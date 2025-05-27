@@ -15,8 +15,13 @@
  * limitations under the License.
  */
 
-// Try to detect IntelliJ model loader project structure "sync"
-if (isIdea) {
+// Tweak settings to allow easier working with IntelliJ Idea
+
+if (project != project.rootProject) {
+  throw new GradleException("Applicable to rootProject only: " + project.path)
+}
+
+if (rootProject.ext.isIdea) {
   logger.warn("IntelliJ Idea IDE detected.")
 
   allprojects {
@@ -32,12 +37,12 @@ if (isIdea) {
   }
 }
 
-if (isIdeaSync) {
+if (rootProject.ext.isIdeaSync) {
   allprojects {
     // disable all MR-JAR folders by hiding them from IDE after evaluation:
-    plugins.withType(JavaPlugin) {
-      sourceSets.matching{ it.name ==~ /main\d+/ }.all{ SourceSet sourceSet ->
-        project.afterEvaluate {
+    plugins.withType(JavaPlugin).configureEach {
+      project.afterEvaluate {
+        sourceSets.matching { it.name ==~ /main\d+/ }.configureEach { SourceSet sourceSet ->
           logger.lifecycle("Skipping MR-JAR sourceSet on IntelliJ Idea: " + sourceSet.name)
           sourceSet.java.srcDirs = []
           sourceSet.resources.srcDirs = []
@@ -47,24 +52,17 @@ if (isIdeaSync) {
   }
 }
 
-if (isIdeaBuild) {
+if (rootProject.ext.isIdeaBuild) {
   // Skip certain long tasks that are dependencies
   // of 'assemble' if we're building from within IntelliJ.
-  gradle.taskGraph.whenReady { taskGraph ->
-    def tasks = taskGraph.getAllTasks()
-
-    def skipTasks = [
-            // Skip site javadoc rendering
-            ".*:(renderSiteJavadoc)",
-    ]
-
-    logger.lifecycle("Skipping certain tasks on IntelliJ builds")
-    tasks.each { task ->
-      def taskPath = task.path
-      if (skipTasks.any { pattern -> taskPath ==~ pattern }) {
-        logger.debug("Skipping task on IntelliJ: " + taskPath)
-        task.enabled = false
-      }
-    }
+  def skipTasks = [
+    // Skip site javadoc rendering
+    ".*:(renderSiteJavadoc)",
+  ]
+  tasks.matching { task ->
+    return skipTasks.any { pattern -> task.path ==~ pattern }
+  }.configureEach {
+    logger.debug("Skipping task on IntelliJ: " + it.path)
+    task.enabled = false
   }
 }

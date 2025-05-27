@@ -19,15 +19,19 @@ import org.apache.tools.ant.filters.ReplaceTokens;
 import org.gradle.plugins.ide.eclipse.model.SourceFolder
 import org.gradle.plugins.ide.eclipse.model.ClasspathEntry
 
-def resources = scriptResources(buildscript)
+if (project != project.rootProject) {
+  throw new GradleException("Applicable to rootProject only: " + project.path)
+}
 
-configure(rootProject) {
+Provider<String> eclipseJavaVersionOption = buildOptions.addOption("eclipse.javaVersion", "Set Java version for Eclipse IDE", deps.versions.minJava.get())
+Provider<String> eclipseErrorsOption = buildOptions.addOption("eclipse.errors", "Sets eclipse IDE lint level (ignore/warning/error)", "warning")
+
   if (gradle.startParameter.taskNames.contains("eclipse")) {
     project.pluginManager.apply("java-base")
     project.pluginManager.apply("eclipse")
 
-    def eclipseJavaVersion = propertyOrDefault("eclipse.javaVersion", deps.versions.minJava.get())
-    def relativize = { other -> rootProject.rootDir.relativePath(other).toString() }
+    def eclipseJavaVersion = eclipseJavaVersionOption.get()
+    def relativize = { File other -> rootProject.rootDir.relativePath(other).toString() }
 
     eclipse {
       project {
@@ -83,8 +87,8 @@ configure(rootProject) {
     }
   }
 
-    task luceneEclipseJdt(type: Sync) {
-      def errorMode = project.propertyOrDefault('eclipse.errors' ,'warning');
+    tasks.register("luceneEclipseJdt", Sync, {
+      def errorMode = eclipseErrorsOption.get()
         def ecjLintFile = rootProject.file('gradle/validation/ecj-lint/ecj.javadocs.prefs');
 
         description = 'Generates the Eclipse JDT settings file.'
@@ -102,10 +106,10 @@ configure(rootProject) {
         filteringCharset = 'UTF-8'
 
         doLast {
-          logger.lifecycle('Eclipse config for Java {} written with ECJ errors configured as {}. Change by passing -Peclipse.errors=ignore/warning/error.', eclipseJavaVersion, errorMode)
+          logger.lifecycle('Eclipse config for Java {} written with ECJ errors configured as {}. Change by altering build option eclipse.errors to ignore/warning/error.', eclipseJavaVersion, errorMode)
           logger.lifecycle('To edit classes of MR-JARs for a specific Java version, use e.g., -Peclipse.javaVersion=19')
         }
-      }
+      })
 
     eclipseJdt {
         enabled = false
@@ -113,11 +117,9 @@ configure(rootProject) {
     }
 
     eclipseClasspath {
-      inputs.property('eclipseJavaVersion', eclipseJavaVersion as String
-      )
+      inputs.property('eclipseJavaVersion', eclipseJavaVersion as String)
     }
   }
-}
 
 public class LibEntry implements ClasspathEntry {
   private String path;
