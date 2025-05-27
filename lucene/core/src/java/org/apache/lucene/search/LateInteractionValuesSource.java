@@ -1,0 +1,171 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.lucene.search;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Objects;
+import org.apache.lucene.document.LateInteractionField;
+import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.VectorSimilarityFunction;
+
+public class LateInteractionValuesSource extends DoubleValuesSource {
+
+  private final String fieldName;
+  private final float[][] queryVector;
+  private final VectorSimilarityFunction vectorSimilarityFunction;
+  private final ScoreFunction scoreFunction;
+
+  public LateInteractionValuesSource(
+      String fieldName, float[][] queryVector, VectorSimilarityFunction vectorSimilarityFunction) {
+    this(fieldName, queryVector, vectorSimilarityFunction, ScoreFunction.SUM_MAX_SIM);
+  }
+
+  public LateInteractionValuesSource(
+      String fieldName,
+      float[][] queryVector,
+      VectorSimilarityFunction vectorSimilarityFunction,
+      ScoreFunction scoreFunction) {
+    if (fieldName == null) {
+      throw new IllegalArgumentException("fieldName must not be null");
+    }
+    if (queryVector == null || queryVector.length == 0) {
+      throw new IllegalArgumentException("queryVector must not be null or empty");
+    }
+    this.fieldName = fieldName;
+    this.queryVector = queryVector;
+    this.vectorSimilarityFunction = vectorSimilarityFunction;
+    this.scoreFunction = scoreFunction;
+  }
+
+  @Override
+  public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
+    BinaryDocValues values = ctx.reader().getBinaryDocValues(fieldName);
+    if (values == null) {
+      return DoubleValues.EMPTY;
+    }
+
+    return new DoubleValues() {
+      @Override
+      public double doubleValue() throws IOException {
+        return scoreFunction.compare(
+            queryVector,
+            LateInteractionField.decode(values.binaryValue()),
+            vectorSimilarityFunction);
+      }
+
+      @Override
+      public boolean advanceExact(int doc) throws IOException {
+        return values.advanceExact(doc);
+      }
+    };
+  }
+
+  @Override
+  public boolean needsScores() {
+    return false;
+  }
+
+  @Override
+  public DoubleValuesSource rewrite(IndexSearcher reader) throws IOException {
+    return this;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        fieldName, Arrays.deepHashCode(queryVector), vectorSimilarityFunction, scoreFunction);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) return true;
+    if (obj == null || getClass() != obj.getClass()) return false;
+    LateInteractionValuesSource other = (LateInteractionValuesSource) obj;
+    return Objects.equals(fieldName, other.fieldName)
+        && vectorSimilarityFunction == other.vectorSimilarityFunction
+        && scoreFunction == other.scoreFunction
+        && Arrays.deepEquals(queryVector, other.queryVector);
+  }
+
+  @Override
+  public String toString() {
+    return "LateInteractionValuesSource(fieldName="
+        + fieldName
+        + " similarityFunction="
+        + vectorSimilarityFunction
+        + " scoreFunction="
+        + scoreFunction.name()
+        + " queryVector="
+        + Arrays.deepToString(queryVector)
+        + ")";
+  }
+
+  @Override
+  public boolean isCacheable(LeafReaderContext ctx) {
+    return true;
+  }
+
+  /** Defines the function to compute similarity score between query and document multi-vectors */
+  public enum ScoreFunction {
+
+    /** Computes the sum of max similarity between query and document vectors */
+    SUM_MAX_SIM {
+      @Override
+      public float compare(
+          float[][] queryVector,
+          float[][] docVector,
+          VectorSimilarityFunction vectorSimilarityFunction) {
+        if (docVector.length == 0) {
+          return Float.MIN_VALUE;
+        }
+        float result = 0f;
+        for (float[] q : queryVector) {
+          float maxSim = Float.MIN_VALUE;
+          for (float[] d : docVector) {
+            if (q.length != d.length) {
+              throw new IllegalArgumentException(
+                  "Provided multi-vectors are incompatible. "
+                      + "Their composing token vectors should have the same dimension, got "
+                      + q.length
+                      + " != "
+                      + d.length);
+            }
+            maxSim = Float.max(maxSim, vectorSimilarityFunction.compare(q, d));
+          }
+          result += maxSim;
+        }
+        return result;
+      }
+    };
+
+    /**
+     * Computes similarity between two multi-vectors using provided {@link VectorSimilarityFunction}
+     *
+     * <p>Provided multi-vectors can have varying number of composing token vectors, but their token
+     * vectors should have the same dimension.
+     *
+     * @param outer a multi-vector
+     * @param inner another multi-vector
+     * @return similarity score between two multi-vectors
+     */
+    public abstract float compare(
+        float[][] outer, float[][] inner, VectorSimilarityFunction vectorSimilarityFunction);
+  }
+}

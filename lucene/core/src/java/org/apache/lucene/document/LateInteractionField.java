@@ -45,6 +45,21 @@ public class LateInteractionField extends BinaryDocValuesField {
   }
 
   /**
+   * Set multi-vector value for the field.
+   *
+   * <p>Value should not be null or empty. Composing token vectors for provided multi-vector value
+   * should have the same dimension.
+   */
+  public void setValue(float[][] value) {
+    this.fieldsData = encode(value);
+  }
+
+  /** Returns the multi-vector value stored in this field */
+  public float[][] getValue() {
+    return decode((BytesRef) fieldsData);
+  }
+
+  /**
    * Encodes provided multi-vector matrix into a {@link BytesRef} that can be stored in the {@link
    * LateInteractionField}.
    *
@@ -56,8 +71,8 @@ public class LateInteractionField extends BinaryDocValuesField {
    * @return BytesRef representation for provided multi-vector
    */
   public static BytesRef encode(float[][] value) {
-    if (value.length == 0) {
-      throw new IllegalArgumentException("Provided value is empty");
+    if (value == null || value.length == 0) {
+      throw new IllegalArgumentException("Value should not be null or empty");
     }
     final int tokenVectorDimension = value[0].length;
     final ByteBuffer buffer =

@@ -20,12 +20,14 @@ package org.apache.lucene.queries.function;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.FilterScorer;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LateInteractionValuesSource;
 import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
@@ -69,6 +71,30 @@ public final class FunctionScoreQuery extends Query {
    */
   public DoubleValuesSource getSource() {
     return source;
+  }
+
+  /**
+   * Returns a FunctionScoreQuery that re-scores hits from the wrapped query using late-interaction
+   * scores between provided query and indexed document multi-vectors.
+   *
+   * <p>Document multi-vectors are indexed using {@link
+   * org.apache.lucene.document.LateInteractionField}. Documents are scored using {@link
+   * LateInteractionValuesSource.ScoreFunction#SUM_MAX_SIM} computation on provided vector
+   * similarity function.
+   *
+   * @param in the query to re-score
+   * @param fieldName field containing document multi-vectors for re-scoring
+   * @param queryVector query multi-vector
+   * @param vectorSimilarityFunction vector similarity function used for computing scores
+   */
+  public static FunctionScoreQuery lateInteractionRerankQuery(
+      Query in,
+      String fieldName,
+      float[][] queryVector,
+      VectorSimilarityFunction vectorSimilarityFunction) {
+    LateInteractionValuesSource scoreSource =
+        new LateInteractionValuesSource(fieldName, queryVector, vectorSimilarityFunction);
+    return new FunctionScoreQuery(in, scoreSource);
   }
 
   /**
