@@ -19,6 +19,8 @@ package org.apache.lucene.document;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
+
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -74,12 +76,16 @@ public class LateInteractionField extends BinaryDocValuesField {
     if (value == null || value.length == 0) {
       throw new IllegalArgumentException("Value should not be null or empty");
     }
+    if (value[0] == null || value[0].length== 0) {
+      throw new IllegalArgumentException("Composing token vectors should not be null or empty");
+    }
     final int tokenVectorDimension = value[0].length;
     final ByteBuffer buffer =
         ByteBuffer.allocate(Integer.BYTES + value.length * tokenVectorDimension * Float.BYTES)
             .order(ByteOrder.LITTLE_ENDIAN);
     // TODO: Should we store dimension in FieldType to ensure consistency across all documents?
     buffer.putInt(tokenVectorDimension);
+    FloatBuffer floatBuffer = buffer.asFloatBuffer();
     for (int i = 0; i < value.length; i++) {
       if (value[i].length != tokenVectorDimension) {
         throw new IllegalArgumentException(
@@ -91,7 +97,7 @@ public class LateInteractionField extends BinaryDocValuesField {
                 + " != "
                 + value[i].length);
       }
-      buffer.asFloatBuffer().put(value[i]);
+      floatBuffer.put(value[i]);
     }
     return new BytesRef(buffer.array());
   }
@@ -110,8 +116,8 @@ public class LateInteractionField extends BinaryDocValuesField {
     final ByteBuffer buffer = ByteBuffer.wrap(payload.bytes, payload.offset, payload.length);
     buffer.order(ByteOrder.LITTLE_ENDIAN);
     final int tokenVectorDimension = buffer.getInt();
-    int numVectors = (payload.length - 4) / tokenVectorDimension;
-    if (numVectors * tokenVectorDimension + 4 != payload.length) {
+    int numVectors = (payload.length - Integer.BYTES) / (tokenVectorDimension * Float.BYTES);
+    if (numVectors * tokenVectorDimension * Float.BYTES + Integer.BYTES != payload.length) {
       throw new IllegalArgumentException(
           "Provided payload does not appear to have been encoded via LateInteractionField.encode. "
               + "Payload length should be equal to 4 + numVectors * tokenVectorDimension, "
