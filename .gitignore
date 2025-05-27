@@ -32,10 +32,3 @@ __pycache__
 
 # SDKMAN
 .sdkmanrc
-
-# Java class files
-*.class
-
-# Ignore bin directories
-bin/
-**/bin/
