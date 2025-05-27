@@ -37,6 +37,7 @@ plugins {
   id "lucene.java.show-failed-tests-at-end"
   id "lucene.java.profiling"
   id "lucene.java.beasting"
+  id "lucene.java.coverage"
 
   id "lucene.validation.spotless-groovy"
   id "lucene.validation.spotless-java"
@@ -118,7 +119,6 @@ apply from: file('gradle/maven/publications.gradle')
 // Validation tasks
 apply from: file('gradle/validation/measure-task-times.gradle')
 apply from: file('gradle/validation/error-prone.gradle')
-apply from: file('gradle/validation/precommit.gradle')
 apply from: file('gradle/validation/forbidden-apis.gradle')
 apply from: file('gradle/validation/jar-checks.gradle')
 apply from: file('gradle/validation/git-status.gradle')
@@ -147,9 +147,6 @@ apply from: file('gradle/generation/unicode-test-classes.gradle')
 apply from: file('gradle/generation/extract-jdk-apis.gradle')
 
 apply from: file('gradle/datasets/external-datasets.gradle')
-
-// Additional development aids.
-apply from: file('gradle/testing/coverage.gradle')
 
 apply from: file('gradle/documentation/documentation.gradle')
 apply from: file('gradle/documentation/changes-to-html.gradle')

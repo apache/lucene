@@ -17,41 +17,44 @@
 
 // This adds jacoco code coverage to tests.
 
-// Run with jacoco if either 'coverage' is passed as a task on input or
-// tests.coverage property is true.
-def withCoverage = gradle.startParameter.taskNames.contains("coverage") ||
-    Boolean.parseBoolean(propertyOrDefault("tests.coverage", "false"))
+if (project != project.rootProject) {
+  throw new GradleException("Applicable to rootProject only: " + project.path)
+}
+
+Provider<Boolean> coverageOption = buildOptions.addBooleanOption("tests.coverage", "Enables jacoco test coverage.", false)
+
+// Run with jacoco if either 'coverage' task is explicitly enabled or tests.coverage option is true.
+def withCoverage = gradle.startParameter.taskNames.contains("coverage") || coverageOption.get()
 
 if (withCoverage) {
-  configure(rootProject) {
-    plugins.apply("org.barfuin.gradle.jacocolog")
+  plugins.apply(deps.plugins.jacocolog.get().pluginId)
 
-    // Synthetic task to enable test coverage (and aggregated reports).
-    task coverage() {
-      dependsOn jacocoAggregatedReport
-    }
+  // Synthetic task to enable test coverage (and aggregated reports).
 
-    configure(jacocoAggregatedReport) {
-      doLast {
-        logger.lifecycle("Code coverage report at: ${reports.html.entryPoint}\n")
-      }
+  def jacocoAggregatedReport = tasks.named("jacocoAggregatedReport")
+  tasks.register("coverage", {
+    dependsOn jacocoAggregatedReport
+  })
+
+  jacocoAggregatedReport.configure {
+    doLast {
+      logger.lifecycle("Aggregated code coverage report at: ${reports.html.entryPoint}\n")
     }
   }
 
-  allprojects {
-    plugins.withType(JavaPlugin) {
-      // Apply jacoco once we know the project has a Java plugin too.
-      project.plugins.apply("org.barfuin.gradle.jacocolog")
+  subprojects {
+    plugins.apply(deps.plugins.jacocolog.get().pluginId)
 
+    plugins.withType(JavaPlugin).configureEach {
       // Synthetic task to enable test coverage (and reports).
-      task coverage() {
-        dependsOn test, jacocoTestReport
-      }
+      def jacocoTestReport = tasks.named("jacocoTestReport")
+      tasks.register("coverage", {
+        dependsOn "test", jacocoTestReport
+      })
 
-      tasks.withType(Test) { Task testTask ->
+      tasks.withType(Test).configureEach { testTask ->
         // Configure jacoco destination file to be within the test
-        // task's working directory - this is related to security
-        // manager permissions (access to this file from within test jvm).
+        // task's working directory
         jacoco {
           destinationFile = file("${testTask.workingDir}/jacoco.exec")
         }
@@ -60,7 +63,7 @@ if (withCoverage) {
         testTask.finalizedBy jacocoTestReport
       }
 
-      configure(jacocoTestReport) {
+      jacocoTestReport.configure {
         doLast {
           logger.lifecycle("Code coverage report at: ${reports.html.entryPoint}.\n")
         }

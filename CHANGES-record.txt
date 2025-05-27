@@ -48,3 +48,6 @@ the same checks to this subproject as we do to everything else.
 
 * parts of the build supporting security manager settings have been just
 removed, without any replacement.
+
+* The legacy ```precommit``` task has been removed; use gradle's ```check```.
+
