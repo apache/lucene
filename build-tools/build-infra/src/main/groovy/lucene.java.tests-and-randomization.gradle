@@ -79,7 +79,7 @@ Provider<Integer> jvmsOption = buildOptions.addIntOption("tests.jvms", "The numb
 
 // GITHUB#13986: Allow easier configuration of the Panama Vectorization provider with newer Java versions
 Provider<Integer> upperJavaFeatureVersionOption = buildOptions.addIntOption(
-    "org.apache.lucene.vectorization.upperJavaFeatureVersion", "Min JDK feature version to configure the Panama Vectorization provider")
+    "tests.upperJavaFeatureVersion", "Min JDK feature version to configure the Panama Vectorization provider")
 
 // Test reiteration, filtering and component randomization options.
 buildOptions.addIntOption("tests.iters", "Duplicate (re-run) each test case N times.")
