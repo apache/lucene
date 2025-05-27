@@ -489,7 +489,7 @@ class ReleaseState:
     print("Saving")
     if not os.path.exists(os.path.join(self.config_path, self.release_version)):
       print("Creating folder %s" % os.path.join(self.config_path, self.release_version))
-      os.makedirs(os.path.join(self.config_path, self.release_version))
+      Path(os.path.join(self.config_path, self.release_version)).mkdir(parents=True)
 
     with open(os.path.join(self.config_path, self.release_version, "state.yaml"), "w") as fp:
       yaml.dump(self.to_dict(), fp, sort_keys=False, default_flow_style=False)
@@ -533,14 +533,14 @@ class ReleaseState:
     folder = os.path.join(self.config_path, self.release_version)
     if not os.path.exists(folder):
       print("Creating folder %s" % folder)
-      os.makedirs(folder)
+      Path(folder).mkdir(parents=True)
     return folder
 
   def get_rc_folder(self):
     folder = os.path.join(self.get_release_folder(), "RC%d" % self.rc_number)
     if not os.path.exists(folder):
       print("Creating folder %s" % folder)
-      os.makedirs(folder)
+      Path(folder).mkdir(parents=True)
     return folder
 
   def get_dist_folder(self):
@@ -1287,7 +1287,7 @@ def main():
     if not os.path.exists(release_root):
       try:
         print("Creating release root %s" % release_root)
-        os.makedirs(release_root)
+        Path(release_root).mkdir(parents=True)
       except Exception as e:
         sys.exit("Error while creating %s: %s" % (release_root, e))
     release_version = get_release_version()
@@ -1390,7 +1390,7 @@ def run_with_log_tail(command: str | list[str], cwd: str | None, logfile: str | 
   if logfile:
     logdir = os.path.dirname(logfile)
     if not os.path.exists(logdir):
-      os.makedirs(logdir)
+      Path(logdir).mkdir(parents=True)
     fh = open(logfile, "w")
   rc = run_follow(command, cwd, fh=fh, tee=tee, live=live, shell=shell)
   if logfile:

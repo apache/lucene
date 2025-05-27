@@ -214,13 +214,13 @@ def normalizeVersion(tup: tuple[str, ...]):
 
 def pushLocal(version: str, root: str, rcNum: int, localDir: str):
   print("Push local [%s]..." % localDir)
-  os.makedirs(localDir)
+  Path(localDir).mkdir(parents=True)
 
   lucene_dist_dir = "%s/lucene/distribution/build/release" % root
   rev = open("%s/lucene/distribution/build/release/.gitrev" % root, encoding="UTF-8").read()
 
   dir = "lucene-%s-RC%d-rev-%s" % (version, rcNum, rev)
-  os.makedirs("%s/%s/lucene" % (localDir, dir))
+  Path("%s/%s/lucene" % (localDir, dir)).mkdir(parents=True)
   print("  Lucene")
   os.chdir(lucene_dist_dir)
   print("    archive...")
