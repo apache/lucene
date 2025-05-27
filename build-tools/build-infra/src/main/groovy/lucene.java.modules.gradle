@@ -20,13 +20,10 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 
-// Configure miscellaneous aspects required for supporting the java module system layer.
-
-// Debugging utilities.
-apply from: buildscript.sourceFile.toPath().resolveSibling("modules-debugging.gradle")
+// Configures miscellaneous aspects required to support the java module system layer.
 
 allprojects {
-  plugins.withType(JavaPlugin) {
+  plugins.withType(JavaPlugin).configureEach {
     // We won't be using gradle's built-in automatic module finder.
     java {
       modularity.inferModulePath.set(false)
@@ -35,7 +32,7 @@ allprojects {
     //
     // Configure modular extensions for each source set.
     //
-    project.sourceSets.all { SourceSet sourceSet ->
+    project.sourceSets.configureEach { SourceSet sourceSet ->
       // Create and register a source set extension for manipulating classpath/ module-path
       ModularPathsExtension modularPaths = new ModularPathsExtension(project, sourceSet)
       sourceSet.extensions.add("modularPaths", modularPaths)
@@ -213,7 +210,7 @@ allprojects {
           }
 
           // Sanity check.
-          args.forEach(s -> {
+          args.forEach({s ->
             if (s.contains("\n")) {
               throw new RuntimeException("LF in forked jvm property?: " + s)
             }
@@ -226,7 +223,7 @@ allprojects {
     }
 
     // Configure (tasks.test, sourceSets.test)
-    tasks.matching { it.name ==~ /test(_[0-9]+)?/ }.all { Test task ->
+    tasks.matching { it.name ==~ /test(_[0-9]+)?/ }.configureEach { Test task ->
       configureTestTaskForSourceSet(task, task.project.sourceSets.test)
     }
 
@@ -290,11 +287,11 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
     DEPENDENCIES_ON_MODULE_PATH
   }
 
-  Project project
-  SourceSet sourceSet
-  Configuration compileModulePathConfiguration
-  Configuration runtimeModulePathConfiguration
-  Configuration modulePatchOnlyConfiguration
+    Project project
+    SourceSet sourceSet
+    Configuration compileModulePathConfiguration
+    Configuration runtimeModulePathConfiguration
+    Configuration modulePatchOnlyConfiguration
 
   // The mode of splitting paths for this source set.
   Mode mode = Mode.DEPENDENCIES_ON_MODULE_PATH
@@ -312,15 +309,16 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
     this.project = project
     this.sourceSet = sourceSet
 
-    debugPaths = Boolean.parseBoolean(project.propertyOrDefault('build.debug.paths', 'false'))
+    // enable to debug paths.
+    debugPaths = false
 
-    ConfigurationContainer configurations = project.configurations
+      ConfigurationContainer configurations = project.configurations
 
     // Create modular configurations for gradle's java plugin convention configurations.
-    Configuration moduleApi = createModuleConfigurationForConvention(sourceSet.apiConfigurationName)
-    Configuration moduleImplementation = createModuleConfigurationForConvention(sourceSet.implementationConfigurationName)
-    Configuration moduleRuntimeOnly = createModuleConfigurationForConvention(sourceSet.runtimeOnlyConfigurationName)
-    Configuration moduleCompileOnly = createModuleConfigurationForConvention(sourceSet.compileOnlyConfigurationName)
+      Configuration moduleApi = createModuleConfigurationForConvention(sourceSet.apiConfigurationName)
+      Configuration moduleImplementation = createModuleConfigurationForConvention(sourceSet.implementationConfigurationName)
+      Configuration moduleRuntimeOnly = createModuleConfigurationForConvention(sourceSet.runtimeOnlyConfigurationName)
+      Configuration moduleCompileOnly = createModuleConfigurationForConvention(sourceSet.compileOnlyConfigurationName)
 
 
     // Apply hierarchy relationships to modular configurations.
@@ -328,8 +326,8 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
 
     // Patched modules have to end up in the implementation configuration for IDEs, which
     // otherwise get terribly confused.
-    Configuration modulePatchOnly = createModuleConfigurationForConvention(
-        SourceSet.isMain(sourceSet) ? "patchOnly" : sourceSet.name + "PatchOnly")
+      Configuration modulePatchOnly = createModuleConfigurationForConvention(
+              SourceSet.isMain(sourceSet) ? "patchOnly" : sourceSet.name + "PatchOnly")
     modulePatchOnly.canBeResolved(true)
     moduleImplementation.extendsFrom(modulePatchOnly)
     this.modulePatchOnlyConfiguration = modulePatchOnly
@@ -345,8 +343,8 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
 
     // Set up compilation module path configuration combining corresponding convention configurations.
     Closure<Configuration> createResolvableModuleConfiguration = { String configurationName ->
-      Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
-      Configuration moduleConfiguration = configurations.maybeCreate(moduleConfigurationNameFor(conventionConfiguration.name))
+        Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
+        Configuration moduleConfiguration = configurations.maybeCreate(moduleConfigurationNameFor(conventionConfiguration.name))
       moduleConfiguration.canBeConsumed(false)
       moduleConfiguration.canBeResolved(true)
       ensureJarVariant(moduleConfiguration)
@@ -397,7 +395,7 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
     return runtimeModulePathConfiguration - modulePatchOnlyConfiguration
   }
 
-  FileCollection getCompilationClasspath() {
+    FileCollection getCompilationClasspath() {
     if (mode == Mode.CLASSPATH_ONLY) {
       return sourceSet.compileClasspath
     }
@@ -409,7 +407,7 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
     })
   }
 
-  CommandLineArgumentProvider getCompilationArguments() {
+    CommandLineArgumentProvider getCompilationArguments() {
     return new CommandLineArgumentProvider() {
       @Override
       Iterable<String> asArguments() {
@@ -438,7 +436,7 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
     }
   }
 
-  FileCollection getRuntimeClasspath() {
+    FileCollection getRuntimeClasspath() {
     if (mode == Mode.CLASSPATH_ONLY) {
       return sourceSet.runtimeClasspath
     }
@@ -450,7 +448,7 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
     })
   }
 
-  CommandLineArgumentProvider getRuntimeArguments() {
+    CommandLineArgumentProvider getRuntimeArguments() {
     return new CommandLineArgumentProvider() {
       @Override
       Iterable<String> asArguments() {
@@ -480,8 +478,8 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
 
   boolean hasModuleDescriptor() {
     return sourceSet.allJava.srcDirs.stream()
-        .map(dir -> new File(dir, "module-info.java"))
-        .anyMatch(file -> file.exists())
+        .map {dir -> new File(dir, "module-info.java") }
+        .anyMatch {file -> file.exists() }
   }
 
   private List<String> getPatchModuleArguments(List<Map.Entry<String, Provider<Path>>> patches) {
@@ -545,8 +543,8 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
   // Create module configuration for the corresponding convention configuration.
   private Configuration createModuleConfigurationForConvention(String configurationName) {
     ConfigurationContainer configurations = project.configurations
-    Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
-    Configuration moduleConfiguration = configurations.maybeCreate(moduleConfigurationNameFor(configurationName))
+      Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
+      Configuration moduleConfiguration = configurations.maybeCreate(moduleConfigurationNameFor(configurationName))
     moduleConfiguration.canBeConsumed(false)
     moduleConfiguration.canBeResolved(false)
     conventionConfiguration.extendsFrom(moduleConfiguration)

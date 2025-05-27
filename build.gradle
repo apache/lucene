@@ -38,6 +38,7 @@ plugins {
   id "lucene.java.profiling"
   id "lucene.java.beasting"
   id "lucene.java.coverage"
+  id "lucene.java.modules"
 
   id "lucene.validation.spotless-groovy"
   id "lucene.validation.spotless-java"
@@ -104,10 +105,6 @@ configure(rootProject) {
     }
   }
 }
-
-// Set up defaults and configure aspects for certain modules or functionality
-// (java, tests)
-apply from: file('gradle/java/modules.gradle')
 
 // IDE support, settings and specials.
 apply from: file('gradle/ide/intellij-idea.gradle')
