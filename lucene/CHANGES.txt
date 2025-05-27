@@ -3,6 +3,14 @@ Lucene Change Log
 For more information on past and future Lucene versions, please see:
 http://s.apache.org/luceneversions
 
+======================= Lucene 10.2.2 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#14527: Reduce NeighborArray heap memory. (weizijun)
+
+
 ======================= Lucene 10.2.1 =======================
 
 Bug Fixes
@@ -20,6 +28,7 @@ Bug Fixes
   queries that mix MUST and FILTER clauses, and disjunctive queries that
   configure a minimum number of matching SHOULD clauses.
   (Peter Alfonsi, Adrien Grand)
+
 
 ======================= Lucene 10.2.0 =======================
 
