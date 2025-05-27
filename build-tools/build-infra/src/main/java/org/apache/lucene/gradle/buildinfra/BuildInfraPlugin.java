@@ -41,10 +41,6 @@ public class BuildInfraPlugin implements Plugin<Project> {
       ExtractReuters.main(new String[] {reutersDir, outputDir});
     }
 
-    public String getOutputLogName(TestDescriptor suite) {
-      return ErrorReportingTestListener.getOutputLogName(suite);
-    }
-
     public Class<?> checksumClass() {
       return Checksum.class;
     }

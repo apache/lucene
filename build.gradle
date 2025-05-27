@@ -33,6 +33,9 @@ plugins {
 
   id "lucene.java.core.mrjar"
   id "lucene.java.fail-on-no-tests"
+  id "lucene.java.slowest-tests-at-end"
+  id "lucene.java.show-failed-tests-at-end"
+  id "lucene.java.profiling"
 
   id "lucene.validation.spotless-groovy"
   id "lucene.validation.spotless-java"
@@ -145,10 +148,6 @@ apply from: file('gradle/generation/extract-jdk-apis.gradle')
 apply from: file('gradle/datasets/external-datasets.gradle')
 
 // Additional development aids.
-apply from: file('gradle/testing/per-project-summary.gradle')
-apply from: file('gradle/testing/slowest-tests-at-end.gradle')
-apply from: file('gradle/testing/failed-tests-at-end.gradle')
-apply from: file('gradle/testing/profiling.gradle')
 apply from: file('gradle/testing/beasting.gradle')
 apply from: file('gradle/testing/coverage.gradle')
 

@@ -15,22 +15,19 @@
  * limitations under the License.
  */
 
+// Prints per-project test summary.
 
-// Per-project test summary.
+tasks.withType(Test).configureEach { task ->
+  afterSuite { desc, result ->
+    if (!desc.parent) {
+      if (result.testCount > 0) {
+        def components = [
+          "test(s)"   : result.testCount,
+          "failure(s)": result.failedTestCount,
+          "skipped"   : result.skippedTestCount
+        ].findAll { k, v -> v > 0 }.collect { k, v -> "$v $k" }.join(", ")
 
-allprojects {
-  tasks.withType(Test) { task ->
-    afterSuite { desc, result ->
-      if (!desc.parent) {
-        if (result.testCount > 0) {
-          def components = [
-              "test(s)"   : result.testCount,
-              "failure(s)": result.failedTestCount,
-              "skipped"   : result.skippedTestCount
-          ].findAll { k, v -> v > 0 }.collect { k, v -> "$v $k" }.join(", ")
-
-          logger.lifecycle("${task.path} (${result.resultType}): ${components}")
-        }
+        logger.lifecycle("${task.path} (${result.resultType}): ${components}")
       }
     }
   }

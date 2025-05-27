@@ -313,11 +313,6 @@ tasks.withType(Test).configureEach {
   }
 }
 
-// TODO: collect non-default and computed options and pass them.
-project.ext.testOptionsForReproduceLine = ""
-/*
- Commandline.quoteArgument("-P" + opt.propName + "=" + testOptionsResolved[opt.propName])
- */
 
 class LoggingFileArgumentProvider implements CommandLineArgumentProvider {
   @InputFile

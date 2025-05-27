@@ -17,23 +17,30 @@
 
 // Add test duration summary at the end of the build.
 
+if (project != project.rootProject) {
+  throw new GradleException("Applicable to rootProject only: " + project.path)
+}
+
 def allTests = []
 def allSuites = []
 
 allprojects {
   plugins.withType(JavaPlugin).configureEach {
     Provider<Boolean> slowestTestsOption = buildOptions.addBooleanOption("tests.slowestTests", "Print the summary of the slowest tests.", true)
+    int slowestTestsMinTime = buildOptions.addIntOption("tests.slowestTests.minTime", "Minimum test time to consider a test slow (millis).", 500).get()
     Provider<Boolean> slowestSuitesOption = buildOptions.addBooleanOption("tests.slowestSuites", "Print the summary of the slowest suites.", true)
+    int slowestSuitesMinTime = buildOptions.addIntOption("tests.slowestSuites.minTime", "Minimum suite time to consider a suite slow (millis).", 1000).get()
 
     tasks.withType(Test).configureEach { task ->
       if (slowestTestsOption.get()) {
         afterTest { desc, result ->
           def duration = (result.getEndTime() - result.getStartTime())
-
-          allTests << [
+          if (duration >= slowestTestsMinTime) {
+            allTests << [
               name    : "${desc.className.replaceAll('.+\\.', "")}.${desc.name} (${project.path})",
               duration: duration
-          ]
+            ]
+          }
         }
       }
 
@@ -42,11 +49,12 @@ allprojects {
           // Gradle reports runner times as well, omit anything that isn't attached to a concrete class.
           if (desc.className != null) {
             def duration = (result.getEndTime() - result.getStartTime())
-
-            allSuites << [
+            if (duration >= slowestSuitesMinTime) {
+              allSuites << [
                 name    : "${desc.className.replaceAll('.+\\.', "")} (${project.path})",
                 duration: duration
-            ]
+              ]
+            }
           }
         }
       }
@@ -60,12 +68,10 @@ gradle.buildFinished { result ->
       def slowest = allTests
           .sort { a, b -> b.duration.compareTo(a.duration) }
           .take(10)
-          .findAll { e -> e.duration >= 500 }
           .collect { e -> String.format(Locale.ROOT, "%5.2fs %s", e.duration / 1000d, e.name) }
 
       if (slowest) {
-        logger.lifecycle("The slowest tests (exceeding 500 ms) during this run:\n  " +
-            slowest.join("\n  "))
+        logger.lifecycle("The slowest tests during this run:\n  " + slowest.join("\n  "))
       }
     }
 
@@ -73,12 +79,10 @@ gradle.buildFinished { result ->
       def slowest = allSuites
           .sort { a, b -> b.duration.compareTo(a.duration) }
           .take(10)
-          .findAll { e -> e.duration >= 1000 }
           .collect { e -> String.format(Locale.ROOT, "%5.2fs %s", e.duration / 1000d, e.name) }
 
       if (slowest) {
-        logger.lifecycle("The slowest suites (exceeding 1s) during this run:\n  " +
-            slowest.join("\n  "))
+        logger.lifecycle("The slowest suites during this run:\n  " + slowest.join("\n  "))
       }
     }
   }
