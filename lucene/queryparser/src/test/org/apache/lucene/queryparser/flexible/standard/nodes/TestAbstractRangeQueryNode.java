@@ -39,6 +39,8 @@ public class TestAbstractRangeQueryNode extends LuceneTestCase {
     TermRangeQueryNode origNode = new TermRangeQueryNode(lower, upper, true, true);
     CharSequence queryString = origNode.toQueryString(escaper);
 
+    new FieldQueryNode("FIELD", "(literal parens)", 0, 0).getTermEscaped(escaper);
+
     // query string should have expected format and parse into a valid query
     assertThat(queryString, is("FIELD:[aaa TO zzz]"));
     Query parsedQuery = parser.parse(queryString.toString(), "");

@@ -25,5 +25,22 @@ public interface ValueQueryNode<T extends Object> extends QueryNode {
 
   public T getValue();
 
+  /**
+   * This method is used to get the value converted to {@link String} and escaped using the given
+   * {@link EscapeQuerySyntax}. For example:
+   *
+   * <pre>
+   * new FieldQueryNode("FIELD", "(literal parens)", 0, 0).getTermEscaped(escaper);
+   * </pre>
+   *
+   * <p>returns
+   *
+   * <pre>
+   * \(literal\ parens\)
+   * </pre>
+   *
+   * @param escaper the {@link EscapeQuerySyntax} used to escape the value {@link String}
+   * @return the value converted to {@link String} and escaped
+   */
   public CharSequence getTermEscaped(EscapeQuerySyntax escaper);
 }
