@@ -15,13 +15,75 @@
  * limitations under the License.
  */
 
-// Configure projects for publishing Maven artifacts and set up repeatable metadata.
+/*
+ * This script configures aspects related to all project publications,
+ * this includes:
+ *
+ * - configuring maven artifacts,
+ * - setting up target maven repositories for publications to end up on,
+ * - configuring binary and source release artifacts,
+ * - other concerns related to publishing artifacts (signing, checksums).
+ */
 
-configure(rootProject.ext.mavenProjects) { Project project ->
+if (project != project.rootProject) {
+  throw new GradleException("Applicable to rootProject only: " + project.path)
+}
+
+//
+// An explicit list of projects to publish as Maven artifacts.
+//
+def mavenProjects = project(":lucene").subprojects.findAll {subproject ->
+  def excluded = [
+    // Exclude distribution assembly, tests & documentation.
+    ":lucene:distribution",
+    ":lucene:documentation",
+    // Exclude the parent container project for analysis modules (no artifacts).
+    ":lucene:analysis",
+    // Exclude the native module.
+    ":lucene:misc:native",
+    // Exclude test fixtures.
+    ":lucene:spatial-test-fixtures",
+    // Exclude JMH benchmarks.
+    ":lucene:benchmarks-jmh",
+  ]
+
+  // Exclude all subprojects that are modular test projects and those explicitly
+  // excluded above.
+  return !(subproject.path.endsWith(".tests")
+      || subproject.path.startsWith(":lucene:build-tools:")
+      || subproject.path in excluded)
+}
+
+// Make projects available to other scripts. Perhaps we should think of another way to do it.
+ext.set("mavenProjects", mavenProjects)
+
+
+// Optionally, switch to using an external GPG command, using it's configured gpg-agent for key management
+Provider<Boolean> useGpgOption = buildOptions.addBooleanOption("useGpg", "Use GPG for signing artifacts.", false)
+if (useGpgOption.get()) {
+  // Do this check before 'useGpgCmd()' (and once), otherwise gradle will fail with a confusing error about 'signatory.keyId'
+  //
+  // 'signatory.keyId' is an implementation detail of the SigningPlugin that it populates from 'signing.gnupg.keyName' when useGpgCmd()
+  // is used -- but does not explain in the error produced if 'signing.gnupg.keyName' is not set.
+  def propName = 'signing.gnupg.keyName'
+  if (!project.hasProperty(propName)) {
+    throw new GradleException("'$propName' project property must be set when using external GPG via 'useGpg', please see help/publishing.txt")
+  }
+
+  rootProject.allprojects {
+    plugins.withType(SigningPlugin).configureEach {
+      signing {
+        useGpgCmd()
+      }
+    }
+  }
+}
+
+configure(mavenProjects) { Project project ->
   project.apply plugin: 'maven-publish'
   project.apply plugin: 'signing'
 
-  plugins.withType(JavaPlugin) {
+  plugins.withType(JavaPlugin).configureEach {
     // We have two types of publications: jars and signed jars.
     publishing {
       publications {
@@ -37,31 +99,27 @@ configure(rootProject.ext.mavenProjects) { Project project ->
 
     // Each publication consists of the java components, source and javadoc artifacts.
     // Add tasks to assemble source and javadoc JARs.
-    task sourcesJar(type: Jar, dependsOn: classes) {
+    def sourcesJar = tasks.register("sourcesJar", Jar, {
+      dependsOn "classes"
       archiveClassifier = 'sources'
       from sourceSets.main.allJava
-    }
+    })
 
-    task javadocJar(type: Jar, dependsOn: javadoc) {
+    def javadocJar = tasks.register("javadocJar", Jar, {
+      dependsOn "javadoc"
       archiveClassifier = 'javadoc'
       from javadoc.destinationDir
-    }
+    })
 
-    // This moves pom metadata configuration after all the scripts of all projects
-    // have been evaluated. This is required because we set artifact groups
-    // and archivesName in other scripts and some of the properties below don't
-    // accept lazy property providers (so everything must be in its final form).
-    gradle.projectsEvaluated {
-      publishing {
-        publications.each { publication ->
-          configure(publication) {
-            from components.java
-            groupId = project.group
-            artifactId = project.base.archivesName.get()
+    publishing {
+      publications.each { publication ->
+        configure(publication) {
+          from components.java
+          groupId = project.group
+          artifactId = project.base.archivesName.get()
 
-            artifact sourcesJar
-            artifact javadocJar
-          }
+          artifact sourcesJar
+          artifact javadocJar
         }
       }
     }
@@ -85,8 +143,8 @@ configure(rootProject.ext.mavenProjects) { Project project ->
             inceptionYear = "2000"
 
             issueManagement {
-              system = "JIRA"
-              url = "https://issues.apache.org/jira/browse/LUCENE"
+              system = "github"
+              url = "https://github.com/apache/lucene/issues"
             }
 
             ciManagement {
@@ -132,10 +190,10 @@ configure(rootProject.ext.mavenProjects) { Project project ->
   afterEvaluate {
     configurations.matching { configuration ->
       configuration.name in [
-          "testFixturesApiElements",
-          "testFixturesRuntimeElements"
+        "testFixturesApiElements",
+        "testFixturesRuntimeElements"
       ]
-    }.all {
+    }.configureEach {
       project.components.java.withVariantsFromConfiguration(it) { variant ->
         variant.skip()
       }
@@ -143,8 +201,14 @@ configure(rootProject.ext.mavenProjects) { Project project ->
   }
 
   // Hack: do not generate or publish gradle metadata files.
-  tasks.withType(GenerateModuleMetadata) {
+  tasks.withType(GenerateModuleMetadata).configureEach {
     enabled = false
   }
 }
 
+// Configure on-demand maven publishing into ~/.m2 for developers' convenience.
+plugins.apply('lucene.publications.maven-to-local-m2')
+
+// Configure ASF Nexus publications.
+plugins.apply('lucene.publications.maven-to-nexus-releases')
+plugins.apply('lucene.publications.maven-to-nexus-snapshots')

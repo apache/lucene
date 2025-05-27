@@ -19,12 +19,12 @@
 // Configure on-demand maven publishing into ~/.m2 for developers' convenience.
 
 configure(rootProject) {
-  task mavenToLocal() {
-    group "Distribution"
-    description "Publish Lucene Maven artifacts to ~/.m2 repository."
+  tasks.register("mavenToLocal", {
+    group = "Distribution"
+    description = "Publish Lucene Maven artifacts to ~/.m2 repository."
 
     dependsOn rootProject.ext.mavenProjects.collect {
       it.tasks.matching { it.name == "publishJarsPublicationToMavenLocal" }
     }
-  }
+  })
 }

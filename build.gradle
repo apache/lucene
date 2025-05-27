@@ -49,6 +49,10 @@ plugins {
   id "lucene.ide.intellij-idea"
   id "lucene.ide.eclipse"
 
+  id "lucene.publications.maven"
+  id "lucene.publications.maven-to-nexus-releases"
+  id "lucene.publications.maven-to-nexus-snapshots"
+
   // perhaps move this to a convention plugin or remove entirely?
   id "lucene.build-infra"
 
@@ -108,9 +112,6 @@ configure(rootProject) {
     }
   }
 }
-
-// Maven artifact publishing.
-apply from: file('gradle/maven/publications.gradle')
 
 // Validation tasks
 apply from: file('gradle/validation/measure-task-times.gradle')
