@@ -187,14 +187,14 @@ public class ProfileResults {
           if (trace != null) {
             StringBuilder stack = new StringBuilder();
             for (int i = 0; i < Math.min(stacksize, trace.getFrames().size()); i++) {
-              if (stack.length() > 0) {
+              if (!stack.isEmpty()) {
                 stack.append("\n").append(framePadding).append("  at ");
               }
               stack.append(frameToString(trace.getFrames().get(i), lineNumbers, frameTypes));
             }
             String line = stack.toString();
             SimpleEntry<String, Long> entry =
-                histogram.computeIfAbsent(line, u -> new SimpleEntry<String, Long>(line, 0L));
+                histogram.computeIfAbsent(line, _ -> new SimpleEntry<>(line, 0L));
             long value = getValue(event);
             entry.setValue(entry.getValue() + value);
             totalEvents++;

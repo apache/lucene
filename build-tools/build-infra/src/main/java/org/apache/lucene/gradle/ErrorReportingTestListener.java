@@ -203,7 +203,7 @@ public class ErrorReportingTestListener implements TestOutputListener, TestListe
     if (!descriptor.isComposite()) {
       descriptor = descriptor.getParent();
     }
-    return outputHandlers.computeIfAbsent(TestKey.of(descriptor), (key) -> new OutputHandler());
+    return outputHandlers.computeIfAbsent(TestKey.of(descriptor), (_) -> new OutputHandler());
   }
 
   public static class TestKey {

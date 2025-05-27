@@ -23,6 +23,11 @@ import com.carrotsearch.gradle.buildinfra.dependencychecks.DependencyChecksPlugi
 // https://github.com/carrotsearch/gradle-build-infra#plugin-comcarrotsearchgradlebuildinfradependencychecksdependencychecksplugin
 
 allprojects {
+  // We don't care about the build infra deps in the lock file.
+  if (it.path == ":lucene:build-tools:build-infra-shadow") {
+    return
+  }
+
   plugins.apply(DependencyChecksPlugin)
 
   def mainConfigurations = project.configurations.matching {
