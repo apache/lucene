@@ -17,61 +17,58 @@
 
 
 // Configure artifact push to apache nexus (snapshots repository, CI job)
+def apacheNexusSnapshotsRepository = "https://repository.apache.org/content/repositories/snapshots"
 
-configure(rootProject) {
-  def apacheNexusSnapshotsRepository = "https://repository.apache.org/content/repositories/snapshots"
+// These access credentials must be passed by the release manager
+// (either on command-line, via the environment or via ~/.gradle.properties).
+Provider<String> asfNexusUsername = providers.gradleProperty("asfNexusUsername")
+    .orElse(providers.systemProperty("asfNexusUsername"))
+    .orElse(providers.environmentVariable("ASF_NEXUS_USERNAME"))
 
-  // These access credentials must be passed by the release manager
-  // (either on command-line, via the environment or via ~/.gradle.properties).
-  Provider<String> asfNexusUsername = providers.gradleProperty("asfNexusUsername")
-      .orElse(providers.systemProperty("asfNexusUsername"))
-      .orElse(providers.environmentVariable("ASF_NEXUS_USERNAME"))
+Provider<String> asfNexusPassword = providers.gradleProperty("asfNexusPassword")
+    .orElse(providers.systemProperty("asfNexusPassword"))
+    .orElse(providers.environmentVariable("ASF_NEXUS_PASSWORD"))
 
-  Provider<String> asfNexusPassword = providers.gradleProperty("asfNexusPassword")
-      .orElse(providers.systemProperty("asfNexusPassword"))
-      .orElse(providers.environmentVariable("ASF_NEXUS_PASSWORD"))
+tasks.register("mavenToApacheSnapshots", {
+  group = "Distribution"
+  description = "Publish Lucene Maven artifacts to Apache Snapshots repository: ${apacheNexusSnapshotsRepository}"
 
-  tasks.register("mavenToApacheSnapshots", {
-    group = "Distribution"
-    description = "Publish Lucene Maven artifacts to Apache Snapshots repository: ${apacheNexusSnapshotsRepository}"
+  dependsOn rootProject.ext.mavenProjects.collect {
+    it.tasks.matching { it.name == "publishJarsPublicationToApacheSnapshotsRepository" }
+  }
+})
 
-    dependsOn rootProject.ext.mavenProjects.collect {
-      it.tasks.matching { it.name == "publishJarsPublicationToApacheSnapshotsRepository" }
-    }
-  })
-
-  def checkSnapshotsRepositoryPushPreconditions = tasks.register("checkSnapshotsRepositoryPushPreconditions", {
-    doFirst {
-      // Make sure we're pushing a snapshot version.
-      if (!rootProject.ext.snapshotBuild) {
-        throw new GradleException("ASF snapshots repository will not accept a non-snapshot version: ${rootProject.version}")
-      }
-
-      // Make sure access credentials have been passed.
-      if (!asfNexusUsername.isPresent() || !asfNexusPassword.isPresent()) {
-        throw new GradleException("asfNexusUsername or asfNexusPassword is empty: these are required to publish to " +
-        " ASF Nexus.")
-      }
-    }
-  })
-
-  configure(rootProject.ext.mavenProjects) { Project project ->
-    // Make sure any actual publication task is preceded by precondition checks.
-    tasks.matching { it.name ==~ /publish.+ToApacheSnapshotsRepository/ }.configureEach {
-      dependsOn checkSnapshotsRepositoryPushPreconditions
+def checkSnapshotsRepositoryPushPreconditions = tasks.register("checkSnapshotsRepositoryPushPreconditions", {
+  doFirst {
+    // Make sure we're pushing a snapshot version.
+    if (!rootProject.ext.snapshotBuild) {
+      throw new GradleException("ASF snapshots repository will not accept a non-snapshot version: ${rootProject.version}")
     }
 
-    plugins.withType(PublishingPlugin).configureEach {
-      publishing {
-        repositories {
-          maven {
-            name = "ApacheSnapshots"
-            url = apacheNexusSnapshotsRepository
+    // Make sure access credentials have been passed.
+    if (!asfNexusUsername.isPresent() || !asfNexusPassword.isPresent()) {
+      throw new GradleException("asfNexusUsername or asfNexusPassword is empty: these are required to publish to " +
+      " ASF Nexus.")
+    }
+  }
+})
 
-            credentials {
-              username asfNexusUsername.getOrElse(null)
-              password asfNexusPassword.getOrElse(null)
-            }
+configure(rootProject.ext.mavenProjects) { Project project ->
+  // Make sure any actual publication task is preceded by precondition checks.
+  tasks.matching { it.name ==~ /publish.+ToApacheSnapshotsRepository/ }.configureEach {
+    dependsOn checkSnapshotsRepositoryPushPreconditions
+  }
+
+  plugins.withType(PublishingPlugin).configureEach {
+    publishing {
+      repositories {
+        maven {
+          name = "ApacheSnapshots"
+          url = apacheNexusSnapshotsRepository
+
+          credentials {
+            username asfNexusUsername.getOrElse(null)
+            password asfNexusPassword.getOrElse(null)
           }
         }
       }
