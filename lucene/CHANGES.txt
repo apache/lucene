@@ -22,6 +22,10 @@ API Changes
 
 * GITHUB#14291: Remove IOException from ScorerSupplier#setTopLevelScoringClause signature (Luca Cavanna)
 
+* GITHUB#7865: Added public CharSequence getTermEscaped(EscapeQuerySyntax)
+  to ValueQueryNode. Made existing implementations public in all classes which
+  implement ValueQueryNode. (Peter Barna, Adam Schwartz)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -49,6 +53,10 @@ Bug Fixes
 
 * GITHUB#14075: Remove duplicate and add missing entry on brazilian portuguese stopwords list. (Arthur Caccavo)
 
+* GITHUB#7865 AbstractRangeQueryNode#toQueryString(EscapeQuerySyntax) now
+  returns a string which can be parsed back into the original node.
+  (Peter Barna, Adam Schwartz)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -73,10 +81,6 @@ API Changes
 
 * GITHUB#14426: Support determining desired off-heap memory requirements through
   KnnVectorsReader::getOffHeapByteSize (Chris Hegarty)
-
-* GITHUB#7865: Added public CharSequence getTermEscaped(EscapeQuerySyntax)
-  to ValueQueryNode. Made existing implementations public in all classes which
-  implement ValueQueryNode. (Peter Barna, Adam Schwartz)
 
 New Features
 ---------------------
@@ -126,10 +130,6 @@ Bug Fixes
 
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
   instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
-
-* GITHUB#7865 AbstractRangeQueryNode#toQueryString(EscapeQuerySyntax) now
-  returns a string which can be parsed back into the original node.
-  (Peter Barna, Adam Schwartz)
 
 Build
 ---------------------
