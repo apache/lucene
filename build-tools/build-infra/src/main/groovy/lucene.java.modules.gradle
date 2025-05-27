@@ -41,9 +41,9 @@ allprojects {
       // support all of the module-specific javac options.
       ModularPathsExtension modularPathsForEcj = modularPaths
       if (sourceSet.name == SourceSet.TEST_SOURCE_SET_NAME && project.path in [
-          ":lucene:spatial-extras",
-          ":lucene:spatial3d",
-      ]) {
+            ":lucene:spatial-extras",
+            ":lucene:spatial3d",
+          ]) {
         modularPathsForEcj = modularPaths.cloneWithMode(ModularPathsExtension.Mode.CLASSPATH_ONLY)
       }
       sourceSet.extensions.add("modularPathsForEcj", modularPathsForEcj)
@@ -51,12 +51,12 @@ allprojects {
       // TODO: the tests of these projects currently don't compile or work in
       // module-path mode. Make the modular paths extension use class path only.
       if (sourceSet.name == SourceSet.TEST_SOURCE_SET_NAME && project.path in [
-        // Circular dependency between artifacts or source set outputs,
-        // causing package split issues at runtime.
-        ":lucene:core",
-        ":lucene:codecs",
-        ":lucene:test-framework",
-      ]) {
+            // Circular dependency between artifacts or source set outputs,
+            // causing package split issues at runtime.
+            ":lucene:core",
+            ":lucene:codecs",
+            ":lucene:test-framework",
+          ]) {
         modularPaths.mode = ModularPathsExtension.Mode.CLASSPATH_ONLY
       }
 
@@ -138,12 +138,12 @@ allprojects {
           testSourceSet.compileClasspath = project.objects.fileCollection().from(
               jarTaskOutputs,
               project.configurations.getByName(testSourceSet.getCompileClasspathConfigurationName()),
-          )
+              )
           testSourceSet.runtimeClasspath = project.objects.fileCollection().from(
               jarTaskOutputs,
               testJarTask.outputs,
               project.configurations.getByName(testSourceSet.getRuntimeClasspathConfigurationName()),
-          )
+              )
 
           project.dependencies {
             moduleTestImplementation files(jarTaskOutputs)
@@ -197,11 +197,13 @@ allprojects {
         // Pass all the required properties for tests which fork the JVM. We don't use
         // regular system properties here because this could affect task up-to-date checks.
         jvmArgumentProviders.add(new CommandLineArgumentProvider() {
-          @Override
-          Iterable<String> asArguments() {
-            return ["-Dtests.jvmForkArgsFile=" + forkProperties.absolutePath]
-          }
-        })
+              @Override
+              Iterable<String> asArguments() {
+                return [
+                  "-Dtests.jvmForkArgsFile=" + forkProperties.absolutePath
+                ]
+              }
+            })
         doFirst {
           List<String> args = new ArrayList<>(modularPaths.runtimeArguments.asArguments().collect())
           def cp = modularPaths.runtimeClasspath.asPath
@@ -230,9 +232,13 @@ allprojects {
     // Configure module versions.
     tasks.withType(JavaCompile).configureEach { task ->
       // TODO: LUCENE-10267: workaround for gradle bug. Remove when the corresponding issue is fixed.
-      task.options.compilerArgumentProviders.add((CommandLineArgumentProvider) { ->
+      task.options.compilerArgumentProviders.add((CommandLineArgumentProvider) {
+        ->
         if (task.getClasspath().isEmpty()) {
-          return ["--module-version", project.version.toString()]
+          return [
+            "--module-version",
+            project.version.toString()
+          ]
         } else {
           return []
         }
@@ -287,11 +293,11 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
     DEPENDENCIES_ON_MODULE_PATH
   }
 
-    Project project
-    SourceSet sourceSet
-    Configuration compileModulePathConfiguration
-    Configuration runtimeModulePathConfiguration
-    Configuration modulePatchOnlyConfiguration
+  Project project
+  SourceSet sourceSet
+  Configuration compileModulePathConfiguration
+  Configuration runtimeModulePathConfiguration
+  Configuration modulePatchOnlyConfiguration
 
   // The mode of splitting paths for this source set.
   Mode mode = Mode.DEPENDENCIES_ON_MODULE_PATH
@@ -312,13 +318,13 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
     // enable to debug paths.
     debugPaths = false
 
-      ConfigurationContainer configurations = project.configurations
+    ConfigurationContainer configurations = project.configurations
 
     // Create modular configurations for gradle's java plugin convention configurations.
-      Configuration moduleApi = createModuleConfigurationForConvention(sourceSet.apiConfigurationName)
-      Configuration moduleImplementation = createModuleConfigurationForConvention(sourceSet.implementationConfigurationName)
-      Configuration moduleRuntimeOnly = createModuleConfigurationForConvention(sourceSet.runtimeOnlyConfigurationName)
-      Configuration moduleCompileOnly = createModuleConfigurationForConvention(sourceSet.compileOnlyConfigurationName)
+    Configuration moduleApi = createModuleConfigurationForConvention(sourceSet.apiConfigurationName)
+    Configuration moduleImplementation = createModuleConfigurationForConvention(sourceSet.implementationConfigurationName)
+    Configuration moduleRuntimeOnly = createModuleConfigurationForConvention(sourceSet.runtimeOnlyConfigurationName)
+    Configuration moduleCompileOnly = createModuleConfigurationForConvention(sourceSet.compileOnlyConfigurationName)
 
 
     // Apply hierarchy relationships to modular configurations.
@@ -326,8 +332,8 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
 
     // Patched modules have to end up in the implementation configuration for IDEs, which
     // otherwise get terribly confused.
-      Configuration modulePatchOnly = createModuleConfigurationForConvention(
-              SourceSet.isMain(sourceSet) ? "patchOnly" : sourceSet.name + "PatchOnly")
+    Configuration modulePatchOnly = createModuleConfigurationForConvention(
+        SourceSet.isMain(sourceSet) ? "patchOnly" : sourceSet.name + "PatchOnly")
     modulePatchOnly.canBeResolved(true)
     moduleImplementation.extendsFrom(modulePatchOnly)
     this.modulePatchOnlyConfiguration = modulePatchOnly
@@ -343,8 +349,8 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
 
     // Set up compilation module path configuration combining corresponding convention configurations.
     Closure<Configuration> createResolvableModuleConfiguration = { String configurationName ->
-        Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
-        Configuration moduleConfiguration = configurations.maybeCreate(moduleConfigurationNameFor(conventionConfiguration.name))
+      Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
+      Configuration moduleConfiguration = configurations.maybeCreate(moduleConfigurationNameFor(conventionConfiguration.name))
       moduleConfiguration.canBeConsumed(false)
       moduleConfiguration.canBeResolved(true)
       ensureJarVariant(moduleConfiguration)
@@ -386,7 +392,7 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
       if (hasModuleDescriptor()) {
         // The source set is itself a module.
         throw new GradleException("Source set contains a module but classpath-only" +
-            " dependencies requested: ${project.path}, source set '${sourceSet.name}'")
+        " dependencies requested: ${project.path}, source set '${sourceSet.name}'")
       }
 
       return project.files()
@@ -395,85 +401,99 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
     return runtimeModulePathConfiguration - modulePatchOnlyConfiguration
   }
 
-    FileCollection getCompilationClasspath() {
+  FileCollection getCompilationClasspath() {
     if (mode == Mode.CLASSPATH_ONLY) {
       return sourceSet.compileClasspath
     }
 
     // Modify the default classpath by removing anything already placed on module path.
     // Use a lazy provider to delay computation.
-    project.files({ ->
+    project.files({
+      ->
       return sourceSet.compileClasspath - compileModulePathConfiguration - modulePatchOnlyConfiguration
     })
   }
 
-    CommandLineArgumentProvider getCompilationArguments() {
+  CommandLineArgumentProvider getCompilationArguments() {
     return new CommandLineArgumentProvider() {
-      @Override
-      Iterable<String> asArguments() {
-        FileCollection modulePath = ModularPathsExtension.this.compilationModulePath
+          @Override
+          Iterable<String> asArguments() {
+            FileCollection modulePath = ModularPathsExtension.this.compilationModulePath
 
-        if (modulePath.isEmpty()) {
-          return []
+            if (modulePath.isEmpty()) {
+              return []
+            }
+
+            ArrayList<String> extraArgs = []
+            extraArgs += [
+              "--module-path",
+              modulePath.join(File.pathSeparator)
+            ]
+
+            if (!hasModuleDescriptor()) {
+              // We're compiling what appears to be a non-module source set so we'll
+              // bring everything on module path in the resolution graph,
+              // otherwise modular dependencies wouldn't be part of the resolved module graph and this
+              // would result in class-not-found compilation problems.
+              extraArgs += [
+                "--add-modules",
+                "ALL-MODULE-PATH"
+              ]
+            }
+
+            // Add module-patching.
+            extraArgs += getPatchModuleArguments(modulePatches)
+
+            return extraArgs
+          }
         }
-
-        ArrayList<String> extraArgs = []
-        extraArgs += ["--module-path", modulePath.join(File.pathSeparator)]
-
-        if (!hasModuleDescriptor()) {
-          // We're compiling what appears to be a non-module source set so we'll
-          // bring everything on module path in the resolution graph,
-          // otherwise modular dependencies wouldn't be part of the resolved module graph and this
-          // would result in class-not-found compilation problems.
-          extraArgs += ["--add-modules", "ALL-MODULE-PATH"]
-        }
-
-        // Add module-patching.
-        extraArgs += getPatchModuleArguments(modulePatches)
-
-        return extraArgs
-      }
-    }
   }
 
-    FileCollection getRuntimeClasspath() {
+  FileCollection getRuntimeClasspath() {
     if (mode == Mode.CLASSPATH_ONLY) {
       return sourceSet.runtimeClasspath
     }
 
     // Modify the default classpath by removing anything already placed on module path.
     // Use a lazy provider to delay computation.
-    project.files({ ->
+    project.files({
+      ->
       return sourceSet.runtimeClasspath - runtimeModulePath - modulePatchOnlyConfiguration
     })
   }
 
-    CommandLineArgumentProvider getRuntimeArguments() {
+  CommandLineArgumentProvider getRuntimeArguments() {
     return new CommandLineArgumentProvider() {
-      @Override
-      Iterable<String> asArguments() {
-        FileCollection modulePath = ModularPathsExtension.this.runtimeModulePath
+          @Override
+          Iterable<String> asArguments() {
+            FileCollection modulePath = ModularPathsExtension.this.runtimeModulePath
 
-        if (modulePath.isEmpty()) {
-          return []
+            if (modulePath.isEmpty()) {
+              return []
+            }
+
+            def extraArgs = []
+
+            // Add source set outputs to module path.
+            extraArgs += [
+              "--module-path",
+              modulePath.files.join(File.pathSeparator)
+            ]
+
+            // Ideally, we should only add the sourceset's module here, everything else would be resolved via the
+            // module descriptor. But this would require parsing the module descriptor and may cause JVM version conflicts
+            // so keeping it simple.
+            extraArgs += [
+              "--add-modules",
+              "ALL-MODULE-PATH"
+            ]
+
+            // Add module-patching.
+            extraArgs += getPatchModuleArguments(modulePatches)
+
+            return extraArgs
+          }
         }
-
-        def extraArgs = []
-
-        // Add source set outputs to module path.
-        extraArgs += ["--module-path", modulePath.files.join(File.pathSeparator)]
-
-        // Ideally, we should only add the sourceset's module here, everything else would be resolved via the
-        // module descriptor. But this would require parsing the module descriptor and may cause JVM version conflicts
-        // so keeping it simple.
-        extraArgs += ["--add-modules", "ALL-MODULE-PATH"]
-
-        // Add module-patching.
-        extraArgs += getPatchModuleArguments(modulePatches)
-
-        return extraArgs
-      }
-    }
   }
 
   boolean hasModuleDescriptor() {
@@ -543,8 +563,8 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
   // Create module configuration for the corresponding convention configuration.
   private Configuration createModuleConfigurationForConvention(String configurationName) {
     ConfigurationContainer configurations = project.configurations
-      Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
-      Configuration moduleConfiguration = configurations.maybeCreate(moduleConfigurationNameFor(configurationName))
+    Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
+    Configuration moduleConfiguration = configurations.maybeCreate(moduleConfigurationNameFor(configurationName))
     moduleConfiguration.canBeConsumed(false)
     moduleConfiguration.canBeResolved(false)
     conventionConfiguration.extendsFrom(moduleConfiguration)
@@ -559,8 +579,8 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
   @Override
   Iterator<Object> iterator() {
     return [
-        compileModulePathConfiguration,
-        runtimeModulePathConfiguration
+      compileModulePathConfiguration,
+      runtimeModulePathConfiguration
     ].iterator()
   }
 }
