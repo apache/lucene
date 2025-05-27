@@ -16,7 +16,7 @@
  */
 import org.apache.tools.ant.filters.*
 
-apply plugin: 'java-library'
+
 
 description = 'Luke - Lucene Toolbox'
 

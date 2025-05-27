@@ -15,10 +15,6 @@
  * limitations under the License.
  */
 
-plugins {
-  id 'java-library'
-}
-
 configurations {
   // This is a configuration that references an 'folder-expanded' binary distribution
   // tests will run against. The distribution is slightly trimmed (no docs, licenses)

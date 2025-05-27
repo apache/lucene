@@ -131,6 +131,9 @@ apply from: file('gradle/validation/ecj-lint.gradle')
 rootProject.tasks.named("tidy").configure {
   dependsOn gradle.includedBuilds*.task(":tidy")
 }
+rootProject.tasks.named("check").configure {
+  dependsOn gradle.includedBuilds*.task(":check")
+}
 
 // Source or data regeneration tasks
 apply from: file('gradle/generation/regenerate.gradle')

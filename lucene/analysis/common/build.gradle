@@ -17,7 +17,7 @@
 
 import java.nio.file.Files;
 
-apply plugin: 'java-library'
+
 
 description = 'Analyzers for indexing content in different languages and domains'
 
