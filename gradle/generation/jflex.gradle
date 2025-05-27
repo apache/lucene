@@ -288,7 +288,7 @@ class JFlexTask extends DefaultTask {
     project.ant.replace(
           file: target,
           encoding: "UTF-8",
-          token: 'SuppressWarnings("FallThrough")',
+          token: 'SuppressWarnings("fallthrough")',
           value: 'SuppressWarnings({"fallthrough","unused"})'
     )
 

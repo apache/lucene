@@ -190,7 +190,6 @@ public class TestStressNRTReplication extends LuceneTestCase {
   final Set<Integer> crashingNodes = Collections.synchronizedSet(new HashSet<>());
 
   @Nightly
-  @SuppressForbidden(reason = "Thread sleep")
   public void test() throws Exception {
 
     Node.globalStartNS = System.nanoTime();
@@ -215,7 +214,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
       numNodes = NUM_NODES;
     }
 
-    System.out.println("TEST: using " + numNodes + " nodes");
+    message("TEST: using " + numNodes + " nodes");
 
     transLogPath = createTempDir("NRTReplication").resolve("translog");
     transLog = new SimpleTransLog(transLogPath);
@@ -232,7 +231,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
     }
 
     Thread[] indexers = new Thread[TestUtil.nextInt(random(), 1, 3)];
-    System.out.println("TEST: launch " + indexers.length + " indexer threads");
+    message("TEST: launch " + indexers.length + " indexer threads");
     for (int i = 0; i < indexers.length; i++) {
       indexers[i] = new IndexThread();
       indexers[i].setName("indexer" + i);
@@ -241,7 +240,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
     }
 
     Thread[] searchers = new Thread[TestUtil.nextInt(random(), 1, 3)];
-    System.out.println("TEST: launch " + searchers.length + " searcher threads");
+    message("TEST: launch " + searchers.length + " searcher threads");
     for (int i = 0; i < searchers.length; i++) {
       searchers[i] = new SearchThread();
       searchers[i].setName("searcher" + i);
@@ -261,7 +260,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
       runTimeSec = RANDOM_MULTIPLIER * TestUtil.nextInt(random(), 20, 60);
     }
 
-    System.out.println("TEST: will run for " + runTimeSec + " sec");
+    message("TEST: will run for " + runTimeSec + " sec");
 
     long endTime = System.nanoTime() + runTimeSec * 1000000000L;
 
@@ -270,7 +269,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
     while (failed.get() == false && System.nanoTime() < endTime) {
 
       // Wait a bit:
-      Thread.sleep(TestUtil.nextInt(random(), Math.min(runTimeSec * 4, 200), runTimeSec * 4));
+      pause(TestUtil.nextInt(random(), Math.min(runTimeSec * 4, 200), runTimeSec * 4));
       if (primary != null && random().nextBoolean()) {
         NodeProcess curPrimary = primary;
         if (curPrimary != null) {
@@ -350,7 +349,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
     restarter.join();
 
     // Close replicas before primary so we cancel any in-progress replications:
-    System.out.println("TEST: top: now close replicas");
+    message("TEST: top: now close replicas");
     List<Closeable> toClose = new ArrayList<>();
     for (NodeProcess node : nodes) {
       if (node != primary && node != null) {
@@ -673,7 +672,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
               return null;
             } else {
               try {
-                Thread.sleep(10);
+                pause(10);
               } catch (InterruptedException ie) {
                 throw new ThreadInterruptedException(ie);
               }
@@ -723,7 +722,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
                     () -> {
                       while (System.nanoTime() < deadline && p.isAlive()) {
                         try {
-                          Thread.sleep(250);
+                          pause(250);
                         } catch (
                             @SuppressWarnings("unused")
                             InterruptedException e) {
@@ -815,6 +814,11 @@ public class TestStressNRTReplication extends LuceneTestCase {
         subprocessKiller);
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
+  private static void pause(int millis) throws InterruptedException {
+    Thread.sleep(millis);
+  }
+
   private void nodeClosed(int id) {
     NodeProcess oldNode = nodes[id];
     if (primary != null && oldNode == primary) {
@@ -896,7 +900,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
   }
 
   // Periodically wakes up and starts up any down nodes:
-  @SuppressForbidden(reason = "Thread sleep")
+
   private class RestartThread extends Thread {
     @Override
     public void run() {
@@ -905,7 +909,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
       try {
         while (stop.get() == false) {
-          Thread.sleep(TestUtil.nextInt(random(), 50, 500));
+          pause(TestUtil.nextInt(random(), 50, 500));
           // message("top: restarter cycle");
 
           // Randomly crash full cluster:
@@ -915,7 +919,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
               if (starting[i]) {
                 message("N" + i + ": top: wait for startup so we can crash...");
                 while (starting[i]) {
-                  Thread.sleep(10);
+                  pause(10);
                 }
                 message("N" + i + ": top: done wait for startup");
               }
@@ -994,12 +998,13 @@ public class TestStressNRTReplication extends LuceneTestCase {
                         } finally {
                           starting[idx] = false;
                           startupThreads.remove(Thread.currentThread());
+                          message("N" + idx + ": top: removed thread");
                         }
                       }
                     };
+                startupThreads.add(t);
                 t.setName("start R" + idx);
                 t.start();
-                startupThreads.add(t);
               }
             } else {
               message("node " + idx + " still starting");
@@ -1007,13 +1012,12 @@ public class TestStressNRTReplication extends LuceneTestCase {
           }
         }
 
-        System.out.println(
-            "Restarter: now stop: join " + startupThreads.size() + " startup threads");
+        message("Restarter: now stop: join " + startupThreads.size() + " startup threads");
 
-        while (startupThreads.size() > 0) {
-          Thread.sleep(10);
+        while (!startupThreads.isEmpty()) {
+          pause(1000);
+          message("Waiting for startup threads to terminate.");
         }
-
       } catch (Throwable t) {
         failed.set(true);
         stop.set(true);
@@ -1023,7 +1027,6 @@ public class TestStressNRTReplication extends LuceneTestCase {
   }
 
   /** Randomly picks a node and runs a search against it */
-  @SuppressForbidden(reason = "Thread sleep")
   private class SearchThread extends Thread {
 
     @Override
@@ -1074,7 +1077,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
               if (node.isOpen == false) {
                 throw new IOException("node closed");
               }
-              Thread.sleep(1);
+              pause(1);
             }
             version = c.in.readVLong();
 
@@ -1085,7 +1088,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
               if (node.isOpen == false) {
                 throw new IOException("node closed");
               }
-              Thread.sleep(1);
+              pause(1);
             }
             int hitCount = c.in.readVInt();
 
@@ -1161,7 +1164,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
                 if (node.isOpen == false) {
                   throw new IOException("node died");
                 }
-                Thread.sleep(1);
+                pause(1);
               }
 
               version = c.in.readVLong();
@@ -1173,7 +1176,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
                 if (node.isOpen == false) {
                   throw new IOException("node died");
                 }
-                Thread.sleep(1);
+                pause(1);
               }
 
               int hitCount = c.in.readVInt();
@@ -1208,7 +1211,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
             }
           }
 
-          Thread.sleep(10);
+          pause(10);
 
         } catch (Throwable t) {
           failed.set(true);
@@ -1223,7 +1226,6 @@ public class TestStressNRTReplication extends LuceneTestCase {
     }
   }
 
-  @SuppressForbidden(reason = "Thread sleep")
   private class IndexThread extends Thread {
 
     @Override
@@ -1248,7 +1250,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
           try {
             while (stop.get() == false && curPrimary == null) {
-              Thread.sleep(10);
+              pause(10);
               curPrimary = primary;
               if (curPrimary != null) {
                 c = new Connection(curPrimary.tcpPort);
@@ -1318,14 +1320,14 @@ public class TestStressNRTReplication extends LuceneTestCase {
           }
 
           if (random().nextInt(sleepChance) == 0) {
-            Thread.sleep(10);
+            pause(10);
           }
 
           if (random().nextInt(100) == 17) {
             int pauseMS = TestUtil.nextInt(random(), 500, 2000);
-            System.out.println("Indexer: now pause for " + pauseMS + " ms...");
-            Thread.sleep(pauseMS);
-            System.out.println("Indexer: done pause for a bit...");
+            message("Indexer: now pause for " + pauseMS + " ms...");
+            pause(pauseMS);
+            message("Indexer: done pause for a bit...");
           }
         }
         if (curPrimary != null) {

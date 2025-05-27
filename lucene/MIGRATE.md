@@ -236,7 +236,7 @@ enum.
 ### IOContext.LOAD and IOContext.READ removed
 
 `IOContext#LOAD` has been removed, it should be replaced with
-`ioContext.withReadAdvice(ReadAdvice.RANDOM_PRELOAD)`.
+`ioContext.withReadAdvice(ReadAdvice.NORMAL)`.
 
 `IOContext.READ` has been removed, it should be replaced with `IOContext.DEFAULT`.
 

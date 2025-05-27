@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.search.DocAndFreqBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
@@ -97,4 +98,48 @@ public abstract class PostingsEnum extends DocIdSetIterator {
    * anything (neither members of the returned BytesRef nor bytes in the byte[]).
    */
   public abstract BytesRef getPayload() throws IOException;
+
+  /**
+   * Fill a buffer of doc IDs and frequencies with some number of doc IDs and their corresponding
+   * frequencies, starting at the current doc ID, and ending before {@code upTo}. Because it starts
+   * on the current doc ID, it is illegal to call this method if the {@link #docID() current doc ID}
+   * is {@code -1}.
+   *
+   * <p>An empty buffer after this method returns indicates that there are no postings left between
+   * the current doc ID and {@code upTo}.
+   *
+   * <p>Implementations should ideally fill the buffer with a number of entries comprised between 8
+   * and a couple hundreds, to keep heap requirements contained, while still being large enough to
+   * enable operations on the buffer to auto-vectorize efficiently.
+   *
+   * <p>The default implementation is provided below:
+   *
+   * <pre class="prettyprint">
+   * int batchSize = 16; // arbitrary
+   * buffer.growNoCopy(batchSize);
+   * int size = 0;
+   * for (int doc = docID(); doc &lt; upTo &amp;&amp; size &lt; batchSize; doc = nextDoc()) {
+   *   buffer.docs[size] = doc;
+   *   buffer.freqs[size] = freq();
+   *   ++size;
+   * }
+   * buffer.size = size;
+   * </pre>
+   *
+   * <p><b>NOTE</b>: The provided {@link DocAndFreqBuffer} should not hold references to internal
+   * data structures.
+   *
+   * @lucene.internal
+   */
+  public void nextPostings(int upTo, DocAndFreqBuffer buffer) throws IOException {
+    int batchSize = 16; // arbitrary
+    buffer.growNoCopy(batchSize);
+    int size = 0;
+    for (int doc = docID(); doc < upTo && size < batchSize; doc = nextDoc()) {
+      buffer.docs[size] = doc;
+      buffer.freqs[size] = freq();
+      ++size;
+    }
+    buffer.size = size;
+  }
 }

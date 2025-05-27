@@ -46,11 +46,13 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
+import org.apache.lucene.search.DocAndFreqBuffer;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
@@ -92,53 +94,44 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene103PostingsFormat.META_EXTENSION);
     final long expectedDocFileLength, expectedPosFileLength, expectedPayFileLength;
-    ChecksumIndexInput metaIn = null;
-    boolean success = false;
     int version;
-    try {
-      metaIn = state.directory.openChecksumInput(metaName);
-      version =
-          CodecUtil.checkIndexHeader(
-              metaIn,
-              META_CODEC,
-              VERSION_START,
-              VERSION_CURRENT,
-              state.segmentInfo.getId(),
-              state.segmentSuffix);
-      maxNumImpactsAtLevel0 = metaIn.readInt();
-      maxImpactNumBytesAtLevel0 = metaIn.readInt();
-      maxNumImpactsAtLevel1 = metaIn.readInt();
-      maxImpactNumBytesAtLevel1 = metaIn.readInt();
-      expectedDocFileLength = metaIn.readLong();
-      if (state.fieldInfos.hasProx()) {
-        expectedPosFileLength = metaIn.readLong();
-        if (state.fieldInfos.hasPayloads() || state.fieldInfos.hasOffsets()) {
-          expectedPayFileLength = metaIn.readLong();
+    try (ChecksumIndexInput metaIn = state.directory.openChecksumInput(metaName)) {
+      try {
+        version =
+            CodecUtil.checkIndexHeader(
+                metaIn,
+                META_CODEC,
+                VERSION_START,
+                VERSION_CURRENT,
+                state.segmentInfo.getId(),
+                state.segmentSuffix);
+        maxNumImpactsAtLevel0 = metaIn.readInt();
+        maxImpactNumBytesAtLevel0 = metaIn.readInt();
+        maxNumImpactsAtLevel1 = metaIn.readInt();
+        maxImpactNumBytesAtLevel1 = metaIn.readInt();
+        expectedDocFileLength = metaIn.readLong();
+        if (state.fieldInfos.hasProx()) {
+          expectedPosFileLength = metaIn.readLong();
+          if (state.fieldInfos.hasPayloads() || state.fieldInfos.hasOffsets()) {
+            expectedPayFileLength = metaIn.readLong();
+          } else {
+            expectedPayFileLength = -1;
+          }
         } else {
+          expectedPosFileLength = -1;
           expectedPayFileLength = -1;
         }
-      } else {
-        expectedPosFileLength = -1;
-        expectedPayFileLength = -1;
-      }
-      CodecUtil.checkFooter(metaIn, null);
-      success = true;
-    } catch (Throwable t) {
-      if (metaIn != null) {
-        CodecUtil.checkFooter(metaIn, t);
-        throw new AssertionError("unreachable");
-      } else {
-        throw t;
-      }
-    } finally {
-      if (success) {
-        metaIn.close();
-      } else {
-        IOUtils.closeWhileHandlingException(metaIn);
+        CodecUtil.checkFooter(metaIn, null);
+      } catch (Throwable t) {
+        if (metaIn != null) {
+          CodecUtil.checkFooter(metaIn, t);
+          throw new AssertionError("unreachable");
+        } else {
+          throw t;
+        }
       }
     }
 
-    success = false;
     IndexInput docIn = null;
     IndexInput posIn = null;
     IndexInput payIn = null;
@@ -152,9 +145,9 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene103PostingsFormat.DOC_EXTENSION);
     try {
-      // Postings have a forward-only access pattern, so pass ReadAdvice.NORMAL to perform
-      // readahead.
-      docIn = state.directory.openInput(docName, state.context.withReadAdvice(ReadAdvice.NORMAL));
+      docIn =
+          state.directory.openInput(
+              docName, state.context.withHints(FileTypeHint.DATA, FileDataHint.POSTINGS));
       CodecUtil.checkIndexHeader(
           docIn, DOC_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
       CodecUtil.retrieveChecksum(docIn, expectedDocFileLength);
@@ -163,7 +156,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
         String proxName =
             IndexFileNames.segmentFileName(
                 state.segmentInfo.name, state.segmentSuffix, Lucene103PostingsFormat.POS_EXTENSION);
-        posIn = state.directory.openInput(proxName, state.context);
+        posIn = state.directory.openInput(proxName, state.context.withHints(FileTypeHint.DATA));
         CodecUtil.checkIndexHeader(
             posIn, POS_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
         CodecUtil.retrieveChecksum(posIn, expectedPosFileLength);
@@ -174,7 +167,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
                   state.segmentInfo.name,
                   state.segmentSuffix,
                   Lucene103PostingsFormat.PAY_EXTENSION);
-          payIn = state.directory.openInput(payName, state.context);
+          payIn = state.directory.openInput(payName, state.context.withHints(FileTypeHint.DATA));
           CodecUtil.checkIndexHeader(
               payIn, PAY_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
           CodecUtil.retrieveChecksum(payIn, expectedPayFileLength);
@@ -184,11 +177,9 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
       this.docIn = docIn;
       this.posIn = posIn;
       this.payIn = payIn;
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(docIn, posIn, payIn);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, docIn, posIn, payIn);
+      throw t;
     }
   }
 
@@ -1044,6 +1035,49 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
       }
     }
 
+    @Override
+    public void nextPostings(int upTo, DocAndFreqBuffer buffer) throws IOException {
+      assert needsRefilling == false;
+
+      if (needsFreq == false) {
+        super.nextPostings(upTo, buffer);
+        return;
+      }
+
+      buffer.size = 0;
+      if (doc >= upTo) {
+        return;
+      }
+
+      // Only return docs from the current block
+      buffer.growNoCopy(BLOCK_SIZE);
+      upTo = (int) Math.min(upTo, level0LastDocID + 1L);
+
+      // Frequencies are decoded lazily, calling freq() makes sure that the freq block is decoded
+      freq();
+
+      int start = docBufferUpto - 1;
+      switch (encoding) {
+        case PACKED:
+          int end = computeBufferEndBoundary(upTo);
+          buffer.size = end - start;
+          System.arraycopy(docBuffer, start, buffer.docs, 0, buffer.size);
+          break;
+        case UNARY:
+          docBitSet.forEach(
+              doc - docBitSetBase,
+              upTo - docBitSetBase,
+              docBitSetBase,
+              d -> buffer.docs[buffer.size++] = d);
+          break;
+      }
+
+      assert buffer.size > 0;
+      System.arraycopy(freqBuffer, start, buffer.freqs, 0, buffer.size);
+
+      advance(upTo);
+    }
+
     private int computeBufferEndBoundary(int upTo) {
       if (docBufferSize != 0 && docBuffer[docBufferSize - 1] < upTo) {
         // All docs in the buffer are under upTo
@@ -1061,6 +1095,32 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
         int doc = docBuffer[i];
         bitSet.set(doc - offset);
       }
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      // Note: this assumes that BLOCK_SIZE == 128, this bit of the code would need to be changed if
+      // the block size was changed.
+      // Hack to avoid compiler warning that both sides of the equal sign are identical.
+      long blockSize = BLOCK_SIZE;
+      assert blockSize == 2 * Long.SIZE;
+      boolean level0IsDense =
+          encoding == DeltaEncoding.UNARY
+              && docBitSet.getBits()[0] == -1L
+              && docBitSet.getBits()[1] == -1L;
+      if (level0IsDense) {
+
+        int level0DocCountUpto = docFreq - docCountLeft;
+        boolean level1IsDense =
+            level1LastDocID - level0LastDocID == level1DocCountUpto - level0DocCountUpto;
+        if (level1IsDense) {
+          return level1LastDocID + 1;
+        }
+
+        return level0LastDocID + 1;
+      }
+
+      return super.docIDRunEnd();
     }
 
     private void skipPositions(int freq) throws IOException {
