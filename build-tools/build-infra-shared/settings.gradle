@@ -15,11 +15,7 @@
  * limitations under the License.
  */
 
-pluginManagement {
-    includeBuild("../build-infra-shared")
-}
-
-rootProject.name = 'build-infra'
+rootProject.name = 'build-infra-shared'
 
 dependencyResolutionManagement {
     versionCatalogs {
