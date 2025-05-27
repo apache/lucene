@@ -20,7 +20,6 @@ package org.apache.lucene.document;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -76,7 +75,7 @@ public class LateInteractionField extends BinaryDocValuesField {
     if (value == null || value.length == 0) {
       throw new IllegalArgumentException("Value should not be null or empty");
     }
-    if (value[0] == null || value[0].length== 0) {
+    if (value[0] == null || value[0].length == 0) {
       throw new IllegalArgumentException("Composing token vectors should not be null or empty");
     }
     final int tokenVectorDimension = value[0].length;
