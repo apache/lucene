@@ -10,10 +10,13 @@ Bug Fixes
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
   used if the DoubleValuesSource needed scores. (David Smiley)
 
+* GITHUB#14527: Reduce NeighborArray heap memory. (weizijun)
+
 ======================== Lucene 9.12.1 =======================
 
 Bug Fixes
 ---------------------
+
 
 * GITHUB#13947: Fix ord-to-doc mapping when searching Lucene 9.0.0 hnsw indices (Michael Sokolov, Ben Trent)
 
