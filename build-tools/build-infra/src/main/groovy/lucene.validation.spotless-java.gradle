@@ -38,6 +38,10 @@ configure(allprojects) { prj ->
 
         // Exclude certain files (generated ones, mostly).
         switch (prj.path) {
+          case ":lucene:build-tools:build-infra-shadow":
+            target = sourceSets.main.allJava.sourceDirectories
+            break
+
           case ":lucene:core":
             targetExclude("**/StandardTokenizerImpl.java")
             break
