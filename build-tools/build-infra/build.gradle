@@ -19,9 +19,8 @@ plugins {
   id "java-gradle-plugin"
   id "groovy-gradle-plugin"
 
-  id "lucene.all-projects.conventions"
-  id "lucene.check-environment"
-  id "lucene.validation.spotless-java"
+  alias(deps.plugins.spotless) apply false
+  alias(deps.plugins.forbiddenapis) apply false
 }
 
 repositories {
@@ -47,13 +46,30 @@ gradlePlugin {
   }
 }
 
+// Convert a plugin dependency to a regular dependency so that we can
+// use [plugins] section in the top-level toml but declare regular
+// project dependencies here.
+static Provider<String> plugin(Provider<PluginDependency> plugin) {
+  return plugin.map {
+    if (it.pluginId == "com.carrotsearch.gradle.buildinfra") {
+      return "${it.pluginId}:${it.pluginId}.gradle.plugin:${it.version}".toString()
+    } else if (it.pluginId == "de.thetaphi.forbiddenapis") {
+      return "de.thetaphi:forbiddenapis:${it.version}".toString()
+    } else {
+      return "${it.pluginId}:${it.pluginId.replaceFirst(".*\\.", "")}-plugin-gradle:${it.version}".toString()
+    }
+  }
+}
+
 dependencies {
   implementation gradleApi()
   implementation localGroovy()
   implementation deps.commons.codec
   implementation deps.randomizedtesting.runner
 
-  implementation "com.carrotsearch.gradle.buildinfra:com.carrotsearch.gradle.buildinfra.gradle.plugin:${deps.plugins.carrotsearch.buildinfra.get().version}"
+  implementation plugin(deps.plugins.carrotsearch.buildinfra)
+  implementation plugin(deps.plugins.forbiddenapis)
+  implementation plugin(deps.plugins.spotless)
 }
 
 def hasJavaFlightRecorder = ModuleLayer.boot().findModule('jdk.jfr').map(this.class.module::canRead).orElse(false)
@@ -63,3 +79,5 @@ if (!hasJavaFlightRecorder) {
     exclude('**/ProfileResults.java')
   }
 }
+
+tasks.register("tidy", {})
