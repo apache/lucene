@@ -43,8 +43,7 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
 
   private final int patience;
   private final double saturationThreshold;
-
-  final AbstractKnnVectorQuery delegate;
+  private AbstractKnnVectorQuery delegate;
 
   /**
    * Construct a new PatienceKnnVectorQuery instance for a float vector field
@@ -233,5 +232,19 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
           saturationThreshold,
           patience);
     }
+  }
+
+  @Override
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    if (delegate instanceof SeededKnnVectorQuery seededKnnVectorQuery) {
+      // this is required because SeededKnnVectorQuery now requires its own rewriting logic (to
+      // create the seed Weight)
+      delegate =
+          new SeededKnnVectorQuery(
+              seededKnnVectorQuery.delegate,
+              seededKnnVectorQuery.seed,
+              seededKnnVectorQuery.createSeedWeight(indexSearcher));
+    }
+    return super.rewrite(indexSearcher);
   }
 }

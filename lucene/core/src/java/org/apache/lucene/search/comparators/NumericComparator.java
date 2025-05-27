@@ -23,7 +23,6 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
@@ -31,7 +30,6 @@ import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.util.DocIdSetBuilder;
-import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IntsRef;
 
 /**
@@ -110,7 +108,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     private long minValueAsLong = Long.MIN_VALUE;
     private long maxValueAsLong = Long.MAX_VALUE;
 
-    private DocIdSetIterator competitiveIterator;
+    private final UpdateableDocIdSetIterator competitiveIterator;
     private long iteratorCost = -1;
     private int maxDocVisited = -1;
     private int updateCounter = 0;
@@ -145,12 +143,14 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         }
         this.enableSkipping = true; // skipping is enabled when points are available
         this.maxDoc = context.reader().maxDoc();
-        this.competitiveIterator = DocIdSetIterator.all(maxDoc);
+        this.competitiveIterator = new UpdateableDocIdSetIterator();
+        this.competitiveIterator.update(DocIdSetIterator.all(maxDoc));
         if (leafTopSet) {
           encodeTop();
         }
       } else {
         this.enableSkipping = false;
+        this.competitiveIterator = null;
         this.maxDoc = 0;
       }
     }
@@ -295,13 +295,13 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         updateSkipInterval(false);
         if (pointValues.getDocCount() < iteratorCost) {
           // Use the set of doc with values to help drive iteration
-          competitiveIterator = getNumericDocValues(context, field);
+          competitiveIterator.update(getNumericDocValues(context, field));
           iteratorCost = pointValues.getDocCount();
         }
         return;
       }
       pointValues.intersect(visitor);
-      competitiveIterator = result.build().iterator();
+      competitiveIterator.update(result.build().iterator());
       iteratorCost = competitiveIterator.cost();
       updateSkipInterval(true);
     }
@@ -405,39 +405,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     @Override
     public DocIdSetIterator competitiveIterator() {
-      if (enableSkipping == false) return null;
-      return new AbstractDocIdSetIterator() {
-
-        {
-          doc = competitiveIterator.docID();
-        }
-
-        @Override
-        public int nextDoc() throws IOException {
-          return advance(doc + 1);
-        }
-
-        @Override
-        public long cost() {
-          return competitiveIterator.cost();
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          return doc = competitiveIterator.advance(target);
-        }
-
-        @Override
-        public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-          // The competitive iterator is usually a BitSetIterator, which has an optimized
-          // implementation of #intoBitSet.
-          if (competitiveIterator.docID() < doc) {
-            competitiveIterator.advance(doc);
-          }
-          competitiveIterator.intoBitSet(upTo, bitSet, offset);
-          doc = competitiveIterator.docID();
-        }
-      };
+      return competitiveIterator;
     }
 
     protected abstract long bottomAsComparableLong();

@@ -14,28 +14,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search;
 
-package org.apache.lucene.luke.app.desktop.util;
+import java.io.IOException;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexCommit;
 
-import java.util.List;
-import java.util.function.IntFunction;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import javax.swing.JList;
-import javax.swing.ListModel;
+/**
+ * Expert: Interface to supply commit for searcher refresh.
+ *
+ * @lucene.experimental
+ */
+public interface RefreshCommitSupplier {
 
-/** List model utilities */
-public class ListUtils {
-
-  public static <T> List<T> getAllItems(JList<T> jlist) {
-    ListModel<T> model = jlist.getModel();
-    return getAllItems(jlist, model::getElementAt);
+  /**
+   * Expert: Returns the index commit that searcher should refresh on. A null return value (default)
+   * indicates reader should refresh on the latest commit.
+   *
+   * @param reader DirectoryReader to refresh
+   */
+  default IndexCommit getSearcherRefreshCommit(DirectoryReader reader) throws IOException {
+    return null;
   }
-
-  public static <T, R> List<R> getAllItems(JList<T> jlist, IntFunction<R> mapFunc) {
-    ListModel<T> model = jlist.getModel();
-    return IntStream.range(0, model.getSize()).mapToObj(mapFunc).collect(Collectors.toList());
-  }
-
-  private ListUtils() {}
 }

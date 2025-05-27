@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.util.Bits;
 
 /**
  * Expert: Common scoring functionality for different types of queries.
@@ -76,4 +77,57 @@ public abstract class Scorer extends Scorable {
    * {@link #advanceShallow(int) shallow-advanced} to included and {@code upTo} included.
    */
   public abstract float getMaxScore(int upTo) throws IOException;
+
+  /**
+   * Return a new batch of doc IDs and scores, starting at the current doc ID, and ending before
+   * {@code upTo}. Because it starts on the current doc ID, it is illegal to call this method if the
+   * {@link #docID() current doc ID} is {@code -1}.
+   *
+   * <p>An empty return value indicates that there are no postings left between the current doc ID
+   * and {@code upTo}.
+   *
+   * <p>Implementations should ideally fill the buffer with a number of entries comprised between 8
+   * and a couple hundreds, to keep heap requirements contained, while still being large enough to
+   * enable operations on the buffer to auto-vectorize efficiently.
+   *
+   * <p>The default implementation is provided below:
+   *
+   * <pre class="prettyprint">
+   * int batchSize = 16; // arbitrary
+   * buffer.growNoCopy(batchSize);
+   * int size = 0;
+   * DocIdSetIterator iterator = iterator();
+   * for (int doc = docID(); doc &lt; upTo &amp;&amp; size &lt; batchSize; doc = iterator.nextDoc()) {
+   *   if (liveDocs == null || liveDocs.get(doc)) {
+   *     buffer.docs[size] = doc;
+   *     buffer.scores[size] = score();
+   *     ++size;
+   *   }
+   * }
+   * buffer.size = size;
+   * </pre>
+   *
+   * <p><b>NOTE</b>: The provided {@link DocAndScoreBuffer} should not hold references to internal
+   * data structures.
+   *
+   * <p><b>NOTE</b>: In case this {@link Scorer} exposes a {@link #twoPhaseIterator()
+   * TwoPhaseIterator}, it should be positioned on a matching document before this method is called.
+   *
+   * @lucene.internal
+   */
+  public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndScoreBuffer buffer)
+      throws IOException {
+    int batchSize = 16; // arbitrary
+    buffer.growNoCopy(batchSize);
+    int size = 0;
+    DocIdSetIterator iterator = iterator();
+    for (int doc = docID(); doc < upTo && size < batchSize; doc = iterator.nextDoc()) {
+      if (liveDocs == null || liveDocs.get(doc)) {
+        buffer.docs[size] = doc;
+        buffer.scores[size] = score();
+        ++size;
+      }
+    }
+    buffer.size = size;
+  }
 }

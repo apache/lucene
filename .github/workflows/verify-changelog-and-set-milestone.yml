@@ -14,6 +14,7 @@ jobs:
   changelog-verifier-and-milestone-setter:
     name: Verify Change Log Entry and Set Milestone
     runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
 
     steps:
       - name: Checkout repository
