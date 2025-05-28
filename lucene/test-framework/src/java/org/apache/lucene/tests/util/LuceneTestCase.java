@@ -2603,7 +2603,9 @@ public abstract class LuceneTestCase extends Assert {
             if (docID == NO_MORE_DOCS) {
               break;
             }
-            assertEquals(leftValues.binaryValue(), rightValues.binaryValue());
+            assertEquals(
+                leftValues.randomAccessInputValue().toBytesRef(),
+                rightValues.randomAccessInputValue().toBytesRef());
           }
         } else {
           assertTrue(info, leftValues == null || leftValues.nextDoc() == NO_MORE_DOCS);
