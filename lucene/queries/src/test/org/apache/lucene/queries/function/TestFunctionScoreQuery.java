@@ -50,7 +50,7 @@ import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
-import org.apache.lucene.search.LateInteractionValuesSource;
+import org.apache.lucene.search.LateInteractionFloatValuesSource;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
@@ -402,9 +402,9 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
     final VectorSimilarityFunction vectorSimilarityFunction =
         VectorSimilarityFunction.values()[
             random().nextInt(VectorSimilarityFunction.values().length)];
-    LateInteractionValuesSource.ScoreFunction scoreFunction =
-        LateInteractionValuesSource.ScoreFunction.values()[
-            random().nextInt(LateInteractionValuesSource.ScoreFunction.values().length)];
+    LateInteractionFloatValuesSource.ScoreFunction scoreFunction =
+        LateInteractionFloatValuesSource.ScoreFunction.values()[
+            random().nextInt(LateInteractionFloatValuesSource.ScoreFunction.values().length)];
 
     try (Directory dir = newDirectory()) {
       int id = 0;
@@ -446,7 +446,7 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
         Set<Integer> knnHitDocs =
             Arrays.stream(knnHits.scoreDocs).map(k -> k.doc).collect(Collectors.toSet());
         FunctionScoreQuery lateIQuery =
-            FunctionScoreQuery.lateInteractionRerankQuery(
+            FunctionScoreQuery.lateInteractionFloatRerankQuery(
                 knnQuery, LATE_I_FIELD, lateIQueryVector, vectorSimilarityFunction);
         TopDocs lateIHits = s.search(lateIQuery, 10);
         StoredFields storedFields = reader.storedFields();

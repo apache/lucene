@@ -27,7 +27,7 @@ import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.FilterScorer;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.LateInteractionValuesSource;
+import org.apache.lucene.search.LateInteractionFloatValuesSource;
 import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
@@ -79,7 +79,7 @@ public final class FunctionScoreQuery extends Query {
    *
    * <p>Document multi-vectors are indexed using {@link
    * org.apache.lucene.document.LateInteractionField}. Documents are scored using {@link
-   * LateInteractionValuesSource.ScoreFunction#SUM_MAX_SIM} computation on provided vector
+   * LateInteractionFloatValuesSource.ScoreFunction#SUM_MAX_SIM} computation on provided vector
    * similarity function.
    *
    * @param in the query to re-score
@@ -87,13 +87,13 @@ public final class FunctionScoreQuery extends Query {
    * @param queryVector query multi-vector
    * @param vectorSimilarityFunction vector similarity function used for computing scores
    */
-  public static FunctionScoreQuery lateInteractionRerankQuery(
+  public static FunctionScoreQuery lateInteractionFloatRerankQuery(
       Query in,
       String fieldName,
       float[][] queryVector,
       VectorSimilarityFunction vectorSimilarityFunction) {
-    LateInteractionValuesSource scoreSource =
-        new LateInteractionValuesSource(fieldName, queryVector, vectorSimilarityFunction);
+    LateInteractionFloatValuesSource scoreSource =
+        new LateInteractionFloatValuesSource(fieldName, queryVector, vectorSimilarityFunction);
     return new FunctionScoreQuery(in, scoreSource);
   }
 

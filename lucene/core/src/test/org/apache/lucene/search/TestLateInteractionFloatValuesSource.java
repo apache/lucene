@@ -36,7 +36,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.TestVectorUtil;
 
-public class TestLateInteractionValuesSource extends LuceneTestCase {
+public class TestLateInteractionFloatValuesSource extends LuceneTestCase {
 
   private static final int dimension = 128;
   private static final String LATE_I_FIELD = "lateIF";
@@ -44,15 +44,15 @@ public class TestLateInteractionValuesSource extends LuceneTestCase {
   public void testValidations() {
     expectThrows(
         IllegalArgumentException.class,
-        () -> new LateInteractionValuesSource("fieldName", null, null));
+        () -> new LateInteractionFloatValuesSource("fieldName", null, null));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new LateInteractionValuesSource("fieldName", new float[0][], null));
+        () -> new LateInteractionFloatValuesSource("fieldName", new float[0][], null));
     float[][] emptyTokens = new float[1][];
     emptyTokens[0] = new float[0];
     expectThrows(
         IllegalArgumentException.class,
-        () -> new LateInteractionValuesSource("fieldName", emptyTokens, null));
+        () -> new LateInteractionFloatValuesSource("fieldName", emptyTokens, null));
 
     float[][] valueBad = new float[random().nextInt(3, 12)][];
     for (int i = 0; i < valueBad.length; i++) {
@@ -71,9 +71,9 @@ public class TestLateInteractionValuesSource extends LuceneTestCase {
     final VectorSimilarityFunction vectorSimilarityFunction =
         VectorSimilarityFunction.values()[
             random().nextInt(VectorSimilarityFunction.values().length)];
-    LateInteractionValuesSource.ScoreFunction scoreFunction =
-        LateInteractionValuesSource.ScoreFunction.values()[
-            random().nextInt(LateInteractionValuesSource.ScoreFunction.values().length)];
+    LateInteractionFloatValuesSource.ScoreFunction scoreFunction =
+        LateInteractionFloatValuesSource.ScoreFunction.values()[
+            random().nextInt(LateInteractionFloatValuesSource.ScoreFunction.values().length)];
 
     try (Directory dir = newDirectory()) {
       int id = 0;
@@ -105,8 +105,8 @@ public class TestLateInteractionValuesSource extends LuceneTestCase {
       }
 
       float[][] queryVector = createMultiVector();
-      LateInteractionValuesSource source =
-          new LateInteractionValuesSource(
+      LateInteractionFloatValuesSource source =
+          new LateInteractionFloatValuesSource(
               LATE_I_FIELD, queryVector, vectorSimilarityFunction, scoreFunction);
       try (IndexReader reader = DirectoryReader.open(dir)) {
         for (LeafReaderContext ctx : reader.leaves()) {
@@ -144,7 +144,7 @@ public class TestLateInteractionValuesSource extends LuceneTestCase {
       docVector[i] = TestVectorUtil.randomVector(queryVector[0].length);
     }
     float score =
-        LateInteractionValuesSource.ScoreFunction.SUM_MAX_SIM.compare(
+        LateInteractionFloatValuesSource.ScoreFunction.SUM_MAX_SIM.compare(
             queryVector, docVector, VectorSimilarityFunction.COSINE);
     assertEquals(queryVector.length, score, 1e-5);
   }

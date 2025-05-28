@@ -25,23 +25,23 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
-public class LateInteractionValuesSource extends DoubleValuesSource {
+public class LateInteractionFloatValuesSource extends DoubleValuesSource {
 
   private final String fieldName;
   private final float[][] queryVector;
   private final VectorSimilarityFunction vectorSimilarityFunction;
   private final ScoreFunction scoreFunction;
 
-  public LateInteractionValuesSource(String fieldName, float[][] queryVector) {
+  public LateInteractionFloatValuesSource(String fieldName, float[][] queryVector) {
     this(fieldName, queryVector, VectorSimilarityFunction.COSINE, ScoreFunction.SUM_MAX_SIM);
   }
 
-  public LateInteractionValuesSource(
+  public LateInteractionFloatValuesSource(
       String fieldName, float[][] queryVector, VectorSimilarityFunction vectorSimilarityFunction) {
     this(fieldName, queryVector, vectorSimilarityFunction, ScoreFunction.SUM_MAX_SIM);
   }
 
-  public LateInteractionValuesSource(
+  public LateInteractionFloatValuesSource(
       String fieldName,
       float[][] queryVector,
       VectorSimilarityFunction vectorSimilarityFunction,
@@ -112,7 +112,7 @@ public class LateInteractionValuesSource extends DoubleValuesSource {
   public boolean equals(Object obj) {
     if (this == obj) return true;
     if (obj == null || getClass() != obj.getClass()) return false;
-    LateInteractionValuesSource other = (LateInteractionValuesSource) obj;
+    LateInteractionFloatValuesSource other = (LateInteractionFloatValuesSource) obj;
     return Objects.equals(fieldName, other.fieldName)
         && vectorSimilarityFunction == other.vectorSimilarityFunction
         && scoreFunction == other.scoreFunction
@@ -121,7 +121,7 @@ public class LateInteractionValuesSource extends DoubleValuesSource {
 
   @Override
   public String toString() {
-    return "LateInteractionValuesSource(fieldName="
+    return "LateInteractionFloatValuesSource(fieldName="
         + fieldName
         + " similarityFunction="
         + vectorSimilarityFunction
