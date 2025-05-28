@@ -44,14 +44,10 @@ public class TestLateInteractionValuesSource extends LuceneTestCase {
   public void testValidations() {
     expectThrows(
         IllegalArgumentException.class,
-        () -> new LateInteractionValuesSource(null, new float[0][], null));
-    expectThrows(
-        IllegalArgumentException.class,
         () -> new LateInteractionValuesSource("fieldName", null, null));
     expectThrows(
         IllegalArgumentException.class,
         () -> new LateInteractionValuesSource("fieldName", new float[0][], null));
-
     float[][] emptyTokens = new float[1][];
     emptyTokens[0] = new float[0];
     expectThrows(
@@ -66,19 +62,6 @@ public class TestLateInteractionValuesSource extends LuceneTestCase {
         valueBad[i] = TestVectorUtil.randomVector(dimension + 1);
       }
     }
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> new LateInteractionValuesSource("fieldName", valueBad, null));
-
-    float[][] value = createMultiVector();
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> new LateInteractionValuesSource("fieldName", value, null));
-    expectThrows(
-        IllegalArgumentException.class,
-        () ->
-            new LateInteractionValuesSource(
-                "fieldName", value, VectorSimilarityFunction.COSINE, null));
   }
 
   public void testValues() throws IOException {

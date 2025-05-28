@@ -46,23 +46,13 @@ public class LateInteractionValuesSource extends DoubleValuesSource {
       float[][] queryVector,
       VectorSimilarityFunction vectorSimilarityFunction,
       ScoreFunction scoreFunction) {
-    if (fieldName == null) {
-      throw new IllegalArgumentException("fieldName must not be null");
-    }
-    validateQueryVector(queryVector);
-    if (vectorSimilarityFunction == null) {
-      throw new IllegalArgumentException("vectorSimilarityFunction must not be null");
-    }
-    if (scoreFunction == null) {
-      throw new IllegalArgumentException("scoreFunction must not be null");
-    }
-    this.fieldName = fieldName;
-    this.queryVector = queryVector;
-    this.vectorSimilarityFunction = vectorSimilarityFunction;
-    this.scoreFunction = scoreFunction;
+    this.fieldName = Objects.requireNonNull(fieldName);
+    this.queryVector = validateQueryVector(queryVector);
+    this.vectorSimilarityFunction = Objects.requireNonNull(vectorSimilarityFunction);
+    this.scoreFunction = Objects.requireNonNull(scoreFunction);
   }
 
-  private void validateQueryVector(float[][] queryVector) {
+  private float[][] validateQueryVector(float[][] queryVector) {
     if (queryVector == null || queryVector.length == 0) {
       throw new IllegalArgumentException("queryVector must not be null or empty");
     }
@@ -76,6 +66,7 @@ public class LateInteractionValuesSource extends DoubleValuesSource {
             "all composing token vectors in provided query vector should have the same length");
       }
     }
+    return queryVector;
   }
 
   @Override
