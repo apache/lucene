@@ -50,10 +50,58 @@ public final class BytesRefHash implements Accountable {
   private int hashSize;
   private int hashHalfSize;
   private int hashMask;
+  // This mask is used to extract the high bits from a hashcode
   private int highMask;
   private int count;
   private int lastCount = -1;
+
+  /**
+   * The <code>ids</code> array serves a dual purpose:
+   *
+   * <ol>
+   *   <li>When the value is <code>-1</code>, it indicates an empty slot in the hash table.
+   *   <li>When the value is not <code>-1</code>, it stores:
+   *       <ul>
+   *         <li>The actual index into the <code>bytesStart</code> array (low bits, masked by <code>
+   *             hashMask</code>).
+   *         <li>The high bits of the original hashcode (high bits, masked by <code>highMask</code>
+   *             ).
+   *       </ul>
+   * </ol>
+   *
+   * <p>This "trick" allows us to store both the index and part of the hashcode in a single int,
+   * which speeds up hash collisions by quickly rejecting non-matching entries without having to
+   * compare the actual byte values. During lookups, we can immediately check if the high bits match
+   * before doing the more expensive byte comparison.
+   *
+   * <p><b>Example:</b>
+   *
+   * <ul>
+   *   <li>hashSize = 16, therefore <code>hashMask = 15</code> (<code>0x0000000F</code>)
+   *   <li><code>highMask = ~hashMask = 0xFFFFFFF0</code>
+   * </ul>
+   *
+   * <p>When storing the value 7 with hashcode <code>0x12345678</code>:
+   *
+   * <ul>
+   *   <li>The low bits (index) are 7 (<code>0x00000007</code>)
+   *   <li>The high bits of hashcode are <code>0x12345670</code>
+   *   <li>The stored value becomes: <code>0x12345677</code>
+   * </ul>
+   *
+   * <p><b>During lookup:</b>
+   *
+   * <ol>
+   *   <li>We compute the hashcode and find the slot.
+   *   <li>We extract the stored value's high bits (<code>& highMask</code>).
+   *   <li>If they match the lookup hashcode's high bits, we proceed to comparing actual bytes.
+   *   <li>Otherwise, we immediately know it's not a match and continue probing.
+   * </ol>
+   *
+   * <p>This significantly improves performance for hash lookups, especially with many collisions.
+   */
   private int[] ids;
+
   private final BytesStartArray bytesStartArray;
   private final Counter bytesUsed;
 
@@ -72,7 +120,11 @@ public final class BytesRefHash implements Accountable {
 
   /** Creates a new {@link BytesRefHash} */
   public BytesRefHash(ByteBlockPool pool, int capacity, BytesStartArray bytesStartArray) {
-    if ((capacity & (capacity - 1)) != 0) {
+    if (capacity <= 0) {
+      throw new IllegalArgumentException("capacity must be greater than 0");
+    }
+
+    if (BitUtil.isZeroOrPowerOfTwo(capacity)) {
       throw new IllegalArgumentException("capacity must be a power of two, got " + capacity);
     }
     hashSize = capacity;
