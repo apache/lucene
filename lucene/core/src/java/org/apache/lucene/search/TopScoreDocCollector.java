@@ -191,42 +191,9 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
   }
 
   @Override
-  public TopDocs topDocs(int start, int howMany) {
-    // In case pq was populated with sentinel values, there might be less
-    // results than pq.size(). Therefore return all results until either
-    // pq.size() or totalHits.
-    int size = topDocsSize();
-
-    if (howMany < 0) {
-      throw new IllegalArgumentException(
-          "Number of hits requested must be greater than 0 but value was " + howMany);
-    }
-
-    if (start < 0) {
-      throw new IllegalArgumentException(
-          "Expected value of starting position is between 0 and " + size + ", got " + start);
-    }
-
-    if (start >= size || howMany == 0) {
-      return newTopDocs(null, start);
-    }
-
-    // We know that start < pqsize, so just fix howMany.
-    howMany = Math.min(size - start, howMany);
-    ScoreDoc[] results = new ScoreDoc[howMany];
-
-    // pq's pop() returns the 'least' element in the queue, therefore need
-    // to discard the first ones, until we reach the requested range.
-    // Note that this loop will usually not be executed, since the common usage
-    // should be that the caller asks for the last howMany results. However it's
-    // needed here for completeness.
-    for (int i = heap.size() - start - howMany; i > 0; i--) {
+  protected void pruneLeastCompetitiveHitsTo(int keep) {
+    for (int i = heap.size() - keep; i > 0; i--) {
       heap.pop();
     }
-
-    // Get the requested results from pq.
-    populateResults(results, howMany);
-
-    return newTopDocs(results, start);
   }
 }
