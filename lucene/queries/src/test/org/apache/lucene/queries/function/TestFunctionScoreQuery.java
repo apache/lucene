@@ -18,9 +18,19 @@
 package org.apache.lucene.queries.function;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.IntField;
+import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.LateInteractionField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.expressions.Expression;
@@ -31,16 +41,21 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnFloatVectorQuery;
+import org.apache.lucene.search.LateInteractionValuesSource;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
@@ -376,5 +391,90 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
       weightCount += weight.count(leafReaderContext);
     }
     assertEquals(searchCount, weightCount);
+  }
+
+  public void testLateInteractionQuery() throws Exception {
+    final String LATE_I_FIELD = "li_vector";
+    final String KNN_FIELD = "knn_vector";
+    List<float[][]> corpus = new ArrayList<>();
+    final int numDocs = atLeast(1000);
+    final int numSegments = random().nextInt(2, 10);
+    final int dim = 128;
+    final VectorSimilarityFunction vectorSimilarityFunction =
+        VectorSimilarityFunction.values()[
+            random().nextInt(VectorSimilarityFunction.values().length)];
+    LateInteractionValuesSource.ScoreFunction scoreFunction =
+        LateInteractionValuesSource.ScoreFunction.values()[
+            random().nextInt(LateInteractionValuesSource.ScoreFunction.values().length)];
+
+    try (Directory dir = newDirectory()) {
+      int id = 0;
+      try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+        for (int j = 0; j < numSegments; j++) {
+          for (int i = 0; i < numDocs; i++) {
+            Document doc = new Document();
+            if (random().nextInt(100) < 30) {
+              // skip value for some docs to create sparse field
+              doc.add(new IntField("has_li_vector", 0, Field.Store.YES));
+            } else {
+              float[][] value = createMultiVector(dim);
+              corpus.add(value);
+              doc.add(new IntField("id", id++, Field.Store.YES));
+              doc.add(new LateInteractionField(LATE_I_FIELD, value));
+              doc.add(new KnnFloatVectorField(KNN_FIELD, randomVector(dim)));
+              doc.add(new IntField("has_li_vector", 1, Field.Store.YES));
+            }
+            w.addDocument(doc);
+            w.flush();
+          }
+        }
+        // add a segment with no vectors
+        for (int i = 0; i < 100; i++) {
+          Document doc = new Document();
+          doc.add(new IntField("has_li_vector", 0, Field.Store.YES));
+          w.addDocument(doc);
+        }
+        w.flush();
+      }
+
+      float[][] lateIQueryVector = createMultiVector(dim);
+      float[] knnQueryVector = randomVector(dim);
+      KnnFloatVectorQuery knnQuery = new KnnFloatVectorQuery(KNN_FIELD, knnQueryVector, 50);
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher s = new IndexSearcher(reader);
+        TopDocs knnHits = s.search(knnQuery, 50);
+        Set<Integer> knnHitDocs = Arrays.stream(knnHits.scoreDocs).map(k -> k.doc).collect(Collectors.toSet());
+        FunctionScoreQuery lateIQuery =
+            FunctionScoreQuery.lateInteractionRerankQuery(knnQuery, LATE_I_FIELD, lateIQueryVector, vectorSimilarityFunction);
+        TopDocs lateIHits = s.search(lateIQuery, 10);
+        StoredFields storedFields = reader.storedFields();
+        for (ScoreDoc hit : lateIHits.scoreDocs) {
+          assertTrue(knnHitDocs.contains(hit.doc));
+          int idValue = Integer.parseInt(storedFields.document(hit.doc).get("id"));
+          float[][] docVector = corpus.get(idValue);
+          float expected =
+              scoreFunction.compare(lateIQueryVector, docVector, vectorSimilarityFunction);
+          assertEquals(expected, hit.score, 1e-5);
+        }
+      }
+    }
+  }
+
+  private float[] randomVector(int dim) {
+    float[] v = new float[dim];
+    Random random = random();
+    for (int i = 0; i < dim; i++) {
+      v[i] = random.nextFloat();
+    }
+    return v;
+  }
+
+  private float[][] createMultiVector(int dimension) {
+    float[][] value = new float[random().nextInt(3, 12)][];
+    for (int i = 0; i < value.length; i++) {
+      value[i] = randomVector(dimension);
+    }
+    return value;
   }
 }
