@@ -606,6 +606,8 @@ public abstract class PointRangeQuery extends Query {
         return Relation.CELL_OUTSIDE_QUERY;
       }
 
+      // Evaluate crosses only when false. Still need to iterate through
+      // all the dimensions to ensure, none of them is completely outside
       if (crosses == false) {
         crosses =
             comparator.compare(minPackedValue, offset, lowerPoint, offset) < 0
