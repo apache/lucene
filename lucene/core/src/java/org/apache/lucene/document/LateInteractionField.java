@@ -109,7 +109,7 @@ public class LateInteractionField extends BinaryDocValuesField {
    * LateInteractionField#encode(float[][])}
    *
    * @param payload to decode into multi-vector value
-   * @return
+   * @return decoded multi-vector value
    */
   public static float[][] decode(BytesRef payload) {
     final ByteBuffer buffer = ByteBuffer.wrap(payload.bytes, payload.offset, payload.length);

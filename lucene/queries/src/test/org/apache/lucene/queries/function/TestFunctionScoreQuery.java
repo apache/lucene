@@ -25,7 +25,6 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntField;
@@ -444,9 +443,11 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
       try (IndexReader reader = DirectoryReader.open(dir)) {
         IndexSearcher s = new IndexSearcher(reader);
         TopDocs knnHits = s.search(knnQuery, 50);
-        Set<Integer> knnHitDocs = Arrays.stream(knnHits.scoreDocs).map(k -> k.doc).collect(Collectors.toSet());
+        Set<Integer> knnHitDocs =
+            Arrays.stream(knnHits.scoreDocs).map(k -> k.doc).collect(Collectors.toSet());
         FunctionScoreQuery lateIQuery =
-            FunctionScoreQuery.lateInteractionRerankQuery(knnQuery, LATE_I_FIELD, lateIQueryVector, vectorSimilarityFunction);
+            FunctionScoreQuery.lateInteractionRerankQuery(
+                knnQuery, LATE_I_FIELD, lateIQueryVector, vectorSimilarityFunction);
         TopDocs lateIHits = s.search(lateIQuery, 10);
         StoredFields storedFields = reader.storedFields();
         for (ScoreDoc hit : lateIHits.scoreDocs) {
