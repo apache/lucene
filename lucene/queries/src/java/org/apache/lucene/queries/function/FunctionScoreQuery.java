@@ -78,9 +78,7 @@ public final class FunctionScoreQuery extends Query {
    * scores between provided query and indexed document multi-vectors.
    *
    * <p>Document multi-vectors are indexed using {@link
-   * org.apache.lucene.document.LateInteractionField}. Documents are scored using {@link
-   * LateInteractionFloatValuesSource.ScoreFunction#SUM_MAX_SIM} computation on provided vector
-   * similarity function.
+   * org.apache.lucene.document.LateInteractionField}.
    *
    * @param in the query to re-score
    * @param fieldName field containing document multi-vectors for re-scoring
