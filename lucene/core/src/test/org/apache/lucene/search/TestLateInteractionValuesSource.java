@@ -132,6 +132,23 @@ public class TestLateInteractionValuesSource extends LuceneTestCase {
     }
   }
 
+  public void testSumMaxSim() {
+    float[][] queryVector = createMultiVector();
+    // docVector has all the token vectors in the query and some random token vectors
+    float[][] docVector = new float[queryVector.length + 4][];
+    for (int i = 0; i < queryVector.length; i++) {
+      docVector[i] = new float[queryVector[i].length];
+      System.arraycopy(queryVector[i], 0, docVector[i], 0, queryVector[i].length);
+    }
+    for (int i = queryVector.length; i < docVector.length; i++) {
+      docVector[i] = TestVectorUtil.randomVector(queryVector[0].length);
+    }
+    float score =
+        LateInteractionValuesSource.ScoreFunction.SUM_MAX_SIM.compare(
+            queryVector, docVector, VectorSimilarityFunction.COSINE);
+    assertEquals(queryVector.length, score, 1e-5);
+  }
+
   private float[][] createMultiVector() {
     float[][] value = new float[random().nextInt(3, 12)][];
     for (int i = 0; i < value.length; i++) {
