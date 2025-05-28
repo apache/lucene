@@ -134,10 +134,6 @@ public final class TermScorer extends Scorer {
       docAndFreqBuffer = new DocAndFreqBuffer();
     }
 
-    if (impactsDisi != null) {
-      impactsDisi.ensureCompetitive();
-    }
-
     for (; ; ) {
       if (impactsDisi != null) {
         impactsDisi.ensureCompetitive();
