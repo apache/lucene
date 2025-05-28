@@ -447,7 +447,7 @@ def run(command: str, logFile: str):
   if cygwin:
     command = cygwinifyPaths(command)
   if os.system("%s > %s 2>&1" % (command, logFile)):
-    logPath = os.path.abspath(logFile)
+    logPath: str = str(Path(logFile).resolve())
     print('\ncommand "%s" failed:' % command)
     printFileContents(logFile)
     raise RuntimeError('command "%s" failed; see log file %s' % (command, logPath))
@@ -1023,7 +1023,7 @@ def parse_config():
   c.java = make_java_config(parser, c.test_alternative_java)
 
   if c.tmp_dir:
-    c.tmp_dir = os.path.abspath(c.tmp_dir)
+    c.tmp_dir = str(Path(c.tmp_dir).resolve())
   else:
     tmp = "/tmp/smoke_lucene_%s_%s" % (c.version, c.revision)
     c.tmp_dir = tmp
