@@ -38,7 +38,7 @@ class DocScoreEncoder {
   }
 
   static long encodeIntScore(int docId, int score) {
-    return (((long) score) << 32) | (Integer.MAX_VALUE - docId);
+    return (((long) score) << 32) | (~docId & 0xFFFFFFFFL);
   }
 
   static float toScore(long value) {
@@ -50,7 +50,7 @@ class DocScoreEncoder {
   }
 
   static int docId(long value) {
-    return Integer.MAX_VALUE - ((int) value);
+    return (int) ~value;
   }
 
   static int nextUp(int intScore) {
