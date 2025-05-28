@@ -124,7 +124,7 @@ public final class BytesRefHash implements Accountable {
       throw new IllegalArgumentException("capacity must be greater than 0");
     }
 
-    if (BitUtil.isZeroOrPowerOfTwo(capacity)) {
+    if (BitUtil.isZeroOrPowerOfTwo(capacity) == false) {
       throw new IllegalArgumentException("capacity must be a power of two, got " + capacity);
     }
     hashSize = capacity;
