@@ -25,13 +25,12 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
-
 /**
  * A {@link DoubleValuesSource} that scores documents using similarity between a multi-vector query,
  * and indexed document multi-vectors.
  *
- * <p>This is useful re-ranking query results using late interaction models, where documents and queries
- * are represented as multi-vectors of composing token vectors. Document vectors are indexed
+ * <p>This is useful re-ranking query results using late interaction models, where documents and
+ * queries are represented as multi-vectors of composing token vectors. Document vectors are indexed
  * using {@link org.apache.lucene.document.LateInteractionField}.
  */
 public class LateInteractionFloatValuesSource extends DoubleValuesSource {
