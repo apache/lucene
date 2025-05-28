@@ -46,8 +46,6 @@ ignore = [
   "ANN204",  # missing return annotation for special method
   "ANN206",  # missing return annotation for classmethod
   "ANN401",  # use of Any as function parameter
-  "ARG001",  # unused function argument
-  "ARG002",  # unused method argument
   "ARG005",  # unused lambda argument
   "B006",    # do not use mutable datastructures for arg defaults
   "B904",    # within except clause, raise exceptions with .. from
