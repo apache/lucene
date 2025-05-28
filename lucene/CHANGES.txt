@@ -126,6 +126,8 @@ Optimizations
 
 * GITHUB#14709: Speed up TermQuery by Scorer#nextDocsAndScores. (Guo Feng)
 
+* GITHUB#14626: Avoid unnecessary comparison for CELL_CROSSES_QUERY cases (Ankit Jain)
+
 * GITHUB#14674: Optimize AbstractKnnVectorQuery#createBitSet with intoBitset. (Guo Feng)
 
 Bug Fixes
