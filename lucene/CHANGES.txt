@@ -62,6 +62,8 @@ Other
 
 * GITHUB#14613: Rewrite APIJAR extractor to use Java 24 classfile API and kill ASM dependency also for build system.  (Uwe Schindler)
 
+* GITHUB#14667: Fix documentation regarding benchmark running. (Viliam Durina)
+
 ======================= Lucene 10.3.0 =======================
 
 API Changes
