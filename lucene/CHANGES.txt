@@ -62,8 +62,6 @@ Other
 
 * GITHUB#14613: Rewrite APIJAR extractor to use Java 24 classfile API and kill ASM dependency also for build system.  (Uwe Schindler)
 
-* GITHUB#14667: Fix documentation regarding benchmark running. (Viliam Durina)
-
 ======================= Lucene 10.3.0 =======================
 
 API Changes
@@ -158,6 +156,8 @@ Other
 * GITHUB#14627, GITHUB#11920, GITHUB#14706: Fix mock filesystem WindowsFS to also
   work on Windows. This is required to make tests pass on Windows 11 which no
   longer has all limitations of previous Windows versions.  (Uwe Schindler)
+
+* GITHUB#14667: Fix documentation regarding benchmark running. (Viliam Durina)
 
 
 ======================= Lucene 10.2.1 =======================
