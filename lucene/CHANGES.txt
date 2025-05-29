@@ -90,6 +90,8 @@ Improvements
 * GITHUB#14602: Refactor the expressions compiler to use official ClassData BSM with indexed lookup
   (Uwe Schindler)
 
+* GITHUB#14443: Support adaptive refresh in Searcher Managers (Vigya Sharma)
+
 Optimizations
 ---------------------
 * GITHUB#14418: Quick exit on filter query matching no docs when rewriting knn query. (Pan Guixin)
@@ -104,6 +106,8 @@ Optimizations
 
 * GITHUB#14447: Compute the doc range more efficiently when flushing doc block. (Pan Guixin)
 
+* GITHUB#14527: Reduce NeighborArray heap memory. (weizijun)
+
 * GITHUB#14529, GITHUB#14555, GITHUB#14618: Impl intoBitset for IndexedDISI and Docvalues. (Guo Feng)
 
 * GITHUB#14552: Speed up flush of softdelete by intoBitset. (Guo Feng)
@@ -111,9 +115,30 @@ Optimizations
 * GITHUB#14609: Optimizes PointRangeQuery by rewriting to MatchAllDocsQuery/FieldExistsQuery/MatchNoDocsQuery if all
   docs in index are contained or excluded (Elliott Bradshaw)
 
+* GITHUB#14679: Optimize exhaustive evaluation of disjunctive queries.
+  (Adrien Grand)
+
+* GITHUB#14700: Return MatchNoDocsQuery when IndexOrDocValuesQuery::rewrite does not match
+  (Chris Hegarty)
+
+* GITHUB#14701: Optimize top-n bulk scorers by evaluating scoring windows in a
+  term-at-a-time fashion instead of doc-at-a-time. (Adrien Grand)
+
+* GITHUB#14709: Speed up TermQuery by Scorer#nextDocsAndScores. (Guo Feng)
+
+* GITHUB#14626: Avoid unnecessary comparison for CELL_CROSSES_QUERY cases (Ankit Jain)
+
+* GITHUB#14674: Optimize AbstractKnnVectorQuery#createBitSet with intoBitset. (Guo Feng)
+
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
+  used if the DoubleValuesSource needed scores. (David Smiley)
+
+* GITHUB#14682 : Fix for add char and token filters in Luke Analysis tab. (Amir Raza)
+
+* GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
+  instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
 
 Build
 ---------------------
@@ -128,9 +153,9 @@ Other
 
 * GITHUB#14516: Move sloppySin into SloppyMath from GeoUtils (Ankit Jain)
 
-* GITHUB#14627, GITHUB#11920: Fix mock filesystem WindowsFS to also work on Windows.
-  This is required to make tests pass on Windows 11 which no longer has
-  all limitations of previous Windows versions.  (Uwe Schindler)
+* GITHUB#14627, GITHUB#11920, GITHUB#14706: Fix mock filesystem WindowsFS to also
+  work on Windows. This is required to make tests pass on Windows 11 which no
+  longer has all limitations of previous Windows versions.  (Uwe Schindler)
 
 
 ======================= Lucene 10.2.1 =======================
