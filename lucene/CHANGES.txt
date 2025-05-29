@@ -22,6 +22,10 @@ API Changes
 
 * GITHUB#14291: Remove IOException from ScorerSupplier#setTopLevelScoringClause signature (Luca Cavanna)
 
+* GITHUB#7865: Added public CharSequence getTermEscaped(EscapeQuerySyntax)
+  to ValueQueryNode. Made existing implementations public in all classes which
+  implement ValueQueryNode. (Peter Barna, Adam Schwartz)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -48,6 +52,10 @@ Bug Fixes
   when all values are identical. (Mike Sokolov)
 
 * GITHUB#14075: Remove duplicate and add missing entry on brazilian portuguese stopwords list. (Arthur Caccavo)
+
+* GITHUB#7865 AbstractRangeQueryNode#toQueryString(EscapeQuerySyntax) now
+  returns a string which can be parsed back into the original node.
+  (Peter Barna, Adam Schwartz)
 
 Changes in Runtime Behavior
 ---------------------
