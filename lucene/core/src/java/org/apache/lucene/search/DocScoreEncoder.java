@@ -31,51 +31,16 @@ import org.apache.lucene.util.NumericUtils;
 class DocScoreEncoder {
 
   static final long LEAST_COMPETITIVE_CODE = encode(Integer.MAX_VALUE, Float.NEGATIVE_INFINITY);
-  private static final int POS_INF_TO_SORTABLE_INT = scoreToSortableInt(Float.POSITIVE_INFINITY);
 
   static long encode(int docId, float score) {
-    return encodeIntScore(docId, scoreToSortableInt(score));
-  }
-
-  static long encodeIntScore(int docId, int score) {
-    return (((long) score) << 32) | (~docId & 0xFFFFFFFFL);
+    return (((long) NumericUtils.floatToSortableInt(score)) << 32) | (~docId & 0xFFFFFFFFL);
   }
 
   static float toScore(long value) {
-    return sortableIntToScore(toIntScore(value));
-  }
-
-  static int toIntScore(long value) {
-    return (int) (value >>> 32);
+    return NumericUtils.sortableIntToFloat((int) (value >>> 32));
   }
 
   static int docId(long value) {
     return (int) ~value;
-  }
-
-  static int nextUp(int intScore) {
-    assert intScore <= POS_INF_TO_SORTABLE_INT;
-    int nextUp = Math.min(POS_INF_TO_SORTABLE_INT, intScore + 1);
-    assert nextUp == scoreToSortableInt(Math.nextUp(sortableIntToScore(intScore)));
-    return nextUp;
-  }
-
-  /**
-   * Score is non-negative float so wo use floatToRawIntBits instead of {@link
-   * NumericUtils#floatToSortableInt}. We do not assert score >= 0 here to allow pass negative float
-   * to indicate totally non-competitive, e.g. {@link #LEAST_COMPETITIVE_CODE}.
-   */
-  static int scoreToSortableInt(float score) {
-    assert Float.isNaN(score) == false;
-    return Float.floatToRawIntBits(score);
-  }
-
-  /**
-   * @see #scoreToSortableInt(float)
-   */
-  static float sortableIntToScore(int scoreBits) {
-    float score = Float.intBitsToFloat(scoreBits);
-    assert Float.isNaN(score) == false;
-    return score;
   }
 }

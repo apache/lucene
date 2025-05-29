@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.stream.IntStream;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.LongHeap;
+import org.apache.lucene.util.NumericUtils;
 
 /**
  * A {@link Collector} implementation that collects the top-scoring hits, returning them as a {@link
@@ -65,13 +66,13 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
   public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
     final int docBase = context.docBase;
     final ScoreDoc after = this.after;
-    final int afterScore;
+    final float afterScore;
     final int afterDoc;
     if (after == null) {
       afterScore = Integer.MAX_VALUE;
       afterDoc = DocIdSetIterator.NO_MORE_DOCS;
     } else {
-      afterScore = DocScoreEncoder.scoreToSortableInt(after.score);
+      afterScore = NumericUtils.floatToSortableInt(after.score);
       afterDoc = after.doc - context.docBase;
     }
 
@@ -79,8 +80,8 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
       private Scorable scorer;
       private long topCode = heap.top();
-      private int topScore = DocScoreEncoder.toIntScore(topCode);
-      private int minCompetitiveScore;
+      private float topScore = DocScoreEncoder.toScore(topCode);
+      private float minCompetitiveScore;
 
       @Override
       public void setScorer(Scorable scorer) throws IOException {
@@ -94,7 +95,7 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
       @Override
       public void collect(int doc) throws IOException {
-        final int score = DocScoreEncoder.scoreToSortableInt(scorer.score());
+        float score = scorer.score();
 
         int hitCountSoFar = ++totalHits;
 
@@ -129,10 +130,10 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
         }
       }
 
-      private void collectCompetitiveHit(int doc, int score) throws IOException {
-        final long code = DocScoreEncoder.encodeIntScore(doc + docBase, score);
+      private void collectCompetitiveHit(int doc, float score) throws IOException {
+        final long code = DocScoreEncoder.encode(doc + docBase, score);
         topCode = heap.updateTop(code);
-        topScore = DocScoreEncoder.toIntScore(topCode);
+        topScore = DocScoreEncoder.toScore(topCode);
         updateMinCompetitiveScore(scorer);
       }
 
@@ -143,11 +144,10 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
           // since we tie-break on doc id and collect in doc id order we can require
           // the next float if the global minimum score is set on a document id that is
           // smaller than the ids in the current leaf
-          int score = DocScoreEncoder.toIntScore(maxMinScore);
-          score =
-              docBase >= DocScoreEncoder.docId(maxMinScore) ? DocScoreEncoder.nextUp(score) : score;
+          float score = DocScoreEncoder.toScore(maxMinScore);
+          score = docBase >= DocScoreEncoder.docId(maxMinScore) ? Math.nextUp(score) : score;
           if (score > minCompetitiveScore) {
-            scorer.setMinCompetitiveScore(DocScoreEncoder.sortableIntToScore(score));
+            scorer.setMinCompetitiveScore(score);
             minCompetitiveScore = score;
             totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
           }
@@ -156,10 +156,11 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
       private void updateMinCompetitiveScore(Scorable scorer) throws IOException {
         if (totalHits > totalHitsThreshold) {
-          if (topScore >= minCompetitiveScore) {
-            minCompetitiveScore = DocScoreEncoder.nextUp(topScore);
-            scorer.setMinCompetitiveScore(DocScoreEncoder.sortableIntToScore(minCompetitiveScore));
+          float localMinScore = Math.nextUp(topScore);
+          if (localMinScore > minCompetitiveScore) {
+            scorer.setMinCompetitiveScore(localMinScore);
             totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
+            minCompetitiveScore = localMinScore;
             if (minScoreAcc != null) {
               // we don't use the next float but we register the document id so that other leaves or
               // leaf partitions can require it if they are after the current maximum
