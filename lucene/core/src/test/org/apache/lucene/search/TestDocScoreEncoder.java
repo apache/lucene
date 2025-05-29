@@ -57,20 +57,12 @@ public class TestDocScoreEncoder extends LuceneTestCase {
     assertEquals(score1, DocScoreEncoder.toScore(code1), 0f);
     assertEquals(score2, DocScoreEncoder.toScore(code2), 0f);
 
-    if (score1 < 0 && score2 < 0) {
-      return;
-    }
-
-    if (score1 < 0) {
-      assertTrue(code1 < code2);
-    } else if (score2 < 0) {
-      assertTrue(code2 < code1);
-    } else if (score1 == score2 && doc1 == doc2) {
-      assertEquals(code1, code2);
-    } else if (score1 < score2) {
+    if (score1 < score2) {
       assertTrue(code1 < code2);
     } else if (score1 > score2) {
       assertTrue(code1 > code2);
+    } else if (doc1 == doc2) {
+      assertEquals(code1, code2);
     } else {
       assertEquals(code1 > code2, doc1 < doc2);
     }

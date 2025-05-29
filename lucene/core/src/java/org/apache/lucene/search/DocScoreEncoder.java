@@ -29,7 +29,7 @@ class DocScoreEncoder {
   static final long LEAST_COMPETITIVE_CODE = encode(Integer.MAX_VALUE, Float.NEGATIVE_INFINITY);
 
   static long encode(int docId, float score) {
-    return (((long) NumericUtils.floatToSortableInt(score)) << 32) | (~docId & 0xFFFFFFFFL);
+    return (((long) NumericUtils.floatToSortableInt(score)) << 32) | (Integer.MAX_VALUE - docId);
   }
 
   static float toScore(long value) {
@@ -37,6 +37,6 @@ class DocScoreEncoder {
   }
 
   static int docId(long value) {
-    return (int) ~value;
+    return Integer.MAX_VALUE - ((int) value);
   }
 }

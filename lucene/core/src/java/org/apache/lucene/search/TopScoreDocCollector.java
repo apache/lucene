@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.stream.IntStream;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.LongHeap;
-import org.apache.lucene.util.NumericUtils;
 
 /**
  * A {@link Collector} implementation that collects the top-scoring hits, returning them as a {@link
@@ -69,10 +68,10 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
     final float afterScore;
     final int afterDoc;
     if (after == null) {
-      afterScore = Integer.MAX_VALUE;
+      afterScore = Float.POSITIVE_INFINITY;
       afterDoc = DocIdSetIterator.NO_MORE_DOCS;
     } else {
-      afterScore = NumericUtils.floatToSortableInt(after.score);
+      afterScore = after.score;
       afterDoc = after.doc - context.docBase;
     }
 
@@ -156,6 +155,10 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
       private void updateMinCompetitiveScore(Scorable scorer) throws IOException {
         if (totalHits > totalHitsThreshold) {
+          // since we tie-break on doc id and collect in doc id order, we can require the next float
+          // pqTop is never null since TopScoreDocCollector fills the priority queue with sentinel
+          // values if the top element is a sentinel value, its score will be -Infty and the below
+          // logic is still valid
           float localMinScore = Math.nextUp(topScore);
           if (localMinScore > minCompetitiveScore) {
             scorer.setMinCompetitiveScore(localMinScore);
