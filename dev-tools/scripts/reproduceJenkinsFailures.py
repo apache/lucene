@@ -237,7 +237,7 @@ def printAndMoveReports(testIters: int, newSubDir: str, location: str):
                 break
           # have to play nice with 'ant clean'...
           newDirPath = os.path.join("repro-reports", newSubDir, dir)
-          os.makedirs(newDirPath, exist_ok=True)
+          Path(newDirPath).mkdir(exist_ok=True, parents=True)
           _ = Path(filePath).rename(target=os.path.join(newDirPath, file))
   print("[repro] Failures%s:" % location)
   for testcase in sorted(failures, key=lambda t: (failures[t], t)):  # sort by failure count, then by testcase
