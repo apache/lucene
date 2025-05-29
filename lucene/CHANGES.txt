@@ -138,7 +138,7 @@ Bug Fixes
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
   instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
 
-* GITHUB#14727: Fix several resource leaks
+* GITHUB#14727: Fix several resource leaks. (Xu Chengxin)
 
 Build
 ---------------------
