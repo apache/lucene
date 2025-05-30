@@ -35,7 +35,8 @@ abstract class NativeAccess {
   public abstract int getPageSize();
 
   /**
-   * Return the NativeAccess instance for this platform. At moment we only support Linux and MacOS
+   * Return the NativeAccess instance for this platform. At the moment we only support Linux and
+   * MacOS.
    */
   public static Optional<NativeAccess> getImplementation() {
     if (Constants.LINUX || Constants.MAC_OS_X) {

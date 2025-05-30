@@ -39,7 +39,7 @@ import org.apache.lucene.util.fst.Util;
 /**
  * Concatenates/Joins every incoming token with a separator into one output token for every path
  * through the token stream (which is a graph). In simple cases this yields one token, but in the
- * presence of any tokens with a zero positionIncrmeent (e.g. synonyms) it will be more. This filter
+ * presence of any tokens with a zero positionIncrement (e.g. synonyms) it will be more. This filter
  * uses the token bytes, position increment, and position length of the incoming stream. Other
  * attributes are not used or manipulated.
  *
