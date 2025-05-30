@@ -29,6 +29,7 @@ import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Search for all (approximate) vectors above a similarity threshold.
@@ -142,14 +143,27 @@ abstract class AbstractVectorSimilarityQuery extends Query {
             acceptDocs = bitSetIterator.getBitSet();
           } else {
             // Else collect all matching docs
-            FilteredDocIdSetIterator filtered =
-                new FilteredDocIdSetIterator(scorer.iterator()) {
-                  @Override
-                  protected boolean match(int doc) {
-                    return liveDocs == null || liveDocs.get(doc);
-                  }
-                };
-            acceptDocs = BitSet.of(filtered, leafReader.maxDoc());
+            DocIdSetIterator iterator = scorer.iterator();
+            final int maxDoc = leafReader.maxDoc();
+            int threshold = maxDoc >> 7; // same as BitSet#of
+            if (iterator.cost() >= threshold) {
+              // take advantage of Disi#intoBitset and Bits#applyMask
+              FixedBitSet bitSet = new FixedBitSet(maxDoc);
+              bitSet.or(iterator);
+              if (liveDocs != null) {
+                liveDocs.applyMask(bitSet, 0);
+              }
+              acceptDocs = bitSet;
+            } else {
+              FilteredDocIdSetIterator filterIterator =
+                  new FilteredDocIdSetIterator(iterator) {
+                    @Override
+                    protected boolean match(int doc) {
+                      return liveDocs == null || liveDocs.get(doc);
+                    }
+                  };
+              acceptDocs = BitSet.of(filterIterator, maxDoc); // create a sparse bitset
+            }
           }
 
           int cardinality = acceptDocs.cardinality();

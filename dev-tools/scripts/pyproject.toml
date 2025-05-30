@@ -95,8 +95,6 @@ ignore = [
   "PLW0602", # using global for variable but no assignment is done
   "PLW0603", # using global statement to update variable is discouraged
   "PLW2901", # loop variable overwritten by assignment target
-  "PTH100",  # os.path.abspath should be replaced by Path.resolve
-  "PTH103",  # os.mkdirs should be replaced by Path.mkdir(parents=True)
   "PTH104",  # os.rename should be replaced by Path.rename
   "PTH107",  # os.remove shoudl be replaced by Path.unlink
   "PTH109",  # os.getcwd should be replaced by Path.cwd
