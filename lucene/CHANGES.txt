@@ -100,6 +100,8 @@ Improvements
 
 * GITHUB#14443: Support adaptive refresh in Searcher Managers (Vigya Sharma)
 
+* Clean up redundant code and comments in query node classes. (Stefan Vodita)
+
 Optimizations
 ---------------------
 * GITHUB#14418: Quick exit on filter query matching no docs when rewriting knn query. (Pan Guixin)
