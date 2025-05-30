@@ -853,6 +853,8 @@ Bug Fixes
 
 * GITHUB#13799: Disable intra-merge parallelism for all structures but kNN vectors. (Ben Trent)
 
+* GITHUB##14732: Fix IndexSortSortedNumericDocValuesRangeQuery for int sort (Mayya Sharipova)
+
 Build
 ---------------------
 
