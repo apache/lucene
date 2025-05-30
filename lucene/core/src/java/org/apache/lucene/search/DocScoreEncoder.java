@@ -17,28 +17,26 @@
 
 package org.apache.lucene.search;
 
-import java.util.concurrent.atomic.LongAccumulator;
+import org.apache.lucene.util.NumericUtils;
 
-/** Maintains the maximum score and its corresponding document id concurrently */
-final class MaxScoreAccumulator {
-  // we use 2^10-1 to check the remainder with a bitwise operation
-  private static final int DEFAULT_INTERVAL = 0x3ff;
+/**
+ * An encoder do encode (doc, score) pair as a long whose sort order is same as {@code (o1, o2) ->
+ * Float.compare(o1.score, o2.score)).thenComparing(Comparator.comparingInt((ScoreDoc o) ->
+ * o.doc).reversed())}
+ */
+class DocScoreEncoder {
 
-  // scores are always positive
-  final LongAccumulator acc = new LongAccumulator(Math::max, Long.MIN_VALUE);
+  static final long LEAST_COMPETITIVE_CODE = encode(Integer.MAX_VALUE, Float.NEGATIVE_INFINITY);
 
-  // non-final and visible for tests
-  long modInterval;
-
-  MaxScoreAccumulator() {
-    this.modInterval = DEFAULT_INTERVAL;
+  static long encode(int docId, float score) {
+    return (((long) NumericUtils.floatToSortableInt(score)) << 32) | (Integer.MAX_VALUE - docId);
   }
 
-  void accumulate(long code) {
-    acc.accumulate(code);
+  static float toScore(long value) {
+    return NumericUtils.sortableIntToFloat((int) (value >>> 32));
   }
 
-  long getRaw() {
-    return acc.get();
+  static int docId(long value) {
+    return Integer.MAX_VALUE - ((int) value);
   }
 }
