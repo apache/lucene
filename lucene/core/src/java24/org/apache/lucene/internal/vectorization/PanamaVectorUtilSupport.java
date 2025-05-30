@@ -795,6 +795,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         }
       }
     }
+    for (int i = from; i < to; ++i) {
+      if (buffer[i] >= target) {
+        return i;
+      }
+    }
+    return to;
+  }
 
   @Override
   public long int4BitDotProduct(byte[] q, byte[] d) {
