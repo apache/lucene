@@ -469,9 +469,9 @@ public class IndexWriter
    * session can be quickly made available for searching without closing the writer nor calling
    * {@link #commit}.
    *
-   * <p>Note that this is functionally equivalent to calling {#flush} and then opening a new reader.
-   * But the turnaround time of this method should be faster since it avoids the potentially costly
-   * {@link #commit}.
+   * <p>Note that this is functionally equivalent to calling {@link #commit} and then opening a new
+   * reader. But the turnaround time of this method should be faster since it avoids the potentially
+   * costly {@link #commit}.
    *
    * <p>You must close the {@link IndexReader} returned by this method once you are done using it.
    *
@@ -500,8 +500,8 @@ public class IndexWriter
    * AlreadyClosedException}.
    *
    * @lucene.experimental
-   * @return IndexReader that covers entire index plus all changes made so far by this IndexWriter
-   *     instance
+   * @return IndexReader that covers the entire index plus all changes made so far by this
+   *     IndexWriter instance
    * @throws IOException If there is a low-level I/O error
    */
   DirectoryReader getReader(boolean applyAllDeletes, boolean writeAllDeletes) throws IOException {
@@ -4110,7 +4110,7 @@ public class IndexWriter
    * Returns true if there may be changes that have not been committed. There are cases where this
    * may return true when there are no actual "real" changes to the index, for example if you've
    * deleted by Term or Query but that Term or Query does not match any documents. Also, if a merge
-   * kicked off as a result of flushing a new segment during {@link #commit}, or a concurrent merged
+   * kicked off as a result of flushing a new segment during {@link #commit}, or a concurrent merge
    * finished, this method may return true right after you had just called {@link #commit}.
    */
   public final boolean hasUncommittedChanges() {
@@ -4526,7 +4526,7 @@ public class IndexWriter
     // if we mix soft and hard deletes we need to make sure that we only carry over deletes
     // that were not deleted before. Otherwise the segDocMap doesn't contain a mapping.
     // yet this is also required if any MergePolicy modifies the liveDocs since this is
-    // what the segDocMap is build on.
+    // what the segDocMap is built on.
     final IntPredicate carryOverDelete =
         docId -> segDocMap.get(docId) != -1 && currentHardLiveDocs.get(docId) == false;
     if (prevHardLiveDocs != null) {
@@ -6154,7 +6154,7 @@ public class IndexWriter
     if (rld != null) {
       numDeletesToMerge = rld.numDeletesToMerge(mergePolicy);
     } else {
-      // if we don't have a  pooled instance lets just return the hard deletes, this is safe!
+      // if we don't have a pooled instance let's just return the hard deletes, this is safe!
       numDeletesToMerge = info.getDelCount();
     }
     assert numDeletesToMerge <= info.info.maxDoc()

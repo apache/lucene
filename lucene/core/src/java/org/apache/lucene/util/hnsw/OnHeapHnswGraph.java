@@ -70,7 +70,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    *
    * @param numNodes number of nodes that will be added to this graph, passing in -1 means unbounded
    *     while passing in a non-negative value will lock the whole graph and disable the graph from
-   *     growing itself (you cannot add a node with has id >= numNodes)
+   *     growing itself (you cannot add a node with id >= numNodes)
    */
   OnHeapHnswGraph(int M, int numNodes) {
     this.entryNode = new AtomicReference<>(new EntryNode(-1, 1));

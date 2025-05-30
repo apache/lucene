@@ -104,7 +104,7 @@
  * <p>The relationship between {@link org.apache.lucene.analysis.Analyzer} and {@link
  * org.apache.lucene.analysis.CharFilter}s, {@link org.apache.lucene.analysis.Tokenizer}s, and
  * {@link org.apache.lucene.analysis.TokenFilter}s is sometimes confusing. To ease this confusion,
- * here is some clarifications:
+ * here are some clarifications:
  *
  * <ul>
  *   <li>The {@link org.apache.lucene.analysis.Analyzer} is a <strong>factory</strong> for analysis
@@ -129,7 +129,7 @@
  * </ul>
  *
  * <p>If you want to use a particular combination of <code>CharFilter</code>s, a <code>Tokenizer
- * </code>, and some <code>TokenFilter</code>s, the simplest thing is often an create an anonymous
+ * </code>, and some <code>TokenFilter</code>s, the simplest thing is often to create an anonymous
  * subclass of {@link org.apache.lucene.analysis.Analyzer}, provide {@link
  * org.apache.lucene.analysis.Analyzer#createComponents(String)} and perhaps also {@link
  * org.apache.lucene.analysis.Analyzer#initReader(String, java.io.Reader)}. However, if you need the
@@ -366,8 +366,8 @@
  * <p>Given that position(magenta) = 0 + position(red), they are at the same position, so anything
  * working with analyzers will return the exact same result if you replace "magenta" with "red" in
  * the input. However, multi-word synonyms are more tricky. Let's say that you want to build a
- * TokenStream where "IBM" is a synonym of "Internal Business Machines". Position increments are not
- * enough anymore:
+ * TokenStream where "IBM" is a synonym of "International Business Machines". Position increments
+ * are not enough anymore:
  *
  * <table>
  * <caption>position increments where international is zero</caption>
@@ -377,7 +377,7 @@
  *
  * <p>The problem with this token stream is that "IBM" is at the same position as "International"
  * although it is a synonym with "International Business Machines" as a whole. Setting the position
- * increment of "Business" and "Machines" to 0 wouldn't help as it would mean than "International"
+ * increment of "Business" and "Machines" to 0 wouldn't help as it would mean that "International"
  * is a synonym of "Business". The only way to solve this issue is to make "IBM" span across 3
  * positions, this is where position lengths come to rescue.
  *
@@ -686,7 +686,7 @@
  * API
  * </pre>
  *
- * Now let's take a look how the LengthFilter is implemented:
+ * Now let's take a look at how the LengthFilter is implemented:
  *
  * <pre class="prettyprint">
  * public final class LengthFilter extends FilteringTokenFilter {
