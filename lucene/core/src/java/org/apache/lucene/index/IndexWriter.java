@@ -109,7 +109,7 @@ import org.apache.lucene.util.Version;
  * removed with {@link #deleteDocuments(Term...)} or {@link #deleteDocuments(Query...)}. A document
  * can be updated with {@link #updateDocument(Term, Iterable) updateDocument} (which just deletes
  * and then adds the entire document). When finished adding, deleting and updating documents, {@link
- * #close() close} should be called. <a id="sequence_numbers"></a>
+ * #close() close} should be called. <a id="sequence_number"></a>
  *
  * <p>Each method that changes the index returns a {@code long} sequence number, which expresses the
  * effective order in which each change was applied. {@link #commit} also returns a sequence number,
@@ -469,9 +469,9 @@ public class IndexWriter
    * session can be quickly made available for searching without closing the writer nor calling
    * {@link #commit}.
    *
-   * <p>Note that this is functionally equivalent to calling {#flush} and then opening a new reader.
-   * But the turnaround time of this method should be faster since it avoids the potentially costly
-   * {@link #commit}.
+   * <p>Note that this is functionally equivalent to calling {@link #flush} and then opening a new
+   * reader. But the turnaround time of this method should be faster since it avoids the potentially
+   * costly {@link #commit}.
    *
    * <p>You must close the {@link IndexReader} returned by this method once you are done using it.
    *
