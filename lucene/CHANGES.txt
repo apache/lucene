@@ -100,7 +100,7 @@ Improvements
 
 * GITHUB#14443: Support adaptive refresh in Searcher Managers (Vigya Sharma)
 
-* Clean up redundant code and comments in query node classes. (Stefan Vodita)
+* GITHUB#14737: Clean up redundant code and comments in query node classes. (Stefan Vodita)
 
 Optimizations
 ---------------------
