@@ -588,7 +588,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     Object missingValue = sortField.getMissingValue();
     LeafReader reader = context.reader();
     PointValues pointValues = reader.getPointValues(field);
-    final long missingLongValue = missingValue == null ? 0L : (long) missingValue;
+    final long missingLongValue = missingValue == null ? 0L : ((Number) missingValue).longValue();
     // all documents have docValues or missing value falls outside the range
     if ((pointValues != null && pointValues.getDocCount() == reader.maxDoc())
         || (missingLongValue < lowerValue || missingLongValue > upperValue)) {
