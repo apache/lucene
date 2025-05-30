@@ -95,6 +95,8 @@ Other
   work on Windows. This is required to make tests pass on Windows 11 which no
   longer has all limitations of previous Windows versions.  (Uwe Schindler)
 
+* GITHUB#14667: Fix documentation regarding benchmark running. (Viliam Durina)
+
 
 ======================= Lucene 10.2.1 =======================
 
