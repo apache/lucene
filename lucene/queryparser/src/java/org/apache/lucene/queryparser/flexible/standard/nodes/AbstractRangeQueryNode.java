@@ -42,8 +42,6 @@ public class AbstractRangeQueryNode<T extends FieldValuePairQueryNode<?>> extend
   }
 
   /**
-   * Returns the field associated with this node.
-   *
    * @return the field associated with this node
    * @see FieldableNode
    */
@@ -83,8 +81,6 @@ public class AbstractRangeQueryNode<T extends FieldValuePairQueryNode<?>> extend
   }
 
   /**
-   * Returns the lower bound node.
-   *
    * @return the lower bound node.
    */
   @Override
@@ -94,8 +90,6 @@ public class AbstractRangeQueryNode<T extends FieldValuePairQueryNode<?>> extend
   }
 
   /**
-   * Returns the upper bound node.
-   *
    * @return the upper bound node.
    */
   @Override

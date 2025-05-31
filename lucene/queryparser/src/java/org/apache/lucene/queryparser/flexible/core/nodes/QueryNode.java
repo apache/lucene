@@ -24,70 +24,67 @@ import org.apache.lucene.queryparser.flexible.core.parser.EscapeQuerySyntax;
 public interface QueryNode {
 
   /** convert to a query string understood by the query parser */
-  // TODO: this interface might be changed in the future
-  public CharSequence toQueryString(EscapeQuerySyntax escapeSyntaxParser);
+  CharSequence toQueryString(EscapeQuerySyntax escapeSyntaxParser);
 
   /** for printing */
   @Override
-  public String toString();
+  String toString();
 
   /** get Children nodes */
-  public List<QueryNode> getChildren();
+  List<QueryNode> getChildren();
 
   /** verify if a node is a Leaf node */
-  public boolean isLeaf();
+  boolean isLeaf();
 
   /** verify if a node contains a tag */
-  public boolean containsTag(String tagName);
+  boolean containsTag(String tagName);
 
   /** Returns object stored under that tag name */
-  public Object getTag(String tagName);
+  Object getTag(String tagName);
 
-  public QueryNode getParent();
+  QueryNode getParent();
 
   /**
-   * Recursive clone the QueryNode tree The tags are not copied to the new tree when you call the
-   * cloneTree() method
+   * Recursive clone the QueryNode tree. The tags are not copied to the new tree when you call the
+   * cloneTree() method.
    *
    * @return the cloned tree
    */
-  public QueryNode cloneTree() throws CloneNotSupportedException;
+  QueryNode cloneTree() throws CloneNotSupportedException;
 
   // Below are the methods that can change state of a QueryNode
   // Write Operations (not Thread Safe)
 
-  // add a new child to a non Leaf node
-  public void add(QueryNode child);
+  /** add a new child to a non Leaf node */
+  void add(QueryNode child);
 
-  public void add(List<QueryNode> children);
+  void add(List<QueryNode> children);
 
-  // reset the children of a node
-  public void set(List<QueryNode> children);
+  /** reset the children of a node */
+  void set(List<QueryNode> children);
 
   /**
    * Associate the specified value with the specified tagName. If the tagName already exists, the
    * old value is replaced. The tagName and value cannot be null. tagName will be converted to
    * lowercase.
    */
-  public void setTag(String tagName, Object value);
+  void setTag(String tagName, Object value);
 
   /** Unset a tag. tagName will be converted to lowercase. */
-  public void unsetTag(String tagName);
+  void unsetTag(String tagName);
 
   /**
-   * Returns a map containing all tags attached to this query node.
-   *
    * @return a map containing all tags attached to this query node
    */
-  public Map<String, Object> getTagMap();
+  Map<String, Object> getTagMap();
 
   /** Removes this query node from its parent. */
-  public void removeFromParent();
+  void removeFromParent();
 
   /**
    * Remove a child node
    *
    * @param childNode Which child to remove
    */
-  public void removeChildren(QueryNode childNode);
+  void removeChildren(QueryNode childNode);
 }

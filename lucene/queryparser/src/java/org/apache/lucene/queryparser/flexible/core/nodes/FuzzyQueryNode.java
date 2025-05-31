@@ -26,10 +26,6 @@ public class FuzzyQueryNode extends FieldQueryNode {
   private int prefixLength;
 
   /**
-   * @param field Name of the field query will use.
-   * @param termStr Term token to use for building term for the query
-   */
-  /**
    * @param field - Field name
    * @param term - Value
    * @param minSimilarity - similarity value
