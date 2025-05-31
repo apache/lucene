@@ -189,57 +189,60 @@ class WordDictionary extends AbstractDictionary {
     int[] buffer = new int[3];
     byte[] intBuffer = new byte[4];
     String tmpword;
-    DataInputStream dctFile = new DataInputStream(Files.newInputStream(Paths.get(dctFilePath)));
+    // Use try-with-resources to ensure the stream is always closed
+    try (DataInputStream dctFile =
+        new DataInputStream(Files.newInputStream(Paths.get(dctFilePath)))) {
 
-    // GB2312 characters 0 - 6768
-    for (i = GB2312_FIRST_CHAR; i < GB2312_FIRST_CHAR + CHAR_NUM_IN_FILE; i++) {
-      // if (i == 5231)
-      // System.out.println(i);
+      // GB2312 characters 0 - 6768
+      for (i = GB2312_FIRST_CHAR; i < GB2312_FIRST_CHAR + CHAR_NUM_IN_FILE; i++) {
+        // if (i == 5231)
+        // System.out.println(i);
 
-      dctFile.read(intBuffer);
-      // the dictionary was developed for C, and byte order must be converted to work with Java
-      cnt = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt();
-      if (cnt <= 0) {
-        wordItem_charArrayTable[i] = null;
-        wordItem_frequencyTable[i] = null;
-        continue;
-      }
-      wordItem_charArrayTable[i] = new char[cnt][];
-      wordItem_frequencyTable[i] = new int[cnt];
-      total += cnt;
-      int j = 0;
-      while (j < cnt) {
-        // wordItemTable[i][j] = new WordItem();
         dctFile.read(intBuffer);
-        buffer[0] = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // frequency
-        dctFile.read(intBuffer);
-        buffer[1] = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // length
-        dctFile.read(intBuffer);
-        buffer[2] = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // handle
-
-        // wordItemTable[i][j].frequency = buffer[0];
-        wordItem_frequencyTable[i][j] = buffer[0];
-
-        length = buffer[1];
-        if (length > 0) {
-          byte[] lchBuffer = new byte[length];
-          dctFile.read(lchBuffer);
-          tmpword = new String(lchBuffer, "GB2312");
-          // indexTable[i].wordItems[j].word = tmpword;
-          // wordItemTable[i][j].charArray = tmpword.toCharArray();
-          wordItem_charArrayTable[i][j] = tmpword.toCharArray();
-        } else {
-          // wordItemTable[i][j].charArray = null;
-          wordItem_charArrayTable[i][j] = null;
+        // the dictionary was developed for C, and byte order must be converted to work with Java
+        cnt = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt();
+        if (cnt <= 0) {
+          wordItem_charArrayTable[i] = null;
+          wordItem_frequencyTable[i] = null;
+          continue;
         }
-        // System.out.println(indexTable[i].wordItems[j]);
-        j++;
-      }
+        wordItem_charArrayTable[i] = new char[cnt][];
+        wordItem_frequencyTable[i] = new int[cnt];
+        total += cnt;
+        int j = 0;
+        while (j < cnt) {
+          // wordItemTable[i][j] = new WordItem();
+          dctFile.read(intBuffer);
+          buffer[0] =
+              ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // frequency
+          dctFile.read(intBuffer);
+          buffer[1] = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // length
+          dctFile.read(intBuffer);
+          buffer[2] = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // handle
 
-      String str = getCCByGB2312Id(i);
-      setTableIndex(str.charAt(0), i);
+          // wordItemTable[i][j].frequency = buffer[0];
+          wordItem_frequencyTable[i][j] = buffer[0];
+
+          length = buffer[1];
+          if (length > 0) {
+            byte[] lchBuffer = new byte[length];
+            dctFile.read(lchBuffer);
+            tmpword = new String(lchBuffer, "GB2312");
+            // indexTable[i].wordItems[j].word = tmpword;
+            // wordItemTable[i][j].charArray = tmpword.toCharArray();
+            wordItem_charArrayTable[i][j] = tmpword.toCharArray();
+          } else {
+            // wordItemTable[i][j].charArray = null;
+            wordItem_charArrayTable[i][j] = null;
+          }
+          // System.out.println(indexTable[i].wordItems[j]);
+          j++;
+        }
+
+        String str = getCCByGB2312Id(i);
+        setTableIndex(str.charAt(0), i);
+      }
     }
-    dctFile.close();
     return total;
   }
 

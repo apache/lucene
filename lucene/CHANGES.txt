@@ -78,6 +78,8 @@ Bug Fixes
 
 * GITHUB#14682 : Fix for add char and token filters in Luke Analysis tab. (Amir Raza)
 
+* GITHUB#14727: Fix several resource leaks. (Xu Chengxin)
+
 Build
 ---------------------
 * Upgrade forbiddenapis to version 3.9.  (Uwe Schindler)
