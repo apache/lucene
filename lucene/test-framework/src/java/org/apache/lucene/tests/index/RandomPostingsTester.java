@@ -52,7 +52,6 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
@@ -675,11 +674,6 @@ public class RandomPostingsTester {
       return getSeedPostings(
           current.getKey().utf8ToString(), current.getValue().seed, maxAllowed, allowPayloads);
     }
-
-    @Override
-    public ImpactsEnum impacts(int flags) throws IOException {
-      throw new UnsupportedOperationException();
-    }
   }
 
   private static class ThreadState {
@@ -1239,7 +1233,7 @@ public class RandomPostingsTester {
         }
       }
 
-      ImpactsEnum impactsEnum = termsEnum.impacts(flags);
+      PostingsEnum impactsEnum = termsEnum.postings(null, flags | PostingsEnum.IMPACTS);
       PostingsEnum postings = termsEnum.postings(null, flags);
       for (int doc = impactsEnum.nextDoc(); ; doc = impactsEnum.nextDoc()) {
         assertEquals(postings.nextDoc(), doc);

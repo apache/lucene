@@ -24,7 +24,6 @@ import java.util.Iterator;
 import java.util.List;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.ImpactsSource;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
@@ -63,7 +62,7 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
     final DocIdSetIterator approximation =
         ConjunctionUtils.intersectIterators(Arrays.stream(postings).map(p -> p.postings).toList());
     final ImpactsSource impactsSource =
-        mergeImpacts(Arrays.stream(postings).map(p -> p.impacts).toArray(ImpactsEnum[]::new));
+        mergeImpacts(Arrays.stream(postings).map(p -> p.postings).toArray(PostingsEnum[]::new));
 
     this.impactsApproximation =
         new ImpactsDISI(approximation, new MaxScoreCache(impactsSource, scorer));
@@ -188,7 +187,7 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
   }
 
   /** Merge impacts for multiple terms of an exact phrase. */
-  static ImpactsSource mergeImpacts(ImpactsEnum[] impactsEnums) {
+  static ImpactsSource mergeImpacts(PostingsEnum[] impactsEnums) {
     // Iteration of block boundaries uses the impacts enum with the lower cost.
     // This is consistent with BlockMaxConjunctionScorer.
     int tmpLeadIndex = -1;
@@ -352,7 +351,7 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
 
       @Override
       public void advanceShallow(int target) throws IOException {
-        for (ImpactsEnum impactsEnum : impactsEnums) {
+        for (PostingsEnum impactsEnum : impactsEnums) {
           impactsEnum.advanceShallow(target);
         }
       }

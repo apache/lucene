@@ -35,13 +35,11 @@ import org.apache.lucene.codecs.TermStats;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Fields;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.IndexInput;
@@ -444,11 +442,6 @@ public final class RAMOnlyPostingsFormat extends PostingsFormat {
     @Override
     public PostingsEnum postings(PostingsEnum reuse, int flags) {
       return new RAMDocsEnum(ramField.termToDocs.get(current));
-    }
-
-    @Override
-    public ImpactsEnum impacts(int flags) throws IOException {
-      return new SlowImpactsEnum(postings(null, PostingsEnum.FREQS));
     }
   }
 

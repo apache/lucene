@@ -33,12 +33,10 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Impacts;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
@@ -243,6 +241,11 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
       FieldInfo fieldInfo, BlockTermState termState, PostingsEnum reuse, int flags)
       throws IOException {
 
+    if (PostingsEnum.featureRequested(flags, PostingsEnum.IMPACTS)
+        && termState.docFreq > BLOCK_SIZE) {
+      return impacts(fieldInfo, termState, flags);
+    }
+
     boolean indexHasPositions =
         fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
 
@@ -272,14 +275,8 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
     }
   }
 
-  @Override
-  public ImpactsEnum impacts(FieldInfo fieldInfo, BlockTermState state, int flags)
+  private PostingsEnum impacts(FieldInfo fieldInfo, BlockTermState state, int flags)
       throws IOException {
-    if (state.docFreq <= BLOCK_SIZE) {
-      // no skip data
-      return new SlowImpactsEnum(postings(fieldInfo, state, null, flags));
-    }
-
     final boolean indexHasPositions =
         fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
     final boolean indexHasOffsets =
@@ -1045,7 +1042,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
     }
   }
 
-  final class BlockImpactsDocsEnum extends ImpactsEnum {
+  final class BlockImpactsDocsEnum extends PostingsEnum {
 
     final PForUtil pforUtil = new PForUtil(new ForUtil());
 
@@ -1248,7 +1245,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
     }
   }
 
-  final class BlockImpactsPostingsEnum extends ImpactsEnum {
+  final class BlockImpactsPostingsEnum extends PostingsEnum {
 
     final PForUtil pforUtil = new PForUtil(new ForUtil());
 
@@ -1540,7 +1537,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
     }
   }
 
-  final class BlockImpactsEverythingEnum extends ImpactsEnum {
+  final class BlockImpactsEverythingEnum extends PostingsEnum {
 
     final PForUtil pforUtil = new PForUtil(new ForUtil());
 

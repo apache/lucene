@@ -26,8 +26,8 @@ import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
 import org.apache.lucene.codecs.lucene103.blocktree.Lucene103BlockTreeTermsReader;
 import org.apache.lucene.codecs.lucene103.blocktree.Lucene103BlockTreeTermsWriter;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.TermState;
@@ -353,12 +353,12 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
   public static final int LEVEL1_MASK = LEVEL1_NUM_DOCS - 1;
 
   /**
-   * Return the class that implements {@link ImpactsEnum} in this {@link PostingsFormat}. This is
-   * internally used to help the JVM make good inlining decisions.
+   * Return the class that implements {@link PostingsEnum} with impacts in this {@link
+   * PostingsFormat}. This is internally used to help the JVM make good inlining decisions.
    *
    * @lucene.internal
    */
-  public static Class<? extends ImpactsEnum> getImpactsEnumImpl() {
+  public static Class<? extends PostingsEnum> getImpactsEnumImpl() {
     return Lucene103PostingsReader.BlockPostingsEnum.class;
   }
 

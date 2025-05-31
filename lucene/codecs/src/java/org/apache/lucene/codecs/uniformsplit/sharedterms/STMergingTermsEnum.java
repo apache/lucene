@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.RandomAccess;
 import org.apache.lucene.index.BaseTermsEnum;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.TermState;
@@ -102,11 +101,6 @@ class STMergingTermsEnum extends BaseTermsEnum {
   public PostingsEnum postings(PostingsEnum reuse, int flags) {
     multiPostingsEnum.setPostingFlags(flags);
     return multiPostingsEnum;
-  }
-
-  @Override
-  public ImpactsEnum impacts(int flags) {
-    throw new UnsupportedOperationException();
   }
 
   @Override

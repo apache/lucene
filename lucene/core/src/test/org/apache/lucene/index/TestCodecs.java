@@ -769,11 +769,6 @@ public class TestCodecs extends LuceneTestCase {
     public PostingsEnum postings(PostingsEnum reuse, int flags) {
       return new DataPostingsEnum(fieldData.terms[upto]);
     }
-
-    @Override
-    public ImpactsEnum impacts(int flags) throws IOException {
-      throw new UnsupportedOperationException();
-    }
   }
 
   private static class DataPostingsEnum extends PostingsEnum {

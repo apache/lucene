@@ -28,11 +28,11 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.ImpactsSource;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.MultiReader;
+import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
@@ -278,7 +278,7 @@ public class TestSynonymQuery extends LuceneTestCase {
   }
 
   public void testMergeImpacts() throws IOException {
-    DummyImpactsEnum impacts1 = new DummyImpactsEnum();
+    DummyPostingsEnum impacts1 = new DummyPostingsEnum();
     impacts1.reset(
         42,
         new Impact[][] {
@@ -286,7 +286,7 @@ public class TestSynonymQuery extends LuceneTestCase {
           new Impact[] {new Impact(5, 11), new Impact(8, 13), new Impact(12, 14)}
         },
         new int[] {110, 945});
-    DummyImpactsEnum impacts2 = new DummyImpactsEnum();
+    DummyPostingsEnum impacts2 = new DummyPostingsEnum();
     impacts2.reset(
         45,
         new Impact[][] {
@@ -296,7 +296,7 @@ public class TestSynonymQuery extends LuceneTestCase {
         new int[] {90, 1000});
 
     ImpactsSource mergedImpacts =
-        SynonymQuery.mergeImpacts(new ImpactsEnum[] {impacts1, impacts2}, new float[] {1f, 1f});
+        SynonymQuery.mergeImpacts(new PostingsEnum[] {impacts1, impacts2}, new float[] {1f, 1f});
     assertEquals(
         new Impact[][] {
           new Impact[] {new Impact(5, 10), new Impact(7, 12), new Impact(14, 13)},
@@ -306,7 +306,8 @@ public class TestSynonymQuery extends LuceneTestCase {
         mergedImpacts.getImpacts());
 
     ImpactsSource mergedBoostedImpacts =
-        SynonymQuery.mergeImpacts(new ImpactsEnum[] {impacts1, impacts2}, new float[] {0.3f, 0.9f});
+        SynonymQuery.mergeImpacts(
+            new PostingsEnum[] {impacts1, impacts2}, new float[] {0.3f, 0.9f});
     assertEquals(
         new Impact[][] {
           new Impact[] {new Impact(3, 10), new Impact(4, 12), new Impact(9, 13)},
@@ -354,7 +355,7 @@ public class TestSynonymQuery extends LuceneTestCase {
     }
   }
 
-  private static class DummyImpactsEnum extends ImpactsEnum {
+  private static class DummyPostingsEnum extends PostingsEnum {
 
     private int docID;
     private Impact[][] impacts;

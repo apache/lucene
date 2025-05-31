@@ -170,11 +170,15 @@ public abstract class TermsEnum implements BytesRefIterator {
   public abstract PostingsEnum postings(PostingsEnum reuse, int flags) throws IOException;
 
   /**
-   * Return a {@link ImpactsEnum}.
+   * Return a {@link PostingsEnum} that exposes impacts.
    *
    * @see #postings(PostingsEnum, int)
+   * @deprecated Use {@link #postings(PostingsEnum)} with {@link PostingsEnum#IMPACTS}
    */
-  public abstract ImpactsEnum impacts(int flags) throws IOException;
+  @Deprecated
+  public final PostingsEnum impacts(int flags) throws IOException {
+    return postings(null, flags | PostingsEnum.IMPACTS);
+  }
 
   /**
    * Expert: Returns the TermsEnums internal state to position the TermsEnum without re-seeking the
@@ -229,11 +233,6 @@ public abstract class TermsEnum implements BytesRefIterator {
 
         @Override
         public PostingsEnum postings(PostingsEnum reuse, int flags) {
-          throw new IllegalStateException("this method should never be called");
-        }
-
-        @Override
-        public ImpactsEnum impacts(int flags) throws IOException {
           throw new IllegalStateException("this method should never be called");
         }
 

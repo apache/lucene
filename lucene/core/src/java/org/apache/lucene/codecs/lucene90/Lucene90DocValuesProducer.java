@@ -31,7 +31,6 @@ import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
@@ -1355,11 +1354,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
     @Override
     public PostingsEnum postings(PostingsEnum reuse, int flags) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public ImpactsEnum impacts(int flags) throws IOException {
       throw new UnsupportedOperationException();
     }
 

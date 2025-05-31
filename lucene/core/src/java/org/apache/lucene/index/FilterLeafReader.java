@@ -229,11 +229,6 @@ public abstract class FilterLeafReader extends LeafReader {
     }
 
     @Override
-    public ImpactsEnum impacts(int flags) throws IOException {
-      return in.impacts(flags);
-    }
-
-    @Override
     public void seekExact(BytesRef term, TermState state) throws IOException {
       in.seekExact(term, state);
     }

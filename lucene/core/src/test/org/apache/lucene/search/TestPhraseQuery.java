@@ -34,11 +34,11 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.ImpactsSource;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.BM25Similarity;
@@ -792,7 +792,7 @@ public class TestPhraseQuery extends LuceneTestCase {
     DummyImpactsEnum impacts1 = new DummyImpactsEnum(1000);
     DummyImpactsEnum impacts2 = new DummyImpactsEnum(2000);
     ImpactsSource mergedImpacts =
-        ExactPhraseMatcher.mergeImpacts(new ImpactsEnum[] {impacts1, impacts2});
+        ExactPhraseMatcher.mergeImpacts(new PostingsEnum[] {impacts1, impacts2});
 
     impacts1.reset(
         new Impact[][] {
@@ -918,7 +918,7 @@ public class TestPhraseQuery extends LuceneTestCase {
     }
   }
 
-  private static class DummyImpactsEnum extends ImpactsEnum {
+  private static class DummyImpactsEnum extends PostingsEnum {
 
     private final long cost;
     private Impact[][] impacts;

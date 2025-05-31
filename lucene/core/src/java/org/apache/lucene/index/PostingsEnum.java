@@ -17,6 +17,8 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 import org.apache.lucene.search.DocAndFreqBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
@@ -25,7 +27,29 @@ import org.apache.lucene.util.BytesRef;
  * Iterates through the postings. NOTE: you must first call {@link #nextDoc} before using any of the
  * per-doc methods.
  */
-public abstract class PostingsEnum extends DocIdSetIterator {
+public abstract class PostingsEnum extends DocIdSetIterator implements ImpactsSource {
+
+  private static final Impacts DUMMY_IMPACTS =
+      new Impacts() {
+
+        private final List<Impact> impacts =
+            Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
+
+        @Override
+        public int numLevels() {
+          return 1;
+        }
+
+        @Override
+        public int getDocIdUpTo(int level) {
+          return DocIdSetIterator.NO_MORE_DOCS;
+        }
+
+        @Override
+        public List<Impact> getImpacts(int level) {
+          return impacts;
+        }
+      };
 
   /**
    * Flag to pass to {@link TermsEnum#postings(PostingsEnum, int)} if you don't require per-document
@@ -62,6 +86,12 @@ public abstract class PostingsEnum extends DocIdSetIterator {
    * offsets in the returned enum
    */
   public static final short ALL = OFFSETS | PAYLOADS;
+
+  /**
+   * Flag to pass to {@link TermsEnum#postings(PostingsEnum, int)} to get impacts in the returned
+   * enum.
+   */
+  public static final short IMPACTS = FREQS | 1 << 7;
 
   /** Returns true if the given feature is requested in the flags, false otherwise. */
   public static boolean featureRequested(int flags, short feature) {
@@ -141,5 +171,13 @@ public abstract class PostingsEnum extends DocIdSetIterator {
       ++size;
     }
     buffer.size = size;
+  }
+
+  @Override
+  public void advanceShallow(int target) throws IOException {}
+
+  @Override
+  public Impacts getImpacts() throws IOException {
+    return DUMMY_IMPACTS;
   }
 }

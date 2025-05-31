@@ -29,7 +29,6 @@ import java.util.Map;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
@@ -302,11 +301,7 @@ public class PhraseWildcardQuery extends Query {
                     : new MultiPhraseQuery.UnionPostingsEnum(postingsEnums);
           }
           postingsFreqs[termPosition] =
-              new PhraseQuery.PostingsAndFreq(
-                  unionPostingsEnum,
-                  new SlowImpactsEnum(unionPostingsEnum),
-                  termPosition,
-                  termData.terms);
+              new PhraseQuery.PostingsAndFreq(unionPostingsEnum, termPosition, termData.terms);
         }
 
         if (slop == 0) {

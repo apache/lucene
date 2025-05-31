@@ -18,7 +18,6 @@ package org.apache.lucene.codecs.lucene103.blocktree;
 
 import java.io.IOException;
 import org.apache.lucene.index.BaseTermsEnum;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.Terms;
@@ -218,12 +217,6 @@ final class IntersectTermsEnum extends BaseTermsEnum {
   public PostingsEnum postings(PostingsEnum reuse, int flags) throws IOException {
     currentFrame.decodeMetaData();
     return fr.parent.postingsReader.postings(fr.fieldInfo, currentFrame.termState, reuse, flags);
-  }
-
-  @Override
-  public ImpactsEnum impacts(int flags) throws IOException {
-    currentFrame.decodeMetaData();
-    return fr.parent.postingsReader.impacts(fr.fieldInfo, currentFrame.termState, flags);
   }
 
   private int getState() {

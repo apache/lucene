@@ -114,8 +114,8 @@
  * thought of as a map that provides efficient lookup given a {@link org.apache.lucene.index.Term}
  * (roughly, a word or token), to (the ordered list of) {@link org.apache.lucene.document.Document}s
  * containing that Term. Codecs may additionally record {@link
- * org.apache.lucene.index.ImpactsEnum#getImpacts impacts} alongside postings in order to be able to
- * skip over low-scoring documents at search time. Postings do not provide any way of retrieving
+ * org.apache.lucene.index.PostingsEnum#getImpacts impacts} alongside postings in order to be able
+ * to skip over low-scoring documents at search time. Postings do not provide any way of retrieving
  * terms given a document, short of scanning the entire index. <a id="stored-fields"></a>
  *
  * <p>Stored fields are essentially the opposite of postings, providing efficient retrieval of field
@@ -227,15 +227,15 @@
  *
  * <h3>Impacts</h3>
  *
- * <p>TermsEnum also allows returning an {@link org.apache.lucene.index.ImpactsEnum}, an extension
- * of PostingsEnum that exposes pareto-optimal tuples of (term frequency, length normalization
- * factor) per block of postings. It is typically used to compute the maximum possible score over
- * these blocks of postings, so that they can be skipped if they cannot possibly produce a
- * competitive hit.
+ * <p>TermsEnum also allows returning impacts via {@link
+ * org.apache.lucene.index.PostingsEnum#getImpacts()}, pareto-optimal tuples of (term frequency,
+ * length normalization factor) per block of postings. It is typically used to compute the maximum
+ * possible score over these blocks of postings, so that they can be skipped if they cannot possibly
+ * produce a competitive hit.
  *
  * <pre class="prettyprint">
  * int docid;
- * ImpactsEnum impactsEnum = termsEnum.impacts(PostingsEnum.FREQS);
+ * PostingsEnum impactsEnum = termsEnum.postings(null, PostingsEnum.IMPACTS);
  * int targetDocID = 420;
  * impactsEnum.advanceShallow(targetDocID);
  * // These impacts expose pareto-optimal tuples of (termFreq, lengthNorm) over various ranges of doc IDs.

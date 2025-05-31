@@ -106,11 +106,6 @@ class SortedSetDocValuesTermsEnum extends BaseTermsEnum {
   }
 
   @Override
-  public ImpactsEnum impacts(int flags) throws IOException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public void seekExact(BytesRef term, TermState state) throws IOException {
     assert state != null && state instanceof OrdTermState;
     this.seekExact(((OrdTermState) state).ord);

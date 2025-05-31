@@ -32,7 +32,6 @@ import org.apache.lucene.codecs.bloom.FuzzySet.ContainsResult;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Fields;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
@@ -371,11 +370,6 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       @Override
       public PostingsEnum postings(PostingsEnum reuse, int flags) throws IOException {
         return delegate().postings(reuse, flags);
-      }
-
-      @Override
-      public ImpactsEnum impacts(int flags) throws IOException {
-        return delegate().impacts(flags);
       }
 
       @Override

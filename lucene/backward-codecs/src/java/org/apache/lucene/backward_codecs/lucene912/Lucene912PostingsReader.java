@@ -39,12 +39,10 @@ import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -269,7 +267,29 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
   public PostingsEnum postings(
       FieldInfo fieldInfo, BlockTermState termState, PostingsEnum reuse, int flags)
       throws IOException {
-    if (fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) < 0
+    final IndexOptions options = fieldInfo.getIndexOptions();
+    final boolean indexHasPositions =
+        options.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+
+    if (PostingsEnum.featureRequested(flags, PostingsEnum.IMPACTS)
+        && termState.docFreq > BLOCK_SIZE) {
+
+      if (options.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0
+          && (indexHasPositions == false
+              || PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS) == false)) {
+        return new BlockImpactsDocsEnum(indexHasPositions, (IntBlockTermState) termState);
+      }
+
+      if (indexHasPositions
+          && (options.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) < 0
+              || PostingsEnum.featureRequested(flags, PostingsEnum.OFFSETS) == false)
+          && (fieldInfo.hasPayloads() == false
+              || PostingsEnum.featureRequested(flags, PostingsEnum.PAYLOADS) == false)) {
+        return new BlockImpactsPostingsEnum(fieldInfo, (IntBlockTermState) termState);
+      }
+    }
+
+    if (indexHasPositions == false
         || PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS) == false) {
       return (reuse instanceof BlockDocsEnum blockDocsEnum
                   && blockDocsEnum.canReuse(docIn, fieldInfo)
@@ -283,32 +303,6 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
               : new EverythingEnum(fieldInfo))
           .reset((IntBlockTermState) termState, flags);
     }
-  }
-
-  @Override
-  public ImpactsEnum impacts(FieldInfo fieldInfo, BlockTermState state, int flags)
-      throws IOException {
-    final IndexOptions options = fieldInfo.getIndexOptions();
-    final boolean indexHasPositions =
-        options.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
-
-    if (state.docFreq >= BLOCK_SIZE) {
-      if (options.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0
-          && (indexHasPositions == false
-              || PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS) == false)) {
-        return new BlockImpactsDocsEnum(indexHasPositions, (IntBlockTermState) state);
-      }
-
-      if (indexHasPositions
-          && (options.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) < 0
-              || PostingsEnum.featureRequested(flags, PostingsEnum.OFFSETS) == false)
-          && (fieldInfo.hasPayloads() == false
-              || PostingsEnum.featureRequested(flags, PostingsEnum.PAYLOADS) == false)) {
-        return new BlockImpactsPostingsEnum(fieldInfo, (IntBlockTermState) state);
-      }
-    }
-
-    return new SlowImpactsEnum(postings(fieldInfo, state, null, flags));
   }
 
   private static long sumOverRange(long[] arr, int start, int end) {
@@ -1126,7 +1120,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     }
   }
 
-  private abstract class BlockImpactsEnum extends ImpactsEnum {
+  private abstract class BlockImpactsEnum extends PostingsEnum {
 
     protected final ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
     protected final PForUtil pforUtil = new PForUtil();
