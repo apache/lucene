@@ -138,6 +138,8 @@ Optimizations
 
 * GITHUB#14674: Optimize AbstractKnnVectorQuery#createBitSet with intoBitset. (Guo Feng)
 
+* GITHUB#14720: Cache high-order bits of hashcode to speed up BytesRefHash. (Pan Guixin)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
