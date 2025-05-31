@@ -148,6 +148,8 @@ Bug Fixes
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
   instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
 
+* GITHUB#14727: Fix several resource leaks. (Xu Chengxin)
+
 Build
 ---------------------
 * Upgrade forbiddenapis to version 3.9.  (Uwe Schindler)
