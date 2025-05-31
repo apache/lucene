@@ -1,0 +1,305 @@
+name: Backport PR
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  backport:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      statuses: read
+      checks: read
+      actions: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Backport
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          MERGE_COMMIT_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -e
+          
+          # Cache PR data early
+          echo "📊 Fetching PR data..."
+          PR_DATA=$(gh pr view "$PR_NUMBER" --json title,body,labels,statusCheckRollup,commits)
+          PR_TITLE=$(echo "$PR_DATA" | jq -r '.title')
+          PR_BODY=$(echo "$PR_DATA" | jq -r '.body // "No description provided."')
+          PR_LABELS=$(echo "$PR_DATA" | jq -r '.labels[].name | select(test("^[Bb]ackport/"; "i"))')
+          
+          # Function to create GitHub comment
+          create_comment() {
+            gh pr comment "$PR_NUMBER" --body "$1"
+          }
+          
+          # Function to add label safely  
+          add_label() {
+            gh pr edit "$PR_NUMBER" --add-label "$1" 2>/dev/null || true
+          }
+          
+          # Check status checks once
+          echo "🔍 Checking PR status checks..."
+          FAILED_CHECKS=$(echo "$PR_DATA" | jq -r '.statusCheckRollup[]? | select(.isRequired == true and (.state == "FAILURE" or .state == "ERROR")) | .state' 2>/dev/null || echo "")
+          
+          if [ -n "$FAILED_CHECKS" ]; then
+            echo "❌ Required status checks failed"
+            create_comment "⚠️ **Automatic backports skipped**
+          
+          Some required status checks failed on this PR. Backports will not be created automatically.
+          
+          **Action required:**
+          1. Fix failing tests or checks
+          2. Manually create backport PRs after verification
+          3. Or re-run this workflow after fixes are merged"
+            add_label "backport-failed"
+            exit 0
+          fi
+          
+          # Early exit if no backport labels
+          if [ -z "$PR_LABELS" ]; then
+            echo "ℹ️ No backport labels found. Nothing to do."
+            exit 0
+          fi
+          
+          echo "📋 Found backport labels: $(echo "$PR_LABELS" | tr '\n' ' ')"
+          
+          # Batch create labels
+          echo "🏷️ Ensuring backport labels exist..."
+          gh label create "backport" --description "Automated backport workflow" --color "0366d6" 2>/dev/null || true &
+          gh label create "backport-conflict" --description "Backport had conflicts" --color "d73a49" 2>/dev/null || true &
+          gh label create "backport-failed" --description "Backport failed" --color "d73a49" 2>/dev/null || true &
+          wait # Wait for background label creation
+          
+          # Cache all remote branches once
+          echo "🌿 Caching branch information..."
+          ALL_BRANCHES=$(git branch -r | grep -v HEAD | sed 's|.*origin/||' | sort)
+          
+          # Define templates in order of preference
+          declare -a target_branch_templates=(
+            "branch_{{version_us}}"
+            "release/{{version}}"
+            "v{{version}}"
+            "{{version}}"
+            "{{version}}-stable"
+          )
+          
+          # Optimized branch finder with caching
+          find_target_branch() {
+            local version="$1"
+            local version_us="${version//\./_}"
+          
+            for template in "${target_branch_templates[@]}"; do
+              local pattern="${template//\{\{version\}\}/$version}"
+              pattern="${pattern//\{\{version_us\}\}/$version_us}"
+          
+              # Use cached branches instead of repeated git calls
+              local target=$(echo "$ALL_BRANCHES" | grep -E "^${pattern}$" | head -1)
+              if [ -n "$target" ]; then
+                echo "$target"
+                return 0
+              fi
+            done
+          
+            # Fallback with cached data
+            echo "$ALL_BRANCHES" | grep -E "${version}([^0-9]|$)" | head -1 || echo ""
+          }
+          
+          # Pre-check all target branches exist before processing
+          declare -a valid_backports=()
+          declare -a failed_versions=()
+          
+          echo "🔍 Pre-validating target branches..."
+          while IFS= read -r label; do
+            [ -z "$label" ] && continue
+            version=${label#[Bb]ackport/}
+            target=$(find_target_branch "$version")
+          
+            if [ -n "$target" ]; then
+              valid_backports+=("$version:$target")
+              echo "✅ $version -> $target"
+            else
+              failed_versions+=("$version")
+              echo "❌ $version -> NOT FOUND"
+            fi
+          done <<< "$PR_LABELS"
+          
+          # Report all missing branches at once
+          if [ ${#failed_versions[@]} -gt 0 ]; then
+            available_sample=$(echo "$ALL_BRANCHES" | head -5 | tr '\n' ', ' | sed 's/,$//')
+            failed_list=""
+            for version in "${failed_versions[@]}"; do
+              failed_list="${failed_list}- \`${version}\`"$'\n'
+            done
+          
+            create_comment "❌ **Backport failed for some versions - Missing target branches**
+          
+          Could not find target branches for:
+          $failed_list
+          
+          **Sample available branches:** $available_sample
+          
+          **Expected patterns:**
+          - \`branch_{version_with_underscores}\` (Lucene style)
+          - \`release/{version}\`
+          - \`v{version}\`
+          
+          Please create the missing branches or update the backport labels.
+          
+          **Note:** Valid backports will still be processed."
+          
+            add_label "backport-failed"
+          fi
+          
+          # Only exit if NO valid backports exist
+          if [ ${#valid_backports[@]} -eq 0 ]; then
+            echo "❌ No valid backports found. Exiting."
+            exit 1
+          fi
+          
+          echo "✅ Processing ${#valid_backports[@]} valid backport(s)..."
+          
+          # Process valid backports
+          success_count=0
+          failure_count=${#failed_versions[@]}
+          
+          for backport in "${valid_backports[@]}"; do
+            IFS=':' read -r version target <<< "$backport"
+            echo "🔄 Processing backport: $version -> $target"
+          
+            branch="backport-${PR_NUMBER}-to-${target}"
+          
+            # Clean checkout with error handling
+            git checkout "$DEFAULT_BRANCH" >/dev/null 2>&1
+            git branch -D "$branch" 2>/dev/null || true
+          
+            if ! git checkout -b "$branch" "origin/$target" >/dev/null 2>&1; then
+              echo "❌ Failed to checkout origin/$target"
+              create_comment "❌ **Backport to \`$target\` failed**
+          
+              Could not create branch from \`origin/$target\`. Branch may have been deleted or is unreachable."
+              add_label "backport-failed"
+              failure_count=$((failure_count + 1))
+              continue
+            fi
+          
+            # Check if PR already exists (early check)
+            existing_pr=$(gh pr list --head "$branch" --base "$target" --json number -q '.[0].number' 2>/dev/null || echo "")
+            if [ -n "$existing_pr" ]; then
+              echo "ℹ️ Backport PR already exists: #$existing_pr"
+              success_count=$((success_count + 1))
+              continue
+            fi
+          
+            # Get individual commits from the PR instead of merge commit
+            echo "🔍 Getting PR commits..."
+            PR_COMMITS=$(echo "$PR_DATA" | jq -r '.commits[].oid' | tr '\n' ' ')
+            echo "📝 PR commits: $PR_COMMITS"
+
+            if [ -z "$PR_COMMITS" ]; then
+              echo "❌ No commits found in PR"
+              create_comment "❌ **Backport to \`$target\` failed**
+          
+              Could not find individual commits in PR #${PR_NUMBER}."
+              add_label "backport-failed"
+              failure_count=$((failure_count + 1))
+              continue
+            fi
+
+            # Cherry-pick each commit individually
+            cherry_pick_success=true
+            for commit in $PR_COMMITS; do
+              echo "🍒 Cherry-picking commit: $commit"
+              if ! git cherry-pick -x "$commit" 2>&1; then
+                echo "❌ Failed to cherry-pick $commit"
+                cherry_pick_success=false
+                break
+              fi
+            done
+
+            if [ "$cherry_pick_success" = true ]; then
+              echo "✅ All commits cherry-picked successfully"
+              if git push origin "$branch" >/dev/null 2>&1; then
+                # Create PR with cached data
+                new_pr_url=$(gh pr create \
+                  --title "[Backport $target] $PR_TITLE" \
+                  --body "## 🔄 Automatic Backport
+          
+          Backport of #${PR_NUMBER} to \`$target\` branch.
+          
+          **Original PR:** #${PR_NUMBER}  
+          **Target:** \`$target\`
+          **Label:** \`backport/$version\`
+          
+          ---
+          
+          $PR_BODY" \
+                  --base "$target" \
+                  --head "$branch" \
+                  --label "backport")
+          
+          
+                echo "✅ Created: $new_pr_url"
+                success_count=$((success_count + 1))
+              else
+                echo "❌ Push failed for $branch"
+                create_comment "❌ **Backport to \`$target\` failed**
+          
+          Cherry-pick succeeded but push failed. This might be a permissions issue."
+                add_label "backport-failed"
+                failure_count=$((failure_count + 1))
+              fi
+            else
+              # Handle cherry-pick failure
+              git cherry-pick --abort 2>/dev/null || true
+          
+              create_comment "❌ **Backport to \`$target\` has conflicts**
+          
+          **Manual resolution required:**
+          \`\`\`bash
+          git checkout $target && git pull
+          git checkout -b backport-${PR_NUMBER}-to-${target}-manual
+          # Cherry-pick commits individually:
+          $(echo "$PR_COMMITS" | tr ' ' '\n' | sed 's/^/git cherry-pick -x /')
+          # Resolve conflicts, then:
+          git add . && git cherry-pick --continue
+          git push origin backport-${PR_NUMBER}-to-${target}-manual
+          \`\`\`"
+          
+              add_label "backport-conflict"
+              failure_count=$((failure_count + 1))
+            fi
+          
+            # Cleanup
+            git checkout "$DEFAULT_BRANCH" >/dev/null 2>&1
+            git branch -D "$branch" 2>/dev/null || true
+          done
+          
+          echo "🏁 Completed: $success_count successes, $failure_count failures"
+          
+          # Set appropriate exit code based on results
+          if [ $success_count -eq 0 ]; then
+            echo "❌ All backports failed"
+            exit 1
+          elif [ $failure_count -gt 0 ]; then
+            echo "⚠️ Some backports failed, but at least one succeeded"
+            exit 0
+          else
+            echo "✅ All backports completed successfully"
+            exit 0
+          fi
