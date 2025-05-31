@@ -770,19 +770,28 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   // Experiments suggest that we need at least 8 lanes so that the overhead of going with the vector
   // approach and counting trues on vector masks pays off.
   private static final boolean ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO = INT_SPECIES.length() >= 8;
+  private static final int FIND_NEXT_GEQ_STEP = INT_SPECIES.length() << 1;
 
   @Override
   public int findNextGEQ(int[] buffer, int target, int from, int to) {
-    if (ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO) {
+    if (ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO && from + INT_SPECIES.length() < to) {
       // This effectively implements the V1 intersection algorithm from
       // D. Lemire, L. Boytsov, N. Kurz SIMD Compression and the Intersection of Sorted Integers
       // with T = INT_SPECIES.length(), ie. T=8 with AVX2 and T=16 with AVX-512
       // https://arxiv.org/pdf/1401.6399
-      for (; from + INT_SPECIES.length() < to; from += INT_SPECIES.length() + 1) {
-        if (buffer[from + INT_SPECIES.length()] >= target) {
-          IntVector vector = IntVector.fromArray(INT_SPECIES, buffer, from);
-          VectorMask<Integer> mask = vector.compare(VectorOperators.LT, target);
-          return from + mask.trueCount();
+      if (buffer[from + INT_SPECIES.length()] >= target) {
+        IntVector vector = IntVector.fromArray(INT_SPECIES, buffer, from);
+        VectorMask<Integer> mask = vector.compare(VectorOperators.LT, target);
+        return from + mask.trueCount();
+      }
+      from += INT_SPECIES.length() + 1;
+      for (; from + FIND_NEXT_GEQ_STEP < to; from += FIND_NEXT_GEQ_STEP + 1) {
+        if (buffer[from + FIND_NEXT_GEQ_STEP] >= target) {
+          IntVector vector1 = IntVector.fromArray(INT_SPECIES, buffer, from);
+          IntVector vector2 = IntVector.fromArray(INT_SPECIES, buffer, from + INT_SPECIES.length());
+          VectorMask<Integer> mask1 = vector1.compare(VectorOperators.LT, target);
+          VectorMask<Integer> mask2 = vector2.compare(VectorOperators.LT, target);
+          return from + mask1.trueCount() + mask2.trueCount();
         }
       }
     }
