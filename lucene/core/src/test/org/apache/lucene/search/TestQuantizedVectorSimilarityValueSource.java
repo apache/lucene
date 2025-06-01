@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
@@ -26,7 +27,6 @@ import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntField;
-import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -93,7 +93,7 @@ public class TestQuantizedVectorSimilarityValueSource extends LuceneTestCase {
     List<float[]> vectors = new ArrayList<>();
     int numVectors = atLeast(NUM_VECTORS);
     int numSegments = random().nextInt(2, 10);
-    final VectorSimilarityFunction vectorSimilarityFunction =
+    final VectorSimilarityFunction indexingSimilarityFunction =
         VectorSimilarityFunction.values()[
             random().nextInt(VectorSimilarityFunction.values().length)];
 
@@ -115,7 +115,7 @@ public class TestQuantizedVectorSimilarityValueSource extends LuceneTestCase {
               float[] vector = TestVectorUtil.randomVector(VECTOR_DIMENSION);
               vectors.add(vector);
               doc.add(new IntField("id", id++, Field.Store.YES));
-              doc.add(new KnnFloatVectorField(KNN_FIELD, vector, vectorSimilarityFunction));
+              doc.add(new KnnFloatVectorField(KNN_FIELD, vector, indexingSimilarityFunction));
               doc.add(new IntField("has_vector", 1, Field.Store.YES));
             }
             w.addDocument(doc);
@@ -146,7 +146,7 @@ public class TestQuantizedVectorSimilarityValueSource extends LuceneTestCase {
               float[] vector = TestVectorUtil.randomVector(VECTOR_DIMENSION);
               vectors.add(vector);
               doc.add(new IntField("id", id++, Field.Store.YES));
-              doc.add(new KnnFloatVectorField(KNN_FIELD, vector, vectorSimilarityFunction));
+              doc.add(new KnnFloatVectorField(KNN_FIELD, vector, indexingSimilarityFunction));
               doc.add(new IntField("has_vector", 1, Field.Store.YES));
             }
             w.addDocument(doc);
@@ -163,10 +163,24 @@ public class TestQuantizedVectorSimilarityValueSource extends LuceneTestCase {
       }
 
       float[] queryVector = TestVectorUtil.randomVector(VECTOR_DIMENSION);
+      VectorSimilarityFunction rerankSimilarityFunction;
       try (IndexReader reader = DirectoryReader.open(dir)) {
         for (LeafReaderContext ctx : reader.leaves()) {
-          DoubleValues fpSimValues =
-              FloatVectorSimilarityValuesSource.fullPrecisionScores(ctx, queryVector, KNN_FIELD);
+          DoubleValues fpSimValues;
+          if (random().nextBoolean()) {
+            rerankSimilarityFunction =
+                VectorSimilarityFunction.values()[
+                    random().nextInt(VectorSimilarityFunction.values().length)];
+            fpSimValues =
+                new FullPrecisionFloatVectorSimilarityValuesSource(
+                        queryVector, KNN_FIELD, rerankSimilarityFunction)
+                    .getSimilarityScores(ctx);
+          } else {
+            fpSimValues =
+                new FullPrecisionFloatVectorSimilarityValuesSource(queryVector, KNN_FIELD)
+                    .getSimilarityScores(ctx);
+            rerankSimilarityFunction = indexingSimilarityFunction;
+          }
           DoubleValues quantizedSimValues =
               DoubleValuesSource.similarityToQueryVector(ctx, queryVector, KNN_FIELD);
           // validate when segment has no vectors
@@ -183,123 +197,12 @@ public class TestQuantizedVectorSimilarityValueSource extends LuceneTestCase {
             int doc = disi.docID();
             fpSimValues.advanceExact(doc);
             quantizedSimValues.advanceExact(doc);
-            int idValue = Integer.parseInt(storedFields.document(doc).get("id"));
+            int idValue =
+                Integer.parseInt(Objects.requireNonNull(storedFields.document(doc).get("id")));
             float[] docVector = vectors.get(idValue);
             assert docVector != null : "Vector for id " + idValue + " not found";
             // validate full precision vector scores
-            double expectedFpScore = vectorSimilarityFunction.compare(queryVector, docVector);
-            double actualFpScore = fpSimValues.doubleValue();
-            assertEquals(expectedFpScore, actualFpScore, 1e-5);
-            // validate quantized vector scores
-            double expectedQScore = quantizedScorer.score();
-            double actualQScore = quantizedSimValues.doubleValue();
-            assertEquals(expectedQScore, actualQScore, 1e-5);
-          }
-        }
-      }
-    }
-  }
-
-  @Test
-  public void testFullPrecisionByteVectorSimilarityDVS() throws Exception {
-    List<byte[]> vectors = new ArrayList<>();
-    int numVectors = atLeast(NUM_VECTORS);
-    int numSegments = random().nextInt(2, 10);
-    final VectorSimilarityFunction vectorSimilarityFunction =
-        VectorSimilarityFunction.values()[
-            random().nextInt(VectorSimilarityFunction.values().length)];
-
-    try (Directory dir = newDirectory()) {
-      int id = 0;
-
-      // index some 4 bit quantized vectors
-      try (IndexWriter w =
-          new IndexWriter(
-              dir,
-              newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(getKnnFormat(4))))) {
-        for (int j = 0; j < numSegments; j++) {
-          for (int i = 0; i < numVectors; i++) {
-            Document doc = new Document();
-            if (random().nextInt(100) < 30) {
-              // skip vector for some docs to create sparse vector field
-              doc.add(new IntField("has_vector", 0, Field.Store.YES));
-            } else {
-              byte[] vector = TestVectorUtil.randomVectorBytes(VECTOR_DIMENSION);
-              vectors.add(vector);
-              doc.add(new IntField("id", id++, Field.Store.YES));
-              doc.add(new KnnByteVectorField(KNN_FIELD, vector, vectorSimilarityFunction));
-              doc.add(new IntField("has_vector", 1, Field.Store.YES));
-            }
-            w.addDocument(doc);
-            w.flush();
-          }
-        }
-        // add a segment with no vectors
-        for (int i = 0; i < 100; i++) {
-          Document doc = new Document();
-          doc.add(new IntField("has_vector", 0, Field.Store.YES));
-          w.addDocument(doc);
-        }
-        w.flush();
-      }
-
-      // index some 7 bit quantized vectors
-      try (IndexWriter w =
-          new IndexWriter(
-              dir,
-              newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(getKnnFormat(7))))) {
-        for (int j = 0; j < numSegments; j++) {
-          for (int i = 0; i < numVectors; i++) {
-            Document doc = new Document();
-            if (random().nextInt(100) < 30) {
-              // skip vector for some docs to create sparse vector field
-              doc.add(new IntField("has_vector", 0, Field.Store.YES));
-            } else {
-              byte[] vector = TestVectorUtil.randomVectorBytes(VECTOR_DIMENSION);
-              vectors.add(vector);
-              doc.add(new IntField("id", id++, Field.Store.YES));
-              doc.add(new KnnByteVectorField(KNN_FIELD, vector, vectorSimilarityFunction));
-              doc.add(new IntField("has_vector", 1, Field.Store.YES));
-            }
-            w.addDocument(doc);
-            w.flush();
-          }
-        }
-        // add a segment with no vectors
-        for (int i = 0; i < 100; i++) {
-          Document doc = new Document();
-          doc.add(new IntField("has_vector", 0, Field.Store.YES));
-          w.addDocument(doc);
-        }
-        w.flush();
-      }
-
-      byte[] queryVector = TestVectorUtil.randomVectorBytes(VECTOR_DIMENSION);
-      try (IndexReader reader = DirectoryReader.open(dir)) {
-        for (LeafReaderContext ctx : reader.leaves()) {
-          DoubleValues fpSimValues =
-              ByteVectorSimilarityValuesSource.fullPrecisionScores(ctx, queryVector, KNN_FIELD);
-          DoubleValues quantizedSimValues =
-              DoubleValuesSource.similarityToQueryVector(ctx, queryVector, KNN_FIELD);
-          // validate when segment has no vectors
-          if (fpSimValues == DoubleValues.EMPTY || quantizedSimValues == DoubleValues.EMPTY) {
-            assertEquals(fpSimValues, quantizedSimValues);
-            assertNull(ctx.reader().getByteVectorValues(KNN_FIELD));
-            continue;
-          }
-          StoredFields storedFields = ctx.reader().storedFields();
-          VectorScorer quantizedScorer =
-              ctx.reader().getByteVectorValues(KNN_FIELD).scorer(queryVector);
-          DocIdSetIterator disi = quantizedScorer.iterator();
-          while (disi.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-            int doc = disi.docID();
-            fpSimValues.advanceExact(doc);
-            quantizedSimValues.advanceExact(doc);
-            int idValue = Integer.parseInt(storedFields.document(doc).get("id"));
-            byte[] docVector = vectors.get(idValue);
-            assert docVector != null : "Vector for id " + idValue + " not found";
-            // validate full precision vector scores
-            double expectedFpScore = vectorSimilarityFunction.compare(queryVector, docVector);
+            double expectedFpScore = rerankSimilarityFunction.compare(queryVector, docVector);
             double actualFpScore = fpSimValues.doubleValue();
             assertEquals(expectedFpScore, actualFpScore, 1e-5);
             // validate quantized vector scores
