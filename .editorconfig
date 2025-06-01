@@ -20,25 +20,9 @@ ij_smart_tabs = false
 ij_visual_guides =
 ij_wrap_on_typing = false
 
-[*.css]
-ij_css_align_closing_brace_with_properties = false
-ij_css_blank_lines_around_nested_selector = 1
-ij_css_blank_lines_between_blocks = 1
-ij_css_block_comment_add_space = false
-ij_css_brace_placement = end_of_line
-ij_css_enforce_quotes_on_format = false
-ij_css_hex_color_long_format = false
-ij_css_hex_color_lower_case = false
-ij_css_hex_color_short_format = false
-ij_css_hex_color_upper_case = false
-ij_css_keep_blank_lines_in_code = 2
-ij_css_keep_indents_on_empty_lines = false
-ij_css_keep_single_line_blocks = false
-ij_css_properties_order = font, font-family, font-size, font-weight, font-style, font-variant, font-size-adjust, font-stretch, line-height, position, z-index, top, right, bottom, left, display, visibility, float, clear, overflow, overflow-x, overflow-y, clip, zoom, align-content, align-items, align-self, flex, flex-flow, flex-basis, flex-direction, flex-grow, flex-shrink, flex-wrap, justify-content, order, box-sizing, width, min-width, max-width, height, min-height, max-height, margin, margin-top, margin-right, margin-bottom, margin-left, padding, padding-top, padding-right, padding-bottom, padding-left, table-layout, empty-cells, caption-side, border-spacing, border-collapse, list-style, list-style-position, list-style-type, list-style-image, content, quotes, counter-reset, counter-increment, resize, cursor, user-select, nav-index, nav-up, nav-right, nav-down, nav-left, transition, transition-delay, transition-timing-function, transition-duration, transition-property, transform, transform-origin, animation, animation-name, animation-duration, animation-play-state, animation-timing-function, animation-delay, animation-iteration-count, animation-direction, text-align, text-align-last, vertical-align, white-space, text-decoration, text-emphasis, text-emphasis-color, text-emphasis-style, text-emphasis-position, text-indent, text-justify, letter-spacing, word-spacing, text-outline, text-transform, text-wrap, text-overflow, text-overflow-ellipsis, text-overflow-mode, word-wrap, word-break, tab-size, hyphens, pointer-events, opacity, color, border, border-width, border-style, border-color, border-top, border-top-width, border-top-style, border-top-color, border-right, border-right-width, border-right-style, border-right-color, border-bottom, border-bottom-width, border-bottom-style, border-bottom-color, border-left, border-left-width, border-left-style, border-left-color, border-radius, border-top-left-radius, border-top-right-radius, border-bottom-right-radius, border-bottom-left-radius, border-image, border-image-source, border-image-slice, border-image-width, border-image-outset, border-image-repeat, outline, outline-width, outline-style, outline-color, outline-offset, background, background-color, background-image, background-repeat, background-attachment, background-position, background-position-x, background-position-y, background-clip, background-origin, background-size, box-decoration-break, box-shadow, text-shadow
-ij_css_space_after_colon = true
-ij_css_space_before_opening_brace = true
-ij_css_use_double_quotes = true
-ij_css_value_alignment = do_not_align
+[Makefile]
+indent_size = 4
+indent_style = tab
 
 [*.java]
 ij_java_align_consecutive_assignments = false
@@ -361,14 +345,14 @@ ij_editorconfig_space_before_colon = false
 ij_editorconfig_space_before_comma = false
 ij_editorconfig_spaces_around_assignment_operators = true
 
-[{*.ad,*.adoc,*.asciidoc,.asciidoctorconfig}]
+[*.adoc]
 indent_size = 4
 ij_asciidoc_blank_lines_after_header = 1
 ij_asciidoc_blank_lines_keep_after_header = 1
 ij_asciidoc_formatting_enabled = true
 ij_asciidoc_one_sentence_per_line = true
 
-[{*.ant,*.fxml,*.jhm,*.jnlp,*.jrxml,*.pom,*.rng,*.tld,*.wadl,*.wsdl,*.xml,*.xsd,*.xsl,*.xslt,*.xul}]
+[*.xml]
 ij_continuation_indent_size = 2
 ij_xml_align_attributes = false
 ij_xml_align_text = false
@@ -388,7 +372,7 @@ ij_xml_space_around_equals_in_attribute = false
 ij_xml_space_inside_empty_tag = false
 ij_xml_text_wrap = normal
 
-[{*.bash,*.sh,*.zsh}]
+[*.sh]
 ij_shell_binary_ops_start_line = false
 ij_shell_keep_column_alignment_padding = false
 ij_shell_minify_program = false
@@ -396,7 +380,7 @@ ij_shell_redirect_followed_by_space = false
 ij_shell_switch_cases_indented = false
 ij_shell_use_unix_line_separator = true
 
-[{*.cjs,*.es6,*.js,*.mjs}]
+[*.js]
 max_line_length = 80
 ij_javascript_align_imports = false
 ij_javascript_align_multiline_array_initializer_expression = false
@@ -570,7 +554,7 @@ ij_javascript_while_brace_force = always
 ij_javascript_while_on_new_line = false
 ij_javascript_wrap_comments = false
 
-[{*.gant,*.gradle,*.groovy,*.gy}]
+[{*.gradle,*.groovy}]
 ij_groovy_align_group_field_declarations = false
 ij_groovy_align_multiline_array_initializer_expression = false
 ij_groovy_align_multiline_assignment = false
@@ -761,7 +745,7 @@ ij_groovy_while_on_new_line = false
 ij_groovy_wrap_chain_calls_after_dot = false
 ij_groovy_wrap_long_lines = false
 
-[{*.har,*.jsb2,*.jsb3,*.json,*.jsonc,*.postman_collection,*.postman_collection.json,*.postman_environment,*.postman_environment.json,.babelrc,.eslintrc,.prettierrc,.stylelintrc,.ws-context,jest.config}]
+[*.json]
 ij_json_array_wrapping = split_into_lines
 ij_json_keep_blank_lines_in_code = 0
 ij_json_keep_indents_on_empty_lines = false
@@ -777,7 +761,7 @@ ij_json_spaces_within_braces = false
 ij_json_spaces_within_brackets = false
 ij_json_wrap_long_lines = false
 
-[{*.htm,*.html,*.sht,*.shtm,*.shtml}]
+[*.html]
 ij_html_add_new_line_before_tags = body, div, p, form, h1, h2, h3
 ij_html_align_attributes = true
 ij_html_align_text = false
@@ -805,7 +789,7 @@ ij_html_space_around_equality_in_attribute = false
 ij_html_space_inside_empty_tag = false
 ij_html_text_wrap = normal
 
-[{*.markdown,*.md}]
+[*.md]
 indent_size = 4
 ij_continuation_indent_size = 8
 ij_markdown_force_one_space_after_blockquote_symbol = true
@@ -825,13 +809,13 @@ ij_markdown_min_lines_between_paragraphs = 1
 ij_markdown_wrap_text_if_long = true
 ij_markdown_wrap_text_inside_blockquotes = true
 
-[{*.properties,spring.handlers,spring.schemas}]
+[*.properties]
 ij_properties_align_group_field_declarations = false
 ij_properties_keep_blank_lines = true
 ij_properties_key_value_delimiter = equals
 ij_properties_spaces_around_key_value_delimiter = false
 
-[{*.py,*.pyw}]
+[*.py]
 max_line_length = 80
 ij_python_add_indent_inside_injections = false
 ij_python_align_collections_and_comprehensions = true
@@ -917,11 +901,6 @@ ij_python_use_trailing_comma_in_arguments_list = false
 ij_python_use_trailing_comma_in_collections = false
 ij_python_use_trailing_comma_in_parameter_list = false
 ij_python_wrap_long_lines = false
-
-[{*.toml,Cargo.lock,Cargo.toml.orig,Gopkg.lock,Pipfile,poetry.lock,uv.lock}]
-indent_size = 4
-ij_continuation_indent_size = 8
-ij_toml_keep_indents_on_empty_lines = false
 
 [{*.yaml,*.yml}]
 ij_yaml_align_values_properties = do_not_align
