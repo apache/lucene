@@ -39,7 +39,6 @@ import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PostingsEnum;
@@ -264,16 +263,10 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       FieldInfo fieldInfo, BlockTermState termState, PostingsEnum reuse, int flags)
       throws IOException {
     return (reuse instanceof BlockPostingsEnum everythingEnum
-                && everythingEnum.canReuse(docIn, fieldInfo, flags, false)
+                && everythingEnum.canReuse(docIn, fieldInfo, flags)
             ? everythingEnum
-            : new BlockPostingsEnum(fieldInfo, flags, false))
+            : new BlockPostingsEnum(fieldInfo, flags))
         .reset((IntBlockTermState) termState, flags);
-  }
-
-  @Override
-  public ImpactsEnum impacts(FieldInfo fieldInfo, BlockTermState state, int flags)
-      throws IOException {
-    return new BlockPostingsEnum(fieldInfo, flags, true).reset((IntBlockTermState) state, flags);
   }
 
   private static int sumOverRange(int[] arr, int start, int end) {
@@ -284,7 +277,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     return res;
   }
 
-  final class BlockPostingsEnum extends ImpactsEnum {
+  final class BlockPostingsEnum extends PostingsEnum {
 
     private enum DeltaEncoding {
       /**
@@ -415,8 +408,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     // true if we shallow-advanced to a new block that we have not decoded yet
     private boolean needsRefilling;
 
-    public BlockPostingsEnum(FieldInfo fieldInfo, int flags, boolean needsImpacts)
-        throws IOException {
+    public BlockPostingsEnum(FieldInfo fieldInfo, int flags) throws IOException {
       options = fieldInfo.getIndexOptions();
       indexHasFreq = options.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
       indexHasPos = options.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
@@ -432,7 +424,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       needsPayloads =
           indexHasPayloads && PostingsEnum.featureRequested(flags, PostingsEnum.PAYLOADS);
       needsOffsetsOrPayloads = needsOffsets || needsPayloads;
-      this.needsImpacts = needsImpacts;
+      needsImpacts = PostingsEnum.featureRequested(flags, PostingsEnum.IMPACTS);
       needsDocsAndFreqsOnly = needsPos == false && needsImpacts == false;
 
       if (needsFreq == false) {
@@ -490,13 +482,11 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       }
     }
 
-    public boolean canReuse(
-        IndexInput docIn, FieldInfo fieldInfo, int flags, boolean needsImpacts) {
+    public boolean canReuse(IndexInput docIn, FieldInfo fieldInfo, int flags) {
       return docIn == Lucene101PostingsReader.this.docIn
           && options == fieldInfo.getIndexOptions()
           && indexHasPayloads == fieldInfo.hasPayloads()
-          && this.flags == flags
-          && this.needsImpacts == needsImpacts;
+          && this.flags == flags;
     }
 
     public BlockPostingsEnum reset(IntBlockTermState termState, int flags) throws IOException {

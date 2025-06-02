@@ -32,7 +32,6 @@ import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
@@ -315,15 +314,6 @@ public class AssertingLeafReader extends FilterLeafReader {
       }
     }
 
-    @Override
-    public ImpactsEnum impacts(int flags) throws IOException {
-      assertThread("Terms enums", creationThread);
-      assert state == State.POSITIONED : "docs(...) called on unpositioned TermsEnum";
-      assert (flags & PostingsEnum.FREQS) != 0 : "Freqs should be requested on impacts";
-
-      return new AssertingImpactsEnum(super.impacts(flags));
-    }
-
     // TODO: we should separately track if we are 'at the end' ?
     // someone should not call next() after it returns null!!!!
     @Override
@@ -475,11 +465,15 @@ public class AssertingLeafReader extends FilterLeafReader {
 
   /** Wraps a docsenum with additional checks */
   public static class AssertingPostingsEnum extends FilterPostingsEnum {
+    private static final IndexPackageAccess INDEX_PACKAGE_ACCESS =
+        TestSecrets.getIndexPackageAccess();
+
     private final Thread creationThread = Thread.currentThread();
     private DocsEnumState state = DocsEnumState.START;
     int positionCount = 0;
     int positionMax = 0;
     private int doc;
+    private int lastShallowTarget = -1;
 
     public AssertingPostingsEnum(PostingsEnum in) {
       super(in);
@@ -490,6 +484,8 @@ public class AssertingLeafReader extends FilterLeafReader {
     public int nextDoc() throws IOException {
       assertThread("Docs enums", creationThread);
       assert state != DocsEnumState.FINISHED : "nextDoc() called after NO_MORE_DOCS";
+      assert docID() + 1 >= lastShallowTarget
+          : "target = " + (docID() + 1) + " < last shallow target = " + lastShallowTarget;
       int nextDoc = super.nextDoc();
       assert nextDoc > doc : "backwards nextDoc from " + doc + " to " + nextDoc + " " + in;
       if (nextDoc == DocIdSetIterator.NO_MORE_DOCS) {
@@ -509,6 +505,8 @@ public class AssertingLeafReader extends FilterLeafReader {
       assertThread("Docs enums", creationThread);
       assert state != DocsEnumState.FINISHED : "advance() called after NO_MORE_DOCS";
       assert target > doc : "target must be > docID(), got " + target + " <= " + doc;
+      assert target >= lastShallowTarget
+          : "target = " + target + " < last shallow target = " + lastShallowTarget;
       int advanced = super.advance(target);
       assert advanced >= target : "backwards advance from: " + target + " to: " + advanced;
       if (advanced == DocIdSetIterator.NO_MORE_DOCS) {
@@ -611,29 +609,6 @@ public class AssertingLeafReader extends FilterLeafReader {
       }
     }
 
-    void reset() {
-      state = DocsEnumState.START;
-      doc = in.docID();
-      positionCount = positionMax = 0;
-    }
-  }
-
-  /** Wraps a {@link ImpactsEnum} with additional checks */
-  public static class AssertingImpactsEnum extends ImpactsEnum {
-
-    private static final IndexPackageAccess INDEX_PACKAGE_ACCESS =
-        TestSecrets.getIndexPackageAccess();
-
-    private final AssertingPostingsEnum assertingPostings;
-    private final ImpactsEnum in;
-    private int lastShallowTarget = -1;
-
-    AssertingImpactsEnum(ImpactsEnum impacts) {
-      in = impacts;
-      // inherit checks from AssertingPostingsEnum
-      assertingPostings = new AssertingPostingsEnum(impacts);
-    }
-
     @Override
     public void advanceShallow(int target) throws IOException {
       assert target >= lastShallowTarget
@@ -655,63 +630,21 @@ public class AssertingLeafReader extends FilterLeafReader {
       return new AssertingImpacts(impacts, this);
     }
 
-    @Override
-    public int freq() throws IOException {
-      return assertingPostings.freq();
-    }
-
-    @Override
-    public int nextPosition() throws IOException {
-      return assertingPostings.nextPosition();
-    }
-
-    @Override
-    public int startOffset() throws IOException {
-      return assertingPostings.startOffset();
-    }
-
-    @Override
-    public int endOffset() throws IOException {
-      return assertingPostings.endOffset();
-    }
-
-    @Override
-    public BytesRef getPayload() throws IOException {
-      return assertingPostings.getPayload();
-    }
-
-    @Override
-    public int docID() {
-      return assertingPostings.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      assert docID() + 1 >= lastShallowTarget
-          : "target = " + (docID() + 1) + " < last shallow target = " + lastShallowTarget;
-      return assertingPostings.nextDoc();
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      assert target >= lastShallowTarget
-          : "target = " + target + " < last shallow target = " + lastShallowTarget;
-      return assertingPostings.advance(target);
-    }
-
-    @Override
-    public long cost() {
-      return assertingPostings.cost();
+    void reset() {
+      state = DocsEnumState.START;
+      doc = in.docID();
+      positionCount = positionMax = 0;
+      lastShallowTarget = -1;
     }
   }
 
   static class AssertingImpacts extends Impacts {
 
     private final Impacts in;
-    private final AssertingImpactsEnum impactsEnum;
+    private final AssertingPostingsEnum impactsEnum;
     private final int validFor;
 
-    AssertingImpacts(Impacts in, AssertingImpactsEnum impactsEnum) {
+    AssertingImpacts(Impacts in, AssertingPostingsEnum impactsEnum) {
       this.in = in;
       this.impactsEnum = impactsEnum;
       validFor = Math.max(impactsEnum.docID(), impactsEnum.lastShallowTarget);

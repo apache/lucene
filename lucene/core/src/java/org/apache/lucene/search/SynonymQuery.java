@@ -27,12 +27,10 @@ import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.ImpactsSource;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
@@ -295,7 +293,6 @@ public final class SynonymQuery extends Query {
       return new ScorerSupplier() {
 
         List<PostingsEnum> iterators;
-        List<ImpactsEnum> impacts;
         List<Float> termBoosts;
         long cost;
 
@@ -304,7 +301,6 @@ public final class SynonymQuery extends Query {
             return;
           }
           iterators = new ArrayList<>();
-          impacts = new ArrayList<>();
           termBoosts = new ArrayList<>();
           cost = 0L;
 
@@ -314,15 +310,12 @@ public final class SynonymQuery extends Query {
             if (state != null) {
               TermsEnum termsEnum = context.reader().terms(field).iterator();
               termsEnum.seekExact(terms[i].term, state);
+              int flags = PostingsEnum.FREQS;
               if (scoreMode == ScoreMode.TOP_SCORES) {
-                ImpactsEnum impactsEnum = termsEnum.impacts(PostingsEnum.FREQS);
-                iterators.add(impactsEnum);
-                impacts.add(impactsEnum);
-              } else {
-                PostingsEnum postingsEnum = termsEnum.postings(null, PostingsEnum.FREQS);
-                iterators.add(postingsEnum);
-                impacts.add(new SlowImpactsEnum(postingsEnum));
+                flags |= PostingsEnum.IMPACTS;
               }
+              PostingsEnum postingsEnum = termsEnum.postings(null, flags);
+              iterators.add(postingsEnum);
               termBoosts.add(terms[i].boost);
             }
           }
@@ -344,12 +337,7 @@ public final class SynonymQuery extends Query {
 
           // we must optimize this case (term not in segment), disjunctions require >= 2 subs
           if (iterators.size() == 1) {
-            final TermScorer scorer;
-            if (scoreMode == ScoreMode.TOP_SCORES) {
-              scorer = new TermScorer(impacts.get(0), simWeight, norms);
-            } else {
-              scorer = new TermScorer(iterators.get(0), simWeight, norms);
-            }
+            final TermScorer scorer = new TermScorer(iterators.get(0), simWeight, norms);
             float boost = termBoosts.get(0);
             return scoreMode == ScoreMode.COMPLETE_NO_SCORES || boost == 1f
                 ? scorer
@@ -371,11 +359,12 @@ public final class SynonymQuery extends Query {
                 new DisjunctionDISIApproximation(wrappers, leadCost);
             DocIdSetIterator iterator = disjunctionIterator;
 
-            float[] boosts = new float[impacts.size()];
+            float[] boosts = new float[iterators.size()];
             for (int i = 0; i < boosts.length; i++) {
               boosts[i] = termBoosts.get(i);
             }
-            ImpactsSource impactsSource = mergeImpacts(impacts.toArray(new ImpactsEnum[0]), boosts);
+            ImpactsSource impactsSource =
+                mergeImpacts(iterators.toArray(new PostingsEnum[0]), boosts);
             MaxScoreCache maxScoreCache = new MaxScoreCache(impactsSource, simWeight);
             ImpactsDISI impactsDisi = new ImpactsDISI(iterator, maxScoreCache);
 
@@ -409,7 +398,7 @@ public final class SynonymQuery extends Query {
   }
 
   /** Merge impacts for multiple synonyms. */
-  static ImpactsSource mergeImpacts(ImpactsEnum[] impactsEnums, float[] boosts) {
+  static ImpactsSource mergeImpacts(PostingsEnum[] impactsEnums, float[] boosts) {
     assert impactsEnums.length == boosts.length;
     return new ImpactsSource() {
 
@@ -567,7 +556,7 @@ public final class SynonymQuery extends Query {
 
       @Override
       public void advanceShallow(int target) throws IOException {
-        for (ImpactsEnum impactsEnum : impactsEnums) {
+        for (PostingsEnum impactsEnum : impactsEnums) {
           if (impactsEnum.docID() < target) {
             impactsEnum.advanceShallow(target);
           }

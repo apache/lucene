@@ -38,7 +38,6 @@ import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
@@ -283,11 +282,6 @@ public class TestSTBlockReader extends LuceneTestCase {
         @Override
         public PostingsEnum postings(
             FieldInfo fieldInfo, BlockTermState state, PostingsEnum reuse, int flags) {
-          return null;
-        }
-
-        @Override
-        public ImpactsEnum impacts(FieldInfo fieldInfo, BlockTermState state, int flags) {
           return null;
         }
 

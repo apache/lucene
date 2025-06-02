@@ -28,13 +28,11 @@ import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Fields;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.OrdTermState;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -936,11 +934,6 @@ public final class DirectPostingsFormat extends PostingsFormat {
           return docsEnum.reset(term.docIDs, term.freqs);
         }
       }
-
-      @Override
-      public ImpactsEnum impacts(int flags) throws IOException {
-        return new SlowImpactsEnum(postings(null, flags));
-      }
     }
 
     private final class DirectIntersectTermsEnum extends BaseTermsEnum {
@@ -1513,11 +1506,6 @@ public final class DirectPostingsFormat extends PostingsFormat {
           // ": " + term.docIDs.length + " docs");
           return new HighFreqDocsEnum().reset(term.docIDs, term.freqs);
         }
-      }
-
-      @Override
-      public ImpactsEnum impacts(int flags) throws IOException {
-        return new SlowImpactsEnum(postings(null, flags));
       }
 
       @Override

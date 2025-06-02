@@ -27,7 +27,6 @@ import java.util.Objects;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
@@ -297,9 +296,7 @@ public class MultiPhraseQuery extends Query {
                     : new UnionPostingsEnum(postings);
           }
 
-          postingsFreqs[pos] =
-              new PhraseQuery.PostingsAndFreq(
-                  postingsEnum, new SlowImpactsEnum(postingsEnum), positions[pos], terms);
+          postingsFreqs[pos] = new PhraseQuery.PostingsAndFreq(postingsEnum, positions[pos], terms);
         }
 
         // sort by increasing docFreq order

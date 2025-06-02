@@ -19,7 +19,6 @@ package org.apache.lucene.codecs;
 import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.store.DataInput;
@@ -27,10 +26,9 @@ import org.apache.lucene.store.IndexInput;
 
 /**
  * The core terms dictionaries (BlockTermsReader, BlockTreeTermsReader) interact with a single
- * instance of this class to manage creation of {@link org.apache.lucene.index.PostingsEnum} and
- * {@link org.apache.lucene.index.ImpactsEnum} instances. It provides an IndexInput (termsIn) where
- * this class may read any previously stored data that it had written in its corresponding {@link
- * PostingsWriterBase} at indexing time.
+ * instance of this class to manage creation of {@link org.apache.lucene.index.PostingsEnum}
+ * instances. It provides an IndexInput (termsIn) where this class may read any previously stored
+ * data that it had written in its corresponding {@link PostingsWriterBase} at indexing time.
  *
  * @lucene.experimental
  */
@@ -65,14 +63,6 @@ public abstract class PostingsReaderBase implements Closeable {
   /** Must fully consume state, since after this call that TermState may be reused. */
   public abstract PostingsEnum postings(
       FieldInfo fieldInfo, BlockTermState state, PostingsEnum reuse, int flags) throws IOException;
-
-  /**
-   * Return a {@link ImpactsEnum} that computes impacts with {@code scorer}.
-   *
-   * @see #postings(FieldInfo, BlockTermState, PostingsEnum, int)
-   */
-  public abstract ImpactsEnum impacts(FieldInfo fieldInfo, BlockTermState state, int flags)
-      throws IOException;
 
   /**
    * Checks consistency of this reader.

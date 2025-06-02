@@ -22,7 +22,6 @@ import org.apache.lucene.document.FeatureField;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
@@ -88,7 +87,7 @@ public class TestScorerUtil extends LuceneTestCase {
         LeafReader leafReader = reader.leaves().get(0).reader();
         TermsEnum te = leafReader.terms("field").iterator();
         assertTrue(te.seekExact(new BytesRef("value")));
-        ImpactsEnum ie = te.impacts(PostingsEnum.FREQS);
+        PostingsEnum ie = te.postings(null, PostingsEnum.IMPACTS);
         assertSame(ie, ScorerUtil.likelyImpactsEnum(ie));
       }
     }

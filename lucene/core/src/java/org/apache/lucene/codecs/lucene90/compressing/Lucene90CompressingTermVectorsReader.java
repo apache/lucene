@@ -44,11 +44,9 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentInfo;
-import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.AlreadyClosedException;
@@ -1193,12 +1191,6 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
           payloads,
           payloadIndex);
       return docsEnum;
-    }
-
-    @Override
-    public ImpactsEnum impacts(int flags) throws IOException {
-      final PostingsEnum delegate = postings(null, PostingsEnum.FREQS);
-      return new SlowImpactsEnum(delegate);
     }
   }
 

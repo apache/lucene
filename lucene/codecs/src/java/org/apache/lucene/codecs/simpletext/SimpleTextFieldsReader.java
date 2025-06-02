@@ -39,11 +39,9 @@ import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Impacts;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -256,18 +254,9 @@ class SimpleTextFieldsReader extends FieldsProducer {
       }
       return docsEnum.reset(docsStart, indexOptions == IndexOptions.DOCS, docFreq, skipPointer);
     }
-
-    @Override
-    public ImpactsEnum impacts(int flags) throws IOException {
-      if (docFreq <= SimpleTextSkipWriter.BLOCK_SIZE) {
-        // no skip data
-        return new SlowImpactsEnum(postings(null, flags));
-      }
-      return (ImpactsEnum) postings(null, flags);
-    }
   }
 
-  private class SimpleTextDocsEnum extends ImpactsEnum {
+  private class SimpleTextDocsEnum extends PostingsEnum {
     private final IndexInput inStart;
     private final IndexInput in;
     private boolean omitTF;
@@ -416,24 +405,30 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
     @Override
     public void advanceShallow(int target) throws IOException {
-      if (target > nextSkipDoc) {
-        skipReader.skipTo(target);
-        if (skipReader.getNextSkipDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-          seekTo = skipReader.getNextSkipDocFP();
+      if (skipReader.hasSkipList()) {
+        if (target > nextSkipDoc) {
+          skipReader.skipTo(target);
+          if (skipReader.getNextSkipDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            seekTo = skipReader.getNextSkipDocFP();
+          }
+          nextSkipDoc = skipReader.getNextSkipDoc();
         }
-        nextSkipDoc = skipReader.getNextSkipDoc();
+        assert nextSkipDoc >= target;
       }
-      assert nextSkipDoc >= target;
     }
 
     @Override
     public Impacts getImpacts() throws IOException {
-      advanceShallow(docID);
-      return skipReader.getImpacts();
+      if (skipReader.hasSkipList()) {
+        advanceShallow(docID);
+        return skipReader.getImpacts();
+      } else {
+        return super.getImpacts();
+      }
     }
   }
 
-  private class SimpleTextPostingsEnum extends ImpactsEnum {
+  private class SimpleTextPostingsEnum extends PostingsEnum {
     private final IndexInput inStart;
     private final IndexInput in;
     private int docID = -1;
@@ -628,20 +623,26 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
     @Override
     public void advanceShallow(int target) throws IOException {
-      if (target > nextSkipDoc) {
-        skipReader.skipTo(target);
-        if (skipReader.getNextSkipDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-          seekTo = skipReader.getNextSkipDocFP();
+      if (skipReader.hasSkipList()) {
+        if (target > nextSkipDoc) {
+          skipReader.skipTo(target);
+          if (skipReader.getNextSkipDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            seekTo = skipReader.getNextSkipDocFP();
+          }
         }
+        nextSkipDoc = skipReader.getNextSkipDoc();
+        assert nextSkipDoc >= target;
       }
-      nextSkipDoc = skipReader.getNextSkipDoc();
-      assert nextSkipDoc >= target;
     }
 
     @Override
     public Impacts getImpacts() throws IOException {
-      advanceShallow(docID);
-      return skipReader.getImpacts();
+      if (skipReader.hasSkipList()) {
+        advanceShallow(docID);
+        return skipReader.getImpacts();
+      } else {
+        return super.getImpacts();
+      }
     }
   }
 

@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.util.stream.LongStream;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat;
-import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.MathUtil;
@@ -61,7 +61,7 @@ class ScorerUtil {
 
   /**
    * Optimize a {@link DocIdSetIterator} for the case when it is likely implemented via an {@link
-   * ImpactsEnum}. This return method only has 2 possible return types, which helps make sure that
+   * PostingsEnum}. This return method only has 2 possible return types, which helps make sure that
    * calls to {@link DocIdSetIterator#nextDoc()} and {@link DocIdSetIterator#advance(int)} are
    * bimorphic at most and candidate for inlining.
    */
