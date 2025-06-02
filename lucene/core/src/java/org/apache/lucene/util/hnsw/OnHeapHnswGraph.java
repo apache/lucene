@@ -63,12 +63,14 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   private int upto;
   private NeighborArray cur;
 
+  private volatile long graphRamBytesUsed;
+
   /**
    * ctor
    *
    * @param numNodes number of nodes that will be added to this graph, passing in -1 means unbounded
    *     while passing in a non-negative value will lock the whole graph and disable the graph from
-   *     growing itself (you cannot add a node with has id >= numNodes)
+   *     growing itself (you cannot add a node with id >= numNodes)
    */
   OnHeapHnswGraph(int M, int numNodes) {
     this.entryNode = new AtomicReference<>(new EntryNode(-1, 1));
@@ -84,7 +86,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   }
 
   /**
-   * Returns the {@link NeighborQueue} connected to the given node.
+   * Returns the {@link NeighborArray} connected to the given node.
    *
    * @param level level of the graph
    * @param node the node whose neighbors are returned, represented as an ordinal on the level 0.
@@ -162,6 +164,15 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       nonZeroLevelSize.incrementAndGet();
     }
     maxNodeId.accumulateAndGet(node, Math::max);
+    // update graphRamBytesUsed every 1000 nodes
+    if (level == 0 && node % 1000 == 0) {
+      updateGraphRamBytesUsed();
+    }
+  }
+
+  /** Finish building the graph. */
+  public void finishBuild() {
+    updateGraphRamBytesUsed();
   }
 
   @Override
@@ -292,23 +303,29 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     lastFreezeSize = size();
   }
 
+  /** Update the estimated ram bytes used for the neighbor array. */
+  public void updateGraphRamBytesUsed() {
+    long currentRamBytesUsedEstimate = RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+    for (int node = 0; node < graph.length; node++) {
+      if (graph[node] == null) {
+        continue;
+      }
+
+      for (int i = 0; i < graph[node].length; i++) {
+        if (graph[node][i] == null) {
+          continue;
+        }
+        currentRamBytesUsedEstimate += graph[node][i].ramBytesUsed();
+      }
+
+      currentRamBytesUsedEstimate += RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
+    }
+    graphRamBytesUsed = currentRamBytesUsedEstimate;
+  }
+
   @Override
   public long ramBytesUsed() {
-    long neighborArrayBytes0 =
-        (long) nsize0 * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2L
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2L
-            + Integer.BYTES * 3;
-    long neighborArrayBytes =
-        (long) nsize * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2L
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2L
-            + Integer.BYTES * 3;
-    long total = 0;
-    total +=
-        size() * (neighborArrayBytes0 + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER; // for graph and level 0;
-    total += nonZeroLevelSize.get() * neighborArrayBytes; // for non-zero level
+    long total = graphRamBytesUsed; // all NeighborArray
     total += 4 * Integer.BYTES; // all int fields
     total += 1; // field: noGrowth
     total +=

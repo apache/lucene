@@ -57,7 +57,7 @@ public final class LongHeap {
    *
    * @return the new 'top' element in the queue.
    */
-  public final long push(long element) {
+  public long push(long element) {
     size++;
     if (size == heap.length) {
       heap = ArrayUtil.grow(heap, (size * 3 + 1) / 2);
@@ -91,7 +91,7 @@ public final class LongHeap {
    * that the heap is not empty; no checking is done, and if no elements have been added, 0 is
    * returned.
    */
-  public final long top() {
+  public long top() {
     return heap[1];
   }
 
@@ -100,7 +100,7 @@ public final class LongHeap {
    *
    * @throws IllegalStateException if the LongHeap is empty.
    */
-  public final long pop() {
+  public long pop() {
     if (size > 0) {
       long result = heap[1]; // save first value
       heap[1] = heap[size]; // move last to first
@@ -132,19 +132,19 @@ public final class LongHeap {
    * @param value the new element that is less than the current top.
    * @return the new 'top' element after shuffling the heap.
    */
-  public final long updateTop(long value) {
+  public long updateTop(long value) {
     heap[1] = value;
     downHeap(1);
     return heap[1];
   }
 
   /** Returns the number of elements currently stored in the PriorityQueue. */
-  public final int size() {
+  public int size() {
     return size;
   }
 
   /** Removes all entries from the PriorityQueue. */
-  public final void clear() {
+  public void clear() {
     size = 0;
   }
 
@@ -199,7 +199,7 @@ public final class LongHeap {
    * @lucene.internal
    */
   // pkg-private for testing
-  final long[] getHeapArray() {
+  long[] getHeapArray() {
     return heap;
   }
 }

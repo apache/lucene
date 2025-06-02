@@ -362,13 +362,13 @@ public class HnswGraphBuilder implements HnswBuilder {
         Lock lock = hnswLock.write(level, nbr);
         try {
           NeighborArray nbrsOfNbr = getGraph().getNeighbors(level, nbr);
-          nbrsOfNbr.addAndEnsureDiversity(node, candidates.scores()[i], nbr, scorer);
+          nbrsOfNbr.addAndEnsureDiversity(node, candidates.getScores(i), nbr, scorer);
         } finally {
           lock.unlock();
         }
       } else {
         NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
-        nbrsOfNbr.addAndEnsureDiversity(node, candidates.scores()[i], nbr, scorer);
+        nbrsOfNbr.addAndEnsureDiversity(node, candidates.getScores(i), nbr, scorer);
       }
     }
   }
@@ -389,7 +389,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       // compare each neighbor (in distance order) against the closer neighbors selected so far,
       // only adding it if it is closer to the target than to any of the other selected neighbors
       int cNode = candidates.nodes()[i];
-      float cScore = candidates.scores()[i];
+      float cScore = candidates.getScores(i);
       assert cNode <= hnsw.maxNodeId();
       scorer.setScoringOrdinal(cNode);
       if (diversityCheck(cScore, neighbors, scorer)) {
@@ -444,6 +444,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     //  see: https://github.com/apache/lucene/issues/14214
     // connectComponents();
     frozen = true;
+    hnsw.finishBuild();
   }
 
   @SuppressWarnings("unused")
@@ -538,7 +539,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     // must subtract 1 here since the nodes array is one larger than the configured
     // max neighbors (M / 2M).
     // We should have taken care of this check by searching for not-full nodes
-    int maxConn = nbr0.nodes().length - 1;
+    int maxConn = nbr0.maxSize() - 1;
     assert notFullyConnected.get(n0);
     assert nbr0.size() < maxConn : "node " + n0 + " is full, has " + nbr0.size() + " friends";
     nbr0.addOutOfOrder(n1, score);

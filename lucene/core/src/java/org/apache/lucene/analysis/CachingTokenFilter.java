@@ -26,7 +26,7 @@ import org.apache.lucene.util.IgnoreRandomChains;
 /**
  * This class can be used if the token attributes of a TokenStream are intended to be consumed more
  * than once. It caches all token attribute states locally in a List when the first call to {@link
- * #incrementToken()} is called. Subsequent calls will used the cache.
+ * #incrementToken()} is called. Subsequent calls will use the cache.
  *
  * <p><em>Important:</em> Like any proper TokenFilter, {@link #reset()} propagates to the input,
  * although only before {@link #incrementToken()} is called the first time. Prior to Lucene 5, it

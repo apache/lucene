@@ -22,6 +22,10 @@ API Changes
 
 * GITHUB#14291: Remove IOException from ScorerSupplier#setTopLevelScoringClause signature (Luca Cavanna)
 
+* GITHUB#7865: Added public CharSequence getTermEscaped(EscapeQuerySyntax)
+  to ValueQueryNode. Made existing implementations public in all classes which
+  implement ValueQueryNode. (Peter Barna, Adam Schwartz)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -48,6 +52,10 @@ Bug Fixes
   when all values are identical. (Mike Sokolov)
 
 * GITHUB#14075: Remove duplicate and add missing entry on brazilian portuguese stopwords list. (Arthur Caccavo)
+
+* GITHUB#7865 AbstractRangeQueryNode#toQueryString(EscapeQuerySyntax) now
+  returns a string which can be parsed back into the original node.
+  (Peter Barna, Adam Schwartz)
 
 Changes in Runtime Behavior
 ---------------------
@@ -106,6 +114,8 @@ Optimizations
 
 * GITHUB#14447: Compute the doc range more efficiently when flushing doc block. (Pan Guixin)
 
+* GITHUB#14527: Reduce NeighborArray heap memory. (weizijun)
+
 * GITHUB#14529, GITHUB#14555, GITHUB#14618: Impl intoBitset for IndexedDISI and Docvalues. (Guo Feng)
 
 * GITHUB#14552: Speed up flush of softdelete by intoBitset. (Guo Feng)
@@ -119,6 +129,17 @@ Optimizations
 * GITHUB#14700: Return MatchNoDocsQuery when IndexOrDocValuesQuery::rewrite does not match
   (Chris Hegarty)
 
+* GITHUB#14701: Optimize top-n bulk scorers by evaluating scoring windows in a
+  term-at-a-time fashion instead of doc-at-a-time. (Adrien Grand)
+
+* GITHUB#14709: Speed up TermQuery by Scorer#nextDocsAndScores. (Guo Feng)
+
+* GITHUB#14626: Avoid unnecessary comparison for CELL_CROSSES_QUERY cases (Ankit Jain)
+
+* GITHUB#14674: Optimize AbstractKnnVectorQuery#createBitSet with intoBitset. (Guo Feng)
+
+* GITHUB#14720: Cache high-order bits of hashcode to speed up BytesRefHash. (Pan Guixin)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
@@ -128,6 +149,8 @@ Bug Fixes
 
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
   instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
+
+* GITHUB#14727: Fix several resource leaks. (Xu Chengxin)
 
 Build
 ---------------------
@@ -145,6 +168,8 @@ Other
 * GITHUB#14627, GITHUB#11920, GITHUB#14706: Fix mock filesystem WindowsFS to also
   work on Windows. This is required to make tests pass on Windows 11 which no
   longer has all limitations of previous Windows versions.  (Uwe Schindler)
+
+* GITHUB#14667: Fix documentation regarding benchmark running. (Viliam Durina)
 
 
 ======================= Lucene 10.2.1 =======================
@@ -981,6 +1006,8 @@ Bug Fixes
   `IndexWriter.addIndexes(CodecReader...)`, or reindexing entirely.
 
 * GITHUB#13799: Disable intra-merge parallelism for all structures but kNN vectors. (Ben Trent)
+
+* GITHUB##14732: Fix IndexSortSortedNumericDocValuesRangeQuery for int sort (Mayya Sharipova)
 
 Build
 ---------------------

@@ -37,7 +37,7 @@ import org.apache.lucene.util.IOConsumer;
 /**
  * Base IndexInput implementation that uses an array of MemorySegments to represent a file.
  *
- * <p>For efficiency, this class requires that the segment size are a power-of-two (<code>
+ * <p>For efficiency, this class requires that the segment size is a power of two (<code>
  * chunkSizePower</code>).
  */
 abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegmentAccessInput {

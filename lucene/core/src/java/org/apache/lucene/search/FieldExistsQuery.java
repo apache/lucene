@@ -137,7 +137,7 @@ public class FieldExistsQuery extends Query {
       } else if (fieldInfo.getDocValuesType()
           != DocValuesType.NONE) { // the field indexes doc values or points
 
-        // This optimization is possible due to LUCENE-9334 enforcing a field to always uses the
+        // This optimization is possible due to LUCENE-9334 enforcing a field to always use the
         // same data structures (all or nothing). Since there's no index statistic to detect when
         // all documents have doc values for a specific field, FieldExistsQuery can only be
         // rewritten to MatchAllDocsQuery for doc values field, when that same field also indexes
