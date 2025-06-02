@@ -181,7 +181,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
     // Only score an inner window, after that we'll check if the min competitive score has increased
     // enough for a more favorable partitioning to be used.
     int innerWindowMin = top.doc;
-    int innerWindowMax = (int) Math.min(max, (long) innerWindowMin + INNER_WINDOW_SIZE);
+    int innerWindowMax = MathUtil.unsignedMin(max, innerWindowMin + INNER_WINDOW_SIZE);
 
     docAndScoreAccBuffer.size = 0;
     while (top.doc < innerWindowMax) {
@@ -277,7 +277,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
     DisiWrapper top = essentialQueue.top();
 
     int innerWindowMin = top.doc;
-    int innerWindowMax = (int) Math.min(max, (long) innerWindowMin + INNER_WINDOW_SIZE);
+    int innerWindowMax = MathUtil.unsignedMin(max, innerWindowMin + INNER_WINDOW_SIZE);
     int innerWindowSize = innerWindowMax - innerWindowMin;
 
     // Collect matches of essential clauses into a bitset
@@ -324,7 +324,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
       final DisiWrapper scorer = allScorers[i];
       if (filter == null || scorer.cost >= filter.cost) {
         final int upTo = scorer.scorer.advanceShallow(Math.max(scorer.doc, windowMin));
-        windowMax = (int) Math.min(windowMax, upTo + 1L); // upTo is inclusive
+        windowMax = MathUtil.unsignedMin(windowMax, upTo + 1); // upTo is inclusive
       }
     }
 
@@ -341,7 +341,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
         minWindowSize = 1;
       }
 
-      int minWindowMax = (int) Math.min(Integer.MAX_VALUE, (long) windowMin + minWindowSize);
+      int minWindowMax = MathUtil.unsignedMin(Integer.MAX_VALUE, windowMin + minWindowSize);
       windowMax = Math.max(windowMax, minWindowMax);
     }
 
