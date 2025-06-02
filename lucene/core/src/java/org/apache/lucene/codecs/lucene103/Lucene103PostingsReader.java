@@ -46,7 +46,7 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
-import org.apache.lucene.search.DocAndFreqBuffer;
+import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -1036,7 +1036,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
     }
 
     @Override
-    public void nextPostings(int upTo, DocAndFreqBuffer buffer) throws IOException {
+    public void nextPostings(int upTo, DocAndFloatFeatureBuffer buffer) throws IOException {
       assert needsRefilling == false;
 
       if (needsFreq == false) {
@@ -1073,7 +1073,9 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
       }
 
       assert buffer.size > 0;
-      System.arraycopy(freqBuffer, start, buffer.freqs, 0, buffer.size);
+      for (int i = 0; i < buffer.size; ++i) {
+        buffer.features[i] = freqBuffer[start + i];
+      }
 
       advance(upTo);
     }

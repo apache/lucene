@@ -51,7 +51,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
   private final FixedBitSet windowMatches = new FixedBitSet(INNER_WINDOW_SIZE);
   private final double[] windowScores = new double[INNER_WINDOW_SIZE];
 
-  private final DocAndScoreBuffer docAndScoreBuffer = new DocAndScoreBuffer();
+  private final DocAndFloatFeatureBuffer docAndScoreBuffer = new DocAndFloatFeatureBuffer();
   private final DocAndScoreAccBuffer docAndScoreAccBuffer = new DocAndScoreAccBuffer();
 
   MaxScoreBulkScorer(int maxDoc, List<Scorer> scorers, Scorer filter) throws IOException {
@@ -287,7 +287,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
           top.scorer.nextDocsAndScores(innerWindowMax, acceptDocs, docAndScoreBuffer)) {
         for (int index = 0; index < docAndScoreBuffer.size; ++index) {
           final int doc = docAndScoreBuffer.docs[index];
-          final float score = docAndScoreBuffer.scores[index];
+          final float score = docAndScoreBuffer.features[index];
           final int i = doc - innerWindowMin;
           windowMatches.set(i);
           windowScores[i] += score;

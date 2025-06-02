@@ -62,12 +62,15 @@ public final class DocAndScoreAccBuffer {
     }
   }
 
-  /** Copy content from the given {@link DocAndScoreBuffer}, expanding float scores to doubles. */
-  public void copyFrom(DocAndScoreBuffer buffer) {
+  /**
+   * Copy content from the given {@link DocAndFloatFeatureBuffer}, expanding float scores to
+   * doubles.
+   */
+  public void copyFrom(DocAndFloatFeatureBuffer buffer) {
     growNoCopy(buffer.size);
     System.arraycopy(buffer.docs, 0, docs, 0, buffer.size);
     for (int i = 0; i < buffer.size; ++i) {
-      scores[i] = buffer.scores[i];
+      scores[i] = buffer.features[i];
     }
     this.size = buffer.size;
   }
