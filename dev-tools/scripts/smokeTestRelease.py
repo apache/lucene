@@ -35,6 +35,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 from collections import namedtuple
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import scriptutil
@@ -262,7 +263,7 @@ def checkSigs(urlString: str, version: str, tmpDir: str, isSigned: bool, keysFil
   gpgHomeDir = "%s/lucene.gpg" % tmpDir
   if os.path.exists(gpgHomeDir):
     shutil.rmtree(gpgHomeDir)
-  os.makedirs(gpgHomeDir, 0o700)
+  Path(gpgHomeDir).mkdir(mode=0o700, parents=True)
   run("gpg --homedir %s --import %s" % (gpgHomeDir, keysFile), "%s/lucene.gpg.import.log" % tmpDir)
 
   if mavenURL is None:
@@ -446,7 +447,7 @@ def run(command: str, logFile: str):
   if cygwin:
     command = cygwinifyPaths(command)
   if os.system("%s > %s 2>&1" % (command, logFile)):
-    logPath = os.path.abspath(logFile)
+    logPath: str = str(Path(logFile).resolve())
     print('\ncommand "%s" failed:' % command)
     printFileContents(logFile)
     raise RuntimeError('command "%s" failed; see log file %s' % (command, logPath))
@@ -501,7 +502,7 @@ def unpackAndVerify(java: Any, tmpDir: str, artifact: str, gitRevision: str, ver
   destDir = "%s/unpack" % tmpDir
   if os.path.exists(destDir):
     shutil.rmtree(destDir)
-  os.makedirs(destDir)
+  Path(destDir).mkdir(parents=True)
   os.chdir(destDir)
   print("  unpack %s..." % artifact)
   unpackLogFile = "%s/lucene-unpack-%s.log" % (tmpDir, artifact)
@@ -722,7 +723,7 @@ def checkMaven(baseURL: str, tmpDir: str, gitRevision: str, version: str, isSign
   artifactsURL = "%s/lucene/maven/org/apache/lucene/" % baseURL
   targetDir = "%s/maven/org/apache/lucene" % tmpDir
   if not os.path.exists(targetDir):
-    os.makedirs(targetDir)
+    Path(targetDir).mkdir(parents=True)
   crawl(artifacts, artifactsURL, targetDir)
   print()
   verifyPOMperBinaryArtifact(artifacts, version)
@@ -747,7 +748,7 @@ def getBinaryDistFiles(tmpDir: str, version: str, baseURL: str):
   destDir = "%s/unpack-lucene-getBinaryDistFiles" % tmpDir
   if os.path.exists(destDir):
     shutil.rmtree(destDir)
-  os.makedirs(destDir)
+  Path(destDir).mkdir(parents=True)
   os.chdir(destDir)
   print("    unpack %s..." % distribution)
   unpackLogFile = "%s/unpack-%s-getBinaryDistFiles.log" % (tmpDir, distribution)
@@ -864,7 +865,7 @@ def verifyMavenSigs(tmpDir: str, artifacts: list[str], keysFile: str):
   gpgHomeDir = "%s/lucene.gpg" % tmpDir
   if os.path.exists(gpgHomeDir):
     shutil.rmtree(gpgHomeDir)
-  os.makedirs(gpgHomeDir, 0o700)
+  Path(gpgHomeDir).mkdir(mode=0o700, parents=True)
   run("gpg --homedir %s --import %s" % (gpgHomeDir, keysFile), "%s/lucene.gpg.import.log" % tmpDir)
 
   reArtifacts = re.compile(r"\.(?:pom|[jw]ar)$")
@@ -929,7 +930,7 @@ def crawl(downloadedFiles: list[str], urlString: str, targetDir: str, exclusions
       path = os.path.join(targetDir, text)
       if text.endswith("/"):
         if not os.path.exists(path):
-          os.makedirs(path)
+          Path(path).mkdir(parents=True)
         crawl(downloadedFiles, subURL, path, exclusions)
       else:
         if not os.path.exists(path) or FORCE_CLEAN:
@@ -1022,7 +1023,7 @@ def parse_config():
   c.java = make_java_config(parser, c.test_alternative_java)
 
   if c.tmp_dir:
-    c.tmp_dir = os.path.abspath(c.tmp_dir)
+    c.tmp_dir = str(Path(c.tmp_dir).resolve())
   else:
     tmp = "/tmp/smoke_lucene_%s_%s" % (c.version, c.revision)
     c.tmp_dir = tmp
@@ -1162,7 +1163,7 @@ def smokeTest(java: Any, baseURL: str, gitRevision: str, version: str, tmpDir: s
       raise RuntimeError("temp dir %s exists; please remove first" % tmpDir)
 
   if not os.path.exists(tmpDir):
-    os.makedirs(tmpDir)
+    Path(tmpDir).mkdir(parents=True)
 
   lucenePath = None
   print()

@@ -57,45 +57,45 @@ public class QueryDriver {
         new SubmissionReport(
             new PrintWriter(Files.newBufferedWriter(submissionFile, StandardCharsets.UTF_8)),
             "lucene");
-    FSDirectory dir = FSDirectory.open(Paths.get(args[3]));
     String fieldSpec = args.length == 5 ? args[4] : "T"; // default to Title-only if not specified.
-    IndexReader reader = DirectoryReader.open(dir);
-    IndexSearcher searcher = new IndexSearcher(reader);
 
-    int maxResults = 1000;
-    String docNameField = "docname";
+    // --- Use try-with-resources for FSDirectory and IndexReader ---
+    try (FSDirectory dir = FSDirectory.open(Paths.get(args[3]));
+        IndexReader reader = DirectoryReader.open(dir)) {
+      IndexSearcher searcher = new IndexSearcher(reader);
+      int maxResults = 1000;
+      String docNameField = "docname";
 
-    PrintWriter logger =
-        new PrintWriter(new OutputStreamWriter(System.out, Charset.defaultCharset()), true);
+      PrintWriter logger =
+          new PrintWriter(new OutputStreamWriter(System.out, Charset.defaultCharset()), true);
 
-    // use trec utilities to read trec topics into quality queries
-    TrecTopicsReader qReader = new TrecTopicsReader();
-    QualityQuery[] qqs =
-        qReader.readQueries(Files.newBufferedReader(topicsFile, StandardCharsets.UTF_8));
+      // use trec utilities to read trec topics into quality queries
+      TrecTopicsReader qReader = new TrecTopicsReader();
+      QualityQuery[] qqs =
+          qReader.readQueries(Files.newBufferedReader(topicsFile, StandardCharsets.UTF_8));
 
-    // prepare judge, with trec utilities that read from a QRels file
-    Judge judge = new TrecJudge(Files.newBufferedReader(qrelsFile, StandardCharsets.UTF_8));
+      // prepare judge, with trec utilities that read from a QRels file
+      Judge judge = new TrecJudge(Files.newBufferedReader(qrelsFile, StandardCharsets.UTF_8));
 
-    // validate topics & judgments match each other
-    judge.validateData(qqs, logger);
+      // validate topics & judgments match each other
+      judge.validateData(qqs, logger);
 
-    Set<String> fieldSet = new HashSet<>();
-    if (fieldSpec.indexOf('T') >= 0) fieldSet.add("title");
-    if (fieldSpec.indexOf('D') >= 0) fieldSet.add("description");
-    if (fieldSpec.indexOf('N') >= 0) fieldSet.add("narrative");
+      Set<String> fieldSet = new HashSet<>();
+      if (fieldSpec.indexOf('T') >= 0) fieldSet.add("title");
+      if (fieldSpec.indexOf('D') >= 0) fieldSet.add("description");
+      if (fieldSpec.indexOf('N') >= 0) fieldSet.add("narrative");
 
-    // set the parsing of quality queries into Lucene queries.
-    QualityQueryParser qqParser = new SimpleQQParser(fieldSet.toArray(new String[0]), "body");
+      // set the parsing of quality queries into Lucene queries.
+      QualityQueryParser qqParser = new SimpleQQParser(fieldSet.toArray(new String[0]), "body");
 
-    // run the benchmark
-    QualityBenchmark qrun = new QualityBenchmark(qqs, qqParser, searcher, docNameField);
-    qrun.setMaxResults(maxResults);
-    QualityStats[] stats = qrun.execute(judge, submitLog, logger);
+      // run the benchmark
+      QualityBenchmark qrun = new QualityBenchmark(qqs, qqParser, searcher, docNameField);
+      qrun.setMaxResults(maxResults);
+      QualityStats[] stats = qrun.execute(judge, submitLog, logger);
 
-    // print an avarage sum of the results
-    QualityStats avg = QualityStats.average(stats);
-    avg.log("SUMMARY", 2, logger, "  ");
-    reader.close();
-    dir.close();
+      // print an avarage sum of the results
+      QualityStats avg = QualityStats.average(stats);
+      avg.log("SUMMARY", 2, logger, "  ");
+    }
   }
 }
