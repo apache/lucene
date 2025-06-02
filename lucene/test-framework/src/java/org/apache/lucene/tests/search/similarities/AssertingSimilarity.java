@@ -94,6 +94,8 @@ public class AssertingSimilarity extends Similarity {
       assert scores.length >= buffer.size;
       for (int i = 1; i < buffer.size; ++i) {
         assert buffer.docs[i] > buffer.docs[i - 1];
+      }
+      for (int i = 0; i < buffer.size; ++i) {
         assert buffer.freqs[i] > 0;
       }
       delegate.score(buffer, norms, scores);
