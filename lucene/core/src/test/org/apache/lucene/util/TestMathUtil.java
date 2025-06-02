@@ -183,6 +183,7 @@ public class TestMathUtil extends LuceneTestCase {
   }
 
   public void testUnsignedMin() {
+    assertEquals(0, MathUtil.unsignedMin(0, 0));
     assertEquals(0, MathUtil.unsignedMin(0, 3));
     assertEquals(0, MathUtil.unsignedMin(3, 0));
     assertEquals(0, MathUtil.unsignedMin(0, Integer.MAX_VALUE));
@@ -191,5 +192,8 @@ public class TestMathUtil extends LuceneTestCase {
     assertEquals(Integer.MAX_VALUE, MathUtil.unsignedMin(Integer.MAX_VALUE + 1, Integer.MAX_VALUE));
     assertEquals(Integer.MAX_VALUE, MathUtil.unsignedMin(Integer.MAX_VALUE, Integer.MIN_VALUE));
     assertEquals(Integer.MAX_VALUE, MathUtil.unsignedMin(Integer.MIN_VALUE, Integer.MAX_VALUE));
+    assertEquals(Integer.MIN_VALUE, MathUtil.unsignedMin(Integer.MIN_VALUE, -1));
+    assertEquals(Integer.MIN_VALUE, MathUtil.unsignedMin(-1, Integer.MIN_VALUE));
+    assertEquals(Integer.MIN_VALUE, MathUtil.unsignedMin(Integer.MIN_VALUE, Integer.MIN_VALUE));
   }
 }
