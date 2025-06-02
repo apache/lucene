@@ -150,53 +150,56 @@ class BigramDictionary extends AbstractDictionary {
     int[] buffer = new int[3];
     byte[] intBuffer = new byte[4];
     String tmpword;
-    DataInputStream dctFile = new DataInputStream(Files.newInputStream(Paths.get(dctFilePath)));
+    // Using try-with-resources
+    try (DataInputStream dctFile =
+        new DataInputStream(Files.newInputStream(Paths.get(dctFilePath)))) {
 
-    // GB2312 characters 0 - 6768
-    for (i = GB2312_FIRST_CHAR; i < GB2312_FIRST_CHAR + CHAR_NUM_IN_FILE; i++) {
-      String currentStr = getCCByGB2312Id(i);
-      // if (i == 5231)
-      // System.out.println(i);
+      // GB2312 characters 0 - 6768
+      for (i = GB2312_FIRST_CHAR; i < GB2312_FIRST_CHAR + CHAR_NUM_IN_FILE; i++) {
+        String currentStr = getCCByGB2312Id(i);
+        // if (i == 5231)
+        // System.out.println(i);
 
-      dctFile.read(intBuffer);
-      // the dictionary was developed for C, and byte order must be converted to work with Java
-      cnt = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt();
-      if (cnt <= 0) {
-        continue;
-      }
-      int j = 0;
-      while (j < cnt) {
         dctFile.read(intBuffer);
-        buffer[0] = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // frequency
-        dctFile.read(intBuffer);
-        buffer[1] = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // length
-        dctFile.read(intBuffer);
-        // buffer[2] = ByteBuffer.wrap(intBuffer).order(
-        // ByteOrder.LITTLE_ENDIAN).getInt();// handle
-
-        length = buffer[1];
-        if (length > 0) {
-          byte[] lchBuffer = new byte[length];
-          dctFile.read(lchBuffer);
-          tmpword = new String(lchBuffer, "GB2312");
-          if (i != 3755 + GB2312_FIRST_CHAR) {
-            tmpword = currentStr + tmpword;
-          }
-          char[] carray = tmpword.toCharArray();
-          long hashId = hash1(carray);
-          int index = getAvaliableIndex(hashId, carray);
-          if (index != -1) {
-            if (bigramHashTable[index] == 0) {
-              bigramHashTable[index] = hashId;
-              // bigramStringTable[index] = tmpword;
-            }
-            frequencyTable[index] += buffer[0];
-          }
+        // the dictionary was developed for C, and byte order must be converted to work with Java
+        cnt = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt();
+        if (cnt <= 0) {
+          continue;
         }
-        j++;
+        int j = 0;
+        while (j < cnt) {
+          dctFile.read(intBuffer);
+          buffer[0] =
+              ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // frequency
+          dctFile.read(intBuffer);
+          buffer[1] = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // length
+          dctFile.read(intBuffer);
+          // buffer[2] = ByteBuffer.wrap(intBuffer).order(
+          // ByteOrder.LITTLE_ENDIAN).getInt();// handle
+
+          length = buffer[1];
+          if (length > 0) {
+            byte[] lchBuffer = new byte[length];
+            dctFile.read(lchBuffer);
+            tmpword = new String(lchBuffer, "GB2312");
+            if (i != 3755 + GB2312_FIRST_CHAR) {
+              tmpword = currentStr + tmpword;
+            }
+            char[] carray = tmpword.toCharArray();
+            long hashId = hash1(carray);
+            int index = getAvaliableIndex(hashId, carray);
+            if (index != -1) {
+              if (bigramHashTable[index] == 0) {
+                bigramHashTable[index] = hashId;
+                // bigramStringTable[index] = tmpword;
+              }
+              frequencyTable[index] += buffer[0];
+            }
+          }
+          j++;
+        }
       }
     }
-    dctFile.close();
     // log.info("load dictionary done! " + dctFilePath + " total:" + total);
   }
 

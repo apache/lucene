@@ -136,7 +136,7 @@ public abstract class KnnVectorsReader implements Closeable {
   public void finishMerge() throws IOException {}
 
   /**
-   * Returns the desired size of off-heap memory the given field. This size can be used to help
+   * Returns the desired size of off-heap memory for the given field. This size can be used to help
    * determine the memory requirements for optimal search performance, which can be greatly affected
    * by page faults when not enough memory is available.
    *
@@ -168,7 +168,7 @@ public abstract class KnnVectorsReader implements Closeable {
   }
 
   /**
-   * Merges the Maps returned by {@link #getOffHeapByteSize(FieldInfo)}.
+   * Merges the maps returned by {@link #getOffHeapByteSize(FieldInfo)}.
    *
    * <p>This method is a convenience for aggregating the desired off-heap memory requirements for
    * several fields. The keys in the returned map are a union of the keys in the given maps. Entries
