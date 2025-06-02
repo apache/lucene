@@ -36,7 +36,7 @@ public final class DocAndFloatFeatureBuffer {
   /** Float-valued features */
   public float[] features = EMPTY_FLOATS;
 
-  /** Number of valid entries in the doc ID and score arrays. */
+  /** Number of valid entries in the doc ID and float-valued feature arrays. */
   public int size;
 
   /** Sole constructor. */
