@@ -33,7 +33,7 @@ public final class DocAndFloatFeatureBuffer {
   /** Doc IDs */
   public int[] docs = IntsRef.EMPTY_INTS;
 
-  /** Scores */
+  /** Float-valued features */
   public float[] features = EMPTY_FLOATS;
 
   /** Number of valid entries in the doc ID and score arrays. */
