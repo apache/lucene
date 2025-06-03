@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.search.Weight.DefaultBulkScorer;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.MathUtil;
 
 /**
  * BulkScorer implementation of {@link BlockMaxConjunctionScorer} that focuses on top-level
@@ -88,14 +89,10 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
     while (windowMin < max) {
       // NOTE: windowMax is inclusive
-      int windowMax = max - 1;
-      for (Scorer scorer : scorers) {
-        int blockEnd = scorer.advanceShallow(windowMin);
-        if (blockEnd < windowMax) {
-          windowMax = blockEnd;
-          break;
-        }
-      }
+      int windowMax = Math.min(
+          scorers[0].advanceShallow(windowMin),
+          (int) Math.min(max - 1, windowMin + 65536L)
+      );
 
       float maxWindowScore = computeMaxScore(windowMin, windowMax);
       scoreWindowScoreFirst(collector, acceptDocs, windowMin, windowMax + 1, maxWindowScore);
