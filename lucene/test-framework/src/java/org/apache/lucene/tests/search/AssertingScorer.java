@@ -19,7 +19,7 @@ package org.apache.lucene.tests.search;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
-import org.apache.lucene.search.DocAndScoreBuffer;
+import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FilterDocIdSetIterator;
 import org.apache.lucene.search.Scorer;
@@ -286,7 +286,7 @@ public class AssertingScorer extends Scorer {
   }
 
   @Override
-  public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndScoreBuffer buffer)
+  public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
       throws IOException {
     assert doc != -1;
     in.nextDocsAndScores(upTo, liveDocs, buffer);

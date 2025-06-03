@@ -36,7 +36,6 @@ public final class TermScorer extends Scorer {
   private final NumericDocValues norms;
   private final ImpactsDISI impactsDisi;
   private final MaxScoreCache maxScoreCache;
-  private DocAndFreqBuffer docAndFreqBuffer;
 
   /** Construct a {@link TermScorer} that will iterate all documents. */
   public TermScorer(PostingsEnum postingsEnum, SimScorer scorer, NumericDocValues norms) {
@@ -124,34 +123,27 @@ public final class TermScorer extends Scorer {
   }
 
   @Override
-  public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndScoreBuffer buffer)
+  public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
       throws IOException {
-    if (docAndFreqBuffer == null) {
-      docAndFreqBuffer = new DocAndFreqBuffer();
-    }
-
     for (; ; ) {
       if (impactsDisi != null) {
         impactsDisi.ensureCompetitive();
       }
 
-      postingsEnum.nextPostings(upTo, docAndFreqBuffer);
-      if (liveDocs != null && docAndFreqBuffer.size != 0) {
+      postingsEnum.nextPostings(upTo, buffer);
+      if (liveDocs != null && buffer.size != 0) {
         // An empty return value indicates that there are no more docs before upTo. We may be
         // unlucky, and there are docs left, but all docs from the current batch happen to be marked
         // as deleted. So we need to iterate until we find a batch that has at least one non-deleted
         // doc.
-        docAndFreqBuffer.apply(liveDocs);
-        if (docAndFreqBuffer.size == 0) {
+        buffer.apply(liveDocs);
+        if (buffer.size == 0) {
           continue;
         }
       }
       break;
     }
 
-    buffer.growNoCopy(docAndFreqBuffer.size);
-    buffer.size = docAndFreqBuffer.size;
-    System.arraycopy(docAndFreqBuffer.docs, 0, buffer.docs, 0, docAndFreqBuffer.size);
-    scorer.score(docAndFreqBuffer, norms, buffer.scores);
+    scorer.score(buffer, norms);
   }
 }

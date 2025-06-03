@@ -66,7 +66,7 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
-import org.apache.lucene.search.DocAndFreqBuffer;
+import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FlushInfo;
@@ -1443,7 +1443,7 @@ public class RandomPostingsTester {
 
         pe1.nextDoc();
         pe2.nextDoc();
-        DocAndFreqBuffer buffer = new DocAndFreqBuffer();
+        DocAndFloatFeatureBuffer buffer = new DocAndFloatFeatureBuffer();
         while (true) {
           int curDoc = pe1.docID();
           int upTo =
@@ -1454,7 +1454,7 @@ public class RandomPostingsTester {
           for (int i = 0; i < buffer.size; ++i) {
             assertTrue(buffer.docs[i] < upTo);
             assertEquals(pe2.docID(), buffer.docs[i]);
-            assertEquals(pe2.freq(), buffer.freqs[i]);
+            assertEquals(0f, pe2.freq(), buffer.features[i]);
             pe2.nextDoc();
           }
 

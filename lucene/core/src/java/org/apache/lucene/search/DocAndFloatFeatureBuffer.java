@@ -21,29 +21,32 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IntsRef;
 
 /**
- * Wrapper around parallel arrays storing doc IDs and their corresponding frequencies.
+ * Wrapper around parallel arrays storing doc IDs and their corresponding features, stored as Java
+ * floats. These features may be anything, but are typically a term frequency or a score.
  *
  * @lucene.internal
  */
-public final class DocAndFreqBuffer {
+public final class DocAndFloatFeatureBuffer {
+
+  private static final float[] EMPTY_FLOATS = new float[0];
 
   /** Doc IDs */
   public int[] docs = IntsRef.EMPTY_INTS;
 
-  /** Frequencies */
-  public int[] freqs = IntsRef.EMPTY_INTS;
+  /** Float-valued features */
+  public float[] features = EMPTY_FLOATS;
 
-  /** Number of valid entries in the doc ID and frequency arrays. */
+  /** Number of valid entries in the doc ID and float-valued feature arrays. */
   public int size;
 
   /** Sole constructor. */
-  public DocAndFreqBuffer() {}
+  public DocAndFloatFeatureBuffer() {}
 
   /** Grow both arrays to ensure that they can store at least the given number of entries. */
   public void growNoCopy(int minSize) {
     if (docs.length < minSize) {
       docs = ArrayUtil.growNoCopy(docs, minSize);
-      freqs = new int[docs.length];
+      features = new float[docs.length];
     }
   }
 
@@ -53,7 +56,7 @@ public final class DocAndFreqBuffer {
     for (int i = 0; i < size; ++i) {
       if (liveDocs.get(docs[i])) {
         docs[newSize] = docs[i];
-        freqs[newSize] = freqs[i];
+        features[newSize] = features[i];
         newSize++;
       }
     }
