@@ -87,7 +87,13 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
     while (windowMin < max) {
       // NOTE: windowMax is inclusive
-      int windowMax = Math.min(scorers[0].advanceShallow(windowMin), max - 1);
+      int leadBlockEnd = scorers[0].advanceShallow(windowMin);
+      int windowMax;
+      if (leadBlockEnd == DocIdSetIterator.NO_MORE_DOCS) {
+        windowMax = (int) Math.min(windowMin + 65536L, max - 1);
+      } else {
+        windowMax = Math.min(leadBlockEnd, max - 1);
+      }
 
       float maxWindowScore = computeMaxScore(windowMin, windowMax);
       scoreWindowScoreFirst(collector, acceptDocs, windowMin, windowMax + 1, maxWindowScore);
@@ -166,6 +172,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
         scorers[0].nextDocsAndScores(max, acceptDocs, docAndScoreBuffer)) {
 
       docAndScoreAccBuffer.copyFrom(docAndScoreBuffer);
+      int maxOtherDoc = -1;
 
       for (int i = 1; i < scorers.length; ++i) {
         double sumOfOtherClause = sumOfOtherClauses[i];
@@ -178,20 +185,17 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
         }
 
         ScorerUtil.applyRequiredClause(docAndScoreAccBuffer, iterators[i], scorables[i]);
+        maxOtherDoc = Math.max(iterators[i].docID(), maxOtherDoc);
       }
 
       for (int i = 0; i < docAndScoreAccBuffer.size; ++i) {
         scorable.score = (float) docAndScoreAccBuffer.scores[i];
         collector.collect(docAndScoreAccBuffer.docs[i]);
       }
-    }
 
-    int maxOtherDoc = -1;
-    for (int i = 1; i < iterators.length; ++i) {
-      maxOtherDoc = Math.max(iterators[i].docID(), maxOtherDoc);
-    }
-    if (lead.docID() < maxOtherDoc) {
-      lead.advance(maxOtherDoc);
+      if (lead.docID() < maxOtherDoc) {
+        lead.advance(maxOtherDoc);
+      }
     }
   }
 

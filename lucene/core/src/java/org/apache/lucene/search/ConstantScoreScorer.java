@@ -122,27 +122,6 @@ public final class ConstantScoreScorer extends Scorer {
   }
 
   @Override
-  public int advanceShallow(int target) throws IOException {
-    return target | 0xFFFF;
-  }
-
-  @Override
-  public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndScoreBuffer buffer) throws IOException {
-    int batchSize = 64; // bigger than default
-    buffer.growNoCopy(batchSize);
-    int size = 0;
-    DocIdSetIterator iterator = iterator();
-    for (int doc = docID(); doc < upTo && size < batchSize; doc = iterator.nextDoc()) {
-      if (liveDocs == null || liveDocs.get(doc)) {
-        buffer.docs[size] = doc;
-        ++size;
-      }
-    }
-    Arrays.fill(buffer.scores, 0, size, score);
-    buffer.size = size;
-  }
-
-  @Override
   public void setMinCompetitiveScore(float minScore) throws IOException {
     if (scoreMode == ScoreMode.TOP_SCORES && minScore > score) {
       ((DocIdSetIteratorWrapper) approximation).delegate = DocIdSetIterator.empty();
