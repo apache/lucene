@@ -16,7 +16,10 @@
  */
 package org.apache.lucene.search;
 
+import org.apache.lucene.util.Bits;
+
 import java.io.IOException;
+import java.util.Arrays;
 
 /**
  * A constant-scoring {@link Scorer}.
@@ -124,6 +127,27 @@ public final class ConstantScoreScorer extends Scorer {
       ((DocIdSetIteratorWrapper) approximation).delegate = DocIdSetIterator.empty();
     }
   }
+
+  @Override
+  public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndScoreBuffer buffer) throws IOException {
+    int batchSize = 64;
+    buffer.growNoCopy(batchSize);
+    int size = 0;
+    DocIdSetIterator iterator = iterator();
+    for (int doc = docID(); doc < upTo && size < batchSize; doc = iterator.nextDoc()) {
+      if (liveDocs == null || liveDocs.get(doc)) {
+        buffer.docs[size] = doc;
+        ++size;
+      }
+    }
+    Arrays.fill(buffer.scores, 0, size, score);
+    buffer.size = size;
+  }
+
+//  @Override
+//  public int advanceShallow(int target) throws IOException {
+//    return target | 0xFFFF;
+//  }
 
   @Override
   public DocIdSetIterator iterator() {
