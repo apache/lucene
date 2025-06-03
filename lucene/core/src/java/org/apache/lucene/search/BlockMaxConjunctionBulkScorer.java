@@ -39,6 +39,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   private final DocIdSetIterator[] iterators;
   private final DocIdSetIterator lead;
   private final DocAndScore scorable = new DocAndScore();
+  private final float[] maxScores
   private final double[] sumOfOtherClauses;
   private final int maxDoc;
   private final DocAndScoreBuffer docAndScoreBuffer = new DocAndScoreBuffer();
@@ -55,6 +56,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     this.iterators =
         Arrays.stream(this.scorers).map(Scorer::iterator).toArray(DocIdSetIterator[]::new);
     lead = ScorerUtil.likelyImpactsEnum(iterators[0]);
+    this.maxScores = new float[this.scorers.length];
     this.sumOfOtherClauses = new double[this.scorers.length];
     Arrays.fill(sumOfOtherClauses, Double.POSITIVE_INFINITY);
     this.maxDoc = maxDoc;
@@ -67,7 +69,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
     double maxWindowScore = 0;
     for (int i = 0; i < scorers.length; ++i) {
-      float maxClauseScore = scorers[i].getMaxScore(windowMax);
+      float maxClauseScore = maxScores[i] = scorers[i].getMaxScore(windowMax);
       sumOfOtherClauses[i] = maxClauseScore;
       maxWindowScore += maxClauseScore;
     }
@@ -77,22 +79,26 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     return (float) maxWindowScore;
   }
 
+
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
     collector.setScorer(scorable);
 
-    int windowMin = Math.max(lead.docID(), min);
-    while (windowMin < max) {
-      // Use impacts of the least costly scorer to compute windows
-      // NOTE: windowMax is inclusive
-      int windowMax = Math.min(scorers[0].advanceShallow(windowMin), max - 1);
+    int windowMin = scoreDocFirstUntilDynamicPruning(collector, acceptDocs, min, max);
 
-      if (0 < scorable.minCompetitiveScore) {
-        float maxWindowScore = computeMaxScore(windowMin, windowMax);
-        scoreWindowScoreFirst(collector, acceptDocs, windowMin, windowMax + 1, maxWindowScore);
-      } else {
-        scoreWindowDocFirst(collector, acceptDocs, windowMin, windowMax + 1);
+    while (windowMin < max) {
+      // NOTE: windowMax is inclusive
+      int windowMax = max - 1;
+      for (Scorer scorer : scorers) {
+        int blockEnd = scorer.advanceShallow(windowMin);
+        if (blockEnd < windowMax) {
+          windowMax = blockEnd;
+          break;
+        }
       }
+
+      float maxWindowScore = computeMaxScore(windowMin, windowMax);
+      scoreWindowScoreFirst(collector, acceptDocs, windowMin, windowMax + 1, maxWindowScore);
       windowMin = Math.max(lead.docID(), windowMax + 1);
     }
 
@@ -103,7 +109,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
    * Score a window of doc IDs by first finding agreement between all iterators, and only then
    * compute scores and call the collector.
    */
-  private void scoreWindowDocFirst(LeafCollector collector, Bits acceptDocs, int min, int max)
+  private int scoreDocFirstUntilDynamicPruning(LeafCollector collector, Bits acceptDocs, int min, int max)
       throws IOException {
     int doc = lead.docID();
     if (doc < min) {
@@ -132,12 +138,12 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
         scorable.score = (float) score;
         collector.collect(doc);
         if (scorable.minCompetitiveScore > 0) {
-          scoreWindowScoreFirst(collector, acceptDocs, lead.nextDoc(), max, Float.POSITIVE_INFINITY);
-          return;
+          return lead.nextDoc();
         }
       }
       doc = lead.nextDoc();
     }
+    return doc;
   }
 
   /**
@@ -170,11 +176,13 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       docAndScoreAccBuffer.copyFrom(docAndScoreBuffer);
 
       for (int i = 1; i < scorers.length; ++i) {
-        ScorerUtil.filterCompetitiveHits(
-            docAndScoreAccBuffer,
-            sumOfOtherClauses[i],
-            scorable.minCompetitiveScore,
-            scorers.length);
+        if (maxScores[i - 1] != 0f) {
+          ScorerUtil.filterCompetitiveHits(
+              docAndScoreAccBuffer,
+              sumOfOtherClauses[i],
+              scorable.minCompetitiveScore,
+              scorers.length);
+        }
 
         ScorerUtil.applyRequiredClause(docAndScoreAccBuffer, iterators[i], scorables[i]);
       }
