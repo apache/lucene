@@ -34,6 +34,8 @@ import org.apache.lucene.util.Bits;
  */
 final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
+  private static final long DEFAULT_WINDOW_SIZE = 65536L;
+
   private final Scorer[] scorers;
   private final Scorable[] scorables;
   private final DocIdSetIterator[] iterators;
@@ -88,7 +90,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       int leadBlockEnd = scorers[0].advanceShallow(windowMin);
       int windowMax = max - 1;
       if (leadBlockEnd == DocIdSetIterator.NO_MORE_DOCS) {
-        windowMax = (int) Math.min(windowMin + 65536L, windowMax);
+        windowMax = (int) Math.min(windowMin + DEFAULT_WINDOW_SIZE, windowMax);
       } else {
         windowMax = Math.min(leadBlockEnd, windowMax);
       }

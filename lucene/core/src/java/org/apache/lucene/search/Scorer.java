@@ -93,7 +93,7 @@ public abstract class Scorer extends Scorable {
    * <p>The default implementation is provided below:
    *
    * <pre class="prettyprint">
-   * int batchSize = 16; // arbitrary
+   * int batchSize = 64; // arbitrary
    * buffer.growNoCopy(batchSize);
    * int size = 0;
    * DocIdSetIterator iterator = iterator();
@@ -117,7 +117,7 @@ public abstract class Scorer extends Scorable {
    */
   public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndScoreBuffer buffer)
       throws IOException {
-    int batchSize = 16; // arbitrary
+    int batchSize = 64; // arbitrary
     buffer.growNoCopy(batchSize);
     int size = 0;
     DocIdSetIterator iterator = iterator();
