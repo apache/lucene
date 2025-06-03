@@ -39,7 +39,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   private final DocIdSetIterator[] iterators;
   private final DocIdSetIterator lead;
   private final DocAndScore scorable = new DocAndScore();
-  private final float[] maxScores
+  private final float[] maxScores;
   private final double[] sumOfOtherClauses;
   private final int maxDoc;
   private final DocAndScoreBuffer docAndScoreBuffer = new DocAndScoreBuffer();
