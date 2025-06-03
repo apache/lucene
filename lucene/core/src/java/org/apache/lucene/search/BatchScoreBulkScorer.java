@@ -26,7 +26,7 @@ import org.apache.lucene.util.Bits;
 class BatchScoreBulkScorer extends BulkScorer {
 
   private final SimpleScorable scorable = new SimpleScorable();
-  private final DocAndScoreBuffer buffer = new DocAndScoreBuffer();
+  private final DocAndFloatFeatureBuffer buffer = new DocAndFloatFeatureBuffer();
   private final Scorer scorer;
 
   BatchScoreBulkScorer(Scorer scorer) {
@@ -50,7 +50,7 @@ class BatchScoreBulkScorer extends BulkScorer {
         buffer.size > 0;
         scorer.nextDocsAndScores(max, acceptDocs, buffer)) {
       for (int i = 0, size = buffer.size; i < size; i++) {
-        float score = scorable.score = buffer.scores[i];
+        float score = scorable.score = buffer.features[i];
         if (score >= scorable.minCompetitiveScore) {
           collector.collect(buffer.docs[i]);
         }

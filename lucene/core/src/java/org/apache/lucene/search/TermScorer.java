@@ -39,7 +39,6 @@ public final class TermScorer extends Scorer {
   private final NumericDocValues norms;
   private final ImpactsDISI impactsDisi;
   private final MaxScoreCache maxScoreCache;
-  private DocAndFreqBuffer docAndFreqBuffer;
   private long[] normValues = LongsRef.EMPTY_LONGS;
 
   /** Construct a {@link TermScorer} that will iterate all documents. */
@@ -128,32 +127,28 @@ public final class TermScorer extends Scorer {
   }
 
   @Override
-  public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndScoreBuffer buffer)
+  public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
       throws IOException {
-    if (docAndFreqBuffer == null) {
-      docAndFreqBuffer = new DocAndFreqBuffer();
-    }
-
     for (; ; ) {
       if (impactsDisi != null) {
         impactsDisi.ensureCompetitive();
       }
 
-      postingsEnum.nextPostings(upTo, docAndFreqBuffer);
-      if (liveDocs != null && docAndFreqBuffer.size != 0) {
+      postingsEnum.nextPostings(upTo, buffer);
+      if (liveDocs != null && buffer.size != 0) {
         // An empty return value indicates that there are no more docs before upTo. We may be
         // unlucky, and there are docs left, but all docs from the current batch happen to be marked
         // as deleted. So we need to iterate until we find a batch that has at least one non-deleted
         // doc.
-        docAndFreqBuffer.apply(liveDocs);
-        if (docAndFreqBuffer.size == 0) {
+        buffer.apply(liveDocs);
+        if (buffer.size == 0) {
           continue;
         }
       }
       break;
     }
 
-    int size = docAndFreqBuffer.size;
+    int size = buffer.size;
     if (normValues.length < size) {
       normValues = new long[ArrayUtil.oversize(size, Long.BYTES)];
       if (norms == null) {
@@ -162,7 +157,7 @@ public final class TermScorer extends Scorer {
     }
     if (norms != null) {
       for (int i = 0; i < size; ++i) {
-        if (norms.advanceExact(docAndFreqBuffer.docs[i])) {
+        if (norms.advanceExact(buffer.docs[i])) {
           normValues[i] = norms.longValue();
         } else {
           normValues[i] = 1L;
@@ -170,13 +165,10 @@ public final class TermScorer extends Scorer {
       }
     }
 
-    buffer.growNoCopy(size);
-    buffer.size = size;
-    System.arraycopy(docAndFreqBuffer.docs, 0, buffer.docs, 0, size);
     for (int i = 0; i < size; ++i) {
       // Unless SimScorer#score is megamorphic, SimScorer#score should inline and (part of) score
       // computations should auto-vectorize.
-      buffer.scores[i] = scorer.score(docAndFreqBuffer.freqs[i], normValues[i]);
+      buffer.features[i] = scorer.score(buffer.features[i], normValues[i]);
     }
   }
 }
