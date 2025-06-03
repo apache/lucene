@@ -40,7 +40,6 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   private final DocIdSetIterator[] iterators;
   private final DocIdSetIterator lead;
   private final DocAndScore scorable = new DocAndScore();
-  private final float[] maxScores;
   private final double[] sumOfOtherClauses;
   private final int maxDoc;
   private final DocAndScoreBuffer docAndScoreBuffer = new DocAndScoreBuffer();
@@ -57,7 +56,6 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     this.iterators =
         Arrays.stream(this.scorers).map(Scorer::iterator).toArray(DocIdSetIterator[]::new);
     lead = ScorerUtil.likelyImpactsEnum(iterators[0]);
-    this.maxScores = new float[this.scorers.length];
     this.sumOfOtherClauses = new double[this.scorers.length];
     Arrays.fill(sumOfOtherClauses, Double.POSITIVE_INFINITY);
     this.maxDoc = maxDoc;
@@ -70,7 +68,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
     double maxWindowScore = 0;
     for (int i = 0; i < scorers.length; ++i) {
-      float maxClauseScore = maxScores[i] = scorers[i].getMaxScore(windowMax);
+      float maxClauseScore = scorers[i].getMaxScore(windowMax);
       sumOfOtherClauses[i] = maxClauseScore;
       maxWindowScore += maxClauseScore;
     }
@@ -91,7 +89,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       // NOTE: windowMax is inclusive
       int windowMax = Math.min(
           scorers[0].advanceShallow(windowMin),
-          (int) Math.min(max - 1L, windowMin + 65536)
+          (int) Math.min(max - 1, windowMin + 65536L)
       );
 
       float maxWindowScore = computeMaxScore(windowMin, windowMax);
@@ -173,10 +171,12 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       docAndScoreAccBuffer.copyFrom(docAndScoreBuffer);
 
       for (int i = 1; i < scorers.length; ++i) {
-        if (maxScores[i - 1] != 0f) {
+        double sumOfOtherClause = sumOfOtherClauses[i];
+        if (sumOfOtherClause != Double.POSITIVE_INFINITY
+            && sumOfOtherClause != sumOfOtherClauses[i - 1]) {
           ScorerUtil.filterCompetitiveHits(
               docAndScoreAccBuffer,
-              sumOfOtherClauses[i],
+              sumOfOtherClause,
               scorable.minCompetitiveScore,
               scorers.length);
         }
