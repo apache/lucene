@@ -81,7 +81,7 @@ final class BooleanScorer extends BulkScorer {
   final int minShouldMatch;
   final long cost;
   final boolean needsScores;
-  private final DocAndScoreBuffer docAndScoreBuffer = new DocAndScoreBuffer();
+  private final DocAndFloatFeatureBuffer docAndScoreBuffer = new DocAndFloatFeatureBuffer();
 
   BooleanScorer(Collection<Scorer> scorers, int minShouldMatch, boolean needsScores) {
     if (minShouldMatch < 1 || minShouldMatch > scorers.size()) {
@@ -148,7 +148,7 @@ final class BooleanScorer extends BulkScorer {
             w.scorer.nextDocsAndScores(max, acceptDocs, docAndScoreBuffer)) {
           for (int index = 0; index < docAndScoreBuffer.size; ++index) {
             final int doc = docAndScoreBuffer.docs[index];
-            final float score = docAndScoreBuffer.scores[index];
+            final float score = docAndScoreBuffer.features[index];
             final int d = doc & MASK;
             matching.set(d);
             final Bucket bucket = buckets[d];
