@@ -48,6 +48,7 @@ import urllib.request
 from collections import OrderedDict
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any, Self, TextIO, cast, override
 
 import yaml
@@ -488,7 +489,7 @@ class ReleaseState:
     print("Saving")
     if not os.path.exists(os.path.join(self.config_path, self.release_version)):
       print("Creating folder %s" % os.path.join(self.config_path, self.release_version))
-      os.makedirs(os.path.join(self.config_path, self.release_version))
+      Path(os.path.join(self.config_path, self.release_version)).mkdir(parents=True)
 
     with open(os.path.join(self.config_path, self.release_version, "state.yaml"), "w") as fp:
       yaml.dump(self.to_dict(), fp, sort_keys=False, default_flow_style=False)
@@ -532,14 +533,14 @@ class ReleaseState:
     folder = os.path.join(self.config_path, self.release_version)
     if not os.path.exists(folder):
       print("Creating folder %s" % folder)
-      os.makedirs(folder)
+      Path(folder).mkdir(parents=True)
     return folder
 
   def get_rc_folder(self):
     folder = os.path.join(self.get_release_folder(), "RC%d" % self.rc_number)
     if not os.path.exists(folder):
       print("Creating folder %s" % folder)
-      os.makedirs(folder)
+      Path(folder).mkdir(parents=True)
     return folder
 
   def get_dist_folder(self):
@@ -1282,11 +1283,11 @@ def main():
       if root.startswith("~/"):
         release_root = os.path.expanduser(root)
       else:
-        release_root = os.path.abspath(root)
+        release_root = str(Path(root).resolve())
     if not os.path.exists(release_root):
       try:
         print("Creating release root %s" % release_root)
-        os.makedirs(release_root)
+        Path(release_root).mkdir(parents=True)
       except Exception as e:
         sys.exit("Error while creating %s: %s" % (release_root, e))
     release_version = get_release_version()
@@ -1305,7 +1306,7 @@ def main():
     y = yaml.load(open(os.path.join(script_path, "releaseWizard.yaml")), Loader=yaml.Loader)
     templates = y.get("templates")
     todo_list = y.get("groups")
-    state = ReleaseState(release_root, release_version, getScriptVersion())
+    state = ReleaseState(str(release_root), release_version, getScriptVersion())
     state.init_todos(bootstrap_todos(todo_list))
     state.load()
   except Exception as e:
@@ -1351,7 +1352,7 @@ def main():
 
 
 sys.path.append(os.path.dirname(__file__))
-current_git_root = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), os.path.pardir, os.path.pardir))
+current_git_root: str = str(Path(os.path.join(Path(os.path.dirname(__file__)).resolve(), os.path.pardir, os.path.pardir)).resolve())
 
 dry_run = False
 
@@ -1389,7 +1390,7 @@ def run_with_log_tail(command: str | list[str], cwd: str | None, logfile: str | 
   if logfile:
     logdir = os.path.dirname(logfile)
     if not os.path.exists(logdir):
-      os.makedirs(logdir)
+      Path(logdir).mkdir(parents=True)
     fh = open(logfile, "w")
   rc = run_follow(command, cwd, fh=fh, tee=tee, live=live, shell=shell)
   if logfile:

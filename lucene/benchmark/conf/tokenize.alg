@@ -22,7 +22,7 @@
 #
 # To use this run:
 #
-#   gradlew :lucene:benchmark:run -Ptask.alg=conf/tokenize.alg
+#   ./gradlew :lucene:benchmark:run -PtaskAlg=conf/tokenize.alg
 #
 
 content.source=org.apache.lucene.benchmark.byTask.feeds.ReutersContentSource

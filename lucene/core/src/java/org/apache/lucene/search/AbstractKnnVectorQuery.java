@@ -42,6 +42,7 @@ import org.apache.lucene.search.knn.TopKnnCollectorManager;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Uses {@link KnnVectorsReader#search} to perform nearest neighbour search.
@@ -194,19 +195,23 @@ abstract class AbstractKnnVectorQuery extends Query {
     final int cost = acceptDocs.cardinality();
     QueryTimeout queryTimeout = timeLimitingKnnCollectorManager.getQueryTimeout();
 
-    if (cost <= k) {
-      // If there are <= k possible matches, short-circuit and perform exact search, since HNSW
-      // must always visit at least k documents
+    float leafProportion = ctx.reader().maxDoc() / (float) ctx.parent.reader().maxDoc();
+    int perLeafTopK = perLeafTopKCalculation(k, leafProportion);
+
+    if (cost <= perLeafTopK) {
+      // If there are <= perLeafTopK possible matches, short-circuit and perform exact search, since
+      // HNSW must always visit at least perLeafTopK documents
       return exactSearch(ctx, new BitSetIterator(acceptDocs, cost), queryTimeout);
     }
 
     // Perform the approximate kNN search
     // We pass cost + 1 here to account for the edge case when we explore exactly cost vectors
     TopDocs results = approximateSearch(ctx, acceptDocs, cost + 1, timeLimitingKnnCollectorManager);
+
     if ((results.totalHits.relation() == TotalHits.Relation.EQUAL_TO
-            // We know that there are more than `k` available docs, if we didn't even get `k`
-            // something weird happened, and we need to drop to exact search
-            && results.scoreDocs.length >= k)
+            // We know that there are more than `perLeafTopK` available docs, if we didn't even get
+            // `perLeafTopK` something weird happened, and we need to drop to exact search
+            && results.scoreDocs.length >= perLeafTopK)
         // Return partial results only when timeout is met
         || (queryTimeout != null && queryTimeout.shouldExit())) {
       return results;
@@ -222,15 +227,25 @@ abstract class AbstractKnnVectorQuery extends Query {
       // If we already have a BitSet and no deletions, reuse the BitSet
       return bitSetIterator.getBitSet();
     } else {
-      // Create a new BitSet from matching and live docs
-      FilteredDocIdSetIterator filterIterator =
-          new FilteredDocIdSetIterator(iterator) {
-            @Override
-            protected boolean match(int doc) {
-              return liveDocs == null || liveDocs.get(doc);
-            }
-          };
-      return BitSet.of(filterIterator, maxDoc);
+      int threshold = maxDoc >> 7; // same as BitSet#of
+      if (iterator.cost() >= threshold) {
+        // take advantage of Disi#intoBitset and Bits#applyMask
+        FixedBitSet bitSet = new FixedBitSet(maxDoc);
+        bitSet.or(iterator);
+        if (liveDocs != null) {
+          liveDocs.applyMask(bitSet, 0);
+        }
+        return bitSet;
+      } else {
+        FilteredDocIdSetIterator filterIterator =
+            new FilteredDocIdSetIterator(iterator) {
+              @Override
+              protected boolean match(int doc) {
+                return liveDocs == null || liveDocs.get(doc);
+              }
+            };
+        return BitSet.of(filterIterator, maxDoc); // create a sparse bitset
+      }
     }
   }
 

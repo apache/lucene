@@ -75,9 +75,10 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
   static final int OUTPUT_FLAG_HAS_TERMS = 0x2;
 
   /** Extension of terms file */
-  static final String TERMS_EXTENSION = "tim";
+  public static final String TERMS_EXTENSION = "tim";
 
-  static final String TERMS_CODEC_NAME = "BlockTreeTermsDict";
+  /** Extension of terms codec name */
+  public static final String TERMS_CODEC_NAME = "BlockTreeTermsDict";
 
   /** Initial terms format. */
   public static final int VERSION_START = 0;
@@ -94,14 +95,16 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
   public static final int VERSION_CURRENT = VERSION_FST_CONTINUOUS_ARCS;
 
   /** Extension of terms index file */
-  static final String TERMS_INDEX_EXTENSION = "tip";
+  public static final String TERMS_INDEX_EXTENSION = "tip";
 
-  static final String TERMS_INDEX_CODEC_NAME = "BlockTreeTermsIndex";
+  /** Extension of terms index codec name */
+  public static final String TERMS_INDEX_CODEC_NAME = "BlockTreeTermsIndex";
 
   /** Extension of terms meta file */
-  static final String TERMS_META_EXTENSION = "tmd";
+  public static final String TERMS_META_EXTENSION = "tmd";
 
-  static final String TERMS_META_CODEC_NAME = "BlockTreeTermsMeta";
+  /** Extension of terms meta codec name */
+  public static final String TERMS_META_CODEC_NAME = "BlockTreeTermsMeta";
 
   // Open input to the main terms dict file (_X.tib)
   final IndexInput termsIn;

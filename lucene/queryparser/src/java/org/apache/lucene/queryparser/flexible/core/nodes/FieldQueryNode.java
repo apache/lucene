@@ -52,7 +52,8 @@ public class FieldQueryNode extends QueryNodeImpl
     this.setLeaf(true);
   }
 
-  protected CharSequence getTermEscaped(EscapeQuerySyntax escaper) {
+  @Override
+  public CharSequence getTermEscaped(EscapeQuerySyntax escaper) {
     return escaper.escape(this.text, Locale.getDefault(), EscapeQuerySyntax.Type.NORMAL);
   }
 
