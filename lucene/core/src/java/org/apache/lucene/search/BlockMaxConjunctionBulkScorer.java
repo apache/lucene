@@ -87,10 +87,8 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
     while (windowMin < max) {
       // NOTE: windowMax is inclusive
-      int windowMax = Math.min(
-          scorers[0].advanceShallow(windowMin),
-          (int) Math.min(max - 1, windowMin + 65536L)
-      );
+      int windowMax = Math.min(scorers[0].advanceShallow(windowMin), max - 1);
+      ConstantScoreScorer
 
       float maxWindowScore = computeMaxScore(windowMin, windowMax);
       scoreWindowScoreFirst(collector, acceptDocs, windowMin, windowMax + 1, maxWindowScore);
@@ -172,8 +170,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
       for (int i = 1; i < scorers.length; ++i) {
         double sumOfOtherClause = sumOfOtherClauses[i];
-        if (sumOfOtherClause != Double.POSITIVE_INFINITY
-            && sumOfOtherClause != sumOfOtherClauses[i - 1]) {
+        if (sumOfOtherClause != sumOfOtherClauses[i - 1]) {
           ScorerUtil.filterCompetitiveHits(
               docAndScoreAccBuffer,
               sumOfOtherClause,
