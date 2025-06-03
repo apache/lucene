@@ -16,10 +16,7 @@
  */
 package org.apache.lucene.search;
 
-import org.apache.lucene.util.Bits;
-
 import java.io.IOException;
-import java.util.Arrays;
 
 /**
  * A constant-scoring {@link Scorer}.
