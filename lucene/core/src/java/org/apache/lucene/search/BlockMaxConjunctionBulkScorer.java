@@ -88,7 +88,6 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     while (windowMin < max) {
       // NOTE: windowMax is inclusive
       int windowMax = Math.min(scorers[0].advanceShallow(windowMin), max - 1);
-      ConstantScoreScorer
 
       float maxWindowScore = computeMaxScore(windowMin, windowMax);
       scoreWindowScoreFirst(collector, acceptDocs, windowMin, windowMax + 1, maxWindowScore);
