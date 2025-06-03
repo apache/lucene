@@ -20,7 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.CollectionStatistics;
-import org.apache.lucene.search.DocAndFreqBuffer;
+import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.similarities.Similarity;
@@ -89,20 +89,17 @@ public class AssertingSimilarity extends Similarity {
     }
 
     @Override
-    public void score(DocAndFreqBuffer buffer, NumericDocValues norms, float[] scores)
-        throws IOException {
-      assert scores.length >= buffer.size;
+    public void score(DocAndFloatFeatureBuffer buffer, NumericDocValues norms) throws IOException {
       for (int i = 1; i < buffer.size; ++i) {
         assert buffer.docs[i] > buffer.docs[i - 1];
       }
       for (int i = 0; i < buffer.size; ++i) {
-        assert buffer.freqs[i] > 0;
+        assert buffer.features[i] > 0;
       }
-      delegate.score(buffer, norms, scores);
+      delegate.score(buffer, norms);
       for (int i = 0; i < buffer.size; ++i) {
-        float score = scores[i];
+        float score = buffer.features[i];
         assert Float.isFinite(score);
-        assert score <= delegate.score(buffer.freqs[i], 1);
         assert score >= 0;
       }
     }

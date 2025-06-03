@@ -25,7 +25,7 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.CollectionStatistics;
-import org.apache.lucene.search.DocAndFreqBuffer;
+import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.similarities.IndriDirichletSimilarity;
@@ -534,7 +534,7 @@ public abstract class BaseSimilarityTestCase extends LuceneTestCase {
     SimScorer scorer = similarity.scorer(random().nextFloat(5f), corpus, term);
     int freqUpperBound =
         Math.toIntExact(Math.min(term.totalTermFreq() - term.docFreq() + 1, Integer.MAX_VALUE));
-    DocAndFreqBuffer buffer = new DocAndFreqBuffer();
+    DocAndFloatFeatureBuffer buffer = new DocAndFloatFeatureBuffer();
     int iters = atLeast(3);
     for (int iter = 0; iter < iters; ++iter) {
       int size = TestUtil.nextInt(random, 0, 200);
@@ -549,7 +549,7 @@ public abstract class BaseSimilarityTestCase extends LuceneTestCase {
       for (int i = 0; i < size; ++i) {
         buffer.docs[i] = prevDoc + TestUtil.nextInt(random, 1, 5);
         prevDoc = buffer.docs[i];
-        buffer.freqs[i] = TestUtil.nextInt(random, 1, freqUpperBound);
+        buffer.features[i] = TestUtil.nextInt(random, 1, freqUpperBound);
         if (hasNorms) {
           norms[i] = TestUtil.nextLong(random, 1, 255);
         }
@@ -601,13 +601,14 @@ public abstract class BaseSimilarityTestCase extends LuceneTestCase {
             };
       }
 
-      float[] actualScores = new float[size];
-      scorer.score(buffer, normValues, actualScores);
       float[] expectedScores = new float[size];
       for (int i = 0; i < size; ++i) {
-        expectedScores[i] = scorer.score(buffer.freqs[i], hasNorms ? norms[i] : 1L);
+        expectedScores[i] = scorer.score(buffer.features[i], hasNorms ? norms[i] : 1L);
       }
-      assertArrayEquals(expectedScores, actualScores, 0f);
+      scorer.score(buffer, normValues);
+
+      assertArrayEquals(
+          expectedScores, ArrayUtil.copyOfSubArray(buffer.features, 0, buffer.size), 0f);
     }
   }
 

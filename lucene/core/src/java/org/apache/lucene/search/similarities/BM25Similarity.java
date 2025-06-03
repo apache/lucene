@@ -21,9 +21,10 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.CollectionStatistics;
-import org.apache.lucene.search.DocAndFreqBuffer;
+import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.SmallFloat;
 
 /**
@@ -210,6 +211,12 @@ public class BM25Similarity extends Similarity {
     /** weight (idf * boost) */
     private final float weight;
 
+    /**
+     * Temporary array to store norm inverses and help {@link #score(DocAndFloatFeatureBuffer,
+     * NumericDocValues)} auto-vectorize.
+     */
+    private float[] normInverses = null;
+
     BM25Scorer(float boost, float k1, float b, Explanation idf, float avgdl, float[] cache) {
       this.boost = boost;
       this.idf = idf;
@@ -251,17 +258,17 @@ public class BM25Similarity extends Similarity {
     }
 
     @Override
-    public void score(DocAndFreqBuffer buffer, NumericDocValues norms, float[] scores)
-        throws IOException {
+    public void score(DocAndFloatFeatureBuffer buffer, NumericDocValues norms) throws IOException {
       if (norms == null) {
         float normInverse = cache[1];
         // The below loop should auto-vectorize.
         for (int i = 0; i < buffer.size; ++i) {
-          scores[i] = doScore(buffer.freqs[i], normInverse);
+          buffer.features[i] = doScore(buffer.features[i], normInverse);
         }
       } else {
-        // Use the scores array to store norm inverses.
-        float[] normInverses = scores;
+        if (normInverses == null || normInverses.length < buffer.size) {
+          normInverses = new float[ArrayUtil.oversize(buffer.size, Float.BYTES)];
+        }
 
         for (int i = 0; i < buffer.size; ++i) {
           if (norms.advanceExact(buffer.docs[i])) {
@@ -276,7 +283,7 @@ public class BM25Similarity extends Similarity {
 
         // The below loop should auto-vectorize
         for (int i = 0; i < buffer.size; ++i) {
-          scores[i] = doScore(buffer.freqs[i], normInverses[i]);
+          buffer.features[i] = doScore(buffer.features[i], normInverses[i]);
         }
       }
     }
