@@ -1020,6 +1020,114 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
   //    iw.addDocument(d);
   //  }
 
+  public void testRangeQueryWithEscapedClosingBrackets() throws Exception {
+    Analyzer a = new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false);
+
+    // Escaped brackets are parsed
+    assertQueryEquals("[\\] TO def]", a, "[] TO def]");
+    assertQueryEquals("[\\]abc TO def]", a, "[]abc TO def]");
+    assertQueryEquals("[a\\]bc TO def]", a, "[a]bc TO def]");
+    assertQueryEquals("[abc\\] TO def]", a, "[abc] TO def]");
+    assertQueryEquals("[abc TO \\]]", a, "[abc TO ]]");
+    assertQueryEquals("[abc TO \\]def]", a, "[abc TO ]def]");
+    assertQueryEquals("[abc TO d\\]ef]", a, "[abc TO d]ef]");
+    assertQueryEquals("[abc TO def\\]]", a, "[abc TO def]]");
+
+    assertQueryEquals("{\\} TO def}", a, "{} TO def}");
+    assertQueryEquals("{\\}abc TO def}", a, "{}abc TO def}");
+    assertQueryEquals("{a\\}bc TO def}", a, "{a}bc TO def}");
+    assertQueryEquals("{abc\\} TO def}", a, "{abc} TO def}");
+    assertQueryEquals("{abc TO \\}}", a, "{abc TO }}");
+    assertQueryEquals("{abc TO \\}def}", a, "{abc TO }def}");
+    assertQueryEquals("{abc TO d\\}ef}", a, "{abc TO d}ef}");
+    assertQueryEquals("{abc TO def\\}}", a, "{abc TO def}}");
+
+    assertQueryEquals("[\\[\\] TO \\[\\]]", a, "[[] TO []]");
+    assertQueryEquals("[\\{\\} TO \\{\\}]", a, "[{} TO {}]");
+    assertQueryEquals("{\\[\\] TO \\[\\]}", a, "{[] TO []}");
+    assertQueryEquals("{\\{\\} TO \\{\\}}", a, "{{} TO {}}");
+
+    assertQueryEquals(
+        "[ 2024-01-01T01:01:01+01:00\\[Europe/Warsaw\\] TO 2025-01-01T01:01:01+01:00\\[Europe/Warsaw\\] ]",
+        a,
+        "[2024-01-01T01:01:01+01:00[Europe/Warsaw] TO 2025-01-01T01:01:01+01:00[Europe/Warsaw]]");
+
+    // Escaped brackets are parsed in quoted terms
+    assertQueryEquals("[\"a\\[1\\]\" TO \"b\\[2\\]\"]", a, "[a[1] TO b[2]]");
+    assertQueryEquals("{\"a\\{1\\}\" TO \"b\\{2\\}\"}", a, "{a{1} TO b{2}}");
+
+    // Unescaped closing brackets in a term should throw an exception
+    assertParseException("[] TO def]");
+    assertParseException("[]abc TO def]");
+    assertParseException("[abc] TO def]");
+    assertParseException("[abc TO ]]");
+    assertParseException("[abc TO ]def]");
+    assertParseException("[abc TO def]]");
+
+    assertParseException("{} TO def}");
+    assertParseException("{}abc TO def}");
+    assertParseException("{abc} TO def}");
+    assertParseException("{abc TO }}");
+    assertParseException("{abc TO }def}");
+    assertParseException("{abc TO def}}");
+
+    // Escaped brackets should not work as range query wrappers
+    assertParseException("\\[abc TO def]");
+    assertParseException("\\{abc TO def}");
+    assertParseException("[abc TO def\\]");
+    assertParseException("{abc TO def\\}");
+  }
+
+  public void testRangeQueryWithEscapedSpaces() throws Exception {
+    Analyzer a = new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false);
+
+    // Escaped spaces are parsed
+    assertQueryEquals("[\\  TO \\ ]", a, "[  TO  ]");
+    assertQueryEquals("[\\ \\  TO \\ \\ ]", a, "[   TO   ]");
+    assertQueryEquals("[\\  TO def]", a, "[  TO def]");
+    assertQueryEquals("[\\ abc TO def]", a, "[ abc TO def]");
+    assertQueryEquals("[a\\ bc TO def]", a, "[a bc TO def]");
+    assertQueryEquals("[abc\\  TO def]", a, "[abc  TO def]");
+    assertQueryEquals("[abc TO \\ ]", a, "[abc TO  ]");
+    assertQueryEquals("[abc TO \\ def]", a, "[abc TO  def]");
+    assertQueryEquals("[abc TO d\\ ef]", a, "[abc TO d ef]");
+    assertQueryEquals("[abc TO def\\ ]", a, "[abc TO def ]");
+
+    // Escaped spaces are parsed in quoted terms
+    assertQueryEquals("[\"a\\ 1\" TO \"b\\ 2\"]", a, "[a 1 TO b 2]");
+
+    // Escaped spaces should not work as breaks around TO
+    assertParseException("[a\\ TO b]");
+    assertParseException("[a TO\\ b]");
+  }
+
+  public void testRangeQueryWithMultipleEscapes() throws Exception {
+    Analyzer a = new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false);
+
+    // Double escapes are parsed as a literal backslash
+    assertQueryEquals("[\\\\ TO def]", a, "[\\ TO def]");
+    assertQueryEquals("[\\\\abc TO def]", a, "[\\abc TO def]");
+    assertQueryEquals("[a\\\\bc TO def]", a, "[a\\bc TO def]");
+    assertQueryEquals("[abc\\\\ TO def]", a, "[abc\\ TO def]");
+    assertQueryEquals("[abc TO \\\\]", a, "[abc TO \\]");
+    assertQueryEquals("[abc TO \\\\def]", a, "[abc TO \\def]");
+    assertQueryEquals("[abc TO d\\\\ef]", a, "[abc TO d\\ef]");
+    assertQueryEquals("[abc TO def\\\\]", a, "[abc TO def\\]");
+
+    // Three escapes are parsed as a literal backslash then an escaped next char
+    assertQueryEquals("[a\\\\\\]c TO def]", a, "[a\\]c TO def]");
+    assertQueryEquals("[abc\\\\\\* TO def]", a, "[abc\\* TO def]");
+    assertQueryEquals("[abc\\\\\\ xyz TO def]", a, "[abc\\ xyz TO def]");
+
+    // Four escapes are parsed as two literal backslashes
+    assertQueryEquals("[abc TO \\\\\\\\def]", a, "[abc TO \\\\def]");
+
+    assertQueryEquals(
+        "[c\\:\\\\temp\\\\\\~foo0.txt TO c\\:\\\\temp\\\\\\~foo9.txt]",
+        a,
+        "[c:\\temp\\~foo0.txt TO c:\\temp\\~foo9.txt]");
+  }
+
   public void testParsesBracketsIfQuoted() throws Exception {
     Analyzer a = new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false);
 
@@ -1037,10 +1145,6 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
         "[ \"2024-01-01T01:01:01+01:00[Europe/Warsaw]\" TO \"2025-01-01T01:01:01+01:00[Europe/Warsaw]\" ]",
         null,
         "[2024-01-01t01:01:01+01:00[europe/warsaw] TO 2025-01-01t01:01:01+01:00[europe/warsaw]]");
-
-    // If the range terms aren't wrapped in quotes, a closing bracket will throw
-    assertParseException("[a[i] TO b[i]]");
-    assertParseException("[a\\[i\\] TO b\\[i\\]]");
   }
 
   public abstract void testStarParsing() throws Exception;
