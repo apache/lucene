@@ -131,6 +131,10 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
         }
         scorable.score = (float) score;
         collector.collect(doc);
+        if (scorable.minCompetitiveScore > 0) {
+          scoreWindowScoreFirst(collector, acceptDocs, lead.nextDoc(), max, Float.POSITIVE_INFINITY);
+          return;
+        }
       }
       doc = lead.nextDoc();
     }
