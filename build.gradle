@@ -46,6 +46,7 @@ plugins {
   id "lucene.validation.gradle-versions-cleanup"
   id "lucene.validation.gradlew-scripts-customizations"
   id "lucene.validation.error-prone"
+  id "lucene.validation.jar-checks"
 
   id "lucene.ide.intellij-idea"
   id "lucene.ide.eclipse"
@@ -116,7 +117,6 @@ configure(rootProject) {
 }
 
 // Validation tasks
-apply from: file('gradle/validation/jar-checks.gradle')
 apply from: file('gradle/validation/git-status.gradle')
 apply from: file('gradle/validation/validate-source-patterns.gradle')
 apply from: file('gradle/validation/rat-sources.gradle')
