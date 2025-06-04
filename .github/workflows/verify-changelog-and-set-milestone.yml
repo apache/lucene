@@ -7,7 +7,7 @@ env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   ISSUE: ${{ github.event.issue.html_url }}
   BASE_REPO: ${{ github.repository }}
-  SKIP_CHANGELOG_CHECK_LABEL: ${{ '"skip-changelog-check"' }}
+  SKIP_CHANGELOG_LABEL: ${{ '"skip-changelog"' }}
   CHANGE_LOG_FILE: ${{ 'lucene/CHANGES.txt' }}
 
 jobs:
@@ -31,12 +31,12 @@ jobs:
           mapfile -t labels < <(gh pr view ${{ github.event.number }} --repo "$BASE_REPO" --json labels -q '.labels[].name')
           IFS=','; echo "${labels[*]}"
           for label in "${labels[@]}"; do
-            if [[ $label == ${{ env.SKIP_CHANGELOG_CHECK_LABEL }} ]]; then
-              echo "Skipping github action workflow as label: ${SKIP_CHANGELOG_CHECK_LABEL} is found in the PR."
+            if [[ $label == ${{ env.SKIP_CHANGELOG_LABEL }} ]]; then
+              echo "Skipping github action workflow as label: ${SKIP_CHANGELOG_LABEL} is found in the PR."
               exit 0
             fi
           done
-          echo "${{ env.SKIP_CHANGELOG_CHECK_LABEL }} not found in the PR. Proceeding with next steps."
+          echo "${{ env.SKIP_CHANGELOG_LABEL }} not found in the PR. Proceeding with next steps."
           
           echo -e "\n"
           echo "################## STEP 2 ##################"
@@ -59,7 +59,7 @@ jobs:
           echo "Diff:"
           if git diff --exit-code --name-only $BASE_COMMIT HEAD -- ${{ env.CHANGE_LOG_FILE }}; then
             echo "Change log file:${{ env.CHANGE_LOG_FILE }} does not contains an entry corresponding to changes introduced in PR. Please add a changelog entry."
-            gh pr comment ${{ github.event.number }} --body "This PR does not have an entry in lucene/CHANGES.txt. Consider adding one. If the PR doesn't need a changelog entry, then add the skip-changelog-check label to it and you will stop receiving this reminder on future updates to the PR."
+            gh pr comment ${{ github.event.number }} --body "This PR does not have an entry in lucene/CHANGES.txt. Consider adding one. If the PR doesn't need a changelog entry, then add the skip-changelog label to it and you will stop receiving this reminder on future updates to the PR."
             exit 0
           else
             echo "${{ env.CHANGE_LOG_FILE }} contains change log entry. Proceeding with next steps."

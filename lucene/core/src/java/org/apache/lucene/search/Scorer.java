@@ -107,15 +107,15 @@ public abstract class Scorer extends Scorable {
    * buffer.size = size;
    * </pre>
    *
-   * <p><b>NOTE</b>: The provided {@link DocAndScoreBuffer} should not hold references to internal
-   * data structures.
+   * <p><b>NOTE</b>: The provided {@link DocAndFloatFeatureBuffer} should not hold references to
+   * internal data structures.
    *
    * <p><b>NOTE</b>: In case this {@link Scorer} exposes a {@link #twoPhaseIterator()
    * TwoPhaseIterator}, it should be positioned on a matching document before this method is called.
    *
    * @lucene.internal
    */
-  public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndScoreBuffer buffer)
+  public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
       throws IOException {
     int batchSize = 16; // arbitrary
     buffer.growNoCopy(batchSize);
@@ -124,7 +124,7 @@ public abstract class Scorer extends Scorable {
     for (int doc = docID(); doc < upTo && size < batchSize; doc = iterator.nextDoc()) {
       if (liveDocs == null || liveDocs.get(doc)) {
         buffer.docs[size] = doc;
-        buffer.scores[size] = score();
+        buffer.features[size] = score();
         ++size;
       }
     }
