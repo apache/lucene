@@ -45,6 +45,7 @@ plugins {
   id "lucene.validation.lockfile"
   id "lucene.validation.gradle-versions-cleanup"
   id "lucene.validation.gradlew-scripts-customizations"
+  id "lucene.validation.error-prone"
 
   id "lucene.ide.intellij-idea"
   id "lucene.ide.eclipse"
@@ -115,7 +116,6 @@ configure(rootProject) {
 }
 
 // Validation tasks
-apply from: file('gradle/validation/error-prone.gradle')
 apply from: file('gradle/validation/forbidden-apis.gradle')
 apply from: file('gradle/validation/jar-checks.gradle')
 apply from: file('gradle/validation/git-status.gradle')
