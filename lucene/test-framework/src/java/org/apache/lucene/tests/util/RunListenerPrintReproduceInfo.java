@@ -188,6 +188,8 @@ public final class RunListenerPrintReproduceInfo extends RunListener {
     // Pass the master seed.
     addVmOpt(b, "tests.seed", RandomizedContext.current().getRunnerSeedAsString());
 
+    addVmOpt(b, "tests.jvmargs", System.getProperty("tests.jvmargs"));
+
     // Test groups and multipliers.
     if (RANDOM_MULTIPLIER != LuceneTestCase.defaultRandomMultiplier())
       addVmOpt(b, "tests.multiplier", RANDOM_MULTIPLIER);

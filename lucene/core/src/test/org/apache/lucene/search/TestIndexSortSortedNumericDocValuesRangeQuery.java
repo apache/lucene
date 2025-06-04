@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.StringField;
@@ -85,6 +86,59 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
         final long max =
             random().nextBoolean() ? Long.MAX_VALUE : TestUtil.nextLong(random(), -100, 10000);
         final Query q1 = LongPoint.newRangeQuery("idx", min, max);
+        final Query q2 = createQuery("dv", min, max);
+        assertSameHits(searcher, q1, q2, false);
+      }
+
+      reader.close();
+      dir.close();
+    }
+  }
+
+  public void testSameHitsAsPointRangeQueryIntSort() throws IOException {
+    final int iters = atLeast(10);
+    for (int iter = 0; iter < iters; ++iter) {
+      Directory dir = newDirectory();
+
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      boolean reverse = random().nextBoolean();
+      SortField sortField = new SortedNumericSortField("dv", SortField.Type.INT, reverse);
+      boolean enableMissingValue = random().nextBoolean();
+      if (enableMissingValue) {
+        int missingValue =
+            random().nextBoolean()
+                ? TestUtil.nextInt(random(), -100, 10000)
+                : (random().nextBoolean() ? Integer.MIN_VALUE : Integer.MAX_VALUE);
+        sortField.setMissingValue(missingValue);
+      }
+      iwc.setIndexSort(new Sort(sortField));
+
+      RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+
+      final int numDocs = atLeast(100);
+      for (int i = 0; i < numDocs; ++i) {
+        Document doc = new Document();
+        final int numValues = TestUtil.nextInt(random(), 0, 1);
+        for (int j = 0; j < numValues; ++j) {
+          final int value = TestUtil.nextInt(random(), -100, 10000);
+          doc.add(new SortedNumericDocValuesField("dv", value));
+          doc.add(new IntPoint("idx", value));
+        }
+        iw.addDocument(doc);
+      }
+      if (random().nextBoolean()) {
+        iw.deleteDocuments(IntPoint.newRangeQuery("idx", 0, 10));
+      }
+      final IndexReader reader = iw.getReader();
+      final IndexSearcher searcher = newSearcher(reader);
+      iw.close();
+
+      for (int i = 0; i < 100; ++i) {
+        final int min =
+            random().nextBoolean() ? Integer.MIN_VALUE : TestUtil.nextInt(random(), -100, 10000);
+        final int max =
+            random().nextBoolean() ? Integer.MAX_VALUE : TestUtil.nextInt(random(), -100, 10000);
+        final Query q1 = IntPoint.newRangeQuery("idx", min, max);
         final Query q2 = createQuery("dv", min, max);
         assertSameHits(searcher, q1, q2, false);
       }

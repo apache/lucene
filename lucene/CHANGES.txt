@@ -100,6 +100,8 @@ Improvements
 
 * GITHUB#14443: Support adaptive refresh in Searcher Managers (Vigya Sharma)
 
+* GITHUB#14737: Clean up redundant code and comments in query node classes. (Stefan Vodita)
+
 Optimizations
 ---------------------
 * GITHUB#14418: Quick exit on filter query matching no docs when rewriting knn query. (Pan Guixin)
@@ -138,6 +140,8 @@ Optimizations
 
 * GITHUB#14674: Optimize AbstractKnnVectorQuery#createBitSet with intoBitset. (Guo Feng)
 
+* GITHUB#14720: Cache high-order bits of hashcode to speed up BytesRefHash. (Pan Guixin)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
@@ -147,6 +151,8 @@ Bug Fixes
 
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
   instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
+
+* GITHUB#14727: Fix several resource leaks. (Xu Chengxin)
 
 Build
 ---------------------
@@ -1002,6 +1008,8 @@ Bug Fixes
   `IndexWriter.addIndexes(CodecReader...)`, or reindexing entirely.
 
 * GITHUB#13799: Disable intra-merge parallelism for all structures but kNN vectors. (Ben Trent)
+
+* GITHUB##14732: Fix IndexSortSortedNumericDocValuesRangeQuery for int sort (Mayya Sharipova)
 
 Build
 ---------------------
