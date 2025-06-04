@@ -34,11 +34,6 @@ import org.apache.lucene.util.Bits;
  */
 final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
-  /**
-   * The maximum size of a scoring window, used to limit the range of documents processed in a
-   * single scoring iteration. This helps optimize performance by ensuring that scoring operations
-   * are performed within manageable bounds.
-   */
   private static final long MAX_WINDOW_SIZE = 65536L;
 
   private final Scorer[] scorers;
@@ -93,11 +88,11 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     while (windowMin < max) {
       // Use impacts of the least costly scorer to compute windows
       // NOTE: windowMax is inclusive
-      int windowMax =
-          (int)
-              Math.min(
-                  scorers[0].advanceShallow(windowMin),
-                  Math.min(max - 1, windowMin + MAX_WINDOW_SIZE));
+      int windowMax = Math.min(scorers[0].advanceShallow(windowMin), max - 1);
+      // Ensure the scoring window not too big, this especially works for the default implementation
+      // of `Scorer#advanceShallow` which may return `DocIdSetIterator#NO_MORE_DOCS`, rendering the
+      // window meaningless.
+      windowMax = (int) Math.min(windowMax, windowMin + MAX_WINDOW_SIZE);
 
       float maxWindowScore = computeMaxScore(windowMin, windowMax);
       scoreWindowScoreFirst(collector, acceptDocs, windowMin, windowMax + 1, maxWindowScore);
@@ -109,7 +104,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
   /**
    * Score a window of doc IDs by first finding agreement between all iterators and only then
-   * compute scores and call the collector until dynamic * pruning kicks in.
+   * compute scores and call the collector until dynamic pruning kicks in.
    */
   private int scoreDocFirstUntilDynamicPruning(
       LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
