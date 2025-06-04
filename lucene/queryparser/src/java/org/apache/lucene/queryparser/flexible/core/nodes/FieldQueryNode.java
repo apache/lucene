@@ -135,8 +135,6 @@ public class FieldQueryNode extends QueryNodeImpl
   }
 
   /**
-   * Returns the term.
-   *
    * @return The "original" form of the term.
    */
   @Override
