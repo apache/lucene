@@ -90,8 +90,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       // NOTE: windowMax is inclusive
       int windowMax = Math.min(scorers[0].advanceShallow(windowMin), max - 1);
       // Ensure the scoring window not too big, this especially works for the default implementation
-      // of `Scorer#advanceShallow` which may return `DocIdSetIterator#NO_MORE_DOCS`, rendering the
-      // window meaningless.
+      // of `Scorer#advanceShallow` which may return `DocIdSetIterator#NO_MORE_DOCS`.
       windowMax = (int) Math.min(windowMax, windowMin + MAX_WINDOW_SIZE);
 
       float maxWindowScore = computeMaxScore(windowMin, windowMax);
