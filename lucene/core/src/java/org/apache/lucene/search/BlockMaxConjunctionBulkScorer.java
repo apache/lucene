@@ -86,14 +86,12 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     int windowMin = scoreDocFirstUntilDynamicPruning(collector, acceptDocs, min, max);
 
     while (windowMin < max) {
+      // Use impacts of the least costly scorer to compute windows
       // NOTE: windowMax is inclusive
-      int leadBlockEnd = scorers[0].advanceShallow(windowMin);
-      int windowMax = max - 1;
-      if (leadBlockEnd == DocIdSetIterator.NO_MORE_DOCS) {
-        windowMax = (int) Math.min(windowMin + DEFAULT_WINDOW_SIZE, windowMax);
-      } else {
-        windowMax = Math.min(leadBlockEnd, windowMax);
-      }
+      int windowMax = (int) Math.min(
+          scorers[0].advanceShallow(windowMin),
+          Math.min(max - 1, windowMin + DEFAULT_WINDOW_SIZE)
+      );
 
       float maxWindowScore = computeMaxScore(windowMin, windowMax);
       scoreWindowScoreFirst(collector, acceptDocs, windowMin, windowMax + 1, maxWindowScore);
