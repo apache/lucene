@@ -15,55 +15,64 @@
  * limitations under the License.
  */
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import java.util.stream.Collectors
 
 // Measure aggregate wall time of each task execution time (summed up across
 // all projects).
 
-if (propertyOrDefault("task.times", null) != null) {
+if (project != project.rootProject) {
+  throw new GradleException("Applicable to rootProject only: " + project.path)
+}
+
+Provider<Boolean> taskTimesOption = buildOptions.addBooleanOption("task.times",
+    "Measures wall-time task execution and provides a summary of the longest tasks at " +
+    "the end of a successfull build.",
+    false)
+
+if (taskTimesOption.get()) {
   gradle.taskGraph.whenReady { TaskExecutionGraph graph ->
     def taskTimes = new ConcurrentHashMap<String, Long>()
-    def measured = graph.allTasks.findAll { task -> true }
 
     graph.addTaskExecutionListener(new TaskExecutionListener() {
-      @Override
-      void beforeExecute(Task task) {
-        def start = System.currentTimeMillis()
-        if (measured.contains(task)) {
-          taskTimes.put(task.path, start)
-        }
-      }
-
-      @Override
-      void afterExecute(Task task, TaskState taskState) {
-        def stop = System.currentTimeMillis()
-        if (measured.contains(task)) {
-          if (taskState.didWork) {
-            taskTimes.compute(task.path, { k, v -> stop - v })
-          } else {
-            taskTimes.remove(task.path)
+          @Override
+          void beforeExecute(Task task) {
+            def start = System.nanoTime()
+            taskTimes.put(task.path, start)
           }
-        }
-      }
-    })
+
+          @Override
+          void afterExecute(Task task, TaskState taskState) {
+            if (taskState.didWork) {
+              def stop = System.nanoTime()
+              taskTimes.compute(task.path, { k, v -> TimeUnit.NANOSECONDS.toMillis(stop - v) })
+            } else {
+              taskTimes.remove(task.path)
+            }
+          }
+        })
 
     // After the build is finished, check the test count.
     gradle.buildFinished {
       // Compute aggregate times of all task execution times.
       def aggregates = taskTimes.entrySet().stream()
           .collect(Collectors.groupingBy({e -> e.key.replaceAll(".*:", "")}))
-           .entrySet().stream()
-           .collect(Collectors.toMap(
-               {e -> e.key },
-               {e -> e.value.stream().mapToLong({ entry -> entry.value }).sum() }
-           ))
+          .entrySet().stream()
+          .collect(Collectors.toMap(
+          {e -> e.key }, {e ->
+            e.value.stream().mapToLong({ entry -> entry.value }).sum()
+          }
+          ))
 
-      logger.lifecycle("Aggregate task times (possibly running in parallel!):")
-      aggregates.entrySet().stream()
-        .sorted({a, b -> Long.compare(b.value, a.value) })
-        .forEach {v ->
-          logger.lifecycle(String.format(Locale.ROOT, " %6.2f sec.  %s", v.value / 1000.0, v.key))
-        }
+      logger.lifecycle("\nAggregate task times (possibly running in parallel!):\n"
+          + aggregates
+          .sort {a, b ->
+            Long.compare(b.value, a.value)
+          }
+          .collect { v ->
+            String.format(Locale.ROOT, " %6.2f sec.  %s", v.value / 1000.0, v.key)
+          }
+          .join("\n"))
     }
   }
 }

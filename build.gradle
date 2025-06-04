@@ -53,13 +53,14 @@ plugins {
   id "lucene.publications.maven-to-nexus-releases"
   id "lucene.publications.maven-to-nexus-snapshots"
 
+  id "lucene.misc.measure-task-times"
+
   // perhaps move this to a convention plugin or remove entirely?
   id "lucene.build-infra"
 
   // TODO: review stuff below this line.
 
   // Apply other plugins.
-  alias(deps.plugins.spotless) apply false
   alias(deps.plugins.benmanes.versions)
   alias(deps.plugins.forbiddenapis) apply false
   alias(deps.plugins.randomizedtesting) apply false
@@ -114,7 +115,6 @@ configure(rootProject) {
 }
 
 // Validation tasks
-apply from: file('gradle/validation/measure-task-times.gradle')
 apply from: file('gradle/validation/error-prone.gradle')
 apply from: file('gradle/validation/forbidden-apis.gradle')
 apply from: file('gradle/validation/jar-checks.gradle')
