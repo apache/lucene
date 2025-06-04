@@ -34,7 +34,12 @@ import org.apache.lucene.util.Bits;
  */
 final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
-  private static final long DEFAULT_WINDOW_SIZE = 65536L;
+  /**
+   * The maximum size of a scoring window, used to limit the range of documents processed in a
+   * single scoring iteration. This helps optimize performance by ensuring that scoring operations
+   * are performed within manageable bounds.
+   */
+  private static final long MAX_WINDOW_SIZE = 65536L;
 
   private final Scorer[] scorers;
   private final Scorable[] scorables;
@@ -88,10 +93,11 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     while (windowMin < max) {
       // Use impacts of the least costly scorer to compute windows
       // NOTE: windowMax is inclusive
-      int windowMax = (int) Math.min(
-          scorers[0].advanceShallow(windowMin),
-          Math.min(max - 1, windowMin + DEFAULT_WINDOW_SIZE)
-      );
+      int windowMax =
+          (int)
+              Math.min(
+                  scorers[0].advanceShallow(windowMin),
+                  Math.min(max - 1, windowMin + MAX_WINDOW_SIZE));
 
       float maxWindowScore = computeMaxScore(windowMin, windowMax);
       scoreWindowScoreFirst(collector, acceptDocs, windowMin, windowMax + 1, maxWindowScore);
@@ -102,8 +108,8 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   }
 
   /**
-   * Score a window of doc IDs by first finding agreement between all iterators, and only then
-   * compute scores and call the collector.
+   * Score a window of doc IDs by first finding agreement between all iterators and only then
+   * compute scores and call the collector until dynamic * pruning kicks in.
    */
   private int scoreDocFirstUntilDynamicPruning(
       LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
@@ -173,8 +179,9 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
       for (int i = 1; i < scorers.length; ++i) {
         double sumOfOtherClause = sumOfOtherClauses[i];
-        if (sumOfOtherClause != Double.POSITIVE_INFINITY
-            && sumOfOtherClause != sumOfOtherClauses[i - 1]) {
+        if (sumOfOtherClause != sumOfOtherClauses[i - 1]) {
+          // two equal consecutive values mean that the first clause always returns a score of zero,
+          // so we don't need to filter hits by score again.
           ScorerUtil.filterCompetitiveHits(
               docAndScoreAccBuffer, sumOfOtherClause, scorable.minCompetitiveScore, scorers.length);
         }
