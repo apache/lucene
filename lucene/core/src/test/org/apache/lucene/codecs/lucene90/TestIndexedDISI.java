@@ -539,7 +539,7 @@ public class TestIndexedDISI extends LuceneTestCase {
     for (int step : new int[] {100, 1000, 10000, 100000}) {
       try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
         IndexedDISI disi =
-                new IndexedDISI(in, 0L, length, jumpTableentryCount, denseRankPower, cardinality);
+            new IndexedDISI(in, 0L, length, jumpTableentryCount, denseRankPower, cardinality);
         BitSetIterator disi2 = new BitSetIterator(set, cardinality);
         int disi2length = set.length();
         assertDocIDRunEndRandomized(disi, disi2, disi2length, step);
@@ -625,7 +625,7 @@ public class TestIndexedDISI extends LuceneTestCase {
   }
 
   private void assertDocIDRunEndRandomized(
-          IndexedDISI disi, BitSetIterator disi2, int disi2length, int step) throws IOException {
+      IndexedDISI disi, BitSetIterator disi2, int disi2length, int step) throws IOException {
     for (int target = 0; target < disi2length; ) {
       target += TestUtil.nextInt(random(), 0, step);
       if (disi.docID() < target) {
