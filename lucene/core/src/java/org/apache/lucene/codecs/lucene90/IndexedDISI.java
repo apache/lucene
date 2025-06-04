@@ -568,6 +568,14 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
     return cost;
   }
 
+  @Override
+  public int docIDRunEnd() throws IOException {
+    if (method == Method.ALL) {
+      return (doc | 0xFFFF) + 1;
+    }
+    return super.docIDRunEnd();
+  }
+
   enum Method {
     SPARSE {
       @Override
