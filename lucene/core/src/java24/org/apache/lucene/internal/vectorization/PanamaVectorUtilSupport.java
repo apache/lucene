@@ -786,12 +786,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       }
       from += INT_SPECIES.length() + 1;
       for (; from + FIND_NEXT_GEQ_STEP < to; from += FIND_NEXT_GEQ_STEP + 1) {
+        int midDiff = buffer[from + INT_SPECIES.length() - 1] - target;
+        int startMask = midDiff >> 31;
+        int start = from + (startMask & INT_SPECIES.length());
         if (buffer[from + FIND_NEXT_GEQ_STEP] >= target) {
-          IntVector vector1 = IntVector.fromArray(INT_SPECIES, buffer, from);
-          IntVector vector2 = IntVector.fromArray(INT_SPECIES, buffer, from + INT_SPECIES.length());
-          VectorMask<Integer> mask1 = vector1.compare(VectorOperators.LT, target);
-          VectorMask<Integer> mask2 = vector2.compare(VectorOperators.LT, target);
-          return from + mask1.trueCount() + mask2.trueCount();
+          IntVector vector = IntVector.fromArray(INT_SPECIES, buffer, start);
+          VectorMask<Integer> mask = vector.compare(VectorOperators.LT, target);
+          return start + mask.trueCount();
         }
       }
     }
