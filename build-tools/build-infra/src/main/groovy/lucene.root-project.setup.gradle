@@ -122,6 +122,15 @@ tasks.register("showTestsSeed", {
   }
 })
 
+// Wire up included builds to some validation tasks.
+tasks.matching { it.name == "tidy" }.configureEach {
+  dependsOn gradle.includedBuilds*.task(":tidy")
+}
+
+tasks.matching { it.name == "check" }.configureEach {
+  dependsOn gradle.includedBuilds*.task(":check")
+}
+
 // TODO: this shouldn't be here but it's used in multiple scripts that are racy in lazy-evaluation.
 configure(project(":lucene:core")) {
   ext {

@@ -116,21 +116,12 @@ configure(rootProject) {
 }
 
 // Validation tasks
-apply from: file('gradle/validation/forbidden-apis.gradle')
 apply from: file('gradle/validation/jar-checks.gradle')
 apply from: file('gradle/validation/git-status.gradle')
 apply from: file('gradle/validation/validate-source-patterns.gradle')
 apply from: file('gradle/validation/rat-sources.gradle')
 apply from: file('gradle/validation/owasp-dependency-check.gradle')
 apply from: file('gradle/validation/ecj-lint.gradle')
-
-// Wire up included builds to some validation tasks.
-rootProject.tasks.named("tidy").configure {
-  dependsOn gradle.includedBuilds*.task(":tidy")
-}
-rootProject.tasks.named("check").configure {
-  dependsOn gradle.includedBuilds*.task(":check")
-}
 
 // Source or data regeneration tasks
 apply from: file('gradle/generation/regenerate.gradle')
