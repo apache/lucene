@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.stream.IntStream;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.LongHeap;
 
@@ -42,8 +41,7 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
   TopScoreDocCollector(
       int numHits, ScoreDoc after, int totalHitsThreshold, MaxScoreAccumulator minScoreAcc) {
     super(null);
-    this.heap = new LongHeap(numHits);
-    IntStream.range(0, numHits).forEach(_ -> heap.push(DocScoreEncoder.LEAST_COMPETITIVE_CODE));
+    this.heap = new LongHeap(numHits, DocScoreEncoder.LEAST_COMPETITIVE_CODE);
     this.after = after;
     this.totalHitsThreshold = totalHitsThreshold;
     this.minScoreAcc = minScoreAcc;
