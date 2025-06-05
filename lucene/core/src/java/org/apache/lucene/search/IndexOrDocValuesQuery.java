@@ -130,8 +130,9 @@ public final class IndexOrDocValuesQuery extends Query {
   @Override
   public void visit(QueryVisitor visitor) {
     QueryVisitor v = visitor.getSubVisitor(BooleanClause.Occur.MUST, this);
+    // we cannot register this query in the visitor, since we don't have the field name,
+    // so we just visit one of the subqueries.
     indexQuery.visit(v);
-    dvQuery.visit(v);
   }
 
   @Override
