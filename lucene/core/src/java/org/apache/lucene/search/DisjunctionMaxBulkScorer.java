@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.util.Bits;
@@ -51,12 +52,7 @@ final class DisjunctionMaxBulkScorer extends BulkScorer {
       throw new IllegalArgumentException();
     }
     this.scorers =
-        new PriorityQueue<>(scorers.size()) {
-          @Override
-          protected boolean lessThan(BulkScorerAndNext a, BulkScorerAndNext b) {
-            return a.next < b.next;
-          }
-        };
+        PriorityQueue.usingComparator(scorers.size(), Comparator.comparingInt(b -> b.next));
     for (BulkScorer scorer : scorers) {
       this.scorers.add(new BulkScorerAndNext(scorer));
     }

@@ -70,6 +70,8 @@ Other
 
 * GITHUB#14613: Rewrite APIJAR extractor to use Java 24 classfile API and kill ASM dependency also for build system.  (Uwe Schindler)
 
+* GITHUB#14705: Use Comparators for some PriorityQueue implementations. (Simon Cooper)
+
 ======================= Lucene 10.3.0 =======================
 
 API Changes
