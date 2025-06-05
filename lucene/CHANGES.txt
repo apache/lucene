@@ -57,6 +57,8 @@ Bug Fixes
   returns a string which can be parsed back into the original node.
   (Peter Barna, Adam Schwartz)
 
+* GITHUB#14755: Fix too many documents collected when only bool-filter condition is present. (Ke Wei)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
