@@ -25,7 +25,6 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocValuesRangeIterator;
 import org.apache.lucene.search.FieldComparator;
@@ -35,7 +34,6 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.util.DocIdSetBuilder;
-import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IntsRef;
 
 /**
@@ -171,7 +169,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     @Override
     public DocIdSetIterator competitiveIterator() {
-      return competitiveDISIBuilder == null ? null : competitiveDISIBuilder.competitiveIterator();
+      return competitiveDISIBuilder == null ? null : competitiveDISIBuilder.competitiveIterator;
     }
 
     protected abstract long bottomAsComparableLong();
@@ -187,7 +185,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     /** According to {@link FieldComparator#setTopValue}, topValueSet is final in leafComparator */
     final boolean leafTopSet = topValueSet;
 
-    DocIdSetIterator competitiveIterator;
+    final UpdateableDocIdSetIterator competitiveIterator = new UpdateableDocIdSetIterator();
     long minValueAsLong = Long.MIN_VALUE;
     long maxValueAsLong = Long.MAX_VALUE;
     int maxDocVisited = -1;
@@ -197,7 +195,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     CompetitiveDISIBuilder(NumericLeafComparator leafComparator) {
       this.leafComparator = leafComparator;
       this.maxDoc = leafComparator.context.reader().maxDoc();
-      this.competitiveIterator = DocIdSetIterator.all(maxDoc);
+      this.competitiveIterator.update(DocIdSetIterator.all(maxDoc));
       if (leafTopSet) {
         encodeTop();
       }
@@ -235,41 +233,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     }
 
     abstract void doUpdateCompetitiveIterator() throws IOException;
-
-    private DocIdSetIterator competitiveIterator() {
-      return new AbstractDocIdSetIterator() {
-
-        {
-          doc = competitiveIterator.docID();
-        }
-
-        @Override
-        public int nextDoc() throws IOException {
-          return advance(doc + 1);
-        }
-
-        @Override
-        public long cost() {
-          return competitiveIterator.cost();
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          return doc = competitiveIterator.advance(target);
-        }
-
-        @Override
-        public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-          // The competitive iterator is usually a BitSetIterator, which has an optimized
-          // implementation of #intoBitSet.
-          if (competitiveIterator.docID() < doc) {
-            competitiveIterator.advance(doc);
-          }
-          competitiveIterator.intoBitSet(upTo, bitSet, offset);
-          doc = competitiveIterator.docID();
-        }
-      };
-    }
 
     private void setMaxDocVisited(int maxDocVisited) {
       this.maxDocVisited = maxDocVisited;
@@ -474,13 +437,14 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         updateSkipInterval(false);
         if (pointValues.getDocCount() < iteratorCost) {
           // Use the set of doc with values to help drive iteration
-          competitiveIterator = leafComparator.getNumericDocValues(leafComparator.context, field);
+          competitiveIterator.update(
+              leafComparator.getNumericDocValues(leafComparator.context, field));
           iteratorCost = pointValues.getDocCount();
         }
         return;
       }
       pointValues.intersect(visitor);
-      competitiveIterator = result.build().iterator();
+      competitiveIterator.update(result.build().iterator());
       iteratorCost = competitiveIterator.cost();
       updateSkipInterval(true);
     }
@@ -544,10 +508,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     void doUpdateCompetitiveIterator() {
       TwoPhaseIterator twoPhaseIterator =
           new DocValuesRangeIterator(innerTwoPhase, skipper, minValueAsLong, maxValueAsLong, false);
-      // TODO this twoPhaseIterator is wrapped by #competitiveIterator() so caller can not use
-      //  TwoPhaseIterator#unwrap to do a two-phase style conjunction. Can we do better by exposing
-      //  a TwoPhaseIterator.asDocIdSetIterator directly?
-      competitiveIterator = TwoPhaseIterator.asDocIdSetIterator(twoPhaseIterator);
+      competitiveIterator.update(TwoPhaseIterator.asDocIdSetIterator(twoPhaseIterator));
     }
   }
 }
