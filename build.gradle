@@ -15,9 +15,6 @@
  * limitations under the License.
  */
 
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-
 plugins {
   // Apply convention plugins from the composite build-infra project.
   // The order of plugins does matter (most of the time).
@@ -66,44 +63,11 @@ plugins {
   id "lucene.build-infra"
 }
 
-// TODO: review stuff below this line.
-
 description = 'Grandparent project for Apache Lucene Core'
 
+// TODO: review stuff below this line.
+
 apply from: file('gradle/_to-remove/globals.gradle')
-
-ext {
-  // Minimum Java version required to compile and run Lucene.
-  minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
-
-  // Build timestamp.
-  def tstamp = ZonedDateTime.now()
-  buildDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(tstamp)
-  buildTime = DateTimeFormatter.ofPattern("HH:mm:ss").format(tstamp)
-  buildYear = DateTimeFormatter.ofPattern("yyyy").format(tstamp)
-}
-
-configurations {
-  groovy
-}
-
-dependencies {
-  // Use a newer groovy that doesn't have illegal reflective accesses.
-  groovy deps.groovy
-}
-
-// Include smaller chunks configuring dedicated build areas.
-// Some of these intersect or add additional functionality.
-// The order of inclusion of these files shouldn't matter (but may
-// if the build file is incorrectly written and evaluates something
-// eagerly).
-configure(rootProject) {
-  ext {
-    scriptResources = { buildscript ->
-      return file(buildscript.sourceFile.absolutePath.replaceAll('.gradle$', ""))
-    }
-  }
-}
 
 // Source or data regeneration tasks
 apply from: file('gradle/generation/regenerate.gradle')
