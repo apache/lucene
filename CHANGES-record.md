@@ -94,6 +94,9 @@ in porcelain mode (which should be stable and portable). This logic is implement
 in [this plugin](https://github.com/carrotsearch/gradle-build-infra/?tab=readme-ov-file#plugin-comcarrotsearchgradlebuildinfraenvironmentgitinfoplugin).
 An additional benefit is that all features of git should now work (including worktrees).
 
+* Added support for owasp API keys in the form of validation.owasp.apikey build option. Owasp check is
+still very, very slow. We should probably just drop it.
+
 ### Fixes to existing issues
 
 * ```gradlew clean check``` will work now (https://github.com/apache/lucene/issues/13567) 

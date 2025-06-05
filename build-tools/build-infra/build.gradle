@@ -51,12 +51,13 @@ gradlePlugin {
 // project dependencies here.
 static Provider<String> plugin(Provider<PluginDependency> plugin) {
   return plugin.map {
-    if (it.pluginId == "com.carrotsearch.gradle.buildinfra") {
-      return "${it.pluginId}:${it.pluginId}.gradle.plugin:${it.version}".toString()
-    } else if (it.pluginId == "de.thetaphi.forbiddenapis") {
+    if (it.pluginId == "de.thetaphi.forbiddenapis") {
+      // Uwe's forbiddenapis is on Maven Central, directly.
       return "de.thetaphi:forbiddenapis:${it.version}".toString()
     } else {
-      return "${it.pluginId}:${it.pluginId.replaceFirst(".*\\.", "")}-plugin-gradle:${it.version}".toString()
+      // maven artifact pattern for gradle's plugin repositories.
+      return "${it.pluginId}:${it.pluginId}.gradle.plugin:${it.version}".toString()
+      // return "${it.pluginId}:${it.pluginId.replaceFirst(".*\\.", "")}-plugin-gradle:${it.version}".toString()
     }
   }
 }
@@ -71,6 +72,7 @@ dependencies {
   implementation plugin(deps.plugins.carrotsearch.buildinfra)
   implementation plugin(deps.plugins.forbiddenapis)
   implementation plugin(deps.plugins.spotless)
+  implementation plugin(deps.plugins.owasp.dependencycheck)
 }
 
 def hasJavaFlightRecorder = ModuleLayer.boot().findModule('jdk.jfr').map{ otherModule ->
