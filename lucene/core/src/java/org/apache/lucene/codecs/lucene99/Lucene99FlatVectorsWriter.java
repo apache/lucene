@@ -64,7 +64,7 @@ import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
  */
 public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
-  private static final long SHALLLOW_RAM_BYTES_USED =
+  private static final long SHALLOW_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(Lucene99FlatVectorsWriter.class);
 
   private final SegmentWriteState segmentWriteState;
@@ -146,7 +146,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
   @Override
   public long ramBytesUsed() {
-    long total = SHALLLOW_RAM_BYTES_USED;
+    long total = SHALLOW_RAM_BYTES_USED;
     for (FieldWriter<?> field : fields) {
       total += field.ramBytesUsed();
     }

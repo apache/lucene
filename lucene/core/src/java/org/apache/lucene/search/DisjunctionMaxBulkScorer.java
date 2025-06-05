@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.PriorityQueue;
 
 /** Bulk scorer for {@link DisjunctionMaxQuery} when the tie-break multiplier is zero. */
@@ -67,7 +68,7 @@ final class DisjunctionMaxBulkScorer extends BulkScorer {
 
     while (top.next < max) {
       final int windowMin = Math.max(top.next, min);
-      final int windowMax = (int) Math.min(max, (long) windowMin + WINDOW_SIZE);
+      final int windowMax = MathUtil.unsignedMin(max, windowMin + WINDOW_SIZE);
 
       // First compute matches / scores in the window
       do {
