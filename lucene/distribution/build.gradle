@@ -25,13 +25,11 @@ plugins {
 // This project puts together the Lucene "distribution", assembling bits and pieces
 // from across the project structure into release artifacts.
 
+Provider<Boolean> signOption = buildOptions.addBooleanOption("sign", "Sign assembled distribution artifacts.", false)
+
 ext {
   releaseDir = file("${buildDir}/release")
-  withSignedArtifacts = { ->
-    def propValue = propertyOrDefault("sign", null)
-    // Allow -Psign to work as a shorthand for -Psign=true
-    return propValue != null && (propValue.isBlank() || Boolean.parseBoolean(propValue))
-  }.call()
+  withSignedArtifacts = signOption.get()
 }
 
 // Collect git revision.

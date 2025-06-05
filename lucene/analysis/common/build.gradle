@@ -15,6 +15,9 @@
  * limitations under the License.
  */
 
+
+import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOption
+
 import java.nio.file.Files;
 
 
@@ -113,8 +116,10 @@ def cloningTasks = dictionaryProjects.collect { repoSpec ->
 }
 
 // check if we should run tests with hunspell dictionaries.
-def withDictionaries = Boolean.parseBoolean(propertyOrDefault("tests.hunspell.regressions", "false"))
-if (withDictionaries) {
+Provider<Boolean> testRegressionsOption = buildOptions.addBooleanOption("tests.hunspell.regressions",
+        "Include testing for regressions against hunspell dictionaries", false)
+
+if (testRegressionsOption.get()) {
   tasks.withType(Test).configureEach {
     dependsOn cloningTasks
     inputs.dir cloneDirProperty
@@ -123,16 +128,21 @@ if (withDictionaries) {
 }
 
 // Pass all hunspell-tests-specific project properties to tests as system properties, if they're specified.
+buildOptions.addOption("hunspell.dictionaries", "Path to hunspell dictionaries for TestAllDictionaries.")
+buildOptions.addOption("hunspell.corpora", "Path to hunspell test work corpora for TestPerformance.")
+buildOptions.addOption("hunspell.repo.path", "Path to hunspell repo path for TestHunspellRepositoryTestCases")
+
 tasks.withType(Test).configureEach {
   [
       "hunspell.dictionaries",
       "hunspell.corpora",
       "hunspell.repo.path"
-  ].each {
-    def val = propertyOrDefault(it, null)
-    if (val != null) {
-      logger.lifecycle("Passing property: ${it}=${val}")
-      systemProperty it, val
+  ].each {optionName ->
+    BuildOption option = buildOptions.getOption(optionName)
+    if (option.isPresent()) {
+      def val = option.asStringProvider().get()
+      logger.lifecycle("Passing property: ${optionName}=${val}")
+      systemProperty(optionName, val)
     }
   }
 }

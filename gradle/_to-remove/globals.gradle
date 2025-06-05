@@ -17,35 +17,6 @@
 
 allprojects {
   ext {
-    // Utility method to support passing overrides via -P or -D.
-    propertyOrDefault = { propName, defValue ->
-      def result
-      if (project.hasProperty(propName)) {
-        result = project.getProperty(propName)
-      } else if (System.properties.containsKey(propName)) {
-        result = System.properties.get(propName)
-      } else if (defValue instanceof Closure) {
-        result = defValue.call()
-      } else {
-        result = defValue
-      }
-      return result
-    }
-
-    // System environment variable or default.
-    envOrDefault = { envName, defValue ->
-      def result = System.getenv(envName)
-      if (result == null) {
-        result = defValue
-      }
-      return result
-    }
-
-    // Either a project, system property, environment variable or default value.
-    propertyOrEnvOrDefault = { propName, envName, defValue ->
-      return propertyOrDefault(propName, envOrDefault(envName, defValue));
-    }
-
     // Utility function similar to project.exec but not emitting
     // any output unless an error code is returned from the executed command.
     quietExec = { closure ->

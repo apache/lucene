@@ -18,16 +18,19 @@
 configure(rootProject) {
   def urlVersion = project.baseVersion.replace('.', '_')
 
+  Provider<String> luceneJavadocUrl = buildOptions.addOption("lucene.javadoc.url",
+          "External Javadoc URL for documentation generator.", provider {
+            if (project.version != project.baseVersion) {
+              // non-release build does not cross-link between modules.
+              return null
+            } else {
+              // release build
+              return "https://lucene.apache.org/core/${urlVersion}"
+            }
+          })
+
   ext {
-    luceneDocUrl = project.propertyOrDefault('lucene.javadoc.url', {
-      if (project.version != project.baseVersion) {
-        // non-release build does not cross-link between modules.
-        return null
-      } else {
-        // release build
-        "https://lucene.apache.org/core/${urlVersion}"
-      }
-    }())
+    luceneDocUrl = luceneJavadocUrl.getOrElse(null)
   }
 
   task documentation() {

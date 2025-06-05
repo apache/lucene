@@ -138,3 +138,17 @@ configure(project(":lucene:core")) {
     apijars = layout.projectDirectory.dir("src/generated/jdk")
   }
 }
+
+//
+// Allow defining external tool locations, use build options so that these options are not hidden.
+//
+buildOptions.addOption("lucene.tool.python3", "External python3 executable (path or name)", "python3")
+buildOptions.addOption("lucene.tool.perl", "External perl executable (path or name)", "perl")
+buildOptions.addOption("lucene.tool.git", "External git executable (path or name)", "git")
+
+ext.externalTool = { String name ->
+  if (name in ["python3", "perl", "git"]) {
+    return buildOptions.getOption("lucene.tool." + name).asStringProvider().get()
+  }
+  throw new GradleException("External tool named '${name}' is not defined.")
+}

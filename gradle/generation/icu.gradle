@@ -231,7 +231,7 @@ configure(project(":lucene:analysis:icu")) {
         executable "make"
         workingDir icuSrcDir
         args = [
-            "-j${propertyOrDefault('tests.jvms', '4')}"
+            "-j${buildOptions['tests.jvms'].get()}"
         ]
       }
 
