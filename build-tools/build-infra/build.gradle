@@ -75,6 +75,7 @@ dependencies {
   implementation plugin(deps.plugins.spotless)
   implementation plugin(deps.plugins.owasp.dependencycheck)
   implementation plugin(deps.plugins.undercouch.download)
+  implementation plugin(deps.plugins.errorprone)
 }
 
 def hasJavaFlightRecorder = ModuleLayer.boot().findModule('jdk.jfr').map{ otherModule ->
