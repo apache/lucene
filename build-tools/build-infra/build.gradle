@@ -66,6 +66,7 @@ dependencies {
   implementation localGroovy()
   implementation deps.commons.codec
   implementation deps.randomizedtesting.runner
+  implementation deps.rat
 
   implementation plugin(deps.plugins.carrotsearch.buildinfra)
   implementation plugin(deps.plugins.forbiddenapis)

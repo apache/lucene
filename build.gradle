@@ -47,6 +47,7 @@ plugins {
   id "lucene.validation.gradlew-scripts-customizations"
   id "lucene.validation.error-prone"
   id "lucene.validation.jar-checks"
+  id "lucene.validation.source-patterns"
 
   id "lucene.ide.intellij-idea"
   id "lucene.ide.eclipse"
@@ -117,7 +118,6 @@ configure(rootProject) {
 }
 
 // Validation tasks
-apply from: file('gradle/validation/validate-source-patterns.gradle')
 apply from: file('gradle/validation/rat-sources.gradle')
 apply from: file('gradle/validation/owasp-dependency-check.gradle')
 apply from: file('gradle/validation/ecj-lint.gradle')

@@ -27,54 +27,46 @@ import javax.inject.Inject;
 import org.gradle.internal.logging.progress.ProgressLoggerFactory
 import org.gradle.internal.logging.progress.ProgressLogger
 
-buildscript {
-  repositories {
-    mavenCentral()
-  }
-
-  dependencies {
-    classpath deps.rat
-  }
+if (project != project.rootProject) {
+  throw new GradleException("Applicable to rootProject only: " + project.path)
 }
 
-def extensions = [
-    'adoc',
-    'bat',
-    'cmd',
-    'css',
-    'g4',
-    'gradle',
-    'groovy',
-    'html',
-    'java',
-    'jflex',
-    'jj',
-    'js',
-    'json',
-    'md',
-    'mdtext',
-    'pl',
-    'policy',
-    'properties',
-    'py',
-    'sh',
-    'template',
-    'txt',
-    'vm',
-    'xml',
-    'xsl',
+List<String> extensions = [
+  'adoc',
+  'bat',
+  'cmd',
+  'css',
+  'g4',
+  'gradle',
+  'groovy',
+  'html',
+  'java',
+  'jflex',
+  'jj',
+  'js',
+  'json',
+  'md',
+  'mdtext',
+  'pl',
+  'policy',
+  'properties',
+  'py',
+  'sh',
+  'template',
+  'txt',
+  'vm',
+  'xml',
+  'xsl',
 ]
 
 // Create source validation task local to each project
 allprojects {
-  task validateSourcePatterns(type: ValidateSourcePatternsTask) { task ->
+  def validateSourcePatterns = tasks.register("validateSourcePatterns", ValidateSourcePatternsTask, {
     group = 'Verification'
     description = 'Validate Source Patterns'
 
     sourceFiles = fileTree(projectDir) {
-      extensions.each{
-        include "**/*.${it}"
-      }
+      include extensions.collect { ext ->"**/*." + ext }
 
       // Don't go into child projects (scanned separately).
       childProjects.keySet().each{
@@ -85,19 +77,15 @@ allprojects {
       exclude '**/build/**'
       exclude '**/.idea/**'
       exclude '**/.gradle/**'
-
-      if (project == rootProject) {
-        // ourselves :-)
-        exclude 'gradle/validation/validate-source-patterns.gradle'
-      } else {
-        // ignore txt files in source resources and tests.
-        exclude 'src/**/*.txt'
-      }
+      // ignore txt files in source resources and tests.
+      exclude 'src/**/*.txt'
     }
-  }
+  })
 
   // Add source validation to per-project checks as well.
-  check.dependsOn validateSourcePatterns
+  tasks.named("check").configure {
+    dependsOn validateSourcePatterns
+  }
 
   // Ensure validation runs prior to any compilation task. This also means
   // no executable code can leak out to other modules.
@@ -106,16 +94,17 @@ allprojects {
   }
 }
 
-configure(project(':lucene:benchmark')) {
-  project.tasks.withType(ValidateSourcePatternsTask) {
-    sourceFiles.exclude 'data/**'
-    sourceFiles.exclude 'work/**'
-
-    // Known .txt offenders.
-    sourceFiles.exclude '**/reuters.first20.lines.txt', '**/trecQRels.txt'
-  }
+project(':lucene:benchmark').tasks.withType(ValidateSourcePatternsTask).configureEach {
+  sourceFiles.exclude 'data/**'
+  sourceFiles.exclude 'work/**'
+  // Known .txt offenders.
+  sourceFiles.exclude '**/reuters.first20.lines.txt', '**/trecQRels.txt'
 }
 
+project(':').tasks.withType(ValidateSourcePatternsTask).configureEach {
+  // Exclude ourselves because there are invalid patterns in the invalid patterns list...
+  sourceFiles.exclude '**/lucene.validation.source-patterns.gradle'
+}
 
 @CacheableTask
 class ValidateSourcePatternsTask extends DefaultTask {
@@ -203,7 +192,7 @@ class ValidateSourcePatternsTask extends DefaultTask {
     progress.start(this.name, this.name)
 
     def validatingDecoder = StandardCharsets.UTF_8.newDecoder()
-      .onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT)
+        .onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT)
 
     sourceFiles.each { f ->
       try {
@@ -213,8 +202,8 @@ class ValidateSourcePatternsTask extends DefaultTask {
         String text
         try {
           validatingDecoder.reset()
-          text = f.withInputStream {
-            in -> new InputStreamReader(in, validatingDecoder).getText()
+          text = f.withInputStream { input ->
+            new InputStreamReader(input, validatingDecoder).getText()
           }
         } catch (CharacterCodingException e) {
           reportViolation(f, "incorrect UTF-8 encoding [${e}]")
@@ -232,7 +221,7 @@ class ValidateSourcePatternsTask extends DefaultTask {
         while (javadocsMatcher.find()) {
           if (isLicense(javadocsMatcher, ratDocument)) {
             reportViolation(f, String.format(Locale.ENGLISH, 'javadoc-style license header [%s]',
-              ratDocument.getMetaData().value(MetaData.RAT_URL_LICENSE_FAMILY_NAME)));
+                ratDocument.getMetaData().value(MetaData.RAT_URL_LICENSE_FAMILY_NAME)));
           }
         }
         if (f.name.endsWith('.java')) {
@@ -240,8 +229,8 @@ class ValidateSourcePatternsTask extends DefaultTask {
           if (!f.name.contains("Test") && !f.name.contains("Mock") && !f.name.contains("Fake") && !text.contains("abstract class") &&
               !f.name.equals("TokenizerFactory.java") && !f.name.equals("CharFilterFactory.java") && !f.name.equals("TokenFilterFactory.java") &&
               (f.name.contains("TokenizerFactory") && text.contains("extends TokenizerFactory") ||
-                  f.name.contains("CharFilterFactory") && text.contains("extends CharFilterFactory") ||
-                  f.name.contains("FilterFactory") && text.contains("extends TokenFilterFactory"))) {
+              f.name.contains("CharFilterFactory") && text.contains("extends CharFilterFactory") ||
+              f.name.contains("FilterFactory") && text.contains("extends TokenFilterFactory"))) {
             if (!validSPINameJavadocTag.matcher(text).find()) {
               reportViolation(f, 'invalid spi name documentation')
             }
@@ -268,8 +257,8 @@ class ValidateSourcePatternsTask extends DefaultTask {
 
     if (!violations.isEmpty()) {
       throw new GradleException(String.format(Locale.ENGLISH, 'Found %d source violation(s):\n  %s',
-        violations.size(),
-        violations.join('\n  ')))
+      violations.size(),
+      violations.join('\n  ')))
     }
   }
 }
