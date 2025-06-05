@@ -140,6 +140,8 @@ Optimizations
 
 * GITHUB#14720: Cache high-order bits of hashcode to speed up BytesRefHash. (Pan Guixin)
 
+* GITHUB#14753: Implement IndexedDISI#docIDRunEnd. (Ge Song)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
@@ -2402,8 +2404,6 @@ Optimizations
   (Greg Miller)
 
 * LUCENE-10653: BlockMaxMaxscoreScorer uses heapify instead of individual adds. (Greg Miller)
-
-* GITHUB#14753: Implement IndexedDISI#docIDRunEnd. (Ge Song)
 
 Changes in runtime behavior
 ---------------------
