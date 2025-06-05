@@ -37,9 +37,21 @@ import java.util.function.Supplier;
  */
 public abstract class PriorityQueue<T> implements Iterable<T> {
 
+  /** Create a {@code PriorityQueue} that orders elements using the specified {@code comparator} */
   public static <T> PriorityQueue<T> usingComparator(
       int maxSize, Comparator<? super T> comparator) {
     return new PriorityQueue<>(maxSize) {
+      @Override
+      protected boolean lessThan(T a, T b) {
+        return comparator.compare(a, b) < 0;
+      }
+    };
+  }
+
+  /** Create a {@code PriorityQueue} that orders elements using the specified {@code comparator} */
+  public static <T> PriorityQueue<T> usingComparator(
+      int maxSize, Supplier<T> sentinelObjectSupplier, Comparator<? super T> comparator) {
+    return new PriorityQueue<>(maxSize, sentinelObjectSupplier) {
       @Override
       protected boolean lessThan(T a, T b) {
         return comparator.compare(a, b) < 0;
