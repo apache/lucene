@@ -64,17 +64,9 @@ plugins {
 
   // perhaps move this to a convention plugin or remove entirely?
   id "lucene.build-infra"
-
-  // TODO: review stuff below this line.
-
-  // Apply other plugins.
-  alias(deps.plugins.benmanes.versions)
-  alias(deps.plugins.forbiddenapis) apply false
-  alias(deps.plugins.randomizedtesting) apply false
-  alias(deps.plugins.undercouch.download) apply false
-  alias(deps.plugins.errorprone) apply false
-  alias(deps.plugins.jacocolog) apply false
 }
+
+// TODO: review stuff below this line.
 
 description = 'Grandparent project for Apache Lucene Core'
 
