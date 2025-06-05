@@ -97,6 +97,9 @@ An additional benefit is that all features of git should now work (including wor
 * Added support for owasp API keys in the form of validation.owasp.apikey build option. Owasp check is
 still very, very slow. We should probably just drop it.
 
+* I've changed the default on ```gradle.ge```, enabling Gradle Enterprise (develocity) to ```false```
+on non-CI builds.
+
 ### Fixes to existing issues
 
 * ```gradlew clean check``` will work now (https://github.com/apache/lucene/issues/13567) 

@@ -68,11 +68,13 @@ dependencies {
   implementation deps.commons.codec
   implementation deps.randomizedtesting.runner
   implementation deps.rat
+  implementation deps.zstd
 
   implementation plugin(deps.plugins.carrotsearch.buildinfra)
   implementation plugin(deps.plugins.forbiddenapis)
   implementation plugin(deps.plugins.spotless)
   implementation plugin(deps.plugins.owasp.dependencycheck)
+  implementation plugin(deps.plugins.undercouch.download)
 }
 
 def hasJavaFlightRecorder = ModuleLayer.boot().findModule('jdk.jfr').map{ otherModule ->

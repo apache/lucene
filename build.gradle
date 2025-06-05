@@ -60,6 +60,8 @@ plugins {
 
   id "lucene.misc.measure-task-times"
 
+  id "lucene.datasets.external-datasets"
+
   // perhaps move this to a convention plugin or remove entirely?
   id "lucene.build-infra"
 
@@ -131,8 +133,6 @@ apply from: file('gradle/generation/forUtil.gradle')
 apply from: file('gradle/generation/antlr.gradle')
 apply from: file('gradle/generation/unicode-test-classes.gradle')
 apply from: file('gradle/generation/extract-jdk-apis.gradle')
-
-apply from: file('gradle/datasets/external-datasets.gradle')
 
 apply from: file('gradle/documentation/documentation.gradle')
 apply from: file('gradle/documentation/changes-to-html.gradle')
