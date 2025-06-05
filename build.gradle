@@ -117,7 +117,6 @@ configure(rootProject) {
 }
 
 // Validation tasks
-apply from: file('gradle/validation/git-status.gradle')
 apply from: file('gradle/validation/validate-source-patterns.gradle')
 apply from: file('gradle/validation/rat-sources.gradle')
 apply from: file('gradle/validation/owasp-dependency-check.gradle')

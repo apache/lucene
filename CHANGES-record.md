@@ -72,3 +72,11 @@ removed, without any replacement.
 
 * The legacy ```precommit``` task has been removed; use gradle's ```check```.
 
+* Removed dependency on jgit entirely. This is replaced by forking the system's git
+in porcelain mode (which should be stable and portable). This logic is implemented
+in [this plugin](https://github.com/carrotsearch/gradle-build-infra/?tab=readme-ov-file#plugin-comcarrotsearchgradlebuildinfraenvironmentgitinfoplugin).
+An additional benefit is that all features of git should now work (including worktrees).
+
+### Fixes to existing issues
+
+* ```gradlew clean check``` will work now (https://github.com/apache/lucene/issues/13567) 
