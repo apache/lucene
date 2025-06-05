@@ -118,9 +118,6 @@ configure(rootProject) {
   }
 }
 
-// Validation tasks
-apply from: file('gradle/validation/ecj-lint.gradle')
-
 // Source or data regeneration tasks
 apply from: file('gradle/generation/regenerate.gradle')
 apply from: file('gradle/generation/jflex.gradle')

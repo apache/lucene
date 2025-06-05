@@ -1,0 +1,191 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// This adds 'ecjLint' task to Java projects.
+
+// Check if we need to use Lucene's storage space for interim "drop" versions of ecj
+// that are ahead of the official Maven publications.
+//
+// Drop versions are at:
+// https://www.eclipse.org/downloads/download.php?r=1&file=/eclipse/downloads/drops4/S-4.36M1-202504031800/ecj-${ecjVersion}.jar
+//
+// dweiss has access to Lucene's AWS storage space (requested via Infra).
+//
+boolean useDropMirror = deps.versions.ecj.get() in ["4.36M1"]
+if (useDropMirror) {
+  repositories {
+    exclusiveContent {
+      forRepository {
+        ivy {
+          url = 'https://s3.amazonaws.com/lucene-testdata/temp-repo/ecj/'
+          patternLayout {
+            artifact "[artifact]-[revision](.[ext])"
+            m2compatible = true
+          }
+          metadataSources {
+            it.artifact()
+          }
+        }
+      }
+      filter {
+        includeGroup "org.eclipse.jdt"
+      }
+    }
+  }
+}
+
+configurations {
+  ecjDeps
+}
+
+dependencies {
+  ecjDeps deps.ecj
+}
+
+Configuration ecjConfiguration = configurations.ecjDeps
+String javadocPrefsPath = rootProject.layout.projectDirectory.file("gradle/validation/ecj-lint/ecj.javadocs.prefs").asFile.absolutePath
+
+// Create a [sourceSetName]EcjLint task for each source set
+// with a non-empty java.srcDirs. These tasks are then
+// attached to project's "ecjLint" task.
+def lintTasks = sourceSets.collect { SourceSet sourceSet ->
+  def srcDirs = sourceSet.java.sourceDirectories
+      .filter { dir -> dir.exists() }
+
+  tasks.register(sourceSet.getTaskName("ecjLint", null), JavaExec, { JavaExec task ->
+    // This dependency is on a configuration; technically it causes
+    // all dependencies to be resolved before this task executes
+    // (this includes scheduling tasks that compile the
+    // sources from other projects for example).
+    dependsOn sourceSet.compileClasspath
+    dependsOn ecjConfiguration
+
+    // The inputs are all source files from the sourceSet.
+    inputs.files sourceSet.allSource.asFileTree
+
+    // We create a task for all source sets but ignore those
+    // that don't have any Java source directories.
+    enabled = !srcDirs.isEmpty()
+
+    // Ignore MR-JAR sourceSets.
+    if (sourceSet.name ==~ /main\d+/) {
+      enabled = false
+    }
+
+    classpath = ecjConfiguration
+    mainClass = "org.eclipse.jdt.internal.compiler.batch.Main"
+
+    // DOCS: https://help.eclipse.org/latest/index.jsp?topic=%2Forg.eclipse.jdt.doc.user%2Ftasks%2Ftask-using_batch_compiler.htm
+
+    // Don't emit any .class files.
+    // Hack around "-d none" still emitting package-info.class
+    // by running in a temporary directory.
+    def tmpDst = getTemporaryDir()
+    workingDir tmpDst
+
+    args += ["-d", "none"]
+
+    assert project.java.sourceCompatibility == project.java.targetCompatibility
+
+    // Compilation environment.
+    // we use -source/-target as it is significantly faster than --release
+    args += [
+      "-source",
+      project.java.sourceCompatibility
+    ]
+    args += [
+      "-target",
+      project.java.targetCompatibility
+    ]
+    args += ["-encoding", "UTF-8"]
+    args += ["-proc:none"]
+    args += ["-nowarn"]
+    args += ["-enableJavadoc"]
+    args += [
+      "-properties",
+      javadocPrefsPath
+    ]
+
+    // We depend on modular paths.
+    def modularPaths = sourceSet.modularPathsForEcj
+    dependsOn modularPaths
+
+    // Add modular dependencies and their transitive dependencies to module path.
+    task.argumentProviders.add(modularPaths.compilationArguments)
+
+    // Add classpath, if needed.
+    task.argumentProviders.add((CommandLineArgumentProvider) {
+      // Add classpath locations in a lazy provider (can't resolve the
+      // configuration at evaluation time). Filter out non-existing entries
+      // (output folders for non-existing input source dirs like resources).
+      FileCollection cpath = modularPaths.compilationClasspath.filter { p -> p.exists() }
+      if (!cpath.isEmpty()) {
+        return [
+          "-classpath",
+          cpath.join(File.pathSeparator)
+        ]
+      } else {
+        return []
+      }
+    })
+
+    // Place input files in an external file to dodge command line argument
+    // limits. We could pass a directory but ecj seems to be buggy: when it
+    // encounters a module-info.java file it no longer compiles other source files.
+    def inputsFile = file("${tmpDst}/ecj-inputs.txt")
+    task.argumentProviders.add((CommandLineArgumentProvider) {
+      return ["@" + inputsFile.absolutePath]
+    })
+
+    doFirst {
+      modularPaths.logCompilationPaths(logger)
+
+      tmpDst.mkdirs()
+
+      // escape filename accoring to ECJ's rules:
+      // https://github.com/eclipse/aspectj.eclipse.jdt.core/blob/a05312e746b9bc2b48b4b039f6e7b5e061b5b393/org.eclipse.jdt.core/batch/org/eclipse/jdt/internal/compiler/batch/Main.java#L1533-L1537
+      // Basically surround all whitespace by quotes:
+      def escapeFileName = { String s -> s.replaceAll(/ +/, /"$0"/) }
+      inputsFile.setText(
+          srcDirs.collectMany { dir ->
+            project.fileTree(
+                dir: dir,
+                include: "**/*.java",
+                // Exclude the benchmark class with dependencies on nekohtml, which causes module-classpath conflicts and breaks ecj.
+                exclude: "**/DemoHTMLParser.java"
+                ).files
+          }
+          // Try to sort all input files; a side-effect of this should be that module-info.java
+          // is placed first on the list, which works around ECJ bug:
+          // https://bugs.eclipse.org/bugs/show_bug.cgi?id=569833
+          .sort()
+          .collect {file -> escapeFileName(file.absolutePath.toString())}.join("\n"), "UTF-8")
+    }
+  })
+}
+
+def ecjLint = tasks.register("ecjLint", {
+  description "Lint Java sources using ECJ."
+  group "Verification"
+
+  dependsOn lintTasks
+})
+
+// Attach ecjLint to check.
+tasks.named("check").configure {
+  dependsOn ecjLint
+}

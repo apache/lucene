@@ -29,5 +29,6 @@ allprojects { project ->
     plugins.apply("lucene.java.per-project-test-summary")
 
     plugins.apply("lucene.validation.forbidden-apis")
+    plugins.apply("lucene.validation.ecj-lint")
   }
 }

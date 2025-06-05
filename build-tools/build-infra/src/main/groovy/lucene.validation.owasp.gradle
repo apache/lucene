@@ -30,7 +30,7 @@ Provider<Integer> owaspThresholdOption = buildOptions.addIntOption("validation.o
     "Owasp validation threshold to fail the build, if exceeded.", 7)
 
 Provider<String> owaspApiKey = buildOptions.addOption("validation.owasp.apikey",
-        "Owasp validation API key (https://nvd.nist.gov/developers/request-an-api-key).")
+    "Owasp validation API key (https://nvd.nist.gov/developers/request-an-api-key).")
 
 if (owaspOption.get() || gradle.startParameter.taskNames.contains("owasp")) {
   plugins.apply(deps.plugins.owasp.dependencycheck.get().pluginId)
