@@ -33,7 +33,7 @@ def recompileDictionary(project, dictionaryName, Closure closure) {
 configure(project(":lucene:analysis:nori")) {
   plugins.withType(JavaPlugin).configureEach {
     project.ext {
-      targetDir = file("src/resources")
+      targetDir = project.file("src/resources")
     }
 
     task deleteDictionaryData() {
@@ -54,7 +54,7 @@ configure(project(":lucene:analysis:nori")) {
       dependsOn sourceSets.main.runtimeClasspath
 
       def dictionaryName = "mecab-ko-dic-2.1.1-20180720"
-      def dictionarySource = "https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/${dictionaryName}.tar.gz"
+      def dictionarySource = "https://s3.amazonaws.com/lucene-testdata/mecab/${dictionaryName}.tar.gz"
       def dictionaryFile = file("${buildDir}/generate/${dictionaryName}.tar.gz")
       def unpackedDir = file("${buildDir}/generate/${dictionaryName}")
 
@@ -81,7 +81,6 @@ configure(project(":lucene:analysis:nori")) {
       }
     }
 
-    // TODO: https://github.com/apache/lucene/issues/14760
-    // regenerate.dependsOn compileMecabKo
+    regenerate.dependsOn compileMecabKo
   }
 }
