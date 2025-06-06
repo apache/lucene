@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.search.Weight.DefaultBulkScorer;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.MathUtil;
 
 /**
  * BulkScorer implementation of {@link BlockMaxConjunctionScorer} that focuses on top-level
@@ -34,7 +35,7 @@ import org.apache.lucene.util.Bits;
  */
 final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
-  private static final long MAX_WINDOW_SIZE = 65536L;
+  private static final int MAX_WINDOW_SIZE = 65536;
 
   private final Scorer[] scorers;
   private final Scorable[] scorables;
@@ -91,7 +92,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       int windowMax = Math.min(scorers[0].advanceShallow(windowMin), max - 1);
       // Ensure the scoring window not too big, this especially works for the default implementation
       // of `Scorer#advanceShallow` which may return `DocIdSetIterator#NO_MORE_DOCS`.
-      windowMax = (int) Math.min(windowMax, windowMin + MAX_WINDOW_SIZE);
+      windowMax = MathUtil.unsignedMin(windowMax, windowMin + MAX_WINDOW_SIZE);
 
       float maxWindowScore = computeMaxScore(windowMin, windowMax);
       scoreWindowScoreFirst(collector, acceptDocs, windowMin, windowMax + 1, maxWindowScore);
