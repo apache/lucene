@@ -77,6 +77,7 @@ plugins {
   id "lucene.regenerate.kuromoji"
   id "lucene.regenerate.nori"
   id "lucene.regenerate.icu"
+  id "lucene.regenerate.javacc"
 
   // perhaps move this to a convention plugin or remove entirely?
   id "lucene.build-infra"
@@ -89,8 +90,6 @@ description = 'Grandparent project for Apache Lucene Core'
 apply from: file('gradle/_to-remove/globals.gradle')
 
 // Source or data regeneration tasks
-apply from: file('gradle/generation/javacc.gradle')
-apply from: file('gradle/generation/forUtil.gradle')
 apply from: file('gradle/generation/antlr.gradle')
 apply from: file('gradle/generation/unicode-test-classes.gradle')
 apply from: file('gradle/generation/extract-jdk-apis.gradle')

@@ -78,10 +78,10 @@ configure(project(":lucene:analysis:common")) {
     inputs.files fileTree(
         dir: "src/java/org/tartarus/snowball",
         include: [
-            "Among.java",
-            "SnowballStemmer.java",
-            "SnowballProgram.java",
-            "ext/*Stemmer.java"
+          "Among.java",
+          "SnowballStemmer.java",
+          "SnowballProgram.java",
+          "ext/*Stemmer.java"
         ])
 
     inputs.files fileTree(
@@ -101,15 +101,26 @@ configure(project(":lucene:analysis:common")) {
       doFirst {
         project.quietExec {
           executable "bash"
-          args = [snowballScript, snowballStemmerDir, snowballWebsiteDir, projectDir]
+          args = [
+            snowballScript,
+            snowballStemmerDir,
+            snowballWebsiteDir,
+            projectDir
+          ]
         }
       }
     }
   }
 
   regenerate.dependsOn wrapWithPersistentChecksums(snowballInternal, [
-          andThenTasks: ["spotlessJava", "spotlessJavaApply"],
-          ignoreWithSource: [downloadSnowballStemmers, downloadSnowballWebsite],
-          mustRunBefore: [ "compileJava" ]
+    andThenTasks: [
+      "spotlessJava",
+      "spotlessJavaApply"
+    ],
+    ignoreWithSource: [
+      downloadSnowballStemmers,
+      downloadSnowballWebsite
+    ],
+    mustRunBefore: ["compileJava"]
   ])
 }

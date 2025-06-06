@@ -42,13 +42,16 @@ configure(project(":lucene:core")) {
     def targetDir = file("src/java/org/apache/lucene/util/packed")
 
     def templateFiles = [
-        file("${resources}/gen_BulkOperation.py"),
-        file("${resources}/gen_Packed64SingleBlock.py")
+      file("${resources}/gen_BulkOperation.py"),
+      file("${resources}/gen_Packed64SingleBlock.py")
     ]
 
     inputs.property("source", momanSource)
     inputs.files templateFiles
-    outputs.files fileTree(dir: targetDir, includes: ["Packed64SingleBlock.java", "BulkOperation*.java"])
+    outputs.files fileTree(dir: targetDir, includes: [
+      "Packed64SingleBlock.java",
+      "BulkOperation*.java"
+    ])
 
     doLast {
       templateFiles.each { prog ->
@@ -65,7 +68,7 @@ configure(project(":lucene:core")) {
           includes: 'Packed64SingleBlock.java, BulkOperation*.java',
           encoding: 'UTF-8',
           eol: 'lf'
-      )
+          )
     }
   }
 
@@ -84,11 +87,13 @@ configure(project(":lucene:core")) {
           quietExec {
             workingDir targetDir
             executable project.externalTool("python3")
-            args = ['-B',
-                    templateFile.toString(),
-                    num,
-                    transpose,
-                    "${momanDir}/finenight/python"]
+            args = [
+              '-B',
+              templateFile.toString(),
+              num,
+              transpose,
+              "${momanDir}/finenight/python"
+            ]
           }
         }
       }
@@ -97,7 +102,7 @@ configure(project(":lucene:core")) {
           includes: '*ParametricDescription.java',
           encoding: 'UTF-8',
           eol: 'lf'
-      )
+          )
     }
   }
 
@@ -106,8 +111,11 @@ configure(project(":lucene:core")) {
     group "generation"
 
     def extraConfig = [
-            andThenTasks: ["spotlessJava", "spotlessJavaApply"],
-            mustRunBefore: [ "compileJava" ]
+      andThenTasks: [
+        "spotlessJava",
+        "spotlessJavaApply"
+      ],
+      mustRunBefore: ["compileJava"]
     ]
 
     dependsOn wrapWithPersistentChecksums(utilGenPackedInternal, extraConfig)

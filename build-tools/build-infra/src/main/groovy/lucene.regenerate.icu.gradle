@@ -99,28 +99,28 @@ configure(project(":lucene:analysis:icu")) {
         ignoreExitValue false
         workingDir utr30DataDir
         args = [
-            "release-${icu4jVersion.replace(".", "-")}"
+          "release-${icu4jVersion.replace(".", "-")}"
         ]
       }
 
       project.quietExec {
         executable gennorm
         args = [
-            "-v",
-            "-s",
-            utr30DataDir,
-            "-o",
-            "${buildDir}/utr30.tmp",
-            *(inputFiles.collect { it.name })
+          "-v",
+          "-s",
+          utr30DataDir,
+          "-o",
+          "${buildDir}/utr30.tmp",
+          *(inputFiles.collect { it.name })
         ]
       }
 
       project.quietExec {
         executable icupkg
         args = [
-            "-tb",
-            "${buildDir}/utr30.tmp",
-            outputFile
+          "-tb",
+          "${buildDir}/utr30.tmp",
+          outputFile
         ]
       }
     }
@@ -148,17 +148,17 @@ configure(project(":lucene:analysis:icu")) {
 
         ignoreExitValue false
         enableAssertions true
-        args = [ sourceDir, targetDir ]
+        args = [sourceDir, targetDir]
       }
     }
   }
 
   regenerate.dependsOn wrapWithPersistentChecksums(genUtr30DataFilesInternal, [
     ignoreWithSource: icuCompileTask,
-    mustRunBefore: [ "compileJava" ]
+    mustRunBefore: ["compileJava"]
   ])
   regenerate.dependsOn wrapWithPersistentChecksums(genRbbiInternal, [
-    mustRunBefore: [ "compileJava" ]
+    mustRunBefore: ["compileJava"]
   ])
 
   task compileIcuWindows() {
@@ -181,7 +181,6 @@ configure(project(":lucene:analysis:icu")) {
         into icuBuildDir
         from zipTree(icuBinZip)
       }
-
     }
   }
 
@@ -211,8 +210,8 @@ configure(project(":lucene:analysis:icu")) {
         executable "tar"
         workingDir icuBuildDir
         args = [
-            "-zxf",
-            icuSrcTgz
+          "-zxf",
+          icuSrcTgz
         ]
       }
 
@@ -224,9 +223,9 @@ configure(project(":lucene:analysis:icu")) {
         environment("CFLAGS", "-O0")
         environment("CXXFLAGS", "-O0")
         args = [
-            "configure",
-            "--prefix=${icuSrcDir}",
-            "--enable-rpath"
+          "configure",
+          "--prefix=${icuSrcDir}",
+          "--enable-rpath"
         ]
       }
 
@@ -234,7 +233,7 @@ configure(project(":lucene:analysis:icu")) {
         executable "make"
         workingDir icuSrcDir
         args = [
-            "-j${buildOptions['tests.jvms'].get()}"
+          "-j${buildOptions['tests.jvms'].get()}"
         ]
       }
 
@@ -243,9 +242,7 @@ configure(project(":lucene:analysis:icu")) {
       project.quietExec {
         executable "./derb"
         workingDir icuBinDir
-        args = [
-            "-V"
-        ]
+        args = ["-V"]
       }
     }
   }
@@ -272,17 +269,21 @@ configure(project(":lucene:analysis:common")) {
         classpath icuConfig, rootProject.configurations.groovy
 
         args = [
-            "--encoding", "UTF-8",
-            file("${resources}/GenerateUnicodeProps.groovy"),
-            outputFile
+          "--encoding",
+          "UTF-8",
+          file("${resources}/GenerateUnicodeProps.groovy"),
+          outputFile
         ]
       }
     }
   }
 
   regenerate.dependsOn wrapWithPersistentChecksums(generateUnicodePropsInternal, [
-          andThenTasks: ["spotlessJava", "spotlessJavaApply"],
-          mustRunBefore: [ "compileJava" ]
+    andThenTasks: [
+      "spotlessJava",
+      "spotlessJavaApply"
+    ],
+    mustRunBefore: ["compileJava"]
   ])
 }
 
@@ -306,16 +307,20 @@ configure(project(":lucene:core")) {
         classpath icuConfig, rootProject.configurations.groovy
 
         args = [
-            "--encoding", "UTF-8",
-            file("${resources}/GenerateCaseFolding.groovy"),
-            outputFile
+          "--encoding",
+          "UTF-8",
+          file("${resources}/GenerateCaseFolding.groovy"),
+          outputFile
         ]
       }
     }
   }
 
   regenerate.dependsOn wrapWithPersistentChecksums(generateUnicodePropsInternal, [
-          andThenTasks: ["spotlessJava", "spotlessJavaApply"],
-          mustRunBefore: [ "compileJava" ]
+    andThenTasks: [
+      "spotlessJava",
+      "spotlessJavaApply"
+    ],
+    mustRunBefore: ["compileJava"]
   ])
 }

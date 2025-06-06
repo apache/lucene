@@ -1,6 +1,3 @@
-import java.nio.charset.Charset
-import java.util.function.Function
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,6 +15,9 @@ import java.util.function.Function
  * limitations under the License.
  */
 
+import java.nio.charset.Charset
+import java.util.function.Function
+
 // This adds javacc generation support.
 
 configure(rootProject) {
@@ -29,12 +29,12 @@ configure(rootProject) {
     javacc deps.javacc
   }
 
-  task javacc() {
-    description "Regenerate sources for corresponding javacc grammar files."
-    group "generation"
+  tasks.register("javacc", {
+    description = "Regenerate sources for corresponding javacc grammar files."
+    group = "generation"
 
     dependsOn allprojects.collect { prj -> prj.tasks.withType(JavaCCTask) }
-  }
+  })
 }
 
 def commonCleanups = { FileTree generatedFiles ->
@@ -68,7 +68,7 @@ def commonCleanups = { FileTree generatedFiles ->
           /package (.+)/,
           '''
           package $1
-          import org.apache.lucene.queryparser.charstream.CharStream; 
+          import org.apache.lucene.queryparser.charstream.CharStream;
           '''.trim())
       // Eliminates redundant cast message.
       text = text.replace(
@@ -88,8 +88,8 @@ def commonCleanups = { FileTree generatedFiles ->
 
 configure(project(":lucene:queryparser")) {
   task javaccParserClassicInternal(type: JavaCCTask) {
-    description "Regenerate classic query parser from lucene/queryparser/classic/QueryParser.jj"
-    group "generation"
+    description = "Regenerate classic query parser from lucene/queryparser/classic/QueryParser.jj"
+    group = "generation"
 
     javaccFile = file('src/java/org/apache/lucene/queryparser/classic/QueryParser.jj')
 
@@ -125,8 +125,8 @@ configure(project(":lucene:queryparser")) {
   }
 
   task javaccParserSurroundInternal(type: JavaCCTask) {
-    description "Regenerate surround query parser from lucene/queryparser/surround/parser/QueryParser.jj"
-    group "generation"
+    description = "Regenerate surround query parser from lucene/queryparser/surround/parser/QueryParser.jj"
+    group = "generation"
 
     javaccFile = file('src/java/org/apache/lucene/queryparser/surround/parser/QueryParser.jj')
 
@@ -150,8 +150,8 @@ configure(project(":lucene:queryparser")) {
   }
 
   task javaccParserFlexibleInternal(type: JavaCCTask) {
-    description "Regenerate flexible query parser from queryparser/flexible/standard/parser/StandardSyntaxParser.jj"
-    group "generation"
+    description = "Regenerate flexible query parser from queryparser/flexible/standard/parser/StandardSyntaxParser.jj"
+    group = "generation"
 
     javaccFile = file('src/java/org/apache/lucene/queryparser/flexible/standard/parser/StandardSyntaxParser.jj')
 
@@ -168,7 +168,7 @@ configure(project(":lucene:queryparser")) {
           text = text.replace(
               "package org.apache.lucene.queryparser.flexible.standard.parser;", '''\
             package org.apache.lucene.queryparser.flexible.standard.parser;
-  
+
             import org.apache.lucene.queryparser.flexible.messages.*;
             import org.apache.lucene.queryparser.flexible.core.*;
             import org.apache.lucene.queryparser.flexible.core.messages.*;
@@ -178,7 +178,7 @@ configure(project(":lucene:queryparser")) {
           text = text.replaceAll(
               /(?s)[ ]*public ParseException\(Token currentTokenVal[^}]+[}]/, '''\
             public ParseException(Token currentTokenVal,
-              int[][] expectedTokenSequencesVal, String[] tokenImageVal) 
+              int[][] expectedTokenSequencesVal, String[] tokenImageVal)
             {
               super(new MessageImpl(QueryParserMessages.INVALID_SYNTAX, initialise(
               currentTokenVal, expectedTokenSequencesVal, tokenImageVal)));
@@ -190,7 +190,7 @@ configure(project(":lucene:queryparser")) {
 
           text = text.replaceAll(
               /(?s)[ ]*public ParseException\(String message\)[^}]+[}]/, '''\
-            public ParseException(Message message) 
+            public ParseException(Message message)
             {
               super(message);
             }
@@ -198,7 +198,7 @@ configure(project(":lucene:queryparser")) {
 
           text = text.replaceAll(
               /(?s)[ ]*public ParseException\(\)[^}]+[}]/, '''\
-            public ParseException() 
+            public ParseException()
             {
               super(new MessageImpl(QueryParserMessages.INVALID_SYNTAX, "Error"));
             }
@@ -229,12 +229,15 @@ configure(project(":lucene:queryparser")) {
   }
 
   task javacc() {
-    description "Regenerate query parsers (javacc syntax definitions)."
-    group "generation"
+    description = "Regenerate query parsers (javacc syntax definitions)."
+    group = "generation"
 
     def extraConfig = [
-        andThenTasks: ["spotlessJava", "spotlessJavaApply"],
-        mustRunBefore: [ "compileJava" ]
+      andThenTasks: [
+        "spotlessJava",
+        "spotlessJavaApply"
+      ],
+      mustRunBefore: ["compileJava"]
     ]
 
     dependsOn wrapWithPersistentChecksums(javaccParserClassicInternal, extraConfig),
@@ -242,7 +245,7 @@ configure(project(":lucene:queryparser")) {
         wrapWithPersistentChecksums(javaccParserFlexibleInternal, extraConfig)
   }
 
-  regenerate.dependsOn javacc
+  regenerate.dependsOn "javacc"
 }
 
 // We always regenerate, no need to declare outputs.
@@ -265,12 +268,12 @@ class JavaCCTask extends DefaultTask {
     def baseName = javaccFile.name.replace(".jj", "")
 
     return [
-        project.file("${baseDir}/${baseName}.java"),
-        project.file("${baseDir}/${baseName}Constants.java"),
-        project.file("${baseDir}/${baseName}TokenManager.java"),
-        project.file("${baseDir}/ParseException.java"),
-        project.file("${baseDir}/Token.java"),
-        project.file("${baseDir}/TokenMgrError.java")
+      project.file("${baseDir}/${baseName}.java"),
+      project.file("${baseDir}/${baseName}Constants.java"),
+      project.file("${baseDir}/${baseName}TokenManager.java"),
+      project.file("${baseDir}/ParseException.java"),
+      project.file("${baseDir}/Token.java"),
+      project.file("${baseDir}/TokenMgrError.java")
     ]
   }
 
@@ -305,8 +308,8 @@ class JavaCCTask extends DefaultTask {
 
       main = "org.javacc.parser.Main"
       args += [
-          "-OUTPUT_DIRECTORY=${tempDir}",
-          javaccFile
+        "-OUTPUT_DIRECTORY=${tempDir}",
+        javaccFile
       ]
     }
 

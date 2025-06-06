@@ -187,10 +187,10 @@ allprojects {
         // that one still tries to write something when the other closed
         // the underlying output stream.
         def wrapped = new java.io.FilterOutputStream(output) {
-          public void close() {
-            // no-op. we close this stream manually.
-          }
-        }
+              public void close() {
+                // no-op. we close this stream manually.
+              }
+            }
 
         result = project.exec { ExecSpec execSpec ->
           project.configure(execSpec, closure)
@@ -212,9 +212,9 @@ allprojects {
         if (!saveIgnoreExitValue) {
           result.rethrowFailure()
           throw new GradleException("The executed process ${saveExecSpec.executable} " +
-                  "returned an odd status " +
-                  "code: ${result.exitValue}, " +
-                  "output at: ${outputFile} (and logged above).")
+          "returned an odd status " +
+          "code: ${result.exitValue}, " +
+          "output at: ${outputFile} (and logged above).")
         }
       } else {
         logger.info(new String(outputFile.bytes))

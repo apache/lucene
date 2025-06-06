@@ -74,19 +74,19 @@ configure(project(":lucene:analysis:kuromoji")) {
           workingDir = unpackedDir
           executable "git"
           args += [
-              "apply",
-              project.file("src/tools/patches/Noun.proper.csv.patch").absolutePath
+            "apply",
+            project.file("src/tools/patches/Noun.proper.csv.patch").absolutePath
           ]
         }
 
         // Compile the dictionary
         recompileDictionary(project, dictionaryName, {
           args += [
-              "ipadic",
-              unpackedDir,
-              targetDir,
-              "euc-jp",
-              false
+            "ipadic",
+            unpackedDir,
+            targetDir,
+            "euc-jp",
+            false
           ]
         })
       }
@@ -118,11 +118,11 @@ configure(project(":lucene:analysis:kuromoji")) {
         // Compile the dictionary
         recompileDictionary(project, dictionaryName, {
           args += [
-              "ipadic",
-              unpackedDir,
-              targetDir,
-              "euc-jp",
-              false
+            "ipadic",
+            unpackedDir,
+            targetDir,
+            "euc-jp",
+            false
           ]
         })
       }
