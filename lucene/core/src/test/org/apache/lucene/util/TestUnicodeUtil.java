@@ -289,4 +289,13 @@ public class TestUnicodeUtil extends LuceneTestCase {
       assertEquals(len, UnicodeUtil.calcUTF16toUTF8Length(unicode, 0, unicode.length()));
     }
   }
+
+  public void testCaseFolding() {
+    assertEquals('0', UnicodeUtil.foldCase('0'));
+    assertEquals('a', UnicodeUtil.foldCase('a'));
+    assertEquals('a', UnicodeUtil.foldCase('A'));
+    assertEquals('σ', UnicodeUtil.foldCase('Σ'));
+    assertEquals('σ', UnicodeUtil.foldCase('σ'));
+    assertEquals('σ', UnicodeUtil.foldCase('ς'));
+  }
 }

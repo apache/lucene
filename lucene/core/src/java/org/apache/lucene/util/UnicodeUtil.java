@@ -84,6 +84,7 @@ package org.apache.lucene.util;
  */
 
 import java.util.Arrays;
+import java.util.function.IntConsumer;
 
 /**
  * Class to encode java's UTF16 char[] into UTF8 byte[] without always allocating a new byte[] as
@@ -683,5 +684,30 @@ public final class UnicodeUtil {
    */
   public static int UTF8toUTF16(BytesRef bytesRef, char[] chars) {
     return UTF8toUTF16(bytesRef.bytes, bytesRef.offset, bytesRef.length, chars);
+  }
+
+  // tableize basic latin: everything folds within basic latin
+  // we'd have to consume more memory for extended latin
+  private static final byte[] FOLD_CACHE = new byte[0x7F];
+
+  static {
+    for (int i = 0; i < FOLD_CACHE.length; i++) {
+      int ch = CaseFolding.fold(i);
+      assert ch < 0x7F;
+      FOLD_CACHE[i] = (byte) ch;
+    }
+  }
+
+  /** Returns the Unicode simple case folding of {@code codepoint} */
+  public static int foldCase(int codepoint) {
+    if (codepoint < FOLD_CACHE.length) {
+      return FOLD_CACHE[codepoint];
+    } else {
+      return CaseFolding.fold(codepoint);
+    }
+  }
+
+  public static void expandCase(int codepoint, IntConsumer consumer) {
+    CaseFolding.expand(codepoint, consumer);
   }
 }

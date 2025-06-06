@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
+import org.apache.lucene.util.UnicodeUtil;
 
 /**
  * Regular Expression extension to <code>Automaton</code>.
@@ -768,7 +769,7 @@ public class RegExp {
    */
   private int[] toCaseInsensitiveChar(int codepoint) {
     List<Integer> list = new ArrayList<>();
-    CaseFolding.expand(
+    UnicodeUtil.expandCase(
         codepoint,
         (int variant) -> {
           list.add(variant);
@@ -796,7 +797,7 @@ public class RegExp {
 
     // iterate over range, adding codepoint and any alternatives as transitions
     for (int i = start; i <= end; i++) {
-      CaseFolding.expand(
+      UnicodeUtil.expandCase(
           i,
           (int ch) -> {
             scratch.addTransition(state, state, ch);
