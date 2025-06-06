@@ -39,9 +39,9 @@ spotless.format("gradleScripts", GroovyGradleExtension.class, { ext ->
 })
 
 tasks.named("spotlessGradleScripts").configure {
-  mustRunAfter ":lucene:build-tools:build-infra-shadow:spotlessJava"
   mustRunAfter ":lucene:build-tools:missing-doclet:spotlessJava"
   mustRunAfter ":lucene:build-tools:missing-doclet:renderJavadoc"
+  mustRunAfter ":lucene:build-tools:build-infra-shadow:spotlessJava"
   mustRunAfter ":lucene:build-tools:build-infra-shadow:pluginUnderTestMetadata"
   mustRunAfter ":lucene:build-tools:build-infra-shadow:pluginDescriptors"
 }
