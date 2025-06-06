@@ -73,6 +73,7 @@ plugins {
 
   id "lucene.regenerate"
   id "lucene.regenerate.jflex"
+  id "lucene.regenerate.moman"
 
   // perhaps move this to a convention plugin or remove entirely?
   id "lucene.build-infra"
@@ -85,7 +86,6 @@ description = 'Grandparent project for Apache Lucene Core'
 apply from: file('gradle/_to-remove/globals.gradle')
 
 // Source or data regeneration tasks
-apply from: file('gradle/generation/moman.gradle')
 apply from: file('gradle/generation/snowball.gradle')
 apply from: file('gradle/generation/kuromoji.gradle')
 apply from: file('gradle/generation/nori.gradle')

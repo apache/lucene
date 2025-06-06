@@ -14,9 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-apply plugin: deps.plugins.undercouch.download.get().pluginId
+import de.undercouch.gradle.tasks.download.Download
 
-def resources = scriptResources(buildscript)
+def resources = rootProject.file("gradle/regenerate/moman")
 
 configure(project(":lucene:core")) {
   ext {
