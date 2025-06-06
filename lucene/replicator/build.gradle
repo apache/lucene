@@ -22,4 +22,3 @@ dependencies {
 
   moduleTestImplementation project(':lucene:test-framework')
 }
-

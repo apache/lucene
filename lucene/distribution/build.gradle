@@ -50,12 +50,18 @@ tasks.register("assembleSourceTgz", {
       executable = project.externalTool("git")
       workingDir = project.rootDir
 
+      // An explicit GIT_DIR to prevent .git upward scanning if something goes wrong.
+      environment("GIT_DIR", dotGitPath.toString())
+
       args += [
-              "archive",
-              "--format", "tgz",
-              "--prefix", "lucene-${version}/",
-              "--output", sourceTgzFile.get().asFile,
-              "HEAD"
+        "archive",
+        "--format",
+        "tgz",
+        "--prefix",
+        "lucene-${version}/",
+        "--output",
+        sourceTgzFile.get().asFile,
+        "HEAD"
       ]
     }
   }
@@ -93,8 +99,8 @@ dependencies {
 task computeChecksums(type: org.apache.lucene.gradle.Checksum) {
   files = objects.fileCollection()
   [
-      tasks.assembleSourceTgz,
-      tasks.assembleBinaryTgz,
+    tasks.assembleSourceTgz,
+    tasks.assembleBinaryTgz,
   ].each { dep ->
     dependsOn dep
     files += dep.outputs.files
@@ -145,10 +151,12 @@ task assembleRelease(type: Sync) {
 
 // Add the description and task group to some of the tasks that make
 // sense at the user-level help.
-tasks.matching {it.name in [
+tasks.matching {
+  it.name in [
     "assembleSourceTgz",
     "assembleBinaryTgz",
     "assembleRelease",
-]}.all {
+  ]
+}.all {
   group "distribution"
 }

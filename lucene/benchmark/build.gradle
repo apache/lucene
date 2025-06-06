@@ -21,7 +21,7 @@ plugins {
 
 description = 'Lucene benchmarking module'
 
-dependencies {  
+dependencies {
   moduleImplementation project(':lucene:core')
 
   moduleImplementation project(':lucene:analysis:common')
@@ -57,7 +57,7 @@ sourceSets {
 }
 
 def taskAlgOption = buildOptions.addFileOption("taskAlg", "Path to the task file for the 'run' task.",
-        layout.projectDirectory.file("conf/micro-standard.alg"))
+    layout.projectDirectory.file("conf/micro-standard.alg"))
 
 def heapSizeOption = buildOptions.addOption("maxHeapSize", "Heap size for the 'run' task.", "1G")
 
@@ -65,8 +65,8 @@ def outputFileOption = buildOptions.addFileOption("standardOutput", "Path to the
 
 tasks.register("run", JavaExec, {
   description = "Run a perf test (optional: -PtaskAlg=conf/your-algorithm-file -PmaxHeapSize=1G). Before" +
-          " running this, you need to download the dataset the benchmark runs against (e.g., by getReuters" +
-          " task). See dataset download tasks for more details."
+      " running this, you need to download the dataset the benchmark runs against (e.g., by getReuters" +
+      " task). See dataset download tasks for more details."
   group = "Utility launchers"
 
   mainClass = 'org.apache.lucene.benchmark.byTask.Benchmark'
@@ -74,7 +74,9 @@ tasks.register("run", JavaExec, {
   classpath sourceSets.main.runtimeClasspath
 
   // allow these to be specified on the CLI via -PtaskAlg=  for example
-  args = [taskAlgOption.get().asFile.absolutePath]
+  args = [
+    taskAlgOption.get().asFile.absolutePath
+  ]
 
   maxHeapSize = heapSizeOption.get()
 

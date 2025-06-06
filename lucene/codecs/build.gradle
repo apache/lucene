@@ -20,6 +20,6 @@
 description = 'Lucene codecs and postings formats'
 
 dependencies {
-    moduleImplementation project(':lucene:core')
-    moduleTestImplementation project(':lucene:test-framework')
+  moduleImplementation project(':lucene:core')
+  moduleTestImplementation project(':lucene:test-framework')
 }

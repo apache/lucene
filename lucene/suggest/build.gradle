@@ -22,6 +22,6 @@ description = 'Auto-suggest and Spellchecking support'
 dependencies {
   moduleApi project(':lucene:core')
   moduleApi project(':lucene:analysis:common')
-  
+
   moduleTestImplementation project(':lucene:test-framework')
 }

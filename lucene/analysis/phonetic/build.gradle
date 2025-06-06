@@ -26,5 +26,4 @@ dependencies {
   moduleApi deps.commons.codec
 
   moduleTestImplementation project(':lucene:test-framework')
-} 
-
+}

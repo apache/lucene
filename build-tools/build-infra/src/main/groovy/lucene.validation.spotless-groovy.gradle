@@ -34,7 +34,8 @@ spotless.format("gradleScripts", GroovyGradleExtension.class, { ext ->
   ext.endWithNewline()
   ext.target([
     "build-tools/**/*.gradle",
-    "build-tools/**/*.groovy"
+    "build-tools/**/*.groovy",
+    "**/build.gradle"
   ])
 })
 

@@ -91,8 +91,8 @@ task standaloneAssemble(type: Sync) {
   def antHelper = new org.apache.tools.ant.Project()
   afterEvaluate {
     def substituteProperties = [
-        "required.java.version": project.java.targetCompatibility,
-        "luke.cmd": "${standaloneJar.archiveFileName.get()}"
+      "required.java.version": project.java.targetCompatibility,
+      "luke.cmd": "${standaloneJar.archiveFileName.get()}"
     ]
     substituteProperties.each { k, v -> antHelper.setProperty(k.toString(), v.toString()) }
   }
@@ -116,7 +116,7 @@ Standalone Luke distribution assembled. You can run it with:
 java -jar "${standaloneDistDir}/${standaloneJar.archiveFileName.get()}"
 java --module-path "${standaloneDistDir}" -m org.apache.lucene.luke
         """
-    )
+        )
   }
 }
 
@@ -145,10 +145,9 @@ task run() {
         executable: rootProject.ext.runtimeJavaExecutable,
         spawn: true,
         vmlauncher: true
-    ) {
-      arg(value: '-jar')
-      arg(value: file("${standaloneDistDir}/${standaloneJar.archiveFileName.get()}").absolutePath)
-    }
+        ) {
+          arg(value: '-jar')
+          arg(value: file("${standaloneDistDir}/${standaloneJar.archiveFileName.get()}").absolutePath)
+        }
   }
 }
-
