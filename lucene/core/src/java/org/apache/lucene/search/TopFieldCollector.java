@@ -367,7 +367,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       long maxMinScore = minScoreAcc.getRaw();
       float score;
       if (maxMinScore != Long.MIN_VALUE
-          && (score = MaxScoreAccumulator.toScore(maxMinScore)) > minCompetitiveScore) {
+          && (score = DocScoreEncoder.toScore(maxMinScore)) > minCompetitiveScore) {
         scorer.setMinCompetitiveScore(score);
         minCompetitiveScore = score;
         totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
@@ -384,7 +384,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
         minCompetitiveScore = minScore;
         totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
         if (minScoreAcc != null) {
-          minScoreAcc.accumulate(docBase, minScore);
+          minScoreAcc.accumulate(DocScoreEncoder.encode(docBase, minScore));
         }
       }
     }
