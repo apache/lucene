@@ -20,7 +20,7 @@ import org.gradle.internal.jvm.Jvm
 // generate javadocs by calling javadoc tool
 // see https://docs.oracle.com/en/java/javase/11/tools/javadoc.html
 
-def resources = scriptResources(buildscript)
+def resources = rootProject.file("gradle/documentation/render-javadoc")
 
 allprojects {
   plugins.withType(JavaPlugin).configureEach {
@@ -44,9 +44,9 @@ allprojects {
       dependsOn sourceSets.main.compileClasspath
       classpath = sourceSets.main.compileClasspath
       srcDirSet = sourceSets.main.java
-      releaseVersion = rootProject.minJavaVersion
+      releaseVersion = rootProject.ext.minJavaVersion
 
-      outputDir = project.javadoc.destinationDir
+      outputDir = project.tasks.named("javadoc").get().destinationDir
     })
 
     // We disable the default javadoc task and have our own
@@ -75,7 +75,7 @@ allprojects {
         dependsOn sourceSets.main.compileClasspath
         classpath = sourceSets.main.compileClasspath
         srcDirSet = sourceSets.main.java
-        releaseVersion = rootProject.minJavaVersion
+        releaseVersion = rootProject.ext.minJavaVersion
 
         relativeProjectLinks = true
 
@@ -83,7 +83,7 @@ allprojects {
 
         // Place the documentation under the documentation directory.
         // docroot is defined in 'documentation.gradle'
-        outputDir = project.docroot.toPath().resolve(project.relativeDocPath).toFile()
+        outputDir = project.docroot.toPath().resolve(project.ext.relativeDocPath).toFile()
       })
     }
   }
@@ -92,15 +92,15 @@ allprojects {
 // Set up titles and link up some offline docs for all documentation
 // (they may be unused but this doesn't do any harm).
 
-def javaJavadocPackages = rootProject.file("${resources}/java21/")
+def javaJavadocPackages = rootProject.file("${resources}/java21/") // TODO: make this use minJava from deps
 def junitJavadocPackages = rootProject.file("${resources}/junit/")
 allprojects {
   project.tasks.withType(RenderJavadocTask).configureEach {
     title = "Lucene ${project.version} ${project.name} API"
 
     offlineLinks += [
-        "https://docs.oracle.com/en/java/javase/21/docs/api/": javaJavadocPackages,
-        "https://junit.org/junit4/javadoc/4.12/": junitJavadocPackages
+      "https://docs.oracle.com/en/java/javase/21/docs/api/": javaJavadocPackages,
+      "https://junit.org/junit4/javadoc/4.12/": junitJavadocPackages
     ]
 
     luceneDocUrl = provider({ rootProject.luceneDocUrl })
@@ -120,20 +120,20 @@ configure(project(":lucene:analysis:common")) {
 }
 
 configure([
-    project(":lucene:analysis:kuromoji"),
-    project(":lucene:analysis:nori"),
-    project(":lucene:analysis:opennlp"),
-    project(":lucene:analysis:smartcn"),
-    project(":lucene:benchmark"),
-    project(":lucene:codecs"),
-    project(":lucene:grouping"),
-    project(":lucene:highlighter"),
-    project(":lucene:luke"),
-    project(":lucene:monitor"),
-    project(":lucene:queries"),
-    project(":lucene:queryparser"),
-    project(":lucene:replicator"),
-    project(":lucene:spatial-extras"),
+  project(":lucene:analysis:kuromoji"),
+  project(":lucene:analysis:nori"),
+  project(":lucene:analysis:opennlp"),
+  project(":lucene:analysis:smartcn"),
+  project(":lucene:benchmark"),
+  project(":lucene:codecs"),
+  project(":lucene:grouping"),
+  project(":lucene:highlighter"),
+  project(":lucene:luke"),
+  project(":lucene:monitor"),
+  project(":lucene:queries"),
+  project(":lucene:queryparser"),
+  project(":lucene:replicator"),
+  project(":lucene:spatial-extras"),
 ]) {
   project.tasks.withType(RenderJavadocTask).configureEach {
     // TODO: fix missing javadocs
@@ -142,17 +142,17 @@ configure([
 }
 
 configure([
-    project(":lucene:analysis:icu"),
-    project(":lucene:analysis:morfologik"),
-    project(":lucene:analysis:phonetic"),
-    project(":lucene:analysis:stempel"),
-    project(":lucene:classification"),
-    project(":lucene:demo"),
-    project(":lucene:expressions"),
-    project(":lucene:facet"),
-    project(":lucene:join"),
-    project(":lucene:spatial3d"),
-    project(":lucene:suggest"),
+  project(":lucene:analysis:icu"),
+  project(":lucene:analysis:morfologik"),
+  project(":lucene:analysis:phonetic"),
+  project(":lucene:analysis:stempel"),
+  project(":lucene:classification"),
+  project(":lucene:demo"),
+  project(":lucene:expressions"),
+  project(":lucene:facet"),
+  project(":lucene:join"),
+  project(":lucene:spatial3d"),
+  project(":lucene:suggest"),
 ]) {
   project.tasks.withType(RenderJavadocTask).configureEach {
     // TODO: fix missing @param tags
@@ -201,20 +201,20 @@ configure(project(":lucene:core")) {
     javadocMissingLevel = "class"
     // some packages are fixed already
     javadocMissingMethod = [
-        "org.apache.lucene.util.automaton",
-        "org.apache.lucene.analysis.standard",
-        "org.apache.lucene.analysis.tokenattributes",
-        "org.apache.lucene.document",
-        "org.apache.lucene.search.similarities",
-        "org.apache.lucene.index",
-        "org.apache.lucene.codecs",
-        "org.apache.lucene.codecs.lucene50",
-        "org.apache.lucene.codecs.lucene60",
-        "org.apache.lucene.codecs.lucene80",
-        "org.apache.lucene.codecs.lucene84",
-        "org.apache.lucene.codecs.lucene86",
-        "org.apache.lucene.codecs.lucene87",
-        "org.apache.lucene.codecs.perfield"
+      "org.apache.lucene.util.automaton",
+      "org.apache.lucene.analysis.standard",
+      "org.apache.lucene.analysis.tokenattributes",
+      "org.apache.lucene.document",
+      "org.apache.lucene.search.similarities",
+      "org.apache.lucene.index",
+      "org.apache.lucene.codecs",
+      "org.apache.lucene.codecs.lucene50",
+      "org.apache.lucene.codecs.lucene60",
+      "org.apache.lucene.codecs.lucene80",
+      "org.apache.lucene.codecs.lucene84",
+      "org.apache.lucene.codecs.lucene86",
+      "org.apache.lucene.codecs.lucene87",
+      "org.apache.lucene.codecs.perfield"
     ]
   }
 }
@@ -261,7 +261,7 @@ class RenderJavadocTask extends DefaultTask {
   @IgnoreEmptyDirectories
   @SkipWhenEmpty
   SourceDirectorySet srcDirSet;
-  
+
   @OutputDirectory
   File outputDir
 
@@ -318,7 +318,7 @@ class RenderJavadocTask extends DefaultTask {
   @Optional
   @Input
   final Property<String> executable = project.objects.property(String).convention(
-      project.provider { Jvm.current().javadocExecutable.toString() })
+  project.provider { Jvm.current().javadocExecutable.toString() })
 
   @InputDirectory
   @PathSensitive(PathSensitivity.RELATIVE)
@@ -329,10 +329,12 @@ class RenderJavadocTask extends DefaultTask {
   private Set findRenderTasksInDependencies() {
     Set found = []
     def collectDeps
-    collectDeps = { task -> project.gradle.taskGraph.getDependencies(task).findAll{ it.name == this.name && it.enabled && !found.contains(it) }.each{
-      found << it
-      collectDeps(it)
-    }}
+    collectDeps = { task ->
+      project.gradle.taskGraph.getDependencies(task).findAll{ it.name == this.name && it.enabled && !found.contains(it) }.each{
+        found << it
+        collectDeps(it)
+      }
+    }
     collectDeps(this)
     return found
   }
@@ -342,26 +344,29 @@ class RenderJavadocTask extends DefaultTask {
     def srcDirs = srcDirSet.sourceDirectories.filter { dir -> dir.exists() }
 
     def optionsFile = project.file("${getTemporaryDir()}/javadoc-options.txt")
-    
+
     // create the directory, so relative link calculation knows that it's a directory:
     outputDir.mkdirs();
-    
+
     def opts = []
 
     def overviewFiles = srcDirs
-            .collect {  dir -> project.file("${dir}/overview.html") }
-            .findAll { overviewFile -> overviewFile.exists() }
+        .collect {  dir -> project.file("${dir}/overview.html") }
+        .findAll { overviewFile -> overviewFile.exists() }
 
     if (!overviewFiles.isEmpty()) {
       assert overviewFiles.size() == 1 : "More than one overview file?: " + overviewFiles
-      opts << ['-overview', project.file("${overviewFiles.getFirst()}/overview.html")]
+      opts << [
+        '-overview',
+        project.file("${overviewFiles.getFirst()}/overview.html")
+      ]
     }
 
-    opts << [ '-d', outputDir ]
+    opts << ['-d', outputDir]
     opts << '-protected'
-    opts << [ '-encoding', 'UTF-8' ]
-    opts << [ '-charset', 'UTF-8' ]
-    opts << [ '-docencoding', 'UTF-8' ]
+    opts << ['-encoding', 'UTF-8']
+    opts << ['-charset', 'UTF-8']
+    opts << ['-docencoding', 'UTF-8']
     if (!enableSearch) {
       opts << '-noindex'
     }
@@ -371,29 +376,59 @@ class RenderJavadocTask extends DefaultTask {
       opts << '-linksource'
     }
     opts << '-use'
-    opts << [ '-locale', 'en_US' ]
-    opts << [ '-windowtitle', title ]
-    opts << [ '-doctitle', title ]
+    opts << ['-locale', 'en_US']
+    opts << ['-windowtitle', title]
+    opts << ['-doctitle', title]
     if (!classpath.isEmpty()) {
-      opts << [ '-classpath', classpath.asPath ]
+      opts << [
+        '-classpath',
+        classpath.asPath
+      ]
     }
-    opts << [ '-bottom', "<i>Copyright &copy; 2000-${project.buildYear} Apache Software Foundation. All Rights Reserved.</i>" ]
+    opts << [
+      '-bottom',
+      "<i>Copyright &copy; 2000-${project.buildYear} Apache Software Foundation. All Rights Reserved.</i>"
+    ]
 
-    opts << [ '-tag', 'lucene.experimental:a:WARNING: This API is experimental and might change in incompatible ways in the next release.' ]
-    opts << [ '-tag', 'lucene.internal:a:NOTE: This API is for internal purposes only and might change in incompatible ways in the next release.' ]
-    opts << [ '-tag', "lucene.spi:t:SPI Name (case-insensitive: if the name is 'htmlStrip', 'htmlstrip' can be used when looking up the service)." ]
+    opts << [
+      '-tag',
+      'lucene.experimental:a:WARNING: This API is experimental and might change in incompatible ways in the next release.'
+    ]
+    opts << [
+      '-tag',
+      'lucene.internal:a:NOTE: This API is for internal purposes only and might change in incompatible ways in the next release.'
+    ]
+    opts << [
+      '-tag',
+      "lucene.spi:t:SPI Name (case-insensitive: if the name is 'htmlStrip', 'htmlstrip' can be used when looking up the service)."
+    ]
 
-    opts << [ '-doclet', "org.apache.lucene.missingdoclet.MissingDoclet" ]
-    opts << [ '-docletpath', docletpath.asPath ]
-    opts << [ '--missing-level', javadocMissingLevel ]
+    opts << [
+      '-doclet',
+      "org.apache.lucene.missingdoclet.MissingDoclet"
+    ]
+    opts << [
+      '-docletpath',
+      docletpath.asPath
+    ]
+    opts << [
+      '--missing-level',
+      javadocMissingLevel
+    ]
     if (javadocMissingIgnore) {
-      opts << [ '--missing-ignore', String.join(',', javadocMissingIgnore) ]
+      opts << [
+        '--missing-ignore',
+        String.join(',', javadocMissingIgnore)
+      ]
     }
     if (javadocMissingMethod) {
-      opts << [ '--missing-method', String.join(',', javadocMissingMethod) ]
+      opts << [
+        '--missing-method',
+        String.join(',', javadocMissingMethod)
+      ]
     }
 
-    opts << [ '-quiet' ]
+    opts << ['-quiet']
 
     // Add all extra options, if any.
     opts.addAll(extraOpts.orElse([]).get())
@@ -432,16 +467,22 @@ class RenderJavadocTask extends DefaultTask {
         throw new GradleException("Expected pre-rendered package-list or element-list at ${dir}.")
       }
       logger.info("Linking ${url} to ${dir}")
-      opts << [ '-linkoffline', url, dir ]
+      opts << ['-linkoffline', url, dir]
     }
 
-    opts << [ '--release', releaseVersion.toString() ]
+    opts << [
+      '--release',
+      releaseVersion.toString()
+    ]
     opts << '-Xdoclint:all,-missing'
 
     // Increase Javadoc's heap.
-    opts += [ "-J-Xmx512m" ]
+    opts += ["-J-Xmx512m"]
     // Force locale to be "en_US" (fix for: https://bugs.openjdk.java.net/browse/JDK-8222793)
-    opts += [ "-J-Duser.language=en", "-J-Duser.country=US" ]
+    opts += [
+      "-J-Duser.language=en",
+      "-J-Duser.country=US"
+    ]
 
     // -J options have to be passed on command line, they are not interpreted if passed via args file.
     def jOpts = opts.findAll { opt -> opt instanceof String && opt.startsWith("-J") }
@@ -451,8 +492,10 @@ class RenderJavadocTask extends DefaultTask {
     opts.addAll(
         srcDirs.collectMany { dir ->
           project.fileTree(dir: dir, include: "**/*.java", exclude: "**/module-info.java").files
-        }.collect { it.toString() }
-    )
+        }.collect {
+          it.toString()
+        }
+        )
 
     // handle doc-files manually since in explicit source file mode javadoc does not copy them.
     srcDirs.each { File dir ->
@@ -484,18 +527,20 @@ class RenderJavadocTask extends DefaultTask {
     logger.info("Javadoc executable used: ${javadocCmd}")
 
     project.quietExec {
-        executable javadocCmd
+      executable javadocCmd
 
-        args += [ "@${optionsFile}" ]
-        args += jOpts
+      args += ["@${optionsFile}"]
+      args += jOpts
     }
 
     // append some special table css, prettify css
     ant.concat(destfile: "${outputDir}/stylesheet.css", append: "true", fixlastline: "true", encoding: "UTF-8") {
       filelist(dir: taskResources, files:
-          ["table_padding.css",
-          "custom_styles.css",
-          "prettify/prettify.css"].join(" ")
+      [
+        "table_padding.css",
+        "custom_styles.css",
+        "prettify/prettify.css"
+      ].join(" ")
       )
     }
 

@@ -28,46 +28,30 @@ import com.vladsch.flexmark.util.data.MutableDataSet;
 import com.vladsch.flexmark.util.sequence.Escaping;
 import groovy.text.SimpleTemplateEngine;
 
-buildscript {
-  repositories {
-    mavenCentral()
-  }
-
-  dependencies {
-    classpath deps.flexmark.core
-    classpath deps.flexmark.ext.abbreviation
-    classpath deps.flexmark.ext.attributes
-    classpath deps.flexmark.ext.autolink
-    classpath deps.flexmark.ext.tables
-  }
-}
-
 configure(project(':lucene:documentation')) {
-  task markdownToHtml(type: Copy) {
-    dependsOn copyDocumentationAssets
-    
-    filteringCharset = 'UTF-8'
-    includeEmptyDirs = false
-    into project.docroot
-    rename(/\.md$/, '.html')
-    filter(MarkdownFilter)
-  }
-}
+  tasks.register("markdownToHtml", Copy, {
+    dependsOn "copyDocumentationAssets"
 
-configure(project(':lucene:documentation')) {
-  markdownToHtml {
     from(project.parent.projectDir) {
       include 'MIGRATE.md'
       include 'JRE_VERSION_MIGRATION.md'
       include 'SYSTEM_REQUIREMENTS.md'
     }
-  }
 
-  task createDocumentationIndex(type: MarkdownTemplateTask) {
-    dependsOn markdownToHtml
+    filteringCharset = 'UTF-8'
+    includeEmptyDirs = false
 
-    outputFile = file("${project.docroot}/index.html")
-    templateFile = file("${project.markdownSrc}/index.template.md")
+    rename(/\.md$/, '.html')
+    filter(MarkdownFilter)
+
+    into project.ext.docroot
+  })
+
+  tasks.register("createDocumentationIndex", MarkdownTemplateTask, {
+    dependsOn "markdownToHtml"
+
+    outputFile = file("${project.ext.docroot}/index.html")
+    templateFile = file("${project.ext.markdownSrc}/index.template.md")
 
     def defaultCodecFile = project(':lucene:core').file('src/java/org/apache/lucene/codecs/Codec.java')
     inputs.file(defaultCodecFile)
@@ -86,7 +70,7 @@ configure(project(':lucene:documentation')) {
     })
 
     withProjectList()
-  }
+  })
 }
 
 // filter that can be used with the "copy" task of Gradle that transforms Markdown files
@@ -98,14 +82,14 @@ class MarkdownFilter extends FilterReader {
     // converts it and provides result downstream as a StringReader
     super(new StringReader(convert(reader.text)));
   }
-  
+
   public static String convert(String markdownSource) {
     // first replace LUCENE and SOLR issue numbers with a markdown link
     markdownSource = markdownSource.replaceAll(/(?s)\b(LUCENE|SOLR)\-\d+\b/,
-      '[$0](https://issues.apache.org/jira/browse/$0)');
+        '[$0](https://issues.apache.org/jira/browse/$0)');
     markdownSource = markdownSource.replaceAll(/(?s)\b(GITHUB#|GH-)(\d+)\b/,
-      '[$0](https://github.com/apache/lucene/issues/$2)');
-  
+        '[$0](https://github.com/apache/lucene/issues/$2)');
+
     // convert the markdown
     MutableDataSet options = new MutableDataSet();
     options.setFrom(ParserEmulationProfile.MARKDOWN);
@@ -120,12 +104,12 @@ class MarkdownFilter extends FilterReader {
     Document parsed = Parser.builder(options).build().parse(markdownSource);
 
     StringBuilder html = new StringBuilder('<html>\n<head>\n');
-    CharSequence title = parsed.getFirstChildAny(Heading.class)?.getText();          
+    CharSequence title = parsed.getFirstChildAny(Heading.class)?.getText();
     if (title != null) {
       html.append('<title>').append(Escaping.escapeHtml(title, false)).append('</title>\n');
     }
     html.append('<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">\n')
-      .append('</head>\n<body>\n');
+        .append('</head>\n<body>\n');
     HtmlRenderer.builder(options).build().render(parsed, html);
     html.append('</body>\n</html>\n');
     return html;
@@ -144,19 +128,21 @@ class MarkdownTemplateTask extends DefaultTask {
 
   @OutputFile
   File outputFile
-  
+
   @Input
   @Optional
   final MapProperty<String,Object> binding = project.objects.mapProperty(String, Object)
-  
+
   /** adds a property "projectList" containing all subprojects with javadocs as markdown bullet list */
   void withProjectList() {
     binding.put('projectList', project.providers.provider{
       def projects = productProject.subprojects.findAll{ it.tasks.findByName('renderSiteJavadoc')?.enabled }
-        .sort(false, Comparator.comparing{ (it.name != 'core') as Boolean }
-          .thenComparing(Comparator.comparing{ (it.name != 'solrj') as Boolean })
-          .thenComparing(Comparator.comparing{ (it.name == 'test-framework') as Boolean })
-          .thenComparing(Comparator.comparing{ it.path }));
+      .sort(false, Comparator.comparing{
+        (it.name != 'core') as Boolean
+      }
+      .thenComparing(Comparator.comparing{ (it.name != 'solrj') as Boolean })
+      .thenComparing(Comparator.comparing{ (it.name == 'test-framework') as Boolean })
+      .thenComparing(Comparator.comparing{ it.path }));
       return projects.collect{ project ->
         def text = "**[${project.relativeDocPath.replace('/','-')}](${project.relativeDocPath}/index.html):** ${project.description}"
         if (project.name == 'core') {

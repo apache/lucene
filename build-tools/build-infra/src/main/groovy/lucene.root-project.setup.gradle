@@ -20,6 +20,9 @@ import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin
 import com.carrotsearch.gradle.buildinfra.environment.GitInfoPlugin
 import com.carrotsearch.randomizedtesting.SeedUtils
 
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+
 // Prepare the root project and some global infrastructure.
 
 if (project != project.rootProject) {
@@ -78,6 +81,15 @@ ext {
   // "CI": Github (https://docs.github.com/en/actions/learn-github-actions/environment-variables)
   // anything starting with "JENKINS_" or "HUDSON_": Jenkins/Hudson (https://jenkins.thetaphi.de/env-vars.html/)
   isCIBuild = System.getenv().keySet().find { it ==~ /(?i)((JENKINS|HUDSON)(_\w+)?|CI)/ } != null
+
+  // Minimum Java version required to compile and run Lucene.
+  minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
+
+  // Build timestamp.
+  def tstamp = ZonedDateTime.now()
+  buildDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(tstamp)
+  buildTime = DateTimeFormatter.ofPattern("HH:mm:ss").format(tstamp)
+  buildYear = DateTimeFormatter.ofPattern("yyyy").format(tstamp)
 }
 
 //

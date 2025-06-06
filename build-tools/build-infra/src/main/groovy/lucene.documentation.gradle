@@ -15,72 +15,75 @@
  * limitations under the License.
  */
 
+if (project != project.rootProject) {
+  throw new GradleException("Applicable to rootProject only: " + project.path)
+}
+
 configure(rootProject) {
-  def urlVersion = project.baseVersion.replace('.', '_')
+  def urlVersion = rootProject.ext.baseVersion.replace('.', '_')
 
   Provider<String> luceneJavadocUrl = buildOptions.addOption("lucene.javadoc.url",
-          "External Javadoc URL for documentation generator.", provider {
-            if (project.version != project.baseVersion) {
-              // non-release build does not cross-link between modules.
-              return null
-            } else {
-              // release build
-              return "https://lucene.apache.org/core/${urlVersion}"
-            }
-          })
+      "External Javadoc URL for documentation generator.", provider {
+        if (project.version != project.baseVersion) {
+          // non-release build does not cross-link between modules.
+          return null
+        } else {
+          // release build
+          return "https://lucene.apache.org/core/${urlVersion}"
+        }
+      })
 
   ext {
     luceneDocUrl = luceneJavadocUrl.getOrElse(null)
   }
 
-  task documentation() {
+  def documentationTask = tasks.register("documentation", {
     group = 'documentation'
     description = 'Generate all documentation'
 
     dependsOn ':lucene:documentation:assemble'
-  }
+  })
 
-  assemble.dependsOn documentation
+  assemble.dependsOn documentationTask
 }
 
-// docroot will point to Lucene and Solr relative directory for each sub-project.
 configure(project(':lucene:documentation')) {
   ext {
-    docroot = file("${buildDir}/site")
-    docrootMinimal = file("${buildDir}/minimalSite")
+    docroot = layout.buildDirectory.dir("site").get().asFile
 
     markdownSrc = file("src/markdown")
     assets = file("src/assets")
   }
 
-  task documentation() {
+  def documentationTask = tasks.register("documentation", {
     group = 'documentation'
     description = "Generate ${project.name.capitalize()} documentation"
 
-    dependsOn project.parent.subprojects.collect { prj ->
+    dependsOn project(":lucene").subprojects.collect { prj ->
       prj.tasks.matching { it.name == 'renderSiteJavadoc' }
     }
-    dependsOn 'changesToHtml','copyDocumentationAssets',
-      'markdownToHtml','createDocumentationIndex'
-  }
 
-  task copyDocumentationAssets(type: Copy) {
+    dependsOn 'changesToHtml', 'copyDocumentationAssets',
+        'markdownToHtml', 'createDocumentationIndex'
+  })
+
+  tasks.register("copyDocumentationAssets", Copy, {
     includeEmptyDirs = false
-    from(project.assets)
-    into project.docroot
-  }
-  
+    from project.ext.assets
+    into project.ext.docroot
+  })
+
   assemble {
-    dependsOn documentation
+    dependsOn documentationTask
   }
 
   configurations {
     site
   }
-  
+
   artifacts {
-    site project.docroot, {
-      builtBy documentation
+    site project.ext.docroot, {
+      builtBy documentationTask
     }
   }
 }
@@ -88,6 +91,5 @@ configure(project(':lucene:documentation')) {
 configure(project(":lucene")) {
   ext {
     docroot = project('documentation').docroot
-    docrootMinimal = project('documentation').docrootMinimal
   }
 }

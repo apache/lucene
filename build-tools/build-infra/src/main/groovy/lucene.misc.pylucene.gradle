@@ -21,7 +21,7 @@
  */
 
 configure(rootProject.ext.mavenProjects, {
-  plugins.withType(JavaPlugin) {
+  plugins.withType(JavaPlugin).configureEach {
     /**
      * Collect the module's primary artifact and any runtime JARs it requires.
      */

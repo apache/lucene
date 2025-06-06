@@ -70,6 +70,12 @@ dependencies {
   implementation deps.rat
   implementation deps.zstd
 
+  implementation deps.flexmark.core
+  implementation deps.flexmark.ext.abbreviation
+  implementation deps.flexmark.ext.attributes
+  implementation deps.flexmark.ext.autolink
+  implementation deps.flexmark.ext.tables
+
   implementation plugin(deps.plugins.carrotsearch.buildinfra)
   implementation plugin(deps.plugins.forbiddenapis)
   implementation plugin(deps.plugins.spotless)

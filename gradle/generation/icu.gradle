@@ -34,10 +34,13 @@ def resources = scriptResources(buildscript)
 configure(rootProject) {
   configurations {
     icu_current
+    groovy
   }
 
   dependencies {
     icu_current deps.icu4j
+    // Use a newer groovy that doesn't have illegal reflective accesses.
+    groovy deps.groovy
   }
 }
 

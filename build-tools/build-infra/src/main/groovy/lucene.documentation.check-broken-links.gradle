@@ -15,20 +15,22 @@
  * limitations under the License.
  */
 
-def resources = scriptResources(buildscript)
+def resources = rootProject.file("gradle/documentation/check-broken-links")
 
 configure(project(':lucene:documentation')) {
-  task checkBrokenLinks(type: CheckBrokenLinksTask) {
-    group 'Verification'
-    description 'Check broken links in the entire documentation'
+  tasks.register("checkBrokenLinks", CheckBrokenLinksTask, {
+    group = 'Verification'
+    description = 'Check broken links in the entire documentation'
     dependsOn 'documentation'
 
     validationScript = file("${resources}/checkJavadocLinks.py")
     docsDir.fileProvider(provider { -> file(project.docroot) })
     output = project.file("${buildDir}/check-broken-links-output.txt")
-  }
+  })
 
-  check.dependsOn checkBrokenLinks
+  tasks.named("check").configure {
+    dependsOn "checkBrokenLinks"
+  }
 }
 
 @CacheableTask

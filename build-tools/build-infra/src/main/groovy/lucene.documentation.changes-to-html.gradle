@@ -15,13 +15,17 @@
  * limitations under the License.
  */
 
-def resources = scriptResources(buildscript)
+if (project != project.rootProject) {
+  throw new GradleException("Applicable to rootProject only: " + project.path)
+}
+
+File resources = rootProject.file("gradle/documentation/changes-to-html")
 
 configure(project(':lucene:documentation')) {
-  task changesToHtml(type: ChangesToHtmlTask) {
+  def changesToHtmlTask = tasks.register("changesToHtml", ChangesToHtmlTask, {
     siteDir = resources
     script = file("${resources}/changes2html.pl")
-  }
+  })
 
   // Make the rendered HTML of changes available as a separate
   // artifact for the distribution.
@@ -30,8 +34,8 @@ configure(project(':lucene:documentation')) {
   }
 
   artifacts {
-    changesHtml changesToHtml.targetDir, {
-      builtBy changesToHtml
+    changesHtml changesToHtmlTask.get().targetDir, {
+      builtBy changesToHtmlTask
     }
   }
 }
@@ -55,8 +59,8 @@ class ChangesToHtmlTask extends DefaultTask {
   File siteDir
 
   @OutputDirectory
-  final DirectoryProperty targetDir = project.objects.directoryProperty()
-    .fileProvider(project.providers.provider { project.file("${project.docroot}/changes") })
+  final DirectoryProperty targetDir = project.objects.directoryProperty().fileProvider(
+  project.providers.provider { project.file("${project.ext.docroot}/changes") })
 
   @Input
   def luceneDocUrl = "${-> project.luceneDocUrl }"
