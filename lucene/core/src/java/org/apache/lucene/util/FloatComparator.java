@@ -19,8 +19,10 @@ package org.apache.lucene.util;
 import java.util.Comparator;
 
 /** A specialization of {@link Comparator} that compares {@code float} values */
+@FunctionalInterface
 public interface FloatComparator {
 
+  @FunctionalInterface
   interface ToFloatFunction<T> {
     float applyAsFloat(T obj);
   }

@@ -94,13 +94,21 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     this.numPostings = postings.length;
     this.captureLeadMatch = captureLeadMatch;
     pq =
-        PriorityQueue.usingComparator(
+        PriorityQueue.usingLessThan(
             postings.length,
-            Comparator.<PhrasePositions>comparingInt(pp -> pp.position)
+            (pp1, pp2) -> {
+              if (pp1.position == pp2.position)
                 // same doc and pp.position, so decide by actual term positions.
                 // rely on: pp.position == tp.position - offset.
-                .thenComparingInt(pp -> pp.offset)
-                .thenComparingInt(pp -> pp.ord));
+                if (pp1.offset == pp2.offset) {
+                  return pp1.ord < pp2.ord;
+                } else {
+                  return pp1.offset < pp2.offset;
+                }
+              else {
+                return pp1.position < pp2.position;
+              }
+            });
     phrasePositions = new PhrasePositions[postings.length];
     for (int i = 0; i < postings.length; ++i) {
       phrasePositions[i] =
