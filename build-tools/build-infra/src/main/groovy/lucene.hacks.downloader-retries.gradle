@@ -13,19 +13,18 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */ 
+ */
 
-// LUCENE-9518: Set up sane defaults for any gradle archiving task.
-allprojects {
-  tasks.withType(AbstractArchiveTask).configureEach { task ->
-    duplicatesStrategy = DuplicatesStrategy.FAIL
-    preserveFileTimestamps = false
-    reproducibleFileOrder = true
-    dirPermissions {
-      it.unix(0755)
-    }
-    filePermissions {
-      it.unix(0644)
+import de.undercouch.gradle.tasks.download.DownloadTaskPlugin
+import de.undercouch.gradle.tasks.download.Download
+
+// Configures the Download task to retry on temporary network glitches.
+
+allprojects {project ->
+  // Limit configuration to just those projects that actually have the plugin enabled.
+  plugins.withType(DownloadTaskPlugin).configureEach {
+    project.tasks.withType(Download).configureEach {
+      it.retries 3
     }
   }
 }

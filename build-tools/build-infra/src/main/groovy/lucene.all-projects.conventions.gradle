@@ -38,6 +38,19 @@ allprojects {project ->
   var baseExt = project.getExtensions().getByType(BasePluginExtension)
   baseExt.archivesName.convention(project.path.replaceAll("^:", "").replace(':', '-'))
 
+  // Common support for reproducible builds.
+  tasks.withType(AbstractArchiveTask).configureEach {
+    duplicatesStrategy = DuplicatesStrategy.FAIL
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+    dirPermissions {
+      it.unix(0755)
+    }
+    filePermissions {
+      it.unix(0644)
+    }
+  }
+
   // Common tasks or meta-tasks.
   tasks.register("tidy", {
     description "Applies all code formatters and other enforced cleanups to the project."

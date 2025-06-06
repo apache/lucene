@@ -59,6 +59,9 @@ plugins {
 
   id "lucene.datasets.external-datasets"
 
+  id "lucene.hacks.downloader-retries"
+  id "lucene.hacks.wipe-gradle-temp"
+
   // perhaps move this to a convention plugin or remove entirely?
   id "lucene.build-infra"
 }
@@ -89,9 +92,6 @@ apply from: file('gradle/documentation/markdown.gradle')
 apply from: file('gradle/documentation/render-javadoc.gradle')
 apply from: file('gradle/documentation/check-broken-links.gradle')
 
-apply from: file('gradle/hacks/downloader-retries.gradle')
-apply from: file('gradle/hacks/gradle-archives.gradle')
-apply from: file('gradle/hacks/wipe-temp.gradle')
 apply from: file('gradle/hacks/turbocharge-jvm-opts.gradle')
 apply from: file('gradle/hacks/dummy-outputs.gradle')
 
