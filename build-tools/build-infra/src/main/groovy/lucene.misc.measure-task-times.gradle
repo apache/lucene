@@ -27,7 +27,7 @@ if (project != project.rootProject) {
 
 Provider<Boolean> taskTimesOption = buildOptions.addBooleanOption("task.times",
     "Measures wall-time task execution and provides a summary of the longest tasks at " +
-    "the end of a successfull build.",
+    "the end of a successful build.",
     false)
 
 if (taskTimesOption.get()) {
