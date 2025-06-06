@@ -69,17 +69,16 @@ import org.apache.lucene.util.PriorityQueue;
 public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<ScoreDocKey> {
 
   ScoreDocKey spare;
-  private PriorityQueue<ScoreDocKey> globalQueue;
-  private int numHits;
-  private LongObjectHashMap<PriorityQueue<ScoreDocKey>> perKeyQueues;
+  private final PriorityQueue<ScoreDocKey> globalQueue;
+  private final int numHits;
+  private final LongObjectHashMap<PriorityQueue<ScoreDocKey>> perKeyQueues;
   protected int maxNumPerKey;
-  private Deque<PriorityQueue<ScoreDocKey>> sparePerKeyQueues = new ArrayDeque<>();
+  private final Deque<PriorityQueue<ScoreDocKey>> sparePerKeyQueues = new ArrayDeque<>();
 
   public DiversifiedTopDocsCollector(int numHits, int maxHitsPerKey) {
     super(createScoreDocQueue(numHits));
-    // Need to access pq.lessThan() which is protected so have to cast here...
     this.globalQueue = pq;
-    perKeyQueues = new LongObjectHashMap<>();
+    this.perKeyQueues = new LongObjectHashMap<>();
     this.numHits = numHits;
     this.maxNumPerKey = maxHitsPerKey;
   }

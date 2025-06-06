@@ -18,7 +18,9 @@ package org.apache.lucene.util;
 
 import java.util.Comparator;
 
+/** A specialization of {@link Comparator} that compares {@code float} values */
 public interface FloatComparator {
+
   interface ToFloatFunction<T> {
     float applyAsFloat(T obj);
   }
@@ -27,5 +29,10 @@ public interface FloatComparator {
     return (a, b) -> Float.compare(function.applyAsFloat(a), function.applyAsFloat(b));
   }
 
+  /**
+   * Float-specialized {@link Comparator#compare}
+   *
+   * @see java.util.Comparator#compare
+   */
   int compare(float f1, float f2);
 }
