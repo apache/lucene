@@ -17,7 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import org.apache.lucene.search.DocAndFreqBuffer;
+import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
@@ -126,18 +126,18 @@ public abstract class PostingsEnum extends DocIdSetIterator {
    * buffer.size = size;
    * </pre>
    *
-   * <p><b>NOTE</b>: The provided {@link DocAndFreqBuffer} should not hold references to internal
-   * data structures.
+   * <p><b>NOTE</b>: The provided {@link DocAndFloatFeatureBuffer} should not hold references to
+   * internal data structures.
    *
    * @lucene.internal
    */
-  public void nextPostings(int upTo, DocAndFreqBuffer buffer) throws IOException {
+  public void nextPostings(int upTo, DocAndFloatFeatureBuffer buffer) throws IOException {
     int batchSize = 16; // arbitrary
     buffer.growNoCopy(batchSize);
     int size = 0;
     for (int doc = docID(); doc < upTo && size < batchSize; doc = nextDoc()) {
       buffer.docs[size] = doc;
-      buffer.freqs[size] = freq();
+      buffer.features[size] = freq();
       ++size;
     }
     buffer.size = size;

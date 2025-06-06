@@ -70,6 +70,8 @@ Other
 
 * GITHUB#14613: Rewrite APIJAR extractor to use Java 24 classfile API and kill ASM dependency also for build system.  (Uwe Schindler)
 
+* GITHUB#14705: Use Comparators for some PriorityQueue implementations. (Simon Cooper)
+
 ======================= Lucene 10.3.0 =======================
 
 API Changes
@@ -99,6 +101,8 @@ Improvements
   (Uwe Schindler)
 
 * GITHUB#14443: Support adaptive refresh in Searcher Managers (Vigya Sharma)
+
+* GITHUB#14737: Clean up redundant code and comments in query node classes. (Stefan Vodita)
 
 Optimizations
 ---------------------
@@ -151,6 +155,8 @@ Bug Fixes
   instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
 
 * GITHUB#14727: Fix several resource leaks. (Xu Chengxin)
+
+* GITHUB#14755: Fix too many documents collected when only bool-filter condition is present. (Ke Wei)
 
 Build
 ---------------------

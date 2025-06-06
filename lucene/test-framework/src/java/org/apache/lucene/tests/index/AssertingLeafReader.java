@@ -50,7 +50,7 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
-import org.apache.lucene.search.DocAndFreqBuffer;
+import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -598,7 +598,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public void nextPostings(int upTo, DocAndFreqBuffer buffer) throws IOException {
+    public void nextPostings(int upTo, DocAndFloatFeatureBuffer buffer) throws IOException {
       assert state != DocsEnumState.START : "nextPostings() called before nextDoc()/advance()";
       in.nextPostings(upTo, buffer);
       doc = in.docID();

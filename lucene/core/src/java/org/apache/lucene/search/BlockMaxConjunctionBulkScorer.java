@@ -43,7 +43,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   private final DocAndScore scorable = new DocAndScore();
   private final double[] sumOfOtherClauses;
   private final int maxDoc;
-  private final DocAndScoreBuffer docAndScoreBuffer = new DocAndScoreBuffer();
+  private final DocAndFloatFeatureBuffer docAndScoreBuffer = new DocAndFloatFeatureBuffer();
   private final DocAndScoreAccBuffer docAndScoreAccBuffer = new DocAndScoreAccBuffer();
 
   BlockMaxConjunctionBulkScorer(int maxDoc, List<Scorer> scorers) throws IOException {

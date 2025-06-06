@@ -281,7 +281,7 @@ public class TestTermScorer extends LuceneTestCase {
     Scorer scorer2 = weight.scorer(context);
     scorer1.iterator().nextDoc();
     scorer2.iterator().nextDoc();
-    DocAndScoreBuffer buffer = new DocAndScoreBuffer();
+    DocAndFloatFeatureBuffer buffer = new DocAndFloatFeatureBuffer();
     while (true) {
       int curDoc = scorer2.iterator().docID();
       int upTo =
@@ -294,7 +294,7 @@ public class TestTermScorer extends LuceneTestCase {
           scorer2.iterator().nextDoc();
         }
         assertEquals(scorer2.iterator().docID(), buffer.docs[i]);
-        assertEquals(scorer2.score(), buffer.scores[i], 0f);
+        assertEquals(scorer2.score(), buffer.features[i], 0f);
         scorer2.iterator().nextDoc();
       }
 
