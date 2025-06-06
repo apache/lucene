@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import de.undercouch.gradle.tasks.download.Download
 
 // This downloads and compiles Nori dictionaries.
 
@@ -30,9 +31,7 @@ def recompileDictionary(project, dictionaryName, Closure closure) {
 }
 
 configure(project(":lucene:analysis:nori")) {
-  apply plugin: deps.plugins.undercouch.download.get().pluginId
-
-  plugins.withType(JavaPlugin) {
+  plugins.withType(JavaPlugin).configureEach {
     project.ext {
       targetDir = file("src/resources")
     }
