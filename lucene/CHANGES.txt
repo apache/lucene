@@ -144,6 +144,9 @@ Optimizations
 
 * GITHUB#14720: Cache high-order bits of hashcode to speed up BytesRefHash. (Pan Guixin)
 
+* GITHUB#14704: More reliably (auto-)vectorize score computations.
+  (Guo Feng, Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
