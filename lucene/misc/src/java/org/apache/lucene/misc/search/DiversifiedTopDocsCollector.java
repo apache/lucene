@@ -18,6 +18,7 @@ package org.apache.lucene.misc.search;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.Comparator;
 import java.util.Deque;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
@@ -30,6 +31,7 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.util.FloatComparator;
 import org.apache.lucene.util.PriorityQueue;
 
 /**
@@ -65,18 +67,18 @@ import org.apache.lucene.util.PriorityQueue;
  * @lucene.experimental
  */
 public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<ScoreDocKey> {
+
   ScoreDocKey spare;
-  private ScoreDocKeyQueue globalQueue;
-  private int numHits;
-  private LongObjectHashMap<ScoreDocKeyQueue> perKeyQueues;
+  private final PriorityQueue<ScoreDocKey> globalQueue;
+  private final int numHits;
+  private final LongObjectHashMap<PriorityQueue<ScoreDocKey>> perKeyQueues;
   protected int maxNumPerKey;
-  private Deque<ScoreDocKeyQueue> sparePerKeyQueues = new ArrayDeque<>();
+  private final Deque<PriorityQueue<ScoreDocKey>> sparePerKeyQueues = new ArrayDeque<>();
 
   public DiversifiedTopDocsCollector(int numHits, int maxHitsPerKey) {
-    super(new ScoreDocKeyQueue(numHits));
-    // Need to access pq.lessThan() which is protected so have to cast here...
-    this.globalQueue = (ScoreDocKeyQueue) pq;
-    perKeyQueues = new LongObjectHashMap<>();
+    super(createScoreDocQueue(numHits));
+    this.globalQueue = pq;
+    this.perKeyQueues = new LongObjectHashMap<>();
     this.numHits = numHits;
     this.maxNumPerKey = maxHitsPerKey;
   }
@@ -100,7 +102,7 @@ public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<Score
 
   protected ScoreDocKey insert(ScoreDocKey addition, int docBase, NumericDocValues keys)
       throws IOException {
-    if ((globalQueue.size() >= numHits) && (globalQueue.lessThan(addition, globalQueue.top()))) {
+    if (globalQueue.size() >= numHits && KEY_COMPARATOR.compare(addition, globalQueue.top()) < 0) {
       // Queue is full and proposed addition is not a globally
       // competitive score
       return addition;
@@ -121,11 +123,11 @@ public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<Score
 
     // For this to work the choice of key class needs to implement
     // hashcode and equals.
-    ScoreDocKeyQueue thisKeyQ = perKeyQueues.get(addition.key);
+    PriorityQueue<ScoreDocKey> thisKeyQ = perKeyQueues.get(addition.key);
 
     if (thisKeyQ == null) {
-      if (sparePerKeyQueues.size() == 0) {
-        thisKeyQ = new ScoreDocKeyQueue(maxNumPerKey);
+      if (sparePerKeyQueues.isEmpty()) {
+        thisKeyQ = createScoreDocQueue(maxNumPerKey);
       } else {
         thisKeyQ = sparePerKeyQueues.pop();
       }
@@ -159,7 +161,7 @@ public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<Score
     if (globalOverflow == null) {
       return;
     }
-    ScoreDocKeyQueue q = perKeyQueues.get(globalOverflow.key);
+    PriorityQueue<ScoreDocKey> q = perKeyQueues.get(globalOverflow.key);
     ScoreDocKey perKeyLowest = q.pop();
     // The least globally-competitive item should also always be the least
     // key-local item
@@ -205,20 +207,12 @@ public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<Score
     };
   }
 
-  static class ScoreDocKeyQueue extends PriorityQueue<ScoreDocKey> {
+  private static final Comparator<ScoreDocKey> KEY_COMPARATOR =
+      FloatComparator.<ScoreDocKey>comparing(sd -> sd.score)
+          .thenComparing(Comparator.<ScoreDocKey>comparingInt(sd -> sd.doc).reversed());
 
-    ScoreDocKeyQueue(int size) {
-      super(size);
-    }
-
-    @Override
-    protected final boolean lessThan(ScoreDocKey hitA, ScoreDocKey hitB) {
-      if (hitA.score == hitB.score) {
-        return hitA.doc > hitB.doc;
-      } else {
-        return hitA.score < hitB.score;
-      }
-    }
+  private static PriorityQueue<ScoreDocKey> createScoreDocQueue(int size) {
+    return PriorityQueue.usingComparator(size, KEY_COMPARATOR);
   }
 
   //

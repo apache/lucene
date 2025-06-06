@@ -164,13 +164,14 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
       throws IOException {
     List<FieldMetadata> fieldMetadataList =
         createFieldMetadataList(new FieldsIterator(fields, fieldInfos), maxDoc);
-    TermIteratorQueue<FieldTerms> fieldTermsQueue =
+    PriorityQueue<TermIterator<FieldTerms>> fieldTermsQueue =
         createFieldTermsQueue(fields, fieldMetadataList);
     List<TermIterator<FieldTerms>> groupedFieldTerms = new ArrayList<>(fieldTermsQueue.size());
     List<FieldMetadataTermState> termStates = new ArrayList<>(fieldTermsQueue.size());
 
     while (fieldTermsQueue.size() != 0) {
-      TermIterator<FieldTerms> topFieldTerms = fieldTermsQueue.popTerms();
+      TermIterator<FieldTerms> topFieldTerms = fieldTermsQueue.pop();
+      assert topFieldTerms != null && topFieldTerms.term != null;
       BytesRef term = BytesRef.deepCopyOf(topFieldTerms.term);
       groupByTerm(fieldTermsQueue, topFieldTerms, groupedFieldTerms);
       writePostingLines(term, groupedFieldTerms, normsProducer, termStates);
@@ -190,9 +191,10 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
     return fieldMetadataList;
   }
 
-  private TermIteratorQueue<FieldTerms> createFieldTermsQueue(
+  private PriorityQueue<TermIterator<FieldTerms>> createFieldTermsQueue(
       Fields fields, List<FieldMetadata> fieldMetadataList) throws IOException {
-    TermIteratorQueue<FieldTerms> fieldQueue = new TermIteratorQueue<>(fieldMetadataList.size());
+    PriorityQueue<TermIterator<FieldTerms>> fieldQueue =
+        PriorityQueue.usingComparator(fieldMetadataList.size(), Comparator.naturalOrder());
     for (FieldMetadata fieldMetadata : fieldMetadataList) {
       Terms terms = fields.terms(fieldMetadata.getFieldInfo().name);
       if (terms != null) {
@@ -207,7 +209,7 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
   }
 
   private <T> void groupByTerm(
-      TermIteratorQueue<T> termIteratorQueue,
+      PriorityQueue<TermIterator<T>> termIteratorQueue,
       TermIterator<T> topTermIterator,
       List<TermIterator<T>> groupedTermIterators) {
     groupedTermIterators.clear();
@@ -243,7 +245,8 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
   }
 
   private <T> void nextTermForIterators(
-      List<? extends TermIterator<T>> termIterators, TermIteratorQueue<T> termIteratorQueue)
+      List<? extends TermIterator<T>> termIterators,
+      PriorityQueue<TermIterator<T>> termIteratorQueue)
       throws IOException {
     for (TermIterator<T> termIterator : termIterators) {
       if (termIterator.nextTerm()) {
@@ -330,7 +333,8 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
             mergeState.mergeFieldInfos.iterator(), mergeState.segmentInfo.maxDoc());
     Map<String, MergingFieldTerms> fieldTermsMap =
         createMergingFieldTermsMap(fieldMetadataList, mergeState.fieldsProducers.length);
-    TermIteratorQueue<SegmentTerms> segmentTermsQueue = createSegmentTermsQueue(segmentTermsList);
+    PriorityQueue<TermIterator<SegmentTerms>> segmentTermsQueue =
+        createSegmentTermsQueue(segmentTermsList);
     List<TermIterator<SegmentTerms>> groupedSegmentTerms = new ArrayList<>(segmentTermsList.size());
     Map<String, List<SegmentPostings>> fieldPostingsMap =
         CollectionUtil.newHashMap(mergeState.fieldInfos.length);
@@ -338,7 +342,8 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
     List<FieldMetadataTermState> termStates = new ArrayList<>(mergeState.fieldInfos.length);
 
     while (segmentTermsQueue.size() != 0) {
-      TermIterator<SegmentTerms> topSegmentTerms = segmentTermsQueue.popTerms();
+      TermIterator<SegmentTerms> topSegmentTerms = segmentTermsQueue.pop();
+      assert topSegmentTerms != null && topSegmentTerms.term != null;
       BytesRef term = BytesRef.deepCopyOf(topSegmentTerms.term);
       groupByTerm(segmentTermsQueue, topSegmentTerms, groupedSegmentTerms);
       combineSegmentsFields(groupedSegmentTerms, fieldPostingsMap);
@@ -364,9 +369,10 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
     return fieldTermsMap;
   }
 
-  private TermIteratorQueue<SegmentTerms> createSegmentTermsQueue(
+  private PriorityQueue<TermIterator<SegmentTerms>> createSegmentTermsQueue(
       List<TermIterator<SegmentTerms>> segmentTermsList) throws IOException {
-    TermIteratorQueue<SegmentTerms> segmentQueue = new TermIteratorQueue<>(segmentTermsList.size());
+    PriorityQueue<TermIterator<SegmentTerms>> segmentQueue =
+        PriorityQueue.usingComparator(segmentTermsList.size(), Comparator.naturalOrder());
     for (TermIterator<SegmentTerms> segmentTerms : segmentTermsList) {
       if (segmentTerms.nextTerm()) {
         // There is at least one term in the segment
@@ -447,26 +453,7 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
     }
   }
 
-  private class TermIteratorQueue<T> extends PriorityQueue<TermIterator<T>> {
-
-    TermIteratorQueue(int numFields) {
-      super(numFields);
-    }
-
-    @Override
-    protected boolean lessThan(TermIterator<T> a, TermIterator<T> b) {
-      return a.compareTo(b) < 0;
-    }
-
-    TermIterator<T> popTerms() {
-      TermIterator<T> topTerms = pop();
-      assert topTerms != null;
-      assert topTerms.term != null;
-      return topTerms;
-    }
-  }
-
-  private abstract class TermIterator<T> implements Comparable<TermIterator<T>> {
+  private abstract static class TermIterator<T> implements Comparable<TermIterator<T>> {
 
     BytesRef term;
 
@@ -485,7 +472,7 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
     abstract int compareSecondary(TermIterator<T> other);
   }
 
-  private class FieldTerms extends TermIterator<FieldTerms> {
+  private static class FieldTerms extends TermIterator<FieldTerms> {
 
     final FieldMetadata fieldMetadata;
     final TermsEnum termsEnum;
@@ -520,7 +507,7 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
     }
   }
 
-  private class SegmentTerms extends TermIterator<SegmentTerms> {
+  private static class SegmentTerms extends TermIterator<SegmentTerms> {
 
     private final Integer segmentIndex;
     private final STMergingBlockReader mergingBlockReader;

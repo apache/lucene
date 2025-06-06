@@ -19,6 +19,7 @@ package org.apache.lucene.search.uhighlight;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -231,12 +232,8 @@ public class PhraseHelper {
 
     // for each SpanQuery, grab it's Spans and put it into a PriorityQueue
     PriorityQueue<Spans> spansPriorityQueue =
-        new PriorityQueue<Spans>(spanQueries.size()) {
-          @Override
-          protected boolean lessThan(Spans a, Spans b) {
-            return a.startPosition() <= b.startPosition();
-          }
-        };
+        PriorityQueue.usingComparator(
+            spanQueries.size(), Comparator.comparingInt(Spans::startPosition));
     for (Query query : spanQueries) {
       Weight weight =
           searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1);

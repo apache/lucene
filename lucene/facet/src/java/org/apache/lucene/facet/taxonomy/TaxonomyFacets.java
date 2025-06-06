@@ -608,19 +608,10 @@ abstract class TaxonomyFacets extends Facets {
     // Create priority queue to store top dimensions and sort by their aggregated values/hits and
     // string values.
     PriorityQueue<DimValue> pq =
-        new PriorityQueue<>(topNDims) {
-          @Override
-          protected boolean lessThan(DimValue a, DimValue b) {
-            int comparison = valueComparator.compare(a.value, b.value);
-            if (comparison < 0) {
-              return true;
-            }
-            if (comparison > 0) {
-              return false;
-            }
-            return a.dim.compareTo(b.dim) > 0;
-          }
-        };
+        PriorityQueue.usingComparator(
+            topNDims,
+            Comparator.<DimValue, Number>comparing(dv -> dv.value, valueComparator)
+                .thenComparing(dv -> dv.dim, Comparator.reverseOrder()));
 
     // Keep track of intermediate results, if we compute them, so we can reuse them later:
     Map<String, TopChildrenForPath> intermediateResults = null;

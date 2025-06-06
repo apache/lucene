@@ -18,6 +18,7 @@ package org.apache.lucene.queries.spans;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
+import org.apache.lucene.util.PriorityQueue;
 
 /** Matches the union of its clauses. */
 public final class SpanOrQuery extends SpanQuery {
@@ -187,8 +189,10 @@ public final class SpanOrQuery extends SpanQuery {
         byDocQueue.add(new SpanDisiWrapper(spans));
       }
 
-      SpanPositionQueue byPositionQueue =
-          new SpanPositionQueue(subSpans.size()); // when empty use -1
+      PriorityQueue<Spans> byPositionQueue =
+          PriorityQueue.usingComparator(
+              subSpans.size(), // when empty use -1
+              Comparator.comparingInt(Spans::startPosition).thenComparingInt(Spans::endPosition));
 
       return new Spans() {
         Spans topPositionSpans = null;
