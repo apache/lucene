@@ -14,12 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+import de.undercouch.gradle.tasks.download.Download
 import org.apache.tools.ant.taskdefs.condition.Os
 
-def resources = scriptResources(buildscript)
-
-apply plugin: deps.plugins.undercouch.download.get().pluginId
+def resources = rootProject.file("gradle/regenerate/snowball")
 
 configure(project(":lucene:analysis:common")) {
   ext {
@@ -74,8 +72,8 @@ configure(project(":lucene:analysis:common")) {
 
   // runs shell script to regenerate stemmers, base stemming subclasses, test data, and stopwords.
   task snowballInternal() {
-    description "Regenerate snowball stemmers."
-    group "generation"
+    description = "Regenerate snowball stemmers."
+    group = "generation"
 
     inputs.files fileTree(
         dir: "src/java/org/tartarus/snowball",
