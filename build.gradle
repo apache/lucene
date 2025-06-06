@@ -61,6 +61,8 @@ plugins {
 
   id "lucene.hacks.downloader-retries"
   id "lucene.hacks.wipe-gradle-temp"
+  id "lucene.hacks.turbocharge-jvm-opts"
+  id "lucene.hacks.dummy-outputs"
 
   // perhaps move this to a convention plugin or remove entirely?
   id "lucene.build-infra"
@@ -91,8 +93,5 @@ apply from: file('gradle/documentation/changes-to-html.gradle')
 apply from: file('gradle/documentation/markdown.gradle')
 apply from: file('gradle/documentation/render-javadoc.gradle')
 apply from: file('gradle/documentation/check-broken-links.gradle')
-
-apply from: file('gradle/hacks/turbocharge-jvm-opts.gradle')
-apply from: file('gradle/hacks/dummy-outputs.gradle')
 
 apply from: file('gradle/pylucene/pylucene.gradle')
