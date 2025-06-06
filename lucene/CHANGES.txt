@@ -70,6 +70,8 @@ Other
 
 * GITHUB#14613: Rewrite APIJAR extractor to use Java 24 classfile API and kill ASM dependency also for build system.  (Uwe Schindler)
 
+* GITHUB#14705: Use Comparators for some PriorityQueue implementations. (Simon Cooper)
+
 ======================= Lucene 10.3.0 =======================
 
 API Changes
@@ -98,7 +100,11 @@ Improvements
 * GITHUB#14602: Refactor the expressions compiler to use official ClassData BSM with indexed lookup
   (Uwe Schindler)
 
+* GITHUB#14672: Numeric sort queries can take advantage of DocValuesSkipper to dynamic prune. (Guo Feng)
+
 * GITHUB#14443: Support adaptive refresh in Searcher Managers (Vigya Sharma)
+
+* GITHUB#14737: Clean up redundant code and comments in query node classes. (Stefan Vodita)
 
 Optimizations
 ---------------------
@@ -142,6 +148,7 @@ Optimizations
 
 * GITHUB#14720: Cache high-order bits of hashcode to speed up BytesRefHash. (Pan Guixin)
 
+* GITHUB#14753: Implement IndexedDISI#docIDRunEnd. (Ge Song)
 
 Bug Fixes
 ---------------------
@@ -154,6 +161,8 @@ Bug Fixes
   instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
 
 * GITHUB#14727: Fix several resource leaks. (Xu Chengxin)
+
+* GITHUB#14755: Fix too many documents collected when only bool-filter condition is present. (Ke Wei)
 
 Build
 ---------------------

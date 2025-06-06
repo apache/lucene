@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.util;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.function.Supplier;
@@ -34,6 +36,17 @@ import java.util.function.Supplier;
  * @lucene.internal
  */
 public abstract class PriorityQueue<T> implements Iterable<T> {
+
+  public static <T> PriorityQueue<T> usingComparator(
+      int maxSize, Comparator<? super T> comparator) {
+    return new PriorityQueue<>(maxSize) {
+      @Override
+      protected boolean lessThan(T a, T b) {
+        return comparator.compare(a, b) < 0;
+      }
+    };
+  }
+
   private int size = 0;
   private final int maxSize;
   private final T[] heap;
@@ -242,9 +255,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
 
   /** Removes all entries from the PriorityQueue. */
   public final void clear() {
-    for (int i = 0; i <= size; i++) {
-      heap[i] = null;
-    }
+    Arrays.fill(heap, 0, size + 1, null);
     size = 0;
   }
 

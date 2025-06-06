@@ -465,6 +465,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     public long cost() {
       return maxDoc;
     }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return maxDoc;
+    }
   }
 
   private abstract static class SparseNumericDocValues extends NumericDocValues {
@@ -503,6 +508,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     @Override
     public long cost() {
       return disi.cost();
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return disi.docIDRunEnd();
     }
   }
 
@@ -747,6 +757,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       doc = target;
       return true;
     }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return maxDoc;
+    }
   }
 
   private abstract static class SparseBinaryDocValues extends BinaryDocValues {
@@ -785,6 +800,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
       disi.intoBitSet(upTo, bitSet, offset);
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return disi.docIDRunEnd();
     }
   }
 
@@ -954,6 +974,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           public long cost() {
             return maxDoc;
           }
+
+          @Override
+          public int docIDRunEnd() throws IOException {
+            return maxDoc;
+          }
         };
       } else if (ordsEntry.docsWithFieldOffset >= 0) { // sparse but non-empty
         final IndexedDISI disi =
@@ -1001,6 +1026,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           public long cost() {
             return disi.cost();
           }
+
+          @Override
+          public int docIDRunEnd() throws IOException {
+            return disi.docIDRunEnd();
+          }
         };
       }
     }
@@ -1036,6 +1066,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       @Override
       public long cost() {
         return ords.cost();
+      }
+
+      @Override
+      public int docIDRunEnd() throws IOException {
+        return ords.docIDRunEnd();
       }
     };
   }
@@ -1444,6 +1479,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         public int docValueCount() {
           return count;
         }
+
+        @Override
+        public int docIDRunEnd() throws IOException {
+          return maxDoc;
+        }
       };
     } else {
       // sparse
@@ -1515,6 +1555,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             count = (int) (end - start);
             set = true;
           }
+        }
+
+        @Override
+        public int docIDRunEnd() throws IOException {
+          return disi.docIDRunEnd();
         }
       };
     }
@@ -1605,6 +1650,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           public long cost() {
             return maxDoc;
           }
+
+          @Override
+          public int docIDRunEnd() throws IOException {
+            return maxDoc;
+          }
         };
       } else if (ordsEntry.docsWithFieldOffset >= 0) { // sparse but non-empty
         final IndexedDISI disi =
@@ -1677,6 +1727,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               set = true;
             }
           }
+
+          @Override
+          public int docIDRunEnd() throws IOException {
+            return disi.docIDRunEnd();
+          }
         };
       }
     }
@@ -1717,6 +1772,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       @Override
       public long cost() {
         return ords.cost();
+      }
+
+      @Override
+      public int docIDRunEnd() throws IOException {
+        return ords.docIDRunEnd();
       }
     };
   }

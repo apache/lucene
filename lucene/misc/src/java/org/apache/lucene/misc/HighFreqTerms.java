@@ -99,7 +99,7 @@ public class HighFreqTerms {
   public static TermStats[] getHighFreqTerms(
       IndexReader reader, int numTerms, String field, Comparator<TermStats> comparator)
       throws Exception {
-    TermStatsQueue tiq = null;
+    PriorityQueue<TermStats> tiq = null;
 
     if (field != null) {
       Terms terms = MultiTerms.getTerms(reader, field);
@@ -108,18 +108,18 @@ public class HighFreqTerms {
       }
 
       TermsEnum termsEnum = terms.iterator();
-      tiq = new TermStatsQueue(numTerms, comparator);
-      tiq.fill(field, termsEnum);
+      tiq = PriorityQueue.usingComparator(numTerms, comparator);
+      fill(tiq, field, termsEnum);
     } else {
       Collection<String> fields = FieldInfos.getIndexedFields(reader);
-      if (fields.size() == 0) {
+      if (fields.isEmpty()) {
         throw new RuntimeException("no fields found for this index");
       }
-      tiq = new TermStatsQueue(numTerms, comparator);
+      tiq = PriorityQueue.usingComparator(numTerms, comparator);
       for (String fieldName : fields) {
         Terms terms = MultiTerms.getTerms(reader, fieldName);
         if (terms != null) {
-          tiq.fill(fieldName, terms.iterator());
+          fill(tiq, fieldName, terms.iterator());
         }
       }
     }
@@ -167,26 +167,12 @@ public class HighFreqTerms {
     }
   }
 
-  /** Priority queue for TermStats objects */
-  static final class TermStatsQueue extends PriorityQueue<TermStats> {
-    final Comparator<TermStats> comparator;
-
-    TermStatsQueue(int size, Comparator<TermStats> comparator) {
-      super(size);
-      this.comparator = comparator;
-    }
-
-    @Override
-    protected boolean lessThan(TermStats termInfoA, TermStats termInfoB) {
-      return comparator.compare(termInfoA, termInfoB) < 0;
-    }
-
-    protected void fill(String field, TermsEnum termsEnum) throws IOException {
-      BytesRef term = null;
-      while ((term = termsEnum.next()) != null) {
-        insertWithOverflow(
-            new TermStats(field, term, termsEnum.docFreq(), termsEnum.totalTermFreq()));
-      }
+  private static void fill(PriorityQueue<TermStats> queue, String field, TermsEnum termsEnum)
+      throws IOException {
+    BytesRef term = null;
+    while ((term = termsEnum.next()) != null) {
+      queue.insertWithOverflow(
+          new TermStats(field, term, termsEnum.docFreq(), termsEnum.totalTermFreq()));
     }
   }
 }
