@@ -78,18 +78,9 @@ plugins {
   id "lucene.regenerate.nori"
   id "lucene.regenerate.icu"
   id "lucene.regenerate.javacc"
-
-  // perhaps move this to a convention plugin or remove entirely?
-  id "lucene.build-infra"
+  id "lucene.regenerate.antlr"
+  id "lucene.regenerate.unicode-test-classes"
+  id "lucene.regenerate.extract-jdk-apis"
 }
 
 description = 'Grandparent project for Apache Lucene Core'
-
-// TODO: review stuff below this line.
-
-apply from: file('gradle/_to-remove/globals.gradle')
-
-// Source or data regeneration tasks
-apply from: file('gradle/generation/antlr.gradle')
-apply from: file('gradle/generation/unicode-test-classes.gradle')
-apply from: file('gradle/generation/extract-jdk-apis.gradle')

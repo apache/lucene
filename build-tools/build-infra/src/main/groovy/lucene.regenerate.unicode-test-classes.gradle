@@ -37,15 +37,19 @@ configure(project(":lucene:test-framework")) {
         workingDir genDir
         executable project.externalTool("perl")
         args = [
-            genScript,
-            "-v", unicodeVersion
+          genScript,
+          "-v",
+          unicodeVersion
         ]
       }
     }
   }
   regenerate.dependsOn wrapWithPersistentChecksums(generateEmojiTokenizationTestInternal, [
-          andThenTasks: ["spotlessJava", "spotlessJavaApply"],
-          mustRunBefore: [ "compileJava" ]
+    andThenTasks: [
+      "spotlessJava",
+      "spotlessJavaApply"
+    ],
+    mustRunBefore: ["compileJava"]
   ])
 
   task generateJavaUnicodeWordBreakTestInternal() {
@@ -67,15 +71,19 @@ configure(project(":lucene:test-framework")) {
         workingDir genDir
         executable project.externalTool("perl")
         args = [
-            genScript,
-            "-v", unicodeVersion
+          genScript,
+          "-v",
+          unicodeVersion
         ]
       }
     }
   }
 
   regenerate.dependsOn wrapWithPersistentChecksums(generateJavaUnicodeWordBreakTestInternal, [
-          andThenTasks: ["spotlessJava", "spotlessJavaApply"],
-          mustRunBefore: [ "compileJava" ]
+    andThenTasks: [
+      "spotlessJava",
+      "spotlessJavaApply"
+    ],
+    mustRunBefore: ["compileJava"]
   ])
 }

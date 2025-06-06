@@ -18,6 +18,7 @@
 import java.nio.file.Files
 import com.github.luben.zstd.ZstdInputStream
 import de.undercouch.gradle.tasks.download.Download
+import org.apache.lucene.gradle.datasets.ExtractReuters
 
 // tasks that download various benchmark/test data sets from the internet.
 
@@ -166,7 +167,7 @@ configure(project(":lucene:benchmark")) {
 
       logger.lifecycle("Extracting ${ext.name} into ${ext.dst}...")
       ext.dst.deleteDir()
-      buildinfra.extractReuters(untarPath.toString(), ext.dst.toString())
+      ExtractReuters.main(untarPath.toString(), ext.dst.toString())
     }
   })
 

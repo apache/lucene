@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+import org.apache.commons.codec.digest.DigestUtils
+
 // This adds validation of project dependencies:
 // 1) license file
 // 2) notice file
@@ -138,6 +140,7 @@ subprojects {
               queue.add(child)
             }
           }
+          def digestUtils = new DigestUtils(DigestUtils.getSha1Digest())
           dep.moduleArtifacts.each { resolvedArtifact ->
             def file = resolvedArtifact.file
             if (visited.add(file)) {
@@ -146,7 +149,7 @@ subprojects {
                 jarName        : file.toPath().getFileName().toString(),
                 path           : file,
                 module         : resolvedArtifact.moduleVersion,
-                checksum       : provider { buildinfra.sha1Digest().digestAsHex(file).trim() },
+                checksum       : provider { digestUtils.digestAsHex(file).trim() },
                 // We keep track of the files referenced by this dependency (sha, license, notice, etc.)
                 // so that we can determine unused dangling files later on.
                 referencedFiles: []

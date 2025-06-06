@@ -1,7 +1,3 @@
-import groovy.json.JsonOutput
-import groovy.json.JsonSlurper
-import java.util.function.Function
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,6 +14,12 @@ import java.util.function.Function
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import org.apache.commons.codec.digest.DigestUtils
+
+import java.util.function.Function
 
 // Create common 'regenerate' task sub-tasks can hook into.
 
@@ -57,10 +59,11 @@ def computeChecksummedEntries = { Task sourceTask ->
   FileCollection allFiles = sourceTask.inputs.files + sourceTask.outputs.files
 
   // Compute checksums for root-project relative paths
+  def digestUtils = new DigestUtils(DigestUtils.getSha1Digest())
   allFiles.files.forEach { file ->
     allEntries.put(
         sourceTask.project.rootDir.relativePath(file),
-        file.exists() ? buildinfra.sha1Digest().digestAsHex(file).trim() : "--")
+        file.exists() ? digestUtils.digestAsHex(file).trim() : "--")
   }
 
   return allEntries

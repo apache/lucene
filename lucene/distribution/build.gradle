@@ -90,7 +90,7 @@ dependencies {
 
 
 // Compute checksums for release archives.
-task computeChecksums(type: buildinfra.checksumClass()) {
+task computeChecksums(type: org.apache.lucene.gradle.Checksum) {
   files = objects.fileCollection()
   [
       tasks.assembleSourceTgz,

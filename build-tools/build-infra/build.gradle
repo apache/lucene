@@ -37,13 +37,6 @@ java {
 
 gradlePlugin {
   automatedPublishing = false
-
-  plugins {
-    buildInfra {
-      id = 'lucene.build-infra'
-      implementationClass = 'org.apache.lucene.gradle.buildinfra.BuildInfraPlugin'
-    }
-  }
 }
 
 // Convert a plugin dependency to a regular dependency so that we can

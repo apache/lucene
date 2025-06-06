@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-def resources = scriptResources(buildscript)
+def resources = rootProject.file("gradle/regenerate/extract-jdk-apis")
 
 configure(project(":lucene:core")) {
   plugins.withType(JavaPlugin) {
@@ -42,13 +42,13 @@ configure(project(":lucene:core")) {
 
         mainClass = file("${resources}/ExtractJdkApis.java") as String
         systemProperties = [
-                'user.timezone': 'UTC',
-                'file.encoding': 'UTF-8',
+          'user.timezone': 'UTC',
+          'file.encoding': 'UTF-8',
         ]
         args = [
-                rootProject.minJavaVersion.toString(),
-                jdkVersion,
-                apijars.file("jdk${jdkVersion}.apijar"),
+          rootProject.minJavaVersion.toString(),
+          jdkVersion,
+          apijars.file("jdk${jdkVersion}.apijar"),
         ]
       }
 
