@@ -71,6 +71,9 @@ plugins {
   id "lucene.documentation.render-javadoc"
   id "lucene.documentation.check-broken-links"
 
+  id "lucene.regenerate"
+  id "lucene.regenerate.jflex"
+
   // perhaps move this to a convention plugin or remove entirely?
   id "lucene.build-infra"
 }
@@ -82,8 +85,6 @@ description = 'Grandparent project for Apache Lucene Core'
 apply from: file('gradle/_to-remove/globals.gradle')
 
 // Source or data regeneration tasks
-apply from: file('gradle/generation/regenerate.gradle')
-apply from: file('gradle/generation/jflex.gradle')
 apply from: file('gradle/generation/moman.gradle')
 apply from: file('gradle/generation/snowball.gradle')
 apply from: file('gradle/generation/kuromoji.gradle')

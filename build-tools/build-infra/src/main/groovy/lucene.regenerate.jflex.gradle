@@ -29,7 +29,7 @@ configure(rootProject) {
   }
 }
 
-def resources = scriptResources(buildscript)
+def resources = rootProject.file("gradle/regenerate/jflex")
 def skeletonDefault = file("${resources}/skeleton.default.txt")
 def skeletonNoBufferExpansion = file("${resources}/skeleton.disable.buffer.expansion.txt")
 

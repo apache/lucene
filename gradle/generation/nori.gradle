@@ -82,6 +82,7 @@ configure(project(":lucene:analysis:nori")) {
       }
     }
 
-    regenerate.dependsOn compileMecabKo
+    // TODO: https://github.com/apache/lucene/issues/14760
+    // regenerate.dependsOn compileMecabKo
   }
 }
