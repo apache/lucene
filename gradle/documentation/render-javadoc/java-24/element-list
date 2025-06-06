@@ -2,6 +2,10 @@ module:java.base
 java.io
 java.lang
 java.lang.annotation
+java.lang.classfile
+java.lang.classfile.attribute
+java.lang.classfile.constantpool
+java.lang.classfile.instruction
 java.lang.constant
 java.lang.foreign
 java.lang.invoke
@@ -210,7 +214,6 @@ com.sun.source.tree
 com.sun.source.util
 com.sun.tools.javac
 module:jdk.crypto.cryptoki
-module:jdk.crypto.ec
 module:jdk.dynalink
 jdk.dynalink
 jdk.dynalink.beans
@@ -255,6 +258,7 @@ module:jdk.jstatd
 module:jdk.localedata
 module:jdk.management
 com.sun.management
+jdk.management
 module:jdk.management.agent
 module:jdk.management.jfr
 jdk.management.jfr

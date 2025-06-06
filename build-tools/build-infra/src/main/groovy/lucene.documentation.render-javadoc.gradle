@@ -92,15 +92,29 @@ allprojects {
 // Set up titles and link up some offline docs for all documentation
 // (they may be unused but this doesn't do any harm).
 
-def javaJavadocPackages = rootProject.file("${resources}/java21/") // TODO: make this use minJava from deps
-def junitJavadocPackages = rootProject.file("${resources}/junit/")
+def minJava = deps.versions.minJava.get()
+def javaJavadocPackages = rootProject.file("${resources}/java-${minJava}/")
+if (!javaJavadocPackages.exists()) {
+  throw new GradleException("Prefetched javadoc element-list is missing at " + javaJavadocPackages + ", " +
+  "create this directory and fetch the element-list file from " +
+  "from https://docs.oracle.com/en/java/javase/${minJava}/docs/api/element-list")
+}
+
+def junitVersion = deps.versions.junit.get()
+def junitJavadocPackages = rootProject.file("${resources}/junit-${junitVersion}/")
+if (!junitJavadocPackages.exists()) {
+  throw new GradleException("Prefetched javadoc package-list is missing at " + junitJavadocPackages + ", " +
+  "create this directory and fetch the package-list file from " +
+  "from https://junit.org/junit4/javadoc/${junitVersion}/package-list")
+}
+
 allprojects {
   project.tasks.withType(RenderJavadocTask).configureEach {
     title = "Lucene ${project.version} ${project.name} API"
 
     offlineLinks += [
-      "https://docs.oracle.com/en/java/javase/21/docs/api/": javaJavadocPackages,
-      "https://junit.org/junit4/javadoc/4.12/": junitJavadocPackages
+      ("https://docs.oracle.com/en/java/javase/${minJava}/docs/api/".toString()): javaJavadocPackages,
+      ("https://junit.org/junit4/javadoc/${junitVersion}/".toString()): junitJavadocPackages
     ]
 
     luceneDocUrl = provider({ rootProject.luceneDocUrl })
