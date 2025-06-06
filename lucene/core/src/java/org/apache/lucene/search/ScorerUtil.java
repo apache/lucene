@@ -132,7 +132,7 @@ class ScorerUtil {
       double maxRemainingScore,
       float minCompetitiveScore,
       int numScorers) {
-    if ((float) MathUtil.sumUpperBound(maxRemainingScore, numScorers) > minCompetitiveScore) {
+    if ((float) MathUtil.sumUpperBound(maxRemainingScore, numScorers) >= minCompetitiveScore) {
       return;
     }
 
