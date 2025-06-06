@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.search.Weight.DefaultBulkScorer;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.MathUtil;
 
 /**
  * BulkScorer implementation of {@link BlockMaxConjunctionScorer} that focuses on top-level
@@ -33,6 +34,8 @@ import org.apache.lucene.util.Bits;
  * block of postings.
  */
 final class BlockMaxConjunctionBulkScorer extends BulkScorer {
+
+  private static final int MAX_WINDOW_SIZE = 65536;
 
   private final Scorer[] scorers;
   private final Scorable[] scorables;
@@ -81,18 +84,18 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
     collector.setScorer(scorable);
 
-    int windowMin = Math.max(lead.docID(), min);
+    int windowMin = scoreDocFirstUntilDynamicPruning(collector, acceptDocs, min, max);
+
     while (windowMin < max) {
       // Use impacts of the least costly scorer to compute windows
       // NOTE: windowMax is inclusive
       int windowMax = Math.min(scorers[0].advanceShallow(windowMin), max - 1);
+      // Ensure the scoring window not too big, this especially works for the default implementation
+      // of `Scorer#advanceShallow` which may return `DocIdSetIterator#NO_MORE_DOCS`.
+      windowMax = MathUtil.unsignedMin(windowMax, windowMin + MAX_WINDOW_SIZE);
 
-      if (0 < scorable.minCompetitiveScore) {
-        float maxWindowScore = computeMaxScore(windowMin, windowMax);
-        scoreWindowScoreFirst(collector, acceptDocs, windowMin, windowMax + 1, maxWindowScore);
-      } else {
-        scoreWindowDocFirst(collector, acceptDocs, windowMin, windowMax + 1);
-      }
+      float maxWindowScore = computeMaxScore(windowMin, windowMax);
+      scoreWindowScoreFirst(collector, acceptDocs, windowMin, windowMax + 1, maxWindowScore);
       windowMin = Math.max(lead.docID(), windowMax + 1);
     }
 
@@ -100,11 +103,11 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   }
 
   /**
-   * Score a window of doc IDs by first finding agreement between all iterators, and only then
-   * compute scores and call the collector.
+   * Score a window of doc IDs by first finding agreement between all iterators and only then
+   * compute scores and call the collector until dynamic pruning kicks in.
    */
-  private void scoreWindowDocFirst(LeafCollector collector, Bits acceptDocs, int min, int max)
-      throws IOException {
+  private int scoreDocFirstUntilDynamicPruning(
+      LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
     int doc = lead.docID();
     if (doc < min) {
       doc = lead.advance(min);
@@ -131,9 +134,13 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
         }
         scorable.score = (float) score;
         collector.collect(doc);
+        if (scorable.minCompetitiveScore > 0) {
+          return lead.nextDoc();
+        }
       }
       doc = lead.nextDoc();
     }
+    return doc;
   }
 
   /**
@@ -166,11 +173,13 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       docAndScoreAccBuffer.copyFrom(docAndScoreBuffer);
 
       for (int i = 1; i < scorers.length; ++i) {
-        ScorerUtil.filterCompetitiveHits(
-            docAndScoreAccBuffer,
-            sumOfOtherClauses[i],
-            scorable.minCompetitiveScore,
-            scorers.length);
+        double sumOfOtherClause = sumOfOtherClauses[i];
+        if (sumOfOtherClause != sumOfOtherClauses[i - 1]) {
+          // two equal consecutive values mean that the first clause always returns a score of zero,
+          // so we don't need to filter hits by score again.
+          ScorerUtil.filterCompetitiveHits(
+              docAndScoreAccBuffer, sumOfOtherClause, scorable.minCompetitiveScore, scorers.length);
+        }
 
         ScorerUtil.applyRequiredClause(docAndScoreAccBuffer, iterators[i], scorables[i]);
       }

@@ -120,11 +120,22 @@ class ScorerUtil {
     }
   }
 
+  /**
+   * Filters competitive hits from the provided {@link DocAndScoreAccBuffer}.
+   *
+   * <p>This method removes documents from the buffer that cannot possibly have a score competitive
+   * enough to exceed the minimum competitive score, given the maximum remaining score and the
+   * number of scorers.
+   */
   static void filterCompetitiveHits(
       DocAndScoreAccBuffer buffer,
       double maxRemainingScore,
       float minCompetitiveScore,
       int numScorers) {
+    if ((float) MathUtil.sumUpperBound(maxRemainingScore, numScorers) >= minCompetitiveScore) {
+      return;
+    }
+
     int newSize = 0;
     for (int i = 0; i < buffer.size; ++i) {
       float maxPossibleScore =
