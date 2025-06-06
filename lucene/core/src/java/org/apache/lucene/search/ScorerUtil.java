@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.stream.LongStream;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat;
@@ -49,12 +50,7 @@ class ScorerUtil {
     // If we recurse infinitely, we find out that the cost of a msm query is the sum of the
     // costs of the num_scorers - minShouldMatch + 1 least costly scorers
     final PriorityQueue<Long> pq =
-        new PriorityQueue<Long>(numScorers - minShouldMatch + 1) {
-          @Override
-          protected boolean lessThan(Long a, Long b) {
-            return a > b;
-          }
-        };
+        PriorityQueue.usingComparator(numScorers - minShouldMatch + 1, Comparator.reverseOrder());
     costs.forEach(pq::insertWithOverflow);
     return StreamSupport.stream(pq.spliterator(), false).mapToLong(Number::longValue).sum();
   }
@@ -120,11 +116,22 @@ class ScorerUtil {
     }
   }
 
+  /**
+   * Filters competitive hits from the provided {@link DocAndScoreAccBuffer}.
+   *
+   * <p>This method removes documents from the buffer that cannot possibly have a score competitive
+   * enough to exceed the minimum competitive score, given the maximum remaining score and the
+   * number of scorers.
+   */
   static void filterCompetitiveHits(
       DocAndScoreAccBuffer buffer,
       double maxRemainingScore,
       float minCompetitiveScore,
       int numScorers) {
+    if ((float) MathUtil.sumUpperBound(maxRemainingScore, numScorers) >= minCompetitiveScore) {
+      return;
+    }
+
     int newSize = 0;
     for (int i = 0; i < buffer.size; ++i) {
       float maxPossibleScore =
