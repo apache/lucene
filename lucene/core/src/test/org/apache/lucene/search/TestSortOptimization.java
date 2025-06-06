@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.BiFunction;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FloatDocValuesField;
@@ -45,6 +46,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.StoredFields;
@@ -65,8 +67,19 @@ import org.apache.lucene.util.IOUtils;
 
 public class TestSortOptimization extends LuceneTestCase {
 
-  public void testLongSortOptimization() throws IOException {
+  public void testLongSortOptimizationPointIndex() throws Exception {
+    testLongSortOptimization(
+        (field, value) ->
+            List.of(new LongPoint(field, value), new NumericDocValuesField(field, value)));
+  }
 
+  public void testLongSortOptimizationSkipperIndex() throws Exception {
+    testLongSortOptimization(
+        (field, value) -> List.of(NumericDocValuesField.indexedField(field, value)));
+  }
+
+  private void testLongSortOptimization(
+      BiFunction<String, Integer, List<IndexableField>> fieldsBuilder) throws IOException {
     final Directory dir = newDirectory();
     IndexWriterConfig config =
         new IndexWriterConfig()
@@ -77,8 +90,7 @@ public class TestSortOptimization extends LuceneTestCase {
     final int numDocs = atLeast(10000);
     for (int i = 0; i < numDocs; ++i) {
       final Document doc = new Document();
-      doc.add(new NumericDocValuesField("my_field", i));
-      doc.add(new LongPoint("my_field", i));
+      fieldsBuilder.apply("my_field", i).forEach(doc::add);
       writer.addDocument(doc);
       if (i == 7000) writer.flush(); // two segments
     }
@@ -175,7 +187,19 @@ public class TestSortOptimization extends LuceneTestCase {
     dir.close();
   }
 
-  public void testSortOptimizationWithMissingValues() throws IOException {
+  public void testSortOptimizationWithMissingValuesPointIndex() throws Exception {
+    testSortOptimizationWithMissingValues(
+        (field, value) ->
+            List.of(new LongPoint(field, value), new NumericDocValuesField(field, value)));
+  }
+
+  public void testSortOptimizationWithMissingValuesSkipperIndex() throws Exception {
+    testSortOptimizationWithMissingValues(
+        (field, value) -> List.of(NumericDocValuesField.indexedField(field, value)));
+  }
+
+  private void testSortOptimizationWithMissingValues(
+      BiFunction<String, Integer, List<IndexableField>> fieldsBuilder) throws IOException {
     final Directory dir = newDirectory();
     IndexWriterConfig config =
         new IndexWriterConfig()
@@ -187,8 +211,7 @@ public class TestSortOptimization extends LuceneTestCase {
     for (int i = 0; i < numDocs; ++i) {
       final Document doc = new Document();
       if ((i % 500) != 0) { // miss values on every 500th document
-        doc.add(new NumericDocValuesField("my_field", i));
-        doc.add(new LongPoint("my_field", i));
+        fieldsBuilder.apply("my_field", i).forEach(doc::add);
       }
       writer.addDocument(doc);
       if (i == 7000) writer.flush(); // two segments
@@ -269,18 +292,26 @@ public class TestSortOptimization extends LuceneTestCase {
         assertEquals(afterValue + 1 + i, fieldDoc.fields[0]);
       }
       assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
-      // expect to skip all but the first leaf in the BKD tree in the first segment as well as the
-      // second segment
-      // doc-0 has no target field, so we need to minus 1
-      final int expectedSkipped = (7001 - 512 - 1) + (numDocs - 7001);
-      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs - expectedSkipped + 1);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
     }
 
     reader.close();
     dir.close();
   }
 
-  public void testNumericDocValuesOptimizationWithMissingValues() throws IOException {
+  public void testNumericDocValuesOptimizationWithMissingValuesPointIndex() throws Exception {
+    testNumericDocValuesOptimizationWithMissingValues(
+        (field, value) ->
+            List.of(new LongPoint(field, value), new NumericDocValuesField(field, value)));
+  }
+
+  public void testNumericDocValuesOptimizationWithMissingValuesSkipperIndex() throws Exception {
+    testNumericDocValuesOptimizationWithMissingValues(
+        (field, value) -> List.of(NumericDocValuesField.indexedField(field, value)));
+  }
+
+  private void testNumericDocValuesOptimizationWithMissingValues(
+      BiFunction<String, Integer, List<IndexableField>> fieldsBuilder) throws IOException {
     final Directory dir = newDirectory();
     IndexWriterConfig config =
         new IndexWriterConfig()
@@ -294,8 +325,7 @@ public class TestSortOptimization extends LuceneTestCase {
       final Document doc = new Document();
       if (i <= missValuesNumDocs) { // missing value document
       } else {
-        doc.add(new NumericDocValuesField("my_field", i));
-        doc.add(new LongPoint("my_field", i));
+        fieldsBuilder.apply("my_field", i).forEach(doc::add);
       }
       writer.addDocument(doc);
     }
@@ -348,7 +378,19 @@ public class TestSortOptimization extends LuceneTestCase {
     dir.close();
   }
 
-  public void testSortOptimizationEqualValues() throws IOException {
+  public void testSortOptimizationEqualValuesPointIndex() throws Exception {
+    testSortOptimizationEqualValues(
+        (field, value) ->
+            List.of(new IntPoint(field, value), new NumericDocValuesField(field, value)));
+  }
+
+  public void testSortOptimizationEqualValuesSkipperIndex() throws Exception {
+    testSortOptimizationEqualValues(
+        (field, value) -> List.of(NumericDocValuesField.indexedField(field, value)));
+  }
+
+  private void testSortOptimizationEqualValues(
+      BiFunction<String, Integer, List<IndexableField>> fieldsBuilder) throws IOException {
     final Directory dir = newDirectory();
     IndexWriterConfig config =
         new IndexWriterConfig()
@@ -359,9 +401,7 @@ public class TestSortOptimization extends LuceneTestCase {
     final int numDocs = atLeast(TEST_NIGHTLY ? 50_000 : 10_000);
     for (int i = 1; i <= numDocs; ++i) {
       final Document doc = new Document();
-      doc.add(
-          new NumericDocValuesField("my_field1", 100)); // all docs have the same value of my_field1
-      doc.add(new IntPoint("my_field1", 100));
+      fieldsBuilder.apply("my_field1", 100).forEach(doc::add);
       doc.add(
           new NumericDocValuesField(
               "my_field2", numDocs - i)); // diff values for the field my_field2
@@ -429,15 +469,26 @@ public class TestSortOptimization extends LuceneTestCase {
     dir.close();
   }
 
-  public void testFloatSortOptimization() throws IOException {
+  public void testFloatSortOptimizationPointIndex() throws Exception {
+    testFloatSortOptimization(
+        (field, value) ->
+            List.of(new FloatPoint(field, value), new FloatDocValuesField(field, value)));
+  }
+
+  public void testFloatSortOptimizationSkpperIndex() throws Exception {
+    testFloatSortOptimization(
+        (field, value) ->
+            List.of(FloatDocValuesField.indexedField(field, Float.floatToRawIntBits(value))));
+  }
+
+  private void testFloatSortOptimization(
+      BiFunction<String, Float, List<IndexableField>> fieldsBuilder) throws IOException {
     final Directory dir = newDirectory();
     final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
     final int numDocs = atLeast(10000);
     for (int i = 0; i < numDocs; ++i) {
       final Document doc = new Document();
-      float f = 1f * i;
-      doc.add(new FloatDocValuesField("my_field", f));
-      doc.add(new FloatPoint("my_field", i));
+      fieldsBuilder.apply("my_field", 1f * i).forEach(doc::add);
       writer.addDocument(doc);
     }
     final DirectoryReader reader = DirectoryReader.open(writer);

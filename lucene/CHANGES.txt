@@ -100,6 +100,8 @@ Improvements
 * GITHUB#14602: Refactor the expressions compiler to use official ClassData BSM with indexed lookup
   (Uwe Schindler)
 
+* GITHUB#14672: Numeric sort queries can take advantage of DocValuesSkipper to dynamic prune. (Guo Feng)
+
 * GITHUB#14443: Support adaptive refresh in Searcher Managers (Vigya Sharma)
 
 * GITHUB#14737: Clean up redundant code and comments in query node classes. (Stefan Vodita)
