@@ -18,7 +18,9 @@ package org.apache.lucene.util;
 
 import static org.apache.lucene.util.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
+import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.store.RandomAccessInput;
 
 /**
  * This class enables the allocation of fixed-size buffers and their management as part of a buffer
@@ -297,6 +299,34 @@ public final class ByteBlockPool implements Accountable {
         // fill up this buffer and move to next one
         if (bufferLeft > 0) {
           System.arraycopy(bytes, offset, buffer, byteUpto, bufferLeft);
+        }
+        nextBuffer();
+        bytesLeft -= bufferLeft;
+        offset += bufferLeft;
+      }
+    }
+  }
+
+  /**
+   * Append some portion of the provided {@link RandomAccessInput} at the current position.
+   *
+   * @param bytes the bytes to write
+   * @param offset the offset of the byte stream
+   * @param length the number of bytes to write
+   */
+  public void append(final RandomAccessInput bytes, long offset, int length) throws IOException {
+    int bytesLeft = length;
+    while (bytesLeft > 0) {
+      int bufferLeft = BYTE_BLOCK_SIZE - byteUpto;
+      if (bytesLeft < bufferLeft) {
+        // fits within current buffer
+        bytes.readBytes(offset, buffer, byteUpto, bytesLeft);
+        byteUpto += bytesLeft;
+        break;
+      } else {
+        // fill up this buffer and move to next one
+        if (bufferLeft > 0) {
+          bytes.readBytes(offset, buffer, byteUpto, bufferLeft);
         }
         nextBuffer();
         bytesLeft -= bufferLeft;
