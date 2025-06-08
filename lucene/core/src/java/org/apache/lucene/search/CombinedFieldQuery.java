@@ -378,8 +378,10 @@ public final class CombinedFieldQuery extends Query implements Accountable {
           List<DisiWrapper> wrappers = new ArrayList<>(iterators.size());
           for (int i = 0; i < iterators.size(); i++) {
             float weight = fields.get(i).weight;
-            wrappers.add(
-                new WeightedDisiWrapper(new TermScorer(iterators.get(i), simWeight, null), weight));
+            Scorer scorer = new TermScorer(iterators.get(i), simWeight, null);
+            DisiWrapper w = new DisiWrapper(scorer, false, weight);
+            assert w.postingsEnum != null; // needed to access term frequencies
+            wrappers.add(w);
           }
           // Even though it is called approximation, it is accurate since none of
           // the sub iterators are two-phase iterators.
@@ -401,21 +403,6 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     }
   }
 
-  private static class WeightedDisiWrapper extends DisiWrapper {
-    final PostingsEnum postingsEnum;
-    final float weight;
-
-    WeightedDisiWrapper(Scorer scorer, float weight) {
-      super(scorer, false);
-      this.weight = weight;
-      this.postingsEnum = (PostingsEnum) scorer.iterator();
-    }
-
-    float freq() throws IOException {
-      return weight * postingsEnum.freq();
-    }
-  }
-
   private static class CombinedFieldScorer extends Scorer {
     private final DisjunctionDISIApproximation iterator;
     private final MultiNormsLeafSimScorer simScorer;
@@ -434,9 +421,9 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
     float freq() throws IOException {
       DisiWrapper w = iterator.topList();
-      float freq = ((WeightedDisiWrapper) w).freq();
+      float freq = w.postingsEnum.freq() * w.weight;
       for (w = w.next; w != null; w = w.next) {
-        freq += ((WeightedDisiWrapper) w).freq();
+        freq += w.postingsEnum.freq() * w.weight;
         if (freq < 0) { // overflow
           return Integer.MAX_VALUE;
         }

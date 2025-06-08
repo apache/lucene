@@ -16,12 +16,15 @@
  */
 package org.apache.lucene.search;
 
+import java.io.IOException;
+import java.util.Comparator;
 import java.util.stream.LongStream;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.PriorityQueue;
 
 /** Util class for Scorer related methods */
@@ -47,12 +50,7 @@ class ScorerUtil {
     // If we recurse infinitely, we find out that the cost of a msm query is the sum of the
     // costs of the num_scorers - minShouldMatch + 1 least costly scorers
     final PriorityQueue<Long> pq =
-        new PriorityQueue<Long>(numScorers - minShouldMatch + 1) {
-          @Override
-          protected boolean lessThan(Long a, Long b) {
-            return a > b;
-          }
-        };
+        PriorityQueue.usingComparator(numScorers - minShouldMatch + 1, Comparator.reverseOrder());
     costs.forEach(pq::insertWithOverflow);
     return StreamSupport.stream(pq.spliterator(), false).mapToLong(Number::longValue).sum();
   }
@@ -115,6 +113,82 @@ class ScorerUtil {
     @Override
     public int length() {
       return in.length();
+    }
+  }
+
+  /**
+   * Filters competitive hits from the provided {@link DocAndScoreAccBuffer}.
+   *
+   * <p>This method removes documents from the buffer that cannot possibly have a score competitive
+   * enough to exceed the minimum competitive score, given the maximum remaining score and the
+   * number of scorers.
+   */
+  static void filterCompetitiveHits(
+      DocAndScoreAccBuffer buffer,
+      double maxRemainingScore,
+      float minCompetitiveScore,
+      int numScorers) {
+    if ((float) MathUtil.sumUpperBound(maxRemainingScore, numScorers) >= minCompetitiveScore) {
+      return;
+    }
+
+    int newSize = 0;
+    for (int i = 0; i < buffer.size; ++i) {
+      float maxPossibleScore =
+          (float) MathUtil.sumUpperBound(buffer.scores[i] + maxRemainingScore, numScorers);
+      if (maxPossibleScore >= minCompetitiveScore) {
+        buffer.docs[newSize] = buffer.docs[i];
+        buffer.scores[newSize] = buffer.scores[i];
+        newSize++;
+      }
+    }
+    buffer.size = newSize;
+  }
+
+  /**
+   * Apply the provided {@link Scorable} as a required clause on the given {@link
+   * DocAndScoreAccBuffer}. This filters out documents from the buffer that do not match, and adds
+   * the scores of this {@link Scorable} to the scores.
+   *
+   * <p><b>NOTE</b>: The provided buffer must contain doc IDs in sorted order, with no duplicates.
+   */
+  static void applyRequiredClause(
+      DocAndScoreAccBuffer buffer, DocIdSetIterator iterator, Scorable scorable)
+      throws IOException {
+    int intersectionSize = 0;
+    int curDoc = iterator.docID();
+    for (int i = 0; i < buffer.size; ++i) {
+      int targetDoc = buffer.docs[i];
+      if (curDoc < targetDoc) {
+        curDoc = iterator.advance(targetDoc);
+      }
+      if (curDoc == targetDoc) {
+        buffer.docs[intersectionSize] = targetDoc;
+        buffer.scores[intersectionSize] = buffer.scores[i] + scorable.score();
+        intersectionSize++;
+      }
+    }
+    buffer.size = intersectionSize;
+  }
+
+  /**
+   * Apply the provided {@link Scorable} as an optional clause on the given {@link
+   * DocAndScoreAccBuffer}. This adds the scores of this {@link Scorer} to the existing scores.
+   *
+   * <p><b>NOTE</b>: The provided buffer must contain doc IDs in sorted order, with no duplicates.
+   */
+  static void applyOptionalClause(
+      DocAndScoreAccBuffer buffer, DocIdSetIterator iterator, Scorable scorable)
+      throws IOException {
+    int curDoc = iterator.docID();
+    for (int i = 0; i < buffer.size; ++i) {
+      int targetDoc = buffer.docs[i];
+      if (curDoc < targetDoc) {
+        curDoc = iterator.advance(targetDoc);
+      }
+      if (curDoc == targetDoc) {
+        buffer.scores[i] += scorable.score();
+      }
     }
   }
 }

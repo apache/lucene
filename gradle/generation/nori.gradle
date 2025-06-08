@@ -55,7 +55,7 @@ configure(project(":lucene:analysis:nori")) {
       dependsOn sourceSets.main.runtimeClasspath
 
       def dictionaryName = "mecab-ko-dic-2.1.1-20180720"
-      def dictionarySource = "https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/${dictionaryName}.tar.gz"
+      def dictionarySource = "https://s3.amazonaws.com/lucene-testdata/mecab/${dictionaryName}.tar.gz"
       def dictionaryFile = file("${buildDir}/generate/${dictionaryName}.tar.gz")
       def unpackedDir = file("${buildDir}/generate/${dictionaryName}")
 
