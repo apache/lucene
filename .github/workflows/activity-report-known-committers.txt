@@ -5,6 +5,7 @@ guofeng.my
 gf2121
 Benjamin Trent
 ChrisHegarty
+Mike McCandless
 Andrzej Bialecki
 Alessandro Benedetti
 Armin Braun
