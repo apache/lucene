@@ -394,6 +394,83 @@ public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
     dir.close();
   }
 
+  @Test
+  public void testIntraSegmentConcurrencyNotSupported() throws Exception {
+    // Create test blocks with specific structure - using a larger number of documents
+    final int numParents = atLeast(1000); // Create at least 1000 parents to ensure large segment
+    TestDoc[][] blocks = new TestDoc[numParents][];
+
+    int docId = 0;
+    for (int parentIdx = 0; parentIdx < numParents; parentIdx++) {
+      // Each parent has 5 children
+      blocks[parentIdx] = new TestDoc[6]; // 5 children + 1 parent
+
+      // Add children
+      for (int childIdx = 0; childIdx < 5; childIdx++) {
+        blocks[parentIdx][childIdx] = new TestDoc("child", true, docId++);
+      }
+      // Add parent
+      blocks[parentIdx][5] = new TestDoc("parent", true, docId++);
+    }
+
+    Directory dir = newDirectory();
+    final RandomIndexWriter writer =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
+
+    // Add documents
+    List<Document> docs = new ArrayList<>();
+    for (TestDoc[] block : blocks) {
+      for (TestDoc doc : block) {
+        docs.add(doc.toDocument());
+      }
+      writer.addDocuments(docs);
+      docs.clear();
+    }
+    writer.commit();
+    writer.forceMerge(1); // Force merge to ensure we have one large segment
+
+    IndexReader reader = writer.getReader();
+    writer.close();
+
+    BitSetProducer parentFilter =
+        new QueryBitSetProducer(new TermQuery(new Term("type", "parent")));
+    CheckJoinIndex.check(reader, parentFilter);
+    Query parentQuery =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("value", "match")), BooleanClause.Occur.MUST)
+            .add(new TermQuery(new Term("type", "parent")), BooleanClause.Occur.MUST)
+            .build();
+    Query childQuery =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("value", "match")), BooleanClause.Occur.MUST)
+            .add(new TermQuery(new Term("type", "child")), BooleanClause.Occur.MUST)
+            .build();
+
+    ParentsChildrenBlockJoinQuery query =
+        new ParentsChildrenBlockJoinQuery(parentFilter, parentQuery, childQuery, 2);
+
+    for (int i = 0; i < 10; i++) {
+      // Verify that searching with IntraSegment concurrency throws the expected exception
+      // Note that there are still randomness on whether to slice a single segment, thus we are
+      // running the test 10 times
+      // And only assert for exception if there are multiple slices
+      IndexSearcher searcher = newSearcher(reader, false, false, Concurrency.INTRA_SEGMENT);
+      IndexSearcher.LeafSlice[] leafSlices = searcher.getSlices();
+      if (leafSlices.length > 1) {
+        IllegalStateException e =
+            expectThrows(IllegalStateException.class, () -> searcher.search(query, 10));
+        assertTrue(
+            e.getMessage()
+                .contains(
+                    "ParentsChildrenBlockJoinQuery does not support intraSegment concurrency."));
+      }
+    }
+
+    reader.close();
+    dir.close();
+  }
+
   private record TestDoc(String type, boolean isMatch, int docID) {
     Document toDocument() {
       Document doc = new Document();

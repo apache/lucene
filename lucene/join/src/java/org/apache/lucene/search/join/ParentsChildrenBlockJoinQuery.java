@@ -22,8 +22,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.function.BinaryOperator;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -146,6 +148,7 @@ public class ParentsChildrenBlockJoinQuery extends Query {
     private final int childLimitPerParent;
     private final boolean doScores;
     private final BinaryOperator<Float> scoreCombiner;
+    private final Set<LeafReaderContext> seenContexts = new HashSet<>();
 
     public ParentsChildrenBlockJoinWeight(
         Query query,
@@ -186,6 +189,13 @@ public class ParentsChildrenBlockJoinQuery extends Query {
 
     @Override
     public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      if (!seenContexts.add(context)) {
+        throw new IllegalStateException(
+            "ParentsChildrenBlockJoinQuery does not support intraSegment concurrency. Context "
+                + context
+                + " was already seen.");
+      }
+
       final BitSet parentBits = parentFilter.getBitSet(context);
       if (parentBits == null) {
         return null;
