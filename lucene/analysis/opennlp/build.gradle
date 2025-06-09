@@ -33,6 +33,7 @@ ext {
   testModelDir = file("${testsUserDir}/org/apache/lucene/analysis/opennlp")
 }
 
+// this should be hooked to regenerate?
 tasks.register('trainTestModels') {
   description = 'Train all small test models for unit tests'
   doLast {
