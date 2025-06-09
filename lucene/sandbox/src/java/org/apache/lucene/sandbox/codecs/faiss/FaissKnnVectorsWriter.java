@@ -21,6 +21,8 @@ import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.DATA_
 import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.META_CODEC_NAME;
 import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.META_EXTENSION;
 import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.VERSION_CURRENT;
+import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.FAISS_IO_FLAG_MMAP;
+import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.FAISS_IO_FLAG_READ_ONLY;
 import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.createIndex;
 import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.indexWrite;
 
@@ -57,7 +59,7 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
   private final FlatVectorsWriter rawVectorsWriter;
   private final IndexOutput meta, data;
   private final Map<FieldInfo, FlatFieldVectorsWriter<?>> rawFields;
-  private boolean closed, finished;
+  private boolean finished;
 
   public FaissKnnVectorsWriter(
       String description,
@@ -70,29 +72,34 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
     this.indexParams = indexParams;
     this.rawVectorsWriter = rawVectorsWriter;
     this.rawFields = new HashMap<>();
-    this.closed = false;
     this.finished = false;
 
-    boolean failure = true;
     try {
-      this.meta = openOutput(state, META_EXTENSION, META_CODEC_NAME);
-      this.data = openOutput(state, DATA_EXTENSION, DATA_CODEC_NAME);
-      failure = false;
-    } finally {
-      if (failure) {
-        IOUtils.closeWhileHandlingException(this);
-      }
-    }
-  }
+      String metaFileName =
+          IndexFileNames.segmentFileName(
+              state.segmentInfo.name, state.segmentSuffix, META_EXTENSION);
+      this.meta = state.directory.createOutput(metaFileName, state.context);
+      CodecUtil.writeIndexHeader(
+          this.meta,
+          META_CODEC_NAME,
+          VERSION_CURRENT,
+          state.segmentInfo.getId(),
+          state.segmentSuffix);
 
-  private IndexOutput openOutput(SegmentWriteState state, String extension, String codecName)
-      throws IOException {
-    String fileName =
-        IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, extension);
-    IndexOutput output = state.directory.createOutput(fileName, state.context);
-    CodecUtil.writeIndexHeader(
-        output, codecName, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
-    return output;
+      String dataFileName =
+          IndexFileNames.segmentFileName(
+              state.segmentInfo.name, state.segmentSuffix, DATA_EXTENSION);
+      this.data = state.directory.createOutput(dataFileName, state.context);
+      CodecUtil.writeIndexHeader(
+          this.data,
+          DATA_CODEC_NAME,
+          VERSION_CURRENT,
+          state.segmentInfo.getId(),
+          state.segmentSuffix);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
+    }
   }
 
   @Override
@@ -161,8 +168,7 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
               // Ensure timely cleanup
               .reinterpret(temp, LibFaissC::freeIndex);
 
-      // See flags defined in c_api/index_io_c.h
-      int ioFlags = 3;
+      int ioFlags = FAISS_IO_FLAG_MMAP | FAISS_IO_FLAG_READ_ONLY;
 
       // Write index
       long dataOffset = data.getFilePointer();
@@ -189,10 +195,7 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
 
   @Override
   public void close() throws IOException {
-    if (closed == false) {
-      IOUtils.close(rawVectorsWriter, meta, data);
-      closed = true;
-    }
+    IOUtils.close(rawVectorsWriter, meta, data);
   }
 
   @Override

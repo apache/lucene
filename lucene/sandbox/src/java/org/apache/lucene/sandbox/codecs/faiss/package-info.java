@@ -15,8 +15,33 @@
  * limitations under the License.
  */
 /**
- * Provides a Faiss-based vector codec via {@link
+ * Provides a Faiss-based vector format via {@link
  * org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat}.
+ *
+ * <p>To use this format: Install <a
+ * href="https://anaconda.org/pytorch/faiss-cpu">pytorch/faiss-cpu</a> v{@value
+ * org.apache.lucene.sandbox.codecs.faiss.LibFaissC#LIBRARY_VERSION} from <a
+ * href="https://docs.conda.io/en/latest">Conda</a> and place shared libraries (including
+ * dependencies) on the {@code $LD_LIBRARY_PATH} environment variable or {@code -Djava.library.path}
+ * JVM argument.
+ *
+ * <p>Important: Ensure that the license of the Conda distribution and channels is applicable to
+ * you. <a href="https://anaconda.org/pytorch">pytorch</a> and <a
+ * href="https://anaconda.org/conda-forge">conda-forge</a> are community-maintained channels with
+ * permissive licenses!
+ *
+ * <p>Sample setup:
+ *
+ * <ul>
+ *   <li>Install <a href="https://github.com/mamba-org/mamba">micromamba</a> (an open-source Conda
+ *       package manager)
+ *   <li>Install dependencies using {@code micromamba create -n faiss-env -c pytorch -c conda-forge
+ *       -y faiss-cpu=}{@value org.apache.lucene.sandbox.codecs.faiss.LibFaissC#LIBRARY_VERSION}
+ *   <li>Activate environment using {@code micromamba activate faiss-env}
+ *   <li>Add shared libraries to runtime using {@code export LD_LIBRARY_PATH=$CONDA_PREFIX/lib}
+ *   <li>And you're good to go! (add the {@code -Dtests.faiss.run=true} JVM argument to ensure Faiss
+ *       tests are run)
+ * </ul>
  *
  * @lucene.experimental
  */

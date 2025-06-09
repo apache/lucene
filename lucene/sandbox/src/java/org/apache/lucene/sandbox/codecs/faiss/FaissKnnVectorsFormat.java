@@ -31,6 +31,8 @@ import org.apache.lucene.index.SegmentWriteState;
  * A format which uses <a href="https://github.com/facebookresearch/faiss">Faiss</a> to create and
  * search vector indexes, using {@link LibFaissC} to interact with the native library.
  *
+ * <p>TODO: There is no guarantee of backwards compatibility!
+ *
  * <p>A separate Faiss index is created per-segment, and uses the following files:
  *
  * <ul>
@@ -40,7 +42,9 @@ import org.apache.lucene.index.SegmentWriteState;
  *   <li>All files required by {@link Lucene99FlatVectorsFormat} for storing raw vectors.
  * </ul>
  *
- * <p>Note: Set the {@code $OMP_NUM_THREADS} environment variable to control internal threading.
+ * <p>Note: Set the {@code $OMP_NUM_THREADS} environment variable to control <a
+ * href="https://github.com/facebookresearch/faiss/wiki/Threads-and-asynchronous-calls">internal
+ * threading</a>.
  *
  * @lucene.experimental
  */
