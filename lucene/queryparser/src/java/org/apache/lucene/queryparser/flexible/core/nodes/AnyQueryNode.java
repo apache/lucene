@@ -47,18 +47,14 @@ public class AnyQueryNode extends AndQueryNode {
   }
 
   /**
-   * returns null if the field was not specified
-   *
-   * @return the field
+   * @return the field or null if the field is unspecified
    */
   public CharSequence getField() {
     return this.field;
   }
 
   /**
-   * returns - null if the field was not specified
-   *
-   * @return the field as a String
+   * @return the field as a String or null if the field is unspecified
    */
   public String getFieldAsString() {
     if (this.field == null) return null;

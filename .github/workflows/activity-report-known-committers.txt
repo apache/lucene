@@ -1,0 +1,111 @@
+# a list of known committer names and their aliases, to highlight 
+# commits from non-committers in the activity-report.
+dependabot
+guofeng.my
+gf2121
+Benjamin Trent
+ChrisHegarty
+Mike McCandless
+Andrzej Bialecki
+Alessandro Benedetti
+Armin Braun
+Adriano Crestani Campos
+Ramkumar Aiyengar
+Anshum Gupta
+Alexandre Rafalovitch
+Areek Zillur
+Atri Sharma
+Ben Trent
+William Au
+Benson Margulies
+Bernhard Messer
+Bruno Roustant
+Michael Busch
+Chris Hegarty
+Christopher John Male
+Christian Moen
+Christine Poerschke
+Cassandra Targett
+Doug Cutting
+Cao Mạnh Đạt
+Nhat Nguyen
+Peter Gromov
+Doron Cohen
+Dennis Gove
+Scott Blum
+David Smiley
+Dawid Weiss
+Erik Hatcher
+Shawn Heisey
+Eric Pugh
+Erick Erickson
+Greg Bowyer
+Gregory Chanan
+Jason Gerlowski
+Grant Ingersoll
+Greg Miller
+Guo Feng
+Gus Heck
+Han Jiang
+Hrishikesh Gadre
+Chris M. Hostetter
+Houston Putman
+Ilan Ginzburg
+Ahmet Arslan
+Ishan Chattopadhyaya
+Ignacio Vera
+Ankit Jain
+Jan Høydahl
+Luca Cavanna
+Joel Bernstein
+James Dyer
+Jim Ferenczi
+Adrien Grand
+Julie Tibshirani
+Koji Sekiguchi
+Kevin Risden
+Karl Wright
+Lu Xugang
+Michael Gibney
+Mark Robert Miller
+Mayya Sharipova
+Mike Drob
+Mark Harwood
+Michael McCandless
+Mikhail Khludnev
+Michael Froh
+Munendra S N
+Martijn van Groningen
+Namgyu Kim
+Nick Knize
+Noble Paul
+Otis Gospodnetic
+Patrick Zhai
+Ryan Ernst
+Robert Muir
+Alan Woodward
+Ryan McKinley
+Steven Rowe
+Shai Erera
+Shalin Shekhar Mangar
+Simon Willnauer
+Sami Siren
+Michael Sokolov
+Stanisław Osiński
+Stefan Matheis
+Tim Allison
+Tomas Eduardo Fernandez Lobbe
+Timothy Potter
+Toke Eskildsen
+Tommaso Teofili
+Tomoko Uchida
+Upayavira
+Uwe Schindler
+Andi Vajda
+Varun Thacker
+Vigya Sharma
+Stefan Vodita
+Wolfgang Hoschek
+Yonik Seeley
+Zach Chen
+Chao Zhang

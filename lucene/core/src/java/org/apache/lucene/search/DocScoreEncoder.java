@@ -14,37 +14,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.lucene.search;
 
-import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.IntsRef;
+import org.apache.lucene.util.NumericUtils;
 
 /**
- * Wrapper around parallel arrays storing doc IDs and their corresponding scores.
- *
- * @lucene.internal
+ * An encoder do encode (doc, score) pair as a long whose sort order is same as {@code (o1, o2) ->
+ * Float.compare(o1.score, o2.score)).thenComparing(Comparator.comparingInt((ScoreDoc o) ->
+ * o.doc).reversed())}
  */
-public final class DocAndScoreBuffer {
+class DocScoreEncoder {
 
-  private static final float[] EMPTY_FLOATS = new float[0];
+  static final long LEAST_COMPETITIVE_CODE = encode(Integer.MAX_VALUE, Float.NEGATIVE_INFINITY);
 
-  /** Doc IDs */
-  public int[] docs = IntsRef.EMPTY_INTS;
+  static long encode(int docId, float score) {
+    return (((long) NumericUtils.floatToSortableInt(score)) << 32) | (Integer.MAX_VALUE - docId);
+  }
 
-  /** Scores */
-  public float[] scores = EMPTY_FLOATS;
+  static float toScore(long value) {
+    return NumericUtils.sortableIntToFloat((int) (value >>> 32));
+  }
 
-  /** Number of valid entries in the doc ID and score arrays. */
-  public int size;
-
-  /** Sole constructor. */
-  public DocAndScoreBuffer() {}
-
-  /** Grow both arrays to ensure that they can store at least the given number of entries. */
-  public void growNoCopy(int minSize) {
-    if (docs.length < minSize) {
-      docs = ArrayUtil.growNoCopy(docs, minSize);
-      scores = new float[docs.length];
-    }
+  static int docId(long value) {
+    return Integer.MAX_VALUE - ((int) value);
   }
 }

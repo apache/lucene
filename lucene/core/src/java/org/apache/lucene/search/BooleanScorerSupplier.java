@@ -439,6 +439,13 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       required.addAll(requiredScoring);
       required.addAll(requiredNoScoring);
       conjunctionScorer = new ConjunctionScorer(required, requiredScoring);
+      if (this.scoreMode == ScoreMode.TOP_SCORES && requiredScoring.size() == 0) {
+        conjunctionScorer =
+            conjunctionScorer.twoPhaseIterator() != null
+                ? new ConstantScoreScorer(
+                    0.0F, this.scoreMode, conjunctionScorer.twoPhaseIterator())
+                : new ConstantScoreScorer(0.0F, this.scoreMode, conjunctionScorer.iterator());
+      }
     }
     return new DefaultBulkScorer(conjunctionScorer);
   }
