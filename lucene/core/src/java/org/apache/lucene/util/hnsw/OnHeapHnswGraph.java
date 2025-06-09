@@ -32,6 +32,15 @@ import org.apache.lucene.util.RamUsageEstimator;
  */
 public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 
+  private static final long RAM_BYTES_USED =
+      4L * Integer.BYTES // all int fields
+          + 1 // field: noGrowth
+          + RamUsageEstimator.NUM_BYTES_OBJECT_REF
+          + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
+          + 2 * Integer.BYTES // field: entryNode
+          + 3L * (Integer.BYTES + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER) // 3 AtomicInteger
+          + RamUsageEstimator.NUM_BYTES_OBJECT_REF // field: cur
+          + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER; // field: levelToNodes;
   private static final int INIT_SIZE = 128;
 
   private final AtomicReference<EntryNode> entryNode;
@@ -83,6 +92,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       numNodes = INIT_SIZE;
     }
     this.graph = new NeighborArray[numNodes][];
+    this.graphRamBytesUsed = RAM_BYTES_USED + RamUsageEstimator.shallowSizeOf(graph);
   }
 
   /**
@@ -158,21 +168,30 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       size.incrementAndGet();
     }
     if (level == 0) {
-      graph[node][level] = new NeighborArray(nsize0, true);
+      graph[node][level] =
+          new NeighborArray(
+              nsize0,
+              true,
+              l -> {
+                long bytesUsed = graphRamBytesUsed;
+                graphRamBytesUsed = bytesUsed + l;
+                assert l > 0;
+                assert graphRamBytesUsed > bytesUsed;
+              });
     } else {
-      graph[node][level] = new NeighborArray(nsize, true);
+      graph[node][level] =
+          new NeighborArray(
+              nsize,
+              true,
+              l -> {
+                long bytesUsed = graphRamBytesUsed;
+                graphRamBytesUsed = bytesUsed + l;
+                assert l > 0;
+                assert graphRamBytesUsed > bytesUsed;
+              });
       nonZeroLevelSize.incrementAndGet();
     }
     maxNodeId.accumulateAndGet(node, Math::max);
-    // update graphRamBytesUsed every 1000 nodes
-    if (level == 0 && node % 1000 == 0) {
-      updateGraphRamBytesUsed();
-    }
-  }
-
-  /** Finish building the graph. */
-  public void finishBuild() {
-    updateGraphRamBytesUsed();
   }
 
   @Override
@@ -303,48 +322,9 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     lastFreezeSize = size();
   }
 
-  /** Update the estimated ram bytes used for the neighbor array. */
-  public void updateGraphRamBytesUsed() {
-    long currentRamBytesUsedEstimate = RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
-    for (int node = 0; node < graph.length; node++) {
-      if (graph[node] == null) {
-        continue;
-      }
-
-      for (int i = 0; i < graph[node].length; i++) {
-        if (graph[node][i] == null) {
-          continue;
-        }
-        currentRamBytesUsedEstimate += graph[node][i].ramBytesUsed();
-      }
-
-      currentRamBytesUsedEstimate += RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
-    }
-    graphRamBytesUsed = currentRamBytesUsedEstimate;
-  }
-
   @Override
   public long ramBytesUsed() {
-    long total = graphRamBytesUsed; // all NeighborArray
-    total += 4 * Integer.BYTES; // all int fields
-    total += 1; // field: noGrowth
-    total +=
-        RamUsageEstimator.NUM_BYTES_OBJECT_REF
-            + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
-            + 2 * Integer.BYTES; // field: entryNode
-    total += 3L * (Integer.BYTES + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER); // 3 AtomicInteger
-    total += RamUsageEstimator.NUM_BYTES_OBJECT_REF; // field: cur
-    total += RamUsageEstimator.NUM_BYTES_ARRAY_HEADER; // field: levelToNodes
-    if (levelToNodes != null) {
-      total +=
-          (long) (numLevels() - 1) * RamUsageEstimator.NUM_BYTES_OBJECT_REF; // no cost for level 0
-      total +=
-          (long) nonZeroLevelSize.get()
-              * (RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
-                  + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
-                  + Integer.BYTES);
-    }
-    return total;
+    return graphRamBytesUsed;
   }
 
   @Override
