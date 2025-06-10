@@ -81,6 +81,9 @@ Optimizations
 
 * GITHUB#14753: Implement IndexedDISI#docIDRunEnd. (Ge Song)
 
+* GITHUB#14704: More reliably (auto-)vectorize score computations. 
+  (Guo Feng, Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when

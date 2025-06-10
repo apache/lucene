@@ -16,12 +16,15 @@
  */
 package org.apache.lucene.search.similarities;
 
+import java.io.IOException;
 import java.util.Collections;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.CollectionStatistics;
+import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermStatistics;
@@ -207,6 +210,28 @@ public abstract class Similarity {
      * @return document's score
      */
     public abstract float score(float freq, long norm);
+
+    /**
+     * Bulk computation of scores. For each entry in the given {@code buffer}, interpreting features
+     * as term frequencies, update features to record the score instead.
+     *
+     * <p><b>NOTE</b>: Doc IDs must be sorted, with no duplicates.
+     *
+     * <p><b>NOTE</b>: {@code norms} may be null if norms are not indexed.
+     *
+     * @lucene.internal
+     */
+    public void score(DocAndFloatFeatureBuffer buffer, NumericDocValues norms) throws IOException {
+      for (int i = 0; i < buffer.size; ++i) {
+        long norm;
+        if (norms == null || norms.advanceExact(buffer.docs[i]) == false) {
+          norm = 1L;
+        } else {
+          norm = norms.longValue();
+        }
+        buffer.features[i] = score(buffer.features[i], norm);
+      }
+    }
 
     /**
      * Explain the score for a single document
