@@ -32,15 +32,10 @@ import org.apache.lucene.util.RamUsageEstimator;
  */
 public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 
+  // shallow estimate of the statically used on-heap memory.
   private static final long RAM_BYTES_USED =
-      4L * Integer.BYTES // all int fields
-          + 1 // field: noGrowth
-          + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-          + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
-          + 2 * Integer.BYTES // field: entryNode
-          + 3L * (Integer.BYTES + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER) // 3 AtomicInteger
-          + RamUsageEstimator.NUM_BYTES_OBJECT_REF // field: cur
-          + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER; // field: levelToNodes;
+      RamUsageEstimator.shallowSizeOfInstance(OnHeapHnswGraph.class);
+
   private static final int INIT_SIZE = 128;
 
   private final AtomicReference<EntryNode> entryNode;
@@ -173,10 +168,9 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
               nsize0,
               true,
               l -> {
+                assert l > 0;
                 long bytesUsed = graphRamBytesUsed;
                 graphRamBytesUsed = bytesUsed + l;
-                assert l > 0;
-                assert graphRamBytesUsed > bytesUsed;
               });
     } else {
       graph[node][level] =
@@ -184,10 +178,9 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
               nsize,
               true,
               l -> {
+                assert l > 0;
                 long bytesUsed = graphRamBytesUsed;
                 graphRamBytesUsed = bytesUsed + l;
-                assert l > 0;
-                assert graphRamBytesUsed > bytesUsed;
               });
       nonZeroLevelSize.incrementAndGet();
     }
@@ -322,6 +315,11 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     lastFreezeSize = size();
   }
 
+  /**
+   * Provides an estimate of the current on-heap memory usage of the graph. This is not threadsafe,
+   * meaning the heap utilization if building the graph concurrently may be inaccurate. The main
+   * purpose of this method is during initial document indexing and flush.
+   */
   @Override
   public long ramBytesUsed() {
     return graphRamBytesUsed;
