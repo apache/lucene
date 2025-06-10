@@ -51,4 +51,11 @@ public abstract class FieldsProducer extends Fields implements Closeable {
   public FieldsProducer getMergeInstance() {
     return this;
   }
+
+  /**
+   * Optional: reset or close merge resources used in the reader
+   *
+   * <p>The default implementation is empty
+   */
+  public void finishMerge() throws IOException {}
 }
