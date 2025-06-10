@@ -14,26 +14,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queryparser.flexible.core.nodes;
+
+package org.apache.lucene.search;
+
+import org.apache.lucene.util.NumericUtils;
 
 /**
- * A query node implements {@link FieldableNode} interface to indicate that its children and itself
- * are associated to a specific field.
- *
- * <p>If it has any children which also implements this interface, it must ensure the children are
- * associated to the same field.
+ * An encoder do encode (doc, score) pair as a long whose sort order is same as {@code (o1, o2) ->
+ * Float.compare(o1.score, o2.score)).thenComparing(Comparator.comparingInt((ScoreDoc o) ->
+ * o.doc).reversed())}
  */
-public interface FieldableNode extends QueryNode {
+class DocScoreEncoder {
 
-  /**
-   * @return name of the filed associated to the node and every node under it
-   */
-  CharSequence getField();
+  static final long LEAST_COMPETITIVE_CODE = encode(Integer.MAX_VALUE, Float.NEGATIVE_INFINITY);
 
-  /**
-   * Associates the node to a field.
-   *
-   * @param fieldName the field name
-   */
-  void setField(CharSequence fieldName);
+  static long encode(int docId, float score) {
+    return (((long) NumericUtils.floatToSortableInt(score)) << 32) | (Integer.MAX_VALUE - docId);
+  }
+
+  static float toScore(long value) {
+    return NumericUtils.sortableIntToFloat((int) (value >>> 32));
+  }
+
+  static int docId(long value) {
+    return Integer.MAX_VALUE - ((int) value);
+  }
 }

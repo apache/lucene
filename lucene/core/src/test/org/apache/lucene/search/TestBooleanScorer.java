@@ -24,7 +24,10 @@ import java.util.Arrays;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
@@ -397,6 +400,42 @@ public class TestBooleanScorer extends LuceneTestCase {
         assertThat(scorer, not(instanceOf(ConstantScoreScorer.class)));
       }
     }
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testCollectNoThresholdWhenOnlyFilter() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    FieldType fieldType = new FieldType();
+    fieldType.setIndexOptions(IndexOptions.DOCS);
+    for (int i = 0; i < 50; i++) {
+      Document doc = new Document();
+      doc.add(new Field("foo", "bar" + (i % 2), fieldType));
+      doc.add(new LongPoint("field", i % 4));
+      w.addDocument(doc);
+    }
+
+    IndexReader reader = w.getReader();
+    IndexSearcher searcher = new IndexSearcher(reader);
+    searcher.setQueryCache(null);
+
+    TermQuery termQuery = new TermQuery(new Term("foo", "bar0"));
+
+    BooleanQuery.Builder builder = new BooleanQuery.Builder();
+    builder.add(termQuery, BooleanClause.Occur.FILTER);
+
+    Query indexQuery = LongPoint.newRangeQuery("field", 1, Long.MAX_VALUE);
+    builder.add(indexQuery, BooleanClause.Occur.FILTER);
+
+    int totalHitsThreshold = 7;
+    TopScoreDocCollectorManager topScoreDocCollectorManager =
+        new TopScoreDocCollectorManager(3, null, totalHitsThreshold);
+    TopScoreDocCollector collector = topScoreDocCollectorManager.newCollector();
+    searcher.search(builder.build(), collector);
+    assertEquals(totalHitsThreshold + 1, collector.totalHits);
 
     reader.close();
     w.close();

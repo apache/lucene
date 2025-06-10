@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import java.util.Arrays;
+
 /**
  * A min heap that stores longs; a primitive priority queue that like all priority queues maintains
  * a partial ordering of its elements such that the least element can always be found in constant
@@ -32,6 +34,18 @@ public final class LongHeap {
 
   private long[] heap;
   private int size = 0;
+
+  /**
+   * Constructs a heap with specified size and initializes all elements with the given value.
+   *
+   * @param size the number of elements to initialize in the heap.
+   * @param initialValue the value to fill the heap with.
+   */
+  public LongHeap(int size, long initialValue) {
+    this(size);
+    Arrays.fill(heap, 1, size + 1, initialValue);
+    this.size = size;
+  }
 
   /**
    * Create an empty priority queue of the configured initial size.
