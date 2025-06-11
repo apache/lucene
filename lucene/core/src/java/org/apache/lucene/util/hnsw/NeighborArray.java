@@ -19,9 +19,9 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.function.LongConsumer;
 import org.apache.lucene.internal.hppc.MaxSizedFloatArrayList;
 import org.apache.lucene.internal.hppc.MaxSizedIntArrayList;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -32,7 +32,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  *
  * @lucene.internal
  */
-public class NeighborArray implements Accountable {
+public class NeighborArray {
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(NeighborArray.class);
 
@@ -42,12 +42,23 @@ public class NeighborArray implements Accountable {
   private final MaxSizedFloatArrayList scores;
   private final MaxSizedIntArrayList nodes;
   private int sortedNodeSize;
+  private long ramBytesUsed = BASE_RAM_BYTES_USED;
+  private final LongConsumer onHeapMemoryUsageListener;
 
   public NeighborArray(int maxSize, boolean descOrder) {
+    this(maxSize, descOrder, null);
+  }
+
+  public NeighborArray(int maxSize, boolean descOrder, LongConsumer onHeapMemoryUsageListener) {
     this.maxSize = maxSize;
     nodes = new MaxSizedIntArrayList(maxSize, maxSize / 8);
     scores = new MaxSizedFloatArrayList(maxSize, maxSize / 8);
+    this.ramBytesUsed += nodes.ramBytesUsed() + scores.ramBytesUsed();
     this.scoresDescOrder = descOrder;
+    this.onHeapMemoryUsageListener = onHeapMemoryUsageListener;
+    if (onHeapMemoryUsageListener != null) {
+      onHeapMemoryUsageListener.accept(ramBytesUsed);
+    }
   }
 
   /**
@@ -68,8 +79,10 @@ public class NeighborArray implements Accountable {
               + " to "
               + Arrays.toString(scores.toArray());
     }
+    int previousLength = nodes.buffer.length;
     nodes.add(newNode);
     scores.add(newScore);
+    alertOnHeapMemoryUsageChange(nodes.buffer.length, previousLength);
     ++size;
     ++sortedNodeSize;
   }
@@ -79,10 +92,19 @@ public class NeighborArray implements Accountable {
     if (size == maxSize) {
       throw new IllegalStateException("No growth is allowed");
     }
-
+    int previousLength = nodes.buffer.length;
     nodes.add(newNode);
     scores.add(newScore);
+    alertOnHeapMemoryUsageChange(nodes.buffer.length, previousLength);
     size++;
+  }
+
+  private void alertOnHeapMemoryUsageChange(int newLength, int previousLength) {
+    if (newLength > previousLength && onHeapMemoryUsageListener != null) {
+      int lengthDelta = newLength - previousLength;
+      onHeapMemoryUsageListener.accept(
+          (long) (lengthDelta) * Integer.BYTES + (long) (lengthDelta) * Float.BYTES);
+    }
   }
 
   /**
@@ -312,10 +334,5 @@ public class NeighborArray implements Accountable {
 
   public int maxSize() {
     return maxSize;
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return BASE_RAM_BYTES_USED + nodes.ramBytesUsed() + scores.ramBytesUsed();
   }
 }
