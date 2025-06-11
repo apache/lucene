@@ -406,7 +406,6 @@ public class HnswGraphBuilder implements HnswBuilder {
     // System.out.println("finish " + frozen);
     connectComponents();
     frozen = true;
-    hnsw.finishBuild();
   }
 
   private void connectComponents() throws IOException {
