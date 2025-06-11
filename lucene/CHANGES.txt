@@ -51,7 +51,7 @@ Optimizations
 
 * GITHUB#14447: Compute the doc range more efficiently when flushing doc block. (Pan Guixin)
 
-* GITHUB#14527: Reduce NeighborArray heap memory. (weizijun)
+* GITHUB#14527, GITHUB#14765: Reduce NeighborArray heap memory. (weizijun, Ben Trent)
 
 * GITHUB#14529, GITHUB#14555, GITHUB#14618: Impl intoBitset for IndexedDISI and Docvalues. (Guo Feng)
 
