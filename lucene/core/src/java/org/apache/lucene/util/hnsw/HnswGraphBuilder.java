@@ -452,7 +452,6 @@ public class HnswGraphBuilder implements HnswBuilder {
     //  see: https://github.com/apache/lucene/issues/14214
     // connectComponents();
     frozen = true;
-    hnsw.finishBuild();
   }
 
   @SuppressWarnings("unused")

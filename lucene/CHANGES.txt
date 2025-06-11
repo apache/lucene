@@ -5,10 +5,11 @@ http://s.apache.org/luceneversions
 
 ======================= Lucene 10.2.2 =======================
 
+
 Bug Fixes
 ---------------------
 
-* GITHUB#14527: Reduce NeighborArray heap memory. (weizijun)
+* GITHUB#14527, GITHUB#14765: Reduce NeighborArray heap memory. (weizijun, Ben Trent)
 
 
 ======================= Lucene 10.2.1 =======================
