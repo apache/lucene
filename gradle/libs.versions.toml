@@ -27,7 +27,7 @@ javacc = "7.0.13"
 # analysis/ tokenizer grammars
 jflex = "1.9.1"
 # gradle checkWorkingCopy support
-jgit = "7.2.1.202505142326-r"
+jgit = "7.3.0.202506031305-r"
 # benchmark-jmh/ microbenchmarks
 jmh = "1.37"
 # spatial-extras/ support
