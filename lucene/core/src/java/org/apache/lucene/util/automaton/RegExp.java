@@ -29,12 +29,8 @@
 
 package org.apache.lucene.util.automaton;
 
-import org.apache.lucene.internal.hppc.IntArrayList;
-
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -43,6 +39,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
+import org.apache.lucene.internal.hppc.IntArrayList;
 
 /**
  * Regular Expression extension to <code>Automaton</code>.
@@ -1411,10 +1408,7 @@ public class RegExp {
         return makeCharRange(flags, starts.get(0), ends.get(0));
       }
     } else {
-      return makeCharClass(
-          flags,
-          starts.toArray(),
-          ends.toArray());
+      return makeCharClass(flags, starts.toArray(), ends.toArray());
     }
   }
 
@@ -1495,10 +1489,7 @@ public class RegExp {
       var starts = new IntArrayList();
       var ends = new IntArrayList();
       expandPreDefined(starts, ends);
-      return makeCharClass(
-          flags,
-          starts.toArray(),
-          ends.toArray());
+      return makeCharClass(flags, starts.toArray(), ends.toArray());
     }
 
     return null;
