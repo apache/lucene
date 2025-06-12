@@ -1152,6 +1152,20 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           DirectMonotonicReader.getInstance(
               entry.termsIndexAddressesMeta, indexAddressesSlice, merging);
       indexBytes = data.randomAccessSlice(entry.termsIndexOffset, entry.termsIndexLength);
+      // Prefetch the first page of data. Following pages are expected to get prefetched through
+      // read-ahead.
+      if (addressesSlice.length() > 0) {
+        addressesSlice.prefetch(0, 1);
+      }
+      if (bytes.length() > 0) {
+        bytes.prefetch(0, 1);
+      }
+      if (indexAddressesSlice.length() > 0) {
+        indexAddressesSlice.prefetch(0, 1);
+      }
+      if (indexBytes.length() > 0) {
+        indexBytes.prefetch(0, 1);
+      }
       term = new BytesRef(entry.maxTermLength);
 
       // add the max term length for the dictionary
