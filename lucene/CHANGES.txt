@@ -51,8 +51,6 @@ Optimizations
 
 * GITHUB#14447: Compute the doc range more efficiently when flushing doc block. (Pan Guixin)
 
-* GITHUB#14527, GITHUB#14765: Reduce NeighborArray heap memory. (weizijun, Ben Trent)
-
 * GITHUB#14529, GITHUB#14555, GITHUB#14618: Impl intoBitset for IndexedDISI and Docvalues. (Guo Feng)
 
 * GITHUB#14552: Speed up flush of softdelete by intoBitset. (Guo Feng)
@@ -110,6 +108,16 @@ Other
   longer has all limitations of previous Windows versions.  (Uwe Schindler)
 
 * GITHUB#14667: Fix documentation regarding benchmark running. (Viliam Durina)
+
+
+======================= Lucene 10.2.2 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#14527, GITHUB#14765: Reduce NeighborArray heap memory. (weizijun, Ben Trent)
+
+* GITHUB##14732: Fix IndexSortSortedNumericDocValuesRangeQuery for int sort (Mayya Sharipova)
 
 
 ======================= Lucene 10.2.1 =======================
@@ -761,6 +769,55 @@ Build
 
 * GITHUB#13698: Upgrade to gradle 8.10 (Dawid Weiss)
 
+======================== Lucene 9.12.2 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
+  used if the DoubleValuesSource needed scores. (David Smiley)
+
+* GITHUB#14527, GITHUB#14765: Reduce NeighborArray heap memory. (weizijun, Ben Trent)
+
+* GITHUB##14732: Fix IndexSortSortedNumericDocValuesRangeQuery for int sort (Mayya Sharipova)
+
+
+======================== Lucene 9.12.1 =======================
+
+Bug Fixes
+---------------------
+
+
+* GITHUB#13947: Fix ord-to-doc mapping when searching Lucene 9.0.0 hnsw indices (Michael Sokolov, Ben Trent)
+
+* GITHUB#13867: Fix backwards compatibility bug that caused 9.12.0 to
+  incorrectly throw IllegalStateException when trying to open an
+  IndexReader on an index created with quantized (int4, int7, int8)
+  KNN vectors using Lucene99HnswScalarQuantizedVectorsFormat.  This
+  was an accidental backwards compatibility break: such indices should
+  be readable and writable by any future 9.x and 10.x Lucene releases.
+  But note that int8 compression was buggy and can no longer be
+  written but can be read from an existing index.  (Ionut
+  Anghelcovici, Michael McCandless)
+
+* GITHUB#13841: Improve Tessellatorlogic when two holes share the same vertex with the polygon which was failing
+  in valid polygons. (Ignacio Vera)
+
+* GITHUB#13986: Allow easier configuration of the Panama Vectorization provider with
+  newer Java versions. Set the `org.apache.lucene.vectorization.upperJavaFeatureVersion`
+  system property to increase the set of Java versions that Panama Vectorization will
+  provide optimized implementations for. (Chris Hegarty)
+
+* GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
+  their corresponding ordinals. (Paul King)
+
+* GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public (Luca Cavanna)
+
+API Changes
+---------------------
+
+* GITHUB#13845: Add missing with-discountOverlaps Similarity constructor variants. (Pierre Salagnac, Christine Poerschke, Robert Muir)
+
 ======================== Lucene 9.12.0 =======================
 
 Security Fixes
@@ -951,8 +1008,6 @@ Bug Fixes
   `IndexWriter.addIndexes(CodecReader...)`, or reindexing entirely.
 
 * GITHUB#13799: Disable intra-merge parallelism for all structures but kNN vectors. (Ben Trent)
-
-* GITHUB##14732: Fix IndexSortSortedNumericDocValuesRangeQuery for int sort (Mayya Sharipova)
 
 Build
 ---------------------
