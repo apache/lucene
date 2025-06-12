@@ -27,7 +27,7 @@ pluginManagement {
 plugins {
     id "org.gradle.toolchains.foojay-resolver-convention" version "1.0.0"
     id 'com.gradle.develocity' version '3.19.2' apply false
-    id 'com.gradle.common-custom-user-data-gradle-plugin' version '2.2.1' apply false
+    id 'com.gradle.common-custom-user-data-gradle-plugin' version '2.3' apply false
 }
 
 dependencyResolutionManagement {
