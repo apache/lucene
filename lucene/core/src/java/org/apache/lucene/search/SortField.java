@@ -359,11 +359,16 @@ public class SortField {
    * @return An identical sort, but with reverse flipped.
    */
   public SortField inverseSort() {
+    SortField inverse;
     if (type == Type.CUSTOM) {
-      return new SortField(field, comparatorSource, !reverse);
+      inverse = new SortField(field, comparatorSource, !reverse);
     } else {
-      return new SortField(field, type, !reverse);
+      inverse = new SortField(field, type, !reverse);
     }
+    if (missingValue != null) {
+      inverse.setMissingValue(missingValue);
+    }
+    return inverse;
   }
 
   // Sets field & type, and ensures field is not NULL unless
