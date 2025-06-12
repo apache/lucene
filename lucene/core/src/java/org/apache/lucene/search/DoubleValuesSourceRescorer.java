@@ -44,6 +44,7 @@ public abstract class DoubleValuesSourceRescorer extends Rescorer {
   public TopDocs rescore(IndexSearcher searcher, TopDocs firstPassTopDocs, int topN)
       throws IOException {
     DoubleValuesSource source = valuesSource.rewrite(searcher);
+    // this will still alter scores, we clone to retain hits ordering in firstPassTopDocs
     ScoreDoc[] hits = firstPassTopDocs.scoreDocs.clone();
     Arrays.sort(hits, (a, b) -> a.doc - b.doc);
 
@@ -88,6 +89,44 @@ public abstract class DoubleValuesSourceRescorer extends Rescorer {
   @Override
   public Explanation explain(IndexSearcher searcher, Explanation firstPassExplanation, int docID)
       throws IOException {
-    return null;
+    Explanation first =
+        Explanation.match(
+            firstPassExplanation.getValue(), "first pass score", firstPassExplanation);
+
+    LeafReaderContext leafWithDoc = null;
+    for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
+      if (docID >= ctx.docBase && docID < (ctx.docBase + ctx.reader().maxDoc())) {
+        leafWithDoc = ctx;
+        break;
+      }
+    }
+    if (leafWithDoc == null) {
+      throw new IllegalArgumentException(
+          "docId=" + docID + " not found in any leaf in provided searcher");
+    }
+
+    DoubleValuesSource source = valuesSource.rewrite(searcher);
+    Explanation doubleValuesMatch =
+        source.explain(
+            leafWithDoc,
+            docID - leafWithDoc.docBase,
+            Explanation.noMatch("DoubleValuesSource was not initialized with query scores"));
+    Explanation second =
+        doubleValuesMatch.isMatch()
+            ? Explanation.match(
+                doubleValuesMatch.getValue(), "value from DoubleValuesSource", doubleValuesMatch)
+            : Explanation.noMatch("no value in DoubleValuesSource");
+
+    float score =
+        combine(
+            first.getValue().floatValue(),
+            doubleValuesMatch.isMatch(),
+            doubleValuesMatch.getValue().doubleValue());
+    String desc =
+        "combined score from firstPass and DoubleValuesSource="
+            + source.getClass()
+            + " using "
+            + getClass();
+    return Explanation.match(score, desc, first, second);
   }
 }
