@@ -75,6 +75,19 @@ public final class Sort {
   }
 
   /**
+   * Creates a new Sort that represents the inverse ordering of this Sort
+   *
+   * @return this Sort in inverse order
+   */
+  public Sort inverse() {
+    SortField[] reversedFields = new SortField[fields.length];
+    for (int i = 0; i < fields.length; i++) {
+      reversedFields[i] = fields[i].inverseSort();
+    }
+    return new Sort(reversedFields);
+  }
+
+  /**
    * Rewrites the SortFields in this Sort, returning a new Sort if any of the fields changes during
    * their rewriting.
    *

@@ -75,6 +75,15 @@ public class SortedSetSortField extends SortField {
     this.selector = selector;
   }
 
+  @Override
+  public SortField inverseSort() {
+    SortedSetSortField inverse = new SortedSetSortField(getField(), !reverse, selector);
+    if (missingValue != null) {
+      inverse.setMissingValue(missingValue);
+    }
+    return inverse;
+  }
+
   /** A SortFieldProvider for this sort */
   public static final class Provider extends SortFieldProvider {
 

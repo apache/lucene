@@ -113,6 +113,17 @@ public class ToParentBlockJoinSortField extends SortField {
   }
 
   @Override
+  public SortField inverseSort() {
+    ToParentBlockJoinSortField inverse =
+        new ToParentBlockJoinSortField(
+            getField(), getType(), !getReverse(), !order, parentFilter, childFilter);
+    if (missingValue != null) {
+      inverse.setMissingValue(missingValue);
+    }
+    return inverse;
+  }
+
+  @Override
   public FieldComparator<?> getComparator(int numHits, Pruning pruning) {
     switch (getType()) {
       case STRING:

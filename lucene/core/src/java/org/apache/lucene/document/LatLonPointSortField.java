@@ -39,6 +39,11 @@ final class LatLonPointSortField extends SortField {
   }
 
   @Override
+  public SortField inverseSort() {
+    throw new UnsupportedOperationException("Inverse sort not supported on LatLonPointSortField");
+  }
+
+  @Override
   public FieldComparator<?> getComparator(int numHits, Pruning pruning) {
     return new LatLonPointDistanceComparator(getField(), latitude, longitude, numHits);
   }
