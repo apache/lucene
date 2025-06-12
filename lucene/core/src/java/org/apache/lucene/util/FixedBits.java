@@ -17,7 +17,7 @@
 package org.apache.lucene.util;
 
 /** Immutable twin of FixedBitSet. */
-final class FixedBits implements Bits {
+public final class FixedBits implements Bits {
 
   final FixedBitSet bitSet;
 
@@ -38,5 +38,9 @@ final class FixedBits implements Bits {
   @Override
   public int length() {
     return bitSet.length();
+  }
+
+  public FixedBitSet getBitSet() {
+    return bitSet;
   }
 }
