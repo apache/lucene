@@ -150,7 +150,7 @@ public final class ConstantScoreScorer extends Scorer {
 
   @Override
   public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer) throws IOException {
-    int batchSize = 16; // arbitrary
+    int batchSize = 64; 
     buffer.growNoCopy(batchSize);
     int size = 0;
     DocIdSetIterator iterator = iterator();
