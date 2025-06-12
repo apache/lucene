@@ -21,6 +21,35 @@ import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDynamicRangeUtil extends LuceneTestCase {
+  public void testComputeDynamicNumericRangesWithSameWeights() {
+    List<DynamicRangeUtil.DynamicRangeInfo> expectedRangeInfoList = new ArrayList<>();
+    long totalValue = 0;
+    long[] values = new long[100];
+    long[] weights = new long[100];
+    for (int i = 0; i < 100; i++) {
+      values[i] = i;
+      weights[i] = 50;
+      totalValue += i;
+    }
+
+    expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(25, 1250L, 0L, 24L, 12.0D));
+    expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(25, 1250L, 25L, 49L, 37.0D));
+    expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(25, 1250L, 50L, 74L, 62.0D));
+    expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(25, 1250L, 75L, 99L, 87.0D));
+    assertDynamicNumericRangeResults(values, weights, 4, totalValue, 5000L, expectedRangeInfoList);
+  }
+
+  public void testComputeDynamicNumericRangesWithLargeTopN() {
+    List<DynamicRangeUtil.DynamicRangeInfo> expectedRangeInfoList = new ArrayList<>();
+    long[] values = new long[] {487, 439, 794, 277};
+    long[] weights = new long[] {59, 508, 736, 560};
+
+    expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(1, 560L, 277L, 277L, 277D));
+    expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(1, 508L, 439L, 439L, 439D));
+    expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(2, 795L, 487L, 794L, 640.5D));
+    assertDynamicNumericRangeResults(values, weights, 42, 1997L, 1863L, expectedRangeInfoList);
+  }
+
   public void testComputeDynamicNumericRangesBasic() {
     List<DynamicRangeUtil.DynamicRangeInfo> expectedRangeInfoList = new ArrayList<>();
     long[] values = new long[1000];
