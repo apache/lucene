@@ -150,6 +150,8 @@ Optimizations
 
 * GITHUB#14753: Implement IndexedDISI#docIDRunEnd. (Ge Song)
 
+* GITHUB#14772: Implement ConstantScoreScorer#nextDocsAndScores. (Ge Song)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
