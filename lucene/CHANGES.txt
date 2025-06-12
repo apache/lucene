@@ -13,6 +13,8 @@ Bug Fixes
 
 * GITHUB#14527, GITHUB#14765: Reduce NeighborArray heap memory. (weizijun, Ben Trent)
 
+* GITHUB#14732: Fix IndexSortSortedNumericDocValuesRangeQuery for int sort (Mayya Sharipova)
+
 ======================== Lucene 9.12.1 =======================
 
 Bug Fixes
@@ -249,8 +251,6 @@ Bug Fixes
   `IndexWriter.addIndexes(CodecReader...)`, or reindexing entirely.
 
 * GITHUB#13799: Disable intra-merge parallelism for all structures but kNN vectors. (Ben Trent)
-
-* GITHUB##14732: Fix IndexSortSortedNumericDocValuesRangeQuery for int sort (Mayya Sharipova)
 
 Build
 ---------------------
