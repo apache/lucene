@@ -22,9 +22,10 @@ import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.ArrayUtil;
 
+/** A {@link Rescorer} that uses provided DoubleValuesSource to rescore first pass hits. */
 public abstract class DoubleValuesSourceRescorer extends Rescorer {
 
-  final DoubleValuesSource valuesSource;
+  private final DoubleValuesSource valuesSource;
 
   public DoubleValuesSourceRescorer(DoubleValuesSource valuesSource) {
     this.valuesSource = valuesSource;
