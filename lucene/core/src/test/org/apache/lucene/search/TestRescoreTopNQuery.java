@@ -28,6 +28,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
@@ -61,7 +62,16 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
   }
 
   @Test
-  public void testTwoPhaseKnnVectorQuery() throws Exception {
+  public void testInvalidN() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () ->
+            new RescoreTopNQuery(
+                new TermQuery(new Term("test")), DoubleValuesSource.constant(0), 0));
+  }
+
+  @Test
+  public void testRescoreField() throws Exception {
     Map<Integer, float[]> vectors = new HashMap<>();
 
     Random random = random();

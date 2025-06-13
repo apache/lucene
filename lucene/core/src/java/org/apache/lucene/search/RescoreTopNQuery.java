@@ -39,9 +39,12 @@ public class RescoreTopNQuery extends Query {
    * @param query the query to execute as initial phase
    * @param valuesSource the double value source to re-score
    * @param n the number of documents to find
-   * @throws IllegalArgumentException if <code>k</code> is less than 1
+   * @throws IllegalArgumentException if <code>n</code> is less than 1
    */
   public RescoreTopNQuery(Query query, DoubleValuesSource valuesSource, int n) {
+    if (n < 1) {
+      throw new IllegalArgumentException("n must be >= 1");
+    }
     this.query = query;
     this.valuesSource = valuesSource;
     this.n = n;
