@@ -19,7 +19,7 @@ package org.apache.lucene.search;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntField;
@@ -37,9 +37,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class TestRerankKnnFloatVectorQuery extends LuceneTestCase {
+public class TestRescoreTopNQuery extends LuceneTestCase {
 
   private static final String FIELD = "vector";
+  private static final String RESCORE_FIELD = "vector-rescore";
   private static final VectorSimilarityFunction VECTOR_SIMILARITY_FUNCTION =
       VectorSimilarityFunction.COSINE;
   private static final int NUM_VECTORS = 1000;
@@ -56,8 +57,7 @@ public class TestRerankKnnFloatVectorQuery extends LuceneTestCase {
 
     // Set up the IndexWriterConfig to use quantized vector storage
     config = new IndexWriterConfig();
-    config.setCodec(
-        TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswScalarQuantizedVectorsFormat()));
+    config.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat()));
   }
 
   @Test
@@ -74,12 +74,15 @@ public class TestRerankKnnFloatVectorQuery extends LuceneTestCase {
       for (int j = 0; j < numSegments; j++) {
         for (int i = 0; i < numVectors; i++) {
           float[] vector = randomFloatVector(VECTOR_DIMENSION, random);
+          float[] rescoreVector = randomFloatVector(VECTOR_DIMENSION, random);
           Document doc = new Document();
           int id = j * numVectors + i;
           doc.add(new IntField("id", id, Field.Store.YES));
           doc.add(new KnnFloatVectorField(FIELD, vector, VECTOR_SIMILARITY_FUNCTION));
+          doc.add(
+              new KnnFloatVectorField(RESCORE_FIELD, rescoreVector, VECTOR_SIMILARITY_FUNCTION));
           writer.addDocument(doc);
-          vectors.put(id, vector);
+          vectors.put(id, rescoreVector);
 
           writer.flush();
         }
@@ -93,9 +96,12 @@ public class TestRerankKnnFloatVectorQuery extends LuceneTestCase {
       int k = 10;
       double oversample = random.nextFloat(1.5f, 3.0f);
 
+      FloatVectorSimilarityValuesSource valueSource =
+          new FloatVectorSimilarityValuesSource(targetVector, RESCORE_FIELD);
+
       KnnFloatVectorQuery knnQuery =
           new KnnFloatVectorQuery(FIELD, targetVector, k + (int) (k * oversample));
-      RerankFloatVectorQuery query = new RerankFloatVectorQuery(knnQuery, FIELD, targetVector, k);
+      RescoreTopNQuery query = new RescoreTopNQuery(knnQuery, valueSource, k);
       TopDocs topDocs = searcher.search(query, k);
 
       // Step 3: Verify that TopDocs scores match similarity with unquantized vectors
