@@ -24,7 +24,6 @@ import java.util.function.LongToDoubleFunction;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.comparators.DoubleComparator;
 import org.apache.lucene.util.NumericUtils;
 
@@ -250,14 +249,6 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
    */
   public static DoubleValues similarityToQueryVector(
       LeafReaderContext ctx, byte[] queryVector, String vectorField) throws IOException {
-    if (ctx.reader().getFieldInfos().fieldInfo(vectorField).getVectorEncoding()
-        != VectorEncoding.BYTE) {
-      throw new IllegalArgumentException(
-          "Field "
-              + vectorField
-              + " does not have the expected vector encoding: "
-              + VectorEncoding.BYTE);
-    }
     return new ByteVectorSimilarityValuesSource(queryVector, vectorField).getValues(ctx, null);
   }
 
@@ -273,14 +264,6 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
    */
   public static DoubleValues similarityToQueryVector(
       LeafReaderContext ctx, float[] queryVector, String vectorField) throws IOException {
-    if (ctx.reader().getFieldInfos().fieldInfo(vectorField).getVectorEncoding()
-        != VectorEncoding.FLOAT32) {
-      throw new IllegalArgumentException(
-          "Field "
-              + vectorField
-              + " does not have the expected vector encoding: "
-              + VectorEncoding.FLOAT32);
-    }
     return new FloatVectorSimilarityValuesSource(queryVector, vectorField).getValues(ctx, null);
   }
 
