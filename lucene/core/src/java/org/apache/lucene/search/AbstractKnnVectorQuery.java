@@ -42,8 +42,8 @@ import org.apache.lucene.search.knn.TopKnnCollectorManager;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.FixedBits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.FixedBits;
 
 /**
  * Uses {@link KnnVectorsReader#search} to perform nearest neighbour search.
@@ -229,8 +229,9 @@ abstract class AbstractKnnVectorQuery extends Query {
         // If we already have a BitSet and no deletions, reuse the BitSet
         return bitSetIterator.getBitSet();
       }
-      if (bitSetIterator.getBitSet() instanceof FixedBitSet bitSet && liveDocs instanceof FixedBits liveDocsBits) {
-        return new LiveDocFilteredBitSet(bitSet, liveDocsBits.getBitSet(), maxDoc);
+      if (bitSetIterator.getBitSet() instanceof FixedBitSet bitSet
+          && liveDocs instanceof FixedBits liveDocsBits) {
+        return new LiveDocFilteredBitSet(bitSet, liveDocsBits.getBitSet());
       }
     }
     int threshold = maxDoc >> 7; // same as BitSet#of
@@ -682,126 +683,128 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   /**
-   * Optimized LiveDocFilteredBitSet for FixedBitSet pairs
-   * Provides lazy evaluation of intersection between original BitSet and liveDocs
+   * Optimized LiveDocFilteredBitSet for FixedBitSet pairs Provides lazy evaluation of intersection
+   * between original BitSet and liveDocs
    */
-  private static class LiveDocFilteredBitSet extends BitSet {
+  private static final class LiveDocFilteredBitSet extends BitSet {
     private final FixedBitSet original;
     private final FixedBitSet liveDocs;
-    private final int maxDoc;
-    
+
     // Cached cardinality value
     private int cachedCardinality = -1;
-    
-    LiveDocFilteredBitSet(FixedBitSet original, FixedBitSet liveDocs, int maxDoc) {
-        this.original = original;
-        this.liveDocs = liveDocs;
-        this.maxDoc = maxDoc;
+
+    LiveDocFilteredBitSet(FixedBitSet original, FixedBitSet liveDocs) {
+      this.original = original;
+      this.liveDocs = liveDocs;
     }
-    
+
     @Override
     public boolean get(int index) {
-        return original.get(index) && liveDocs.get(index);
+      return original.get(index) && liveDocs.get(index);
     }
-    
+
     @Override
     public int length() {
-        return original.length();
+      return original.length();
     }
-    
+
     @Override
     public int nextSetBit(int fromIndex) {
-        return nextSetBit(fromIndex, length());
+      return nextSetBit(fromIndex, length());
     }
-    
+
     @Override
     public int nextSetBit(int start, int end) {
-        int next = original.nextSetBit(start, end);
-        while (next != DocIdSetIterator.NO_MORE_DOCS && next < end) {
-            if (liveDocs.get(next)) {
-                return next;
-            }
-            next = original.nextSetBit(next + 1, end);
+      int next = original.nextSetBit(start, end);
+      while (next != DocIdSetIterator.NO_MORE_DOCS && next < end) {
+        if (liveDocs.get(next)) {
+          return next;
         }
-        return DocIdSetIterator.NO_MORE_DOCS;
+        next = original.nextSetBit(next + 1, end);
+      }
+      return DocIdSetIterator.NO_MORE_DOCS;
     }
-    
+
     @Override
     public int prevSetBit(int index) {
-        int prev = original.prevSetBit(index);
-        while (prev >= 0) {
-            if (liveDocs.get(prev)) {
-                return prev;
-            }
-            prev = original.prevSetBit(prev - 1);
+      int prev = original.prevSetBit(index);
+      while (prev >= 0) {
+        if (liveDocs.get(prev)) {
+          return prev;
         }
-        return -1;
+        prev = original.prevSetBit(prev - 1);
+      }
+      return -1;
     }
-    
+
     @Override
     public int cardinality() {
-        // Return cached value if available
-        if (cachedCardinality != -1) {
-            return cachedCardinality;
-        }
-        
-        // Super-fast intersection count using FixedBitSet optimization!
-        cachedCardinality = (int) FixedBitSet.intersectionCount(original, liveDocs);
+      // Return cached value if available
+      if (cachedCardinality != -1) {
         return cachedCardinality;
+      }
+
+      // Super-fast intersection count using FixedBitSet optimization!
+      cachedCardinality = (int) FixedBitSet.intersectionCount(original, liveDocs);
+      return cachedCardinality;
     }
-    
+
     @Override
     public int approximateCardinality() {
-        // Return cached value if already computed (exact value)
-        if (cachedCardinality != -1) {
-            return cachedCardinality;
-        }
-        
-        // Calculate exact value efficiently since both are FixedBitSets
-        return cardinality();
+      // Return cached value if already computed (exact value)
+      if (cachedCardinality != -1) {
+        return cachedCardinality;
+      }
+
+      // Calculate exact value efficiently since both are FixedBitSets
+      return cardinality();
     }
-    
+
     @Override
     public long ramBytesUsed() {
-        return original.ramBytesUsed() + liveDocs.ramBytesUsed();
+      return original.ramBytesUsed() + liveDocs.ramBytesUsed();
     }
-    
+
     // Read-only implementation - modification operations are not supported
     @Override
     public void set(int i) {
-        throw new UnsupportedOperationException("LiveDocFilteredBitSet is read-only");
+      throw new UnsupportedOperationException("LiveDocFilteredBitSet is read-only");
     }
-    
+
     @Override
     public boolean getAndSet(int i) {
-        throw new UnsupportedOperationException("LiveDocFilteredBitSet is read-only");
+      throw new UnsupportedOperationException("LiveDocFilteredBitSet is read-only");
     }
-    
+
     @Override
     public void clear(int i) {
-        throw new UnsupportedOperationException("LiveDocFilteredBitSet is read-only");
+      throw new UnsupportedOperationException("LiveDocFilteredBitSet is read-only");
     }
-    
+
     @Override
     public void clear(int startIndex, int endIndex) {
-        throw new UnsupportedOperationException("LiveDocFilteredBitSet is read-only");
+      throw new UnsupportedOperationException("LiveDocFilteredBitSet is read-only");
     }
-    
+
     @Override
     public void clear() {
-        throw new UnsupportedOperationException("LiveDocFilteredBitSet is read-only");
+      throw new UnsupportedOperationException("LiveDocFilteredBitSet is read-only");
     }
-    
+
     @Override
     public void or(DocIdSetIterator iter) throws IOException {
-        throw new UnsupportedOperationException("LiveDocFilteredBitSet is read-only");
+      throw new UnsupportedOperationException("LiveDocFilteredBitSet is read-only");
     }
-    
+
     @Override
     public String toString() {
-        return "LiveDocFilteredBitSet(original=" + original.cardinality() + 
-               ", liveDocs=" + liveDocs.cardinality() + 
-               ", filtered=" + cardinality() + ")";
+      return "LiveDocFilteredBitSet(original="
+          + original.cardinality()
+          + ", liveDocs="
+          + liveDocs.cardinality()
+          + ", filtered="
+          + cardinality()
+          + ")";
     }
   }
 }
