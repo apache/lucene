@@ -30,6 +30,8 @@ New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
 
+* GITHUB#14178: Add a Faiss-based vector format in the sandbox module. (Kaival Parikh)
+
 Improvements
 ---------------------
 

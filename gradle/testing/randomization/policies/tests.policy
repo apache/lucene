@@ -80,6 +80,9 @@ grant {
   permission java.io.FilePermission "${hunspell.corpora}${/}-", "read";
   permission java.io.FilePermission "${hunspell.dictionaries}", "read";
   permission java.io.FilePermission "${hunspell.dictionaries}${/}-", "read";
+
+  // allow loading specific library for the Faiss codec
+  permission java.lang.RuntimePermission "loadLibrary.faiss_c";
 };
 
 // Permissions for jacoco code coverage
