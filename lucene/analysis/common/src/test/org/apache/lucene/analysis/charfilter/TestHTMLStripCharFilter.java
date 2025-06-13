@@ -33,7 +33,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.TestUtil;
-import org.junit.Ignore;
 
 public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
 
@@ -650,7 +649,6 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
     assertEquals("Test\n\n\n\nSome text.", result.toString().trim());
   }
 
-  @Ignore("Fails due to PR #11724")
   public void testForIssue10520Regression() throws IOException {
     String test =
         "<!DOCTYPE html><html lang=\"en\"><head><title>Test</title></head><a href=\"https://www.somewhere.com?data=\">a link</a> some text <a href=\"https://www.elsewhere.com\">another link</a></html>";
