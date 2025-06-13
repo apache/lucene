@@ -22,6 +22,7 @@ import java.util.Comparator;
 @FunctionalInterface
 public interface FloatComparator {
 
+  /** Represents a function that returns a {@code float} result */
   @FunctionalInterface
   interface ToFloatFunction<T> {
     float applyAsFloat(T obj);

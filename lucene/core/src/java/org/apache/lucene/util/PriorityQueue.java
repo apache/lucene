@@ -37,6 +37,7 @@ import java.util.function.Supplier;
  */
 public abstract class PriorityQueue<T> implements Iterable<T> {
 
+  /** Represents a {@code <} operation, which is less prescriptive than {@link Comparator} */
   @FunctionalInterface
   public interface LessThan<T> {
     boolean lessThan(T a, T b);
