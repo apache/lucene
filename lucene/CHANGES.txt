@@ -140,6 +140,8 @@ Optimizations
 
 * GITHUB#14720: Cache high-order bits of hashcode to speed up BytesRefHash. (Pan Guixin)
 
+* GITHUB#14774: Use IntArrayList/IntHashSet to replace usages of List/Set of Integer. (Zhang Chao)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
