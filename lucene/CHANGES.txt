@@ -92,6 +92,9 @@ New Features
 * GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
   along with limiting number of child documents to retrieve per parent. (Jinny Wang)
 
+* GITHUB#14776: Add a Rescorer that uses values from provided DoubleValuesSource to re-score
+  first pass hits. (Vigya Sharma)
+
 Improvements
 ---------------------
 * GITHUB#14458: Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
