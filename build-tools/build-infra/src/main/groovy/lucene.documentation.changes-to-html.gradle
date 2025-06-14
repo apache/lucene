@@ -82,8 +82,8 @@ class ChangesToHtmlTask extends DefaultTask {
     def output = new ByteArrayOutputStream()
     def result = project.exec {
       executable project.externalTool("perl")
-      standardInput changesFile.newInputStream()
-      standardOutput project.file("${targetDir.get().getAsFile()}/Changes.html").newOutputStream()
+      standardInput = changesFile.newInputStream()
+      standardOutput = project.file("${targetDir.get().getAsFile()}/Changes.html").newOutputStream()
       errorOutput = output
       ignoreExitValue = true
 

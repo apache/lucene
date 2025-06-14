@@ -69,8 +69,8 @@ configure(rootProject.ext.mavenProjects) { Project project ->
           url = apacheNexusReleasesRepository
 
           credentials {
-            username asfNexusUsername.getOrElse(null)
-            password asfNexusPassword.getOrElse(null)
+            username = asfNexusUsername.getOrElse(null)
+            password = asfNexusPassword.getOrElse(null)
           }
         }
       }

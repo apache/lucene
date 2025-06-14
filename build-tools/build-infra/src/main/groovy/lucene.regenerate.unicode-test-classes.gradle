@@ -25,8 +25,8 @@ configure(project(":lucene:test-framework")) {
     def genScript = file("${genDir}/generateEmojiTokenizationTest.pl")
     def genOutput = file("${genDir}/EmojiTokenizationTestUnicode_${unicodeVersion.replace('.', '_')}.java")
 
-    description "Regenerate ${genOutput}"
-    group "generation"
+    description = "Regenerate ${genOutput}"
+    group = "generation"
 
     inputs.file genScript
     inputs.property "unicodeVersion", unicodeVersion
@@ -59,8 +59,8 @@ configure(project(":lucene:test-framework")) {
     def genScript = file("${genDir}/generateJavaUnicodeWordBreakTest.pl")
     def genOutput = file("${genDir}/WordBreakTestUnicode_${unicodeVersion.replace('.', '_')}.java")
 
-    description "Regenerate ${genOutput}"
-    group "generation"
+    description = "Regenerate ${genOutput}"
+    group = "generation"
 
     inputs.file genScript
     inputs.property "unicodeVersion", unicodeVersion

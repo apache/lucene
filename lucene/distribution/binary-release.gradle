@@ -67,7 +67,7 @@ configure(project(":lucene:distribution")) {
   }
 
   task assembleBinaryTgz(type: Tar) {
-    description "Assemble binary Lucene artifact as a .tgz file."
+    description = "Assemble binary Lucene artifact as a .tgz file."
 
     archiveFileName = packageBaseName + ".tgz"
     destinationDirectory = file(archiveFileName).parentFile
@@ -80,9 +80,9 @@ configure(project(":lucene:distribution")) {
   }
 
   task assembleBinaryDirForTests(type: Sync) {
-    description "Assemble a subset of the binary Lucene distribution as an expanded directory for tests."
+    description = "Assemble a subset of the binary Lucene distribution as an expanded directory for tests."
 
-    destinationDir file("${packageBaseName}-itests")
+    destinationDir = file("${packageBaseName}-itests")
   }
 
   artifacts {

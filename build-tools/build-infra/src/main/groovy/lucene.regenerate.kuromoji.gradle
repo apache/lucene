@@ -47,8 +47,8 @@ configure(project(":lucene:analysis:kuromoji")) {
     }
 
     task compileMecab(type: Download) {
-      description "Recompile dictionaries from Mecab data."
-      group "generation"
+      description = "Recompile dictionaries from Mecab data."
+      group = "generation"
 
       dependsOn deleteDictionaryData
       dependsOn sourceSets.main.runtimeClasspath
@@ -93,8 +93,8 @@ configure(project(":lucene:analysis:kuromoji")) {
     }
 
     task compileNaist(type: Download) {
-      description "Recompile dictionaries from Naist data."
-      group "generation"
+      description = "Recompile dictionaries from Naist data."
+      group = "generation"
 
       dependsOn deleteDictionaryData
       dependsOn sourceSets.main.runtimeClasspath

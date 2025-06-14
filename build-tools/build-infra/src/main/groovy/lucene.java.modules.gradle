@@ -334,7 +334,7 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
     // otherwise get terribly confused.
     Configuration modulePatchOnly = createModuleConfigurationForConvention(
         SourceSet.isMain(sourceSet) ? "patchOnly" : sourceSet.name + "PatchOnly")
-    modulePatchOnly.canBeResolved(true)
+    modulePatchOnly.canBeResolved = (true)
     moduleImplementation.extendsFrom(modulePatchOnly)
     this.modulePatchOnlyConfiguration = modulePatchOnly
 
@@ -351,8 +351,8 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
     Closure<Configuration> createResolvableModuleConfiguration = { String configurationName ->
       Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
       Configuration moduleConfiguration = configurations.maybeCreate(moduleConfigurationNameFor(conventionConfiguration.name))
-      moduleConfiguration.canBeConsumed(false)
-      moduleConfiguration.canBeResolved(true)
+      moduleConfiguration.canBeConsumed = false
+      moduleConfiguration.canBeResolved = true
       ensureJarVariant(moduleConfiguration)
 
       project.logger.info("Created resolvable module configuration for '${conventionConfiguration.name}': ${moduleConfiguration.name}")
@@ -565,8 +565,8 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
     ConfigurationContainer configurations = project.configurations
     Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
     Configuration moduleConfiguration = configurations.maybeCreate(moduleConfigurationNameFor(configurationName))
-    moduleConfiguration.canBeConsumed(false)
-    moduleConfiguration.canBeResolved(false)
+    moduleConfiguration.canBeConsumed = false
+    moduleConfiguration.canBeResolved = false
     conventionConfiguration.extendsFrom(moduleConfiguration)
 
     project.logger.info("Created module configuration for '${conventionConfiguration.name}': ${moduleConfiguration.name}")

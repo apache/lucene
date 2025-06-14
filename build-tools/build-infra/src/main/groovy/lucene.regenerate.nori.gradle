@@ -47,8 +47,8 @@ configure(project(":lucene:analysis:nori")) {
     }
 
     task compileMecabKo(type: Download) {
-      description "Recompile dictionaries from Mecab-Ko data."
-      group "generation"
+      description = "Recompile dictionaries from Mecab-Ko data."
+      group = "generation"
 
       dependsOn deleteDictionaryData
       dependsOn sourceSets.main.runtimeClasspath

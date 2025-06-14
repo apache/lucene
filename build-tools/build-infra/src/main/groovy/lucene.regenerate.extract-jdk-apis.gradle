@@ -21,8 +21,8 @@ configure(project(":lucene:core")) {
   plugins.withType(JavaPlugin) {
     mrjarJavaVersions.each { jdkVersion ->
       def task = tasks.create(name: "generateJdkApiJar${jdkVersion}", type: JavaExec) {
-        description "Regenerate the API-only JAR file with public Panama Vector API from JDK ${jdkVersion}"
-        group "generation"
+        description = "Regenerate the API-only JAR file with public Panama Vector API from JDK ${jdkVersion}"
+        group = "generation"
 
         javaLauncher = javaToolchains.launcherFor {
           languageVersion = JavaLanguageVersion.of(jdkVersion)

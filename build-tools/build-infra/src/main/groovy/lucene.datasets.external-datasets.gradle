@@ -47,7 +47,7 @@ configure(project(":lucene:benchmark")) {
       dst = file("${dataDir}/${name}")
     }
 
-    description "Download the ${ext.name} data set."
+    description = "Download the ${ext.name} data set."
 
     outputs.file ext.dst
 
@@ -70,7 +70,7 @@ configure(project(":lucene:benchmark")) {
       dst = file("${dataDir}/${name}")
     }
 
-    description "Download the ${ext.name} data set."
+    description = "Download the ${ext.name} data set."
 
     outputs.file ext.dst
 
@@ -96,7 +96,7 @@ configure(project(":lucene:benchmark")) {
       dst = file("${dataDir}/${name}")
     }
 
-    description "Download the ${ext.name} data set."
+    description = "Download the ${ext.name} data set."
 
     outputs.file ext.dst
 
@@ -119,7 +119,7 @@ configure(project(":lucene:benchmark")) {
       dst = file("${dataDir}/${name}")
     }
 
-    description "Download the ${ext.name} data set."
+    description = "Download the ${ext.name} data set."
 
     outputs.dir ext.dst
 
@@ -145,7 +145,7 @@ configure(project(":lucene:benchmark")) {
       dst = file("${dataDir}/reuters-out")
     }
 
-    description "Download the ${ext.name} data set."
+    description = "Download the ${ext.name} data set."
 
     outputs.dir ext.dst
 

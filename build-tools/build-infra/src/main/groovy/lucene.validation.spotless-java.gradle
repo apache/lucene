@@ -29,7 +29,7 @@ configure(allprojects) { prj ->
   plugins.withType(JavaPlugin).configureEach {
     spotless {
       java {
-        lineEndings(LineEnding.UNIX)
+        lineEndings = LineEnding.UNIX
         endWithNewline()
         googleJavaFormat(deps.versions.googleJavaFormat.get())
 

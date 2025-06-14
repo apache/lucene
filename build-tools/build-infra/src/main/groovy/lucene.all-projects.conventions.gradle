@@ -53,7 +53,7 @@ allprojects {project ->
 
   // Common tasks or meta-tasks.
   tasks.register("tidy", {
-    description "Applies all code formatters and other enforced cleanups to the project."
-    group "verification"
+    description = "Applies all code formatters and other enforced cleanups to the project."
+    group = "verification"
   })
 }

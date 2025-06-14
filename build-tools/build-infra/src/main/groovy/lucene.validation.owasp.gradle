@@ -48,8 +48,8 @@ if (owaspOption.get() || gradle.startParameter.taskNames.contains("owasp")) {
   }
 
   def owaspTask = tasks.register("owasp", {
-    group "Verification"
-    description "Check project dependencies against OWASP vulnerability database."
+    group = "Verification"
+    description = "Check project dependencies against OWASP vulnerability database."
     dependsOn "dependencyCheckAggregate"
   })
 
