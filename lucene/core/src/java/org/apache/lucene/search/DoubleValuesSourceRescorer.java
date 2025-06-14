@@ -77,12 +77,12 @@ public abstract class DoubleValuesSourceRescorer extends Rescorer {
     }
 
     if (topN < hits.length) {
-      ArrayUtil.select(hits, 0, hits.length, topN, ScoreDoc.scoreDocComparator);
+      ArrayUtil.select(hits, 0, hits.length, topN, ScoreDoc.COMPARATOR);
       ScoreDoc[] subset = new ScoreDoc[topN];
       System.arraycopy(hits, 0, subset, 0, topN);
       hits = subset;
     }
-    Arrays.sort(hits, ScoreDoc.scoreDocComparator);
+    Arrays.sort(hits, ScoreDoc.COMPARATOR);
 
     return new TopDocs(firstPassTopDocs.totalHits, hits);
   }

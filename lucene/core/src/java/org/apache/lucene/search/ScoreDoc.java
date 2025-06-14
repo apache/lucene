@@ -54,7 +54,7 @@ public class ScoreDoc {
   }
 
   /** Utility comparator that sorts by score descending, then by docId ascending */
-  public static final Comparator<ScoreDoc> scoreDocComparator =
+  public static final Comparator<ScoreDoc> COMPARATOR =
       (a, b) -> {
         if (a.score > b.score) {
           return -1;
