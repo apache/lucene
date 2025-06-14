@@ -282,12 +282,12 @@ tasks.withType(Test).configureEach {
   // Set up logging.
   testLogging {
     events TestLogEvent.FAILED
-    exceptionFormat TestExceptionFormat.FULL
-    showExceptions true
-    showCauses true
-    showStackTraces true
+    exceptionFormat = TestExceptionFormat.FULL
+    showExceptions = true
+    showCauses = true
+    showStackTraces = true
     stackTraceFilters.clear()
-    showStandardStreams false
+    showStandardStreams = false
   }
 
   // Disable automatic test class detection, rely on class names only. This is needed for testing

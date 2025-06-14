@@ -96,7 +96,7 @@ configure(project(":lucene:analysis:icu")) {
         main = "org.apache.lucene.analysis.icu.GenerateUTR30DataFiles"
         classpath = sourceSets.tools.runtimeClasspath
 
-        ignoreExitValue false
+        ignoreExitValue = false
         workingDir utr30DataDir
         args = [
           "release-${icu4jVersion.replace(".", "-")}"
@@ -146,7 +146,7 @@ configure(project(":lucene:analysis:icu")) {
         main = "org.apache.lucene.analysis.icu.RBBIRuleCompiler"
         classpath = sourceSets.tools.runtimeClasspath
 
-        ignoreExitValue false
+        ignoreExitValue = false
         enableAssertions true
         args = [sourceDir, targetDir]
       }
@@ -255,8 +255,8 @@ configure(project(":lucene:analysis:common")) {
     def icuConfig = rootProject.configurations.icu_current
     def outputFile = file("src/java/org/apache/lucene/analysis/util/UnicodeProps.java")
 
-    description "Regenerate ${outputFile} (with ${icuConfig.name})"
-    group "generation"
+    description = "Regenerate ${outputFile} (with ${icuConfig.name})"
+    group = "generation"
 
     dependsOn icuConfig
 
@@ -293,8 +293,8 @@ configure(project(":lucene:core")) {
     def icuConfig = rootProject.configurations.icu_current
     def outputFile = file("src/java/org/apache/lucene/util/automaton/CaseFolding.java")
 
-    description "Regenerate ${outputFile} (with ${icuConfig.name})"
-    group "generation"
+    description = "Regenerate ${outputFile} (with ${icuConfig.name})"
+    group = "generation"
 
     dependsOn icuConfig
 
