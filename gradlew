@@ -205,9 +205,6 @@ fi
 # Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
 DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
 
-# Prevent jgit from forking/searching git.exe
-export GIT_CONFIG_NOSYSTEM=1
-
 # LUCENE-9471: workaround for gradle leaving junk temp. files behind.
 GRADLE_TEMPDIR="$APP_HOME/.gradle/tmp"
 mkdir -p "$GRADLE_TEMPDIR"

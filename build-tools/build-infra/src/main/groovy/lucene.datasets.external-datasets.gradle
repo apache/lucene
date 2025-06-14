@@ -1,0 +1,197 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import java.nio.file.Files
+import com.github.luben.zstd.ZstdInputStream
+import de.undercouch.gradle.tasks.download.Download
+import org.apache.lucene.gradle.datasets.ExtractReuters
+
+// tasks that download various benchmark/test data sets from the internet.
+
+// TODO: not sure whether this should live in benchmarks, but for now let it be.
+
+if (project != project.rootProject) {
+  throw new GradleException("Applicable to rootProject only: " + project.path)
+}
+
+def static unzstd(java.nio.file.Path src, java.nio.file.Path dst) {
+  new ZstdInputStream(new BufferedInputStream(Files.newInputStream(src))).withCloseable { is ->
+    new BufferedOutputStream(Files.newOutputStream(dst)).withCloseable { os ->
+      is.transferTo(os)
+    }
+  }
+}
+
+configure(project(":lucene:benchmark")) {
+  def dataDir = project.file("work")
+
+  def getEnWikiTask = tasks.register("getEnWiki", Download, {
+    ext {
+      name = "enwiki-20070527-pages-articles.xml"
+      src = "https://s3.amazonaws.com/lucene-testdata/wikipedia/${name}.zst"
+      intermediate = file("${dataDir}/${name}.bz2")
+      dst = file("${dataDir}/${name}")
+    }
+
+    description "Download the ${ext.name} data set."
+
+    outputs.file ext.dst
+
+    src ext.src
+    dest ext.intermediate
+    overwrite false
+    compress false
+
+    doLast {
+      logger.lifecycle("Decompressing ${ext.name}...")
+      unzstd(ext.intermediate.toPath(), ext.dst.toPath())
+    }
+  })
+
+  def getEnWikiRandomLinesTask = tasks.register("getEnWikiRandomLines", Download, {
+    ext {
+      name = "enwiki.random.lines.txt"
+      src = "https://s3.amazonaws.com/lucene-testdata/wikipedia/${name}.zst"
+      intermediate = file("${dataDir}/${name}.zst")
+      dst = file("${dataDir}/${name}")
+    }
+
+    description "Download the ${ext.name} data set."
+
+    outputs.file ext.dst
+
+    src ext.src
+    dest ext.intermediate
+    overwrite false
+    compress false
+
+    doLast {
+      logger.lifecycle("Decompressing ${ext.name}...")
+      unzstd(ext.intermediate.toPath(), ext.dst.toPath())
+    }
+  })
+
+  def getGeoNamesTask = tasks.register("getGeoNames", Download, {
+    // note: latest data is at: https://download.geonames.org/export/dump/allCountries.zip
+    //       and then randomize with: gsort -R -S 1500M file.txt > file_random.txt
+    //       and then compress with: bzip2 -9 -k file_random.txt
+    ext {
+      name = "geonames_20130921_randomOrder_allCountries.txt"
+      src = "https://s3.amazonaws.com/lucene-testdata/geonames/${name}.bz2"
+      intermediate = file("${dataDir}/${name}.bz2")
+      dst = file("${dataDir}/${name}")
+    }
+
+    description "Download the ${ext.name} data set."
+
+    outputs.file ext.dst
+
+    src ext.src
+    dest ext.intermediate
+    overwrite false
+    compress false
+
+    doLast {
+      logger.lifecycle("Decompressing ${ext.name}...")
+      ant.bunzip2(src: ext.intermediate, dest: ext.dst)
+    }
+  })
+
+  def getTop100kWikiWordFilesTask = tasks.register("getTop100kWikiWordFiles", Download, {
+    ext {
+      name = "top.100k.words.de.en.fr.uk.wikipedia.2009-11"
+      src = "https://s3.amazonaws.com/lucene-testdata/wikipedia/${name}.tar.bz2"
+      intermediate = file("${dataDir}/${name}.bz2")
+      dst = file("${dataDir}/${name}")
+    }
+
+    description "Download the ${ext.name} data set."
+
+    outputs.dir ext.dst
+
+    src ext.src
+    dest ext.intermediate
+    overwrite false
+    compress false
+
+    doLast {
+      logger.lifecycle("Decompressing ${ext.name}...")
+      project.sync {
+        from tarTree(ext.intermediate) // defined above. Will decompress on the fly
+        into ext.dst
+      }
+    }
+  })
+
+  def getReutersTask = tasks.register("getReuters", Download, {
+    ext {
+      name = "reuters21578"
+      src = "https://kdd.ics.uci.edu/databases/${name}/${name}.tar.gz"
+      intermediate = file("${dataDir}/${name}.tar.gz")
+      dst = file("${dataDir}/reuters-out")
+    }
+
+    description "Download the ${ext.name} data set."
+
+    outputs.dir ext.dst
+
+    src ext.src
+    dest ext.intermediate
+    overwrite false
+    compress false
+
+    doLast {
+      def untarPath = file("$temporaryDir/reuters-untar")
+
+      logger.lifecycle("Decompressing ${ext.name}...")
+      project.sync {
+        from(tarTree(intermediate)) {
+          exclude '*.txt'
+        }
+        into untarPath
+      }
+
+      logger.lifecycle("Extracting ${ext.name} into ${ext.dst}...")
+      ext.dst.deleteDir()
+      ExtractReuters.main(untarPath.toString(), ext.dst.toString())
+    }
+  })
+
+  def downloadTasks = [
+    getEnWikiTask,
+    getGeoNamesTask,
+    getTop100kWikiWordFilesTask,
+    getReutersTask,
+    getEnWikiRandomLinesTask
+  ]
+
+  tasks.register("downloadDatasets", {
+    group = "Data set download"
+    description = "Download all data sets."
+
+    dependsOn downloadTasks
+  })
+
+  downloadTasks.each {
+    it.configure {
+      group = "Data set download"
+      doFirst {
+        logger.lifecycle("Downloading data set ${it.ext.name} from ${it.ext.src} to ${it.ext.dst}...")
+      }
+    }
+  }
+}

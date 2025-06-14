@@ -70,14 +70,14 @@ of secure passing of private key information and passwords.
 Artifact signing using an external GPG with GPG Agent
 -----------------------------------------------------
 
-You can use an external GPG command to deal with signing artifacts, with out needing to give gradle your passphrase,
-by adding a "-PuseGpg" option, but this changes the properties you must specify:
+You can use an external GPG command to deal with signing artifacts, without needing to give gradle your passphrase,
+by adding a "-PuseGpg=true" option, but this changes the properties you must specify:
 
 For gpg2:
-gradlew [tasks] -Psign -PuseGpg -Psigning.gnupg.keyName=...
+gradlew [tasks] -Psign -PuseGpg=true -Psigning.gnupg.keyName=...
 
 For gpg:
-gradlew [tasks] -Psign -PuseGpg -Psigning.gnupg.keyName=... -Psigning.gnupg.useLegacyGpg=true
+gradlew [tasks] -Psign -PuseGpg=true -Psigning.gnupg.keyName=... -Psigning.gnupg.useLegacyGpg=true
 
 The keyName is the last 8 digits of your key (gpg -k will print your keys).
 
@@ -93,13 +93,13 @@ If in doubt, consult gradle's signing plugin documentation:
 https://docs.gradle.org/current/userguide/signing_plugin.html#sec:using_gpg_agent
 
 "signing.gnupg.passphrase" is not recommended because there is no advantage to using an external GPG process if you use it.
-If you are comfortable giving gradle your passphrase, then there is no reason to use an external GPG process via '-PuseGpg'.
-Just use the "signing.*" options described previuosly to let gradle deal with your key directly.
+If you are comfortable giving gradle your passphrase, then there is no reason to use an external GPG process via '-PuseGpg=true'.
+Just use the "signing.*" options described previously to let gradle deal with your key directly.
 
 Because of how Gradle's signing plugin invokes GPG, using an external GPG process *only* works if your GPG configuration uses a 
 GPG agent (required by gpg2) and if the "pinentry" for your GPG agent does not require access to the tty to prompt you for a password.
 
-If you the following command fails with your GPG configuration, you can not use an external GPG process with gradle:
+If the following command fails with your GPG configuration, you can not use an external GPG process with gradle:
 
 echo foo | gpg --batch --no-tty --armor --detach-sign --use-agent --local-user YOUR_KEY_NAME
 

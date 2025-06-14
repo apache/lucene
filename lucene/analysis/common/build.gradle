@@ -15,9 +15,12 @@
  * limitations under the License.
  */
 
+
+import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOption
+
 import java.nio.file.Files;
 
-apply plugin: 'java-library'
+
 
 description = 'Analyzers for indexing content in different languages and domains'
 
@@ -40,16 +43,16 @@ def cloneDirProperty = project.layout.buildDirectory.dir("hunspell-regressions")
 // a full commit reference for each project. These should be updated
 // from time to time based on what's available at the head reference.
 def dictionaryProjects = [
-    [
-        "name": "libreoffice",
-        "url": "https://github.com/LibreOffice/dictionaries",
-        "ref": "762abe74008b94b2ff06db6f4024b59a8254c467" // head: master
-    ],
-    [
-        "name": "woorm",
-        "url": "https://github.com/wooorm/dictionaries",
-        "ref": "8cfea406b505e4d7df52d5a19bce525df98c54ab" // head: main
-    ]
+  [
+    "name": "libreoffice",
+    "url": "https://github.com/LibreOffice/dictionaries",
+    "ref": "762abe74008b94b2ff06db6f4024b59a8254c467" // head: master
+  ],
+  [
+    "name": "woorm",
+    "url": "https://github.com/wooorm/dictionaries",
+    "ref": "8cfea406b505e4d7df52d5a19bce525df98c54ab" // head: main
+  ]
 ]
 
 // We need this for the new gradle configuration cache. I personally think it's
@@ -81,10 +84,10 @@ def cloningTasks = dictionaryProjects.collect { repoSpec ->
 
       def logger = task.logger
       def dotGitPath = targetDir.get().asFile.toPath().toAbsolutePath().resolve(".git")
-      def gitExec = (List<String> cmdArgs) -> {
+      def gitExec = { List<String> cmdArgs ->
         logger.lifecycle("Executing git " + cmdArgs.join(" "))
         execOps.exec {
-          executable "git"
+          executable project.externalTool("git")
           ignoreExitValue false
           workingDir dotGitPath.getParent().toString()
           args = cmdArgs
@@ -98,14 +101,33 @@ def cloningTasks = dictionaryProjects.collect { repoSpec ->
       // the remote url (origin) but don't fetch anything.
       if (!Files.exists(dotGitPath)) {
         Files.createDirectories(dotGitPath.getParent())
-        gitExec(["init", "--initial-branch", "irrelevant"])
-        gitExec(["config", "advice.detachedHead", "false"])
-        gitExec(["remote", "add", "origin", repoSpec.url])
+        gitExec([
+          "init",
+          "--initial-branch",
+          "irrelevant"
+        ])
+        gitExec([
+          "config",
+          "advice.detachedHead",
+          "false"
+        ])
+        gitExec([
+          "remote",
+          "add",
+          "origin",
+          repoSpec.url
+        ])
       }
 
       // Fetch just the revision we're interested in.
       // This avoids downloading the entire repo.
-      gitExec(["fetch", "--depth", "1", "origin", ref.get()])
+      gitExec([
+        "fetch",
+        "--depth",
+        "1",
+        "origin",
+        ref.get()
+      ])
       gitExec(["checkout", "FETCH_HEAD"])
     }
   })
@@ -113,8 +135,10 @@ def cloningTasks = dictionaryProjects.collect { repoSpec ->
 }
 
 // check if we should run tests with hunspell dictionaries.
-def withDictionaries = Boolean.parseBoolean(propertyOrDefault("tests.hunspell.regressions", "false"))
-if (withDictionaries) {
+Provider<Boolean> testRegressionsOption = buildOptions.addBooleanOption("tests.hunspell.regressions",
+    "Include testing for regressions against hunspell dictionaries", false)
+
+if (testRegressionsOption.get()) {
   tasks.withType(Test).configureEach {
     dependsOn cloningTasks
     inputs.dir cloneDirProperty
@@ -123,16 +147,21 @@ if (withDictionaries) {
 }
 
 // Pass all hunspell-tests-specific project properties to tests as system properties, if they're specified.
+buildOptions.addOption("hunspell.dictionaries", "Path to hunspell dictionaries for TestAllDictionaries.")
+buildOptions.addOption("hunspell.corpora", "Path to hunspell test work corpora for TestPerformance.")
+buildOptions.addOption("hunspell.repo.path", "Path to hunspell repo path for TestHunspellRepositoryTestCases")
+
 tasks.withType(Test).configureEach {
   [
-      "hunspell.dictionaries",
-      "hunspell.corpora",
-      "hunspell.repo.path"
-  ].each {
-    def val = propertyOrDefault(it, null)
-    if (val != null) {
-      logger.lifecycle("Passing property: ${it}=${val}")
-      systemProperty it, val
+    "hunspell.dictionaries",
+    "hunspell.corpora",
+    "hunspell.repo.path"
+  ].each {optionName ->
+    BuildOption option = buildOptions.getOption(optionName)
+    if (option.isPresent()) {
+      def val = option.asStringProvider().get()
+      logger.lifecycle("Passing property: ${optionName}=${val}")
+      systemProperty(optionName, val)
     }
   }
 }

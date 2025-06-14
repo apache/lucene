@@ -1,0 +1,56 @@
+import com.diffplug.gradle.spotless.GroovyGradleExtension
+import com.diffplug.gradle.spotless.SpotlessPlugin
+
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Apply spotless formatter to groovy code (gradle scripts in the build-infra plugin
+// and possibly other places).
+
+if (project != project.rootProject) {
+  throw new GradleException("Applicable to rootProject only: " + project.path)
+}
+
+plugins.apply(SpotlessPlugin.class)
+
+spotless.format("gradleScripts", GroovyGradleExtension.class, { ext ->
+  ext.greclipse()
+  ext.leadingTabsToSpaces(2)
+  ext.trimTrailingWhitespace()
+  ext.endWithNewline()
+  ext.target([
+    "build-tools/**/*.gradle",
+    "build-tools/**/*.groovy",
+    "**/build.gradle"
+  ])
+})
+
+tasks.named("spotlessGradleScripts").configure {
+  mustRunAfter ":lucene:build-tools:missing-doclet:spotlessJava"
+  mustRunAfter ":lucene:build-tools:missing-doclet:renderJavadoc"
+  mustRunAfter ":lucene:build-tools:build-infra-shadow:spotlessJava"
+  mustRunAfter ":lucene:build-tools:build-infra-shadow:pluginUnderTestMetadata"
+  mustRunAfter ":lucene:build-tools:build-infra-shadow:pluginDescriptors"
+}
+
+tasks.named("tidy").configure {
+  dependsOn ":spotlessGradleScriptsApply"
+}
+
+tasks.named("check").configure {
+  dependsOn ":spotlessGradleScriptsCheck"
+}

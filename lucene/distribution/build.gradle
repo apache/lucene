@@ -25,17 +25,48 @@ plugins {
 // This project puts together the Lucene "distribution", assembling bits and pieces
 // from across the project structure into release artifacts.
 
+Provider<Boolean> signOption = buildOptions.addBooleanOption("sign", "Sign assembled distribution artifacts.", false)
+
 ext {
   releaseDir = file("${buildDir}/release")
-  withSignedArtifacts = { ->
-    def propValue = propertyOrDefault("sign", null)
-    // Allow -Psign to work as a shorthand for -Psign=true
-    return propValue != null && (propValue.isBlank() || Boolean.parseBoolean(propValue))
-  }.call()
+  withSignedArtifacts = signOption.get()
 }
 
-// Prepare the "source" distribution artifact.
-apply from: buildscript.sourceFile.toPath().resolveSibling("source-release.gradle")
+// Collect git revision.
+MapProperty<String, String> gitStatus = rootProject.extensions.getByName("gitinfo").getGitInfo()
+Provider<String> gitRev = gitStatus.getting("git.commit")
+
+// Prepare the "source" distribution artifact. We use raw git export, no additional complexity needed.
+Provider<RegularFile> sourceTgzFile = project.layout.buildDirectory.file("packages/lucene-${version}-src.tgz")
+tasks.register("assembleSourceTgz", {
+  description "Assemble source Lucene artifact as a .tgz file."
+
+  inputs.property("git-revision", gitRev)
+
+  outputs.file sourceTgzFile
+
+  doFirst {
+    quietExec {
+      executable = project.externalTool("git")
+      workingDir = project.rootDir
+
+      // An explicit GIT_DIR to prevent .git upward scanning if something goes wrong.
+      environment("GIT_DIR", dotGitPath.toString())
+
+      args += [
+        "archive",
+        "--format",
+        "tgz",
+        "--prefix",
+        "lucene-${version}/",
+        "--output",
+        sourceTgzFile.get().asFile,
+        "HEAD"
+      ]
+    }
+  }
+})
+
 
 // Prepare the "binary" distribution artifact.
 apply from: buildscript.sourceFile.toPath().resolveSibling("binary-release.gradle")
@@ -43,8 +74,15 @@ apply from: buildscript.sourceFile.toPath().resolveSibling("binary-release.gradl
 // Configure maven artifact collection to a local build folder (required to collect artifacts for the release).
 apply from: buildscript.sourceFile.toPath().resolveSibling("collect-maven-artifacts.gradle")
 
-// Configure artifact signing.
-apply from: buildscript.sourceFile.toPath().resolveSibling("artifact-signing.gradle")
+// Configure release artifact signing.
+tasks.register("signReleaseArchives", Sign, {
+  dependsOn tasks.assembleBinaryTgz
+  sign tasks.assembleBinaryTgz
+
+  // The source tgz is not an archive task so be explicit about the outputs to sign.
+  dependsOn tasks.assembleSourceTgz
+  sign sourceTgzFile.get().asFile
+})
 
 
 // Set up the HTML-rendered "changes" distribution artifact by linking to documentation's output.
@@ -58,36 +96,34 @@ dependencies {
 
 
 // Compute checksums for release archives.
-task computeChecksums(type: buildinfra.checksumClass()) {
+tasks.register("computeChecksums", org.apache.lucene.gradle.Checksum, {
   files = objects.fileCollection()
   [
-      tasks.assembleSourceTgz,
-      tasks.assembleBinaryTgz,
+    tasks.assembleSourceTgz,
+    tasks.assembleBinaryTgz,
   ].each { dep ->
     dependsOn dep
     files += dep.outputs.files
   }
 
   outputDir = file("${buildDir}/checksums")
-}
+})
 
 
-task prepareGitRev() {
-  dependsOn ":gitStatus"
+tasks.register("prepareGitRev", {
+  Provider<RegularFile> outputFile = project.layout.buildDirectory.file(".gitrev")
 
-  ext.outputFile = file("${buildDir}/.gitrev")
-
-  outputs.file(ext.outputFile)
-  inputs.property("gitrev", provider { -> rootProject.ext.gitRev })
+  inputs.property("gitrev", gitRev)
+  outputs.file(outputFile)
 
   doFirst {
-    Files.writeString(ext.outputFile.toPath(), rootProject.ext.gitRev, StandardCharsets.UTF_8)
+    Files.writeString(outputFile.get().asFile.toPath(), gitRev.get(), StandardCharsets.UTF_8)
   }
-}
+})
 
 
 // Assemble everything needed in the release folder structure.
-task assembleRelease(type: Sync) {
+tasks.register("assembleRelease", Sync, {
   description "Assemble all Lucene artifacts for a release."
 
   from(configurations.changesHtml, {
@@ -110,15 +146,17 @@ task assembleRelease(type: Sync) {
   }
 
   into releaseDir
-}
+})
 
 
 // Add the description and task group to some of the tasks that make
 // sense at the user-level help.
-tasks.matching {it.name in [
+tasks.matching {
+  it.name in [
     "assembleSourceTgz",
     "assembleBinaryTgz",
     "assembleRelease",
-]}.all {
-  group "distribution"
+  ]
+}.configureEach {
+  group = "distribution"
 }

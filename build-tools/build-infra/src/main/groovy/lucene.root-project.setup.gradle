@@ -1,0 +1,256 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionValueSource
+import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin
+import com.carrotsearch.gradle.buildinfra.environment.GitInfoPlugin
+import com.carrotsearch.randomizedtesting.SeedUtils
+
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+
+// Prepare the root project and some global infrastructure.
+
+if (project != project.rootProject) {
+  throw new GradleException("Applicable to rootProject only: " + project.path)
+}
+
+//
+// Register these plugins early.
+//
+plugins.apply(GitInfoPlugin)
+allprojects {
+  plugins.apply(BuildOptionsPlugin)
+}
+
+//
+// Figure out project version based on the base version and, suffix (or overrides of these options).
+//
+Provider<String> versionBase = buildOptions.addOption("version.base", "Base Lucene version")
+Provider<String> versionSuffix = buildOptions.addOption("version.suffix", "Appends project version suffix to 'version.base'.", "SNAPSHOT")
+Provider<String> versionProvider = buildOptions.addOption("version.release", "Lucene project version.",
+    versionSuffix
+    .map { suffix ->
+      versionBase.get() + "-" + suffix
+    }
+    .orElse(versionBase))
+
+String luceneVersion = versionProvider.get()
+rootProject.version = luceneVersion
+
+//
+// Expose parts of the final project version to the build. We can't use Runtime.Version, sadly.
+//
+ext {
+  // "base" version is stripped of the qualifier. Compute it because somebody might have passed
+  // -Pversion.release=x.y.z directly.
+  baseVersion = {
+    def m = (luceneVersion =~ /^(\d+\.\d+\.\d+)(-(.+))?/)
+    if (!m) {
+      throw new GradleException("Can't strip version to just x.y.z: " + rootProject.version)
+    }
+    return m[0][1]
+  }()
+  // "majorVersion" is an integer with just the major version. Compute it.
+  majorVersion = {
+    def m = (version =~ /^(\d+)\.\d+\.\d+(-(.+))?/)
+    if (!m) {
+      throw new GradleException("Can't strip version to just major version: " + rootProject.version)
+    }
+    return m[0][1] as int
+  }()
+
+  // snapshot build marker used in scripts.
+  snapshotBuild = luceneVersion.contains("SNAPSHOT")
+
+  // detect if we run in CI environment by looking at existence of env vars:
+  // "CI": Github (https://docs.github.com/en/actions/learn-github-actions/environment-variables)
+  // anything starting with "JENKINS_" or "HUDSON_": Jenkins/Hudson (https://jenkins.thetaphi.de/env-vars.html/)
+  isCIBuild = System.getenv().keySet().find { it ==~ /(?i)((JENKINS|HUDSON)(_\w+)?|CI)/ } != null
+
+  // Minimum Java version required to compile and run Lucene.
+  minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
+
+  // Build timestamp.
+  def tstamp = ZonedDateTime.now()
+  buildDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(tstamp)
+  buildTime = DateTimeFormatter.ofPattern("HH:mm:ss").format(tstamp)
+  buildYear = DateTimeFormatter.ofPattern("yyyy").format(tstamp)
+}
+
+//
+// Set certain root project properties eagerly so that plugins
+// and scripts have them available.
+//
+ext {
+  isIdea = Boolean.parseBoolean(System.getProperty("idea.active", "false"))
+  isIdeaSync = Boolean.parseBoolean(System.getProperty("idea.sync.active", "false"))
+  isIdeaBuild = (isIdea && !isIdeaSync)
+}
+
+ext {
+  // JDK versions where the vector module is still incubating;
+  // also change this in extractor tool: ExtractForeignAPI
+  vectorIncubatorJavaVersions = [
+    JavaVersion.VERSION_21,
+    JavaVersion.VERSION_22,
+    JavaVersion.VERSION_23,
+    JavaVersion.VERSION_24
+  ] as Set
+}
+
+// Pick the "root" seed from which everything else that is randomized is derived.
+Provider<String> rootSeedOption = buildOptions.addOption("tests.seed", "The \"root\" randomization seed for options and test parameters.", provider {
+  return String.format("%08X", new Random().nextLong())
+})
+ext {
+  rootSeed = rootSeedOption.get()
+  rootSeedUserProvided = buildOptions.getOption("tests.seed").getValue().get().source() == BuildOptionValueSource.COMPUTED_VALUE
+  rootSeedLong = SeedUtils.parseSeedChain(rootSeed)[0]
+}
+allprojects {
+  ext {
+    projectSeedLong = rootProject.rootSeedLong ^ project.path.hashCode()
+  }
+}
+
+tasks.register("showTestsSeed", {
+  doFirst {
+    logger.lifecycle("Running tests with root randomization seed: tests.seed=${rootProject.ext.rootSeed}")
+  }
+})
+
+// Wire up included builds to some validation tasks.
+tasks.matching { it.name == "tidy" }.configureEach {
+  dependsOn gradle.includedBuilds*.task(":tidy")
+}
+
+tasks.matching { it.name == "check" }.configureEach {
+  dependsOn gradle.includedBuilds*.task(":check")
+}
+
+// TODO: this shouldn't be here but it's used in multiple scripts that are racy in lazy-evaluation.
+configure(project(":lucene:core")) {
+  ext {
+    mrjarJavaVersions = [24]
+    apijars = layout.projectDirectory.dir("src/generated/jdk")
+  }
+}
+
+//
+// Allow defining external tool locations, use build options so that these options are not hidden.
+//
+buildOptions.addOption("lucene.tool.python3", "External python3 executable (path or name)", "python3")
+buildOptions.addOption("lucene.tool.perl", "External perl executable (path or name)", "perl")
+buildOptions.addOption("lucene.tool.git", "External git executable (path or name)", "git")
+
+ext.externalTool = { String name ->
+  if (name in ["python3", "perl", "git"]) {
+    return buildOptions.getOption("lucene.tool." + name).asStringProvider().get()
+  }
+  throw new GradleException("External tool named '${name}' is not defined.")
+}
+
+// TODO: These utility methods should be moved somewhere else or removed.
+allprojects {
+  ext {
+    // Utility function similar to project.exec but not emitting
+    // any output unless an error code is returned from the executed command.
+    quietExec = { closure ->
+      // Resolve any properties against the provided closure.
+      resolveStrategy = Closure.DELEGATE_ONLY
+      delegate = closure.delegate
+
+      File outputFile = File.createTempFile("exec-output-", ".txt", getTemporaryDir())
+      ExecResult result
+      boolean saveIgnoreExitValue
+      ExecSpec saveExecSpec
+
+      outputFile.withOutputStream { output ->
+        // we want to capture both stdout and stderr to the same
+        // stream but gradle attempts to close these separately
+        // (it has two independent pumping threads) and it can happen
+        // that one still tries to write something when the other closed
+        // the underlying output stream.
+        def wrapped = new java.io.FilterOutputStream(output) {
+              public void close() {
+                // no-op. we close this stream manually.
+              }
+            }
+
+        result = project.exec { ExecSpec execSpec ->
+          project.configure(execSpec, closure)
+
+          saveIgnoreExitValue = execSpec.ignoreExitValue
+          saveExecSpec = execSpec
+
+          standardOutput = wrapped
+          errorOutput = wrapped
+          ignoreExitValue true
+        }
+      }
+
+      if (result.getExitValue() != 0) {
+        // Pipe the output to console. Intentionally skips any encoding conversion
+        // and pumps raw bytes.
+        logger.error(new String(outputFile.bytes))
+
+        if (!saveIgnoreExitValue) {
+          result.rethrowFailure()
+          throw new GradleException("The executed process ${saveExecSpec.executable} " +
+          "returned an odd status " +
+          "code: ${result.exitValue}, " +
+          "output at: ${outputFile} (and logged above).")
+        }
+      } else {
+        logger.info(new String(outputFile.bytes))
+      }
+
+      return result
+    }
+
+    // Convert a list of strings, tasks and task providers into resolved tasks or task providers.
+    resolveTaskRefs = { List<Object> refs ->
+      def resolved = refs.collect {
+        if (it instanceof Task) return it
+        if (it instanceof TaskProvider) return it
+        if (it instanceof String) return project.tasks.named((String) it)
+        throw new GradleException("Can't resolve task: ${it}")
+      }
+      return resolved
+    }
+
+    // Forces sequential ordering of a list of tasks (via mustRunAfter).
+    // This method should not be required in 99% of cases, consider regular dependsOn links.
+    // This method does NOT imply any ordering between dependencies of task on the input
+    // list - the execution of these may still be unordered.
+    mustRunInOrder = { List<Object> taskList ->
+      project.afterEvaluate {
+        def resolved = resolveTaskRefs(taskList)
+
+        // Enforce sequential ordering between tasks (this does NOT apply to their dependencies!)
+        for (int i = 1; i < resolved.size(); i++) {
+          resolved[i].configure {
+            logger.info("Scheduling " + resolved[i].name + " to run after " + resolved[i - 1].name)
+            mustRunAfter resolved[i - 1]
+          }
+        }
+      }
+      return taskList
+    }
+  }
+}
