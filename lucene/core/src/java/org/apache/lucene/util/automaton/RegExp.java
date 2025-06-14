@@ -31,7 +31,6 @@ package org.apache.lucene.util.automaton;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -40,6 +39,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
+import org.apache.lucene.internal.hppc.IntArrayList;
 
 /**
  * Regular Expression extension to <code>Automaton</code>.
@@ -767,14 +767,14 @@ public class RegExp {
    * @return the original codepoint and the set of alternates
    */
   private int[] toCaseInsensitiveChar(int codepoint) {
-    List<Integer> list = new ArrayList<>();
+    IntArrayList list = new IntArrayList();
     CaseFolding.expand(
         codepoint,
         (int variant) -> {
           list.add(variant);
         });
-    Collections.sort(list);
-    return list.stream().mapToInt(Integer::intValue).toArray();
+    list.sort();
+    return list.toArray();
   }
 
   /**
@@ -785,7 +785,7 @@ public class RegExp {
    * activated by optional flag.
    */
   private void expandCaseInsensitiveRange(
-      int start, int end, List<Integer> rangeStarts, List<Integer> rangeEnds) {
+      int start, int end, IntArrayList rangeStarts, IntArrayList rangeEnds) {
     if (start > end)
       throw new IllegalArgumentException(
           "invalid range: from (" + start + ") cannot be > to (" + end + ")");
@@ -1358,8 +1358,8 @@ public class RegExp {
   }
 
   final RegExp parseCharClasses() throws IllegalArgumentException {
-    ArrayList<Integer> starts = new ArrayList<>();
-    ArrayList<Integer> ends = new ArrayList<>();
+    IntArrayList starts = new IntArrayList();
+    IntArrayList ends = new IntArrayList();
 
     do {
       // look for escape
@@ -1402,20 +1402,17 @@ public class RegExp {
     // not sure why we bother optimizing nodes, same automaton...
     // definitely saves time vs fixing toString()-based tests.
     if (starts.size() == 1) {
-      if (starts.get(0).intValue() == ends.get(0).intValue()) {
+      if (starts.get(0) == ends.get(0)) {
         return makeChar(flags, starts.get(0));
       } else {
         return makeCharRange(flags, starts.get(0), ends.get(0));
       }
     } else {
-      return makeCharClass(
-          flags,
-          starts.stream().mapToInt(Integer::intValue).toArray(),
-          ends.stream().mapToInt(Integer::intValue).toArray());
+      return makeCharClass(flags, starts.toArray(), ends.toArray());
     }
   }
 
-  void expandPreDefined(List<Integer> starts, List<Integer> ends) {
+  void expandPreDefined(IntArrayList starts, IntArrayList ends) {
     if (peek("\\")) {
       // escape
       starts.add((int) '\\');
@@ -1489,13 +1486,10 @@ public class RegExp {
   final RegExp matchPredefinedCharacterClass() {
     // See https://docs.oracle.com/javase/tutorial/essential/regex/pre_char_classes.html
     if (match('\\') && peek("\\ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")) {
-      var starts = new ArrayList<Integer>();
-      var ends = new ArrayList<Integer>();
+      var starts = new IntArrayList();
+      var ends = new IntArrayList();
       expandPreDefined(starts, ends);
-      return makeCharClass(
-          flags,
-          starts.stream().mapToInt(Integer::intValue).toArray(),
-          ends.stream().mapToInt(Integer::intValue).toArray());
+      return makeCharClass(flags, starts.toArray(), ends.toArray());
     }
 
     return null;
