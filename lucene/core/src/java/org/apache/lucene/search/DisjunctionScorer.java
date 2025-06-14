@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import org.apache.lucene.util.FloatComparator;
 import org.apache.lucene.util.PriorityQueue;
 
 /** Base class for Scorers that score disjunctions. */
@@ -88,12 +89,7 @@ abstract class DisjunctionScorer extends Scorer {
       super(approximation);
       this.matchCost = matchCost;
       unverifiedMatches =
-          new PriorityQueue<DisiWrapper>(numClauses) {
-            @Override
-            protected boolean lessThan(DisiWrapper a, DisiWrapper b) {
-              return a.matchCost < b.matchCost;
-            }
-          };
+          PriorityQueue.usingComparator(numClauses, FloatComparator.comparing(d -> d.matchCost));
     }
 
     DisiWrapper getSubMatches() throws IOException {

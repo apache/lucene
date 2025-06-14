@@ -14,21 +14,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queries.spans;
+package org.apache.lucene.util;
 
-import org.apache.lucene.util.PriorityQueue;
+import java.util.Comparator;
 
-class SpanPositionQueue extends PriorityQueue<Spans> {
-  SpanPositionQueue(int maxSize) {
-    super(maxSize); // do not prepopulate
+/** A specialization of {@link Comparator} that compares {@code float} values */
+@FunctionalInterface
+public interface FloatComparator {
+
+  /** Represents a function that returns a {@code float} result */
+  @FunctionalInterface
+  interface ToFloatFunction<T> {
+    float applyAsFloat(T obj);
   }
 
-  @Override
-  protected boolean lessThan(Spans s1, Spans s2) {
-    int start1 = s1.startPosition();
-    int start2 = s2.startPosition();
-    return (start1 < start2)
-        ? true
-        : (start1 == start2) ? s1.endPosition() < s2.endPosition() : false;
+  static <T> Comparator<T> comparing(ToFloatFunction<T> function) {
+    return (a, b) -> Float.compare(function.applyAsFloat(a), function.applyAsFloat(b));
   }
+
+  /**
+   * Float-specialized {@link Comparator#compare}
+   *
+   * @see java.util.Comparator#compare
+   */
+  int compare(float f1, float f2);
 }

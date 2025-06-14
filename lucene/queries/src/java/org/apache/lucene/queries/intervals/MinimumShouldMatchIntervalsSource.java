@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -183,19 +184,15 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
       this.onMatch = onMatch;
 
       this.proximityQueue =
-          new PriorityQueue<IntervalIterator>(minShouldMatch) {
-            @Override
-            protected boolean lessThan(IntervalIterator a, IntervalIterator b) {
-              return a.start() < b.start() || (a.start() == b.start() && a.end() >= b.end());
-            }
-          };
+          PriorityQueue.usingComparator(
+              minShouldMatch,
+              Comparator.comparingInt(IntervalIterator::start)
+                  .thenComparing(Comparator.comparingInt(IntervalIterator::end).reversed()));
       this.backgroundQueue =
-          new PriorityQueue<IntervalIterator>(subs.size()) {
-            @Override
-            protected boolean lessThan(IntervalIterator a, IntervalIterator b) {
-              return a.end() < b.end() || (a.end() == b.end() && a.start() >= b.start());
-            }
-          };
+          PriorityQueue.usingComparator(
+              subs.size(),
+              Comparator.comparingInt(IntervalIterator::end)
+                  .thenComparing(Comparator.comparingInt(IntervalIterator::start).reversed()));
     }
 
     @Override

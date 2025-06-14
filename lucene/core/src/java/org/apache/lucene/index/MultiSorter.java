@@ -18,6 +18,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.index.MergeState.DocMap;
 import org.apache.lucene.search.Sort;
@@ -82,24 +83,22 @@ final class MultiSorter {
     int leafCount = readers.size();
 
     PriorityQueue<LeafAndDocID> queue =
-        new PriorityQueue<LeafAndDocID>(leafCount) {
-          @Override
-          public boolean lessThan(LeafAndDocID a, LeafAndDocID b) {
-            for (int i = 0; i < comparables.length; i++) {
-              int cmp = Long.compare(a.valuesAsComparableLongs[i], b.valuesAsComparableLongs[i]);
-              if (cmp != 0) {
-                return reverseMuls[i] * cmp < 0;
-              }
-            }
-
-            // tie-break by docID natural order:
-            if (a.readerIndex != b.readerIndex) {
-              return a.readerIndex < b.readerIndex;
-            } else {
-              return a.docID < b.docID;
-            }
-          }
-        };
+        PriorityQueue.usingComparator(
+            leafCount,
+            ((Comparator<LeafAndDocID>)
+                    (a, b) -> {
+                      for (int i = 0; i < comparables.length; i++) {
+                        int cmp =
+                            Long.compare(
+                                a.valuesAsComparableLongs[i], b.valuesAsComparableLongs[i]);
+                        if (cmp != 0) {
+                          return reverseMuls[i] * cmp;
+                        }
+                      }
+                      return 0;
+                    })
+                .thenComparingInt(ld -> ld.readerIndex)
+                .thenComparingInt(ld -> ld.docID));
 
     PackedLongValues.Builder[] builders = new PackedLongValues.Builder[leafCount];
 
