@@ -26,6 +26,8 @@ import org.apache.lucene.util.LongHeap;
 /**
  * Utility class for updating a big graph with smaller graphs. This is used during merging of
  * segments containing HNSW graphs.
+ *
+ * @lucene.internal
  */
 public class UpdateGraphsUtils {
 
