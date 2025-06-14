@@ -200,7 +200,7 @@ allprojects {
 
           standardOutput = wrapped
           errorOutput = wrapped
-          ignoreExitValue =  true
+          ignoreExitValue = true
         }
       }
 

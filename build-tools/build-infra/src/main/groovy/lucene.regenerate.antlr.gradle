@@ -53,7 +53,7 @@ configure(project(":lucene:expressions")) {
         main = "org.antlr.v4.Tool"
         classpath = configurations.antlr
 
-        ignoreExitValue =  false
+        ignoreExitValue = false
         args = [
           "-no-listener",
           "-visitor",
