@@ -46,6 +46,7 @@ tasks.withType(Jar).configureEach { task ->
     }
   }
 
+  def javaPluginExtension = project.getExtensions().getByType(JavaPluginExtension)
   def manifestAttrs = [
     "Extension-Name"        : implementationTitle,
 
@@ -58,8 +59,8 @@ tasks.withType(Jar).configureEach { task ->
     "Specification-Title"   : title,
 
     // Evaluate these properties lazily so that the defaults are applied properly.
-    "X-Compile-Source-JDK"  : "${-> project.sourceCompatibility}",
-    "X-Compile-Target-JDK"  : "${-> project.targetCompatibility}",
+    "X-Compile-Source-JDK"  : "${-> javaPluginExtension.getSourceCompatibility().toString() }",
+    "X-Compile-Target-JDK"  : "${-> javaPluginExtension.getTargetCompatibility().toString() }",
 
     "X-Build-JDK"           : "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})",
     "X-Build-OS"            : "${System.properties['os.name']} ${System.properties['os.arch']} ${System.properties['os.version']}"

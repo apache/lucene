@@ -68,6 +68,13 @@ class ChangesToHtmlTask extends DefaultTask {
   @InputFile
   def script
 
+  private ExecOperations execOperations;
+
+  @Inject
+  ChangesToHtmlTask(ExecOperations execOperations) {
+    this.execOperations = execOperations
+  }
+
   def loadVersions(File outfile) {
     // load version properties from DOAP RDF
     def prefix = "doap.${productName}".toString()
@@ -80,7 +87,7 @@ class ChangesToHtmlTask extends DefaultTask {
 
   def toHtml(File versionsFile) {
     def output = new ByteArrayOutputStream()
-    def result = project.exec {
+    def result = execOperations.exec {
       executable project.externalTool("perl")
       standardInput = changesFile.newInputStream()
       standardOutput = project.file("${targetDir.get().getAsFile()}/Changes.html").newOutputStream()
