@@ -39,7 +39,7 @@ Provider<String> gitRev = gitStatus.getting("git.commit")
 // Prepare the "source" distribution artifact. We use raw git export, no additional complexity needed.
 Provider<RegularFile> sourceTgzFile = project.layout.buildDirectory.file("packages/lucene-${version}-src.tgz")
 tasks.register("assembleSourceTgz", {
-  description "Assemble source Lucene artifact as a .tgz file."
+  description = "Assemble source Lucene artifact as a .tgz file."
 
   inputs.property("git-revision", gitRev)
 
@@ -124,7 +124,7 @@ tasks.register("prepareGitRev", {
 
 // Assemble everything needed in the release folder structure.
 tasks.register("assembleRelease", Sync, {
-  description "Assemble all Lucene artifacts for a release."
+  description = "Assemble all Lucene artifacts for a release."
 
   from(configurations.changesHtml, {
     into "changes"

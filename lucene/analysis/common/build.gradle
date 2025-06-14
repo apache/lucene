@@ -88,7 +88,7 @@ def cloningTasks = dictionaryProjects.collect { repoSpec ->
         logger.lifecycle("Executing git " + cmdArgs.join(" "))
         execOps.exec {
           executable project.externalTool("git")
-          ignoreExitValue false
+          ignoreExitValue =  false
           workingDir dotGitPath.getParent().toString()
           args = cmdArgs
 

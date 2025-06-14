@@ -107,8 +107,8 @@ configure(project(":lucene:core")) {
   }
 
   task moman()  {
-    description "Regenerate Moman-based sources."
-    group "generation"
+    description = "Regenerate Moman-based sources."
+    group =  "generation"
 
     def extraConfig = [
       andThenTasks: [

@@ -254,12 +254,12 @@ configure([
 
       // Copy the description and group from the source task.
       project.afterEvaluate {
-        conditionalTask.group sourceTask.group
-        conditionalTask.description sourceTask.description + " (if sources changed)"
+        conditionalTask.group = sourceTask.group
+        conditionalTask.description = sourceTask.description + " (if sources changed)"
 
         // Hide low-level tasks from help.
         sourceTask.group = null
-        sourceTask.description sourceTask.description + " (low-level)"
+        sourceTask.description = sourceTask.description + " (low-level)"
       }
 
       // Set conditional execution only if checksum mismatch occurred.

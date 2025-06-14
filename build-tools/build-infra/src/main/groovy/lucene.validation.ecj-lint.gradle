@@ -179,8 +179,8 @@ def lintTasks = sourceSets.collect { SourceSet sourceSet ->
 }
 
 def ecjLint = tasks.register("ecjLint", {
-  description "Lint Java sources using ECJ."
-  group "Verification"
+  description = "Lint Java sources using ECJ."
+  group =  "Verification"
 
   dependsOn lintTasks
 })

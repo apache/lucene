@@ -35,8 +35,8 @@ def skeletonNoBufferExpansion = file("${resources}/skeleton.disable.buffer.expan
 
 configure(project(":lucene:core")) {
   task generateStandardTokenizerInternal(type: JFlexTask) {
-    description "Regenerate StandardTokenizerImpl.java"
-    group "generation"
+    description = "Regenerate StandardTokenizerImpl.java"
+    group =  "generation"
 
     jflexFile = file('src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.jflex')
     skeleton = skeletonNoBufferExpansion
@@ -68,8 +68,8 @@ configure(project(":lucene:analysis:common")) {
     def jflexMacro = file("src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex")
     def tldList = file("src/test/org/apache/lucene/analysis/email/TLDs.txt")
 
-    description "Regenerate top-level domain jflex macros and tests"
-    group "generation"
+    description = "Regenerate top-level domain jflex macros and tests"
+    group =  "generation"
 
     dependsOn { sourceSets.tools.runtimeClasspath }
 
@@ -84,7 +84,7 @@ configure(project(":lucene:analysis:common")) {
         main = "org.apache.lucene.analysis.standard.GenerateJflexTLDMacros"
         classpath = sourceSets.tools.runtimeClasspath
 
-        ignoreExitValue false
+        ignoreExitValue =  false
         args = [
           tldZones,
           tmpJflexMacro,
@@ -115,24 +115,24 @@ configure(project(":lucene:analysis:common")) {
   }
 
   task generateWikipediaTokenizerInternal(type: JFlexTask) {
-    description "Regenerate WikipediaTokenizerImpl.java"
-    group "generation"
+    description = "Regenerate WikipediaTokenizerImpl.java"
+    group =  "generation"
 
     jflexFile = file('src/java/org/apache/lucene/analysis/wikipedia/WikipediaTokenizerImpl.jflex')
     skeleton = skeletonDefault
   }
 
   task generateClassicTokenizerInternal(type: JFlexTask) {
-    description "Regenerate ClassicTokenizerImpl.java"
-    group "generation"
+    description = "Regenerate ClassicTokenizerImpl.java"
+    group =  "generation"
 
     jflexFile = file('src/java/org/apache/lucene/analysis/classic/ClassicTokenizerImpl.jflex')
     skeleton = skeletonDefault
   }
 
   task generateUAX29URLEmailTokenizerInternal(type: JFlexTask) {
-    description "Regenerate UAX29URLEmailTokenizerImpl.java"
-    group "generation"
+    description = "Regenerate UAX29URLEmailTokenizerImpl.java"
+    group =  "generation"
 
     jflexFile = file('src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.jflex')
     skeleton = skeletonNoBufferExpansion
@@ -201,8 +201,8 @@ configure(project(":lucene:analysis:common")) {
   }
 
   task generateHTMLStripCharFilterInternal(type: JFlexTask) {
-    description "Regenerate HTMLStripCharFilter.java"
-    group "generation"
+    description = "Regenerate HTMLStripCharFilter.java"
+    group =  "generation"
 
     // Add included files as inputs.
     inputs.file file('src/java/org/apache/lucene/analysis/charfilter/HTMLCharacterEntities.jflex')

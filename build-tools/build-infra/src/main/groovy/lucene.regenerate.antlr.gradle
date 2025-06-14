@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import java.nio.file.Files
 
 configure(project(":lucene:expressions")) {
   configurations {
@@ -54,7 +53,7 @@ configure(project(":lucene:expressions")) {
         main = "org.antlr.v4.Tool"
         classpath = configurations.antlr
 
-        ignoreExitValue false
+        ignoreExitValue =  false
         args = [
           "-no-listener",
           "-visitor",
