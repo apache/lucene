@@ -20,6 +20,9 @@ New Features
 * GITHUB#14404: Introducing DocValuesMultiRangeQuery.SortedNumericStabbingBuilder into sandbox.
   (Mikhail Khludnev)
 
+* GITHUB#14776: Add a Rescorer that uses values from provided DoubleValuesSource to re-score
+  first pass hits. (Vigya Sharma)
+
 Improvements
 ---------------------
 * GITHUB#14458: Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
