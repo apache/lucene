@@ -40,6 +40,8 @@ configure(project(":lucene:core")) {
           // for compilation we patch the incubator packages into java.base, this has no effect on resulting class files:
           "--add-exports", "java.base/jdk.incubator.vector=ALL-UNNAMED",
         ]
+        // hack because -Xlint:-options does not work for all options (regression in JDK 25+):
+        options.compilerArgs.remove("-Werror")
 
         def argsProvider = objects.newInstance(CompilerArgsProvider)
         argsProvider.apiJarFile.set(apijar)
