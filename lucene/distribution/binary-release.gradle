@@ -81,7 +81,6 @@ configure(project(":lucene:distribution")) {
 
   task assembleBinaryDirForTests(type: Sync) {
     description = "Assemble a subset of the binary Lucene distribution as an expanded directory for tests."
-
     destinationDir = file("${packageBaseName}-itests")
   }
 
@@ -97,7 +96,7 @@ configure(project(":lucene:distribution")) {
   Closure<Void> distributionBinaryContent = { AbstractCopyTask task ->
     // Manually correct posix permissions (matters when assembling archives on Windows).
     filesMatching(["**/*.sh", "**/*.bat"]) { copy ->
-      copy.setMode(0755)
+      copy.permissions.unix("755")
     }
 
     // Attach binary release - only files.
