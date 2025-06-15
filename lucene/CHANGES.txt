@@ -95,6 +95,8 @@ New Features
 * GITHUB#14776: Add a Rescorer that uses values from provided DoubleValuesSource to re-score
   first pass hits. (Vigya Sharma)
 
+* GITHUB#14708: Add a DoubleValuesSource for full precision vector similarity scores. (Vigya Sharma)
+
 Improvements
 ---------------------
 * GITHUB#14458: Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
