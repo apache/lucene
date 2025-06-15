@@ -189,7 +189,6 @@ Other
 
 * GITHUB#14784: Make pack methods public for BigIntegerPoint and HalfFloatPoint. (Prudhvi Godithi)
 
-
 ======================= Lucene 10.2.2 =======================
 
 Bug Fixes
