@@ -30,14 +30,15 @@ def resources = rootProject.file("gradle/regenerate/icu")
  * download and compile a matching icu4c version automatically.
  */
 
-// Configure different icu4j dependencies.
-configure(rootProject) {
-  configurations {
+
+def setupIcuDependencies = { proj ->
+  // Configure different icu4j dependencies.
+  proj.configurations {
     icu_current
     groovy
   }
 
-  dependencies {
+  proj.dependencies {
     icu_current deps.icu4j
     // Use a newer groovy that doesn't have illegal reflective accesses.
     groovy deps.groovy
@@ -47,10 +48,11 @@ configure(rootProject) {
 // This retrieves the module name/ version for ICU from the given
 // configuration (if present).
 def icuVersionFromConfiguration(Configuration configuration) {
-  return configuration.resolvedConfiguration.getFirstLevelModuleDependencies({ dep -> dep.group.startsWith("com.ibm.icu") }).collect { dep -> dep.module.id }.join(", ")
+  return configuration.resolvedConfiguration.getFirstLevelModuleDependencies().findAll { dep -> dep.moduleGroup.startsWith("com.ibm.icu") }.collect { dep -> dep.module.id   }.join(", ")
 }
 
 configure(project(":lucene:analysis:icu")) {
+  setupIcuDependencies(project)
   def utr30DataDir = file("src/data/utr30")
 
   def icuBuildDir = file("${buildDir}/icu")
@@ -74,7 +76,7 @@ configure(project(":lucene:analysis:icu")) {
   def icuCompileTask = Os.isFamily(Os.FAMILY_WINDOWS) ? "compileIcuWindows" : "compileIcuLinux"
 
   task genUtr30DataFilesInternal() {
-    def icuConfig = rootProject.configurations.icu_current
+    def icuConfig = configurations.icu_current
 
     dependsOn icuConfig
     dependsOn icuCompileTask
@@ -127,7 +129,7 @@ configure(project(":lucene:analysis:icu")) {
   }
 
   task genRbbiInternal() {
-    def icuConfig = rootProject.configurations.icu_current
+    def icuConfig = configurations.icu_current
 
     dependsOn icuConfig
 
@@ -251,8 +253,11 @@ configure(project(":lucene:analysis:icu")) {
 
 // Regenerates UnicodeProps.java
 configure(project(":lucene:analysis:common")) {
+  setupIcuDependencies(project)
   task generateUnicodePropsInternal() {
-    def icuConfig = rootProject.configurations.icu_current
+    def icuConfig = configurations.icu_current
+    def groovyConfig = configurations.groovy
+
     def outputFile = file("src/java/org/apache/lucene/analysis/util/UnicodeProps.java")
 
     description = "Regenerate ${outputFile} (with ${icuConfig.name})"
@@ -266,7 +271,7 @@ configure(project(":lucene:analysis:common")) {
     doFirst {
       project.javaexec {
         main "groovy.lang.GroovyShell"
-        classpath icuConfig, rootProject.configurations.groovy
+        classpath icuConfig, groovyConfig
 
         args = [
           "--encoding",
@@ -289,8 +294,10 @@ configure(project(":lucene:analysis:common")) {
 
 // Regenerates CaseFolding.java
 configure(project(":lucene:core")) {
+  setupIcuDependencies(project)
   task generateUnicodePropsInternal() {
-    def icuConfig = rootProject.configurations.icu_current
+    def icuConfig = configurations.icu_current
+    def groovyConfig = configurations.groovy
     def outputFile = file("src/java/org/apache/lucene/util/automaton/CaseFolding.java")
 
     description = "Regenerate ${outputFile} (with ${icuConfig.name})"
@@ -304,7 +311,7 @@ configure(project(":lucene:core")) {
     doFirst {
       project.javaexec {
         main "groovy.lang.GroovyShell"
-        classpath icuConfig, rootProject.configurations.groovy
+        classpath icuConfig, groovyConfig
 
         args = [
           "--encoding",
