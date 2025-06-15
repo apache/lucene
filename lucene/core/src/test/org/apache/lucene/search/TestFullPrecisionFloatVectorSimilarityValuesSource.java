@@ -41,7 +41,7 @@ import org.apache.lucene.util.TestVectorUtil;
 import org.junit.Before;
 import org.junit.Test;
 
-public class TestQuantizedVectorSimilarityValueSource extends LuceneTestCase {
+public class TestFullPrecisionFloatVectorSimilarityValuesSource extends LuceneTestCase {
 
   private Codec savedCodec;
 
