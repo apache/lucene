@@ -96,7 +96,9 @@ configure(project(":lucene:distribution")) {
   Closure<Void> distributionBinaryContent = { AbstractCopyTask task ->
     // Manually correct posix permissions (matters when assembling archives on Windows).
     filesMatching(["**/*.sh", "**/*.bat"]) { copy ->
-      copy.permissions.unix("755")
+      copy.permissions {
+        unix("755")
+      }
     }
 
     // Attach binary release - only files.
