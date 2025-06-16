@@ -196,5 +196,4 @@ def find_current_version():
 
 if __name__ == "__main__":
   print("This is only a support module, it cannot be run")
-  update_base_version(Version(10, 1, 1, 0))
   sys.exit(1)
