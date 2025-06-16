@@ -17,7 +17,7 @@
 
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionValueSource
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin
-import com.carrotsearch.gradle.buildinfra.environment.GitInfoPlugin
+import org.apache.lucene.gradle.plugins.gitinfo.GitInfoPlugin
 import com.carrotsearch.randomizedtesting.SeedUtils
 
 import java.time.ZonedDateTime

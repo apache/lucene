@@ -32,9 +32,14 @@ configure(project(":lucene:core")) {
       tasks.named("compileMain${jdkVersion}Java").configure {
         def apijar = apijars.file("jdk${jdkVersion}.apijar")
 
+        // TODO: this depends on the order of argument configuration...
         int releaseIndex = options.compilerArgs.indexOf("--release")
         options.compilerArgs.removeAt(releaseIndex)
         options.compilerArgs.removeAt(releaseIndex)
+
+        // Remove conflicting options for the linter. #14782
+        options.compilerArgs.removeAll("-Xlint:options")
+
         options.compilerArgs += [
           "-Xlint:-options",
           "--add-exports",
