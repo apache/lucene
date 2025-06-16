@@ -21,9 +21,9 @@ import org.apache.lucene.queryparser.flexible.core.parser.EscapeQuerySyntax;
 /** This interface should be implemented by {@link QueryNode} that holds an arbitrary value. */
 public interface ValueQueryNode<T extends Object> extends QueryNode {
 
-  public void setValue(T value);
+  void setValue(T value);
 
-  public T getValue();
+  T getValue();
 
   /**
    * This method is used to get the value converted to {@link String} and escaped using the given
@@ -42,5 +42,5 @@ public interface ValueQueryNode<T extends Object> extends QueryNode {
    * @param escaper the {@link EscapeQuerySyntax} used to escape the value {@link String}
    * @return the value converted to {@link String} and escaped
    */
-  public CharSequence getTermEscaped(EscapeQuerySyntax escaper);
+  CharSequence getTermEscaped(EscapeQuerySyntax escaper);
 }

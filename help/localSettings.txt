@@ -1,8 +1,39 @@
-Local developer settings
-========================
+Local gradle settings
+=====================
 
 The first invocation of any task in Lucene's gradle build will generate
 and save a project-local 'gradle.properties' file from a template,
-with some default settings which you can modify.
+with some default gradle JVM settings, which you can modify to your needs.
 
 See your 'gradle.properties' file for more details of those settings.
+
+
+Build options
+=============
+
+There are also various options that the Lucene build uses, which can affect
+how tests are run or enable additional features (for example enable code
+coverage or profiling).
+
+To see the current values of all these options, run:
+
+./gradlew buildOptions
+
+this prints all build options for each module. You can also scope
+this task to just one module, for example:
+
+./gradlew -p lucene/core buildOptions
+
+The output of this task shows all options, their current values
+and their current value's "source". All build option values can be
+overridden by, in order of priority:
+
+ * cli parameters to gradlew (system properties): -DoptionKey=value
+ * cli parameters to gradlew (gradle properties): -PoptionKey=value
+ * env variables: optionKey=value ./gradlew ...
+ * property file (local for you, non-versioned!): build-options.local.properties
+ * property file (versioned): build-options.properties
+
+If you'd like to tweak some of the build options permanently, use the
+build-options.local.properties file. For temporary overrides, use
+cli parameters (preferably gradle parameters -Pxyz=value).

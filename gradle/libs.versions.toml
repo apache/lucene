@@ -26,8 +26,6 @@ icu4j = "77.1"
 javacc = "7.0.13"
 # analysis/ tokenizer grammars
 jflex = "1.9.1"
-# gradle checkWorkingCopy support
-jgit = "7.2.1.202505142326-r"
 # benchmark-jmh/ microbenchmarks
 jmh = "1.37"
 # spatial-extras/ support
@@ -79,7 +77,6 @@ hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
 icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
 javacc = { module = "net.java.dev.javacc:javacc", version.ref = "javacc" }
 jflex = { module = "de.jflex:jflex", version.ref = "jflex" }
-jgit = { module = "org.eclipse.jgit:org.eclipse.jgit", version.ref = "jgit" }
 jmh-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jts = { module = "org.locationtech.jts:jts-core", version.ref = "jts" }
@@ -99,11 +96,11 @@ zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
 
 [plugins]
 benmanes-versions = "com.github.ben-manes.versions:0.52.0"
-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.0.9"
+carrotsearch-buildinfra = "com.carrotsearch.gradle.buildinfra:0.0.12"
 errorprone = "net.ltgt.errorprone:4.2.0"
 forbiddenapis = "de.thetaphi.forbiddenapis:3.9"
 jacocolog = "org.barfuin.gradle.jacocolog:3.1.0"
-owasp-dependencycheck = "org.owasp.dependencycheck:12.1.1"
+owasp-dependencycheck = "org.owasp.dependencycheck:12.1.2"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
 spotless = "com.diffplug.spotless:7.0.4"
 undercouch-download = "de.undercouch.download:5.6.0"

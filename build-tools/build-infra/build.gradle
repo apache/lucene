@@ -17,24 +17,18 @@
 
 plugins {
   id "java-gradle-plugin"
+  id "groovy-gradle-plugin"
+
   alias(deps.plugins.spotless) apply false
   alias(deps.plugins.forbiddenapis) apply false
 }
 
 repositories {
   mavenCentral()
+  gradlePluginPortal()
 }
 
 group = "org.apache"
-
-// Make sure the build environment is consistent.
-apply from: file('../../gradle/conventions.gradle')
-apply from: file('../../gradle/validation/check-environment.gradle')
-
-// Add spotless/ tidy.
-tasks.register("checkJdkInternalsExportedToGradle") {}
-apply from: file('../../gradle/validation/spotless.gradle')
-apply from: file('../../gradle/validation/forbidden-apis.gradle')
 
 java {
   sourceCompatibility = JavaVersion.toVersion(deps.versions.minJava.get())
@@ -43,11 +37,20 @@ java {
 
 gradlePlugin {
   automatedPublishing = false
+}
 
-  plugins {
-    buildInfra {
-      id = 'lucene.build-infra'
-      implementationClass = 'org.apache.lucene.gradle.buildinfra.BuildInfraPlugin'
+// Convert a plugin dependency to a regular dependency so that we can
+// use [plugins] section in the top-level toml but declare regular
+// project dependencies here.
+static Provider<String> plugin(Provider<PluginDependency> plugin) {
+  return plugin.map {
+    if (it.pluginId == "de.thetaphi.forbiddenapis") {
+      // Uwe's forbiddenapis is on Maven Central, directly.
+      return "de.thetaphi:forbiddenapis:${it.version}".toString()
+    } else {
+      // maven artifact pattern for gradle's plugin repositories.
+      return "${it.pluginId}:${it.pluginId}.gradle.plugin:${it.version}".toString()
+      // return "${it.pluginId}:${it.pluginId.replaceFirst(".*\\.", "")}-plugin-gradle:${it.version}".toString()
     }
   }
 }
@@ -56,11 +59,32 @@ dependencies {
   implementation gradleApi()
   implementation localGroovy()
   implementation deps.commons.codec
+  implementation deps.randomizedtesting.runner
+  implementation deps.rat
+  implementation deps.zstd
+
+  implementation deps.flexmark.core
+  implementation deps.flexmark.ext.abbreviation
+  implementation deps.flexmark.ext.attributes
+  implementation deps.flexmark.ext.autolink
+  implementation deps.flexmark.ext.tables
+
+  implementation plugin(deps.plugins.carrotsearch.buildinfra)
+  implementation plugin(deps.plugins.forbiddenapis)
+  implementation plugin(deps.plugins.spotless)
+  implementation plugin(deps.plugins.owasp.dependencycheck)
+  implementation plugin(deps.plugins.undercouch.download)
+  implementation plugin(deps.plugins.errorprone)
 }
 
+def hasJavaFlightRecorder = ModuleLayer.boot().findModule('jdk.jfr').map{ otherModule ->
+  this.getClass().module.canRead(otherModule)
+}.orElse(false)
 if (!hasJavaFlightRecorder) {
   logger.warn('Module jdk.jfr is not available; skipping compilation of Java Flight Recorder support.')
   tasks.named('compileJava').configure {
     exclude('**/ProfileResults.java')
   }
 }
+
+tasks.register("tidy", {})

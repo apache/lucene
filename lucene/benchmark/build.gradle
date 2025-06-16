@@ -21,7 +21,7 @@ plugins {
 
 description = 'Lucene benchmarking module'
 
-dependencies {  
+dependencies {
   moduleImplementation project(':lucene:core')
 
   moduleImplementation project(':lucene:analysis:common')
@@ -56,20 +56,32 @@ sourceSets {
   test.resources.srcDirs += ['conf']
 }
 
-task run(type: JavaExec) {
-  description "Run a perf test (optional: -PtaskAlg=conf/your-algorithm-file -PmaxHeapSize=1G). Before running this, you need to download the dataset the benchmark run against (e.g., by getReuters task). See dataset download tasks for more details."
-  group "Utility launchers"
+def taskAlgOption = buildOptions.addFileOption("taskAlg", "Path to the task file for the 'run' task.",
+    layout.projectDirectory.file("conf/micro-standard.alg"))
+
+def heapSizeOption = buildOptions.addOption("maxHeapSize", "Heap size for the 'run' task.", "1G")
+
+def outputFileOption = buildOptions.addFileOption("standardOutput", "Path to the output file for the 'run' task.")
+
+tasks.register("run", JavaExec, {
+  description = "Run a perf test (optional: -PtaskAlg=conf/your-algorithm-file -PmaxHeapSize=1G). Before" +
+      " running this, you need to download the dataset the benchmark runs against (e.g., by getReuters" +
+      " task). See dataset download tasks for more details."
+  group = "Utility launchers"
+
   mainClass = 'org.apache.lucene.benchmark.byTask.Benchmark'
 
   classpath sourceSets.main.runtimeClasspath
+
   // allow these to be specified on the CLI via -PtaskAlg=  for example
-  args = [propertyOrDefault('taskAlg', 'conf/micro-standard.alg')]
+  args = [
+    taskAlgOption.get().asFile.absolutePath
+  ]
 
-  maxHeapSize = propertyOrDefault('maxHeapSize', '1G')
+  maxHeapSize = heapSizeOption.get()
 
-  String stdOutStr = propertyOrDefault('standardOutput', null)
-  if (stdOutStr != null) {
-    standardOutput = new File(stdOutStr).newOutputStream()
+  if (outputFileOption.isPresent()) {
+    standardOutput = outputFileOption.get().asFile.newOutputStream()
   }
 
   debugOptions {
@@ -77,4 +89,4 @@ task run(type: JavaExec) {
     port = 5005
     suspend = true
   }
-}
+})

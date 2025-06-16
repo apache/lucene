@@ -1,0 +1,126 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+import de.undercouch.gradle.tasks.download.Download
+import org.apache.tools.ant.taskdefs.condition.Os
+
+def resources = rootProject.file("gradle/regenerate/snowball")
+
+configure(project(":lucene:analysis:common")) {
+  ext {
+    // git commit hash of source code https://github.com/snowballstem/snowball/
+    snowballStemmerCommit = "34f3612e5e8c48975243bc2e87561abdac5aa9bb"
+    // git commit hash of stopwords https://github.com/snowballstem/snowball-website
+    snowballWebsiteCommit = "424fd1f75044160bb4a92f1daf08cce618459374"
+
+    snowballWorkDir    = file("${buildDir}/snowball")
+
+    snowballStemmerDir = file("${snowballWorkDir}/stemmers-${snowballStemmerCommit}")
+    snowballWebsiteDir = file("${snowballWorkDir}/website-${snowballWebsiteCommit}")
+
+    snowballScript     = file("${resources}/snowball.sh")
+  }
+
+  def unpackFromZip = { zipFile, targetDir ->
+    project.sync {
+      from(zipTree(zipFile), {
+        eachFile { fcd ->
+          fcd.relativePath = new RelativePath(true, fcd.relativePath.segments.drop(1))
+        }
+      })
+      into targetDir
+    }
+  }
+
+  // downloads snowball stemmers (or use cached copy)
+  task downloadSnowballStemmers(type: Download) {
+    src "https://github.com/snowballstem/snowball/archive/${snowballStemmerCommit}.zip"
+    dest file("${snowballStemmerDir}.zip")
+    overwrite false
+    tempAndMove true
+
+    doLast {
+      unpackFromZip(dest, snowballStemmerDir)
+    }
+  }
+
+  // downloads snowball website (or use cached copy)
+  task downloadSnowballWebsite(type: Download) {
+    src "https://github.com/snowballstem/snowball-website/archive/${snowballWebsiteCommit}.zip"
+    def snowballWebsiteZip = file("${snowballWebsiteDir}.zip")
+    dest snowballWebsiteZip
+    overwrite false
+    tempAndMove true
+
+    doLast {
+      unpackFromZip(snowballWebsiteZip, snowballWebsiteDir)
+    }
+  }
+
+  // runs shell script to regenerate stemmers, base stemming subclasses, test data, and stopwords.
+  task snowballInternal() {
+    description = "Regenerate snowball stemmers."
+    group = "generation"
+
+    inputs.files fileTree(
+        dir: "src/java/org/tartarus/snowball",
+        include: [
+          "Among.java",
+          "SnowballStemmer.java",
+          "SnowballProgram.java",
+          "ext/*Stemmer.java"
+        ])
+
+    inputs.files fileTree(
+        dir: "src/resources/org/apache/lucene/analysis/snowball",
+        include: "*_stop.txt")
+
+    // Don't even bother adding dependencies on Windows.
+    if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+      doFirst {
+        // Just emit a big fat error message. Fail the build so that checksums are not regenerated.
+        throw new GradleException("Snowball generation does not work on Windows (bash must be available).")
+      }
+    } else {
+      dependsOn downloadSnowballStemmers
+      dependsOn downloadSnowballWebsite
+
+      doFirst {
+        project.quietExec {
+          executable "bash"
+          args = [
+            snowballScript,
+            snowballStemmerDir,
+            snowballWebsiteDir,
+            projectDir
+          ]
+        }
+      }
+    }
+  }
+
+  regenerate.dependsOn wrapWithPersistentChecksums(snowballInternal, [
+    andThenTasks: [
+      "spotlessJava",
+      "spotlessJavaApply"
+    ],
+    ignoreWithSource: [
+      downloadSnowballStemmers,
+      downloadSnowballWebsite
+    ],
+    mustRunBefore: ["compileJava"]
+  ])
+}

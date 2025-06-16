@@ -97,9 +97,9 @@ gradlew -p lucene/core test --tests TestDemo -Ptests.iters=5
 Tests tasks will be (by default) re-executed on each invocation because
 we pick a random global tests.seed and because we want them to (force
 the test task to run). If you want to make the 'tests' task obey up-to-date
-gradle rules, fix the seed and turn off up to date trigger:
+gradle rules, fix the seed and force rerunning:
 
-gradlew -p lucene/core test -Ptests.seed=deadbeef -Ptests.neverUpToDate=false
+gradlew -p lucene/core test -Ptests.seed=deadbeef -Ptests.rerun=true
 
 These properties can be set in your local gradle.properties. To force re-execution 
 of tests, even for the same master seed, apply cleanTest task:
@@ -137,9 +137,9 @@ Larger heap size
 --------------------------
 
 By default tests run with a 512 MB max heap.  But some tests (monster/nightly)
-need more heap.  Use "-Dtests.heapsize" for this:
+need more heap.  Use "-Ptests.heapsize" for this:
 
-  gradlew -p lucene/core test --tests "Test2BFST" -Dtests.heapsize=32g
+  gradlew -p lucene/core test --tests "Test2BFST" -Ptests.heapsize=32g
 
 
 Run GUI tests headlessly with Xvfb (Linux only)

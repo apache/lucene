@@ -39,18 +39,18 @@ configure(project(":lucene:distribution")) {
     }
   }
 
-  def cleanBuildTask = task cleanMavenBuildRepository(type: Delete) {
+  def cleanBuildTask = tasks.register("cleanMavenBuildRepository", Delete, {
     delete mavenRepositoryDir
-  }
+  })
 
   configure(rootProject.ext.mavenProjects) { Project project ->
     // Clean the build repository prior to publishing anything. Ensures we don't
     // have multiple artifacts there.
-    tasks.matching { it.name ==~ /publish.+ToBuildRepository/ }.all {
+    tasks.matching { it.name ==~ /publish.+ToBuildRepository/ }.configureEach {
       dependsOn cleanBuildTask
     }
 
-    plugins.withType(PublishingPlugin) {
+    plugins.withType(PublishingPlugin).configureEach {
       publishing {
         repositories {
           maven {

@@ -131,6 +131,9 @@ public class LRUQueryCache implements QueryCache, Accountable {
     }
     this.skipCacheFactor = skipCacheFactor;
 
+    // Note that reads on this LinkedHashMap trigger modifications on the linked list under the
+    // hood, so reading from multiple threads is not thread-safe. This is why it is wrapped in a
+    // Collections#synchronizedMap.
     uniqueQueries = Collections.synchronizedMap(new LinkedHashMap<>(16, 0.75f, true));
     mostRecentlyUsedQueries = uniqueQueries.keySet();
     cache = new IdentityHashMap<>();

@@ -144,7 +144,7 @@ def prepare(root: str, version: str, pause_before_sign: bool, gpg_key_id: str | 
         os.environ["ORG_GRADLE_PROJECT_signingPassword"] = gpg_password
     else:
       print("  Signing method is gpg tool")
-      cmd += ' -PuseGpg -Psigning.gnupg.keyName="%s"' % gpg_key_id
+      cmd += ' -PuseGpg=true -Psigning.gnupg.keyName="%s"' % gpg_key_id
       if gpg_home is not None:
         cmd += ' -Psigning.gnupg.homeDir="%s"' % gpg_home
 

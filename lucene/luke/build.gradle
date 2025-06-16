@@ -16,8 +16,6 @@
  */
 import org.apache.tools.ant.filters.*
 
-apply plugin: 'java-library'
-
 description = 'Luke - Lucene Toolbox'
 
 ext {
@@ -49,14 +47,14 @@ dependencies {
 }
 
 // Configure main class name for all JARs.
-tasks.withType(Jar) {
+tasks.withType(Jar).configureEach {
   manifest {
     attributes("Main-Class": "org.apache.lucene.luke.app.desktop.LukeMain")
   }
 }
 
 // Configure the main class and version attribute for the module system.
-tasks.compileJava.configure {
+tasks.named("compileJava").configure {
   options.javaModuleMainClass.set("org.apache.lucene.luke.app.desktop.LukeMain")
 }
 
@@ -69,10 +67,12 @@ tasks.withType(ProcessResources).configureEach { task ->
 }
 
 // Configure "stand-alone" JAR with proper dependency classpath links.
-task standaloneJar(type: Jar) {
+String standaloneJarName = "${project.base.archivesName.get()}-${project.version}-standalone.jar"
+
+tasks.register("standaloneJar", Jar, {
   dependsOn classes
 
-  archiveFileName = "${project.base.archivesName.get()}-${project.version}-standalone.jar"
+  archiveFileName = standaloneJarName
 
   from(sourceSets.main.output)
 
@@ -85,17 +85,12 @@ task standaloneJar(type: Jar) {
       }.join(' '))
     }
   }
-}
+})
 
-task standaloneAssemble(type: Sync) {
+def standaloneAssembleTask = tasks.register("standaloneAssemble", Sync, {
   def antHelper = new org.apache.tools.ant.Project()
-  afterEvaluate {
-    def substituteProperties = [
-        "required.java.version": project.java.targetCompatibility,
-        "luke.cmd": "${standaloneJar.archiveFileName.get()}"
-    ]
-    substituteProperties.each { k, v -> antHelper.setProperty(k.toString(), v.toString()) }
-  }
+  antHelper.setProperty("required.java.version", libs.versions.minJava.get())
+  antHelper.setProperty("luke.cmd", standaloneJarName)
 
   from standaloneJar
   from configurations.runtimeClasspath
@@ -110,34 +105,38 @@ task standaloneAssemble(type: Sync) {
   into standaloneDistDir
 
   doLast {
+
     logger.lifecycle(
         """
 Standalone Luke distribution assembled. You can run it with:
-java -jar "${standaloneDistDir}/${standaloneJar.archiveFileName.get()}"
+java -jar "${standaloneDistDir}/${standaloneJarName}"
 java --module-path "${standaloneDistDir}" -m org.apache.lucene.luke
         """
-    )
+        )
   }
-}
+})
 
 // Attach standalone distribution assembly to main assembly.
-assemble.dependsOn standaloneAssemble
+tasks.named("assemble").configure {
+  dependsOn standaloneAssembleTask
+}
 
 // Create a standalone package bundle.
-task standalonePackage(type: Tar) {
-  from standaloneAssemble
+tasks.register("standalonePackage", Tar, {
+  from standaloneAssembleTask
 
   into "${project.base.archivesName.get()}-${project.version}/"
 
   compression = Compression.GZIP
   archiveFileName = "${project.base.archivesName.get()}-${project.version}-standalone.tgz"
-}
+})
 
 // Utility to launch Luke (and fork it from the build).
-task run() {
-  dependsOn standaloneAssemble
-  description "Launches (spawns) Luke directly from the build process."
-  group "Utility launchers"
+tasks.register("run", {
+  description = "Launches (spawns) Luke directly from the build process."
+  group = "Utility launchers"
+
+  dependsOn standaloneAssembleTask
 
   doFirst {
     logger.lifecycle("Launching Luke ${project.version} right now...")
@@ -145,10 +144,9 @@ task run() {
         executable: rootProject.ext.runtimeJavaExecutable,
         spawn: true,
         vmlauncher: true
-    ) {
-      arg(value: '-jar')
-      arg(value: file("${standaloneDistDir}/${standaloneJar.archiveFileName.get()}").absolutePath)
-    }
+        ) {
+          arg(value: '-jar')
+          arg(value: file("${standaloneDistDir}/${standaloneJar.archiveFileName.get()}").absolutePath)
+        }
   }
-}
-
+})

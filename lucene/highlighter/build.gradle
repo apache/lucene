@@ -16,7 +16,7 @@
  */
 
 
-apply plugin: 'java-library'
+
 
 description = 'Highlights search keywords in results'
 

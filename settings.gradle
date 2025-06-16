@@ -26,8 +26,8 @@ pluginManagement {
 
 plugins {
     id "org.gradle.toolchains.foojay-resolver-convention" version "1.0.0"
-    id 'com.gradle.develocity' version '3.19.2'
-    id 'com.gradle.common-custom-user-data-gradle-plugin' version '2.2.1'
+    id 'com.gradle.develocity' version '3.19.2' apply false
+    id 'com.gradle.common-custom-user-data-gradle-plugin' version '2.3' apply false
 }
 
 dependencyResolutionManagement {
@@ -38,13 +38,15 @@ dependencyResolutionManagement {
     }
 }
 
-if (Boolean.parseBoolean(providers.gradleProperty("gradle.ge").orElse("true").get())) {
-    apply from: file('gradle/ge.gradle')
+boolean isCIBuild = System.getenv().keySet().find { it ==~ /(?i)((JENKINS|HUDSON)(_\w+)?|CI)/ } != null
+boolean enableDevelocity = Boolean.parseBoolean(providers.gradleProperty("gradle.ge").orElse("false").get()) || isCIBuild
+if (enableDevelocity) {
+    apply plugin: "com.gradle.develocity"
+    apply plugin: "com.gradle.common-custom-user-data-gradle-plugin"
+    apply from: file('gradle/develocity.gradle')
 }
 
 rootProject.name = "lucene-root"
-
-includeBuild("build-tools/missing-doclet")
 
 include "lucene:analysis:common"
 include "lucene:analysis:icu"
@@ -86,3 +88,10 @@ include "lucene:spatial-extras"
 include "lucene:spatial-test-fixtures"
 include "lucene:suggest"
 include "lucene:test-framework"
+
+include "lucene:build-tools:missing-doclet"
+include "lucene:build-tools:build-infra-shadow"
+
+// tweak the physical path for build-tools.
+project(":lucene:build-tools:missing-doclet").projectDir = file("build-tools/missing-doclet")
+project(":lucene:build-tools:build-infra-shadow").projectDir = file("build-tools/build-infra-shadow")
