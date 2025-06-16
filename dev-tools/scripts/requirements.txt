@@ -16,3 +16,5 @@ jira==3.8.0
 basedpyright==1.29.2
 # linting in "make lint"
 ruff==0.11.12
+# reading Lucene version from build-options.properties
+javaproperties==0.8.2

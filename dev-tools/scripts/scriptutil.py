@@ -20,6 +20,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+import javaproperties
 from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
@@ -184,17 +185,15 @@ def attemptDownload(urlString: str, fileName: str):
       os.remove(fileName)
 
 
-version_prop_re = re.compile(r'baseVersion\s*=\s*([\'"])(.*)\1')
-
-
 def find_current_version():
   script_path = os.path.dirname(os.path.realpath(__file__))
   top_level_dir = os.path.join(Path("%s/" % script_path).resolve(), os.path.pardir, os.path.pardir)
-  match = version_prop_re.search(open("%s/build.gradle" % top_level_dir).read())
-  assert match
-  return match.group(2).strip()
+  with open("%s/build-options.properties" % top_level_dir, "r", encoding="utf-8") as build_options_file:
+    build_options = javaproperties.load(build_options_file)
+    return build_options['version.base']
 
 
 if __name__ == "__main__":
   print("This is only a support module, it cannot be run")
+  update_base_version(Version(10, 1, 1, 0))
   sys.exit(1)
