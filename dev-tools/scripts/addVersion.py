@@ -112,7 +112,7 @@ def update_build_version(new_version: Version):
     buffer.append("version.base=" + new_version.dot + "\n")
     return True
 
-  version_prop_re = re.compile(r"version\.base=(.*)\1")
+  version_prop_re = re.compile(r"version\.base=(.*)")
   changed = update_file(filename, version_prop_re, edit)
   print("done" if changed else "uptodate")
 

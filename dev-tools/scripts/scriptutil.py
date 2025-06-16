@@ -26,8 +26,6 @@ from pathlib import Path
 from re import Match, Pattern
 from typing import Self, override
 
-import javaproperties
-
 
 class Version:
   def __init__(self, major: int, minor: int, bugfix: int, prerelease: int):
@@ -187,11 +185,12 @@ def attemptDownload(urlString: str, fileName: str):
 
 
 def find_current_version():
+  version_prop_re = re.compile(r"version\.base=(.*)")
   script_path = os.path.dirname(os.path.realpath(__file__))
   top_level_dir = os.path.join(Path("%s/" % script_path).resolve(), os.path.pardir, os.path.pardir)
-  with open("%s/build-options.properties" % top_level_dir, "r", encoding="utf-8") as build_options_file:
-    build_options = javaproperties.load(build_options_file)
-    return build_options["version.base"]
+  match = version_prop_re.search(open("%s/build-options.properties" % top_level_dir).read())
+  assert match
+  return match.group(1).strip()
 
 
 if __name__ == "__main__":
