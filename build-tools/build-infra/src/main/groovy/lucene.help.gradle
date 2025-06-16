@@ -108,7 +108,8 @@ tasks.named("help").configure {
     }
 
     println ""
-    println "For the impatient, build the project with 'gradlew assemble', run all tests with 'gradlew check'."
+    println "For the impatient, build the project with 'gradlew assemble', run all tests with 'gradlew check', check " +
+        "your current build options with 'gradlew allOptions'."
     throw new StopExecutionException()
   }
 }
