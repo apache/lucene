@@ -44,6 +44,9 @@ configure(project(":lucene:core")) {
           "java.base/jdk.incubator.vector=ALL-UNNAMED",
         ]
 
+        // hack because -Xlint:-options does not work for all options (regression in JDK 25+): #14782
+        options.compilerArgs.remove("-Werror")
+
         def argsProvider = objects.newInstance(CompilerArgsProvider)
         argsProvider.apiJarFile.set(apijar)
         options.compilerArgumentProviders.add(argsProvider)

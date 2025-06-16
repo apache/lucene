@@ -81,7 +81,7 @@ tasks.withType(JavaCompile).configureEach {
     // proc:none was added because of LOG4J2-1925 / JDK-8186647
     options.compilerArgs += ["-proc:none"]
 
-    if (failOnWarningsOption.get() && (rootProject.ext.runtimeJavaVersion < JavaVersion.VERSION_25)) {
+    if (failOnWarningsOption.get()) {
       options.compilerArgs += "-Werror"
     }
   }
