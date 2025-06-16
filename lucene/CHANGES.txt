@@ -95,6 +95,8 @@ New Features
 * GITHUB#14776: Add a Rescorer that uses values from provided DoubleValuesSource to re-score
   first pass hits. (Vigya Sharma)
 
+* GITHUB#14784: Make pack methods public for BigIntegerPoint and HalfFloatPoint. (Prudhvi Godithi)
+
 Improvements
 ---------------------
 * GITHUB#14458: Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
@@ -195,11 +197,6 @@ Bug Fixes
 * GITHUB#14527, GITHUB#14765: Reduce NeighborArray heap memory. (weizijun, Ben Trent)
 
 * GITHUB##14732: Fix IndexSortSortedNumericDocValuesRangeQuery for int sort (Mayya Sharipova)
-
-Other
----------------------
-
-* GITHUB#14784: Make pack methods public for BigIntegerPoint and HalfFloatPoint. (Prudhvi Godithi)
 
 ======================= Lucene 10.2.1 =======================
 
