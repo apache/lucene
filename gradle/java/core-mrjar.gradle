@@ -30,18 +30,20 @@ configure(project(":lucene:core")) {
 
       tasks.named("compileMain${jdkVersion}Java").configure {
         def apijar = apijars.file("jdk${jdkVersion}.apijar")
-        
+
         int releaseIndex = options.compilerArgs.indexOf("--release")
         options.compilerArgs.removeAt(releaseIndex)
         options.compilerArgs.removeAt(releaseIndex)
+
+        // Remove conflicting options for the linter. #14782
+        options.compilerArgs.removeAll("-Xlint:options")
+
         options.compilerArgs += [
           "-Xlint:-options",
           "--add-exports", "java.base/java.lang.foreign=ALL-UNNAMED",
           // for compilation we patch the incubator packages into java.base, this has no effect on resulting class files:
           "--add-exports", "java.base/jdk.incubator.vector=ALL-UNNAMED",
         ]
-        // hack because -Xlint:-options does not work for all options (regression in JDK 25+):
-        options.compilerArgs.remove("-Werror")
 
         def argsProvider = objects.newInstance(CompilerArgsProvider)
         argsProvider.apiJarFile.set(apijar)
