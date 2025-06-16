@@ -78,7 +78,7 @@ public class TestDoubleValuesSourceRescorer extends LuceneTestCase {
 
   public void testBasic() throws Exception {
     try (Directory dir = newDirectory()) {
-      publishDocs( random().nextInt(50, 100), "title", true, dir);
+      publishDocs(random().nextInt(50, 100), "title", true, dir);
       try (IndexReader r = DirectoryReader.open(dir)) {
         IndexSearcher s = new IndexSearcher(r);
         TermQuery query =
