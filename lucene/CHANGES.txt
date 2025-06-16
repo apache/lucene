@@ -156,6 +156,8 @@ Optimizations
 
 * GITHUB#14753: Implement IndexedDISI#docIDRunEnd. (Ge Song)
 
+* GITHUB#14774: Use IntArrayList/IntHashSet to replace usages of List/Set of Integer. (Zhang Chao)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
@@ -189,6 +191,7 @@ Other
 
 * GITHUB#14667: Fix documentation regarding benchmark running. (Viliam Durina)
 
+
 ======================= Lucene 10.2.2 =======================
 
 Bug Fixes
@@ -197,6 +200,7 @@ Bug Fixes
 * GITHUB#14527, GITHUB#14765: Reduce NeighborArray heap memory. (weizijun, Ben Trent)
 
 * GITHUB##14732: Fix IndexSortSortedNumericDocValuesRangeQuery for int sort (Mayya Sharipova)
+
 
 ======================= Lucene 10.2.1 =======================
 
