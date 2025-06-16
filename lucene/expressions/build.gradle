@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-apply plugin: 'java-library'
+
 
 description = 'Dynamically computed values to sort/facet/search on based on a pluggable grammar'
 

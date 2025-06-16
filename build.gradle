@@ -15,196 +15,72 @@
  * limitations under the License.
  */
 
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-
 plugins {
-  id "base"
-  id "lucene.build-infra"
+  // Apply convention plugins from the composite build-infra project.
+  // The order of plugins does matter (most of the time).
+  id "lucene.root-project.check-environment"
+  id "lucene.root-project.setup"
 
-  alias(deps.plugins.dependencychecks)
-  alias(deps.plugins.spotless) apply false
-  alias(deps.plugins.benmanes.versions)
-  alias(deps.plugins.forbiddenapis) apply false
-  alias(deps.plugins.versionCatalogUpdate) apply false
-  alias(deps.plugins.randomizedtesting) apply false
-  alias(deps.plugins.owasp.dependencycheck)
-  alias(deps.plugins.undercouch.download) apply false
-  alias(deps.plugins.errorprone) apply false
-  alias(deps.plugins.jacocolog) apply false
+  id "lucene.all-projects.conventions"
+
+  id "lucene.help"
+
+  id "lucene.java.alternative-jdk-support"
+  id "lucene.java-projects.conventions"
+
+  id "lucene.java.core.mrjar"
+  id "lucene.java.fail-on-no-tests"
+  id "lucene.java.slowest-tests-at-end"
+  id "lucene.java.show-failed-tests-at-end"
+  id "lucene.java.profiling"
+  id "lucene.java.beasting"
+  id "lucene.java.coverage"
+  id "lucene.java.modules"
+
+  id "lucene.validation.spotless-groovy"
+  id "lucene.validation.spotless-java"
+  id "lucene.validation.lockfile"
+  id "lucene.validation.gradle-versions-cleanup"
+  id "lucene.validation.gradlew-scripts-customizations"
+  id "lucene.validation.error-prone"
+  id "lucene.validation.jar-checks"
+  id "lucene.validation.source-patterns"
+  id "lucene.validation.rat-sources"
+  id "lucene.validation.owasp"
+
+  id "lucene.ide.intellij-idea"
+  id "lucene.ide.eclipse"
+
+  id "lucene.publications.maven"
+  id "lucene.publications.maven-to-nexus-releases"
+  id "lucene.publications.maven-to-nexus-snapshots"
+
+  id "lucene.misc.measure-task-times"
+  id "lucene.misc.pylucene"
+
+  id "lucene.datasets.external-datasets"
+
+  id "lucene.hacks.downloader-retries"
+  id "lucene.hacks.wipe-gradle-temp"
+  id "lucene.hacks.turbocharge-jvm-opts"
+  id "lucene.hacks.dummy-outputs"
+
+  id "lucene.documentation"
+  id "lucene.documentation.changes-to-html"
+  id "lucene.documentation.markdown"
+  id "lucene.documentation.render-javadoc"
+  id "lucene.documentation.check-broken-links"
+
+  id "lucene.regenerate"
+  id "lucene.regenerate.jflex"
+  id "lucene.regenerate.moman"
+  id "lucene.regenerate.kuromoji"
+  id "lucene.regenerate.nori"
+  id "lucene.regenerate.icu"
+  id "lucene.regenerate.javacc"
+  id "lucene.regenerate.antlr"
+  id "lucene.regenerate.unicode-test-classes"
+  id "lucene.regenerate.extract-jdk-apis"
 }
 
-apply from: file('gradle/globals.gradle')
-
-// General metadata.
-
-// Calculate project version:
-version = {
-  // Release manager: update base version here after release:
-  String baseVersion = '11.0.0'
-
-  // On a release explicitly set release version in one go:
-  //  -Dversion.release=x.y.z
-  
-  // Jenkins can just set just a suffix, overriding SNAPSHOT, e.g. using build id:
-  //  -Dversion.suffix=jenkins123
-  
-  String versionSuffix = propertyOrDefault('version.suffix', 'SNAPSHOT')
-  return propertyOrDefault('version.release', "${baseVersion}-${versionSuffix}")
-}()
 description = 'Grandparent project for Apache Lucene Core'
-
-// Propagate version and derived properties across projects.
-allprojects {
-  version = rootProject.version
-}
-
-ext {
-  // "base" version is stripped of the qualifier. Compute it.
-  baseVersion = {
-    def m = (version =~ /^(\d+\.\d+\.\d+)(-(.+))?/)
-    if (!m) {
-      throw new GradleException("Can't strip version to just x.y.z: " + rootProject.version)
-    }
-    return m[0][1]
-  }()
-  // "majorVersion" is an integer with just the major version. Compute it.
-  majorVersion = {
-    def m = (version =~ /^(\d+)\.\d+\.\d+(-(.+))?/)
-    if (!m) {
-      throw new GradleException("Can't strip version to just major version: " + rootProject.version)
-    }
-    return m[0][1] as int
-  }
-
-  // Minimum Java version required to compile and run Lucene.
-  minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
-
-  // also change this in extractor tool: ExtractForeignAPI
-  vectorIncubatorJavaVersions = [
-    JavaVersion.VERSION_21,
-    JavaVersion.VERSION_22,
-    JavaVersion.VERSION_23,
-    JavaVersion.VERSION_24 ] as Set
-
-  // snapshot build marker used in scripts.
-  snapshotBuild = version.contains("SNAPSHOT")
-
-  // Build timestamp.
-  def tstamp = ZonedDateTime.now()
-  buildDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(tstamp)
-  buildTime = DateTimeFormatter.ofPattern("HH:mm:ss").format(tstamp)
-  buildYear = DateTimeFormatter.ofPattern("yyyy").format(tstamp)
-
-  // Allow definiting external tool locations using system props.
-  externalTool = { name ->
-    def resolved = propertyOrDefault("${name}.exe", name as String)
-    logger.info("External tool '${name}' resolved to: ${resolved}")
-    return resolved
-  }
-}
-
-configurations {
-  groovy
-}
-
-dependencies {
-  // Use a newer groovy that doesn't have illegal reflective accesses.
-  groovy deps.groovy
-}
-
-// Include smaller chunks configuring dedicated build areas.
-// Some of these intersect or add additional functionality.
-// The order of inclusion of these files shouldn't matter (but may
-// if the build file is incorrectly written and evaluates something
-// eagerly).
-apply from: file('gradle/conventions.gradle')
-apply from: file('gradle/generation/local-settings.gradle')
-
-// Make sure the build environment is consistent.
-apply from: file('gradle/validation/check-environment.gradle')
-
-// Set up defaults and configure aspects for certain modules or functionality
-// (java, tests)
-apply from: file('gradle/java/folder-layout.gradle')
-apply from: file('gradle/java/javac.gradle')
-apply from: file('gradle/java/core-mrjar.gradle')
-apply from: file('gradle/testing/defaults-tests.gradle')
-apply from: file('gradle/testing/randomization.gradle')
-apply from: file('gradle/testing/fail-on-no-tests.gradle')
-apply from: file('gradle/testing/alternative-jdk-support.gradle')
-apply from: file('gradle/java/jar-manifest.gradle')
-apply from: file('gradle/java/modules.gradle')
-
-// IDE support, settings and specials.
-apply from: file('gradle/ide/intellij-idea.gradle')
-apply from: file('gradle/ide/eclipse.gradle')
-
-// Maven artifact publishing.
-apply from: file('gradle/maven/publications.gradle')
-
-// Validation tasks
-apply from: file('gradle/validation/measure-task-times.gradle')
-apply from: file('gradle/validation/error-prone.gradle')
-apply from: file('gradle/validation/precommit.gradle')
-apply from: file('gradle/validation/forbidden-apis.gradle')
-apply from: file('gradle/validation/jar-checks.gradle')
-apply from: file('gradle/validation/git-status.gradle')
-apply from: file('gradle/validation/validate-source-patterns.gradle')
-apply from: file('gradle/validation/rat-sources.gradle')
-apply from: file('gradle/validation/owasp-dependency-check.gradle')
-apply from: file('gradle/validation/ecj-lint.gradle')
-apply from: file('gradle/validation/gradlew-scripts-tweaked.gradle')
-apply from: file('gradle/validation/dependencies.gradle')
-apply from: file('gradle/validation/spotless.gradle')
-
-// Wire up included builds to some validation tasks.
-rootProject.tasks.named("tidy").configure {
-  dependsOn gradle.includedBuilds*.task(":tidy")
-}
-rootProject.tasks.named("clean").configure {
-  dependsOn gradle.includedBuilds*.task(":clean")
-}
-rootProject.tasks.named("check").configure {
-  dependsOn gradle.includedBuilds*.task(":forbiddenApis")
-}
-
-// Source or data regeneration tasks
-apply from: file('gradle/generation/regenerate.gradle')
-apply from: file('gradle/generation/jflex.gradle')
-apply from: file('gradle/generation/moman.gradle')
-apply from: file('gradle/generation/snowball.gradle')
-apply from: file('gradle/generation/kuromoji.gradle')
-apply from: file('gradle/generation/nori.gradle')
-apply from: file('gradle/generation/icu.gradle')
-apply from: file('gradle/generation/javacc.gradle')
-apply from: file('gradle/generation/forUtil.gradle')
-apply from: file('gradle/generation/antlr.gradle')
-apply from: file('gradle/generation/unicode-test-classes.gradle')
-apply from: file('gradle/generation/extract-jdk-apis.gradle')
-
-apply from: file('gradle/datasets/external-datasets.gradle')
-
-// Additional development aids.
-apply from: file('gradle/testing/per-project-summary.gradle')
-apply from: file('gradle/testing/slowest-tests-at-end.gradle')
-apply from: file('gradle/testing/failed-tests-at-end.gradle')
-apply from: file('gradle/testing/profiling.gradle')
-apply from: file('gradle/testing/beasting.gradle')
-apply from: file('gradle/testing/coverage.gradle')
-apply from: file('gradle/help.gradle')
-
-apply from: file('gradle/documentation/documentation.gradle')
-apply from: file('gradle/documentation/changes-to-html.gradle')
-apply from: file('gradle/documentation/markdown.gradle')
-apply from: file('gradle/documentation/render-javadoc.gradle')
-apply from: file('gradle/documentation/check-broken-links.gradle')
-
-apply from: file('gradle/hacks/downloader-retries.gradle')
-apply from: file('gradle/hacks/gradle-archives.gradle')
-apply from: file('gradle/hacks/wipe-temp.gradle')
-apply from: file('gradle/hacks/hashmapAssertions.gradle')
-apply from: file('gradle/hacks/turbocharge-jvm-opts.gradle')
-apply from: file('gradle/hacks/dummy-outputs.gradle')
-
-apply from: file('gradle/pylucene/pylucene.gradle')

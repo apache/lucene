@@ -48,8 +48,8 @@ on some of the conceptual or inner details of Lucene:
 
 * [Changes](changes/Changes.html): List of changes in this release.
 * [System Requirements](SYSTEM_REQUIREMENTS.html): Minimum and supported Java versions.
-* [Migration Guide](MIGRATE.html): What changed in Lucene ${project.majorVersion()}; how to migrate code from
-  Lucene ${project.majorVersion()-1}.x.
+* [Migration Guide](MIGRATE.html): What changed in Lucene ${project.majorVersion}; how to migrate code from
+  Lucene ${project.majorVersion-1}.x.
 * [JRE Version Migration](JRE_VERSION_MIGRATION.html): Information about upgrading between major JRE versions.
 * [File Formats](core/org/apache/lucene/codecs/${defaultCodecPackage}/package-summary.html#package.description):
   Guide to the supported index format used by Lucene. This can be customized by using
