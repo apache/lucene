@@ -94,6 +94,7 @@ import org.apache.lucene.util.IntBlockPool;
 import org.apache.lucene.util.RecyclingByteBlockAllocator;
 import org.apache.lucene.util.RecyclingIntBlockAllocator;
 import org.apache.lucene.util.Version;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 
 /**
  * High-performance single-document main memory Apache Lucene fulltext search index.
@@ -1755,6 +1756,11 @@ public class MemoryIndex {
         return null;
       }
       return new MemoryByteVectorValues(info);
+    }
+
+    @Override
+    public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
+      throw new UnsupportedOperationException();
     }
 
     @Override

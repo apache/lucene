@@ -43,6 +43,7 @@ import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 
 /**
  * This is a hack to make index sorting fast, with a {@link LeafReader} that always returns merge
@@ -237,6 +238,11 @@ class MergeReaderWrapper extends LeafReader {
   @Override
   public ByteVectorValues getByteVectorValues(String fieldName) throws IOException {
     return in.getByteVectorValues(fieldName);
+  }
+
+  @Override
+  public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
+    throw new UnsupportedOperationException();
   }
 
   @Override
