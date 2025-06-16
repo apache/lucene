@@ -17,14 +17,14 @@ coverage or profiling).
 
 To see the current values of all these options, run:
 
-./gradlew buildOptions
+./gradlew allOptions
 
-this prints all build options for each module. You can also scope
-this task to just one module, for example:
+this prints all build options for all modules. You can print all options
+for a single module too, for example:
 
 ./gradlew -p lucene/core buildOptions
 
-The output of this task shows all options, their current values
+The output of both tasks shows the options, their current values
 and their current value's "source". All build option values can be
 overridden by, in order of priority:
 
