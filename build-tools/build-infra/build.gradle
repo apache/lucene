@@ -69,12 +69,15 @@ dependencies {
   implementation deps.flexmark.ext.autolink
   implementation deps.flexmark.ext.tables
 
-  implementation plugin(deps.plugins.carrotsearch.buildinfra)
+  implementation plugin(deps.plugins.carrotsearch.buildopts)
+  implementation plugin(deps.plugins.carrotsearch.dependencychecks)
   implementation plugin(deps.plugins.forbiddenapis)
   implementation plugin(deps.plugins.spotless)
   implementation plugin(deps.plugins.owasp.dependencycheck)
   implementation plugin(deps.plugins.undercouch.download)
   implementation plugin(deps.plugins.errorprone)
+  implementation plugin(deps.plugins.jacocolog)
+  implementation plugin(deps.plugins.versionCatalogUpdate)
 }
 
 def hasJavaFlightRecorder = ModuleLayer.boot().findModule('jdk.jfr').map{ otherModule ->

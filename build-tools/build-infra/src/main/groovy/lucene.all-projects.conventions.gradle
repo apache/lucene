@@ -25,6 +25,9 @@ allprojects {project ->
   // All projects have the base plugin (convention tasks like 'check', etc.)
   apply plugin: 'base'
 
+  // Configure build option groups.
+  project.plugins.apply(org.apache.lucene.gradle.plugins.help.BuildOptionGroupsPlugin)
+
   // Project group and version.
   group = "org.apache.lucene"
   version = rootProject.version
