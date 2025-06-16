@@ -22,6 +22,10 @@ API Changes
 
 * GITHUB#14291: Remove IOException from ScorerSupplier#setTopLevelScoringClause signature (Luca Cavanna)
 
+* GITHUB#7865: Added public CharSequence getTermEscaped(EscapeQuerySyntax)
+  to ValueQueryNode. Made existing implementations public in all classes which
+  implement ValueQueryNode. (Peter Barna, Adam Schwartz)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -49,6 +53,10 @@ Bug Fixes
 
 * GITHUB#14075: Remove duplicate and add missing entry on brazilian portuguese stopwords list. (Arthur Caccavo)
 
+* GITHUB#7865 AbstractRangeQueryNode#toQueryString(EscapeQuerySyntax) now
+  returns a string which can be parsed back into the original node.
+  (Peter Barna, Adam Schwartz)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -61,6 +69,8 @@ Other
 * GITHUB#14564: Remove abstractions from MMapDirectory as we need no MR-JAR anymore.  (Uwe Schindler)
 
 * GITHUB#14613: Rewrite APIJAR extractor to use Java 24 classfile API and kill ASM dependency also for build system.  (Uwe Schindler)
+
+* GITHUB#14705: Use Comparators for some PriorityQueue implementations. (Simon Cooper)
 
 ======================= Lucene 10.3.0 =======================
 
@@ -79,6 +89,12 @@ New Features
 * GITHUB#14404: Introducing DocValuesMultiRangeQuery.SortedNumericStabbingBuilder into sandbox.
   (Mikhail Khludnev)
 
+* GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
+  along with limiting number of child documents to retrieve per parent. (Jinny Wang)
+
+* GITHUB#14776: Add a Rescorer that uses values from provided DoubleValuesSource to re-score
+  first pass hits. (Vigya Sharma)
+
 Improvements
 ---------------------
 * GITHUB#14458: Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
@@ -89,6 +105,12 @@ Improvements
 
 * GITHUB#14602: Refactor the expressions compiler to use official ClassData BSM with indexed lookup
   (Uwe Schindler)
+
+* GITHUB#14672: Numeric sort queries can take advantage of DocValuesSkipper to dynamic prune. (Guo Feng)
+
+* GITHUB#14443: Support adaptive refresh in Searcher Managers (Vigya Sharma)
+
+* GITHUB#14737: Clean up redundant code and comments in query node classes. (Stefan Vodita)
 
 Optimizations
 ---------------------
@@ -111,10 +133,42 @@ Optimizations
 * GITHUB#14609: Optimizes PointRangeQuery by rewriting to MatchAllDocsQuery/FieldExistsQuery/MatchNoDocsQuery if all
   docs in index are contained or excluded (Elliott Bradshaw)
 
+* GITHUB#14679: Optimize exhaustive evaluation of disjunctive queries.
+  (Adrien Grand)
+
+* GITHUB#14700: Return MatchNoDocsQuery when IndexOrDocValuesQuery::rewrite does not match
+  (Chris Hegarty)
+
+* GITHUB#14701: Optimize top-n bulk scorers by evaluating scoring windows in a
+  term-at-a-time fashion instead of doc-at-a-time. (Adrien Grand)
+
+* GITHUB#14709: Speed up TermQuery by Scorer#nextDocsAndScores. (Guo Feng)
+
+* GITHUB#14626: Avoid unnecessary comparison for CELL_CROSSES_QUERY cases (Ankit Jain)
+
+* GITHUB#14674: Optimize AbstractKnnVectorQuery#createBitSet with intoBitset. (Guo Feng)
+
+* GITHUB#14714: Move HitQueue in TopScoreDocCollector to a LongHeap. (Guo Feng)
+
+* GITHUB#14720: Cache high-order bits of hashcode to speed up BytesRefHash. (Pan Guixin)
+
+* GITHUB#14753: Implement IndexedDISI#docIDRunEnd. (Ge Song)
+
+* GITHUB#14774: Use IntArrayList/IntHashSet to replace usages of List/Set of Integer. (Zhang Chao)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
   used if the DoubleValuesSource needed scores. (David Smiley)
+
+* GITHUB#14682 : Fix for add char and token filters in Luke Analysis tab. (Amir Raza)
+
+* GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
+  instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
+
+* GITHUB#14727: Fix several resource leaks. (Xu Chengxin)
+
+* GITHUB#14755: Fix too many documents collected when only bool-filter condition is present. (Ke Wei)
 
 Build
 ---------------------
@@ -129,9 +183,21 @@ Other
 
 * GITHUB#14516: Move sloppySin into SloppyMath from GeoUtils (Ankit Jain)
 
-* GITHUB#14627, GITHUB#11920: Fix mock filesystem WindowsFS to also work on Windows.
-  This is required to make tests pass on Windows 11 which no longer has
-  all limitations of previous Windows versions.  (Uwe Schindler)
+* GITHUB#14627, GITHUB#11920, GITHUB#14706: Fix mock filesystem WindowsFS to also
+  work on Windows. This is required to make tests pass on Windows 11 which no
+  longer has all limitations of previous Windows versions.  (Uwe Schindler)
+
+* GITHUB#14667: Fix documentation regarding benchmark running. (Viliam Durina)
+
+
+======================= Lucene 10.2.2 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#14527, GITHUB#14765: Reduce NeighborArray heap memory. (weizijun, Ben Trent)
+
+* GITHUB##14732: Fix IndexSortSortedNumericDocValuesRangeQuery for int sort (Mayya Sharipova)
 
 
 ======================= Lucene 10.2.1 =======================
@@ -777,6 +843,55 @@ Build
 * GITHUB#13649: Fix eclipse ide settings generation #13649 (Uwe Schindler, Dawid Weiss)
 
 * GITHUB#13698: Upgrade to gradle 8.10 (Dawid Weiss)
+
+======================== Lucene 9.12.2 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
+  used if the DoubleValuesSource needed scores. (David Smiley)
+
+* GITHUB#14527, GITHUB#14765: Reduce NeighborArray heap memory. (weizijun, Ben Trent)
+
+* GITHUB##14732: Fix IndexSortSortedNumericDocValuesRangeQuery for int sort (Mayya Sharipova)
+
+
+======================== Lucene 9.12.1 =======================
+
+Bug Fixes
+---------------------
+
+
+* GITHUB#13947: Fix ord-to-doc mapping when searching Lucene 9.0.0 hnsw indices (Michael Sokolov, Ben Trent)
+
+* GITHUB#13867: Fix backwards compatibility bug that caused 9.12.0 to
+  incorrectly throw IllegalStateException when trying to open an
+  IndexReader on an index created with quantized (int4, int7, int8)
+  KNN vectors using Lucene99HnswScalarQuantizedVectorsFormat.  This
+  was an accidental backwards compatibility break: such indices should
+  be readable and writable by any future 9.x and 10.x Lucene releases.
+  But note that int8 compression was buggy and can no longer be
+  written but can be read from an existing index.  (Ionut
+  Anghelcovici, Michael McCandless)
+
+* GITHUB#13841: Improve Tessellatorlogic when two holes share the same vertex with the polygon which was failing
+  in valid polygons. (Ignacio Vera)
+
+* GITHUB#13986: Allow easier configuration of the Panama Vectorization provider with
+  newer Java versions. Set the `org.apache.lucene.vectorization.upperJavaFeatureVersion`
+  system property to increase the set of Java versions that Panama Vectorization will
+  provide optimized implementations for. (Chris Hegarty)
+
+* GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
+  their corresponding ordinals. (Paul King)
+
+* GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public (Luca Cavanna)
+
+API Changes
+---------------------
+
+* GITHUB#13845: Add missing with-discountOverlaps Similarity constructor variants. (Pierre Salagnac, Christine Poerschke, Robert Muir)
 
 ======================== Lucene 9.12.0 =======================
 

@@ -8,8 +8,8 @@ assertj = "3.27.3"
 commons-codec = "1.18.0"
 # benchmark/ bzip2 compression
 commons-compress = "1.27.1"
-# @keep This version refers to ECJ batch compiler from p2 repositories ("drops").
-ecjP2Drop = "ecj-4.36M1"
+# See ecj-lint.gradle (used for more linting).
+ecj = "4.36M1"
 # java linting
 errorprone = "2.38.0"
 # markdown documentation generation
@@ -17,7 +17,7 @@ flexmark = "0.64.8"
 # @keep This is GJF version for spotless/ tidy source code formatting
 googleJavaFormat = "1.23.0"
 # gradle build support
-groovy = "4.0.26"
+groovy = "4.0.27"
 # test assertions
 hamcrest = "3.0"
 # analysis/icu/, gradle regeneration unicode support
@@ -26,8 +26,6 @@ icu4j = "77.1"
 javacc = "7.0.13"
 # analysis/ tokenizer grammars
 jflex = "1.9.1"
-# gradle checkWorkingCopy support
-jgit = "7.2.0.202503040940-r"
 # benchmark-jmh/ microbenchmarks
 jmh = "1.37"
 # spatial-extras/ support
@@ -51,7 +49,7 @@ procfork = "1.0.6"
 # unit tests
 randomizedtesting = "2.8.3"
 # license checks
-rat = "0.14"
+rat = "0.15"
 # spatial-extras/ support
 s2-geometry = "1.0.0"
 # spatial-extras/ support
@@ -67,6 +65,7 @@ antlr-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr" }
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 commons-codec = { module = "commons-codec:commons-codec", version.ref = "commons-codec" }
 commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
+ecj = { module = "org.eclipse.jdt:ecj", version.ref = "ecj" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }
 flexmark-core = { module = "com.vladsch.flexmark:flexmark", version.ref = "flexmark" }
 flexmark-ext-abbreviation = { module = "com.vladsch.flexmark:flexmark-ext-abbreviation", version.ref = "flexmark" }
@@ -78,7 +77,6 @@ hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
 icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
 javacc = { module = "net.java.dev.javacc:javacc", version.ref = "javacc" }
 jflex = { module = "de.jflex:jflex", version.ref = "jflex" }
-jgit = { module = "org.eclipse.jgit:org.eclipse.jgit", version.ref = "jgit" }
 jmh-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jts = { module = "org.locationtech.jts:jts-core", version.ref = "jts" }
@@ -98,12 +96,13 @@ zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
 
 [plugins]
 benmanes-versions = "com.github.ben-manes.versions:0.52.0"
-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.0.9"
+carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.0"
+carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.1.0"
 errorprone = "net.ltgt.errorprone:4.2.0"
 forbiddenapis = "de.thetaphi.forbiddenapis:3.9"
 jacocolog = "org.barfuin.gradle.jacocolog:3.1.0"
-owasp-dependencycheck = "org.owasp.dependencycheck:12.1.1"
+owasp-dependencycheck = "org.owasp.dependencycheck:12.1.2"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
-spotless = "com.diffplug.spotless:7.0.3"
+spotless = "com.diffplug.spotless:7.0.4"
 undercouch-download = "de.undercouch.download:5.6.0"
 versionCatalogUpdate = "nl.littlerobots.version-catalog-update:1.0.0"

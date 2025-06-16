@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-apply plugin: 'java-library'
+
 
 description = 'Analyzer for indexing Chinese'
 
@@ -24,4 +24,4 @@ dependencies {
   moduleApi project(':lucene:analysis:common')
 
   moduleTestImplementation project(':lucene:test-framework')
-} 
+}

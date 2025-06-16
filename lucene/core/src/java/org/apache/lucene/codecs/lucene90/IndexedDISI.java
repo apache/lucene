@@ -568,6 +568,11 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
     return cost;
   }
 
+  @Override
+  public int docIDRunEnd() throws IOException {
+    return method.docIDRunEnd(this);
+  }
+
   enum Method {
     SPARSE {
       @Override
@@ -633,6 +638,11 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
           bitSet.set(doc - offset);
         }
         return false;
+      }
+
+      @Override
+      int docIDRunEnd(IndexedDISI disi) throws IOException {
+        return disi.doc + 1;
       }
     },
     DENSE {
@@ -730,6 +740,14 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
           return advanceWithinBlock(disi, upTo);
         }
       }
+
+      @Override
+      int docIDRunEnd(IndexedDISI disi) throws IOException {
+        if (disi.word == -1L) {
+          return (disi.doc | 0x3F) + 1;
+        }
+        return disi.doc + 1;
+      }
     },
     ALL {
       @Override
@@ -757,6 +775,11 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
           return false;
         }
       }
+
+      @Override
+      int docIDRunEnd(IndexedDISI disi) throws IOException {
+        return (disi.doc | 0xFFFF) + 1;
+      }
     };
 
     /**
@@ -783,6 +806,8 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
      */
     abstract boolean intoBitSetWithinBlock(
         IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset) throws IOException;
+
+    abstract int docIDRunEnd(IndexedDISI disi) throws IOException;
   }
 
   /**

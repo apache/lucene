@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-apply plugin: 'java-library'
+
 
 description = 'Korean Morphological Analyzer'
 
@@ -25,4 +25,3 @@ dependencies {
 
   moduleTestImplementation project(':lucene:test-framework')
 }
-

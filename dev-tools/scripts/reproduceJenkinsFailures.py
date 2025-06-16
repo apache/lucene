@@ -25,6 +25,7 @@ import time
 import traceback
 import urllib.error
 import urllib.request
+from pathlib import Path
 from textwrap import dedent
 
 # Example: Checking out Revision e441a99009a557f82ea17ee9f9c3e9b89c75cee6 (refs/remotes/origin/master)
@@ -236,8 +237,8 @@ def printAndMoveReports(testIters: int, newSubDir: str, location: str):
                 break
           # have to play nice with 'ant clean'...
           newDirPath = os.path.join("repro-reports", newSubDir, dir)
-          os.makedirs(newDirPath, exist_ok=True)
-          os.rename(filePath, os.path.join(newDirPath, file))
+          Path(newDirPath).mkdir(exist_ok=True, parents=True)
+          _ = Path(filePath).rename(target=os.path.join(newDirPath, file))
   print("[repro] Failures%s:" % location)
   for testcase in sorted(failures, key=lambda t: (failures[t], t)):  # sort by failure count, then by testcase
     print("[repro]   %d/%d failed: %s" % (failures[testcase], testIters, testcase))
