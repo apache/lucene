@@ -29,7 +29,7 @@ configure(rootProject) {
           return null
         } else {
           // release build
-          return "https://lucene.apache.org/core/${urlVersion}"
+          return "https://lucene.apache.org/core/${urlVersion}".toString()
         }
       })
 
