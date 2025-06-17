@@ -15,7 +15,10 @@
  * limitations under the License.
  */
 /**
- * Provides a Faiss-based vector format via {@link
+ * <a href="https://github.com/facebookresearch/faiss">Faiss</a> is <i>"a library for efficient
+ * similarity search and clustering of dense vectors"</i>, with support for various vector
+ * transforms, indexing algorithms, quantization techniques, etc. This package provides a pluggable
+ * Faiss-based format to perform vector searches in Lucene, via {@link
  * org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat}.
  *
  * <p>To use this format: Install <a
@@ -34,7 +37,7 @@
  *
  * <ul>
  *   <li>Install <a href="https://github.com/mamba-org/mamba">micromamba</a> (an open-source Conda
- *       package manager)
+ *       package manager) or similar
  *   <li>Install dependencies using {@code micromamba create -n faiss-env -c pytorch -c conda-forge
  *       -y faiss-cpu=}{@value org.apache.lucene.sandbox.codecs.faiss.LibFaissC#LIBRARY_VERSION}
  *   <li>Activate environment using {@code micromamba activate faiss-env}

@@ -169,6 +169,7 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
   @Override
   public void checkIntegrity() throws IOException {
     rawVectorsReader.checkIntegrity();
+    // TODO: Evaluate if we need an explicit check for validity of Faiss indexes
     CodecUtil.checksumEntireFile(data);
   }
 

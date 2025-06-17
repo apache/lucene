@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.sandbox.codecs.faiss;
 
+import static org.apache.lucene.util.hnsw.HnswGraphBuilder.DEFAULT_BEAM_WIDTH;
+import static org.apache.lucene.util.hnsw.HnswGraphBuilder.DEFAULT_MAX_CONN;
+
 import java.io.IOException;
 import java.util.Locale;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -28,10 +31,14 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
 /**
- * A format which uses <a href="https://github.com/facebookresearch/faiss">Faiss</a> to create and
- * search vector indexes, using {@link LibFaissC} to interact with the native library.
+ * A Faiss-based format to create and search vector indexes, using {@link LibFaissC} to interact
+ * with the native library.
  *
- * <p>TODO: There is no guarantee of backwards compatibility!
+ * <p>The Faiss index is configured using its flexible <a
+ * href="https://github.com/facebookresearch/faiss/wiki/The-index-factory">index factory</a>, which
+ * allows creating arbitrary indexes by "describing" them. These indexes can be tuned by <a
+ * href="https://github.com/facebookresearch/faiss/wiki/Index-IO,-cloning-and-hyper-parameter-tuning">setting
+ * relevant parameters</a>.
  *
  * <p>A separate Faiss index is created per-segment, and uses the following files:
  *
@@ -45,6 +52,8 @@ import org.apache.lucene.index.SegmentWriteState;
  * <p>Note: Set the {@code $OMP_NUM_THREADS} environment variable to control <a
  * href="https://github.com/facebookresearch/faiss/wiki/Threads-and-asynchronous-calls">internal
  * threading</a>.
+ *
+ * <p>TODO: There is no guarantee of backwards compatibility!
  *
  * @lucene.experimental
  */
@@ -61,10 +70,24 @@ public final class FaissKnnVectorsFormat extends KnnVectorsFormat {
   private final String indexParams;
   private final FlatVectorsFormat rawVectorsFormat;
 
+  /**
+   * Constructs an HNSW-based format using default {@code maxConn}={@value
+   * org.apache.lucene.util.hnsw.HnswGraphBuilder#DEFAULT_MAX_CONN} and {@code beamWidth}={@value
+   * org.apache.lucene.util.hnsw.HnswGraphBuilder#DEFAULT_BEAM_WIDTH}.
+   */
   public FaissKnnVectorsFormat() {
-    this("IDMap,HNSW32", "efConstruction=200");
+    this(
+        String.format(Locale.ROOT, "IDMap,HNSW%d", DEFAULT_MAX_CONN),
+        String.format(Locale.ROOT, "efConstruction=%d", DEFAULT_BEAM_WIDTH));
   }
 
+  /**
+   * Constructs a format using the specified index factory string and index parameters (see class
+   * docs for more information).
+   *
+   * @param description the index factory string to initialize Faiss indexes.
+   * @param indexParams the index params to set on Faiss indexes.
+   */
   public FaissKnnVectorsFormat(String description, String indexParams) {
     super(NAME);
     this.description = description;
