@@ -85,7 +85,7 @@ jobs:
             git reset --hard && git clean -xfd .
           fi
 
-      - run: ./gradlew testOpts
+      - run: ./gradlew allOptions
       - run: ./gradlew helpWorkflow
       - run: ./gradlew licenses updateLicenses
       - run: ./gradlew check -x test
