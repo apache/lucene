@@ -1,6 +1,3 @@
-import com.diffplug.gradle.spotless.SpotlessPlugin
-import com.diffplug.spotless.LineEnding
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,6 +15,10 @@ import com.diffplug.spotless.LineEnding
  * limitations under the License.
  */
 
+import org.apache.lucene.gradle.plugins.spotless.WildcardImportDetector
+import com.diffplug.gradle.spotless.SpotlessPlugin
+import com.diffplug.spotless.LineEnding
+
 /*
  * LUCENE-9564: This adds automatic (and enforced) code formatting using
  * spotless and Google Java Format.
@@ -32,6 +33,9 @@ configure(allprojects) { prj ->
         lineEndings = LineEnding.UNIX
         endWithNewline()
         googleJavaFormat(deps.versions.googleJavaFormat.get())
+
+        // Idea from: https://github.com/opensearch-project/opensearch-java/pull/1180/files
+        custom("Wildcard imports disallowed ", new WildcardImportDetector())
 
         // Apply to all Java sources
         target("src/**/*.java")
