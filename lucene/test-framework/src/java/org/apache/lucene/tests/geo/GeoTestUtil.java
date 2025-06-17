@@ -16,7 +16,10 @@
  */
 package org.apache.lucene.tests.geo;
 
-import static org.apache.lucene.geo.GeoUtils.*;
+import static org.apache.lucene.geo.GeoUtils.MAX_LAT_INCL;
+import static org.apache.lucene.geo.GeoUtils.MAX_LON_INCL;
+import static org.apache.lucene.geo.GeoUtils.MIN_LAT_INCL;
+import static org.apache.lucene.geo.GeoUtils.MIN_LON_INCL;
 
 import com.carrotsearch.randomizedtesting.RandomizedContext;
 import java.io.BufferedReader;
