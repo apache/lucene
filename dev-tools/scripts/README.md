@@ -20,7 +20,7 @@
 This folder contains various useful scripts for developers, mostly related to
 releasing new versions of Lucene and testing those.
 
-Python scripts require Python 3.6 or avobe. To install necessary python modules, please run:
+Python scripts require Python 3.6 or above. To install necessary python modules, please run:
 
     pip3 install -r requirements.txt
 

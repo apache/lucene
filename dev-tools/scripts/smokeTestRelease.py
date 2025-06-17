@@ -149,13 +149,13 @@ def checkJARMetaData(desc: str, jarFile: str, gitRevision: str, version: str):
       "X-Compile-Source-JDK: %s" % BASE_JAVA_VERSION,
       "X-Compile-Target-JDK: %s" % BASE_JAVA_VERSION,
       "Specification-Version: %s" % version,
-      "X-Build-JDK: %s." % BASE_JAVA_VERSION,
+      re.compile("X-Build-JDK: %s[. ]" % re.escape(BASE_JAVA_VERSION)),
       "Extension-Name: org.apache.lucene",
     ):
       if type(verify) is not tuple:
         verify = (verify,)
       for x in verify:
-        if s.find(x) != -1:
+        if (isinstance(x, re.Pattern) and x.search(s)) or (isinstance(x, str) and s.find(x) != -1):
           break
       else:
         if len(verify) == 1:
@@ -604,7 +604,21 @@ def verifyUnpacked(java: Any, artifact: str, unpackPath: str, gitRevision: str, 
     "licenses",
   ]
   if isSrc:
-    expected_src_root_files = ["build.gradle", "build-tools", "CONTRIBUTING.md", "dev-docs", "dev-tools", "gradle", "gradlew", "gradlew.bat", "help", "lucene", "settings.gradle", "versions.lock"]
+    expected_src_root_files = [
+      "build.gradle",
+      "build-options.properties",
+      "build-tools",
+      "CONTRIBUTING.md",
+      "dev-docs",
+      "dev-tools",
+      "gradle",
+      "gradlew",
+      "gradlew.bat",
+      "help",
+      "lucene",
+      "settings.gradle",
+      "versions.lock",
+    ]
     expected_src_lucene_files = ["build.gradle", "documentation", "distribution", "dev-docs"]
     is_in_list(in_root_folder, expected_src_root_files)
     is_in_list(in_lucene_folder, expected_folders)

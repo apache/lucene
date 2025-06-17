@@ -104,15 +104,15 @@ def add_constant(new_version: Version, deprecate: bool):
 
 def update_build_version(new_version: Version):
   print("  changing baseVersion...", end="", flush=True)
-  filename = "build.gradle"
+  filename = "build-options.properties"
 
   def edit(buffer: list[str], _match: re.Match[str], line: str):
     if new_version.dot in line:
       return None
-    buffer.append("  String baseVersion = '" + new_version.dot + "'\n")
+    buffer.append("version.base=" + new_version.dot + "\n")
     return True
 
-  version_prop_re = re.compile(r'baseVersion\s*=\s*([\'"])(.*)\1')
+  version_prop_re = re.compile(r"version\.base=(.*)")
   changed = update_file(filename, version_prop_re, edit)
   print("done" if changed else "uptodate")
 
@@ -164,7 +164,7 @@ def parse_properties_file(filename: str):
 
 
 def main():
-  if not os.path.exists("build.gradle"):
+  if not os.path.exists("build-options.properties"):
     sys.exit("Tool must be run from the root of a source checkout.")
   current_version = Version.parse(find_current_version())
   newconf = read_config(current_version)
