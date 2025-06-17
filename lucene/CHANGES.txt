@@ -64,6 +64,9 @@ Changes in Runtime Behavior
 Other
 ---------------------
 
+* GITHUB#: Removed all security manager and java.security-related code, which is effectively dead
+  in Java 24+. (Dawid Weiss)
+
 * GITHUB#14229: Bump minimum required Java version to 25
 
 * GITHUB#14564: Remove abstractions from MMapDirectory as we need no MR-JAR anymore.  (Uwe Schindler)
