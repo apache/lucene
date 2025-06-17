@@ -130,8 +130,6 @@ def prepare(root: str, version: str, pause_before_sign: bool, gpg_key_id: str | 
 
   print("  prepare-release")
   cmd = "./gradlew --stacktrace --no-daemon assembleRelease -Dversion.release=%s" % version
-  if dev_mode:
-    cmd += " -Pvalidation.git.failOnModified=false"
   if gpg_key_id is not None:
     cmd += " -Psign --max-workers 2"
     if sign_gradle:

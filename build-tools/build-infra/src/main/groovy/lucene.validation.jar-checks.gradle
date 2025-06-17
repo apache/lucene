@@ -297,7 +297,7 @@ configure(project(":lucene")) {
   def updateLicenses = tasks.register("updateLicenses", {
     group = 'Dependency validation'
     description = "Write or update checksums of dependencies. May need to run gradlew --write-locks first if changing dependency versions"
-    dependsOn "jarInfoTasks"
+    dependsOn jarInfoTasks
 
     doLast {
       licensesDir.asFile.mkdirs()
@@ -334,7 +334,13 @@ configure(project(":lucene")) {
   // We add an ordering constraint that any validation task (or its dependency subgraph)
   // must run after updateLicenses
   configure(subprojects) {
-    tasks.matching { it.name == "licenses" }.configureEach {
+    tasks.matching {
+      it.name in [
+        "licenses",
+        "validateJarChecksums",
+        "validateJarLicenses"
+      ]
+    }.configureEach {
       mustRunAfter updateLicenses
     }
   }
