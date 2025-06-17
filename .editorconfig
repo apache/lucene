@@ -561,7 +561,7 @@ ij_groovy_variable_annotation_wrap = split_into_lines
 ij_groovy_while_brace_force = never
 ij_groovy_while_on_new_line = false
 ij_groovy_wrap_chain_calls_after_dot = false
-ij_groovy_wrap_long_lines = true
+ij_groovy_wrap_long_lines = false
 
 [*.html]
 ij_html_add_new_line_before_tags = body, div, p, form, h1, h2, h3
@@ -616,9 +616,6 @@ ij_properties_align_group_field_declarations = false
 ij_properties_keep_blank_lines = true
 ij_properties_key_value_delimiter = equals
 ij_properties_spaces_around_key_value_delimiter = false
-
-[*.py]
-max_line_length = 80
 
 [{*.yaml,*.yml}]
 ij_yaml_align_values_properties = do_not_align
