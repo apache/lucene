@@ -155,7 +155,7 @@ def checkJARMetaData(desc: str, jarFile: str, gitRevision: str, version: str):
       if type(verify) is not tuple:
         verify = (verify,)
       for x in verify:
-        if (isinstance(x, re.Pattern) and x.search(s)) or s.find(x) != -1:
+        if (isinstance(x, re.Pattern) and x.search(s)) or (isinstance(x, str) and s.find(x) != -1):
           break
       else:
         if len(verify) == 1:
