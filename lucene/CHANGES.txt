@@ -64,7 +64,7 @@ Changes in Runtime Behavior
 Other
 ---------------------
 
-* GITHUB#: Removed all security manager and java.security-related code, which is effectively dead
+* GITHUB#14801: Removed all security manager and java.security-related code, which is effectively dead
   in Java 24+. (Dawid Weiss)
 
 * GITHUB#14229: Bump minimum required Java version to 25
