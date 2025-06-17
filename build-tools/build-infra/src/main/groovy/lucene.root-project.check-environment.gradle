@@ -1,0 +1,88 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// This checks that we're running the desired version of Gradle and
+// that the JVM is supported.
+
+import org.gradle.util.GradleVersion
+
+if (project != project.rootProject) {
+  throw new GradleException("Applicable to rootProject only: " + project.path)
+}
+
+String expectedGradleVersion = deps.versions.minGradle.get()
+
+wrapper {
+  distributionType = Wrapper.DistributionType.BIN
+  gradleVersion = expectedGradleVersion
+}
+
+JavaVersion currentJavaVersion = JavaVersion.current()
+JavaVersion minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
+
+if (currentJavaVersion < minJavaVersion) {
+  throw new GradleException("At least Java ${minJavaVersion} is required, you are running Java ${currentJavaVersion} "
+  + "[${System.getProperty('java.vm.name')} ${System.getProperty('java.vm.version')}]")
+}
+
+if (Runtime.version().pre().isPresent()) {
+  throw new GradleException("You are running Gradle with an EA version of Java - this is not supported. "
+  + "To test Lucene compatibility with EA or pre-release versions, see this help guide: " +
+  " './gradlew helpJvms'. Detected Java version: "
+  + "[${System.getProperty('java.vm.name')} ${System.getProperty('java.vm.version')}]")
+}
+
+//
+// Skip this check if we're regenerating the wrapper.
+//
+if (!gradle.startParameter.taskNames.contains("wrapper")) {
+  GradleVersion currentGradleVersion = GradleVersion.current()
+  if (currentGradleVersion != GradleVersion.version(expectedGradleVersion)) {
+    if (currentGradleVersion.baseVersion == GradleVersion.version(expectedGradleVersion).baseVersion) {
+      logger.warn("Gradle ${expectedGradleVersion} is required but base version of this gradle matches, proceeding (" +
+          "this gradle is ${currentGradleVersion}).")
+    } else {
+      throw new GradleException("Gradle ${expectedGradleVersion} is required (hint: use the ./gradlew script), " +
+      "this gradle is ${currentGradleVersion}.")
+    }
+  }
+}
+
+//
+// Register this utility task on the root project.
+//
+tasks.register("checkJdkInternalsExportedToGradle", {
+  doFirst {
+    def jdkCompilerModule = ModuleLayer.boot().findModule("jdk.compiler").orElseThrow()
+    def gradleModule = getClass().module
+    def internalsExported = [
+      "com.sun.tools.javac.api",
+      "com.sun.tools.javac.file",
+      "com.sun.tools.javac.parser",
+      "com.sun.tools.javac.tree",
+      "com.sun.tools.javac.util"
+    ].stream()
+    .allMatch({ pkg -> jdkCompilerModule.isExported(pkg, gradleModule) })
+
+    if (!internalsExported) {
+      throw new GradleException(
+      "Certain gradle tasks and plugins require access to jdk.compiler" +
+      " internals, your gradle.properties might have just been generated or could be" +
+      " out of sync (see gradle/template.gradle.properties)")
+    }
+  }
+})

@@ -1,0 +1,68 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Tweak settings to allow easier working with IntelliJ Idea
+
+if (project != project.rootProject) {
+  throw new GradleException("Applicable to rootProject only: " + project.path)
+}
+
+if (rootProject.ext.isIdea) {
+  logger.warn("IntelliJ Idea IDE detected.")
+
+  allprojects {
+    apply plugin: 'idea'
+
+    idea {
+      module {
+        outputDir file('build/idea/classes/main')
+        testOutputDir file('build/idea/classes/test')
+        downloadSources = true
+      }
+    }
+  }
+}
+
+if (rootProject.ext.isIdeaSync) {
+  allprojects {
+    // disable all MR-JAR folders by hiding them from IDE after evaluation:
+    plugins.withType(JavaPlugin).configureEach {
+      project.afterEvaluate {
+        sourceSets.matching { it.name ==~ /main\d+/ }.configureEach { SourceSet sourceSet ->
+          logger.lifecycle("Skipping MR-JAR sourceSet on IntelliJ Idea: " + sourceSet.name)
+          sourceSet.java.srcDirs = []
+          sourceSet.resources.srcDirs = []
+        }
+      }
+    }
+  }
+}
+
+if (rootProject.ext.isIdeaBuild) {
+  // Skip certain long tasks that are dependencies
+  // of 'assemble' if we're building from within IntelliJ.
+  def skipTasks = [
+    // Skip site javadoc rendering
+    ".*:(renderSiteJavadoc)",
+  ]
+  tasks.matching { task ->
+    return skipTasks.any { pattern -> task.path ==~ pattern }
+  }.configureEach {
+    logger.debug("Skipping task on IntelliJ: " + it.path)
+    task.enabled = false
+  }
+}

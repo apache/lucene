@@ -63,7 +63,7 @@ public class Test2BPostingsBytes extends LuceneTestCase {
               + maxDocsPerChunk
               + ") * blockSize ("
               + blockSize
-              + ") < 16 - this can trigger OOM with -Dtests.heapsize=30g",
+              + ") < 16 - this can trigger OOM with -Ptests.heapsize=30g",
           product >= 16);
     }
 

@@ -107,9 +107,6 @@ IF NOT EXIST "%APP_HOME%\gradle.properties" (
   endlocal
 )
 
-@rem Prevent jgit from forking/searching git.exe
-SET GIT_CONFIG_NOSYSTEM=1
-
 @rem END OF LUCENE CUSTOMIZATION
 
 @rem Execute Gradle

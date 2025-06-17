@@ -47,6 +47,12 @@ git log --all --pretty='format:%an' --since="$SINCE" --before="$UNTIL" | sort | 
 echo '```'
 
 echo
+echo "## Top non-committer contributors in the given time period (all commits, any branch)"
+echo '```'
+git log --all --pretty='format:%an | %ae' --since="$SINCE" --before="$UNTIL" | sort | uniq -c | sort -r -n | grep -v -f .github/workflows/activity-report-known-committers.txt
+echo '```'
+
+echo
 echo "## All pull requests:"
 echo '```'
 gh pr list --state all --search "created:$SINCE_TS..$UNTIL_TS" --repo $REPO --limit 1000 \

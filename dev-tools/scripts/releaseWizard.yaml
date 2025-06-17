@@ -328,7 +328,7 @@ groups:
         From the base branch {{ base_branch }} we'll run precommit tests.
         Fix any problems that are found by pushing fixes to the branch
         and then running this task again. This task will always do `git pull`
-        before `{{ gradle_cmd }} precommit` so it will catch changes to your branch :)
+        before `{{ gradle_cmd }} check` so it will catch changes to your branch :)
       confirm_each_command: false
       commands:
       - !Command

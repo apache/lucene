@@ -2115,7 +2115,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
-  static void assertOffHeapByteSize(LeafReader r, String fieldName) throws IOException {
+  protected void assertOffHeapByteSize(LeafReader r, String fieldName) throws IOException {
     var fieldInfo = r.getFieldInfos().fieldInfo(fieldName);
 
     if (r instanceof CodecReader codecReader) {
