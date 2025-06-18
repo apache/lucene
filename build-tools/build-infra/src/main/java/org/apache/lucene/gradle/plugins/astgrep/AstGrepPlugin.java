@@ -43,9 +43,10 @@ public class AstGrepPlugin implements Plugin<Project> {
               task.setWorkingDir(project.getLayout().getProjectDirectory());
               task.setArgs(List.of("scan", "-c", "gradle/validation/ast-grep/sgconfig.yml"));
             });
+
     tasks
-        .named("check")
-        .configure(
+        .matching(task -> task.getName().equals("check") || task.getName().equals("tidy"))
+        .configureEach(
             task -> {
               task.dependsOn(applyAstGrepRulesTask);
             });
