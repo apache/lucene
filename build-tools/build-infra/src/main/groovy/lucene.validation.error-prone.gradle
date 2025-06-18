@@ -97,6 +97,9 @@ allprojects { prj ->
             break
 
           case ":lucene:expressions":
+            options.errorprone.excludedPaths.set("" +
+            ".*/JavascriptParser.java|" +
+            ".*/JavascriptLexer.java")
             break
 
           case ":lucene:queryparser":
@@ -331,6 +334,7 @@ allprojects { prj ->
           '-Xep:UnsafeWildcard:ERROR',
           '-Xep:UnusedAnonymousClass:ERROR',
           '-Xep:UnusedCollectionModifiedInPlace:ERROR',
+          "-Xep:WildcardImport:ERROR",
           '-Xep:VarTypeName:ERROR',
           // '-Xep:WrongOneof:OFF', // we don't use protobuf
           '-Xep:XorPower:ERROR',
