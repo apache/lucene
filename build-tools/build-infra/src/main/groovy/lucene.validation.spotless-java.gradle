@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-import org.apache.lucene.gradle.plugins.spotless.WildcardImportDetector
 import com.diffplug.gradle.spotless.SpotlessPlugin
 import com.diffplug.spotless.LineEnding
 
@@ -34,13 +33,6 @@ configure(allprojects) { prj ->
         endWithNewline()
         googleJavaFormat(deps.versions.googleJavaFormat.get())
         removeUnusedImports()
-
-        // Idea from: https://github.com/opensearch-project/opensearch-java/pull/1180/files
-        // we have to add some manual exclusions because wildcard detector can't fix the wildcard import -
-        // it can only detect them and fail the build. This matters for some generated files, which
-        // are a pain to fix.
-        def wildcardDetector = new WildcardImportDetector()
-        custom("Wildcard imports disallowed ", wildcardDetector)
 
         // Apply to all Java sources
         target("src/**/*.java")
@@ -66,7 +58,6 @@ configure(allprojects) { prj ->
             break
 
           case ":lucene:expressions":
-            wildcardDetector.addExcludedFiles("JavascriptLexer.java", "JavascriptParser.java")
             break
 
           case ":lucene:queryparser":
