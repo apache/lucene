@@ -16,32 +16,59 @@ public class AstGrepPlugin implements Plugin<Project> {
 
     var optionName = "lucene.tool.ast-grep";
     var tasks = project.getTasks();
+
+    var astToolOption =
+        project
+            .getExtensions()
+            .getByType(BuildOptionsExtension.class)
+            .addOption("lucene.tool.ast-grep", "External ast-grep executable (path or name)");
+
+    var testAstGrepRules =
+        tasks.register(
+            "testAstGrepRules",
+            Exec.class,
+            (task) -> {
+              task.setArgs(
+                  List.of(
+                      "test",
+                      "--skip-snapshot-tests",
+                      "-c",
+                      "gradle/validation/ast-grep/sgconfig.yml"));
+            });
+
     var applyAstGrepRulesTask =
         tasks.register(
             "applyAstGrepRules",
             Exec.class,
             task -> {
-              var option =
-                  project
-                      .getExtensions()
-                      .getByType(BuildOptionsExtension.class)
-                      .getOption(optionName)
-                      .asStringProvider();
+              task.dependsOn(testAstGrepRules);
 
-              if (!option.isPresent()) {
+              if (!astToolOption.isPresent()) {
                 task.getLogger()
                     .warn(
                         "The ast-grep tool location is not set ('{}' option), will not apply ast-grep rules.",
                         optionName);
-                task.setEnabled(false);
               }
 
-              task.setIgnoreExitValue(false);
-              if (option.isPresent()) {
-                task.setExecutable(option.get());
-              }
-              task.setWorkingDir(project.getLayout().getProjectDirectory());
               task.setArgs(List.of("scan", "-c", "gradle/validation/ast-grep/sgconfig.yml"));
+            });
+
+    // Common configuration.
+    List.of(testAstGrepRules, applyAstGrepRulesTask)
+        .forEach(
+            taskProv -> {
+              taskProv.configure(
+                  task -> {
+                    if (!astToolOption.isPresent()) {
+                      task.setEnabled(false);
+                    }
+
+                    task.setIgnoreExitValue(false);
+                    if (astToolOption.isPresent()) {
+                      task.setExecutable(astToolOption.get());
+                    }
+                    task.setWorkingDir(project.getLayout().getProjectDirectory());
+                  });
             });
 
     tasks
