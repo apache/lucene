@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: wildcard-import-not-allowed
+language: java
+rule:
+  kind: asterisk
+  inside:
+    kind: import_declaration
+severity: error
+message: don't use wildcard imports
+note: please use full imports instead
+url: https://errorprone.info/bugpattern/WildcardImport
+files:
+  - "**/*.java"
+ignores:
+  - "**/JavascriptParser.java"
+  - "**/JavascriptLexer.java"

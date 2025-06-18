@@ -331,6 +331,7 @@ allprojects { prj ->
           '-Xep:UnsafeWildcard:ERROR',
           '-Xep:UnusedAnonymousClass:ERROR',
           '-Xep:UnusedCollectionModifiedInPlace:ERROR',
+          // "-Xep:WildcardImport:ERROR", // we use ast-grep for this check.
           '-Xep:VarTypeName:ERROR',
           // '-Xep:WrongOneof:OFF', // we don't use protobuf
           '-Xep:XorPower:ERROR',

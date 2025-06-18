@@ -1,6 +1,3 @@
-import com.diffplug.gradle.spotless.SpotlessPlugin
-import com.diffplug.spotless.LineEnding
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,6 +14,9 @@ import com.diffplug.spotless.LineEnding
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+import com.diffplug.gradle.spotless.SpotlessPlugin
+import com.diffplug.spotless.LineEnding
 
 /*
  * LUCENE-9564: This adds automatic (and enforced) code formatting using

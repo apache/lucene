@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.codecs.lucene103;
 
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.*;
+import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.BLOCK_SIZE;
 import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.DOC_CODEC;
 import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.LEVEL1_MASK;
 import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.META_CODEC;
