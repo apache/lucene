@@ -21,7 +21,7 @@ public class AstGrepPlugin implements Plugin<Project> {
         project
             .getExtensions()
             .getByType(BuildOptionsExtension.class)
-            .addOption("lucene.tool.ast-grep", "External ast-grep executable (path or name)");
+            .addOption(optionName, "External ast-grep executable (path or name)");
 
     var testAstGrepRules =
         tasks.register(
