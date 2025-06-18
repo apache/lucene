@@ -1,0 +1,14 @@
+---
+id: java-lang-import
+invalid:
+  - import java.lang.Foo;
+valid:
+  - import java.lang.foo.bar;
+  - import static java.lang.Foo.bar;
+---
+id: impossible-type-inference
+invalid:
+  - var x = new HashSet<>();
+  - var x = new HashSet<>(foo);
+valid:
+  - HashSet<String> x = new HashSet<>();
