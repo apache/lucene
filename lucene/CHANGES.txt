@@ -100,6 +100,8 @@ New Features
 
 * GITHUB#14708: Add a DoubleValuesSource for full precision vector similarity scores. (Vigya Sharma)
 
+* GITHUB#14784: Make pack methods public for BigIntegerPoint and HalfFloatPoint. (Prudhvi Godithi)
+
 Improvements
 ---------------------
 * GITHUB#14458: Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
