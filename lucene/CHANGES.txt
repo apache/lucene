@@ -158,6 +158,8 @@ Optimizations
 
 * GITHUB#14774: Use IntArrayList/IntHashSet to replace usages of List/Set of Integer. (Zhang Chao)
 
+* GITHUB#14806: Utilize docIdRunEnd on ReqExclBulkScorer. (Ge Song)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
