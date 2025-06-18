@@ -76,3 +76,15 @@ java.lang.Math#fma(float,float,float)
 java.lang.Math#fma(double,double,double)
 
 java.lang.Thread#sleep(**) @ Thread.sleep makes inefficient use of resources, introduces weird race conditions and slows down the code/tests. Not a scalable and good practice so we should prevent it creeping into lucene code
+
+@defaultMessage Using dangerous ClassLoader APIs may deserialize untrusted user input into bytecode, leading to remote code execution vulnerabilities
+java.lang.ClassLoader#defineClass(**)
+jdk.internal.misc.Unsafe#defineClass(**)
+jdk.internal.access.JavaLangAccess#defineClass(**)
+# forbidden complains it can't find this enclosed class
+# java.lang.invoke.MethodHandles.Lookup#defineClass(**)
+java.rmi.server.RMIClassLoader#loadClass(**)
+java.rmi.server.RMIClassLoader#loadProxyClass(**)
+java.rmi.server.RMIClassLoaderSpi#loadClass(**)
+java.rmi.server.RMIClassLoaderSpi#loadProxyClass(**)
+java.net.URLClassLoader#<init>(**)

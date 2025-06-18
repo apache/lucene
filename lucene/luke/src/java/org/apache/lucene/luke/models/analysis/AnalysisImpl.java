@@ -45,6 +45,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.luke.models.LukeException;
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeSource;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.IOUtils;
 
 /** Default implementation of {@link AnalysisImpl} */
@@ -52,7 +53,7 @@ public final class AnalysisImpl implements Analysis {
 
   private Analyzer analyzer = defaultAnalyzer();
 
-  @SuppressWarnings("BanClassLoader")
+  @SuppressForbidden(reason = "adds external jars to classloader")
   @Override
   public void addExternalJars(List<String> jarFiles) {
     List<URL> urls = new ArrayList<>();
