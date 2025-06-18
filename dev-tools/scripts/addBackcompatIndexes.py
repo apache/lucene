@@ -60,7 +60,7 @@ def create_and_add_index(source: str, indextype: str, index_version: scriptutil.
     "dvupdates": "testCreateIndexWithDocValuesUpdates",
     "emptyIndex": "testCreateEmptyIndex",
   }[indextype]
-  gradle_args = " ".join(["-Ptests.useSecurityManager=false", "-p lucene/%s" % module, "test", "--tests TestGenerateBwcIndices.%s" % test, "-Dtests.bwcdir=%s" % temp_dir, "-Dtests.codec=default"])
+  gradle_args = " ".join(["-p lucene/%s" % module, "test", "--tests TestGenerateBwcIndices.%s" % test, "-Dtests.bwcdir=%s" % temp_dir, "-Dtests.codec=default"])
   base_dir = os.getcwd()
   bc_index_file = os.path.join(temp_dir, filename)
 
