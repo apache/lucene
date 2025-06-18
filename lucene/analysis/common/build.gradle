@@ -92,7 +92,7 @@ def cloningTasks = dictionaryProjects.collect { repoSpec ->
           workingDir dotGitPath.getParent().toString()
           args = cmdArgs
 
-          // An explicit GIT_DIR to prevent .git upward scanning if something goes wrong.
+          // An explicit GIT_DIR to prevent .git upward scanning.
           environment("GIT_DIR", dotGitPath.toString())
         }
       }

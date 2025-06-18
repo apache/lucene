@@ -26,6 +26,7 @@ gradle/wrapper/gradle-wrapper.jar
 # Python
 .pydevproject
 __pycache__
+.venv
 
 # Emacs backup
 *~

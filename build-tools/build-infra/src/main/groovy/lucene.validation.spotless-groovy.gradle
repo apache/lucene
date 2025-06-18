@@ -27,17 +27,39 @@ if (project != project.rootProject) {
 
 plugins.apply(SpotlessPlugin.class)
 
-spotless.format("gradleScripts", GroovyGradleExtension.class, { ext ->
-  ext.greclipse()
-  ext.leadingTabsToSpaces(2)
-  ext.trimTrailingWhitespace()
-  ext.endWithNewline()
-  ext.target([
-    "build-tools/**/*.gradle",
-    "build-tools/**/*.groovy",
-    "**/build.gradle"
-  ])
-})
+def spotlessGradleScriptsOptionName = "lucene.spotlessGradleScripts"
+Provider<Boolean> spotlessGradleScriptsOption = buildOptions.addBooleanOption(spotlessGradleScriptsOptionName,
+    "Enable formatting and validation of groovy/gradle scripts (you may want to turn it off locally on slow" +
+    " networks or computers)", true)
+
+if (!spotlessGradleScriptsOption.get()) {
+  // register empty stubs for the corresponding set of spotless tasks.
+  [
+    "spotlessGradleScripts",
+    "spotlessGradleScriptsApply",
+    "spotlessGradleScriptsCheck"
+  ].each {taskName ->
+    tasks.register(taskName, {
+      doFirst {
+        logger.warn("You requested spotless to be locally turned off for gradle/groovy scripts. CI " +
+            "checks may not pass if you have formatting " +
+            "differences ('${spotlessGradleScriptsOptionName}' build option is set to false).")
+      }
+    })
+  }
+} else {
+  spotless.format("gradleScripts", GroovyGradleExtension.class, { ext ->
+    ext.greclipse()
+    ext.leadingTabsToSpaces(2)
+    ext.trimTrailingWhitespace()
+    ext.endWithNewline()
+    ext.target([
+      "build-tools/**/*.gradle",
+      "build-tools/**/*.groovy",
+      "**/build.gradle"
+    ])
+  })
+}
 
 tasks.named("spotlessGradleScripts").configure {
   mustRunAfter ":lucene:build-tools:missing-doclet:spotlessJava"

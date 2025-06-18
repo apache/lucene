@@ -232,21 +232,20 @@ allprojects {
     // Configure module versions.
     tasks.withType(JavaCompile).configureEach { task ->
       // TODO: LUCENE-10267: workaround for gradle bug. Remove when the corresponding issue is fixed.
+      String projectVersion = project.version.toString()
       task.options.compilerArgumentProviders.add((CommandLineArgumentProvider) {
         ->
         if (task.getClasspath().isEmpty()) {
           return [
             "--module-version",
-            project.version.toString()
+            projectVersion
           ]
         } else {
           return []
         }
       })
 
-      task.options.javaModuleVersion.set(provider {
-        return project.version.toString()
-      })
+      task.options.javaModuleVersion.set(projectVersion)
     }
   }
 }
