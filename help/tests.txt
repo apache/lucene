@@ -42,10 +42,14 @@ gradlew :lucene:misc:test -Ptests.seed=DEADBEEF
 
 There are a lot of other test randomization properties
 available. To list them, their defaults and current values
-run the testOpts task against a project that has tests.
+run the 'buildOptions' task against a project that has tests.
 For example:
 
-gradlew -p lucene/core testOpts
+gradlew -p lucene/core buildOptions
+
+or list all options with:
+
+gradlew allOptions
 
 
 Filtering

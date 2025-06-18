@@ -173,6 +173,17 @@ if (verboseMode && !verboseModeHookInstalled) {
   }
 }
 
+Provider<Integer> minMajorVersion = upperJavaFeatureVersionOption.map { ver -> Integer.parseInt(JavaVersion.toVersion(ver).majorVersion) }
+JavaVersion runtimeJava = rootProject.ext.runtimeJavaVersion
+boolean incubatorJavaVersion = rootProject.ext.vectorIncubatorJavaVersions.contains(runtimeJava)
+
+// if the vector module is in incubator, pass lint flags to suppress excessive warnings.
+if (incubatorJavaVersion) {
+  tasks.withType(JavaCompile).configureEach {
+    it.options.compilerArgs += ["-Xlint:-incubating"]
+  }
+}
+
 tasks.withType(Test).configureEach {
   // Running any test task should first display the root randomization seed.
   dependsOn ":showTestsSeed"
@@ -225,9 +236,6 @@ tasks.withType(Test).configureEach {
 
   // Enable the vector incubator module on supported Java versions:
 
-  Provider<Integer> minMajorVersion = upperJavaFeatureVersionOption.map { ver -> Integer.parseInt(JavaVersion.toVersion(ver).majorVersion) }
-  JavaVersion runtimeJava = rootProject.ext.runtimeJavaVersion
-  boolean incubatorJavaVersion = rootProject.ext.vectorIncubatorJavaVersions.contains(runtimeJava)
   boolean manualMinMajorVersion = minMajorVersion.isPresent() &&
       Integer.parseInt(runtimeJava.majorVersion) <= minMajorVersion.get()
   if (incubatorJavaVersion || manualMinMajorVersion) {
