@@ -1,0 +1,34 @@
+# Lint rules from https://errorprone.info/
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: WildcardImport
+language: java
+rule:
+  kind: asterisk
+  inside:
+    kind: import_declaration
+severity: error
+message: Wildcard imports, static or otherwise, should not be used
+note: Use a regular, single-type import
+url: https://errorprone.info/bugpattern/WildcardImport
+files:
+  - "**/*.java"
+ignores:
+  - "**/JavascriptParser.java"
+  - "**/JavascriptLexer.java"
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: ComparingThisWithNull
+language: java
+# we don't even bother matching specific operators, there are other binary ops,
+# but they are even more senseless for this + null.
+rule:
+  kind: binary_expression
+  all:
+    - has:
+        kind: this
+    - has:
+        kind: null_literal
+severity: error
+message: this == null is always false, this != null is always true
+url: https://errorprone.info/bugpattern/ComparingThisWithNull
