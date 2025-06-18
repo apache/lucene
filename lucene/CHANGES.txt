@@ -63,6 +63,8 @@ Changes in Runtime Behavior
 
 Build
 ---------------------
+* GITHUB#14804: Detect and ban wildcard imports in Java (Robert Muir, Dawid Weiss)
+
 * GITHUB#14808: Add support for validating sources using ast-grep tool rules #14808 
   (Robert Muir, Dawid Weiss)
 
