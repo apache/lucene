@@ -33,6 +33,7 @@ configure(allprojects) { prj ->
         lineEndings = LineEnding.UNIX
         endWithNewline()
         googleJavaFormat(deps.versions.googleJavaFormat.get())
+        removeUnusedImports()
 
         // Idea from: https://github.com/opensearch-project/opensearch-java/pull/1180/files
         // we have to add some manual exclusions because wildcard detector can't fix the wildcard import -

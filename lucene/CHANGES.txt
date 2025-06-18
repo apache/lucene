@@ -64,6 +64,9 @@ Changes in Runtime Behavior
 Other
 ---------------------
 
+* GITHUB#14801: Removed all security manager and java.security-related code, which is effectively dead
+  in Java 24+. (Dawid Weiss)
+
 * GITHUB#14229: Bump minimum required Java version to 25
 
 * GITHUB#14564: Remove abstractions from MMapDirectory as we need no MR-JAR anymore.  (Uwe Schindler)
@@ -94,6 +97,10 @@ New Features
 
 * GITHUB#14776: Add a Rescorer that uses values from provided DoubleValuesSource to re-score
   first pass hits. (Vigya Sharma)
+
+* GITHUB#14708: Add a DoubleValuesSource for full precision vector similarity scores. (Vigya Sharma)
+
+* GITHUB#14784: Make pack methods public for BigIntegerPoint and HalfFloatPoint. (Prudhvi Godithi)
 
 Improvements
 ---------------------
