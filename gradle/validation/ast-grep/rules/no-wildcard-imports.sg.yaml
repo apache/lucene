@@ -1,0 +1,15 @@
+id: wildcard-import-not-allowed
+language: java
+rule:
+  kind: asterisk
+  inside:
+    kind: import_declaration
+severity: error
+message: don't use wildcard imports
+note: please use full imports instead
+url: https://google.github.io/styleguide/javaguide.html?cl=head#s3.3.1-wildcard-imports
+files:
+  - "**/*.java"
+ignores:
+  - "**/JavascriptParser.java"
+  - "**/JavascriptLexer.java"
