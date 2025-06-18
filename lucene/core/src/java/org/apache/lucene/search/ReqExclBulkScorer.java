@@ -57,10 +57,11 @@ final class ReqExclBulkScorer extends BulkScorer {
         exclDoc = exclApproximation.advance(upTo);
       }
       if (exclDoc == upTo) {
-        if (exclTwoPhase == null && upTo != DocIdSetIterator.NO_MORE_DOCS) {
+        if (exclTwoPhase == null) {
           // from upTo to docIdRunEnd() are excluded, so we scored up to docIdRunEnd()
+//          upTo = Math.max(exclApproximation.docIDRunEnd(), upTo + 1);
           upTo = exclApproximation.docIDRunEnd();
-        } else if (exclTwoPhase == null || exclTwoPhase.matches()) {
+        } else if (exclTwoPhase.matches()) {
           // upTo is excluded so we can consider that we scored up to upTo+1
           upTo += 1;
         }
