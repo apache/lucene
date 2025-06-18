@@ -161,12 +161,8 @@ public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
     topN = Math.min(topN, counts.length);
 
     PriorityQueue<Entry> pq =
-        new PriorityQueue<>(topN, () -> new Entry("", 0)) {
-          @Override
-          protected boolean lessThan(Entry a, Entry b) {
-            return compare(a.count, b.count, a.label, b.label) < 0;
-          }
-        };
+        PriorityQueue.usingComparator(
+            topN, () -> new Entry("", 0), (a, b) -> compare(a.count, b.count, a.label, b.label));
 
     int childCount = 0;
     Entry reuse = pq.top();
