@@ -44,6 +44,8 @@ Improvements
 
 * GITHUB#14737: Clean up redundant code and comments in query node classes. (Stefan Vodita)
 
+* GITHUB#14816: Expose search strategy in KNN query
+
 Optimizations
 ---------------------
 * GITHUB#14418: Quick exit on filter query matching no docs when rewriting knn query. (Pan Guixin)
