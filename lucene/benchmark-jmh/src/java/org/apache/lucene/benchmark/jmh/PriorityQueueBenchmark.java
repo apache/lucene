@@ -95,7 +95,7 @@ public class PriorityQueueBenchmark {
   }
 
   @Benchmark
-  public List<CompObj> topTreeMap() {
+  public List<CompObj> getTopNWithTreeMap() {
     treeSet.clear();
     for (int i = 0; i < ints.length; i++) {
       if (treeSet.size() < TOP) {
@@ -117,7 +117,7 @@ public class PriorityQueueBenchmark {
   }
 
   @Benchmark
-  public List<CompObj> topHeap() {
+  public List<CompObj> getTopNWithHeap() {
     heap.clear();
     for (int i = 0; i < ints.length; i++) {
       if (heap.size() < TOP) {
@@ -141,8 +141,8 @@ public class PriorityQueueBenchmark {
   public static void main(String[] args) {
     PriorityQueueBenchmark priorityQueueBenchmark = new PriorityQueueBenchmark();
     priorityQueueBenchmark.init();
-    List<CompObj> top100Heap = priorityQueueBenchmark.topHeap();
-    List<CompObj> top100TreeMap = priorityQueueBenchmark.topTreeMap();
+    List<CompObj> top100Heap = priorityQueueBenchmark.getTopNWithHeap();
+    List<CompObj> top100TreeMap = priorityQueueBenchmark.getTopNWithTreeMap();
 
     for (int i = 0; i < top100Heap.size(); i++) {
       if (top100Heap.get(i).equals(top100TreeMap.get(i)) == false) {
