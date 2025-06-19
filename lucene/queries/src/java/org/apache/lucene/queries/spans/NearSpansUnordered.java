@@ -129,14 +129,12 @@ public class NearSpansUnordered extends ConjunctionSpans {
 
   @Override
   public int endPosition() {
-    return atFirstInCurrentDoc
-        ? -1
-        : oneExhaustedInCurrentDoc ? NO_MORE_POSITIONS : spanWindow.maxEndPosition;
+    return atFirstInCurrentDoc ? -1 : oneExhaustedInCurrentDoc ? NO_MORE_POSITIONS : maxEndPosition;
   }
 
   @Override
   public int width() {
-    return spanWindow.maxEndPosition - spanWindow.top().startPosition();
+    return maxEndPosition - spanWindow.top().startPosition();
   }
 
   @Override

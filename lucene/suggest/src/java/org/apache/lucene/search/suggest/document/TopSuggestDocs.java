@@ -35,7 +35,7 @@ public class TopSuggestDocs extends TopDocs {
   public static final TopSuggestDocs EMPTY =
       new TopSuggestDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new SuggestScoreDoc[0]);
 
-  public static final Comparator<SuggestScoreDoc> SUGGEST_SCORE_DOC_COMPARATOR =
+  static final Comparator<SuggestScoreDoc> SUGGEST_SCORE_DOC_COMPARATOR =
       (a, b) -> {
         // compare score, then key (reversed), then docID (reversed)
         int cmp = Float.compare(a.score, b.score);
