@@ -342,4 +342,13 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
       }
     };
   }
+
+  /**
+   * Returns {@code true} if this list contains no elements.
+   *
+   * @return {@code true} if this list contains no elements
+   */
+  public boolean isEmpty() {
+    return size == 0;
+  }
 }
