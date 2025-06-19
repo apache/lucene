@@ -12,3 +12,4 @@ invalid:
   - var x = new HashSet<>(foo);
 valid:
   - HashSet<String> x = new HashSet<>();
+  - var list = new ArrayList<String>();
