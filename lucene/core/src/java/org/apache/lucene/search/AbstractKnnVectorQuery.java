@@ -675,4 +675,8 @@ abstract class AbstractKnnVectorQuery extends Query {
           classHash(), contextIdentity, Arrays.hashCode(docs), Arrays.hashCode(scores));
     }
   }
+
+  public KnnSearchStrategy getSearchStrategy() {
+    return searchStrategy;
+  }
 }
