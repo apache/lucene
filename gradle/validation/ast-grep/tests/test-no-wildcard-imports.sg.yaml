@@ -1,7 +1,0 @@
-id: wildcard-import-not-allowed
-valid:
-  - import foo.bar.Baz;
-  - import static foo.bar.Baz;
-invalid:
-  - import foo.bar.*;
-  - import static foo.bar.*;

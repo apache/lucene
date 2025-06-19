@@ -1,0 +1,22 @@
+---
+id: WildcardImport
+valid:
+  - import foo.bar.Baz;
+  - import static foo.bar.Baz;
+invalid:
+  - import foo.bar.*;
+  - import static foo.bar.*;
+---
+id: ComparingThisWithNull
+valid:
+  - if (this == that) {}
+  - if (that == null) {}
+  - if (null == null) {}
+  - if (this == this) {}
+invalid:
+  - if (this == null) {}
+  - if (null == this) {}
+  - |
+    x = this == null ? 1 : 0;
+  - |
+    x = null == this ? 1 : 0;
