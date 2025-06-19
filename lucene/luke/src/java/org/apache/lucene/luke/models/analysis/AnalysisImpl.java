@@ -46,14 +46,12 @@ import org.apache.lucene.luke.models.LukeException;
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.SuppressForbidden;
 
 /** Default implementation of {@link AnalysisImpl} */
 public final class AnalysisImpl implements Analysis {
 
   private Analyzer analyzer = defaultAnalyzer();
 
-  @SuppressForbidden(reason = "adds external jars to classloader")
   @Override
   public void addExternalJars(List<String> jarFiles) {
     List<URL> urls = new ArrayList<>();
