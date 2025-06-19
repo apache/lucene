@@ -61,6 +61,13 @@ Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
 
+Build
+---------------------
+* GITHUB#14804: Detect and ban wildcard imports in Java (Robert Muir, Dawid Weiss)
+
+* GITHUB#14808: Add support for validating sources using ast-grep tool rules #14808 
+  (Robert Muir, Dawid Weiss)
+
 Other
 ---------------------
 
@@ -99,6 +106,8 @@ New Features
   first pass hits. (Vigya Sharma)
 
 * GITHUB#14708: Add a DoubleValuesSource for full precision vector similarity scores. (Vigya Sharma)
+
+* GITHUB#14784: Make pack methods public for BigIntegerPoint and HalfFloatPoint. (Prudhvi Godithi)
 
 Improvements
 ---------------------

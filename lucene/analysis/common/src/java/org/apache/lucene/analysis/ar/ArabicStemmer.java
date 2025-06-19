@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.analysis.ar;
 
-import static org.apache.lucene.analysis.util.StemmerUtil.*;
+import static org.apache.lucene.analysis.util.StemmerUtil.deleteN;
 
 /**
  * Stemmer for Arabic.

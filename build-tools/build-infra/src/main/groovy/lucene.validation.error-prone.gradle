@@ -153,7 +153,7 @@ allprojects { prj ->
           // '-Xep:AutoValueConstructorOrderChecker:OFF', // we don't use autovalue
           '-Xep:BadAnnotationImplementation:ERROR',
           '-Xep:BadShiftAmount:ERROR',
-          '-Xep:BanClassLoader:ERROR',
+          // '-Xep:BanClassLoader:OFF', // implemented with forbidden APIs instead
           // '-Xep:BanJNDI:OFF', // implemented with forbidden APIs instead
           // '-Xep:BoxedPrimitiveEquality:OFF', // TODO: there are problems
           // '-Xep:BundleDeserializationCast:OFF', // we don't use android
@@ -162,7 +162,7 @@ allprojects { prj ->
           // '-Xep:CheckReturnValue:OFF', // we don't use these annotations
           '-Xep:CollectionToArraySafeParameter:ERROR',
           // '-Xep:ComparableType:OFF',
-          '-Xep:ComparingThisWithNull:ERROR',
+          // '-Xep:ComparingThisWithNull:ERROR', // we use ast-grep for this check
           '-Xep:ComparisonOutOfRange:ERROR',
           // '-Xep:CompatibleWithAnnotationMisuse:OFF', // we don't use this annotation
           // '-Xep:CompileTimeConstant:OFF', // we don't use this annotation
@@ -331,6 +331,7 @@ allprojects { prj ->
           '-Xep:UnsafeWildcard:ERROR',
           '-Xep:UnusedAnonymousClass:ERROR',
           '-Xep:UnusedCollectionModifiedInPlace:ERROR',
+          // "-Xep:WildcardImport:ERROR", // we use ast-grep for this check.
           '-Xep:VarTypeName:ERROR',
           // '-Xep:WrongOneof:OFF', // we don't use protobuf
           '-Xep:XorPower:ERROR',

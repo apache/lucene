@@ -345,7 +345,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
     return array;
   }
 
-  private final boolean upHeap(int origPos) {
+  private boolean upHeap(int origPos) {
     int i = origPos;
     T node = heap[i]; // save bottom node
     int j = i >>> 1;
@@ -358,7 +358,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
     return i != origPos;
   }
 
-  private final void downHeap(int i) {
+  private void downHeap(int i) {
     T node = heap[i]; // save top node
     int j = i << 1; // find smaller child
     int k = j + 1;
