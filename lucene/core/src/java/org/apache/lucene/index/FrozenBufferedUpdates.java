@@ -500,7 +500,6 @@ final class FrozenBufferedUpdates {
   public void setDelGen(long delGen) {
     assert this.delGen == -1 : "delGen was already previously set to " + this.delGen;
     this.delGen = delGen;
-    deleteTerms.setDelGen(delGen);
   }
 
   public long delGen() {
