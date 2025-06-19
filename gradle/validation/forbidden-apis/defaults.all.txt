@@ -79,12 +79,6 @@ java.lang.Thread#sleep(**) @ Thread.sleep makes inefficient use of resources, in
 
 @defaultMessage Using dangerous ClassLoader APIs may deserialize untrusted user input into bytecode, leading to remote code execution vulnerabilities
 java.lang.ClassLoader#defineClass(**)
-jdk.internal.misc.Unsafe#defineClass(**)
-jdk.internal.access.JavaLangAccess#defineClass(**)
-# forbidden complains it can't find this enclosed class
-# java.lang.invoke.MethodHandles.Lookup#defineClass(**)
-java.rmi.server.RMIClassLoader#loadClass(**)
-java.rmi.server.RMIClassLoader#loadProxyClass(**)
-java.rmi.server.RMIClassLoaderSpi#loadClass(**)
-java.rmi.server.RMIClassLoaderSpi#loadProxyClass(**)
+java.lang.invoke.MethodHandles$Lookup#defineClass(**)
+java.rmi.server.RMIClassLoader
 java.net.URLClassLoader#<init>(**)
