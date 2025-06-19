@@ -6,7 +6,7 @@ valid:
   - import java.lang.foo.bar;
   - import static java.lang.Foo.bar;
 ---
-id: impossible-type-inference
+id: confusing-type-inference
 invalid:
   - var x = new HashSet<>();
   - var x = new HashSet<>(foo);

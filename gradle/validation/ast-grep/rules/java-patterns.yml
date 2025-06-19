@@ -13,12 +13,11 @@ message: unnecessary import of `$REF` from java.lang
 note: classes in java.lang are implicitly imported
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
-id: impossible-type-inference
+id: confusing-type-inference
 language: java
-# does the javac compiler allow this? did it ever?
 rule:
   pattern: var $$$ = new $$$<>($$$)
   kind: local_variable_declaration
 severity: error
 message: illegal use of `var` keyword with generic instance creation
-note: type inference cannot happen in both directions
+note: add explicit typing on the RHS when using `var`
