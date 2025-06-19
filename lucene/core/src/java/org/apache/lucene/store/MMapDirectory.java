@@ -312,15 +312,13 @@ public class MMapDirectory extends FSDirectory {
     // Work around for JDK-8259028: we need to unwrap our test-only file system layers
     path = Unwrappable.unwrapAll(path);
 
-    boolean success = false;
     final boolean confined = context.hints().contains(ReadOnceHint.INSTANCE);
     Function<IOContext, ReadAdvice> toReadAdvice =
         c -> readAdviceOverride.apply(name, c).orElseGet(() -> toReadAdvice(c));
     final Arena arena = confined ? Arena.ofConfined() : getSharedArena(name, arenas);
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
-      final IndexInput in =
-          MemorySegmentIndexInput.newInstance(
+      return MemorySegmentIndexInput.newInstance(
               resourceDescription,
               arena,
               map(
@@ -335,12 +333,9 @@ public class MMapDirectory extends FSDirectory {
               chunkSizePower,
               confined,
               toReadAdvice);
-      success = true;
-      return in;
-    } finally {
-      if (success == false) {
-        arena.close();
-      }
+    } catch (Throwable t) {
+      arena.close();
+      throw t;
     }
   }
 

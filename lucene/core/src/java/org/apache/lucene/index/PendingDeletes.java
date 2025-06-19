@@ -186,15 +186,12 @@ class PendingDeletes {
     // We can write directly to the actual name (vs to a
     // .tmp & renaming it) because the file is not live
     // until segments file is written:
-    boolean success = false;
     try {
       Codec codec = info.info.getCodec();
       codec
           .liveDocsFormat()
           .writeLiveDocs(liveDocs, trackingDir, info, pendingDeleteCount, IOContext.DEFAULT);
-      success = true;
-    } finally {
-      if (!success) {
+    } catch (Throwable t) {
         // Advance only the nextWriteDelGen so that a 2nd
         // attempt to write will write to a new file
         info.advanceNextWriteDelGen();
@@ -203,7 +200,7 @@ class PendingDeletes {
         for (String fileName : trackingDir.getCreatedFiles()) {
           IOUtils.deleteFilesIgnoringExceptions(dir, fileName);
         }
-      }
+      throw t;
     }
 
     // If we hit an exc in the line above (eg disk full)
