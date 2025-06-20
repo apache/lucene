@@ -17,7 +17,6 @@
 
 import com.diffplug.gradle.spotless.SpotlessPlugin
 import com.diffplug.spotless.LineEnding
-import org.apache.lucene.gradle.plugins.spotless.CheckGoogleJavaFormatTask
 
 /*
  * LUCENE-9564: This adds automatic (and enforced) code formatting using
@@ -28,12 +27,6 @@ configure(allprojects) { prj ->
   plugins.apply(SpotlessPlugin)
 
   plugins.withType(JavaPlugin).configureEach {
-    tasks.register("checkGoogleJavaFormat", CheckGoogleJavaFormatTask, {
-      sourceFiles = project.fileTree("src", {
-        include "**/*.java"
-      })
-    })
-
     spotless {
       java {
         lineEndings = LineEnding.UNIX

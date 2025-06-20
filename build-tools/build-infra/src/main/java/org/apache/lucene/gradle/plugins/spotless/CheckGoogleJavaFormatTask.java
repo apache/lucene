@@ -3,9 +3,6 @@ package org.apache.lucene.gradle.plugins.spotless;
 import com.github.difflib.text.DiffRow;
 import com.github.difflib.text.DiffRowGenerator;
 import com.google.googlejavaformat.java.FormatterException;
-import com.google.googlejavaformat.java.ImportOrderer;
-import com.google.googlejavaformat.java.JavaFormatterOptions;
-import com.google.googlejavaformat.java.RemoveUnusedImports;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -51,7 +48,7 @@ public abstract class CheckGoogleJavaFormatTask extends ParentGoogleJavaFormatTa
 
     getLogger()
         .info(
-            "Will check formatting of {} source {} in this run.",
+            "Will check the formatting of {} source {} in this run.",
             sourceFiles.size(),
             sourceFiles.size() == 1 ? "file" : "files");
 
@@ -113,39 +110,31 @@ public abstract class CheckGoogleJavaFormatTask extends ParentGoogleJavaFormatTa
       var formatter = getFormatter();
       var outputFile = getParameters().getOutputFile().get().getAsFile().toPath();
       Writer diffOutput = null;
+      for (File inputFile : getParameters().getTargetFiles().getFiles()) {
+        var inputPath = inputFile.toPath();
+        try {
+          String input = Files.readString(inputPath);
+          String expected = applyFormatter(formatter, input);
+
+          if (!input.equals(expected)) {
+            if (diffOutput == null) {
+              diffOutput = Files.newBufferedWriter(outputFile, StandardCharsets.UTF_8);
+            }
+
+            diffOutput.write("== " + inputPath + "\n");
+            writeDiff(diffOutput, input, expected);
+          }
+        } catch (FormatterException | IOException e) {
+          throw new RuntimeException("Could not format file: " + inputPath, e);
+        }
+      }
+
       try {
-        for (File inputFile : getParameters().getTargetFiles().getFiles()) {
-          var inputPath = inputFile.toPath();
-          try {
-            String input = Files.readString(inputPath);
-            String expected = input;
-            {
-              // String expected = formatter.formatSourceAndFixImports(input);
-              expected = ImportOrderer.reorderImports(expected, JavaFormatterOptions.Style.GOOGLE);
-              expected = RemoveUnusedImports.removeUnusedImports(expected);
-              expected = formatter.formatSource(expected);
-            }
-
-            if (!input.equals(expected)) {
-              if (diffOutput == null) {
-                diffOutput = Files.newBufferedWriter(outputFile, StandardCharsets.UTF_8);
-              }
-
-              diffOutput.write("== " + inputPath + "\n");
-              writeDiff(diffOutput, input, expected);
-            }
-          } catch (FormatterException | IOException e) {
-            throw new RuntimeException("Could not format file: " + inputPath, e);
-          }
-        }
-      } finally {
         if (diffOutput != null) {
-          try {
-            diffOutput.close();
-          } catch (IOException e) {
-            throw new UncheckedIOException(e);
-          }
+          diffOutput.close();
         }
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
       }
     }
 
@@ -156,8 +145,8 @@ public abstract class CheckGoogleJavaFormatTask extends ParentGoogleJavaFormatTa
             .showInlineDiffs(false)
             .mergeOriginalRevised(true)
             .inlineDiffByWord(true)
-            .oldTag(f -> "~~")
-            .newTag(f -> "**")
+            .oldTag(_ -> "")
+            .newTag(_ -> "")
             .build();
 
     // TODO: improve this or reuse spotless's diffing alg (which is from jgit).
