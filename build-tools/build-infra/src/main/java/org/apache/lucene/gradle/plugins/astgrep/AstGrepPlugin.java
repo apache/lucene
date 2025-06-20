@@ -57,7 +57,7 @@ public class AstGrepPlugin implements Plugin<Project> {
             "applyAstGrepRules",
             Exec.class,
             task -> {
-              task.dependsOn(testAstGrepRules);
+              task.mustRunAfter(testAstGrepRules);
 
               if (!astToolOption.isPresent()) {
                 task.getLogger()
@@ -88,7 +88,14 @@ public class AstGrepPlugin implements Plugin<Project> {
             });
 
     tasks
-        .matching(task -> task.getName().equals("check") || task.getName().equals("tidy"))
+        .matching(task -> task.getName().equals("check"))
+        .configureEach(
+            task -> {
+              task.dependsOn(testAstGrepRules);
+            });
+
+    tasks
+        .matching(task -> task.getName().equals("tidy"))
         .configureEach(
             task -> {
               task.dependsOn(applyAstGrepRulesTask);

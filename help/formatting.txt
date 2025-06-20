@@ -32,10 +32,10 @@ automatic formatting.
 Gradle scripts
 ==============
 
-Groovy and gradle code is also automatically formatted and this formatting
-is enforced. This is unfortunately a heavy download and runtime-costly
-application. If you'd like to temporarily skip this validation step, set
-the lucene.spotlessGradleScripts option to false - either on command line
-using -Plucene.spotlessGradleScripts=false, in your local
-build-options.local.properties or by any other means build options can be
-set.
+Groovy and gradle code may be automatically formatted and this formatting
+can be enforced. This is unfortunately a heavy download and runtime-costly
+application so it's turned off by default. If you work with groovy/gradle,
+enable this validation step by setting the lucene.spotlessGradleScripts option
+to true - either on command line using -Plucene.spotlessGradleScripts=false,
+in your local build-options.local.properties, or by any other means build
+options can be set.
