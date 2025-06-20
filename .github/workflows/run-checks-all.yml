@@ -1,6 +1,6 @@
 name: "Run checks: all modules"
 
-on: 
+on:
   workflow_dispatch:
 
   pull_request:

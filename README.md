@@ -39,7 +39,7 @@ comprehensive documentation, visit:
 ## Building
 
 ### Basic steps:
-  
+
 1. Install [OpenJDK 24](https://jdk.java.net/archive/).
 2. Clone Lucene's git repository (or download the source distribution).
 3. Run gradle launcher script (`gradlew`).
