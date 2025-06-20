@@ -19,7 +19,7 @@
 
 # Apache Lucene™ ${project.version} Documentation
 
-Lucene is a Java full-text search engine. Lucene is not a complete application, 
+Lucene is a Java full-text search engine. Lucene is not a complete application,
 but rather a code library and API that can easily be used to add search capabilities
 to applications.
 

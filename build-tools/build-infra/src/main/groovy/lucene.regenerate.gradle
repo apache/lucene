@@ -219,7 +219,8 @@ configure([
           // Recompute checksums after the task has completed and write them.
           def updatedChecksums = computeChecksummedEntries(sourceTask)
           checksumsFile.setText(
-              JsonOutput.prettyPrint(JsonOutput.toJson(new TreeMap<String, String>(updatedChecksums))), "UTF-8")
+              JsonOutput.prettyPrint(JsonOutput.toJson(new TreeMap<String,
+              String>(updatedChecksums))) + '\n', "UTF-8")
 
           logger.warn("Updated generated file checksums for task ${sourceTask.path}.")
         }

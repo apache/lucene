@@ -218,7 +218,7 @@ def main():
   w('')
   if not transpose and n == 1:
     w(HEADER_COMMENT)
-    w('') 
+    w('')
   if transpose:
     w('/** Parametric description for generating a Levenshtein automaton of degree %s, ' % n)
     w('    with transpositions as primitive edits.')
@@ -382,7 +382,7 @@ def main():
         w('// %d vectors; %d states per vector; array length = %d' % \
         (numVectors, numCasesPerVector, numVectors * numCasesPerVector))
       else:
-        w(STATE_COMMENT[i]) 
+        w(STATE_COMMENT[i])
       w.indent()
       if PACKED:
         # pack in python

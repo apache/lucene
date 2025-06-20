@@ -23,10 +23,10 @@ echo "Date range covered by this report: $SINCE_TS .. $UNTIL_TS"
 
 echo "## Commits and issue summary:"
 echo -n "* The number of commits to the main branch: "
-git log main --pretty='format:%h,%as,%an,%s' --since="$SINCE" --before="$UNTIL" | wc -l 
+git log main --pretty='format:%h,%as,%an,%s' --since="$SINCE" --before="$UNTIL" | wc -l
 
 echo -n "* The number of commits to any branch: "
-git log --all --pretty='format:%h,%as,%an,%s' --since="$SINCE" --before="$UNTIL" | wc -l 
+git log --all --pretty='format:%h,%as,%an,%s' --since="$SINCE" --before="$UNTIL" | wc -l
 
 echo -n "* The number of issues filed: "
 gh issue list --state all --search "created:$SINCE_TS..$UNTIL_TS" --repo $REPO --limit 1000 --json id | jq length

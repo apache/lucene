@@ -19,8 +19,8 @@
 
 ## Introduction
 
-This is a binary distribution of Lucene. Lucene is a Java full-text 
-search engine. Lucene is not a complete application, but rather a code library 
+This is a binary distribution of Lucene. Lucene is a Java full-text
+search engine. Lucene is not a complete application, but rather a code library
 and an API that can easily be used to add search capabilities to applications.
 
  * The Lucene web site is at: https://lucene.apache.org/
@@ -35,7 +35,7 @@ The following sub-folders are included in the binary distribution of Lucene:
   Convenience scripts to launch Lucene Luke and other index-maintenance tools.
 * `modules/`:
   All binary Lucene Java modules (JARs).
-* `modules-thirdparty/` 
+* `modules-thirdparty/`
   Third-party binary modules required to run Lucene Luke.
 * `licenses/`
   Third-party licenses and notice files.

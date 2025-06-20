@@ -20,9 +20,9 @@ package org.apache.lucene.analysis.email;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 /**
- * This class implements Word Break rules from the Unicode Text Segmentation 
- * algorithm, as specified in 
- * <a href="http://unicode.org/reports/tr29/">Unicode Standard Annex #29</a> 
+ * This class implements Word Break rules from the Unicode Text Segmentation
+ * algorithm, as specified in
+ * <a href="http://unicode.org/reports/tr29/">Unicode Standard Annex #29</a>
  * URLs and email addresses are also tokenized according to the relevant RFCs.
  * <p>
  * Tokens produced are of the following types:
@@ -97,8 +97,8 @@ ExtFmtZwj           = [\p{WB:Format}\p{WB:Extend}\p{WB:ZWJ}]*
 HangulEx            = [\p{Script:Hangul}&&[\p{WB:ALetter}\p{WB:Hebrew_Letter}]] {ExtFmtZwj}
 AHLetterEx          = [\p{WB:ALetter}\p{WB:Hebrew_Letter}]                      {ExtFmtZwj}
 NumericEx           = [\p{WB:Numeric}]                                          {ExtFmtZwj}
-KatakanaEx          = \p{WB:Katakana}                                           {ExtFmtZwj} 
-MidLetterEx         = [\p{WB:MidLetter}\p{WB:MidNumLet}\p{WB:SingleQuote}]      {ExtFmtZwj} 
+KatakanaEx          = \p{WB:Katakana}                                           {ExtFmtZwj}
+MidLetterEx         = [\p{WB:MidLetter}\p{WB:MidNumLet}\p{WB:SingleQuote}]      {ExtFmtZwj}
 MidNumericEx        = [\p{WB:MidNum}\p{WB:MidNumLet}\p{WB:SingleQuote}]         {ExtFmtZwj}
 ExtendNumLetEx      = \p{WB:ExtendNumLet}                                       {ExtFmtZwj}
 HanEx               = \p{Script:Han}                                            {ExtFmtZwj}
@@ -133,7 +133,7 @@ DomainNameStrict_TLDprefix_2CharSuffix = {DomainLabelSequence} {ASCIITLDprefix_2
 DomainNameLoose  = {DomainLabel} ("." {DomainLabel})*
 
 IPv4DecimalOctet = "0"{0,2} [0-9] | "0"? [1-9][0-9] | "1" [0-9][0-9] | "2" ([0-4][0-9] | "5" [0-5])
-IPv4Address  = {IPv4DecimalOctet} ("." {IPv4DecimalOctet}){3} 
+IPv4Address  = {IPv4DecimalOctet} ("." {IPv4DecimalOctet}){3}
 IPv6Hex16Bit = [0-9A-Fa-f]{1,4}
 IPv6LeastSignificant32Bits = {IPv4Address} | ({IPv6Hex16Bit} ":" {IPv6Hex16Bit})
 IPv6Address =                                                  ({IPv6Hex16Bit} ":"){6} {IPv6LeastSignificant32Bits}
@@ -154,11 +154,11 @@ URIlogin = {URIloginSegment} (":" {URIloginSegment})? "@"
 URIquery    = "?" ({URIunreserved} | {URIpercentEncoded} | {URIsubDelims} | [:@/?])*
 URIfragment = "#" ({URIunreserved} | {URIpercentEncoded} | {URIsubDelims} | [:@/?])*
 URIport = ":" [0-9]{1,5}
-URIhostStrict                       = ("[" {IPv6Address} "]") | {IPv4Address} | {DomainNameStrict}  
-URIhostStrict_NoTLDprefix           = ("[" {IPv6Address} "]") | {IPv4Address} | {DomainNameStrict_NoTLDprefix} 
+URIhostStrict                       = ("[" {IPv6Address} "]") | {IPv4Address} | {DomainNameStrict}
+URIhostStrict_NoTLDprefix           = ("[" {IPv6Address} "]") | {IPv4Address} | {DomainNameStrict_NoTLDprefix}
 URIhostStrict_TLDprefix_1CharSuffix = ("[" {IPv6Address} "]") | {IPv4Address} | {DomainNameStrict_TLDprefix_1CharSuffix}
 URIhostStrict_TLDprefix_2CharSuffix = ("[" {IPv6Address} "]") | {IPv4Address} | {DomainNameStrict_TLDprefix_2CharSuffix}
-URIhostLoose  = ("[" {IPv6Address} "]") | {IPv4Address} | {DomainNameLoose} 
+URIhostLoose  = ("[" {IPv6Address} "]") | {IPv4Address} | {DomainNameLoose}
 URIauthorityLoose  = {URIlogin}? {URIhostLoose}  {URIport}?
 
 HTTPsegment = ({URIunreserved} | {URIpercentEncoded} | [;:@&=])*
@@ -189,10 +189,10 @@ EMAILatomText = [A-Za-z0-9!#$%&'*+-/=?\^_`{|}~]
 EMAILlabel = {EMAILatomText}+ | {EMAILquotedString}
 EMAILlocalPart = {EMAILlabel} ("." {EMAILlabel})*
 EMAILdomainLiteralText = [\u0001-\u0008\u000B\u000C\u000E-\u005A\u005E-\u007F] | [\\] [\u0000-\u007F]
-// DFA minimization allows {IPv6Address} and {IPv4Address} to be included 
-// in the {EMAILbracketedHost} definition without incurring any size penalties, 
+// DFA minimization allows {IPv6Address} and {IPv4Address} to be included
+// in the {EMAILbracketedHost} definition without incurring any size penalties,
 // since {EMAILdomainLiteralText} recognizes all valid IP addresses.
-// The IP address regexes are included in {EMAILbracketedHost} simply as a 
+// The IP address regexes are included in {EMAILbracketedHost} simply as a
 // reminder that they are acceptable bracketed host forms.
 EMAILbracketedHost = "[" ({EMAILdomainLiteralText}* | {IPv4Address} | [iI][pP][vV] "6:" {IPv6Address}) "]"
 EMAIL = {EMAILlocalPart} "@" ({DomainNameStrict} | {EMAILbracketedHost})
@@ -201,35 +201,35 @@ EMAIL = {EMAILlocalPart} "@" ({DomainNameStrict} | {EMAILbracketedHost})
 %{
   /** Alphanumeric sequences */
   public static final int WORD_TYPE = UAX29URLEmailTokenizer.ALPHANUM;
-  
+
   /** Numbers */
   public static final int NUMERIC_TYPE = UAX29URLEmailTokenizer.NUM;
-  
+
   /**
    * Chars in class \p{Line_Break = Complex_Context} are from South East Asian
-   * scripts (Thai, Lao, Myanmar, Khmer, etc.).  Sequences of these are kept 
+   * scripts (Thai, Lao, Myanmar, Khmer, etc.).  Sequences of these are kept
    * together as as a single token rather than broken up, because the logic
    * required to break them at word boundaries is too complex for UAX#29.
    * <p>
    * See Unicode Line Breaking Algorithm: http://www.unicode.org/reports/tr14/#SA
    */
   public static final int SOUTH_EAST_ASIAN_TYPE = UAX29URLEmailTokenizer.SOUTHEAST_ASIAN;
-  
+
   /** Ideographic token type */
   public static final int IDEOGRAPHIC_TYPE = UAX29URLEmailTokenizer.IDEOGRAPHIC;
-  
+
   /** Hiragana token type */
   public static final int HIRAGANA_TYPE = UAX29URLEmailTokenizer.HIRAGANA;
-  
+
   /** Katakana token type */
   public static final int KATAKANA_TYPE = UAX29URLEmailTokenizer.KATAKANA;
-  
+
   /** Hangul token type */
   public static final int HANGUL_TYPE = UAX29URLEmailTokenizer.HANGUL;
-  
+
   /** Email token type */
   public static final int EMAIL_TYPE = UAX29URLEmailTokenizer.EMAIL;
-  
+
   /** URL token type */
   public static final int URL_TYPE = UAX29URLEmailTokenizer.URL;
 
@@ -249,7 +249,7 @@ EMAIL = {EMAILlocalPart} "@" ({DomainNameStrict} | {EMAILbracketedHost})
   public final void getText(CharTermAttribute t) {
     t.copyBuffer(zzBuffer, zzStartRead, zzMarkedPos-zzStartRead);
   }
-  
+
   /**
    * Sets the scanner buffer size in chars
    */
@@ -269,7 +269,7 @@ EMAIL = {EMAILlocalPart} "@" ({DomainNameStrict} | {EMAILbracketedHost})
 //        WB2.    Any ÷ eot
 //
   <<EOF>> { return YYEOF; }
-  
+
   {URL}   { yybegin(YYINITIAL); return URL_TYPE; }
 
   // LUCENE-5391: Don't recognize no-scheme domain-only URLs with a following alphanumeric character
@@ -302,7 +302,7 @@ EMAIL = {EMAILlocalPart} "@" ({DomainNameStrict} | {EMAILbracketedHost})
   //                          WB16. [^RI] (RI RI)* RI × RI
   //
   // We use the "emoji_sequence" rule from http://www.unicode.org/reports/tr51/tr51-16.html (Unicode 12.0)
-  // 
+  //
   // emoji_sequence :=
   //    Top-level EBNF           Expanded #1                       Expanded #2                       Expanded #3
   //    ---------------------    ----------------------------      -----------------------------     ----------------------------------------------
@@ -316,18 +316,18 @@ EMAIL = {EMAILlocalPart} "@" ({DomainNameStrict} | {EMAILbracketedHost})
   //                                                               | emoji_presentation_sequence     | \p{Emoji} \uFE0F
   //                                                               | emoji_modifier_sequence         | \p{Emoji_Modifier_Base} \p{Emoji_Modifier} )
   //                             ( ZWJ emoji_zwj_element )+                                          ( \p{WB:ZWJ} ^^ )+
-  // 
+  //
   //    | emoji_tag_sequence     tag_base                            emoji_character                 ( \p{Emoji}
   //                                                               | emoji_presentation_sequence     | \p{Emoji} \uFE0F
   //                                                               | emoji_modifier_sequence         | \p{Emoji_Modifier_Base} \p{Emoji_Modifier} )
   //                             tag_spec                                                            [\u{E0020}-\u{E007E}]+
   //                             tag_term                                                            \u{E007F}
   //
-  // [1] https://unicode.org/Public/emoji/12.1/emoji-test.txt includes key cap sequences 
+  // [1] https://unicode.org/Public/emoji/12.1/emoji-test.txt includes key cap sequences
   //     WITHOUT \uFE0F (emoji presentation indicator), annotating them as "non-fully-qualified";
   //     TR#51 says about non-fully-qualified *ZWJ sequences* that implementations may
   //     choose whether to support them for segmentation.  This implementation will
-  //     recognize /[0-9#*]\u20E3/ - i.e. without \uFE0F - as Emoji. 
+  //     recognize /[0-9#*]\u20E3/ - i.e. without \uFE0F - as Emoji.
   //
   // See also: http://www.unicode.org/L2/L2016/16315-handling-seg-emoji.pdf
   //           https://docs.google.com/document/d/1yDZ5TUZNVVKaM9zYCCLbRIAKGNZANsAGl0bcNzGGvn8
@@ -336,9 +336,9 @@ EMAIL = {EMAILlocalPart} "@" ({DomainNameStrict} | {EMAILbracketedHost})
   //
   //         WB3c′ ZWJ × (Extended_Pictographic | EmojiNRK)
   //
-    {EmojiCharOrPresSeqOrModSeq} ( ( \p{WB:ZWJ} {EmojiCharOrPresSeqOrModSeq} )* | {TagSpec}+ {TagTerm} ) 
-  | {KeyCapBaseCharEx} {EmojiPresentationSelector}? {KeyCapEx} 
-  | {RegionalIndicatorEx}{2} 
+    {EmojiCharOrPresSeqOrModSeq} ( ( \p{WB:ZWJ} {EmojiCharOrPresSeqOrModSeq} )* | {TagSpec}+ {TagTerm} )
+  | {KeyCapBaseCharEx} {EmojiPresentationSelector}? {KeyCapEx}
+  | {RegionalIndicatorEx}{2}
     { yybegin(YYINITIAL); return EMOJI_TYPE; }
 
   // UAX#29 WB8.    Numeric × Numeric
@@ -353,7 +353,7 @@ EMAIL = {EMAILlocalPart} "@" ({DomainNameStrict} | {EMAILbracketedHost})
   // subset of the below for typing purposes only!
   {HangulEx}+
     { yybegin(YYINITIAL); return HANGUL_TYPE; }
-  
+
   {KatakanaEx}+
     { yybegin(YYINITIAL); return KATAKANA_TYPE; }
 
@@ -367,7 +367,7 @@ EMAIL = {EMAILlocalPart} "@" ({DomainNameStrict} | {EMAILbracketedHost})
   //        WB10.   Numeric × AHLetter
   //        WB13.   Katakana × Katakana
   //        WB13a.  (ALetter | Hebrew_Letter | Numeric | Katakana | ExtendNumLet) × ExtendNumLet
-  //        WB13b.  ExtendNumLet × (ALetter | Hebrew_Letter | Numeric | Katakana) 
+  //        WB13b.  ExtendNumLet × (ALetter | Hebrew_Letter | Numeric | Katakana)
   //
   {ExtendNumLetEx}*  ( {KatakanaEx}          ( {ExtendNumLetEx}*   {KatakanaEx}                        )*
                      | ( {HebrewLetterEx}    ( {SingleQuoteEx}     | {DoubleQuoteEx}  {HebrewLetterEx} )
@@ -382,7 +382,7 @@ EMAIL = {EMAILlocalPart} "@" ({DomainNameStrict} | {EMAILbracketedHost})
                        )+
                      )
   )*
-  {ExtendNumLetEx}* 
+  {ExtendNumLetEx}*
     { yybegin(YYINITIAL); return WORD_TYPE; }
 
 

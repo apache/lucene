@@ -95,8 +95,8 @@ stop
 { a TO c }^2.0
 [ a TO c] OR bar
 [ a TO c] AND bar
-( bar blar { a TO c}) 
-gack ( bar blar { a TO c}) 
+( bar blar { a TO c})
+gack ( bar blar { a TO c})
 
 
 +weltbank +worlbank
