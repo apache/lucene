@@ -650,3 +650,11 @@ charset = unset
 # this file has no trailing newline
 [versions.lock]
 insert_final_newline = unset
+
+# javacc generated files which have trailing whitespace
+[{**/*Parser.java,**/*ParserTokenManager.java,**/TokenMgrError.java,**/ParseException.java}]
+trim_trailing_whitespace = unset
+
+# jflex generated files which has trailing whitespace
+[**/HTMLStripCharFilter.java]
+trim_trailing_whitespace = unset
