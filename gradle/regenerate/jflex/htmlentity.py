@@ -22,7 +22,7 @@ import sys
 def main():
   with open(sys.argv[1], 'w') as f:
       sys.stdout = f
-      
+
       print(get_apache_license())
       codes = {}
       regex = re.compile(r'\s*<!ENTITY\s+(\S+)\s+"&(?:#38;)?#(\d+);"')
@@ -33,9 +33,9 @@ def main():
           if   key == 'quot': codes[key] = r'\"'
           elif key == 'nbsp': codes[key] = ' ';
           else              : codes[key] = r'\u%04X' % int(match.group(2))
-    
+
       keys = sorted(codes)
-    
+
       first_entry = True
       output_line = 'CharacterEntities = ( '
       for key in keys:
@@ -52,7 +52,7 @@ def main():
             output_line = '                   '
           output_line += new_entry
       print(output_line, ')')
-    
+
       print('%{')
       print('  private static final Map<String,String> upperCaseVariantsAccepted')
       print('      = new HashMap<>();')

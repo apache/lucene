@@ -15,7 +15,7 @@
 # limitations under the License.
 
 
-# Invoke Yetus locally to validate a patch against Lucene/Solr, and 
+# Invoke Yetus locally to validate a patch against Lucene/Solr, and
 # (optionally) post a validation report comment on the passed-in JIRA issue
 # from which the patch was downloaded.
 #
@@ -26,26 +26,26 @@
 #
 # NB 2: The Jenkins job "PreCommit-Admin" automatically detects new patches
 # posted to LUCENE and SOLR JIRA issues that are in the "Patch Available"
-# state, and then queues the appropriate "PreCommit-LUCENE-Build" or 
+# state, and then queues the appropriate "PreCommit-LUCENE-Build" or
 # "PreCommit-SOLR-Build" job pointing to the JIRA hosting the new patch.
 # Those jobs perform the same checks as this script, and like this script,
 # will post a comment on the JIRA issue.  As a result, manual invocation
 # (e.g. via this script) should ordinarily not be necessary.
-# 
+#
 # Environment variable ${YETUS_HOME} must point to the separately installed
 # Yetus home directory, e.g. the "rel/0.7.0" tag checked out from a local
-# Yetus Git repository. 
+# Yetus Git repository.
 #
 # Environment variable ${PROJECT_DIR} must point to a local Lucene/Solr git
 # workspace dir.
 #
-# The sole cmdline param can be a JIRA issue, a local patch file, 
+# The sole cmdline param can be a JIRA issue, a local patch file,
 # or a URL to a patch file.
 #
 # If the cmdline param is a JIRA issue, the patch to download and validate
 # will be the most recently uploaded patch on the issue.  See the patch
-# naming schema that Yetus recognizes: 
-# https://yetus.apache.org/documentation/in-progress/precommit-patchnames/ 
+# naming schema that Yetus recognizes:
+# https://yetus.apache.org/documentation/in-progress/precommit-patchnames/
 #
 # If the cmdline param is a JIRA issue and you provide JIRA user/password via
 # environment variables ${JIRA_USER} and ${JIRA_PASSWORD}, a patch validation
@@ -71,8 +71,8 @@ declare -a YETUS_ARGS
 if [[ ${PATCH_REF} =~ ^(LUCENE|SOLR)- ]]; then
   JIRA_PROJECT=${BASH_REMATCH[0]}
   YETUS_ARGS+=("--project=${JIRA_PROJECT}")
-  
-  if [[ -n "${JIRA_USER}" ]] && [[ -n "${JIRA_PASSWORD}" ]] ; then 
+
+  if [[ -n "${JIRA_USER}" ]] && [[ -n "${JIRA_PASSWORD}" ]] ; then
     YETUS_ARGS+=("--jira-user=${JIRA_USER}")
     YETUS_ARGS+=("--jira-password=${JIRA_PASSWORD}")
     YETUS_ARGS+=("--bugcomments=jira")

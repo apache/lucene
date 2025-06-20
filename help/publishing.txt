@@ -96,7 +96,7 @@ https://docs.gradle.org/current/userguide/signing_plugin.html#sec:using_gpg_agen
 If you are comfortable giving gradle your passphrase, then there is no reason to use an external GPG process via '-PuseGpg=true'.
 Just use the "signing.*" options described previously to let gradle deal with your key directly.
 
-Because of how Gradle's signing plugin invokes GPG, using an external GPG process *only* works if your GPG configuration uses a 
+Because of how Gradle's signing plugin invokes GPG, using an external GPG process *only* works if your GPG configuration uses a
 GPG agent (required by gpg2) and if the "pinentry" for your GPG agent does not require access to the tty to prompt you for a password.
 
 If the following command fails with your GPG configuration, you can not use an external GPG process with gradle:

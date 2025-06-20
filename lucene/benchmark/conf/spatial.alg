@@ -92,7 +92,7 @@ task.max.depth.log=1
   ForceMerge(1)
   CommitIndex
   CloseIndex
-  
+
   RepSumByPref MAddDocs
 } : 1
 #set above round to 0 on subsequent runs if not changing indexing but experimenting with search
@@ -103,12 +103,12 @@ CloseReader
 
 { "Rounds"
   ResetSystemSoft
-  
+
   OpenReader
   Search
   {"RealQueries" Search > : 2000
   CloseReader
-  
+
   NewRound
 } : 1
 

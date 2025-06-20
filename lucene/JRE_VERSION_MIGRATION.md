@@ -18,13 +18,13 @@
 # JRE Version Migration Guide
 
 If possible, use the same JRE major version at both index and search time.
-When upgrading to a different JRE major version, consider re-indexing. 
+When upgrading to a different JRE major version, consider re-indexing.
 
 Different Java versions may implement different versions of Unicode,
 which will change the way some parts of Lucene treat your text.
 
-An (outdated) example: with Java 1.4, `LetterTokenizer` will split around the 
-character U+02C6, but with Java 5 it will not. This is because Java 1.4 
+An (outdated) example: with Java 1.4, `LetterTokenizer` will split around the
+character U+02C6, but with Java 5 it will not. This is because Java 1.4
 implements Unicode 3, but Java 5 implements Unicode 4.
 
 The version of Unicode supported by Java is listed in the documentation
@@ -39,6 +39,6 @@ support the following Unicode versions:
  * Java 17, Unicode 13.0
 
 In general, whether you need to re-index largely depends upon the data that
-you are searching, and what was changed in any given Unicode version. For example, 
+you are searching, and what was changed in any given Unicode version. For example,
 if you are completely sure your content is limited to the "Basic Latin" range
-of Unicode, you can safely ignore this. 
+of Unicode, you can safely ignore this.

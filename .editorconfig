@@ -9,9 +9,11 @@ charset = utf-8
 # matches spotless.gradle insistence on this
 end_of_line = lf
 indent_size = 2
+eclint_indent_size = unset
 indent_style = space
 insert_final_newline = true
 max_line_length = 100
+eclint_max_line_length = unset
 trim_trailing_whitespace = true
 ij_continuation_indent_size = 4
 ij_formatter_off_tag = @formatter:off
@@ -636,3 +638,23 @@ ij_yaml_sequence_on_new_line = false
 ij_yaml_space_before_colon = false
 ij_yaml_spaces_within_braces = true
 ij_yaml_spaces_within_brackets = true
+
+# dos files
+[{*.bat,*.cmd}]
+end_of_line = crlf
+
+# this file is not UTF-8
+[lucene/analysis/common/src/test/org/apache/lucene/analysis/hunspell/rep.aff]
+charset = unset
+
+# this file has no trailing newline
+[versions.lock]
+insert_final_newline = unset
+
+# javacc generated files which have trailing whitespace
+[{**/*Parser.java,**/*ParserTokenManager.java,**/TokenMgrError.java,**/ParseException.java}]
+trim_trailing_whitespace = unset
+
+# jflex generated files which has trailing whitespace
+[**/HTMLStripCharFilter.java]
+trim_trailing_whitespace = unset

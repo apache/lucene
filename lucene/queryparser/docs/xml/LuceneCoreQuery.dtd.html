@@ -289,7 +289,7 @@ Unlike UserQuery element, this does not parse any special characters to control 
 of producing a Query parse error given any user input</p><p><span class='inTextTitle'>Example:</span> <em>Match on text from a database description (which may contain characters that
 are illegal characters in the standard Lucene Query syntax used in the UserQuery tag</em>
 </p><pre>
-               &lt;TermsQuery fieldName="description"&gt;Smith &gt; Sons (Ltd) : incorporated 1982&lt;/TermsQuery&gt;
+               &lt;TermsQuery fieldName="description"&gt;Smith &amp; Sons (Ltd) : incorporated 1982&lt;/TermsQuery&gt;
          </pre><p></p><blockquote><table summary='element info'><tr>
 <td class='construct'><table  summary="&lt;TermsQuery&gt;'s attributes"><tr>
 <th class='title' colspan='3'>&lt;TermsQuery&gt;'s attributes</th>

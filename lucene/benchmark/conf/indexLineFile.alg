@@ -49,4 +49,4 @@ CreateIndex
 {AddDoc}: *
 CloseIndex
 
-RepSumByPref AddDoc 
+RepSumByPref AddDoc

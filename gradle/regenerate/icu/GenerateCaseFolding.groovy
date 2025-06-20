@@ -66,7 +66,7 @@ final class CaseFolding {
   private CaseFolding() {}
 
   /**
-   * Calls {@code fn} consumer with {@code c} itself and its {@code scf} mappings. 
+   * Calls {@code fn} consumer with {@code c} itself and its {@code scf} mappings.
    */
   static void expand(int c, IntConsumer fn) {
     // add codepoint

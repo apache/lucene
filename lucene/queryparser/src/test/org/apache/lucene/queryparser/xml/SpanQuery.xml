@@ -16,7 +16,7 @@
  limitations under the License.
 -->
 <SpanOr fieldName="contents">
-  <SpanNear slop="8" inOrder="false" >    
+  <SpanNear slop="8" inOrder="false" >
       <SpanOr>
         <SpanTerm>killed</SpanTerm>
         <SpanTerm>died</SpanTerm>
@@ -28,24 +28,24 @@
         -->
         <SpanOrTerms>miner miners</SpanOrTerms>
         <!-- finds mine near worker or workers -->
-        <SpanNear slop="6" inOrder="false">    
-          <SpanTerm>mine</SpanTerm>          
+        <SpanNear slop="6" inOrder="false">
+          <SpanTerm>mine</SpanTerm>
           <SpanOrTerms>worker workers</SpanOrTerms>
           <BoostingTermQuery>heavy</BoostingTermQuery>
         </SpanNear>
       </SpanOr>
-  </SpanNear>  
+  </SpanNear>
   <SpanFirst end="10">
     <SpanOrTerms>fire burn</SpanOrTerms>
-  </SpanFirst> 
+  </SpanFirst>
   <!-- Other Span examples....
-    
+
   <SpanNot>
     <Include>
-        <SpanNear slop="2" inOrder="2">    
+        <SpanNear slop="2" inOrder="2">
             <SpanTerm>social</SpanTerm>
             <SpanTerm>services</SpanTerm>
-        </SpanNear>        
+        </SpanNear>
     </Include>
     <Exclude>
         <SpanTerm>public</SpanTerm>

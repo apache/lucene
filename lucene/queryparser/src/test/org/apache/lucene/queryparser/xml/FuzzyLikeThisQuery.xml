@@ -18,6 +18,6 @@
 <FuzzyLikeThisQuery>
   <!-- Matches on misspelt "Sumitomo" bank -->
   <Field fieldName="contents">
-    Sumitimo bank 
+    Sumitimo bank
   </Field>
 </FuzzyLikeThisQuery>
