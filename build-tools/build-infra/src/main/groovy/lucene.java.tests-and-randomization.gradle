@@ -147,6 +147,9 @@ buildOptions.addOption("tests.file.encoding", "Sets the default file.encoding on
   ])
 })
 
+buildOptions.addBooleanOption("tests.faiss.run", "Explicitly run tests for the Faiss codec.", false)
+optionsInheritedAsProperties += ["tests.faiss.run"]
+
 // TODO: do we still use these?
 // Test data file used.
 // [propName: 'tests.linedocsfile', value: 'europarl.lines.txt.gz', description: "Test data file path."],

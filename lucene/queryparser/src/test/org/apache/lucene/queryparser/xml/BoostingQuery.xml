@@ -25,7 +25,7 @@
       <Clause occurs="must">
         <TermQuery>bank</TermQuery>
       </Clause>
-    </BooleanQuery>  
+    </BooleanQuery>
   </Query>
   <BoostQuery boost="0.01">
       <UserQuery>"world bank"</UserQuery>

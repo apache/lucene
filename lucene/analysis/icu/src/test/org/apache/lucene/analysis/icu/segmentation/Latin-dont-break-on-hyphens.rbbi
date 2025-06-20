@@ -86,7 +86,7 @@ $Hiragana           = [:Hiragana:];
 #   5.0 or later as the definition of Complex_Context was corrected to include all
 #   characters requiring dictionary break.
 
-$Control        = [\p{Grapheme_Cluster_Break = Control}]; 
+$Control        = [\p{Grapheme_Cluster_Break = Control}];
 $HangulSyllable = [\uac00-\ud7a3];
 $ComplexContext = [:LineBreak = Complex_Context:];
 $KanaKanji      = [$Han $Hiragana $Katakana];
@@ -98,7 +98,7 @@ $ALetterPlus  = [$ALetter-$dictionaryCJK [$ComplexContext-$Extend-$Control]];
 
 
 #
-#  Rules 4    Ignore Format and Extend characters, 
+#  Rules 4    Ignore Format and Extend characters,
 #             except when they appear at the beginning of a region of text.
 #
 # TODO: check if handling of katakana in dictionary makes rules incorrect/void
@@ -176,7 +176,7 @@ $NumericEx $NumericEx {100};
 
 $NumericEx ($ALetterEx | $Hebrew_LetterEx) {200};
 
-# rule 11 and 12 
+# rule 11 and 12
 
 $NumericEx ($MidNumEx | $MidNumLetEx | $Single_QuoteEx) $NumericEx {100};
 

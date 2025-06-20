@@ -47,8 +47,8 @@ There are a few pre-defined label families to organize/search issues.
   - `type:test` is attached to test improvements or failure reports
   - `type:task` is attached to general tasks
   - `type:documentation` is attached to tasks relate to documentation
-- `affects-version` (color code `#f19072`) : the versions in which a bug was found 
-  - this may be used with `type:bug` 
+- `affects-version` (color code `#f19072`) : the versions in which a bug was found
+  - this may be used with `type:bug`
   - (example) `affects-version:9.1.0`
 - `module` (color code `#a0d8ef`) : Lucene module
   - (example) `module:core/index`, `module:analysis`

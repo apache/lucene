@@ -45,7 +45,7 @@ class FindHyperlinks(HTMLParser):
         if attName == 'class' and attValue == 'invalid-tag':
           raise RuntimeError('javadoc generated an invalid-tag')
 
-    # NOTE: I don't think 'a' should be in here. But try debugging 
+    # NOTE: I don't think 'a' should be in here. But try debugging
     # NumericRangeQuery.html. (Could be javadocs bug, it's a generic type...)
     if tag not in ('link', 'meta', 'frame', 'br', 'wbr', 'hr', 'p', 'li', 'img', 'col', 'a', 'dt', 'dd', 'input'):
       self.stack.append(tag)
@@ -87,7 +87,7 @@ class FindHyperlinks(HTMLParser):
   def handle_endtag(self, tag):
     if tag in ('link', 'meta', 'frame', 'br', 'hr', 'p', 'li', 'img', 'col', 'a', 'dt', 'dd', 'input'):
       return
-    
+
     if len(self.stack) == 0:
       raise RuntimeError('%s %s:%s: saw </%s> no opening <%s>' % (self.baseURL, self.getpos()[0], self.getpos()[1], tag, self.stack[-1]))
 
@@ -101,7 +101,7 @@ class FindHyperlinks(HTMLParser):
       print()
       print('  ' + self.baseURL)
       self.printed = True
-                   
+
 def parse(baseURL, html):
   global failures
   # look for broken unicode
@@ -121,7 +121,7 @@ def parse(baseURL, html):
     traceback.print_exc(file=sys.stdout)
     failures = True
     return [], []
-  
+
   #print '    %d links, %d anchors' % \
   #      (len(parser.links), len(parser.anchors))
   return parser.links, parser.anchors
@@ -189,7 +189,7 @@ def checkAll(dirName):
       idx = link.find('?')
       if idx != -1:
         link = link[:idx]
-        
+
       # TODO: normalize path sep for windows...
       if link.startswith('http://') or link.startswith('https://'):
         # don't check external links
@@ -243,7 +243,7 @@ def checkAll(dirName):
         # ok...?
         pass
       elif 'org/apache/solr/client/solrj/beans/Field.html' in link:
-        # see LUCENE-4011: this is a javadocs bug for constants 
+        # see LUCENE-4011: this is a javadocs bug for constants
         # on annotations it seems?
         pass
       elif link.startswith('file:'):
@@ -269,7 +269,7 @@ def checkAll(dirName):
         print('  BROKEN URL SCHEME: %s' % origLink)
     failures = failures or printed
 
-  return failures   
+  return failures
 
 if __name__ == '__main__':
   if checkAll(sys.argv[1]):
@@ -280,4 +280,4 @@ if __name__ == '__main__':
     print('* Public methods referencing non-public classes in their signature.')
     sys.exit(1)
   sys.exit(0)
-  
+
