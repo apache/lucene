@@ -216,7 +216,7 @@ public final class VersionBlockTreeTermsWriter extends FieldsConsumer {
 
       postingsWriter.init(out, state); // have consumer write its format/header
     } catch (Throwable t) {
-        IOUtils.closeWhileSuppressingExceptions(t, out, indexOut);
+      IOUtils.closeWhileSuppressingExceptions(t, out, indexOut);
       throw t;
     }
     this.indexOut = indexOut;

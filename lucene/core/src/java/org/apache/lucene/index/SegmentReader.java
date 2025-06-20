@@ -116,7 +116,7 @@ public final class SegmentReader extends CodecReader {
       // this case, we want to explicitly close any subset
       // of things that were opened so that we don't have to
       // wait for a GC to do so.
-        doClose();
+      doClose();
       throw t;
     }
   }
@@ -156,7 +156,7 @@ public final class SegmentReader extends CodecReader {
       fieldInfos = initFieldInfos();
       docValuesProducer = initDocValuesProducer();
     } catch (Throwable t) {
-        doClose();
+      doClose();
       throw t;
     }
   }

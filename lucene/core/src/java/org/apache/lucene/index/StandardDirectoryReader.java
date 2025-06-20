@@ -95,9 +95,10 @@ public final class StandardDirectoryReader extends DirectoryReader {
           }
           // This may throw CorruptIndexException if there are too many docs, so
           // it must be inside try clause so we close readers in that case:
-          return new StandardDirectoryReader(directory, readers, null, sis, leafSorter, false, false);
+          return new StandardDirectoryReader(
+              directory, readers, null, sis, leafSorter, false, false);
         } catch (Throwable t) {
-            IOUtils.closeWhileSuppressingExceptions(t, readers);
+          IOUtils.closeWhileSuppressingExceptions(t, readers);
           throw t;
         }
       }
@@ -289,7 +290,7 @@ public final class StandardDirectoryReader extends DirectoryReader {
           }
         }
       } catch (Throwable t) {
-          decRefWhileSuppressingException(t, newReaders);
+        decRefWhileSuppressingException(t, newReaders);
         throw t;
       }
     }

@@ -227,9 +227,9 @@ final class DocumentsWriter implements Closeable, Accountable {
       assert perThreadPool.size() == 0
           : "There are still active DWPT in the pool: " + perThreadPool.size();
       assert flushControl.getFlushingBytes() == 0
-              : "flushingBytes has unexpected value 0 != " + flushControl.getFlushingBytes();
+          : "flushingBytes has unexpected value 0 != " + flushControl.getFlushingBytes();
       assert flushControl.netBytes() == 0
-              : "netBytes has unexpected value 0 != " + flushControl.netBytes();
+          : "netBytes has unexpected value 0 != " + flushControl.netBytes();
 
       if (infoStream.isEnabled("DW")) {
         infoStream.message("DW", "done abort success=true");

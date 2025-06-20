@@ -319,20 +319,20 @@ public class MMapDirectory extends FSDirectory {
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
       return MemorySegmentIndexInput.newInstance(
-              resourceDescription,
+          resourceDescription,
+          arena,
+          map(
               arena,
-              map(
-                  arena,
-                  resourceDescription,
-                  fc,
-                  toReadAdvice.apply(context),
-                  chunkSizePower,
-                  preload.test(name, context),
-                  fileSize),
-              fileSize,
+              resourceDescription,
+              fc,
+              toReadAdvice.apply(context),
               chunkSizePower,
-              confined,
-              toReadAdvice);
+              preload.test(name, context),
+              fileSize),
+          fileSize,
+          chunkSizePower,
+          confined,
+          toReadAdvice);
     } catch (Throwable t) {
       arena.close();
       throw t;

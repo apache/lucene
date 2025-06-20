@@ -1000,7 +1000,7 @@ public class BKDWriter implements Closeable {
       // System.out.println("write time: " + ((System.nanoTime() - t1) / (double)
       //   TimeUnit.SECONDS.toNanos(1)) + " ms");
     } catch (Throwable t) {
-        IOUtils.deleteFilesSuppressingExceptions(t, tempDir, tempDir.getCreatedFiles());
+      IOUtils.deleteFilesSuppressingExceptions(t, tempDir, tempDir.getCreatedFiles());
       throw t;
     }
 

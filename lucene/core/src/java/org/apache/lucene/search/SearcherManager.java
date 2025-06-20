@@ -260,7 +260,7 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
                 + ")");
       }
     } catch (Throwable t) {
-        reader.decRef();
+      reader.decRef();
       throw t;
     }
     return searcher;

@@ -593,7 +593,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         newMergeThread.start();
         updateMergeThreads();
       } catch (Throwable t) {
-          mergeSource.onMergeFinished(merge);
+        mergeSource.onMergeFinished(merge);
         throw t;
       }
     }

@@ -25,7 +25,6 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.function.IntUnaryOperator;
-
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DocValues;
@@ -862,13 +861,15 @@ public final class BPIndexReorderer extends AbstractBPReorderer {
     try {
       int numTerms;
       String postingsName;
-      try (IndexOutput postingsOutput = trackingDir.createTempOutput("postings", "", IOContext.DEFAULT)) {
+      try (IndexOutput postingsOutput =
+          trackingDir.createTempOutput("postings", "", IOContext.DEFAULT)) {
         numTerms = writePostings(reader, fields, trackingDir, postingsOutput, parallelism);
         CodecUtil.writeFooter(postingsOutput);
         postingsName = postingsOutput.getName();
       }
 
-      try (ForwardIndex forwardIndex = buildForwardIndex(trackingDir, postingsName, maxDoc, numTerms)) {
+      try (ForwardIndex forwardIndex =
+          buildForwardIndex(trackingDir, postingsName, maxDoc, numTerms)) {
         trackingDir.deleteFile(postingsName);
 
         int[] sortedDocs = new int[maxDoc];
@@ -881,21 +882,22 @@ public final class BPIndexReorderer extends AbstractBPReorderer {
         }
 
         try (CloseableThreadLocal<PerThreadState> threadLocal =
-                     new CloseableThreadLocal<>() {
-                       @Override
-                       protected PerThreadState initialValue() {
-                         return new PerThreadState(numTerms, forwardIndex.clone());
-                       }
-                     }) {
+            new CloseableThreadLocal<>() {
+              @Override
+              protected PerThreadState initialValue() {
+                return new PerThreadState(numTerms, forwardIndex.clone());
+              }
+            }) {
           IntsRef docs = new IntsRef(sortedDocs, 0, sortedDocs.length);
-          new IndexReorderingTask(docs, new float[maxDoc], threadLocal, parents, executor, 0).call();
+          new IndexReorderingTask(docs, new float[maxDoc], threadLocal, parents, executor, 0)
+              .call();
         }
 
         IOUtils.deleteFiles(trackingDir, trackingDir.getCreatedFiles());
         return sortedDocs;
       }
     } catch (Throwable t) {
-        IOUtils.deleteFilesSuppressingExceptions(t, trackingDir, trackingDir.getCreatedFiles());
+      IOUtils.deleteFilesSuppressingExceptions(t, trackingDir, trackingDir.getCreatedFiles());
       throw t;
     }
   }

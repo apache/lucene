@@ -49,8 +49,8 @@ public class RefCount<T> {
       try {
         release();
       } catch (Throwable t) {
-          // Put reference back on failure
-          refCount.incrementAndGet();
+        // Put reference back on failure
+        refCount.incrementAndGet();
         throw t;
       }
     } else if (rc < 0) {

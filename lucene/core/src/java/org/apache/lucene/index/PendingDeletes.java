@@ -192,14 +192,14 @@ class PendingDeletes {
           .liveDocsFormat()
           .writeLiveDocs(liveDocs, trackingDir, info, pendingDeleteCount, IOContext.DEFAULT);
     } catch (Throwable t) {
-        // Advance only the nextWriteDelGen so that a 2nd
-        // attempt to write will write to a new file
-        info.advanceNextWriteDelGen();
+      // Advance only the nextWriteDelGen so that a 2nd
+      // attempt to write will write to a new file
+      info.advanceNextWriteDelGen();
 
-        // Delete any partially created file(s):
-        for (String fileName : trackingDir.getCreatedFiles()) {
-          IOUtils.deleteFilesIgnoringExceptions(dir, fileName);
-        }
+      // Delete any partially created file(s):
+      for (String fileName : trackingDir.getCreatedFiles()) {
+        IOUtils.deleteFilesIgnoringExceptions(dir, fileName);
+      }
       throw t;
     }
 

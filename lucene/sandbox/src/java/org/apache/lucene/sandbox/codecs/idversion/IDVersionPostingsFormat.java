@@ -81,7 +81,8 @@ public class IDVersionPostingsFormat extends PostingsFormat {
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
     PostingsWriterBase postingsWriter = new IDVersionPostingsWriter(state.liveDocs);
     try {
-      return new VersionBlockTreeTermsWriter(state, postingsWriter, minTermsInBlock, maxTermsInBlock);
+      return new VersionBlockTreeTermsWriter(
+          state, postingsWriter, minTermsInBlock, maxTermsInBlock);
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, postingsWriter);
       throw t;

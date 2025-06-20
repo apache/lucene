@@ -398,7 +398,7 @@ final class IndexingChain implements Accountable {
         pointsWriter.close();
       }
     } catch (Throwable t) {
-        IOUtils.closeWhileSuppressingExceptions(t, pointsWriter);
+      IOUtils.closeWhileSuppressingExceptions(t, pointsWriter);
       throw t;
     }
   }

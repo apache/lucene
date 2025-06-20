@@ -661,12 +661,12 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
         newSegment.advanceDelGen();
       }
     } catch (Throwable t) {
-        if (infoStream.isEnabled("DWPT")) {
-          infoStream.message(
-              "DWPT",
-              "hit exception creating compound file for newly flushed segment "
-                  + newSegment.info.name);
-        }
+      if (infoStream.isEnabled("DWPT")) {
+        infoStream.message(
+            "DWPT",
+            "hit exception creating compound file for newly flushed segment "
+                + newSegment.info.name);
+      }
       throw t;
     }
   }

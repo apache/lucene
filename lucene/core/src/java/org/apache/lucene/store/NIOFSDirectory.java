@@ -79,7 +79,7 @@ public class NIOFSDirectory extends FSDirectory {
     try {
       return new NIOFSIndexInput("NIOFSIndexInput(path=\"" + path + "\")", fc, context);
     } catch (Throwable t) {
-        IOUtils.closeWhileSuppressingExceptions(t, fc);
+      IOUtils.closeWhileSuppressingExceptions(t, fc);
       throw t;
     }
   }

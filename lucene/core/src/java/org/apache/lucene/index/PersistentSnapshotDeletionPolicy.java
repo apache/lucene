@@ -115,11 +115,11 @@ public class PersistentSnapshotDeletionPolicy extends SnapshotDeletionPolicy {
     try {
       persist();
     } catch (Throwable t) {
-        try {
-          super.release(ic);
-        } catch (Exception e) {
-          t.addSuppressed(e);
-        }
+      try {
+        super.release(ic);
+      } catch (Exception e) {
+        t.addSuppressed(e);
+      }
       throw t;
     }
     return ic;
@@ -137,11 +137,11 @@ public class PersistentSnapshotDeletionPolicy extends SnapshotDeletionPolicy {
     try {
       persist();
     } catch (Throwable t) {
-        try {
-          incRef(commit);
-        } catch (Exception e) {
-          t.addSuppressed(e);
-        }
+      try {
+        incRef(commit);
+      } catch (Exception e) {
+        t.addSuppressed(e);
+      }
       throw t;
     }
   }
@@ -168,8 +168,8 @@ public class PersistentSnapshotDeletionPolicy extends SnapshotDeletionPolicy {
         out.writeVInt(ent.getValue());
       }
     } catch (Throwable t) {
-        IOUtils.deleteFilesSuppressingExceptions(t, dir, fileName);
-        throw t;
+      IOUtils.deleteFilesSuppressingExceptions(t, dir, fileName);
+      throw t;
     }
 
     dir.sync(Collections.singletonList(fileName));

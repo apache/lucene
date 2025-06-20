@@ -565,11 +565,11 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       directory.sync(Collections.singleton(segmentFileName));
       pendingCommit = true;
     } catch (Throwable t) {
-        // try to close the file but suppress any exception:
-        IOUtils.closeWhileSuppressingExceptions(t, segnOutput);
-        // Try not to leave a truncated segments_N file in
-        // the index:
-        IOUtils.deleteFilesSuppressingExceptions(t, directory, segmentFileName);
+      // try to close the file but suppress any exception:
+      IOUtils.closeWhileSuppressingExceptions(t, segnOutput);
+      // Try not to leave a truncated segments_N file in
+      // the index:
+      IOUtils.deleteFilesSuppressingExceptions(t, directory, segmentFileName);
       throw t;
     }
   }
@@ -937,14 +937,14 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       try {
         dir.syncMetaData();
       } catch (Throwable t) {
-          // at this point we already created the file but missed to sync directory let's also
-          // remove the renamed file
-          IOUtils.deleteFilesSuppressingExceptions(t, dir, dest);
+        // at this point we already created the file but missed to sync directory let's also
+        // remove the renamed file
+        IOUtils.deleteFilesSuppressingExceptions(t, dir, dest);
         throw t;
       }
     } catch (Throwable t) {
-        // deletes pending_segments_N:
-        rollbackCommit(dir);
+      // deletes pending_segments_N:
+      rollbackCommit(dir);
       throw t;
     }
 
