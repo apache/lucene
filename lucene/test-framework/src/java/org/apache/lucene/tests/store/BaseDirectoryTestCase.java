@@ -61,7 +61,6 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.tests.mockfile.ExtrasFS;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -1569,38 +1568,6 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
 
   public void testPrefetchOnSlice() throws IOException {
     doTestPrefetch(TestUtil.nextInt(random(), 1, 1024));
-  }
-
-  public void testUpdateReadAdvice() throws IOException {
-    try (Directory dir = getDirectory(createTempDir("testUpdateReadAdvice"))) {
-      final int totalLength = TestUtil.nextInt(random(), 16384, 65536);
-      byte[] arr = new byte[totalLength];
-      random().nextBytes(arr);
-      try (IndexOutput out = dir.createOutput("temp.bin", IOContext.DEFAULT)) {
-        out.writeBytes(arr, arr.length);
-      }
-
-      try (IndexInput orig = dir.openInput("temp.bin", IOContext.DEFAULT)) {
-        IndexInput in = random().nextBoolean() ? orig.clone() : orig;
-        // Read advice updated at start
-        in.updateReadAdvice(randomFrom(random(), ReadAdvice.values()));
-        for (int i = 0; i < totalLength; i++) {
-          int offset = TestUtil.nextInt(random(), 0, (int) in.length() - 1);
-          in.seek(offset);
-          assertEquals(arr[offset], in.readByte());
-        }
-
-        // Updating readAdvice in the middle
-        for (int i = 0; i < 10_000; ++i) {
-          int offset = TestUtil.nextInt(random(), 0, (int) in.length() - 1);
-          in.seek(offset);
-          assertEquals(arr[offset], in.readByte());
-          if (random().nextBoolean()) {
-            in.updateReadAdvice(randomFrom(random(), ReadAdvice.values()));
-          }
-        }
-      }
-    }
   }
 
   private void doTestPrefetch(int startOffset) throws IOException {
