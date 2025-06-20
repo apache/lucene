@@ -67,7 +67,8 @@ public class AstGrepPlugin implements Plugin<Project> {
               }
 
               // fail on any rule match regardless of severity level
-              task.setArgs(List.of("scan", "-c", "gradle/validation/ast-grep/sgconfig.yml", "--error"));
+              task.setArgs(
+                  List.of("scan", "-c", "gradle/validation/ast-grep/sgconfig.yml", "--error"));
             });
 
     // Common configuration.
