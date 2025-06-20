@@ -20,6 +20,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 
 abstract class DocValuesLeafReader extends LeafReader {
   @Override
@@ -54,6 +55,11 @@ abstract class DocValuesLeafReader extends LeafReader {
 
   @Override
   public final ByteVectorValues getByteVectorValues(String field) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
     throw new UnsupportedOperationException();
   }
 

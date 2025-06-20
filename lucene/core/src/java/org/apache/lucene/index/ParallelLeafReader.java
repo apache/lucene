@@ -30,6 +30,7 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 
 /**
  * An {@link LeafReader} which reads multiple, parallel indexes. Each index added must have the same
@@ -461,6 +462,13 @@ public class ParallelLeafReader extends LeafReader {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
     return reader == null ? null : reader.getByteVectorValues(fieldName);
+  }
+
+  @Override
+  public QuantizedByteVectorValues getQuantizedVectorValues(String fieldName) throws IOException {
+    ensureOpen();
+    LeafReader reader = fieldToReader.get(fieldName);
+    return reader == null ? null : reader.getQuantizedVectorValues(fieldName);
   }
 
   @Override
