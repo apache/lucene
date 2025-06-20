@@ -73,8 +73,8 @@ import org.apache.lucene.internal.hppc.IntHashSet;
  * use a different method for date conversion.
  * </p>
  *
- * <p>Note that QueryParser is <em>not</em> thread-safe.</p> 
- * 
+ * <p>Note that QueryParser is <em>not</em> thread-safe.</p>
+ *
  * <p><b>NOTE</b>: there is a new QueryParser in contrib, which matches
  * the same syntax as this class, but is more modular,
  * enabling substantial customization to how a query is created.

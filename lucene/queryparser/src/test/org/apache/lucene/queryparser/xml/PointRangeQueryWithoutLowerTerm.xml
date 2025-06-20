@@ -20,7 +20,7 @@
     <TermQuery>merger</TermQuery>
   </Clause>
   <Clause occurs="mustnot">
-    <TermQuery >sumitomo</TermQuery>    
+    <TermQuery >sumitomo</TermQuery>
   </Clause>
   <Clause occurs="must">
     <TermQuery>bank</TermQuery>

@@ -1,8 +1,8 @@
 {
-    "lucene/analysis/icu/src/data/utr30/BasicFoldings.txt": "7f14c4d4f989ffa8513a5c5a237542c968d09eb9",
-    "lucene/analysis/icu/src/data/utr30/DiacriticFolding.txt": "ff4ff62473567cb47cc424acdf500f619b198dcf",
-    "lucene/analysis/icu/src/data/utr30/DingbatFolding.txt": "ca562b2029e208bdf07cb2e5f689e509a336265e",
-    "lucene/analysis/icu/src/data/utr30/HanRadicalFolding.txt": "f5848aa38cbf1a11131d59384f31477f3b7f077b",
+    "lucene/analysis/icu/src/data/utr30/BasicFoldings.txt": "bb64c13b9a0a6eda9526eba490b000cc785e1671",
+    "lucene/analysis/icu/src/data/utr30/DiacriticFolding.txt": "355947dd4691b8cb2070f6a637c0c211dba3e2b9",
+    "lucene/analysis/icu/src/data/utr30/DingbatFolding.txt": "bed27b1f97b52538ffeb3a4eccd85c5848991a3e",
+    "lucene/analysis/icu/src/data/utr30/HanRadicalFolding.txt": "567197dc87a5ff803cc44cd5ce874f0e4717e3d4",
     "lucene/analysis/icu/src/data/utr30/NativeDigitFolding.txt": "849fd177fdbcdea84ab8d7fc8bb77416ad21cc1e",
     "lucene/analysis/icu/src/data/utr30/nfc.txt": "f7b86e96de57a3a2b05853cadff8ad5aca5e7801",
     "lucene/analysis/icu/src/data/utr30/nfkc.txt": "7b639877a1701cffca5555e7487f5b96c4531aef",

@@ -44,4 +44,4 @@ content.source.forever=false
 # -------------------------------------------------------------------------------------
 
 # Process all documents, appending each one to the line file:
-{WriteLineDoc()}: * 
+{WriteLineDoc()}: *
