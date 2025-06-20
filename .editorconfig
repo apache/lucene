@@ -640,7 +640,7 @@ ij_yaml_spaces_within_braces = true
 ij_yaml_spaces_within_brackets = true
 
 # dos files
-[*.cmd]
+[{*.bat,*.cmd}]
 end_of_line = crlf
 
 # this file is not UTF-8
