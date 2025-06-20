@@ -22,6 +22,8 @@ groovy = "4.0.27"
 hamcrest = "3.0"
 # analysis/icu/, gradle regeneration unicode support
 icu4j = "77.1"
+# build infra only (diff of changes from google java format tasks)
+javadiff = "4.15"
 # queryparsers/ grammars
 javacc = "7.0.13"
 # analysis/ tokenizer grammars
@@ -72,10 +74,12 @@ flexmark-ext-abbreviation = { module = "com.vladsch.flexmark:flexmark-ext-abbrev
 flexmark-ext-attributes = { module = "com.vladsch.flexmark:flexmark-ext-attributes", version.ref = "flexmark" }
 flexmark-ext-autolink = { module = "com.vladsch.flexmark:flexmark-ext-autolink", version.ref = "flexmark" }
 flexmark-ext-tables = { module = "com.vladsch.flexmark:flexmark-ext-tables", version.ref = "flexmark" }
+gjf = { module = "com.google.googlejavaformat:google-java-format", version.ref = "googleJavaFormat" }
 groovy = { module = "org.apache.groovy:groovy-all", version.ref = "groovy" }
 hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
 icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
 javacc = { module = "net.java.dev.javacc:javacc", version.ref = "javacc" }
+javadiff = { module = "io.github.java-diff-utils:java-diff-utils", version.ref = "javadiff" }
 jflex = { module = "de.jflex:jflex", version.ref = "jflex" }
 jmh-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
