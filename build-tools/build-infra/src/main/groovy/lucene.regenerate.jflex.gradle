@@ -304,11 +304,12 @@ class JFlexTask extends DefaultTask {
         value: 'SuppressWarnings({"fallthrough","unused"})'
         )
 
-    // Correct line endings for Windows.
-    project.ant.fixcrlf(
+    // Seems like a bug in gjf. https://github.com/google/google-java-format/issues/1260
+    project.ant.replace(
         file: target,
         encoding: "UTF-8",
-        eol: "lf"
-        )
+        token: '/* Break so we don\'t hit fall-through warning: */',
+        value: ''
+    )
   }
 }
