@@ -93,12 +93,6 @@ public class AstGrepPlugin implements Plugin<Project> {
         .configureEach(
             task -> {
               task.dependsOn(testAstGrepRules);
-            });
-
-    tasks
-        .matching(task -> task.getName().equals("tidy"))
-        .configureEach(
-            task -> {
               task.dependsOn(applyAstGrepRulesTask);
             });
   }
