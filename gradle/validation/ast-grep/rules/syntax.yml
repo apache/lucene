@@ -1,0 +1,73 @@
+# This isn't great, for many reasons.
+# But it can prevent trouble with long-tail of various filetypes in the repository.
+# Severity is set low to prevent annoyance in editors (e.g. if it cascades badly)
+# If there is trouble, replace rule with a real linter/compiler instead
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/rule.json
+id: css-syntax
+language: css
+rule:
+  kind: ERROR
+message: Parse Error
+severity: hint
+ignores:
+  # css injections in ms-word generated test html files
+  - "**/test/**/charfilter/**"
+note: |
+  Treesitter parse error: editors, code review, and tools may treat it incorrectly.
+  Disable false-positives with `/* ast-grep-ignore */`
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/rule.json
+id: html-syntax
+language: html
+rule:
+  kind: ERROR
+message: Parse Error
+severity: hint
+note: |
+  Treesitter parse error: editors, code review, and tools may treat it incorrectly.
+  Disable false-positives with `<!-- ast-grep-ignore -->`
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/rule.json
+id: javascript-syntax
+language: javascript
+rule:
+  kind: ERROR
+message: Parse Error
+severity: hint
+note: |
+  Treesitter parse error: editors, code review, and tools may treat it incorrectly.
+  Disable false-positives with `// ast-grep-ignore`
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/rule.json
+id: json-syntax
+language: json
+rule:
+  kind: ERROR
+message: Parse Error
+severity: hint
+note: |
+  Treesitter parse error: editors, code review, and tools may treat it incorrectly.
+  Check for trailing commas and comments, which JSON forbids.
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/rule.json
+id: python-syntax
+language: python
+rule:
+  kind: ERROR
+message: Parse Error
+severity: hint
+note: |
+  Treesitter parse error: editors, code review, and tools may treat it incorrectly.
+  Disable false-positives with `# ast-grep-ignore`
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/rule.json
+id: yaml-syntax
+language: yml
+rule:
+  kind: ERROR
+message: Parse Error
+severity: hint
+note: |
+  Treesitter parse error: editors, code review, and tools may treat it incorrectly.
+  Disable false-positives with `# ast-grep-ignore`
