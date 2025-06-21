@@ -69,7 +69,7 @@ dependencies {
   implementation deps.flexmark.ext.autolink
   implementation deps.flexmark.ext.tables
   implementation deps.gjf
-  implementation deps.javadiff
+  implementation deps.jgit
 
   implementation plugin(deps.plugins.carrotsearch.buildopts)
   implementation plugin(deps.plugins.carrotsearch.dependencychecks)

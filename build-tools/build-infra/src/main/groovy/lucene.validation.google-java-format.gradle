@@ -23,12 +23,22 @@ import org.apache.lucene.gradle.plugins.spotless.CheckGoogleJavaFormatTask
  * google-java-format (LUCENE-9564, GITHUB-14824).
  */
 configure(allprojects) {prj ->
+  Provider<Integer> batchSizeOption = buildOptions.addIntOption(
+      "lucene.gjf.batchSize", "Sets the batch size for google-java-format tasks.", 5)
+
   plugins.withType(JavaPlugin).configureEach {
-    def checkGoogleJavaFormat = tasks.register("checkGoogleJavaFormat", CheckGoogleJavaFormatTask)
+    def checkGoogleJavaFormat = tasks.register("checkGoogleJavaFormat", CheckGoogleJavaFormatTask, {
+      colorizedOutput = !rootProject.ext.isCIBuild
+    })
     def applyGoogleJavaFormat = tasks.register("applyGoogleJavaFormat", ApplyGoogleJavaFormatTask)
 
-    [checkGoogleJavaFormat, applyGoogleJavaFormat].each {
+    [
+      checkGoogleJavaFormat,
+      applyGoogleJavaFormat
+    ].each {
       it.configure {
+        batchSize.set(batchSizeOption)
+
         if (project.path == ":lucene:build-tools:build-infra-shadow") {
           sourceFiles = rootProject.fileTree("build-tools/build-infra/src", {
             include "**/*.java"
@@ -44,33 +54,33 @@ configure(allprojects) {prj ->
 
               case ":lucene:analysis:common":
                 exclude("**/HTMLStripCharFilter.java",
-                    "**/UAX29URLEmailTokenizerImpl.java")
+                "**/UAX29URLEmailTokenizerImpl.java")
                 break
 
               case ":lucene:test-framework":
                 exclude("**/EmojiTokenizationTestUnicode_11_0.java",
-                    "**/WordBreakTestUnicode_9_0_0.java")
+                "**/WordBreakTestUnicode_9_0_0.java")
                 break
 
               case ":lucene:queryparser":
                 exclude("**/classic/ParseException.java",
-                    "**/classic/QueryParser.java",
-                    "**/classic/QueryParserConstants.java",
-                    "**/classic/QueryParserTokenManager.java",
-                    "**/classic/Token.java",
-                    "**/classic/TokenMgrError.java",
-                    "**/standard/parser/ParseException.java",
-                    "**/standard/parser/StandardSyntaxParser.java",
-                    "**/standard/parser/StandardSyntaxParserConstants.java",
-                    "**/standard/parser/StandardSyntaxParserTokenManager.java",
-                    "**/standard/parser/Token.java",
-                    "**/standard/parser/TokenMgrError.java",
-                    "**/surround/parser/ParseException.java",
-                    "**/surround/parser/QueryParser.java",
-                    "**/surround/parser/QueryParserConstants.java",
-                    "**/surround/parser/QueryParserTokenManager.java",
-                    "**/surround/parser/Token.java",
-                    "**/surround/parser/TokenMgrError.java")
+                "**/classic/QueryParser.java",
+                "**/classic/QueryParserConstants.java",
+                "**/classic/QueryParserTokenManager.java",
+                "**/classic/Token.java",
+                "**/classic/TokenMgrError.java",
+                "**/standard/parser/ParseException.java",
+                "**/standard/parser/StandardSyntaxParser.java",
+                "**/standard/parser/StandardSyntaxParserConstants.java",
+                "**/standard/parser/StandardSyntaxParserTokenManager.java",
+                "**/standard/parser/Token.java",
+                "**/standard/parser/TokenMgrError.java",
+                "**/surround/parser/ParseException.java",
+                "**/surround/parser/QueryParser.java",
+                "**/surround/parser/QueryParserConstants.java",
+                "**/surround/parser/QueryParserTokenManager.java",
+                "**/surround/parser/Token.java",
+                "**/surround/parser/TokenMgrError.java")
                 break
             }
           })
