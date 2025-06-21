@@ -88,7 +88,7 @@ configure(allprojects) {prj ->
       }
     }
 
-    // Hook up spotless to tidy and check tasks.
+    // Connect to check and tidy tasks.
     tasks.named("tidy").configure {v ->
       v.dependsOn applyGoogleJavaFormat
     }

@@ -53,8 +53,7 @@ configure(project(":lucene:core")) {
 
   def generateStandardTokenizer = wrapWithPersistentChecksums(generateStandardTokenizerInternal, [
     andThenTasks: [
-      "spotlessJava",
-      "spotlessJavaApply"
+      "applyGoogleJavaFormat"
     ],
     mustRunBefore: ["compileJava"]
   ])
@@ -157,8 +156,7 @@ configure(project(":lucene:analysis:common")) {
 
   def generateUAX29URLEmailTokenizer = wrapWithPersistentChecksums(generateUAX29URLEmailTokenizerInternal, [
     andThenTasks: [
-      "spotlessJava",
-      "spotlessJavaApply"
+      "applyGoogleJavaFormat"
     ],
     mustRunBefore: ["compileJava"]
   ])
@@ -213,8 +211,7 @@ configure(project(":lucene:analysis:common")) {
 
   def extraConfig = [
     andThenTasks: [
-      "spotlessJava",
-      "spotlessJavaApply"
+      "applyGoogleJavaFormat"
     ],
     mustRunBefore: ["compileJava"]
   ]
