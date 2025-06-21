@@ -75,6 +75,7 @@ public class BuildOptionGroupsPlugin implements Plugin<Project> {
                         "Build control and information",
                         explicitList(
                             "lucene.spotlessGradleScripts",
+                            "lucene.gjf.batchSize",
                             "task.times",
                             "javac.failOnWarnings",
                             "tests.slowestSuites",

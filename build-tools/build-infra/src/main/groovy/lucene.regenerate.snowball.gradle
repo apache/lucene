@@ -114,8 +114,7 @@ configure(project(":lucene:analysis:common")) {
 
   regenerate.dependsOn wrapWithPersistentChecksums(snowballInternal, [
     andThenTasks: [
-      "spotlessJava",
-      "spotlessJavaApply"
+      "applyGoogleJavaFormat"
     ],
     ignoreWithSource: [
       downloadSnowballStemmers,

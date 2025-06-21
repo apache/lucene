@@ -62,7 +62,8 @@ public class AstGrepPlugin implements Plugin<Project> {
               if (!astToolOption.isPresent()) {
                 task.getLogger()
                     .warn(
-                        "The ast-grep tool location is not set ('{}' option), will not apply ast-grep rules.",
+                        "The ast-grep tool location is not set ('{}' option), will not apply"
+                            + " ast-grep rules.",
                         optionName);
               }
 

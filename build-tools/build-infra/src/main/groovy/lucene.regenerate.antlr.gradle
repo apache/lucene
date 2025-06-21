@@ -85,8 +85,7 @@ configure(project(":lucene:expressions")) {
   def generateAntlr = wrapWithPersistentChecksums(
       generateAntlrInternal, [
         andThenTasks: [
-          "spotlessJava",
-          "spotlessJavaApply"
+          "applyGoogleJavaFormat"
         ],
         mustRunBefore: ["compileJava"]
       ])

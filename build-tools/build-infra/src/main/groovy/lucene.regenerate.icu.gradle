@@ -285,8 +285,7 @@ configure(project(":lucene:analysis:common")) {
 
   regenerate.dependsOn wrapWithPersistentChecksums(generateUnicodePropsInternal, [
     andThenTasks: [
-      "spotlessJava",
-      "spotlessJavaApply"
+      "applyGoogleJavaFormat"
     ],
     mustRunBefore: ["compileJava"]
   ])
@@ -325,8 +324,7 @@ configure(project(":lucene:core")) {
 
   regenerate.dependsOn wrapWithPersistentChecksums(generateUnicodePropsInternal, [
     andThenTasks: [
-      "spotlessJava",
-      "spotlessJavaApply"
+      "applyGoogleJavaFormat"
     ],
     mustRunBefore: ["compileJava"]
   ])

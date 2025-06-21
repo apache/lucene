@@ -46,8 +46,7 @@ configure(project(":lucene:test-framework")) {
   }
   regenerate.dependsOn wrapWithPersistentChecksums(generateEmojiTokenizationTestInternal, [
     andThenTasks: [
-      "spotlessJava",
-      "spotlessJavaApply"
+      "applyGoogleJavaFormat"
     ],
     mustRunBefore: ["compileJava"]
   ])
@@ -81,8 +80,7 @@ configure(project(":lucene:test-framework")) {
 
   regenerate.dependsOn wrapWithPersistentChecksums(generateJavaUnicodeWordBreakTestInternal, [
     andThenTasks: [
-      "spotlessJava",
-      "spotlessJavaApply"
+      "applyGoogleJavaFormat"
     ],
     mustRunBefore: ["compileJava"]
   ])
