@@ -16,11 +16,11 @@
  */
 package org.apache.lucene.search.suggest.document;
 
+import static org.apache.lucene.search.suggest.document.TopSuggestDocs.SUGGEST_SCORE_DOC_COMPARATOR;
 import static org.apache.lucene.search.suggest.document.TopSuggestDocs.SuggestScoreDoc;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.index.LeafReaderContext;
@@ -29,6 +29,7 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.suggest.Lookup;
+import org.apache.lucene.util.PriorityQueue;
 
 /**
  * {@link org.apache.lucene.search.Collector} that collects completion and score, along with
@@ -49,7 +50,7 @@ import org.apache.lucene.search.suggest.Lookup;
  */
 public class TopSuggestDocsCollector extends SimpleCollector {
 
-  private final SuggestScoreDocPriorityQueue priorityQueue;
+  private final PriorityQueue<SuggestScoreDoc> priorityQueue;
   private final int num;
 
   /**
@@ -77,10 +78,10 @@ public class TopSuggestDocsCollector extends SimpleCollector {
       throw new IllegalArgumentException("'num' must be > 0");
     }
     this.num = num;
-    this.priorityQueue = new SuggestScoreDocPriorityQueue(num);
+    this.priorityQueue = PriorityQueue.usingComparator(num, SUGGEST_SCORE_DOC_COMPARATOR);
     if (skipDuplicates) {
       seenSurfaceForms = new CharArraySet(num, false);
-      pendingResults = new ArrayList<>();
+      pendingResults = new ArrayList<>(num);
     } else {
       seenSurfaceForms = null;
       pendingResults = null;
@@ -105,8 +106,9 @@ public class TopSuggestDocsCollector extends SimpleCollector {
   @Override
   public void finish() throws IOException {
     if (seenSurfaceForms != null) {
-      // NOTE: this also clears the priorityQueue:
-      Collections.addAll(pendingResults, priorityQueue.getResults());
+      // doesn't need to be sorted now, it is sorted in the get() method
+      priorityQueue.iterator().forEachRemaining(pendingResults::add);
+      priorityQueue.clear();
 
       // Deduplicate all hits: we already dedup'd efficiently within each segment by
       // truncating the FST top paths search, but across segments there may still be dups:
@@ -165,17 +167,16 @@ public class TopSuggestDocsCollector extends SimpleCollector {
       List<SuggestScoreDoc> hits = new ArrayList<>();
 
       for (SuggestScoreDoc hit : pendingResults) {
-        if (seenSurfaceForms.contains(hit.key) == false) {
-          seenSurfaceForms.add(hit.key);
+        if (seenSurfaceForms.add(hit.key)) {
           hits.add(hit);
           if (hits.size() == num) {
             break;
           }
         }
       }
-      suggestScoreDocs = hits.toArray(new SuggestScoreDoc[0]);
+      suggestScoreDocs = hits.toArray(SuggestScoreDoc[]::new);
     } else {
-      suggestScoreDocs = priorityQueue.getResults();
+      suggestScoreDocs = priorityQueue.drainToArrayHighestFirst(SuggestScoreDoc[]::new);
     }
 
     if (suggestScoreDocs.length > 0) {

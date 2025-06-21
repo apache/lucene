@@ -385,7 +385,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
     }
 
     /**
-     * Add the {@link #top()} slice as well as all slices that are positionned on the same term to
+     * Add the {@link #top()} slice as well as all slices that are positioned on the same term to
      * {@code tops} and return how many of them there are.
      */
     int fillTop(TermsEnumWithSlice[] tops) {
@@ -402,7 +402,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
         final int index = stack[--stackLen];
         final int leftChild = index << 1;
         for (int child = leftChild, end = Math.min(size, leftChild + 1); child <= end; ++child) {
-          TermsEnumWithSlice te = get(child);
+          TermsEnumWithSlice te = (TermsEnumWithSlice) getHeapArray()[child];
           if (te.compareTermTo(tops[0]) == 0) {
             tops[numTop++] = te;
             stack[stackLen++] = child;
@@ -410,10 +410,6 @@ public final class MultiTermsEnum extends BaseTermsEnum {
         }
       }
       return numTop;
-    }
-
-    private TermsEnumWithSlice get(int i) {
-      return (TermsEnumWithSlice) getHeapArray()[i];
     }
   }
 

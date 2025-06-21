@@ -292,10 +292,7 @@ public class Highlighter {
       }
 
       // return the most relevant fragments
-      TextFragment[] frag = new TextFragment[fragQueue.size()];
-      for (int i = frag.length - 1; i >= 0; i--) {
-        frag[i] = fragQueue.pop();
-      }
+      TextFragment[] frag = fragQueue.drainToArrayHighestFirst(TextFragment[]::new);
 
       // merge any contiguous fragments to improve readability
       if (mergeContiguousFragments) {

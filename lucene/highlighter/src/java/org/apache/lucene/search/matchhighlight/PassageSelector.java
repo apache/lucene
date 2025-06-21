@@ -168,10 +168,7 @@ public class PassageSelector {
     // Collect from the priority queue (reverse the order so that highest-scoring are first).
     Passage[] passages;
     if (pq.size() > 0) {
-      passages = new Passage[pq.size()];
-      for (int i = pq.size(); --i >= 0; ) {
-        passages[i] = pq.pop();
-      }
+      passages = pq.drainToArrayHighestFirst(Passage[]::new);
     } else {
       // Handle the default, no highlighting markers case.
       passages = pickDefaultPassage(value, maxPassageWindow, maxPassages, permittedPassageRanges);

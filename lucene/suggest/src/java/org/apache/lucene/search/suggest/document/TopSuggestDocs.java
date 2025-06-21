@@ -16,10 +16,12 @@
  */
 package org.apache.lucene.search.suggest.document;
 
+import java.util.Comparator;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.suggest.Lookup;
+import org.apache.lucene.util.PriorityQueue;
 
 /**
  * {@link org.apache.lucene.search.TopDocs} wrapper with an additional CharSequence key per {@link
@@ -32,6 +34,16 @@ public class TopSuggestDocs extends TopDocs {
   /** Singleton for empty {@link TopSuggestDocs} */
   public static final TopSuggestDocs EMPTY =
       new TopSuggestDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new SuggestScoreDoc[0]);
+
+  static final Comparator<SuggestScoreDoc> SUGGEST_SCORE_DOC_COMPARATOR =
+      (a, b) -> {
+        // compare score, then key (reversed), then docID (reversed)
+        int cmp = Float.compare(a.score, b.score);
+        if (cmp != 0) return cmp;
+        cmp = Lookup.CHARSEQUENCE_COMPARATOR.compare(b.key, a.key);
+        if (cmp != 0) return cmp;
+        return Integer.compare(b.doc, a.doc);
+      };
 
   /** {@link org.apache.lucene.search.ScoreDoc} with an additional CharSequence key */
   public static class SuggestScoreDoc extends ScoreDoc implements Comparable<SuggestScoreDoc> {
@@ -102,7 +114,8 @@ public class TopSuggestDocs extends TopDocs {
    * <p>NOTE: assumes every <code>shardHit</code> is already sorted by score
    */
   public static TopSuggestDocs merge(int topN, TopSuggestDocs[] shardHits) {
-    SuggestScoreDocPriorityQueue priorityQueue = new SuggestScoreDocPriorityQueue(topN);
+    PriorityQueue<SuggestScoreDoc> priorityQueue =
+        PriorityQueue.usingComparator(topN, SUGGEST_SCORE_DOC_COMPARATOR);
     for (TopSuggestDocs shardHit : shardHits) {
       for (SuggestScoreDoc scoreDoc : shardHit.scoreLookupDocs()) {
         if (scoreDoc == priorityQueue.insertWithOverflow(scoreDoc)) {
@@ -110,7 +123,7 @@ public class TopSuggestDocs extends TopDocs {
         }
       }
     }
-    SuggestScoreDoc[] topNResults = priorityQueue.getResults();
+    SuggestScoreDoc[] topNResults = priorityQueue.drainToArrayHighestFirst(SuggestScoreDoc[]::new);
     if (topNResults.length > 0) {
       return new TopSuggestDocs(
           new TotalHits(topNResults.length, TotalHits.Relation.EQUAL_TO), topNResults);

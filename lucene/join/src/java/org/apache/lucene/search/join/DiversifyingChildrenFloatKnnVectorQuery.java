@@ -147,10 +147,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
       queue.pop();
     }
 
-    ScoreDoc[] topScoreDocs = new ScoreDoc[queue.size()];
-    for (int i = topScoreDocs.length - 1; i >= 0; i--) {
-      topScoreDocs[i] = queue.pop();
-    }
+    ScoreDoc[] topScoreDocs = queue.drainToArrayHighestFirst(ScoreDoc[]::new);
 
     TotalHits totalHits = new TotalHits(acceptIterator.cost(), relation);
     return new TopDocs(totalHits, topScoreDocs);
