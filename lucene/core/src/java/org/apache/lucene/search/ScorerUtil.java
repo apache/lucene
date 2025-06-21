@@ -133,6 +133,20 @@ class ScorerUtil {
     }
 
     int newSize = 0;
+    final double minimalScoreRequired = minCompetitiveScore - maxRemainingScore;
+    // special case when we have 2 scorers
+    if (numScorers == 2) {
+      for (int i = 0; i < buffer.size; ++i) {
+        if (buffer.scores[i] >= minimalScoreRequired) {
+          buffer.docs[newSize] = buffer.docs[i];
+          buffer.scores[newSize] = buffer.scores[i];
+          newSize++;
+        }
+      }
+      buffer.size = newSize;
+      return;
+    }
+
     for (int i = 0; i < buffer.size; ++i) {
       float maxPossibleScore =
           (float) MathUtil.sumUpperBound(buffer.scores[i] + maxRemainingScore, numScorers);
