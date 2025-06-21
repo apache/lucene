@@ -184,8 +184,13 @@ public class FirstPassGroupingBenchmark {
     }
 
     final List<Group> result = new ArrayList<>();
+    final List<Group> reversedResult = new ArrayList<>();
     while (heap.size() > 0) {
-      result.add(0, heap.pop());
+      reversedResult.add(heap.pop());
+    }
+
+    for (int i = reversedResult.size() - 1; i >= 0; i--) {
+      result.add(reversedResult.get(i));
     }
     return result;
   }
