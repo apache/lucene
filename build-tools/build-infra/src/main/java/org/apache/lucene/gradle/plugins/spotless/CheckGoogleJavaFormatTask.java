@@ -244,14 +244,7 @@ public abstract class CheckGoogleJavaFormatTask extends ParentGoogleJavaFormatTa
       diffOutput.write("\n");
     }
 
-    /**
-     * Returns a map entry with value being a git-style diff between the two unix strings and key
-     * being the 0-based line of the first difference (in the dirty string)
-     *
-     * <p>Output has no trailing newlines.
-     *
-     * <p>Boolean args determine whether whitespace or line endings will be visible.
-     */
+    /** Returns a git-style diff between the two unix strings. */
     private static String diffWhitespaceLineEndings(
         String dirty, String clean, boolean whitespace, boolean lineEndings) throws IOException {
       dirty = visibleWhitespaceLineEndings(dirty, whitespace, lineEndings);

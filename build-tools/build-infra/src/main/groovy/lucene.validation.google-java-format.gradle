@@ -27,10 +27,12 @@ configure(allprojects) {prj ->
       "lucene.gjf.batchSize", "Sets the batch size for google-java-format tasks.", 5)
 
   plugins.withType(JavaPlugin).configureEach {
+    def applyGoogleJavaFormat = tasks.register("applyGoogleJavaFormat", ApplyGoogleJavaFormatTask)
+
     def checkGoogleJavaFormat = tasks.register("checkGoogleJavaFormat", CheckGoogleJavaFormatTask, {
       colorizedOutput = !rootProject.ext.isCIBuild
+      mustRunAfter applyGoogleJavaFormat
     })
-    def applyGoogleJavaFormat = tasks.register("applyGoogleJavaFormat", ApplyGoogleJavaFormatTask)
 
     [
       checkGoogleJavaFormat,

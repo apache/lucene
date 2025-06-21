@@ -310,6 +310,6 @@ class JFlexTask extends DefaultTask {
         encoding: "UTF-8",
         token: '/* Break so we don\'t hit fall-through warning: */',
         value: ''
-    )
+        )
   }
 }
