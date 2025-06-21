@@ -97,6 +97,20 @@ abstract class ParentGoogleJavaFormatTask extends DefaultTask {
 
   protected static String applyFormatter(Formatter formatter, String input)
       throws FormatterException {
+    // Correct line endings, if there are any oddities.
+    if (input.indexOf('\r') >= 0) {
+      // replace windows sequences first,
+      input = input.replace("\r\n", "\n");
+      // then just remove any CRs
+      input = input.replaceAll("\\r", "");
+    }
+
+    // Add trailing LF if the last character isn't an LF already. We don't
+    // care about blanks because we'll reformat everything anyway.
+    if (!input.isEmpty() && input.charAt(input.length() - 1) != '\n') {
+      input = input + "\n";
+    }
+
     input = ImportOrderer.reorderImports(input, JavaFormatterOptions.Style.GOOGLE);
     input = RemoveUnusedImports.removeUnusedImports(input);
     input = formatter.formatSource(input);
