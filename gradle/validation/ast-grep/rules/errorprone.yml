@@ -83,12 +83,12 @@ rule:
         all:
           # has a junit annotation
           - has:
-             kind: marker_annotation
-             any:
-              - pattern: "@Before"
-              - pattern: "@After"
-              - pattern: "@BeforeClass"
-              - pattern: "@AfterClass"
+              kind: marker_annotation
+              any:
+                - pattern: "@Before"
+                - pattern: "@After"
+                - pattern: "@BeforeClass"
+                - pattern: "@AfterClass"
           # doesn't have an override annotation
           - not:
               has:
@@ -110,11 +110,11 @@ rule:
   has:
     not:
       any:
-       # allow pkg decl and associated docs / imports only
-       - kind: package_declaration
-       - kind: block_comment
-       - kind: line_comment
-       - kind: import_declaration
+        # allow pkg decl and associated docs / imports only
+        - kind: package_declaration
+        - kind: block_comment
+        - kind: line_comment
+        - kind: import_declaration
 severity: error
 message: Declaring types inside package-info.java files is very bad form
 url: https://errorprone.info/bugpattern/PackageInfo
