@@ -38,7 +38,7 @@ plugins {
   id "lucene.java.modules"
 
   id "lucene.validation.spotless-groovy"
-  id "lucene.validation.spotless-java"
+  id "lucene.validation.google-java-format"
   id "lucene.validation.lockfile"
   id "lucene.validation.gradle-versions-cleanup"
   id "lucene.validation.gradlew-scripts-customizations"

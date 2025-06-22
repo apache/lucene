@@ -19,7 +19,6 @@ plugins {
   id "java-gradle-plugin"
   id "groovy-gradle-plugin"
 
-  alias(deps.plugins.spotless) apply false
   alias(deps.plugins.forbiddenapis) apply false
 }
 
@@ -50,7 +49,6 @@ static Provider<String> plugin(Provider<PluginDependency> plugin) {
     } else {
       // maven artifact pattern for gradle's plugin repositories.
       return "${it.pluginId}:${it.pluginId}.gradle.plugin:${it.version}".toString()
-      // return "${it.pluginId}:${it.pluginId.replaceFirst(".*\\.", "")}-plugin-gradle:${it.version}".toString()
     }
   }
 }
@@ -68,6 +66,8 @@ dependencies {
   implementation deps.flexmark.ext.attributes
   implementation deps.flexmark.ext.autolink
   implementation deps.flexmark.ext.tables
+  implementation deps.gjf
+  implementation deps.jgit
 
   implementation plugin(deps.plugins.carrotsearch.buildopts)
   implementation plugin(deps.plugins.carrotsearch.dependencychecks)

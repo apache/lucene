@@ -14,7 +14,7 @@ ecj = "4.36M1"
 errorprone = "2.38.0"
 # markdown documentation generation
 flexmark = "0.64.8"
-# @keep This is GJF version for spotless/ tidy source code formatting
+# @keep This is GJF version for java source code formatting
 googleJavaFormat = "1.23.0"
 # gradle build support
 groovy = "4.0.27"
@@ -26,6 +26,8 @@ icu4j = "77.1"
 javacc = "7.0.13"
 # analysis/ tokenizer grammars
 jflex = "1.9.1"
+# build infra only (diff of changes from google java format tasks)
+jgit = "7.3.0.202506031305-r"
 # benchmark-jmh/ microbenchmarks
 jmh = "1.37"
 # spatial-extras/ support
@@ -72,11 +74,13 @@ flexmark-ext-abbreviation = { module = "com.vladsch.flexmark:flexmark-ext-abbrev
 flexmark-ext-attributes = { module = "com.vladsch.flexmark:flexmark-ext-attributes", version.ref = "flexmark" }
 flexmark-ext-autolink = { module = "com.vladsch.flexmark:flexmark-ext-autolink", version.ref = "flexmark" }
 flexmark-ext-tables = { module = "com.vladsch.flexmark:flexmark-ext-tables", version.ref = "flexmark" }
+gjf = { module = "com.google.googlejavaformat:google-java-format", version.ref = "googleJavaFormat" }
 groovy = { module = "org.apache.groovy:groovy-all", version.ref = "groovy" }
 hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
 icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
 javacc = { module = "net.java.dev.javacc:javacc", version.ref = "javacc" }
 jflex = { module = "de.jflex:jflex", version.ref = "jflex" }
+jgit = { module = "org.eclipse.jgit:org.eclipse.jgit", version.ref = "jgit" }
 jmh-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jts = { module = "org.locationtech.jts:jts-core", version.ref = "jts" }
