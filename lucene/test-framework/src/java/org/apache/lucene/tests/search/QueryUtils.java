@@ -59,7 +59,6 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.junit.Assert;
 
 /** Utility class for sanity-checking queries. */
@@ -241,11 +240,6 @@ public class QueryUtils {
 
       @Override
       public ByteVectorValues getByteVectorValues(String field) throws IOException {
-        return null;
-      }
-
-      @Override
-      public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
         return null;
       }
 

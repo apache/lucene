@@ -24,7 +24,6 @@ import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 
 /**
  * {@code LeafReader} is an abstract class, providing an interface for accessing an index. Search of
@@ -225,16 +224,6 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * @lucene.experimental
    */
   public abstract ByteVectorValues getByteVectorValues(String field) throws IOException;
-
-  /**
-   * Returns {@link QuantizedByteVectorValues} for this field, or null if no {@link
-   * QuantizedByteVectorValues} were indexed. The returned instance should only be used by a single
-   * thread.
-   *
-   * @lucene.experimental
-   */
-  public abstract QuantizedByteVectorValues getQuantizedVectorValues(String field)
-      throws IOException;
 
   /**
    * Return the k nearest neighbor documents as determined by comparison of their vector values for

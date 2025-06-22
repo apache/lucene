@@ -24,7 +24,6 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.Unwrappable;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 
 /**
  * A <code>FilterLeafReader</code> contains another LeafReader, which it uses as its basic source of
@@ -362,11 +361,6 @@ public abstract class FilterLeafReader extends LeafReader {
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     return in.getByteVectorValues(field);
-  }
-
-  @Override
-  public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
-    return in.getQuantizedVectorValues(field);
   }
 
   @Override

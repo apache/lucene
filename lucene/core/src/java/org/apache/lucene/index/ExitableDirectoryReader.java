@@ -26,7 +26,6 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 
 /**
  * The {@link ExitableDirectoryReader} wraps a real index {@link DirectoryReader} and allows for a
@@ -333,15 +332,6 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
-    public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
-      final QuantizedByteVectorValues vectorValues = in.getQuantizedVectorValues(field);
-      if (vectorValues == null) {
-        return null;
-      }
-      return new ExitableQuantizedByteVectorValues(vectorValues);
-    }
-
-    @Override
     public void searchNearestVectors(
         String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
@@ -521,49 +511,6 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       @Override
       public ByteVectorValues copy() {
         throw new UnsupportedOperationException();
-      }
-    }
-
-    private class ExitableQuantizedByteVectorValues extends QuantizedByteVectorValues {
-      private final QuantizedByteVectorValues vectorValues;
-
-      public ExitableQuantizedByteVectorValues(QuantizedByteVectorValues vectorValues) {
-        this.vectorValues = vectorValues;
-      }
-
-      @Override
-      public int dimension() {
-        return vectorValues.dimension();
-      }
-
-      @Override
-      public int size() {
-        return vectorValues.size();
-      }
-
-      @Override
-      public byte[] vectorValue(int ord) throws IOException {
-        return vectorValues.vectorValue(ord);
-      }
-
-      @Override
-      public int ordToDoc(int ord) {
-        return vectorValues.ordToDoc(ord);
-      }
-
-      @Override
-      public DocIndexIterator iterator() {
-        return createExitableIterator(vectorValues.iterator(), queryTimeout);
-      }
-
-      @Override
-      public VectorScorer scorer(byte[] target) throws IOException {
-        return vectorValues.scorer(target);
-      }
-
-      @Override
-      public float getScoreCorrectionConstant(int ord) throws IOException {
-        return vectorValues.getScoreCorrectionConstant(ord);
       }
     }
   }

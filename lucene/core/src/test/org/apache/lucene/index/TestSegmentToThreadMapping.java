@@ -31,7 +31,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.Version;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 
 public class TestSegmentToThreadMapping extends LuceneTestCase {
 
@@ -114,11 +113,6 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
 
       @Override
       public ByteVectorValues getByteVectorValues(String field) {
-        return null;
-      }
-
-      @Override
-      public QuantizedByteVectorValues getQuantizedVectorValues(String field) {
         return null;
       }
 

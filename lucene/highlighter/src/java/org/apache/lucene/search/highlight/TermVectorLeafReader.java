@@ -45,7 +45,6 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 
 /**
  * Wraps a Terms with a {@link org.apache.lucene.index.LeafReader}, typically from term vectors.
@@ -177,11 +176,6 @@ public class TermVectorLeafReader extends LeafReader {
 
   @Override
   public ByteVectorValues getByteVectorValues(String fieldName) {
-    return null;
-  }
-
-  @Override
-  public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
     return null;
   }
 

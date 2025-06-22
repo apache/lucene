@@ -25,11 +25,8 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
-import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 
 /** LeafReader implemented by codec APIs. */
 public abstract class CodecReader extends LeafReader {
@@ -259,26 +256,6 @@ public abstract class CodecReader extends LeafReader {
     }
 
     return getVectorReader().getByteVectorValues(field);
-  }
-
-  @Override
-  public final QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
-    ensureOpen();
-    FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null
-        || fi.getVectorDimension() == 0
-        || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
-      // Field does not exist or does not index vectors
-      return null;
-    }
-    KnnVectorsReader vectorsReader = getVectorReader();
-    if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader) {
-      vectorsReader = ((PerFieldKnnVectorsFormat.FieldsReader) vectorsReader).getFieldReader(field);
-    }
-    if (vectorsReader instanceof QuantizedVectorsReader) {
-      return ((QuantizedVectorsReader) vectorsReader).getQuantizedVectorValues(field);
-    }
-    return null;
   }
 
   @Override

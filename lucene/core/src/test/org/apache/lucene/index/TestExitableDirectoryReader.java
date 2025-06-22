@@ -20,8 +20,6 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.atMost;
 
 import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -42,11 +40,9 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.TestVectorUtil;
-import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 
 /**
  * Test that uses a default/lucene Implementation of {@link QueryTimeout} to exit out long running
@@ -564,87 +560,6 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
           Integer.MAX_VALUE);
     }
 
-    reader.close();
-    directory.close();
-  }
-
-  public void testQuantizedByteVectorValues() throws Exception {
-    Codec codec =
-        TestUtil.alwaysKnnVectorsFormat(
-            new Lucene99HnswScalarQuantizedVectorsFormat(10, HnswGraphBuilder.DEFAULT_BEAM_WIDTH));
-    Directory directory = newDirectory();
-    IndexWriter writer = new IndexWriter(directory, new IndexWriterConfig().setCodec(codec));
-
-    int numDoc = atLeast(20);
-    int deletedDoc = atMost(5);
-    int dimension = atLeast(3);
-
-    for (int i = 0; i < numDoc; i++) {
-      Document doc = new Document();
-
-      float[] value = new float[dimension];
-      for (int j = 0; j < dimension; j++) {
-        value[j] = random().nextFloat();
-      }
-      FieldType fieldType =
-          KnnFloatVectorField.createFieldType(dimension, VectorSimilarityFunction.COSINE);
-      doc.add(new KnnFloatVectorField("vector", value, fieldType));
-
-      doc.add(new StringField("id", Integer.toString(i), Field.Store.YES));
-      writer.addDocument(doc);
-    }
-
-    writer.forceMerge(1);
-    writer.commit();
-
-    for (int i = 0; i < deletedDoc; i++) {
-      writer.deleteDocuments(new Term("id", Integer.toString(i)));
-    }
-
-    writer.close();
-
-    QueryTimeout queryTimeout;
-    if (random().nextBoolean()) {
-      queryTimeout = immediateQueryTimeout();
-    } else {
-      queryTimeout = infiniteQueryTimeout();
-    }
-    DirectoryReader directoryReader = DirectoryReader.open(directory);
-    DirectoryReader exitableDirectoryReader =
-        new ExitableDirectoryReader(directoryReader, queryTimeout);
-    IndexReader reader = new TestReader(getOnlyLeafReader(exitableDirectoryReader));
-
-    LeafReaderContext context = reader.leaves().get(0);
-    LeafReader leaf = context.reader();
-
-    if (queryTimeout.shouldExit()) {
-      expectThrows(
-          ExitingReaderException.class,
-          () -> {
-            KnnVectorValues values = leaf.getQuantizedVectorValues("vector");
-            scanAndRetrieve(leaf, values);
-          });
-
-      expectThrows(
-          ExitingReaderException.class,
-          () ->
-              leaf.searchNearestVectors(
-                  "vector",
-                  TestVectorUtil.randomVector(dimension),
-                  5,
-                  leaf.getLiveDocs(),
-                  Integer.MAX_VALUE));
-    } else {
-      KnnVectorValues values = leaf.getQuantizedVectorValues("vector");
-      scanAndRetrieve(leaf, values);
-
-      leaf.searchNearestVectors(
-          "vector",
-          TestVectorUtil.randomVector(dimension),
-          5,
-          leaf.getLiveDocs(),
-          Integer.MAX_VALUE);
-    }
     reader.close();
     directory.close();
   }
