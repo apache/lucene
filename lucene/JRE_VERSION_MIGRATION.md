@@ -13,7 +13,7 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
- -->
+-->
 
 # JRE Version Migration Guide
 
@@ -31,12 +31,12 @@ The version of Unicode supported by Java is listed in the documentation
 of java.lang.Character class. For reference, Java versions after Java 11
 support the following Unicode versions:
 
- * Java 11, Unicode 10.0
- * Java 12, Unicode 11.0
- * Java 13, Unicode 12.1
- * Java 15, Unicode 13.0
- * Java 16, Unicode 13.0
- * Java 17, Unicode 13.0
+* Java 11, Unicode 10.0
+* Java 12, Unicode 11.0
+* Java 13, Unicode 12.1
+* Java 15, Unicode 13.0
+* Java 16, Unicode 13.0
+* Java 17, Unicode 13.0
 
 In general, whether you need to re-index largely depends upon the data that
 you are searching, and what was changed in any given Unicode version. For example,

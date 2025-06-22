@@ -49,33 +49,43 @@ import org.apache.lucene.util.PriorityQueue;
  */
 public class TermOrdValComparator extends FieldComparator<BytesRef> {
 
-  /* Ords for each slot.
-  @lucene.internal */
+  /*
+   * Ords for each slot.
+   * @lucene.internal
+   */
   final int[] ords;
 
-  /* Values for each slot.
-  @lucene.internal */
+  /*
+   * Values for each slot.
+   * @lucene.internal
+   */
   final BytesRef[] values;
   private final BytesRefBuilder[] tempBRs;
 
-  /* Which reader last copied a value into the slot. When
-  we compare two slots, we just compare-by-ord if the
-  readerGen is the same; else we must compare the
-  values (slower).
-  @lucene.internal */
+  /*
+   * Which reader last copied a value into the slot. When
+   * we compare two slots, we just compare-by-ord if the
+   * readerGen is the same; else we must compare the
+   * values (slower).
+   * @lucene.internal
+   */
   final int[] readerGen;
 
-  /* Gen of current reader we are on.
-  @lucene.internal */
+  /*
+   * Gen of current reader we are on.
+   * @lucene.internal
+   */
   int currentReaderGen = -1;
 
   private final String field;
   private final boolean reverse;
   private final boolean sortMissingLast;
 
-  /* Bottom value (same as values[bottomSlot] once
-   bottomSlot is set).  Cached for faster compares.
-  @lucene.internal */
+  /*
+   * Bottom value (same as values[bottomSlot] once
+   * bottomSlot is set).  Cached for faster compares.
+   * @lucene.internal
+   */
   BytesRef bottomValue;
 
   /* Bottom slot, or -1 if queue isn't full yet */

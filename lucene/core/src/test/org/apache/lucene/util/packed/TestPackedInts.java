@@ -420,11 +420,11 @@ public class TestPackedInts extends LuceneTestCase {
   }
 
   /*
-   Check if the structures properly handle the case where
-   index * bitsPerValue > Integer.MAX_VALUE
-
-   NOTE: this test allocates 256 MB
-  */
+   * Check if the structures properly handle the case where
+   * index * bitsPerValue > Integer.MAX_VALUE
+   *
+   * NOTE: this test allocates 256 MB
+   */
   @Ignore("See LUCENE-4488")
   public void testIntOverflow() {
     int INDEX = (int) Math.pow(2, 30) + 1;

@@ -1,18 +1,18 @@
 <!--
- Licensed to the Apache Software Foundation (ASF) under one or more
- contributor license agreements.  See the NOTICE file distributed with
- this work for additional information regarding copyright ownership.
- The ASF licenses this file to You under the Apache License, Version 2.0
- (the "License"); you may not use this file except in compliance with
- the License.  You may obtain a copy of the License at
+  Licensed to the Apache Software Foundation (ASF) under one or more
+  contributor license agreements.  See the NOTICE file distributed with
+  this work for additional information regarding copyright ownership.
+  The ASF licenses this file to You under the Apache License, Version 2.0
+  (the "License"); you may not use this file except in compliance with
+  the License.  You may obtain a copy of the License at
 
-     http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
 -->
 <html>
 <head>
@@ -99,8 +99,8 @@ applications.</p>
 <div class="section">
 <p>The files discussed here are linked into this documentation directly:
   <ul>
-     <li><a href="src-html/org/apache/lucene/demo/IndexFiles.html">IndexFiles.java</a>: code to create a Lucene index.
-     <li><a href="src-html/org/apache/lucene/demo/SearchFiles.html">SearchFiles.java</a>: code to search a Lucene index.
+    <li><a href="src-html/org/apache/lucene/demo/IndexFiles.html">IndexFiles.java</a>: code to create a Lucene index.
+    <li><a href="src-html/org/apache/lucene/demo/SearchFiles.html">SearchFiles.java</a>: code to search a Lucene index.
   </ul>
 </div>
 <a id="IndexFiles"></a>
@@ -182,7 +182,7 @@ adding the new document to the index.</p>
 quite simple. It primarily collaborates with an
 {@link org.apache.lucene.search.IndexSearcher IndexSearcher},
 {@link org.apache.lucene.analysis.standard.StandardAnalyzer StandardAnalyzer},
- (which is used in the <a href=
+(which is used in the <a href=
 "src-html/org/apache/lucene/demo/IndexFiles.html">IndexFiles</a> class as well)
 and a {@link org.apache.lucene.queryparser.classic.QueryParser QueryParser}. The
 query parser is constructed with an analyzer used to interpret your query text
@@ -206,26 +206,26 @@ by score (i.e. relevance).</p>
 </div>
 <h2 id="Embeddings" class="boxed">Working with vector embeddings</h2>
 <div class="section">
-    <p>In addition to indexing and searching text, IndexFiles and SearchFiles can also index and search
-        numeric vectors derived from that text, known as "embeddings." This demo code uses pre-computed embeddings
-        provided by the <a href="https://nlp.stanford.edu/projects/glove/">GloVe</a> project, which are in the public
-        domain. The dictionary here is a tiny subset of the full GloVe dataset. It includes only the words that occur
-        in the toy data set, and is definitely <i>not ready for production use</i>! If you use this code to create
-        a vector index for a larger document set, the indexer will throw an exception because
-        a more complete set of embeddings is needed to get reasonable results.
-    </p>
+  <p>In addition to indexing and searching text, IndexFiles and SearchFiles can also index and search
+      numeric vectors derived from that text, known as "embeddings." This demo code uses pre-computed embeddings
+      provided by the <a href="https://nlp.stanford.edu/projects/glove/">GloVe</a> project, which are in the public
+      domain. The dictionary here is a tiny subset of the full GloVe dataset. It includes only the words that occur
+      in the toy data set, and is definitely <i>not ready for production use</i>! If you use this code to create
+      a vector index for a larger document set, the indexer will throw an exception because
+      a more complete set of embeddings is needed to get reasonable results.
+  </p>
 </div>
 <h2 id="Faceting" class="boxed">Working with facets</h2>
 <div class="section">
-    <p>Lucene also provides aggregation capabilities over the index, e.g. counting results across a category
-        (<a href="src-html/org/apache/lucene/demo/facet/SimpleFacetsExample.html">SimpleFacetsExample</a>),
-        computing expressions (<a href=
-        "src-html/org/apache/lucene/demo/facet/ExpressionAggregationFacetsExample.html">
-        ExpressionAggregationFacetsExample</a>), dynamic ranges (<a href=
-        "src-html/org/apache/lucene/demo/facet/DynamicRangeFacetsExample.html">DynamicRangeFacetsExample</a>).
-        For more details, see the dedicated
-        <a href="org/apache/lucene/demo/facet/package-summary.html">faceting guide</a>.
-    </p>
+  <p>Lucene also provides aggregation capabilities over the index, e.g. counting results across a category
+      (<a href="src-html/org/apache/lucene/demo/facet/SimpleFacetsExample.html">SimpleFacetsExample</a>),
+      computing expressions (<a href=
+      "src-html/org/apache/lucene/demo/facet/ExpressionAggregationFacetsExample.html">
+      ExpressionAggregationFacetsExample</a>), dynamic ranges (<a href=
+      "src-html/org/apache/lucene/demo/facet/DynamicRangeFacetsExample.html">DynamicRangeFacetsExample</a>).
+      For more details, see the dedicated
+      <a href="org/apache/lucene/demo/facet/package-summary.html">faceting guide</a>.
+  </p>
 </div>
 </body>
 </html>
