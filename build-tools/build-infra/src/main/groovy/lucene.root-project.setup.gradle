@@ -19,6 +19,7 @@ import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionValueSource
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin
 import org.apache.lucene.gradle.plugins.gitinfo.GitInfoPlugin
 import org.apache.lucene.gradle.plugins.astgrep.AstGrepPlugin
+import org.apache.lucene.gradle.plugins.eclint.EditorConfigLintPlugin
 import com.carrotsearch.randomizedtesting.SeedUtils
 
 import java.time.ZonedDateTime
@@ -40,6 +41,7 @@ allprojects {
 plugins.apply(BasePlugin)
 plugins.apply(GitInfoPlugin)
 plugins.apply(AstGrepPlugin)
+plugins.apply(EditorConfigLintPlugin)
 
 //
 // Figure out project version based on the base version and, suffix (or overrides of these options).
