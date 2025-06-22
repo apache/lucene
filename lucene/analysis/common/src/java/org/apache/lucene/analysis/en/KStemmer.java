@@ -1375,11 +1375,10 @@ class KStemmer {
       word.setLength(j + 1);
       word.unsafeWrite('e');
       k = j + 1;
-      if (lookup()) /*
-                     * remove -ition and add `e', and check against the
-                     * dictionary
-                     */
+      if (lookup()) {
+        // remove -ition and add `e', and check against the
         return; /* (e.g., definition->define, opposition->oppose) */
+      }
 
       /* restore original values */
       word.setLength(j + 1);
@@ -1390,21 +1389,19 @@ class KStemmer {
       word.setLength(j + 3);
       word.unsafeWrite('e');
       k = j + 3;
-      if (lookup()) /* remove -ion and add `e', and check against the dictionary */
-        return; /* (elmination -> eliminate) */
+      if (lookup()) {
+        /* remove -ion and add `e', and check against the dictionary */
+        return; /* (elimination -> eliminate) */
+      }
 
       word.setLength(j + 1);
-      word.unsafeWrite('e'); /*
-                              * remove -ation and add `e', and check against the
-                              * dictionary
-                              */
+      word.unsafeWrite('e');
+      // remove -ation and add `e', and check against the dictionary
       k = j + 1;
       if (lookup()) return;
 
-      word.setLength(j + 1); /*
-                             * just remove -ation (resignation->resign) and
-                             * check dictionary
-                             */
+      word.setLength(j + 1);
+      // just remove -ation (resignation->resign) and check dictionary
       k = j;
       if (lookup()) return;
 
@@ -1425,10 +1422,10 @@ class KStemmer {
       word.setLength(j + 1);
       word.unsafeWrite('y');
       k = j + 1;
-      if (lookup()) /*
-                     * remove -ication and add `y', and check against the
-                     * dictionary
-                     */ return; /* (e.g., amplification -> amplify) */
+      if (lookup()) {
+        // remove -ication and add `y', and check against the dictionary
+        return; /* (e.g., amplification -> amplify) */
+      }
 
       /* restore original values */
       word.setLength(j + 1);

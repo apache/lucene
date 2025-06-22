@@ -267,9 +267,11 @@ def parse_config():
     dest="gpg_pass_noprompt",
     default=False,
     action="store_true",
-    help="""Do not prompt for gpg passphrase. For the default gnupg method, this means your gpg-agent
-     needs a non-TTY pin-entry program. For gradle signing method, passphrase must be provided
-     in gradle.properties or by env.var/sysprop. See ./gradlew helpPublishing for more info""",
+    help="""
+    Do not prompt for gpg passphrase. For the default gnupg method, this means your gpg-agent
+    needs a non-TTY pin-entry program. For gradle signing method, passphrase must be provided
+    in gradle.properties or by env.var/sysprop. See ./gradlew helpPublishing for more info
+    """.strip(),
   )
   parser.add_argument("--gpg-home", metavar="PATH", help="Path to gpg home containing your secring.gpg Optional, will use $HOME/.gnupg/secring.gpg by default")
   parser.add_argument("--rc-num", metavar="NUM", type=int, default=1, help="Release Candidate number.  Default: 1")

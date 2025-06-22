@@ -5,19 +5,19 @@ name: Prepare Lucene build
 description: Creates a shared setup for other workflows
 
 inputs:
-   java-version:
-     required: false
-     default: "24"
-     description: "The default JDK version to set up."
+  java-version:
+    required: false
+    default: "24"
+    description: "The default JDK version to set up."
 
-   java-distribution:
-     required: false
-     default: "temurin"
-     description: "The default JDK distribution type"
+  java-distribution:
+    required: false
+    default: "temurin"
+    description: "The default JDK distribution type"
 
 runs:
- using: "composite"
- steps:
+  using: "composite"
+  steps:
     - name: Set up Java (${{ inputs.java-distribution }}, ${{ inputs.java-version }})"
       uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
       with:

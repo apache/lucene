@@ -33278,7 +33278,7 @@ public final class UAX29URLEmailTokenizerImpl {
       else {
         switch (zzAction < 0 ? zzAction : ZZ_ACTION[zzAction]) {
           case 1:
-            { /* Break so we don't hit fall-through warning: */ break; /* Not numeric, word, ideographic, hiragana, emoji or SE Asian -- ignore it. */
+            {  break; /* Not numeric, word, ideographic, hiragana, emoji or SE Asian -- ignore it. */
             }
           // fall through
           case 16: break;

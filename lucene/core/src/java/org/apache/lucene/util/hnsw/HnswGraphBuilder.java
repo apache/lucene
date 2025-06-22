@@ -295,23 +295,23 @@ public class HnswGraphBuilder implements HnswBuilder {
   @Override
   public void addGraphNode(int node) throws IOException {
     /*
-    Note: this implementation is thread safe when graph size is fixed (e.g. when merging)
-    The process of adding a node is roughly:
-    1. Add the node to all level from top to the bottom, but do not connect it to any other node,
-       nor try to promote itself to an entry node before the connection is done. (Unless the graph is empty
-       and this is the first node, in that case we set the entry node and return)
-    2. Do the search from top to bottom, remember all the possible neighbours on each level the node
-       is on.
-    3. Add the neighbor to the node from bottom to top level, when adding the neighbour,
-       we always add all the outgoing links first before adding incoming link such that
-       when a search visits this node, it can always find a way out
-    4. If the node has level that is less or equal to graph level, then we're done here.
-       If the node has level larger than graph level, then we need to promote the node
-       as the entry node. If, while we add the node to the graph, the entry node has changed
-       (which means the graph level has changed as well), we need to reinsert the node
-       to the newly introduced levels (repeating step 2,3 for new levels) and again try to
-       promote the node to entry node.
-    */
+     * Note: this implementation is thread safe when graph size is fixed (e.g. when merging)
+     * The process of adding a node is roughly:
+     * 1. Add the node to all level from top to the bottom, but do not connect it to any other node,
+     *    nor try to promote itself to an entry node before the connection is done. (Unless the graph is empty
+     *    and this is the first node, in that case we set the entry node and return)
+     * 2. Do the search from top to bottom, remember all the possible neighbours on each level the node
+     *    is on.
+     * 3. Add the neighbor to the node from bottom to top level, when adding the neighbour,
+     *    we always add all the outgoing links first before adding incoming link such that
+     *    when a search visits this node, it can always find a way out
+     * 4. If the node has level that is less or equal to graph level, then we're done here.
+     *    If the node has level larger than graph level, then we need to promote the node
+     *    as the entry node. If, while we add the node to the graph, the entry node has changed
+     *    (which means the graph level has changed as well), we need to reinsert the node
+     *    to the newly introduced levels (repeating step 2,3 for new levels) and again try to
+     *    promote the node to entry node.
+     */
     UpdateableRandomVectorScorer scorer = scorerSupplier.scorer();
     scorer.setScoringOrdinal(node);
     addGraphNodeInternal(node, scorer, null);
