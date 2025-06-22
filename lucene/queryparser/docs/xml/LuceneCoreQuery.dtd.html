@@ -80,7 +80,7 @@ Some clauses may represent optional Query criteria while others represent mandat
 @boost</td><td class='rightAttributeTitle'>
 Attribute of <a href='#BooleanQuery'>BooleanQuery</a>
 </td></tr></table>
-<p>Optional boost for matches on this query. Values > 1</p><p><span class='inTextTitle'>Default value</span>: 1.0</p><a name='BooleanQuery_fieldName'></a>
+<p>Optional boost for matches on this query. Values &gt; 1</p><p><span class='inTextTitle'>Default value</span>: 1.0</p><a name='BooleanQuery_fieldName'></a>
 <br /><table class='attributeTitle' summary="fieldName"><tr><td class='leftAttributeTitle'>
 @fieldName</td><td class='rightAttributeTitle'>
 Attribute of <a href='#BooleanQuery'>BooleanQuery</a>
@@ -100,8 +100,8 @@ Attribute of <a href='#BooleanQuery'>BooleanQuery</a>
 &lt;Clause&gt;</td><td class='rightElementTitle'>
 Child of <a href='#BooleanQuery'>BooleanQuery</a>
 </td></tr></table>
-<p>NOTE: "Clause" tag has 2 modes of use - inside &lt;BooleanQuery> in which case only "query" types can be
-child elements - while in a &lt;BooleanFilter> clause only "filter" types can be contained.</p><blockquote><table summary='element info'><tr>
+<p>NOTE: "Clause" tag has 2 modes of use - inside &lt;BooleanQuery&gt; in which case only "query" types can be
+child elements - while in a &lt;BooleanFilter&gt; clause only "filter" types can be contained.</p><blockquote><table summary='element info'><tr>
 <td class='construct'><table summary="&lt;Clause&gt;'s children">
 <thead>
 <tr><th class='title' colspan='2'>&lt;Clause&gt;'s children</th></tr>
@@ -210,7 +210,7 @@ Child of <a href='#Clause'>Clause</a>, <a href='#Query'>Query</a>, <a href='#Cac
 @boost</td><td class='rightAttributeTitle'>
 Attribute of <a href='#UserQuery'>UserQuery</a>
 </td></tr></table>
-<p>Optional boost for matches on this query. Values > 1</p><p><span class='inTextTitle'>Default value</span>: 1.0</p><a name='UserQuery_fieldName'></a>
+<p>Optional boost for matches on this query. Values &gt; 1</p><p><span class='inTextTitle'>Default value</span>: 1.0</p><a name='UserQuery_fieldName'></a>
 <br /><table class='attributeTitle' summary="fieldName"><tr><td class='leftAttributeTitle'>
 @fieldName</td><td class='rightAttributeTitle'>
 Attribute of <a href='#UserQuery'>UserQuery</a>
@@ -258,7 +258,7 @@ Child of <a href='#Clause'>Clause</a>, <a href='#Query'>Query</a>, <a href='#Cac
 @boost</td><td class='rightAttributeTitle'>
 Attribute of <a href='#TermQuery'>TermQuery</a>
 </td></tr></table>
-<p>Optional boost for matches on this query. Values > 1</p><p><span class='inTextTitle'>Default value</span>: 1.0</p><a name='TermQuery_fieldName'></a>
+<p>Optional boost for matches on this query. Values &gt; 1</p><p><span class='inTextTitle'>Default value</span>: 1.0</p><a name='TermQuery_fieldName'></a>
 <br /><table class='attributeTitle' summary="fieldName"><tr><td class='leftAttributeTitle'>
 @fieldName</td><td class='rightAttributeTitle'>
 Attribute of <a href='#TermQuery'>TermQuery</a>
@@ -273,7 +273,7 @@ Child of <a href='#Include'>Include</a>, <a href='#Clause'>Clause</a>, <a href='
 @boost</td><td class='rightAttributeTitle'>
 Attribute of <a href='#TermQuery'>TermQuery</a>
 </td></tr></table>
-<p>Optional boost for matches on this query. Values > 1</p><p><span class='inTextTitle'>Default value</span>: 1.0</p><a name='TermQuery_fieldName'></a>
+<p>Optional boost for matches on this query. Values &gt; 1</p><p><span class='inTextTitle'>Default value</span>: 1.0</p><a name='TermQuery_fieldName'></a>
 <br /><table class='attributeTitle' summary="fieldName"><tr><td class='leftAttributeTitle'>
 @fieldName</td><td class='rightAttributeTitle'>
 Attribute of <a href='#TermQuery'>TermQuery</a>
@@ -289,7 +289,7 @@ Unlike UserQuery element, this does not parse any special characters to control 
 of producing a Query parse error given any user input</p><p><span class='inTextTitle'>Example:</span> <em>Match on text from a database description (which may contain characters that
 are illegal characters in the standard Lucene Query syntax used in the UserQuery tag</em>
 </p><pre>
-               &lt;TermsQuery fieldName="description"&gt;Smith & Sons (Ltd) : incorporated 1982&lt;/TermsQuery&gt;
+               &lt;TermsQuery fieldName="description"&gt;Smith &amp; Sons (Ltd) : incorporated 1982&lt;/TermsQuery&gt;
          </pre><p></p><blockquote><table summary='element info'><tr>
 <td class='construct'><table  summary="&lt;TermsQuery&gt;'s attributes"><tr>
 <th class='title' colspan='3'>&lt;TermsQuery&gt;'s attributes</th>
@@ -304,7 +304,7 @@ are illegal characters in the standard Lucene Query syntax used in the UserQuery
 @boost</td><td class='rightAttributeTitle'>
 Attribute of <a href='#TermsQuery'>TermsQuery</a>
 </td></tr></table>
-<p>Optional boost for matches on this query. Values > 1</p><p><span class='inTextTitle'>Default value</span>: 1.0</p><a name='TermsQuery_fieldName'></a>
+<p>Optional boost for matches on this query. Values &gt; 1</p><p><span class='inTextTitle'>Default value</span>: 1.0</p><a name='TermsQuery_fieldName'></a>
 <br /><table class='attributeTitle' summary="fieldName"><tr><td class='leftAttributeTitle'>
 @fieldName</td><td class='rightAttributeTitle'>
 Attribute of <a href='#TermsQuery'>TermsQuery</a>
@@ -357,7 +357,7 @@ Child of <a href='#Clause'>Clause</a>, <a href='#Query'>Query</a>, <a href='#Cac
 @boost</td><td class='rightAttributeTitle'>
 Attribute of <a href='#FilteredQuery'>FilteredQuery</a>
 </td></tr></table>
-<p>Optional boost for matches on this query. Values > 1</p><p><span class='inTextTitle'>Default value</span>: 1.0</p><a name='Query'></a>
+<p>Optional boost for matches on this query. Values &gt; 1</p><p><span class='inTextTitle'>Default value</span>: 1.0</p><a name='Query'></a>
 <br /><table class='elementTitle' summary="Query"><tr><td class='leftElementTitle'>
 &lt;Query&gt;</td><td class='rightElementTitle'>
 Child of <a href='#FilteredQuery'>FilteredQuery</a>
@@ -442,7 +442,7 @@ Attribute of <a href='#RangeFilter'>RangeFilter</a>
 @upperTerm</td><td class='rightAttributeTitle'>
 Attribute of <a href='#RangeFilter'>RangeFilter</a>
 </td></tr></table>
-<p>The upper-most term value for this field (must be >= lowerTerm)</p><p><span class='inTextTitle'>Required</span></p><a name='RangeFilter_includeLower'></a>
+<p>The upper-most term value for this field (must be &gt;= lowerTerm)</p><p><span class='inTextTitle'>Required</span></p><a name='RangeFilter_includeLower'></a>
 <br /><table class='attributeTitle' summary="includeLower"><tr><td class='leftAttributeTitle'>
 @includeLower</td><td class='rightAttributeTitle'>
 Attribute of <a href='#RangeFilter'>RangeFilter</a>
@@ -484,7 +484,7 @@ Attribute of <a href='#NumericRangeQuery'>NumericRangeQuery</a>
 @upperTerm</td><td class='rightAttributeTitle'>
 Attribute of <a href='#NumericRangeQuery'>NumericRangeQuery</a>
 </td></tr></table>
-<p>The upper-most term value for this field (must be >= lowerTerm and a valid native java numeric type)</p><p><span class='inTextTitle'>Required</span></p><a name='NumericRangeQuery_type'></a>
+<p>The upper-most term value for this field (must be &gt;= lowerTerm and a valid native java numeric type)</p><p><span class='inTextTitle'>Required</span></p><a name='NumericRangeQuery_type'></a>
 <br /><table class='attributeTitle' summary="type"><tr><td class='leftAttributeTitle'>
 @type</td><td class='rightAttributeTitle'>
 Attribute of <a href='#NumericRangeQuery'>NumericRangeQuery</a>
@@ -543,7 +543,7 @@ Attribute of <a href='#NumericRangeFilter'>NumericRangeFilter</a>
 @upperTerm</td><td class='rightAttributeTitle'>
 Attribute of <a href='#NumericRangeFilter'>NumericRangeFilter</a>
 </td></tr></table>
-<p>The upper-most term value for this field (must be >= lowerTerm and a valid native java numeric type)</p><p><span class='inTextTitle'>Required</span></p><a name='NumericRangeFilter_type'></a>
+<p>The upper-most term value for this field (must be &gt;= lowerTerm and a valid native java numeric type)</p><p><span class='inTextTitle'>Required</span></p><a name='NumericRangeFilter_type'></a>
 <br /><table class='attributeTitle' summary="type"><tr><td class='leftAttributeTitle'>
 @type</td><td class='rightAttributeTitle'>
 Attribute of <a href='#NumericRangeFilter'>NumericRangeFilter</a>
@@ -752,7 +752,7 @@ Attribute of <a href='#SpanFirst'>SpanFirst</a>
 @boost</td><td class='rightAttributeTitle'>
 Attribute of <a href='#SpanFirst'>SpanFirst</a>
 </td></tr></table>
-<p>Optional boost for matches on this query. Values > 1</p><p><span class='inTextTitle'>Default value</span>: 1.0</p><a name='SpanNot'></a>
+<p>Optional boost for matches on this query. Values &gt; 1</p><p><span class='inTextTitle'>Default value</span>: 1.0</p><a name='SpanNot'></a>
 <br /><table class='elementTitle' summary="SpanNot"><tr><td class='leftElementTitle'>
 &lt;SpanNot&gt;</td><td class='rightElementTitle'>
 Child of <a href='#Include'>Include</a>, <a href='#Clause'>Clause</a>, <a href='#Query'>Query</a>, <a href='#SpanNear'>SpanNear</a>, <a href='#SpanOr'>SpanOr</a>, <a href='#SpanFirst'>SpanFirst</a>, <a href='#Exclude'>Exclude</a>, <a href='#CachedFilter'>CachedFilter</a>
@@ -857,4 +857,4 @@ Child of <a href='#Clause'>Clause</a>, <a href='#Query'>Query</a>, <a href='#Cac
 @boost</td><td class='rightAttributeTitle'>
 Attribute of <a href='#ConstantScoreQuery'>ConstantScoreQuery</a>
 </td></tr></table>
-<p>Optional boost for matches on this query. Values > 1</p><p><span class='inTextTitle'>Default value</span>: 1.0</p></body></html>
+<p>Optional boost for matches on this query. Values &gt; 1</p><p><span class='inTextTitle'>Default value</span>: 1.0</p></body></html>
