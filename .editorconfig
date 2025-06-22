@@ -9,7 +9,6 @@ charset = utf-8
 # matches spotless.gradle insistence on this
 end_of_line = lf
 indent_size = 2
-eclint_indent_size = unset
 indent_style = space
 insert_final_newline = true
 trim_trailing_whitespace = true
@@ -21,11 +20,19 @@ ij_smart_tabs = false
 ij_visual_guides =
 ij_wrap_on_typing = false
 
+[{*.txt,*.patch,*.gnuplot,*.rbbi,*.sbl,*.dic,*.aff,*.alg,*.jj,*.jflex,*.css,*.js,*.pl,*.svg}]
+# indent doesn't make sense for filetype, or not worth the trouble
+indent_size = unset
+
 [Makefile]
 indent_size = 4
 indent_style = tab
 
 [*.java]
+block_comment_start = /*
+block_comment = *
+block_comment_end = */
+line_comment = //
 ij_java_align_consecutive_assignments = false
 ij_java_align_consecutive_variable_declarations = false
 ij_java_align_group_field_declarations = false
@@ -345,7 +352,7 @@ ij_asciidoc_blank_lines_keep_after_header = 1
 ij_asciidoc_formatting_enabled = true
 ij_asciidoc_one_sentence_per_line = true
 
-[*.xml]
+[{*.xml,*.rdf,*.dtd}]
 ij_continuation_indent_size = 2
 ij_xml_align_attributes = false
 ij_xml_align_text = false
@@ -373,7 +380,26 @@ ij_shell_redirect_followed_by_space = false
 ij_shell_switch_cases_indented = false
 ij_shell_use_unix_line_separator = true
 
+# feral untamed python code
+[*.py]
+indent_size = unset
+
+# these python scripts are tamed
+[dev-tools/scripts/*.py]
+indent_size = 2
+
+[*.g4]
+indent_size = 4
+block_comment_start = /*
+block_comment = *
+block_comment_end = */
+line_comment = //
+
 [{*.gradle,*.groovy}]
+block_comment_start = /*
+block_comment = *
+block_comment_end = */
+line_comment = //
 ij_groovy_align_group_field_declarations = false
 ij_groovy_align_multiline_array_initializer_expression = false
 ij_groovy_align_multiline_assignment = false
@@ -612,7 +638,13 @@ ij_markdown_min_lines_between_paragraphs = 1
 ij_markdown_wrap_text_if_long = false
 ij_markdown_wrap_text_inside_blockquotes = false
 
+[dev-tools/scripts/README.md]
+# TODO: doesn't adhere
+indent_size = unset
+
 [*.properties]
+# indent doesn't make sense for filetype
+indent_size = unset
 ij_properties_align_group_field_declarations = false
 ij_properties_keep_blank_lines = true
 ij_properties_key_value_delimiter = equals
@@ -641,14 +673,32 @@ end_of_line = crlf
 [lucene/analysis/common/src/test/org/apache/lucene/analysis/hunspell/rep.aff]
 charset = unset
 
+# test file that may care about offsets and shouldn't be reindented
+[lucene/analysis/common/src/test/org/apache/lucene/analysis/charfilter/htmlStripReaderTest.html]
+indent_size = unset
+
 # this file has no trailing newline
 [versions.lock]
 insert_final_newline = unset
 
-# javacc generated files which have trailing whitespace
+# javacc generated files which have trailing whitespace, inconsistent indent
 [{**/*Parser.java,**/*ParserTokenManager.java,**/TokenMgrError.java,**/ParseException.java}]
 trim_trailing_whitespace = unset
+indent_size = unset
 
-# jflex generated files which has trailing whitespace
-[**/HTMLStripCharFilter.java]
+# jflex generated files which has trailing whitespace, inconsistent indent
+[{**/HTMLStripCharFilter.java,**/*TokenizerImpl.java}]
 trim_trailing_whitespace = unset
+indent_size = unset
+
+# python generated files which have inconsistent indent
+[**/Lev1ParametricDescription.java]
+indent_size = unset
+
+# snowball vendored fields
+[lucene/analysis/common/src/java/org/tartarus/snowball/*.java]
+indent_size = unset
+
+# literal block scalar with inconsistent indents containing email template
+[dev-tools/scripts/releaseWizard.yaml]
+indent_size = unset

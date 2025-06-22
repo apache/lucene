@@ -17,30 +17,30 @@
 package org.apache.lucene.analysis.en;
 
 /*
-
-   Porter stemmer in Java. The original paper is in
-
-       Porter, 1980, An algorithm for suffix stripping, Program, Vol. 14,
-       no. 3, pp 130-137,
-
-   See also https://snowballstem.org/algorithms/porter/stemmer.html
-
-   Bug 1 (reported by Gonzalo Parra 16/10/99) fixed as marked below.
-   Tthe words 'aed', 'eed', 'oed' leave k at 'a' for step 3, and b[k-1]
-   is then out outside the bounds of b.
-
-   Similarly,
-
-   Bug 2 (reported by Steve Dyrdahl 22/2/00) fixed as marked below.
-   'ion' by itself leaves j = -1 in the test for 'ion' in step 5, and
-   b[j] is then outside the bounds of b.
-
-   Release 3.
-
-   [ This version is derived from Release 3, modified by Brian Goetz to
-     optimize for fewer object creations.  ]
-
-*/
+ *
+ *  Porter stemmer in Java. The original paper is in
+ *
+ *      Porter, 1980, An algorithm for suffix stripping, Program, Vol. 14,
+ *      no. 3, pp 130-137,
+ *
+ *  See also https://snowballstem.org/algorithms/porter/stemmer.html
+ *
+ *  Bug 1 (reported by Gonzalo Parra 16/10/99) fixed as marked below.
+ *  The words 'aed', 'eed', 'oed' leave k at 'a' for step 3, and b[k-1]
+ *  is then out outside the bounds of b.
+ *
+ *  Similarly,
+ *
+ *  Bug 2 (reported by Steve Dyrdahl 22/2/00) fixed as marked below.
+ *  'ion' by itself leaves j = -1 in the test for 'ion' in step 5, and
+ *  b[j] is then outside the bounds of b.
+ *
+ *  Release 3.
+ *
+ *  [ This version is derived from Release 3, modified by Brian Goetz to
+ *    optimize for fewer object creations.  ]
+ *
+ */
 
 import org.apache.lucene.util.ArrayUtil;
 
@@ -123,15 +123,15 @@ class PorterStemmer {
   }
 
   /* m() measures the number of consonant sequences between k0 and j. if c is
-     a consonant sequence and v a vowel sequence, and <..> indicates arbitrary
-     presence,
-
-          <c><v>       gives 0
-          <c>vc<v>     gives 1
-          <c>vcvc<v>   gives 2
-          <c>vcvcvc<v> gives 3
-          ....
-  */
+   *  a consonant sequence and v a vowel sequence, and <..> indicates arbitrary
+   *  presence,
+   *
+   *       <c><v>       gives 0
+   *       <c>vc<v>     gives 1
+   *       <c>vcvc<v>   gives 2
+   *       <c>vcvcvc<v> gives 3
+   *       ....
+   */
 
   private final int m() {
     int n = 0;
@@ -176,13 +176,13 @@ class PorterStemmer {
   }
 
   /* cvc(i) is true <=> i-2,i-1,i has the form consonant - vowel - consonant
-     and also if the second c is not w,x or y. this is used when trying to
-     restore an e at the end of a short word. e.g.
-
-          cav(e), lov(e), hop(e), crim(e), but
-          snow, box, tray.
-
-  */
+   *  and also if the second c is not w,x or y. this is used when trying to
+   *  restore an e at the end of a short word. e.g.
+   *
+   *       cav(e), lov(e), hop(e), crim(e), but
+   *       snow, box, tray.
+   *
+   */
 
   private final boolean cvc(int i) {
     if (i < k0 + 2 || !cons(i) || cons(i - 1) || !cons(i - 2)) return false;
@@ -220,26 +220,26 @@ class PorterStemmer {
   }
 
   /* step1() gets rid of plurals and -ed or -ing. e.g.
-
-           caresses  ->  caress
-           ponies    ->  poni
-           ties      ->  ti
-           caress    ->  caress
-           cats      ->  cat
-
-           feed      ->  feed
-           agreed    ->  agree
-           disabled  ->  disable
-
-           matting   ->  mat
-           mating    ->  mate
-           meeting   ->  meet
-           milling   ->  mill
-           messing   ->  mess
-
-           meetings  ->  meet
-
-  */
+   *
+   *        caresses  ->  caress
+   *        ponies    ->  poni
+   *        ties      ->  ti
+   *        caress    ->  caress
+   *        cats      ->  cat
+   *
+   *        feed      ->  feed
+   *        agreed    ->  agree
+   *        disabled  ->  disable
+   *
+   *        matting   ->  mat
+   *        mating    ->  mate
+   *        meeting   ->  meet
+   *        milling   ->  mill
+   *        messing   ->  mess
+   *
+   *        meetings  ->  meet
+   *
+   */
 
   private final void step1() {
     if (b[k] == 's') {
@@ -555,55 +555,4 @@ class PorterStemmer {
     i = k + 1;
     return dirty;
   }
-
-  /* Test program for demonstrating the Stemmer.  It reads a file and
-   * stems each word, writing the result to standard out.
-   * Usage: Stemmer file-name
-  public static void main(String[] args) {
-    PorterStemmer s = new PorterStemmer();
-
-    for (int i = 0; i < args.length; i++) {
-      try {
-        InputStream in = new FileInputStream(args[i]);
-        byte[] buffer = new byte[1024];
-        int bufferLen, offset, ch;
-
-        bufferLen = in.read(buffer);
-        offset = 0;
-        s.reset();
-
-        while(true) {
-          if (offset < bufferLen)
-            ch = buffer[offset++];
-          else {
-            bufferLen = in.read(buffer);
-            offset = 0;
-            if (bufferLen < 0)
-              ch = -1;
-            else
-              ch = buffer[offset++];
-          }
-
-          if (Character.isLetter((char) ch)) {
-            s.add(Character.toLowerCase((char) ch));
-          }
-          else {
-             s.stem();
-             System.out.print(s.toString());
-             s.reset();
-             if (ch < 0)
-               break;
-             else {
-               System.out.print((char) ch);
-             }
-           }
-        }
-
-        in.close();
-      }
-      catch (IOException e) {
-        System.out.println("error reading " + args[i]);
-      }
-    }
-  }*/
 }

@@ -160,19 +160,19 @@ public class TestMultiFields extends LuceneTestCase {
   }
 
   /*
-  private void verify(IndexReader r, String term, List<Integer> expected) throws Exception {
-    DocsEnum docs = _TestUtil.docs(random, r,
-                                   "field",
-                                   new BytesRef(term),
-                                   MultiLeafReader.getLiveDocs(r),
-                                   null,
-                                   false);
-    for(int docID : expected) {
-      assertEquals(docID, docs.nextDoc());
-    }
-    assertEquals(docs.NO_MORE_DOCS, docs.nextDoc());
-  }
-  */
+   * private void verify(IndexReader r, String term, List<Integer> expected) throws Exception {
+   *   DocsEnum docs = _TestUtil.docs(random, r,
+   *                                  "field",
+   *                                  new BytesRef(term),
+   *                                  MultiLeafReader.getLiveDocs(r),
+   *                                  null,
+   *                                  false);
+   *   for(int docID : expected) {
+   *     assertEquals(docID, docs.nextDoc());
+   *   }
+   *   assertEquals(docs.NO_MORE_DOCS, docs.nextDoc());
+   * }
+   */
 
   public void testSeparateEnums() throws Exception {
     Directory dir = newDirectory();

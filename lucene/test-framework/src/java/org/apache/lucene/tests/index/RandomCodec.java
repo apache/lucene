@@ -283,21 +283,21 @@ public class RandomCodec extends AssertingCodec {
         // TODO: also test 4-bit quantization, but this must somehow be restricted to even-length
         // fields
         /*
-        new Lucene99HnswScalarQuantizedVectorsFormat(TestUtil.nextInt(random, 5, 50),
-                                                     TestUtil.nextInt(random, 10, 50),
-                                                     1,
-                                                     4,
-                                                     random.nextBoolean(),
-                                                     randomConfidenceInterval(random),
-                                                     null),
-        new Lucene99HnswScalarQuantizedVectorsFormat(TestUtil.nextInt(random, 5, 50),
-                                                     TestUtil.nextInt(random, 10, 50),
-                                                     TestUtil.nextInt(random, 2, 8),
-                                                     4,
-                                                     random.nextBoolean(),
-                                                     randomConfidenceInterval(random),
-                                                     ForkJoinPool.commonPool()),
-        */
+         * new Lucene99HnswScalarQuantizedVectorsFormat(TestUtil.nextInt(random, 5, 50),
+         *                                              TestUtil.nextInt(random, 10, 50),
+         *                                              1,
+         *                                              4,
+         *                                              random.nextBoolean(),
+         *                                              randomConfidenceInterval(random),
+         *                                              null),
+         * new Lucene99HnswScalarQuantizedVectorsFormat(TestUtil.nextInt(random, 5, 50),
+         *                                              TestUtil.nextInt(random, 10, 50),
+         *                                              TestUtil.nextInt(random, 2, 8),
+         *                                              4,
+         *                                              random.nextBoolean(),
+         *                                              randomConfidenceInterval(random),
+         *                                              ForkJoinPool.commonPool()),
+         */
         new AssertingKnnVectorsFormat());
 
     Collections.shuffle(formats, random);

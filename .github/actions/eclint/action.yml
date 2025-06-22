@@ -1,0 +1,33 @@
+name: Install eclint
+description: Installs eclint from cache, or builds it
+
+inputs:
+  eclint-version:
+    required: false
+    description: "eclint version to use"
+    default: "v0.5.1"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Cache eclint binary
+      id: cache-eclint
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      with:
+        path: ~/.local/bin/eclint
+        key: eclint-${{ inputs.eclint-version }}-${{ runner.os }}-${{ runner.arch }}
+    - name: Setup go
+      if: steps.cache-eclint.outputs.cache-hit != 'true'
+      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      with:
+        go-version: '1.24'
+        cache: false
+    - name: Install eclint
+      if: steps.cache-eclint.outputs.cache-hit != 'true'
+      run: GOBIN=${HOME}/.local/bin go install gitlab.com/greut/eclint/cmd/eclint@${ECLINT_VERSION}
+      shell: bash
+      env:
+        ECLINT_VERSION: ${{ inputs.eclint-version }}
+    - name: Configure gradle
+      run: echo "lucene.tool.eclint=eclint" >> build-options.local.properties
+      shell: bash
