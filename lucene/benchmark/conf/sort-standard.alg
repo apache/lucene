@@ -45,7 +45,7 @@ log.queries=true
 # -------------------------------------------------------------------------------------
 
 { "Rounds"
-	{ "Run"
+  { "Run"
       ResetSystemErase
 
       { "Populate"
@@ -54,19 +54,19 @@ log.queries=true
         -ForceMerge(1)
         -CloseIndex
       }
-    
+
       { "TestSortSpeed"
-        OpenReader  
-        { "LoadFieldCacheAndSearch" SearchWithSort(sort_field:int) > : 1 
+        OpenReader
+        { "LoadFieldCacheAndSearch" SearchWithSort(sort_field:int) > : 1
         { "SearchWithSort" SearchWithSort(sort_field:int) > : 5000
-        CloseReader 
-      
+        CloseReader
+
       }
-    
+
       NewRound
      } : 4
 
-} 
+}
 
 RepSumByName
 

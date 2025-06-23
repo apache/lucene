@@ -7,7 +7,7 @@ to you under the Apache License, Version 2.0 (the
 "License"); you may not use this file except in compliance
 with the License.  You may obtain a copy of the License at
 
-  http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing,
 software distributed under the License is distributed on an
@@ -36,18 +36,18 @@ on their own.
 ## How to split the data into files?
 
 Most file formats split the data into 3 files:
- - metadata,
- - index data,
- - raw data.
+- metadata,
+- index data,
+- raw data.
 
 The metadata file contains all the data that is read once at open time. This
 helps on several fronts:
- - One can validate the checksums of this data at open time without significant
-   overhead since all data needs to be read anyway, this helps detect
-   corruptions early.
- - No need to perform expensive seeks into the index/raw data files at open
-   time, one can create slices into these files from offsets that have been
-   written into the metadata file.
+- One can validate the checksums of this data at open time without significant
+overhead since all data needs to be read anyway, this helps detect
+corruptions early.
+- No need to perform expensive seeks into the index/raw data files at open
+time, one can create slices into these files from offsets that have been
+written into the metadata file.
 
 The index file contains data-structures that help search the raw data. For KD
 trees, this would be the inner nodes, for doc values this would be jump tables,

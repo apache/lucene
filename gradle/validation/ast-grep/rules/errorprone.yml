@@ -1,0 +1,151 @@
+# Lint rules from https://errorprone.info/
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: WildcardImport
+language: java
+rule:
+  kind: asterisk
+  inside:
+    kind: import_declaration
+severity: error
+message: Wildcard imports, static or otherwise, should not be used
+note: Use a regular, single-type import
+url: https://errorprone.info/bugpattern/WildcardImport
+files:
+  - "**/*.java"
+ignores:
+  - "**/JavascriptParser.java"
+  - "**/JavascriptLexer.java"
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: ComparingThisWithNull
+language: java
+# we don't even bother matching specific operators, there are other binary ops,
+# but they are even more senseless for this + null.
+rule:
+  kind: binary_expression
+  all:
+    - has:
+        kind: this
+    - has:
+        kind: null_literal
+severity: error
+message: this == null is always false, this != null is always true
+url: https://errorprone.info/bugpattern/ComparingThisWithNull
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: SubstringOfZero
+language: java
+rule:
+  pattern: $$RECEIVER.substring(0)
+  kind: method_invocation
+fix: $$RECEIVER
+severity: error
+message: String.substring(0) returns the original String
+url: https://errorprone.info/bugpattern/SubstringOfZero
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: JUnit4ClassAnnotationNonStatic
+language: java
+rule:
+  kind: method_declaration
+  has:
+    kind: modifiers
+    all:
+      # has a BeforeClass/AfterClass annotation
+      - has:
+          kind: marker_annotation
+          any:
+            - pattern: "@BeforeClass"
+            - pattern: "@AfterClass"
+      # isn't a static method
+      - not:
+          has:
+            pattern: static
+severity: error
+message: JUnit4ClassAnnotationNonStatic
+note: This method should be `static`
+url: https://errorprone.info/bugpattern/JUnit4ClassAnnotationNonStatic
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: JUnit4EmptyMethods
+language: java
+rule:
+  kind: method_declaration
+  all:
+    # has an empty/all-whitespace body
+    - has:
+        field: body
+        kind: block
+        pattern: "{}"
+    - has:
+        kind: modifiers
+        all:
+          # has a junit annotation
+          - has:
+              kind: marker_annotation
+              any:
+                - pattern: "@Before"
+                - pattern: "@After"
+                - pattern: "@BeforeClass"
+                - pattern: "@AfterClass"
+          # doesn't have an override annotation
+          - not:
+              has:
+                kind: marker_annotation
+                pattern: "@Override"
+fix: ""
+severity: error
+message: Empty JUnit4 @Before, @After, @BeforeClass, and @AfterClass methods are unnecessary and should be deleted.
+url: https://errorprone.info/bugpattern/JUnit4EmptyMethods
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: PackageInfo
+language: java
+files:
+  - "**/package-info.java"
+rule:
+  kind: program
+  # look for any child node not in an allow-list
+  has:
+    not:
+      any:
+        # allow pkg decl and associated docs / imports only
+        - kind: package_declaration
+        - kind: block_comment
+        - kind: line_comment
+        - kind: import_declaration
+severity: error
+message: Declaring types inside package-info.java files is very bad form
+url: https://errorprone.info/bugpattern/PackageInfo
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: IncorrectMainMethod
+language: java
+rule:
+  kind: method_declaration
+  all:
+    # named main
+    - has:
+        field: name
+        pattern: main
+    - any:
+      # doesn't have void type
+      - not:
+          has:
+            kind: void_type
+      # doesn't have both public and static modifiers
+      - has:
+          kind: modifiers
+          not:
+            all:
+              - has:
+                  not:
+                    pattern: public
+              - has:
+                  not:
+                    pattern: static
+severity: error
+message: |
+  `main` methods must be `public`, `static`, and `void`
+url: https://errorprone.info/bugpattern/IncorrectMainMethod

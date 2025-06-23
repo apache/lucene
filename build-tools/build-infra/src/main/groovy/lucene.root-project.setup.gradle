@@ -18,6 +18,8 @@
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionValueSource
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin
 import org.apache.lucene.gradle.plugins.gitinfo.GitInfoPlugin
+import org.apache.lucene.gradle.plugins.astgrep.AstGrepPlugin
+import org.apache.lucene.gradle.plugins.eclint.EditorConfigLintPlugin
 import com.carrotsearch.randomizedtesting.SeedUtils
 
 import java.time.ZonedDateTime
@@ -32,10 +34,14 @@ if (project != project.rootProject) {
 //
 // Register these plugins early.
 //
-plugins.apply(GitInfoPlugin)
 allprojects {
   plugins.apply(BuildOptionsPlugin)
 }
+
+plugins.apply(BasePlugin)
+plugins.apply(GitInfoPlugin)
+plugins.apply(AstGrepPlugin)
+plugins.apply(EditorConfigLintPlugin)
 
 //
 // Figure out project version based on the base version and, suffix (or overrides of these options).
@@ -159,7 +165,11 @@ buildOptions.addOption("lucene.tool.perl", "External perl executable (path or na
 buildOptions.addOption("lucene.tool.git", "External git executable (path or name)", "git")
 
 ext.externalTool = { String name ->
-  if (name in ["python3", "perl", "git"]) {
+  if (name in [
+        "python3",
+        "perl",
+        "git"
+      ]) {
     return buildOptions.getOption("lucene.tool." + name).asStringProvider().get()
   }
   throw new GradleException("External tool named '${name}' is not defined.")

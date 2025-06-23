@@ -37,7 +37,7 @@ jobs:
             fi
           done
           echo "${{ env.SKIP_CHANGELOG_LABEL }} not found in the PR. Proceeding with next steps."
-          
+
           echo -e "\n"
           echo "################## STEP 2 ##################"
           echo "Checking for change log entry in ${{ env.CHANGE_LOG_FILE }}"
@@ -69,7 +69,7 @@ jobs:
           echo -e "\n"
           echo "################## STEP 3 ##################"
           echo "Extracting Lucene version from change log entry"
-          # git diff header pattern -> "@@ -15,0 +16,4 @@" 
+          # git diff header pattern -> "@@ -15,0 +16,4 @@"
           # try to extract the line number at which new entry is added, here it's line number 16
           echo "Diff:"
           git diff --unified=0 $BASE_COMMIT HEAD -- ${{ env.CHANGE_LOG_FILE }}

@@ -21,7 +21,7 @@
 configure(project(":lucene:distribution")) {
   def packageBaseName = "${buildDir}/packages/lucene-${version}"
 
-   // Prepare site documentation dependency for inclusion.
+  // Prepare site documentation dependency for inclusion.
   configurations {
     docs
 
