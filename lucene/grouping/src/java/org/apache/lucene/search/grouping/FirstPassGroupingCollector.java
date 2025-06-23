@@ -132,12 +132,18 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       buildSortedSet();
     }
 
+    if (orderedGroups.size() - groupOffset < 0) {
+      System.out.println();
+    }
     final Collection<SearchGroup<T>> result = new ArrayList<>(orderedGroups.size() - groupOffset);
     final List<SearchGroup<T>> reversedResult = new ArrayList<>(orderedGroups.size() - groupOffset);
     int upto = 0;
     final int sortFieldCount = comparators.length;
+    // TODO: Keep orderedGroups' element, since we may getTopGroups many times. e.g.
+    // TestGrouping#testRandom.
     while (orderedGroups.size() > 0) {
       if (upto++ < groupOffset) {
+        orderedGroups.pop();
         continue;
       }
       // System.out.println("  group=" + (group.groupValue == null ? "null" :
@@ -352,7 +358,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
         new PriorityQueue<>(topNGroups) {
           @Override
           protected boolean lessThan(CollectedSearchGroup<T> a, CollectedSearchGroup<T> b) {
-            return comparator.compare(a, b) < 0;
+            return comparator.compare(a, b) > 0;
           }
         };
     orderedGroups.addAll(groupMap.values());
