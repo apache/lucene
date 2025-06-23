@@ -99,13 +99,27 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     for (FieldInfo fieldInfo : mergeState.mergeFieldInfos) {
       if (fieldInfo.hasVectorValues()) {
         if (mergeState.infoStream.isEnabled("VV")) {
-          mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
+          mergeState.infoStream.message(
+              "VV",
+              "field="
+                  + fieldInfo.name
+                  + " dim="
+                  + fieldInfo.getVectorDimension()
+                  + " merging into "
+                  + mergeState.segmentInfo);
         }
 
         mergeOneField(fieldInfo, mergeState);
 
         if (mergeState.infoStream.isEnabled("VV")) {
-          mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
+          mergeState.infoStream.message(
+              "VV",
+              "field="
+                  + fieldInfo.name
+                  + " dim="
+                  + fieldInfo.getVectorDimension()
+                  + " merge done into "
+                  + mergeState.segmentInfo);
         }
       }
     }
