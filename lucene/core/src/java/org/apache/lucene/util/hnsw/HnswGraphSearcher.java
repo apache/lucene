@@ -41,6 +41,16 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
 
   protected BitSet visited;
 
+  public static int expectedVisitedNodes(int k, int graphSize) {
+    return (int) (Math.log(graphSize) * k);
+  }
+
+  static BitSet createBitSet(int k, int graphSize) {
+    return expectedVisitedNodes(k, graphSize) < (graphSize >>> 7) ?
+        new SparseFixedBitSet(graphSize) :
+        new FixedBitSet(graphSize);
+  }
+
   /**
    * Creates a new graph searcher.
    *
@@ -117,7 +127,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       innerSearcher =
           new HnswGraphSearcher(
               new NeighborQueue(knnCollector.k(), true),
-              new SparseFixedBitSet(getGraphSize(graph)));
+              createBitSet(knnCollector.k(), getGraphSize(graph)));
     }
     // Then, check if we the search strategy is seeded
     final AbstractHnswGraphSearcher graphSearcher;
