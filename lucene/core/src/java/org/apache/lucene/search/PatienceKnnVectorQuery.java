@@ -48,7 +48,7 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
   /**
    * Construct a new PatienceKnnVectorQuery instance for a float vector field
    *
-   * @param knnQuery the knn query to be seeded
+   * @param knnQuery the knn query to be wrapped
    * @param saturationThreshold the early exit saturation threshold
    * @param patience the patience parameter
    * @return a new PatienceKnnVectorQuery instance
@@ -62,7 +62,7 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
   /**
    * Construct a new PatienceKnnVectorQuery instance for a float vector field
    *
-   * @param knnQuery the knn query to be seeded
+   * @param knnQuery the knn query to be wrapped
    * @return a new PatienceKnnVectorQuery instance
    * @lucene.experimental
    */
@@ -74,7 +74,7 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
   /**
    * Construct a new PatienceKnnVectorQuery instance for a byte vector field
    *
-   * @param knnQuery the knn query to be seeded
+   * @param knnQuery the knn query to be wrapped
    * @param saturationThreshold the early exit saturation threshold
    * @param patience the patience parameter
    * @return a new PatienceKnnVectorQuery instance
@@ -123,8 +123,24 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
         knnQuery, DEFAULT_SATURATION_THRESHOLD, defaultPatience(knnQuery));
   }
 
-  PatienceKnnVectorQuery(
-      AbstractKnnVectorQuery knnQuery, double saturationThreshold, int patience) {
+  public PatienceKnnVectorQuery(
+      SeededKnnVectorQuery knnQuery, double saturationThreshold, int patience) {
+    super(knnQuery.field, knnQuery.k, knnQuery.filter, knnQuery.searchStrategy);
+    this.delegate = knnQuery;
+    this.saturationThreshold = saturationThreshold;
+    this.patience = patience;
+  }
+
+  public PatienceKnnVectorQuery(
+      KnnFloatVectorQuery knnQuery, double saturationThreshold, int patience) {
+    super(knnQuery.field, knnQuery.k, knnQuery.filter, knnQuery.searchStrategy);
+    this.delegate = knnQuery;
+    this.saturationThreshold = saturationThreshold;
+    this.patience = patience;
+  }
+
+  public PatienceKnnVectorQuery(
+      KnnByteVectorQuery knnQuery, double saturationThreshold, int patience) {
     super(knnQuery.field, knnQuery.k, knnQuery.filter, knnQuery.searchStrategy);
     this.delegate = knnQuery;
     this.saturationThreshold = saturationThreshold;
