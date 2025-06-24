@@ -123,28 +123,54 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
         knnQuery, DEFAULT_SATURATION_THRESHOLD, defaultPatience(knnQuery));
   }
 
-  public PatienceKnnVectorQuery(
-      SeededKnnVectorQuery knnQuery, double saturationThreshold, int patience) {
-    super(knnQuery.field, knnQuery.k, knnQuery.filter, knnQuery.searchStrategy);
+  PatienceKnnVectorQuery(
+      AbstractKnnVectorQuery knnQuery,
+      String field,
+      int k,
+      Query filter,
+      KnnSearchStrategy searchStrategy,
+      double saturationThreshold,
+      int patience) {
+    super(field, k, filter, searchStrategy);
     this.delegate = knnQuery;
     this.saturationThreshold = saturationThreshold;
     this.patience = patience;
+  }
+
+  public PatienceKnnVectorQuery(
+      SeededKnnVectorQuery knnQuery, double saturationThreshold, int patience) {
+    this(
+        knnQuery,
+        knnQuery.field,
+        knnQuery.k,
+        knnQuery.filter,
+        knnQuery.searchStrategy,
+        saturationThreshold,
+        patience);
   }
 
   public PatienceKnnVectorQuery(
       KnnFloatVectorQuery knnQuery, double saturationThreshold, int patience) {
-    super(knnQuery.field, knnQuery.k, knnQuery.filter, knnQuery.searchStrategy);
-    this.delegate = knnQuery;
-    this.saturationThreshold = saturationThreshold;
-    this.patience = patience;
+    this(
+        knnQuery,
+        knnQuery.field,
+        knnQuery.k,
+        knnQuery.filter,
+        knnQuery.searchStrategy,
+        saturationThreshold,
+        patience);
   }
 
   public PatienceKnnVectorQuery(
       KnnByteVectorQuery knnQuery, double saturationThreshold, int patience) {
-    super(knnQuery.field, knnQuery.k, knnQuery.filter, knnQuery.searchStrategy);
-    this.delegate = knnQuery;
-    this.saturationThreshold = saturationThreshold;
-    this.patience = patience;
+    this(
+        knnQuery,
+        knnQuery.field,
+        knnQuery.k,
+        knnQuery.filter,
+        knnQuery.searchStrategy,
+        saturationThreshold,
+        patience);
   }
 
   private static int defaultPatience(AbstractKnnVectorQuery delegate) {
