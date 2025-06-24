@@ -57,14 +57,14 @@ rm -f ${WWWDSTDIR}/*_stop.txt
 for file in ${WWWSRCDIR}/algorithms/*/stop.txt; do
   language=$(basename $(dirname ${file}))
   cat > ${WWWDSTDIR}/${language}_stop.txt << EOF
- | From https://snowballstem.org/algorithms/${language}/stop.txt
- | This file is distributed under the BSD License.
- | See https://snowballstem.org/license.html
- | Also see https://opensource.org/licenses/bsd-license.html
- |  - Encoding was converted to UTF-8.
- |  - This notice was added.
- |
- | NOTE: To use this file with StopFilterFactory, you must specify format="snowball"
+| From https://snowballstem.org/algorithms/${language}/stop.txt
+| This file is distributed under the BSD License.
+| See https://snowballstem.org/license.html
+| Also see https://opensource.org/licenses/bsd-license.html
+|  - Encoding was converted to UTF-8.
+|  - This notice was added.
+|
+| NOTE: To use this file with StopFilterFactory, you must specify format="snowball"
 EOF
 # try to confirm its really UTF-8
 iconv -f UTF-8 -t UTF-8 $file >> ${WWWDSTDIR}/${language}_stop.txt

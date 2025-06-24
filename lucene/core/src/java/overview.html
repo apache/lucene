@@ -1,22 +1,22 @@
 <!--
- Licensed to the Apache Software Foundation (ASF) under one or more
- contributor license agreements.  See the NOTICE file distributed with
- this work for additional information regarding copyright ownership.
- The ASF licenses this file to You under the Apache License, Version 2.0
- (the "License"); you may not use this file except in compliance with
- the License.  You may obtain a copy of the License at
+  Licensed to the Apache Software Foundation (ASF) under one or more
+  contributor license agreements.  See the NOTICE file distributed with
+  this work for additional information regarding copyright ownership.
+  The ASF licenses this file to You under the Apache License, Version 2.0
+  (the "License"); you may not use this file except in compliance with
+  the License.  You may obtain a copy of the License at
 
-     http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
 -->
 <html>
 <head>
-   <title>Apache Lucene API</title>
+  <title>Apache Lucene API</title>
 </head>
 <body>
 
@@ -26,9 +26,10 @@ search across high-dimensionality vectors, spell correction or query suggestions
 Here's a simple example how to use Lucene for indexing and searching (using JUnit
 to check if the results are what we expect):</p>
 
-<!-- code comes from org.apache.lucene.TestDemo.
-     See LUCENE-8481 for reasons why it's out of sync with the code.
- -->
+<!--
+code comes from org.apache.lucene.TestDemo.
+See LUCENE-8481 for reasons why it's out of sync with the code.
+-->
 <pre class="prettyprint">
     Analyzer analyzer = new StandardAnalyzer();
 
@@ -100,8 +101,8 @@ which accesses the data in the index.</li>
 <li>
 <b>{@link org.apache.lucene.search}</b>
 provides data structures to represent queries (ie {@link org.apache.lucene.search.TermQuery TermQuery}
-for individual words, {@link org.apache.lucene.search.PhraseQuery PhraseQuery} 
-for phrases, and {@link org.apache.lucene.search.BooleanQuery BooleanQuery} 
+for individual words, {@link org.apache.lucene.search.PhraseQuery PhraseQuery}
+for phrases, and {@link org.apache.lucene.search.BooleanQuery BooleanQuery}
 for boolean combinations of queries) and the {@link org.apache.lucene.search.IndexSearcher IndexSearcher}
 which turns queries into {@link org.apache.lucene.search.TopDocs TopDocs}.
 A number of <a href="../queryparser/overview-summary.html">QueryParser</a>s are provided for producing

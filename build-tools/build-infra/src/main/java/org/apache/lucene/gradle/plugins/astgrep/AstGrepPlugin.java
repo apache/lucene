@@ -57,16 +57,19 @@ public class AstGrepPlugin implements Plugin<Project> {
             "applyAstGrepRules",
             Exec.class,
             task -> {
-              task.dependsOn(testAstGrepRules);
+              task.mustRunAfter(testAstGrepRules);
 
               if (!astToolOption.isPresent()) {
                 task.getLogger()
                     .warn(
-                        "The ast-grep tool location is not set ('{}' option), will not apply ast-grep rules.",
+                        "The ast-grep tool location is not set ('{}' option), will not apply"
+                            + " ast-grep rules.",
                         optionName);
               }
 
-              task.setArgs(List.of("scan", "-c", "gradle/validation/ast-grep/sgconfig.yml"));
+              // fail on any rule match regardless of severity level
+              task.setArgs(
+                  List.of("scan", "-c", "gradle/validation/ast-grep/sgconfig.yml", "--error"));
             });
 
     // Common configuration.
@@ -88,9 +91,10 @@ public class AstGrepPlugin implements Plugin<Project> {
             });
 
     tasks
-        .matching(task -> task.getName().equals("check") || task.getName().equals("tidy"))
+        .matching(task -> task.getName().equals("check"))
         .configureEach(
             task -> {
+              task.dependsOn(testAstGrepRules);
               task.dependsOn(applyAstGrepRulesTask);
             });
   }

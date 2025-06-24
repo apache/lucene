@@ -56,12 +56,12 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 public final class ExtractJdkApis {
-  
+
   private static final FileTime FIXED_FILEDATE = FileTime.from(Instant.parse("2025-05-05T00:00:00Z"));
-  
+
   private static final String PATTERN_VECTOR_INCUBATOR    = "jdk.incubator.vector/jdk/incubator/vector/*";
   private static final String PATTERN_VECTOR_VM_INTERNALS = "java.base/jdk/internal/vm/vector/VectorSupport{,$Vector,$VectorMask,$VectorPayload,$VectorShuffle}";
-  
+
   static final Map<Integer,List<String>> CLASSFILE_PATTERNS = Map.of(
       24, List.of(PATTERN_VECTOR_VM_INTERNALS, PATTERN_VECTOR_INCUBATOR)
   );
@@ -85,7 +85,7 @@ public final class ExtractJdkApis {
       throw new IllegalArgumentException("No support to extract stubs from java version: " + extractJdk);
     }
     var outputPath = Paths.get(args[2]);
-    
+
     // the output class files need to be compatible with the targetJdk of our compilation, so we need to adapt them:
     var classFileVersion = ClassFileVersion.of(ClassFileFormatVersion.valueOf("RELEASE_" + targetJdk).major(), 0);
 
@@ -95,13 +95,13 @@ public final class ExtractJdkApis {
         .map(pattern -> jrtPath.getFileSystem().getPathMatcher("glob:" + pattern + ".class"))
         .toArray(PathMatcher[]::new);
     PathMatcher pattern = p -> Arrays.stream(patterns).anyMatch(matcher -> matcher.matches(p));
-    
+
     // Collect all files to process:
     final List<Path> filesToExtract;
     try (var stream = Files.walk(jrtPath)) {
       filesToExtract = stream.filter(p -> pattern.matches(jrtPath.relativize(p))).toList();
     }
-    
+
     // Process all class files:
     try (var out = new ZipOutputStream(Files.newOutputStream(outputPath))) {
       process(filesToExtract, out, classFileVersion);
@@ -167,7 +167,7 @@ public final class ExtractJdkApis {
       throw new IllegalStateException("Some referenced classes are not publicly available in java.base module: " + missingClasses);
     }
   }
-  
+
   /** returns all superclasses, interfaces, and outer classes of the parsed class as stream of internal names */
   private static Stream<String> getReferences(ClassModel parsed) {
     var parents = Stream.concat(parsed.superclass().stream(), parsed.interfaces().stream())
@@ -179,7 +179,7 @@ public final class ExtractJdkApis {
         .map(ClassEntry::asInternalName);
     return Stream.concat(parents.stream(), outerClasses);
   }
-  
+
   @SuppressWarnings("unchecked") // no idea how to get generics correct!?!
   private static <E extends ClassFileElement, B extends ClassFileBuilder<E, B>> void dropPreview(ClassFileBuilder<E, B> builder, E ele) {
     switch (ele) {
@@ -189,9 +189,9 @@ public final class ExtractJdkApis {
       default -> builder.with(ele);
     }
   }
-  
+
   private static boolean isVisible(AccessFlags access) {
     return access.has(AccessFlag.PUBLIC) || access.has(AccessFlag.PROTECTED);
   }
-  
+
 }

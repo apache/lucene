@@ -131,7 +131,7 @@ configure([
     // sourceTask - the task to wrap
     // extraConfig - a map with extra (optional) configuration options.
     //   andThenTasks: any other tasks that should be scheduled to run after the internal task and
-    //     before checksum calculation/ saving. spotless is a good example of this.
+    //     before checksum calculation/ saving. code formatting is a good example of this.
     //   ignoreWithSource: any other tasks that should be ignored if the internal task is ignored
     //     (checksums are identical)
     //   mustRunBefore: any tasks which should be scheduled to run after the internal task.
@@ -219,7 +219,8 @@ configure([
           // Recompute checksums after the task has completed and write them.
           def updatedChecksums = computeChecksummedEntries(sourceTask)
           checksumsFile.setText(
-              JsonOutput.prettyPrint(JsonOutput.toJson(new TreeMap<String, String>(updatedChecksums))), "UTF-8")
+              JsonOutput.prettyPrint(JsonOutput.toJson(new TreeMap<String,
+              String>(updatedChecksums))) + '\n', "UTF-8")
 
           logger.warn("Updated generated file checksums for task ${sourceTask.path}.")
         }

@@ -5,19 +5,19 @@ name: Prepare Lucene build
 description: Creates a shared setup for other workflows
 
 inputs:
-   java-version:
-     required: false
-     default: "24"
-     description: "The default JDK version to set up."
+  java-version:
+    required: false
+    default: "24"
+    description: "The default JDK version to set up."
 
-   java-distribution:
-     required: false
-     default: "temurin"
-     description: "The default JDK distribution type"
+  java-distribution:
+    required: false
+    default: "temurin"
+    description: "The default JDK distribution type"
 
 runs:
- using: "composite"
- steps:
+  using: "composite"
+  steps:
     - name: Set up Java (${{ inputs.java-distribution }}, ${{ inputs.java-version }})"
       uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
       with:
@@ -26,14 +26,14 @@ runs:
         java-package: jdk
 
     - name: Cache gradle-wrapper.jar
-      uses: actions/cache@v4
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
       with:
         path: gradle/wrapper/gradle-wrapper.jar
         key: gradle-wrapper-${{ hashFiles('gradle/wrapper/gradle-wrapper.jar.sha256') }}
 
     # This includes "smart" caching of gradle dependencies.
     - name: Set up Gradle
-      uses: gradle/actions/setup-gradle@v4
+      uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6c972d7336334ccaf61c96 # v4.4.1
       with:
         # increase expiry time for the temp. develocity token.
         # https://github.com/gradle/actions/blob/main/docs/setup-gradle.md#increasing-the-expiry-time-for-develocity-access-tokens

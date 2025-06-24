@@ -24,9 +24,9 @@ package org.apache.lucene.analysis.standard;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 /**
- * This class implements Word Break rules from the Unicode Text Segmentation 
- * algorithm, as specified in 
- * <a href="http://unicode.org/reports/tr29/">Unicode Standard Annex #29</a>. 
+ * This class implements Word Break rules from the Unicode Text Segmentation
+ * algorithm, as specified in
+ * <a href="http://unicode.org/reports/tr29/">Unicode Standard Annex #29</a>.
  * <p>
  * Tokens produced are of the following types:
  * <ul>
@@ -680,32 +680,32 @@ public final class StandardTokenizerImpl {
   /* user code: */
   /** Alphanumeric sequences */
   public static final int WORD_TYPE = StandardTokenizer.ALPHANUM;
-  
+
   /** Numbers */
   public static final int NUMERIC_TYPE = StandardTokenizer.NUM;
-  
+
   /**
    * Chars in class \p{Line_Break = Complex_Context} are from South East Asian
-   * scripts (Thai, Lao, Myanmar, Khmer, etc.).  Sequences of these are kept 
+   * scripts (Thai, Lao, Myanmar, Khmer, etc.).  Sequences of these are kept
    * together as as a single token rather than broken up, because the logic
    * required to break them at word boundaries is too complex for UAX#29.
    * <p>
    * See Unicode Line Breaking Algorithm: http://www.unicode.org/reports/tr14/#SA
    */
   public static final int SOUTH_EAST_ASIAN_TYPE = StandardTokenizer.SOUTHEAST_ASIAN;
-  
+
   /** Ideographic token type */
   public static final int IDEOGRAPHIC_TYPE = StandardTokenizer.IDEOGRAPHIC;
-  
+
   /** Hiragana token type */
   public static final int HIRAGANA_TYPE = StandardTokenizer.HIRAGANA;
-  
+
   /** Katakana token type */
   public static final int KATAKANA_TYPE = StandardTokenizer.KATAKANA;
 
   /** Hangul token type */
   public static final int HANGUL_TYPE = StandardTokenizer.HANGUL;
-  
+
   /** Emoji token type */
   public static final int EMOJI_TYPE = StandardTokenizer.EMOJI;
 
@@ -722,7 +722,7 @@ public final class StandardTokenizerImpl {
   public final void getText(CharTermAttribute t) {
     t.copyBuffer(zzBuffer, zzStartRead, zzMarkedPos-zzStartRead);
   }
-  
+
   /**
    * Sets the scanner buffer size in chars
    */
@@ -1082,7 +1082,7 @@ public final class StandardTokenizerImpl {
       else {
         switch (zzAction < 0 ? zzAction : ZZ_ACTION[zzAction]) {
           case 1:
-            { /* Break so we don't hit fall-through warning: */ break; /* Not numeric, word, ideographic, hiragana, emoji or SE Asian -- ignore it. */
+            {  break; /* Not numeric, word, ideographic, hiragana, emoji or SE Asian -- ignore it. */
             }
           // fall through
           case 10: break;
