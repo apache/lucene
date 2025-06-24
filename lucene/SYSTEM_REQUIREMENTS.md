@@ -13,9 +13,9 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
- -->
+-->
 
-# System Requirements 
+# System Requirements
 
 Apache Lucene runs on Java 23 or greater.
 
@@ -26,7 +26,7 @@ can be found on https://cwiki.apache.org/confluence/display/LUCENE/JavaBugs
 With all Java versions it is strongly recommended to not use experimental
 `-XX` JVM options.
 
-CPU, disk and memory requirements are based on the many choices made in 
-implementing Lucene (document size, number of documents, and number of 
-hits retrieved to name a few). The benchmarks page has some information 
-related to performance on particular platforms. 
+CPU, disk and memory requirements are based on the many choices made in
+implementing Lucene (document size, number of documents, and number of
+hits retrieved to name a few). The benchmarks page has some information
+related to performance on particular platforms.

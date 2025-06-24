@@ -792,7 +792,7 @@ InlineElment = ( [aAbBiIqQsSuU]                   |
     addOffCorrectMap(outputCharCount, cumulativeDiff);
     yybegin(YYINITIAL);
   }
-  [^] { 
+  [^] {
     if (yylength() == 1) {
       return zzBuffer[zzStartRead];
     } else {
@@ -921,7 +921,7 @@ InlineElment = ( [aAbBiIqQsSuU]                   |
   }
 }
 
-[^] { 
+[^] {
   if (yylength() == 1) {
     return zzBuffer[zzStartRead];
   } else {

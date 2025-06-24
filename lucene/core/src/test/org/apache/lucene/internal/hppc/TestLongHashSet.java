@@ -17,7 +17,12 @@
 
 package org.apache.lucene.internal.hppc;
 
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.lessThan;
+import static org.hamcrest.Matchers.not;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.util.Arrays;

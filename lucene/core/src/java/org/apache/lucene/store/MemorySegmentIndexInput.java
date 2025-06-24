@@ -37,7 +37,7 @@ import org.apache.lucene.util.IOConsumer;
 /**
  * Base IndexInput implementation that uses an array of MemorySegments to represent a file.
  *
- * <p>For efficiency, this class requires that the segment size are a power-of-two (<code>
+ * <p>For efficiency, this class requires that the segment size is a power of two (<code>
  * chunkSizePower</code>).
  */
 abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegmentAccessInput {
@@ -357,7 +357,11 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   }
 
   @Override
-  public void updateReadAdvice(ReadAdvice readAdvice) throws IOException {
+  public void updateIOContext(IOContext context) throws IOException {
+    updateReadAdvice(toReadAdvice.apply(context));
+  }
+
+  private void updateReadAdvice(ReadAdvice readAdvice) throws IOException {
     if (NATIVE_ACCESS.isEmpty()) {
       return;
     }

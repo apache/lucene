@@ -1,6 +1,7 @@
 # Gradle.
 # Ignore the generated local settings file.
 /gradle.properties
+/build-options.local.properties
 .gradle/
 build/
 
@@ -26,6 +27,7 @@ gradle/wrapper/gradle-wrapper.jar
 # Python
 .pydevproject
 __pycache__
+.venv
 
 # Emacs backup
 *~

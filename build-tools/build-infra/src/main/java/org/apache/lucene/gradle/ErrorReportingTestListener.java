@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.gradle;
 
+import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionValueSource;
+import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsExtension;
 import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
@@ -27,12 +29,16 @@ import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import org.apache.tools.ant.types.Commandline;
 import org.gradle.api.internal.tasks.testing.logging.FullExceptionFormatter;
 import org.gradle.api.internal.tasks.testing.logging.TestExceptionFormatter;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
+import org.gradle.api.tasks.testing.Test;
 import org.gradle.api.tasks.testing.TestDescriptor;
 import org.gradle.api.tasks.testing.TestListener;
 import org.gradle.api.tasks.testing.TestOutputEvent;
@@ -153,6 +159,34 @@ public class ErrorReportingTestListener implements TestOutputListener, TestListe
     return SANITIZE.matcher("OUTPUT-" + suite.getName() + ".txt").replaceAll("_");
   }
 
+  // -Dtests.seed=E2469ED1547BF96C -Dtests.multiplier=3 -Dtests.directory=MMapDirectory
+  // -Dtests.locale=tok-001 -Dtests.timezone=Asia/Kuching -Dtests.asserts=true
+  // -Dtests.file.encoding=UTF-8
+  public static String getReproLineOptions(Test testTask) {
+    var buildOptions = testTask.getProject().getExtensions().getByType(BuildOptionsExtension.class);
+    var internalOptions = Set.of("tests.workDir", "tests.tmpDir");
+
+    return buildOptions.getAllOptions().stream()
+        .filter(
+            option -> {
+              return !internalOptions.contains(option.getName());
+            })
+        .filter(
+            option -> {
+              // we only care about options that have non-default values or options
+              // where values are computed are runtime (possibly randomized).
+              return option.isPresent()
+                  && (option.getSource() == BuildOptionValueSource.COMPUTED_VALUE
+                      || !option.isEqualToDefaultValue());
+            })
+        .map(
+            option -> {
+              return Commandline.quoteArgument(
+                  "-P" + option.getName() + "=" + option.asStringProvider().get());
+            })
+        .collect(Collectors.joining(" "));
+  }
+
   @Override
   public void afterTest(TestDescriptor testDescriptor, TestResult result) {
     // Include test failure exception stacktrace(s) in test output log.
@@ -169,7 +203,7 @@ public class ErrorReportingTestListener implements TestOutputListener, TestListe
     if (!descriptor.isComposite()) {
       descriptor = descriptor.getParent();
     }
-    return outputHandlers.computeIfAbsent(TestKey.of(descriptor), (key) -> new OutputHandler());
+    return outputHandlers.computeIfAbsent(TestKey.of(descriptor), (_) -> new OutputHandler());
   }
 
   public static class TestKey {

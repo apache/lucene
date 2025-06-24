@@ -18,6 +18,7 @@ package org.apache.lucene.facet.rangeonrange;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.document.BinaryRangeDocValues;
 import org.apache.lucene.document.RangeFieldQuery;
@@ -144,16 +145,10 @@ abstract class RangeOnRangeFacetCounts extends FacetCountsWithFilterQuery {
     validateDimAndPathForGetChildren(dim, path);
 
     PriorityQueue<Entry> pq =
-        new PriorityQueue<>(Math.min(topN, counts.length)) {
-          @Override
-          protected boolean lessThan(Entry a, Entry b) {
-            int cmp = Integer.compare(a.count, b.count);
-            if (cmp == 0) {
-              cmp = b.label.compareTo(a.label);
-            }
-            return cmp < 0;
-          }
-        };
+        PriorityQueue.usingComparator(
+            Math.min(topN, counts.length),
+            Comparator.<Entry>comparingInt(e -> e.count)
+                .thenComparing(e -> e.label, Comparator.reverseOrder()));
 
     int childCount = 0;
     Entry e = null;

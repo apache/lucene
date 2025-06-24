@@ -48,18 +48,18 @@ as filter parts that fit only a certain manufacturer or year. Few example docume
 [source]
 ----
 {
-  "type": "Wiper Blades V1",
-  "models": [
-    { "manufaturer": "Ford", "year": 2010 },
-    { "manufacturer": "Chevy", "year": 2011 }
-  ]
+    "type": "Wiper Blades V1",
+    "models": [
+        { "manufaturer": "Ford", "year": 2010 },
+        { "manufacturer": "Chevy", "year": 2011 }
+    ]
 }
 {
-  "type": "Wiper Blades V2",
-  "models": [
-    { "manufaturer": "Ford", "year": 2011 },
-    { "manufacturer": "Chevy", "year": 2010 }
-  ]
+    "type": "Wiper Blades V2",
+    "models": [
+        { "manufaturer": "Ford", "year": 2011 },
+        { "manufacturer": "Chevy", "year": 2010 }
+    ]
 }
 ----
 

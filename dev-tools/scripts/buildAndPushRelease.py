@@ -24,6 +24,7 @@ import textwrap
 import time
 import urllib.request
 import xml.etree.ElementTree as ET
+from pathlib import Path
 from subprocess import TimeoutExpired
 
 import scriptutil
@@ -129,8 +130,6 @@ def prepare(root: str, version: str, pause_before_sign: bool, gpg_key_id: str | 
 
   print("  prepare-release")
   cmd = "./gradlew --stacktrace --no-daemon assembleRelease -Dversion.release=%s" % version
-  if dev_mode:
-    cmd += " -Pvalidation.git.failOnModified=false"
   if gpg_key_id is not None:
     cmd += " -Psign --max-workers 2"
     if sign_gradle:
@@ -143,7 +142,7 @@ def prepare(root: str, version: str, pause_before_sign: bool, gpg_key_id: str | 
         os.environ["ORG_GRADLE_PROJECT_signingPassword"] = gpg_password
     else:
       print("  Signing method is gpg tool")
-      cmd += ' -PuseGpg -Psigning.gnupg.keyName="%s"' % gpg_key_id
+      cmd += ' -PuseGpg=true -Psigning.gnupg.keyName="%s"' % gpg_key_id
       if gpg_home is not None:
         cmd += ' -Psigning.gnupg.homeDir="%s"' % gpg_home
 
@@ -213,13 +212,13 @@ def normalizeVersion(tup: tuple[str, ...]):
 
 def pushLocal(version: str, root: str, rcNum: int, localDir: str):
   print("Push local [%s]..." % localDir)
-  os.makedirs(localDir)
+  Path(localDir).mkdir(parents=True)
 
   lucene_dist_dir = "%s/lucene/distribution/build/release" % root
   rev = open("%s/lucene/distribution/build/release/.gitrev" % root, encoding="UTF-8").read()
 
   dir = "lucene-%s-RC%d-rev-%s" % (version, rcNum, rev)
-  os.makedirs("%s/%s/lucene" % (localDir, dir))
+  Path("%s/%s/lucene" % (localDir, dir)).mkdir(parents=True)
   print("  Lucene")
   os.chdir(lucene_dist_dir)
   print("    archive...")
@@ -237,7 +236,7 @@ def pushLocal(version: str, root: str, rcNum: int, localDir: str):
   run("chmod -R a+rX-w .")
 
   print("  done!")
-  return "file://%s/%s" % (os.path.abspath(localDir), dir)
+  return "file://%s/%s" % (Path(localDir).resolve(), dir)
 
 
 def read_version(_path: str):
@@ -268,9 +267,11 @@ def parse_config():
     dest="gpg_pass_noprompt",
     default=False,
     action="store_true",
-    help="""Do not prompt for gpg passphrase. For the default gnupg method, this means your gpg-agent
-     needs a non-TTY pin-entry program. For gradle signing method, passphrase must be provided
-     in gradle.properties or by env.var/sysprop. See ./gradlew helpPublishing for more info""",
+    help="""
+    Do not prompt for gpg passphrase. For the default gnupg method, this means your gpg-agent
+    needs a non-TTY pin-entry program. For gradle signing method, passphrase must be provided
+    in gradle.properties or by env.var/sysprop. See ./gradlew helpPublishing for more info
+    """.strip(),
   )
   parser.add_argument("--gpg-home", metavar="PATH", help="Path to gpg home containing your secring.gpg Optional, will use $HOME/.gnupg/secring.gpg by default")
   parser.add_argument("--rc-num", metavar="NUM", type=int, default=1, help="Release Candidate number.  Default: 1")

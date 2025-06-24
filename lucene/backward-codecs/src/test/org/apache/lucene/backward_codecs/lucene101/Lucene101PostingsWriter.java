@@ -16,13 +16,14 @@
  */
 package org.apache.lucene.backward_codecs.lucene101;
 
-import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.*;
+import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.BLOCK_SIZE;
 import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.DOC_CODEC;
 import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.LEVEL1_MASK;
 import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.META_CODEC;
 import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.PAY_CODEC;
 import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.POS_CODEC;
 import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.TERMS_CODEC;
+import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.VERSION_DENSE_BLOCKS_AS_BITSETS;
 
 import java.io.IOException;
 import java.util.Arrays;

@@ -46,7 +46,7 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
-import org.apache.lucene.search.DocAndFreqBuffer;
+import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -1036,7 +1036,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
     }
 
     @Override
-    public void nextPostings(int upTo, DocAndFreqBuffer buffer) throws IOException {
+    public void nextPostings(int upTo, DocAndFloatFeatureBuffer buffer) throws IOException {
       assert needsRefilling == false;
 
       if (needsFreq == false) {
@@ -1073,7 +1073,9 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
       }
 
       assert buffer.size > 0;
-      System.arraycopy(freqBuffer, start, buffer.freqs, 0, buffer.size);
+      for (int i = 0; i < buffer.size; ++i) {
+        buffer.features[i] = freqBuffer[start + i];
+      }
 
       advance(upTo);
     }
@@ -1095,6 +1097,32 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
         int doc = docBuffer[i];
         bitSet.set(doc - offset);
       }
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      // Note: this assumes that BLOCK_SIZE == 128, this bit of the code would need to be changed if
+      // the block size was changed.
+      // Hack to avoid compiler warning that both sides of the equal sign are identical.
+      long blockSize = BLOCK_SIZE;
+      assert blockSize == 2 * Long.SIZE;
+      boolean level0IsDense =
+          encoding == DeltaEncoding.UNARY
+              && docBitSet.getBits()[0] == -1L
+              && docBitSet.getBits()[1] == -1L;
+      if (level0IsDense) {
+
+        int level0DocCountUpto = docFreq - docCountLeft;
+        boolean level1IsDense =
+            level1LastDocID - level0LastDocID == level1DocCountUpto - level0DocCountUpto;
+        if (level1IsDense) {
+          return level1LastDocID + 1;
+        }
+
+        return level0LastDocID + 1;
+      }
+
+      return super.docIDRunEnd();
     }
 
     private void skipPositions(int freq) throws IOException {

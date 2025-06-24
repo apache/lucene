@@ -76,3 +76,15 @@ java.lang.Math#fma(float,float,float)
 java.lang.Math#fma(double,double,double)
 
 java.lang.Thread#sleep(**) @ Thread.sleep makes inefficient use of resources, introduces weird race conditions and slows down the code/tests. Not a scalable and good practice so we should prevent it creeping into lucene code
+
+# rules to prevent defining new code from bytes
+@defaultMessage Using dangerous ClassLoader APIs may deserialize untrusted user input into bytecode, leading to remote code execution vulnerabilities
+java.lang.ClassLoader#defineClass(**)
+java.lang.invoke.MethodHandles$Lookup#defineClass(**)
+java.lang.invoke.MethodHandles$Lookup#defineHiddenClass(**)
+java.lang.invoke.MethodHandles$Lookup#defineHiddenClassWithClassData(**)
+java.rmi.server.RMIClassLoader
+
+# https://errorprone.info/bugpattern/ICCProfileGetInstance
+@defaultMessage This method searches the class path for the given file, prefer to read the file and call getInstance(byte[]) or getInstance(InputStream)
+java.awt.color.ICC_Profile#getInstance(java.lang.String)

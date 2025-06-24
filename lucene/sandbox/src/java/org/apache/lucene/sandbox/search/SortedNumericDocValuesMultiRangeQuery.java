@@ -92,18 +92,10 @@ public class SortedNumericDocValuesMultiRangeQuery extends Query {
             // .thenComparing(r -> r.upper)// have to ignore upper boundary for .floor() lookups
             );
     PriorityQueue<Edge> heap =
-        new PriorityQueue<>(clauses.size() * 2) {
-          @Override
-          protected boolean lessThan(Edge a, Edge b) {
-            if (a.getValue() < b.getValue()) {
-              return true;
-            } else if (a.getValue() == b.getValue()) {
-              return a.point; // if a point is in the edge of the range, pass the point first
-            } else {
-              return false;
-            }
-          }
-        };
+        PriorityQueue.usingComparator(
+            clauses.size() * 2,
+            Comparator.comparingLong(Edge::getValue)
+                .thenComparing(e -> e.point, Comparator.reverseOrder())); // points first
     for (DocValuesMultiRangeQuery.LongRange r : clauses) {
       long cmp = r.lower - r.upper;
       if (cmp == 0) {

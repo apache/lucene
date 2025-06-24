@@ -232,11 +232,11 @@ my $newer_version_regex = "^(?:$first_relid_regex|$second_relid_regex)";
 print<<"__HTML_HEADER__";
 <!--
 **********************************************************
-** WARNING: This file is generated from CHANGES.txt by the 
+** WARNING: This file is generated from CHANGES.txt by the
 **          Perl script 'changes2html.pl'.
 **          Do *not* edit this file!
 **********************************************************
-          
+
 ****************************************************************************
 * Licensed to the Apache Software Foundation (ASF) under one or more
 * contributor license agreements.  See the NOTICE file distributed with
@@ -310,7 +310,7 @@ print<<"__HTML_HEADER__";
         unorderedLists[i].style.display = "block";
       var orderedLists = document.getElementsByTagName("ol");
       for (var i = 0; i < orderedLists.length; i++)
-        orderedLists[i].style.display = "block"; 
+        orderedLists[i].style.display = "block";
       var olderList = document.getElementById("older.list");
       olderList.style.display = "block";
       var anchors = document.getElementsByTagName("a");
@@ -354,7 +354,7 @@ print<<"__HTML_HEADER__";
          * the first two releases, or the current URL has a fragment and the
          * fragment refers to the current item or one of its ancestors.
          */
-        if (list.id != '$first_relid.list' 
+        if (list.id != '$first_relid.list'
             && list.id != '$second_relid.list'
             && list.className != 'bulleted-list'
             && (currentAnchor == ''
@@ -453,7 +453,7 @@ for my $rel (@releases) {
   for my $section (@$sections) {
     ($heading, $items) = @$section;
     (my $sectid = lc($heading)) =~ s/\s+/_/g;
-    my $numItemsStr = $#{$items} > 0 ? "($#{$items})" : "(none)";  
+    my $numItemsStr = $#{$items} > 0 ? "($#{$items})" : "(none)";
 
     my $list_item = "li";
     if ($release) {
@@ -485,8 +485,8 @@ for my $rel (@releases) {
       $item =~ s~<(?!/?code>(?:[^,]|$))~&lt;~gi;  #   intact - unless followed by a comma - and
       $item =~ s:(?<!code)>:&gt;:gi;              #   add <pre> wrappers for non-inline sections
       $item =~ s{((?:^|.*\n)\s*)<code>(?!,)(?!</code>.+)(.+)</code>(?![ \t]*\S)}
-                { 
-                  my $prefix = $1; 
+                {
+                  my $prefix = $1;
                   my $code = $2;
                   $code =~ s/\s+$//;
                   "$prefix<pre><code>$code></code></pre>"
@@ -654,7 +654,7 @@ sub markup_trailing_attribution {
                            (?!SOLR-\d+\))
                            (?!user's)
                            (?!like\ )
-                           (?!r\d{6})     # subversion revision 
+                           (?!r\d{6})     # subversion revision
                            (?!and\ )
                            (?!backported\ )
                            (?!in\ )
@@ -680,7 +680,7 @@ sub markup_trailing_attribution {
                       (?!SOLR-\d+\))
                       (?!user's)
                       (?!like\ )
-                      (?!r\d{6})     # subversion revision 
+                      (?!r\d{6})     # subversion revision
                       (?!and\ )
                       (?!backported\ )
                       (?!in\ )
@@ -718,7 +718,7 @@ sub markup_trailing_attribution {
 #
 # Returns one scalar:
 #
-#    - A boolean indicating whether there are release sections 
+#    - A boolean indicating whether there are release sections
 #
 sub has_release_sections {
   my $sections = shift;
@@ -821,7 +821,7 @@ sub get_release_date {
     # Handle '1.2 RC6', which should be '1.2 final'
     $release = '1.2 final' if ($release eq '1.2 RC6');
 
-    $reldate = ( exists($release_dates{$release}) 
+    $reldate = ( exists($release_dates{$release})
                ? $release_dates{$release}
                : 'unknown');
   }
@@ -851,7 +851,7 @@ sub setup_release_dates {
   $version_list =~ s/^\s+|\s+$//g;
   my @versions = split /\s*,\s*/, $version_list;
   $created_list =~ s/^\s+|\s+$//g;
-  my @created = split /\s*,\s*/, $created_list; 
+  my @created = split /\s*,\s*/, $created_list;
 
   if (scalar(@versions) != scalar(@created)) {
     die $file . " contains" . scalar(@versions) . " versions but " . scalar(@created) . " creation dates.";
