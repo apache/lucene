@@ -149,7 +149,7 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
           RescoreTopNQuery.createFullPrecisionRescorerQuery(knnQuery, targetVector, "field-1", k);
       TopDocs topDocs = searcher.search(query, k);
 
-      // Step 3: Verify that TopDocs scores match similarity with unquantized vectors
+      // Step 3: The rescoring field is invalid, so the score should be 0
       for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
         Assert.assertEquals("Score must be 0 for missing DoubleValues", 0, scoreDoc.score, 1e-5);
       }
