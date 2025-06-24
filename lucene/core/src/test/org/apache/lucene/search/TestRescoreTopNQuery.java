@@ -16,10 +16,11 @@
  */
 package org.apache.lucene.search;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntField;
@@ -41,7 +42,6 @@ import org.junit.Test;
 public class TestRescoreTopNQuery extends LuceneTestCase {
 
   private static final String FIELD = "vector";
-  private static final String RESCORE_FIELD = "vector-rescore";
   private static final VectorSimilarityFunction VECTOR_SIMILARITY_FUNCTION =
       VectorSimilarityFunction.COSINE;
   private static final int NUM_VECTORS = 1000;
@@ -58,7 +58,8 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
 
     // Set up the IndexWriterConfig to use quantized vector storage
     config = new IndexWriterConfig();
-    config.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat()));
+    config.setCodec(
+        TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswScalarQuantizedVectorsFormat()));
   }
 
   @Test
@@ -84,15 +85,12 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
       for (int j = 0; j < numSegments; j++) {
         for (int i = 0; i < numVectors; i++) {
           float[] vector = randomFloatVector(VECTOR_DIMENSION, random);
-          float[] rescoreVector = randomFloatVector(VECTOR_DIMENSION, random);
           Document doc = new Document();
           int id = j * numVectors + i;
           doc.add(new IntField("id", id, Field.Store.YES));
           doc.add(new KnnFloatVectorField(FIELD, vector, VECTOR_SIMILARITY_FUNCTION));
-          doc.add(
-              new KnnFloatVectorField(RESCORE_FIELD, rescoreVector, VECTOR_SIMILARITY_FUNCTION));
           writer.addDocument(doc);
-          vectors.put(id, rescoreVector);
+          vectors.put(id, vector);
 
           writer.flush();
         }
@@ -106,12 +104,11 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
       int k = 10;
       double oversample = random.nextFloat(1.5f, 3.0f);
 
-      FloatVectorSimilarityValuesSource valueSource =
-          new FloatVectorSimilarityValuesSource(targetVector, RESCORE_FIELD);
-
       KnnFloatVectorQuery knnQuery =
           new KnnFloatVectorQuery(FIELD, targetVector, k + (int) (k * oversample));
-      RescoreTopNQuery query = new RescoreTopNQuery(knnQuery, valueSource, k);
+
+      Query query =
+          RescoreTopNQuery.createFullPrecisionRescorerQuery(knnQuery, targetVector, FIELD, k);
       TopDocs topDocs = searcher.search(query, k);
 
       // Step 3: Verify that TopDocs scores match similarity with unquantized vectors
@@ -126,6 +123,35 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
             expectedScore,
             scoreDoc.score,
             1e-5);
+      }
+    }
+  }
+
+  public void testMissingDoubleValues() throws IOException {
+    Random random = random();
+
+    try (IndexWriter writer = new IndexWriter(directory, config)) {
+      float[] vector = randomFloatVector(VECTOR_DIMENSION, random);
+      Document doc = new Document();
+      doc.add(new KnnFloatVectorField(FIELD, vector, VECTOR_SIMILARITY_FUNCTION));
+      writer.addDocument(doc);
+    }
+
+    // Step 2: Run TwoPhaseKnnVectorQuery with a random target vector
+    try (IndexReader reader = DirectoryReader.open(directory)) {
+      IndexSearcher searcher = new IndexSearcher(reader);
+      float[] targetVector = randomFloatVector(VECTOR_DIMENSION, random);
+      int k = 1;
+
+      KnnFloatVectorQuery knnQuery = new KnnFloatVectorQuery(FIELD, targetVector, k);
+
+      Query query =
+          RescoreTopNQuery.createFullPrecisionRescorerQuery(knnQuery, targetVector, "field-1", k);
+      TopDocs topDocs = searcher.search(query, k);
+
+      // Step 3: Verify that TopDocs scores match similarity with unquantized vectors
+      for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+        Assert.assertEquals("Score must be 0 for missing DoubleValues", 0, scoreDoc.score, 1e-5);
       }
     }
   }

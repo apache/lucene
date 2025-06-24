@@ -21,8 +21,12 @@ import java.util.Objects;
 import org.apache.lucene.index.IndexReader;
 
 /**
- * A Query that re-scores another Query with a DoubleValueSource function and cut-off the results at
- * top N.
+ * A Query that re-scores another Query with a {@link DoubleValuesSource} function and cut-off the
+ * results at top N. Unlike {@link Rescorer} which does rescoring at post-collection phase, this
+ * Query does the rescoring at rewrite() phase. The reason it operates in rewrite phase is to be
+ * compatible with KNN vector query, where the results are collected upfront, but it can work with
+ * any type of Query. Unlike or <code>FunctionScoreQuery</code>, this Query will work even with the
+ * no-scoring {@link ScoreMode}.
  *
  * @lucene.experimental
  */
@@ -57,6 +61,7 @@ public class RescoreTopNQuery extends Query {
     Query rewritten = indexSearcher.rewrite(query);
     Weight weight = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
     HitQueue queue = new HitQueue(n, false);
+    int originalCount = 0;
     for (var leaf : reader.leaves()) {
       Scorer innerScorer = weight.scorer(leaf);
       if (innerScorer == null) {
@@ -72,6 +77,7 @@ public class RescoreTopNQuery extends Query {
         } else {
           queue.insertWithOverflow(new ScoreDoc(leaf.docBase + docId, 0f));
         }
+        originalCount++;
       }
     }
     int i = 0;
@@ -80,8 +86,8 @@ public class RescoreTopNQuery extends Query {
       scoreDocs[i++] = topDoc;
     }
     TopDocs topDocs =
-        new TopDocs(new TotalHits(queue.size(), TotalHits.Relation.EQUAL_TO), scoreDocs);
-    return KnnFloatVectorQuery.createRewrittenQuery(reader, topDocs, 0);
+        new TopDocs(new TotalHits(originalCount, TotalHits.Relation.EQUAL_TO), scoreDocs);
+    return DocAndScoreQuery.createDocAndScoreQuery(reader, topDocs, 0);
   }
 
   private DoubleValues getDoubleValues(Scorer innerScorer) {
@@ -124,5 +130,22 @@ public class RescoreTopNQuery extends Query {
         + "["
         + n
         + "]";
+  }
+
+  /**
+   * Utility method to create a new RescoreTopNQuery which uses full-precision vectors for
+   * rescoring.
+   *
+   * @param in the inner Query to rescore
+   * @param targetVector the target vector to compute score
+   * @param field the vector field to compute score
+   * @param n the number of results to keep
+   * @return the RescoreTopNQuery
+   */
+  public static Query createFullPrecisionRescorerQuery(
+      Query in, float[] targetVector, String field, int n) {
+    DoubleValuesSource valuaSource =
+        new FullPrecisionFloatVectorSimilarityValuesSource(targetVector, field);
+    return new RescoreTopNQuery(in, valuaSource, n);
   }
 }
