@@ -217,7 +217,7 @@ public class TieredMergePolicy extends MergePolicy {
    * Sets the allowed number of segments per tier. Smaller values mean more merging but fewer
    * segments.
    *
-   * <p>Default is 10.0.
+   * <p>Default is 8.0.
    */
   public TieredMergePolicy setSegmentsPerTier(double v) {
     if (v < 2.0) {
