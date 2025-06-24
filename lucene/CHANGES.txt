@@ -188,7 +188,7 @@ Bug Fixes
 
 * GITHUB#14755: Fix too many documents collected when only bool-filter condition is present. (Ke Wei)
 
-* GITHUB#14838: Make it possible to extend PatienceKnnQuery (Tommaso Teofili)
+* GITHUB#14838: Make it possible to extend Patience/Seeded knn queries (Tommaso Teofili)
 
 Build
 ---------------------

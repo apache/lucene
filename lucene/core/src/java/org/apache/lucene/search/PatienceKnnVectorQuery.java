@@ -285,7 +285,11 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
           new SeededKnnVectorQuery(
               seededKnnVectorQuery.delegate,
               seededKnnVectorQuery.seed,
-              seededKnnVectorQuery.createSeedWeight(indexSearcher));
+              seededKnnVectorQuery.createSeedWeight(indexSearcher),
+              delegate.field,
+              delegate.k,
+              delegate.filter,
+              delegate.searchStrategy);
     }
     return super.rewrite(indexSearcher);
   }
