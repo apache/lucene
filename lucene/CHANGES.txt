@@ -207,6 +207,7 @@ Other
 
 * GITHUB#14667: Fix documentation regarding benchmark running. (Viliam Durina)
 
+* GITHUB#14839: Add support for sparse SortedDocValues to LuceneTestCase.assertDocValuesEquals (Parker Timmins)
 
 ======================= Lucene 10.2.2 =======================
 
