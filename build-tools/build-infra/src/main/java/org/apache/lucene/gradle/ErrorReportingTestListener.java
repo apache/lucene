@@ -165,7 +165,6 @@ public class ErrorReportingTestListener implements TestOutputListener, TestListe
   public static String getReproLineOptions(Test testTask) {
     var buildOptions = testTask.getProject().getExtensions().getByType(BuildOptionsExtension.class);
     var internalOptions = Set.of("tests.workDir", "tests.tmpDir");
-    var alwaysIncludeOptions = Set.of("tests.seed");
 
     return buildOptions.getAllOptions().stream()
         .filter(
