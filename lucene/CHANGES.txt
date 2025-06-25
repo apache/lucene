@@ -177,6 +177,8 @@ Optimizations
 * GITHUB#14836: Sometimes use FixedBitSet when doing HNSW searches. This slightly improves HNSW
   search performance on smaller graphs. (Ben Trent)
 
+* GITHUB#14830: Optimize FieldExistsQuery to leverage index statistic in DocValuesSkipper. (Pan Guixin)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
