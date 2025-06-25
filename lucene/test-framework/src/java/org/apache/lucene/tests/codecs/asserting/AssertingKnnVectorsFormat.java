@@ -113,17 +113,16 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
   public static class AssertingKnnVectorsReader extends KnnVectorsReader
       implements HnswGraphProvider {
     public final KnnVectorsReader delegate;
-    private final FieldInfos fis;
-    private final boolean mergeInstance;
-    private final AtomicInteger mergeInstanceCount = new AtomicInteger();
-    private final AtomicInteger finishMergeCount = new AtomicInteger();
+    final FieldInfos fis;
+    final boolean mergeInstance;
+    AtomicInteger mergeInstanceCount = new AtomicInteger();
+    AtomicInteger finishMergeCount = new AtomicInteger();
 
-    private AssertingKnnVectorsReader(KnnVectorsReader delegate, FieldInfos fis) {
+    AssertingKnnVectorsReader(KnnVectorsReader delegate, FieldInfos fis) {
       this(delegate, fis, false);
     }
 
-    private AssertingKnnVectorsReader(
-        KnnVectorsReader delegate, FieldInfos fis, boolean mergeInstance) {
+    AssertingKnnVectorsReader(KnnVectorsReader delegate, FieldInfos fis, boolean mergeInstance) {
       assert delegate != null;
       this.delegate = delegate;
       this.fis = fis;
@@ -137,8 +136,6 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-      assert mergeInstanceCount.get() == finishMergeCount.get() || mergeInstance
-          : "Called on the wrong instance";
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -153,8 +150,6 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public ByteVectorValues getByteVectorValues(String field) throws IOException {
-      assert mergeInstanceCount.get() == finishMergeCount.get() || mergeInstance
-          : "Called on the wrong instance";
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -170,7 +165,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
-      assert mergeInstanceCount.get() == finishMergeCount.get() : "There is an open merge instance";
+      assert !mergeInstance;
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -181,7 +176,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
-      assert mergeInstanceCount.get() == finishMergeCount.get() : "There is an open merge instance";
+      assert !mergeInstance;
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -190,28 +185,15 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public KnnVectorsReader getMergeInstance() throws IOException {
+    public KnnVectorsReader getMergeInstance() {
+      assert !mergeInstance;
       var mergeVectorsReader = delegate.getMergeInstance();
       assert mergeVectorsReader != null;
       mergeInstanceCount.incrementAndGet();
-      AtomicInteger parentMergeFinishCount = this.finishMergeCount;
 
+      final var parent = this;
       return new AssertingKnnVectorsReader(
           mergeVectorsReader, AssertingKnnVectorsReader.this.fis, true) {
-        private boolean finished;
-
-        @Override
-        public void search(
-            String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
-          assert false : "This instance should only be used for merging";
-        }
-
-        @Override
-        public void search(
-            String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
-          assert false : "This instance should only be used for merging";
-        }
-
         @Override
         public KnnVectorsReader getMergeInstance() {
           assert false; // merging from a merge instance it not allowed
@@ -220,10 +202,9 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
         @Override
         public void finishMerge() throws IOException {
-          assert !finished : "Merging already finished";
-          finished = true;
+          assert mergeInstance;
           delegate.finishMerge();
-          parentMergeFinishCount.incrementAndGet();
+          parent.finishMergeCount.incrementAndGet();
         }
 
         @Override
@@ -235,7 +216,9 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public void finishMerge() throws IOException {
-      assert false; // can only finish merge on the merge instance
+      assert mergeInstance;
+      delegate.finishMerge();
+      finishMergeCount.incrementAndGet();
     }
 
     @Override
@@ -245,8 +228,10 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public void close() throws IOException {
-      assert mergeInstanceCount.get() == finishMergeCount.get();
+      assert !mergeInstance;
       delegate.close();
+      delegate.close();
+      assert finishMergeCount.get() <= 0 || mergeInstanceCount.get() == finishMergeCount.get();
     }
 
     @Override

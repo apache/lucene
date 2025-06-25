@@ -131,7 +131,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
-  public KnnVectorsReader getMergeInstance() throws IOException {
+  public KnnVectorsReader getMergeInstance() {
     return new Lucene99HnswVectorsReader(this, this.flatVectorsReader.getMergeInstance());
   }
 
