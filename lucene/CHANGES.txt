@@ -174,6 +174,9 @@ Optimizations
 
 * GITHUB#14774: Use IntArrayList/IntHashSet to replace usages of List/Set of Integer. (Zhang Chao)
 
+* GITHUB#14836: Sometimes use FixedBitSet when doing HNSW searches. This slightly improves HNSW
+  search performance on smaller graphs. (Ben Trent)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
@@ -187,6 +190,8 @@ Bug Fixes
 * GITHUB#14727: Fix several resource leaks. (Xu Chengxin)
 
 * GITHUB#14755: Fix too many documents collected when only bool-filter condition is present. (Ke Wei)
+
+* GITHUB#14838: Make it possible to extend Patience/Seeded knn queries (Tommaso Teofili)
 
 Build
 ---------------------

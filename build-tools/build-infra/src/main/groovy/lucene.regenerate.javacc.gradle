@@ -235,8 +235,7 @@ configure(project(":lucene:queryparser")) {
 
     def extraConfig = [
       andThenTasks: [
-        "spotlessJava",
-        "spotlessJavaApply"
+        "applyGoogleJavaFormat"
       ],
       mustRunBefore: ["compileJava"]
     ]

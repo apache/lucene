@@ -13,7 +13,7 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
- -->
+-->
 
 # Apache Lucene Migration Guide
 
@@ -87,7 +87,7 @@ For example:
 TopDocs hits = searcher.search(query, 10);
 StoredFields storedFields = reader.storedFields();
 for (ScoreDoc hit : hits.scoreDocs) {
-  Document doc = storedFields.document(hit.doc);
+    Document doc = storedFields.document(hit.doc);
 }
 ```
 
@@ -256,17 +256,17 @@ For example
 public class CustomCollectorManager implements CollectorManager<CustomCollector, List<Object>> {
     @Override
     public CustomCollector newCollector() throws IOException {
-      return new CustomCollector();
+        return new CustomCollector();
     }
 
     @Override
     public List<Object> reduce(Collection<CustomCollector> collectors) throws IOException {
-      List<Object> all = new ArrayList<>();
-      for (CustomCollector c : collectors) {
-        all.addAll(c.getResult());
-      }
+        List<Object> all = new ArrayList<>();
+        for (CustomCollector c : collectors) {
+            all.addAll(c.getResult());
+        }
 
-      return all;
+        return all;
     }
 }
 
@@ -537,7 +537,7 @@ factory classes should implement it in the following way:
 ```java
     /** Default ctor for compatibility with SPI */
     public StandardTokenizerFactory() {
-      throw defaultCtorException();
+        throw defaultCtorException();
     }
 ```
 
@@ -631,8 +631,8 @@ know the maximum score for a query, the recommended approach is to run a
 separate query:
 
 ```java
-  TopDocs topHits = searcher.search(query, 1);
-  float maxScore = topHits.scoreDocs.length == 0 ? Float.NaN : topHits.scoreDocs[0].score;
+TopDocs topHits = searcher.search(query, 1);
+float maxScore = topHits.scoreDocs.length == 0 ? Float.NaN : topHits.scoreDocs[0].score;
 ```
 
 Thanks to other optimizations that were added to Lucene 8, this query will be

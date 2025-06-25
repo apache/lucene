@@ -41,8 +41,7 @@ configure(project(":lucene:core")) {
 
   regenerate.dependsOn wrapWithPersistentChecksums(generateForUtilInternal, [
     andThenTasks: [
-      "spotlessJava",
-      "spotlessJavaApply"
+      "applyGoogleJavaFormat"
     ],
     mustRunBefore: ["compileJava"]
   ])
@@ -69,8 +68,7 @@ configure(project(":lucene:core")) {
 
   regenerate.dependsOn wrapWithPersistentChecksums(generateForDeltaUtilInternal, [
     andThenTasks: [
-      "spotlessJava",
-      "spotlessJavaApply"
+      "applyGoogleJavaFormat"
     ],
     mustRunBefore: ["compileJava"]
   ])
@@ -100,8 +98,7 @@ configure(project(":lucene:backward-codecs")) {
 
   regenerate.dependsOn wrapWithPersistentChecksums(generateForUtil84Internal, [
     andThenTasks: [
-      "spotlessJava",
-      "spotlessJavaApply"
+      "applyGoogleJavaFormat"
     ],
     mustRunBefore: ["compileJava"]
   ])
@@ -128,8 +125,7 @@ configure(project(":lucene:backward-codecs")) {
 
   regenerate.dependsOn wrapWithPersistentChecksums(generateForUtil90Internal, [
     andThenTasks: [
-      "spotlessJava",
-      "spotlessJavaApply"
+      "applyGoogleJavaFormat"
     ],
     mustRunBefore: ["compileJava"]
   ])
@@ -156,8 +152,7 @@ configure(project(":lucene:backward-codecs")) {
 
   regenerate.dependsOn wrapWithPersistentChecksums(generateForUtil99Internal, [
     andThenTasks: [
-      "spotlessJava",
-      "spotlessJavaApply"
+      "applyGoogleJavaFormat"
     ],
     mustRunBefore: ["compileJava"]
   ])
@@ -184,8 +179,7 @@ configure(project(":lucene:backward-codecs")) {
 
   regenerate.dependsOn wrapWithPersistentChecksums(generateForUtil912Internal, [
     andThenTasks: [
-      "spotlessJava",
-      "spotlessJavaApply"
+      "applyGoogleJavaFormat"
     ],
     mustRunBefore: ["compileJava"]
   ])
@@ -212,8 +206,7 @@ configure(project(":lucene:backward-codecs")) {
 
   regenerate.dependsOn wrapWithPersistentChecksums(generateForDeltaUtil912Internal, [
     andThenTasks: [
-      "spotlessJava",
-      "spotlessJavaApply"
+      "applyGoogleJavaFormat"
     ],
     mustRunBefore: ["compileJava"]
   ])
@@ -240,8 +233,7 @@ configure(project(":lucene:backward-codecs")) {
 
   regenerate.dependsOn wrapWithPersistentChecksums(generateForUtil101Internal, [
     andThenTasks: [
-      "spotlessJava",
-      "spotlessJavaApply"
+      "applyGoogleJavaFormat"
     ],
     mustRunBefore: ["compileJava"]
   ])
@@ -268,8 +260,7 @@ configure(project(":lucene:backward-codecs")) {
 
   regenerate.dependsOn wrapWithPersistentChecksums(generateForDeltaUtil101Internal, [
     andThenTasks: [
-      "spotlessJava",
-      "spotlessJavaApply"
+      "applyGoogleJavaFormat"
     ],
     mustRunBefore: ["compileJava"]
   ])
