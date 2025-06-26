@@ -97,6 +97,8 @@ Optimizations
 
 * GITHUB#14851: Fewer virtual calls to enhance performance of point queries. (Ke Wei)
 
+* GITHUB#14834: Optimize CombinedFieldQuery by nextDocsAndScores. (Ge Song)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
