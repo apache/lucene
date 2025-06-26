@@ -16,11 +16,8 @@
  */
 package org.apache.lucene.util;
 
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.logging.Logger;
 import org.apache.lucene.store.ReadAdvice;
 
 /** Some useful constants. */
@@ -166,36 +163,10 @@ public final class Constants {
           .orElse(ReadAdvice.RANDOM);
 
   private static String getSysProp(String property) {
-    try {
-      return doPrivileged(() -> System.getProperty(property));
-    } catch (
-        @SuppressWarnings("unused")
-        SecurityException se) {
-      logSecurityWarning(property);
-      return null;
-    }
+    return System.getProperty(property);
   }
 
   private static String getSysProp(String property, String def) {
-    try {
-      return doPrivileged(() -> System.getProperty(property, def));
-    } catch (
-        @SuppressWarnings("unused")
-        SecurityException se) {
-      logSecurityWarning(property);
-      return def;
-    }
-  }
-
-  private static void logSecurityWarning(String property) {
-    var log = Logger.getLogger(Constants.class.getName());
-    log.warning("SecurityManager prevented access to system property: " + property);
-  }
-
-  // Extracted to a method to be able to apply the SuppressForbidden annotation
-  @SuppressWarnings("removal")
-  @SuppressForbidden(reason = "security manager")
-  private static <T> T doPrivileged(PrivilegedAction<T> action) {
-    return AccessController.doPrivileged(action);
+    return System.getProperty(property, def);
   }
 }

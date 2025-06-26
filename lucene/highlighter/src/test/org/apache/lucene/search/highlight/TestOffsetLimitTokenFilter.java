@@ -17,7 +17,7 @@
 package org.apache.lucene.search.highlight;
 
 import java.io.StringReader;
-import org.apache.lucene.analysis.*;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 

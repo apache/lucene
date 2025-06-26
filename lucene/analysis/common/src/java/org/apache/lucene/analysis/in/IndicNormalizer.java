@@ -16,8 +16,16 @@
  */
 package org.apache.lucene.analysis.in;
 
-import static java.lang.Character.UnicodeBlock.*;
-import static org.apache.lucene.analysis.util.StemmerUtil.*;
+import static java.lang.Character.UnicodeBlock.BENGALI;
+import static java.lang.Character.UnicodeBlock.DEVANAGARI;
+import static java.lang.Character.UnicodeBlock.GUJARATI;
+import static java.lang.Character.UnicodeBlock.GURMUKHI;
+import static java.lang.Character.UnicodeBlock.KANNADA;
+import static java.lang.Character.UnicodeBlock.MALAYALAM;
+import static java.lang.Character.UnicodeBlock.ORIYA;
+import static java.lang.Character.UnicodeBlock.TAMIL;
+import static java.lang.Character.UnicodeBlock.TELUGU;
+import static org.apache.lucene.analysis.util.StemmerUtil.delete;
 
 import java.util.BitSet;
 import java.util.IdentityHashMap;

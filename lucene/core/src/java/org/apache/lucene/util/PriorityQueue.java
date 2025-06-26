@@ -37,9 +37,48 @@ import java.util.function.Supplier;
  */
 public abstract class PriorityQueue<T> implements Iterable<T> {
 
+  /** Represents a {@code <} operation, which is less prescriptive than {@link Comparator} */
+  @FunctionalInterface
+  public interface LessThan<T> {
+    boolean lessThan(T a, T b);
+  }
+
+  /** Create a {@code PriorityQueue} that orders elements using the specified {@code lessThan} */
+  public static <T> PriorityQueue<T> usingLessThan(int maxSize, LessThan<? super T> lessThan) {
+    return new PriorityQueue<>(maxSize) {
+      @Override
+      protected boolean lessThan(T a, T b) {
+        return lessThan.lessThan(a, b);
+      }
+    };
+  }
+
+  /** Create a {@code PriorityQueue} that orders elements using the specified {@code lessThan} */
+  public static <T> PriorityQueue<T> usingLessThan(
+      int maxSize, Supplier<T> sentinelObjectSupplier, LessThan<? super T> lessThan) {
+    return new PriorityQueue<>(maxSize, sentinelObjectSupplier) {
+      @Override
+      protected boolean lessThan(T a, T b) {
+        return lessThan.lessThan(a, b);
+      }
+    };
+  }
+
+  /** Create a {@code PriorityQueue} that orders elements using the specified {@code comparator} */
   public static <T> PriorityQueue<T> usingComparator(
       int maxSize, Comparator<? super T> comparator) {
     return new PriorityQueue<>(maxSize) {
+      @Override
+      protected boolean lessThan(T a, T b) {
+        return comparator.compare(a, b) < 0;
+      }
+    };
+  }
+
+  /** Create a {@code PriorityQueue} that orders elements using the specified {@code comparator} */
+  public static <T> PriorityQueue<T> usingComparator(
+      int maxSize, Supplier<T> sentinelObjectSupplier, Comparator<? super T> comparator) {
+    return new PriorityQueue<>(maxSize, sentinelObjectSupplier) {
       @Override
       protected boolean lessThan(T a, T b) {
         return comparator.compare(a, b) < 0;
@@ -281,7 +320,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
     return false;
   }
 
-  private final boolean upHeap(int origPos) {
+  private boolean upHeap(int origPos) {
     int i = origPos;
     T node = heap[i]; // save bottom node
     int j = i >>> 1;
@@ -294,7 +333,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
     return i != origPos;
   }
 
-  private final void downHeap(int i) {
+  private void downHeap(int i) {
     T node = heap[i]; // save top node
     int j = i << 1; // find smaller child
     int k = j + 1;

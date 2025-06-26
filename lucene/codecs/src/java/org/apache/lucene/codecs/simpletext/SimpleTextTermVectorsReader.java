@@ -16,7 +16,22 @@
  */
 package org.apache.lucene.codecs.simpletext;
 
-import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.*;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.DOC;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.END;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.ENDOFFSET;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELD;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDNAME;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDOFFSETS;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDPAYLOADS;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDPOSITIONS;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDTERMCOUNT;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.NUMFIELDS;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.PAYLOAD;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.POSITION;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.STARTOFFSET;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.TERMFREQ;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.TERMTEXT;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.VECTORS_EXTENSION;
 
 import java.io.IOException;
 import java.util.Collections;

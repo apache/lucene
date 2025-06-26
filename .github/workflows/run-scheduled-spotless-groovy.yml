@@ -1,0 +1,27 @@
+name: "Run scheduled checks: gradle/groovy formatting"
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    # 3:13 on Mondays
+    - cron: '13 4 * * 1'
+
+env:
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+
+jobs:
+  test:
+    name: Check groovy/gradle script formatting compliance
+    timeout-minutes: 15
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: ./.github/actions/prepare-for-build
+
+      - run: >
+          ./gradlew
+          -Plucene.spotlessGradleScripts=true
+          spotlessGradleScriptsCheck

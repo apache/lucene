@@ -153,7 +153,7 @@ allprojects { prj ->
           // '-Xep:AutoValueConstructorOrderChecker:OFF', // we don't use autovalue
           '-Xep:BadAnnotationImplementation:ERROR',
           '-Xep:BadShiftAmount:ERROR',
-          '-Xep:BanClassLoader:ERROR',
+          // '-Xep:BanClassLoader:OFF', // implemented with forbidden APIs instead
           // '-Xep:BanJNDI:OFF', // implemented with forbidden APIs instead
           // '-Xep:BoxedPrimitiveEquality:OFF', // TODO: there are problems
           // '-Xep:BundleDeserializationCast:OFF', // we don't use android
@@ -162,7 +162,7 @@ allprojects { prj ->
           // '-Xep:CheckReturnValue:OFF', // we don't use these annotations
           '-Xep:CollectionToArraySafeParameter:ERROR',
           // '-Xep:ComparableType:OFF',
-          '-Xep:ComparingThisWithNull:ERROR',
+          // '-Xep:ComparingThisWithNull:ERROR', // we use ast-grep for this check
           '-Xep:ComparisonOutOfRange:ERROR',
           // '-Xep:CompatibleWithAnnotationMisuse:OFF', // we don't use this annotation
           // '-Xep:CompileTimeConstant:OFF', // we don't use this annotation
@@ -233,8 +233,8 @@ allprojects { prj ->
           '-Xep:IsInstanceOfClass:ERROR',
           // '-Xep:IsLoggableTagLength:OFF', // we don't use android
           // '-Xep:JUnit3TestNotRun:OFF', // we don't use junit3
-          '-Xep:JUnit4ClassAnnotationNonStatic:ERROR',
-          '-Xep:JUnit4EmptyMethods:ERROR',
+          // '-Xep:JUnit4ClassAnnotationNonStatic:OFF', // we use ast-grep for this check
+          // '-Xep:JUnit4EmptyMethods:OFF', // we use ast-grep for this check
           // '-Xep:JUnit4SetUpNotRun:OFF', // LuceneTestCase takes care
           // '-Xep:JUnit4TearDownNotRun:OFF', // LuceneTestCase takes care
           // '-Xep:JUnit4TestNotRun:OFF', // noisy
@@ -279,7 +279,7 @@ allprojects { prj ->
           '-Xep:OptionalOfRedundantMethod:ERROR',
           // '-Xep:OverlappingQualifierAndScopeAnnotation:OFF', // we don't use this annotation
           // '-Xep:OverridesJavaxInjectableMethod:OFF', // we don't use this annotation
-          '-Xep:PackageInfo:ERROR',
+          // '-Xep:PackageInfo:OFF', // we use ast-grep for this check
           '-Xep:ParametersButNotParameterized:ERROR',
           // '-Xep:ParcelableCreator:OFF', // we don't use android
           // '-Xep:PeriodFrom:OFF', // we don't use Period
@@ -312,7 +312,7 @@ allprojects { prj ->
           '-Xep:StreamToString:ERROR',
           '-Xep:StringBuilderInitWithChar:ERROR',
           // '-Xep:StringConcatToTextBlock:OFF', // TODO: there are problems
-          '-Xep:SubstringOfZero:ERROR',
+          // '-Xep:SubstringOfZero:OFF', // we use ast-grep for this check
           '-Xep:SuppressWarningsDeprecated:ERROR',
           // '-Xep:TemporalAccessorGetChronoField:OFF', // we don't use TemporalAccessor.get
           // '-Xep:TestParametersNotInitialized:OFF', // we don't use this annotation
@@ -331,6 +331,7 @@ allprojects { prj ->
           '-Xep:UnsafeWildcard:ERROR',
           '-Xep:UnusedAnonymousClass:ERROR',
           '-Xep:UnusedCollectionModifiedInPlace:ERROR',
+          // "-Xep:WildcardImport:OFF", // we use ast-grep for this check.
           '-Xep:VarTypeName:ERROR',
           // '-Xep:WrongOneof:OFF', // we don't use protobuf
           '-Xep:XorPower:ERROR',
@@ -423,14 +424,14 @@ allprojects { prj ->
           '-Xep:GetClassOnEnum:WARN',
           // '-Xep:GuiceNestedCombine:OFF', // we don't use guice
           // '-Xep:HidingField:OFF', // noisy
-          '-Xep:ICCProfileGetInstance:WARN',
+          // '-Xep:ICCProfileGetInstance:OFF', // we use forbidden-apis for this
           // '-Xep:IdentityHashMapUsage:OFF', // noisy
           // '-Xep:ImmutableAnnotationChecker:OFF', // we don't use this annotation
           // '-Xep:ImmutableEnumChecker:OFF', // noisy
           // '-Xep:InconsistentCapitalization:OFF', // TODO: there are problems
           // '-Xep:InconsistentHashCode:OFF', // noisy
           // '-Xep:IgnoredPureGetter:OFF', // we don't use these google libraries
-          '-Xep:IncorrectMainMethod:WARN',
+          // '-Xep:IncorrectMainMethod:OFF', // we use ast-grep for this
           '-Xep:IncrementInForLoopAndHeader:WARN',
           '-Xep:InheritDoc:WARN',
           // '-Xep:InjectOnBugCheckers:OFF', // we don't use this annotation

@@ -17,7 +17,7 @@ Run all(*) verification tasks, including tests:
 gradlew check
 
 (*) This step may omit certain validation tasks (errorprone, for example)
-    that are slow or require external resources. A pull request runs all 
+    that are slow or require external resources. A pull request runs all
     those locally omitted tasks on the CI (jenkins, gh actions).
     For this reason, it's a good idea to run patches via the CI.
 
@@ -79,7 +79,7 @@ Test groups
 Tests can be filtered by an annotation they're marked with.
 Some test group annotations include: @AwaitsFix, @Nightly
 
-This uses filtering infrastructure on the *runner* (randomizedtesting), 
+This uses filtering infrastructure on the *runner* (randomizedtesting),
 not gradle's built-in mechanisms (but it can be combined with "--tests").
 For example, run all lucene-core tests annotated as @Nightly:
 
@@ -105,7 +105,7 @@ gradle rules, fix the seed and force rerunning:
 
 gradlew -p lucene/core test -Ptests.seed=deadbeef -Ptests.rerun=true
 
-These properties can be set in your local gradle.properties. To force re-execution 
+These properties can be set in your local gradle.properties. To force re-execution
 of tests, even for the same master seed, apply cleanTest task:
 
 gradlew -p lucene/core cleanTest test -Ptests.seed=deadbeef

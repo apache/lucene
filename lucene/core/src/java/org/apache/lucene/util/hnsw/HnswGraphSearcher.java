@@ -20,6 +20,7 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
@@ -40,6 +41,32 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   protected final NeighborQueue candidates;
 
   protected BitSet visited;
+
+  /**
+   * HNSW search is roughly logarithmic. This doesn't take maxConn into account, but it is a pretty
+   * good approximation.
+   *
+   * @param k neighbors to find
+   * @param graphSize size of the graph
+   * @return expected number of visited nodes
+   */
+  public static int expectedVisitedNodes(int k, int graphSize) {
+    return (int) (Math.log(graphSize) * k);
+  }
+
+  /**
+   * Follows similar logic to {@link FixedBitSet#of(DocIdSetIterator, int)} to determine the best
+   * bit set given the expected number of visited nodes vs total graph size.
+   *
+   * @param k neighbors to find
+   * @param graphSize size of the graph
+   * @return a bit set appropriate for the expected number of visited nodes
+   */
+  static BitSet createBitSet(int k, int graphSize) {
+    return expectedVisitedNodes(k, graphSize) < (graphSize >>> 7)
+        ? new SparseFixedBitSet(graphSize)
+        : new FixedBitSet(graphSize);
+  }
 
   /**
    * Creates a new graph searcher.
@@ -117,7 +144,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       innerSearcher =
           new HnswGraphSearcher(
               new NeighborQueue(knnCollector.k(), true),
-              new SparseFixedBitSet(getGraphSize(graph)));
+              createBitSet(knnCollector.k(), getGraphSize(graph)));
     }
     // Then, check if we the search strategy is seeded
     final AbstractHnswGraphSearcher graphSearcher;

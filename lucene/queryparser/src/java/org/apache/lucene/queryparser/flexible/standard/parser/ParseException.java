@@ -2,9 +2,10 @@
 /* JavaCCOptions:KEEP_LINE_COLUMN=true */
             package org.apache.lucene.queryparser.flexible.standard.parser;
 
-            import org.apache.lucene.queryparser.flexible.messages.*;
-            import org.apache.lucene.queryparser.flexible.core.*;
-            import org.apache.lucene.queryparser.flexible.core.messages.*;
+            import org.apache.lucene.queryparser.flexible.core.QueryNodeParseException;
+            import org.apache.lucene.queryparser.flexible.core.messages.QueryParserMessages;
+            import org.apache.lucene.queryparser.flexible.messages.Message;
+            import org.apache.lucene.queryparser.flexible.messages.MessageImpl;
             
 
 /**

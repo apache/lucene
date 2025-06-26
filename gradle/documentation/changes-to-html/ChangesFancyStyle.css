@@ -6,13 +6,13 @@ body {
 
 h1 {
   font-family: Helvetica, Geneva, Arial, SunSans-Regular, sans-serif;
-  color: black; 
+  color: black;
   background-color: light-gray;
 }
 
 h2 {
   font-family: Helvetica, Geneva, Arial, SunSans-Regular, sans-serif;
-  color: black; 
+  color: black;
   background-color: #D8D8D8;
 }
 
@@ -21,7 +21,7 @@ a:link {
 }
 
 a:visited {
-  color: purple; 
+  color: purple;
 }
 
 li.bulleted-list {

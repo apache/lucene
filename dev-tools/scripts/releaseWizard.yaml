@@ -58,7 +58,7 @@ templates:
     {% set passed = plus_binding >= 3 and minus < plus_binding %}
     {% set too_few = plus_binding < 3 %}
     {% set veto = plus_binding < minus %}
-    {% set reason = 'too few binding votes' if too_few else 'too many negative votes' if veto else 'unknown' %}    
+    {% set reason = 'too few binding votes' if too_few else 'too many negative votes' if veto else 'unknown' %}
   vote_macro: |
     {% macro end_vote_result(plus_binding, plus_other, zero, minus) -%}
     (( template=vote_logic ))
@@ -75,9 +75,9 @@ templates:
 
     {% if not passed %}
     Reason for fail is {{ reason }}.
-    
+
     {% endif %}
-    This vote has {% if passed %}PASSED{% else %}FAILED{% endif %} 
+    This vote has {% if passed %}PASSED{% else %}FAILED{% endif %}
     ----
     {%- endmacro %}
   announce_lucene: |
@@ -116,7 +116,7 @@ templates:
   announce_lucene_sign_mail: |
     The template below can be used to announce the Lucene release to the
     `announce@apache.org` mailing list. The mail *should be signed with PGP.*
-    and sent *from your `@apache.org` account*.    
+    and sent *from your `@apache.org` account*.
 
     .Mail template
     ----
@@ -162,12 +162,12 @@ templates:
 #       # Vars can contain global jinja vars or local vars earlier defined (ordered dict)
 #     persist_vars: ['var_name', 'var_name'] # List of variables to persist in TODO state
 #     asciidoc: |
-#         Some `asciidoc` text to be included in asciidoc guide 
+#         Some `asciidoc` text to be included in asciidoc guide
 #         *instead of* description/post_description
 #     function: my_python_function  # Will call the named function for complex tasks
 #     commands: !Commands   # A !Commands object holding commands to execute for this todo
 #       root_folder: '{{ git_checkout_folder }}' # path to where commands will run
-#       commands_text: Introduction text to be displayed just before the commands 
+#       commands_text: Introduction text to be displayed just before the commands
 #       enable_execute: true # Set to false to never offer to run commands automatically
 #       confirm_each_command: true # Set to false to run all commands without prompting
 #       remove_files: ['file1', 'folder2'] # List of files or folders that must be gone
@@ -192,7 +192,7 @@ templates:
 #       name: gpg_id  # This will be stored in todo state and can be referenced as {{ todo_id.name }}
 #       type: int  # if no type is given, a string is stored. Supported types are 'int'
 #     post_description: |
-#       Some `asciidoc` text (with jinja template support) 
+#       Some `asciidoc` text (with jinja template support)
 #       to be printed *after* commands and user_input is done.
 #     links:
 #     - http://example.com/list/of/links?to&be&displayed
@@ -643,7 +643,7 @@ groups:
   - !Todo
     id: build_rc
     title: Build the release candidate
-    depends: 
+    depends:
     - gpg
     - run_tests
     vars:
@@ -664,7 +664,7 @@ groups:
         Note that the build will take a long time. To follow the detailed build
         log, you can tail the log file {{ logfile | default("<logfile>") }}.
       confirm_each_command: false
-      remove_files: 
+      remove_files:
       - '{{ dist_file_path }}'
       commands:
       - !Command
@@ -723,7 +723,7 @@ groups:
     id: verify_staged
     title: Verify staged artifacts
     description: |
-      A lightweight smoke testing which downloads the artifacts from stage 
+      A lightweight smoke testing which downloads the artifacts from stage
       area and checks hash and signatures, but does not re-run all tests.
     depends: import_svn
     vars:
@@ -855,7 +855,7 @@ groups:
         there are more positive than negative votes you can techically release
         the software. However, please review the negative votes and consider
         a re-spin.
-        
+
         {% endif %}
         {%- endif %}
         {{ end_vote_result(plus_binding,plus_other,zero,minus) }}
@@ -1180,7 +1180,7 @@ groups:
     title: Update the DOAP file
     description: |
       Update the Lucene DOAP RDF file on the unstable, stable and release branches to
-      reflect the new versions (note that the website .htaccess file redirects from their 
+      reflect the new versions (note that the website .htaccess file redirects from their
       canonical URLs to their locations in the Lucene Git source repository - see
       dev-tools/doap/README.txt for more info)
     commands: !Commands
@@ -1253,7 +1253,7 @@ groups:
   id: announce
   title: Announce the release
   description: |
-    For feature releases, your announcement should describe the main features included 
+    For feature releases, your announcement should describe the main features included
     in the release. *Send the announce as Plain-text email, not HTML.*
 
     This step will generate email templates based on the news files you edited earler for the website.
@@ -1356,13 +1356,13 @@ groups:
     id: synchronize_changes
     title: Synchronize CHANGES.txt
     description: |
-      Copy the CHANGES.txt section for this release back to the stable and unstable branches' 
-      CHANGES.txt files, removing any duplicate entries, but only from sections for as-yet 
+      Copy the CHANGES.txt section for this release back to the stable and unstable branches'
+      CHANGES.txt files, removing any duplicate entries, but only from sections for as-yet
       unreleased versions; leave intact duplicate entries for already-released versions.
 
-      There is a script to generate a regex that will match issues fixed in a release: 
-      `releasedJirasRegex.py`. The following examples will print regexes matching all issues 
-      fixed in {{ release_version }}, which can then be used to find duplicates in unreleased 
+      There is a script to generate a regex that will match issues fixed in a release:
+      `releasedJirasRegex.py`. The following examples will print regexes matching all issues
+      fixed in {{ release_version }}, which can then be used to find duplicates in unreleased
       version sections of the corresponding CHANGES.txt files.
     commands: !Commands
       root_folder: '{{ git_checkout_folder }}'
@@ -1428,21 +1428,21 @@ groups:
     id: backcompat_release
     title: Generate Backcompat Indexes for release branch
     description: |
-      After each version of Lucene is released, compressed CFS, non-CFS, and sorted indexes created with 
-      the newly released version are added to `lucene/backwards-codecs/src/test/org/apache/lucene/index/`, 
-      for use in testing backward index compatibility via org.apache.lucene.index.TestBackwardsCompatibility, 
-      which is also located under the `backwards-codecs/` module. There are also three indexes created only 
-      with major Lucene versions: moreterms, empty, and dvupdates. These indexes are created via methods 
+      After each version of Lucene is released, compressed CFS, non-CFS, and sorted indexes created with
+      the newly released version are added to `lucene/backwards-codecs/src/test/org/apache/lucene/index/`,
+      for use in testing backward index compatibility via org.apache.lucene.index.TestBackwardsCompatibility,
+      which is also located under the `backwards-codecs/` module. There are also three indexes created only
+      with major Lucene versions: moreterms, empty, and dvupdates. These indexes are created via methods
       on `TestBackwardsCompatibility` itself - see comments in the source for more information.
 
       There is a script (`dev-tools/scripts/addBackcompatIndexes.py`) that automates most of the process.
-      It downloads the source for the specified release; generates indexes for the current release using 
-      `TestBackwardsCompatibility`; compresses the indexes and places them in the correct place in the source 
-      tree; modifies TestBackwardsCompatibility.java to include the generated indexes in the list of indexes 
+      It downloads the source for the specified release; generates indexes for the current release using
+      `TestBackwardsCompatibility`; compresses the indexes and places them in the correct place in the source
+      tree; modifies TestBackwardsCompatibility.java to include the generated indexes in the list of indexes
       to test; and then runs `TestBackwardsCompatibility`.
-      
+
       In this and the next two steps we'll guide you through using this tool on each of the branches.
-    depends: 
+    depends:
     - increment_release_version
     vars:
       temp_dir: "{{ [release_folder, 'backcompat'] | path_join }}"
@@ -1471,7 +1471,7 @@ groups:
     title: Generate Backcompat Indexes for stable branch
     description: |
       Now generate back-compat for stable branch ({{ stable_branch }})
-    depends: 
+    depends:
     - increment_release_version
     vars:
       temp_dir: "{{ [release_folder, 'backcompat'] | path_join }}"
@@ -1486,7 +1486,7 @@ groups:
       - !Command
         cmd: "{{ gradle_cmd }} clean"
       - !Command
-        cmd: python3 -u dev-tools/scripts/addBackcompatIndexes.py --no-cleanup  --temp-dir {{ temp_dir }} {{ release_version }}  && git add lucene/backward-codecs/src/test/org/apache/lucene/backward_index/  
+        cmd: python3 -u dev-tools/scripts/addBackcompatIndexes.py --no-cleanup  --temp-dir {{ temp_dir }} {{ release_version }}  && git add lucene/backward-codecs/src/test/org/apache/lucene/backward_index/
         logfile: add-backcompat.log
       - !Command
         cmd: git diff --staged
@@ -1501,7 +1501,7 @@ groups:
     description: |
       Now generate back-compat for unstable (main) branch.
       Note that this time we do not specify `--no-cleanup` meaning the tmp folder will be deleted
-    depends: 
+    depends:
     - increment_release_version
     vars:
       temp_dir: "{{ [release_folder, 'backcompat'] | path_join }}"
@@ -1517,7 +1517,7 @@ groups:
       - !Command
         cmd: "{{ gradle_cmd }} clean"
       - !Command
-        cmd: python3 -u dev-tools/scripts/addBackcompatIndexes.py  --temp-dir {{ temp_dir }}  {{ release_version }}  && git add lucene/backward-codecs/src/test/org/apache/lucene/backward_index/  
+        cmd: python3 -u dev-tools/scripts/addBackcompatIndexes.py  --temp-dir {{ temp_dir }}  {{ release_version }}  && git add lucene/backward-codecs/src/test/org/apache/lucene/backward_index/
         logfile: add-backcompat.log
       - !Command
         cmd: git diff --staged
@@ -1527,9 +1527,9 @@ groups:
         cmd: git commit -m "Add back-compat indices for {{ release_version }}"  && git push
         logfile: commit.log
     post_description: |
-      When doing a major version release, eg. 8.0.0, you might also need to reenable some 
-      backward compatibility tests for corner cases. To find them, run grep -r assume 
-      lucene/backward-codecs/, which should find tests that have been disabled on main 
+      When doing a major version release, eg. 8.0.0, you might also need to reenable some
+      backward compatibility tests for corner cases. To find them, run grep -r assume
+      lucene/backward-codecs/, which should find tests that have been disabled on main
       because there was no released Lucene version to test against.
       {{ set_java_home(release_version) }}
   - !Todo
@@ -1568,7 +1568,7 @@ groups:
     title: Stop promoting old releases
     description: |
       Shortly after new releases are first published, they are automatically copied to the archives.
-      Only the latest point release from each active branch should be kept under the Lucene PMC 
+      Only the latest point release from each active branch should be kept under the Lucene PMC
       svnpubsub area `dist/releases/lucene/`. Older releases can be
       safely deleted, since they are already backed up in the archives.
 

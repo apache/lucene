@@ -1,3 +1,5 @@
+import org.apache.lucene.gradle.plugins.spotless.ApplyGoogleJavaFormatTask
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -73,6 +75,8 @@ def lintTasks = sourceSets.collect { SourceSet sourceSet ->
     // sources from other projects for example).
     dependsOn sourceSet.compileClasspath
     dependsOn ecjConfiguration
+
+    mustRunAfter tasks.withType(ApplyGoogleJavaFormatTask)
 
     // The inputs are all source files from the sourceSet.
     inputs.files sourceSet.allSource.asFileTree

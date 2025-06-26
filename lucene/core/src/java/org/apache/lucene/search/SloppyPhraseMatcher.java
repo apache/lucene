@@ -32,6 +32,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.PriorityQueue;
 
 /**
  * Find all slop-valid position-combinations (matches) encountered while traversing/hopping the
@@ -56,7 +57,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
 
   private final int slop;
   private final int numPostings;
-  private final PhraseQueue pq; // for advancing min position
+  private final PriorityQueue<PhrasePositions> pq; // for advancing min position
   private final boolean captureLeadMatch;
 
   private final DocIdSetIterator approximation;
@@ -92,7 +93,22 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     this.slop = slop;
     this.numPostings = postings.length;
     this.captureLeadMatch = captureLeadMatch;
-    pq = new PhraseQueue(postings.length);
+    pq =
+        PriorityQueue.usingLessThan(
+            postings.length,
+            (pp1, pp2) -> {
+              if (pp1.position == pp2.position)
+                // same doc and pp.position, so decide by actual term positions.
+                // rely on: pp.position == tp.position - offset.
+                if (pp1.offset == pp2.offset) {
+                  return pp1.ord < pp2.ord;
+                } else {
+                  return pp1.offset < pp2.offset;
+                }
+              else {
+                return pp1.position < pp2.position;
+              }
+            });
     phrasePositions = new PhrasePositions[postings.length];
     for (int i = 0; i < postings.length; ++i) {
       phrasePositions[i] =
