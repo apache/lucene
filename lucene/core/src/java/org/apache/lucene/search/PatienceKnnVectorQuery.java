@@ -48,7 +48,7 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
   /**
    * Construct a new PatienceKnnVectorQuery instance for a float vector field
    *
-   * @param knnQuery the knn query to be seeded
+   * @param knnQuery the knn query to be wrapped
    * @param saturationThreshold the early exit saturation threshold
    * @param patience the patience parameter
    * @return a new PatienceKnnVectorQuery instance
@@ -62,7 +62,7 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
   /**
    * Construct a new PatienceKnnVectorQuery instance for a float vector field
    *
-   * @param knnQuery the knn query to be seeded
+   * @param knnQuery the knn query to be wrapped
    * @return a new PatienceKnnVectorQuery instance
    * @lucene.experimental
    */
@@ -74,7 +74,7 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
   /**
    * Construct a new PatienceKnnVectorQuery instance for a byte vector field
    *
-   * @param knnQuery the knn query to be seeded
+   * @param knnQuery the knn query to be wrapped
    * @param saturationThreshold the early exit saturation threshold
    * @param patience the patience parameter
    * @return a new PatienceKnnVectorQuery instance
@@ -124,11 +124,53 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
   }
 
   PatienceKnnVectorQuery(
-      AbstractKnnVectorQuery knnQuery, double saturationThreshold, int patience) {
-    super(knnQuery.field, knnQuery.k, knnQuery.filter, knnQuery.searchStrategy);
+      AbstractKnnVectorQuery knnQuery,
+      String field,
+      int k,
+      Query filter,
+      KnnSearchStrategy searchStrategy,
+      double saturationThreshold,
+      int patience) {
+    super(field, k, filter, searchStrategy);
     this.delegate = knnQuery;
     this.saturationThreshold = saturationThreshold;
     this.patience = patience;
+  }
+
+  public PatienceKnnVectorQuery(
+      SeededKnnVectorQuery knnQuery, double saturationThreshold, int patience) {
+    this(
+        knnQuery,
+        knnQuery.field,
+        knnQuery.k,
+        knnQuery.filter,
+        knnQuery.searchStrategy,
+        saturationThreshold,
+        patience);
+  }
+
+  public PatienceKnnVectorQuery(
+      KnnFloatVectorQuery knnQuery, double saturationThreshold, int patience) {
+    this(
+        knnQuery,
+        knnQuery.field,
+        knnQuery.k,
+        knnQuery.filter,
+        knnQuery.searchStrategy,
+        saturationThreshold,
+        patience);
+  }
+
+  public PatienceKnnVectorQuery(
+      KnnByteVectorQuery knnQuery, double saturationThreshold, int patience) {
+    this(
+        knnQuery,
+        knnQuery.field,
+        knnQuery.k,
+        knnQuery.filter,
+        knnQuery.searchStrategy,
+        saturationThreshold,
+        patience);
   }
 
   private static int defaultPatience(AbstractKnnVectorQuery delegate) {
@@ -243,7 +285,11 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
           new SeededKnnVectorQuery(
               seededKnnVectorQuery.delegate,
               seededKnnVectorQuery.seed,
-              seededKnnVectorQuery.createSeedWeight(indexSearcher));
+              seededKnnVectorQuery.createSeedWeight(indexSearcher),
+              delegate.field,
+              delegate.k,
+              delegate.filter,
+              delegate.searchStrategy);
     }
     return super.rewrite(indexSearcher);
   }
