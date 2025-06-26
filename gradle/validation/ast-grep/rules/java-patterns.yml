@@ -21,3 +21,25 @@ rule:
 severity: error
 message: illegal use of `var` keyword with generic instance creation
 note: add explicit typing on the RHS when using `var`
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: javadoc-style-license-header
+language: java
+rule:
+  matches: java-license
+  regex: "^/[*][*]"
+severity: error
+message: license should be a non-javadoc block comment
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: license-after-package
+language: java
+rule:
+  kind: package_declaration
+  precedes:
+    matches: java-license
+ignores:
+  # TODO: something not right with regeneration of this lone file
+  - "**/StandardSyntaxParser.java"
+severity: error
+message: license should be before `package` declaration

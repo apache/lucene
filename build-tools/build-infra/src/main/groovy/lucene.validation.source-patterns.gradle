@@ -147,11 +147,8 @@ class ValidateSourcePatternsTask extends DefaultTask {
       violations.add(msg)
     }
 
-    def javadocsPattern = ~$/(?sm)^\Q/**\E(.*?)\Q*/\E/$;
-    def javaCommentPattern = ~$/(?sm)^\Q/*\E(.*?)\Q*/\E/$;
     def xmlCommentPattern = ~$/(?sm)\Q<!--\E(.*?)\Q-->\E/$;
     def lineSplitter = ~$/[\r\n]+/$;
-    def packagePattern = ~$/(?m)^\s*package\s+org\.apache.*;/$;
     def xmlTagPattern = ~$/(?m)\s*<[a-zA-Z].*/$;
     def validSPINameJavadocTag = ~$/(?s)\s*\*\s*@lucene\.spi\s+\{@value #NAME\}/$;
 
@@ -209,14 +206,6 @@ class ValidateSourcePatternsTask extends DefaultTask {
             reportViolation(f, String.format(Locale.ROOT, '%s [start=%d, end=%d]', name, matcher.start(), matcher.end()));
           }
         }
-        def javadocsMatcher = javadocsPattern.matcher(text);
-        def ratDocument = new FileDocument(f);
-        while (javadocsMatcher.find()) {
-          if (isLicense(javadocsMatcher, ratDocument)) {
-            reportViolation(f, String.format(Locale.ENGLISH, 'javadoc-style license header [%s]',
-                ratDocument.getMetaData().value(MetaData.RAT_URL_LICENSE_FAMILY_NAME)));
-          }
-        }
         if (f.name.endsWith('.java')) {
           // make sure that SPI names of all tokenizers/charfilters/tokenfilters are documented
           if (!f.name.contains("Test") && !f.name.contains("Mock") && !f.name.contains("Fake") && !text.contains("abstract class") &&
@@ -228,9 +217,9 @@ class ValidateSourcePatternsTask extends DefaultTask {
               reportViolation(f, 'invalid spi name documentation')
             }
           }
-          checkLicenseHeaderPrecedes(f, 'package', packagePattern, javaCommentPattern, text, ratDocument);
         }
         if (f.name.endsWith('.xml')) {
+          def ratDocument = new FileDocument(f);
           checkLicenseHeaderPrecedes(f, '<tag>', xmlTagPattern, xmlCommentPattern, text, ratDocument);
         }
       } catch (e) {
