@@ -47,7 +47,6 @@ Optimizations
 ---------------------
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
 * GITHUB#14022: Optimize DFS marking of connected components in HNSW by reducing stack depth, improving performance and reducing allocations. (Viswanath Kuchibhotla)
-* GITHUB#14851: Fewer virtual calls to enhance performance of point queries. (Ke Wei)
 
 Bug Fixes
 ---------------------
@@ -179,6 +178,8 @@ Optimizations
   search performance on smaller graphs. (Ben Trent)
 
 * GITHUB#14830: Optimize FieldExistsQuery to leverage index statistic in DocValuesSkipper. (Pan Guixin)
+
+* GITHUB#14851: Fewer virtual calls to enhance performance of point queries. (Ke Wei)
 
 Bug Fixes
 ---------------------
