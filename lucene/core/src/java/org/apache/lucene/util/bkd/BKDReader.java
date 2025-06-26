@@ -247,6 +247,7 @@ public class BKDReader extends PointValues {
     // if true the tree is balanced, otherwise unbalanced
     private final boolean isTreeBalanced;
     private final IntsRef scratchIntsRef = new IntsRef();
+
     {
       assert scratchIntsRef.offset == 0;
     }
