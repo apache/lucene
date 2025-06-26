@@ -42,13 +42,14 @@ import org.apache.lucene.util.quantization.ScalarQuantizer;
  * implementation is based on {@code OffHeapQuantizedByteVectorValues} with modifications to the
  * {@code vectorValue()} method to return float vectors after dequantizing the byte vectors.
  *
- * <p>This class is designed to be used in scenarios where quantized byte vectors are present in the
- * index but their corresponding raw float vectors are not available. It provides an efficient way
- * to access the original float vector representation without requiring additional storage.
+ * <p>Usage: This class is used for read-only indexes where full-precision float vectors have been
+ * dropped from the index to save storage space. Full-precision vectors can be removed from an index
+ * using a method as implemnted in {@code
+ * TestLucene99ScalarQuantizedVectorsFormat.simulateEmptyRawVectors()}.
  *
  * @lucene.internal
  */
-public abstract class OffHeapQuantizedFloatVectorValues extends FloatVectorValues
+abstract class OffHeapQuantizedFloatVectorValues extends FloatVectorValues
     implements HasIndexSlice {
 
   protected final int dimension;
