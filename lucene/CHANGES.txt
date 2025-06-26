@@ -177,9 +177,10 @@ Optimizations
 * GITHUB#14836: Sometimes use FixedBitSet when doing HNSW searches. This slightly improves HNSW
   search performance on smaller graphs. (Ben Trent)
 
+* GITHUB#14830: Optimize FieldExistsQuery to leverage index statistic in DocValuesSkipper. (Pan Guixin)
+
 Changes in Runtime Behavior
 ---------------------
-
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
   tier from 10 to 8. This is expected to result in slightly faster search and
   slightly slower indexing. (Adrien Grand)
@@ -197,6 +198,8 @@ Bug Fixes
 * GITHUB#14727: Fix several resource leaks. (Xu Chengxin)
 
 * GITHUB#14755: Fix too many documents collected when only bool-filter condition is present. (Ke Wei)
+
+* GITHUB#14838: Make it possible to extend Patience/Seeded knn queries (Tommaso Teofili)
 
 Build
 ---------------------

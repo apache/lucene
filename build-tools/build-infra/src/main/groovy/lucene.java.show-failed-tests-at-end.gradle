@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+import java.util.regex.Pattern
 import org.apache.lucene.gradle.ErrorReportingTestListener
 
 // Display all failed tests at the end of the build.
@@ -33,11 +34,28 @@ allprojects {
 
       afterTest { desc, result ->
         if (result.resultType == TestResult.ResultType.FAILURE) {
+          // check if it's a constructor or a before/after class hook that failed.
+          def qTestName
+          if (desc.name == "classMethod") {
+            qTestName = desc.className
+          } else {
+            qTestName = "${desc.className}.${desc.name}"
+          }
+
+          def randomizationParameters = ""
+          def p = Pattern.compile(/.+ (?<params>[{].*[}])$/)
+          def matcher = p.matcher(qTestName)
+          if (matcher.matches()) {
+            randomizationParameters = matcher.group("params")
+            qTestName = qTestName.replace(randomizationParameters, "").trim()
+          }
+
           failedTests << [
-            "name"     : "${desc.className}.${desc.name}",
+            "name"     : qTestName,
+            "randomizationParameters": randomizationParameters,
             "project"  : "${test.project.path}",
             "output"   : file("${testOutputsDir}/${ErrorReportingTestListener.getOutputLogName(desc.parent)}"),
-            "reproduce": "gradlew ${project.path}:test --tests \"${desc.className}.${desc.name}\" ${reproLine}"
+            "reproduce": "gradlew ${project.path}:test --tests \"${qTestName}\" ${reproLine}"
           ]
         }
       }
@@ -62,11 +80,14 @@ gradle.buildFinished { result ->
         .sort { a, b -> b.project.compareTo(a.project) }
         .collect { e ->
           String.format(Locale.ROOT,
-              "  - %s (%s)\n    Test output: %s\n    Reproduce with: %s\n",
-              e.name, e.project, e.output, e.reproduce)
+              "  - %s (%s)%s\n    Test output: %s\n    Reproduce with: %s\n",
+              e.name, e.project,
+              e.containsKey("randomizationParameters") &&
+              !e.randomizationParameters.isBlank() ? "\n    Context parameters: ${e.randomizationParameters}" : "",
+              e.output, e.reproduce)
         }
         .join("\n")
 
-    logger.error("\nERROR: The following test(s) have failed:\n${formatted}")
+    logger.error("\nERROR: The following {} failed:\n\n{}", failedTests.size() == 1 ? "test has" : "tests have", formatted)
   }
 }
