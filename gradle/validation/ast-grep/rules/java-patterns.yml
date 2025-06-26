@@ -38,8 +38,11 @@ rule:
   kind: package_declaration
   precedes:
     matches: java-license
+    # allow anything in between (e.g. import statements)
+    stopBy: end
 ignores:
-  # TODO: something not right with regeneration of this lone file
+  # TODO: something not right with regeneration of this lone parser
   - "**/StandardSyntaxParser.java"
+  - "**/StandardSyntaxParserTokenManager.java"
 severity: error
 message: license should be before `package` declaration
