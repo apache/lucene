@@ -95,6 +95,8 @@ Optimizations
 
 * GITHUB#14830: Optimize FieldExistsQuery to leverage index statistic in DocValuesSkipper. (Pan Guixin)
 
+* GITHUB#14851: Fewer virtual calls to enhance performance of point queries. (Ke Wei)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
