@@ -18,8 +18,6 @@ package org.apache.lucene.internal.vectorization;
 
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.logging.Logger;
 import jdk.incubator.vector.FloatVector;
@@ -27,7 +25,6 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MemorySegmentAccessInput;
 import org.apache.lucene.util.Constants;
-import org.apache.lucene.util.SuppressForbidden;
 
 /** A vectorization provider that leverages the Panama Vector API. */
 final class PanamaVectorizationProvider extends VectorizationProvider {
@@ -36,28 +33,12 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   // would get called before we have a chance to perform sanity checks around the vector API in the
   // constructor of this class. Put them in PanamaVectorConstants instead.
 
-  // Extracted to a method to be able to apply the SuppressForbidden annotation
-  @SuppressWarnings("removal")
-  @SuppressForbidden(reason = "security manager")
-  private static <T> T doPrivileged(PrivilegedAction<T> action) {
-    return AccessController.doPrivileged(action);
-  }
-
   private final VectorUtilSupport vectorUtilSupport;
 
   PanamaVectorizationProvider() {
     // hack to work around for JDK-8309727:
-    try {
-      doPrivileged(
-          () ->
-              FloatVector.fromArray(
-                  FloatVector.SPECIES_PREFERRED,
-                  new float[FloatVector.SPECIES_PREFERRED.length()],
-                  0));
-    } catch (SecurityException se) {
-      throw new UnsupportedOperationException(
-          "We hit initialization failure described in JDK-8309727: " + se);
-    }
+    FloatVector.fromArray(
+        FloatVector.SPECIES_PREFERRED, new float[FloatVector.SPECIES_PREFERRED.length()], 0);
 
     if (PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE < 128) {
       throw new UnsupportedOperationException(

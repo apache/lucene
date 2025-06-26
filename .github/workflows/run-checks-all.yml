@@ -1,6 +1,6 @@
 name: "Run checks: all modules"
 
-on: 
+on:
   workflow_dispatch:
 
   pull_request:
@@ -39,6 +39,16 @@ jobs:
 
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: ./.github/actions/prepare-for-build
+
+      - name: Install eclint
+        if: ${{ ! startsWith(matrix.os, 'windows') }}
+        uses: ./.github/actions/eclint
+
+      - name: Install ast-grep
+        if: ${{ ! startsWith(matrix.os, 'windows') }}
+        run: |
+          npm -g i @ast-grep/cli
+          echo "lucene.tool.ast-grep=ast-grep" >> build-options.local.properties
 
       - name: Run gradle check (without tests)
         run: ./gradlew check -x test "-Ptask.times=true" --max-workers 2

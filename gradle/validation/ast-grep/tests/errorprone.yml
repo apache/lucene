@@ -1,0 +1,105 @@
+---
+id: WildcardImport
+valid:
+  - import foo.bar.Baz;
+  - import static foo.bar.Baz;
+invalid:
+  - import foo.bar.*;
+  - import static foo.bar.*;
+---
+id: ComparingThisWithNull
+valid:
+  - if (this == that) {}
+  - if (that == null) {}
+  - if (null == null) {}
+  - if (this == this) {}
+invalid:
+  - if (this == null) {}
+  - if (null == this) {}
+  - |
+    x = this == null ? 1 : 0;
+  - |
+    x = null == this ? 1 : 0;
+---
+id: SubstringOfZero
+valid:
+  - x.substring(1)
+  - x.substring(0, 1)
+  - x.foobar(0)
+invalid:
+  - x.substring(0)
+  - x.y().substring(0)
+---
+id: JUnit4ClassAnnotationNonStatic
+valid:
+  - |
+    @Before
+    void t() {}
+  - |
+    @BeforeClass
+    static void t() {}
+invalid:
+  - |
+    @BeforeClass
+    void t() {}
+  - |
+    @BeforeClass
+    @SomethingElse
+    void t() {}
+---
+id: JUnit4EmptyMethods
+valid:
+  - |
+    void t() {}
+  - |
+    @Before
+    void t() {
+      int x;
+    }
+  - |
+    @Before
+    void t() {
+      // comment
+    }
+  - |
+    @Before
+    @Override
+    void t() {}
+invalid:
+  - |
+    @Before
+    void t() {}
+  - |
+    @BeforeClass
+    @Foo()
+    public static void t() {
+    }
+---
+id: PackageInfo
+valid:
+  - |
+    package foo.bar.baz;
+  - |
+    /** javadoc */
+    package foo.bar.baz;
+  - |
+    import x.y.Z; // javadocs
+    /** javadoc {@link Z} */
+    package foo.bar.baz;
+invalid:
+  - |
+    class Foo {}
+  - |
+    interface Bar {}
+---
+id: IncorrectMainMethod
+valid:
+  - |
+    public static void main() {}
+  - |
+    public void foo() {}
+invalid:
+  - |
+    public void main() {}
+  - |
+    public static int main() {}

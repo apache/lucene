@@ -60,15 +60,15 @@ lastFailureCode = 0
 gitCheckoutSucceeded = False
 
 description = dedent("""\
-                     Must be run from a Lucene/Solr git workspace. Downloads the Jenkins
-                     log pointed to by the given URL, parses it for Git revision and failed
-                     Lucene/Solr tests, checks out the Git revision in the local workspace,
-                     groups the failed tests by module, then runs
-                     'ant test -Dtest.dups=%d -Dtests.class="*.test1[|*.test2[...]]" ...'
-                     in each module of interest, failing at the end if any of the runs fails.
-                     To control the maximum number of concurrent JVMs used for each module's
-                     test run, set 'tests.jvms', e.g. in ~/lucene.build.properties
-                     """)
+  Must be run from a Lucene/Solr git workspace. Downloads the Jenkins
+  log pointed to by the given URL, parses it for Git revision and failed
+  Lucene/Solr tests, checks out the Git revision in the local workspace,
+  groups the failed tests by module, then runs
+  'ant test -Dtest.dups=%d -Dtests.class="*.test1[|*.test2[...]]" ...'
+  in each module of interest, failing at the end if any of the runs fails.
+  To control the maximum number of concurrent JVMs used for each module's
+  test run, set 'tests.jvms', e.g. in ~/lucene.build.properties
+  """)
 defaultIters = 5
 
 
@@ -238,7 +238,7 @@ def printAndMoveReports(testIters: int, newSubDir: str, location: str):
           # have to play nice with 'ant clean'...
           newDirPath = os.path.join("repro-reports", newSubDir, dir)
           Path(newDirPath).mkdir(exist_ok=True, parents=True)
-          os.rename(filePath, os.path.join(newDirPath, file))
+          _ = Path(filePath).rename(target=os.path.join(newDirPath, file))
   print("[repro] Failures%s:" % location)
   for testcase in sorted(failures, key=lambda t: (failures[t], t)):  # sort by failure count, then by testcase
     print("[repro]   %d/%d failed: %s" % (failures[testcase], testIters, testcase))

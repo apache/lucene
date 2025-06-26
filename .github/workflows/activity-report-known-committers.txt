@@ -1,4 +1,4 @@
-# a list of known committer names and their aliases, to highlight 
+# a list of known committer names and their aliases, to highlight
 # commits from non-committers in the activity-report.
 dependabot
 guofeng.my

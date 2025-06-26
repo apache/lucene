@@ -53,10 +53,10 @@ jobs:
           echo "Gradle's 'RUNTIME_JAVA_HOME' JDK:"
           RUNTIME_JAVA_HOME_VAR=JAVA_HOME_`echo ${{ matrix.java-version }} | egrep --only "[0-9]+"`_X64
           echo ${RUNTIME_JAVA_HOME_VAR} points at ${!RUNTIME_JAVA_HOME_VAR}
-          
+
           # Copy the JDK from its default location to /tmp so that it appears different to gradle.
           rsync -av ${!RUNTIME_JAVA_HOME_VAR}/ ${{ env.ALT_JAVA_DIR }}/
-          
+
           # This sets the environment variable and makes it available for subsequent job steps.
           # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-an-environment-variable
           echo "RUNTIME_JAVA_HOME=${{ env.ALT_JAVA_DIR }}" >> "$GITHUB_ENV"
@@ -77,18 +77,18 @@ jobs:
           # add this package for generateEmojiTokenizationTestChecksumLoad.
           sudo apt-get install libwww-perl
           ./gradlew regenerate -x generateUAX29URLEmailTokenizerInternal --rerun-tasks
-          if [ ! -z "$(git status --porcelain)" ]; then 
-            echo ":warning: **regenerate left local checkout in modified state**" >> $GITHUB_STEP_SUMMARY 
+          if [ ! -z "$(git status --porcelain)" ]; then
+            echo ":warning: **regenerate left local checkout in modified state**" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             git status --porcelain >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             git reset --hard && git clean -xfd .
           fi
 
-      - run: ./gradlew testOpts
+      - run: ./gradlew allOptions
       - run: ./gradlew helpWorkflow
       - run: ./gradlew licenses updateLicenses
-      - run: ./gradlew check -x test -Pvalidation.git.failOnModified=false
+      - run: ./gradlew check -x test
       - run: ./gradlew assembleRelease mavenToLocal
 
       # Conserve resources: only run these in non-alt-java mode.

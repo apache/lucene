@@ -20,6 +20,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.IntFunction;
 import org.apache.lucene.codecs.CodecUtil;
@@ -453,29 +454,14 @@ public class BKDWriter60 implements Closeable {
     }
   }
 
-  private static class BKDMergeQueue extends PriorityQueue<MergeReader> {
-    private final int bytesPerDim;
-
-    public BKDMergeQueue(int bytesPerDim, int maxSize) {
-      super(maxSize);
-      this.bytesPerDim = bytesPerDim;
-    }
-
-    @Override
-    public boolean lessThan(MergeReader a, MergeReader b) {
-      assert a != b;
-
-      int cmp =
-          Arrays.compareUnsigned(a.packedValue, 0, bytesPerDim, b.packedValue, 0, bytesPerDim);
-      if (cmp < 0) {
-        return true;
-      } else if (cmp > 0) {
-        return false;
-      }
-
-      // Tie break by sorting smaller docIDs earlier:
-      return a.docID < b.docID;
-    }
+  private static Comparator<MergeReader> mergeComparator(int bytesPerDim) {
+    return ((Comparator<MergeReader>)
+            (a, b) -> {
+              assert a != b;
+              return Arrays.compareUnsigned(
+                  a.packedValue, 0, bytesPerDim, b.packedValue, 0, bytesPerDim);
+            })
+        .thenComparingInt(mr -> mr.docID);
   }
 
   /**
@@ -642,7 +628,8 @@ public class BKDWriter60 implements Closeable {
       throws IOException {
     assert docMaps == null || readers.size() == docMaps.size();
 
-    BKDMergeQueue queue = new BKDMergeQueue(config.bytesPerDim(), readers.size());
+    PriorityQueue<MergeReader> queue =
+        PriorityQueue.usingComparator(readers.size(), mergeComparator(config.bytesPerDim()));
 
     for (int i = 0; i < readers.size(); i++) {
       PointValues pointValues = readers.get(i);
