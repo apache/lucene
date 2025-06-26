@@ -270,8 +270,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     }
   }
 
-  /** Empty vector values when there are no vectors stored. */
-  public static class EmptyOffHeapVectorValues extends OffHeapFloatVectorValues {
+  private static class EmptyOffHeapVectorValues extends OffHeapFloatVectorValues {
 
     public EmptyOffHeapVectorValues(
         int dimension,

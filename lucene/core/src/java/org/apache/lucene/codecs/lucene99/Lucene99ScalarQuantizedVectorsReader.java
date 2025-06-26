@@ -27,7 +27,6 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
-import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
@@ -190,8 +189,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field);
     final FloatVectorValues rawVectorValues = rawVectorsReader.getFloatVectorValues(field);
-    if (rawVectorValues instanceof OffHeapFloatVectorValues.EmptyOffHeapVectorValues
-        && fieldEntry.size != 0) {
+    if (rawVectorValues.size() == 0) {
       return OffHeapQuantizedFloatVectorValues.load(
           fieldEntry.ordToDoc,
           fieldEntry.dimension,

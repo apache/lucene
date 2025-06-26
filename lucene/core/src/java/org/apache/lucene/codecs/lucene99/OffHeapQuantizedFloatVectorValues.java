@@ -33,7 +33,21 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
-/** Read the vector values from the index input. This supports both iterated and random access. */
+/**
+ * Reads quantized vector values from the index input and returns float vector values after
+ * dequantizing them.
+ *
+ * <p>This class provides functionality to read byte vectors that have been quantized and stored in
+ * the index, and then dequantize them back to float vectors with some precision loss. The
+ * implementation is based on {@code OffHeapQuantizedByteVectorValues} with modifications to the
+ * {@code vectorValue()} method to return float vectors after dequantizing the byte vectors.
+ *
+ * <p>This class is designed to be used in scenarios where quantized byte vectors are present in the
+ * index but their corresponding raw float vectors are not available. It provides an efficient way
+ * to access the original float vector representation without requiring additional storage.
+ *
+ * @lucene.internal
+ */
 public abstract class OffHeapQuantizedFloatVectorValues extends FloatVectorValues
     implements HasIndexSlice {
 
@@ -77,10 +91,6 @@ public abstract class OffHeapQuantizedFloatVectorValues extends FloatVectorValue
     floatValue = new float[dimension];
     this.similarityFunction = similarityFunction;
     this.vectorsScorer = vectorsScorer;
-  }
-
-  public ScalarQuantizer getScalarQuantizer() {
-    return scalarQuantizer;
   }
 
   @Override
