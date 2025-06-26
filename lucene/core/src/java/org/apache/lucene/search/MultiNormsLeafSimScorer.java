@@ -117,8 +117,8 @@ final class MultiNormsLeafSimScorer {
   }
 
   /**
-   * score the provided documents contained in buffe. This method assumes the feature store is
-   * {@code freq}
+   * score the provided documents contained in buffer. This method assumes the float feature store
+   * is {@code freq}
    *
    * @see SimScorer#score(float, long)
    */
