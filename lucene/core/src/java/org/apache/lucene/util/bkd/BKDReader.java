@@ -247,10 +247,7 @@ public class BKDReader extends PointValues {
     // if true the tree is balanced, otherwise unbalanced
     private final boolean isTreeBalanced;
     private final IntsRef scratchIntsRef = new IntsRef();
-    {
-      // This is here to not rely on the default constructor of IntsRef to set offset to 0
-      scratchIntsRef.offset = 0;
-    }
+
     private BKDPointTree(
         IndexInput innerNodes,
         IndexInput leafNodes,
@@ -789,6 +786,7 @@ public class BKDReader extends PointValues {
         visitor.grow(count);
 
         if (r == PointValues.Relation.CELL_INSIDE_QUERY) {
+          assert scratchIntsRef.offset == 0;
           scratchIntsRef.ints = scratchIterator.docIDs;
           scratchIntsRef.length = count;
           visitor.visit(scratchIntsRef);
@@ -854,6 +852,7 @@ public class BKDReader extends PointValues {
           visitor.grow(count);
 
           if (r == PointValues.Relation.CELL_INSIDE_QUERY) {
+            assert scratchIntsRef.offset == 0;
             scratchIntsRef.ints = scratchIterator.docIDs;
             scratchIntsRef.length = count;
             visitor.visit(scratchIntsRef);
