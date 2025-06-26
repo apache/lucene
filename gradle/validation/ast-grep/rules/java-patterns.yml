@@ -28,6 +28,15 @@ language: java
 rule:
   matches: java-license
   regex: "^/[*][*]"
+  pattern: $TEXT
+# remove extraneous stars
+transform:
+  NEWTEXT:
+    replace:
+      replace: "^/[*]+"
+      by: "/*"
+      source: $TEXT
+fix: $NEWTEXT
 severity: error
 message: license should be a non-javadoc block comment
 ---
