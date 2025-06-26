@@ -246,7 +246,11 @@ public class BKDReader extends PointValues {
     private final DocIdsWriter docIdsWriter;
     // if true the tree is balanced, otherwise unbalanced
     private final boolean isTreeBalanced;
-
+    private final IntsRef scratchIntsRef = new IntsRef();
+    {
+      // This is here to not rely on the default constructor of IntsRef to set offset to 0
+      scratchIntsRef.offset = 0;
+    }
     private BKDPointTree(
         IndexInput innerNodes,
         IndexInput leafNodes,
@@ -783,10 +787,11 @@ public class BKDReader extends PointValues {
           return;
         }
         visitor.grow(count);
+
         if (r == PointValues.Relation.CELL_INSIDE_QUERY) {
-          for (int i = 0; i < count; ++i) {
-            visitor.visit(scratchIterator.docIDs[i]);
-          }
+          scratchIntsRef.ints = scratchIterator.docIDs;
+          scratchIntsRef.length = count;
+          visitor.visit(scratchIntsRef);
           return;
         }
       } else {
@@ -849,9 +854,9 @@ public class BKDReader extends PointValues {
           visitor.grow(count);
 
           if (r == PointValues.Relation.CELL_INSIDE_QUERY) {
-            for (int i = 0; i < count; ++i) {
-              visitor.visit(scratchIterator.docIDs[i]);
-            }
+            scratchIntsRef.ints = scratchIterator.docIDs;
+            scratchIntsRef.length = count;
+            visitor.visit(scratchIntsRef);
             return;
           }
         } else {
