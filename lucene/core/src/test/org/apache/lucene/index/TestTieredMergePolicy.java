@@ -839,7 +839,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     // Make sure TMP always merged equal-number-of-docs segments:
     for (LeafReaderContext ctx : r.leaves()) {
       int numDocs = ctx.reader().numDocs();
-      assertTrue("got numDocs=" + numDocs, numDocs == 100 || numDocs == 1000 || numDocs == 10000);
+      assertTrue("got numDocs=" + numDocs, numDocs == 100 || numDocs == 800 || numDocs == 6400);
     }
     r.close();
     w.close();
@@ -883,7 +883,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     assertNotNull(mergeSpec);
     assertEquals(1, mergeSpec.merges.size());
     OneMerge merge = mergeSpec.merges.get(0);
-    assertEquals(10, merge.segments.size());
+    assertEquals(8, merge.segments.size());
   }
 
   /** Make sure that singleton merges are considered when the max number of deletes is crossed. */
@@ -936,15 +936,15 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     MergeContext mergeContext = new MockMergeContext(SegmentCommitInfo::getDelCount);
 
     SegmentInfos infos = new SegmentInfos(Version.LATEST.major);
-    // 50 1MB segments
-    for (int i = 0; i < 50; ++i) {
+    // 5*mergeFactor 1MB segments
+    for (int i = 0; i < 5 * 8; ++i) {
       infos.add(makeSegmentCommitInfo("_0", 1_000_000, 0, 1, IndexWriter.SOURCE_FLUSH));
     }
 
     TieredMergePolicy mergePolicy = new TieredMergePolicy();
     mergePolicy.setFloorSegmentMB(0.1);
 
-    // Segments are above the floor segment size, we get 4 merges of mergeFactor=10 segments each
+    // Segments are above the floor segment size, we get 4 merges of mergeFactor=8 segments each
     MergeSpecification mergeSpec =
         mergePolicy.findMerges(MergeTrigger.FULL_FLUSH, infos, mergeContext);
     assertNotNull(mergeSpec);
@@ -953,23 +953,23 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
       assertEquals(mergePolicy.getSegmentsPerTier(), oneMerge.segments.size(), 0d);
     }
 
-    // Segments are below the floor segment size and it takes 15 segments to go above the floor
-    // segment size. We get 3 merges of 15 segments each
-    mergePolicy.setFloorSegmentMB(15);
+    // Segments are below the floor segment size and it takes 12 segments to go above the floor
+    // segment size. We get 3 merges of 12 segments each.
+    mergePolicy.setFloorSegmentMB(12);
     mergeSpec = mergePolicy.findMerges(MergeTrigger.FULL_FLUSH, infos, mergeContext);
     assertNotNull(mergeSpec);
     assertEquals(3, mergeSpec.merges.size());
     for (OneMerge oneMerge : mergeSpec.merges) {
-      assertEquals(15, oneMerge.segments.size());
+      assertEquals(12, oneMerge.segments.size());
     }
 
-    // Segments are below the floor segment size. We get one merge that merges the 50 segments
+    // Segments are below the floor segment size. We get one merge that merges the 40 segments
     // together.
     mergePolicy.setFloorSegmentMB(60);
     mergeSpec = mergePolicy.findMerges(MergeTrigger.FULL_FLUSH, infos, mergeContext);
     assertNotNull(mergeSpec);
     assertEquals(1, mergeSpec.merges.size());
-    assertEquals(50, mergeSpec.merges.get(0).segments.size());
+    assertEquals(40, mergeSpec.merges.get(0).segments.size());
   }
 
   @SuppressWarnings("UnnecessaryAsync")

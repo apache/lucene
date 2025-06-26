@@ -179,6 +179,12 @@ Optimizations
 
 * GITHUB#14830: Optimize FieldExistsQuery to leverage index statistic in DocValuesSkipper. (Pan Guixin)
 
+Changes in Runtime Behavior
+---------------------
+* GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
+  tier from 10 to 8. This is expected to result in slightly faster search and
+  slightly slower indexing. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
