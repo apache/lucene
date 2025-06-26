@@ -325,7 +325,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
    * Moves the contents of this queue into a new array created by {@code newArray}, lowest items
    * first
    */
-  public T[] drainToArray(IntFunction<T[]> newArray) {
+  public T[] drainToArrayLowestFirst(IntFunction<T[]> newArray) {
     T[] array = newArray.apply(size);
     for (int i = 0; i < array.length; i++) {
       array[i] = pop();
