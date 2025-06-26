@@ -1,7 +1,0 @@
----
-# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
-id: java-generated-comment
-language: java
-rule:
-  kind: line_comment
-  regex: DO NOT EDIT
