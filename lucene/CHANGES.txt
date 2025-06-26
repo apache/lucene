@@ -185,6 +185,8 @@ Optimizations
 
 * GITHUB#14834: Optimize CombinedFieldQuery by nextDocsAndScores. (Ge Song)
 
+* GITHUB#14772: Implement ConstantScoreScorer#nextDocsAndScores. (Ge Song)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
