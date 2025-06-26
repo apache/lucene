@@ -21,13 +21,16 @@ import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 
 import java.io.IOException;
+import java.util.Collections;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
+import org.junit.Test;
 
 /**
  * Tests for {@link FaissKnnVectorsFormat}. Will run only if required shared libraries (including
@@ -108,4 +111,20 @@ public class TestFaissKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   @Ignore // does not support byte vectors
   public void testMergingWithDifferentByteKnnFields() {}
+
+  @Test
+  public void testLargeVectorData() throws IOException {
+    int numFloats = 1 << 10;
+    float[] veryLargeVector = new float[Integer.MAX_VALUE / (Float.BYTES * numFloats)]; // ~2 MB
+
+    // Check that we can index vectors larger than Integer.MAX_VALUE number of bytes
+    LibFaissC.createIndex(
+        "IDMap,Flat", // Store in a flat index, no need for special indexing like HNSW
+        "",
+        DOT_PRODUCT,
+        FloatVectorValues.fromFloats(
+            // simply repeat this vector, no need to allocate large objects on heap
+            Collections.nCopies(numFloats + 1, veryLargeVector), veryLargeVector.length),
+        doc -> doc);
+  }
 }
