@@ -32,6 +32,8 @@ New Features
 
 * GITHUB#14178: Add a Faiss-based vector format in the sandbox module. (Kaival Parikh)
 
+* GITHUB#14792: Introduced OffHeapQuantizedFloatVectorValues class to access float vectors when only quantized byte vectors are available in the index. (Pulkit Gupta)
+
 Improvements
 ---------------------
 
@@ -180,6 +182,8 @@ Optimizations
 * GITHUB#14830: Optimize FieldExistsQuery to leverage index statistic in DocValuesSkipper. (Pan Guixin)
 
 * GITHUB#14851: Fewer virtual calls to enhance performance of point queries. (Ke Wei)
+
+* GITHUB#14834: Optimize CombinedFieldQuery by nextDocsAndScores. (Ge Song)
 
 * GITHUB#14772: Implement ConstantScoreScorer#nextDocsAndScores. (Ge Song)
 
