@@ -1,0 +1,23 @@
+# Banned Lucene source patterns
+# Historically implemented as regexes which are more difficult
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: java-lang-import
+language: java
+rule:
+  pattern: import java.lang.$REF
+  kind: import_declaration
+fix: ""
+severity: error
+message: unnecessary import of `$REF` from java.lang
+note: classes in java.lang are implicitly imported
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: confusing-type-inference
+language: java
+rule:
+  pattern: var $$$ = new $$$<>($$$)
+  kind: local_variable_declaration
+severity: error
+message: illegal use of `var` keyword with generic instance creation
+note: add explicit typing on the RHS when using `var`

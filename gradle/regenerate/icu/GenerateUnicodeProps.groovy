@@ -46,10 +46,10 @@ import org.apache.lucene.util.SparseFixedBitSet;
  */
 public final class UnicodeProps {
   private UnicodeProps() {}
-  
+
   /** Unicode version that was used to generate this file: {@value} */
   public static final String UNICODE_VERSION = "${unicodeVersion}";
-  
+
   /** Bitset with Unicode WHITESPACE code points. */
   public static final Bits WHITESPACE = createBits(${whitespace});
 
@@ -62,7 +62,7 @@ public final class UnicodeProps {
       public boolean get(int index) {
         return index < len && bitset.get(index);
       }
-      
+
       @Override
       public int length() {
         return ${String.format(Locale.ROOT, "0x%04X", UCharacter.MAX_CODE_POINT)} + 1;

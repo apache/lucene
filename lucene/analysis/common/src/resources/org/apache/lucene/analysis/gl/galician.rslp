@@ -1,7 +1,7 @@
 #	Steps file for the RSLP stemmer.
 
 # Step 1: Plural Reduction
-{  "Plural", 3, 1, {"s"}, 
+{  "Plural", 3, 1, {"s"},
   # bons -> bon
   {"ns",1,"n",{"luns","furatapóns","furatapons"}},
   # xamós -> xamón
@@ -195,7 +195,7 @@
   {"ella",3,"",{"alborella","bertorella","bocatella","botella","calella","cercella","gadella","grosella","lentella","movella","nocella","noitevella","parella","pelella","percebella","segorella","sabella"}}};
 
 {  "Noun", 0, 0, {},
-  # lealdade -> leal 
+  # lealdade -> leal
   {"dade",3,"",{"acridade","calidade"}},
   # clarificar -> clar
   {"ificar",2},
@@ -321,21 +321,21 @@
   # chorabamo -> chor
   {"abamo",2},
   # chorábamo -> chor
-  {"ábamo",2}, 
+  {"ábamo",2},
   # moraban -> morab
   {"aban",2},
   # andache -> and
   {"ache",2},
   # andade -> and
   {"ade",2},
-  {"an",2}, 
+  {"an",2},
   # cantando -> cant
   {"ando",2},
   # cantar -> cant
-  {"ar",2,"",{"azar","bazar","patamar"}}, 
+  {"ar",2,"",{"azar","bazar","patamar"}},
   # lembrarade -> lembra
   {"arade",2},
-  {"aramo",2}, 
+  {"aramo",2},
   {"arán",2},
   # cantaran -> cant
   {"aran",2},
@@ -347,7 +347,7 @@
   {"ariade",2},
   # cantaríade -> cant
   {"aríade",2},
-  # cantarian -> cant 
+  # cantarian -> cant
   {"arian",2},
   # cantariamo -> cant
   {"ariamo",2},
@@ -567,14 +567,14 @@
   # bebesedes -> beb
   {"esedes",1},
   # bebésedes -> beb
-  {"ésedes",1}, 
+  {"ésedes",1},
   # bebesemo -> beb
   {"esemo",1},
   # bebésemo -> beb
   {"ésemo",1},
   # bebesen -> beb
   {"esen",1},
-  # bebêssede -> beb 
+  # bebêssede -> beb
   {"êssede",1},
   # chovía -> chov
   {"ía",1},
@@ -584,7 +584,7 @@
   {"íade",1},
   # perdiamo -> perd
   {"iamo",1},
-  # fuxían -> fux 
+  # fuxían -> fux
   {"ían",1},
   # corriche -> corr
   {"iche",1},
@@ -595,7 +595,7 @@
   # parírade -> par
   {"írade",3},
   # partiramo -> part
-  {"iramo",3}, 
+  {"iramo",3},
   # fugirán -> fug
   {"irán",3},
   # viviría -> viv
@@ -605,7 +605,7 @@
   # partiríade -> part
   {"iríade",3},
   # partiriamo -> part
-  {"iriamo",3}, 
+  {"iriamo",3},
   # partirian -> part
   {"irian",3},
   # partirían -> part
@@ -625,7 +625,7 @@
   # partisen -> part
   {"isen",3},
   # partíssede -> part
-  {"íssede",3}, 
+  {"íssede",3},
   {"tizar",3,"",{"alfabetizar"}},
   {"ondo",3}};
 

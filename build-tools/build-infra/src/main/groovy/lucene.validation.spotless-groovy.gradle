@@ -29,8 +29,8 @@ plugins.apply(SpotlessPlugin.class)
 
 def spotlessGradleScriptsOptionName = "lucene.spotlessGradleScripts"
 Provider<Boolean> spotlessGradleScriptsOption = buildOptions.addBooleanOption(spotlessGradleScriptsOptionName,
-    "Enable formatting and validation of groovy/gradle scripts (you may want to turn it off locally on slow" +
-    " networks or computers)", true)
+    "Enable formatting and validation of groovy/gradle scripts (you may want to turn it on locally if you" +
+    " work with gradle/groovy scripts)", false)
 
 if (!spotlessGradleScriptsOption.get()) {
   // register empty stubs for the corresponding set of spotless tasks.
@@ -41,9 +41,10 @@ if (!spotlessGradleScriptsOption.get()) {
   ].each {taskName ->
     tasks.register(taskName, {
       doFirst {
-        logger.warn("You requested spotless to be locally turned off for gradle/groovy scripts. CI " +
+        logger.info("Spotless is turned off for gradle/groovy scripts. CI " +
             "checks may not pass if you have formatting " +
-            "differences ('${spotlessGradleScriptsOptionName}' build option is set to false).")
+            "differences (enable '${spotlessGradleScriptsOptionName}' build option to check" +
+            "and apply gradle/groovy formatting).")
       }
     })
   }
@@ -62,9 +63,9 @@ if (!spotlessGradleScriptsOption.get()) {
 }
 
 tasks.named("spotlessGradleScripts").configure {
-  mustRunAfter ":lucene:build-tools:missing-doclet:spotlessJava"
+  mustRunAfter ":lucene:build-tools:missing-doclet:applyGoogleJavaFormat"
   mustRunAfter ":lucene:build-tools:missing-doclet:renderJavadoc"
-  mustRunAfter ":lucene:build-tools:build-infra-shadow:spotlessJava"
+  mustRunAfter ":lucene:build-tools:build-infra-shadow:applyGoogleJavaFormat"
   mustRunAfter ":lucene:build-tools:build-infra-shadow:pluginUnderTestMetadata"
   mustRunAfter ":lucene:build-tools:build-infra-shadow:pluginDescriptors"
 }

@@ -13,7 +13,7 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
- -->
+-->
 
 # Contributing to Lucene Guide
 
@@ -62,7 +62,7 @@ In case your contribution fixes a bug, please create a new test case that fails 
 - *Eclipse*  - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L7)).
 - *Netbeans* - Not tested.
 
-## Benchmarking 
+## Benchmarking
 
 Use the tool suite at [luceneutil](https://github.com/mikemccand/luceneutil) to benchmark your code changes
 if you think that your change may have measurably changed the performance of a task. Apache Lucene also contains an off the shelf benchmark [module](https://github.com/apache/lucene/tree/main/lucene/benchmark).

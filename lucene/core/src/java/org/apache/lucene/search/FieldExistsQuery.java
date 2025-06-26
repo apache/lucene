@@ -21,6 +21,8 @@ import java.util.Objects;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -138,17 +140,14 @@ public class FieldExistsQuery extends Query {
           != DocValuesType.NONE) { // the field indexes doc values or points
 
         // This optimization is possible due to LUCENE-9334 enforcing a field to always use the
-        // same data structures (all or nothing). Since there's no index statistic to detect when
-        // all documents have doc values for a specific field, FieldExistsQuery can only be
-        // rewritten to MatchAllDocsQuery for doc values field, when that same field also indexes
-        // terms or point values which do have index statistics, and those statistics confirm that
-        // all documents in this segment have values terms or point values.
-
-        Terms terms = leaf.terms(field);
-        PointValues pointValues = leaf.getPointValues(field);
+        // same data structures (all or nothing).
+        final Terms terms = leaf.terms(field);
+        final PointValues pointValues = leaf.getPointValues(field);
+        final DocValuesSkipper docValuesSkipper = leaf.getDocValuesSkipper(field);
 
         if ((terms == null || terms.getDocCount() != leaf.maxDoc())
-            && (pointValues == null || pointValues.getDocCount() != leaf.maxDoc())) {
+            && (pointValues == null || pointValues.getDocCount() != leaf.maxDoc())
+            && (docValuesSkipper == null || docValuesSkipper.docCount() != leaf.maxDoc())) {
           allReadersRewritable = false;
           break;
         }
@@ -248,6 +247,9 @@ public class FieldExistsQuery extends Query {
             } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) {
               Terms terms = reader.terms(field);
               return terms == null ? 0 : terms.getDocCount();
+            } else if (fieldInfo.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
+              DocValuesSkipper docValuesSkipper = reader.getDocValuesSkipper(field);
+              return docValuesSkipper == null ? 0 : docValuesSkipper.docCount();
             }
           }
 

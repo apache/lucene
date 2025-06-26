@@ -49,6 +49,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.search.knn.TopKnnCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -1218,5 +1219,11 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       }
       return true;
     }
+  }
+
+  public void testStrategy() {
+    AbstractKnnVectorQuery vector = getKnnVectorQuery("vector", randomVector(10), 3);
+    assertNotNull(vector.getSearchStrategy());
+    assertTrue(vector.getSearchStrategy() instanceof KnnSearchStrategy.Hnsw);
   }
 }

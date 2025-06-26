@@ -32,8 +32,15 @@ import java.util.Objects;
 import java.util.OptionalLong;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
-import org.apache.lucene.store.*;
+import org.apache.lucene.store.AlreadyClosedException;
+import org.apache.lucene.store.BufferedChecksum;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.FilterDirectory;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IOContext.Context;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 
 /**
  * A {@link Directory} implementation for all Unixes and Windows that uses DIRECT I/O to bypass OS

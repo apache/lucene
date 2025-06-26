@@ -51,7 +51,7 @@ package org.apache.lucene.analysis.hu;
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import static org.apache.lucene.analysis.util.StemmerUtil.*;
+import static org.apache.lucene.analysis.util.StemmerUtil.endsWith;
 
 /**
  * Light Stemmer for Hungarian.

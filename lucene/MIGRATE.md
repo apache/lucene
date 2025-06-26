@@ -13,7 +13,7 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
- -->
+-->
 
 # Apache Lucene Migration Guide
 
@@ -44,9 +44,9 @@ In particular, this feature is used by the `DataInput#readZLong()` method. A
 practical implication is that `DataInput#readVLong()` may now read up to 10
 bytes, while it would never read more than 9 bytes in Lucene 9.x.
 
-### Changes to DataInput.readGroupVInt and readGroupVInts methods 
+### Changes to DataInput.readGroupVInt and readGroupVInts methods
 
-As part of GITHUB#13820, GITHUB#13825, GITHUB#13830, this issue corrects DataInput.readGroupVInts 
+As part of GITHUB#13820, GITHUB#13825, GITHUB#13830, this issue corrects DataInput.readGroupVInts
 to be public and not-final, allowing subclasses to override it. This change also removes the protected
 DataInput.readGroupVInt method: subclasses should delegate or reimplement it entirely.
 
@@ -66,9 +66,9 @@ RomanianAnalyzer now works with Romanian in its modern unicode form, and normali
 
 For indices newly created as of 10.0.0 onwards, IndexWriter preserves document blocks indexed via
 IndexWriter#addDocuments or IndexWriter#updateDocuments when index sorting is configured. Document blocks are maintained
-alongside their parent documents during sort and merge. The internally used parent field must be configured in 
+alongside their parent documents during sort and merge. The internally used parent field must be configured in
 IndexWriterConfig only if index sorting is used together with documents blocks. See `IndexWriterConfig#setParendField`
-for reference. 
+for reference.
 
 ### Minor API changes in MatchHighlighter and MatchRegionRetriever. (GITHUB#12881)
 
@@ -87,7 +87,7 @@ For example:
 TopDocs hits = searcher.search(query, 10);
 StoredFields storedFields = reader.storedFields();
 for (ScoreDoc hit : hits.scoreDocs) {
-  Document doc = storedFields.document(hit.doc);
+    Document doc = storedFields.document(hit.doc);
 }
 ```
 
@@ -106,7 +106,7 @@ tokenStream(Analyzer, TokenStream)` to return a custom TokenStream.
 ### PersianStemFilter is added to PersianAnalyzer (LUCENE-10312)
 
 PersianAnalyzer now includes PersianStemFilter, that would change analysis results. If you need the exactly same analysis
-behaviour as 9.x, clone `PersianAnalyzer` in 9.x or create custom analyzer by using `CustomAnalyzer` on your own. 
+behaviour as 9.x, clone `PersianAnalyzer` in 9.x or create custom analyzer by using `CustomAnalyzer` on your own.
 
 ### AutomatonQuery/CompiledAutomaton/RunAutomaton/RegExp no longer determinize (LUCENE-10010)
 
@@ -130,7 +130,7 @@ character that is not an `f` or `o`.
 ### DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery removed in favor of FieldExistsQuery (LUCENE-10436)
 
 These classes have been removed and consolidated into `FieldExistsQuery`. To migrate, caller simply replace those classes
-with the new one during object instantiation. 
+with the new one during object instantiation.
 
 ### Normalizer and stemmer classes are now package private (LUCENE-10561)
 
@@ -141,7 +141,7 @@ constants defined in them, copy the constant values and re-define them in your c
 
 The behavior of `LongRangeFacetCounts`/`DoubleRangeFacetCounts` `#getTopChildren` actually returns
 the top-n ranges ordered by count from 10.0 onwards (as described in the `Facets` API) instead
-of returning all ranges ordered by constructor-specified range order. The pre-existing behavior in 
+of returning all ranges ordered by constructor-specified range order. The pre-existing behavior in
 9.x and earlier can be retained by migrating to the new `Facets#getAllChildren` API (LUCENE-10550).
 
 ### SortedSetDocValues#NO_MORE_ORDS removed (LUCENE-10603)
@@ -164,10 +164,10 @@ Callers should remove the parameter when calling this method.
 The former `DaciukMihovAutomatonBuilder#build` functionality is exposed through `Automata#makeStringUnion`.
 Users should be able to directly migrate to the `Automata` static method as a 1:1 replacement.
 
-### Remove deprecated IndexSearcher#getExecutor (GITHUB#12580) 
+### Remove deprecated IndexSearcher#getExecutor (GITHUB#12580)
 
-The deprecated getter for the `Executor` that was optionally provided to the `IndexSearcher` constructors 
-has been removed. Users that want to execute concurrent tasks should rely instead on the `TaskExecutor` 
+The deprecated getter for the `Executor` that was optionally provided to the `IndexSearcher` constructors
+has been removed. Users that want to execute concurrent tasks should rely instead on the `TaskExecutor`
 that the searcher holds, retrieved via `IndexSearcher#getTaskExecutor`.
 
 ### CheckIndex params -slow and -fast are deprecated, replaced by -level X (GITHUB#11023)
@@ -256,17 +256,17 @@ For example
 public class CustomCollectorManager implements CollectorManager<CustomCollector, List<Object>> {
     @Override
     public CustomCollector newCollector() throws IOException {
-      return new CustomCollector();
+        return new CustomCollector();
     }
 
     @Override
     public List<Object> reduce(Collection<CustomCollector> collectors) throws IOException {
-      List<Object> all = new ArrayList<>();
-      for (CustomCollector c : collectors) {
-        all.addAll(c.getResult());
-      }
+        List<Object> all = new ArrayList<>();
+        for (CustomCollector c : collectors) {
+            all.addAll(c.getResult());
+        }
 
-      return all;
+        return all;
     }
 }
 
@@ -428,8 +428,8 @@ These packages in the `lucene-backwards-codecs` module are renamed:
 
 ### JapanesePartOfSpeechStopFilterFactory loads default stop tags if "tags" argument not specified (LUCENE-9567)
 
-Previously, `JapanesePartOfSpeechStopFilterFactory` added no filter if `args` didn't include "tags". Now, it will load 
-the default stop tags returned by `JapaneseAnalyzer.getDefaultStopTags()` (i.e. the tags from`stoptags.txt` in the 
+Previously, `JapanesePartOfSpeechStopFilterFactory` added no filter if `args` didn't include "tags". Now, it will load
+the default stop tags returned by `JapaneseAnalyzer.getDefaultStopTags()` (i.e. the tags from`stoptags.txt` in the
 `lucene-analyzers-kuromoji` jar.)
 
 ### ICUCollationKeyAnalyzer is renamed (LUCENE-9558)
@@ -463,12 +463,12 @@ is split into `org.apache.lucene.analysis.classic` and `org.apache.lucene.analys
 
 ### RegExpQuery now rejects invalid backslashes (LUCENE-9370)
 
-We now follow the [Java rules](https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html#bs) for accepting backslashes. 
-Alphabetic characters other than s, S, w, W, d or D that are preceded by a backslash are considered illegal syntax and will throw an exception.  
+We now follow the [Java rules](https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html#bs) for accepting backslashes.
+Alphabetic characters other than s, S, w, W, d or D that are preceded by a backslash are considered illegal syntax and will throw an exception.
 
 ### RegExp certain regular expressions now match differently (LUCENE-9336)
 
-The commonly used regular expressions \w \W \d \D \s and \S now work the same way [Java Pattern](https://docs.oracle.com/javase/tutorial/essential/regex/pre_char_classes.html#CHART) matching works. Previously these expressions were (mis)interpreted as searches for the literal characters w, d, s etc. 
+The commonly used regular expressions \w \W \d \D \s and \S now work the same way [Java Pattern](https://docs.oracle.com/javase/tutorial/essential/regex/pre_char_classes.html#CHART) matching works. Previously these expressions were (mis)interpreted as searches for the literal characters w, d, s etc.
 
 ### NGramFilterFactory "keepShortTerm" option was fixed to "preserveOriginal" (LUCENE-9259)
 
@@ -537,7 +537,7 @@ factory classes should implement it in the following way:
 ```java
     /** Default ctor for compatibility with SPI */
     public StandardTokenizerFactory() {
-      throw defaultCtorException();
+        throw defaultCtorException();
     }
 ```
 
@@ -631,8 +631,8 @@ know the maximum score for a query, the recommended approach is to run a
 separate query:
 
 ```java
-  TopDocs topHits = searcher.search(query, 1);
-  float maxScore = topHits.scoreDocs.length == 0 ? Float.NaN : topHits.scoreDocs[0].score;
+TopDocs topHits = searcher.search(query, 1);
+float maxScore = topHits.scoreDocs.length == 0 ? Float.NaN : topHits.scoreDocs[0].score;
 ```
 
 Thanks to other optimizations that were added to Lucene 8, this query will be
@@ -666,7 +666,7 @@ actual hit count.
 
 This RAM-based directory implementation is an old piece of code that uses inefficient
 thread synchronization primitives and can be confused as "faster" than the NIO-based
-`MMapDirectory`. It is deprecated and scheduled for removal in future versions of 
+`MMapDirectory`. It is deprecated and scheduled for removal in future versions of
 Lucene.
 
 ### LeafCollector.setScorer() now takes a Scorable rather than a Scorer (LUCENE-6228)
@@ -681,7 +681,7 @@ now takes a `Scorable`, an abstract class that scorers can extend, with methods
 If a custom `Scorer` implementation does not have an associated `Weight`, it can probably
 be replaced with a `Scorable` instead.
 
-### Suggesters now return Long instead of long for weight() during indexing, and double instead of long at suggest time 
+### Suggesters now return Long instead of long for weight() during indexing, and double instead of long at suggest time
 
 Most code should just require recompilation, though possibly requiring some added casts.
 
@@ -722,7 +722,7 @@ by the `LegacyBM25Similarity` class which can be found in the lucene-misc jar.
 
 ### IndexWriter.maxDoc()/numDocs() removed in favor of IndexWriter.getDocStats()
 
-`IndexWriter.getDocStats()` should be used instead of `maxDoc()` / `numDocs()` which offers a consistent 
+`IndexWriter.getDocStats()` should be used instead of `maxDoc()` / `numDocs()` which offers a consistent
 view on document stats. Previously calling two methods in order to get point in time stats was subject
 to concurrent changes.
 
@@ -754,21 +754,21 @@ that the same data is stored in these points and doc values.
 
 ### Require consistency between data-structures on a per-field basis
 
-The per field data-structures are implicitly defined by the first document 
-indexed that contains a certain field. Once defined, the per field 
-data-structures are not changeable for the whole index. For example, if you 
-first index a document where a certain field is indexed with doc values and 
+The per field data-structures are implicitly defined by the first document
+indexed that contains a certain field. Once defined, the per field
+data-structures are not changeable for the whole index. For example, if you
+first index a document where a certain field is indexed with doc values and
 points, all subsequent documents containing this field must also have this
 field indexed with only doc values and points.
 
-This also means that an index created in the previous version that doesn't 
-satisfy this requirement can not be updated. 
+This also means that an index created in the previous version that doesn't
+satisfy this requirement can not be updated.
 
 ### Doc values updates are allowed only for doc values only fields
 
-Previously IndexWriter could update doc values for a binary or numeric docValue 
-field that was also indexed with other data structures (e.g. postings, vectors 
-etc). This is not allowed anymore. A field must be indexed with only doc values 
+Previously IndexWriter could update doc values for a binary or numeric docValue
+field that was also indexed with other data structures (e.g. postings, vectors
+etc). This is not allowed anymore. A field must be indexed with only doc values
 to be allowed for doc values updates in `IndexWriter`.
 
 ### SortedDocValues no longer extends BinaryDocValues (LUCENE-9796)
@@ -826,83 +826,83 @@ classes were `@Deprecated` starting with 9.0. Users are encouraged to rely on th
 taxonomy facet encodings where possible. If custom formats are needed, users will need
 to manage the indexed data on their own and create new `Facet` implementations to use it.
 
-### `Weight#scorerSupplier` is declared abstract, and `Weight#scorer` methd is marked final 
+### `Weight#scorerSupplier` is declared abstract, and `Weight#scorer` methd is marked final
 
-The `Weight#scorerSupplier` method is now declared abstract, compelling child classes to implement the ScorerSupplier 
-interface. Additionally, `Weight#scorer` is now declared final, with its implementation being delegated to 
+The `Weight#scorerSupplier` method is now declared abstract, compelling child classes to implement the ScorerSupplier
+interface. Additionally, `Weight#scorer` is now declared final, with its implementation being delegated to
 `Weight#scorerSupplier` for the scorer.
 
 ### Reference to `weight` is removed from Scorer (GITHUB#13410)
 
-The `weight` has been removed from the Scorer class. Consequently, the constructor, `Scorer(Weight)`,and a getter, 
-`Scorer#getWeight`, has also been eliminated. References to weight have also been removed from nearly all the subclasses 
+The `weight` has been removed from the Scorer class. Consequently, the constructor, `Scorer(Weight)`,and a getter,
+`Scorer#getWeight`, has also been eliminated. References to weight have also been removed from nearly all the subclasses
 of Scorer, including ConstantScoreScorer, TermScorer, and others.
 
-Additionally, several APIs have been modified to remove the weight reference, as it is no longer necessary. 
-Specifically, the method `FunctionValues#getScorer(Weight weight, LeafReaderContext readerContext)` has been updated to 
+Additionally, several APIs have been modified to remove the weight reference, as it is no longer necessary.
+Specifically, the method `FunctionValues#getScorer(Weight weight, LeafReaderContext readerContext)` has been updated to
 `FunctionValues#getScorer(LeafReaderContext readerContext)`.
 
-Callers must now keep track of the Weight instance that created the Scorer if they need it, instead of relying on 
+Callers must now keep track of the Weight instance that created the Scorer if they need it, instead of relying on
 Scorer.
 
 ### `FacetsCollector#search` utility methods moved and updated
 
-The static `search` methods exposed by `FacetsCollector` have been moved to `FacetsCollectorManager`. 
-Furthermore, they take a `FacetsCollectorManager` last argument in place of a `Collector` so that they support 
-intra query concurrency. The return type has also be updated to `FacetsCollectorManager.FacetsResult` which includes 
+The static `search` methods exposed by `FacetsCollector` have been moved to `FacetsCollectorManager`.
+Furthermore, they take a `FacetsCollectorManager` last argument in place of a `Collector` so that they support
+intra query concurrency. The return type has also be updated to `FacetsCollectorManager.FacetsResult` which includes
 both `TopDocs` as well as facets results included in a reduced `FacetsCollector` instance.
 
-### `SearchWithCollectorTask` no longer supports the `collector.class` config parameter 
+### `SearchWithCollectorTask` no longer supports the `collector.class` config parameter
 
 `collector.class` used to allow users to load a custom collector implementation. `collector.manager.class`
 replaces it by allowing users to load a custom collector manager instead.
 
 ### BulkScorer#score(LeafCollector collector, Bits acceptDocs) removed
 
-Use `BulkScorer#score(LeafCollector collector, Bits acceptDocs, int min, int max)` instead. In order to score the 
-entire leaf, provide `0` as min and `DocIdSetIterator.NO_MORE_DOCS` as max. `BulkScorer` subclasses that override 
+Use `BulkScorer#score(LeafCollector collector, Bits acceptDocs, int min, int max)` instead. In order to score the
+entire leaf, provide `0` as min and `DocIdSetIterator.NO_MORE_DOCS` as max. `BulkScorer` subclasses that override
 such method need to instead override the method variant that takes the range of doc ids as well as arguments.
 
 ### CollectorManager#newCollector and Collector#getLeafCollector contract
 
-With the introduction of intra-segment query concurrency support, multiple `LeafCollector`s may be requested for the 
-same `LeafReaderContext` via `Collector#getLeafCollector(LeafReaderContext)` across the different `Collector` instances 
+With the introduction of intra-segment query concurrency support, multiple `LeafCollector`s may be requested for the
+same `LeafReaderContext` via `Collector#getLeafCollector(LeafReaderContext)` across the different `Collector` instances
 returned by multiple `CollectorManager#newCollector` calls. Any logic or computation that needs to happen
-once per segment requires specific handling in the collector manager implementation. See `TotalHitCountCollectorManager` 
-as an example. Individual collectors don't need to be adapted as a specific `Collector` instance will still see a given 
-`LeafReaderContext` once, given that it is not possible to add more than one partition of the same segment to the same 
+once per segment requires specific handling in the collector manager implementation. See `TotalHitCountCollectorManager`
+as an example. Individual collectors don't need to be adapted as a specific `Collector` instance will still see a given
+`LeafReaderContext` once, given that it is not possible to add more than one partition of the same segment to the same
 leaf slice.
 
 ### Weight#scorer, Weight#bulkScorer and Weight#scorerSupplier contract
 
-With the introduction of intra-segment query concurrency support, multiple `Scorer`s, `ScorerSupplier`s or `BulkScorer`s 
-may be requested for the same `LeafReaderContext` instance as part of a single search call. That may happen concurrently 
-from separate threads each searching a specific doc id range of the segment. `Weight` implementations that rely on the 
-assumption that a scorer, bulk scorer or scorer supplier for a given `LeafReaderContext` is requested once per search 
+With the introduction of intra-segment query concurrency support, multiple `Scorer`s, `ScorerSupplier`s or `BulkScorer`s
+may be requested for the same `LeafReaderContext` instance as part of a single search call. That may happen concurrently
+from separate threads each searching a specific doc id range of the segment. `Weight` implementations that rely on the
+assumption that a scorer, bulk scorer or scorer supplier for a given `LeafReaderContext` is requested once per search
 need updating.
 
 ### Signature of IndexSearcher#searchLeaf changed
 
-With the introduction of intra-segment query concurrency support, the `IndexSearcher#searchLeaf(LeafReaderContext ctx, Weight weight, Collector collector)` 
-method now accepts two additional int arguments to identify the min/max range of doc ids that will be searched in this 
+With the introduction of intra-segment query concurrency support, the `IndexSearcher#searchLeaf(LeafReaderContext ctx, Weight weight, Collector collector)`
+method now accepts two additional int arguments to identify the min/max range of doc ids that will be searched in this
 leaf partition`: IndexSearcher#searchLeaf(LeafReaderContext ctx, int minDocId, int maxDocId, Weight weight, Collector collector)`.
 Subclasses of `IndexSearcher` that call or override the `searchLeaf` method need to be updated accordingly.
 
 ### Signature of static IndexSearch#slices method changed
 
-The static `IndexSearcher#slices(List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice)` 
+The static `IndexSearcher#slices(List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice)`
 method now supports an additional 4th and last argument to optionally enable creating segment partitions:
 `IndexSearcher#slices(List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice, boolean allowSegmentPartitions)`
 
 ### TotalHitCountCollectorManager constructor
 
-`TotalHitCountCollectorManager` now requires that an array of `LeafSlice`s, retrieved via `IndexSearcher#getSlices`, 
-is provided to its constructor. Depending on whether segment partitions are present among slices, the manager can 
+`TotalHitCountCollectorManager` now requires that an array of `LeafSlice`s, retrieved via `IndexSearcher#getSlices`,
+is provided to its constructor. Depending on whether segment partitions are present among slices, the manager can
 optimize the type of collectors it creates and exposes via `newCollector`.
 
 ### `IndexSearcher#search(List<LeafReaderContext>, Weight, Collector)` removed
 
-The protected `IndexSearcher#search(List<LeafReaderContext> leaves, Weight weight, Collector collector)` method has been 
+The protected `IndexSearcher#search(List<LeafReaderContext> leaves, Weight weight, Collector collector)` method has been
 removed in favour of the newly introduced `search(LeafReaderContextPartition[] partitions, Weight weight, Collector collector)`.
 `IndexSearcher` subclasses that override this method need to instead override the new method.
 

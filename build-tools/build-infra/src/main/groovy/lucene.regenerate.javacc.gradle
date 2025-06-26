@@ -169,9 +169,10 @@ configure(project(":lucene:queryparser")) {
               "package org.apache.lucene.queryparser.flexible.standard.parser;", '''\
             package org.apache.lucene.queryparser.flexible.standard.parser;
 
-            import org.apache.lucene.queryparser.flexible.messages.*;
-            import org.apache.lucene.queryparser.flexible.core.*;
-            import org.apache.lucene.queryparser.flexible.core.messages.*;
+            import org.apache.lucene.queryparser.flexible.core.QueryNodeParseException;
+            import org.apache.lucene.queryparser.flexible.core.messages.QueryParserMessages;
+            import org.apache.lucene.queryparser.flexible.messages.Message;
+            import org.apache.lucene.queryparser.flexible.messages.MessageImpl;
             ''')
 
           // Modify constructors and code bits
@@ -234,8 +235,7 @@ configure(project(":lucene:queryparser")) {
 
     def extraConfig = [
       andThenTasks: [
-        "spotlessJava",
-        "spotlessJavaApply"
+        "applyGoogleJavaFormat"
       ],
       mustRunBefore: ["compileJava"]
     ]
