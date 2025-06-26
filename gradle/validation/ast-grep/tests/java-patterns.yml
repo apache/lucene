@@ -29,6 +29,14 @@ invalid:
   - |
     package foo;
     /* BLAH BLAH Unless required by applicable law BLAH BLAH */
+  - |
+    package foo;
+    import bar;
+    /* BLAH BLAH Unless required by applicable law BLAH BLAH */
+  - |
+    /* BLAH BLAH Unless required by applicable law BLAH BLAH */
+    package foo;
+    /* BLAH BLAH Unless required by applicable law BLAH BLAH */
 valid:
   - |
     /* BLAH BLAH Unless required by applicable law BLAH BLAH */
