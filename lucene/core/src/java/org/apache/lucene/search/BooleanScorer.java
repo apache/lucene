@@ -48,7 +48,7 @@ final class BooleanScorer extends BulkScorer {
   final DisiWrapper[] leads;
   final PriorityQueue<DisiWrapper> head;
   final PriorityQueue<DisiWrapper> tail;
-  final Score score = new Score();
+  final SimpleScorable score = new SimpleScorable();
   final int minShouldMatch;
   final long cost;
   final boolean needsScores;

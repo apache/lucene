@@ -41,7 +41,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   private final Scorable[] scorables;
   private final DocIdSetIterator[] iterators;
   private final DocIdSetIterator lead;
-  private final DocAndScore scorable = new DocAndScore();
+  private final SimpleScorable scorable = new SimpleScorable();
   private final double[] sumOfOtherClauses;
   private final int maxDoc;
   private final DocAndFloatFeatureBuffer docAndScoreBuffer = new DocAndFloatFeatureBuffer();
@@ -202,21 +202,5 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   @Override
   public long cost() {
     return lead.cost();
-  }
-
-  private static class DocAndScore extends Scorable {
-
-    float score;
-    float minCompetitiveScore;
-
-    @Override
-    public float score() throws IOException {
-      return score;
-    }
-
-    @Override
-    public void setMinCompetitiveScore(float minScore) throws IOException {
-      this.minCompetitiveScore = minScore;
-    }
   }
 }

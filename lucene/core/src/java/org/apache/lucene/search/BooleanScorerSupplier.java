@@ -255,7 +255,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
           throws IOException {
         final LeafCollector noScoreCollector =
             new LeafCollector() {
-              Score fake = new Score();
+              SimpleScorable fake = new SimpleScorable();
 
               @Override
               public void setScorer(Scorable scorer) throws IOException {

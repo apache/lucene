@@ -43,8 +43,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
   // The minimum value of minCompetitiveScore that would produce a more favorable partitioning.
   float nextMinCompetitiveScore;
   private final long cost;
-  float minCompetitiveScore;
-  private final Score scorable = new Score();
+  final SimpleScorable scorable = new SimpleScorable();
   final double[] maxScoreSums;
   private final DisiWrapper filter;
 
@@ -130,7 +129,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
       while (top.doc < outerWindowMax) {
         scoreInnerWindow(collector, acceptDocs, outerWindowMax, filter);
         top = essentialQueue.top();
-        if (minCompetitiveScore >= nextMinCompetitiveScore) {
+        if (scorable.minCompetitiveScore >= nextMinCompetitiveScore) {
           // The minimum competitive score increased substantially, so we can now partition scorers
           // in a more favorable way.
           break;
@@ -255,9 +254,12 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
       for (int i = allScorers.length - 2; i >= firstRequiredScorer; --i) {
 
-        if (minCompetitiveScore > 0) {
+        if (scorable.minCompetitiveScore > 0) {
           ScorerUtil.filterCompetitiveHits(
-              docAndScoreAccBuffer, maxScoreSums[i], minCompetitiveScore, allScorers.length);
+              docAndScoreAccBuffer,
+              maxScoreSums[i],
+              scorable.minCompetitiveScore,
+              allScorers.length);
         }
 
         DisiWrapper scorer = allScorers[i];
@@ -371,10 +373,10 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
     for (int i = numNonEssentialClauses - 1; i >= 0; --i) {
       DisiWrapper scorer = allScorers[i];
-      assert minCompetitiveScore > 0
+      assert scorable.minCompetitiveScore > 0
           : "All clauses are essential if minCompetitiveScore is equal to zero";
       ScorerUtil.filterCompetitiveHits(
-          buffer, maxScoreSums[i], minCompetitiveScore, allScorers.length);
+          buffer, maxScoreSums[i], scorable.minCompetitiveScore, allScorers.length);
       ScorerUtil.applyOptionalClause(buffer, scorer.iterator, scorer.scorable);
       scorer.doc = scorer.iterator.docID();
     }
@@ -413,7 +415,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
       double newMaxScoreSum = maxScoreSum + w.maxWindowScore;
       float maxScoreSumFloat =
           (float) MathUtil.sumUpperBound(newMaxScoreSum, firstEssentialScorer + 1);
-      if (maxScoreSumFloat < minCompetitiveScore) {
+      if (maxScoreSumFloat < scorable.minCompetitiveScore) {
         maxScoreSum = newMaxScoreSum;
         allScorers[firstEssentialScorer] = w;
         maxScoreSums[firstEssentialScorer] = maxScoreSum;
@@ -451,7 +453,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
         if (firstRequiredScorer > 1) {
           maxPossibleScoreWithoutPreviousClause += maxScoreSums[firstRequiredScorer - 2];
         }
-        if ((float) maxPossibleScoreWithoutPreviousClause >= minCompetitiveScore) {
+        if ((float) maxPossibleScoreWithoutPreviousClause >= scorable.minCompetitiveScore) {
           break;
         }
         // The sum of maximum scores ignoring the previous clause is less than the minimum
@@ -484,20 +486,5 @@ final class MaxScoreBulkScorer extends BulkScorer {
   @Override
   public long cost() {
     return cost;
-  }
-
-  private class Score extends Scorable {
-
-    float score;
-
-    @Override
-    public float score() {
-      return score;
-    }
-
-    @Override
-    public void setMinCompetitiveScore(float minScore) throws IOException {
-      MaxScoreBulkScorer.this.minCompetitiveScore = minScore;
-    }
   }
 }
