@@ -27,8 +27,8 @@ id: javadoc-style-license-header
 language: java
 rule:
   all:
-   - matches: java-license
-   - matches: javadoc
+    - matches: java-license
+    - matches: javadoc
   pattern: $TEXT
 # remove extraneous stars
 transform:
