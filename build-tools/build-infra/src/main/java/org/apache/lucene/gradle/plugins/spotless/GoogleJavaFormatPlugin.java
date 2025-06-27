@@ -84,21 +84,15 @@ public class GoogleJavaFormatPlugin implements Plugin<Project> {
     for (var t : List.of(applyTask, checkTask)) {
       t.configure(
           task -> {
-            String srcDir =
+            var srcTree =
                 project.getPath().equals(":lucene:build-tools:build-infra-shadow")
-                    ? "build-tools/build-infra/src"
-                    : "src";
+                    ? project.getRootProject().fileTree("build-tools/build-infra/src")
+                    : project.fileTree("src");
 
-            task.getSourceFiles()
-                .setFrom(
-                    project
-                        .getRootProject()
-                        .fileTree(
-                            srcDir,
-                            ftree -> {
-                              ftree.include("**/*.java");
-                              configureExclusions(project, ftree);
-                            }));
+            srcTree.include("**/*.java");
+            configureExclusions(project, srcTree);
+
+            task.getSourceFiles().setFrom(srcTree);
           });
     }
   }
