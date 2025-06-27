@@ -90,6 +90,13 @@ public class TestFunctionQuerySort extends LuceneTestCase {
     vssf = vssf.rewrite(searcher);
     assertEquals(sf, vssf);
 
+    // Test the inverse
+    vs = new LongFieldSource("long_field");
+    sf = new SortField("long_field", Type.LONG, reverse);
+    assertEquals(sf.inverseSort().rewrite(searcher), sf.rewrite(searcher).inverseSort());
+    vssf = vs.getSortField(reverse);
+    assertEquals(vssf.inverseSort().rewrite(searcher), vssf.rewrite(searcher).inverseSort());
+
     reader.close();
     dir.close();
   }
@@ -151,7 +158,33 @@ public class TestFunctionQuerySort extends LuceneTestCase {
     for (ScoreDoc hit : hits.scoreDocs) {
       int val = Integer.parseInt(reader.storedFields().document(hit.doc).get("value"));
       assertTrue(afterValue <= val);
-      assertFalse(hit.doc == afterHit.doc);
+      assertNotEquals(hit.doc, afterHit.doc);
+    }
+
+    // Now test the inverse Sort
+    hits = searcher.search(q, reader.maxDoc(), orderBy.inverse());
+    assertEquals(NUM_VALS, hits.scoreDocs.length);
+    // Verify that sorting works in general
+    i = NUM_VALS;
+    for (ScoreDoc hit : hits.scoreDocs) {
+      int valueFromDoc = Integer.parseInt(reader.storedFields().document(hit.doc).get("value"));
+      assertEquals(i--, valueFromDoc);
+    }
+
+    // Now get hits after hit #2 using IS.searchAfter()
+    afterIdx = 1;
+    afterHit = (FieldDoc) hits.scoreDocs[afterIdx];
+    hits = searcher.searchAfter(afterHit, q, reader.maxDoc(), orderBy.inverse());
+
+    // Expected # of hits: NUM_VALS - 2
+    assertEquals(NUM_VALS - (afterIdx + 1), hits.scoreDocs.length);
+
+    // Verify that hits are actually "after"
+    afterValue = ((Double) afterHit.fields[0]).intValue();
+    for (ScoreDoc hit : hits.scoreDocs) {
+      int val = Integer.parseInt(reader.storedFields().document(hit.doc).get("value"));
+      assertTrue(afterValue >= val);
+      assertNotEquals(hit.doc, afterHit.doc);
     }
     reader.close();
     dir.close();
