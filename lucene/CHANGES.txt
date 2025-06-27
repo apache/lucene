@@ -7,7 +7,7 @@ http://s.apache.org/luceneversions
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#14858: Ensure vector queries handle advanceShallow correctly (Ben Trent)
 
 ======================== Lucene 9.12.2 =======================
 

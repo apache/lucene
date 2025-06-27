@@ -437,6 +437,9 @@ abstract class AbstractKnnVectorQuery extends Query {
 
             @Override
             public int advanceShallow(int docid) {
+              if (docid == NO_MORE_DOCS) {
+                return NO_MORE_DOCS;
+              }
               int start = Math.max(upTo, lower);
               int docidIndex = Arrays.binarySearch(docs, start, upper, docid + context.docBase);
               if (docidIndex < 0) {
