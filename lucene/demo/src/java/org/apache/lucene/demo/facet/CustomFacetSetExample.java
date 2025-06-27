@@ -24,7 +24,6 @@ import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FloatPoint;
-import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.facet.FacetResult;
@@ -51,6 +50,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermInSetQuery;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NumericUtils;
 
@@ -351,13 +351,14 @@ public class CustomFacetSetExample {
     }
 
     /**
-     * An implementation of {@link FacetSetDecoder#decode(BytesRef, int, long[])} for {@link
-     * TemperatureReadingFacetSet}.
+     * An implementation of {@link FacetSetDecoder#decode(RandomAccessInput, long, long[])} for
+     * {@link TemperatureReadingFacetSet}.
      */
-    public static int decodeTemperatureReading(BytesRef bytesRef, int start, long[] dest) {
-      dest[0] = LongPoint.decodeDimension(bytesRef.bytes, start);
+    public static int decodeTemperatureReading(RandomAccessInput input, long start, long[] dest)
+        throws IOException {
+      dest[0] = FacetSetDecoder.sortableBytesToLong(input, start);
       // Decode the degrees as a sortable integer.
-      dest[1] = IntPoint.decodeDimension(bytesRef.bytes, start + Long.BYTES);
+      dest[1] = FacetSetDecoder.sortableBytesToInt(input, start + Long.BYTES);
       return SIZE_PACKED_BYTES;
     }
   }
