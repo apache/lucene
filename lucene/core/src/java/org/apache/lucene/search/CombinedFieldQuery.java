@@ -37,6 +37,7 @@ import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.DFRSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -444,6 +445,24 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     @Override
     public float getMaxScore(int upTo) throws IOException {
       return maxScore;
+    }
+
+    @Override
+    public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
+        throws IOException {
+      int batchSize = 64; // arbitrary
+      buffer.growNoCopy(batchSize);
+      int size = 0;
+      DocIdSetIterator iterator = iterator();
+      for (int doc = docID(); doc < upTo && size < batchSize; doc = iterator.nextDoc()) {
+        if (liveDocs == null || liveDocs.get(doc)) {
+          buffer.docs[size] = doc;
+          buffer.features[size] = freq();
+          ++size;
+        }
+      }
+      buffer.size = size;
+      simScorer.scoreRange(buffer);
     }
   }
 }
