@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+import org.apache.lucene.gradle.plugins.spotless.GoogleJavaFormatPlugin
+
 allprojects { project ->
   if (['src/java', 'src/test'].any {path ->
         project.file(path).exists()
@@ -30,5 +32,6 @@ allprojects { project ->
 
     plugins.apply("lucene.validation.forbidden-apis")
     plugins.apply("lucene.validation.ecj-lint")
+    plugins.apply(GoogleJavaFormatPlugin)
   }
 }
