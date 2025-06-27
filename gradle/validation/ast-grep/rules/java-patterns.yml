@@ -26,8 +26,9 @@ note: add explicit typing on the RHS when using `var`
 id: javadoc-style-license-header
 language: java
 rule:
-  matches: java-license
-  regex: "^/[*][*]"
+  all:
+   - matches: java-license
+   - matches: javadoc
   pattern: $TEXT
 # remove extraneous stars
 transform:
@@ -51,3 +52,42 @@ rule:
     stopBy: end
 severity: error
 message: license should be before `package` declaration
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: javadoc-author-tag
+language: java
+rule:
+  matches: javadoc
+  regex: "@author"
+severity: error
+message: javadoc `@author` tags should not be used
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: nocommit-comment
+language: java
+rule:
+  regex: "nocommit:"
+  any:
+    - kind: line_comment
+    - kind: block_comment
+severity: error
+message: all `nocommit:` comments must be resolved
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: tood-comment
+language: java
+rule:
+  regex: "TOOD:"
+  any:
+    - kind: line_comment
+    - kind: block_comment
+  pattern: $TEXT
+transform:
+  NEWTEXT:
+    replace:
+      replace: "TOOD:"
+      by: "TODO:"
+      source: $TEXT
+fix: $NEWTEXT
+severity: error
+message: please write as `TODO:` instead
