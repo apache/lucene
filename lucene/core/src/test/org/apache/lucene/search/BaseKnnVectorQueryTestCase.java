@@ -272,6 +272,33 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
+  public void testAdvanceAdverseShallow() throws IOException {
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        for (int j = 0; j < 20; j++) {
+          Document doc = new Document();
+          doc.add(getKnnVectorField("field", new float[] {j, j}));
+          w.addDocument(doc);
+          if (randomBoolean()) {
+            w.commit();
+          }
+        }
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {2, 3}, 3);
+        Query dasq = query.rewrite(searcher);
+        Weight w = dasq.createWeight(searcher, ScoreMode.COMPLETE, 1);
+        for (LeafReaderContext ctx : reader.leaves()) {
+          Scorer scorer = w.scorer(ctx);
+          if (scorer != null) {
+            assertEquals(NO_MORE_DOCS, scorer.advanceShallow(NO_MORE_DOCS));
+          }
+        }
+      }
+    }
+  }
+
   public void testAdvanceShallow() throws IOException {
     try (Directory d = newDirectory()) {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
