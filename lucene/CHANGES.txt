@@ -189,6 +189,8 @@ Optimizations
 
 * GITHUB#14772: Implement ConstantScoreScorer#nextDocsAndScores. (Ge Song)
 
+* GITHUB#14806: Utilize docIdRunEnd on ReqExclBulkScorer. (Ge Song)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
