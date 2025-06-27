@@ -124,15 +124,7 @@ public class HighFreqTerms {
       }
     }
 
-    TermStats[] result = new TermStats[tiq.size()];
-    // we want highest first so we read the queue and populate the array
-    // starting at the end and work backwards
-    int count = tiq.size() - 1;
-    while (tiq.size() != 0) {
-      result[count] = tiq.pop();
-      count--;
-    }
-    return result;
+    return tiq.drainToArrayHighestFirst(TermStats[]::new);
   }
 
   /** Compares terms by docTermFreq */
