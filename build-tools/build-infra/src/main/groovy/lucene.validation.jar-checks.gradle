@@ -63,8 +63,6 @@ subprojects {
     jarValidation
   }
 
-  // For Java projects, add all dependencies from the following configurations
-  // to jar validation
   plugins.withType(JavaPlugin).configureEach {
     configurations {
       jarValidation {
@@ -75,73 +73,6 @@ subprojects {
       }
     }
   }
-
-  // Collects dependency JAR information for a project and saves it in
-  // project.jarInfos. Each dependency has a map of attributes
-  // which make it easier to process it later on (name, hash, origin module,
-  // see the code below for details).
-  def collectJarInfos = tasks.register("collectJarInfos", {
-    dependsOn configurations.jarValidation
-
-    doFirst {
-      // When gradle resolves a configuration it applies exclude rules from inherited configurations
-      // globally (this seems like a bug to me). So we process each inherited configuration independently
-      // but make sure there are no other dependencies on jarValidation itself.
-      if (!configurations.jarValidation.dependencies.isEmpty()) {
-        throw new GradleException("jarValidation must only inherit from other configurations (can't have its own dependencies).")
-      }
-
-      def excludeRules = configurations.jarValidation.excludeRules
-
-      ArrayDeque<ResolvedDependency> queue = new ArrayDeque<>()
-      configurations.jarValidation.extendsFrom.each { conf ->
-        if (excludeRules) {
-          conf = conf.copyRecursive()
-          conf.canBeResolved = true
-          conf.canBeConsumed = true
-          conf.excludeRules = excludeRules
-        }
-        if (conf.canBeResolved) {
-          queue.addAll(conf.resolvedConfiguration.firstLevelModuleDependencies)
-        }
-      }
-
-      def visited = new HashSet<>()
-      def seenDeps = new HashSet<>()
-      def infos = []
-
-      while (!queue.isEmpty()) {
-        def dep = queue.removeFirst()
-        seenDeps.add(dep)
-
-        // Skip any artifacts from Lucene modules.
-        if (!dep.moduleGroup.startsWith("org.apache.lucene")) {
-          // Make sure we don't keep visiting the same children over and over again
-          dep.children.each { child ->
-            if (!seenDeps.contains(child)) {
-              queue.add(child)
-            }
-          }
-          def digestUtils = new DigestUtils(DigestUtils.getSha1Digest())
-          dep.moduleArtifacts.each { resolvedArtifact ->
-            def file = resolvedArtifact.file
-            if (visited.add(file)) {
-              infos.add(new JarInfo(
-                  resolvedArtifact.name,
-                  file.toPath().getFileName().toString(),
-                  file,
-                  resolvedArtifact.moduleVersion,
-                  provider {digestUtils.digestAsHex(file).trim()},
-              ))
-            }
-          }
-        }
-      }
-
-      project.jarInfos.addAll(infos.sort {a, b -> "${a.module}".compareTo("${b.module}")})
-      println "{project.jarInfos} = ${project.jarInfos}"
-    }
-  })
 
   // Verifies that each JAR has a corresponding checksum and that it matches actual JAR available for this dependency.
   tasks.register("validateJarChecksums", {
@@ -159,7 +90,7 @@ subprojects {
         } else {
           dep.addReferencedFile(expectedChecksumFile)
           def expected = expectedChecksumFile.getText("UTF-8").trim()
-          def actual = dep.checksum.get()
+          def actual = dep.checksum
           if (expected.compareToIgnoreCase(actual) != 0) {
             errors << "Dependency checksum mismatch ('${dep.module}'), expected it to be: ${expected}, but was: ${actual}"
           } else {
@@ -234,7 +165,7 @@ configure(project(":lucene")) {
       def updated = []
       jarInfoTasks.collectMany {task -> task.project.jarInfos}.each {dep ->
         def expectedChecksumFile = file("${licensesDir}/${dep.jarName}.sha1")
-        def actual = dep.checksum.get()
+        def actual = dep.checksum
         if (expectedChecksumFile.exists()) {
           def expected = expectedChecksumFile.getText("UTF-8").trim()
           if (expected.compareToIgnoreCase(actual) == 0) {

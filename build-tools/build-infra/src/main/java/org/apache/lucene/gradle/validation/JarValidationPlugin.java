@@ -18,36 +18,82 @@
 package org.apache.lucene.gradle.validation;
 
 import java.util.ArrayList;
+import java.util.List;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.plugins.JavaPlugin;
+import org.gradle.api.plugins.JavaPluginExtension;
 
 public abstract class JarValidationPlugin implements Plugin<Project> {
 
   @Override
   public void apply(Project project) {
-    ArrayList<JarInfo> jarInfos = new ArrayList<>();
+    List<JarInfo> jarInfos = new ArrayList<>();
     project.getExtensions().add("jarInfos", jarInfos);
 
     project
         .getTasks()
-        .withType(JarValidationTask.class)
-        .configureEach(
+        .register(
+            "collectJarInfos",
+            GenerateJarInfosTask.class,
             task -> {
-              task.setJarInfos(jarInfos);
+              // For Java projects, add all dependencies from each source set
+              project
+                  .getPlugins()
+                  .withType(
+                      JavaPlugin.class,
+                      _ -> {
+                        var java = project.getExtensions().getByType(JavaPluginExtension.class);
+                        java.getSourceSets()
+                            .configureEach(
+                                sourceSet -> {
+                                  var compileClassPathConfiguration =
+                                      project
+                                          .getConfigurations()
+                                          .getByName(
+                                              sourceSet.getCompileClasspathConfigurationName());
+                                  var runtimeClassPathConfiguration =
+                                      project
+                                          .getConfigurations()
+                                          .getByName(
+                                              sourceSet.getRuntimeClasspathConfigurationName());
+                                  task.getDependencies().from(compileClassPathConfiguration);
+                                  task.getDependencies().from(runtimeClassPathConfiguration);
+
+                                  task.getRuntimeArtifacts()
+                                      .add(
+                                          compileClassPathConfiguration
+                                              .getIncoming()
+                                              .getArtifacts());
+                                  task.getRuntimeArtifacts()
+                                      .add(
+                                          runtimeClassPathConfiguration
+                                              .getIncoming()
+                                              .getArtifacts());
+                                });
+                      });
+              // TODO remove ones downstream dependencies have been ported to file dependencies
+              task.getOutputs().upToDateWhen(_ -> false);
+              task.getOutputFile()
+                  .set(project.getLayout().getBuildDirectory().file("reports/jarInfos.json"));
             });
+
+    project
+        .getTasks()
+        .withType(JarValidationTask.class)
+        .configureEach(task -> task.setJarInfos(jarInfos));
     project
         .getTasks()
         .register(
             "validateJarLicenses",
             JarLicenseValidationTask.class,
-            task -> {
-              task.getLicenseDir()
-                  .fileValue(
-                      project
-                          .getLayout()
-                          .getSettingsDirectory()
-                          .dir("lucene/licenses")
-                          .getAsFile());
-            });
+            task ->
+                task.getLicenseDir()
+                    .fileValue(
+                        project
+                            .getLayout()
+                            .getSettingsDirectory()
+                            .dir("lucene/licenses")
+                            .getAsFile()));
   }
 }

@@ -73,7 +73,6 @@ public abstract class JarLicenseValidationTask extends JarValidationTask {
     List<String> errors = new ArrayList<>();
     File licensesDir = getLicenseDir().get().getAsFile();
 
-    System.out.println("jarInfos.size() = " + jarInfos.size());
     jarInfos.forEach(
         dep -> {
           var baseName = dep.getName();
@@ -131,8 +130,7 @@ public abstract class JarLicenseValidationTask extends JarValidationTask {
               getLogger()
                   .info(
                       String.format(
-                          "Dependency license file OK ('%s'): " + licenseName,
-                          dep.getModule().toString()));
+                          "Dependency license file OK ('%s'): " + licenseName, dep.getModule()));
 
               // Look for sibling NOTICE file.
               File noticeFile =

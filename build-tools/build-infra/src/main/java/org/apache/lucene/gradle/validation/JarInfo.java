@@ -20,30 +20,21 @@ package org.apache.lucene.gradle.validation;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import org.gradle.api.artifacts.ResolvedModuleVersion;
-import org.gradle.api.provider.Provider;
 
 public final class JarInfo {
 
   private final String name;
   private final String jarName;
-  private final File path;
-  private final ResolvedModuleVersion module;
-  private final Provider<String> checksum;
+  private final String module;
+  private final String checksum;
 
   // We keep track of the files referenced by this dependency (sha, license, notice, etc.)
   // so that we can determine unused dangling files later on.
-  private final List<File> referencedFiles;
+  private final transient List<File> referencedFiles;
 
-  public JarInfo(
-      String name,
-      String jarName,
-      File path,
-      ResolvedModuleVersion module,
-      Provider<String> checksum) {
+  public JarInfo(String name, String jarName, String module, String checksum) {
     this.name = name;
     this.jarName = jarName;
-    this.path = path;
     this.module = module;
     this.checksum = checksum;
     this.referencedFiles = new ArrayList<>();
@@ -61,15 +52,11 @@ public final class JarInfo {
     return jarName;
   }
 
-  public File getPath() {
-    return path;
-  }
-
-  public ResolvedModuleVersion getModule() {
+  public String getModule() {
     return module;
   }
 
-  public Provider<String> getChecksum() {
+  public String getChecksum() {
     return checksum;
   }
 

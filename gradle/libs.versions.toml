@@ -18,6 +18,8 @@ flexmark = "0.64.8"
 googleJavaFormat = "1.27.0"
 # gradle build support
 groovy = "4.0.27"
+# serializing build analytics
+gson = "2.10.1"
 # test assertions
 hamcrest = "3.0"
 # analysis/icu/, gradle regeneration unicode support
@@ -76,6 +78,7 @@ flexmark-ext-autolink = { module = "com.vladsch.flexmark:flexmark-ext-autolink",
 flexmark-ext-tables = { module = "com.vladsch.flexmark:flexmark-ext-tables", version.ref = "flexmark" }
 gjf = { module = "com.google.googlejavaformat:google-java-format", version.ref = "googleJavaFormat" }
 groovy = { module = "org.apache.groovy:groovy-all", version.ref = "groovy" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
 icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
 javacc = { module = "net.java.dev.javacc:javacc", version.ref = "javacc" }
