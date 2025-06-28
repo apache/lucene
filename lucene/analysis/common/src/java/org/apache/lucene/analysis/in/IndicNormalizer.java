@@ -184,8 +184,6 @@ class IndicNormalizer {
     {0x33, 0x3C, -1, 0x34, flag(DEVANAGARI)},
     /* malayalam chillu ll */
     {0x33, 0x4D, 0xFF, 0x7E, flag(MALAYALAM)},
-    /* telugu letter MA */
-    {0x35, 0x41, -1, 0x2E, flag(TELUGU)},
     /* devanagari, gujarati vowel sign candra O */
     {0x3E, 0x45, -1, 0x49, flag(DEVANAGARI) | flag(GUJARATI)},
     /* devanagari vowel sign short O */
