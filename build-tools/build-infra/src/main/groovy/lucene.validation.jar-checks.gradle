@@ -16,6 +16,9 @@
  */
 
 import org.apache.commons.codec.digest.DigestUtils
+import org.apache.lucene.gradle.validation.JarInfo
+import org.apache.lucene.gradle.validation.JarValidationPlugin
+import org.apache.lucene.gradle.validation.JarValidationTask
 
 // This adds validation of project dependencies:
 // 1) license file
@@ -40,25 +43,6 @@ boolean failOnError = true
 // relative to the current project so they're not the same).
 def licensesDir = rootProject.layout.projectDirectory.dir("lucene/licenses")
 
-
-// All known license types. If 'noticeOptional' is true then
-// the notice file must accompany the license.
-def licenseTypes = [
-  "ASL"     : [name: "Apache Software License 2.0"],
-  "BSD"     : [name: "Berkeley Software Distribution"],
-  //BSD like just means someone has taken the BSD license and put in their name, copyright, or it's a very similar license.
-  "BSD_LIKE": [name: "BSD like license"],
-  "CDDL"    : [name: "Common Development and Distribution License", noticeOptional: true],
-  "CPL"     : [name: "Common Public License"],
-  "EPL"     : [name: "Eclipse Public License Version 1.0", noticeOptional: true],
-  "MIT"     : [name: "Massachusetts Institute of Tech. License", noticeOptional: true],
-  "MPL"     : [name: "Mozilla Public License", noticeOptional: true /* NOT SURE on the required notice */],
-  "PD"      : [name: "Public Domain", noticeOptional: true],
-  "PDDL"    : [name: "Public Domain Dedication and License", noticeOptional: true],
-  "SUN"     : [name: "Sun Open Source License", noticeOptional: true],
-  "COMPOUND": [name: "Compound license (details in NOTICE file)."],
-]
-
 allprojects {
   def licensesTask = tasks.register("licenses", {
     group = 'Dependency validation'
@@ -71,9 +55,7 @@ allprojects {
 }
 
 subprojects {
-  // initialize empty, because no checks for benchmark-jmh module.
-  ext.jarInfos = []
-
+  apply plugin: JarValidationPlugin
   // Configure jarValidation configuration for all projects. Any dependency
   // declared on this configuration (or any configuration it extends from) will
   // be verified.
@@ -95,7 +77,7 @@ subprojects {
   }
 
   // Collects dependency JAR information for a project and saves it in
-  // project.ext.jarInfos. Each dependency has a map of attributes
+  // project.jarInfos. Each dependency has a map of attributes
   // which make it easier to process it later on (name, hash, origin module,
   // see the code below for details).
   def collectJarInfos = tasks.register("collectJarInfos", {
@@ -144,22 +126,20 @@ subprojects {
           dep.moduleArtifacts.each { resolvedArtifact ->
             def file = resolvedArtifact.file
             if (visited.add(file)) {
-              infos.add([
-                name           : resolvedArtifact.name,
-                jarName        : file.toPath().getFileName().toString(),
-                path           : file,
-                module         : resolvedArtifact.moduleVersion,
-                checksum       : provider { digestUtils.digestAsHex(file).trim() },
-                // We keep track of the files referenced by this dependency (sha, license, notice, etc.)
-                // so that we can determine unused dangling files later on.
-                referencedFiles: []
-              ])
+              infos.add(new JarInfo(
+                  resolvedArtifact.name,
+                  file.toPath().getFileName().toString(),
+                  file,
+                  resolvedArtifact.moduleVersion,
+                  provider {digestUtils.digestAsHex(file).trim()},
+              ))
             }
           }
         }
       }
 
-      project.ext.jarInfos = infos.sort {a, b -> "${a.module}".compareTo("${b.module}")}
+      project.jarInfos.addAll(infos.sort {a, b -> "${a.module}".compareTo("${b.module}")})
+      println "{project.jarInfos} = ${project.jarInfos}"
     }
   })
 
@@ -172,12 +152,12 @@ subprojects {
 
     doLast {
       def errors = []
-      project.ext.jarInfos.each { dep ->
+      project.jarInfos.each {dep ->
         def expectedChecksumFile = licensesDir.file("${dep.jarName}.sha1").asFile
         if (!expectedChecksumFile.exists()) {
           errors << "Dependency checksum missing ('${dep.module}'), expected it at: ${expectedChecksumFile}"
         } else {
-          dep.referencedFiles += expectedChecksumFile
+          dep.addReferencedFile(expectedChecksumFile)
           def expected = expectedChecksumFile.getText("UTF-8").trim()
           def actual = dep.checksum.get()
           if (expected.compareToIgnoreCase(actual) != 0) {
@@ -204,67 +184,9 @@ subprojects {
   // where 'jar-or-prefix' can be any '-'-delimited prefix of the dependency JAR's name.
   // So for 'commons-io' it can be 'commons-io-LICENSE-foo.txt' or
   // 'commons-LICENSE.txt'
-  tasks.register("validateJarLicenses", {
-    group = 'Dependency validation'
-    description = "Validate license and notice files of dependencies"
+  tasks.named("validateJarLicenses").configure {
     dependsOn "collectJarInfos"
-
-    doLast {
-      def errors = []
-      project.ext.jarInfos.each { dep ->
-        def baseName = dep.name
-        def found = []
-        def candidates = []
-        while (true) {
-          candidates += licensesDir.file("${baseName}-LICENSE-[type].txt").asFile
-          found += fileTree(dir: licensesDir, include: "${baseName}-LICENSE-*.txt").files
-          def prefix = baseName.replaceAll(/[\-][^-]+$/, "")
-          if (found || prefix == baseName) {
-            break
-          }
-          baseName = prefix
-        }
-
-        if (found.size() == 0) {
-          errors << "License file missing ('${dep.module}'), expected it at: ${candidates.join(" or ")}," +
-              " where [type] can be any of ${licenseTypes.keySet()}."
-        } else if (found.size() > 1) {
-          errors << "Multiple license files matching for ('${dep.module}'): ${found.join(", ")}"
-        } else {
-          def licenseFile = found.get(0)
-          dep.referencedFiles += licenseFile
-          def m = (licenseFile.name =~ /LICENSE-(.+)\.txt$/)
-          if (!m) throw new GradleException("License file name doesn't contain license type?: ${licenseFile.name}")
-
-          def licenseName = m[0][1]
-          def licenseType = licenseTypes[licenseName]
-          if (!licenseType) {
-            errors << "Unknown license type suffix for ('${dep.module}'): ${licenseFile} (must be one of ${licenseTypes.keySet()})"
-          } else {
-            logger.log(LogLevel.INFO, "Dependency license file OK ('${dep.module}'): " + licenseName)
-
-            // Look for sibling NOTICE file.
-            def noticeFile = file(licenseFile.path.replaceAll(/\-LICENSE-.+/, "-NOTICE.txt"))
-            if (noticeFile.exists()) {
-              dep.referencedFiles += noticeFile
-              logger.log(LogLevel.INFO, "Dependency notice file OK ('${dep.module}'): " + noticeFile)
-            } else if (!licenseType.noticeOptional) {
-              errors << "Notice file missing for ('${dep.module}'), expected it at: ${noticeFile}"
-            }
-          }
-        }
-      }
-
-      if (errors) {
-        def msg = "Certain license/ notice files are missing:\n  - " + errors.join("\n  - ")
-        if (failOnError) {
-          throw new GradleException(msg)
-        } else {
-          logger.log(LogLevel.WARN, "WARNING: ${msg}")
-        }
-      }
-    }
-  })
+  }
 
   tasks.named("licenses").configure {
     dependsOn "validateJarChecksums", "validateJarLicenses"
@@ -283,9 +205,7 @@ configure(project(":lucene")) {
   ]
 
   def validationTasks = subprojects.collectMany {
-    it.tasks.matching {
-      it.name == "licenses"
-    }
+    it.tasks.withType(JarValidationTask.class)
   }
   def jarInfoTasks = subprojects.collectMany {
     it.tasks.matching {
@@ -312,7 +232,7 @@ configure(project(":lucene")) {
       })
 
       def updated = []
-      jarInfoTasks.collectMany { task -> task.project.ext.jarInfos }.each { dep ->
+      jarInfoTasks.collectMany {task -> task.project.jarInfos}.each {dep ->
         def expectedChecksumFile = file("${licensesDir}/${dep.jarName}.sha1")
         def actual = dep.checksum.get()
         if (expectedChecksumFile.exists()) {
@@ -326,7 +246,7 @@ configure(project(":lucene")) {
         expectedChecksumFile.write(actual + "\n", "UTF-8")
       }
 
-      updated.sort().each { line -> logger.log(LogLevel.LIFECYCLE, line) }
+      updated.sort().each {line -> logger.log(LogLevel.LIFECYCLE, line)}
     }
   })
 
@@ -365,7 +285,7 @@ configure(project(":lucene")) {
           // Only collect for enabled tasks: https://issues.apache.org/jira/browse/LUCENE-9780
           .findAll { it.enabled }
           .collectMany { task ->
-            task.project.ext.jarInfos.collectMany { it.referencedFiles }
+            task.jarInfos.collectMany { it.referencedFiles }
           }
           .collect { it.toString() }
 
