@@ -19,8 +19,15 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.LongField;
+import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.SortedNumericDocValuesField;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestMaxClauseLimit extends LuceneTestCase {
@@ -157,5 +164,49 @@ public class TestMaxClauseLimit extends LuceneTestCase {
         () -> {
           searcher.rewrite(qb.build());
         });
+  }
+
+  public void testIndexOrDocValues() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    Document d = new Document();
+    d.add(new LongField("foo", 0L, LongField.Store.NO));
+    writer.addDocument(d);
+    d = new Document();
+    d.add(new LongField("foo", Long.MAX_VALUE, LongField.Store.NO));
+    writer.addDocument(d);
+
+    IndexReader reader = writer.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    writer.close();
+    int maxClauseCount = IndexSearcher.getMaxClauseCount();
+    BooleanQuery.Builder qb = new BooleanQuery.Builder();
+
+    for (int i = 0; i < maxClauseCount; i++) {
+      qb.add(LongPoint.newRangeQuery("foo", 0, i), BooleanClause.Occur.SHOULD);
+    }
+    // should not throw an exception, because  it is below the limit
+    searcher.rewrite(qb.build());
+
+    qb = new BooleanQuery.Builder();
+    for (int i = 0; i < maxClauseCount; i++) {
+      qb.add(LongField.newRangeQuery("foo", 0, i), BooleanClause.Occur.SHOULD);
+    }
+    // should not throw an exception, because  it is below the limit
+    searcher.rewrite(qb.build());
+
+    qb = new BooleanQuery.Builder();
+    for (int i = 0; i < maxClauseCount; i++) {
+      qb.add(
+          new IndexOrDocValuesQuery(
+              LongPoint.newRangeQuery("foo", 0, i),
+              SortedNumericDocValuesField.newSlowRangeQuery("foo", 0, i)),
+          BooleanClause.Occur.SHOULD);
+    }
+    // should not throw an exception, because  it is below the limit
+    searcher.rewrite(qb.build());
+
+    reader.close();
+    dir.close();
   }
 }
