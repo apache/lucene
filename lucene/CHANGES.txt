@@ -27,6 +27,9 @@ New Features
 
 * GITHUB#14784: Make pack methods public for BigIntegerPoint and HalfFloatPoint. (Prudhvi Godithi)
 
+* GITHUB#14009: Add a new Query that can rescore other Query based on a generic DoubleValueSource
+  and trim the results down to top N (Anh Dung Bui)
+
 Improvements
 ---------------------
 * GITHUB#14458: Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
