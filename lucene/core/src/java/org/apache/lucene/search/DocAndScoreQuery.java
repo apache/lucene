@@ -185,7 +185,7 @@ class DocAndScoreQuery extends Query {
         classHash(), contextIdentity, Arrays.hashCode(docs), Arrays.hashCode(scores));
   }
 
-  static Query createRewrittenQuery(IndexReader reader, TopDocs topK) {
+  static Query createDocAndScoreQuery(IndexReader reader, TopDocs topK) {
     int len = topK.scoreDocs.length;
 
     assert len > 0;
