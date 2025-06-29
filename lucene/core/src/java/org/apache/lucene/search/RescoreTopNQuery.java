@@ -87,7 +87,7 @@ public class RescoreTopNQuery extends Query {
     }
     TopDocs topDocs =
         new TopDocs(new TotalHits(originalCount, TotalHits.Relation.EQUAL_TO), scoreDocs);
-    return DocAndScoreQuery.createDocAndScoreQuery(reader, topDocs, 0);
+    return DocAndScoreQuery.createDocAndScoreQuery(reader, topDocs);
   }
 
   private DoubleValues getDoubleValues(Scorer innerScorer) {
