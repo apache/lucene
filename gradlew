@@ -243,6 +243,8 @@ if [ ! -e "$APP_HOME/gradle.properties" ]; then
         exit $GENERATOR_STATUS
     fi
 fi
+# hack
+buildarg="$1"
 # END OF LUCENE CUSTOMIZATION
 
 # Collect all arguments for the java command:
@@ -289,4 +291,12 @@ eval "set -- $(
         tr '\n' ' '
     )" '"$@"'
 
-exec "$JAVACMD" "$@"
+if [[ "$buildarg" == "eclipse" ]]; then
+  "$JAVACMD" "$@"
+  # clean up unwanted .classpath/.project/.settings in subprojects
+  # i'm sure there's a better way, but various functionality of gradle such as doLast doesnt work
+  # use what works.
+  git clean -df
+else
+  exec "$JAVACMD" "$@"
+fi
