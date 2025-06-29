@@ -27,6 +27,11 @@ Provider<String> eclipseJavaVersionOption = buildOptions.addOption("eclipse.java
 Provider<String> eclipseErrorsOption = buildOptions.addOption("eclipse.errors", "Sets eclipse IDE lint level (ignore/warning/error)", "warning")
 
 if (gradle.startParameter.taskNames.contains("eclipse")) {
+  // force it to download source jars
+  subprojects {
+    apply plugin: 'eclipse'
+  }
+
   project.pluginManager.apply("java-base")
   project.pluginManager.apply("eclipse")
 
@@ -143,11 +148,30 @@ public class LibEntry implements ClasspathEntry {
     return "lib"
   }
 
+  // hackishly locates a source jar in your gradle cache!
+  static String findSourceJar(String byteCodeJar) {
+    def location = new File(byteCodeJar);
+    def sourceJar = location.getName().replaceFirst('.jar$', '-sources.jar');
+    def dependency = location.getParentFile().getParentFile();
+    for (subdir in dependency.listFiles()) {
+      def candidate = new File(subdir, sourceJar);
+      if (candidate.exists()) {
+        return candidate.toString();
+      }
+    }
+    return null;
+  }
+
   @Override
   void appendNode(Node node) {
-    node.appendNode("classpathentry", Map.of(
-        "kind", "lib",
-        "path", path
-        ))
+    def attributes = new HashMap();
+    attributes.put('kind', 'lib');
+    attributes.put('path', path);
+    // look for -sources.jar of dependency to see if eclipse plugin downloaded it
+    def sourceJar = LibEntry.findSourceJar(path);
+    if (sourceJar != null) {
+      attributes.put('sourcepath', sourceJar);
+    }
+    node.appendNode('classpathentry', attributes);
   }
 }
