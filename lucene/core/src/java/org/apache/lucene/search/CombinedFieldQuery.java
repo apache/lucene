@@ -395,6 +395,11 @@ public final class CombinedFieldQuery extends Query implements Accountable {
         public long cost() {
           return finalCost;
         }
+
+        @Override
+        public BulkScorer bulkScorer() throws IOException {
+          return new BatchScoreBulkScorer(get(Long.MAX_VALUE));
+        }
       };
     }
 
