@@ -16,6 +16,7 @@
  */
 
 import org.apache.lucene.gradle.plugins.spotless.GoogleJavaFormatPlugin
+import org.apache.lucene.gradle.plugins.java.JavaFolderLayoutPlugin
 
 allprojects { project ->
   if (['src/java', 'src/test'].any {path ->
@@ -23,7 +24,7 @@ allprojects { project ->
       }) {
     plugins.apply("java-library")
 
-    plugins.apply("lucene.java.folder-layout")
+    plugins.apply(JavaFolderLayoutPlugin)
     plugins.apply("lucene.java.javac")
     plugins.apply("lucene.java.jar-manifest")
 
