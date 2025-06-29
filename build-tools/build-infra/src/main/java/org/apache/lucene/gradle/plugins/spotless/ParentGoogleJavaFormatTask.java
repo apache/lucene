@@ -114,6 +114,9 @@ abstract class ParentGoogleJavaFormatTask extends DefaultTask {
     input = ImportOrderer.reorderImports(input, JavaFormatterOptions.Style.GOOGLE);
     input = RemoveUnusedImports.removeUnusedImports(input);
     input = formatter.formatSource(input);
+
+    // input = StringWrapper.wrap(input, formatter);
+
     return input;
   }
 

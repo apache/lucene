@@ -44,6 +44,7 @@ public abstract class ApplyGoogleJavaFormatTask extends ParentGoogleJavaFormatTa
   public void formatSources(InputChanges inputChanges) throws IOException {
     WorkQueue workQueue = getWorkQueue();
     List<File> sourceFiles = getIncrementalBatch(inputChanges);
+
     if (sourceFiles.isEmpty()) {
       return;
     }
