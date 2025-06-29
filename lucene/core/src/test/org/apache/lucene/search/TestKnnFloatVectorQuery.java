@@ -27,6 +27,7 @@ import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
@@ -272,6 +273,39 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
             assertEquals(iteratorCount, count);
           }
         }
+      }
+    }
+  }
+
+  public void testKnnSearchWithFiltering() throws IOException {
+    try (Directory directory = newDirectory()) {
+      final DirectoryReader reader;
+      try (RandomIndexWriter iw = new RandomIndexWriter(random(), directory)) {
+        for (int i = 0; i < 100_000; i++) {
+          Document doc = new Document();
+          doc.add(new StringField("id", "text" + i, Field.Store.NO));
+          doc.add(
+              new KnnFloatVectorField(
+                  "vector", new float[] {i, i * 2}, VectorSimilarityFunction.DOT_PRODUCT));
+          if (i % 2 == 0) { // this seems to happen only for DenseBinaryDocValues
+            doc.add(new KeywordField("answerId", "answer" + i, Field.Store.NO));
+          }
+          iw.addDocument(doc);
+          if (i % 1_000 == 0) {
+            iw.flush();
+          }
+        }
+        iw.deleteDocuments(new WildcardQuery(new Term("id", "text9990*")));
+        reader = iw.getReader();
+      }
+      try (reader) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        AbstractKnnVectorQuery query =
+            getKnnVectorQuery(
+                "vector", new float[] {100, 200}, 10, new FieldExistsQuery("answerId"));
+
+        TopDocs topDocs = searcher.search(query, 100);
+        assertNotNull(topDocs);
       }
     }
   }

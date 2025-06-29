@@ -149,7 +149,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
             if (iterator.cost() >= threshold) {
               // take advantage of Disi#intoBitset and Bits#applyMask
               FixedBitSet bitSet = new FixedBitSet(maxDoc);
-              bitSet.or(iterator);
+              bitSet.or(iterator, maxDoc);
               if (liveDocs != null) {
                 liveDocs.applyMask(bitSet, 0);
               }

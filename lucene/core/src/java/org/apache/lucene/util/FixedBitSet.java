@@ -375,9 +375,13 @@ public final class FixedBitSet extends BitSet {
 
   @Override
   public void or(DocIdSetIterator iter) throws IOException {
+    or(iter, DocIdSetIterator.NO_MORE_DOCS);
+  }
+
+  public void or(DocIdSetIterator iter, int upTo) throws IOException {
     checkUnpositioned(iter);
     iter.nextDoc();
-    iter.intoBitSet(DocIdSetIterator.NO_MORE_DOCS, this, 0);
+    iter.intoBitSet(upTo, this, 0);
   }
 
   /** Read {@code numBits} (between 1 and 63) bits from {@code bitSet} at {@code from}. */
