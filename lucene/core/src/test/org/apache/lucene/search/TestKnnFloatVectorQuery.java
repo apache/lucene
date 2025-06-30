@@ -303,6 +303,9 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
 
         TopDocs topDocs = searcher.search(query, 100);
         assertNotNull(topDocs);
+        assertTrue(topDocs.totalHits.value() > 0);
+        assertTrue(topDocs.scoreDocs.length > 0);
+        assertTrue(Arrays.stream(topDocs.scoreDocs).allMatch(x -> x.score > 0));
       }
     }
   }
