@@ -70,8 +70,7 @@ public class TestPriorityQueue extends LuceneTestCase {
       }
     }
 
-    PriorityQueue<Value> pq =
-        new PriorityQueue<>(5, (a, b) -> a.value < b.value);
+    PriorityQueue<Value> pq = new PriorityQueue<>(5, (a, b) -> a.value < b.value);
 
     // Make all elements equal but record insertion order.
     for (int i = 0; i < 100; i++) {

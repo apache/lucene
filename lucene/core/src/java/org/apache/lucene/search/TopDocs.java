@@ -166,7 +166,7 @@ public class TopDocs {
 
     // Returns true if first is < second
     @Override
-    @SuppressWarnings({ "rawtypes", "unchecked" })
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public boolean lessThan(ShardRef first, ShardRef second) {
       assert first != second;
       final FieldDoc firstFD = (FieldDoc) shardHits[first.shardIndex][first.hitIndex];
@@ -282,7 +282,8 @@ public class TopDocs {
     if (sort == null) {
       queue = new PriorityQueue<>(shardHits.length, new ScoreLessThan(shardHits, tieBreaker));
     } else {
-      queue = new PriorityQueue<>(shardHits.length, new ShardRefLessThan(sort, shardHits, tieBreaker));
+      queue =
+          new PriorityQueue<>(shardHits.length, new ShardRefLessThan(sort, shardHits, tieBreaker));
     }
 
     long totalHitCount = 0;

@@ -27,8 +27,7 @@ import org.apache.lucene.util.PriorityQueue;
  * @since 2.9
  * @see IndexSearcher#search(Query,int,Sort)
  */
-public class FieldValueHitQueue<T extends FieldValueHitQueue.Entry>
-    extends PriorityQueue<T> {
+public class FieldValueHitQueue<T extends FieldValueHitQueue.Entry> extends PriorityQueue<T> {
 
   /** Extension of ScoreDoc to also store the {@link FieldComparator} slot. */
   public static class Entry extends ScoreDoc {
@@ -108,6 +107,7 @@ public class FieldValueHitQueue<T extends FieldValueHitQueue.Entry>
 
   /** Stores the sort criteria being used. */
   private final SortField[] fields;
+
   private final EntryLessThan lessThan;
 
   // prevent instantiation and extension.
@@ -150,8 +150,12 @@ public class FieldValueHitQueue<T extends FieldValueHitQueue.Entry>
                   : Pruning.NONE);
     }
 
-    return new FieldValueHitQueue<>(fields, size,
-        fields.length == 1 ? new OneComparatorEntryLessThan(comparators, reverseMul) : new EntryLessThan(comparators, reverseMul));
+    return new FieldValueHitQueue<>(
+        fields,
+        size,
+        fields.length == 1
+            ? new OneComparatorEntryLessThan(comparators, reverseMul)
+            : new EntryLessThan(comparators, reverseMul));
   }
 
   public FieldComparator<?>[] getComparators() {

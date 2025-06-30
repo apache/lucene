@@ -64,7 +64,8 @@ public class PriorityQueue<T> implements Iterable<T> {
   /** Create a {@code PriorityQueue} that orders elements using the specified {@code comparator} */
   public static <T> PriorityQueue<T> usingComparator(
       int maxSize, Supplier<T> sentinelObjectSupplier, Comparator<? super T> comparator) {
-    return new PriorityQueue<>(maxSize, (a, b) -> comparator.compare(a, b) < 0, sentinelObjectSupplier);
+    return new PriorityQueue<>(
+        maxSize, (a, b) -> comparator.compare(a, b) < 0, sentinelObjectSupplier);
   }
 
   private int size = 0;
@@ -107,7 +108,8 @@ public class PriorityQueue<T> implements Iterable<T> {
    * this method creates a new instance and behaves consistently, e.g., it cannot return null if it
    * previously returned non-null and all returned instances must {@link LessThan compare equal}.
    */
-  public PriorityQueue(int maxSize, LessThan<? super T> lessThan, Supplier<T> sentinelObjectSupplier) {
+  public PriorityQueue(
+      int maxSize, LessThan<? super T> lessThan, Supplier<T> sentinelObjectSupplier) {
     final int heapSize;
 
     if (0 == maxSize) {
