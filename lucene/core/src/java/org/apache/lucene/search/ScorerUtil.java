@@ -128,15 +128,19 @@ class ScorerUtil {
       double maxRemainingScore,
       float minCompetitiveScore,
       int numScorers) {
-    if ((float) MathUtil.sumUpperBound(maxRemainingScore, numScorers) >= minCompetitiveScore) {
+    // Compute minRequiredScore as the greatest float value so that (float) MathUtil.sumUpperBound(minRequiredScore + maxRemainingScore, numScorers) <= minCompetitiveScore.
+    float minRequiredScore = (float) (minCompetitiveScore - maxRemainingScore);
+    while ((float) MathUtil.sumUpperBound(minRequiredScore + maxRemainingScore, numScorers) > minCompetitiveScore) {
+      minRequiredScore = Math.nextDown(minRequiredScore);
+    }
+
+    if (minRequiredScore <= 0) {
       return;
     }
 
     int newSize = 0;
     for (int i = 0; i < buffer.size; ++i) {
-      float maxPossibleScore =
-          (float) MathUtil.sumUpperBound(buffer.scores[i] + maxRemainingScore, numScorers);
-      if (maxPossibleScore >= minCompetitiveScore) {
+      if (buffer.scores[i] >= minRequiredScore) {
         buffer.docs[newSize] = buffer.docs[i];
         buffer.scores[newSize] = buffer.scores[i];
         newSize++;
