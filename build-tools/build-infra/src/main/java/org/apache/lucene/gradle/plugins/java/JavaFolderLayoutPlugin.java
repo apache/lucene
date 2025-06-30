@@ -18,8 +18,7 @@ package org.apache.lucene.gradle.plugins.java;
 
 import java.io.File;
 import java.util.List;
-import org.gradle.api.GradleException;
-import org.gradle.api.Plugin;
+import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.plugins.JavaPlugin;
@@ -29,15 +28,10 @@ import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.language.jvm.tasks.ProcessResources;
 
 /** Configure up non-standard, legacy folder structure in Lucene projects. */
-public class JavaFolderLayoutPlugin implements Plugin<Project> {
+public class JavaFolderLayoutPlugin extends LuceneGradlePlugin {
   @Override
   public void apply(Project project) {
-    JavaPlugin javaPlugin = project.getPlugins().findPlugin(JavaPlugin.class);
-    if (javaPlugin == null) {
-      throw new GradleException(
-          getClass().getName()
-              + " should be applied to java projects only (after the java plugin is applied).");
-    }
+    requiresAppliedPlugin(project, JavaPlugin.class);
 
     JavaPluginExtension javaExt = project.getExtensions().getByType(JavaPluginExtension.class);
     SourceSetContainer sourceSets = javaExt.getSourceSets();
