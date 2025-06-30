@@ -18,6 +18,7 @@
 import org.apache.lucene.gradle.plugins.spotless.GoogleJavaFormatPlugin
 import org.apache.lucene.gradle.plugins.java.JavaFolderLayoutPlugin
 import org.apache.lucene.gradle.plugins.java.JavacConfigurationPlugin
+import org.apache.lucene.gradle.plugins.java.JarManifestConfigurationPlugin
 
 allprojects { project ->
   if (['src/java', 'src/test'].any {path ->
@@ -27,7 +28,7 @@ allprojects { project ->
 
     plugins.apply(JavaFolderLayoutPlugin)
     plugins.apply(JavacConfigurationPlugin)
-    plugins.apply("lucene.java.jar-manifest")
+    plugins.apply(JarManifestConfigurationPlugin)
 
     plugins.apply("lucene.java.tests-and-randomization")
     plugins.apply("lucene.java.per-project-test-summary")

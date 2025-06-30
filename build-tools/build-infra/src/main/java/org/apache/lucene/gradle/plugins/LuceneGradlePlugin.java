@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.gradle.plugins;
 
+import java.nio.file.Path;
 import java.util.Locale;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
@@ -47,5 +48,10 @@ public abstract class LuceneGradlePlugin implements Plugin<Project> {
               clazz.getSimpleName(),
               project.getPath()));
     }
+  }
+
+  /** Return the main Lucene project path (root path of the repository checkout). */
+  protected static Path getProjectRootPath(Project project) {
+    return project.getLayout().getSettingsDirectory().getAsFile().toPath();
   }
 }
