@@ -20,8 +20,8 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.apache.lucene.gradle.plugins.gitinfo.GitInfoExtension;
+import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension;
 import org.gradle.api.Project;
-import org.gradle.api.plugins.ExtraPropertiesExtension;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Provider;
@@ -50,6 +50,8 @@ public class JarManifestConfigurationPlugin extends LuceneGradlePlugin {
     var title = "Lucene Search Engine: " + project.getName();
     var implementationTitle = "org.apache.lucene";
 
+    var globals = rootProject.getExtensions().getByType(LuceneBuildGlobalsExtension.class);
+
     // Apply the manifest to any JAR or WAR file created by any project.
     project
         .getTasks()
@@ -65,13 +67,12 @@ public class JarManifestConfigurationPlugin extends LuceneGradlePlugin {
               attributes.put("Implementation-Title", implementationTitle);
               attributes.put(
                   "Implementation-Version",
-                  getImplementationVersion(project, gitRevProvider, rootProject));
+                  getImplementationVersion(project, gitRevProvider.get(), globals));
 
               // For snapshot builds just include the project version and gitRev so that
               // JARs don't need to be recompiled just because the manifest has changed.
-              var ext = rootProject.getExtensions().getByType(ExtraPropertiesExtension.class);
               attributes.put("Specification-Vendor", "The Apache Software Foundation");
-              attributes.put("Specification-Version", ext.get("baseVersion"));
+              attributes.put("Specification-Version", globals.baseVersion);
               attributes.put("Specification-Title", title);
 
               // Evaluate these properties lazily so that the defaults are applied properly.
@@ -111,20 +112,14 @@ public class JarManifestConfigurationPlugin extends LuceneGradlePlugin {
   }
 
   private static @NotNull String getImplementationVersion(
-      Project project, Provider<String> gitRevProvider, Project rootProject) {
-    String gitRev = gitRevProvider.get();
-    var ext = rootProject.getExtensions().getByType(ExtraPropertiesExtension.class);
-
-    if ((Boolean) ext.get("snapshotBuild")) {
+      Project project, String gitRev, LuceneBuildGlobalsExtension globals) {
+    if (globals.snapshotBuild) {
       return project.getVersion() + " " + gitRev + " [snapshot build, details omitted]";
     } else {
       return project.getVersion()
-          + " "
-          + gitRev
-          + " - "
-          + ext.get("buildDate")
-          + " "
-          + ext.get("buildTime");
+          + (" " + gitRev)
+          + (" - " + globals.buildDate)
+          + (" " + globals.buildTime);
     }
   }
 }

@@ -18,8 +18,7 @@ package org.apache.lucene.gradle.plugins.spotless;
 
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsExtension;
 import java.util.List;
-import org.gradle.api.GradleException;
-import org.gradle.api.Plugin;
+import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileTree;
 import org.gradle.api.plugins.JavaPlugin;
@@ -31,18 +30,13 @@ import org.gradle.api.tasks.TaskProvider;
  * This adds automatic (and enforced) code formatting using google-java-format (LUCENE-9564,
  * GITHUB-14824).
  */
-public class GoogleJavaFormatPlugin implements Plugin<Project> {
+public class GoogleJavaFormatPlugin extends LuceneGradlePlugin {
   private static final int DEFAULT_BATCH_SIZE = 5;
   private static final String GJF_BATCH_SIZE_OPTION = "lucene.gjf.batchSize";
 
   @Override
   public void apply(Project project) {
-    JavaPlugin javaPlugin = project.getPlugins().findPlugin(JavaPlugin.class);
-    if (javaPlugin == null) {
-      throw new GradleException(
-          getClass().getName()
-              + " should be applied to java projects only (after the java plugin is applied).");
-    }
+    requiresAppliedPlugin(project, JavaPlugin.class);
 
     TaskContainer tasks = project.getTasks();
 

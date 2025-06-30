@@ -54,4 +54,12 @@ public abstract class LuceneGradlePlugin implements Plugin<Project> {
   protected static Path getProjectRootPath(Project project) {
     return project.getLayout().getSettingsDirectory().getAsFile().toPath();
   }
+
+  /** Ensure the plugin is applied to the root project only, not subprojects. */
+  protected void applicableToRootProjectOnly(Project project) {
+    if (project != project.getRootProject()) {
+      throw new GradleException(
+          "This plugin is applicable to the rootProject only: " + getClass().getSimpleName());
+    }
+  }
 }
