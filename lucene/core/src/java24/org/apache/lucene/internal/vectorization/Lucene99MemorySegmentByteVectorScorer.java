@@ -16,7 +16,10 @@
  */
 package org.apache.lucene.internal.vectorization;
 
+import static java.lang.foreign.ValueLayout.JAVA_BYTE;
+
 import java.io.IOException;
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.Optional;
 import org.apache.lucene.index.ByteVectorValues;
@@ -61,7 +64,7 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
     super(values);
     this.input = input;
     this.vectorByteSize = values.getVectorByteLength();
-    this.query = MemorySegment.ofArray(queryVector);
+    this.query = Arena.ofAuto().allocateFrom(JAVA_BYTE, queryVector);
   }
 
   final MemorySegment getSegment(int ord) throws IOException {
