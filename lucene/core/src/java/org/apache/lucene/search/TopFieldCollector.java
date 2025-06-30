@@ -241,7 +241,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       this.queue = queue;
       this.after = after;
 
-      FieldComparator<?>[] comparators = queue.comparators;
+      FieldComparator<?>[] comparators = queue.getComparators();
       // Tell all comparators their top value:
       for (int i = 0; i < comparators.length; i++) {
         @SuppressWarnings("unchecked")
@@ -335,7 +335,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
     this.totalHitsThreshold = Math.max(totalHitsThreshold, numHits);
     this.numComparators = pq.getComparators().length;
     this.firstComparator = pq.getComparators()[0];
-    int reverseMul = pq.reverseMul[0];
+    int reverseMul = pq.getReverseMul()[0];
 
     if (firstComparator.getClass().equals(FieldComparator.RelevanceComparator.class)
         && reverseMul == 1 // if the natural sort is preserved (sort by descending relevance)
