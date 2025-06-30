@@ -291,9 +291,6 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
             doc.add(new KeywordField("answerId", "answer" + i, Field.Store.NO));
           }
           iw.addDocument(doc);
-          if (i % 1_000 == 0) {
-            iw.flush();
-          }
         }
         iw.deleteDocuments(new WildcardQuery(new Term("id", "text9990*")));
         reader = iw.getReader();

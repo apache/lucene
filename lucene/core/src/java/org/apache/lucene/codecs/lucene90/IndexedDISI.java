@@ -473,15 +473,7 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
 
   @Override
   public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-    assert doc >= offset && upTo - offset <= bitSet.length()
-        : "offset="
-            + offset
-            + " docID()="
-            + docID()
-            + " upTo="
-            + upTo
-            + " bitSet.length()="
-            + bitSet.length();
+    assert doc >= offset : "offset=" + offset + " docID()=" + docID();
     while (doc < upTo && method.intoBitSetWithinBlock(this, upTo, bitSet, offset) == false) {
       readBlockHeader();
       boolean found = method.advanceWithinBlock(this, block);
