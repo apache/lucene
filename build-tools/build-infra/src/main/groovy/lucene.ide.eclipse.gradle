@@ -26,15 +26,6 @@ if (project != project.rootProject) {
 Provider<String> eclipseJavaVersionOption = buildOptions.addOption("eclipse.javaVersion", "Set Java version for Eclipse IDE", deps.versions.minJava.get())
 Provider<String> eclipseErrorsOption = buildOptions.addOption("eclipse.errors", "Sets eclipse IDE lint level (ignore/warning/error)", "warning")
 
-configurations {
-  foo
-}
-
-dependencies {
-  foo deps.zstd
-}
-
-
 if (gradle.startParameter.taskNames.contains("eclipse")) {
   project.pluginManager.apply("java-base")
   project.pluginManager.apply("eclipse")
