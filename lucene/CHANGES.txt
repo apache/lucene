@@ -7,7 +7,7 @@ http://s.apache.org/luceneversions
 
 Bug Fixes
 ---------------------
-* GITHUB#14858: Ensure vector queries handle advanceShallow correctly (Ben Trent)
+* GITHUB#14858, GITHUB#12146: Simplify max score for kNN vector queries, ensuring vector queries handle advanceShallow correctly (Julie Tibshirani)
 
 ======================== Lucene 9.12.2 =======================
 
