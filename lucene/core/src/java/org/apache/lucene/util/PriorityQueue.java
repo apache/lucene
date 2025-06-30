@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
 /**
@@ -318,6 +319,30 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
       }
     }
     return false;
+  }
+
+  /**
+   * Moves the contents of this queue into a new array created by {@code newArray}, lowest items
+   * first
+   */
+  public T[] drainToArrayLowestFirst(IntFunction<T[]> newArray) {
+    T[] array = newArray.apply(size);
+    for (int i = 0; i < array.length; i++) {
+      array[i] = pop();
+    }
+    return array;
+  }
+
+  /**
+   * Moves the contents of this queue into a new array created by {@code newArray}, highest items
+   * first
+   */
+  public T[] drainToArrayHighestFirst(IntFunction<T[]> newArray) {
+    T[] array = newArray.apply(size);
+    for (int i = array.length - 1; i >= 0; i--) {
+      array[i] = pop();
+    }
+    return array;
   }
 
   private boolean upHeap(int origPos) {

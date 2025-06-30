@@ -29,6 +29,7 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.similarities.BM25Similarity;
@@ -42,6 +43,8 @@ import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.Bits;
 
 public class TestCombinedFieldQuery extends LuceneTestCase {
   public void testInvalid() {
@@ -555,6 +558,112 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
         new CombinedFieldQuery.Builder("foo").addField("a").addField("b").build();
 
     checkExpectedHits(searcher, numMatch, query, new TermQuery(new Term("ab", "foo")));
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testNextDocsAndScores() throws IOException {
+    int numMatchDoc = randomIntBetween(100, 500);
+    int boost1 = Math.max(1, random().nextInt(5));
+    int boost2 = Math.max(1, random().nextInt(5));
+
+    Directory dir = newDirectory();
+    Similarity similarity = randomCompatibleSimilarity();
+
+    IndexWriterConfig iwc = new IndexWriterConfig();
+    iwc.setSimilarity(similarity);
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    // adding potentially matching doc
+    for (int i = 0; i < numMatchDoc; i++) {
+      Document doc = new Document();
+
+      int freqA = random().nextInt(20) + 1;
+      for (int j = 0; j < freqA; j++) {
+        doc.add(new TextField("a", "foo", Store.NO));
+      }
+
+      freqA = random().nextInt(20) + 1;
+      if (randomBoolean()) {
+        for (int j = 0; j < freqA; j++) {
+          doc.add(new TextField("a", "foo" + j, Store.NO));
+        }
+      }
+
+      freqA = random().nextInt(20) + 1;
+      for (int j = 0; j < freqA; j++) {
+        doc.add(new TextField("a", "zoo", Store.NO));
+      }
+
+      int freqB = random().nextInt(20) + 1;
+      for (int j = 0; j < freqB; j++) {
+        doc.add(new TextField("b", "zoo", Store.NO));
+      }
+
+      freqB = random().nextInt(20) + 1;
+      if (randomBoolean()) {
+        for (int j = 0; j < freqB; j++) {
+          doc.add(new TextField("b", "zoo" + j, Store.NO));
+        }
+      }
+
+      int freqC = random().nextInt(20) + 1;
+      for (int j = 0; j < freqC; j++) {
+        doc.add(new TextField("c", "bla" + j, Store.NO));
+      }
+      w.addDocument(doc);
+    }
+
+    w.forceMerge(1);
+
+    IndexReader reader = getOnlyLeafReader(w.getReader());
+    IndexSearcher searcher = newSearcher(reader, false);
+    searcher.setSimilarity(similarity);
+
+    CombinedFieldQuery query =
+        new CombinedFieldQuery.Builder("foo")
+            .addField("a", (float) boost1)
+            .addField("b", (float) boost2)
+            .build();
+
+    Weight weight = searcher.createWeight(query, ScoreMode.TOP_SCORES, 1f);
+    LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
+    Bits liveDocs = context.reader().getLiveDocs();
+
+    Scorer scorer1 = weight.scorer(context);
+    Scorer scorer2 = weight.scorer(context);
+    scorer1.iterator().nextDoc();
+    scorer2.iterator().nextDoc();
+    DocAndFloatFeatureBuffer buffer = new DocAndFloatFeatureBuffer();
+    while (true) {
+      int curDoc = scorer2.iterator().docID();
+      int upTo =
+          TestUtil.nextInt(random(), curDoc, (int) Math.min(Integer.MAX_VALUE, curDoc + 512L));
+      scorer1.nextDocsAndScores(upTo, liveDocs, buffer);
+      assertEquals(buffer.size == 0, curDoc >= upTo);
+
+      for (int i = 0; i < buffer.size; ++i) {
+        while (liveDocs != null && liveDocs.get(scorer2.iterator().docID()) == false) {
+          scorer2.iterator().nextDoc();
+        }
+        assertEquals(scorer2.iterator().docID(), buffer.docs[i]);
+        assertEquals(scorer2.score(), buffer.features[i], 0f);
+        scorer2.iterator().nextDoc();
+      }
+
+      assertEquals(scorer2.iterator().docID(), scorer1.iterator().docID());
+      if (scorer1.iterator().docID() == DocIdSetIterator.NO_MORE_DOCS) {
+        break;
+      }
+    }
+
+    Scorer scorer3 = weight.scorer(context);
+    scorer3.iterator().nextDoc();
+    scorer3.nextDocsAndScores(
+        DocIdSetIterator.NO_MORE_DOCS, new Bits.MatchNoBits(context.reader().maxDoc()), buffer);
+    assertEquals(0, buffer.size);
 
     reader.close();
     w.close();

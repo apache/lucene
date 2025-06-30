@@ -32,6 +32,8 @@ New Features
 
 * GITHUB#14178: Add a Faiss-based vector format in the sandbox module. (Kaival Parikh)
 
+* GITHUB#14792: Introduced OffHeapQuantizedFloatVectorValues class to access float vectors when only quantized byte vectors are available in the index. (Pulkit Gupta)
+
 Improvements
 ---------------------
 
@@ -83,6 +85,8 @@ Other
 * GITHUB#14613: Rewrite APIJAR extractor to use Java 24 classfile API and kill ASM dependency also for build system.  (Uwe Schindler)
 
 * GITHUB#14705: Use Comparators for some PriorityQueue implementations. (Simon Cooper)
+* GITHUB#14761: Use more Comparators for PriorityQueue implementations. (Simon Cooper)
+* GITHUB#14817: Refactor some complex uses of PriorityQueue to use Comparators. (Simon Cooper)
 
 ======================= Lucene 10.3.0 =======================
 
@@ -110,6 +114,9 @@ New Features
 * GITHUB#14708: Add a DoubleValuesSource for full precision vector similarity scores. (Vigya Sharma)
 
 * GITHUB#14784: Make pack methods public for BigIntegerPoint and HalfFloatPoint. (Prudhvi Godithi)
+
+* GITHUB#14009: Add a new Query that can rescore other Query based on a generic DoubleValueSource
+  and trim the results down to top N (Anh Dung Bui)
 
 Improvements
 ---------------------
@@ -178,6 +185,12 @@ Optimizations
   search performance on smaller graphs. (Ben Trent)
 
 * GITHUB#14830: Optimize FieldExistsQuery to leverage index statistic in DocValuesSkipper. (Pan Guixin)
+
+* GITHUB#14851: Fewer virtual calls to enhance performance of point queries. (Ke Wei)
+
+* GITHUB#14834: Optimize CombinedFieldQuery by nextDocsAndScores. (Ge Song)
+
+* GITHUB#14772: Implement ConstantScoreScorer#nextDocsAndScores. (Ge Song)
 
 Bug Fixes
 ---------------------

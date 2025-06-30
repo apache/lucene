@@ -30,6 +30,7 @@ if (gradle.startParameter.taskNames.contains("eclipse")) {
   project.pluginManager.apply("java-base")
   project.pluginManager.apply("eclipse")
 
+  def resources = rootProject.file("gradle/ide/eclipse")
   def eclipseJavaVersion = eclipseJavaVersionOption.get()
   def relativize = { File other -> rootProject.rootDir.relativePath(other).toString() }
 
