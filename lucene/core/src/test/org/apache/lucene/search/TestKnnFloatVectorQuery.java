@@ -278,7 +278,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
   }
 
   @Nightly
-  public void testKnnSearchWithFiltering() throws IOException {
+  public void testKnnQueryWithFiltering() throws IOException {
     try (Directory directory = newDirectory()) {
       final DirectoryReader reader;
       try (RandomIndexWriter iw = new RandomIndexWriter(random(), directory)) {
@@ -288,19 +288,19 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
           doc.add(
               new KnnFloatVectorField(
                   "vector", new float[] {i, i * 2}, VectorSimilarityFunction.DOT_PRODUCT));
-          if (i % 2 == 0) { // this seems to happen only for DenseBinaryDocValues
-            doc.add(new KeywordField("answerId", "answer" + i, Field.Store.NO));
+          if (i % 2 == 0) {
+            // add a tag to half of the documents so that we will trigger
+            // DENSE DISI filtering
+            doc.add(new KeywordField("tag", "tag" + i, Field.Store.NO));
           }
           iw.addDocument(doc);
         }
-        iw.deleteDocuments(new WildcardQuery(new Term("id", "text9990*")));
         reader = iw.getReader();
       }
       try (reader) {
         IndexSearcher searcher = new IndexSearcher(reader);
         AbstractKnnVectorQuery query =
-            getKnnVectorQuery(
-                "vector", new float[] {100, 200}, 10, new FieldExistsQuery("answerId"));
+            getKnnVectorQuery("vector", new float[] {100, 200}, 10, new FieldExistsQuery("tag"));
 
         TopDocs topDocs = searcher.search(query, 100);
         assertNotNull(topDocs);
