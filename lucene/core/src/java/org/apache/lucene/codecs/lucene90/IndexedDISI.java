@@ -737,7 +737,7 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
           return false;
         } else {
           disi.slice.seek(fp);
-          return advanceWithinBlock(disi, upTo);
+          return advanceWithinBlock(disi, disiTo);
         }
       }
 
