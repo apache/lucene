@@ -277,6 +277,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
     }
   }
 
+  @Nightly
   public void testKnnSearchWithFiltering() throws IOException {
     try (Directory directory = newDirectory()) {
       final DirectoryReader reader;
