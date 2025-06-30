@@ -719,10 +719,10 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
         if (disi.bitSet == null) {
           disi.bitSet = new FixedBitSet(BLOCK_SIZE);
         }
-
-        int sourceFrom = disi.doc & 0xFFFF;
-        int sourceTo = Math.min(upTo - disi.block, BLOCK_SIZE);
         int destFrom = disi.doc - offset;
+        int disiTo = upTo == DocIdSetIterator.NO_MORE_DOCS ? bitSet.length() : upTo;
+        int sourceFrom = disi.doc & 0xFFFF;
+        int sourceTo = Math.min(disiTo - disi.block, BLOCK_SIZE);
 
         long fp = disi.slice.getFilePointer();
         disi.slice.seek(fp - Long.BYTES); // seek back a long to include current word (disi.word).
@@ -731,7 +731,7 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
         FixedBitSet.orRange(disi.bitSet, sourceFrom, bitSet, destFrom, sourceTo - sourceFrom);
 
         int blockEnd = disi.block | 0xFFFF;
-        if (upTo > blockEnd) {
+        if (disiTo > blockEnd) {
           disi.slice.seek(disi.blockEnd);
           disi.index += disi.bitSet.cardinality(sourceFrom, sourceTo);
           return false;
