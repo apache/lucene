@@ -192,6 +192,8 @@ Optimizations
 
 * GITHUB#14772: Implement ConstantScoreScorer#nextDocsAndScores. (Ge Song)
 
+* GITHUB#14854: Using BatchScoreBulkScorer on CombinedFieldQuery. (Ge Song)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
