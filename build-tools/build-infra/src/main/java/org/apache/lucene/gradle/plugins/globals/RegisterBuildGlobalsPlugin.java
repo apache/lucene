@@ -20,6 +20,7 @@ import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsExtension;
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.gradle.api.GradleException;
@@ -28,6 +29,9 @@ import org.gradle.api.provider.Provider;
 
 /** Registers global build constants and extensions. */
 public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
+  private static Pattern VERSION_PATTERN =
+      Pattern.compile("^(?<baseVersion>(?<majorVersion>\\d+)\\.\\d+\\.\\d+)(-(.+))?");
+
   @Override
   public void apply(Project project) {
     applicableToRootProjectOnly(project);
@@ -42,17 +46,30 @@ public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
     String buildYear = DateTimeFormatter.ofPattern("yyyy").format(tstamp);
 
     String baseVersion = getBaseVersion(luceneVersion);
+    String majorVersion = getMajorVersion(luceneVersion);
+
+    boolean isCIBuild =
+        System.getenv().keySet().stream()
+            .anyMatch(key -> key.matches("(?i)((JENKINS|HUDSON)(_\\w+)?|CI)"));
+
     project.allprojects(
         p -> {
           var globals =
               p.getExtensions()
                   .create(LuceneBuildGlobalsExtension.NAME, LuceneBuildGlobalsExtension.class);
           globals.baseVersion = baseVersion;
+          globals.majorVersion = majorVersion;
           globals.snapshotBuild = luceneVersion.contains("SNAPSHOT");
           globals.buildDate = buildDate;
           globals.buildTime = buildTime;
           globals.buildYear = buildYear;
+          globals.isCIBuild = isCIBuild;
         });
+  }
+
+  /** The "major" version in semantic versioning scheme. */
+  private String getMajorVersion(String luceneVersion) {
+    return parseVersion(luceneVersion).group("majorVersion");
   }
 
   /**
@@ -60,12 +77,15 @@ public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
    * -Pversion.release=x.y.z directly.
    */
   private String getBaseVersion(String luceneVersion) {
-    var matcher =
-        Pattern.compile("^(?<baseVersion>\\d+\\.\\d+\\.\\d+)(-(.+))?").matcher(luceneVersion);
+    return parseVersion(luceneVersion).group("baseVersion");
+  }
+
+  private static Matcher parseVersion(String luceneVersion) {
+    var matcher = VERSION_PATTERN.matcher(luceneVersion);
     if (!matcher.matches()) {
       throw new GradleException("Can't strip version to just x.y.z: " + luceneVersion);
     }
-    return matcher.group("baseVersion");
+    return matcher;
   }
 
   /**

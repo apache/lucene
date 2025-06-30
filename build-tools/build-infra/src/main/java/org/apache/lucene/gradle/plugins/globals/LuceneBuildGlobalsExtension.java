@@ -20,8 +20,11 @@ package org.apache.lucene.gradle.plugins.globals;
 public abstract class LuceneBuildGlobalsExtension {
   public static final String NAME = "buildGlobals";
 
-  /** Base lucene version (@{code x.y.z}). */
+  /** Base Lucene version ({@code x.y.z}). */
   public String baseVersion;
+
+  /** Major Lucene version ({@code x} in {@code x.y.z}). */
+  public String majorVersion;
 
   /** {@code true} if this build is a snapshot build. */
   public boolean snapshotBuild;
@@ -34,4 +37,17 @@ public abstract class LuceneBuildGlobalsExtension {
 
   /** Build year ({@code yyyy}. */
   public String buildYear;
+
+  /**
+   * {@code true} if this build runs on a CI server. This is a heuristic looking for typical env.
+   * variables:
+   *
+   * <ul>
+   *   <li>{@code CI}: <a
+   *       href="https://docs.github.com/en/actions/learn-github-actions/environment-variables">Github</a>
+   *   <li>{@code JENKINS_} or {@code HUDSON_}: <a
+   *       href="https://jenkins.thetaphi.de/env-vars.html/">Jenkins/Hudson</a>
+   * </ul>
+   */
+  public boolean isCIBuild;
 }

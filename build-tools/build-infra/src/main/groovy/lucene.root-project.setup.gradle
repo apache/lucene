@@ -52,23 +52,9 @@ def buildGlobals = rootProject.extensions.getByName("buildGlobals")
 ext {
   // TODO: remove ext properties in favor of using the global extension directly in Java plugins code (typed refs).
   baseVersion = buildGlobals.baseVersion
-
-  // "majorVersion" is an integer with just the major version. Compute it.
-  majorVersion = {
-    def m = (version =~ /^(\d+)\.\d+\.\d+(-(.+))?/)
-    if (!m) {
-      throw new GradleException("Can't strip version to just major version: " + rootProject.version)
-    }
-    return m[0][1] as int
-  }()
-
-  // snapshot build marker used in scripts.
+  majorVersion = buildGlobals.majorVersion
   snapshotBuild = buildGlobals.snapshotBuild
-
-  // detect if we run in CI environment by looking at existence of env vars:
-  // "CI": Github (https://docs.github.com/en/actions/learn-github-actions/environment-variables)
-  // anything starting with "JENKINS_" or "HUDSON_": Jenkins/Hudson (https://jenkins.thetaphi.de/env-vars.html/)
-  isCIBuild = System.getenv().keySet().find { it ==~ /(?i)((JENKINS|HUDSON)(_\w+)?|CI)/ } != null
+  isCIBuild = buildGlobals.isCIBuild
 
   // Minimum Java version required to compile and run Lucene.
   minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
