@@ -173,11 +173,19 @@ public class ErrorReportingTestListener implements TestOutputListener, TestListe
             })
         .filter(
             option -> {
+              // if the option is not present, ignore it in repro line.
+              if (!option.isPresent()) {
+                return false;
+              }
+
               // we only care about options that have non-default values or options
-              // where values are computed are runtime (possibly randomized).
-              return option.isPresent()
-                  && (option.getSource() == BuildOptionValueSource.COMPUTED_VALUE
-                      || !option.isEqualToDefaultValue());
+              // where values are computed at runtime (possibly randomized).
+              if (option.getSource() == BuildOptionValueSource.COMPUTED_VALUE) {
+                return true;
+              }
+
+              // filter out all non-computed options with default values.
+              return !option.isEqualToDefaultValue();
             })
         .map(
             option -> {

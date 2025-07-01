@@ -704,22 +704,22 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
     flattenedTokenStream.close();
 
     /*
-       CheckGeneralization can get VERY slow as matching holes to tokens or other holes generates a lot of potentially valid paths.
-       Analyzer withoutFlattenGraph =
-           new Analyzer() {
-             @Override
-             protected TokenStreamComponents createComponents(String fieldName) {
-               Tokenizer in = new WhitespaceTokenizer();
-               TokenStream result = new SynonymGraphFilter(in, synMap, true);
-               result = new StopFilter(result, stopWords);
-               return new TokenStreamComponents(in, result);
-             }
-           };
-       checkGeneralization(
-           withFlattenGraph.tokenStream("field", text),
-           withoutFlattenGraph.tokenStream("field", text));
-
-    */
+     *  CheckGeneralization can get VERY slow as matching holes to tokens or other holes generates a lot of potentially valid paths.
+     *  Analyzer withoutFlattenGraph =
+     *      new Analyzer() {
+     *        @Override
+     *        protected TokenStreamComponents createComponents(String fieldName) {
+     *          Tokenizer in = new WhitespaceTokenizer();
+     *          TokenStream result = new SynonymGraphFilter(in, synMap, true);
+     *          result = new StopFilter(result, stopWords);
+     *          return new TokenStreamComponents(in, result);
+     *        }
+     *      };
+     *  checkGeneralization(
+     *      withFlattenGraph.tokenStream("field", text),
+     *      withoutFlattenGraph.tokenStream("field", text));
+     *
+     */
   }
 
   /*

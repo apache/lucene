@@ -188,7 +188,7 @@ allprojects {
         jvmArgumentProviders.add(modularPaths.runtimeArguments)
 
         // Modify the default classpath.
-        classpath = modularPaths.runtimeClasspath
+        classpath = modularPaths.testRuntimeClasspath
 
         doFirst {
           modularPaths.logRuntimePaths(logger)
@@ -458,6 +458,28 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
     project.files({
       ->
       return sourceSet.runtimeClasspath - runtimeModulePath - modulePatchOnlyConfiguration
+    })
+  }
+
+  /**
+   * Returns the runtime classpath for test tasks.
+   *
+   * The plain runtimeClassspath would also filter out junit dependencies, which must
+   * be on the Test.classpath as the gradle test worker depends on it.
+   * Not having junit explicitly on the classpath would result in a deprecation warning
+   * about junit not being on the classpath and indirectly added by gradle internal logic.
+   */
+  FileCollection getTestRuntimeClasspath() {
+    if (mode == Mode.CLASSPATH_ONLY) {
+      return sourceSet.runtimeClasspath
+    }
+
+    // Modify the default classpath by removing anything already placed on module path.
+    // Use a lazy provider to delay computation.
+    project.files({
+      ->
+      return sourceSet.runtimeClasspath - runtimeModulePath - modulePatchOnlyConfiguration +
+          sourceSet.runtimeClasspath.filter {file -> file.name.contains("junit")}
     })
   }
 

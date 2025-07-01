@@ -1,3 +1,5 @@
+import org.apache.lucene.gradle.plugins.spotless.GoogleJavaFormatPlugin
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -38,7 +40,6 @@ plugins {
   id "lucene.java.modules"
 
   id "lucene.validation.spotless-groovy"
-  id "lucene.validation.spotless-java"
   id "lucene.validation.lockfile"
   id "lucene.validation.gradle-versions-cleanup"
   id "lucene.validation.gradlew-scripts-customizations"

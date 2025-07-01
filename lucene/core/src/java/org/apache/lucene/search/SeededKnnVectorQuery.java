@@ -69,11 +69,40 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
     return new SeededKnnVectorQuery(knnQuery, seed, null);
   }
 
-  SeededKnnVectorQuery(AbstractKnnVectorQuery knnQuery, Query seed, Weight seedWeight) {
-    super(knnQuery.field, knnQuery.k, knnQuery.filter, knnQuery.searchStrategy);
+  SeededKnnVectorQuery(
+      AbstractKnnVectorQuery knnQuery,
+      Query seed,
+      Weight seedWeight,
+      String field,
+      int k,
+      Query filter,
+      KnnSearchStrategy searchStrategy) {
+    super(field, k, filter, searchStrategy);
     this.delegate = knnQuery;
     this.seed = Objects.requireNonNull(seed);
     this.seedWeight = seedWeight;
+  }
+
+  public SeededKnnVectorQuery(KnnFloatVectorQuery knnQuery, Query seed, Weight seedWeight) {
+    this(
+        knnQuery,
+        seed,
+        seedWeight,
+        knnQuery.field,
+        knnQuery.k,
+        knnQuery.filter,
+        knnQuery.searchStrategy);
+  }
+
+  public SeededKnnVectorQuery(KnnByteVectorQuery knnQuery, Query seed, Weight seedWeight) {
+    this(
+        knnQuery,
+        seed,
+        seedWeight,
+        knnQuery.field,
+        knnQuery.k,
+        knnQuery.filter,
+        knnQuery.searchStrategy);
   }
 
   @Override
@@ -94,7 +123,14 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
       return super.rewrite(indexSearcher);
     }
     SeededKnnVectorQuery rewritten =
-        new SeededKnnVectorQuery(delegate, seed, createSeedWeight(indexSearcher));
+        new SeededKnnVectorQuery(
+            delegate,
+            seed,
+            createSeedWeight(indexSearcher),
+            delegate.field,
+            delegate.k,
+            delegate.filter,
+            delegate.searchStrategy);
     return rewritten.rewrite(indexSearcher);
   }
 

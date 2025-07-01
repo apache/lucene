@@ -17,6 +17,7 @@
 package org.apache.lucene.gradle.plugins.astgrep;
 
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsExtension;
+import java.util.ArrayList;
 import java.util.List;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
@@ -62,11 +63,20 @@ public class AstGrepPlugin implements Plugin<Project> {
               if (!astToolOption.isPresent()) {
                 task.getLogger()
                     .warn(
-                        "The ast-grep tool location is not set ('{}' option), will not apply ast-grep rules.",
+                        "The ast-grep tool location is not set ('{}' option), will not apply"
+                            + " ast-grep rules.",
                         optionName);
               }
 
-              task.setArgs(List.of("scan", "-c", "gradle/validation/ast-grep/sgconfig.yml"));
+              var args = new ArrayList<String>();
+              // fail on any rule match regardless of severity level
+              args.addAll(
+                  List.of("scan", "-c", "gradle/validation/ast-grep/sgconfig.yml", "--error"));
+              // use the github format when being run as a workflow
+              if (System.getenv("CI") != null && System.getenv("GITHUB_WORKFLOW") != null) {
+                args.addAll(List.of("--format", "github"));
+              }
+              task.setArgs(args);
             });
 
     // Common configuration.
@@ -92,12 +102,6 @@ public class AstGrepPlugin implements Plugin<Project> {
         .configureEach(
             task -> {
               task.dependsOn(testAstGrepRules);
-            });
-
-    tasks
-        .matching(task -> task.getName().equals("tidy"))
-        .configureEach(
-            task -> {
               task.dependsOn(applyAstGrepRulesTask);
             });
   }
