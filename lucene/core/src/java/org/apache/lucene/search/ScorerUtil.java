@@ -128,9 +128,12 @@ class ScorerUtil {
       double maxRemainingScore,
       float minCompetitiveScore,
       int numScorers) {
-    // Compute minRequiredScore as the greatest float value so that (float) MathUtil.sumUpperBound(minRequiredScore + maxRemainingScore, numScorers) <= minCompetitiveScore.
+    // Compute minRequiredScore as the greatest float value so that (float)
+    // MathUtil.sumUpperBound(minRequiredScore + maxRemainingScore, numScorers) <=
+    // minCompetitiveScore.
     double minRequiredScore = minCompetitiveScore - maxRemainingScore;
-    while ((float) MathUtil.sumUpperBound(minRequiredScore + maxRemainingScore, numScorers) > minCompetitiveScore) {
+    while ((float) MathUtil.sumUpperBound(minRequiredScore + maxRemainingScore, numScorers)
+        > minCompetitiveScore) {
       minRequiredScore = Math.nextDown(minRequiredScore);
     }
 
