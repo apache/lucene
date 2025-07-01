@@ -19,6 +19,7 @@ package org.apache.lucene.monitor;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -77,7 +78,7 @@ public class QueryDecomposer {
   public Set<Query> decomposeBoolean(BooleanQuery q) {
     if (q.getMinimumNumberShouldMatch() > 1) return Collections.singleton(q);
 
-    Set<Query> subqueries = new HashSet<>();
+    Set<Query> subqueries = new LinkedHashSet<>();
     Set<Query> exclusions = new HashSet<>();
     Set<Query> mandatory = new HashSet<>();
 
