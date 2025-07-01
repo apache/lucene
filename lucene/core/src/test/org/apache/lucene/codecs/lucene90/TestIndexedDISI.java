@@ -405,7 +405,7 @@ public class TestIndexedDISI extends LuceneTestCase {
                 new BitSetIterator(set, set.cardinality()), out, denseRankPower);
         length = out.getFilePointer();
         assertTrue(
-            "Jump table entry count should be 0 for dense bitsets with size < BLOCK_SIZE",
+            "jumpTableEntryCount should be 0 for dense bitsets with size < BLOCK_SIZE",
             0 == jumpTableEntryCount);
       }
       try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
