@@ -21,6 +21,7 @@ import java.util.Random;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.store.Directory;
@@ -112,6 +113,11 @@ public class TestDuelingCodecs extends LuceneTestCase {
       document.removeFields("sortedset");
       for (String trash : split) {
         document.add(new SortedSetDocValuesField("sortedset", new BytesRef(trash)));
+      }
+      // add a sorted dv field sometimes
+      document.removeFields("sparseset");
+      if (random.nextBoolean()) {
+        document.add(new SortedDocValuesField("sparseset", new BytesRef(title)));
       }
       // add a numeric dv field sometimes
       document.removeFields("sparsenumeric");
