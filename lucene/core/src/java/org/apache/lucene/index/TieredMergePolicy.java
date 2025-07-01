@@ -130,7 +130,7 @@ public class TieredMergePolicy extends MergePolicy {
   /**
    * Sets the maximum percentage of doc id space taken by deleted docs. The denominator includes
    * both active and deleted documents. Lower values make the index more space efficient at the
-   * expense of increased CPU and I/O activity. Values must be between 5 and 50. Default value is
+   * expense of increased CPU and I/O activity. Values must be between 0 and 50. Default value is
    * 20.
    *
    * <p>When the maximum delete percentage is lowered, the indexing thread will call for merges more
@@ -139,9 +139,9 @@ public class TieredMergePolicy extends MergePolicy {
    * amplification factor will lead to higher CPU and I/O activity as indicated above.
    */
   public TieredMergePolicy setDeletesPctAllowed(double v) {
-    if (v < 5 || v > 50) {
+    if (v <= 0 || v > 50) {
       throw new IllegalArgumentException(
-          "indexPctDeletedTarget must be >= 5.0 and <= 50 (got " + v + ")");
+          "indexPctDeletedTarget must be > 0 and <= 50 (got " + v + ")");
     }
     deletesPctAllowed = v;
     return this;
