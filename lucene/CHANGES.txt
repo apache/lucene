@@ -194,6 +194,8 @@ Optimizations
 
 * GITHUB#14854: Using BatchScoreBulkScorer on CombinedFieldQuery. (Ge Song)
 
+* GITHUB#14827: Specialize filterCompetitiveHits when have exact 2 clauses. (Ge Sone)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
