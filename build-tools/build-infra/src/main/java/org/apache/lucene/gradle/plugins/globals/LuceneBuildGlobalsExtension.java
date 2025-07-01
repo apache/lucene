@@ -17,7 +17,7 @@
 package org.apache.lucene.gradle.plugins.globals;
 
 /** Global build constants. */
-public abstract class LuceneBuildGlobalsExtension {
+public final class LuceneBuildGlobalsExtension {
   public static final String NAME = "buildGlobals";
 
   /** Base Lucene version ({@code x.y.z}). */
