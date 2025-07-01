@@ -75,7 +75,6 @@ public class JarManifestConfigurationPlugin extends LuceneGradlePlugin {
               attributes.put("Specification-Version", globals.baseVersion);
               attributes.put("Specification-Title", title);
 
-              // Evaluate these properties lazily so that the defaults are applied properly.
               var javaPluginExtension =
                   project.getExtensions().getByType(JavaPluginExtension.class);
               attributes.put(
