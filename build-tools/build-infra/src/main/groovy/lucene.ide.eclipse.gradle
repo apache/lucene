@@ -48,7 +48,10 @@ if (gradle.startParameter.taskNames.contains("eclipse")) {
       plusConfigurations += allprojects.findAll{ prj ->
         return prj.plugins.hasPlugin(JavaPlugin)
       }.collectMany {
-        return [ it.configurations.compileClasspath, it.configurations.testCompileClasspath ]
+        return [
+          it.configurations.compileClasspath,
+          it.configurations.testCompileClasspath
+        ]
       }
 
       file {
@@ -139,4 +142,3 @@ if (gradle.startParameter.taskNames.contains("eclipse")) {
     inputs.property('eclipseJavaVersion', eclipseJavaVersion as String)
   }
 }
-
