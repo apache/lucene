@@ -5,6 +5,8 @@ invalid:
 valid:
   - import java.lang.foo.bar;
   - import static java.lang.Foo.bar;
+  - import java.lang.foo.*;
+  - import static java.lang.Foo.*;
 ---
 id: confusing-type-inference
 invalid:
