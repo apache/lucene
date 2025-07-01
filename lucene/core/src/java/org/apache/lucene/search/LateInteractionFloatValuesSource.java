@@ -32,6 +32,8 @@ import org.apache.lucene.index.VectorSimilarityFunction;
  * <p>This is useful re-ranking query results using late interaction models, where documents and
  * queries are represented as multi-vectors of composing token vectors. Document vectors are indexed
  * using {@link org.apache.lucene.document.LateInteractionField}.
+ *
+ * @lucene.experimental
  */
 public class LateInteractionFloatValuesSource extends DoubleValuesSource {
 
