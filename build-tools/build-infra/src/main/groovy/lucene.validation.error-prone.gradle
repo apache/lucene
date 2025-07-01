@@ -162,7 +162,7 @@ allprojects { prj ->
           // '-Xep:CheckReturnValue:OFF', // we don't use these annotations
           '-Xep:CollectionToArraySafeParameter:ERROR',
           // '-Xep:ComparableType:OFF',
-          // '-Xep:ComparingThisWithNull:ERROR', // we use ast-grep for this check
+          // '-Xep:ComparingThisWithNull:OFF', // we use ast-grep for this check
           '-Xep:ComparisonOutOfRange:ERROR',
           // '-Xep:CompatibleWithAnnotationMisuse:OFF', // we don't use this annotation
           // '-Xep:CompileTimeConstant:OFF', // we don't use this annotation
@@ -395,7 +395,7 @@ allprojects { prj ->
           // '-Xep:DoNotMockAutoValue:OFF', // we don't use autovalue
           // '-Xep:DoubleCheckedLocking:OFF', // TODO: there are problems
           '-Xep:DuplicateDateFormatField:WARN',
-          '-Xep:EmptyBlockTag:WARN',
+          // '-Xep:EmptyBlockTag:OFF', // ECJ takes care
           // '-Xep:EmptyCatch:OFF', // ECJ takes care
           // '-Xep:EmptySetMultibindingContributions:OFF', // we don't use this annotation
           // '-Xep:EnumOrdinal:OFF', // noisy
@@ -570,11 +570,11 @@ allprojects { prj ->
           // '-Xep:StreamResourceLeak:OFF', // TODO: there are problems
           '-Xep:StreamToIterable:WARN',
           // '-Xep:StringCaseLocaleUsage:OFF', // noisy, can use forbidden-apis for this
-          '-Xep:StringCharset:WARN',
+          // '-Xep:StringCharset:OFF', // we use ast-grep for this
           '-Xep:StringFormatWithLiteral:WARN',
           // '-Xep:StringSplitter:OFF', // noisy, can use forbidden-apis for this
           '-Xep:SystemConsoleNull:WARN',
-          '-Xep:SunApi:WARN',
+          // '-Xep:SunApi:OFF', // we use forbidden-apis for this
           '-Xep:SuperCallToObjectMethod:WARN',
           // '-Xep:SwigMemoryLeak:OFF', // we don't use swig
           // '-Xep:SynchronizeOnNonFinalField:OFF', // noisy
@@ -582,7 +582,7 @@ allprojects { prj ->
           // '-Xep:ThreadLocalUsage:OFF', // noisy
           // '-Xep:ThreadPriorityCheck:OFF', // noisy, forbidden APIs can do this
           // '-Xep:ThrowIfUncheckedKnownUnchecked:OFF', // we don't use these google libraries
-          '-Xep:ThreeLetterTimeZoneID:WARN',
+          // '-Xep:ThreeLetterTimeZoneID:OFF', // we use ast-grep for this
           '-Xep:TimeUnitConversionChecker:WARN',
           // '-Xep:ToStringReturnsNull:OFF', // TODO: there are problems
           // '-Xep:TruthAssertExpected:OFF', // we don't use truth
