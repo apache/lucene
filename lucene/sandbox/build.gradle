@@ -16,12 +16,25 @@
  */
 
 
+plugins {
+  id 'java-library'
+}
 
 description = 'Various third party contributions and new ideas'
+
+java {
+  modularity.inferModulePath = true
+}
 
 dependencies {
   moduleApi project(':lucene:core')
   moduleApi project(':lucene:queries')
   moduleApi project(':lucene:facet')
   moduleTestImplementation project(':lucene:test-framework')
+
+  moduleImplementation('io.github.jbellis:jvector:4.0.0-beta.6') {
+    exclude group: 'org.slf4j', module: 'slf4j-api'
+  }
+
+  moduleImplementation 'org.slf4j:slf4j-api:2.0.17'
 }

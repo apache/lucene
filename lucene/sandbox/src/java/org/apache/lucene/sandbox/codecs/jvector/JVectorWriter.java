@@ -631,7 +631,7 @@ public class JVectorWriter extends KnnVectorsWriter {
 
       for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
         FieldInfos fieldInfos = mergeState.fieldInfos[i];
-        if (KnnVectorsWriter.MergedVectorValues.hasVectorValues(fieldInfos, fieldName)) {
+        if (MergedVectorValues.hasVectorValues(fieldInfos, fieldName)) {
           KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
           if (reader != null) {
             FloatVectorValues values = reader.getFloatVectorValues(fieldName);
