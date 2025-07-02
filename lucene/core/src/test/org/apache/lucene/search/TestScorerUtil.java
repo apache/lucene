@@ -36,6 +36,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.SparseFixedBitSet;
 
 public class TestScorerUtil extends LuceneTestCase {
@@ -91,6 +92,22 @@ public class TestScorerUtil extends LuceneTestCase {
         ImpactsEnum ie = te.impacts(PostingsEnum.FREQS);
         assertSame(ie, ScorerUtil.likelyImpactsEnum(ie));
       }
+    }
+  }
+
+  public void testMinRequiredScore() {
+    double maxRemainingScore = random().nextDouble();
+    float minCompetitiveScore = random().nextFloat();
+    int numScorers = random().nextInt(1, 10);
+
+    double minRequiredScore =
+        ScorerUtil.minRequiredScore(maxRemainingScore, minCompetitiveScore, numScorers);
+    if (minCompetitiveScore < maxRemainingScore) {
+      assertTrue(minRequiredScore <= 0);
+    } else {
+      assertTrue(
+          (float) MathUtil.sumUpperBound(minRequiredScore + maxRemainingScore, numScorers)
+              <= minCompetitiveScore);
     }
   }
 }
