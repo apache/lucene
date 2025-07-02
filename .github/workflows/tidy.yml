@@ -12,23 +12,23 @@ on:
 
 env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
-  
+
 jobs:
   tidy-code:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2  # 检出仓库代码
-     
+
       - name: Set up JDK
         uses: actions/setup-java@v2
         with:
           java-version: '24'       # 指定 Java 版本（根据项目调整）
           distribution: 'adopt'
-     
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v2  # 初始化 Gradle 并启用缓存
-     
+
       - name: Run tidy task
         run: ./gradlew tidy
         run: ./gradlew tidy        # 执行自定义 tidy 任务
