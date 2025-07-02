@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.Arrays;
 
 public class Node48 extends Node {
@@ -134,36 +132,6 @@ public class Node48 extends Node {
     return ILLEGAL_IDX;
   }
 
-  @Override
-  public int getNextSmallerPos(int pos) {
-    if (pos == ILLEGAL_IDX) {
-      pos = 256;
-    }
-    pos--;
-    int i = pos >>> 3;
-    int offset = pos & (8 - 1);
-    for (; i < 32; i++) {
-      long longv = childIndex[i];
-      if (offset == 0) {
-        if (longv == INIT_LONG_VALUE) {
-          //skip over empty bytes
-          pos -= 8;
-          continue;
-        }
-      }
-      for (int j = offset; j <= 7; j++) {
-        int shiftNum = j * 8;
-        byte v = (byte) (longv >>> shiftNum);
-        if (v != EMPTY_VALUE) {
-          return pos;
-        }
-        pos--;
-      }
-      offset = 0;
-    }
-    return ILLEGAL_IDX;
-  }
-
   /**
    * insert a child node into the node48 node with the key byte
    *
@@ -198,43 +166,10 @@ public class Node48 extends Node {
         Node256.setBit((byte) currentPos, node256.bitmapMask);
       }
       node256.count = node48.count;
-      copyPrefix(node48, node256);
+      copyNode(node48, node256);
       Node freshOne = Node256.insert(node256, child, key);
       return freshOne;
     }
-  }
-
-  @Override
-  public Node remove(int pos) {
-    int longPos = pos >>> 3;
-    int bytePos = pos & (8 - 1);
-    long longVal = childIndex[longPos];
-    byte idx = (byte) ((longVal) >>> (7 - bytePos) * 8);
-    byte[] bytes = LongUtils.toBDBytes(longVal);
-    bytes[bytePos] = EMPTY_VALUE;
-    long newLong = LongUtils.fromBDBytes(bytes);
-    childIndex[longPos] = newLong;
-    children[idx] = null;
-    count--;
-    if (count <= 12) {
-      //shrink to node16
-      Node16 node16 = new Node16(this.prefixLength);
-      int j = 0;
-      ByteBuffer byteBuffer = ByteBuffer.allocate(16).order(ByteOrder.BIG_ENDIAN);
-      int currentPos = ILLEGAL_IDX;
-      while ((currentPos = getNextLargerPos(currentPos)) != ILLEGAL_IDX) {
-        Node child = getChild(currentPos);
-        byteBuffer.put(j, (byte) currentPos);
-        node16.children[j] = child;
-        j++;
-      }
-      node16.firstChildIndex = byteBuffer.getLong(0);
-      node16.secondChildIndex = byteBuffer.getLong(8);
-      node16.count = (short) j;
-      copyPrefix(this, node16);
-      return node16;
-    }
-    return this;
   }
 
   private static byte childrenIdx(int pos, long[] childIndex) {

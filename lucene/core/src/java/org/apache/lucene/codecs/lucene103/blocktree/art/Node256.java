@@ -105,28 +105,6 @@ public class Node256 extends Node {
     return ILLEGAL_IDX;
   }
 
-  @Override
-  public int getNextSmallerPos(int pos) {
-    if (pos == ILLEGAL_IDX) {
-      pos = 256;
-    }
-    if (pos == 0) {
-      return ILLEGAL_IDX;
-    }
-    pos--;
-    int longPos = pos >>> 6;
-    long longVal = bitmapMask[longPos] & (LONG_MASK >>> -(pos + 1));
-    while (true) {
-      if (longVal != 0) {
-        return (longPos + 1) * 64 - 1 - Long.numberOfLeadingZeros(longVal);
-      }
-      if (longPos-- == 0) {
-        return ILLEGAL_IDX;
-      }
-      longVal = bitmapMask[longPos];
-    }
-  }
-
   /**
    * insert the child node into the node256 node with the key byte
    *
@@ -150,29 +128,6 @@ public class Node256 extends Node {
     final long previous = bitmapMask[longIdx];
     long newVal = previous | (1L << i);
     bitmapMask[longIdx] = newVal;
-  }
-
-  @Override
-  public Node remove(int pos) {
-    this.children[pos] = null;
-    int longPos = pos >>> 6;
-    bitmapMask[longPos] &= ~(1L << pos);
-    this.count--;
-    if (this.count <= 36) {
-      Node48 node48 = new Node48(this.prefixLength);
-      int j = 0;
-      int currentPos = ILLEGAL_IDX;
-      while ((currentPos = getNextLargerPos(currentPos)) != ILLEGAL_IDX) {
-        Node child = getChild(currentPos);
-        node48.children[j] = child;
-        Node48.setOneByte(currentPos, (byte) j, node48.childIndex);
-        j++;
-      }
-      node48.count = (short) j;
-      copyPrefix(this, node48);
-      return node48;
-    }
-    return this;
   }
 }
 

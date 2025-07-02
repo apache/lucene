@@ -96,20 +96,6 @@ public abstract class Node {
   public abstract int getMaxPos();
 
   /**
-   * get the next smaller element's position
-   * @param pos the position,-1 to start from the largest one
-   * @return the next smaller key's position which is close to input 'pos' position,-1 for end
-   */
-  public abstract int getNextSmallerPos(int pos);
-
-  /**
-   * remove the specified position child
-   * @param pos the position to remove
-   * @return an adaptive changed fresh node of the current node
-   */
-  public abstract Node remove(int pos);
-
-  /**
    * insert the LeafNode as a child of the current internal node
    *
    * @param current current internal node
@@ -133,13 +119,14 @@ public abstract class Node {
   }
 
   /**
-   * copy the prefix between two nodes
+   * copy the prefix and output between two nodes
    * @param src the source node
    * @param dst the destination node
    */
-  public static void copyPrefix(Node src, Node dst) {
+  public static void copyNode(Node src, Node dst) {
     dst.prefixLength = src.prefixLength;
     System.arraycopy(src.prefix, 0, dst.prefix, 0, src.prefixLength);
+    dst.output = src.output;
   }
 
   /**

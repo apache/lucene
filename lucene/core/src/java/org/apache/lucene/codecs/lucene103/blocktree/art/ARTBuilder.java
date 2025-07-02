@@ -21,11 +21,11 @@ import org.apache.lucene.util.BytesRef;
 
 import java.util.Arrays;
 
-public class Art {
+public class ARTBuilder {
   public Node root;
   private long keySize = 0;
 
-  public Art() {
+  public ARTBuilder() {
     root = null;
   }
 
@@ -46,8 +46,13 @@ public class Art {
   private void updateNodeBytes(Node node, int from) {
     if (from < node.key.bytes.length) {
       node.key.bytes = ArrayUtil.copyOfSubArray(node.key.bytes, from, node.key.bytes.length);
+      node.key.offset = 0;
+      node.key.length = node.key.bytes.length;
     } else {
+      // TODO: Just set node.key is null;
       node.key.bytes = null;
+      node.key.offset = 0;
+      node.key.length = 0;
     }
   }
 
@@ -83,7 +88,7 @@ public class Art {
         //replace the current node with this internal node4
         return node4;
       } else {
-        int commonPrefix = commonPrefixLength(prefix, depth, prefix.length, key.bytes, depth, key.length);
+        int commonPrefix = ARTUtil.commonPrefixLength(prefix, depth, prefix.length, key.bytes, depth, key.length);
         Node4 node4 = new Node4(commonPrefix);
         //copy common prefix
         node4.prefixLength = (byte) commonPrefix;
@@ -145,20 +150,4 @@ public class Art {
     updateNodeBytes(leafNode, depth + 1);
     return freshOne;
   }
-
-  //find common prefix length
-  private static int commonPrefixLength(byte[] key1, int aFromIndex, int aToIndex,
-                                        byte[] key2, int bFromIndex, int bToIndex) {
-    int aLength = aToIndex - aFromIndex;
-    int bLength = bToIndex - bFromIndex;
-    int minLength = Math.min(aLength, bLength);
-    int mismatchIndex = Arrays.mismatch(key1, aFromIndex, aToIndex, key2, bFromIndex, bToIndex);
-
-    if (aLength != bLength && mismatchIndex >= minLength) {
-      return minLength;
-    }
-    return mismatchIndex;
-  }
-
-
 }

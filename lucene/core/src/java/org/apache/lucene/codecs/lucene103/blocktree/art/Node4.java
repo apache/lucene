@@ -20,7 +20,6 @@ public class Node4 extends Node {
 
   int childIndex = 0;
   Node[] children = new Node[4];
-  Output output;
 
   public Node4(int compressedPrefixSize) {
     super(NodeType.NODE4, compressedPrefixSize);
@@ -74,15 +73,6 @@ public class Node4 extends Node {
     return count - 1;
   }
 
-  @Override
-  public int getNextSmallerPos(int pos) {
-    if (pos == ILLEGAL_IDX) {
-      return count - 1;
-    }
-    pos--;
-    return pos >= 0 ? pos : ILLEGAL_IDX;
-  }
-
   /**
    * insert the child node into the node4 with the key byte
    *
@@ -105,33 +95,9 @@ public class Node4 extends Node {
       node16.count = 4;
       node16.firstChildIndex = LongUtils.initWithFirst4Byte(current.childIndex);
       System.arraycopy(current.children, 0, node16.children, 0, 4);
-      copyPrefix(current, node16);
+      copyNode(current, node16);
       Node freshOne = Node16.insert(node16, childNode, key);
       return freshOne;
     }
-  }
-
-  @Override
-  public Node remove(int pos) {
-    assert pos < count;
-    children[pos] = null;
-    count--;
-    childIndex = IntegerUtil.shiftLeftFromSpecifiedPosition(childIndex, pos, (4 - pos - 1));
-    for (; pos < count; pos++) {
-      children[pos] = children[pos + 1];
-    }
-    if (count == 1) {
-      //shrink to leaf node
-      Node child = children[0];
-      byte newLength = (byte) (child.prefixLength + this.prefixLength + 1);
-      byte[] newPrefix = new byte[newLength];
-      System.arraycopy(this.prefix, 0, newPrefix, 0, this.prefixLength);
-      newPrefix[this.prefixLength] = IntegerUtil.firstByte(childIndex);
-      System.arraycopy(child.prefix, 0, newPrefix, this.prefixLength + 1, child.prefixLength);
-      child.prefixLength = newLength;
-      child.prefix = newPrefix;
-      return child;
-    }
-    return this;
   }
 }

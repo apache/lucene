@@ -16,9 +16,6 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-
 public class Node16 extends Node {
 
   long firstChildIndex = 0L;
@@ -93,15 +90,6 @@ public class Node16 extends Node {
     return count - 1;
   }
 
-  @Override
-  public int getNextSmallerPos(int pos) {
-    if (pos == ILLEGAL_IDX) {
-      return count - 1;
-    }
-    pos--;
-    return pos >= 0 ? pos : ILLEGAL_IDX;
-  }
-
   /**
    * insert a child into the node with the key byte
    *
@@ -146,33 +134,10 @@ public class Node16 extends Node {
         Node48.setOneByte(unsignedIdx, (byte) i, node48.childIndex);
         node48.children[i] = currentNode16.children[i];
       }
-      copyPrefix(currentNode16, node48);
+      copyNode(currentNode16, node48);
       node48.count = currentNode16.count;
       Node freshOne = Node48.insert(node48, child, key);
       return freshOne;
     }
-  }
-
-  @Override
-  public Node remove(int pos) {
-    children[pos] = null;
-    ByteBuffer byteBuffer = ByteBuffer.allocate(16).order(ByteOrder.BIG_ENDIAN);
-    byte[] bytes = byteBuffer.putLong(firstChildIndex).putLong(secondChildIndex).array();
-    System.arraycopy(bytes, pos + 1, bytes, pos, (16 - pos - 1));
-    System.arraycopy(children, pos + 1, children, pos, (16 - pos - 1));
-    firstChildIndex = byteBuffer.getLong(0);
-    secondChildIndex = byteBuffer.getLong(8);
-    count--;
-    if (count <= 3) {
-      //shrink to node4
-      Node4 node4 = new Node4(prefixLength);
-      //copy the keys
-      node4.childIndex = (int) (firstChildIndex >> 32);
-      System.arraycopy(children, 0, node4.children, 0, count);
-      node4.count = count;
-      copyPrefix(this, node4);
-      return node4;
-    }
-    return this;
   }
 }
