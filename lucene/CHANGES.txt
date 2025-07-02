@@ -100,7 +100,7 @@ API Changes
 * GITHUB#14426: Support determining desired off-heap memory requirements through
   KnnVectorsReader::getOffHeapByteSize (Chris Hegarty)
 
-* GITHUB#?????: TieredMergePolicy minimum deletes percentage decreased from 5% inclusive to 0% exclusive.
+* GITHUB#14893: TieredMergePolicy minimum deletes percentage decreased from 5% inclusive to 0% exclusive.
   (Stefan Vodita)
 
 New Features
