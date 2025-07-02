@@ -16,10 +16,9 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
+import java.util.Arrays;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
-
-import java.util.Arrays;
 
 // TODO: Save to disk.
 public class ARTBuilder {
@@ -74,10 +73,12 @@ public class ARTBuilder {
     if (node.nodeType == NodeType.LEAF_NODE) {
       LeafNode leafNode = (LeafNode) node;
       byte[] prefix = leafNode.key.bytes;
-      // This happens insert: abc1, abc10, abc100. When inserting abc100 to abc10, there is no key in abc10: abc1 is
-      // common prefix, 0 is child index(let it as common prefix for abc10 and abc100, but stay in child index).
+      // This happens insert: abc1, abc10, abc100. When inserting abc100 to abc10, there is no key
+      // in abc10: abc1 is
+      // common prefix, 0 is child index(let it as common prefix for abc10 and abc100, but stay in
+      // child index).
       if (prefix == null) {
-        Node4 node4 =  new Node4(0);
+        Node4 node4 = new Node4(0);
         node4.output = leafNode.output;
         // TODO: Even don't record this child.
         node4.count++;
@@ -86,15 +87,16 @@ public class ARTBuilder {
         assert depth < anotherLeaf.key.length;
         Node4.insert(node4, anotherLeaf, key.bytes[depth]);
         updateNodeBytes(anotherLeaf, depth + 1);
-        //replace the current node with this internal node4
+        // replace the current node with this internal node4
         return node4;
       } else {
-        int commonPrefix = ARTUtil.commonPrefixLength(prefix, depth, prefix.length, key.bytes, depth, key.length);
+        int commonPrefix =
+            ARTUtil.commonPrefixLength(prefix, depth, prefix.length, key.bytes, depth, key.length);
         Node4 node4 = new Node4(commonPrefix);
-        //copy common prefix
+        // copy common prefix
         node4.prefixLength = (byte) commonPrefix;
         System.arraycopy(key.bytes, depth, node4.prefix, 0, commonPrefix);
-        //generate two leaf nodes as the children of the fresh node4
+        // generate two leaf nodes as the children of the fresh node4
         // Save output to parent node for node without commonPrefix. e.g. abc1, abc10.
         if (depth + commonPrefix < leafNode.key.length) {
           Node4.insert(node4, leafNode, prefix[depth + commonPrefix]);
@@ -109,23 +111,22 @@ public class ARTBuilder {
         assert depth + commonPrefix < anotherLeaf.key.length;
         Node4.insert(node4, anotherLeaf, key.bytes[depth + commonPrefix]);
         updateNodeBytes(anotherLeaf, depth + commonPrefix + 1);
-        //replace the current node with this internal node4
+        // replace the current node with this internal node4
         return node4;
       }
-
     }
-    //to a inner node case
+    // to a inner node case
     if (node.prefixLength > 0) {
-      //find the mismatch position
-      int mismatchPos = Arrays.mismatch(node.prefix, 0, node.prefixLength,
-          key.bytes, depth, key.length);
+      // find the mismatch position
+      int mismatchPos =
+          Arrays.mismatch(node.prefix, 0, node.prefixLength, key.bytes, depth, key.length);
       if (mismatchPos != node.prefixLength) {
         Node4 node4 = new Node4(mismatchPos);
-        //copy prefix
+        // copy prefix
         node4.prefixLength = (byte) mismatchPos;
         System.arraycopy(node.prefix, 0, node4.prefix, 0, mismatchPos);
-        //split the current internal node, spawn a fresh node4 and let the
-        //current internal node as its children.
+        // split the current internal node, spawn a fresh node4 and let the
+        // current internal node as its children.
         Node4.insert(node4, node, node.prefix[mismatchPos]);
         updateNodePrefix(node, mismatchPos + 1);
         LeafNode leafNode = new LeafNode(key, output);
@@ -137,7 +138,7 @@ public class ARTBuilder {
     }
     int pos = node.getChildPos(key.bytes[depth]);
     if (pos != Node.ILLEGAL_IDX) {
-      //insert the key as current internal node's children's child node.
+      // insert the key as current internal node's children's child node.
       Node child = node.getChild(pos);
       Node freshOne = insert(child, key, depth + 1, output);
       if (freshOne != child) {
@@ -145,7 +146,7 @@ public class ARTBuilder {
       }
       return node;
     }
-    //insert the key as a child leaf node of the current internal node
+    // insert the key as a child leaf node of the current internal node
     LeafNode leafNode = new LeafNode(key, output);
     Node freshOne = Node.insertLeaf(node, leafNode, key.bytes[depth]);
     updateNodeBytes(leafNode, depth + 1);

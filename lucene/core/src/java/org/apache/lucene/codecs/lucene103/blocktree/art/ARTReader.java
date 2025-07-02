@@ -21,6 +21,7 @@ import org.apache.lucene.util.BytesRef;
 // TODO: Load from disk.
 public class ARTReader {
   private Node root;
+
   // for testing.
   public ARTReader(Node root) {
     this.root = root;
@@ -41,12 +42,13 @@ public class ARTReader {
         return null;
       }
       if (node.prefixLength > 0) {
-        int commonLength = ARTUtil.commonPrefixLength(key.bytes, key.offset, key.offset + key.length, node.prefix, 0,
-            node.prefixLength);
+        int commonLength =
+            ARTUtil.commonPrefixLength(
+                key.bytes, key.offset, key.offset + key.length, node.prefix, 0, node.prefixLength);
         if (commonLength != node.prefixLength) {
           return null;
         }
-        //common prefix is the same, then increase the offset.
+        // common prefix is the same, then increase the offset.
         key.offset += node.prefixLength;
         key.length -= node.prefixLength;
 
