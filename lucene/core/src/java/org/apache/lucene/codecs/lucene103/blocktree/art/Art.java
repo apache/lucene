@@ -1,0 +1,148 @@
+package org.apache.lucene.codecs.lucene103.blocktree.art;
+
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BytesRef;
+
+import java.util.Arrays;
+
+public class Art {
+  public Node root;
+  private long keySize = 0;
+
+  public Art() {
+    root = null;
+  }
+
+  public boolean isEmpty() {
+    return root == null;
+  }
+
+  /** insert the key and output pair. */
+  public void insert(BytesRef key, Output output) {
+    Node freshRoot = insert(root, key, 0, output);
+    if (freshRoot != root) {
+      this.root = freshRoot;
+    }
+    keySize++;
+  }
+
+  /** Set remaining suffix to bytes. */
+  private void updateNodeBytes(Node node, int from) {
+    if (from < node.key.bytes.length) {
+      node.key.bytes = ArrayUtil.copyOfSubArray(node.key.bytes, from, node.key.bytes.length);
+    } else {
+      node.key.bytes = null;
+    }
+  }
+
+  /** Set remaining suffix to prefix. */
+  private void updateNodePrefix(Node node, int from) {
+    if (from < node.prefix.length) {
+      node.prefix = ArrayUtil.copyOfSubArray(node.prefix, from, node.prefix.length);
+    } else {
+      node.prefix = null;
+      node.prefixLength = 0;
+    }
+  }
+
+  private Node insert(Node node, BytesRef key, int depth, Output output) {
+    if (node == null) {
+      return new LeafNode(key, output);
+    }
+    if (node.nodeType == NodeType.LEAF_NODE) {
+      LeafNode leafNode = (LeafNode) node;
+      byte[] prefix = leafNode.key.bytes;
+      // This happens insert: abc1, abc10, abc100. When inserting abc100 to abc10, there is no key in abc10: abc1 is
+      // common prefix, 0 is child index(let it as common prefix for abc10 and abc100, but stay in child index).
+      if (prefix == null) {
+        Node4 node4 =  new Node4(0);
+        node4.output = leafNode.output;
+        // TODO: Even don't record this child.
+        node4.count++;
+        leafNode = null;
+        LeafNode anotherLeaf = new LeafNode(key, output);
+        assert depth < anotherLeaf.key.length;
+        Node4.insert(node4, anotherLeaf, key.bytes[depth]);
+        updateNodeBytes(anotherLeaf, depth + 1);
+        //replace the current node with this internal node4
+        return node4;
+      } else {
+        int commonPrefix = commonPrefixLength(prefix, depth, prefix.length, key.bytes, depth, key.length);
+        Node4 node4 = new Node4(commonPrefix);
+        //copy common prefix
+        node4.prefixLength = (byte) commonPrefix;
+        System.arraycopy(key.bytes, depth, node4.prefix, 0, commonPrefix);
+        //generate two leaf nodes as the children of the fresh node4
+        // Save output to parent node for node without commonPrefix. e.g. abc1, abc10.
+        if (depth + commonPrefix < leafNode.key.length) {
+          Node4.insert(node4, leafNode, prefix[depth + commonPrefix]);
+          updateNodeBytes(leafNode, depth + commonPrefix + 1);
+        } else {
+          node4.output = leafNode.output;
+          // TODO: Even don't record this child.
+          node4.count++;
+          leafNode = null;
+        }
+        LeafNode anotherLeaf = new LeafNode(key, output);
+        assert depth + commonPrefix < anotherLeaf.key.length;
+        Node4.insert(node4, anotherLeaf, key.bytes[depth + commonPrefix]);
+        updateNodeBytes(anotherLeaf, depth + commonPrefix + 1);
+        //replace the current node with this internal node4
+        return node4;
+      }
+
+    }
+    //to a inner node case
+    if (node.prefixLength > 0) {
+      //find the mismatch position
+      int mismatchPos = Arrays.mismatch(node.prefix, 0, node.prefixLength,
+          key.bytes, depth, key.length);
+      if (mismatchPos != node.prefixLength) {
+        Node4 node4 = new Node4(mismatchPos);
+        //copy prefix
+        node4.prefixLength = (byte) mismatchPos;
+        System.arraycopy(node.prefix, 0, node4.prefix, 0, mismatchPos);
+        //split the current internal node, spawn a fresh node4 and let the
+        //current internal node as its children.
+        Node4.insert(node4, node, node.prefix[mismatchPos]);
+        updateNodePrefix(node, mismatchPos + 1);
+        LeafNode leafNode = new LeafNode(key, output);
+        Node4.insert(node4, leafNode, key.bytes[mismatchPos + depth]);
+        updateNodeBytes(leafNode, mismatchPos + depth + 1);
+        return node4;
+      }
+      depth += node.prefixLength;
+    }
+    int pos = node.getChildPos(key.bytes[depth]);
+    if (pos != Node.ILLEGAL_IDX) {
+      //insert the key as current internal node's children's child node.
+      Node child = node.getChild(pos);
+      Node freshOne = insert(child, key, depth + 1, output);
+      if (freshOne != child) {
+        node.replaceNode(pos, freshOne);
+      }
+      return node;
+    }
+    //insert the key as a child leaf node of the current internal node
+    LeafNode leafNode = new LeafNode(key, output);
+    Node freshOne = Node.insertLeaf(node, leafNode, key.bytes[depth]);
+    updateNodeBytes(leafNode, depth + 1);
+    return freshOne;
+  }
+
+  //find common prefix length
+  private static int commonPrefixLength(byte[] key1, int aFromIndex, int aToIndex,
+                                        byte[] key2, int bFromIndex, int bToIndex) {
+    int aLength = aToIndex - aFromIndex;
+    int bLength = bToIndex - bFromIndex;
+    int minLength = Math.min(aLength, bLength);
+    int mismatchIndex = Arrays.mismatch(key1, aFromIndex, aToIndex, key2, bFromIndex, bToIndex);
+
+    if (aLength != bLength && mismatchIndex >= minLength) {
+      return minLength;
+    }
+    return mismatchIndex;
+  }
+
+
+}
