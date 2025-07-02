@@ -94,7 +94,7 @@ public class ARTBuilder {
             ARTUtil.commonPrefixLength(prefix, depth, prefix.length, key.bytes, depth, key.length);
         Node4 node4 = new Node4(commonPrefix);
         // copy common prefix
-        node4.prefixLength = (byte) commonPrefix;
+        node4.prefixLength = commonPrefix;
         System.arraycopy(key.bytes, depth, node4.prefix, 0, commonPrefix);
         // generate two leaf nodes as the children of the fresh node4
         // Save output to parent node for node without commonPrefix. e.g. abc1, abc10.
@@ -123,7 +123,7 @@ public class ARTBuilder {
       if (mismatchPos != node.prefixLength) {
         Node4 node4 = new Node4(mismatchPos);
         // copy prefix
-        node4.prefixLength = (byte) mismatchPos;
+        node4.prefixLength = mismatchPos;
         System.arraycopy(node.prefix, 0, node4.prefix, 0, mismatchPos);
         // split the current internal node, spawn a fresh node4 and let the
         // current internal node as its children.

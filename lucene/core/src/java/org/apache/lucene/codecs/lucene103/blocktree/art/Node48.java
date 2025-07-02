@@ -43,7 +43,6 @@ public class Node48 extends Node {
 
   @Override
   public byte getChildKey(int pos) {
-
     return (byte) pos;
   }
 

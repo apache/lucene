@@ -59,28 +59,4 @@ public class IntegerUtil {
     bytes[pos] = bv;
     return fromBDBytes(bytes);
   }
-
-  /**
-   * shift the byte left from the specified position
-   *
-   * @param v a integer value
-   * @param pos the position from which to shift byte values left
-   * @param count the shifting numbers
-   * @return a fresh integer value
-   */
-  public static int shiftLeftFromSpecifiedPosition(int v, int pos, int count) {
-    byte[] initialVal = toBDBytes(v);
-    System.arraycopy(initialVal, pos + 1, initialVal, pos, count);
-    return fromBDBytes(initialVal);
-  }
-
-  /**
-   * fetch the first byte
-   *
-   * @param v an input integer
-   * @return the first byte of the big endian representation
-   */
-  public static byte firstByte(int v) {
-    return (byte) (v >> 24);
-  }
 }
