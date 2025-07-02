@@ -20,7 +20,7 @@ import java.util.Arrays;
 
 public class Node48 extends Node {
 
-  //the actual byte value of childIndex content won't be beyond 48
+  // the actual byte value of childIndex content won't be beyond 48
   long[] childIndex = new long[32];
   Node[] children = new Node[48];
   static final byte EMPTY_VALUE = -1;
@@ -65,7 +65,7 @@ public class Node48 extends Node {
     for (int i = 0; i < 32; i++) {
       long longv = childIndex[i];
       if (longv == INIT_LONG_VALUE) {
-        //skip over empty bytes
+        // skip over empty bytes
         pos += 8;
         continue;
       } else {
@@ -93,7 +93,7 @@ public class Node48 extends Node {
       long longv = childIndex[i];
       if (offset == 0) {
         if (longv == INIT_LONG_VALUE) {
-          //skip over empty bytes
+          // skip over empty bytes
           pos += 8;
           continue;
         }
@@ -143,7 +143,7 @@ public class Node48 extends Node {
   public static Node insert(Node currentNode, Node child, byte key) {
     Node48 node48 = (Node48) currentNode;
     if (node48.count < 48) {
-      //insert leaf node into current node
+      // insert leaf node into current node
       int pos = node48.count;
       assert node48.children[pos] == null;
       node48.children[pos] = child;
@@ -157,7 +157,7 @@ public class Node48 extends Node {
       node48.count++;
       return node48;
     } else {
-      //grow to Node256
+      // grow to Node256
       Node256 node256 = new Node256(node48.prefixLength);
       int currentPos = ILLEGAL_IDX;
       while ((currentPos = node48.getNextLargerPos(currentPos)) != ILLEGAL_IDX) {

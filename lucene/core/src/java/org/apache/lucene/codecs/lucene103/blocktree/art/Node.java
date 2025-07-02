@@ -23,14 +23,14 @@ public abstract class Node {
   BytesRef key;
   Output output;
 
-  //node type
+  // node type
   public NodeType nodeType;
-  //length of compressed path(prefix)
+  // length of compressed path(prefix)
   public int prefixLength;
-  //the compressed path path (prefix)
+  // the compressed path path (prefix)
   protected byte[] prefix;
-  //number of non-null children, the largest value will not beyond 255
-  //to benefit calculation,we keep the value as a short type
+  // number of non-null children, the largest value will not beyond 255
+  // to benefit calculation,we keep the value as a short type
   protected short count;
   public static final int ILLEGAL_IDX = -1;
 
@@ -49,6 +49,7 @@ public abstract class Node {
 
   /**
    * get the position of a child corresponding to the input key 'k'
+   *
    * @param k a key value of the byte range
    * @return the child position corresponding to the key 'k'
    */
@@ -56,6 +57,7 @@ public abstract class Node {
 
   /**
    * get the corresponding key byte of the requested position
+   *
    * @param pos the position
    * @return the corresponding key byte
    */
@@ -63,6 +65,7 @@ public abstract class Node {
 
   /**
    * get the child at the specified position in the node, the 'pos' range from 0 to count
+   *
    * @param pos the position
    * @return a Node corresponding to the input position
    */
@@ -70,6 +73,7 @@ public abstract class Node {
 
   /**
    * replace the position child to the fresh one
+   *
    * @param pos the position
    * @param freshOne the fresh node to replace the old one
    */
@@ -77,6 +81,7 @@ public abstract class Node {
 
   /**
    * get the position of the min element in current node.
+   *
    * @return the minimum key's position
    */
   public abstract int getMinPos();
@@ -91,6 +96,7 @@ public abstract class Node {
 
   /**
    * get the max child's position
+   *
    * @return the max byte key's position
    */
   public abstract int getMaxPos();
@@ -120,6 +126,7 @@ public abstract class Node {
 
   /**
    * copy the prefix and output between two nodes
+   *
    * @param src the source node
    * @param dst the destination node
    */
@@ -138,8 +145,7 @@ public abstract class Node {
    * @param k the target key byte value
    * @return the array offset of the target input key 'k' or -1 to not found
    */
-  public static int binarySearch(byte[] key, int fromIndex, int toIndex,
-      byte k) {
+  public static int binarySearch(byte[] key, int fromIndex, int toIndex, byte k) {
     int inputUnsignedByte = Byte.toUnsignedInt(k);
     int low = fromIndex;
     int high = toIndex - 1;

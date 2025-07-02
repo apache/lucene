@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene103.blocktree.art;
 public class LongUtils {
   /**
    * to big endian bytes representation
+   *
    * @param v a long value
    * @return the input long value's big endian byte array representation
    */

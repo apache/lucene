@@ -101,7 +101,7 @@ public class Node16 extends Node {
   public static Node insert(Node node, Node child, byte key) {
     Node16 currentNode16 = (Node16) node;
     if (currentNode16.count < 8) {
-      //first
+      // first
       byte[] bytes = LongUtils.toBDBytes(currentNode16.firstChildIndex);
       bytes[currentNode16.count] = key;
       currentNode16.firstChildIndex = LongUtils.fromBDBytes(bytes);
@@ -109,7 +109,7 @@ public class Node16 extends Node {
       currentNode16.count++;
       return currentNode16;
     } else if (currentNode16.count < 16) {
-      //second
+      // second
       byte[] bytes = LongUtils.toBDBytes(currentNode16.secondChildIndex);
       bytes[currentNode16.count - 8] = key;
       currentNode16.secondChildIndex = LongUtils.fromBDBytes(bytes);
@@ -122,7 +122,7 @@ public class Node16 extends Node {
       for (int i = 0; i < 8; i++) {
         byte v = firstBytes[i];
         int unsignedIdx = Byte.toUnsignedInt(v);
-        //i won't be beyond 48
+        // i won't be beyond 48
         Node48.setOneByte(unsignedIdx, (byte) i, node48.childIndex);
         node48.children[i] = currentNode16.children[i];
       }
@@ -130,7 +130,7 @@ public class Node16 extends Node {
       for (int i = 8; i < currentNode16.count; i++) {
         byte v = secondBytes[i - 8];
         int unsignedIdx = Byte.toUnsignedInt(v);
-        //i won't be beyond 48
+        // i won't be beyond 48
         Node48.setOneByte(unsignedIdx, (byte) i, node48.childIndex);
         node48.children[i] = currentNode16.children[i];
       }

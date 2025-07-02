@@ -84,13 +84,13 @@ public class Node4 extends Node {
   public static Node insert(Node node, Node childNode, byte key) {
     Node4 current = (Node4) node;
     if (current.count < 4) {
-      //insert leaf into current node
+      // insert leaf into current node
       current.childIndex = IntegerUtil.setByte(current.childIndex, key, current.count);
       current.children[current.count] = childNode;
       current.count++;
       return current;
     } else {
-      //grow to Node16
+      // grow to Node16
       Node16 node16 = new Node16(current.prefixLength);
       node16.count = 4;
       node16.firstChildIndex = LongUtils.initWithFirst4Byte(current.childIndex);

@@ -29,10 +29,13 @@ public class TestArt extends LuceneTestCase {
     // Build.
     ARTBuilder artBuilder = new ARTBuilder();
     artBuilder.insert(new BytesRef("abc1".getBytes()), new Output(0, false, new BytesRef("abc1")));
-    artBuilder.insert(new BytesRef("abc10".getBytes()), new Output(0, false, new BytesRef("abc10")));
-    artBuilder.insert(new BytesRef("abc100".getBytes()), new Output(0, false, new BytesRef("abc100")));
+    artBuilder.insert(
+        new BytesRef("abc10".getBytes()), new Output(0, false, new BytesRef("abc10")));
+    artBuilder.insert(
+        new BytesRef("abc100".getBytes()), new Output(0, false, new BytesRef("abc100")));
     artBuilder.insert(new BytesRef("abc2".getBytes()), new Output(0, false, new BytesRef("abc2")));
-    artBuilder.insert(new BytesRef("abc234".getBytes()), new Output(0, false, new BytesRef("abc234")));
+    artBuilder.insert(
+        new BytesRef("abc234".getBytes()), new Output(0, false, new BytesRef("abc234")));
     artBuilder.insert(new BytesRef("abc3".getBytes()), new Output(0, false, new BytesRef("abc3")));
 
     assertEquals(3, artBuilder.root.prefixLength);
@@ -41,22 +44,26 @@ public class TestArt extends LuceneTestCase {
     // Search.
     ARTReader artReader = new ARTReader(artBuilder.root);
     assertEquals(new Output(0, false, new BytesRef("abc1")), artReader.find(new BytesRef("abc1")));
-    assertEquals(new Output(0, false, new BytesRef("abc10")), artReader.find(new BytesRef("abc10")));
-    assertEquals(new Output(0, false, new BytesRef("abc100")), artReader.find(new BytesRef("abc100")));
+    assertEquals(
+        new Output(0, false, new BytesRef("abc10")), artReader.find(new BytesRef("abc10")));
+    assertEquals(
+        new Output(0, false, new BytesRef("abc100")), artReader.find(new BytesRef("abc100")));
     assertEquals(new Output(0, false, new BytesRef("abc2")), artReader.find(new BytesRef("abc2")));
-    assertEquals(new Output(0, false, new BytesRef("abc234")), artReader.find(new BytesRef("abc234")));
+    assertEquals(
+        new Output(0, false, new BytesRef("abc234")), artReader.find(new BytesRef("abc234")));
     assertEquals(new Output(0, false, new BytesRef("abc3")), artReader.find(new BytesRef("abc3")));
     assertNull(artReader.find(new BytesRef("abc33")));
-
   }
 
   public void testNode16() {
     // Build.
     ARTBuilder artBuilder = new ARTBuilder();
     // Add a null child.
-    artBuilder.insert(new BytesRef(("abc").getBytes()), new Output(0, false, new BytesRef(("abc"))));
+    artBuilder.insert(
+        new BytesRef(("abc").getBytes()), new Output(0, false, new BytesRef(("abc"))));
     for (int i = 0; i < 10; i++) {
-      artBuilder.insert(new BytesRef(("abc" + i).getBytes()), new Output(0, false, new BytesRef(("abc" + i))));
+      artBuilder.insert(
+          new BytesRef(("abc" + i).getBytes()), new Output(0, false, new BytesRef(("abc" + i))));
     }
     assertEquals(NodeType.NODE16, artBuilder.root.nodeType);
 
@@ -64,7 +71,8 @@ public class TestArt extends LuceneTestCase {
     ARTReader artReader = new ARTReader(artBuilder.root);
     assertEquals(new Output(0, false, new BytesRef("abc")), artReader.find(new BytesRef("abc")));
     for (int i = 0; i < 10; i++) {
-      assertEquals(new Output(0, false, new BytesRef("abc" + i)), artReader.find(new BytesRef("abc" + i)));
+      assertEquals(
+          new Output(0, false, new BytesRef("abc" + i)), artReader.find(new BytesRef("abc" + i)));
     }
   }
 
@@ -72,7 +80,8 @@ public class TestArt extends LuceneTestCase {
     // Build.
     ARTBuilder artBuilder = new ARTBuilder();
     // Add a null child.
-    artBuilder.insert(new BytesRef(("abc").getBytes()), new Output(0, false, new BytesRef(("abc"))));
+    artBuilder.insert(
+        new BytesRef(("abc").getBytes()), new Output(0, false, new BytesRef(("abc"))));
     for (byte i = 65; i < 91; i++) {
       byte[] bytes = {97, 98, 99, i};
       artBuilder.insert(new BytesRef(bytes), new Output(0, false, new BytesRef(bytes)));
@@ -92,7 +101,8 @@ public class TestArt extends LuceneTestCase {
     // Build.
     ARTBuilder artBuilder = new ARTBuilder();
     // Add a null child.
-    artBuilder.insert(new BytesRef(("abc").getBytes()), new Output(0, false, new BytesRef(("abc"))));
+    artBuilder.insert(
+        new BytesRef(("abc").getBytes()), new Output(0, false, new BytesRef(("abc"))));
     for (byte i = -128; i < 127; i++) {
       byte[] bytes = {97, 98, 99, i};
       artBuilder.insert(new BytesRef(bytes), new Output(0, false, new BytesRef(bytes)));

@@ -20,9 +20,9 @@ import java.util.Arrays;
 
 public class ARTUtil {
 
-  //find common prefix length
-  public static int commonPrefixLength(byte[] key1, int aFromIndex, int aToIndex,
-      byte[] key2, int bFromIndex, int bToIndex) {
+  // find common prefix length
+  public static int commonPrefixLength(
+      byte[] key1, int aFromIndex, int aToIndex, byte[] key2, int bFromIndex, int bToIndex) {
     int mismatchIndex = Arrays.mismatch(key1, aFromIndex, aToIndex, key2, bFromIndex, bToIndex);
     if (mismatchIndex == -1) {
       return aToIndex - aFromIndex;

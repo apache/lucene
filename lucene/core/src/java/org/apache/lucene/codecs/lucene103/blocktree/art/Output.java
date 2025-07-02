@@ -26,5 +26,4 @@ import org.apache.lucene.util.BytesRef;
  * @param floorData will be non-null when a large block of terms sharing a single trie prefix is
  *     split into multiple on-disk blocks.
  */
-public record Output(long fp, boolean hasTerms, BytesRef floorData) {
-}
+public record Output(long fp, boolean hasTerms, BytesRef floorData) {}

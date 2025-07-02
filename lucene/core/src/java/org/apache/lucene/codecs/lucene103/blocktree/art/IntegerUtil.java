@@ -20,6 +20,7 @@ public class IntegerUtil {
 
   /**
    * convert integer to its byte array format
+   *
    * @param v an input integer value
    * @return the big endian byte array representation
    */
@@ -34,6 +35,7 @@ public class IntegerUtil {
 
   /**
    * convert into its integer representation
+   *
    * @param bytes the big endian integer's byte array
    * @return a integer corresponding to input bytes
    */
@@ -46,6 +48,7 @@ public class IntegerUtil {
 
   /**
    * set a specified position byte to another value to return a fresh integer
+   *
    * @param v the input integer value
    * @param bv the byte value to replace
    * @param pos the position of an 8 byte array to replace
@@ -59,6 +62,7 @@ public class IntegerUtil {
 
   /**
    * shift the byte left from the specified position
+   *
    * @param v a integer value
    * @param pos the position from which to shift byte values left
    * @param count the shifting numbers
@@ -72,6 +76,7 @@ public class IntegerUtil {
 
   /**
    * fetch the first byte
+   *
    * @param v an input integer
    * @return the first byte of the big endian representation
    */

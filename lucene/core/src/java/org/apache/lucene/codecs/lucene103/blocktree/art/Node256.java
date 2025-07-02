@@ -19,10 +19,9 @@ package org.apache.lucene.codecs.lucene103.blocktree.art;
 public class Node256 extends Node {
 
   Node[] children = new Node[256];
-  //a helper utility field
+  // a helper utility field
   long[] bitmapMask = new long[4];
   private static final long LONG_MASK = 0xffffffffffffffffL;
-
 
   public Node256(int compressedPrefixSize) {
     super(NodeType.NODE256, compressedPrefixSize);
@@ -130,4 +129,3 @@ public class Node256 extends Node {
     bitmapMask[longIdx] = newVal;
   }
 }
-
