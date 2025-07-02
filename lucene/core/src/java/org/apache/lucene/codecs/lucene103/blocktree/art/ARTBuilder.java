@@ -21,6 +21,7 @@ import org.apache.lucene.util.BytesRef;
 
 import java.util.Arrays;
 
+// TODO: Save to disk.
 public class ARTBuilder {
   public Node root;
   private long keySize = 0;

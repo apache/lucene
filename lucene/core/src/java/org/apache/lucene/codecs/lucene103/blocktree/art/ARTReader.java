@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene103.blocktree.art;
 
 import org.apache.lucene.util.BytesRef;
 
+// TODO: Load from disk.
 public class ARTReader {
   private Node root;
   // for testing.
