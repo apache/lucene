@@ -293,9 +293,9 @@ public final class OpenIndexDialogFactory implements DialogOpener.DialogFactory 
       if (!history.isEmpty()) {
         Path path = Paths.get(history.get(0));
         if (Files.exists(path)) {
-          if(path.getParent() != null) {
+          if (path.getParent() != null) {
             return path.getParent().toAbsolutePath().toFile();
-          }else {
+          } else {
             return path.toAbsolutePath().toFile();
           }
         }
