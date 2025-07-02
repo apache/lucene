@@ -391,8 +391,8 @@ public class TestIndexedDISI extends LuceneTestCase {
   public void testDenseBitSizeLessThanBlockSize() throws IOException {
     final byte denseRankPower = (byte) (random().nextInt(7) + 7);
     try (Directory dir = newDirectory()) {
-      int maxDoc = random().nextInt(4096 * 2, 65536); // initialize a maxDoc that is less
-      // than IndexedDISI.BLOCK_SIZE
+      // initialize a maxDoc that is less than IndexedDISI.BLOCK_SIZE
+      int maxDoc = random().nextInt(4096 * 2, 65536);
       FixedBitSet set = new FixedBitSet(maxDoc);
       for (int i = 0; i < maxDoc; i += 2) { // Set every other to ensure dense
         set.set(i);

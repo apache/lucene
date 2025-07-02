@@ -27,7 +27,6 @@ import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
@@ -273,40 +272,6 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
             assertEquals(iteratorCount, count);
           }
         }
-      }
-    }
-  }
-
-  @Nightly
-  public void testKnnQueryWithFiltering() throws IOException {
-    try (Directory directory = newDirectory()) {
-      final DirectoryReader reader;
-      try (RandomIndexWriter iw = new RandomIndexWriter(random(), directory)) {
-        for (int i = 0; i < 100_000; i++) {
-          Document doc = new Document();
-          doc.add(new StringField("id", "text" + i, Field.Store.NO));
-          doc.add(
-              new KnnFloatVectorField(
-                  "vector", new float[] {i, i * 2}, VectorSimilarityFunction.DOT_PRODUCT));
-          if (i % 2 == 0) {
-            // add a tag to half of the documents so that we will trigger
-            // DENSE DISI filtering
-            doc.add(new KeywordField("tag", "tag" + i, Field.Store.NO));
-          }
-          iw.addDocument(doc);
-        }
-        reader = iw.getReader();
-      }
-      try (reader) {
-        IndexSearcher searcher = new IndexSearcher(reader);
-        AbstractKnnVectorQuery query =
-            getKnnVectorQuery("vector", new float[] {100, 200}, 10, new FieldExistsQuery("tag"));
-
-        TopDocs topDocs = searcher.search(query, 100);
-        assertNotNull(topDocs);
-        assertTrue(topDocs.totalHits.value() > 0);
-        assertTrue(topDocs.scoreDocs.length > 0);
-        assertTrue(Arrays.stream(topDocs.scoreDocs).allMatch(x -> x.score > 0));
       }
     }
   }
