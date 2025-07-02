@@ -117,6 +117,25 @@ class ScorerUtil {
   }
 
   /**
+   * Compute a minimum required score, so that (float) MathUtil.sumUpperBound(minRequiredScore +
+   * maxRemainingScore, numScorers) <= minCompetitiveScore. The computed value may not be the
+   * greatest value that meets this condition, which means that we may fail to filter out some docs.
+   * However, this doesn't hurt correctness, it just means that these docs will be filtered out
+   * later, and the extra work required to compute an optimal value would unlikely result in a
+   * speedup.
+   */
+  static double minRequiredScore(
+      double maxRemainingScore, float minCompetitiveScore, int numScorers) {
+    double minRequiredScore = minCompetitiveScore - maxRemainingScore;
+    double subtraction = Math.ulp((double) minCompetitiveScore);
+    while ((float) MathUtil.sumUpperBound(minRequiredScore + maxRemainingScore, numScorers)
+        > minCompetitiveScore) {
+      minRequiredScore -= subtraction;
+    }
+    return minRequiredScore;
+  }
+
+  /**
    * Filters competitive hits from the provided {@link DocAndScoreAccBuffer}.
    *
    * <p>This method removes documents from the buffer that cannot possibly have a score competitive
@@ -128,14 +147,7 @@ class ScorerUtil {
       double maxRemainingScore,
       float minCompetitiveScore,
       int numScorers) {
-    // Compute minRequiredScore as the greatest float value so that (float)
-    // MathUtil.sumUpperBound(minRequiredScore + maxRemainingScore, numScorers) <=
-    // minCompetitiveScore.
-    double minRequiredScore = minCompetitiveScore - maxRemainingScore;
-    while ((float) MathUtil.sumUpperBound(minRequiredScore + maxRemainingScore, numScorers)
-        > minCompetitiveScore) {
-      minRequiredScore = Math.nextDown(minRequiredScore);
-    }
+    double minRequiredScore = minRequiredScore(maxRemainingScore, minCompetitiveScore, numScorers);
 
     if (minRequiredScore <= 0) {
       return;

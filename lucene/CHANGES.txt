@@ -194,7 +194,7 @@ Optimizations
 
 * GITHUB#14854: Using BatchScoreBulkScorer on CombinedFieldQuery. (Ge Song)
 
-* GITHUB#14827: Specialize filterCompetitiveHits when have exact 2 clauses. (Ge Sone)
+* GITHUB#14827: Pre-calculate minRequiredScore to speedup filterCompetitiveHits. (Ge Song)
 
 Changes in Runtime Behavior
 ---------------------
