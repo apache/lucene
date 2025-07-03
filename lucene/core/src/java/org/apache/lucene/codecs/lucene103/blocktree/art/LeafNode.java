@@ -37,22 +37,12 @@ public class LeafNode extends Node {
   }
 
   @Override
-  public byte getChildKey(int pos) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public Node getChild(int pos) {
     throw new UnsupportedOperationException();
   }
 
   @Override
   public void replaceNode(int pos, Node freshOne) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public int getMinPos() {
     throw new UnsupportedOperationException();
   }
 

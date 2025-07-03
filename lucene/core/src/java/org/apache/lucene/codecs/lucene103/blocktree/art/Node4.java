@@ -38,13 +38,6 @@ public class Node4 extends Node {
   }
 
   @Override
-  public byte getChildKey(int pos) {
-    int shiftLeftLen = (3 - pos) * 8;
-    byte v = (byte) (childIndex >> shiftLeftLen);
-    return v;
-  }
-
-  @Override
   public Node getChild(int pos) {
     return children[pos];
   }
@@ -52,11 +45,6 @@ public class Node4 extends Node {
   @Override
   public void replaceNode(int pos, Node freshOne) {
     children[pos] = freshOne;
-  }
-
-  @Override
-  public int getMinPos() {
-    return 0;
   }
 
   @Override

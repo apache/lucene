@@ -42,11 +42,6 @@ public class Node48 extends Node {
   }
 
   @Override
-  public byte getChildKey(int pos) {
-    return (byte) pos;
-  }
-
-  @Override
   public Node getChild(int pos) {
     byte idx = childrenIdx(pos, childIndex);
     return children[(int) idx];
@@ -56,28 +51,6 @@ public class Node48 extends Node {
   public void replaceNode(int pos, Node freshOne) {
     byte idx = childrenIdx(pos, childIndex);
     children[(int) idx] = freshOne;
-  }
-
-  @Override
-  public int getMinPos() {
-    int pos = 0;
-    for (int i = 0; i < 32; i++) {
-      long longv = childIndex[i];
-      if (longv == INIT_LONG_VALUE) {
-        // skip over empty bytes
-        pos += 8;
-        continue;
-      } else {
-        for (int j = 0; j <= 7; j++) {
-          byte v = (byte) (longv >>> ((7 - j) * 8));
-          if (v != EMPTY_VALUE) {
-            return pos;
-          }
-          pos++;
-        }
-      }
-    }
-    return ILLEGAL_IDX;
   }
 
   @Override

@@ -56,14 +56,6 @@ public abstract class Node {
   public abstract int getChildPos(byte k);
 
   /**
-   * get the corresponding key byte of the requested position
-   *
-   * @param pos the position
-   * @return the corresponding key byte
-   */
-  public abstract byte getChildKey(int pos);
-
-  /**
    * get the child at the specified position in the node, the 'pos' range from 0 to count
    *
    * @param pos the position
@@ -78,13 +70,6 @@ public abstract class Node {
    * @param freshOne the fresh node to replace the old one
    */
   public abstract void replaceNode(int pos, Node freshOne);
-
-  /**
-   * get the position of the min element in current node.
-   *
-   * @return the minimum key's position
-   */
-  public abstract int getMinPos();
 
   /**
    * get the next position in the node

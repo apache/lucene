@@ -48,20 +48,6 @@ public class Node16 extends Node {
   }
 
   @Override
-  public byte getChildKey(int pos) {
-    int posInLong;
-    if (pos <= 7) {
-      posInLong = pos;
-      byte[] firstBytes = LongUtils.toBDBytes(firstChildIndex);
-      return firstBytes[posInLong];
-    } else {
-      posInLong = pos - 8;
-      byte[] secondBytes = LongUtils.toBDBytes(secondChildIndex);
-      return secondBytes[posInLong];
-    }
-  }
-
-  @Override
   public Node getChild(int pos) {
     return children[pos];
   }
@@ -69,11 +55,6 @@ public class Node16 extends Node {
   @Override
   public void replaceNode(int pos, Node freshOne) {
     children[pos] = freshOne;
-  }
-
-  @Override
-  public int getMinPos() {
-    return 0;
   }
 
   @Override

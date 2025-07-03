@@ -23,7 +23,7 @@ import org.apache.lucene.codecs.lucene103.blocktree.art.Output;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
-public class TestArt extends LuceneTestCase {
+public class TestART extends LuceneTestCase {
 
   public void testNode4() {
     // Build.

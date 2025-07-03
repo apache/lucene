@@ -37,11 +37,6 @@ public class Node256 extends Node {
   }
 
   @Override
-  public byte getChildKey(int pos) {
-    return (byte) pos;
-  }
-
-  @Override
   public Node getChild(int pos) {
     return children[pos];
   }
@@ -49,21 +44,6 @@ public class Node256 extends Node {
   @Override
   public void replaceNode(int pos, Node freshOne) {
     children[pos] = freshOne;
-  }
-
-  @Override
-  public int getMinPos() {
-    for (int i = 0; i < 4; i++) {
-      long longVal = bitmapMask[i];
-      int v = Long.numberOfTrailingZeros(longVal);
-      if (v == 64) {
-        continue;
-      } else {
-        int res = i * 64 + v;
-        return res;
-      }
-    }
-    return ILLEGAL_IDX;
   }
 
   @Override
