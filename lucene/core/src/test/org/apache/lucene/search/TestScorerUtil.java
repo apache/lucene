@@ -96,18 +96,32 @@ public class TestScorerUtil extends LuceneTestCase {
   }
 
   public void testMinRequiredScore() {
-    double maxRemainingScore = random().nextDouble();
-    float minCompetitiveScore = random().nextFloat();
-    int numScorers = random().nextInt(1, 10);
+    int iters = atLeast(100);
+    for (int iter = 0; iter < iters; iter++) {
+      double maxRemainingScore = random().nextDouble();
+      float minCompetitiveScore = random().nextFloat();
+      int numScorers = random().nextInt(1, 1000);
 
-    double minRequiredScore =
-        ScorerUtil.minRequiredScore(maxRemainingScore, minCompetitiveScore, numScorers);
-    if (minCompetitiveScore < maxRemainingScore) {
-      assertTrue(minRequiredScore <= 0);
-    } else {
-      assertTrue(
-          (float) MathUtil.sumUpperBound(minRequiredScore + maxRemainingScore, numScorers)
-              <= minCompetitiveScore);
+      double minRequiredScore =
+          ScorerUtil.minRequiredScore(maxRemainingScore, minCompetitiveScore, numScorers);
+      if (minCompetitiveScore < maxRemainingScore) {
+        assertTrue(minRequiredScore <= 0);
+      } else {
+        assertTrue(
+            (float) MathUtil.sumUpperBound(minRequiredScore + maxRemainingScore, numScorers)
+                <= minCompetitiveScore);
+      }
+
+      // NOTE: we need to assert the internal while loop ends within an acceptable iterations. But it seems there is no
+      // easy way to do this assertion, so the assertion below relies on the internal implementation detail of
+      // ScorerUtil.minRequiredScore
+      double initialMinRequiredScore = minCompetitiveScore - maxRemainingScore;
+      double subtraction = Math.ulp(minCompetitiveScore);
+      int expectConverge = 10;
+      for (int i = 0; i < expectConverge; i++) {
+        initialMinRequiredScore -= subtraction;
+      }
+      assertTrue(initialMinRequiredScore <= minRequiredScore);
     }
   }
 }
