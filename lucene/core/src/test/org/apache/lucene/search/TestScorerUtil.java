@@ -112,9 +112,9 @@ public class TestScorerUtil extends LuceneTestCase {
                 <= minCompetitiveScore);
       }
 
-      // NOTE: we need to assert the internal while loop ends within an acceptable iterations. But it seems there is no
-      // easy way to do this assertion, so the assertion below relies on the internal implementation detail of
-      // ScorerUtil.minRequiredScore
+      // NOTE: we need to assert the internal while loop ends within an acceptable iterations. But
+      // it seems there is no easy way to do this assertion, so the assertion below relies on the
+      // internal implementation detail of ScorerUtil.minRequiredScore
       double initialMinRequiredScore = minCompetitiveScore - maxRemainingScore;
       double subtraction = Math.ulp(minCompetitiveScore);
       int expectConverge = 10;
