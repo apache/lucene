@@ -194,6 +194,8 @@ Optimizations
 
 * GITHUB#14854: Using BatchScoreBulkScorer on CombinedFieldQuery. (Ge Song)
 
+* GITHUB#14827: Pre-calculate minRequiredScore to speedup filterCompetitiveHits. (Ge Song, Adrien Grand)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
