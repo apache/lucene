@@ -194,6 +194,8 @@ Optimizations
 
 * GITHUB#14854: Using BatchScoreBulkScorer on CombinedFieldQuery. (Ge Song)
 
+* GITHUB#14806: Utilize docIdRunEnd on ReqExclBulkScorer. (Ge Song)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
