@@ -380,7 +380,7 @@ public final class VectorUtil {
   /**
    * filter both docBuffer and scoreBuffer with threshold, each docBuffer and scoreBuffer of the
    * same index forms a pair, pairs with score less than threshold will be filtered out from the
-   * array. This method is dedicated for {@Link ScorerUtil#filterCompetitiveHits} at least for now
+   * array.
    *
    * @param docBuffer doc buffer contains docs (or some other value forms a pair with scoreBuffer)
    * @param scoreBuffer score buffer contains scores to be compared with threshold
