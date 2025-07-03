@@ -134,9 +134,7 @@ class ScorerUtil {
     // note: we want the float ulp in order to converge faster, not the double ulp
     double subtraction = Math.ulp(minCompetitiveScore);
     while (minRequiredScore > 0
-        && (float)
-                MathUtil.sumUpperBound(
-                    minRequiredScore - subtraction + maxRemainingScore, numScorers)
+        && (float) MathUtil.sumUpperBound(minRequiredScore + maxRemainingScore, numScorers)
             >= minCompetitiveScore) {
       minRequiredScore -= subtraction;
     }
