@@ -96,7 +96,7 @@ public class TestScorerUtil extends LuceneTestCase {
   }
 
   public void testMinRequiredScore() {
-    int iters = atLeast(100);
+    int iters = atLeast(10000);
     for (int iter = 0; iter < iters; iter++) {
       double maxRemainingScore = random().nextDouble();
       float minCompetitiveScore = random().nextFloat();
@@ -107,9 +107,13 @@ public class TestScorerUtil extends LuceneTestCase {
       if (minCompetitiveScore < maxRemainingScore) {
         assertTrue(minRequiredScore <= 0);
       } else {
-        assertTrue(
-            (float) MathUtil.sumUpperBound(minRequiredScore + maxRemainingScore, numScorers)
-                <= minCompetitiveScore);
+        // The value before minRequiredScore must not be able to produce a score >=
+        // minCompetitiveScore.
+        assertFalse(
+            (float)
+                    MathUtil.sumUpperBound(
+                        Math.nextDown(minRequiredScore) + maxRemainingScore, numScorers)
+                >= minCompetitiveScore);
       }
 
       // NOTE: we need to assert the internal while loop ends within an acceptable iterations. But
