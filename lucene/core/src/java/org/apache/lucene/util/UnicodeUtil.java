@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util;
 
 /*
  * Some of this code came from the excellent Unicode
@@ -82,6 +81,8 @@ package org.apache.lucene.util;
  * dealings in this Software without prior written authorization of the
  * copyright holder.
  */
+
+package org.apache.lucene.util;
 
 import java.util.Arrays;
 

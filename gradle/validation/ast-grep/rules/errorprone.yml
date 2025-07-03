@@ -149,3 +149,35 @@ severity: error
 message: |
   `main` methods must be `public`, `static`, and `void`
 url: https://errorprone.info/bugpattern/IncorrectMainMethod
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: ThreeLetterTimeZoneID
+language: java
+rule:
+  pattern: $$$.getTimeZone("$ZONE")
+severity: error
+constraints:
+  ZONE:
+    # three-letter zone
+    regex: "^[A-Z][A-Z][A-Z]$"
+    # exempt UTC/GMT
+    not:
+      regex: "(UTC|GMT)"
+message: Three-letter time zone identifiers are deprecated, may be ambiguous, and might not do what you intend
+note: The full IANA time zone ID should be used instead.
+url: https://errorprone.info/bugpattern/ThreeLetterTimeZoneID
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: StringCharset
+language: java
+rule:
+  any:
+    - pattern: new String($ARG, "$CHARSET")
+    - pattern: $$$.getBytes("$CHARSET")
+constraints:
+  CHARSET:
+    # these are available in StandardCharsets
+    regex: "(US-ASCII|UTF-16|UTF-8)"
+severity: error
+message: Prefer StandardCharsets over using string names for charsets
+url: https://errorprone.info/bugpattern/StringCharset

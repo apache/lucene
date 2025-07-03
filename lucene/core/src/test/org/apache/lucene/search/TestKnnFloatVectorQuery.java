@@ -232,10 +232,10 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
           maxScore = Math.max(maxScore, scores[i]);
         }
         IndexReader indexReader = searcher.getIndexReader();
-        int[] segments = AbstractKnnVectorQuery.findSegmentStarts(indexReader.leaves(), docs);
+        int[] segments = DocAndScoreQuery.findSegmentStarts(indexReader.leaves(), docs);
 
-        AbstractKnnVectorQuery.DocAndScoreQuery query =
-            new AbstractKnnVectorQuery.DocAndScoreQuery(
+        DocAndScoreQuery query =
+            new DocAndScoreQuery(
                 docs,
                 scores,
                 maxScore,
