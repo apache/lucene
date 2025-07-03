@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import org.apache.lucene.index.MultiTenantCMSManager;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
