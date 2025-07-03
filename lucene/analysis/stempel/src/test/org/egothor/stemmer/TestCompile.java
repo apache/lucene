@@ -1,5 +1,3 @@
-package org.egothor.stemmer;
-
 /*
 Egothor Software License version 1.00
 Copyright (C) 1997-2004 Leo Galambos.
@@ -54,6 +52,8 @@ This  software  consists  of  voluntary  contributions  made  by  many
 individuals  on  behalf  of  the  Egothor  Project  and was originally
 created by Leo Galambos (Leo.G@seznam.cz).
 */
+
+package org.egothor.stemmer;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
