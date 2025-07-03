@@ -18,8 +18,10 @@ package org.apache.lucene.gradle.plugins.globals;
 
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsExtension;
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin;
+import com.carrotsearch.randomizedtesting.SeedUtils;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
@@ -52,6 +54,18 @@ public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
         System.getenv().keySet().stream()
             .anyMatch(key -> key.matches("(?i)((JENKINS|HUDSON)(_\\w+)?|CI)"));
 
+    // Pick the "root" seed from which everything else that is randomized is derived.
+    Provider<String> rootSeedOption =
+        getBuildOptions(project)
+            .addOption(
+                "tests.seed",
+                "The \"root\" randomization seed for options and test parameters.",
+                project.provider(() -> String.format("%08X", new Random().nextLong())));
+    String rootSeed = rootSeedOption.get();
+
+    // We take just the root seed, ignoring any chained sub-seeds.
+    long rootSeedLong = SeedUtils.parseSeedChain(rootSeed)[0];
+
     project.allprojects(
         p -> {
           var globals =
@@ -64,6 +78,12 @@ public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
           globals.buildTime = buildTime;
           globals.buildYear = buildYear;
           globals.isCIBuild = isCIBuild;
+          globals.getRootSeed().set(rootSeed);
+          globals.getRootSeedAsLong().set(rootSeedLong);
+          globals
+              .getProjectSeedAsLong()
+              .convention(rootSeedLong ^ p.getPath().hashCode())
+              .finalizeValue();
         });
   }
 

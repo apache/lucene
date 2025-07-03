@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.gradle.plugins;
 
+import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsExtension;
 import java.nio.file.Path;
 import java.util.Locale;
 import org.gradle.api.GradleException;
@@ -61,5 +62,25 @@ public abstract class LuceneGradlePlugin implements Plugin<Project> {
       throw new GradleException(
           "This plugin is applicable to the rootProject only: " + getClass().getSimpleName());
     }
+  }
+
+  /**
+   * Returns a filesystem path to a given resource that the plugin uses. At the moment, these
+   * resources are located under the top-level {@code gradle/} folder.
+   */
+  protected Path gradlePluginResource(Project project, String relativePath) {
+    return project
+        .getRootProject()
+        .getLayout()
+        .getProjectDirectory()
+        .dir("gradle")
+        .getAsFile()
+        .toPath()
+        .resolve(relativePath);
+  }
+
+  /** Utility method returning {@link BuildOptionsExtension}. */
+  protected BuildOptionsExtension getBuildOptions(Project project) {
+    return project.getExtensions().getByType(BuildOptionsExtension.class);
   }
 }

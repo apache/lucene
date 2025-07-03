@@ -19,6 +19,7 @@ import org.apache.lucene.gradle.plugins.spotless.GoogleJavaFormatPlugin
 import org.apache.lucene.gradle.plugins.java.JavaFolderLayoutPlugin
 import org.apache.lucene.gradle.plugins.java.JavacConfigurationPlugin
 import org.apache.lucene.gradle.plugins.java.JarManifestConfigurationPlugin
+import org.apache.lucene.gradle.plugins.java.TestsAndRandomizationPlugin
 
 allprojects { project ->
   if (['src/java', 'src/test'].any {path ->
@@ -30,7 +31,7 @@ allprojects { project ->
     plugins.apply(JavacConfigurationPlugin)
     plugins.apply(JarManifestConfigurationPlugin)
 
-    plugins.apply("lucene.java.tests-and-randomization")
+    plugins.apply(TestsAndRandomizationPlugin)
     plugins.apply("lucene.java.per-project-test-summary")
 
     plugins.apply("lucene.validation.forbidden-apis")

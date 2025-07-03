@@ -86,18 +86,14 @@ ext {
   ] as Set
 }
 
-// Pick the "root" seed from which everything else that is randomized is derived.
-Provider<String> rootSeedOption = buildOptions.addOption("tests.seed", "The \"root\" randomization seed for options and test parameters.", provider {
-  return String.format("%08X", new Random().nextLong())
-})
 ext {
-  rootSeed = rootSeedOption.get()
+  rootSeed = buildGlobals.rootSeed.get()
   rootSeedUserProvided = buildOptions.getOption("tests.seed").getValue().get().source() == BuildOptionValueSource.COMPUTED_VALUE
-  rootSeedLong = SeedUtils.parseSeedChain(rootSeed)[0]
+  rootSeedLong = buildGlobals.rootSeedAsLong.get()
 }
-allprojects {
+allprojects {p ->
   ext {
-    projectSeedLong = rootProject.rootSeedLong ^ project.path.hashCode()
+    projectSeedLong = p.extensions.getByName("buildGlobals").projectSeedAsLong.get()
   }
 }
 
