@@ -70,7 +70,8 @@ public class VectorScorerBenchmark {
   IndexInput in;
   KnnVectorValues vectorValues;
   byte[] vec1, vec2;
-  UpdateableRandomVectorScorer scorer;
+  UpdateableRandomVectorScorer scorer1;
+  RandomVectorScorer scorer2;
 
   @Setup(Level.Iteration)
   public void init() throws IOException {
@@ -86,11 +87,11 @@ public class VectorScorerBenchmark {
     }
     in = dir.openInput("vector.data", IOContext.DEFAULT);
     vectorValues = vectorValues(size, 2, in, DOT_PRODUCT);
-    scorer =
-        FlatVectorScorerUtil.getLucene99FlatVectorsScorer()
-            .getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValues)
-            .scorer();
-    scorer.setScoringOrdinal(0);
+
+    FlatVectorsScorer flatVectorsScorer = FlatVectorScorerUtil.getLucene99FlatVectorsScorer();
+    scorer1 = flatVectorsScorer.getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValues).scorer();
+    scorer1.setScoringOrdinal(0);
+    scorer2 = flatVectorsScorer.getRandomVectorScorer(DOT_PRODUCT, vectorValues, vec1);
   }
 
   @TearDown
@@ -99,14 +100,25 @@ public class VectorScorerBenchmark {
   }
 
   @Benchmark
-  public float binaryDotProductDefault() throws IOException {
-    return scorer.score(1);
+  public float binaryDotProductIndexingDefault() throws IOException {
+    return scorer1.score(1);
   }
 
   @Benchmark
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
-  public float binaryDotProductMemSeg() throws IOException {
-    return scorer.score(1);
+  public float binaryDotProductIndexingMemSeg() throws IOException {
+    return scorer1.score(1);
+  }
+
+  @Benchmark
+  public float binaryDotProductSearchingDefault() throws IOException {
+    return scorer2.score(1);
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public float binaryDotProductSearchingMemSeg() throws IOException {
+    return scorer2.score(1);
   }
 
   static KnnVectorValues vectorValues(
