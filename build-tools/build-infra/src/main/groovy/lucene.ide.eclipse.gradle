@@ -48,7 +48,10 @@ if (gradle.startParameter.taskNames.contains("eclipse")) {
       plusConfigurations += allprojects.findAll{ prj ->
         return prj.plugins.hasPlugin(JavaPlugin)
       }.collectMany {
-        return [ it.configurations.compileClasspath, it.configurations.testCompileClasspath ]
+        return [
+          it.configurations.compileClasspath,
+          it.configurations.testCompileClasspath
+        ]
       }
 
       file {
@@ -57,10 +60,15 @@ if (gradle.startParameter.taskNames.contains("eclipse")) {
             return it.kind == "src" || (it.kind == "lib" && it.getPath() ==~ /(.+)lucene-.*\.jar/)
           }
 
-          // I'm not sure what these attributes are supposed to do. Keeping the previous version of having no-attributes.
+          // Wipe attributes which only contain a blank "gradle_used_by_scope" for every single library.
           classpath.entries.each {
             if (it.kind == "lib") {
               it.getEntryAttributes().clear()
+            }
+            // The generated gradle-api.jar has no source attached, attaching source is a PITA
+            // for now just attach a javadocs URL, which improves editor functionality:
+            if (it.getPath() ==~ /(.+)gradle-api-.*\.jar/) {
+              it.getEntryAttributes().put("javadoc_location", "https://docs.gradle.org/${deps.versions.minGradle.get()}/javadoc")
             }
           }
 
@@ -134,4 +142,3 @@ if (gradle.startParameter.taskNames.contains("eclipse")) {
     inputs.property('eclipseJavaVersion', eclipseJavaVersion as String)
   }
 }
-

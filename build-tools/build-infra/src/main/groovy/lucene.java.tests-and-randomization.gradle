@@ -89,7 +89,7 @@ if (project != project.rootProject) {
   buildOptions.addOption("tests.seed", "The \"root\" randomization seed for options and test parameters.",
       rootProject.getExtensions().getByType(BuildOptionsExtension).getOption("tests.seed").asStringProvider())
 }
-optionsInheritedAsProperties += [ "tests.seed" ]
+optionsInheritedAsProperties += ["tests.seed"]
 
 buildOptions.addIntOption("tests.iters", "Duplicate (re-run) each test case N times.")
 optionsInheritedAsProperties += ["tests.iters"]

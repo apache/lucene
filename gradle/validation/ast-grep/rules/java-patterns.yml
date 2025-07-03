@@ -5,7 +5,7 @@
 id: java-lang-import
 language: java
 rule:
-  pattern: import java.lang.$REF
+  pattern: import java.lang.$REF;
   kind: import_declaration
 fix: ""
 severity: error
