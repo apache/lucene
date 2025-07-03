@@ -44,15 +44,15 @@ public class ARTBuilder {
 
   /** Set remaining suffix to bytes. */
   private void updateNodeBytes(Node node, int from) {
-    if (from < node.key.bytes.length) {
-      node.key.bytes = ArrayUtil.copyOfSubArray(node.key.bytes, from, node.key.bytes.length);
-      node.key.offset = 0;
-      node.key.length = node.key.bytes.length;
+    assert from > node.key.offset;
+    if (from < node.key.offset + node.key.length) {
+      // TODO: subtract bytes?
+      //      node.key.bytes = ArrayUtil.copyOfSubArray(node.key.bytes, from,
+      // node.key.bytes.length);
+      node.key.length = node.key.offset + node.key.length - from;
+      node.key.offset = from;
     } else {
-      // TODO: Just set node.key is null;
-      node.key.bytes = null;
-      node.key.offset = 0;
-      node.key.length = 0;
+      node.key = null;
     }
   }
 
@@ -60,6 +60,7 @@ public class ARTBuilder {
   private void updateNodePrefix(Node node, int from) {
     if (from < node.prefix.length) {
       node.prefix = ArrayUtil.copyOfSubArray(node.prefix, from, node.prefix.length);
+      node.prefixLength = node.prefix.length;
     } else {
       node.prefix = null;
       node.prefixLength = 0;
@@ -72,12 +73,12 @@ public class ARTBuilder {
     }
     if (node.nodeType == NodeType.LEAF_NODE) {
       LeafNode leafNode = (LeafNode) node;
-      byte[] prefix = leafNode.key.bytes;
+      //      byte[] prefix = leafNode.key.bytes;
       // This happens insert: abc1, abc10, abc100. When inserting abc100 to abc10, there is no key
       // in abc10: abc1 is
       // common prefix, 0 is child index(let it as common prefix for abc10 and abc100, but stay in
       // child index).
-      if (prefix == null) {
+      if (leafNode.key == null) {
         Node4 node4 = new Node4(0);
         node4.output = leafNode.output;
         // TODO: Even don't record this child.
@@ -90,6 +91,7 @@ public class ARTBuilder {
         // replace the current node with this internal node4
         return node4;
       } else {
+        byte[] prefix = leafNode.key.bytes;
         int commonPrefix =
             ARTUtil.commonPrefixLength(prefix, depth, prefix.length, key.bytes, depth, key.length);
         Node4 node4 = new Node4(commonPrefix);

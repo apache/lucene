@@ -36,7 +36,7 @@ public class ARTReader {
       if (node.nodeType == NodeType.LEAF_NODE) {
         LeafNode leafNode = (LeafNode) node;
         // TODO: Set node.key is null.
-        if (node.key.length != 0 && node.key.equals(key)) {
+        if (node.key != null && node.key.equals(key)) {
           return leafNode.output;
         }
         return null;
