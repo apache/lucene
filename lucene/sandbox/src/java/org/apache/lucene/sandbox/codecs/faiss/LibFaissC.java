@@ -417,10 +417,9 @@ final class LibFaissC {
         MemorySegment pointer = temp.allocate(ADDRESS);
 
         long[] bits = fixedBitSet.getBits();
-        MemorySegment nativeBits = temp.allocate(JAVA_LONG, bits.length);
-
-        // Use LITTLE_ENDIAN to convert long[] -> uint8_t*
-        nativeBits.asByteBuffer().order(ByteOrder.LITTLE_ENDIAN).asLongBuffer().put(bits);
+        MemorySegment nativeBits =
+            // Use LITTLE_ENDIAN to convert long[] -> uint8_t*
+            temp.allocateFrom(JAVA_LONG.withOrder(ByteOrder.LITTLE_ENDIAN), bits);
 
         callAndHandleError(ID_SELECTOR_BITMAP_NEW, pointer, fixedBitSet.length(), nativeBits);
         MemorySegment idSelectorBitmapPointer =
