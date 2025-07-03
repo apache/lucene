@@ -154,15 +154,26 @@ public class RescoreTopNQuery extends Query {
    * Creates a {@code RescoreTopNQuery} that computes top N results using multi-vector similarity
    * comparisons against a late interaction field.
    *
+   * <p>Note: This query computes late interaction field similarity for the entire match-set of
+   * wrapped query, and returns a new query with only top-N hits in the match-set. This is typically
+   * useful in combining a query's results with other queries for hybrid search. To simply rerank
+   * the top N hits without scoring entire match-set, see {@link LateInteractionRescorer}.
+   *
    * @param in the inner Query to rescore
    * @param n number of results to keep
-   * @param fieldName the {@link org.apache.lucene.document.LateInteractionField} for recomputing top N hits
+   * @param fieldName the {@link org.apache.lucene.document.LateInteractionField} for recomputing
+   *     top N hits
    * @param queryVector query multi-vector to use for similarity comparisons
    * @param vectorSimilarityFunction function to use for vector similarity comparisons.
    */
   public static Query createLateInteractionQuery(
-      Query in, int n, String fieldName, float[][] queryVector, VectorSimilarityFunction vectorSimilarityFunction) {
-    final LateInteractionFloatValuesSource valuesSource = new LateInteractionFloatValuesSource(fieldName, queryVector, vectorSimilarityFunction);
+      Query in,
+      int n,
+      String fieldName,
+      float[][] queryVector,
+      VectorSimilarityFunction vectorSimilarityFunction) {
+    final LateInteractionFloatValuesSource valuesSource =
+        new LateInteractionFloatValuesSource(fieldName, queryVector, vectorSimilarityFunction);
     return new RescoreTopNQuery(in, valuesSource, n);
   }
 }
