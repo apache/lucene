@@ -376,4 +376,24 @@ public final class VectorUtil {
     return IMPL.recalculateScalarQuantizationOffset(
         vector, oldAlpha, oldMinQuantile, scale, alpha, minQuantile, maxQuantile);
   }
+
+  /**
+   * filter both docBuffer and scoreBuffer with threshold, each docBuffer and scoreBuffer of the
+   * same index forms a pair, pairs with score less than threshold will be filtered out from the
+   * array. This method is dedicated for {@Link ScorerUtil#filterCompetitiveHits} at least for now
+   *
+   * @param docBuffer doc buffer contains docs (or some other value forms a pair with scoreBuffer)
+   * @param scoreBuffer score buffer contains scores to be compared with threshold
+   * @param threshold minimal required double value to not be filtered out
+   * @param upTo where the filter should end
+   * @return how many pairs left after filter
+   */
+  public static int filterWithDouble(
+      int[] docBuffer, double[] scoreBuffer, double threshold, int upTo) {
+    if (docBuffer.length != scoreBuffer.length || docBuffer.length < upTo) {
+      throw new IllegalArgumentException(
+          "docBuffer and scoreBuffer should keep same length and at least as long as upTo");
+    }
+    return IMPL.filterWithDouble(docBuffer, scoreBuffer, threshold, upTo);
+  }
 }
