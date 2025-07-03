@@ -202,6 +202,8 @@ Changes in Runtime Behavior
 
 Bug Fixes
 ---------------------
+* GITHUB#14880: NPE exception could occur in Luke on Windows when using network shares (wuth)
+
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
   used if the DoubleValuesSource needed scores. (David Smiley)
 
