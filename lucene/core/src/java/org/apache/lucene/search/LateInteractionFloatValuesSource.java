@@ -40,7 +40,7 @@ public class LateInteractionFloatValuesSource extends DoubleValuesSource {
   private final String fieldName;
   private final float[][] queryVector;
   private final VectorSimilarityFunction vectorSimilarityFunction;
-  private final ScoreFunction scoreFunction;
+  private final MultiVectorSimilarity scoreFunction;
 
   public LateInteractionFloatValuesSource(String fieldName, float[][] queryVector) {
     this(fieldName, queryVector, VectorSimilarityFunction.COSINE, ScoreFunction.SUM_MAX_SIM);
@@ -55,7 +55,7 @@ public class LateInteractionFloatValuesSource extends DoubleValuesSource {
       String fieldName,
       float[][] queryVector,
       VectorSimilarityFunction vectorSimilarityFunction,
-      ScoreFunction scoreFunction) {
+      MultiVectorSimilarity scoreFunction) {
     this.fieldName = Objects.requireNonNull(fieldName);
     this.queryVector = validateQueryVector(queryVector);
     this.vectorSimilarityFunction = Objects.requireNonNull(vectorSimilarityFunction);
@@ -136,7 +136,7 @@ public class LateInteractionFloatValuesSource extends DoubleValuesSource {
         + " similarityFunction="
         + vectorSimilarityFunction
         + " scoreFunction="
-        + scoreFunction.name()
+        + scoreFunction.getClass()
         + " queryVector="
         + Arrays.deepToString(queryVector)
         + ")";
@@ -148,7 +148,7 @@ public class LateInteractionFloatValuesSource extends DoubleValuesSource {
   }
 
   /** Defines the function to compute similarity score between query and document multi-vectors */
-  public enum ScoreFunction {
+  public enum ScoreFunction implements MultiVectorSimilarity {
 
     /** Computes the sum of max similarity between query and document vectors */
     SUM_MAX_SIM {
@@ -179,18 +179,5 @@ public class LateInteractionFloatValuesSource extends DoubleValuesSource {
         return result;
       }
     };
-
-    /**
-     * Computes similarity between two multi-vectors using provided {@link VectorSimilarityFunction}
-     *
-     * <p>Provided multi-vectors can have varying number of composing token vectors, but their token
-     * vectors should have the same dimension.
-     *
-     * @param outer a multi-vector
-     * @param inner another multi-vector
-     * @return similarity score between two multi-vectors
-     */
-    public abstract float compare(
-        float[][] outer, float[][] inner, VectorSimilarityFunction vectorSimilarityFunction);
   }
 }
