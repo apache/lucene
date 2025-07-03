@@ -27,6 +27,7 @@ import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2S;
 
 import java.lang.foreign.MemorySegment;
 import jdk.incubator.vector.ByteVector;
+import jdk.incubator.vector.DoubleVector;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.LongVector;
@@ -55,6 +56,11 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   // preferred vector sizes, which can be altered for testing
   private static final VectorSpecies<Float> FLOAT_SPECIES;
+  private static final VectorSpecies<Double> DOUBLE_SPECIES =
+      PanamaVectorConstants.PREFERRED_DOUBLE_SPECIES;
+  // This create a vector species which we make sure have exact half bits of DOUBLE_SPECIES
+  private static final VectorSpecies<Integer> INT_FOR_DOUBLE_SPECIES =
+      VectorSpecies.of(int.class, VectorShape.forBitSize(DOUBLE_SPECIES.vectorBitSize() / 2));
   private static final VectorSpecies<Integer> INT_SPECIES =
       PanamaVectorConstants.PRERERRED_INT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES;
@@ -1000,5 +1006,27 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
             .recalculateOffset(vector, i, oldAlpha, oldMinQuantile);
 
     return correction;
+  }
+
+  @Override
+  public int filterWithDouble(int[] docBuffer, double[] scoreBuffer, double threshold, int upTo) {
+    int newUpto = 0;
+    int i = 0;
+    for (int bound = upTo - DOUBLE_SPECIES.length() + 1; i < bound; i += DOUBLE_SPECIES.length()) {
+      DoubleVector scoreVector = DoubleVector.fromArray(DOUBLE_SPECIES, scoreBuffer, i);
+      IntVector docVector = IntVector.fromArray(INT_FOR_DOUBLE_SPECIES, docBuffer, i);
+      VectorMask<Double> mask = scoreVector.compare(VectorOperators.GE, threshold);
+      docVector.compress(mask.cast(INT_FOR_DOUBLE_SPECIES)).intoArray(docBuffer, newUpto);
+      scoreVector.compress(mask).intoArray(scoreBuffer, newUpto);
+      newUpto += mask.trueCount();
+    }
+    for (; i < upTo; ++i) {
+      if (scoreBuffer[i] >= threshold) {
+        docBuffer[newUpto] = docBuffer[i];
+        scoreBuffer[newUpto] = scoreBuffer[i];
+        newUpto++;
+      }
+    }
+    return newUpto;
   }
 }

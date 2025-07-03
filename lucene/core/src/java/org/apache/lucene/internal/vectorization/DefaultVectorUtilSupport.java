@@ -309,4 +309,17 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       return minQuantile * (v - minQuantile / 2.0F) + (dx - dxq) * dxq;
     }
   }
+
+  @Override
+  public int filterWithDouble(int[] docBuffer, double[] scoreBuffer, double threshold, int upTo) {
+    int newSize = 0;
+    for (int i = 0; i < upTo; i++) {
+      if (scoreBuffer[i] >= threshold) {
+        docBuffer[newSize] = docBuffer[i];
+        scoreBuffer[newSize] = scoreBuffer[i];
+        newSize++;
+      }
+    }
+    return newSize;
+  }
 }

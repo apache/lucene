@@ -22,6 +22,7 @@ import java.util.stream.LongStream;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat;
 import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.MathUtil;
@@ -34,6 +35,8 @@ class ScorerUtil {
       Lucene103PostingsFormat.getImpactsEnumImpl();
   private static final Class<?> DEFAULT_ACCEPT_DOCS_CLASS =
       new FixedBitSet(1).asReadOnlyBits().getClass();
+
+  static final VectorizationProvider VECTORIZATION_PROVIDER = VectorizationProvider.getInstance();
 
   static long costWithMinShouldMatch(LongStream costs, int numScorers, int minShouldMatch) {
     // the idea here is the following: a boolean query c1,c2,...cn with minShouldMatch=m
@@ -157,15 +160,7 @@ class ScorerUtil {
       return;
     }
 
-    int newSize = 0;
-    for (int i = 0; i < buffer.size; ++i) {
-      if (buffer.scores[i] >= minRequiredScore) {
-        buffer.docs[newSize] = buffer.docs[i];
-        buffer.scores[newSize] = buffer.scores[i];
-        newSize++;
-      }
-    }
-    buffer.size = newSize;
+    buffer.size = VECTORIZATION_PROVIDER.getVectorUtilSupport().filterWithDouble(buffer.docs, buffer.scores, minRequiredScore, buffer.size);
   }
 
   /**

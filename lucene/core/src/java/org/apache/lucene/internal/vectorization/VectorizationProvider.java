@@ -217,7 +217,8 @@ public abstract class VectorizationProvider {
           "org.apache.lucene.util.VectorUtil",
           "org.apache.lucene.codecs.lucene103.Lucene103PostingsReader",
           "org.apache.lucene.codecs.lucene103.PostingIndexInput",
-          "org.apache.lucene.tests.util.TestSysoutsLimits");
+          "org.apache.lucene.tests.util.TestSysoutsLimits",
+          "org.apache.lucene.search.ScorerUtil");
 
   private static void ensureCaller() {
     final boolean validCaller =

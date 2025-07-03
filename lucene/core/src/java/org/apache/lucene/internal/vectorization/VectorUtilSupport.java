@@ -100,4 +100,6 @@ public interface VectorUtilSupport {
       float alpha,
       float minQuantile,
       float maxQuantile);
+
+  int filterWithDouble(int[] docBuffer, double[] scoreBuffer, double threshold, int upTo);
 }
