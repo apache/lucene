@@ -20,8 +20,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.apache.lucene.index.ConcurrentMergeScheduler;
-
 /**
  * Simple demonstration of a MultiTenantCMSManager that divides a fixed thread budget equally among
  * all registered ConcurrentMergeSchedulers.
@@ -37,26 +35,26 @@ public class MultiTenantCMSManager {
 
   private MultiTenantCMSManager() {}
 
-/**
- * Returns the singleton instance of the MultiTenantCMSManager.
- */
+  /** Returns the singleton instance of the MultiTenantCMSManager. */
   public static MultiTenantCMSManager getInstance() {
     return INSTANCE;
   }
-/**
- * Registers a ConcurrentMergeScheduler with the global manager.
- *
- * @param cms the merge scheduler to register
- */
+
+  /**
+   * Registers a ConcurrentMergeScheduler with the global manager.
+   *
+   * @param cms the merge scheduler to register
+   */
   public void register(ConcurrentMergeScheduler cms) {
     schedulers.add(cms);
     updateBudgets();
   }
-/**
- * Unregisters a ConcurrentMergeScheduler from the global manager.
- *
- * @param cms the merge scheduler to unregister
- */
+
+  /**
+   * Unregisters a ConcurrentMergeScheduler from the global manager.
+   *
+   * @param cms the merge scheduler to unregister
+   */
   public void unregister(ConcurrentMergeScheduler cms) {
     schedulers.remove(cms);
     updateBudgets();
