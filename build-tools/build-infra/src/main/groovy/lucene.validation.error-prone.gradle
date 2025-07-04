@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+import org.apache.lucene.gradle.plugins.java.AlternativeJdkSupportPlugin
+
 // Applies error-prone for additional linting.
 
 if (project != project.rootProject) {
@@ -26,7 +28,7 @@ Provider<Boolean> errorproneOption = buildOptions.addBooleanOption("validation.e
 
 // make sure we can apply error-prone or provide a reason why we can't.
 String skipReason = null
-if (rootProject.ext.usesAltJvm) {
+if (rootProject.getExtensions().getByType(AlternativeJdkSupportPlugin.AltJvmExtension).altJvmUsed.get()) {
   skipReason = "won't work with alternative java toolchain"
 } else if (errorproneOption.get() == false) {
   if (rootProject.ext.isCIBuild) {

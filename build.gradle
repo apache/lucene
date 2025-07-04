@@ -27,7 +27,6 @@ plugins {
 
   id "lucene.help"
 
-  id "lucene.java.alternative-jdk-support"
   id "lucene.java-projects.conventions"
 
   id "lucene.java.core.mrjar"

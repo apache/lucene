@@ -1,4 +1,5 @@
 import org.gradle.internal.jvm.Jvm
+import org.apache.lucene.gradle.plugins.java.RenderJavadocTaskBase
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -269,7 +270,7 @@ class OfflineLink implements Serializable {
 }
 
 @CacheableTask
-class RenderJavadocTask extends DefaultTask {
+abstract class RenderJavadocTask extends RenderJavadocTaskBase {
   @InputFiles
   @PathSensitive(PathSensitivity.RELATIVE)
   @IgnoreEmptyDirectories
@@ -329,15 +330,15 @@ class RenderJavadocTask extends DefaultTask {
   @Optional
   ListProperty<String> extraOpts = project.objects.listProperty(String)
 
-  @Optional
-  @Input
-  final Property<String> executable = project.objects.property(String).convention(
-  project.provider { Jvm.current().javadocExecutable.toString() })
-
   @InputDirectory
   @PathSensitive(PathSensitivity.RELATIVE)
   @IgnoreEmptyDirectories
   File taskResources
+
+  @Inject
+  public RenderJavadocTask(Project project) {
+    super(project)
+  }
 
   /** Utility method to recursively collect all tasks with same name like this one that we depend on */
   private Set findRenderTasksInDependencies() {

@@ -322,16 +322,19 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
       }
     }
 
-    // TODO: maybe convert these ext properties to an extension too?
     Provider<Integer> minMajorVersion =
         upperJavaFeatureVersionOption.map(
             ver -> Integer.parseInt(JavaVersion.toVersion(ver).getMajorVersion()));
-    ExtraPropertiesExtension rootExt =
-        project.getRootProject().getExtensions().getByType(ExtraPropertiesExtension.class);
-    JavaVersion runtimeJava = (JavaVersion) rootExt.get("runtimeJavaVersion");
-    @SuppressWarnings("unchecked")
+    var altJvmExt =
+        project
+            .getRootProject()
+            .getExtensions()
+            .getByType(AlternativeJdkSupportPlugin.AltJvmExtension.class);
+    JavaVersion runtimeJava = altJvmExt.getCompilationJvmVersion().get();
+
+    // JDK versions where the vector module is still incubating.
     boolean incubatorJavaVersion =
-        ((Set<JavaVersion>) rootExt.get("vectorIncubatorJavaVersions")).contains(runtimeJava);
+        Set.of("21", "22", "23", "24", "25").contains(runtimeJava.getMajorVersion());
 
     // if the vector module is in incubator, pass lint flags to suppress excessive warnings.
     if (incubatorJavaVersion) {
