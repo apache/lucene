@@ -50,9 +50,32 @@ import org.gradle.process.CommandLineArgumentProvider;
 
 /** Sets up gradle's Test task configuration, including all kinds of randomized options */
 public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
+  public static class RootHooksPlugin extends LuceneGradlePlugin {
+    @Override
+    public void apply(Project project) {
+      applicableToRootProjectOnly(project);
+
+      project
+          .getTasks()
+          .register(
+              "warnForcedLimitedParallelism",
+              task -> {
+                task.doFirst(
+                    t -> {
+                      t.getLogger()
+                          .warn(
+                              "'tests.jvm' build option forced to 1 because tests.verbose is true.");
+                    });
+              });
+    }
+  }
+
   @Override
   public void apply(Project project) {
     requiresAppliedPlugin(project, JavaPlugin.class);
+
+    // Add warning task at the top level project so that we only emit it once.
+    project.getRootProject().getPlugins().apply(RootHooksPlugin.class);
 
     // Pass certain build options to the test JVM as system properties
     LinkedHashSet<String> optionsInheritedAsProperties = new LinkedHashSet<>();
@@ -314,7 +337,7 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
 
               int maxParallelForks = jvmsOption.get();
               if (verboseMode && maxParallelForks != 1) {
-                task.getLogger().lifecycle("tests.jvm forced to 1 in verbose mode.");
+                task.dependsOn(":warnForcedLimitedParallelism");
                 maxParallelForks = 1;
               }
               task.setMaxParallelForks(maxParallelForks);
@@ -387,9 +410,10 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
               task.systemProperty("jdk.map.althashing.threshold", "0");
 
               // Pass certain buildOptions as system properties
+              var sysProps = task.getSystemProperties().keySet();
               for (String key : optionsInheritedAsProperties) {
                 Provider<String> option = buildOptions.optionValue(key);
-                if (option.isPresent()) {
+                if (option.isPresent() && !sysProps.contains(key)) {
                   task.systemProperty(key, buildOptions.optionValue(key).get());
                 }
               }

@@ -35,7 +35,6 @@ plugins {
   id "lucene.java.slowest-tests-at-end"
   id "lucene.java.show-failed-tests-at-end"
   id "lucene.java.profiling"
-  id "lucene.java.beasting"
   id "lucene.java.coverage"
   id "lucene.java.modules"
 

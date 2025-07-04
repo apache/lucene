@@ -20,6 +20,7 @@ import org.apache.lucene.gradle.plugins.java.JavaFolderLayoutPlugin
 import org.apache.lucene.gradle.plugins.java.JavacConfigurationPlugin
 import org.apache.lucene.gradle.plugins.java.JarManifestConfigurationPlugin
 import org.apache.lucene.gradle.plugins.java.TestsAndRandomizationPlugin
+import org.apache.lucene.gradle.plugins.java.TestsBeastingPlugin
 
 allprojects { project ->
   if (['src/java', 'src/test'].any {path ->
@@ -30,8 +31,8 @@ allprojects { project ->
     plugins.apply(JavaFolderLayoutPlugin)
     plugins.apply(JavacConfigurationPlugin)
     plugins.apply(JarManifestConfigurationPlugin)
-
     plugins.apply(TestsAndRandomizationPlugin)
+    plugins.apply(TestsBeastingPlugin)
     plugins.apply("lucene.java.per-project-test-summary")
 
     plugins.apply("lucene.validation.forbidden-apis")

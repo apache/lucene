@@ -40,10 +40,12 @@ allprojects {
 }
 
 plugins.apply(BasePlugin)
+
+plugins.apply(RegisterBuildGlobalsPlugin)
+
 plugins.apply(GitInfoPlugin)
 plugins.apply(AstGrepPlugin)
 plugins.apply(EditorConfigLintPlugin)
-plugins.apply(RegisterBuildGlobalsPlugin)
 
 //
 // Expose parts of the final project version to the build. We can't use Runtime.Version, sadly.
@@ -88,13 +90,7 @@ ext {
 
 ext {
   rootSeed = buildGlobals.rootSeed.get()
-  rootSeedUserProvided = buildOptions.getOption("tests.seed").getValue().get().source() == BuildOptionValueSource.COMPUTED_VALUE
   rootSeedLong = buildGlobals.rootSeedAsLong.get()
-}
-allprojects {p ->
-  ext {
-    projectSeedLong = p.extensions.getByName("buildGlobals").projectSeedAsLong.get()
-  }
 }
 
 tasks.register("showTestsSeed", {
