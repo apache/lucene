@@ -475,6 +475,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
       if (intraMergeExecutor != null) {
         intraMergeExecutor.shutdown();
       }
+      MultiTenantCMSManager.getInstance().unregister(this);
     }
   }
 
