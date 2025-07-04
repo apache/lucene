@@ -70,9 +70,8 @@ public abstract class LuceneGradlePlugin implements Plugin<Project> {
    */
   protected Path gradlePluginResource(Project project, String relativePath) {
     return project
-        .getRootProject()
         .getLayout()
-        .getProjectDirectory()
+        .getSettingsDirectory()
         .dir("gradle")
         .getAsFile()
         .toPath()
