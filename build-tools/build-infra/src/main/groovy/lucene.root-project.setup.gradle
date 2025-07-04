@@ -88,17 +88,6 @@ ext {
   ] as Set
 }
 
-ext {
-  rootSeed = buildGlobals.rootSeed.get()
-  rootSeedLong = buildGlobals.rootSeedAsLong.get()
-}
-
-tasks.register("showTestsSeed", {
-  doFirst {
-    logger.lifecycle("Running tests with root randomization seed: tests.seed=${rootProject.ext.rootSeed}")
-  }
-})
-
 // Wire up included builds to some validation tasks.
 tasks.matching { it.name == "tidy" }.configureEach {
   dependsOn gradle.includedBuilds*.task(":tidy")

@@ -17,6 +17,7 @@
 package org.apache.lucene.gradle.plugins.java;
 
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsExtension;
+import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.File;
 import java.nio.file.Path;
@@ -65,6 +66,40 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                       t.getLogger()
                           .warn(
                               "'tests.jvm' build option forced to 1 because tests.verbose is true.");
+                    });
+              });
+
+      project
+          .getTasks()
+          .register(
+              "showTestsSeed",
+              task -> {
+                var testsSeedOption =
+                    project
+                        .getExtensions()
+                        .getByType(BuildOptionsExtension.class)
+                        .getOption("tests.seed");
+
+                String seedSource =
+                    switch (testsSeedOption.getSource()) {
+                      case GRADLE_PROPERTY -> "project property";
+                      case SYSTEM_PROPERTY -> "system property";
+                      case ENVIRONMENT_VARIABLE -> "environment variable";
+                      case EXPLICIT_VALUE -> "explicit value";
+                      case COMPUTED_VALUE -> "picked at random";
+                      case BUILD_OPTIONS_FILE -> BuildOptionsPlugin.BUILD_OPTIONS_FILE + " file";
+                      case LOCAL_BUILD_OPTIONS_FILE ->
+                          BuildOptionsPlugin.LOCAL_BUILD_OPTIONS_FILE + " file";
+                    };
+
+                task.doFirst(
+                    t -> {
+                      t.getLogger()
+                          .lifecycle(
+                              "Running tests with root randomization seed tests.seed="
+                                  + testsSeedOption.asStringProvider().get()
+                                  + ", source: "
+                                  + seedSource);
                     });
               });
     }
