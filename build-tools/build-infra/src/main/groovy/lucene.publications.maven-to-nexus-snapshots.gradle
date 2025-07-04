@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension
 
 // Configure artifact push to apache nexus (snapshots repository, CI job)
 def apacheNexusSnapshotsRepository = "https://repository.apache.org/content/repositories/snapshots"
@@ -38,10 +39,12 @@ tasks.register("mavenToApacheSnapshots", {
   }
 })
 
+LuceneBuildGlobalsExtension buildGlobals = rootProject.extensions.getByType(LuceneBuildGlobalsExtension)
+
 def checkSnapshotsRepositoryPushPreconditions = tasks.register("checkSnapshotsRepositoryPushPreconditions", {
   doFirst {
     // Make sure we're pushing a snapshot version.
-    if (!rootProject.ext.snapshotBuild) {
+    if (!buildGlobals.snapshotBuild) {
       throw new GradleException("ASF snapshots repository will not accept a non-snapshot version: ${rootProject.version}")
     }
 

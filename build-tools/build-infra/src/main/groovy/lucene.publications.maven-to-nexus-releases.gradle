@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension
 
 // Configure artifact push to apache nexus (releases repository).
 def apacheNexusReleasesRepository = "https://repository.apache.org/service/local/staging/deploy/maven2"
@@ -38,11 +39,13 @@ tasks.register("mavenToApacheReleases", {
   }
 })
 
+LuceneBuildGlobalsExtension buildGlobals = rootProject.extensions.getByType(LuceneBuildGlobalsExtension)
+
 def checkReleasesRepositoryPushPreconditions = tasks.register("checkReleasesRepositoryPushPreconditions", {
   doFirst {
     // Make sure we're pushing a release version. The release repository
     // does not accept snapshots and returns cryptic errors upon trying.
-    if (rootProject.ext.snapshotBuild) {
+    if (buildGlobals.snapshotBuild) {
       throw new GradleException("ASF releases repository will not accept a snapshot version: ${rootProject.version}")
     }
 

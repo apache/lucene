@@ -27,7 +27,6 @@ plugins {
 
   id "lucene.help"
 
-  id "lucene.java.alternative-jdk-support"
   id "lucene.java-projects.conventions"
 
   id "lucene.java.core.mrjar"
@@ -35,7 +34,6 @@ plugins {
   id "lucene.java.slowest-tests-at-end"
   id "lucene.java.show-failed-tests-at-end"
   id "lucene.java.profiling"
-  id "lucene.java.beasting"
   id "lucene.java.coverage"
   id "lucene.java.modules"
 

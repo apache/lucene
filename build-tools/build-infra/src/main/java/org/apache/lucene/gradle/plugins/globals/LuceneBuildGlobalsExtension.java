@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.gradle.plugins.globals;
 
+import org.gradle.api.provider.Property;
+
 /** Global build constants. */
 public abstract class LuceneBuildGlobalsExtension {
   public static final String NAME = "buildGlobals";
@@ -50,4 +52,13 @@ public abstract class LuceneBuildGlobalsExtension {
    * </ul>
    */
   public boolean isCIBuild;
+
+  /** Returns per-project seed for randomization. */
+  public abstract Property<Long> getProjectSeedAsLong();
+
+  /** Return the root randomization seed */
+  public abstract Property<String> getRootSeed();
+
+  /** Return the root randomization seed as a {@code long} value. */
+  public abstract Property<Long> getRootSeedAsLong();
 }

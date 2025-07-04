@@ -16,7 +16,7 @@
  */
 
 import java.util.regex.Pattern
-import org.apache.lucene.gradle.ErrorReportingTestListener
+import org.apache.lucene.gradle.plugins.java.ErrorReportingTestListener
 
 // Display all failed tests at the end of the build.
 
