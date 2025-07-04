@@ -16,6 +16,7 @@
  */
 
 import org.apache.lucene.gradle.plugins.java.AlternativeJdkSupportPlugin
+import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension
 
 // Applies error-prone for additional linting.
 
@@ -23,15 +24,17 @@ if (project != project.rootProject) {
   throw new GradleException("Applicable to rootProject only: " + project.path)
 }
 
+LuceneBuildGlobalsExtension buildGlobals = rootProject.extensions.getByType(LuceneBuildGlobalsExtension)
+
 Provider<Boolean> errorproneOption = buildOptions.addBooleanOption("validation.errorprone",
-    "Applies error-prone for additional source code linting.", provider { -> rootProject.ext.isCIBuild as boolean })
+    "Applies error-prone for additional source code linting.", buildGlobals.isCIBuild)
 
 // make sure we can apply error-prone or provide a reason why we can't.
 String skipReason = null
 if (rootProject.getExtensions().getByType(AlternativeJdkSupportPlugin.AltJvmExtension).altJvmUsed.get()) {
   skipReason = "won't work with alternative java toolchain"
 } else if (errorproneOption.get() == false) {
-  if (rootProject.ext.isCIBuild) {
+  if (buildGlobals.isCIBuild) {
     throw new GradleException("Odd, errorprone linting should always be enabled on CI builds.")
   } else {
     skipReason = "skipped on builds not running inside CI environments, pass -Pvalidation.errorprone=true to enable"

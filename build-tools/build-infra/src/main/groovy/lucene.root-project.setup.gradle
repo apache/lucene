@@ -53,10 +53,6 @@ plugins.apply(EditorConfigLintPlugin)
 def buildGlobals = rootProject.extensions.getByName("buildGlobals")
 ext {
   // TODO: remove ext properties in favor of using the global extension directly in Java plugins code (typed refs).
-  baseVersion = buildGlobals.baseVersion
-  majorVersion = buildGlobals.majorVersion
-  snapshotBuild = buildGlobals.snapshotBuild
-  isCIBuild = buildGlobals.isCIBuild
 
   // Minimum Java version required to compile and run Lucene.
   minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
