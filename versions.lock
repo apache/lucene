@@ -6,14 +6,16 @@
       "com.ibm.icu:icu4j:77.1" : "47ea4550,refs=6",
       "commons-codec:commons-codec:1.18.0" : "e6288df0,refs=6",
       "commons-io:commons-io:2.16.1" : "5ce8cdc6,refs=2",
+      "io.github.jbellis:jvector:4.0.0-beta.6" : "9f877bb0,refs=7",
       "io.sgr:s2-geometry-library-java:1.0.0" : "cbc357ab,refs=4",
       "junit:junit:4.13.2" : "fa9ef26b,refs=4",
       "net.sf.jopt-simple:jopt-simple:5.0.4" : "85a1e4c6,refs=2",
       "net.sourceforge.nekohtml:nekohtml:1.9.22" : "5ce8cdc6,refs=2",
+      "org.agrona:agrona:1.20.0" : "9f877bb0,refs=7",
       "org.antlr:antlr4-runtime:4.13.2" : "d9953130,refs=4",
       "org.apache.commons:commons-compress:1.27.1" : "5ce8cdc6,refs=2",
       "org.apache.commons:commons-lang3:3.16.0" : "5ce8cdc6,refs=2",
-      "org.apache.commons:commons-math3:3.6.1" : "85a1e4c6,refs=2",
+      "org.apache.commons:commons-math3:3.6.1" : "dd26014b,refs=8",
       "org.apache.opennlp:opennlp-tools:2.5.4" : "2f760bab,refs=4",
       "org.carrot2:morfologik-fsa:2.1.9" : "79af844b,refs=4",
       "org.carrot2:morfologik-polish:2.1.9" : "fe494320,refs=3",
@@ -21,7 +23,8 @@
       "org.hamcrest:hamcrest:3.0" : "fa9ef26b,refs=4",
       "org.locationtech.spatial4j:spatial4j:0.8" : "cbc357ab,refs=4",
       "org.openjdk.jmh:jmh-core:1.37" : "85a1e4c6,refs=2",
-      "org.slf4j:slf4j-api:2.0.17" : "2f760bab,refs=4",
+      "org.slf4j:slf4j-api:2.0.17" : "07f0efc6,refs=10",
+      "org.yaml:snakeyaml:2.4" : "9f877bb0,refs=7",
       "ua.net.nlp:morfologik-ukrainian-search:4.9.1" : "fe494320,refs=3",
       "xerces:xercesImpl:2.12.2" : "5ce8cdc6,refs=2"
     },
@@ -48,16 +51,18 @@
       "commons-io:commons-io:2.16.1" : "6f16ff86,refs=2",
       "io.github.eisop:dataflow-errorprone:3.41.0-eisop1" : "7d2143da,refs=39",
       "io.github.java-diff-utils:java-diff-utils:4.12" : "7d2143da,refs=39",
+      "io.github.jbellis:jvector:4.0.0-beta.6" : "43dd284b,refs=10",
       "io.sgr:s2-geometry-library-java:1.0.0" : "1d5a4b2b,refs=4",
       "javax.inject:javax.inject:1" : "7d2143da,refs=39",
       "junit:junit:4.13.2" : "b35e5d7a,refs=74",
       "net.bytebuddy:byte-buddy:1.15.11" : "b7ba1646,refs=2",
       "net.sf.jopt-simple:jopt-simple:5.0.4" : "152d9f78,refs=3",
       "net.sourceforge.nekohtml:nekohtml:1.9.22" : "6f16ff86,refs=2",
+      "org.agrona:agrona:1.20.0" : "43dd284b,refs=10",
       "org.antlr:antlr4-runtime:4.13.2" : "6fbc4021,refs=5",
       "org.apache.commons:commons-compress:1.27.1" : "6f16ff86,refs=2",
       "org.apache.commons:commons-lang3:3.16.0" : "6f16ff86,refs=2",
-      "org.apache.commons:commons-math3:3.6.1" : "152d9f78,refs=3",
+      "org.apache.commons:commons-math3:3.6.1" : "f0656784,refs=12",
       "org.apache.opennlp:opennlp-tools:2.5.4" : "b91715f0,refs=6",
       "org.assertj:assertj-core:3.27.3" : "b7ba1646,refs=2",
       "org.carrot2:morfologik-fsa:2.1.9" : "e077a675,refs=8",
@@ -71,12 +76,55 @@
       "org.openjdk.jmh:jmh-core:1.37" : "152d9f78,refs=3",
       "org.openjdk.jmh:jmh-generator-annprocess:1.37" : "ecaf1d73,refs=1",
       "org.pcollections:pcollections:4.0.1" : "7d2143da,refs=39",
-      "org.slf4j:slf4j-api:2.0.17" : "b91715f0,refs=6",
+      "org.slf4j:slf4j-api:2.0.17" : "736bb8da,refs=15",
+      "org.yaml:snakeyaml:2.4" : "43dd284b,refs=10",
       "ua.net.nlp:morfologik-ukrainian-search:4.9.1" : "cb00cecf,refs=5",
       "xerces:xercesImpl:2.12.2" : "6f16ff86,refs=2"
     }
   },
   "because" : {
+    "07f0efc6" : [
+      {
+        "configuration" : "runtimeClasspath",
+        "projectPath" : ":lucene:benchmark"
+      },
+      {
+        "configuration" : "runtimeClasspath",
+        "projectPath" : ":lucene:benchmark-jmh"
+      },
+      {
+        "configuration" : "runtimeClasspath",
+        "projectPath" : ":lucene:demo"
+      },
+      {
+        "configuration" : "compileClasspath",
+        "projectPath" : ":lucene:luke"
+      },
+      {
+        "configuration" : "runtimeClasspath",
+        "projectPath" : ":lucene:luke"
+      },
+      {
+        "configuration" : "runtimeClasspath",
+        "projectPath" : ":lucene:queryparser"
+      },
+      {
+        "configuration" : "compileClasspath",
+        "projectPath" : ":lucene:sandbox"
+      },
+      {
+        "configuration" : "runtimeClasspath",
+        "projectPath" : ":lucene:sandbox"
+      },
+      {
+        "configuration" : "compileClasspath",
+        "projectPath" : ":lucene:analysis:opennlp"
+      },
+      {
+        "configuration" : "runtimeClasspath",
+        "projectPath" : ":lucene:analysis:opennlp"
+      }
+    ],
     "152d9f78" : [
       {
         "configuration" : "annotationProcessor",
@@ -135,6 +183,48 @@
       {
         "configuration" : "runtimeClasspath",
         "projectPath" : ":lucene:analysis:opennlp"
+      }
+    ],
+    "43dd284b" : [
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:benchmark"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:benchmark-jmh"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:demo"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:highlighter"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:luke"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:memory"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:monitor"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:queryparser"
+      },
+      {
+        "configuration" : "testCompileClasspath",
+        "projectPath" : ":lucene:sandbox"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:sandbox"
       }
     ],
     "47ea4550" : [
@@ -203,6 +293,68 @@
       {
         "configuration" : "testRuntimeClasspath",
         "projectPath" : ":lucene:queries"
+      }
+    ],
+    "736bb8da" : [
+      {
+        "configuration" : "testCompileClasspath",
+        "projectPath" : ":lucene:analysis.tests"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:analysis.tests"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:benchmark"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:benchmark-jmh"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:demo"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:highlighter"
+      },
+      {
+        "configuration" : "testCompileClasspath",
+        "projectPath" : ":lucene:luke"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:luke"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:memory"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:monitor"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:queryparser"
+      },
+      {
+        "configuration" : "testCompileClasspath",
+        "projectPath" : ":lucene:sandbox"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:sandbox"
+      },
+      {
+        "configuration" : "testCompileClasspath",
+        "projectPath" : ":lucene:analysis:opennlp"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:analysis:opennlp"
       }
     ],
     "79af844b" : [
@@ -423,6 +575,36 @@
       {
         "configuration" : "testRuntimeClasspath",
         "projectPath" : ":lucene:analysis:phonetic"
+      }
+    ],
+    "9f877bb0" : [
+      {
+        "configuration" : "runtimeClasspath",
+        "projectPath" : ":lucene:benchmark"
+      },
+      {
+        "configuration" : "runtimeClasspath",
+        "projectPath" : ":lucene:benchmark-jmh"
+      },
+      {
+        "configuration" : "runtimeClasspath",
+        "projectPath" : ":lucene:demo"
+      },
+      {
+        "configuration" : "runtimeClasspath",
+        "projectPath" : ":lucene:luke"
+      },
+      {
+        "configuration" : "runtimeClasspath",
+        "projectPath" : ":lucene:queryparser"
+      },
+      {
+        "configuration" : "compileClasspath",
+        "projectPath" : ":lucene:sandbox"
+      },
+      {
+        "configuration" : "runtimeClasspath",
+        "projectPath" : ":lucene:sandbox"
       }
     ],
     "b35e5d7a" : [
@@ -817,6 +999,40 @@
         "projectPath" : ":lucene:expressions"
       }
     ],
+    "dd26014b" : [
+      {
+        "configuration" : "runtimeClasspath",
+        "projectPath" : ":lucene:benchmark"
+      },
+      {
+        "configuration" : "compileClasspath",
+        "projectPath" : ":lucene:benchmark-jmh"
+      },
+      {
+        "configuration" : "runtimeClasspath",
+        "projectPath" : ":lucene:benchmark-jmh"
+      },
+      {
+        "configuration" : "runtimeClasspath",
+        "projectPath" : ":lucene:demo"
+      },
+      {
+        "configuration" : "runtimeClasspath",
+        "projectPath" : ":lucene:luke"
+      },
+      {
+        "configuration" : "runtimeClasspath",
+        "projectPath" : ":lucene:queryparser"
+      },
+      {
+        "configuration" : "compileClasspath",
+        "projectPath" : ":lucene:sandbox"
+      },
+      {
+        "configuration" : "runtimeClasspath",
+        "projectPath" : ":lucene:sandbox"
+      }
+    ],
     "e077a675" : [
       {
         "configuration" : "testCompileClasspath",
@@ -881,6 +1097,56 @@
       {
         "configuration" : "annotationProcessor",
         "projectPath" : ":lucene:benchmark-jmh"
+      }
+    ],
+    "f0656784" : [
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:benchmark"
+      },
+      {
+        "configuration" : "annotationProcessor",
+        "projectPath" : ":lucene:benchmark-jmh"
+      },
+      {
+        "configuration" : "testCompileClasspath",
+        "projectPath" : ":lucene:benchmark-jmh"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:benchmark-jmh"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:demo"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:highlighter"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:luke"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:memory"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:monitor"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:queryparser"
+      },
+      {
+        "configuration" : "testCompileClasspath",
+        "projectPath" : ":lucene:sandbox"
+      },
+      {
+        "configuration" : "testRuntimeClasspath",
+        "projectPath" : ":lucene:sandbox"
       }
     ],
     "fa9ef26b" : [
