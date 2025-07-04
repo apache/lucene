@@ -16,9 +16,7 @@
  */
 package org.apache.lucene.gradle.plugins.java;
 
-import javax.inject.Inject;
 import org.gradle.api.DefaultTask;
-import org.gradle.api.Project;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Optional;
@@ -30,10 +28,11 @@ public abstract class RenderJavadocTaskBase extends DefaultTask {
   @Input
   public abstract Property<String> getExecutable();
 
-  @Inject
-  public RenderJavadocTaskBase(Project project) {
+  public RenderJavadocTaskBase() {
     getExecutable()
         .convention(
-            project.getProviders().provider(() -> Jvm.current().getJavadocExecutable().toString()));
+            getProject()
+                .getProviders()
+                .provider(() -> Jvm.current().getJavadocExecutable().toString()));
   }
 }

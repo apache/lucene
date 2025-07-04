@@ -335,11 +335,6 @@ abstract class RenderJavadocTask extends RenderJavadocTaskBase {
   @IgnoreEmptyDirectories
   File taskResources
 
-  @Inject
-  public RenderJavadocTask(Project project) {
-    super(project)
-  }
-
   /** Utility method to recursively collect all tasks with same name like this one that we depend on */
   private Set findRenderTasksInDependencies() {
     Set found = []
