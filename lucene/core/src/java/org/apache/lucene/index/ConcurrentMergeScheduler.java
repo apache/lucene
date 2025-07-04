@@ -467,6 +467,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
   @Override
   public void close() throws IOException {
+    MultiTenantCMSManager.getInstance().unregister(this);
     super.close();
     try {
       sync();
