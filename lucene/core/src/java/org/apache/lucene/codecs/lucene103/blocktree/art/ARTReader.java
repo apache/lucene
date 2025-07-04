@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
+import java.io.IOException;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 
 // TODO: Load from disk.
@@ -25,6 +27,32 @@ public class ARTReader {
   // for testing.
   public ARTReader(Node root) {
     this.root = root;
+  }
+
+  public ARTReader(IndexInput dataInput) throws IOException {
+    this.root = read(dataInput);
+  }
+
+  public Node read(IndexInput dataInput) throws IOException {
+    Node node = Node.read(dataInput);
+    if (node == null) {
+      return null;
+    }
+    if (node.nodeType == NodeType.LEAF_NODE) {
+      return node;
+    } else {
+      // Children count.
+      // We didn't build child without key(record its output to parent), but added count.
+      int count = node.output != null ? node.count-- : node.count;
+      Node[] children = new Node[count];
+      // Read all not null children.
+      for (int i = 0; i < count; i++) {
+        Node child = read(dataInput);
+        children[i] = child;
+      }
+      node.setChildren(children);
+      return node;
+    }
   }
 
   public Output find(BytesRef key) {

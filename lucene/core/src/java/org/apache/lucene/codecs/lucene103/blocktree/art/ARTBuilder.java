@@ -36,8 +36,11 @@ public class ARTBuilder {
   }
 
   public void save(DataOutput meta, IndexOutput data) throws IOException {
+    // start FP.
     meta.writeVLong(data.getFilePointer());
     save(root, data);
+    // end FP.
+    meta.writeVLong(data.getFilePointer());
   }
 
   private void save(Node node, IndexOutput data) throws IOException {

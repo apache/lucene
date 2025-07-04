@@ -23,6 +23,7 @@ import org.apache.lucene.codecs.lucene103.blocktree.art.NodeType;
 import org.apache.lucene.codecs.lucene103.blocktree.art.Output;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
@@ -62,6 +63,13 @@ public class TestART extends LuceneTestCase {
       try (IndexOutput index = directory.createOutput("index", IOContext.DEFAULT);
           IndexOutput meta = directory.createOutput("meta", IOContext.DEFAULT)) {
         artBuilder.save(meta, index);
+      }
+
+      try (IndexInput indexIn = directory.openInput("index", IOContext.DEFAULT);
+          IndexInput metaIn = directory.openInput("meta", IOContext.DEFAULT)) {
+        long start = metaIn.readVLong();
+        long end = metaIn.readVLong();
+        ARTReader artReader1 = new ARTReader(indexIn.slice("outputs", start, end - start));
       }
     }
   }

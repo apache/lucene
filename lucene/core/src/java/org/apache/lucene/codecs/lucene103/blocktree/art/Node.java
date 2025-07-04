@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene103.blocktree.art;
 
 import java.io.IOException;
 import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 
@@ -26,6 +27,9 @@ public abstract class Node {
   // TODO: move to leafNode if key just exists in leafNode?
   BytesRef key;
   Output output;
+
+  private static final Byte HAS_OUTPUT = 1;
+  private static final Byte NO_OUTPUT = 0;
 
   // node type
   public NodeType nodeType;
@@ -91,18 +95,65 @@ public abstract class Node {
   public abstract int getMaxPos();
 
   /**
+   * Read node from data input.
+   *
+   * @param dataInput
+   * @return
+   */
+  public static Node read(IndexInput dataInput) throws IOException {
+    // Node type.
+    int nodeTypeOrdinal = dataInput.readByte();
+    // Children count.
+    short count = Short.reverseBytes(dataInput.readShort());
+    // Prefix.
+    int prefixLength = dataInput.readVInt();
+    byte[] prefix;
+    if (prefixLength > 0) {
+      prefix = new byte[prefixLength];
+      dataInput.readBytes(prefix, 0, prefixLength);
+    }
+    // Key.
+    int keyLength = dataInput.readVInt();
+    BytesRef key = null;
+    if (keyLength > 0) {
+      byte[] keyBytes = new byte[keyLength];
+      dataInput.readBytes(keyBytes, 0, keyLength);
+      key = new BytesRef(keyBytes);
+    }
+    // Output.
+    Output output = null;
+    byte flag = dataInput.readByte();
+    if (flag == HAS_OUTPUT) {}
+
+    Node node;
+    if (nodeTypeOrdinal == NodeType.NODE4.ordinal()) {
+      node = new Node4(prefixLength);
+    } else if (nodeTypeOrdinal == NodeType.NODE16.ordinal()) {
+      node = new Node16(prefixLength);
+    } else if (nodeTypeOrdinal == NodeType.NODE48.ordinal()) {
+      node = new Node48(prefixLength);
+    } else if (nodeTypeOrdinal == NodeType.NODE256.ordinal()) {
+      node = new Node256(prefixLength);
+    } else if (nodeTypeOrdinal == NodeType.LEAF_NODE.ordinal()) {
+      node = new LeafNode(key, output);
+    } else {
+      throw new IOException("read error: bad nodeTypeOrdinal");
+    }
+  }
+
+  /**
    * Write node to output.
    *
    * @param data
    * @throws IOException
    */
   public void save(IndexOutput data) throws IOException {
-    // node type.
+    // Node type.
     data.writeByte((byte) this.nodeType.ordinal());
-    // children count.
+    // Children count.
     // TODO: max 255, maybe write byte.
     data.writeShort(Short.reverseBytes(this.count));
-    // write prefix.
+    // Write prefix.
     data.writeVInt(this.prefixLength);
     if (prefixLength > 0) {
       data.writeBytes(this.prefix, 0, this.prefixLength);
@@ -117,6 +168,7 @@ public abstract class Node {
 
     // Write output exists flag.
     if (this.output != null) {
+      data.writeByte(HAS_OUTPUT);
       Output output = this.output;
       long encodedFP = encodeFP(output);
       writeLongNBytes(encodedFP, bytesRequiredVLong(output.fp()), data);
@@ -124,6 +176,8 @@ public abstract class Node {
         data.writeBytes(
             output.floorData().bytes, output.floorData().offset, output.floorData().length);
       }
+    } else {
+      data.writeByte(NO_OUTPUT);
     }
 
     saveChildIndex(data);
@@ -227,4 +281,11 @@ public abstract class Node {
     // key not found.
     return ILLEGAL_IDX;
   }
+
+  /**
+   * Set the node's children to right index while doing the read phase.
+   *
+   * @param children all the not null children nodes in key byte ascending order, no null element.
+   */
+  abstract void setChildren(Node[] children);
 }
