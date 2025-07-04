@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
+import java.io.IOException;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 
 public class LeafNode extends Node {
@@ -54,5 +56,10 @@ public class LeafNode extends Node {
   @Override
   public int getMaxPos() {
     throw new UnsupportedOperationException();
+  }
+
+  public void saveChildIndex(IndexOutput data) throws IOException {
+    // empty
+    // TODO: save key
   }
 }

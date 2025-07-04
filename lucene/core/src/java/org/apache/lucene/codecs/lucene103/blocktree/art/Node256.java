@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
+import java.io.IOException;
+import org.apache.lucene.store.IndexOutput;
+
 public class Node256 extends Node {
 
   Node[] children = new Node[256];
@@ -107,5 +110,12 @@ public class Node256 extends Node {
     final long previous = bitmapMask[longIdx];
     long newVal = previous | (1L << i);
     bitmapMask[longIdx] = newVal;
+  }
+
+  public void saveChildIndex(IndexOutput data) throws IOException {
+    // little endian
+    for (long longV : bitmapMask) {
+      data.writeLong(Long.reverseBytes(longV));
+    }
   }
 }

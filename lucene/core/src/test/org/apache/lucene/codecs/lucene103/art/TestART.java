@@ -16,16 +16,20 @@
  */
 package org.apache.lucene.codecs.lucene103.art;
 
+import java.io.IOException;
 import org.apache.lucene.codecs.lucene103.blocktree.art.ARTBuilder;
 import org.apache.lucene.codecs.lucene103.blocktree.art.ARTReader;
 import org.apache.lucene.codecs.lucene103.blocktree.art.NodeType;
 import org.apache.lucene.codecs.lucene103.blocktree.art.Output;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
 public class TestART extends LuceneTestCase {
 
-  public void testNode4() {
+  public void testNode4() throws IOException {
     // Build.
     ARTBuilder artBuilder = new ARTBuilder();
     artBuilder.insert(new BytesRef("abc1".getBytes()), new Output(0, false, new BytesRef("abc1")));
@@ -53,6 +57,13 @@ public class TestART extends LuceneTestCase {
         new Output(0, false, new BytesRef("abc234")), artReader.find(new BytesRef("abc234")));
     assertEquals(new Output(0, false, new BytesRef("abc3")), artReader.find(new BytesRef("abc3")));
     assertNull(artReader.find(new BytesRef("abc33")));
+
+    try (Directory directory = newDirectory()) {
+      try (IndexOutput index = directory.createOutput("index", IOContext.DEFAULT);
+          IndexOutput meta = directory.createOutput("meta", IOContext.DEFAULT)) {
+        artBuilder.save(meta, index);
+      }
+    }
   }
 
   public void testNode16() {

@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
+import java.io.IOException;
+import org.apache.lucene.store.IndexOutput;
+
 public class Node4 extends Node {
 
   int childIndex = 0;
@@ -87,5 +90,9 @@ public class Node4 extends Node {
       Node freshOne = Node16.insert(node16, childNode, key);
       return freshOne;
     }
+  }
+
+  public void saveChildIndex(IndexOutput data) throws IOException {
+    data.writeInt(childIndex);
   }
 }

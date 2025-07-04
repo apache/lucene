@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
+import java.io.IOException;
+import org.apache.lucene.store.IndexOutput;
+
 public class Node16 extends Node {
 
   long firstChildIndex = 0L;
@@ -120,5 +123,11 @@ public class Node16 extends Node {
       Node freshOne = Node48.insert(node48, child, key);
       return freshOne;
     }
+  }
+
+  public void saveChildIndex(IndexOutput data) throws IOException {
+    // little endian
+    data.writeLong(Long.reverseBytes(firstChildIndex));
+    data.writeLong(Long.reverseBytes(secondChildIndex));
   }
 }

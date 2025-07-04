@@ -16,10 +16,14 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
+import java.io.IOException;
+import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 
+/** The whole path of a node is: prefix bytes + childIndex byte + key bytes. */
 public abstract class Node {
-  // TODO: Set right BytesRef: bytes, offset, length. or use byte[] directly.
+  // TODO: move to leafNode if key just exists in leafNode?
   BytesRef key;
   Output output;
 
@@ -30,7 +34,7 @@ public abstract class Node {
   // the compressed path path (prefix)
   protected byte[] prefix;
   // number of non-null children, the largest value will not beyond 255
-  // to benefit calculation,we keep the value as a short type
+  // to benefit calculation, we keep the value as a short type
   protected short count;
   public static final int ILLEGAL_IDX = -1;
 
@@ -85,6 +89,79 @@ public abstract class Node {
    * @return the max byte key's position
    */
   public abstract int getMaxPos();
+
+  /**
+   * Write node to output.
+   *
+   * @param data
+   * @throws IOException
+   */
+  public void save(IndexOutput data) throws IOException {
+    // node type.
+    data.writeByte((byte) this.nodeType.ordinal());
+    // children count.
+    // TODO: max 255, maybe write byte.
+    data.writeShort(Short.reverseBytes(this.count));
+    // write prefix.
+    data.writeVInt(this.prefixLength);
+    if (prefixLength > 0) {
+      data.writeBytes(this.prefix, 0, this.prefixLength);
+    }
+    // write key.
+    if (key != null) {
+      data.writeVInt(key.length);
+      data.writeBytes(key.bytes, key.offset, key.length);
+    } else {
+      data.writeVInt(0);
+    }
+
+    // Write output exists flag.
+    if (this.output != null) {
+      Output output = this.output;
+      long encodedFP = encodeFP(output);
+      writeLongNBytes(encodedFP, bytesRequiredVLong(output.fp()), data);
+      if (output.floorData() != null) {
+        data.writeBytes(
+            output.floorData().bytes, output.floorData().offset, output.floorData().length);
+      }
+    }
+
+    saveChildIndex(data);
+  }
+
+  /**
+   * Write childIndex to output.
+   *
+   * @param data
+   * @throws IOException
+   */
+  public abstract void saveChildIndex(IndexOutput data) throws IOException;
+
+  protected long encodeFP(Output output) {
+    // TODO: where did this?
+    assert output.fp() < 1L << 62;
+    return (output.floorData() != null ? 1 : 0) | (output.hasTerms() ? 1 : 0) | (output.fp() << 2);
+  }
+
+  protected static int bytesRequiredVLong(long v) {
+    return Long.BYTES - (Long.numberOfLeadingZeros(v | 1) >>> 3);
+  }
+
+  /**
+   * Write the first (LSB order) n bytes of the given long v into the DataOutput.
+   *
+   * <p>This differs from writeVLong because it can write more bytes than would be needed for vLong
+   * when the incoming int n is larger.
+   */
+  protected static void writeLongNBytes(long v, int n, DataOutput out) throws IOException {
+    for (int i = 0; i < n; i++) {
+      // Note that we sometimes write trailing 0 bytes here, when the incoming int n is bigger than
+      // would be required for a "normal" vLong
+      out.writeByte((byte) v);
+      v >>>= 8;
+    }
+    assert v == 0;
+  }
 
   /**
    * insert the LeafNode as a child of the current internal node

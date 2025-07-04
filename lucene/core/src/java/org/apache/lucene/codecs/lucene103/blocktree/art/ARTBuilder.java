@@ -16,14 +16,16 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
+import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
 // TODO: Save to disk.
 public class ARTBuilder {
   public Node root;
-  private long keySize = 0;
 
   public ARTBuilder() {
     root = null;
@@ -33,13 +35,38 @@ public class ARTBuilder {
     return root == null;
   }
 
+  public void save(DataOutput meta, IndexOutput data) throws IOException {
+    meta.writeVLong(data.getFilePointer());
+    save(root, data);
+  }
+
+  private void save(Node node, IndexOutput data) throws IOException {
+    // TODO: Assign node's FP like Trie.
+    if (node.nodeType != NodeType.LEAF_NODE) {
+      // Save node.
+      node.save(data);
+      // Save children.
+      int nextPos = node.getNextLargerPos(Node.ILLEGAL_IDX);
+      while (nextPos != Node.ILLEGAL_IDX) {
+        Node child = node.getChild(nextPos);
+        if (child != null) {
+          // TODO: Use stack to eliminate this recursion.
+          save(child, data);
+        }
+        nextPos = node.getNextLargerPos(nextPos);
+      }
+    } else {
+      // Save leaf Node
+      node.save(data);
+    }
+  }
+
   /** insert the key and output pair. */
   public void insert(BytesRef key, Output output) {
     Node freshRoot = insert(root, key, 0, output);
     if (freshRoot != root) {
       this.root = freshRoot;
     }
-    keySize++;
   }
 
   /** Set remaining suffix to bytes. */
