@@ -19,6 +19,7 @@ package org.apache.lucene.benchmark.jmh;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.function.IntSupplier;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -92,7 +93,19 @@ public class CompetitiveBenchmark {
   }
 
   @Benchmark
-  public int candidate() {
+  public int branchlessCandidate() {
+    int newSize = 0;
+    for (int i = 0; i < size; ++i) {
+      int inc = scores[i] >= minScoreInclusive ? 1 : 0;
+      docs[newSize] = docs[i];
+      scores[newSize] = scores[i];
+      newSize += inc;
+    }
+    return newSize;
+  }
+
+  @Benchmark
+  public int vectorizedCandidate() {
     return VectorUtil.filterByScore(docs, scores, minScoreInclusive, size);
   }
 
@@ -107,24 +120,30 @@ public class CompetitiveBenchmark {
     candidate.size = 128;
     candidate.setUpTrial();
     candidate.setUpInvocation();
-    int candidateSize = candidate.candidate();
 
-    if (baselineSize != candidateSize) {
-      throw new IllegalArgumentException("incorrect size");
-    }
+    for (IntSupplier s :
+        new IntSupplier[] {candidate::branchlessCandidate, candidate::vectorizedCandidate}) {
 
-    if (Arrays.equals(baseline.docs, 0, baselineSize, candidate.docs, 0, candidateSize) == false) {
-      throw new IllegalArgumentException(
-          "incorrect docs,"
-              + "\nbaseline: "
-              + Arrays.toString(ArrayUtil.copyOfSubArray(baseline.docs, 0, baselineSize))
-              + "\ncandidate: "
-              + Arrays.toString(ArrayUtil.copyOfSubArray(candidate.docs, 0, candidateSize)));
-    }
+      int candidateSize = s.getAsInt();
 
-    if (Arrays.equals(baseline.scores, 0, baselineSize, candidate.scores, 0, candidateSize)
-        == false) {
-      throw new IllegalArgumentException("incorrect scores");
+      if (baselineSize != candidateSize) {
+        throw new IllegalArgumentException("incorrect size");
+      }
+
+      if (Arrays.equals(baseline.docs, 0, baselineSize, candidate.docs, 0, candidateSize)
+          == false) {
+        throw new IllegalArgumentException(
+            "incorrect docs,"
+                + "\nbaseline: "
+                + Arrays.toString(ArrayUtil.copyOfSubArray(baseline.docs, 0, baselineSize))
+                + "\ncandidate: "
+                + Arrays.toString(ArrayUtil.copyOfSubArray(candidate.docs, 0, candidateSize)));
+      }
+
+      if (Arrays.equals(baseline.scores, 0, baselineSize, candidate.scores, 0, candidateSize)
+          == false) {
+        throw new IllegalArgumentException("incorrect scores");
+      }
     }
   }
 }
