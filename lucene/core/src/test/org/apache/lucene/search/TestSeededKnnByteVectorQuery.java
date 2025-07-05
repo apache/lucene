@@ -238,7 +238,7 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
     public AssertingSeededKnnVectorQuery(
         AbstractKnnVectorQuery query, Query seed, Weight seedWeight, AtomicInteger seedCalls) {
-      super(query, seed, seedWeight);
+      super(query, seed, seedWeight, query.field, query.k, query.filter, query.searchStrategy);
       this.seedCalls = seedCalls;
     }
 

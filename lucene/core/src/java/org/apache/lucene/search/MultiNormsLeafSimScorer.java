@@ -27,6 +27,8 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.CombinedFieldQuery.FieldAndWeight;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.LongsRef;
 import org.apache.lucene.util.SmallFloat;
 
 /**
@@ -48,6 +50,7 @@ final class MultiNormsLeafSimScorer {
 
   private final SimScorer scorer;
   private final NumericDocValues norms;
+  private long[] normValues = LongsRef.EMPTY_LONGS;
 
   /** Sole constructor: Score documents of {@code reader} with {@code scorer}. */
   MultiNormsLeafSimScorer(
@@ -111,6 +114,24 @@ final class MultiNormsLeafSimScorer {
    */
   public float score(int doc, float freq) throws IOException {
     return scorer.score(freq, getNormValue(doc));
+  }
+
+  /**
+   * score the provided documents contained in buffer. This method assumes the float feature store
+   * is {@code freq}
+   *
+   * @see SimScorer#score(float, long)
+   */
+  public void scoreRange(DocAndFloatFeatureBuffer buffer) throws IOException {
+    if (normValues.length < buffer.size) {
+      normValues = ArrayUtil.growNoCopy(normValues, buffer.size);
+    }
+    for (int i = 0; i < buffer.size; i++) {
+      normValues[i] = getNormValue(buffer.docs[i]);
+    }
+    for (int i = 0; i < buffer.size; i++) {
+      buffer.features[i] = scorer.score(buffer.features[i], normValues[i]);
+    }
   }
 
   /**
