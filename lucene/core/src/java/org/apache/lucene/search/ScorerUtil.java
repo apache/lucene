@@ -159,7 +159,7 @@ class ScorerUtil {
     }
 
     buffer.size =
-        VectorUtil.filterWithDouble(buffer.docs, buffer.scores, minRequiredScore, buffer.size);
+        VectorUtil.filterByScore(buffer.docs, buffer.scores, minRequiredScore, buffer.size);
   }
 
   /**

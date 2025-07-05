@@ -311,10 +311,11 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public int filterWithDouble(int[] docBuffer, double[] scoreBuffer, double threshold, int upTo) {
+  public int filterByScore(
+      int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
     int newSize = 0;
     for (int i = 0; i < upTo; i++) {
-      if (scoreBuffer[i] >= threshold) {
+      if (scoreBuffer[i] >= minScoreInclusive) {
         docBuffer[newSize] = docBuffer[i];
         scoreBuffer[newSize] = scoreBuffer[i];
         newSize++;

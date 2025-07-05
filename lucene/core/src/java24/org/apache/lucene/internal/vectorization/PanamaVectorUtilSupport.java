@@ -1009,19 +1009,20 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public int filterWithDouble(int[] docBuffer, double[] scoreBuffer, double threshold, int upTo) {
+  public int filterByScore(
+      int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
     int newUpto = 0;
     int i = 0;
-    for (int bound = upTo - DOUBLE_SPECIES.length() + 1; i < bound; i += DOUBLE_SPECIES.length()) {
+    for (int bound = DOUBLE_SPECIES.loopBound(upTo); i < bound; i += DOUBLE_SPECIES.length()) {
       DoubleVector scoreVector = DoubleVector.fromArray(DOUBLE_SPECIES, scoreBuffer, i);
       IntVector docVector = IntVector.fromArray(INT_FOR_DOUBLE_SPECIES, docBuffer, i);
-      VectorMask<Double> mask = scoreVector.compare(VectorOperators.GE, threshold);
-      docVector.compress(mask.cast(INT_FOR_DOUBLE_SPECIES)).intoArray(docBuffer, newUpto);
+      VectorMask<Double> mask = scoreVector.compare(VectorOperators.GE, minScoreInclusive);
       scoreVector.compress(mask).intoArray(scoreBuffer, newUpto);
+      docVector.compress(mask.cast(INT_FOR_DOUBLE_SPECIES)).intoArray(docBuffer, newUpto);
       newUpto += mask.trueCount();
     }
     for (; i < upTo; ++i) {
-      if (scoreBuffer[i] >= threshold) {
+      if (scoreBuffer[i] >= minScoreInclusive) {
         docBuffer[newUpto] = docBuffer[i];
         scoreBuffer[newUpto] = scoreBuffer[i];
         newUpto++;

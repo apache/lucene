@@ -378,22 +378,23 @@ public final class VectorUtil {
   }
 
   /**
-   * filter both docBuffer and scoreBuffer with threshold, each docBuffer and scoreBuffer of the
-   * same index forms a pair, pairs with score less than threshold will be filtered out from the
-   * array.
+   * filter both {@code docBuffer} and {@code scoreBuffer} with {@code minScoreInclusive}, each
+   * {@code docBuffer} and {@code scoreBuffer} of the same index forms a pair, pairs with score less
+   * than {@code minScoreInclusive} will be filtered out from the array.
    *
-   * @param docBuffer doc buffer contains docs (or some other value forms a pair with scoreBuffer)
-   * @param scoreBuffer score buffer contains scores to be compared with threshold
-   * @param threshold minimal required double value to not be filtered out
+   * @param docBuffer doc buffer contains docs (or some other value forms a pair with {@code
+   *     scoreBuffer})
+   * @param scoreBuffer score buffer contains scores to be compared with {@code minScoreInclusive}
+   * @param minScoreInclusive minimal required score to not be filtered out
    * @param upTo where the filter should end
    * @return how many pairs left after filter
    */
-  public static int filterWithDouble(
-      int[] docBuffer, double[] scoreBuffer, double threshold, int upTo) {
+  public static int filterByScore(
+      int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
     if (docBuffer.length != scoreBuffer.length || docBuffer.length < upTo) {
       throw new IllegalArgumentException(
           "docBuffer and scoreBuffer should keep same length and at least as long as upTo");
     }
-    return IMPL.filterWithDouble(docBuffer, scoreBuffer, threshold, upTo);
+    return IMPL.filterByScore(docBuffer, scoreBuffer, minScoreInclusive, upTo);
   }
 }

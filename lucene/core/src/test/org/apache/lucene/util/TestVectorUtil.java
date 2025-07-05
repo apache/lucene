@@ -391,7 +391,7 @@ public class TestVectorUtil extends LuceneTestCase {
     return length;
   }
 
-  public void testFilterWithDouble() {
+  public void testFilterByScore() {
     for (int iter = 0; iter < 1_000; ++iter) {
       int padding = TestUtil.nextInt(random(), 0, 5);
       DocAndScoreAccBuffer b1 = new DocAndScoreAccBuffer();
@@ -406,10 +406,10 @@ public class TestVectorUtil extends LuceneTestCase {
         b1.scores[i] = b2.scores[i] = random().nextDouble();
       }
 
-      double threshold = random().nextDouble();
+      double minScoreInclusive = random().nextDouble();
       int upTo = TestUtil.nextInt(random(), 0, 127);
-      b1.size = slowFilterWithDouble(b1.docs, b1.scores, threshold, upTo);
-      b2.size = VectorUtil.filterWithDouble(b2.docs, b2.scores, threshold, upTo);
+      b1.size = slowFilterByScore(b1.docs, b1.scores, minScoreInclusive, upTo);
+      b2.size = VectorUtil.filterByScore(b2.docs, b2.scores, minScoreInclusive, upTo);
       assertEquals(b1.size, b2.size);
       assertArrayEquals(b1.docs, b2.docs);
       // two double array should be exactly the same, so the delta should be 0
@@ -417,11 +417,11 @@ public class TestVectorUtil extends LuceneTestCase {
     }
   }
 
-  private static int slowFilterWithDouble(
-      int[] docBuffer, double[] scoreBuffer, double threshold, int upTo) {
+  private static int slowFilterByScore(
+      int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
     int newSize = 0;
     for (int i = 0; i < upTo; i++) {
-      if (scoreBuffer[i] >= threshold) {
+      if (scoreBuffer[i] >= minScoreInclusive) {
         docBuffer[newSize] = docBuffer[i];
         scoreBuffer[newSize] = scoreBuffer[i];
         newSize++;
