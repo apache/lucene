@@ -27,7 +27,7 @@ New Features
 
 * GITHUB#14784: Make pack methods public for BigIntegerPoint and HalfFloatPoint. (Prudhvi Godithi)
 
-* GITHUB#14178: Add a Faiss-based vector format in the sandbox module. (Kaival Parikh)
+* GITHUB#14843: Backport Faiss-based vector format (#14178, #14847). (Kaival Parikh)
 
 Improvements
 ---------------------

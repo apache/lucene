@@ -17,6 +17,7 @@
 package org.apache.lucene.sandbox.codecs.faiss;
 
 import static java.lang.foreign.ValueLayout.ADDRESS;
+import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 import static java.lang.foreign.ValueLayout.JAVA_FLOAT;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static java.lang.foreign.ValueLayout.JAVA_LONG;
@@ -29,12 +30,11 @@ import java.lang.foreign.Linker;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
-import java.nio.LongBuffer;
 import java.util.Arrays;
 import java.util.Locale;
 import org.apache.lucene.index.FloatVectorValues;
@@ -72,16 +72,30 @@ final class LibFaissC {
     return call(GET_STRING_DELEGATE.bindTo(segment), offset);
   }
 
-  private static final MethodHandle ALLOCATE_STRING_DELEGATE;
+  private static final MethodHandle ALLOCATE_FROM_STRING_DELEGATE;
 
-  private static MemorySegment allocateFromDelegate(Arena arena, String string) {
-    return call(ALLOCATE_STRING_DELEGATE.bindTo(arena), string);
+  private static MemorySegment allocateFromStringDelegate(Arena arena, String string) {
+    return call(ALLOCATE_FROM_STRING_DELEGATE.bindTo(arena), string);
   }
 
-  private static final MethodHandle ALLOCATE_DELEGATE;
+  private static final MethodHandle ALLOCATE_FROM_FLOAT_ARRAY_DELEGATE;
 
-  private static MemorySegment allocateDelegate(Arena arena, MemoryLayout layout, long count) {
-    return call(ALLOCATE_DELEGATE.bindTo(arena), layout, count);
+  private static MemorySegment allocateFromFloatArrayDelegate(
+      Arena arena, ValueLayout.OfFloat ofFloat, float... floats) {
+    return call(ALLOCATE_FROM_FLOAT_ARRAY_DELEGATE.bindTo(arena), ofFloat, floats);
+  }
+
+  private static final MethodHandle ALLOCATE_FROM_LONG_ARRAY_DELEGATE;
+
+  private static MemorySegment allocateFromLongArrayDelegate(
+      Arena arena, ValueLayout.OfLong ofLong, long... longs) {
+    return call(ALLOCATE_FROM_LONG_ARRAY_DELEGATE.bindTo(arena), ofLong, longs);
+  }
+
+  private static final MethodHandle ALLOCATE_ARRAY_DELEGATE;
+
+  private static MemorySegment allocateArrayDelegate(Arena arena, MemoryLayout layout, long count) {
+    return call(ALLOCATE_ARRAY_DELEGATE.bindTo(arena), layout, count);
   }
 
   static {
@@ -89,16 +103,22 @@ final class LibFaissC {
     assert runtimeVersion >= 21;
 
     String getStringFunctionName;
-    String allocateStringFunctionName;
-    String allocateFunctionName;
+    String allocateFromStringFunctionName;
+    String allocateFromFloatArrayFunctionName;
+    String allocateFromLongArrayFunctionName;
+    String allocateArrayFunctionName;
     if (runtimeVersion == 21) {
       getStringFunctionName = "getUtf8String";
-      allocateStringFunctionName = "allocateUtf8String";
-      allocateFunctionName = "allocateArray";
+      allocateFromStringFunctionName = "allocateUtf8String";
+      allocateFromFloatArrayFunctionName = "allocateArray";
+      allocateFromLongArrayFunctionName = "allocateArray";
+      allocateArrayFunctionName = "allocateArray";
     } else {
       getStringFunctionName = "getString";
-      allocateStringFunctionName = "allocateFrom";
-      allocateFunctionName = "allocate";
+      allocateFromStringFunctionName = "allocateFrom";
+      allocateFromFloatArrayFunctionName = "allocateFrom";
+      allocateFromLongArrayFunctionName = "allocateFrom";
+      allocateArrayFunctionName = "allocate";
     }
 
     try {
@@ -109,18 +129,34 @@ final class LibFaissC {
                   getStringFunctionName,
                   MethodType.methodType(String.class, long.class));
 
-      ALLOCATE_STRING_DELEGATE =
+      ALLOCATE_FROM_STRING_DELEGATE =
           MethodHandles.lookup()
               .findVirtual(
                   Arena.class,
-                  allocateStringFunctionName,
+                  allocateFromStringFunctionName,
                   MethodType.methodType(MemorySegment.class, String.class));
 
-      ALLOCATE_DELEGATE =
+      ALLOCATE_FROM_FLOAT_ARRAY_DELEGATE =
           MethodHandles.lookup()
               .findVirtual(
                   Arena.class,
-                  allocateFunctionName,
+                  allocateFromFloatArrayFunctionName,
+                  MethodType.methodType(
+                      MemorySegment.class, ValueLayout.OfFloat.class, float[].class));
+
+      ALLOCATE_FROM_LONG_ARRAY_DELEGATE =
+          MethodHandles.lookup()
+              .findVirtual(
+                  Arena.class,
+                  allocateFromLongArrayFunctionName,
+                  MethodType.methodType(
+                      MemorySegment.class, ValueLayout.OfLong.class, long[].class));
+
+      ALLOCATE_ARRAY_DELEGATE =
+          MethodHandles.lookup()
+              .findVirtual(
+                  Arena.class,
+                  allocateArrayFunctionName,
                   MethodType.methodType(MemorySegment.class, MemoryLayout.class, long.class));
     } catch (IllegalAccessException | NoSuchMethodException e) {
       throw new RuntimeException(e);
@@ -264,7 +300,7 @@ final class LibFaissC {
       // Create an index
       MemorySegment pointer = temp.allocate(ADDRESS);
       callAndHandleError(
-          INDEX_FACTORY, pointer, dimension, allocateFromDelegate(temp, description), metric);
+          INDEX_FACTORY, pointer, dimension, allocateFromStringDelegate(temp, description), metric);
       MemorySegment indexPointer = pointer.get(ADDRESS, 0);
 
       // Set index params
@@ -279,24 +315,30 @@ final class LibFaissC {
           SET_INDEX_PARAMETERS,
           parameterSpacePointer,
           indexPointer,
-          allocateFromDelegate(temp, indexParams));
+          allocateFromStringDelegate(temp, indexParams));
 
       // TODO: Improve memory usage (with a tradeoff in performance) by batched indexing, see:
       //  - https://github.com/opensearch-project/k-NN/issues/1506
       //  - https://github.com/opensearch-project/k-NN/issues/1938
 
       // Allocate docs in native memory
-      MemorySegment docs = allocateDelegate(temp, JAVA_FLOAT, (long) size * dimension);
-      FloatBuffer docsBuffer = docs.asByteBuffer().order(ByteOrder.nativeOrder()).asFloatBuffer();
+      MemorySegment docs = allocateArrayDelegate(temp, JAVA_FLOAT, (long) size * dimension);
+      long docsOffset = 0;
+      long perDocByteSize = dimension * JAVA_FLOAT.byteSize();
 
       // Allocate ids in native memory
-      MemorySegment ids = allocateDelegate(temp, JAVA_LONG, size);
-      LongBuffer idsBuffer = ids.asByteBuffer().order(ByteOrder.nativeOrder()).asLongBuffer();
+      MemorySegment ids = allocateArrayDelegate(temp, JAVA_LONG, size);
+      int idsIndex = 0;
 
       KnnVectorValues.DocIndexIterator iterator = floatVectorValues.iterator();
       for (int i = iterator.nextDoc(); i != NO_MORE_DOCS; i = iterator.nextDoc()) {
-        idsBuffer.put(oldToNewDocId.apply(i));
-        docsBuffer.put(floatVectorValues.vectorValue(iterator.index()));
+        int id = oldToNewDocId.apply(i);
+        ids.setAtIndex(JAVA_LONG, idsIndex, id);
+        idsIndex++;
+
+        float[] vector = floatVectorValues.vectorValue(iterator.index());
+        MemorySegment.copy(vector, 0, docs, JAVA_FLOAT, docsOffset, vector.length);
+        docsOffset += perDocByteSize;
       }
 
       // Train index
@@ -320,18 +362,12 @@ final class LibFaissC {
     inputPointer = inputPointer.reinterpret(size);
 
     if (size <= BUFFER_SIZE) { // simple case, avoid buffering
-      byte[] bytes = new byte[(int) size];
-      inputPointer.asSlice(0, size).asByteBuffer().order(ByteOrder.nativeOrder()).get(bytes);
-      output.writeBytes(bytes, bytes.length);
+      output.writeBytes(inputPointer.toArray(JAVA_BYTE), (int) size);
     } else { // copy buffered number of bytes repeatedly
       byte[] bytes = new byte[BUFFER_SIZE];
       for (long offset = 0; offset < size; offset += BUFFER_SIZE) {
         int length = (int) Math.min(size - offset, BUFFER_SIZE);
-        inputPointer
-            .asSlice(offset, length)
-            .asByteBuffer()
-            .order(ByteOrder.nativeOrder())
-            .get(bytes, 0, length);
+        MemorySegment.copy(inputPointer, JAVA_BYTE, offset, bytes, 0, length);
         output.writeBytes(bytes, length);
       }
     }
@@ -348,21 +384,13 @@ final class LibFaissC {
     if (size <= BUFFER_SIZE) { // simple case, avoid buffering
       byte[] bytes = new byte[(int) size];
       input.readBytes(bytes, 0, bytes.length);
-      outputPointer
-          .asSlice(0, bytes.length)
-          .asByteBuffer()
-          .order(ByteOrder.nativeOrder())
-          .put(bytes);
+      MemorySegment.copy(bytes, 0, outputPointer, JAVA_BYTE, 0, bytes.length);
     } else { // copy buffered number of bytes repeatedly
       byte[] bytes = new byte[BUFFER_SIZE];
       for (long offset = 0; offset < size; offset += BUFFER_SIZE) {
         int length = (int) Math.min(size - offset, BUFFER_SIZE);
         input.readBytes(bytes, 0, length);
-        outputPointer
-            .asSlice(offset, length)
-            .asByteBuffer()
-            .order(ByteOrder.nativeOrder())
-            .put(bytes, 0, length);
+        MemorySegment.copy(bytes, 0, outputPointer, JAVA_BYTE, offset, length);
       }
     }
     return numItems;
@@ -477,13 +505,12 @@ final class LibFaissC {
           };
 
       // Allocate queries in native memory
-      MemorySegment queries = allocateDelegate(temp, JAVA_FLOAT, query.length);
-      queries.asByteBuffer().order(ByteOrder.nativeOrder()).asFloatBuffer().put(query);
+      MemorySegment queries = allocateFromFloatArrayDelegate(temp, JAVA_FLOAT, query);
 
       // Faiss knn search
       int k = knnCollector.k();
-      MemorySegment distancesPointer = allocateDelegate(temp, JAVA_FLOAT, k);
-      MemorySegment idsPointer = allocateDelegate(temp, JAVA_LONG, k);
+      MemorySegment distancesPointer = allocateArrayDelegate(temp, JAVA_FLOAT, k);
+      MemorySegment idsPointer = allocateArrayDelegate(temp, JAVA_LONG, k);
 
       MemorySegment localIndex = indexPointer.reinterpret(temp, null);
       if (fixedBitSet == null) {
@@ -493,10 +520,9 @@ final class LibFaissC {
         MemorySegment pointer = temp.allocate(ADDRESS);
 
         long[] bits = fixedBitSet.getBits();
-        MemorySegment nativeBits = allocateDelegate(temp, JAVA_LONG, bits.length);
-
-        // Use LITTLE_ENDIAN to convert long[] -> uint8_t*
-        nativeBits.asByteBuffer().order(ByteOrder.LITTLE_ENDIAN).asLongBuffer().put(bits);
+        MemorySegment nativeBits =
+            // Use LITTLE_ENDIAN to convert long[] -> uint8_t*
+            allocateFromLongArrayDelegate(temp, JAVA_LONG.withOrder(ByteOrder.LITTLE_ENDIAN), bits);
 
         callAndHandleError(ID_SELECTOR_BITMAP_NEW, pointer, fixedBitSet.length(), nativeBits);
         MemorySegment idSelectorBitmapPointer =
@@ -524,13 +550,9 @@ final class LibFaissC {
             idsPointer);
       }
 
-      // Retrieve scores
-      float[] distances = new float[k];
-      distancesPointer.asByteBuffer().order(ByteOrder.nativeOrder()).asFloatBuffer().get(distances);
-
-      // Retrieve ids
-      long[] ids = new long[k];
-      idsPointer.asByteBuffer().order(ByteOrder.nativeOrder()).asLongBuffer().get(ids);
+      // Retrieve scores and ids
+      float[] distances = distancesPointer.toArray(JAVA_FLOAT);
+      long[] ids = idsPointer.toArray(JAVA_LONG);
 
       // Record hits
       for (int i = 0; i < k; i++) {
