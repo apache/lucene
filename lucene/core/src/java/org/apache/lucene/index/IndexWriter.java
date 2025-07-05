@@ -3724,7 +3724,7 @@ public class IndexWriter
         maybeCloseOnTragicEvent();
       }
 
-      if (pointInTimeMerges != null && pointInTimeMerges.merges.size() > 0) {
+      if (pointInTimeMerges != null) {
         if (infoStream.isEnabled("IW")) {
           infoStream.message(
               "IW", "now run merges during commit: " + pointInTimeMerges.segString(directory));
