@@ -50,20 +50,24 @@ import org.openjdk.jmh.annotations.Warmup;
     })
 public class CompetitiveBenchmark {
 
-  private Random R = new Random(0);
+  private final Random R = new Random(0);
 
   @Param("128")
   int size;
 
   double[] scores;
   int[] docs;
+
+  // scores generated from Random.nextDouble() locate in range [0, 1), so we can tune this parameter
+  // and see how the
+  // performance changes depends on how selective the filter is.
+  @Param({"0", "0.2", "0.4", "0.5", "0.8"})
   double minScoreInclusive;
 
   @Setup(Level.Trial)
   public void setUpTrial() {
     scores = new double[size];
     docs = new int[size];
-    R = new Random(System.currentTimeMillis());
   }
 
   @Setup(Level.Invocation)
@@ -72,7 +76,6 @@ public class CompetitiveBenchmark {
       docs[i] = R.nextInt(Integer.MAX_VALUE);
       scores[i] = R.nextDouble();
     }
-    minScoreInclusive = R.nextDouble();
   }
 
   @Benchmark

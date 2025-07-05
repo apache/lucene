@@ -103,8 +103,8 @@ public interface VectorUtilSupport {
 
   /**
    * filter both {@code docBuffer} and {@code scoreBuffer} with {@code minScoreInclusive}, each
-   * {@code docBuffer} and {@code scoreBuffer} of the same index forms a pair, pairs with score less
-   * than {@code minScoreInclusive} will be filtered out from the array.
+   * {@code docBuffer} and {@code scoreBuffer} of the same index forms a pair, pairs with score not
+   * greater than or equal to {@code minScoreInclusive} will be filtered out from the array.
    *
    * @param docBuffer doc buffer contains docs (or some other value forms a pair with {@code
    *     scoreBuffer})
