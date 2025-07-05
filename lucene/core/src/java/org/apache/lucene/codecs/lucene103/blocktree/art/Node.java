@@ -28,8 +28,9 @@ public abstract class Node {
   BytesRef key;
   Output output;
 
-  private static final Byte HAS_OUTPUT = 1;
-  private static final Byte NO_OUTPUT = 0;
+  private static final int HAS_OUTPUT = 1;
+  private static final int HAS_FLOOR = 1 << 1;
+  private static final int HAS_TERMS = 1 << 2;
 
   // node type
   public NodeType nodeType;
@@ -107,7 +108,7 @@ public abstract class Node {
     short count = Short.reverseBytes(dataInput.readShort());
     // Prefix.
     int prefixLength = dataInput.readVInt();
-    byte[] prefix;
+    byte[] prefix = null;
     if (prefixLength > 0) {
       prefix = new byte[prefixLength];
       dataInput.readBytes(prefix, 0, prefixLength);
@@ -122,8 +123,19 @@ public abstract class Node {
     }
     // Output.
     Output output = null;
-    byte flag = dataInput.readByte();
-    if (flag == HAS_OUTPUT) {}
+    byte outputFlag = dataInput.readByte();
+    if ((outputFlag & HAS_OUTPUT) != 0) {
+      long fp = dataInput.readVLong();
+      boolean hasTerms = (outputFlag & HAS_TERMS) != 0;
+      BytesRef floorData = null;
+      if ((outputFlag & HAS_FLOOR) != 0) {
+        int floorDataLength = dataInput.readVInt();
+        byte[] bytes = new byte[floorDataLength];
+        dataInput.readBytes(bytes, 0, floorDataLength);
+        floorData = new BytesRef(bytes);
+      }
+      output = new Output(fp, hasTerms, floorData);
+    }
 
     Node node;
     if (nodeTypeOrdinal == NodeType.NODE4.ordinal()) {
@@ -139,6 +151,14 @@ public abstract class Node {
     } else {
       throw new IOException("read error: bad nodeTypeOrdinal");
     }
+
+    node.output = output;
+    node.key = key;
+    node.prefix = prefix;
+    node.count = count;
+
+    // TODO: read childIndex.
+    return node;
   }
 
   /**
@@ -166,18 +186,28 @@ public abstract class Node {
       data.writeVInt(0);
     }
 
+    int outputFlag = 0;
+    if (this.output != null) {
+      outputFlag = outputFlag | HAS_OUTPUT;
+      if (this.output.floorData() != null) {
+        outputFlag = outputFlag | HAS_FLOOR;
+      }
+      if (this.output.hasTerms()) {
+        outputFlag = outputFlag | HAS_TERMS;
+      }
+    }
+
+    data.writeByte((byte) outputFlag);
     // Write output exists flag.
     if (this.output != null) {
-      data.writeByte(HAS_OUTPUT);
       Output output = this.output;
-      long encodedFP = encodeFP(output);
-      writeLongNBytes(encodedFP, bytesRequiredVLong(output.fp()), data);
+      // TODO: writeLongNBytes like TrieBuilder.
+      data.writeVLong(output.fp());
       if (output.floorData() != null) {
+        data.writeVInt(output.floorData().length);
         data.writeBytes(
             output.floorData().bytes, output.floorData().offset, output.floorData().length);
       }
-    } else {
-      data.writeByte(NO_OUTPUT);
     }
 
     saveChildIndex(data);
@@ -190,12 +220,6 @@ public abstract class Node {
    * @throws IOException
    */
   public abstract void saveChildIndex(IndexOutput data) throws IOException;
-
-  protected long encodeFP(Output output) {
-    // TODO: where did this?
-    assert output.fp() < 1L << 62;
-    return (output.floorData() != null ? 1 : 0) | (output.hasTerms() ? 1 : 0) | (output.fp() << 2);
-  }
 
   protected static int bytesRequiredVLong(long v) {
     return Long.BYTES - (Long.numberOfLeadingZeros(v | 1) >>> 3);
