@@ -17,7 +17,7 @@
 package org.apache.lucene.benchmark.jmh;
 
 import java.util.Arrays;
-import java.util.Random;
+import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.IntSupplier;
 import org.apache.lucene.util.ArrayUtil;
@@ -51,7 +51,7 @@ import org.openjdk.jmh.annotations.Warmup;
     })
 public class CompetitiveBenchmark {
 
-  private final Random R = new Random(0);
+  private final SplittableRandom R = new SplittableRandom(0);
 
   @Param("128")
   int size;
