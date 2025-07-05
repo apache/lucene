@@ -56,6 +56,9 @@ public class CompetitiveBenchmark {
   @Param("128")
   int size;
 
+  double[] initialScores;
+  int[] initialDocs;
+
   double[] scores;
   int[] docs;
 
@@ -67,16 +70,22 @@ public class CompetitiveBenchmark {
 
   @Setup(Level.Trial)
   public void setUpTrial() {
+    initialDocs = new int[size];
+    initialScores = new double[size];
     scores = new double[size];
     docs = new int[size];
+    for (int i = 0; i < size; i++) {
+      initialDocs[i] = R.nextInt(Integer.MAX_VALUE);
+      initialScores[i] = R.nextDouble();
+    }
   }
 
   @Setup(Level.Invocation)
   public void setUpInvocation() {
-    for (int i = 0; i < size; i++) {
-      docs[i] = R.nextInt(Integer.MAX_VALUE);
-      scores[i] = R.nextDouble();
-    }
+    // Just copy data in setupInvocation instead of re-generating from the random object, otherwise
+    // the output of perfasm is polluted with calls to the random object
+    System.arraycopy(initialDocs, 0, docs, 0, initialDocs.length);
+    System.arraycopy(initialScores, 0, scores, 0, initialScores.length);
   }
 
   @Benchmark
