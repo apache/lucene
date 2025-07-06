@@ -42,8 +42,7 @@ final class PanamaVectorConstants {
     // to be fair, they do document this thing only works well with AVX2/AVX3 and Neon
     boolean isAMD64withoutAVX2 =
         Constants.OS_ARCH.equals("amd64") && PREFERRED_VECTOR_BITSIZE < 256;
-    HAS_FAST_INTEGER_VECTORS =
-        VectorizationProvider.TESTS_FORCE_INTEGER_VECTORS || (isAMD64withoutAVX2 == false);
+    HAS_FAST_INTEGER_VECTORS = isAMD64withoutAVX2 == false;
 
     PRERERRED_LONG_SPECIES =
         VectorSpecies.of(long.class, VectorShape.forBitSize(PREFERRED_VECTOR_BITSIZE));

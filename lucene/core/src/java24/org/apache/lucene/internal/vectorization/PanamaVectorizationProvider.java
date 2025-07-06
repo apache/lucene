@@ -45,6 +45,10 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
           "Vector bit size is less than 128: " + PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE);
     }
 
+    if (PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS == false) {
+      throw new UnsupportedOperationException("No integer vector support");
+    }
+
     this.vectorUtilSupport = new PanamaVectorUtilSupport();
 
     var log = Logger.getLogger(getClass().getName());
@@ -53,8 +57,7 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
             Locale.ENGLISH,
             "Java vector incubator API enabled; uses preferredBitSize=%d%s%s",
             PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE,
-            Constants.HAS_FAST_VECTOR_FMA ? "; FMA enabled" : "",
-            PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS ? "" : "; floating-point vectors only"));
+            Constants.HAS_FAST_VECTOR_FMA ? "; FMA enabled" : ""));
   }
 
   @Override
