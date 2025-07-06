@@ -61,12 +61,7 @@ allprojects {
 
     if (project.path == ':lucene:luke' || !(project in rootProject.ext.mavenProjects)) {
       // These projects are not part of the public API so we don't render their javadocs
-      // as part of the site's creation. A side-effect of this is that javadocs would not
-      // be linted for these projects. To avoid this, we connect the regular javadoc task
-      // to check so that everything is validated.
-      project.tasks.named("check").configure {
-        dependsOn renderJavadoc
-      }
+      // as part of the site's creation. Linting happens via javac
     } else {
       tasks.register("renderSiteJavadoc", RenderJavadocTask, {
         description = "Generates Javadoc API documentation for the site (relative links)."
