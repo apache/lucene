@@ -40,10 +40,12 @@ allprojects {
 }
 
 plugins.apply(BasePlugin)
+
+plugins.apply(RegisterBuildGlobalsPlugin)
+
 plugins.apply(GitInfoPlugin)
 plugins.apply(AstGrepPlugin)
 plugins.apply(EditorConfigLintPlugin)
-plugins.apply(RegisterBuildGlobalsPlugin)
 
 //
 // Expose parts of the final project version to the build. We can't use Runtime.Version, sadly.
@@ -51,10 +53,6 @@ plugins.apply(RegisterBuildGlobalsPlugin)
 def buildGlobals = rootProject.extensions.getByName("buildGlobals")
 ext {
   // TODO: remove ext properties in favor of using the global extension directly in Java plugins code (typed refs).
-  baseVersion = buildGlobals.baseVersion
-  majorVersion = buildGlobals.majorVersion
-  snapshotBuild = buildGlobals.snapshotBuild
-  isCIBuild = buildGlobals.isCIBuild
 
   // Minimum Java version required to compile and run Lucene.
   minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
@@ -74,38 +72,6 @@ ext {
   isIdeaSync = Boolean.parseBoolean(System.getProperty("idea.sync.active", "false"))
   isIdeaBuild = (isIdea && !isIdeaSync)
 }
-
-ext {
-  // JDK versions where the vector module is still incubating;
-  // also change this in extractor tool: ExtractForeignAPI
-  vectorIncubatorJavaVersions = [
-    JavaVersion.VERSION_21,
-    JavaVersion.VERSION_22,
-    JavaVersion.VERSION_23,
-    JavaVersion.VERSION_24
-  ] as Set
-}
-
-// Pick the "root" seed from which everything else that is randomized is derived.
-Provider<String> rootSeedOption = buildOptions.addOption("tests.seed", "The \"root\" randomization seed for options and test parameters.", provider {
-  return String.format("%08X", new Random().nextLong())
-})
-ext {
-  rootSeed = rootSeedOption.get()
-  rootSeedUserProvided = buildOptions.getOption("tests.seed").getValue().get().source() == BuildOptionValueSource.COMPUTED_VALUE
-  rootSeedLong = SeedUtils.parseSeedChain(rootSeed)[0]
-}
-allprojects {
-  ext {
-    projectSeedLong = rootProject.rootSeedLong ^ project.path.hashCode()
-  }
-}
-
-tasks.register("showTestsSeed", {
-  doFirst {
-    logger.lifecycle("Running tests with root randomization seed: tests.seed=${rootProject.ext.rootSeed}")
-  }
-})
 
 // Wire up included builds to some validation tasks.
 tasks.matching { it.name == "tidy" }.configureEach {
