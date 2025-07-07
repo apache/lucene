@@ -3,6 +3,7 @@ package org.apache.lucene.benchmark.jmh;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.SplittableRandom;
+
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
@@ -38,8 +39,9 @@ import org.openjdk.jmh.annotations.Warmup;
     })
 public class BitsetToArrayBenchmark {
 
-  private final SplittableRandom R = new SplittableRandom(0);
+  private final SplittableRandom R = new SplittableRandom(4314123142L);
   private static final VectorSpecies<Byte> SPECIES_512 = ByteVector.SPECIES_512;
+  private static final VectorSpecies<Byte> SPECIES_256 = ByteVector.SPECIES_256;
 
   @Param({"128", "256", "512", "768"})
   int bitSetSize;
@@ -55,8 +57,24 @@ public class BitsetToArrayBenchmark {
     base = R.nextInt(1000);
     bitSet = new FixedBitSet(bitSetSize);
     resultArray = new int[FIXED_SET_BITS + Long.SIZE];
-    while (bitSet.cardinality() < FIXED_SET_BITS) {
-      bitSet.set(R.nextInt(bitSetSize));
+    setBits();
+  }
+
+  @Setup(Level.Invocation)
+  public void setupInvocation() {
+    if (bitSetSize != 128) {
+      bitSet.clear();
+      setBits();
+    }
+  }
+
+  private void setBits() {
+    for (int i = 0; i < FIXED_SET_BITS; i++) {
+      int doc;
+      do {
+        doc = R.nextInt(bitSetSize);
+      } while (bitSet.get(doc));
+      bitSet.set(doc);
     }
   }
 
@@ -81,7 +99,7 @@ public class BitsetToArrayBenchmark {
   }
 
   @Benchmark
-  @SuppressWarnings("fallthrough")
+  @Fork(jvmArgsPrepend = {"-XX:UseAVX=3"})
   public int vectorized512() {
     final int[] docs = resultArray;
 
@@ -93,31 +111,84 @@ public class BitsetToArrayBenchmark {
       long word = bits[i];
       if (word != 0) {
         int bitCount = Long.bitCount(word);
-        int base = this.base + (i << 6);
-
-        VectorMask<Byte> mask = VectorMask.fromLong(SPECIES_512, word);
-        ByteVector indices = ByteVector.fromArray(SPECIES_512, IDENTITY_BYTES, 0)
-            .compress(mask);
-
-        switch ((bitCount - 1) >>> 4) {
-          case 3:
-            indices.convert(VectorOperators.B2I, 3).reinterpretAsInts().add(base).intoArray(docs, size + 48);
-          case 2:
-            indices.convert(VectorOperators.B2I, 2).reinterpretAsInts().add(base).intoArray(docs, size + 32);
-          case 1:
-            indices.convert(VectorOperators.B2I, 1).reinterpretAsInts().add(base).intoArray(docs, size + 16);
-          case 0:
-            indices.convert(VectorOperators.B2I, 0).reinterpretAsInts().add(base).intoArray(docs, size);
-            break;
-          default:
-            throw new IllegalStateException(word + " " + i);
-        }
-
+        word2Array_512(word, base + (i << 6), docs, size, bitCount);
         size += bitCount;
       }
     }
 
     return size;
+  }
+
+  @SuppressWarnings("fallthrough")
+  private static void word2Array_512(long word, int base, int[] docs, int offset, int bitCount) {
+    VectorMask<Byte> mask = VectorMask.fromLong(SPECIES_512, word);
+    ByteVector indices = ByteVector.fromArray(SPECIES_512, IDENTITY_BYTES, 0)
+        .compress(mask);
+
+    switch ((bitCount - 1) >>> 4) {
+      case 3:
+        indices.convert(VectorOperators.B2I, 3).reinterpretAsInts().add(base).intoArray(docs, offset + 48);
+      case 2:
+        indices.convert(VectorOperators.B2I, 2).reinterpretAsInts().add(base).intoArray(docs, offset + 32);
+      case 1:
+        indices.convert(VectorOperators.B2I, 1).reinterpretAsInts().add(base).intoArray(docs, offset + 16);
+      case 0:
+        indices.convert(VectorOperators.B2I, 0).reinterpretAsInts().add(base).intoArray(docs, offset);
+        break;
+      default:
+        throw new IllegalStateException(bitCount + "");
+    }
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"-XX:UseAVX=2"})
+  public int vectorized256() {
+    final int[] docs = resultArray;
+
+    long[] bits = bitSet.getBits();
+    int numLongs = bits.length;
+    int size = 0;
+
+    for (int i = 0; i < numLongs; i++) {
+      long word = bits[i];
+      int base = this.base + (i << 6);
+
+      long lWord = word & 0xFFFFFFFFL;
+      if (lWord != 0) {
+        int bitCount = Long.bitCount(lWord);
+        word2Array_256(lWord, base, docs, size, bitCount);
+        size += bitCount;
+      }
+
+      long hWord = word >>> 32;
+      if (hWord != 0) {
+        int bitCount = Long.bitCount(hWord);
+        word2Array_256(hWord, base + 32, docs, size, bitCount);
+        size += bitCount;
+      }
+    }
+
+    return size;
+  }
+
+  @SuppressWarnings("fallthrough")
+  private static void word2Array_256(long word, int base, int[] docs, int offset, int bitCount) {
+    VectorMask<Byte> mask = VectorMask.fromLong(SPECIES_256, word);
+    ByteVector indices = ByteVector.fromArray(SPECIES_256, IDENTITY_BYTES, 0).compress(mask);
+
+    switch ((bitCount - 1) >>> 3) {
+      case 3:
+        indices.convert(VectorOperators.B2I, 3).reinterpretAsInts().add(base).intoArray(docs, offset + 24);
+      case 2:
+        indices.convert(VectorOperators.B2I, 2).reinterpretAsInts().add(base).intoArray(docs, offset + 16);
+      case 1:
+        indices.convert(VectorOperators.B2I, 1).reinterpretAsInts().add(base).intoArray(docs, offset + 8);
+      case 0:
+        indices.convert(VectorOperators.B2I, 0).reinterpretAsInts().add(base).intoArray(docs, offset);
+        break;
+      default:
+        throw new IllegalStateException(bitCount + "");
+    }
   }
 
   private static final byte[] IDENTITY_BYTES = new byte[64];
@@ -129,7 +200,7 @@ public class BitsetToArrayBenchmark {
   }
 
   public static void main(String[] args) {
-    for (int bitSetSize : new int[] {128, 256, 512, 1024}) {
+    for (int bitSetSize : new int[]{128, 256, 512, 1024}) {
       BitsetToArrayBenchmark baseline = new BitsetToArrayBenchmark();
       baseline.bitSetSize = bitSetSize;
       baseline.setup();
@@ -138,23 +209,46 @@ public class BitsetToArrayBenchmark {
         throw new IllegalArgumentException("incorrect size: " + size);
       }
 
-      BitsetToArrayBenchmark candidate = new BitsetToArrayBenchmark();
-      candidate.bitSetSize = bitSetSize;
-      candidate.setup();
-      size = candidate.vectorized512();
-      if (size != FIXED_SET_BITS) {
-        throw new IllegalArgumentException("incorrect size: " + size);
+      {
+        BitsetToArrayBenchmark candidate = new BitsetToArrayBenchmark();
+        candidate.bitSetSize = bitSetSize;
+        candidate.setup();
+        size = candidate.vectorized512();
+        if (size != FIXED_SET_BITS) {
+          throw new IllegalArgumentException("incorrect size: " + size);
+        }
+
+        if (Arrays.equals(baseline.resultArray, 0, FIXED_SET_BITS, candidate.resultArray, 0, FIXED_SET_BITS)
+            == false) {
+          throw new IllegalArgumentException(
+              "incorrect docs,"
+                  + "\nbaseline: "
+                  + Arrays.toString(ArrayUtil.copyOfSubArray(baseline.resultArray, 0, FIXED_SET_BITS))
+                  + "\ncandidate: "
+                  + Arrays.toString(ArrayUtil.copyOfSubArray(candidate.resultArray, 0, FIXED_SET_BITS)));
+        }
       }
 
-      if (Arrays.equals(baseline.resultArray, 0, FIXED_SET_BITS, candidate.resultArray, 0, FIXED_SET_BITS)
-          == false) {
-        throw new IllegalArgumentException(
-            "incorrect docs,"
-                + "\nbaseline: "
-                + Arrays.toString(ArrayUtil.copyOfSubArray(baseline.resultArray, 0, FIXED_SET_BITS))
-                + "\ncandidate: "
-                + Arrays.toString(ArrayUtil.copyOfSubArray(candidate.resultArray, 0, FIXED_SET_BITS)));
+      {
+        BitsetToArrayBenchmark candidate = new BitsetToArrayBenchmark();
+        candidate.bitSetSize = bitSetSize;
+        candidate.setup();
+        size = candidate.vectorized256();
+        if (size != FIXED_SET_BITS) {
+          throw new IllegalArgumentException("incorrect size: " + size);
+        }
+
+        if (Arrays.equals(baseline.resultArray, 0, FIXED_SET_BITS, candidate.resultArray, 0, FIXED_SET_BITS)
+            == false) {
+          throw new IllegalArgumentException(
+              "incorrect docs,"
+                  + "\nbaseline: "
+                  + Arrays.toString(ArrayUtil.copyOfSubArray(baseline.resultArray, 0, FIXED_SET_BITS))
+                  + "\ncandidate: "
+                  + Arrays.toString(ArrayUtil.copyOfSubArray(candidate.resultArray, 0, FIXED_SET_BITS)));
+        }
       }
+
     }
   }
 }
