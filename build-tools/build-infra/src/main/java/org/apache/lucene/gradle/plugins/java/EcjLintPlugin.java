@@ -32,6 +32,7 @@ import org.eclipse.jdt.internal.compiler.batch.Main;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
+import org.gradle.api.file.FileCollection;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
@@ -136,7 +137,7 @@ public class EcjLintPlugin extends LuceneGradlePlugin {
     task.getInputs().files(sourceSet.getCompileClasspath());
 
     // Collect classpath locations
-    var classpathArguments = modularPaths.getCompilationClasspath().filter(File::exists);
+    FileCollection classpathArguments = modularPaths.getCompilationClasspath().filter(File::exists);
     task.getInputs().files(classpathArguments);
 
     // Input sources.
