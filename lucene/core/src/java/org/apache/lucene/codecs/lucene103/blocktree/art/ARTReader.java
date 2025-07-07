@@ -20,11 +20,15 @@ import java.io.IOException;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 
-// TODO: Load from disk.
 public class ARTReader {
   private Node root;
 
-  // for testing.
+  // For testing.
+  public Node getRoot() {
+    return root;
+  }
+
+  // For testing.
   public ARTReader(Node root) {
     this.root = root;
   }
@@ -34,20 +38,20 @@ public class ARTReader {
   }
 
   public Node read(IndexInput dataInput) throws IOException {
+    // TODO: Read specify node by node's fp like trie.
     Node node = Node.read(dataInput);
-    if (node == null) {
-      return null;
-    }
+
     if (node.nodeType == NodeType.LEAF_NODE) {
       return node;
     } else {
       // Children count.
       // We didn't build child without key(If this happens, it must be the first child), But record
       // its output to parent and add child count.
-      int count = node.output != null ? node.count-- : node.count;
-      Node[] children = new Node[count];
+      int i = node.output != null ? 1 : 0;
+      Node[] children = new Node[node.count];
       // Read all not null children.
-      for (int i = 0; i < count; i++) {
+      //      System.out.println(node);
+      for (; i < node.count; i++) {
         Node child = read(dataInput);
         children[i] = child;
       }
@@ -64,7 +68,6 @@ public class ARTReader {
     while (node != null) {
       if (node.nodeType == NodeType.LEAF_NODE) {
         LeafNode leafNode = (LeafNode) node;
-        // TODO: Set node.key is null.
         if (node.key != null && node.key.equals(key)) {
           return leafNode.output;
         }

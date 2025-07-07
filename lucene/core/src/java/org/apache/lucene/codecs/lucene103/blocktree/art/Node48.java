@@ -167,14 +167,16 @@ public class Node48 extends Node {
   public void saveChildIndex(IndexOutput dataOutput) throws IOException {
     for (int i = 0; i < 32; i++) {
       long longV = childIndex[i];
-      dataOutput.writeVLong(longV);
+      // TODO: Skip -1 and write VLong.
+      //      dataOutput.writeVLong(longV);
+      dataOutput.writeLong(longV);
     }
   }
 
   @Override
   public void readChildIndex(IndexInput dataInput) throws IOException {
     for (int i = 0; i < 32; i++) {
-      childIndex[i] = dataInput.readVLong();
+      childIndex[i] = dataInput.readLong();
     }
   }
 
@@ -183,6 +185,9 @@ public class Node48 extends Node {
     int step = 0;
     for (int i = 0; i < 32; i++) {
       long longVal = childIndex[i];
+      if (longVal == -1) {
+        continue;
+      }
       for (int j = 7; j >= 0; j--) {
         byte bytePos = (byte) (longVal >>> (j * 8));
         int unsignedPos = Byte.toUnsignedInt(bytePos);
@@ -192,5 +197,23 @@ public class Node48 extends Node {
         }
       }
     }
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+
+    if (obj instanceof Node48 == false) {
+      return false;
+    }
+    if (Arrays.equals(childIndex, ((Node48) obj).childIndex) == false) {
+      return false;
+    }
+    if (Arrays.equals(children, ((Node48) obj).children) == false) {
+      return false;
+    }
+    return super.equals(obj);
   }
 }

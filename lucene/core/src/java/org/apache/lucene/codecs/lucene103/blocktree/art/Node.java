@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -52,8 +53,10 @@ public abstract class Node {
   public Node(NodeType nodeType, int compressedPrefixSize) {
     this.nodeType = nodeType;
     this.prefixLength = compressedPrefixSize;
-    prefix = new byte[prefixLength];
     count = 0;
+    if (prefixLength > 0) {
+      prefix = new byte[prefixLength];
+    }
   }
 
   /**
@@ -321,4 +324,63 @@ public abstract class Node {
    * @param children all the not null children nodes in key byte ascending order, no null element.
    */
   abstract void setChildren(Node[] children);
+
+  @Override
+  public String toString() {
+    StringBuilder stb = new StringBuilder();
+    stb.append(" nodeType=").append(nodeType);
+    stb.append(" prefix=").append(prefix == null ? "" : new String(prefix));
+    // May throw exception.
+    stb.append(" key=").append(key == null ? "" : key.utf8ToString());
+    stb.append(" count=").append(count);
+    return stb.toString();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+
+    if (obj instanceof Node == false) {
+      return false;
+    }
+    if (this.nodeType != ((Node) obj).nodeType) {
+      return false;
+    }
+    if (this.count != ((Node) obj).count) {
+      return false;
+    }
+    if (this.prefixLength != ((Node) obj).prefixLength) {
+      return false;
+    }
+    if (this.prefix != null || ((Node) obj).prefix != null) {
+      if (Arrays.equals(this.prefix, ((Node) obj).prefix) == false) {
+        return false;
+      }
+    }
+    if (this.key != null || ((Node) obj).key != null) {
+      if (this.key == null || ((Node) obj).key == null) {
+        return false;
+      }
+      if (this.key.equals(((Node) obj).key) == false) {
+        return false;
+      }
+    }
+    if (this.output != null || ((Node) obj).output != null) {
+      if (this.output == null || ((Node) obj).output == null) {
+        return false;
+      }
+      if (this.output.equals(((Node) obj).output) == false) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    // TODO
+    return super.hashCode();
+  }
 }

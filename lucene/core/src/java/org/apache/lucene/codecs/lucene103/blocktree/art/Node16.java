@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 
@@ -140,6 +141,27 @@ public class Node16 extends Node {
 
   @Override
   public void setChildren(Node[] children) {
-    System.arraycopy(children, 0, this.children, output == null ? 0 : 1, children.length);
+    System.arraycopy(children, 0, this.children, 0, children.length);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+
+    if (obj instanceof Node16 == false) {
+      return false;
+    }
+    if (firstChildIndex != ((Node16) obj).firstChildIndex) {
+      return false;
+    }
+    if (secondChildIndex != ((Node16) obj).secondChildIndex) {
+      return false;
+    }
+    if (Arrays.equals(children, ((Node16) obj).children) == false) {
+      return false;
+    }
+    return super.equals(obj);
   }
 }

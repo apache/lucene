@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene103.blocktree.art;
 import static java.lang.Long.numberOfTrailingZeros;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 
@@ -151,5 +152,22 @@ public class Node256 extends Node {
       offset += w;
       x++;
     }
+  }
+
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+
+    if (obj instanceof Node256 == false) {
+      return false;
+    }
+    if (Arrays.equals(bitmapMask, ((Node256) obj).bitmapMask) == false) {
+      return false;
+    }
+    if (Arrays.equals(children, ((Node256) obj).children) == false) {
+      return false;
+    }
+    return super.equals(obj);
   }
 }
