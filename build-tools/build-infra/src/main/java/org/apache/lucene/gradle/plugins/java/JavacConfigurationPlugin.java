@@ -88,7 +88,8 @@ public class JavacConfigurationPlugin extends LuceneGradlePlugin {
                           "-Xlint:output-file-clash",
                           "-Xlint:overloads",
                           "-Xlint:overrides",
-                          "-Xlint:path",
+                          // TODO: https://github.com/apache/lucene/issues/14912
+                          "-Xlint:-path",
                           "-Xlint:processing",
                           "-Xlint:rawtypes",
                           "-Xlint:removal",
