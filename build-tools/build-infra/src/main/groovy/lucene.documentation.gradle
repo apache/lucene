@@ -73,7 +73,8 @@ configure(project(':lucene:documentation')) {
   // in CI, fully build documentation. this is very costly, way too
   // much for a developer workflow, but it validates build machinery,
   // and link references from overview.html, that javac won't catch
-  if (System.getenv("CI") != null) {
+  LuceneBuildGlobalsExtension buildGlobals = rootProject.extensions.getByType(LuceneBuildGlobalsExtension)
+  if (buildGlobals.isCIBuild) {
     tasks.named("check").configure {
       dependsOn 'documentation'
     }
