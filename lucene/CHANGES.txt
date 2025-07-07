@@ -242,6 +242,7 @@ Other
 
 * GITHUB#14667: Fix documentation regarding benchmark running. (Viliam Durina)
 
+* GITHUB#14898: Fix typo in Circle2D.java (Hokuto Joel Ide)
 
 ======================= Lucene 10.2.2 =======================
 
