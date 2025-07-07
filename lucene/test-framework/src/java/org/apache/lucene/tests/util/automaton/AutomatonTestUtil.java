@@ -296,7 +296,7 @@ public class AutomatonTestUtil extends Assert {
     }
   }
 
-  /**
+  /*
    * below are original, unoptimized implementations of DFA operations for testing. These are from
    * brics automaton, full license (BSD) below:
    */
