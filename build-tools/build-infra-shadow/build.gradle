@@ -46,6 +46,7 @@ dependencies {
   implementation deps.randomizedtesting.runner
   implementation deps.gjf
   implementation deps.jgit
+  implementation deps.ecj
 
   implementation plugin(deps.plugins.carrotsearch.buildopts)
   implementation plugin(deps.plugins.carrotsearch.dependencychecks)

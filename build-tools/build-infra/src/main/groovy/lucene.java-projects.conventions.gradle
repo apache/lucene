@@ -22,6 +22,7 @@ import org.apache.lucene.gradle.plugins.java.JarManifestConfigurationPlugin
 import org.apache.lucene.gradle.plugins.java.TestsAndRandomizationPlugin
 import org.apache.lucene.gradle.plugins.java.TestsBeastingPlugin
 import org.apache.lucene.gradle.plugins.java.AlternativeJdkSupportPlugin
+import org.apache.lucene.gradle.plugins.java.EcjLintPlugin
 
 allprojects { project ->
   if (['src/java', 'src/test'].any {path ->
@@ -38,7 +39,7 @@ allprojects { project ->
     plugins.apply("lucene.java.per-project-test-summary")
 
     plugins.apply("lucene.validation.forbidden-apis")
-    plugins.apply("lucene.validation.ecj-lint")
+    plugins.apply(EcjLintPlugin)
     plugins.apply(GoogleJavaFormatPlugin)
   }
 }

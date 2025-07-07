@@ -19,6 +19,7 @@
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
+import org.apache.lucene.gradle.plugins.java.ModularPathsExtensionApi
 
 // Configures miscellaneous aspects required to support the java module system layer.
 
@@ -274,7 +275,7 @@ allprojects {
 // moduleImplementation - 'requires'
 // moduleCompileOnly    - 'requires static'
 //
-class ModularPathsExtension implements Cloneable, Iterable<Object> {
+class ModularPathsExtension implements Cloneable, Iterable<Object>, ModularPathsExtensionApi {
   /**
    * Determines how paths are split between module path and classpath.
    */
