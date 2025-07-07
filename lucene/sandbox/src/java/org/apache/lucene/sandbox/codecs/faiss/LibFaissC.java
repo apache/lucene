@@ -52,6 +52,7 @@ import org.apache.lucene.util.hnsw.IntToIntFunction;
  *
  * @lucene.experimental
  */
+@SuppressWarnings("restricted") // uses unsafe calls
 final class LibFaissC {
   // TODO: Use vectorized version where available
   public static final String LIBRARY_NAME = "faiss_c";
