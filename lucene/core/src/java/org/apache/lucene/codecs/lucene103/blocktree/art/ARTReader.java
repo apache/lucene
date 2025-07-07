@@ -42,7 +42,8 @@ public class ARTReader {
       return node;
     } else {
       // Children count.
-      // We didn't build child without key(If this happens, it must be the first child), But record its output to parent and add child count.
+      // We didn't build child without key(If this happens, it must be the first child), But record
+      // its output to parent and add child count.
       int count = node.output != null ? node.count-- : node.count;
       Node[] children = new Node[count];
       // Read all not null children.

@@ -16,11 +16,11 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
+import static java.lang.Long.numberOfTrailingZeros;
+
 import java.io.IOException;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-
-import static java.lang.Long.numberOfTrailingZeros;
 
 public class Node256 extends Node {
 
