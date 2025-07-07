@@ -314,11 +314,13 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   public int filterByScore(
       int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
     int newSize = 0;
-    for (int i = 0; i < upTo; i++) {
-      if (scoreBuffer[i] >= minScoreInclusive) {
-        docBuffer[newSize] = docBuffer[i];
-        scoreBuffer[newSize] = scoreBuffer[i];
-        newSize++;
+    for (int i = 0; i < upTo; ++i) {
+      int doc = docBuffer[i];
+      double score = scoreBuffer[i];
+      docBuffer[newSize] = doc;
+      scoreBuffer[newSize] = score;
+      if (score >= minScoreInclusive) {
+        newSize += 1;
       }
     }
     return newSize;
