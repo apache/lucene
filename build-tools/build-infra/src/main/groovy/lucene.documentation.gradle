@@ -70,6 +70,16 @@ configure(project(':lucene:documentation')) {
         'markdownToHtml', 'createDocumentationIndex'
   })
 
+  // in CI, fully build documentation. this is very costly, way too
+  // much for a developer workflow, but it validates build machinery,
+  // and link references from overview.html, that javac won't catch
+  LuceneBuildGlobalsExtension buildGlobals = rootProject.extensions.getByType(LuceneBuildGlobalsExtension)
+  if (buildGlobals.isCIBuild) {
+    tasks.named("check").configure {
+      dependsOn 'documentation'
+    }
+  }
+
   tasks.register("copyDocumentationAssets", Copy, {
     includeEmptyDirs = false
     from project.ext.assets
