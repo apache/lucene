@@ -228,9 +228,6 @@ Bug Fixes
 
 * GITHUB#14838: Make it possible to extend Patience/Seeded knn queries (Tommaso Teofili)
 
-* GITHUB#14882: Fix for IndexedDISI.Dense#intoBitSetWithinBlock to take into account the provided bitset size
-  and avoid throwing IndexOutOfBoundsException (Panagiotis Bailis)
-
 Build
 ---------------------
 * Upgrade forbiddenapis to version 3.9.  (Uwe Schindler)
