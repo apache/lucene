@@ -103,6 +103,23 @@ public class CompetitiveBenchmark {
     return newSize;
   }
 
+  // This is an effort try to make the modification of newSize using cmov
+  // see https://github.com/apache/lucene/pull/14906
+  @Benchmark
+  public int branchlessCandidateCmov() {
+    int newSize = 0;
+    for (int i = 0; i < size; ++i) {
+      int doc = docs[i];
+      double score = scores[i];
+      docs[newSize] = doc;
+      scores[newSize] = score;
+      if (score >= minScoreInclusive) {
+        newSize += 1;
+      }
+    }
+    return newSize;
+  }
+
   @Benchmark
   public int vectorizedCandidate() {
     return VectorUtil.filterByScore(docs, scores, minScoreInclusive, size);
