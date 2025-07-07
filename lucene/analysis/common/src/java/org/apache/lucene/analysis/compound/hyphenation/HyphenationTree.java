@@ -251,7 +251,7 @@ public class HyphenationTree extends TernaryTree implements PatternConsumer {
     return hyphenate(w, 0, w.length, remainCharCount, pushCharCount);
   }
 
-  /**
+  /*
    * w = "****nnllllllnnn*****", where n is a non-letter, l is a letter, all n may be absent, the
    * first n is at offset, the first l is at offset + iIgnoreAtBeginning; word = ".llllll.'\0'***",
    * where all l in w are copied into word. In the first part of the routine len = w.length, in the
