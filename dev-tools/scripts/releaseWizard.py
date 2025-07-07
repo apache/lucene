@@ -1005,15 +1005,13 @@ def generate_asciidoc():
         fh.write(abbreviate_homedir("cd %s\n" % cmds.get_root_folder()))
         cmds2: list[Command] = ensure_list(cmds.commands)
         for c in cmds2:
-          for line in c.display_cmd():
-            fh.write("%s\n" % line)
+          fh.writelines("%s\n" % line for line in c.display_cmd())
         fh.write("----\n\n")
       if todo.post_description and not todo.get_asciidoc():
         fh.write("\n%s\n\n" % todo.get_post_description())
       if todo.links:
         fh.write("Links:\n\n")
-        for link in todo.links:
-          fh.write("* %s\n" % expand_jinja(link))
+        fh.writelines("* %s\n" % expand_jinja(link) for link in todo.links)
         fh.write("\n")
 
   fh.close()

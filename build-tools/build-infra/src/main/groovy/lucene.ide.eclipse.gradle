@@ -30,6 +30,7 @@ if (gradle.startParameter.taskNames.contains("eclipse")) {
   project.pluginManager.apply("java-base")
   project.pluginManager.apply("eclipse")
 
+  def resources = rootProject.file("gradle/ide/eclipse")
   def eclipseJavaVersion = eclipseJavaVersionOption.get()
   def relativize = { File other -> rootProject.rootDir.relativePath(other).toString() }
 
@@ -41,14 +42,36 @@ if (gradle.startParameter.taskNames.contains("eclipse")) {
     classpath {
       defaultOutputDir = file('build/eclipse')
 
-      file {
-        beforeMerged { classpath ->
-          classpath.entries.removeAll {
-            it.kind == "src"
-          }
-        }
+      downloadSources = true
+      downloadJavadoc = false
 
+      plusConfigurations += allprojects.findAll{ prj ->
+        return prj.plugins.hasPlugin(JavaPlugin)
+      }.collectMany {
+        return [
+          it.configurations.compileClasspath,
+          it.configurations.testCompileClasspath
+        ]
+      }
+
+      file {
         whenMerged { classpath ->
+          classpath.entries.removeAll {
+            return it.kind == "src" || (it.kind == "lib" && it.getPath() ==~ /(.+)lucene-.*\.jar/)
+          }
+
+          // Wipe attributes which only contain a blank "gradle_used_by_scope" for every single library.
+          classpath.entries.each {
+            if (it.kind == "lib") {
+              it.getEntryAttributes().clear()
+            }
+            // The generated gradle-api.jar has no source attached, attaching source is a PITA
+            // for now just attach a javadocs URL, which improves editor functionality:
+            if (it.getPath() ==~ /(.+)gradle-api-.*\.jar/) {
+              it.getEntryAttributes().put("javadoc_location", "https://docs.gradle.org/${deps.versions.minGradle.get()}/javadoc")
+            }
+          }
+
           def projects = allprojects.findAll { prj ->
             return prj.plugins.hasPlugin(JavaPlugin)
           }
@@ -61,7 +84,6 @@ if (gradle.startParameter.taskNames.contains("eclipse")) {
             'tools'
           ] as Set
           Set<String> sources = []
-          Set<File> jars = []
           projects.each { prj ->
             prj.sourceSets.each { sourceSet ->
               if (sourceSetNames.contains(sourceSet.name)) {
@@ -69,22 +91,12 @@ if (gradle.startParameter.taskNames.contains("eclipse")) {
                 sources += sourceSet.resources.srcDirs.findAll { dir -> dir.exists() }.collect { dir -> relativize(dir) }
               }
             }
-
-            // This is hacky - we take the resolved compile classpath and just
-            // include JAR files from there. We should probably make it smarter
-            // by looking at real dependencies. But then: this Eclipse configuration
-            // doesn't really separate sources anyway so why bother.
-            jars += prj.configurations.compileClasspath.resolve()
-            jars += prj.configurations.testCompileClasspath.resolve()
           }
 
           classpath.entries += sources.sort().collect { name ->
             def sourceFolder = new SourceFolder(name, "build/eclipse/" + name)
             sourceFolder.setExcludes(["module-info.java"])
             return sourceFolder
-          }
-          classpath.entries += jars.unique().findAll { location -> location.isFile() && !(location.name ==~ /lucene-.*\.jar/) }.collect { location ->
-            new LibEntry(location.toString())
           }
         }
       }
@@ -128,26 +140,5 @@ if (gradle.startParameter.taskNames.contains("eclipse")) {
 
   eclipseClasspath {
     inputs.property('eclipseJavaVersion', eclipseJavaVersion as String)
-  }
-}
-
-public class LibEntry implements ClasspathEntry {
-  private String path;
-
-  LibEntry(String path) {
-    this.path = path;
-  }
-
-  @Override
-  String getKind() {
-    return "lib"
-  }
-
-  @Override
-  void appendNode(Node node) {
-    node.appendNode("classpathentry", Map.of(
-        "kind", "lib",
-        "path", path
-        ))
   }
 }
