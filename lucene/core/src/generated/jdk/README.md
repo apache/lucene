@@ -17,13 +17,13 @@
 
 # Generated Java API signatures files
 
-This directory contains generated `.apijar` files. Those are special JAR files containing
+This directory contains generated `*-api.jar` files. Those are special JAR files containing
 class files that only have public signatures of certain packages of the Java class
 library, but no bytecode at all. Those files are only used to compile the MR-JAR of Apache
 Lucene while allowing to link against APIs only provided as preview or incubating APIs in
 future JDK versions.
 
-`.apijar` files are provided for developer's convenience in the Lucene source tree.
+These API jar files are provided for developer's convenience in the Lucene source tree.
 They are not part of Lucene's APIs or source code and are not part of binary releases.
 See them as binary blobs with encoded information also provided through the public
 [Javadocs](https://docs.oracle.com/en/java/javase/) of the corresponding Java

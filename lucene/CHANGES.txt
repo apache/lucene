@@ -64,6 +64,9 @@ Bug Fixes
   returns a string which can be parsed back into the original node.
   (Peter Barna, Adam Schwartz)
 
+* GITHUB#14847: Allow Faiss vector format to index >2GB of vectors per-field per-segment by using MemorySegment APIs
+  (instead of ByteBuffer) to copy bytes to native memory. (Kaival Parikh)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -198,6 +201,8 @@ Optimizations
 * GITHUB#14854: Using BatchScoreBulkScorer on CombinedFieldQuery. (Ge Song)
 
 * GITHUB#14827: Pre-calculate minRequiredScore to speedup filterCompetitiveHits. (Ge Song, Adrien Grand)
+
+* GITHUB#14906: Use branchless way to speedup filterCompetitiveHits. (Adrien Grand, Ge Song)
 
 * GITHUB#14896: Vectorize filterCompetitiveHits (Ge Song, Adrien Grand)
 

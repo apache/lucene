@@ -778,22 +778,6 @@ public abstract class LuceneTestCase extends Assert {
    * Some tests expect the directory to contain a single segment, and want to do tests on that
    * segment's reader. This is an utility method to help them.
    */
-  /*
-  public static SegmentReader getOnlySegmentReader(DirectoryReader reader) {
-    List<LeafReaderContext> subReaders = reader.leaves();
-    if (subReaders.size() != 1) {
-      throw new IllegalArgumentException(reader + " has " + subReaders.size() + " segments instead of exactly one");
-    }
-    final LeafReader r = subReaders.get(0).reader();
-    assertTrue("expected a SegmentReader but got " + r, r instanceof SegmentReader);
-    return (SegmentReader) r;
-  }
-    */
-
-  /**
-   * Some tests expect the directory to contain a single segment, and want to do tests on that
-   * segment's reader. This is an utility method to help them.
-   */
   public static LeafReader getOnlyLeafReader(IndexReader reader) {
     List<LeafReaderContext> subReaders = reader.leaves();
     if (subReaders.size() != 1) {

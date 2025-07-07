@@ -48,7 +48,7 @@ configure(project(":lucene:core")) {
         args = [
           rootProject.minJavaVersion.toString(),
           jdkVersion,
-          apijars.file("jdk${jdkVersion}.apijar"),
+          apijars.file("jdk${jdkVersion}-api.jar"),
         ]
       }
 
