@@ -137,6 +137,13 @@ public class TieredMergePolicy extends MergePolicy {
    * often, meaning that write amplification factor will be increased. Write amplification factor
    * measures the number of times each document in the index is written. A higher write
    * amplification factor will lead to higher CPU and I/O activity as indicated above.
+   *
+   * <p>Values below 5% can lead to exceptionally high merge cost where indexing will continuously
+   * merge nearly all segments, and select newly merged segments immediately for merging again,
+   * often forcing degenerate merge selection like singleton merges. If you venture into this dark
+   * forest, consider limiting the maximum number of concurrent merges and threads (see {@link
+   * ConcurrentMergeScheduler#setMaxMergesAndThreads}) as a coarse attempt to bound the otherwise
+   * pathological indexing behavior.
    */
   public TieredMergePolicy setDeletesPctAllowed(double v) {
     if (v <= 0 || v > 50) {
