@@ -158,6 +158,7 @@ public abstract class Node {
     node.count = count;
 
     // TODO: read childIndex.
+    node.readChildIndex(dataInput);
     return node;
   }
 
@@ -216,10 +217,18 @@ public abstract class Node {
   /**
    * Write childIndex to output.
    *
-   * @param data
+   * @param dataOutput
    * @throws IOException
    */
-  public abstract void saveChildIndex(IndexOutput data) throws IOException;
+  public abstract void saveChildIndex(IndexOutput dataOutput) throws IOException;
+
+  /**
+   * Write childIndex to output.
+   *
+   * @param dataInput
+   * @throws IOException
+   */
+  public abstract void readChildIndex(IndexInput dataInput) throws IOException;
 
   protected static int bytesRequiredVLong(long v) {
     return Long.BYTES - (Long.numberOfLeadingZeros(v | 1) >>> 3);

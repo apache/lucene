@@ -17,7 +17,10 @@
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
 import java.io.IOException;
+import java.util.Arrays;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.ArrayUtil;
 
 public class Node4 extends Node {
 
@@ -92,7 +95,17 @@ public class Node4 extends Node {
     }
   }
 
-  public void saveChildIndex(IndexOutput data) throws IOException {
-    data.writeInt(childIndex);
+  public void saveChildIndex(IndexOutput dataOutput) throws IOException {
+    dataOutput.writeInt(childIndex);
+  }
+
+  @Override
+  public void readChildIndex(IndexInput dataInput) throws IOException {
+    childIndex = dataInput.readInt();
+  }
+
+  @Override
+  public void setChildren(Node[] children) {
+    System.arraycopy(children, 0, this.children, output == null ? 0 : 1, children.length);
   }
 }

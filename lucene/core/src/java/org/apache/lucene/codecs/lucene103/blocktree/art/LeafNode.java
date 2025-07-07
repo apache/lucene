@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
 import java.io.IOException;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 
@@ -58,8 +59,18 @@ public class LeafNode extends Node {
     throw new UnsupportedOperationException();
   }
 
-  public void saveChildIndex(IndexOutput data) throws IOException {
+  public void saveChildIndex(IndexOutput dataOutput) throws IOException {
     // empty
     // TODO: save key
+  }
+
+  @Override
+  public void readChildIndex(IndexInput dataInput) throws IOException {
+    // empty
+  }
+
+  @Override
+  void setChildren(Node[] children) {
+    throw new UnsupportedOperationException();
   }
 }

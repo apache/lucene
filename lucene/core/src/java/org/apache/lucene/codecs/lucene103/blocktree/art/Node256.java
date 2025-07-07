@@ -17,7 +17,10 @@
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
 import java.io.IOException;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+
+import static java.lang.Long.numberOfTrailingZeros;
 
 public class Node256 extends Node {
 
@@ -112,10 +115,41 @@ public class Node256 extends Node {
     bitmapMask[longIdx] = newVal;
   }
 
-  public void saveChildIndex(IndexOutput data) throws IOException {
+  public void saveChildIndex(IndexOutput dataOutput) throws IOException {
     // little endian
     for (long longV : bitmapMask) {
-      data.writeLong(Long.reverseBytes(longV));
+      dataOutput.writeLong(Long.reverseBytes(longV));
+    }
+  }
+
+  @Override
+  public void readChildIndex(IndexInput dataInput) throws IOException {
+    for (int i = 0; i < bitmapMask.length; i++) {
+      bitmapMask[i] = Long.reverseBytes(dataInput.readLong());
+    }
+  }
+
+  @Override
+  public void setChildren(Node[] children) {
+    if (children.length == this.children.length) {
+      this.children = children;
+      return;
+    } else if (output != null && children.length + 1 == this.children.length) {
+      System.arraycopy(children, 0, this.children, 1, children.length);
+      return;
+    }
+
+    int offset = 0;
+    int x = 0;
+    for (long longv : bitmapMask) {
+      int w = Long.bitCount(longv);
+      for (int i = 0; i < w; i++) {
+        int pos = x * 64 + numberOfTrailingZeros(longv);
+        this.children[pos] = children[offset + i];
+        longv &= (longv - 1);
+      }
+      offset += w;
+      x++;
     }
   }
 }

@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene103.blocktree.art;
 
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 
 public class Node48 extends Node {
@@ -163,11 +164,33 @@ public class Node48 extends Node {
     childIndex[longPos] = LongUtils.fromBDBytes(bytes);
   }
 
-  public void saveChildIndex(IndexOutput data) throws IOException {
-    // little endian
+  public void saveChildIndex(IndexOutput dataOutput) throws IOException {
     for (int i = 0; i < 32; i++) {
       long longV = childIndex[i];
-      data.writeLong(Long.reverseBytes(longV));
+      dataOutput.writeVLong(longV);
+    }
+  }
+
+  @Override
+  public void readChildIndex(IndexInput dataInput) throws IOException {
+    for (int i = 0; i < 32; i++) {
+      childIndex[i] = dataInput.readVLong();
+    }
+  }
+
+  @Override
+  public void setChildren(Node[] children) {
+    int step = 0;
+    for (int i = 0; i < 32; i++) {
+      long longVal = childIndex[i];
+      for (int j = 7; j >= 0; j--) {
+        byte bytePos = (byte) (longVal >>> (j * 8));
+        int unsignedPos = Byte.toUnsignedInt(bytePos);
+        if (bytePos != EMPTY_VALUE) {
+          this.children[unsignedPos] = children[step];
+          step++;
+        }
+      }
     }
   }
 }
