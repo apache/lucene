@@ -400,7 +400,7 @@ public class TestVectorUtil extends LuceneTestCase {
       b2.growNoCopy(128 + padding);
 
       int doc = 0;
-      for (int i = 0; i < 128; ++i) {
+      for (int i = 0; i < 128 + padding; ++i) {
         doc += TestUtil.nextInt(random(), 1, 1000);
         b1.docs[i] = b2.docs[i] = doc;
         b1.scores[i] = b2.scores[i] = random().nextDouble();
@@ -411,9 +411,9 @@ public class TestVectorUtil extends LuceneTestCase {
       b1.size = slowFilterByScore(b1.docs, b1.scores, minScoreInclusive, upTo);
       b2.size = VectorUtil.filterByScore(b2.docs, b2.scores, minScoreInclusive, upTo);
       assertEquals(b1.size, b2.size);
-      assertArrayEquals(b1.docs, b2.docs);
-      // two double array should be exactly the same, so the delta should be 0
-      assertArrayEquals(b1.scores, b2.scores, 0);
+      assertTrue(Arrays.equals(b1.docs, 0, b1.size, b2.docs, 0, b2.size));
+      // two double array should be exactly the same, so just use simple Arrays.equals
+      assertTrue(Arrays.equals(b1.scores, 0, b1.size, b2.scores, 0, b2.size));
     }
   }
 

@@ -1030,10 +1030,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
 
     for (; i < upTo; ++i) {
-      int inc = scoreBuffer[i] >= minScoreInclusive ? 1 : 0;
-      docBuffer[newUpto] = docBuffer[i];
-      scoreBuffer[newUpto] = scoreBuffer[i];
-      newUpto += inc;
+      int doc = docBuffer[i];
+      double score = scoreBuffer[i];
+      docBuffer[newUpto] = doc;
+      scoreBuffer[newUpto] = score;
+      if (score >= minScoreInclusive) {
+        newUpto++;
+      }
     }
     return newUpto;
   }

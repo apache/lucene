@@ -114,7 +114,7 @@ public class CompetitiveBenchmark {
       docs[newSize] = doc;
       scores[newSize] = score;
       if (score >= minScoreInclusive) {
-        newSize += 1;
+        newSize++;
       }
     }
     return newSize;
@@ -138,7 +138,11 @@ public class CompetitiveBenchmark {
     candidate.setUpInvocation();
 
     for (IntSupplier s :
-        new IntSupplier[] {candidate::branchlessCandidate, candidate::vectorizedCandidate}) {
+        new IntSupplier[] {
+          candidate::branchlessCandidate,
+          candidate::vectorizedCandidate,
+          candidate::branchlessCandidateCmov
+        }) {
 
       int candidateSize = s.getAsInt();
 

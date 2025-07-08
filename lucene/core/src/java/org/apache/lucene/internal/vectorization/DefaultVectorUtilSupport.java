@@ -320,7 +320,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       docBuffer[newSize] = doc;
       scoreBuffer[newSize] = score;
       if (score >= minScoreInclusive) {
-        newSize += 1;
+        newSize++;
       }
     }
     return newSize;
