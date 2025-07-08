@@ -91,6 +91,32 @@ jobs:
           echo "Applying formatting fixes..."
           ./gradlew tidy "-Ptask.times=true" --max-workers 2
           echo "Applying EditorConfig fixes..."
+          # Debug eclint environment
+          echo "=== ECLINT DEBUG ==="
+          echo "PATH: $PATH"
+          echo "Which eclint: $(which eclint || echo 'not found')"
+          echo "Eclint at ~/.local/bin: $(ls -la ~/.local/bin/eclint 2>/dev/null || echo 'not found')"
+          echo "Current directory: $(pwd)"
+          echo "Contents: $(ls -la . | head -5)"
+          echo "Trying eclint version:"
+          ~/.local/bin/eclint --version || echo "Failed to run ~/.local/bin/eclint --version"
+          echo "Trying eclint via PATH:"
+          eclint --version || echo "Failed to run eclint --version"
+          echo "===================="
+
+          # Try using eclint fix with explicit path first
+          if ~/.local/bin/eclint --version >/dev/null 2>&1; then
+            echo "Using eclint from ~/.local/bin"
+            ~/.local/bin/eclint fix . || echo "eclint fix failed, falling back to manual approach"
+          elif command -v eclint >/dev/null 2>&1; then
+            echo "Using eclint from PATH"
+            eclint fix . || echo "eclint fix failed, falling back to manual approach"
+          else
+            echo "eclint not found, using manual approach"
+          fi
+
+          # Fallback to manual fixes if eclint fails
+          echo "Applying manual EditorConfig fixes as backup..."
           # Fix trailing whitespace in all files (respecting EditorConfig)
           git ls-files -z | xargs -0 sed -i 's/[[:space:]]*$//'
           # Fix line endings for Windows files (convert LF to CRLF for .bat/.cmd files)
