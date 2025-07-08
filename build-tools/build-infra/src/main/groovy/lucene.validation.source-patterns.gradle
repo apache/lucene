@@ -31,10 +31,7 @@ if (project != project.rootProject) {
   throw new GradleException("Applicable to rootProject only: " + project.path)
 }
 
-List<String> extensions = [
-  'java',
-  'xml',
-]
+List<String> extensions = ['java', 'xml',]
 
 // Create source validation task local to each project
 allprojects {

@@ -21,23 +21,19 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import org.apache.tools.ant.taskdefs.condition.Os;
+import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.gradle.api.GradleException;
-import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Exec;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
 
 /** Uses {@code git-grep(1)} to find text files matching a list of patterns. */
-public class GitGrepPlugin implements Plugin<Project> {
+public class GitGrepPlugin extends LuceneGradlePlugin {
   @Override
   public void apply(Project project) {
-    if (project != project.getRootProject()) {
-      throw new GradleException("This plugin can be applied to the root project only.");
-    }
-
-    TaskContainer tasks = project.getTasks();
+    applicableToRootProjectOnly(project);
 
     // currently configured as basic regular expressions...
     // extended or even perl-compatible can be configured, but best avoided
@@ -68,11 +64,20 @@ public class GitGrepPlugin implements Plugin<Project> {
             "$LastChangedRevision\\b",
             "$Rev\\b");
 
+    TaskContainer tasks = project.getTasks();
     TaskProvider<Exec> applyGitGrepRulesTask =
         tasks.register(
             "applyGitGrepRules",
             Exec.class,
             (Exec task) -> {
+              Provider<String> gitExecName =
+                  getBuildOptions(project).getOption("lucene.tool.git").asStringProvider();
+              if (gitExecName.isPresent()) {
+                task.setExecutable(gitExecName.get());
+              } else {
+                task.setEnabled(false);
+              }
+
               // we could pass each pattern via '-e', but this feels more comfortable.
               Path inputFile = task.getTemporaryDir().toPath().resolve("patterns.txt");
               task.doFirst(
@@ -83,7 +88,6 @@ public class GitGrepPlugin implements Plugin<Project> {
                       throw new UncheckedIOException(e);
                     }
                   });
-              task.setExecutable(Os.isFamily(Os.FAMILY_WINDOWS) ? "git.exe" : "git");
               task.setWorkingDir(project.getLayout().getProjectDirectory());
               task.setIgnoreExitValue(true);
               task.setArgs(
@@ -111,8 +115,8 @@ public class GitGrepPlugin implements Plugin<Project> {
             });
 
     tasks
-        .matching(task -> task.getName().equals("check"))
-        .configureEach(
+        .named("check")
+        .configure(
             task -> {
               task.dependsOn(applyGitGrepRulesTask);
             });
