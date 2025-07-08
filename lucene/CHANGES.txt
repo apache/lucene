@@ -106,6 +106,8 @@ API Changes
 * GITHUB#14426: Support determining desired off-heap memory requirements through
   KnnVectorsReader::getOffHeapByteSize (Chris Hegarty)
 
+* GITHUB#14899: Deprecate MergeSpecification#segString(Directory) (kitoha)
+
 New Features
 ---------------------
 * GITHUB#14404: Introducing DocValuesMultiRangeQuery.SortedNumericStabbingBuilder into sandbox.
