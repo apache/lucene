@@ -29,3 +29,23 @@ dependencies {
 
   moduleTestImplementation project(':lucene:test-framework')
 }
+
+// Poorly formatted task for testing format bot
+task   formatTest{
+   description='Test task with bad formatting'
+   doLast{
+       println("This  has   poor   spacing")
+       if(project.hasProperty('testProp')){
+println  "Property exists"
+        }else {
+              println(  "No property found"  );
+       }
+   }
+}
+
+// More poor formatting
+configurations{
+   customConfig{
+     description    =   "Custom configuration"
+   }
+}

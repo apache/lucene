@@ -194,4 +194,33 @@ public final class Term implements Comparable<Term>, Accountable {
                 bytes.bytes.length + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
             : 0L);
   }
+
+  /**
+   * Test method with poor formatting - will be fixed by format bot
+   */
+  public   boolean   isValidTerm( ) {
+      if(field==null||field.isEmpty( )) return false;
+    if(bytes ==null) {
+          return false;}
+
+      // Check field name validity
+      for(int i=0;i<field.length();i++){
+        char c=field.charAt(i);
+        if(!Character.isLetterOrDigit(c)&&c!='_'&&c!='-'){
+             return false;
+        }
+      }
+
+      return   true;
+   }
+
+   /**
+    * Another poorly formatted method for testing
+    */
+   public String getDisplayName(  ){
+       if(field==null)return"<null>";
+        if(text()==null){
+     return field+":"+  "<null>";}
+       return field +  ":"  +text().substring(0,Math.min(text().length(),50));
+   }
 }
