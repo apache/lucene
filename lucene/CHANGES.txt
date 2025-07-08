@@ -32,6 +32,8 @@ New Features
 * GITHUB#14009: Add a new Query that can rescore other Query based on a generic DoubleValueSource
   and trim the results down to top N (Anh Dung Bui)
 
+* GITHUB#14729: Support for Re-Ranking Queries using Late Interaction Model Multi-Vectors. (Vigya Sharma, Jim Ferenczi)
+
 Improvements
 ---------------------
 * GITHUB#14458: Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
