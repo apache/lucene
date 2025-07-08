@@ -195,7 +195,7 @@ Bug Fixes
 
 * GITHUB#14838: Make it possible to extend Patience/Seeded knn queries (Tommaso Teofili)
 
-* GITHUB#14882: Fix for IndexedDISI.Dense#intoBitSetWithinBlock to take into account the provided bitset size
+* GITHUB#14922: Fix for IndexedDISI.Dense#intoBitSetWithinBlock to take into account the provided bitset size
   and avoid throwing IndexOutOfBoundsException (Panagiotis Bailis)
 
 Build
