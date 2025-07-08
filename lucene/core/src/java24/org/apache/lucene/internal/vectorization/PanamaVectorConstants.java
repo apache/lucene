@@ -29,7 +29,6 @@ final class PanamaVectorConstants {
   /** Whether integer vectors can be trusted to actually be fast. */
   static final boolean ENABLE_INTEGER_VECTORS;
 
-  static final VectorSpecies<Long> PRERERRED_LONG_SPECIES;
   static final VectorSpecies<Integer> PRERERRED_INT_SPECIES;
 
   static {
@@ -45,8 +44,6 @@ final class PanamaVectorConstants {
     ENABLE_INTEGER_VECTORS =
         (isAMD64withoutAVX2 == false) || VectorizationProvider.TESTS_VECTOR_SIZE.isPresent();
 
-    PRERERRED_LONG_SPECIES =
-        VectorSpecies.of(long.class, VectorShape.forBitSize(PREFERRED_VECTOR_BITSIZE));
     PRERERRED_INT_SPECIES =
         VectorSpecies.of(int.class, VectorShape.forBitSize(PREFERRED_VECTOR_BITSIZE));
   }
