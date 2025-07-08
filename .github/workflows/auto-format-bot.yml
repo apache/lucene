@@ -91,6 +91,9 @@ jobs:
         if: steps.check_before.outputs.initial_check_passed == 'false'
         run: |
           echo "Applying formatting fixes..."
+          echo "→ Applying EditorConfig fixes..."
+          ./gradlew applyEcLint "-Ptask.times=true" --max-workers 2
+          echo "→ Applying code formatting..."
           ./gradlew tidy "-Ptask.times=true" --max-workers 2
 
           echo "Applying EditorConfig fixes..."
@@ -264,9 +267,11 @@ jobs:
             This PR applies automatic formatting fixes to address validation failures in #${{ github.event.issue.number }}.
 
             ### 🔧 Changes Applied
+            - ✅ EditorConfig fixes via \`./gradlew applyEcLint\`
             - ✅ Code formatting via \`./gradlew tidy\`
             - ✅ Java code formatted with google-java-format
             - ✅ Gradle/Groovy scripts formatted with spotless
+            - ✅ Trailing whitespace, tabs, and line endings fixed
             - ✅ EditorConfig compliance via \`editorconfig-checker\`
             - ✅ Trailing whitespace removal
             - ✅ Line ending fixes (CRLF for Windows files)
