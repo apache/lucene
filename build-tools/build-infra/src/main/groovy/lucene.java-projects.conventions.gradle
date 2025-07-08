@@ -21,6 +21,7 @@ import org.apache.lucene.gradle.plugins.java.JavacConfigurationPlugin
 import org.apache.lucene.gradle.plugins.java.JarManifestConfigurationPlugin
 import org.apache.lucene.gradle.plugins.java.TestsAndRandomizationPlugin
 import org.apache.lucene.gradle.plugins.java.TestsBeastingPlugin
+import org.apache.lucene.gradle.plugins.java.TestsSummaryPlugin
 import org.apache.lucene.gradle.plugins.java.AlternativeJdkSupportPlugin
 import org.apache.lucene.gradle.plugins.java.EcjLintPlugin
 
@@ -36,7 +37,7 @@ allprojects { project ->
     plugins.apply(JarManifestConfigurationPlugin)
     plugins.apply(TestsAndRandomizationPlugin)
     plugins.apply(TestsBeastingPlugin)
-    plugins.apply("lucene.java.per-project-test-summary")
+    plugins.apply(TestsSummaryPlugin)
 
     plugins.apply("lucene.validation.forbidden-apis")
     plugins.apply(EcjLintPlugin)
