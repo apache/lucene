@@ -14,7 +14,7 @@ jobs:
     if: |
       github.event.issue.pull_request &&
       (contains(github.event.comment.body, '@lucene-format-bot apply') ||
-       contains(github.event.comment.body, '/format-fix'))
+      contains(github.event.comment.body, '/format-fix'))
 
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -67,8 +67,10 @@ jobs:
 
       - uses: ./.github/actions/prepare-for-build
 
-      - name: Install eclint
-        uses: ./.github/actions/eclint
+      - name: Install editorconfig-checker
+        run: |
+          npm install -g editorconfig-checker
+          echo "Installed editorconfig-checker version: $(editorconfig-checker --version)"
 
       - name: Install ast-grep
         run: |
@@ -94,6 +96,67 @@ jobs:
           echo "→ Applying code formatting..."
           ./gradlew tidy "-Ptask.times=true" --max-workers 2
 
+          echo "Applying EditorConfig fixes..."
+
+          # Get list of changed files (exclude deleted files and binary files)
+          echo "Getting list of changed files..."
+          changed_files=$(git diff --name-only --diff-filter=AM ${{ fromJson(steps.pr_details.outputs.result).base_ref }}...HEAD | grep -E '\.(java|gradle|groovy|yml|yaml|md|txt|properties|sh|bat|cmd)$' || true)
+
+          if [ -z "$changed_files" ]; then
+            echo "No relevant files changed for EditorConfig processing"
+            exit 0
+          fi
+
+          echo "Files to process:"
+          echo "$changed_files"
+
+          # Check current EditorConfig compliance for changed files only
+          echo "Checking EditorConfig compliance for changed files..."
+          if [ -n "$changed_files" ]; then
+            echo "$changed_files" | xargs editorconfig-checker 2>&1 || echo "EditorConfig issues found in changed files"
+          fi
+
+          echo "Applying comprehensive EditorConfig fixes to changed files..."
+
+          # 1. Fix trailing whitespace in changed files
+          echo "→ Removing trailing whitespace from changed files..."
+          if [ -n "$changed_files" ]; then
+            echo "$changed_files" | xargs -I {} sh -c 'sed -i "s/[[:space:]]*$//" "$1"' _ {}
+          fi
+
+          # 2. Fix line endings for Windows files (convert LF to CRLF for .bat/.cmd files)
+          echo "→ Fixing line endings for Windows files..."
+          windows_files=$(echo "$changed_files" | grep -E '\.(bat|cmd)$' || true)
+          if [ -n "$windows_files" ]; then
+            echo "$windows_files" | while read -r file; do
+              if [ -f "$file" ] && ! file "$file" | grep -q "CRLF"; then
+                echo "  Converting LF to CRLF for: $file"
+                sed -i 's/$/\r/' "$file"
+              fi
+            done
+          fi
+
+          # 3. Fix indentation issues (convert tabs to spaces where needed)
+          echo "→ Converting tabs to spaces for text files..."
+          if [ -n "$changed_files" ]; then
+            echo "$changed_files" | xargs -I {} sh -c 'sed -i "s/\t/  /g" "$1"' _ {}
+          fi
+
+          # 4. Ensure files end with newline
+          echo "→ Ensuring files end with newline..."
+          if [ -n "$changed_files" ]; then
+            echo "$changed_files" | while read -r file; do
+              if [ -f "$file" ] && file "$file" | grep -q "text"; then
+                if [ -s "$file" ] && [ "$(tail -c1 "$file" | wc -l)" -eq 0 ]; then
+                  echo "  Adding final newline to: $file"
+                  echo "" >> "$file"
+                fi
+              fi
+            done
+          fi
+
+          echo "✅ EditorConfig fixes completed for changed files"
+
       - name: Check if any files were changed
         id: git_changes
         if: steps.check_before.outputs.initial_check_passed == 'false'
@@ -113,14 +176,40 @@ jobs:
         if: steps.check_before.outputs.initial_check_passed == 'false' && steps.git_changes.outputs.changes_made == 'true'
         run: |
           echo "Verifying formatting fixes..."
+
+          # Get list of changed files again (in case the list is different)
+          changed_files=$(git diff --name-only --diff-filter=AM ${{ fromJson(steps.pr_details.outputs.result).base_ref }}...HEAD | grep -E '\.(java|gradle|groovy|yml|yaml|md|txt|properties|sh|bat|cmd)$' || true)
+
+          # Check EditorConfig compliance after fixes for changed files only
+          echo "Checking EditorConfig compliance after fixes for changed files..."
           set +e
-          ./gradlew check -x test "-Ptask.times=true" --max-workers 2
-          exit_code=$?
-          echo "final_check_passed=$([[ $exit_code -eq 0 ]] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
-          if [[ $exit_code -eq 0 ]]; then
-            echo "✅ Formatting validation passed after fixes"
+          editorconfig_exit_code=0
+          if [ -n "$changed_files" ]; then
+            editorconfig_check_result=$(echo "$changed_files" | xargs editorconfig-checker 2>&1)
+            editorconfig_exit_code=$?
           else
-            echo "❌ Formatting validation still failing after fixes"
+            editorconfig_check_result="No changed files to check"
+          fi
+
+          # Check Gradle formatting compliance (code formatting, not EditorConfig)
+          echo "Checking code formatting compliance..."
+          ./gradlew check -x test "-Ptask.times=true" --max-workers 2
+          gradle_exit_code=$?
+
+          # Overall success requires both to pass
+          if [[ $editorconfig_exit_code -eq 0 && $gradle_exit_code -eq 0 ]]; then
+            echo "✅ All formatting validation passed after fixes"
+            echo "final_check_passed=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Some formatting validation still failing after fixes"
+            if [[ $editorconfig_exit_code -ne 0 ]]; then
+              echo "EditorConfig issues found in changed files:"
+              echo "$editorconfig_check_result"
+            fi
+            if [[ $gradle_exit_code -ne 0 ]]; then
+              echo "Gradle formatting checks failed"
+            fi
+            echo "final_check_passed=false" >> $GITHUB_OUTPUT
           fi
           exit 0
 
@@ -183,6 +272,11 @@ jobs:
             - ✅ Java code formatted with google-java-format
             - ✅ Gradle/Groovy scripts formatted with spotless
             - ✅ Trailing whitespace, tabs, and line endings fixed
+            - ✅ EditorConfig compliance via \`editorconfig-checker\`
+            - ✅ Trailing whitespace removal
+            - ✅ Line ending fixes (CRLF for Windows files)
+            - ✅ Tab-to-space conversion
+            - ✅ Final newline insertion
             - ✅ All formatting validation checks now pass
 
             ### 📝 Details
