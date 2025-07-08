@@ -15,6 +15,8 @@ API Changes
 * GITHUB#14426: Support determining desired off-heap memory requirements through
   KnnVectorsReader::getOffHeapByteSize (Chris Hegarty)
 
+* GITHUB#14899: Deprecate MergeSpecification#segString(Directory) (kitoha)
+
 New Features
 ---------------------
 * GITHUB#14404: Introducing DocValuesMultiRangeQuery.SortedNumericStabbingBuilder into sandbox.
@@ -30,7 +32,9 @@ New Features
 * GITHUB#14009: Add a new Query that can rescore other Query based on a generic DoubleValueSource
   and trim the results down to top N (Anh Dung Bui)
 
-* GITHUB#14843: Backport Faiss-based vector format (#14178, #14847). (Kaival Parikh)
+* GITHUB#14729: Support for Re-Ranking Queries using Late Interaction Model Multi-Vectors. (Vigya Sharma, Jim Ferenczi)
+
+* GITHUB#14843: Add new KnnVectorsFormat that wraps the Faiss library (#14178, #14847). (Kaival Parikh)
 
 Improvements
 ---------------------
@@ -110,6 +114,8 @@ Optimizations
 
 * GITHUB#14827: Pre-calculate minRequiredScore to speedup filterCompetitiveHits. (Ge Song, Adrien Grand)
 
+* GITHUB#14906: Use branchless way to speedup filterCompetitiveHits. (Adrien Grand, Ge Song)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
@@ -150,6 +156,7 @@ Other
 
 * GITHUB#14667: Fix documentation regarding benchmark running. (Viliam Durina)
 
+* GITHUB#14898: Fix typo in Circle2D.java (Hokuto Joel Ide)
 
 ======================= Lucene 10.2.2 =======================
 
