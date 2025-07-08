@@ -40,7 +40,7 @@ import org.gradle.api.tasks.TaskCollection;
 import org.gradle.api.tasks.TaskContainer;
 
 /**
- * This configures the application of forbidden-API rules.
+ * This configures the application of forbidden-API signature files.
  *
  * @see "https://github.com/policeman-tools/forbidden-apis"
  */
@@ -112,6 +112,18 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
 
     // Configure non-standard per-project stuff.
     var forbiddenApisMainTask = allForbiddenApisTasks.named("forbiddenApisMain");
+
+    // apply logging patterns for all modules except Luke.
+    // TODO: this really should be reworked somehow so that Luke also complies.
+    if (!project.getPath().equals(":lucene:luke")) {
+      forbiddenApisMainTask.configure(
+          task -> {
+            task.setSignaturesFiles(
+                task.getSignaturesFiles()
+                    .plus(project.files(forbiddenApisDir.resolve("logging.txt").toFile())));
+          });
+    }
+
     switch (project.getPath()) {
       case ":lucene:build-tools:missing-doclet", ":lucene:build-tools:build-infra-shadow":
         forbiddenApisMainTask.configure(
@@ -177,7 +189,7 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
                 });
 
     var allSignatureFiles = project.files(signatureFiles);
-    var existingSignatureFiles = allSignatureFiles.filter(file -> file.exists());
+    var existingSignatureFiles = allSignatureFiles.filter(File::exists);
 
     task.getInputs().files(existingSignatureFiles);
     task.setSignaturesFiles(task.getSignaturesFiles().plus(existingSignatureFiles));
