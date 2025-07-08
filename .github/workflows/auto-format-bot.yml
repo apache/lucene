@@ -91,10 +91,8 @@ jobs:
           echo "Applying formatting fixes..."
           ./gradlew tidy "-Ptask.times=true" --max-workers 2
           echo "Applying EditorConfig fixes..."
-          # Fix Windows batch/cmd files first (convert to CRLF and remove trailing whitespace except \r)
-          git ls-files -z '*.bat' '*.cmd' | xargs -0 -r sed -i -e 's/[[:blank:]]*$//' -e 's/$/\r/' -e 's/\r\r$/\r/'
-          # Remove trailing whitespace from all other files (excluding .bat and .cmd)
-          git ls-files -z | grep -zv -E '\.(bat|cmd)$' | xargs -0 sed -i 's/[[:space:]]*$//'
+          # Use eclint to fix EditorConfig violations
+          eclint fix .
 
       - name: Check if any files were changed
         id: git_changes
