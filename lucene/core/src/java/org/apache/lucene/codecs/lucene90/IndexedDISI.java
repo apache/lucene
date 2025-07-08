@@ -720,7 +720,7 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
           disi.bitSet = new FixedBitSet(BLOCK_SIZE);
         }
         int destFrom = disi.doc - offset;
-        int disiTo = Math.min(upTo, bitSet.length());
+        int disiTo = upTo - offset > bitSet.length() ? bitSet.length() : upTo;
         int sourceFrom = disi.doc & 0xFFFF;
         int sourceTo = Math.min(disiTo - disi.block, BLOCK_SIZE);
 
