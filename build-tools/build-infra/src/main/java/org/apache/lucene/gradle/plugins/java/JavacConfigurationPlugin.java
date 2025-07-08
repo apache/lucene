@@ -68,6 +68,7 @@ public class JavacConfigurationPlugin extends LuceneGradlePlugin {
                           "-Xlint:auxiliaryclass",
                           "-Xlint:cast",
                           "-Xlint:classfile",
+                          "-Xlint:dangling-doc-comments",
                           "-Xlint:-deprecation",
                           "-Xlint:dep-ann",
                           "-Xlint:divzero",
@@ -76,16 +77,18 @@ public class JavacConfigurationPlugin extends LuceneGradlePlugin {
                           "-Xlint:-exports",
                           "-Xlint:fallthrough",
                           "-Xlint:finally",
-                          // TODO: untested
+                          "-Xlint:incubating",
+                          // TODO: there are problems
+                          "-Xlint:-lossy-conversions",
+                          // TODO: there are problems
                           "-Xlint:-missing-explicit-ctor",
                           "-Xlint:module",
                           "-Xlint:opens",
                           "-Xlint:options",
+                          "-Xlint:output-file-clash",
                           "-Xlint:overloads",
                           "-Xlint:overrides",
-                          // TODO: some tests seem to have bad classpaths?
-                          // this check seems to be a good sanity check for gradle?
-                          "-Xlint:-path",
+                          "-Xlint:path",
                           "-Xlint:processing",
                           "-Xlint:rawtypes",
                           "-Xlint:removal",
@@ -96,10 +99,13 @@ public class JavacConfigurationPlugin extends LuceneGradlePlugin {
                           "-Xlint:strictfp",
                           "-Xlint:synchronization",
                           "-Xlint:text-blocks",
+                          // TODO: there are problems
+                          "-Xlint:-this-escape",
                           "-Xlint:try",
                           "-Xlint:unchecked",
                           "-Xlint:varargs",
                           "-Xlint:preview",
+                          "-Xlint:restricted",
                           "-Xdoclint:all/protected",
                           "-Xdoclint:-missing",
                           "-Xdoclint:-accessibility"));

@@ -153,6 +153,7 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
     return new FieldMeta(fieldInfo, dataOffset, dataLength);
   }
 
+  @SuppressWarnings("restricted") // TODO: encapsulate the unsafeness into the LibFaissC
   private static IndexEntry loadField(IndexInput data, Arena arena, FieldMeta fieldMeta)
       throws IOException {
     int ioFlags = FAISS_IO_FLAG_MMAP | FAISS_IO_FLAG_READ_ONLY;

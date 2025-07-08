@@ -65,6 +65,7 @@ if (!spotlessGradleScriptsOption.get()) {
 tasks.named("spotlessGradleScripts").configure {
   mustRunAfter ":lucene:build-tools:missing-doclet:applyGoogleJavaFormat"
   mustRunAfter ":lucene:build-tools:missing-doclet:renderJavadoc"
+  mustRunAfter ":lucene:build-tools:missing-doclet:compileJava"
   mustRunAfter ":lucene:build-tools:build-infra-shadow:applyGoogleJavaFormat"
   mustRunAfter ":lucene:build-tools:build-infra-shadow:pluginUnderTestMetadata"
   mustRunAfter ":lucene:build-tools:build-infra-shadow:pluginDescriptors"

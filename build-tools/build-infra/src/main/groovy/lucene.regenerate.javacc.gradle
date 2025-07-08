@@ -81,6 +81,13 @@ def commonCleanups = { FileTree generatedFiles ->
       text = text.replace(
           "public  void setDebugStream(java.io.PrintStream ds) { debugStream = ds; }",
           "// (setDebugStream omitted).")
+      // Remove dangling doc comments
+      text = text.replace(
+          "/** Debug output. */",
+          "// Debug output.")
+      text = text.replace(
+          "/** Set debug output. */",
+          "// Set debug output.")
       return text
     })
   }

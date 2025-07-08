@@ -157,10 +157,12 @@ class ScorerUtil {
 
     int newSize = 0;
     for (int i = 0; i < buffer.size; ++i) {
-      if (buffer.scores[i] >= minRequiredScore) {
-        buffer.docs[newSize] = buffer.docs[i];
-        buffer.scores[newSize] = buffer.scores[i];
-        newSize++;
+      int doc = buffer.docs[i];
+      double score = buffer.scores[i];
+      buffer.docs[newSize] = doc;
+      buffer.scores[newSize] = score;
+      if (score >= minRequiredScore) {
+        newSize += 1;
       }
     }
     buffer.size = newSize;

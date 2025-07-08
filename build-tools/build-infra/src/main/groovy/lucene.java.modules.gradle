@@ -400,17 +400,21 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
     return runtimeModulePathConfiguration - modulePatchOnlyConfiguration
   }
 
+  FileCollection removeNonExisting(FileCollection fc) {
+    return fc.filter { f -> f.exists() }
+  }
+
   FileCollection getCompilationClasspath() {
     if (mode == Mode.CLASSPATH_ONLY) {
-      return sourceSet.compileClasspath
+      return removeNonExisting(sourceSet.compileClasspath)
     }
 
     // Modify the default classpath by removing anything already placed on module path.
     // Use a lazy provider to delay computation.
-    project.files({
+    return removeNonExisting(project.files({
       ->
       return sourceSet.compileClasspath - compileModulePathConfiguration - modulePatchOnlyConfiguration
-    })
+    }))
   }
 
   CommandLineArgumentProvider getCompilationArguments() {
