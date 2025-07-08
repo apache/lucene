@@ -145,14 +145,28 @@ public final class IndexFileNames {
   /** Returns the generation from this file name, or 0 if there is no generation. */
   public static long parseGeneration(String filename) {
     assert filename.startsWith("_");
-    String[] parts = stripExtension(filename).substring(1).split("_");
+    int dot = filename.indexOf('.');
+    int end = (dot != -1) ? dot : filename.length();
+    int start = 1; // skip initial '_'
+
+    int first = filename.indexOf('_', start);
+    if (first == -1 || first >= end) {
+      return 0;
+    }
+
+    int second = filename.indexOf('_', first + 1);
+    int third = (second != -1) ? filename.indexOf('_', second + 1) : -1;
+
+    int parts = (second == -1 || second >= end) ? 2 : (third == -1 || third >= end) ? 3 : 4;
+
     // 4 cases:
     // segment.ext
     // segment_gen.ext
     // segment_codec_suffix.ext
     // segment_gen_codec_suffix.ext
-    if (parts.length == 2 || parts.length == 4) {
-      return Long.parseLong(parts[1], Character.MAX_RADIX);
+    if (parts == 2 || parts == 4) {
+      String gen = filename.substring(first + 1, (second != -1 && second < end) ? second : end);
+      return Long.parseLong(gen, Character.MAX_RADIX);
     } else {
       return 0;
     }
