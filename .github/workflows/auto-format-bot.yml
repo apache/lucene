@@ -90,7 +90,8 @@ jobs:
         run: |
           echo "Applying formatting fixes..."
           ./gradlew tidy "-Ptask.times=true" --max-workers 2
-                    echo "Applying EditorConfig fixes..."
+
+          echo "Applying EditorConfig fixes..."
           # Add ~/.local/bin to PATH for eclint
           export PATH="$HOME/.local/bin:$PATH"
 
