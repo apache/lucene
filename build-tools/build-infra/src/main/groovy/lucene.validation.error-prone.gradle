@@ -199,7 +199,7 @@ allprojects { prj ->
           // '-Xep:FloggerLogVarargs:OFF', // we don't use flogger
           // '-Xep:FloggerSplitLogStatement:OFF', // we don't use flogger
           // '-Xep:ForOverride:OFF', // we don't use this annotation
-          // '-Xep:FormatString:OFF',
+          '-Xep:FormatString:ERROR',
           // '-Xep:FormatStringAnnotation:OFF', // we don't use this annotation
           // '-Xep:FromTemporalAccessor:OFF', // we don't use .from(LocalDate) etc
           '-Xep:FunctionalInterfaceMethodChanged:ERROR',
