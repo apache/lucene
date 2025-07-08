@@ -90,6 +90,9 @@ jobs:
         run: |
           echo "Applying formatting fixes..."
           ./gradlew tidy "-Ptask.times=true" --max-workers 2
+          echo "Applying EditorConfig fixes (removing trailing whitespace)..."
+          # Remove trailing whitespace from all tracked files
+          git ls-files | xargs sed -i 's/[[:space:]]*$//'
 
       - name: Check if any files were changed
         id: git_changes
@@ -178,6 +181,7 @@ jobs:
             - ✅ Code formatting via \`./gradlew tidy\`
             - ✅ Java code formatted with google-java-format
             - ✅ Gradle/Groovy scripts formatted with spotless
+            - ✅ EditorConfig fixes (trailing whitespace removal)
             - ✅ All formatting validation checks now pass
 
             ### 📝 Details
