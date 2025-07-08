@@ -89,14 +89,10 @@ jobs:
         if: steps.check_before.outputs.initial_check_passed == 'false'
         run: |
           echo "Applying formatting fixes..."
+          echo "→ Applying EditorConfig fixes..."
+          ./gradlew applyEcLint "-Ptask.times=true" --max-workers 2
+          echo "→ Applying code formatting..."
           ./gradlew tidy "-Ptask.times=true" --max-workers 2
-          echo "Applying EditorConfig fixes..."
-          # Remove trailing whitespace from all tracked files (handle filenames with spaces)
-          git ls-files -z | xargs -0 sed -i 's/[[:space:]]*$//'
-          # Fix line endings for Windows files (convert LF to CRLF for .bat files)
-          git ls-files -z '*.bat' | xargs -0 -r sed -i 's/$/\r/'
-          # Remove any double CRLF that might have been created
-          git ls-files -z '*.bat' | xargs -0 -r sed -i 's/\r\r$/\r/'
 
       - name: Check if any files were changed
         id: git_changes
@@ -182,10 +178,11 @@ jobs:
             This PR applies automatic formatting fixes to address validation failures in #${{ github.event.issue.number }}.
 
             ### 🔧 Changes Applied
+            - ✅ EditorConfig fixes via \`./gradlew applyEcLint\`
             - ✅ Code formatting via \`./gradlew tidy\`
             - ✅ Java code formatted with google-java-format
             - ✅ Gradle/Groovy scripts formatted with spotless
-            - ✅ EditorConfig fixes (trailing whitespace removal)
+            - ✅ Trailing whitespace, tabs, and line endings fixed
             - ✅ All formatting validation checks now pass
 
             ### 📝 Details
