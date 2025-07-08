@@ -24,6 +24,7 @@ import org.apache.lucene.gradle.plugins.java.TestsBeastingPlugin
 import org.apache.lucene.gradle.plugins.java.TestsSummaryPlugin
 import org.apache.lucene.gradle.plugins.java.AlternativeJdkSupportPlugin
 import org.apache.lucene.gradle.plugins.java.EcjLintPlugin
+import org.apache.lucene.gradle.plugins.java.ApplyForbiddenApisPlugin
 
 allprojects { project ->
   if (['src/java', 'src/test'].any {path ->
@@ -38,8 +39,7 @@ allprojects { project ->
     plugins.apply(TestsAndRandomizationPlugin)
     plugins.apply(TestsBeastingPlugin)
     plugins.apply(TestsSummaryPlugin)
-
-    plugins.apply("lucene.validation.forbidden-apis")
+    plugins.apply(ApplyForbiddenApisPlugin)
     plugins.apply(EcjLintPlugin)
     plugins.apply(GoogleJavaFormatPlugin)
   }
