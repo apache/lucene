@@ -175,7 +175,8 @@ public abstract class Node {
     // Node type.
     data.writeByte((byte) this.nodeType.ordinal());
     // Children count.
-    // TODO: max 255, maybe write byte.
+    // TODO: max 255, maybe write byte. In Node256 with output case(abc, abc[-128,127]), it would be
+    // 256, so consider don't add count for node without childIndex.
     data.writeShort(Short.reverseBytes(this.count));
     // Write prefix.
     data.writeVInt(this.prefixLength);

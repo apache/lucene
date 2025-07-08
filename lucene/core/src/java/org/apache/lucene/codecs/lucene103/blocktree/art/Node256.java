@@ -25,7 +25,8 @@ import org.apache.lucene.store.IndexOutput;
 
 public class Node256 extends Node {
 
-  Node[] children = new Node[256];
+  // For testing.
+  public Node[] children = new Node[256];
   // a helper utility field
   long[] bitmapMask = new long[4];
   private static final long LONG_MASK = 0xffffffffffffffffL;
@@ -135,10 +136,11 @@ public class Node256 extends Node {
     if (children.length == this.children.length) {
       this.children = children;
       return;
-    } else if (output != null && children.length + 1 == this.children.length) {
-      System.arraycopy(children, 0, this.children, 1, children.length);
-      return;
     }
+    //    if (output != null && children.length + 1 == this.children.length) {
+    //      System.arraycopy(children, 0, this.children, 1, children.length);
+    //      return;
+    //    }
 
     int offset = 0;
     int x = 0;
