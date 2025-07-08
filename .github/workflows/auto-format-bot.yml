@@ -92,7 +92,7 @@ jobs:
           ./gradlew tidy "-Ptask.times=true" --max-workers 2
           echo "Applying EditorConfig fixes..."
           # Use eclint to fix EditorConfig violations
-          eclint fix .
+          eclint fix $(git ls-files)
 
       - name: Check if any files were changed
         id: git_changes
