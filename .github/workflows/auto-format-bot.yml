@@ -14,7 +14,7 @@ jobs:
     if: |
       github.event.issue.pull_request &&
       (contains(github.event.comment.body, '@lucene-format-bot apply') ||
-       contains(github.event.comment.body, '/format-fix'))
+      contains(github.event.comment.body, '/format-fix'))
 
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -90,42 +90,26 @@ jobs:
         run: |
           echo "Applying formatting fixes..."
           ./gradlew tidy "-Ptask.times=true" --max-workers 2
-          echo "Applying EditorConfig fixes..."
-          # Debug eclint environment
-          echo "=== ECLINT DEBUG ==="
-          echo "PATH: $PATH"
-          echo "Which eclint: $(which eclint || echo 'not found')"
-          echo "Eclint at ~/.local/bin: $(ls -la ~/.local/bin/eclint 2>/dev/null || echo 'not found')"
-          echo "Current directory: $(pwd)"
-          echo "Contents: $(ls -la . | head -5)"
-          echo "Trying eclint version:"
-          ~/.local/bin/eclint --version || echo "Failed to run ~/.local/bin/eclint --version"
-          echo "Trying eclint via PATH:"
-          eclint --version || echo "Failed to run eclint --version"
-          echo "===================="
+                    echo "Applying EditorConfig fixes..."
+          # Add ~/.local/bin to PATH for eclint
+          export PATH="$HOME/.local/bin:$PATH"
 
-          # Try using eclint fix with explicit path first
-          if ~/.local/bin/eclint --version >/dev/null 2>&1; then
-            echo "Using eclint from ~/.local/bin"
-            ~/.local/bin/eclint fix . || echo "eclint fix failed, falling back to manual approach"
-          elif command -v eclint >/dev/null 2>&1; then
-            echo "Using eclint from PATH"
-            eclint fix . || echo "eclint fix failed, falling back to manual approach"
+          # Use eclint fix to handle all EditorConfig violations
+          if command -v eclint >/dev/null 2>&1; then
+            echo "Using eclint fix to apply EditorConfig fixes..."
+            eclint fix .
           else
-            echo "eclint not found, using manual approach"
+            echo "eclint not found, falling back to manual approach..."
+            # Fix trailing whitespace in all files (respecting EditorConfig)
+            git ls-files -z | xargs -0 sed -i 's/[[:space:]]*$//'
+            # Fix line endings for Windows files (convert LF to CRLF for .bat/.cmd files)
+            find . -name "*.bat" -o -name "*.cmd" | while read -r file; do
+              # Convert LF to CRLF if not already CRLF
+              if ! file "$file" | grep -q "CRLF"; then
+                sed -i 's/$/\r/' "$file"
+              fi
+            done
           fi
-
-          # Fallback to manual fixes if eclint fails
-          echo "Applying manual EditorConfig fixes as backup..."
-          # Fix trailing whitespace in all files (respecting EditorConfig)
-          git ls-files -z | xargs -0 sed -i 's/[[:space:]]*$//'
-          # Fix line endings for Windows files (convert LF to CRLF for .bat/.cmd files)
-          find . -name "*.bat" -o -name "*.cmd" | while read -r file; do
-            # Convert LF to CRLF if not already CRLF
-            if ! file "$file" | grep -q "CRLF"; then
-              sed -i 's/$/\r/' "$file"
-            fi
-          done
 
       - name: Check if any files were changed
         id: git_changes
