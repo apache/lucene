@@ -196,7 +196,7 @@ public final class Term implements Comparable<Term>, Accountable {
   }
 
   /** Simple test method with trailing whitespace. */
-  public boolean isEmptyField() {   
-    return field == null || field.isEmpty();    
+  public boolean isEmptyField() {
+    return field == null || field.isEmpty();
   }
 }
