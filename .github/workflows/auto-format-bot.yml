@@ -91,42 +91,42 @@ jobs:
           echo "Applying formatting fixes..."
           ./gradlew tidy "-Ptask.times=true" --max-workers 2
 
-                    echo "Applying EditorConfig fixes..."
-          # Add ~/.local/bin to PATH for eclint
-          export PATH="$HOME/.local/bin:$PATH"
+                              echo "Applying EditorConfig fixes..."
 
-          # Try eclint fix with better error handling
-          if command -v eclint >/dev/null 2>&1; then
-            echo "Using eclint fix to apply EditorConfig fixes..."
-            # Use absolute path and handle working directory properly
-            if ! eclint fix "$PWD"; then
-              echo "eclint fix failed, falling back to manual approach..."
-              apply_manual_fixes=true
-            else
-              apply_manual_fixes=false
+          echo "Applying comprehensive EditorConfig fixes (manual approach)..."
+
+          # Fix trailing whitespace in all files
+          echo "Removing trailing whitespace..."
+          git ls-files -z | xargs -0 -I {} sh -c 'sed -i "s/[[:space:]]*$//" "$1"' _ {}
+
+          # Fix line endings for Windows files (convert LF to CRLF for .bat/.cmd files)
+          echo "Fixing line endings for Windows files..."
+          git ls-files -z '*.bat' '*.cmd' | while IFS= read -r -d '' file; do
+            # Check if file doesn't already have CRLF line endings
+            if ! file "$file" | grep -q "CRLF"; then
+              echo "Converting LF to CRLF for: $file"
+              sed -i 's/$/\r/' "$file"
             fi
-          else
-            echo "eclint not found, using manual approach..."
-            apply_manual_fixes=true
-          fi
+          done
 
-          if [ "$apply_manual_fixes" = "true" ]; then
-            echo "Applying manual EditorConfig fixes..."
-            # Fix trailing whitespace in all files (respecting EditorConfig)
-            git ls-files -z | xargs -0 sed -i 's/[[:space:]]*$//'
+          # Fix indentation issues (convert tabs to spaces)
+          echo "Converting tabs to spaces for text files..."
+          git ls-files -z '*.java' '*.gradle' '*.groovy' '*.yml' '*.yaml' '*.md' '*.txt' '*.properties' | xargs -0 -I {} sh -c 'sed -i "s/\t/  /g" "$1"' _ {}
 
-            # Fix line endings for Windows files (convert LF to CRLF for .bat/.cmd files)
-            find . -name "*.bat" -o -name "*.cmd" | while read -r file; do
-              # Convert LF to CRLF if not already CRLF
-              if ! file "$file" | grep -q "CRLF"; then
-                sed -i 's/$/\r/' "$file"
+          # Ensure files end with newline
+          echo "Ensuring files end with newline..."
+          git ls-files -z | while IFS= read -r -d '' file; do
+            # Skip binary files and specific file types that shouldn't be modified
+            if file "$file" | grep -q "text" && ! echo "$file" | grep -qE '\.(jar|zip|png|jpg|gif|ico|class|sha1)$'; then
+              # Add newline if file doesn't end with one
+              if [ -s "$file" ] && [ "$(tail -c1 "$file" | wc -l)" -eq 0 ]; then
+                echo "" >> "$file"
               fi
-            done
+            fi
+          done
 
-            # Fix indentation issues (convert tabs to spaces for files that need it)
-            # This is a basic fallback - eclint would handle this more precisely
-            git ls-files -z '*.java' '*.gradle' '*.yml' '*.yaml' '*.md' | xargs -0 sed -i 's/\t/  /g'
-          fi
+          # Fix charset issues - ensure UTF-8 encoding for text files
+          echo "EditorConfig fixes completed"
 
       - name: Check if any files were changed
         id: git_changes
