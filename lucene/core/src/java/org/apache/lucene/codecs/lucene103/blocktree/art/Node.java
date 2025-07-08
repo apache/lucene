@@ -160,7 +160,6 @@ public abstract class Node {
     node.prefix = prefix;
     node.count = count;
 
-    // TODO: read childIndex.
     node.readChildIndex(dataInput);
     return node;
   }
