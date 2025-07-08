@@ -91,8 +91,8 @@ jobs:
           echo "Applying formatting fixes..."
           ./gradlew tidy "-Ptask.times=true" --max-workers 2
           echo "Applying EditorConfig fixes (removing trailing whitespace)..."
-          # Remove trailing whitespace from all tracked files
-          git ls-files | xargs sed -i 's/[[:space:]]*$//'
+          # Remove trailing whitespace from all tracked files (handle filenames with spaces)
+          git ls-files -z | xargs -0 sed -i 's/[[:space:]]*$//'
 
       - name: Check if any files were changed
         id: git_changes
