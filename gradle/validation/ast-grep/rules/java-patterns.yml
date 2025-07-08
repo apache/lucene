@@ -91,3 +91,35 @@ transform:
 fix: $NEWTEXT
 severity: error
 message: please write as `TODO:` instead
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: missing-spi-block-tag
+language: java
+ignores:
+  - "**/src/test/**"
+rule:
+  pattern:
+    selector: superclass
+    context: class $CLASS extends $SUPERCLASS
+  inside:
+    kind: class_declaration
+    # public, and not abstract
+    has:
+      kind: modifiers
+      has:
+        regex: public
+      not:
+        has:
+          regex: abstract
+    # not documented
+    not:
+      follows:
+        matches: javadoc
+        regex: "@lucene.spi [{]@value #NAME[}]"
+constraints:
+  SUPERCLASS:
+    regex: ^(Tokenizer|TokenFilter|CharFilter)Factory$
+severity: error
+message: Public factory is missing @lucene.spi javadoc block tag.
+note: |
+  Document with `@lucene.spi {@value #NAME}`
