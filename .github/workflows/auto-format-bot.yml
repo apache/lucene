@@ -91,18 +91,30 @@ jobs:
           echo "Applying formatting fixes..."
           ./gradlew tidy "-Ptask.times=true" --max-workers 2
 
-          echo "Applying EditorConfig fixes..."
+                    echo "Applying EditorConfig fixes..."
           # Add ~/.local/bin to PATH for eclint
           export PATH="$HOME/.local/bin:$PATH"
 
-          # Use eclint fix to handle all EditorConfig violations
+          # Try eclint fix with better error handling
           if command -v eclint >/dev/null 2>&1; then
             echo "Using eclint fix to apply EditorConfig fixes..."
-            eclint fix .
+            # Use absolute path and handle working directory properly
+            if ! eclint fix "$PWD"; then
+              echo "eclint fix failed, falling back to manual approach..."
+              apply_manual_fixes=true
+            else
+              apply_manual_fixes=false
+            fi
           else
-            echo "eclint not found, falling back to manual approach..."
+            echo "eclint not found, using manual approach..."
+            apply_manual_fixes=true
+          fi
+
+          if [ "$apply_manual_fixes" = "true" ]; then
+            echo "Applying manual EditorConfig fixes..."
             # Fix trailing whitespace in all files (respecting EditorConfig)
             git ls-files -z | xargs -0 sed -i 's/[[:space:]]*$//'
+
             # Fix line endings for Windows files (convert LF to CRLF for .bat/.cmd files)
             find . -name "*.bat" -o -name "*.cmd" | while read -r file; do
               # Convert LF to CRLF if not already CRLF
@@ -110,6 +122,10 @@ jobs:
                 sed -i 's/$/\r/' "$file"
               fi
             done
+
+            # Fix indentation issues (convert tabs to spaces for files that need it)
+            # This is a basic fallback - eclint would handle this more precisely
+            git ls-files -z '*.java' '*.gradle' '*.yml' '*.yaml' '*.md' | xargs -0 sed -i 's/\t/  /g'
           fi
 
       - name: Check if any files were changed
