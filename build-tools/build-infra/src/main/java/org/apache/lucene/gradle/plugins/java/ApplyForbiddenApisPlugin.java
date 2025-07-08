@@ -177,10 +177,10 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
                 });
 
     var allSignatureFiles = project.files(signatureFiles);
-    var existingSignatureFiles = allSignatureFiles.filter(file -> !file.exists());
+    var existingSignatureFiles = allSignatureFiles.filter(file -> file.exists());
 
     task.getInputs().files(existingSignatureFiles);
-    task.getSignaturesFiles().plus(existingSignatureFiles);
+    task.setSignaturesFiles(task.getSignaturesFiles().plus(existingSignatureFiles));
 
     if (task.getLogger().isInfoEnabled()) {
       task.doFirst(
