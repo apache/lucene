@@ -45,21 +45,10 @@ public class ARTReader {
       return node;
     } else {
       // Children count.
-      // We didn't build child without key(If this happens, it must be the first child), But record
-      // its output to parent and add child count.
-      // TODO: Remove this when we don't add count for node without childIndex.
-      int i = 0, count = node.count;
-      if (node.output != null) {
-        if (node.nodeType != NodeType.NODE256) {
-          i++;
-        } else {
-          count--;
-        }
-      }
-      Node[] children = new Node[count];
+      Node[] children = new Node[node.count];
       // Read all not null children.
       //      System.out.println(node);
-      for (; i < count; i++) {
+      for (int i = 0; i < node.count; i++) {
         Node child = read(dataInput);
         children[i] = child;
       }

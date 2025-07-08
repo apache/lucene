@@ -33,6 +33,9 @@ public class TestART extends LuceneTestCase {
   public void testNode4() throws IOException {
     // Build.
     ARTBuilder artBuilder = new ARTBuilder();
+    // Add a null child.
+    artBuilder.insert(
+        new BytesRef(("abc").getBytes()), new Output(0, false, new BytesRef(("abc"))));
     artBuilder.insert(new BytesRef("abc1".getBytes()), new Output(0, false, new BytesRef("abc1")));
     artBuilder.insert(
         new BytesRef("abc10".getBytes()), new Output(0, false, new BytesRef("abc10")));
@@ -48,6 +51,7 @@ public class TestART extends LuceneTestCase {
 
     // Search.
     ARTReader artReader = new ARTReader(artBuilder.root);
+    assertEquals(new Output(0, false, new BytesRef("abc")), artReader.find(new BytesRef("abc")));
     assertEquals(new Output(0, false, new BytesRef("abc1")), artReader.find(new BytesRef("abc1")));
     assertEquals(
         new Output(0, false, new BytesRef("abc10")), artReader.find(new BytesRef("abc10")));
@@ -156,8 +160,8 @@ public class TestART extends LuceneTestCase {
     // Add a null child.
     artBuilder.insert(
         new BytesRef(("abc").getBytes()), new Output(0, false, new BytesRef(("abc"))));
-    for (byte i = -128; i < 127; i++) {
-      byte[] bytes = {97, 98, 99, i};
+    for (int i = -128; i <= 127; i++) {
+      byte[] bytes = {97, 98, 99, (byte) i};
       artBuilder.insert(new BytesRef(bytes), new Output(0, false, new BytesRef(bytes)));
     }
     assertEquals(NodeType.NODE256, artBuilder.root.nodeType);
@@ -165,8 +169,8 @@ public class TestART extends LuceneTestCase {
     // Search.
     ARTReader artReader = new ARTReader(artBuilder.root);
     assertEquals(new Output(0, false, new BytesRef("abc")), artReader.find(new BytesRef("abc")));
-    for (byte i = -128; i < 127; i++) {
-      byte[] bytes = {97, 98, 99, i};
+    for (int i = -128; i <= 127; i++) {
+      byte[] bytes = {97, 98, 99, (byte) i};
       assertEquals(new Output(0, false, new BytesRef(bytes)), artReader.find(new BytesRef(bytes)));
     }
 

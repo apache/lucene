@@ -137,10 +137,6 @@ public class Node256 extends Node {
       this.children = children;
       return;
     }
-    //    if (output != null && children.length + 1 == this.children.length) {
-    //      System.arraycopy(children, 0, this.children, 1, children.length);
-    //      return;
-    //    }
 
     int offset = 0;
     int x = 0;

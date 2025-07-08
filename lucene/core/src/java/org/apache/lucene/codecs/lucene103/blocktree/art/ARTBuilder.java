@@ -52,10 +52,9 @@ public class ARTBuilder {
       int nextPos = node.getNextLargerPos(Node.ILLEGAL_IDX);
       while (nextPos != Node.ILLEGAL_IDX) {
         Node child = node.getChild(nextPos);
-        if (child != null) {
-          // TODO: Use stack to eliminate this recursion.
-          save(child, data);
-        }
+        assert child != null;
+        // TODO: Use stack to eliminate this recursion.
+        save(child, data);
         nextPos = node.getNextLargerPos(nextPos);
       }
     } else {
@@ -111,8 +110,6 @@ public class ARTBuilder {
       if (leafNode.key == null) {
         Node4 node4 = new Node4(0);
         node4.output = leafNode.output;
-        // TODO: Even don't record this child.
-        node4.count++;
         leafNode = null;
         LeafNode anotherLeaf = new LeafNode(key, output);
         assert depth < anotherLeaf.key.length;
@@ -135,8 +132,6 @@ public class ARTBuilder {
           updateNodeBytes(leafNode, depth + commonPrefix + 1);
         } else {
           node4.output = leafNode.output;
-          // TODO: Even don't record this child.
-          node4.count++;
           leafNode = null;
         }
         LeafNode anotherLeaf = new LeafNode(key, output);
