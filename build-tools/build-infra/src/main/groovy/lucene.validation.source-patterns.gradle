@@ -31,33 +31,7 @@ if (project != project.rootProject) {
   throw new GradleException("Applicable to rootProject only: " + project.path)
 }
 
-List<String> extensions = [
-  'adoc',
-  'bat',
-  'cmd',
-  'css',
-  'g4',
-  'gradle',
-  'groovy',
-  'html',
-  'java',
-  'jflex',
-  'jj',
-  'js',
-  'json',
-  'md',
-  'mdtext',
-  'pl',
-  'policy',
-  'properties',
-  'py',
-  'sh',
-  'template',
-  'txt',
-  'vm',
-  'xml',
-  'xsl',
-]
+List<String> extensions = ['java', 'xml',]
 
 // Create source validation task local to each project
 allprojects {
@@ -124,16 +98,7 @@ class ValidateSourcePatternsTask extends DefaultTask {
   @TaskAction
   public void check() {
     def invalidPatterns = [
-      (~$/[\u202A-\u202E\u2066-\u2069]/$) : 'misuse of RTL/LTR (https://trojansource.codes)',
       (~$/\Q/**\E((?:\s)|(?:\*))*\Q{@inheritDoc}\E((?:\s)|(?:\*))*\Q*/\E/$) : '{@inheritDoc} on its own is unnecessary',
-      (~$/\$$(?:LastChanged)?Date\b/$) : 'svn keyword',
-      (~$/\$$(?:(?:LastChanged)?Revision|Rev)\b/$) : 'svn keyword',
-      (~$/\$$(?:LastChangedBy|Author)\b/$) : 'svn keyword',
-      (~$/\$$(?:Head)?URL\b/$) : 'svn keyword',
-      (~$/\$$Id\b/$) : 'svn keyword',
-      (~$/\$$Header\b/$) : 'svn keyword',
-      (~$/\$$Source\b/$) : 'svn keyword',
-      (~$/[\u200B\uFEFF]/$) : 'UTF-8 byte order mark or other zero-width codepoints',
     ]
 
     def violations = new TreeSet();

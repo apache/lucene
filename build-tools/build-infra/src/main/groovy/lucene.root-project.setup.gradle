@@ -17,6 +17,7 @@
 
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionValueSource
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin
+import org.apache.lucene.gradle.plugins.gitgrep.GitGrepPlugin
 import org.apache.lucene.gradle.plugins.gitinfo.GitInfoPlugin
 import org.apache.lucene.gradle.plugins.astgrep.AstGrepPlugin
 import org.apache.lucene.gradle.plugins.eclint.EditorConfigLintPlugin
@@ -44,6 +45,7 @@ plugins.apply(BasePlugin)
 plugins.apply(RegisterBuildGlobalsPlugin)
 
 plugins.apply(GitInfoPlugin)
+plugins.apply(GitGrepPlugin)
 plugins.apply(AstGrepPlugin)
 plugins.apply(EditorConfigLintPlugin)
 
