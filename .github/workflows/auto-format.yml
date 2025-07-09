@@ -79,9 +79,9 @@ jobs:
 
       - name: Get changed files
         id: changed-files
-        uses: tj-actions/changed-files@v46
+        uses: ana06/get-changed-files@25f79e676e7ea1868813e21465014798211fad8c
         with:
-          files: |
+          filter: |
             **/*.java
             **/*.gradle
             **/*.groovy
@@ -163,7 +163,6 @@ jobs:
           - **Triggered by**: ${{ github.event.comment.html_url }}
           - **Original PR**: #${{ github.event.issue.number }}
           - **Fix branch**: \`${{ env.fix_branch }}\`
-          - **Files checked**: ${{ steps.changed-files.outputs.all_changed_files_count || '0' }} files
 
           ### 🚀 Next Steps
           Review and merge this PR to apply the formatting fixes to the original branch.
@@ -199,7 +198,6 @@ jobs:
 
           ### 📝 Details
           - **Triggered by**: ${{ github.event.comment.html_url }}
-          - **Files checked**: ${{ steps.changed-files.outputs.all_changed_files_count || '0' }} files
           - **Fix PR**: #${{ steps.create_pr.outputs.pr_number }}
 
           ### 🚀 Next Steps
@@ -217,7 +215,6 @@ jobs:
 
           ### 📝 Details
           - **Triggered by**: ${{ github.event.comment.html_url }}
-          - **Files checked**: ${{ steps.changed-files.outputs.all_changed_files_count || '0' }} files
 
           The PR is ready for review!
 
@@ -233,7 +230,6 @@ jobs:
 
           ### 📝 Details
           - **Triggered by**: ${{ github.event.comment.html_url }}
-          - **Files checked**: ${{ steps.changed-files.outputs.all_changed_files_count || '0' }} files
 
           **Recommendation**: Review the validation failures manually and apply fixes as needed.
 
@@ -262,7 +258,7 @@ jobs:
 
           ### 📝 Details
           - **Triggered by**: ${{ github.event.comment.html_url }}
-          - **Files processed**: ${{ steps.changed-files.outputs.all_changed_files || 'None detected' }}
+          - **Files processed**: ${{ steps.changed-files.outputs.all || 'None detected' }}
 
           ---
           *This was performed automatically by the Auto Format Bot*"
