@@ -6,14 +6,22 @@ task. The rules for each project are sourced dynamically based on the
 actual set of dependencies of a project.
 
 Signature files are under gradle/validation/forbidden-apis and are grouped
-into three categories:
+into these three main categories:
 
 all/
 main/
 test/
 
+and these extra exceptional ones:
+
+main-build-infra/
+non-standard/
+
 Signatures under all/ are applied to all sources, main/ are applied to
-main source sets and test/ to tests only (and test fixtures, if any).
+all main source sets and test/ to tests only (and test fixtures, if any).
+main-build-infra is applied to gradle's build-infra project sources (build
+plugins). non-standard/ contains signature files applied selectively
+to just certain projects.
 
 Let's say a project has a test dependency on an artifact called "foo.bar:baz".
 An attempt would be made to load the following signature files:

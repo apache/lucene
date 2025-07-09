@@ -19,6 +19,7 @@ package org.apache.lucene.gradle.plugins.java;
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOption;
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionValueSource;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 import java.util.stream.IntStream;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
@@ -141,6 +142,7 @@ public class TestsBeastingPlugin extends LuceneGradlePlugin {
                               test.systemProperty(
                                   "tests.seed",
                                   String.format(
+                                      Locale.ROOT,
                                       "%08X",
                                       new Random(rootSeed + (idx * 6364136223846793005L))
                                           .nextLong()));

@@ -35,9 +35,11 @@ import org.gradle.api.artifacts.result.ResolvedComponentResult;
 import org.gradle.api.artifacts.result.ResolvedDependencyResult;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskCollection;
 import org.gradle.api.tasks.TaskContainer;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * This configures the application of forbidden-API signature files.
@@ -61,23 +63,38 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
     TaskCollection<CheckForbiddenApis> allForbiddenApisTasks =
         tasks.withType(CheckForbiddenApis.class);
 
+    // common configuration of all source sets.
+    allForbiddenApisTasks.configureEach(
+        task -> {
+          task.getBundledSignatures()
+              .addAll(
+                  List.of("jdk-unsafe", "jdk-deprecated", "jdk-non-portable", "jdk-reflection"));
+
+          task.getSuppressAnnotations().add("**.SuppressForbidden");
+
+          // apply logger restrictions to all modules except Luke.
+          if (!project.getPath().equals(":lucene:luke")) {
+            task.setSignaturesFiles(
+                task.getSignaturesFiles()
+                    .plus(
+                        project.files(
+                            forbiddenApisDir.resolve("non-standard/logging.txt").toFile())));
+          }
+        });
+
     // Configure defaults for main source sets
     allForbiddenApisTasks
         .matching(task -> task.getName().matches("forbiddenApisMain\\d*|forbiddenApisTools"))
         .configureEach(
             task -> {
-              task.getBundledSignatures()
-                  .addAll(
-                      List.of(
-                          "jdk-unsafe",
-                          "jdk-deprecated",
-                          "jdk-non-portable",
-                          "jdk-reflection",
-                          "jdk-system-out"));
+              task.getBundledSignatures().add("jdk-system-out");
 
-              task.getSuppressAnnotations().add("**.SuppressForbidden");
+              String ruleGroup =
+                  switch (project.getPath()) {
+                    case ":lucene:build-tools:build-infra-shadow" -> "main-build-infra";
+                    default -> "main";
+                  };
 
-              String ruleGroup = "main";
               addCompileConfigurationSignatureFiles(
                   project, task, sourceSets, ruleGroup, forbiddenApisDir);
             });
@@ -87,22 +104,12 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
         .matching(task -> task.getName().matches("forbiddenApisTest|forbiddenApisTestFixtures"))
         .configureEach(
             task -> {
-              task.getBundledSignatures()
-                  .addAll(
-                      List.of(
-                          "jdk-unsafe", "jdk-deprecated", "jdk-non-portable", "jdk-reflection"));
-
-              task.getSuppressAnnotations().add("**.SuppressForbidden");
-
               String ruleGroup = "test";
               addCompileConfigurationSignatureFiles(
                   project, task, sourceSets, ruleGroup, forbiddenApisDir);
             });
 
-    // Configure defaults for the MR-JAR feature sourceSets by setting java version and ignore
-    // missing classes
-    // TODO: get hold of warning messages, see
-    // https://github.com/policeman-tools/forbidden-apis/issues/207
+    // Configure defaults for the MR-JAR feature sourceSets: ignore missing classes
     allForbiddenApisTasks
         .matching(task -> task.getName().matches("forbiddenApisMain\\d+"))
         .configureEach(
@@ -110,19 +117,8 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
               task.setFailOnMissingClasses(false);
             });
 
-    // Configure non-standard per-project stuff.
+    // Configure non-standard, per-project stuff.
     var forbiddenApisMainTask = allForbiddenApisTasks.named("forbiddenApisMain");
-
-    // apply logging patterns for all modules except Luke.
-    // TODO: this really should be reworked somehow so that Luke also complies.
-    if (!project.getPath().equals(":lucene:luke")) {
-      forbiddenApisMainTask.configure(
-          task -> {
-            task.setSignaturesFiles(
-                task.getSignaturesFiles()
-                    .plus(project.files(forbiddenApisDir.resolve("logging.txt").toFile())));
-          });
-    }
 
     switch (project.getPath()) {
       case ":lucene:build-tools:missing-doclet", ":lucene:build-tools:build-infra-shadow":
@@ -175,24 +171,30 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
     var compileConfigurationName =
         sourceSets.named(sourceSetName).get().getCompileClasspathConfigurationName();
 
-    var signatureFiles =
+    var allDependenciesProvider =
         project
             .getConfigurations()
             .named(compileConfigurationName)
             .flatMap(conf -> conf.getIncoming().getResolutionResult().getRootComponent())
-            .map(
-                graphRoot -> {
-                  return collectSignatureLocations(ruleGroup, graphRoot).stream()
-                      .map(forbiddenApisDir::resolve)
-                      .map(Path::toFile)
-                      .toList();
-                });
+            .map(ApplyForbiddenApisPlugin::getAllDependencies);
+
+    // collect signature files for all other dependencies.
+    Provider<List<File>> signatureFiles =
+        allDependenciesProvider.map(
+            allDependencies -> {
+              return collectSignatureLocations(ruleGroup, allDependencies).stream()
+                  .map(forbiddenApisDir::resolve)
+                  .map(Path::toFile)
+                  .toList();
+            });
 
     var allSignatureFiles = project.files(signatureFiles);
     var existingSignatureFiles = allSignatureFiles.filter(File::exists);
 
     task.getInputs().files(existingSignatureFiles);
     task.setSignaturesFiles(task.getSignaturesFiles().plus(existingSignatureFiles));
+
+    addBuiltInSignatures(task, allDependenciesProvider);
 
     if (task.getLogger().isInfoEnabled()) {
       task.doFirst(
@@ -218,8 +220,61 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
     }
   }
 
+  /**
+   * This is hacky; certain signatures are built into forbidden-api checker. Unfortunately, the
+   * task's setBundledSignatures doesn't accept providers and if we try to instantiate the
+   * dependency graph early, it breaks the build... I don't know how to fix this better than by
+   * moving to execution stage.
+   */
+  private static void addBuiltInSignatures(
+      CheckForbiddenApis task,
+      Provider<HashSet<ResolvedDependencyResult>> allDependenciesProvider) {
+    task.doFirst(
+        _ -> {
+          var builtInSignatureProvider =
+              allDependenciesProvider.map(
+                  allDependencies -> {
+                    return allDependencies.stream()
+                        .map(
+                            dep -> {
+                              return dep.getSelected().getModuleVersion();
+                            })
+                        .filter(
+                            moduleVersion -> {
+                              return moduleVersion.getGroup().equals("commons-io")
+                                  && moduleVersion.getName().equals("commons-io");
+                            })
+                        .map(
+                            moduleVersion ->
+                                moduleVersion.getName() + "-unsafe-" + moduleVersion.getVersion())
+                        .sorted()
+                        .toList();
+                  });
+          task.getBundledSignatures().addAll(builtInSignatureProvider.get());
+        });
+  }
+
   private Set<String> collectSignatureLocations(
-      String ruleGroup, ResolvedComponentResult graphRoot) {
+      String ruleGroup, Set<ResolvedDependencyResult> allDependencies) {
+
+    Set<String> signatureLocations = new TreeSet<>();
+    signatureLocations.add("all/defaults.txt");
+    signatureLocations.add(ruleGroup + "/defaults.txt");
+
+    allDependencies.stream()
+        .flatMap(
+            dep -> {
+              var moduleVersion = dep.getSelected().getModuleVersion();
+              var ruleFileName = moduleVersion.getGroup() + "." + moduleVersion.getName() + ".txt";
+              return Set.of("all/" + ruleFileName, ruleGroup + "/" + ruleFileName).stream();
+            })
+        .forEach(signatureLocations::add);
+
+    return signatureLocations;
+  }
+
+  private static @NotNull HashSet<ResolvedDependencyResult> getAllDependencies(
+      ResolvedComponentResult graphRoot) {
     HashSet<ResolvedDependencyResult> allResolved = new HashSet<>();
     ArrayDeque<DependencyResult> queue = new ArrayDeque<>(graphRoot.getDependencies());
 
@@ -233,20 +288,6 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
         throw new GradleException("Unresolved dependency, can't apply forbidden APIs: " + dep);
       }
     }
-
-    Set<String> signatureLocations = new TreeSet<>();
-    signatureLocations.add("all/defaults.txt");
-    signatureLocations.add(ruleGroup + "/defaults.txt");
-
-    allResolved.stream()
-        .flatMap(
-            dep -> {
-              var moduleVersion = dep.getSelected().getModuleVersion();
-              var ruleFileName = moduleVersion.getGroup() + "." + moduleVersion.getName() + ".txt";
-              return Set.of("all/" + ruleFileName, ruleGroup + "/" + ruleFileName).stream();
-            })
-        .forEach(signatureLocations::add);
-
-    return signatureLocations;
+    return allResolved;
   }
 }
