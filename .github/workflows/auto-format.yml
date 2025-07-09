@@ -40,6 +40,17 @@ jobs:
               return;
             }
 
+      - name: Add workflow started reaction
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'eyes'
+            });
+
       - name: Get PR details
         id: pr_details
         uses: actions/github-script@v7
@@ -185,6 +196,34 @@ jobs:
               pr_url: fixPr.html_url
             };
 
+      - name: Remove workflow started reaction and add success reaction
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const reactions = await github.rest.reactions.listForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id
+            });
+
+            const eyesReaction = reactions.data.find(r => r.content === 'eyes' && r.user.type === 'Bot');
+            if (eyesReaction) {
+              await github.rest.reactions.deleteForIssueComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: context.payload.comment.id,
+                reaction_id: eyesReaction.id
+              });
+            }
+
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: '+1'
+            });
+
       - name: Comment on PR with success (fixes applied)
         if: success() && steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true'
         uses: actions/github-script@v7
@@ -261,6 +300,34 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: comment
+            });
+
+      - name: Remove workflow started reaction and add failure reaction
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const reactions = await github.rest.reactions.listForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id
+            });
+
+            const eyesReaction = reactions.data.find(r => r.content === 'eyes' && r.user.type === 'Bot');
+            if (eyesReaction) {
+              await github.rest.reactions.deleteForIssueComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: context.payload.comment.id,
+                reaction_id: eyesReaction.id
+              });
+            }
+
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: '-1'
             });
 
       - name: Comment on PR with failure
