@@ -25,9 +25,22 @@ jobs:
     steps:
       - name: Check permissions
         run: |
-          PERMISSION=$(gh api repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission --jq '.permission')
-          if [[ "$PERMISSION" != "admin" && "$PERMISSION" != "write" ]]; then
-            echo "Error: User @${{ github.actor }} does not have permission to run the format bot. Required: admin or write access."
+          PR_AUTHOR=$(gh pr view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json author --jq '.author.login')
+
+          PERMISSION=$(gh api repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission --jq '.permission' 2>/dev/null || echo "none")
+
+          # only allow if user is PR author OR has admin/write repository access
+          if [[ "${{ github.actor }}" == "$PR_AUTHOR" ]] || [[ "$PERMISSION" == "admin" ]] || [[ "$PERMISSION" == "write" ]]; then
+            echo "Permission granted: User @${{ github.actor }} can run the format bot"
+            if [[ "${{ github.actor }}" == "$PR_AUTHOR" ]]; then
+              echo "  - Reason: PR author"
+            fi
+            if [[ "$PERMISSION" == "admin" ]] || [[ "$PERMISSION" == "write" ]]; then
+              echo "  - Reason: Repository $PERMISSION access"
+            fi
+          else
+            echo "Error: User @${{ github.actor }} does not have permission to run the format bot."
+            echo "Required: Be the PR author OR have admin/write repository access."
             exit 1
           fi
 
