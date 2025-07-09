@@ -31,10 +31,10 @@ import java.util.Objects;
  *     equal to {@link Relation#EQUAL_TO}, or a lower bound of the total hit count, in which case
  *     {@link #relation} is equal to {@link Relation#GREATER_THAN_OR_EQUAL_TO}.
  */
-public record TotalHits(long value, Relation relation) {
+public record TotalHits(long value, Relation relation){
 
   /** How the {@link TotalHits#value} should be interpreted. */
-  public enum Relation {
+  public enum Relation{
     /** The total hit count is equal to {@link TotalHits#value}. */
     EQUAL_TO,
     /** The total hit count is greater than or equal to {@link TotalHits#value}. */
@@ -42,15 +42,15 @@ public record TotalHits(long value, Relation relation) {
   }
 
   /** Sole constructor. */
-  public TotalHits {
-    if (value < 0) {
+  public TotalHits{
+    if(value < 0){
       throw new IllegalArgumentException("value must be >= 0, got " + value);
     }
     Objects.requireNonNull(relation);
   }
 
   @Override
-  public String toString() {
+  public String toString(){
     return value + (relation == Relation.EQUAL_TO ? "" : "+") + " hits";
   }
 }
