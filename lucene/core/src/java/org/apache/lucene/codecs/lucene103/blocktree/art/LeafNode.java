@@ -30,7 +30,9 @@ public class LeafNode extends Node {
    */
   public LeafNode(BytesRef key, Output output) {
     super(NodeType.LEAF_NODE, 0);
-    this.key = key;
+    if (key != null && key.length > 0) {
+      this.key = key;
+    }
     this.output = output;
   }
 

@@ -288,7 +288,10 @@ public abstract class Node {
    */
   public static void copyNode(Node src, Node dst) {
     dst.prefixLength = src.prefixLength;
-    System.arraycopy(src.prefix, 0, dst.prefix, 0, src.prefixLength);
+
+    if (src.prefixLength > 0) {
+      System.arraycopy(src.prefix, 0, dst.prefix, 0, src.prefixLength);
+    }
     dst.output = src.output;
   }
 

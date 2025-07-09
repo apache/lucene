@@ -72,11 +72,15 @@ public class ARTReader {
   private void visit(Node node, BytesRefBuilder prefix, BiConsumer<BytesRef, Output> consumer) {
     if (node.output != null) {
       if (node.nodeType == NodeType.LEAF_NODE) {
-        prefix.append(node.key);
+        if (node.key != null) {
+          prefix.append(node.key);
+        }
         consumer.accept(prefix.toBytesRef(), node.output);
         return;
       } else {
-        prefix.append(node.prefix, 0, node.prefixLength);
+        if (node.prefixLength > 0) {
+          prefix.append(node.prefix, 0, node.prefixLength);
+        }
         consumer.accept(prefix.toBytesRef(), node.output);
       }
     }

@@ -107,6 +107,7 @@ public class ARTBuilder {
       // in abc10: abc1 is
       // common prefix, 0 is child index(let it as common prefix for abc10 and abc100, but stay in
       // child index).
+      // Or, we even insert a BytesRef("").
       if (leafNode.key == null) {
         Node4 node4 = new Node4(0);
         node4.output = leafNode.output;
@@ -118,13 +119,16 @@ public class ARTBuilder {
         // replace the current node with this internal node4
         return node4;
       } else {
+        assert key.length > 0;
         byte[] prefix = leafNode.key.bytes;
         int commonPrefix =
             ARTUtil.commonPrefixLength(prefix, depth, prefix.length, key.bytes, depth, key.length);
         Node4 node4 = new Node4(commonPrefix);
         // copy common prefix
         node4.prefixLength = commonPrefix;
-        System.arraycopy(key.bytes, depth, node4.prefix, 0, commonPrefix);
+        if (node4.prefixLength > 0) {
+          System.arraycopy(key.bytes, depth, node4.prefix, 0, commonPrefix);
+        }
         // generate two leaf nodes as the children of the fresh node4
         // Save output to parent node for node without commonPrefix. e.g. abc1, abc10.
         if (depth + commonPrefix < leafNode.key.length) {
@@ -151,7 +155,9 @@ public class ARTBuilder {
         Node4 node4 = new Node4(mismatchPos);
         // copy prefix
         node4.prefixLength = mismatchPos;
-        System.arraycopy(node.prefix, 0, node4.prefix, 0, mismatchPos);
+        if (node4.prefixLength > 0) {
+          System.arraycopy(node.prefix, 0, node4.prefix, 0, mismatchPos);
+        }
         // split the current internal node, spawn a fresh node4 and let the
         // current internal node as its children.
         Node4.insert(node4, node, node.prefix[mismatchPos]);
