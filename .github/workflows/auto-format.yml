@@ -6,6 +6,7 @@ on:
 
 env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   format-check:
@@ -23,61 +24,35 @@ jobs:
 
     steps:
       - name: Check permissions
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const actorPermission = await github.rest.repos.getCollaboratorPermissionLevel({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              username: context.actor
-            });
-
-            const permission = actorPermission.data.permission;
-            const hasPermission = ['admin', 'write'].includes(permission);
-
-            if (!hasPermission) {
-              core.setFailed(`User @${context.actor} does not have permission to run the format bot. Required: admin or write access.`);
-              return;
-            }
+        run: |
+          PERMISSION=$(gh api repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission --jq '.permission')
+          if [[ "$PERMISSION" != "admin" && "$PERMISSION" != "write" ]]; then
+            echo "Error: User @${{ github.actor }} does not have permission to run the format bot. Required: admin or write access."
+            exit 1
+          fi
 
       - name: Add workflow started reaction
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.reactions.createForIssueComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: context.payload.comment.id,
-              content: 'eyes'
-            });
+        run: |
+          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            --method POST \
+            --field content='eyes'
 
-      - name: Get PR details
-        id: pr_details
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const prNumber = context.issue.number;
-            const { data: pr } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: prNumber
-            });
+      - name: Get PR details and checkout
+        run: |
+          # Get PR details
+          PR_DATA=$(gh pr view ${{ github.event.issue.number }} --json headRefName,headRepository,headRepositoryOwner)
+          HEAD_REF=$(echo "$PR_DATA" | jq -r '.headRefName')
+          HEAD_REPO=$(echo "$PR_DATA" | jq -r '.headRepository.name')
+          HEAD_OWNER=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login')
 
-            return {
-              head_ref: pr.head.ref,
-              head_sha: pr.head.sha,
-              base_ref: pr.base.ref,
-              base_sha: pr.base.sha,
-              clone_url: pr.head.repo.clone_url,
-              ssh_url: pr.head.repo.ssh_url,
-              repo_full_name: pr.head.repo.full_name
-            };
+          echo "head_ref=$HEAD_REF" >> $GITHUB_ENV
+          echo "head_repo_full=$HEAD_OWNER/$HEAD_REPO" >> $GITHUB_ENV
 
       - name: Checkout PR code
         uses: actions/checkout@v4
         with:
-          repository: ${{ fromJson(steps.pr_details.outputs.result).repo_full_name }}
-          ref: ${{ fromJson(steps.pr_details.outputs.result).head_ref }}
+          repository: ${{ env.head_repo_full }}
+          ref: ${{ env.head_ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
@@ -138,8 +113,9 @@ jobs:
         id: create_fix_branch
         run: |
           # Create a new branch for the fixes
-          fix_branch="format-fixes-${{ fromJson(steps.pr_details.outputs.result).head_ref }}-$(date +%s)"
+          fix_branch="format-fixes-${{ env.head_ref }}-$(date +%s)"
           echo "fix_branch=$fix_branch" >> $GITHUB_OUTPUT
+          echo "fix_branch=$fix_branch" >> $GITHUB_ENV
 
           git config --local user.email "action@github.com"
           git config --local user.name "Lucene Format Bot"
@@ -165,195 +141,114 @@ jobs:
       - name: Create PR for fixes
         if: steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true'
         id: create_pr
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { data: fixPr } = await github.rest.pulls.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `Apply formatting fixes to #${{ github.event.issue.number }}`,
-              head: '${{ steps.create_fix_branch.outputs.fix_branch }}',
-              base: '${{ fromJson(steps.pr_details.outputs.result).head_ref }}',
-              body: `## Automatic Formatting Fixes
+        run: |
+          PR_BODY="## Automatic Formatting Fixes
 
-            This PR applies automatic formatting fixes to address validation failures in #${{ github.event.issue.number }}.
+          This PR applies automatic formatting fixes to address validation failures in #${{ github.event.issue.number }}.
 
-            ### 📝 Details
-            - **Triggered by**: ${{ github.event.comment.html_url }}
-            - **Original PR**: #${{ github.event.issue.number }}
-            - **Fix branch**: \`${{ steps.create_fix_branch.outputs.fix_branch }}\`
-            - **Files checked**: ${{ steps.changed-files.outputs.all_changed_files_count || '0' }} files
+          ### 📝 Details
+          - **Triggered by**: ${{ github.event.comment.html_url }}
+          - **Original PR**: #${{ github.event.issue.number }}
+          - **Fix branch**: \`${{ env.fix_branch }}\`
+          - **Files checked**: ${{ steps.changed-files.outputs.all_changed_files_count || '0' }} files
 
-            ### 🚀 Next Steps
-            Review and merge this PR to apply the formatting fixes to the original branch.
+          ### 🚀 Next Steps
+          Review and merge this PR to apply the formatting fixes to the original branch.
 
-            ---
-            *This PR was created automatically by the Auto Format Bot*`
-            });
+          ---
+          *This PR was created automatically by the Auto Format Bot*"
 
-            return {
-              pr_number: fixPr.number,
-              pr_url: fixPr.html_url
-            };
+          PR_URL=$(gh pr create \
+            --title "Apply formatting fixes to #${{ github.event.issue.number }}" \
+            --body "$PR_BODY" \
+            --base "${{ env.head_ref }}" \
+            --head "${{ env.fix_branch }}")
 
-      - name: Remove workflow started reaction and add success reaction
+          PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+
+      - name: Add success reaction
         if: success()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const reactions = await github.rest.reactions.listForIssueComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: context.payload.comment.id
-            });
-
-            const eyesReaction = reactions.data.find(r => r.content === 'eyes' && r.user.type === 'Bot');
-            if (eyesReaction) {
-              await github.rest.reactions.deleteForIssueComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: context.payload.comment.id,
-                reaction_id: eyesReaction.id
-              });
-            }
-
-            await github.rest.reactions.createForIssueComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: context.payload.comment.id,
-              content: '+1'
-            });
+        run: |
+          # Remove eyes reaction and add success reaction
+          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            --method POST \
+            --field content='+1'
 
       - name: Comment on PR with success (fixes applied)
         if: success() && steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const prNumber = '${{ fromJson(steps.create_pr.outputs.result).pr_number }}';
-            const comment = `## Formatting Fixes Applied
+        run: |
+          gh pr comment ${{ github.event.issue.number }} --body "## Formatting Fixes Applied
 
-            The formatting bot has successfully created a PR with formatting fixes!
+          The formatting bot has successfully created a PR with formatting fixes!
 
-            ### 📝 Details
-            - **Triggered by**: ${{ github.event.comment.html_url }}
-            - **Files checked**: ${{ steps.changed-files.outputs.all_changed_files_count || '0' }} files
-            - **Fix PR**: #${prNumber}
+          ### 📝 Details
+          - **Triggered by**: ${{ github.event.comment.html_url }}
+          - **Files checked**: ${{ steps.changed-files.outputs.all_changed_files_count || '0' }} files
+          - **Fix PR**: #${{ steps.create_pr.outputs.pr_number }}
 
-            ### 🚀 Next Steps
-            Review and merge PR #${prNumber} to apply the formatting fixes to this branch.
+          ### 🚀 Next Steps
+          Review and merge PR #${{ steps.create_pr.outputs.pr_number }} to apply the formatting fixes to this branch.
 
-            ---
-            *This was performed automatically by the Auto Format Bot*`;
-
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
+          ---
+          *This was performed automatically by the Auto Format Bot*"
 
       - name: Comment on PR with success (no fixes needed)
         if: success() && steps.initial-validation.outcome == 'success'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const comment = `## No Formatting Issues Found
+        run: |
+          gh pr comment ${{ github.event.issue.number }} --body "## No Formatting Issues Found
 
-            The formatting bot has validated this PR and found no issues!
+          The formatting bot has validated this PR and found no issues!
 
-            ### 📝 Details
-            - **Triggered by**: ${{ github.event.comment.html_url }}
-            - **Files checked**: ${{ steps.changed-files.outputs.all_changed_files_count || '0' }} files
+          ### 📝 Details
+          - **Triggered by**: ${{ github.event.comment.html_url }}
+          - **Files checked**: ${{ steps.changed-files.outputs.all_changed_files_count || '0' }} files
 
-            The PR is ready for review!
+          The PR is ready for review!
 
-            ---
-            *This was performed automatically by the Auto Format Bot*`;
-
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
+          ---
+          *This was performed automatically by the Auto Format Bot*"
 
       - name: Comment on PR with success (fixes made but no changes)
         if: success() && steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'false'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const comment = `## Formatting Issues Detected (No Auto-fixes Available)
+        run: |
+          gh pr comment ${{ github.event.issue.number }} --body "## Formatting Issues Detected (No Auto-fixes Available)
 
-            The formatting bot found issues but was unable to automatically fix them.
+          The formatting bot found issues but was unable to automatically fix them.
 
-            ### 📝 Details
-            - **Triggered by**: ${{ github.event.comment.html_url }}
-            - **Files checked**: ${{ steps.changed-files.outputs.all_changed_files_count || '0' }} files
+          ### 📝 Details
+          - **Triggered by**: ${{ github.event.comment.html_url }}
+          - **Files checked**: ${{ steps.changed-files.outputs.all_changed_files_count || '0' }} files
 
-            **Recommendation**: Review the validation failures manually and apply fixes as needed.
+          **Recommendation**: Review the validation failures manually and apply fixes as needed.
 
-            ---
-            *This was performed automatically by the Auto Format Bot*`;
+          ---
+          *This was performed automatically by the Auto Format Bot*"
 
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
-
-      - name: Remove workflow started reaction and add failure reaction
+      - name: Add failure reaction
         if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const reactions = await github.rest.reactions.listForIssueComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: context.payload.comment.id
-            });
-
-            const eyesReaction = reactions.data.find(r => r.content === 'eyes' && r.user.type === 'Bot');
-            if (eyesReaction) {
-              await github.rest.reactions.deleteForIssueComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: context.payload.comment.id,
-                reaction_id: eyesReaction.id
-              });
-            }
-
-            await github.rest.reactions.createForIssueComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: context.payload.comment.id,
-              content: '-1'
-            });
+        run: |
+          # Add failure reaction
+          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            --method POST \
+            --field content='-1'
 
       - name: Comment on PR with failure
         if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const comment = `## Formatting Failed
+        run: |
+          gh pr comment ${{ github.event.issue.number }} --body "## Formatting Failed
 
-            The formatting bot encountered issues while processing this PR.
+          The formatting bot encountered issues while processing this PR.
 
-            ### Next Steps:
-            1. Check the workflow logs for specific error details
-            2. Fix any issues manually if needed
-            3. Re-trigger the bot with \`/format-fix apply\`
+          ### Next Steps:
+          1. Check the workflow logs for specific error details
+          2. Fix any issues manually if needed
+          3. Re-trigger the bot with \`/format-fix apply\`
 
-            ### 📝 Details
-            - **Triggered by**: ${{ github.event.comment.html_url }}
-            - **Files processed**: ${{ steps.changed-files.outputs.all_changed_files || 'None detected' }}
+          ### 📝 Details
+          - **Triggered by**: ${{ github.event.comment.html_url }}
+          - **Files processed**: ${{ steps.changed-files.outputs.all_changed_files || 'None detected' }}
 
-            ---
-            *This was performed automatically by the Auto Format Bot*`;
-
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
+          ---
+          *This was performed automatically by the Auto Format Bot*"
