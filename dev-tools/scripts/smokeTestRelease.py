@@ -633,7 +633,7 @@ def verifyUnpacked(java: Any, artifact: str, unpackPath: str, gitRevision: str, 
 
   if isSrc:
     print("    make sure no JARs/WARs in src dist...")
-    lines = os.popen("find . -name \\*.jar").readlines()
+    lines = os.popen("find . -name \\*.jar -not -name \\*-api.jar").readlines()
     if len(lines) != 0:
       print("    FAILED:")
       for line in lines:

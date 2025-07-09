@@ -331,7 +331,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     // Take into account if quantized? E.g. some scorer cost?
     int filteredDocCount = 0;
     // The approximate number of vectors that would be visited if we did not filter
-    int unfilteredVisit = (int) (Math.log(graph.size()) * knnCollector.k());
+    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graph.size());
     if (acceptDocs instanceof BitSet bitSet) {
       // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
       // size as that is illogical

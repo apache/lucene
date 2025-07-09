@@ -18,17 +18,19 @@ package org.apache.lucene.gradle.plugins.eclint;
 
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsExtension;
 import java.util.List;
-import org.gradle.api.GradleException;
-import org.gradle.api.Plugin;
+import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.gradle.api.Project;
 import org.gradle.api.tasks.Exec;
 
-public class EditorConfigLintPlugin implements Plugin<Project> {
+/**
+ * Applies (the rust version of) {@code eclint} to verify editor config settings.
+ *
+ * @see "https://gitlab.com/greut/eclint"
+ */
+public class EditorConfigLintPlugin extends LuceneGradlePlugin {
   @Override
   public void apply(Project project) {
-    if (project != project.getRootProject()) {
-      throw new GradleException("This plugin can be applied to the root project only.");
-    }
+    applicableToRootProjectOnly(project);
 
     var optionName = "lucene.tool.eclint";
     var tasks = project.getTasks();
@@ -39,26 +41,27 @@ public class EditorConfigLintPlugin implements Plugin<Project> {
             .getByType(BuildOptionsExtension.class)
             .addOption(optionName, "External eclint executable (path or name)");
 
+    var verifyEcLintTask = tasks.register("verifyEcLint", Exec.class);
+
     var applyEcLintTask =
         tasks.register(
             "applyEcLint",
             Exec.class,
             task -> {
-              if (!eclintToolOption.isPresent()) {
-                task.getLogger()
-                    .warn(
-                        "The eclint tool location is not set ('{}' option), will not apply eclint checks.",
-                        optionName);
-              }
+              task.args("-fix");
             });
 
     // Common configuration.
-    List.of(applyEcLintTask)
+    List.of(verifyEcLintTask, applyEcLintTask)
         .forEach(
             taskProv -> {
               taskProv.configure(
                   task -> {
                     if (!eclintToolOption.isPresent()) {
+                      task.getLogger()
+                          .warn(
+                              "The eclint tool location is not set ('{}' option), will not apply eclint checks.",
+                              optionName);
                       task.setEnabled(false);
                     }
 
@@ -72,6 +75,13 @@ public class EditorConfigLintPlugin implements Plugin<Project> {
 
     tasks
         .matching(task -> task.getName().equals("check"))
+        .configureEach(
+            task -> {
+              task.dependsOn(verifyEcLintTask);
+            });
+
+    tasks
+        .matching(task -> task.getName().equals("tidy"))
         .configureEach(
             task -> {
               task.dependsOn(applyEcLintTask);

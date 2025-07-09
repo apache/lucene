@@ -17,9 +17,11 @@
 
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionValueSource
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin
+import org.apache.lucene.gradle.plugins.gitgrep.GitGrepPlugin
 import org.apache.lucene.gradle.plugins.gitinfo.GitInfoPlugin
 import org.apache.lucene.gradle.plugins.astgrep.AstGrepPlugin
 import org.apache.lucene.gradle.plugins.eclint.EditorConfigLintPlugin
+import org.apache.lucene.gradle.plugins.globals.RegisterBuildGlobalsPlugin
 import com.carrotsearch.randomizedtesting.SeedUtils
 
 import java.time.ZonedDateTime
@@ -39,63 +41,28 @@ allprojects {
 }
 
 plugins.apply(BasePlugin)
+
+plugins.apply(RegisterBuildGlobalsPlugin)
+
 plugins.apply(GitInfoPlugin)
+plugins.apply(GitGrepPlugin)
 plugins.apply(AstGrepPlugin)
 plugins.apply(EditorConfigLintPlugin)
 
 //
-// Figure out project version based on the base version and, suffix (or overrides of these options).
-//
-Provider<String> versionBase = buildOptions.addOption("version.base", "Base Lucene version")
-Provider<String> versionSuffix = buildOptions.addOption("version.suffix", "Appends project version suffix to 'version.base'.", "SNAPSHOT")
-Provider<String> versionProvider = buildOptions.addOption("version.release", "Lucene project version.",
-    versionSuffix
-    .map { suffix ->
-      versionBase.get() + "-" + suffix
-    }
-    .orElse(versionBase))
-
-String luceneVersion = versionProvider.get()
-rootProject.version = luceneVersion
-
-//
 // Expose parts of the final project version to the build. We can't use Runtime.Version, sadly.
 //
+def buildGlobals = rootProject.extensions.getByName("buildGlobals")
 ext {
-  // "base" version is stripped of the qualifier. Compute it because somebody might have passed
-  // -Pversion.release=x.y.z directly.
-  baseVersion = {
-    def m = (luceneVersion =~ /^(\d+\.\d+\.\d+)(-(.+))?/)
-    if (!m) {
-      throw new GradleException("Can't strip version to just x.y.z: " + rootProject.version)
-    }
-    return m[0][1]
-  }()
-  // "majorVersion" is an integer with just the major version. Compute it.
-  majorVersion = {
-    def m = (version =~ /^(\d+)\.\d+\.\d+(-(.+))?/)
-    if (!m) {
-      throw new GradleException("Can't strip version to just major version: " + rootProject.version)
-    }
-    return m[0][1] as int
-  }()
-
-  // snapshot build marker used in scripts.
-  snapshotBuild = luceneVersion.contains("SNAPSHOT")
-
-  // detect if we run in CI environment by looking at existence of env vars:
-  // "CI": Github (https://docs.github.com/en/actions/learn-github-actions/environment-variables)
-  // anything starting with "JENKINS_" or "HUDSON_": Jenkins/Hudson (https://jenkins.thetaphi.de/env-vars.html/)
-  isCIBuild = System.getenv().keySet().find { it ==~ /(?i)((JENKINS|HUDSON)(_\w+)?|CI)/ } != null
+  // TODO: remove ext properties in favor of using the global extension directly in Java plugins code (typed refs).
 
   // Minimum Java version required to compile and run Lucene.
   minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
 
   // Build timestamp.
-  def tstamp = ZonedDateTime.now()
-  buildDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(tstamp)
-  buildTime = DateTimeFormatter.ofPattern("HH:mm:ss").format(tstamp)
-  buildYear = DateTimeFormatter.ofPattern("yyyy").format(tstamp)
+  buildDate = buildGlobals.buildDate
+  buildTime = buildGlobals.buildTime
+  buildYear = buildGlobals.buildYear
 }
 
 //
@@ -107,38 +74,6 @@ ext {
   isIdeaSync = Boolean.parseBoolean(System.getProperty("idea.sync.active", "false"))
   isIdeaBuild = (isIdea && !isIdeaSync)
 }
-
-ext {
-  // JDK versions where the vector module is still incubating;
-  // also change this in extractor tool: ExtractForeignAPI
-  vectorIncubatorJavaVersions = [
-    JavaVersion.VERSION_21,
-    JavaVersion.VERSION_22,
-    JavaVersion.VERSION_23,
-    JavaVersion.VERSION_24
-  ] as Set
-}
-
-// Pick the "root" seed from which everything else that is randomized is derived.
-Provider<String> rootSeedOption = buildOptions.addOption("tests.seed", "The \"root\" randomization seed for options and test parameters.", provider {
-  return String.format("%08X", new Random().nextLong())
-})
-ext {
-  rootSeed = rootSeedOption.get()
-  rootSeedUserProvided = buildOptions.getOption("tests.seed").getValue().get().source() == BuildOptionValueSource.COMPUTED_VALUE
-  rootSeedLong = SeedUtils.parseSeedChain(rootSeed)[0]
-}
-allprojects {
-  ext {
-    projectSeedLong = rootProject.rootSeedLong ^ project.path.hashCode()
-  }
-}
-
-tasks.register("showTestsSeed", {
-  doFirst {
-    logger.lifecycle("Running tests with root randomization seed: tests.seed=${rootProject.ext.rootSeed}")
-  }
-})
 
 // Wire up included builds to some validation tasks.
 tasks.matching { it.name == "tidy" }.configureEach {

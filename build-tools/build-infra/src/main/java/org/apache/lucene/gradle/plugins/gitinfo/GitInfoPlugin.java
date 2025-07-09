@@ -18,17 +18,15 @@ package org.apache.lucene.gradle.plugins.gitinfo;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.gradle.api.GradleException;
-import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.file.Directory;
 
-public class GitInfoPlugin implements Plugin<Project> {
+public class GitInfoPlugin extends LuceneGradlePlugin {
   @Override
   public void apply(Project project) {
-    if (project != project.getRootProject()) {
-      throw new GradleException("This plugin is applicable to the rootProject only.");
-    }
+    applicableToRootProjectOnly(project);
 
     var gitInfoProvider =
         project

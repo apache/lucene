@@ -19,6 +19,7 @@
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
+import org.apache.lucene.gradle.plugins.java.ModularPathsExtensionApi
 
 // Configures miscellaneous aspects required to support the java module system layer.
 
@@ -274,7 +275,7 @@ allprojects {
 // moduleImplementation - 'requires'
 // moduleCompileOnly    - 'requires static'
 //
-class ModularPathsExtension implements Cloneable, Iterable<Object> {
+class ModularPathsExtension implements Cloneable, Iterable<Object>, ModularPathsExtensionApi {
   /**
    * Determines how paths are split between module path and classpath.
    */
@@ -400,17 +401,21 @@ class ModularPathsExtension implements Cloneable, Iterable<Object> {
     return runtimeModulePathConfiguration - modulePatchOnlyConfiguration
   }
 
+  FileCollection removeNonExisting(FileCollection fc) {
+    return fc.filter { f -> f.exists() }
+  }
+
   FileCollection getCompilationClasspath() {
     if (mode == Mode.CLASSPATH_ONLY) {
-      return sourceSet.compileClasspath
+      return removeNonExisting(sourceSet.compileClasspath)
     }
 
     // Modify the default classpath by removing anything already placed on module path.
     // Use a lazy provider to delay computation.
-    project.files({
+    return removeNonExisting(project.files({
       ->
       return sourceSet.compileClasspath - compileModulePathConfiguration - modulePatchOnlyConfiguration
-    })
+    }))
   }
 
   CommandLineArgumentProvider getCompilationArguments() {

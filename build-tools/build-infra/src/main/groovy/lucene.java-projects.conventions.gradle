@@ -15,20 +15,31 @@
  * limitations under the License.
  */
 
+import org.apache.lucene.gradle.plugins.spotless.GoogleJavaFormatPlugin
+import org.apache.lucene.gradle.plugins.java.JavaFolderLayoutPlugin
+import org.apache.lucene.gradle.plugins.java.JavacConfigurationPlugin
+import org.apache.lucene.gradle.plugins.java.JarManifestConfigurationPlugin
+import org.apache.lucene.gradle.plugins.java.TestsAndRandomizationPlugin
+import org.apache.lucene.gradle.plugins.java.TestsBeastingPlugin
+import org.apache.lucene.gradle.plugins.java.AlternativeJdkSupportPlugin
+import org.apache.lucene.gradle.plugins.java.EcjLintPlugin
+
 allprojects { project ->
   if (['src/java', 'src/test'].any {path ->
         project.file(path).exists()
       }) {
     plugins.apply("java-library")
 
-    plugins.apply("lucene.java.folder-layout")
-    plugins.apply("lucene.java.javac")
-    plugins.apply("lucene.java.jar-manifest")
-
-    plugins.apply("lucene.java.tests-and-randomization")
+    plugins.apply(AlternativeJdkSupportPlugin)
+    plugins.apply(JavaFolderLayoutPlugin)
+    plugins.apply(JavacConfigurationPlugin)
+    plugins.apply(JarManifestConfigurationPlugin)
+    plugins.apply(TestsAndRandomizationPlugin)
+    plugins.apply(TestsBeastingPlugin)
     plugins.apply("lucene.java.per-project-test-summary")
 
     plugins.apply("lucene.validation.forbidden-apis")
-    plugins.apply("lucene.validation.ecj-lint")
+    plugins.apply(EcjLintPlugin)
+    plugins.apply(GoogleJavaFormatPlugin)
   }
 }

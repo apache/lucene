@@ -34,3 +34,5 @@ jobs:
 
       - name: Lint Python
         run: "cd dev-tools/scripts && make"
+        env:
+          RUFF_OUTPUT_FORMAT: github

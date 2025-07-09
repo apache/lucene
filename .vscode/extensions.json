@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "redhat.java",
+    "editorconfig.editorconfig",
+    "ast-grep.ast-grep-vscode"
+  ],
+  "unwantedRecommendations": [
+    "vscjava.vscode-java-pack",
+    "vscjava.vscode-gradle"
+  ]
+}
