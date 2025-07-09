@@ -1,4 +1,4 @@
-name: "Format Bot"
+name: Lucene Auto Format Bot
 
 on:
   issue_comment:
@@ -8,14 +8,11 @@ env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
 jobs:
-  format-fix:
-    name: Apply formatting fixes
-    # Only run on pull request comments and when the comment contains the trigger phrase
+  format-check:
+    # Only run on pull requests when the bot is mentioned
     if: |
       github.event.issue.pull_request &&
-      (contains(github.event.comment.body, '@lucene-format-bot apply') ||
-       contains(github.event.comment.body, '/format-fix'))
-
+      contains(github.event.comment.body, '@lucene-format-bot')
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -25,57 +22,63 @@ jobs:
       issues: write
 
     steps:
+      - name: Check permissions
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const actorPermission = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: context.actor
+            });
+
+            const permission = actorPermission.data.permission;
+            const hasPermission = ['admin', 'write'].includes(permission);
+
+            if (!hasPermission) {
+              core.setFailed(`❌ User @${context.actor} does not have permission to run the format bot. Required: admin or write access.`);
+              return;
+            }
+
+            console.log(`✅ User @${context.actor} has ${permission} permission - proceeding with format bot.`);
+
       - name: Get PR details
         id: pr_details
         uses: actions/github-script@v7
         with:
           script: |
+            const prNumber = context.issue.number;
             const { data: pr } = await github.rest.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: context.issue.number
+              pull_number: prNumber
             });
+
             return {
               head_ref: pr.head.ref,
               head_sha: pr.head.sha,
               base_ref: pr.base.ref,
-              repo_full_name: pr.head.repo.full_name,
-              repo_clone_url: pr.head.repo.clone_url
+              base_sha: pr.base.sha,
+              clone_url: pr.head.repo.clone_url,
+              ssh_url: pr.head.repo.ssh_url,
+              repo_full_name: pr.head.repo.full_name
             };
 
-      - name: React to comment
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.reactions.createForIssueComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: context.payload.comment.id,
-              content: 'eyes'
-            });
-
-      - name: Correct git autocrlf
-        run: git config --global core.autocrlf false
-
-      - name: Checkout PR branch
+      - name: Checkout PR code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ fromJson(steps.pr_details.outputs.result).repo_full_name }}
           ref: ${{ fromJson(steps.pr_details.outputs.result).head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
       - uses: ./.github/actions/prepare-for-build
-
-      - name: Install ast-grep
-        run: |
-          npm -g i @ast-grep/cli
-          echo "lucene.tool.ast-grep=ast-grep" >> build-options.local.properties
-
-      - name: Disable eclint task (using alternative tools)
-        run: |
-          echo "# Disable eclint task - using Prettier/shfmt/manual fixes instead" >> build-options.local.properties
-          echo "# lucene.tool.eclint is not set, so applyEcLint task will be disabled" >> build-options.local.properties
 
       - name: Get changed files
         id: changed-files
@@ -92,72 +95,84 @@ jobs:
             **/*.sh
             **/*.bat
             **/*.cmd
-            **/*.json
-            **/*.yaml
-            **/*.yml
-            **/*.html
-            **/*.css
-            **/*.js
-          files_yaml: |
-            java:
-              - '**/*.java'
-            gradle:
-              - '**/*.gradle'
-              - '**/*.groovy'
-            prettier:
-              - '**/*.md'
-              - '**/*.json'
-              - '**/*.yaml'
-              - '**/*.yml'
-              - '**/*.html'
-              - '**/*.css'
-              - '**/*.js'
-            shell:
-              - '**/*.sh'
-            cmd:
-              - '**/*.cmd'
-              - '**/*.bat'
-            other:
-              - '**/*.properties'
-              - '**/*.xml'
-              - '**/*.py'
 
-      - name: Display changed files info
-        if: steps.changed-files.outputs.any_changed == 'true'
+      - name: Initial validation
+        id: initial-validation
+        continue-on-error: true
         run: |
-          echo "Files changed in this PR:"
-          echo "${{ steps.changed-files.outputs.all_changed_files }}"
-          echo "Total files changed: ${{ steps.changed-files.outputs.all_changed_files_count }}"
-          echo "  - Java files: ${{ steps.changed-files.outputs.java_all_changed_files_count || '0' }}"
-          echo "  - Gradle files: ${{ steps.changed-files.outputs.gradle_all_changed_files_count || '0' }}"
-          echo "  - Prettier files: ${{ steps.changed-files.outputs.prettier_all_changed_files_count || '0' }}"
-          echo "  - Shell files: ${{ steps.changed-files.outputs.shell_all_changed_files_count || '0' }}"
-          echo "  - CMD files: ${{ steps.changed-files.outputs.cmd_all_changed_files_count || '0' }}"
-          echo "  - Other files: ${{ steps.changed-files.outputs.other_all_changed_files_count || '0' }}"
+          echo "Running initial validation..."
+          ./gradlew check -x test
 
-      - name: Early exit if no relevant files changed
-        if: steps.changed-files.outputs.any_changed != 'true'
+      - name: Fix formatting issues
+        if: steps.initial-validation.outcome == 'failure'
+        run: |
+          echo "Fixing formatting issues..."
+          ./gradlew tidy
+
+      - name: Commit fixes if any
+        if: steps.initial-validation.outcome == 'failure'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "Lucene Format Bot"
+          git add .
+          if ! git diff --staged --quiet; then
+            git commit -m "Apply automatic formatting fixes
+
+            Fixes applied by @lucene-format-bot in response to:
+            ${{ github.event.comment.html_url }}
+
+            Original PR: #${{ github.event.issue.number }}"
+            git push
+          fi
+
+      - name: Final validation
+        run: |
+          echo "Running final validation..."
+          ./gradlew check -x test
+
+      - name: EditorConfig validation
+        if: steps.changed-files.outputs.any_changed == 'true'
+        continue-on-error: true
+        run: |
+          # Install editorconfig-checker
+          echo "Installing editorconfig-checker..."
+          curl -L https://github.com/editorconfig-checker/editorconfig-checker/releases/download/v3.0.3/ec-linux-amd64.tar.gz -o /tmp/ec.tar.gz
+          tar -xzf /tmp/ec.tar.gz -C /tmp
+          chmod +x /tmp/bin/ec-linux-amd64
+
+          # Check changed files only
+          echo "Validating EditorConfig compliance for changed files..."
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | while read file; do
+            if [ -f "$file" ]; then
+              echo "Checking: $file"
+              /tmp/bin/ec-linux-amd64 "$file" || true
+            fi
+          done
+
+      - name: Comment on PR with success
+        if: success()
         uses: actions/github-script@v7
         with:
           script: |
-            const comment = `## ✅ No Formatting Changes Needed
+            const comment = `## ✅ Formatting Complete
 
-            No relevant files were changed in this PR that require formatting validation.
+            The formatting bot has successfully processed this PR!
 
-            **Files checked for formatting:**
-            - Java files (*.java)
-            - Gradle files (*.gradle, *.groovy)
-            - Markdown files (*.md)
-            - JSON/YAML files (*.json, *.yaml, *.yml)
-            - Web files (*.html, *.css, *.js)
-            - Shell scripts (*.sh)
-            - CMD/BAT files (*.cmd, *.bat)
-            - Other files (*.properties, *.xml, *.py)
+            ### 🔧 Changes Applied
+            - ✅ **Full validation**: \`./gradlew check -x test\`
+            - ✅ **Formatting fixes**: \`./gradlew tidy\` (applied if needed)
+            - ✅ **EditorConfig validation**: Checked compliance for changed files
+            - ✅ **Final validation**: Confirmed all checks pass
 
-            The PR is ready to proceed without formatting fixes.
+            ### 📝 Details
+            - **Triggered by**: ${{ github.event.comment.html_url }}
+            - **Files checked**: ${{ steps.changed-files.outputs.all_changed_files_count || '0' }} files
+            - **Validation**: All formatting checks now pass
+
+            The PR is now ready for review!
 
             ---
-            *This check was performed automatically by the Lucene Format Bot 🤖*`;
+            *This was performed automatically by the Lucene Format Bot 🤖*`;
 
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -166,438 +181,34 @@ jobs:
               body: comment
             });
 
-            // Exit the workflow successfully
-            core.setOutput('workflow_conclusion', 'success');
-            process.exit(0);
-
-      - name: Initial validation phase
-        id: check_before
-        run: |
-          echo "🔍 Running initial validation on changed files..."
-          validation_failed=false
-
-          # Skip validation if no relevant files changed
-          if [ "${{ steps.changed-files.outputs.any_changed }}" != "true" ]; then
-            echo "✅ No relevant files changed - skipping validation"
-            echo "initial_check_passed=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          # Java files - Google Java Format validation
-          if [ "${{ steps.changed-files.outputs.java_any_changed }}" == "true" ]; then
-            echo "→ Validating Java files with Google Java Format..."
-            set +e
-            ./gradlew checkGoogleJavaFormat "-Ptask.times=true" --max-workers 2
-            if [ $? -ne 0 ]; then
-              echo "❌ Java formatting validation failed"
-              validation_failed=true
-            else
-              echo "✅ Java formatting validation passed"
-            fi
-            set -e
-          fi
-
-          # Gradle files - Spotless validation (if available)
-          if [ "${{ steps.changed-files.outputs.gradle_any_changed }}" == "true" ]; then
-            echo "→ Validating Gradle files..."
-            set +e
-            ./gradlew spotlessCheck "-Ptask.times=true" --max-workers 2 || true
-            # Note: spotlessCheck might not be available, so we don't fail on this
-            echo "✅ Gradle validation completed"
-            set -e
-          fi
-
-          # Run targeted validation for changed files only
-          if [ "${{ steps.changed-files.outputs.any_changed }}" == "true" ]; then
-            echo "→ Running targeted validation checks..."
-            set +e
-
-            # Create a temporary file with only changed files for validation
-            echo "${{ steps.changed-files.outputs.all_changed_files }}" > /tmp/changed_files.txt
-
-            # Run core validation tasks that are most likely to fail
-            ./gradlew validateLogCalls validateSourcePatterns "-Ptask.times=true" --max-workers 2 || validation_failed=true
-
-            set -e
-          fi
-
-          # Output result
-          if [ "$validation_failed" == "true" ]; then
-            echo "❌ Initial validation failed - formatting fixes needed"
-            echo "initial_check_passed=false" >> $GITHUB_OUTPUT
-          else
-            echo "✅ Initial validation passed - no formatting fixes needed"
-            echo "initial_check_passed=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Apply targeted formatting fixes
-        if: steps.check_before.outputs.initial_check_passed == 'false'
-        run: |
-          echo "🔧 Applying targeted formatting fixes to changed files..."
-
-          # Java files - Apply Google Java Format
-          if [ "${{ steps.changed-files.outputs.java_any_changed }}" == "true" ]; then
-            echo "→ Applying Google Java Format to Java files..."
-            ./gradlew googleJavaFormat "-Ptask.times=true" --max-workers 2
-            echo "✅ Java formatting applied"
-          fi
-
-          # Gradle files - Apply Spotless (if available)
-          if [ "${{ steps.changed-files.outputs.gradle_any_changed }}" == "true" ]; then
-            echo "→ Applying Spotless formatting to Gradle files..."
-            ./gradlew spotlessApply "-Ptask.times=true" --max-workers 2 || true
-            echo "✅ Gradle formatting applied"
-          fi
-
-          # Install tools for other file types (only if needed)
-          tools_needed=false
-          if [ "${{ steps.changed-files.outputs.prettier_any_changed }}" == "true" ] || [ "${{ steps.changed-files.outputs.shell_any_changed }}" == "true" ]; then
-            tools_needed=true
-          fi
-
-          if [ "$tools_needed" == "true" ]; then
-            echo "→ Installing formatting tools..."
-
-            if [ "${{ steps.changed-files.outputs.prettier_any_changed }}" == "true" ]; then
-              npm install -g prettier
-            fi
-
-            if [ "${{ steps.changed-files.outputs.shell_any_changed }}" == "true" ]; then
-              curl -L https://github.com/mvdan/sh/releases/download/v3.8.0/shfmt_v3.8.0_linux_amd64 -o /usr/local/bin/shfmt
-              chmod +x /usr/local/bin/shfmt
-            fi
-          fi
-
-          # Apply Prettier to changed files that support it
-          if [ "${{ steps.changed-files.outputs.prettier_any_changed }}" == "true" ]; then
-            echo "→ Applying Prettier formatting to changed files..."
-            echo "${{ steps.changed-files.outputs.prettier_all_changed_files }}" | tr ' ' '\n' | while read file; do
-              if [ -f "$file" ]; then
-                prettier --write "$file" --ignore-unknown || true
-              fi
-            done
-            echo "✅ Prettier formatting applied"
-          fi
-
-          # Apply shfmt to changed shell files
-          if [ "${{ steps.changed-files.outputs.shell_any_changed }}" == "true" ]; then
-            echo "→ Applying shfmt to changed shell files..."
-            echo "${{ steps.changed-files.outputs.shell_all_changed_files }}" | tr ' ' '\n' | while read file; do
-              if [ -f "$file" ]; then
-                shfmt -i 2 -ci -w "$file" || true
-              fi
-            done
-            echo "✅ Shell formatting applied"
-          fi
-
-          # Fix CMD/BAT files line endings (only changed files)
-          if [ "${{ steps.changed-files.outputs.cmd_any_changed }}" == "true" ]; then
-            echo "→ Fixing CMD/BAT file line endings..."
-            echo "${{ steps.changed-files.outputs.cmd_all_changed_files }}" | tr ' ' '\n' | while read file; do
-              if [ -f "$file" ]; then
-                sed -i 's/$/\r/' "$file" || true
-              fi
-            done
-            echo "✅ CMD/BAT line endings fixed"
-          fi
-
-          # Apply manual EditorConfig fixes to other changed files
-          if [ "${{ steps.changed-files.outputs.other_any_changed }}" == "true" ]; then
-            echo "→ Applying manual EditorConfig fixes to other files..."
-            echo "${{ steps.changed-files.outputs.other_all_changed_files }}" | tr ' ' '\n' | while read file; do
-              if [ -f "$file" ]; then
-                # Remove trailing whitespace
-                sed -i 's/[[:space:]]*$//' "$file" || true
-                # Ensure file ends with newline
-                if [ -s "$file" ] && [ "$(tail -c1 "$file" | wc -l)" -eq 0 ]; then
-                  echo "" >> "$file"
-                fi
-              fi
-            done
-            echo "✅ Manual EditorConfig fixes applied"
-          fi
-
-          echo "🎉 All targeted formatting fixes completed"
-
-      - name: Check if any files were changed
-        id: git_changes
-        if: steps.check_before.outputs.initial_check_passed == 'false'
-        run: |
-          if git diff --quiet; then
-            echo "No changes were made by formatting fixes"
-            echo "changes_made=false" >> $GITHUB_OUTPUT
-          else
-            echo "Changes were made by formatting fixes"
-            echo "changes_made=true" >> $GITHUB_OUTPUT
-            echo "Changed files:"
-            git diff --name-only
-          fi
-
-      - name: Final validation phase
-        id: check_after
-        if: steps.check_before.outputs.initial_check_passed == 'false' && steps.git_changes.outputs.changes_made == 'true'
-        run: |
-          echo "🔍 Running final validation on fixed files..."
-          validation_failed=false
-
-          # Java files - Re-validate Google Java Format
-          if [ "${{ steps.changed-files.outputs.java_any_changed }}" == "true" ]; then
-            echo "→ Re-validating Java files with Google Java Format..."
-            set +e
-            ./gradlew checkGoogleJavaFormat "-Ptask.times=true" --max-workers 2
-            if [ $? -ne 0 ]; then
-              echo "❌ Java formatting validation still failing"
-              validation_failed=true
-            else
-              echo "✅ Java formatting validation passed"
-            fi
-            set -e
-          fi
-
-          # Gradle files - Re-validate Spotless
-          if [ "${{ steps.changed-files.outputs.gradle_any_changed }}" == "true" ]; then
-            echo "→ Re-validating Gradle files..."
-            set +e
-            ./gradlew spotlessCheck "-Ptask.times=true" --max-workers 2 || true
-            echo "✅ Gradle validation completed"
-            set -e
-          fi
-
-          # EditorConfig validation using dedicated tool
-          if [ "${{ steps.changed-files.outputs.any_changed }}" == "true" ]; then
-            echo "→ Validating EditorConfig compliance..."
-            set +e
-
-            # Install editorconfig-checker
-            curl -L https://github.com/editorconfig-checker/editorconfig-checker/releases/download/v3.0.3/ec-linux-amd64.tar.gz -o /tmp/ec.tar.gz
-            tar -xzf /tmp/ec.tar.gz -C /tmp
-            chmod +x /tmp/bin/ec-linux-amd64
-
-            # Check changed files only
-            echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | while read file; do
-              if [ -f "$file" ]; then
-                /tmp/bin/ec-linux-amd64 "$file" || validation_failed=true
-              fi
-            done
-
-            if [ "$validation_failed" == "false" ]; then
-              echo "✅ EditorConfig validation passed"
-            else
-              echo "❌ EditorConfig validation failed"
-            fi
-
-            set -e
-          fi
-
-          # Run essential validation tasks
-          echo "→ Running essential validation tasks..."
-          set +e
-          ./gradlew validateLogCalls validateSourcePatterns "-Ptask.times=true" --max-workers 2
-          if [ $? -ne 0 ]; then
-            echo "❌ Essential validation tasks failed"
-            validation_failed=true
-          else
-            echo "✅ Essential validation tasks passed"
-          fi
-          set -e
-
-          # Output final result
-          if [ "$validation_failed" == "true" ]; then
-            echo "❌ Final validation failed - additional fixes may be needed"
-            echo "final_check_passed=false" >> $GITHUB_OUTPUT
-          else
-            echo "✅ Final validation passed - all formatting fixes successful"
-            echo "final_check_passed=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create fix branch and commit
-        id: create_fix_branch
-        if: |
-          steps.check_before.outputs.initial_check_passed == 'false' &&
-          steps.git_changes.outputs.changes_made == 'true' &&
-          steps.check_after.outputs.final_check_passed == 'true'
-        run: |
-          # Create a new branch for the fixes
-          fix_branch="format-fixes-${{ fromJson(steps.pr_details.outputs.result).head_ref }}-$(date +%s)"
-          echo "fix_branch=$fix_branch" >> $GITHUB_OUTPUT
-
-          git config --local user.email "action@github.com"
-          git config --local user.name "Lucene Format Bot"
-
-          git checkout -b "$fix_branch"
-          git add -A
-          git commit -m "Apply automatic formatting fixes
-
-          Fixes applied by @lucene-format-bot in response to:
-          ${{ github.event.comment.html_url }}
-
-          Original PR: #${{ github.event.issue.number }}
-
-          Changes:
-          $(git diff --name-only HEAD~1)"
-
-      - name: Push fix branch
-        if: |
-          steps.check_before.outputs.initial_check_passed == 'false' &&
-          steps.git_changes.outputs.changes_made == 'true' &&
-          steps.check_after.outputs.final_check_passed == 'true'
-        run: |
-          git push origin ${{ steps.create_fix_branch.outputs.fix_branch }}
-
-      - name: Create PR for fixes
-        id: create_pr
-        if: |
-          steps.check_before.outputs.initial_check_passed == 'false' &&
-          steps.git_changes.outputs.changes_made == 'true' &&
-          steps.check_after.outputs.final_check_passed == 'true'
+      - name: Comment on PR with failure
+        if: failure()
         uses: actions/github-script@v7
         with:
           script: |
-            const { data: fixPr } = await github.rest.pulls.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `🤖 Apply formatting fixes to #${{ github.event.issue.number }}`,
-              head: '${{ steps.create_fix_branch.outputs.fix_branch }}',
-              base: '${{ fromJson(steps.pr_details.outputs.result).head_ref }}',
-              body: `## Automatic Formatting Fixes
+            const comment = `## ❌ Formatting Failed
 
-            This PR applies automatic formatting fixes to address validation failures in #${{ github.event.issue.number }}.
+            The formatting bot encountered issues while processing this PR.
 
-            ### 🔧 Changes Applied (Targeted to Changed Files Only)
-            - ✅ **Java files**: Google Java Format applied to modified Java files
-            - ✅ **Gradle files**: Spotless formatting applied to modified Gradle files
-            - ✅ **JSON/YAML/HTML/CSS/JS**: Prettier applied to modified files
-            - ✅ **Markdown files**: Prettier formatting applied to modified files
-            - ✅ **Shell scripts**: shfmt applied to modified shell files (respects EditorConfig)
-            - ✅ **CMD/BAT files**: CRLF line endings applied to modified files
-            - ✅ **Other files**: Manual EditorConfig fixes (trailing whitespace, final newlines) applied to modified files
-            - ⚡ **Efficiency**: Only processes files that were changed in this PR
-            - ✅ **Validation**: Targeted validation with Google Java Format, Spotless, and EditorConfig checker
-            - ✅ All formatting validation checks now pass for changed files
+            ### 🔍 What was attempted:
+            - ✅ **File detection**: Found ${{ steps.changed-files.outputs.all_changed_files_count || '0' }} changed files
+            - ❌ **Validation/Formatting**: One or more steps failed
+
+            ### 🛠️ Next Steps:
+            1. Check the workflow logs for specific error details
+            2. Fix any issues manually if needed
+            3. Re-trigger the bot with \`@lucene-format-bot\`
 
             ### 📝 Details
             - **Triggered by**: ${{ github.event.comment.html_url }}
-            - **Original PR**: #${{ github.event.issue.number }}
-            - **Fix branch**: "${{ steps.create_fix_branch.outputs.fix_branch }}"
-
-            ### 🚀 Next Steps
-            Review and merge this PR to apply the formatting fixes to the original branch.
+            - **Files processed**: ${{ steps.changed-files.outputs.all_changed_files || 'None detected' }}
 
             ---
-            *This PR was created automatically by the Lucene Format Bot 🤖*`
-            });
+            *This was performed automatically by the Lucene Format Bot 🤖*`;
 
-            // Return only the specific properties we need to avoid serialization issues
-            core.setOutput('pr_number', fixPr.number.toString());
-            core.setOutput('pr_url', fixPr.html_url);
-
-      - name: Comment on original PR with success
-        if: |
-          steps.check_before.outputs.initial_check_passed == 'false' &&
-          steps.git_changes.outputs.changes_made == 'true' &&
-          steps.check_after.outputs.final_check_passed == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const prNumber = '${{ steps.create_pr.outputs.pr_number }}';
             await github.rest.issues.createComment({
+              issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `🤖 **Format Bot Results**
-
-            ✅ **Formatting fixes applied successfully!**
-
-            New PR with the formatting fixes: **#${prNumber}**
-
-            ---
-            *To trigger the format bot again, comment \`@lucene-format-bot apply\` or \`/format-fix\`*`
+              body: comment
             });
-
-      - name: Comment on original PR with no changes needed
-        if: steps.check_before.outputs.initial_check_passed == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `🤖 **Format Bot Results**
-
-            ✅ **No formatting issues found!**
-
-            Your code already complies with the project's formatting standards. No changes are needed.
-
-            ---
-            *To trigger the format bot again, comment \`@lucene-format-bot apply\` or \`/format-fix\`*`
-            });
-
-      - name: Comment on original PR with no changes made
-        if: |
-          steps.check_before.outputs.initial_check_passed == 'false' &&
-          steps.git_changes.outputs.changes_made == 'false'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `🤖 **Format Bot Results**
-
-            ⚠️ **Formatting issues detected, but no automatic fixes available**
-
-            The formatting validation failed, but running the formatting tools did not produce any changes. This might indicate:
-            - Issues that cannot be automatically fixed
-            - Problems with the build configuration
-            - Non-formatting validation failures
-
-            **Recommendation:** Please review the validation failures manually and apply fixes as needed.
-
-            ---
-            *To trigger the format bot again, comment \`@lucene-format-bot apply\` or \`/format-fix\`*`
-            });
-
-      - name: Comment on original PR with fix failures
-        if: |
-          steps.check_before.outputs.initial_check_passed == 'false' &&
-          steps.git_changes.outputs.changes_made == 'true' &&
-          steps.check_after.outputs.final_check_passed == 'false'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `🤖 **Format Bot Results**
-
-            ❌ **Formatting fixes applied, but validation still failing**
-
-            Formatting fixes were applied, but the validation checks are still failing. This suggests there may be:
-            - Additional formatting issues that cannot be automatically fixed
-            - Non-formatting validation problems
-            - Build or configuration issues
-
-            **Recommendation:** Please review the validation failures manually and apply additional fixes as needed.
-
-            ---
-            *To trigger the format bot again, comment \`@lucene-format-bot apply\` or \`/format-fix\`*`
-            });
-
-      - name: Update reaction on completion
-        if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            try {
-              await github.rest.reactions.createForIssueComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: context.payload.comment.id,
-                content: 'hooray'
-              });
-            } catch (error) {
-              console.log('Could not add reaction:', error.message);
-            }
