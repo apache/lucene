@@ -34,8 +34,6 @@ New Features
 
 * GITHUB#14729: Support for Re-Ranking Queries using Late Interaction Model Multi-Vectors. (Vigya Sharma, Jim Ferenczi)
 
-* GITHUB#14843: Add new KnnVectorsFormat that wraps the Faiss library (#14178, #14847). (Kaival Parikh)
-
 Improvements
 ---------------------
 * GITHUB#14458: Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)

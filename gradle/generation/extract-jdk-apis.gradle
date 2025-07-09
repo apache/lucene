@@ -17,10 +17,7 @@
 
 def resources = scriptResources(buildscript)
 
-configure([
-        project(":lucene:core"),
-        project(":lucene:sandbox"),
-]) {
+configure(project(":lucene:core")) {
   ext {
     apijars = layout.projectDirectory.dir("src/generated/jdk")
     mrjarJavaVersions = [ 21 ]

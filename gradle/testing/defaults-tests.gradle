@@ -145,8 +145,7 @@ allprojects {
               ':lucene:core',
               ':lucene:codecs',
               ":lucene:distribution.tests",
-              ":lucene:test-framework",
-              ":lucene:sandbox",
+              ":lucene:test-framework"
       ] ? 'ALL-UNNAMED' : 'org.apache.lucene.core')
 
       def loggingConfigFile = layout.projectDirectory.file("${resources}/logging.properties")
