@@ -35,7 +35,7 @@ jobs:
         run: |
           gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
             --method POST \
-            --field content='eyes'
+            --field content="eyes"
 
       - name: Get PR details and checkout
         run: |
@@ -175,7 +175,7 @@ jobs:
           # Remove eyes reaction and add success reaction
           gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
             --method POST \
-            --field content='+1'
+            --field content="+1"
 
       - name: Comment on PR with success (fixes applied)
         if: success() && steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true'
@@ -233,7 +233,7 @@ jobs:
           # Add failure reaction
           gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
             --method POST \
-            --field content='-1'
+            --field content="-1"
 
       - name: Comment on PR with failure
         if: failure()
