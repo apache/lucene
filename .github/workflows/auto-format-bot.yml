@@ -251,13 +251,13 @@ jobs:
             - ✅ **Gradle/Groovy/Properties**: Manual EditorConfig fixes (trailing whitespace, final newlines)
             - ✅ Gradle/Groovy scripts formatted with spotless
             - ✅ Dependency catalog formatting
-            - ℹ️ **Note**: Workflow files (`.github/workflows/`) excluded for security
+            - ℹ️ **Note**: Workflow files (".github/workflows/") excluded for security
             - ✅ All formatting validation checks now pass
 
             ### 📝 Details
             - **Triggered by**: ${{ github.event.comment.html_url }}
             - **Original PR**: #${{ github.event.issue.number }}
-            - **Fix branch**: \`${{ steps.create_fix_branch.outputs.fix_branch }}\`
+            - **Fix branch**: "${{ steps.create_fix_branch.outputs.fix_branch }}"
 
             ### 🚀 Next Steps
             Review and merge this PR to apply the formatting fixes to the original branch.
