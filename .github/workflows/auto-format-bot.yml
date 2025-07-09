@@ -266,10 +266,9 @@ jobs:
             *This PR was created automatically by the Lucene Format Bot 🤖*`
             });
 
-            return {
-              number: fixPr.number,
-              html_url: fixPr.html_url
-            };
+            // Return only the specific properties we need to avoid serialization issues
+            core.setOutput('pr_number', fixPr.number.toString());
+            core.setOutput('pr_url', fixPr.html_url);
 
       - name: Comment on original PR with success
         if: |
@@ -279,7 +278,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const fixPr = ${{ steps.create_pr.outputs.result }};
+            const prNumber = '${{ steps.create_pr.outputs.pr_number }}';
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -288,7 +287,7 @@ jobs:
 
             ✅ **Formatting fixes applied successfully!**
 
-            New PR with the formatting fixes: **#${fixPr.number}**
+            New PR with the formatting fixes: **#${prNumber}**
 
             ---
             *To trigger the format bot again, comment \`@lucene-format-bot apply\` or \`/format-fix\`*`
