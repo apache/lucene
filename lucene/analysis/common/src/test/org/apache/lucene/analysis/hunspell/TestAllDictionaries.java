@@ -121,8 +121,8 @@ public class TestAllDictionaries extends LuceneTestCase {
               switch (firstWord) {
                 case "SET":
                 case "FLAG":
-                  local.computeIfAbsent(firstWord, (k) -> new ArrayList<>()).add(is.position());
-                  global.computeIfAbsent(firstWord, (k) -> new ArrayList<>()).add(is.position());
+                  local.computeIfAbsent(firstWord, (_) -> new ArrayList<>()).add(is.position());
+                  global.computeIfAbsent(firstWord, (_) -> new ArrayList<>()).add(is.position());
                   break;
               }
             }

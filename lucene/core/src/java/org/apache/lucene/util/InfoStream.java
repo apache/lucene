@@ -53,6 +53,7 @@ public abstract class InfoStream implements Closeable {
   /** returns true if messages are enabled and should be posted to {@link #message}. */
   public abstract boolean isEnabled(String component);
 
+  @SuppressWarnings("NonFinalStaticField")
   private static InfoStream defaultInfoStream = NO_OUTPUT;
 
   /**

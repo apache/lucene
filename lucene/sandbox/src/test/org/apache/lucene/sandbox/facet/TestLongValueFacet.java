@@ -38,6 +38,7 @@ import org.apache.lucene.sandbox.facet.iterators.ComparableSupplier;
 import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 import org.apache.lucene.sandbox.facet.iterators.TopnOrdinalIterator;
 import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
+import org.apache.lucene.sandbox.facet.utils.ComparableUtils;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.Directory;

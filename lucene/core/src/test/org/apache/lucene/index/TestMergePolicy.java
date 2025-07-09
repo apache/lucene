@@ -46,7 +46,7 @@ public class TestMergePolicy extends LuceneTestCase {
               () -> {
                 try {
                   for (MergePolicy.OneMerge m : ms.merges) {
-                    m.close(true, false, mr -> {});
+                    m.close(true, false, _ -> {});
                   }
                 } catch (IOException e) {
                   throw new AssertionError(e);
@@ -71,7 +71,7 @@ public class TestMergePolicy extends LuceneTestCase {
           new Thread(
               () -> {
                 try {
-                  ms.merges.get(0).close(true, false, mr -> {});
+                  ms.merges.get(0).close(true, false, _ -> {});
                 } catch (IOException e) {
                   throw new AssertionError(e);
                 }
@@ -97,7 +97,7 @@ public class TestMergePolicy extends LuceneTestCase {
               () -> {
                 while (stop.get() == false) {
                   try {
-                    ms.merges.get(i.getAndIncrement()).close(true, false, mr -> {});
+                    ms.merges.get(i.getAndIncrement()).close(true, false, _ -> {});
                     Thread.sleep(1);
                   } catch (IOException | InterruptedException e) {
                     throw new AssertionError(e);
@@ -122,8 +122,8 @@ public class TestMergePolicy extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       MergePolicy.MergeSpecification spec = createRandomMergeSpecification(dir, 1);
       MergePolicy.OneMerge oneMerge = spec.merges.get(0);
-      oneMerge.close(true, false, mr -> {});
-      expectThrows(IllegalStateException.class, () -> oneMerge.close(false, false, mr -> {}));
+      oneMerge.close(true, false, _ -> {});
+      expectThrows(IllegalStateException.class, () -> oneMerge.close(false, false, _ -> {}));
     }
   }
 

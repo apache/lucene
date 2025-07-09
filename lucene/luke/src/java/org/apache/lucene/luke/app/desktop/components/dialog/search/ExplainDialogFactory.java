@@ -49,6 +49,7 @@ import org.apache.lucene.search.Explanation;
 /** Factory of explain dialog */
 public final class ExplainDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static ExplainDialogFactory instance;
 
   private final Preferences prefs;
@@ -116,7 +117,7 @@ public final class ExplainDialogFactory implements DialogOpener.DialogFactory {
             FontUtils.elegantIconHtml("&#xe0e6;", MessageUtils.getLocalizedMessage("button.copy")));
     copyBtn.setMargin(new Insets(3, 3, 3, 3));
     copyBtn.addActionListener(
-        e -> {
+        _ -> {
           Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
           StringSelection selection = new StringSelection(explanationToString());
           clipboard.setContents(selection, null);
@@ -125,7 +126,7 @@ public final class ExplainDialogFactory implements DialogOpener.DialogFactory {
 
     JButton closeBtn = new JButton(MessageUtils.getLocalizedMessage("button.close"));
     closeBtn.setMargin(new Insets(3, 3, 3, 3));
-    closeBtn.addActionListener(e -> dialog.dispose());
+    closeBtn.addActionListener(_ -> dialog.dispose());
     footer.add(closeBtn);
     panel.add(footer, BorderLayout.PAGE_END);
 
@@ -171,7 +172,7 @@ public final class ExplainDialogFactory implements DialogOpener.DialogFactory {
 
   private void traverseToCopy(StringBuilder sb, int depth, Explanation[] explanations) {
     for (Explanation explanation : explanations) {
-      IntStream.range(0, depth).forEach(i -> sb.append("  "));
+      IntStream.range(0, depth).forEach(_ -> sb.append("  "));
       sb.append(format(explanation));
       sb.append("\n");
       traverseToCopy(sb, depth + 1, explanation.getDetails());

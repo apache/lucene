@@ -342,7 +342,7 @@ public abstract class Analyzer implements Closeable {
    * TokenFilter} which also serves as the {@link TokenStream} returned by {@link
    * Analyzer#tokenStream(String, Reader)}.
    */
-  public static class TokenStreamComponents {
+  public static final class TokenStreamComponents {
     /** Original source of the tokens. */
     protected final Consumer<Reader> source;
 

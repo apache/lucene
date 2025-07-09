@@ -36,7 +36,7 @@ import org.apache.lucene.search.WildcardQuery;
  */
 public class ReutersQueryMaker extends AbstractQueryMaker {
 
-  private static String[] STANDARD_QUERIES = {
+  private static final String[] STANDARD_QUERIES = {
     // Start with some short queries
     "Salomon",
     "Comex",

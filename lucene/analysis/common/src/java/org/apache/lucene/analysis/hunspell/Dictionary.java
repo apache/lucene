@@ -812,7 +812,7 @@ public class Dictionary {
         affixArg = new StringBuilder(affixArg).reverse().toString();
       }
 
-      affixes.computeIfAbsent(affixArg, __ -> new IntArrayList()).add(currentAffix);
+      affixes.computeIfAbsent(affixArg, _ -> new IntArrayList()).add(currentAffix);
       currentAffix++;
     }
   }

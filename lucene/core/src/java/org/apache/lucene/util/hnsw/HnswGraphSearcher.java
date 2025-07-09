@@ -20,6 +20,7 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
@@ -40,6 +41,32 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   protected final NeighborQueue candidates;
 
   protected BitSet visited;
+
+  /**
+   * HNSW search is roughly logarithmic. This doesn't take maxConn into account, but it is a pretty
+   * good approximation.
+   *
+   * @param k neighbors to find
+   * @param graphSize size of the graph
+   * @return expected number of visited nodes
+   */
+  public static int expectedVisitedNodes(int k, int graphSize) {
+    return (int) (Math.log(graphSize) * k);
+  }
+
+  /**
+   * Follows similar logic to {@link FixedBitSet#of(DocIdSetIterator, int)} to determine the best
+   * bit set given the expected number of visited nodes vs total graph size.
+   *
+   * @param k neighbors to find
+   * @param graphSize size of the graph
+   * @return a bit set appropriate for the expected number of visited nodes
+   */
+  static BitSet createBitSet(int k, int graphSize) {
+    return expectedVisitedNodes(k, graphSize) < (graphSize >>> 7)
+        ? new SparseFixedBitSet(graphSize)
+        : new FixedBitSet(graphSize);
+  }
 
   /**
    * Creates a new graph searcher.
@@ -117,7 +144,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       innerSearcher =
           new HnswGraphSearcher(
               new NeighborQueue(knnCollector.k(), true),
-              new SparseFixedBitSet(getGraphSize(graph)));
+              createBitSet(knnCollector.k(), getGraphSize(graph)));
     }
     // Then, check if we the search strategy is seeded
     final AbstractHnswGraphSearcher graphSearcher;
@@ -266,11 +293,21 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
     float minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
+    // We should allow exploring equivalent minAcceptedSimilarity values at least once
+    boolean shouldExploreMinSim = true;
     while (candidates.size() > 0 && results.earlyTerminated() == false) {
       // get the best candidate (closest or best scoring)
       float topCandidateSimilarity = candidates.topScore();
       if (topCandidateSimilarity < minAcceptedSimilarity) {
-        break;
+        // if the similarity is equivalent to the minAcceptedSimilarity,
+        // we should explore one candidate
+        // however, running into many duplicates can be expensive,
+        // so we should stop exploring if equivalent minimum scores are found
+        if (shouldExploreMinSim && Math.nextUp(topCandidateSimilarity) == minAcceptedSimilarity) {
+          shouldExploreMinSim = false;
+        } else {
+          break;
+        }
       }
 
       int topCandidateNode = candidates.pop();
@@ -291,10 +328,19 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
           candidates.add(friendOrd, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
             if (results.collect(friendOrd, friendSimilarity)) {
+              float oldMinAcceptedSimilarity = minAcceptedSimilarity;
               minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
+              if (minAcceptedSimilarity > oldMinAcceptedSimilarity) {
+                // we adjusted our minAcceptedSimilarity, so we should explore the next equivalent
+                // if necessary
+                shouldExploreMinSim = true;
+              }
             }
           }
         }
+      }
+      if (results.getSearchStrategy() != null) {
+        results.getSearchStrategy().nextVectorsBlock();
       }
     }
   }

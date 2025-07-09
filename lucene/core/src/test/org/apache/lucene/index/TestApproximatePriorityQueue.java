@@ -26,26 +26,26 @@ public class TestApproximatePriorityQueue extends LuceneTestCase {
     pq.add(32L, 32L);
     pq.add(0L, 0L);
     assertFalse(pq.isEmpty());
-    assertEquals(Long.valueOf(32L), pq.poll(x -> true));
+    assertEquals(Long.valueOf(32L), pq.poll(_ -> true));
     assertFalse(pq.isEmpty());
-    assertEquals(Long.valueOf(8L), pq.poll(x -> true));
+    assertEquals(Long.valueOf(8L), pq.poll(_ -> true));
     assertFalse(pq.isEmpty());
-    assertEquals(Long.valueOf(0L), pq.poll(x -> true));
+    assertEquals(Long.valueOf(0L), pq.poll(_ -> true));
     assertTrue(pq.isEmpty());
-    assertNull(pq.poll(x -> true));
+    assertNull(pq.poll(_ -> true));
   }
 
   public void testPollThenAdd() {
     ApproximatePriorityQueue<Long> pq = new ApproximatePriorityQueue<>();
     pq.add(8L, 8L);
-    assertEquals(Long.valueOf(8L), pq.poll(x -> true));
-    assertNull(pq.poll(x -> true));
+    assertEquals(Long.valueOf(8L), pq.poll(_ -> true));
+    assertNull(pq.poll(_ -> true));
     pq.add(0L, 0L);
-    assertEquals(Long.valueOf(0L), pq.poll(x -> true));
-    assertNull(pq.poll(x -> true));
+    assertEquals(Long.valueOf(0L), pq.poll(_ -> true));
+    assertNull(pq.poll(_ -> true));
     pq.add(0L, 0L);
-    assertEquals(Long.valueOf(0L), pq.poll(x -> true));
-    assertNull(pq.poll(x -> true));
+    assertEquals(Long.valueOf(0L), pq.poll(_ -> true));
+    assertNull(pq.poll(_ -> true));
   }
 
   public void testCollision() {
@@ -55,15 +55,15 @@ public class TestApproximatePriorityQueue extends LuceneTestCase {
     pq.add(0L, 0L);
     pq.add(3L, 3L); // Same nlz as 2
     assertFalse(pq.isEmpty());
-    assertEquals(Long.valueOf(2L), pq.poll(x -> true));
+    assertEquals(Long.valueOf(2L), pq.poll(_ -> true));
     assertFalse(pq.isEmpty());
-    assertEquals(Long.valueOf(1L), pq.poll(x -> true));
+    assertEquals(Long.valueOf(1L), pq.poll(_ -> true));
     assertFalse(pq.isEmpty());
-    assertEquals(Long.valueOf(3L), pq.poll(x -> true));
+    assertEquals(Long.valueOf(3L), pq.poll(_ -> true));
     assertFalse(pq.isEmpty());
-    assertEquals(Long.valueOf(0L), pq.poll(x -> true));
+    assertEquals(Long.valueOf(0L), pq.poll(_ -> true));
     assertTrue(pq.isEmpty());
-    assertNull(pq.poll(x -> true));
+    assertNull(pq.poll(_ -> true));
   }
 
   public void testPollWithPredicate() {

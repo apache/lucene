@@ -303,18 +303,15 @@ public class TestFreeTextSuggester extends LuceneTestCase {
     a.close();
   }
 
-  private static Comparator<LookupResult> byScoreThenKey =
-      new Comparator<LookupResult>() {
-        @Override
-        public int compare(LookupResult a, LookupResult b) {
-          if (a.value > b.value) {
-            return -1;
-          } else if (a.value < b.value) {
-            return 1;
-          } else {
-            // Tie break by UTF16 sort order:
-            return ((String) a.key).compareTo((String) b.key);
-          }
+  private static final Comparator<LookupResult> byScoreThenKey =
+      (a, b) -> {
+        if (a.value > b.value) {
+          return -1;
+        } else if (a.value < b.value) {
+          return 1;
+        } else {
+          // Tie break by UTF16 sort order:
+          return ((String) a.key).compareTo((String) b.key);
         }
       };
 

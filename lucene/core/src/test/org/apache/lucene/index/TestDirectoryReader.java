@@ -984,7 +984,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     writer.commit();
     final DirectoryReader reader = DirectoryReader.open(writer);
     final int[] closeCount = new int[1];
-    final IndexReader.ClosedListener listener = key -> closeCount[0]++;
+    final IndexReader.ClosedListener listener = _ -> closeCount[0]++;
 
     reader.getReaderCacheHelper().addClosedListener(listener);
 

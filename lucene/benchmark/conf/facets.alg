@@ -58,9 +58,9 @@ task.max.depth.log=2
       -CloseTaxonomyIndex
   }
 
-  OpenReader  
+  OpenReader
   { "SearchSameRdr" Search > : 40
-  CloseReader 
+  CloseReader
 
   #RepSumByNameRound
   ResetSystemErase

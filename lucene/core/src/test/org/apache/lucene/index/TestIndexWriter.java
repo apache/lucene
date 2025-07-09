@@ -89,7 +89,6 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.LockObtainFailedException;
-import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.store.NoLockFactory;
 import org.apache.lucene.store.SimpleFSLockFactory;
@@ -108,7 +107,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
@@ -1243,15 +1241,9 @@ public class TestIndexWriter extends LuceneTestCase {
       WindowsFS provider = new WindowsFS(path.getFileSystem());
       Path indexPath = provider.wrapPath(path);
 
-      // NOTE: on Unix, we cannot use MMapDir, because WindowsFS doesn't see/think it keeps file
-      // handles open. Yet, on Windows, we MUST use MMapDir because the Windows OS will in fact
-      // prevent file deletion for us, and fails otherwise:
-      FSDirectory dir;
-      if (Constants.WINDOWS) {
-        dir = new MMapDirectory(indexPath);
-      } else {
-        dir = new NIOFSDirectory(indexPath);
-      }
+      // NOTE: We cannot use MMapDir, because WindowsFS doesn't see/think it keeps file
+      // handles open.
+      FSDirectory dir = new NIOFSDirectory(indexPath);
 
       MergePolicy mergePolicy = newLogMergePolicy(true);
 
@@ -2879,9 +2871,6 @@ public class TestIndexWriter extends LuceneTestCase {
   }
 
   public void testPendingDeleteDVGeneration() throws IOException {
-    // irony: currently we don't emulate windows well enough to work on windows!
-    assumeFalse("windows is not supported", Constants.WINDOWS);
-
     Path path = createTempDir();
 
     // Use WindowsFS to prevent open files from being deleted:
@@ -2947,9 +2936,6 @@ public class TestIndexWriter extends LuceneTestCase {
   }
 
   public void testPendingDeletionsRollbackWithReader() throws IOException {
-    // irony: currently we don't emulate Windows well enough to work on Windows!
-    assumeFalse("Windows is not supported", Constants.WINDOWS);
-
     Path path = createTempDir();
 
     // Use WindowsFS to prevent open files from being deleted:
@@ -2986,9 +2972,6 @@ public class TestIndexWriter extends LuceneTestCase {
   }
 
   public void testWithPendingDeletions() throws Exception {
-    // irony: currently we don't emulate Windows well enough to work on Windows!
-    assumeFalse("Windows is not supported", Constants.WINDOWS);
-
     Path path = createTempDir();
 
     // Use WindowsFS to prevent open files from being deleted:
@@ -3038,8 +3021,6 @@ public class TestIndexWriter extends LuceneTestCase {
 
   public void testPendingDeletesAlreadyWrittenFiles() throws IOException {
     Path path = createTempDir();
-    // irony: currently we don't emulate Windows well enough to work on Windows!
-    assumeFalse("Windows is not supported", Constants.WINDOWS);
 
     // Use WindowsFS to prevent open files from being deleted:
     WindowsFS provider = new WindowsFS(path.getFileSystem());
@@ -4264,7 +4245,7 @@ public class TestIndexWriter extends LuceneTestCase {
       t.join();
       assertEquals(4, executed.get());
       expectThrows(AlreadyClosedException.class, () -> queue.processEvents());
-      expectThrows(AlreadyClosedException.class, () -> queue.add(w -> {}));
+      expectThrows(AlreadyClosedException.class, () -> queue.add(_ -> {}));
     }
   }
 
@@ -5036,5 +5017,89 @@ public class TestIndexWriter extends LuceneTestCase {
         }
       }
     }
+  }
+
+  public void testAdvanceSegmentInfosCounter() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer;
+    IndexReader reader;
+    writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+
+    // add 10 documents
+    for (int i = 0; i < 10; i++) {
+      addDocWithIndex(writer, i);
+      writer.commit();
+    }
+    writer.advanceSegmentInfosCounter(1);
+    assertTrue(writer.getSegmentInfosCounter() >= 1);
+
+    writer.advanceSegmentInfosCounter(1000);
+    // add 40 documents
+    for (int i = 10; i < 50; i++) {
+      addDocWithIndex(writer, i);
+      writer.commit();
+    }
+
+    // There may be merge operations in the background, here only verifies that the current segment
+    // counter is greater than 1000.
+    assertTrue(writer.getSegmentInfosCounter() >= 1000);
+
+    IndexWriter.DocStats docStats = writer.getDocStats();
+    assertEquals(50, docStats.maxDoc);
+    assertEquals(50, docStats.numDocs);
+    writer.close();
+
+    // check that the index reader gives the same numbers.
+    reader = DirectoryReader.open(dir);
+    assertEquals(50, reader.maxDoc());
+    assertEquals(50, reader.numDocs());
+    reader.close();
+    dir.close();
+  }
+
+  public void testAdvanceSegmentCounterInCrashAndRecoveryScenario() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer;
+    IndexReader reader;
+    writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+
+    // add 100 documents
+    for (int i = 0; i < 100; i++) {
+      addDocWithIndex(writer, i);
+      if (random().nextBoolean()) {
+        writer.commit();
+      }
+    }
+    IndexWriter.DocStats docStats = writer.getDocStats();
+    assertEquals(100, docStats.maxDoc);
+    assertEquals(100, docStats.numDocs);
+    writer.commit();
+    writer.close();
+
+    // recovery and advance segment counter
+    writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+    assertEquals(100, writer.getDocStats().numDocs);
+    long newSegmentCounter = writer.getSegmentInfosCounter() + 1000;
+    writer.advanceSegmentInfosCounter(newSegmentCounter);
+
+    // add 10 documents
+    for (int i = 0; i < 10; i++) {
+      addDocWithIndex(writer, i);
+      if (random().nextBoolean()) {
+        writer.commit();
+      }
+    }
+
+    assertTrue(writer.getSegmentInfosCounter() >= newSegmentCounter);
+
+    assertEquals(110, writer.getDocStats().numDocs);
+    // check that the index reader gives the same numbers.
+    writer.commit();
+    reader = DirectoryReader.open(dir);
+    assertEquals(110, reader.maxDoc());
+    assertEquals(110, reader.numDocs());
+    reader.close();
+    writer.close();
+    dir.close();
   }
 }

@@ -47,6 +47,8 @@ public final class DocIdSetBuilder {
     void add(IntsRef docs);
 
     void add(DocIdSetIterator iterator) throws IOException;
+
+    void add(IntsRef docs, int docLowerBoundInclusive);
   }
 
   private record FixedBitSetAdder(FixedBitSet bitSet) implements BulkAdder {
@@ -65,7 +67,18 @@ public final class DocIdSetBuilder {
 
     @Override
     public void add(DocIdSetIterator iterator) throws IOException {
-      bitSet.or(iterator);
+      iterator.nextDoc();
+      iterator.intoBitSet(DocIdSetIterator.NO_MORE_DOCS, bitSet, 0);
+    }
+
+    @Override
+    public void add(IntsRef docs, int docLowerBoundInclusive) {
+      for (int i = docs.offset, to = docs.offset + docs.length; i < to; i++) {
+        int doc = docs.ints[i];
+        if (doc >= docLowerBoundInclusive) {
+          bitSet.set(doc);
+        }
+      }
     }
   }
 
@@ -104,6 +117,18 @@ public final class DocIdSetBuilder {
         add(docID);
       }
     }
+
+    @Override
+    public void add(IntsRef docs, int docLowerBoundInclusive) {
+      int index = buffer.length;
+      for (int i = docs.offset, to = docs.offset + docs.length; i < to; i++) {
+        int doc = docs.ints[i];
+        if (doc >= docLowerBoundInclusive) {
+          buffer.array[index++] = doc;
+        }
+      }
+      buffer.length = index;
+    }
   }
 
   private final int maxDoc;
@@ -137,7 +162,7 @@ public final class DocIdSetBuilder {
    * Create a {@link DocIdSetBuilder} instance that is optimized for accumulating docs that match
    * the given {@link PointValues}.
    */
-  public DocIdSetBuilder(int maxDoc, PointValues values, String field) throws IOException {
+  public DocIdSetBuilder(int maxDoc, PointValues values) throws IOException {
     this(maxDoc, values.getDocCount(), values.size());
   }
 

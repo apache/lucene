@@ -259,7 +259,7 @@ public class TestSortRandom extends LuceneTestCase {
           FixedBitSet bits =
               bitsets.computeIfAbsent(
                   context,
-                  ctx -> {
+                  _ -> {
                     Random random = new Random(context.docBase ^ seed);
                     final int maxDoc = context.reader().maxDoc();
                     try {

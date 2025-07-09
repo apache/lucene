@@ -16,8 +16,22 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
-import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.*;
-import static org.apache.lucene.analysis.miscellaneous.WordDelimiterIterator.*;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.CATENATE_ALL;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.CATENATE_NUMBERS;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.CATENATE_WORDS;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.GENERATE_NUMBER_PARTS;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.GENERATE_WORD_PARTS;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.IGNORE_KEYWORDS;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.PRESERVE_ORIGINAL;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.SPLIT_ON_CASE_CHANGE;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.SPLIT_ON_NUMERICS;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.STEM_ENGLISH_POSSESSIVE;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterIterator.ALPHA;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterIterator.ALPHANUM;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterIterator.DIGIT;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterIterator.LOWER;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterIterator.SUBWORD_DELIM;
+import static org.apache.lucene.analysis.miscellaneous.WordDelimiterIterator.UPPER;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -144,13 +158,13 @@ public class WordDelimiterGraphFilterFactory extends TokenFilterFactory
   }
 
   // source => type
-  private static Pattern typePattern = Pattern.compile("(.*)\\s*=>\\s*(.*)\\s*$");
+  private static final Pattern TYPE_PATTERN = Pattern.compile("(.*)\\s*=>\\s*(.*)\\s*$");
 
   // parses a list of MappingCharFilter style rules into a custom byte[] type table
   private byte[] parseTypes(List<String> rules) {
     SortedMap<Character, Byte> typeMap = new TreeMap<>();
     for (String rule : rules) {
-      Matcher m = typePattern.matcher(rule);
+      Matcher m = TYPE_PATTERN.matcher(rule);
       if (!m.find()) throw new IllegalArgumentException("Invalid Mapping Rule : [" + rule + "]");
       String lhs = parseString(m.group(1).trim());
       Byte rhs = parseType(m.group(2).trim());

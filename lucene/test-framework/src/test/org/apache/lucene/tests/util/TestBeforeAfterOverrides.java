@@ -30,7 +30,9 @@ public class TestBeforeAfterOverrides extends WithNestedTests {
 
   public static class Before1 extends WithNestedTests.AbstractNestedTest {
     @Before
-    public void before() {}
+    public void before() {
+      /* intentionally left blank */
+    }
 
     public void testEmpty() {}
   }
@@ -45,7 +47,9 @@ public class TestBeforeAfterOverrides extends WithNestedTests {
 
   public static class After1 extends WithNestedTests.AbstractNestedTest {
     @After
-    public void after() {}
+    public void after() {
+      /* intentionally left blank */
+    }
 
     public void testEmpty() {}
   }
@@ -54,7 +58,9 @@ public class TestBeforeAfterOverrides extends WithNestedTests {
 
   public static class After3 extends Before2 {
     @After
-    public void after() {}
+    public void after() {
+      /* intentionally left blank */
+    }
   }
 
   @Test

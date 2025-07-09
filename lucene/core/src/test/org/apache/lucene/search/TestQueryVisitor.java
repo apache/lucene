@@ -169,7 +169,7 @@ public class TestQueryVisitor extends LuceneTestCase {
           private void countQuery(Query q) {
             queryCounts.compute(
                 q.getClass(),
-                (query, i) -> {
+                (_, i) -> {
                   if (i == null) {
                     return 1;
                   }

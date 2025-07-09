@@ -61,6 +61,7 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.AbstractKnnCollector;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -183,7 +184,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                         similarityFunction));
               }
             }
-            ;
             doc.add(new StringField("id", Integer.toString(vectors.ordToDoc(ord)), Field.Store.NO));
             iw.addDocument(doc);
           }
@@ -525,6 +525,23 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     for (ScoreDoc node : nodes.scoreDocs) {
       assertTrue("the results include a deleted document: " + node, acceptOrds.get(node.doc));
     }
+  }
+
+  public void testBuildingJoinSet() throws IOException {
+    int dim = random().nextInt(100) + 1;
+    int nDoc = random().nextInt(500) + 100;
+    int M = random().nextInt(16) + 16;
+    int beamWidth = random().nextInt(100) + 16;
+    long seed = random().nextLong();
+    KnnVectorValues vectors = vectorValues(nDoc, dim);
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, M, beamWidth, seed);
+    HnswGraph graph = builder.build(vectors.size());
+
+    IntHashSet j = UpdateGraphsUtils.computeJoinSet(graph);
+    assertTrue(
+        "Join set size [" + j.size() + "] is not less than graph size [" + graph.size() + "]",
+        j.size() < graph.size());
   }
 
   public void testHnswGraphBuilderInitializationFromGraph_withOffsetZero() throws IOException {

@@ -47,6 +47,7 @@ import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.TFIDFSimilarity;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRefBuilder;
+import org.apache.lucene.util.FloatComparator;
 import org.apache.lucene.util.PriorityQueue;
 
 /**
@@ -626,7 +627,8 @@ public final class MoreLikeThis {
       Map<String, Map<String, Int>> perFieldTermFrequencies) throws IOException {
     // have collected all words in doc and their freqs
     final int limit = Math.min(maxQueryTerms, this.getTermsCount(perFieldTermFrequencies));
-    FreqQ queue = new FreqQ(limit); // will order words by score
+    PriorityQueue<ScoreTerm> queue =
+        PriorityQueue.usingComparator(limit, FloatComparator.comparing(st -> st.score));
     for (Map.Entry<String, Map<String, Int>> entry : perFieldTermFrequencies.entrySet()) {
       Map<String, Int> perWordTermFrequencies = entry.getValue();
       String fieldName = entry.getKey();
@@ -767,7 +769,7 @@ public final class MoreLikeThis {
       Map<String, Map<String, Int>> field2termFreqMap, Terms vector, String fieldName)
       throws IOException {
     Map<String, Int> termFreqMap =
-        field2termFreqMap.computeIfAbsent(fieldName, k -> new HashMap<>());
+        field2termFreqMap.computeIfAbsent(fieldName, _ -> new HashMap<>());
     final TermsEnum termsEnum = vector.iterator();
     final CharsRefBuilder spare = new CharsRefBuilder();
     BytesRef text;
@@ -806,7 +808,7 @@ public final class MoreLikeThis {
           "To use MoreLikeThis without " + "term vectors, you must provide an Analyzer");
     }
     Map<String, Int> termFreqMap =
-        perFieldTermFrequencies.computeIfAbsent(fieldName, k -> new HashMap<>());
+        perFieldTermFrequencies.computeIfAbsent(fieldName, _ -> new HashMap<>());
     try (TokenStream ts = analyzer.tokenStream(fieldName, r)) {
       int tokenCount = 0;
       // for every token
@@ -923,18 +925,6 @@ public final class MoreLikeThis {
     }
     String[] res = new String[al.size()];
     return al.toArray(res);
-  }
-
-  /** PriorityQueue that orders words by score. */
-  private static class FreqQ extends PriorityQueue<ScoreTerm> {
-    FreqQ(int maxSize) {
-      super(maxSize);
-    }
-
-    @Override
-    protected boolean lessThan(ScoreTerm a, ScoreTerm b) {
-      return a.score < b.score;
-    }
   }
 
   private static class ScoreTerm {

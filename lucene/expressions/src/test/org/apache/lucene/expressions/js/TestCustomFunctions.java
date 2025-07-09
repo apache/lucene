@@ -30,7 +30,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Tests customing the function map */
 public class TestCustomFunctions extends CompilerTestCase {
-  private static double DELTA = 0.0000001;
+  private static final double DELTA = 0.0000001;
   private static final Lookup LOOKUP = MethodHandles.lookup();
 
   /** empty list of methods */
@@ -198,7 +198,8 @@ public class TestCustomFunctions extends CompilerTestCase {
     assertTrue(expected.getMessage().contains("is not static"));
   }
 
-  static double nonPublicMethod() {
+  @SuppressWarnings("unused")
+  private static double nonPublicMethod() {
     return 7;
   }
 
@@ -209,7 +210,8 @@ public class TestCustomFunctions extends CompilerTestCase {
     assertEquals(7, expr.evaluate(null), DELTA);
   }
 
-  static class NestedNotPublic {
+  @SuppressWarnings("unused")
+  private static class NestedNotPublic {
     public static double method() {
       return 41;
     }
@@ -238,7 +240,7 @@ public class TestCustomFunctions extends CompilerTestCase {
     assertEquals(16, expr.evaluate(null), DELTA);
   }
 
-  static String MESSAGE = "This should not happen but it happens";
+  private static final String MESSAGE = "This should not happen but it happens";
 
   public static double staticThrowingException() {
     throw new ArithmeticException(MESSAGE);
@@ -291,21 +293,5 @@ public class TestCustomFunctions extends CompilerTestCase {
             MethodHandles.identity(double.class));
     Expression expr = compile("foo.bar() + bar.foo(7)", functions);
     assertEquals(16, expr.evaluate(null), DELTA);
-  }
-
-  public void testLegacyFunctions() throws Exception {
-    var functions =
-        Map.of("foo", TestCustomFunctions.class.getMethod("oneArgMethod", double.class));
-    var newFunctions = JavascriptCompiler.convertLegacyFunctions(functions);
-    newFunctions.putAll(JavascriptCompiler.DEFAULT_FUNCTIONS);
-    Expression expr = compile("foo(3) + abs(-7)", newFunctions);
-    assertEquals(13, expr.evaluate(null), DELTA);
-  }
-
-  public void testInvalidLegacyFunctions() throws Exception {
-    var functions = Map.of("foo", TestCustomFunctions.class.getMethod("nonStaticMethod"));
-    var newFunctions = JavascriptCompiler.convertLegacyFunctions(functions);
-    newFunctions.putAll(JavascriptCompiler.DEFAULT_FUNCTIONS);
-    expectThrows(IllegalArgumentException.class, () -> compile("foo(3) + abs(-7)", newFunctions));
   }
 }

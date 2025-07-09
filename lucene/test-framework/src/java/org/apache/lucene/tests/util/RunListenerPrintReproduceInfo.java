@@ -55,7 +55,7 @@ public final class RunListenerPrintReproduceInfo extends RunListener {
    * A list of all test suite classes executed so far in this JVM (ehm, under this class's
    * classloader).
    */
-  private static List<String> testClassesRun = new ArrayList<>();
+  private static final List<String> testClassesRun = new ArrayList<>();
 
   /** The currently executing scope. */
   private LifecycleScope scope;
@@ -187,6 +187,8 @@ public final class RunListenerPrintReproduceInfo extends RunListener {
 
     // Pass the master seed.
     addVmOpt(b, "tests.seed", RandomizedContext.current().getRunnerSeedAsString());
+
+    addVmOpt(b, "tests.jvmargs", System.getProperty("tests.jvmargs"));
 
     // Test groups and multipliers.
     if (RANDOM_MULTIPLIER != LuceneTestCase.defaultRandomMultiplier())

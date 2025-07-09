@@ -28,6 +28,7 @@ import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
@@ -56,6 +57,7 @@ public class HnswGraphBuilder implements HnswBuilder {
   public static final String HNSW_COMPONENT = "HNSW";
 
   /** Random seed for level generation; public to expose for testing * */
+  @SuppressWarnings("NonFinalStaticField")
   public static long randSeed = DEFAULT_RAND_SEED;
 
   private final int M; // max number of connections on upper layers
@@ -67,12 +69,13 @@ public class HnswGraphBuilder implements HnswBuilder {
   private final GraphBuilderKnnCollector entryCandidates; // for upper levels of graph search
   private final GraphBuilderKnnCollector
       beamCandidates; // for levels of graph where we add the node
+  private final GraphBuilderKnnCollector beamCandidates0;
 
   protected final OnHeapHnswGraph hnsw;
   protected final HnswLock hnswLock;
 
-  private InfoStream infoStream = InfoStream.getDefault();
-  private boolean frozen;
+  protected InfoStream infoStream = InfoStream.getDefault();
+  protected boolean frozen;
 
   public static HnswGraphBuilder create(
       RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
@@ -151,6 +154,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     this.graphSearcher = graphSearcher;
     entryCandidates = new GraphBuilderKnnCollector(1);
     beamCandidates = new GraphBuilderKnnCollector(beamWidth);
+    beamCandidates0 = new GraphBuilderKnnCollector(Math.min(beamWidth / 2, M * 3));
   }
 
   @Override
@@ -207,6 +211,11 @@ public class HnswGraphBuilder implements HnswBuilder {
   }
 
   public void addGraphNode(int node, UpdateableRandomVectorScorer scorer) throws IOException {
+    addGraphNodeInternal(node, scorer, null);
+  }
+
+  private void addGraphNodeInternal(int node, UpdateableRandomVectorScorer scorer, IntHashSet eps0)
+      throws IOException {
     if (frozen) {
       throw new IllegalStateException("Graph builder is already frozen");
     }
@@ -246,9 +255,13 @@ public class HnswGraphBuilder implements HnswBuilder {
       for (int i = scratchPerLevel.length - 1; i >= 0; i--) {
         int level = i + lowestUnsetLevel;
         candidates.clear();
+        if (level == 0 && eps0 != null && eps0.size() > 0) {
+          eps = eps0.toArray();
+          candidates = beamCandidates0;
+        }
         graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
         eps = candidates.popUntilNearestKNodes();
-        scratchPerLevel[i] = new NeighborArray(Math.max(beamCandidates.k(), M + 1), false);
+        scratchPerLevel[i] = new NeighborArray(Math.max(candidates.k(), M + 1), false);
         popToScratch(candidates, scratchPerLevel[i]);
       }
 
@@ -282,26 +295,32 @@ public class HnswGraphBuilder implements HnswBuilder {
   @Override
   public void addGraphNode(int node) throws IOException {
     /*
-    Note: this implementation is thread safe when graph size is fixed (e.g. when merging)
-    The process of adding a node is roughly:
-    1. Add the node to all level from top to the bottom, but do not connect it to any other node,
-       nor try to promote itself to an entry node before the connection is done. (Unless the graph is empty
-       and this is the first node, in that case we set the entry node and return)
-    2. Do the search from top to bottom, remember all the possible neighbours on each level the node
-       is on.
-    3. Add the neighbor to the node from bottom to top level, when adding the neighbour,
-       we always add all the outgoing links first before adding incoming link such that
-       when a search visits this node, it can always find a way out
-    4. If the node has level that is less or equal to graph level, then we're done here.
-       If the node has level larger than graph level, then we need to promote the node
-       as the entry node. If, while we add the node to the graph, the entry node has changed
-       (which means the graph level has changed as well), we need to reinsert the node
-       to the newly introduced levels (repeating step 2,3 for new levels) and again try to
-       promote the node to entry node.
-    */
+     * Note: this implementation is thread safe when graph size is fixed (e.g. when merging)
+     * The process of adding a node is roughly:
+     * 1. Add the node to all level from top to the bottom, but do not connect it to any other node,
+     *    nor try to promote itself to an entry node before the connection is done. (Unless the graph is empty
+     *    and this is the first node, in that case we set the entry node and return)
+     * 2. Do the search from top to bottom, remember all the possible neighbours on each level the node
+     *    is on.
+     * 3. Add the neighbor to the node from bottom to top level, when adding the neighbour,
+     *    we always add all the outgoing links first before adding incoming link such that
+     *    when a search visits this node, it can always find a way out
+     * 4. If the node has level that is less or equal to graph level, then we're done here.
+     *    If the node has level larger than graph level, then we need to promote the node
+     *    as the entry node. If, while we add the node to the graph, the entry node has changed
+     *    (which means the graph level has changed as well), we need to reinsert the node
+     *    to the newly introduced levels (repeating step 2,3 for new levels) and again try to
+     *    promote the node to entry node.
+     */
     UpdateableRandomVectorScorer scorer = scorerSupplier.scorer();
     scorer.setScoringOrdinal(node);
-    addGraphNode(node, scorer);
+    addGraphNodeInternal(node, scorer, null);
+  }
+
+  public void addGraphNodeWithEps(int node, IntHashSet eps0) throws IOException {
+    UpdateableRandomVectorScorer scorer = scorerSupplier.scorer();
+    scorer.setScoringOrdinal(node);
+    addGraphNodeInternal(node, scorer, eps0);
   }
 
   private long printGraphBuildStatus(int node, long start, long t) {
@@ -343,13 +362,13 @@ public class HnswGraphBuilder implements HnswBuilder {
         Lock lock = hnswLock.write(level, nbr);
         try {
           NeighborArray nbrsOfNbr = getGraph().getNeighbors(level, nbr);
-          nbrsOfNbr.addAndEnsureDiversity(node, candidates.scores()[i], nbr, scorer);
+          nbrsOfNbr.addAndEnsureDiversity(node, candidates.getScores(i), nbr, scorer);
         } finally {
           lock.unlock();
         }
       } else {
         NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
-        nbrsOfNbr.addAndEnsureDiversity(node, candidates.scores()[i], nbr, scorer);
+        nbrsOfNbr.addAndEnsureDiversity(node, candidates.getScores(i), nbr, scorer);
       }
     }
   }
@@ -370,7 +389,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       // compare each neighbor (in distance order) against the closer neighbors selected so far,
       // only adding it if it is closer to the target than to any of the other selected neighbors
       int cNode = candidates.nodes()[i];
-      float cScore = candidates.scores()[i];
+      float cScore = candidates.getScores(i);
       assert cNode <= hnsw.maxNodeId();
       scorer.setScoringOrdinal(cNode);
       if (diversityCheck(cScore, neighbors, scorer)) {
@@ -421,10 +440,13 @@ public class HnswGraphBuilder implements HnswBuilder {
 
   void finish() throws IOException {
     // System.out.println("finish " + frozen);
-    connectComponents();
+    // TODO: Connect components can be exceptionally expensive, disabling
+    //  see: https://github.com/apache/lucene/issues/14214
+    // connectComponents();
     frozen = true;
   }
 
+  @SuppressWarnings("unused")
   private void connectComponents() throws IOException {
     long start = System.nanoTime();
     for (int level = 0; level < hnsw.numLevels(); level++) {
@@ -516,7 +538,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     // must subtract 1 here since the nodes array is one larger than the configured
     // max neighbors (M / 2M).
     // We should have taken care of this check by searching for not-full nodes
-    int maxConn = nbr0.nodes().length - 1;
+    int maxConn = nbr0.maxSize() - 1;
     assert notFullyConnected.get(n0);
     assert nbr0.size() < maxConn : "node " + n0 + " is full, has " + nbr0.size() + " friends";
     nbr0.addOutOfOrder(n1, score);
@@ -615,7 +637,7 @@ public class HnswGraphBuilder implements HnswBuilder {
 
     @Override
     public KnnSearchStrategy getSearchStrategy() {
-      throw new IllegalArgumentException("Should not use unique strategy during graph building");
+      return null;
     }
   }
 }

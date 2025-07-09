@@ -69,11 +69,40 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
     return new SeededKnnVectorQuery(knnQuery, seed, null);
   }
 
-  SeededKnnVectorQuery(AbstractKnnVectorQuery knnQuery, Query seed, Weight seedWeight) {
-    super(knnQuery.field, knnQuery.k, knnQuery.filter, knnQuery.searchStrategy);
+  SeededKnnVectorQuery(
+      AbstractKnnVectorQuery knnQuery,
+      Query seed,
+      Weight seedWeight,
+      String field,
+      int k,
+      Query filter,
+      KnnSearchStrategy searchStrategy) {
+    super(field, k, filter, searchStrategy);
     this.delegate = knnQuery;
     this.seed = Objects.requireNonNull(seed);
     this.seedWeight = seedWeight;
+  }
+
+  public SeededKnnVectorQuery(KnnFloatVectorQuery knnQuery, Query seed, Weight seedWeight) {
+    this(
+        knnQuery,
+        seed,
+        seedWeight,
+        knnQuery.field,
+        knnQuery.k,
+        knnQuery.filter,
+        knnQuery.searchStrategy);
+  }
+
+  public SeededKnnVectorQuery(KnnByteVectorQuery knnQuery, Query seed, Weight seedWeight) {
+    this(
+        knnQuery,
+        seed,
+        seedWeight,
+        knnQuery.field,
+        knnQuery.k,
+        knnQuery.filter,
+        knnQuery.searchStrategy);
   }
 
   @Override
@@ -94,7 +123,14 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
       return super.rewrite(indexSearcher);
     }
     SeededKnnVectorQuery rewritten =
-        new SeededKnnVectorQuery(delegate, seed, createSeedWeight(indexSearcher));
+        new SeededKnnVectorQuery(
+            delegate,
+            seed,
+            createSeedWeight(indexSearcher),
+            delegate.field,
+            delegate.k,
+            delegate.filter,
+            delegate.searchStrategy);
     return rewritten.rewrite(indexSearcher);
   }
 
@@ -179,11 +215,11 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
     return delegate.createVectorScorer(context, fi);
   }
 
-  private static class MappedDISI extends DocIdSetIterator {
+  static class MappedDISI extends DocIdSetIterator {
     KnnVectorValues.DocIndexIterator indexedDISI;
     DocIdSetIterator sourceDISI;
 
-    private MappedDISI(KnnVectorValues.DocIndexIterator indexedDISI, DocIdSetIterator sourceDISI) {
+    MappedDISI(KnnVectorValues.DocIndexIterator indexedDISI, DocIdSetIterator sourceDISI) {
       this.indexedDISI = indexedDISI;
       this.sourceDISI = sourceDISI;
     }
@@ -225,11 +261,11 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
     }
   }
 
-  private static class TopDocsDISI extends DocIdSetIterator {
+  static class TopDocsDISI extends DocIdSetIterator {
     private final int[] sortedDocIds;
     private int idx = -1;
 
-    private TopDocsDISI(TopDocs topDocs, LeafReaderContext ctx) {
+    TopDocsDISI(TopDocs topDocs, LeafReaderContext ctx) {
       sortedDocIds = new int[topDocs.scoreDocs.length];
       for (int i = 0; i < topDocs.scoreDocs.length; i++) {
         // Remove the doc base as added by the collector

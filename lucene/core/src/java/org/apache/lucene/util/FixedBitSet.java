@@ -19,6 +19,7 @@ package org.apache.lucene.util;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import org.apache.lucene.search.CheckedIntConsumer;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 
@@ -44,11 +45,12 @@ public final class FixedBitSet extends BitSet {
 
   /**
    * If the given {@link FixedBitSet} is large enough to hold {@code numBits+1}, returns the given
-   * bits, otherwise returns a new {@link FixedBitSet} which can hold the requested number of bits.
+   * bits, otherwise returns a new {@link FixedBitSet} which can hold {@code numBits+1} bits. That
+   * means the bitset returned by this method can be safely called with {@code bits.set(numBits)}
    *
    * <p><b>NOTE:</b> the returned bitset reuses the underlying {@code long[]} of the given {@code
    * bits} if possible. Also, calling {@link #length()} on the returned bits may return a value
-   * greater than {@code numBits}.
+   * greater than {@code numBits+1}.
    */
   public static FixedBitSet ensureCapacity(FixedBitSet bits, int numBits) {
     if (numBits < bits.numBits) {
@@ -202,6 +204,40 @@ public final class FixedBitSet extends BitSet {
       tot += Long.bitCount(bits[i]);
     }
     return Math.toIntExact(tot);
+  }
+
+  /**
+   * Return the number of set bits between indexes {@code from} inclusive and {@code to} exclusive.
+   */
+  public int cardinality(int from, int to) {
+    Objects.checkFromToIndex(from, to, length());
+
+    int cardinality = 0;
+
+    // First, align `from` with a word start, ie. a multiple of Long.SIZE (64)
+    if ((from & 0x3F) != 0) {
+      long bits = this.bits[from >> 6] >>> from;
+      int numBitsTilNextWord = -from & 0x3F;
+      if (to - from < numBitsTilNextWord) {
+        bits &= (1L << (to - from)) - 1L;
+        return Long.bitCount(bits);
+      }
+      cardinality += Long.bitCount(bits);
+      from += numBitsTilNextWord;
+      assert (from & 0x3F) == 0;
+    }
+
+    for (int i = from >> 6, end = to >> 6; i < end; ++i) {
+      cardinality += Long.bitCount(bits[i]);
+    }
+
+    // Now handle bits between the last complete word and to
+    if ((to & 0x3F) != 0) {
+      long bits = this.bits[to >> 6] << -to;
+      cardinality += Long.bitCount(bits);
+    }
+
+    return cardinality;
   }
 
   @Override
@@ -749,7 +785,7 @@ public final class FixedBitSet extends BitSet {
   public static FixedBitSet copyOf(Bits bits) {
     if (bits instanceof FixedBits fixedBits) {
       // restore the original FixedBitSet
-      bits = new FixedBitSet(fixedBits.bits, fixedBits.length);
+      bits = fixedBits.bitSet;
     }
 
     if (bits instanceof FixedBitSet) {
@@ -788,6 +824,50 @@ public final class FixedBitSet extends BitSet {
     if (length < bitSet.length()
         && bitSet.nextSetBit(Math.max(0, length)) != DocIdSetIterator.NO_MORE_DOCS) {
       throw new IllegalArgumentException("Some bits are set beyond the end of live docs");
+    }
+  }
+
+  /**
+   * For each set bit from {@code from} inclusive to {@code to} exclusive, add {@code base} to the
+   * bit index and call {@code consumer} on it. This is internally used by queries that use bit sets
+   * as intermediate representations of their matches.
+   */
+  public void forEach(int from, int to, int base, CheckedIntConsumer<IOException> consumer)
+      throws IOException {
+    Objects.checkFromToIndex(from, to, length());
+
+    // First, align `from` with a word start, ie. a multiple of Long.SIZE (64)
+    if ((from & 0x3F) != 0) {
+      long bits = this.bits[from >> 6] >>> from;
+      int numBitsTilNextWord = -from & 0x3F;
+      if (to - from < numBitsTilNextWord) {
+        // All bits are in a single word
+        bits &= (1L << (to - from)) - 1L;
+        forEach(bits, from + base, consumer);
+        return;
+      }
+      forEach(bits, from + base, consumer);
+      from += numBitsTilNextWord;
+      assert (from & 0x3F) == 0;
+    }
+
+    for (int i = from >> 6, end = to >> 6; i < end; ++i) {
+      forEach(bits[i], base + (i << 6), consumer);
+    }
+
+    // Now handle remaining bits in the last partial word
+    if ((to & 0x3F) != 0) {
+      long bits = this.bits[to >> 6] & ((1L << to) - 1);
+      forEach(bits, base + (to & ~0x3F), consumer);
+    }
+  }
+
+  private static void forEach(long bits, int base, CheckedIntConsumer<IOException> consumer)
+      throws IOException {
+    while (bits != 0L) {
+      int ntz = Long.numberOfTrailingZeros(bits);
+      consumer.accept(base + ntz);
+      bits ^= 1L << ntz;
     }
   }
 }

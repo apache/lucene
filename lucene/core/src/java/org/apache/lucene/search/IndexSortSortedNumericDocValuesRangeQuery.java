@@ -213,7 +213,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
             // The index sort optimization is only supported for Type.INT and Type.LONG
             if (sortFieldType == Type.INT || sortFieldType == Type.LONG) {
               Object missingValue = sortField.getMissingValue();
-              final long missingLongValue = missingValue == null ? 0L : (long) missingValue;
+              final long missingLongValue =
+                  missingValue == null ? 0L : ((Number) missingValue).longValue();
               // all documents have docValues or missing value falls outside the range
               if ((pointValues != null && pointValues.getDocCount() == reader.maxDoc())
                   || (missingLongValue < lowerValue || missingLongValue > upperValue)) {
@@ -612,7 +613,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     Object missingValue = sortField.getMissingValue();
     LeafReader reader = context.reader();
     PointValues pointValues = reader.getPointValues(field);
-    final long missingLongValue = missingValue == null ? 0L : (long) missingValue;
+    final long missingLongValue = missingValue == null ? 0L : ((Number) missingValue).longValue();
     // all documents have docValues or missing value falls outside the range
     if ((pointValues != null && pointValues.getDocCount() == reader.maxDoc())
         || (missingLongValue < lowerValue || missingLongValue > upperValue)) {
@@ -685,12 +686,10 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
    * A doc ID set iterator that wraps a delegate iterator and only returns doc IDs in the range
    * [firstDocInclusive, lastDoc).
    */
-  private static class BoundedDocIdSetIterator extends DocIdSetIterator {
+  private static class BoundedDocIdSetIterator extends AbstractDocIdSetIterator {
     private final int firstDoc;
     private final int lastDoc;
     private final DocIdSetIterator delegate;
-
-    private int docID = -1;
 
     BoundedDocIdSetIterator(int firstDoc, int lastDoc, DocIdSetIterator delegate) {
       assert delegate != null;
@@ -700,13 +699,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     }
 
     @Override
-    public int docID() {
-      return docID;
-    }
-
-    @Override
     public int nextDoc() throws IOException {
-      return advance(docID + 1);
+      return advance(doc + 1);
     }
 
     @Override
@@ -717,11 +711,11 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
       int result = delegate.advance(target);
       if (result < lastDoc) {
-        docID = result;
+        doc = result;
       } else {
-        docID = NO_MORE_DOCS;
+        doc = NO_MORE_DOCS;
       }
-      return docID;
+      return doc;
     }
 
     @Override

@@ -13,14 +13,14 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
- -->
+-->
 
 # Developer Scripts
 
 This folder contains various useful scripts for developers, mostly related to
 releasing new versions of Lucene and testing those.
 
-Python scripts require Python 3.6 or avobe. To install necessary python modules, please run:
+Python scripts require Python 3.6 or above. To install necessary python modules, please run:
 
     pip3 install -r requirements.txt
 
@@ -37,14 +37,14 @@ the full tests.
                                [--version X.Y.Z(-ALPHA|-BETA)?]
                                [--test-java12 JAVA12_HOME] [--download-only]
                                url ...
-    
+
     Utility to test a release.
-    
+
     positional arguments:
       url                   Url pointing to release to test
       test_args             Arguments to pass to ant for testing, e.g.
                             -Dwhat=ever.
-    
+
     optional arguments:
       -h, --help            show this help message and exit
       --tmp-dir PATH        Temporary directory to test inside, defaults to
@@ -60,31 +60,31 @@ the full tests.
                             Path to Java12 home directory, to run tests with if
                             specified
       --download-only       Only perform download and sha hash check steps
-    
+
     Example usage:
     python3 -u dev-tools/scripts/smokeTestRelease.py https://dist.apache.org/repos/dist/dev/lucene/lucene-9.0.1-RC2-revc7510a0...
 
 ### releaseWizard.py
 
-The Release Wizard guides the Release Manager through the release process step 
+The Release Wizard guides the Release Manager through the release process step
 by step, helping you to to run the right commands in the right order, generating
 e-mail templates with the correct texts, versions, paths etc, obeying
 the voting rules and much more. It also serves as a documentation of all the
 steps, with timestamps, preserving log files from each command etc, showing only
 the steps and commands required for a major/minor/bugfix release. It also lets
-you generate a full Asciidoc guide for the release. The wizard will execute many 
-of the other tools in this folder. 
+you generate a full Asciidoc guide for the release. The wizard will execute many
+of the other tools in this folder.
 
     usage: releaseWizard.py [-h] [--dry-run] [--init]
-    
+
     Script to guide a RM through the whole release process
-    
+
     optional arguments:
       -h, --help  show this help message and exit
       --dry-run   Do not execute any commands, but echo them instead. Display
                   extra debug info
       --init      Re-initialize root and version
-    
+
     Go push that release!
 
 ### buildAndPushRelease.py
@@ -92,9 +92,9 @@ of the other tools in this folder.
     usage: buildAndPushRelease.py [-h] [--no-prepare] [--local-keys PATH]
                                   [--push-local PATH] [--sign KEYID]
                                   [--rc-num NUM] [--root PATH] [--logfile PATH]
-    
+
     Utility to build, push, and test a release.
-    
+
     optional arguments:
       -h, --help         show this help message and exit
       --no-prepare       Use the already built release in the provided checkout
@@ -105,7 +105,7 @@ of the other tools in this folder.
       --root PATH        Root of Git working tree for lucene. Default: "."
                          (the current directory)
       --logfile PATH     Specify log file path (default /tmp/release.log)
-    
+
     Example usage for a Release Manager:
     python3 -u dev-tools/scripts/buildAndPushRelease.py --push-local /tmp/releases/6.0.1 --sign 6E68DA61 --rc-num 1
 
@@ -113,13 +113,13 @@ of the other tools in this folder.
 
     usage: addBackcompatIndexes.py [-h] [--force] [--no-cleanup] [--temp-dir DIR]
                                    version
-    
+
     Add backcompat index and test for new version.  See:
     http://wiki.apache.org/lucene-java/ReleaseTodo#Generate_Backcompat_Indexes
-    
+
     positional arguments:
       version         Version to add, of the form X.Y.Z
-    
+
     optional arguments:
       -h, --help      show this help message and exit
       --force         Redownload the version and rebuild, even if it already
@@ -131,12 +131,12 @@ of the other tools in this folder.
 ### addVersion.py
 
     usage: addVersion.py [-h] version
-    
+
     Add a new version to CHANGES, to Version.java and build.gradle files
-    
+
     positional arguments:
       version
-    
+
     optional arguments:
       -h, --help  show this help message and exit
 
@@ -147,21 +147,21 @@ under the given version in the given CHANGES.txt file
 and prints a regular expression that will match all of them
 
     usage: releasedJirasRegex.py [-h] version changes
-    
+
     Prints a regex matching JIRAs fixed in the given version by parsing the given
     CHANGES.txt file
-    
+
     positional arguments:
       version     Version of the form X.Y.Z
       changes     CHANGES.txt file to parse
-    
+
     optional arguments:
       -h, --help  show this help message and exit
 
 ### reproduceJenkinsFailures.py
 
     usage: reproduceJenkinsFailures.py [-h] [--no-git] [--iters N] URL
-    
+
     Must be run from a Lucene git workspace. Downloads the Jenkins
     log pointed to by the given URL, parses it for Git revision and failed
     Lucene tests, checks out the Git revision in the local workspace,
@@ -170,10 +170,10 @@ and prints a regular expression that will match all of them
     in each module of interest, failing at the end if any of the runs fails.
     To control the maximum number of concurrent JVMs used for each module's
     test run, set 'tests.jvms', e.g. in ~/lucene.build.properties
-    
+
     positional arguments:
       URL         Points to the Jenkins log to parse
-    
+
     optional arguments:
       -h, --help  show this help message and exit
       --no-git    Do not run "git" at all
@@ -182,9 +182,9 @@ and prints a regular expression that will match all of them
 ### githubPRs.py
 
     usage: githubPRs.py [-h] [--json] [--token TOKEN]
-    
+
     Find open Pull Requests that need attention
-    
+
     optional arguments:
       -h, --help     show this help message and exit
       --json         Output as json

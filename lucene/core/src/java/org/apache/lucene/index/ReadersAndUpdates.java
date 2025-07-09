@@ -39,6 +39,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOConsumer;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
@@ -147,7 +148,7 @@ final class ReadersAndUpdates {
       throw new IllegalArgumentException("call finish first");
     }
     List<DocValuesFieldUpdates> fieldUpdates =
-        pendingDVUpdates.computeIfAbsent(update.field, key -> new ArrayList<>());
+        pendingDVUpdates.computeIfAbsent(update.field, _ -> new ArrayList<>());
     assert assertNoDupGen(fieldUpdates, update);
 
     ramBytesUsed.addAndGet(update.ramBytesUsed());
@@ -321,7 +322,7 @@ final class ReadersAndUpdates {
       }
       final long nextDocValuesGen = info.getNextDocValuesGen();
       final String segmentSuffix = Long.toString(nextDocValuesGen, Character.MAX_RADIX);
-      final IOContext updatesContext = new IOContext(new FlushInfo(info.info.maxDoc(), bytes));
+      final IOContext updatesContext = IOContext.flush(new FlushInfo(info.info.maxDoc(), bytes));
       final FieldInfo fieldInfo = infos.fieldInfo(field);
       assert fieldInfo != null;
       fieldInfo.setDocValuesGen(nextDocValuesGen);
@@ -386,6 +387,12 @@ final class ReadersAndUpdates {
                     }
 
                     @Override
+                    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset)
+                        throws IOException {
+                      mergedDocValues.intoBitSet(upTo, bitSet, offset);
+                    }
+
+                    @Override
                     public long cost() {
                       return mergedDocValues.cost();
                     }
@@ -433,6 +440,12 @@ final class ReadersAndUpdates {
                     }
 
                     @Override
+                    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset)
+                        throws IOException {
+                      mergedDocValues.intoBitSet(upTo, bitSet, offset);
+                    }
+
+                    @Override
                     public long cost() {
                       return mergedDocValues.cost();
                     }
@@ -461,6 +474,7 @@ final class ReadersAndUpdates {
     private int docIDOnDisk = -1;
     // docID from our updates
     private int updateDocID = -1;
+    private FixedBitSet scratch;
 
     private final DocValuesInstance onDiskDocValues;
     private final DocValuesInstance updateDocValues;
@@ -526,6 +540,61 @@ final class ReadersAndUpdates {
       } while (hasValue == false);
       return docIDOut;
     }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      if (onDiskDocValues == null) {
+        super.intoBitSet(upTo, bitSet, offset);
+        return;
+      }
+
+      // we need a scratch bitset because the param bitset doesn't allow bits to be cleared.
+      if (scratch == null) {
+        scratch = new FixedBitSet(bitSet.length());
+      } else {
+        // It's OK even if bitset.length() == 0 according the contract.
+        scratch = FixedBitSet.ensureCapacity(scratch, bitSet.length() - 1);
+        scratch.clear();
+      }
+
+      onDiskDocValues.intoBitSet(upTo, scratch, offset);
+      docIDOnDisk = onDiskDocValues.docID();
+
+      for (int doc = updateDocValues.docID(); doc < upTo; doc = updateDocValues.nextDoc()) {
+        if (updateIterator.hasValue()) {
+          scratch.set(doc - offset);
+        } else {
+          scratch.clear(doc - offset);
+        }
+      }
+
+      FixedBitSet.orRange(scratch, 0, bitSet, 0, bitSet.length());
+
+      // Iterate to find out current doc.
+      while (true) {
+        while (updateDocValues.docID() < docIDOnDisk && updateIterator.hasValue() == false) {
+          updateDocValues.nextDoc();
+        }
+        if (docIDOnDisk != NO_MORE_DOCS
+            && updateDocValues.docID() == docIDOnDisk
+            && updateIterator.hasValue() == false) {
+          // value of docIDOnDisk removed
+          docIDOnDisk = onDiskDocValues.nextDoc();
+        } else {
+          break;
+        }
+      }
+
+      // update docIDOut and currentValuesSupplier
+      updateDocID = updateDocValues.docID();
+      if (docIDOnDisk < updateDocID) {
+        docIDOut = docIDOnDisk;
+        currentValuesSupplier = onDiskDocValues;
+      } else {
+        docIDOut = updateDocID;
+        currentValuesSupplier = updateDocValues;
+      }
+    }
   }
 
   private synchronized Set<String> writeFieldInfosGen(
@@ -536,7 +605,7 @@ final class ReadersAndUpdates {
     // HEADER + FOOTER: 40
     // 90 bytes per-field (over estimating long name and attributes map)
     final long estInfosSize = 40 + 90L * fieldInfos.size();
-    final IOContext infosContext = new IOContext(new FlushInfo(info.info.maxDoc(), estInfosSize));
+    final IOContext infosContext = IOContext.flush(new FlushInfo(info.info.maxDoc(), estInfosSize));
     // separately also track which files were created for this gen
     final TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(dir);
     infosFormat.write(trackingDir, info.info, segmentSuffix, fieldInfos, infosContext);
@@ -569,8 +638,6 @@ final class ReadersAndUpdates {
     // Do this so we can delete any created files on
     // exception; this saves all codecs from having to do it:
     TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(dir);
-
-    boolean success = false;
     try {
       final Codec codec = info.info.getCodec();
 
@@ -627,20 +694,17 @@ final class ReadersAndUpdates {
           reader.close();
         }
       }
+    } catch (Throwable t) {
+      // Advance only the nextWriteFieldInfosGen and nextWriteDocValuesGen, so
+      // that a 2nd attempt to write will write to a new file
+      info.advanceNextWriteFieldInfosGen();
+      info.advanceNextWriteDocValuesGen();
 
-      success = true;
-    } finally {
-      if (success == false) {
-        // Advance only the nextWriteFieldInfosGen and nextWriteDocValuesGen, so
-        // that a 2nd attempt to write will write to a new file
-        info.advanceNextWriteFieldInfosGen();
-        info.advanceNextWriteDocValuesGen();
-
-        // Delete any partially created file(s):
-        for (String fileName : trackingDir.getCreatedFiles()) {
-          IOUtils.deleteFilesIgnoringExceptions(dir, fileName);
-        }
+      // Delete any partially created file(s):
+      for (String fileName : trackingDir.getCreatedFiles()) {
+        IOUtils.deleteFilesSuppressingExceptions(t, dir, fileName);
       }
+      throw t;
     }
 
     // Prune the now-written DV updates:
@@ -737,15 +801,12 @@ final class ReadersAndUpdates {
             pendingDeletes.getHardLiveDocs(),
             pendingDeletes.numDocs(),
             true);
-    boolean success2 = false;
     try {
       pendingDeletes.onNewReader(newReader, info);
       reader.decRef();
-      success2 = true;
-    } finally {
-      if (success2 == false) {
-        newReader.decRef();
-      }
+    } catch (Throwable t) {
+      newReader.decRef();
+      throw t;
     }
     return newReader;
   }

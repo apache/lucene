@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.MathUtil;
 
 /**
  * BulkScorer implementation of {@link ConjunctionScorer} that is specialized for dense clauses.
@@ -29,6 +30,28 @@ import org.apache.lucene.util.FixedBitSet;
  * the intersection of clauses by and-ing these bit sets.
  */
 final class DenseConjunctionBulkScorer extends BulkScorer {
+
+  private record DisiWrapper(DocIdSetIterator approximation, TwoPhaseIterator twoPhase) {
+    DisiWrapper(DocIdSetIterator iterator) {
+      this(iterator, null);
+    }
+
+    DisiWrapper(TwoPhaseIterator twoPhase) {
+      this(twoPhase.approximation(), twoPhase);
+    }
+
+    int docID() {
+      return approximation().docID();
+    }
+
+    int docIDRunEnd() throws IOException {
+      if (twoPhase() == null) {
+        return approximation().docIDRunEnd();
+      } else {
+        return twoPhase().docIDRunEnd();
+      }
+    }
+  }
 
   // Use a small-ish window size to make sure that we can take advantage of gaps in the postings of
   // clauses that are not leading iteration.
@@ -38,56 +61,85 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
   // we're erring on the conservative side.
   static final int DENSITY_THRESHOLD_INVERSE = Long.SIZE / 2;
 
-  private final DocIdSetIterator lead;
-  private final List<DocIdSetIterator> others;
+  private final int maxDoc;
+  private final List<DisiWrapper> iterators;
+  private final SimpleScorable scorable;
 
   private final FixedBitSet windowMatches = new FixedBitSet(WINDOW_SIZE);
   private final FixedBitSet clauseWindowMatches = new FixedBitSet(WINDOW_SIZE);
-  private final DocIdStreamView docIdStreamView = new DocIdStreamView();
+  private final List<DocIdSetIterator> windowApproximations = new ArrayList<>();
+  private final List<TwoPhaseIterator> windowTwoPhases = new ArrayList<>();
 
-  DenseConjunctionBulkScorer(List<DocIdSetIterator> iterators) {
-    if (iterators.size() <= 1) {
-      throw new IllegalArgumentException("Expected 2 or more clauses, got " + iterators.size());
+  static DenseConjunctionBulkScorer of(List<Scorer> filters, int maxDoc, float constantScore) {
+    List<DocIdSetIterator> iterators = new ArrayList<>();
+    List<TwoPhaseIterator> twoPhases = new ArrayList<>();
+    for (Scorer filter : filters) {
+      TwoPhaseIterator twoPhase = filter.twoPhaseIterator();
+      if (twoPhase != null) {
+        twoPhases.add(twoPhase);
+      } else {
+        iterators.add(filter.iterator());
+      }
     }
-    iterators = new ArrayList<>(iterators);
-    iterators.sort(Comparator.comparingLong(DocIdSetIterator::cost));
-    lead = iterators.get(0);
-    others = List.copyOf(iterators.subList(1, iterators.size()));
+    return new DenseConjunctionBulkScorer(iterators, twoPhases, maxDoc, constantScore);
+  }
+
+  DenseConjunctionBulkScorer(
+      List<DocIdSetIterator> iterators,
+      List<TwoPhaseIterator> twoPhases,
+      int maxDoc,
+      float constantScore) {
+    if (iterators.isEmpty() && twoPhases.isEmpty()) {
+      throw new IllegalArgumentException("Expected one or more iterators, got 0");
+    }
+    this.maxDoc = maxDoc;
+    this.iterators = new ArrayList<>();
+    for (DocIdSetIterator iterator : iterators) {
+      this.iterators.add(new DisiWrapper(iterator));
+    }
+    for (TwoPhaseIterator twoPhase : twoPhases) {
+      this.iterators.add(new DisiWrapper(twoPhase));
+    }
+    this.iterators.sort(Comparator.comparing(w -> w.approximation().cost()));
+    this.scorable = new SimpleScorable();
+    scorable.score = constantScore;
   }
 
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
-    for (DocIdSetIterator it : others) {
-      min = Math.max(min, it.docID());
+    collector.setScorer(scorable);
+
+    List<DisiWrapper> iterators = this.iterators;
+    if (collector.competitiveIterator() != null) {
+      iterators = new ArrayList<>(iterators);
+      iterators.add(new DisiWrapper(collector.competitiveIterator()));
     }
 
+    for (DisiWrapper w : iterators) {
+      min = Math.max(min, w.approximation().docID());
+    }
+
+    max = Math.min(max, maxDoc);
+
+    DisiWrapper lead = iterators.get(0);
     if (lead.docID() < min) {
-      lead.advance(min);
+      min = lead.approximation.advance(min);
     }
 
-    if (lead.docID() >= max) {
+    while (min < max) {
+      if (scorable.minCompetitiveScore > scorable.score) {
+        return DocIdSetIterator.NO_MORE_DOCS;
+      }
+      min = scoreWindow(collector, acceptDocs, iterators, min, max);
+    }
+
+    if (lead.docID() > max) {
       return lead.docID();
+    } else if (max >= maxDoc) {
+      return DocIdSetIterator.NO_MORE_DOCS;
+    } else {
+      return max;
     }
-
-    // This scorer is only used for conjunctions of FILTER clauses, so we set a simple scorer that
-    // always returns a score of zero.
-    collector.setScorer(new SimpleScorable());
-    List<DocIdSetIterator> otherIterators = this.others;
-    DocIdSetIterator collectorIterator = collector.competitiveIterator();
-    if (collectorIterator != null) {
-      otherIterators = new ArrayList<>(otherIterators);
-      otherIterators.add(collectorIterator);
-    }
-
-    final DocIdSetIterator[] others = otherIterators.toArray(DocIdSetIterator[]::new);
-
-    int windowMax;
-    do {
-      windowMax = (int) Math.min(max, (long) lead.docID() + WINDOW_SIZE);
-      scoreWindowUsingBitSet(collector, acceptDocs, others, windowMax);
-    } while (windowMax < max);
-
-    return lead.docID();
   }
 
   private static int advance(FixedBitSet set, int i) {
@@ -98,34 +150,108 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     }
   }
 
-  private void scoreWindowUsingBitSet(
-      LeafCollector collector, Bits acceptDocs, DocIdSetIterator[] others, int max)
+  private int scoreWindow(
+      LeafCollector collector, Bits acceptDocs, List<DisiWrapper> iterators, int min, int max)
       throws IOException {
+
+    // Advance all iterators to the first doc that is greater than or equal to min. This is
+    // important as this is the only place where we can take advantage of a large gap between
+    // consecutive matches in any clause.
+    for (DisiWrapper w : iterators) {
+      if (w.docID() >= min) {
+        min = w.docID();
+      } else {
+        min = w.approximation().advance(min);
+      }
+      if (min >= max) {
+        return min;
+      }
+    }
+
+    // Partition clauses of the conjunction into:
+    //  - clauses that don't fully match the first half of the window and get evaluated via
+    // #loadIntoBitSet or leaf-frog,
+    //  - other clauses that are used to compute the greatest possible window size that they fully
+    // match.
+    // This logic helps align scoring windows with the natural #docIDRunEnd() boundaries of the
+    // data, which helps evaluate fewer clauses per window - without allowing windows to become too
+    // small thanks to the WINDOW_SIZE/2 threshold.
+    int minDocIDRunEnd = max;
+    final int minRunEndThreshold = MathUtil.unsignedMin(min + WINDOW_SIZE / 2, max);
+    for (DisiWrapper w : iterators) {
+      int docIdRunEnd = w.docIDRunEnd();
+      if (w.docID() > min || docIdRunEnd < minRunEndThreshold) {
+        windowApproximations.add(w.approximation());
+        if (w.twoPhase() != null) {
+          windowTwoPhases.add(w.twoPhase());
+        }
+      } else {
+        minDocIDRunEnd = Math.min(minDocIDRunEnd, docIdRunEnd);
+      }
+    }
+
+    if (acceptDocs == null && windowApproximations.isEmpty()) {
+      // We have a large range of doc IDs that all match.
+      collector.collectRange(min, minDocIDRunEnd);
+      return minDocIDRunEnd;
+    }
+
+    int bitsetWindowMax = MathUtil.unsignedMin(minDocIDRunEnd, WINDOW_SIZE + min);
+
+    if (windowTwoPhases.isEmpty()) {
+      scoreWindowUsingBitSet(collector, acceptDocs, windowApproximations, min, bitsetWindowMax);
+    } else {
+      windowTwoPhases.sort(Comparator.comparingDouble(TwoPhaseIterator::matchCost));
+      scoreWindowUsingLeapFrog(
+          collector, acceptDocs, windowApproximations, windowTwoPhases, min, bitsetWindowMax);
+      windowTwoPhases.clear();
+    }
+    windowApproximations.clear();
+
+    return bitsetWindowMax;
+  }
+
+  private void scoreWindowUsingBitSet(
+      LeafCollector collector,
+      Bits acceptDocs,
+      List<DocIdSetIterator> iterators,
+      int windowBase,
+      int windowMax)
+      throws IOException {
+    assert windowMax > windowBase;
     assert windowMatches.scanIsEmpty();
     assert clauseWindowMatches.scanIsEmpty();
 
-    int offset = lead.docID();
-    lead.intoBitSet(max, windowMatches, offset);
-    if (acceptDocs != null) {
-      // Apply live docs.
-      acceptDocs.applyMask(windowMatches, offset);
+    if (iterators.isEmpty()) {
+      // This happens if all clauses fully matched the window and there are deleted docs.
+      windowMatches.set(0, windowMax - windowBase);
+    } else {
+      DocIdSetIterator lead = iterators.get(0);
+      if (lead.docID() < windowBase) {
+        lead.advance(windowBase);
+      }
+      lead.intoBitSet(windowMax, windowMatches, windowBase);
     }
 
-    int upTo = 0;
-    for (;
-        upTo < others.length
-            && windowMatches.cardinality() >= WINDOW_SIZE / DENSITY_THRESHOLD_INVERSE;
-        upTo++) {
-      DocIdSetIterator other = others[upTo];
-      if (other.docID() < offset) {
-        other.advance(offset);
+    if (acceptDocs != null) {
+      // Apply live docs.
+      acceptDocs.applyMask(windowMatches, windowBase);
+    }
+
+    int windowSize = windowMax - windowBase;
+    int threshold = windowSize / DENSITY_THRESHOLD_INVERSE;
+    int upTo = 1; // the leading clause at index 0 is already applied
+    for (; upTo < iterators.size() && windowMatches.cardinality() >= threshold; upTo++) {
+      DocIdSetIterator other = iterators.get(upTo);
+      if (other.docID() < windowBase) {
+        other.advance(windowBase);
       }
-      other.intoBitSet(max, clauseWindowMatches, offset);
+      other.intoBitSet(windowMax, clauseWindowMatches, windowBase);
       windowMatches.and(clauseWindowMatches);
       clauseWindowMatches.clear();
     }
 
-    if (upTo < others.length) {
+    if (upTo < iterators.size()) {
       // If the leading clause is sparse on this doc ID range or if the intersection became sparse
       // after applying a few clauses, we finish evaluating the intersection using the traditional
       // leap-frog approach. This proved important with a query such as "+secretary +of +state" on
@@ -134,65 +260,100 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
       advanceHead:
       for (int windowMatch = windowMatches.nextSetBit(0);
           windowMatch != DocIdSetIterator.NO_MORE_DOCS; ) {
-        int doc = offset + windowMatch;
-        for (int i = upTo; i < others.length; ++i) {
-          DocIdSetIterator other = others[i];
+        int doc = windowBase + windowMatch;
+        for (int i = upTo; i < iterators.size(); ++i) {
+          DocIdSetIterator other = iterators.get(i);
           int otherDoc = other.docID();
           if (otherDoc < doc) {
             otherDoc = other.advance(doc);
           }
           if (doc != otherDoc) {
-            int clearUpTo = Math.min(WINDOW_SIZE, otherDoc - offset);
-            windowMatches.clear(windowMatch, clearUpTo);
-            windowMatch = advance(windowMatches, clearUpTo);
+            windowMatch = advance(windowMatches, otherDoc - windowBase);
             continue advanceHead;
           }
         }
+        collector.collect(doc);
         windowMatch = advance(windowMatches, windowMatch + 1);
       }
+    } else {
+      collector.collect(new BitSetDocIdStream(windowMatches, windowBase));
     }
 
-    docIdStreamView.offset = offset;
-    collector.collect(docIdStreamView);
     windowMatches.clear();
+  }
 
-    // If another clause is more advanced than lead1 then advance lead1, it's important to take
-    // advantage of large gaps in the postings lists of other clauses.
-    int maxOtherDocID = -1;
-    for (DocIdSetIterator other : others) {
-      maxOtherDocID = Math.max(maxOtherDocID, other.docID());
-    }
-    if (lead.docID() < maxOtherDocID) {
-      lead.advance(maxOtherDocID);
+  private static void scoreWindowUsingLeapFrog(
+      LeafCollector collector,
+      Bits acceptDocs,
+      List<DocIdSetIterator> approximations,
+      List<TwoPhaseIterator> twoPhases,
+      int min,
+      int max)
+      throws IOException {
+    assert twoPhases.size() > 0;
+    assert approximations.size() >= twoPhases.size();
+
+    if (approximations.size() == 1) {
+      // scoreWindowUsingLeapFrog is only used if there is at least one two-phase iterator, so our
+      // single clause is a two-phase iterator
+      assert twoPhases.size() == 1;
+      DocIdSetIterator approximation = approximations.get(0);
+      TwoPhaseIterator twoPhase = twoPhases.get(0);
+      if (approximation.docID() < min) {
+        approximation.advance(min);
+      }
+      for (int doc = approximation.docID(); doc < max; doc = approximation.nextDoc()) {
+        if ((acceptDocs == null || acceptDocs.get(doc)) && twoPhase.matches()) {
+          collector.collect(doc);
+        }
+      }
+    } else {
+      DocIdSetIterator lead1 = approximations.get(0);
+      DocIdSetIterator lead2 = approximations.get(1);
+
+      if (lead1.docID() < min) {
+        lead1.advance(min);
+      }
+
+      advanceHead:
+      for (int doc = lead1.docID(); doc < max; ) {
+        if (acceptDocs != null && acceptDocs.get(doc) == false) {
+          doc = lead1.nextDoc();
+          continue;
+        }
+        int doc2 = lead2.docID();
+        if (doc2 < doc) {
+          doc2 = lead2.advance(doc);
+        }
+        if (doc != doc2) {
+          doc = lead1.advance(Math.min(doc2, max));
+          continue;
+        }
+        for (int i = 2; i < approximations.size(); ++i) {
+          DocIdSetIterator other = approximations.get(i);
+          int docN = other.docID();
+          if (docN < doc) {
+            docN = other.advance(doc);
+          }
+          if (doc != docN) {
+            doc = lead1.advance(Math.min(docN, max));
+            continue advanceHead;
+          }
+        }
+        for (TwoPhaseIterator twoPhase : twoPhases) {
+          if (twoPhase.matches() == false) {
+            doc = lead1.nextDoc();
+            continue advanceHead;
+          }
+        }
+        collector.collect(doc);
+        doc = lead1.nextDoc();
+      }
     }
   }
 
   @Override
   public long cost() {
-    return lead.cost();
-  }
-
-  final class DocIdStreamView extends DocIdStream {
-
-    int offset;
-
-    @Override
-    public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
-      int offset = this.offset;
-      long[] bitArray = windowMatches.getBits();
-      for (int idx = 0; idx < bitArray.length; idx++) {
-        long bits = bitArray[idx];
-        while (bits != 0L) {
-          int ntz = Long.numberOfTrailingZeros(bits);
-          consumer.accept(offset + ((idx << 6) | ntz));
-          bits ^= 1L << ntz;
-        }
-      }
-    }
-
-    @Override
-    public int count() throws IOException {
-      return windowMatches.cardinality();
-    }
+    return iterators.get(0).approximation().cost();
   }
 }

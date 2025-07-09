@@ -319,6 +319,8 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
           IOException ioe) {
         writer.rollback();
         failure.clearDoFail();
+      } finally {
+        writer.close();
       }
       if (VERBOSE) {
         System.out.println("TEST: success=" + success);

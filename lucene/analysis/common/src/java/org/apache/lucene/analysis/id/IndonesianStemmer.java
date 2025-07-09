@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.analysis.id;
 
-import static org.apache.lucene.analysis.util.StemmerUtil.*;
+import static org.apache.lucene.analysis.util.StemmerUtil.deleteN;
+import static org.apache.lucene.analysis.util.StemmerUtil.endsWith;
+import static org.apache.lucene.analysis.util.StemmerUtil.startsWith;
 
 /**
  * Stemmer for Indonesian.

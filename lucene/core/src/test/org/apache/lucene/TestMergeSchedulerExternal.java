@@ -41,7 +41,7 @@ import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.PrintStreamInfoStream;
-import org.junit.AfterClass;
+import org.junit.After;
 
 /**
  * Holds tests cases to verify external APIs are accessible while not being in
@@ -52,7 +52,7 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
   volatile boolean mergeCalled;
   volatile boolean mergeThreadCreated;
   volatile boolean excCalled;
-  static volatile InfoStream infoStream;
+  volatile InfoStream infoStream;
 
   private class MyMergeScheduler extends ConcurrentMergeScheduler {
 
@@ -87,7 +87,7 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
     }
   }
 
-  private static class FailOnlyOnMerge extends MockDirectoryWrapper.Failure {
+  private class FailOnlyOnMerge extends MockDirectoryWrapper.Failure {
     @Override
     public void eval(MockDirectoryWrapper dir) throws IOException {
       if (callStackContainsAnyOf("doMerge")) {
@@ -103,8 +103,8 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
     }
   }
 
-  @AfterClass
-  public static void afterClass() {
+  @After
+  public void after() {
     infoStream = null;
   }
 
@@ -116,9 +116,10 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
     Field idField = newStringField("id", "", Field.Store.YES);
     doc.add(idField);
 
+    MyMergeScheduler mergeScheduler = new MyMergeScheduler();
     IndexWriterConfig iwc =
         newIndexWriterConfig(new MockAnalyzer(random()))
-            .setMergeScheduler(new MyMergeScheduler())
+            .setMergeScheduler(mergeScheduler)
             .setMaxBufferedDocs(2)
             .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
             .setMergePolicy(newLogMergePolicy());
@@ -141,13 +142,7 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
       // OK
     }
 
-    try {
-      ((MyMergeScheduler) writer.getConfig().getMergeScheduler()).sync();
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException ise) {
-      // OK
-    }
+    mergeScheduler.sync();
     writer.rollback();
 
     try {

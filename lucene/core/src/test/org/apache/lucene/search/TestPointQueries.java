@@ -772,6 +772,7 @@ public class TestPointQueries extends LuceneTestCase {
 
       if (missing.get(id) == false) {
         doc.add(new BinaryPoint("value", docValues[ord]));
+        doc.add(new SortedNumericDocValuesField("value", 1));
         if (VERBOSE) {
           System.out.println("id=" + id);
           for (int dim = 0; dim < numDims; dim++) {
@@ -2465,6 +2466,66 @@ public class TestPointQueries extends LuceneTestCase {
     dir.close();
   }
 
+  public void testRangeQueryOptimizesRewrites() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig());
+
+    int numDims = randomIntValue(1, PointValues.MAX_INDEX_DIMENSIONS);
+    int[] point = new int[numDims];
+    int[] lower = new int[numDims];
+    int[] upper = new int[numDims];
+
+    for (int i = 0; i < numDims; i++) {
+      point[i] = randomIntValue(1, 10);
+      lower[i] = point[i] - randomIntValue(0, 5);
+      upper[i] = point[i] + randomIntValue(0, 5);
+    }
+
+    // Should rewrite to match all docs query if fully contained
+    w.addDocument(
+        List.of(new IntPoint("field", point), new SortedNumericDocValuesField("field", 1)));
+
+    IndexReader reader = w.getReader();
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    Query query = IntPoint.newRangeQuery("field", lower, upper);
+    Query rewritten = searcher.rewrite(query);
+    assertTrue(
+        "Expected MatchAllDocsQuery, but got [" + rewritten.getClass().getName() + "]",
+        rewritten instanceof MatchAllDocsQuery);
+    assertEquals(1, searcher.count(query));
+
+    // Should rewrite to FieldExistsQuery if fully contained but not all docs have values
+    w.addDocument(new Document());
+    w.forceMerge(1);
+
+    reader.close();
+    reader = w.getReader();
+    searcher = new IndexSearcher(reader);
+    rewritten = searcher.rewrite(query);
+    assertTrue(
+        "Expected FieldExistsQuery, but got [" + rewritten.getClass().getName() + "]",
+        rewritten instanceof FieldExistsQuery);
+    assertEquals(1, searcher.count(query));
+
+    // Should fallback to MatchNoDocsQuery if no docs have values
+    for (int i = 0; i < numDims; i++) {
+      lower[i] = point[i] - 3;
+      upper[i] = point[i] - 2;
+    }
+
+    query = IntPoint.newRangeQuery("field", lower, upper);
+    rewritten = searcher.rewrite(query);
+    assertTrue(
+        "Expected MatchNoDocsQuery, but got [" + rewritten.getClass().getName() + "]",
+        rewritten instanceof MatchNoDocsQuery);
+    assertEquals(0, searcher.count(query));
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
+
   public void testRangeQuerySkipsNonMatchingSegments() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
@@ -2496,5 +2557,75 @@ public class TestPointQueries extends LuceneTestCase {
     reader.close();
     w.close();
     dir.close();
+  }
+
+  public void testPointInSetQuerySkipsNonMatchingSegments() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    Document doc = new Document();
+    doc.add(new IntPoint("field", 10));
+    doc.add(new IntPoint("field2d", 10, 10));
+    w.addDocument(doc);
+
+    DirectoryReader reader = DirectoryReader.open(w);
+    IndexSearcher searcher = newSearcher(reader);
+
+    Query query = IntPoint.newSetQuery("field", 1, 3, 5);
+    Weight weight =
+        searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    query = IntPoint.newSetQuery("field", 11, 13, 15);
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    query = IntPoint.newSetQuery("field", 5, 10, 15);
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNotNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    query = newMultiDimIntSetQuery("field2d", 2, 5, 5);
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    query = newMultiDimIntSetQuery("field2d", 2, 15, 15);
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    query = newMultiDimIntSetQuery("field2d", 2, 10, 10);
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNotNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testOutOfOrderValuesInPointInSetQuery() throws Exception {
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              new PointInSetQuery(
+                  "foo",
+                  1,
+                  1,
+                  new PointInSetQuery.Stream() {
+                    private final BytesRef[] values = {
+                      newBytesRef(new byte[] {2}), newBytesRef(new byte[] {1}) // out of order
+                    };
+                    int index = 0;
+
+                    @Override
+                    public BytesRef next() {
+                      return index < values.length ? values[index++] : null;
+                    }
+                  }) {
+                @Override
+                protected String toString(byte[] point) {
+                  return Arrays.toString(point);
+                }
+              };
+            });
+    assertEquals("values are out of order: saw [2] before [1]", expected.getMessage());
   }
 }

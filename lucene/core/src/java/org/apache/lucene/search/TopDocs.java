@@ -16,7 +16,11 @@
  */
 package org.apache.lucene.search;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.lucene.util.PriorityQueue;
 
 /** Represents hits returned by {@link IndexSearcher#search(Query,int)}. */
@@ -88,14 +92,12 @@ public class TopDocs {
     return value < 0;
   }
 
-  // Specialized MergeSortQueue that just merges by
-  // relevance score, descending:
-  private static class ScoreMergeSortQueue extends PriorityQueue<ShardRef> {
-    final ScoreDoc[][] shardHits;
-    final Comparator<ScoreDoc> tieBreakerComparator;
+  // LessThan that just sorts by relevance score, descending:
+  private static class ScoreLessThan implements PriorityQueue.LessThan<ShardRef> {
+    private final ScoreDoc[][] shardHits;
+    private final Comparator<ScoreDoc> tieBreakerComparator;
 
-    public ScoreMergeSortQueue(TopDocs[] shardHits, Comparator<ScoreDoc> tieBreakerComparator) {
-      super(shardHits.length);
+    public ScoreLessThan(TopDocs[] shardHits, Comparator<ScoreDoc> tieBreakerComparator) {
       this.shardHits = new ScoreDoc[shardHits.length][];
       for (int shardIDX = 0; shardIDX < shardHits.length; shardIDX++) {
         this.shardHits[shardIDX] = shardHits[shardIDX].scoreDocs;
@@ -119,16 +121,14 @@ public class TopDocs {
     }
   }
 
-  @SuppressWarnings({"rawtypes", "unchecked"})
-  private static class MergeSortQueue extends PriorityQueue<ShardRef> {
+  private static class ShardRefLessThan implements PriorityQueue.LessThan<ShardRef> {
     // These are really FieldDoc instances:
     final ScoreDoc[][] shardHits;
     final FieldComparator<?>[] comparators;
     final int[] reverseMul;
     final Comparator<ScoreDoc> tieBreaker;
 
-    public MergeSortQueue(Sort sort, TopDocs[] shardHits, Comparator<ScoreDoc> tieBreaker) {
-      super(shardHits.length);
+    private ShardRefLessThan(Sort sort, TopDocs[] shardHits, Comparator<ScoreDoc> tieBreaker) {
       this.shardHits = new ScoreDoc[shardHits.length][];
       this.tieBreaker = tieBreaker;
       for (int shardIDX = 0; shardIDX < shardHits.length; shardIDX++) {
@@ -155,7 +155,7 @@ public class TopDocs {
       }
 
       final SortField[] sortFields = sort.getSort();
-      comparators = new FieldComparator[sortFields.length];
+      comparators = new FieldComparator<?>[sortFields.length];
       reverseMul = new int[sortFields.length];
       for (int compIDX = 0; compIDX < sortFields.length; compIDX++) {
         final SortField sortField = sortFields[compIDX];
@@ -166,6 +166,7 @@ public class TopDocs {
 
     // Returns true if first is < second
     @Override
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public boolean lessThan(ShardRef first, ShardRef second) {
       assert first != second;
       final FieldDoc firstFD = (FieldDoc) shardHits[first.shardIndex][first.hitIndex];
@@ -279,9 +280,10 @@ public class TopDocs {
 
     final PriorityQueue<ShardRef> queue;
     if (sort == null) {
-      queue = new ScoreMergeSortQueue(shardHits, tieBreaker);
+      queue = new PriorityQueue<>(shardHits.length, new ScoreLessThan(shardHits, tieBreaker));
     } else {
-      queue = new MergeSortQueue(sort, shardHits, tieBreaker);
+      queue =
+          new PriorityQueue<>(shardHits.length, new ShardRefLessThan(sort, shardHits, tieBreaker));
     }
 
     long totalHitCount = 0;
@@ -349,5 +351,85 @@ public class TopDocs {
     } else {
       return new TopFieldDocs(totalHits, hits, sort.getSort());
     }
+  }
+
+  private record ShardIndexAndDoc(int shardIndex, int doc) {}
+
+  /**
+   * Reciprocal Rank Fusion method.
+   *
+   * <p>This method combines different search results into a single ranked list by combining their
+   * ranks. This is especially well suited when combining hits computed via different methods, whose
+   * score distributions are hardly comparable.
+   *
+   * @param topN the top N results to be returned
+   * @param k a constant determines how much influence documents in individual rankings have on the
+   *     final result. A higher value gives lower rank documents more influence. k should be greater
+   *     than or equal to 1.
+   * @param hits a list of TopDocs to apply RRF on
+   * @return a TopDocs contains the top N ranked results.
+   */
+  public static TopDocs rrf(int topN, int k, TopDocs[] hits) {
+    if (topN < 1) {
+      throw new IllegalArgumentException("topN must be >= 1, got " + topN);
+    }
+    if (k < 1) {
+      throw new IllegalArgumentException("k must be >= 1, got " + k);
+    }
+
+    Boolean shardIndexSet = null;
+    for (TopDocs topDocs : hits) {
+      for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+        boolean thisShardIndexSet = scoreDoc.shardIndex != -1;
+        if (shardIndexSet == null) {
+          shardIndexSet = thisShardIndexSet;
+        } else if (shardIndexSet.booleanValue() != thisShardIndexSet) {
+          throw new IllegalArgumentException(
+              "All hits must either have their ScoreDoc#shardIndex set, or unset (-1), not a mix of both.");
+        }
+      }
+    }
+
+    // Compute the rrf score as a double to reduce accuracy loss due to floating-point arithmetic.
+    Map<ShardIndexAndDoc, Double> rrfScore = new HashMap<>();
+    long totalHitCount = 0;
+    for (TopDocs topDoc : hits) {
+      // A document is a hit globally if it is a hit for any of the top docs, so we compute the
+      // total hit count as the max total hit count.
+      totalHitCount = Math.max(totalHitCount, topDoc.totalHits.value());
+      for (int i = 0; i < topDoc.scoreDocs.length; ++i) {
+        ScoreDoc scoreDoc = topDoc.scoreDocs[i];
+        int rank = i + 1;
+        double rrfScoreContribution = 1d / Math.addExact(k, rank);
+        rrfScore.compute(
+            new ShardIndexAndDoc(scoreDoc.shardIndex, scoreDoc.doc),
+            (_, score) -> (score == null ? 0 : score) + rrfScoreContribution);
+      }
+    }
+
+    List<Map.Entry<ShardIndexAndDoc, Double>> rrfScoreRank = new ArrayList<>(rrfScore.entrySet());
+    rrfScoreRank.sort(
+        // Sort by descending score
+        Map.Entry.<ShardIndexAndDoc, Double>comparingByValue()
+            .reversed()
+            // Tie-break by doc ID, then shard index (like TopDocs#merge)
+            .thenComparing(
+                Map.Entry.<ShardIndexAndDoc, Double>comparingByKey(
+                    Comparator.comparingInt(ShardIndexAndDoc::doc)))
+            .thenComparing(
+                Map.Entry.<ShardIndexAndDoc, Double>comparingByKey(
+                    Comparator.comparingInt(ShardIndexAndDoc::shardIndex))));
+
+    ScoreDoc[] rrfScoreDocs = new ScoreDoc[Math.min(topN, rrfScoreRank.size())];
+    for (int i = 0; i < rrfScoreDocs.length; i++) {
+      Map.Entry<ShardIndexAndDoc, Double> entry = rrfScoreRank.get(i);
+      int doc = entry.getKey().doc;
+      int shardIndex = entry.getKey().shardIndex();
+      float score = entry.getValue().floatValue();
+      rrfScoreDocs[i] = new ScoreDoc(doc, score, shardIndex);
+    }
+
+    TotalHits totalHits = new TotalHits(totalHitCount, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO);
+    return new TopDocs(totalHits, rrfScoreDocs);
   }
 }

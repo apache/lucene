@@ -29,6 +29,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.Random;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 import org.apache.lucene.util.Constants;
 
 /** Basic tests for WindowsFS */
@@ -37,11 +38,6 @@ public class TestWindowsFS extends MockFileSystemTestCase {
   @Override
   public void setUp() throws Exception {
     super.setUp();
-    // irony: currently we don't emulate windows well enough to work on windows!
-    // TODO: Can we fork this class and create a new class with only those tests that can run on
-    // Windows and then check if
-    // the Lucene WindowsFS error is same as the one OG Windows throws
-    assumeFalse("windows is not supported", Constants.WINDOWS);
   }
 
   @Override
@@ -188,8 +184,12 @@ public class TestWindowsFS extends MockFileSystemTestCase {
   }
 
   public void testFileName() {
-    Character[] reservedCharacters = WindowsPath.RESERVED_CHARACTERS.toArray(new Character[0]);
-    String[] reservedNames = WindowsPath.RESERVED_NAMES.toArray(new String[0]);
+    Character[] reservedCharacters =
+        WindowsPath.RESERVED_CHARACTERS.stream()
+            .filter(Predicate.not(Character.valueOf('\\')::equals))
+            .sorted()
+            .toArray(Character[]::new);
+    String[] reservedNames = WindowsPath.RESERVED_NAMES.stream().sorted().toArray(String[]::new);
     String fileName;
     Random r = random();
     Path dir = wrap(createTempDir());
@@ -197,21 +197,27 @@ public class TestWindowsFS extends MockFileSystemTestCase {
     if (r.nextBoolean()) {
       // We need at least one char after the special char
       // For example, in case of '/' we interpret `foo/` to just be a file `foo` which is valid
+      // We need at least 2 chars before the special character, because resolving a drive
+      // letter (C:) or a path starting with "/" will not fail on real Windows.
       fileName =
-          RandomStrings.randomAsciiLettersOfLength(r, r.nextInt(10))
+          RandomStrings.randomAsciiLettersOfLength(r, r.nextInt(2, 10))
               + reservedCharacters[r.nextInt(reservedCharacters.length)]
               + RandomStrings.randomAsciiLettersOfLength(r, r.nextInt(1, 10));
     } else {
       fileName = reservedNames[r.nextInt(reservedNames.length)];
     }
-    expectThrows(InvalidPathException.class, () -> dir.resolve(fileName));
+    expectThrows(InvalidPathException.class, fileName, () -> dir.resolve(fileName));
 
     // some other basic tests
     expectThrows(InvalidPathException.class, () -> dir.resolve("foo:bar"));
     expectThrows(InvalidPathException.class, () -> dir.resolve("foo:bar:tar"));
     expectThrows(InvalidPathException.class, () -> dir.resolve("foo?bar"));
     expectThrows(InvalidPathException.class, () -> dir.resolve("foo<bar"));
-    expectThrows(InvalidPathException.class, () -> dir.resolve("foo\\bar"));
+    if (!Constants.WINDOWS) {
+      // we need to exclude that test on Windows, because the backslash is resolved before our code
+      // checks the filename:
+      expectThrows(InvalidPathException.class, () -> dir.resolve("foo\\bar"));
+    }
     expectThrows(InvalidPathException.class, () -> dir.resolve("foo*bar|tar"));
     expectThrows(InvalidPathException.class, () -> dir.resolve("foo|bar?tar"));
   }

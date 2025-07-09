@@ -1066,7 +1066,7 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
             return new TokenStreamComponents(
-                r -> {},
+                _ -> {},
                 new CannedTokenStream(
                     token("hairy", 1, 1), token("smelly", 0, 1), token("dog", 1, 1)));
           }
@@ -1265,7 +1265,7 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
             return new TokenStreamComponents(
-                r -> {}, new CannedTokenStream(new Token("a", 0, 1), new Token("b", 0, 0, 1)));
+                _ -> {}, new CannedTokenStream(new Token("a", 0, 1), new Token("b", 0, 0, 1)));
           }
         };
 

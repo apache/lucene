@@ -49,6 +49,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.MultiTerms;
@@ -1767,5 +1768,36 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
     assertNull(te.next());
 
     IOUtils.close(reader, w2, dir1, dir2);
+  }
+
+  public void testDocIDRunEnd() throws Exception {
+    Directory dir = newDirectory();
+    for (int iter = 0; iter < 100; ++iter) {
+      IndexWriterConfig iwc = newIndexWriterConfig(null).setOpenMode(OpenMode.CREATE);
+      iwc.setCodec(getCodec());
+      // Prevent randomization from slowing down indexing too much
+      if (iwc.getMaxBufferedDocs() < 1_000) {
+        iwc.setMaxBufferedDocs(1_000);
+      }
+      IndexWriter iw = new IndexWriter(dir, iwc);
+      Document emptyDoc = new Document();
+      Document doc = new Document();
+      doc.add(new StringField("", "something", Field.Store.NO));
+      int numEmptyDocs = TestUtil.nextInt(random(), 0, 5_000);
+      int numDocs = TestUtil.nextInt(random(), 4096, 20_000);
+      for (int i = 0; i < numEmptyDocs; ++i) {
+        iw.addDocument(emptyDoc);
+      }
+      for (int i = 0; i < numDocs; ++i) {
+        iw.addDocument(doc);
+      }
+      iw.forceMerge(1);
+      DirectoryReader ir = DirectoryReader.open(iw);
+      LeafReader ar = getOnlyLeafReader(ir);
+      TestUtil.checkReader(ar);
+      ir.close();
+      iw.close();
+    }
+    dir.close();
   }
 }

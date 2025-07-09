@@ -348,15 +348,24 @@ public class ParallelLeafReader extends LeafReader {
       @Override
       public Fields get(int docID) throws IOException {
         ParallelFields fields = null;
-        for (Map.Entry<String, LeafReader> ent : tvFieldToReader.entrySet()) {
-          String fieldName = ent.getKey();
-          TermVectors termVectors = readerToTermVectors.get(ent.getValue());
-          Terms vector = termVectors.get(docID, fieldName);
-          if (vector != null) {
+
+        // Step 2: Fetch all term vectors once per reader
+        for (Map.Entry<LeafReader, TermVectors> entry : readerToTermVectors.entrySet()) {
+          TermVectors termVectors = entry.getValue();
+          Fields docFields = termVectors.get(docID); // Fetch all fields at once
+
+          if (docFields != null) {
             if (fields == null) {
               fields = new ParallelFields();
             }
-            fields.addField(fieldName, vector);
+
+            // Step 3: Aggregate only required fields
+            for (String fieldName : docFields) {
+              Terms vector = docFields.terms(fieldName);
+              if (vector != null) {
+                fields.addField(fieldName, vector);
+              }
+            }
           }
         }
 

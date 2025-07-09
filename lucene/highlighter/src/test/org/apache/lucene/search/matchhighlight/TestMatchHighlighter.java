@@ -501,7 +501,7 @@ public class TestMatchHighlighter extends LuceneTestCase {
                     new MatchHighlighter(searcher, analyzer)
                         .appendFieldHighlighter(
                             FieldValueHighlighters.highlighted(
-                                80 * 3, 1, new PassageFormatter("...", ">", "<"), fld -> true))
+                                80 * 3, 1, new PassageFormatter("...", ">", "<"), _ -> true))
                         .appendFieldHighlighter(FieldValueHighlighters.skipRemaining());
 
                 StandardQueryParser qp = new StandardQueryParser(analyzer);
@@ -746,7 +746,7 @@ public class TestMatchHighlighter extends LuceneTestCase {
                       new PassageFormatter(
                           "...",
                           (range) -> "<span class='" + queryToClass.apply(range) + "'>",
-                          (range) -> "</span>");
+                          (_) -> "</span>");
 
                   return passageFormatter.format(contiguousValue, bestPassages, valueRanges);
                 }

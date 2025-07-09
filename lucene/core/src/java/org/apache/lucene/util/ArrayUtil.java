@@ -347,6 +347,30 @@ public final class ArrayUtil {
   }
 
   /**
+   * Returns an array whose size is at least {@code minLength} but not over {@code maxLength},
+   * growing exponentially if it needs to grow.
+   */
+  public static float[] growInRange(float[] array, int minLength, int maxLength) {
+    assert minLength >= 0
+        : "minLength must be positive (got " + minLength + "): likely integer overflow?";
+
+    if (minLength > maxLength) {
+      throw new IllegalArgumentException(
+          "requested minimum array length "
+              + minLength
+              + " is larger than requested maximum array length "
+              + maxLength);
+    }
+
+    if (array.length >= minLength) {
+      return array;
+    }
+
+    int potentialLength = oversize(minLength, Float.BYTES);
+    return growExact(array, Math.min(maxLength, potentialLength));
+  }
+
+  /**
    * Returns an array whose size is at least {@code minSize}, generally over-allocating
    * exponentially
    */

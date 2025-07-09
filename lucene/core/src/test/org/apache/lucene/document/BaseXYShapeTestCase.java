@@ -243,11 +243,7 @@ public abstract class BaseXYShapeTestCase extends BaseSpatialTestCase {
       }
     };
 
-    static ShapeType[] subList;
-
-    static {
-      subList = new ShapeType[] {POINT, LINE, POLYGON};
-    }
+    private static final ShapeType[] subList = new ShapeType[] {POINT, LINE, POLYGON};
 
     public abstract Object nextShape();
   }

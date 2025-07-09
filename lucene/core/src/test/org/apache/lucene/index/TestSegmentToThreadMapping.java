@@ -393,7 +393,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     IndexReader r = w.getReader();
     w.close();
 
-    IndexSearcher s = new IndexSearcher(r, command -> {});
+    IndexSearcher s = new IndexSearcher(r, _ -> {});
     IndexSearcher.LeafSlice[] slices = s.getSlices();
     assertNotNull(slices);
 
@@ -422,7 +422,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     w.close();
 
     IndexSearcher s =
-        new IndexSearcher(r, command -> {}) {
+        new IndexSearcher(r, _ -> {}) {
           @Override
           protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
             // force partitioning of segment with max docs per slice set to 1: 1 doc per partition.
