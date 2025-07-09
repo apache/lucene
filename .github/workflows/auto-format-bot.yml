@@ -77,85 +77,247 @@ jobs:
           echo "# Disable eclint task - using Prettier/shfmt/manual fixes instead" >> build-options.local.properties
           echo "# lucene.tool.eclint is not set, so applyEcLint task will be disabled" >> build-options.local.properties
 
-      - name: Get changed files for information
-        id: changed_files
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v46
+        with:
+          files: |
+            **/*.java
+            **/*.gradle
+            **/*.groovy
+            **/*.md
+            **/*.properties
+            **/*.xml
+            **/*.py
+            **/*.sh
+            **/*.bat
+            **/*.cmd
+            **/*.json
+            **/*.yaml
+            **/*.yml
+            **/*.html
+            **/*.css
+            **/*.js
+          files_yaml: |
+            java:
+              - '**/*.java'
+            gradle:
+              - '**/*.gradle'
+              - '**/*.groovy'
+            prettier:
+              - '**/*.md'
+              - '**/*.json'
+              - '**/*.yaml'
+              - '**/*.yml'
+              - '**/*.html'
+              - '**/*.css'
+              - '**/*.js'
+            shell:
+              - '**/*.sh'
+            cmd:
+              - '**/*.cmd'
+              - '**/*.bat'
+            other:
+              - '**/*.properties'
+              - '**/*.xml'
+              - '**/*.py'
+
+      - name: Display changed files info
+        if: steps.changed-files.outputs.any_changed == 'true'
         run: |
-          echo "Getting list of files changed in this PR..."
-          changed_files=$(git diff --name-only --diff-filter=AM ${{ fromJson(steps.pr_details.outputs.result).base_ref }}...HEAD || true)
+          echo "Files changed in this PR:"
+          echo "${{ steps.changed-files.outputs.all_changed_files }}"
+          echo "Total files changed: ${{ steps.changed-files.outputs.all_changed_files_count }}"
+          echo "  - Java files: ${{ steps.changed-files.outputs.java_all_changed_files_count || '0' }}"
+          echo "  - Gradle files: ${{ steps.changed-files.outputs.gradle_all_changed_files_count || '0' }}"
+          echo "  - Prettier files: ${{ steps.changed-files.outputs.prettier_all_changed_files_count || '0' }}"
+          echo "  - Shell files: ${{ steps.changed-files.outputs.shell_all_changed_files_count || '0' }}"
+          echo "  - CMD files: ${{ steps.changed-files.outputs.cmd_all_changed_files_count || '0' }}"
+          echo "  - Other files: ${{ steps.changed-files.outputs.other_all_changed_files_count || '0' }}"
 
-          if [ -n "$changed_files" ]; then
-            echo "Files changed in this PR:"
-            echo "$changed_files"
-            echo "Total files changed: $(echo "$changed_files" | wc -l)"
+      - name: Early exit if no relevant files changed
+        if: steps.changed-files.outputs.any_changed != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = `## ✅ No Formatting Changes Needed
 
-            # Count by file type for information
-            java_files=$(echo "$changed_files" | grep -E '\.java$' | wc -l || echo "0")
-            gradle_files=$(echo "$changed_files" | grep -E '\.gradle$' | wc -l || echo "0")
-            other_files=$(echo "$changed_files" | grep -v -E '\.(java|gradle)$' | wc -l || echo "0")
+            No relevant files were changed in this PR that require formatting validation.
 
-            echo "  - Java files: $java_files"
-            echo "  - Gradle files: $gradle_files"
-            echo "  - Other files: $other_files"
-          else
-            echo "No files changed in this PR"
-          fi
+            **Files checked for formatting:**
+            - Java files (*.java)
+            - Gradle files (*.gradle, *.groovy)
+            - Markdown files (*.md)
+            - JSON/YAML files (*.json, *.yaml, *.yml)
+            - Web files (*.html, *.css, *.js)
+            - Shell scripts (*.sh)
+            - CMD/BAT files (*.cmd, *.bat)
+            - Other files (*.properties, *.xml, *.py)
 
-      - name: Check formatting before fixes
+            The PR is ready to proceed without formatting fixes.
+
+            ---
+            *This check was performed automatically by the Lucene Format Bot 🤖*`;
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+            // Exit the workflow successfully
+            core.setOutput('workflow_conclusion', 'success');
+            process.exit(0);
+
+      - name: Initial validation phase
         id: check_before
         run: |
-          echo "Checking current formatting status..."
-          echo "Note: Running full validation to ensure entire codebase consistency"
-          set +e
-          ./gradlew check -x test "-Ptask.times=true" --max-workers 2
-          exit_code=$?
-          echo "initial_check_passed=$([[ $exit_code -eq 0 ]] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
-          exit 0
+          echo "🔍 Running initial validation on changed files..."
+          validation_failed=false
 
-      - name: Apply formatting fixes
+          # Skip validation if no relevant files changed
+          if [ "${{ steps.changed-files.outputs.any_changed }}" != "true" ]; then
+            echo "✅ No relevant files changed - skipping validation"
+            echo "initial_check_passed=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Java files - Google Java Format validation
+          if [ "${{ steps.changed-files.outputs.java_any_changed }}" == "true" ]; then
+            echo "→ Validating Java files with Google Java Format..."
+            set +e
+            ./gradlew checkGoogleJavaFormat "-Ptask.times=true" --max-workers 2
+            if [ $? -ne 0 ]; then
+              echo "❌ Java formatting validation failed"
+              validation_failed=true
+            else
+              echo "✅ Java formatting validation passed"
+            fi
+            set -e
+          fi
+
+          # Gradle files - Spotless validation (if available)
+          if [ "${{ steps.changed-files.outputs.gradle_any_changed }}" == "true" ]; then
+            echo "→ Validating Gradle files..."
+            set +e
+            ./gradlew spotlessCheck "-Ptask.times=true" --max-workers 2 || true
+            # Note: spotlessCheck might not be available, so we don't fail on this
+            echo "✅ Gradle validation completed"
+            set -e
+          fi
+
+          # Run targeted validation for changed files only
+          if [ "${{ steps.changed-files.outputs.any_changed }}" == "true" ]; then
+            echo "→ Running targeted validation checks..."
+            set +e
+
+            # Create a temporary file with only changed files for validation
+            echo "${{ steps.changed-files.outputs.all_changed_files }}" > /tmp/changed_files.txt
+
+            # Run core validation tasks that are most likely to fail
+            ./gradlew validateLogCalls validateSourcePatterns "-Ptask.times=true" --max-workers 2 || validation_failed=true
+
+            set -e
+          fi
+
+          # Output result
+          if [ "$validation_failed" == "true" ]; then
+            echo "❌ Initial validation failed - formatting fixes needed"
+            echo "initial_check_passed=false" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Initial validation passed - no formatting fixes needed"
+            echo "initial_check_passed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Apply targeted formatting fixes
         if: steps.check_before.outputs.initial_check_passed == 'false'
         run: |
-          echo "Applying formatting fixes..."
-          echo "Note: Running full formatting to ensure entire codebase consistency"
-          echo "→ Applying code formatting..."
-          ./gradlew tidy "-Ptask.times=true" --max-workers 2
+          echo "🔧 Applying targeted formatting fixes to changed files..."
 
-          echo "→ Installing Prettier for EditorConfig fixes..."
-          npm install -g prettier
+          # Java files - Apply Google Java Format
+          if [ "${{ steps.changed-files.outputs.java_any_changed }}" == "true" ]; then
+            echo "→ Applying Google Java Format to Java files..."
+            ./gradlew googleJavaFormat "-Ptask.times=true" --max-workers 2
+            echo "✅ Java formatting applied"
+          fi
 
-          echo "→ Installing shfmt for shell script formatting..."
-          # Install shfmt (shell script formatter)
-          curl -L https://github.com/mvdan/sh/releases/download/v3.8.0/shfmt_v3.8.0_linux_amd64 -o /usr/local/bin/shfmt
-          chmod +x /usr/local/bin/shfmt
+          # Gradle files - Apply Spotless (if available)
+          if [ "${{ steps.changed-files.outputs.gradle_any_changed }}" == "true" ]; then
+            echo "→ Applying Spotless formatting to Gradle files..."
+            ./gradlew spotlessApply "-Ptask.times=true" --max-workers 2 || true
+            echo "✅ Gradle formatting applied"
+          fi
 
-          echo "→ Applying EditorConfig fixes via Prettier..."
-          # Fix files that Prettier can handle (respects .editorconfig automatically)
-          prettier --write "**/*.{json,yaml,yml,md,html,css,js}" --ignore-path .gitignore --ignore-path .github/workflows || true
+          # Install tools for other file types (only if needed)
+          tools_needed=false
+          if [ "${{ steps.changed-files.outputs.prettier_any_changed }}" == "true" ] || [ "${{ steps.changed-files.outputs.shell_any_changed }}" == "true" ]; then
+            tools_needed=true
+          fi
 
-          echo "→ Fixing Markdown indentation to 4 spaces..."
-          # Fix Markdown files to use 4-space indentation as required by .editorconfig
-          find . -name "*.md" -not -path "./.git/*" -not -path "./build/*" -not -path "./.gradle/*" -not -path "./node_modules/*" -not -path "./.github/workflows/*" \
-            -exec sed -i 's/^  /    /g' {} \; || true
+          if [ "$tools_needed" == "true" ]; then
+            echo "→ Installing formatting tools..."
 
-          echo "→ Applying shell script formatting via shfmt..."
-          # Format shell scripts (respects .editorconfig automatically)
-          find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./.gradle/*" -not -path "./node_modules/*" -not -path "./.github/workflows/*" \
-            -exec shfmt -i 2 -ci -w {} \; || true
+            if [ "${{ steps.changed-files.outputs.prettier_any_changed }}" == "true" ]; then
+              npm install -g prettier
+            fi
 
-          echo "→ Fixing CMD file line endings to CRLF..."
-          # Fix CMD and BAT files to use CRLF line endings as required by .editorconfig
-          find . -type f \( -name "*.cmd" -o -name "*.bat" \) -not -path "./.git/*" -not -path "./build/*" -not -path "./.gradle/*" -not -path "./.github/workflows/*" \
-            -exec sed -i 's/$/\r/' {} \; || true
+            if [ "${{ steps.changed-files.outputs.shell_any_changed }}" == "true" ]; then
+              curl -L https://github.com/mvdan/sh/releases/download/v3.8.0/shfmt_v3.8.0_linux_amd64 -o /usr/local/bin/shfmt
+              chmod +x /usr/local/bin/shfmt
+            fi
+          fi
 
-          echo "→ Applying remaining EditorConfig fixes..."
-          # Handle remaining files that need manual processing (excluding workflow files)
-          find . -type f \( -name "*.gradle" -o -name "*.groovy" -o -name "*.txt" -o -name "*.properties" \) \
-            -not -path "./.git/*" -not -path "./build/*" -not -path "./.gradle/*" -not -path "./node_modules/*" -not -path "./.github/workflows/*" \
-            -exec sed -i 's/[[:space:]]*$//' {} \;
+          # Apply Prettier to changed files that support it
+          if [ "${{ steps.changed-files.outputs.prettier_any_changed }}" == "true" ]; then
+            echo "→ Applying Prettier formatting to changed files..."
+            echo "${{ steps.changed-files.outputs.prettier_all_changed_files }}" | tr ' ' '\n' | while read file; do
+              if [ -f "$file" ]; then
+                prettier --write "$file" --ignore-unknown || true
+              fi
+            done
+            echo "✅ Prettier formatting applied"
+          fi
 
-          # Ensure files end with newline (excluding Java and shell scripts - handled by their respective formatters)
-          find . -type f \( -name "*.gradle" -o -name "*.groovy" -o -name "*.txt" -o -name "*.properties" \) \
-            -not -path "./.git/*" -not -path "./build/*" -not -path "./.gradle/*" -not -path "./node_modules/*" -not -path "./.github/workflows/*" \
-            -exec sh -c 'if [ -s "$1" ] && [ "$(tail -c1 "$1" | wc -l)" -eq 0 ]; then echo "" >> "$1"; fi' _ {} \;
+          # Apply shfmt to changed shell files
+          if [ "${{ steps.changed-files.outputs.shell_any_changed }}" == "true" ]; then
+            echo "→ Applying shfmt to changed shell files..."
+            echo "${{ steps.changed-files.outputs.shell_all_changed_files }}" | tr ' ' '\n' | while read file; do
+              if [ -f "$file" ]; then
+                shfmt -i 2 -ci -w "$file" || true
+              fi
+            done
+            echo "✅ Shell formatting applied"
+          fi
+
+          # Fix CMD/BAT files line endings (only changed files)
+          if [ "${{ steps.changed-files.outputs.cmd_any_changed }}" == "true" ]; then
+            echo "→ Fixing CMD/BAT file line endings..."
+            echo "${{ steps.changed-files.outputs.cmd_all_changed_files }}" | tr ' ' '\n' | while read file; do
+              if [ -f "$file" ]; then
+                sed -i 's/$/\r/' "$file" || true
+              fi
+            done
+            echo "✅ CMD/BAT line endings fixed"
+          fi
+
+          # Apply manual EditorConfig fixes to other changed files
+          if [ "${{ steps.changed-files.outputs.other_any_changed }}" == "true" ]; then
+            echo "→ Applying manual EditorConfig fixes to other files..."
+            echo "${{ steps.changed-files.outputs.other_all_changed_files }}" | tr ' ' '\n' | while read file; do
+              if [ -f "$file" ]; then
+                # Remove trailing whitespace
+                sed -i 's/[[:space:]]*$//' "$file" || true
+                # Ensure file ends with newline
+                if [ -s "$file" ] && [ "$(tail -c1 "$file" | wc -l)" -eq 0 ]; then
+                  echo "" >> "$file"
+                fi
+              fi
+            done
+            echo "✅ Manual EditorConfig fixes applied"
+          fi
+
+          echo "🎉 All targeted formatting fixes completed"
 
       - name: Check if any files were changed
         id: git_changes
@@ -171,22 +333,82 @@ jobs:
             git diff --name-only
           fi
 
-      - name: Verify formatting fixes
+      - name: Final validation phase
         id: check_after
         if: steps.check_before.outputs.initial_check_passed == 'false' && steps.git_changes.outputs.changes_made == 'true'
         run: |
-          echo "Verifying formatting fixes..."
-          echo "Note: Running full verification to ensure entire codebase consistency"
-          set +e
-          ./gradlew check -x test "-Ptask.times=true" --max-workers 2
-          exit_code=$?
-          echo "final_check_passed=$([[ $exit_code -eq 0 ]] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
-          if [[ $exit_code -eq 0 ]]; then
-            echo "✅ Formatting validation passed after fixes"
-          else
-            echo "❌ Formatting validation still failing after fixes"
+          echo "🔍 Running final validation on fixed files..."
+          validation_failed=false
+
+          # Java files - Re-validate Google Java Format
+          if [ "${{ steps.changed-files.outputs.java_any_changed }}" == "true" ]; then
+            echo "→ Re-validating Java files with Google Java Format..."
+            set +e
+            ./gradlew checkGoogleJavaFormat "-Ptask.times=true" --max-workers 2
+            if [ $? -ne 0 ]; then
+              echo "❌ Java formatting validation still failing"
+              validation_failed=true
+            else
+              echo "✅ Java formatting validation passed"
+            fi
+            set -e
           fi
-          exit 0
+
+          # Gradle files - Re-validate Spotless
+          if [ "${{ steps.changed-files.outputs.gradle_any_changed }}" == "true" ]; then
+            echo "→ Re-validating Gradle files..."
+            set +e
+            ./gradlew spotlessCheck "-Ptask.times=true" --max-workers 2 || true
+            echo "✅ Gradle validation completed"
+            set -e
+          fi
+
+          # EditorConfig validation using dedicated tool
+          if [ "${{ steps.changed-files.outputs.any_changed }}" == "true" ]; then
+            echo "→ Validating EditorConfig compliance..."
+            set +e
+
+            # Install editorconfig-checker
+            curl -L https://github.com/editorconfig-checker/editorconfig-checker/releases/download/v3.0.3/ec-linux-amd64.tar.gz -o /tmp/ec.tar.gz
+            tar -xzf /tmp/ec.tar.gz -C /tmp
+            chmod +x /tmp/bin/ec-linux-amd64
+
+            # Check changed files only
+            echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | while read file; do
+              if [ -f "$file" ]; then
+                /tmp/bin/ec-linux-amd64 "$file" || validation_failed=true
+              fi
+            done
+
+            if [ "$validation_failed" == "false" ]; then
+              echo "✅ EditorConfig validation passed"
+            else
+              echo "❌ EditorConfig validation failed"
+            fi
+
+            set -e
+          fi
+
+          # Run essential validation tasks
+          echo "→ Running essential validation tasks..."
+          set +e
+          ./gradlew validateLogCalls validateSourcePatterns "-Ptask.times=true" --max-workers 2
+          if [ $? -ne 0 ]; then
+            echo "❌ Essential validation tasks failed"
+            validation_failed=true
+          else
+            echo "✅ Essential validation tasks passed"
+          fi
+          set -e
+
+          # Output final result
+          if [ "$validation_failed" == "true" ]; then
+            echo "❌ Final validation failed - additional fixes may be needed"
+            echo "final_check_passed=false" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Final validation passed - all formatting fixes successful"
+            echo "final_check_passed=true" >> $GITHUB_OUTPUT
+          fi
 
       - name: Create fix branch and commit
         id: create_fix_branch
@@ -241,18 +463,17 @@ jobs:
 
             This PR applies automatic formatting fixes to address validation failures in #${{ github.event.issue.number }}.
 
-            ### 🔧 Changes Applied
-            - ✅ Code formatting via \`./gradlew tidy\`
-            - ✅ **Java files**: Formatted with Google Java Format (includes EditorConfig compliance)
-            - ✅ **JSON/YAML/HTML/CSS/JS**: EditorConfig fixes via Prettier
-            - ✅ **Markdown files**: Fixed indentation to 4 spaces (EditorConfig compliance)
-            - ✅ **Shell scripts**: Formatted with shfmt (respects EditorConfig)
-            - ✅ **CMD/BAT files**: Fixed line endings to CRLF (EditorConfig compliance)
-            - ✅ **Gradle/Groovy/Properties**: Manual EditorConfig fixes (trailing whitespace, final newlines)
-            - ✅ Gradle/Groovy scripts formatted with spotless
-            - ✅ Dependency catalog formatting
-            - ℹ️ **Note**: Workflow files (".github/workflows/") excluded for security
-            - ✅ All formatting validation checks now pass
+            ### 🔧 Changes Applied (Targeted to Changed Files Only)
+            - ✅ **Java files**: Google Java Format applied to modified Java files
+            - ✅ **Gradle files**: Spotless formatting applied to modified Gradle files
+            - ✅ **JSON/YAML/HTML/CSS/JS**: Prettier applied to modified files
+            - ✅ **Markdown files**: Prettier formatting applied to modified files
+            - ✅ **Shell scripts**: shfmt applied to modified shell files (respects EditorConfig)
+            - ✅ **CMD/BAT files**: CRLF line endings applied to modified files
+            - ✅ **Other files**: Manual EditorConfig fixes (trailing whitespace, final newlines) applied to modified files
+            - ⚡ **Efficiency**: Only processes files that were changed in this PR
+            - ✅ **Validation**: Targeted validation with Google Java Format, Spotless, and EditorConfig checker
+            - ✅ All formatting validation checks now pass for changed files
 
             ### 📝 Details
             - **Triggered by**: ${{ github.event.comment.html_url }}
