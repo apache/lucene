@@ -129,32 +129,32 @@ jobs:
 
           echo "→ Applying EditorConfig fixes via Prettier..."
           # Fix files that Prettier can handle (respects .editorconfig automatically)
-          prettier --write "**/*.{json,yaml,yml,md,html,css,js}" --ignore-path .gitignore || true
+          prettier --write "**/*.{json,yaml,yml,md,html,css,js}" --ignore-path .gitignore --ignore-path .github/workflows || true
 
           echo "→ Fixing Markdown indentation to 4 spaces..."
           # Fix Markdown files to use 4-space indentation as required by .editorconfig
-          find . -name "*.md" -not -path "./.git/*" -not -path "./build/*" -not -path "./.gradle/*" -not -path "./node_modules/*" \
+          find . -name "*.md" -not -path "./.git/*" -not -path "./build/*" -not -path "./.gradle/*" -not -path "./node_modules/*" -not -path "./.github/workflows/*" \
             -exec sed -i 's/^  /    /g' {} \; || true
 
           echo "→ Applying shell script formatting via shfmt..."
           # Format shell scripts (respects .editorconfig automatically)
-          find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./.gradle/*" -not -path "./node_modules/*" \
+          find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./.gradle/*" -not -path "./node_modules/*" -not -path "./.github/workflows/*" \
             -exec shfmt -i 2 -ci -w {} \; || true
 
           echo "→ Fixing CMD file line endings to CRLF..."
           # Fix CMD and BAT files to use CRLF line endings as required by .editorconfig
-          find . -type f \( -name "*.cmd" -o -name "*.bat" \) -not -path "./.git/*" -not -path "./build/*" -not -path "./.gradle/*" \
+          find . -type f \( -name "*.cmd" -o -name "*.bat" \) -not -path "./.git/*" -not -path "./build/*" -not -path "./.gradle/*" -not -path "./.github/workflows/*" \
             -exec sed -i 's/$/\r/' {} \; || true
 
           echo "→ Applying remaining EditorConfig fixes..."
-          # Handle remaining files that need manual processing
+          # Handle remaining files that need manual processing (excluding workflow files)
           find . -type f \( -name "*.gradle" -o -name "*.groovy" -o -name "*.txt" -o -name "*.properties" \) \
-            -not -path "./.git/*" -not -path "./build/*" -not -path "./.gradle/*" -not -path "./node_modules/*" \
+            -not -path "./.git/*" -not -path "./build/*" -not -path "./.gradle/*" -not -path "./node_modules/*" -not -path "./.github/workflows/*" \
             -exec sed -i 's/[[:space:]]*$//' {} \;
 
           # Ensure files end with newline (excluding Java and shell scripts - handled by their respective formatters)
           find . -type f \( -name "*.gradle" -o -name "*.groovy" -o -name "*.txt" -o -name "*.properties" \) \
-            -not -path "./.git/*" -not -path "./build/*" -not -path "./.gradle/*" -not -path "./node_modules/*" \
+            -not -path "./.git/*" -not -path "./build/*" -not -path "./.gradle/*" -not -path "./node_modules/*" -not -path "./.github/workflows/*" \
             -exec sh -c 'if [ -s "$1" ] && [ "$(tail -c1 "$1" | wc -l)" -eq 0 ]; then echo "" >> "$1"; fi' _ {} \;
 
       - name: Check if any files were changed
@@ -251,6 +251,7 @@ jobs:
             - ✅ **Gradle/Groovy/Properties**: Manual EditorConfig fixes (trailing whitespace, final newlines)
             - ✅ Gradle/Groovy scripts formatted with spotless
             - ✅ Dependency catalog formatting
+            - ℹ️ **Note**: Workflow files (`.github/workflows/`) excluded for security
             - ✅ All formatting validation checks now pass
 
             ### 📝 Details
