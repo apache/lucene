@@ -116,8 +116,34 @@ jobs:
           echo "Note: Running full formatting to ensure entire codebase consistency"
           echo "→ Applying code formatting..."
           ./gradlew tidy "-Ptask.times=true" --max-workers 2
-          echo "→ Applying EditorConfig fixes..."
-          ./gradlew applyEcLint "-Ptask.times=true" --max-workers 2
+
+          echo "→ Installing Prettier for EditorConfig fixes..."
+          npm install -g prettier
+
+          echo "→ Installing shfmt for shell script formatting..."
+          # Install shfmt (shell script formatter)
+          curl -L https://github.com/mvdan/sh/releases/download/v3.8.0/shfmt_v3.8.0_linux_amd64 -o /usr/local/bin/shfmt
+          chmod +x /usr/local/bin/shfmt
+
+          echo "→ Applying EditorConfig fixes via Prettier..."
+          # Fix files that Prettier can handle (respects .editorconfig automatically)
+          prettier --write "**/*.{json,yaml,yml,md,html,css,js}" --ignore-path .gitignore || true
+
+          echo "→ Applying shell script formatting via shfmt..."
+          # Format shell scripts (respects .editorconfig automatically)
+          find . -name "*.sh" -not -path "./.git/*" -not -path "./build/*" -not -path "./.gradle/*" -not -path "./node_modules/*" \
+            -exec shfmt -i 2 -ci -w {} \; || true
+
+          echo "→ Applying remaining EditorConfig fixes..."
+          # Handle remaining files that need manual processing
+          find . -type f \( -name "*.gradle" -o -name "*.groovy" -o -name "*.txt" -o -name "*.properties" -o -name "*.bat" -o -name "*.cmd" \) \
+            -not -path "./.git/*" -not -path "./build/*" -not -path "./.gradle/*" -not -path "./node_modules/*" \
+            -exec sed -i 's/[[:space:]]*$//' {} \;
+
+          # Ensure files end with newline (excluding Java and shell scripts - handled by their respective formatters)
+          find . -type f \( -name "*.gradle" -o -name "*.groovy" -o -name "*.txt" -o -name "*.properties" \) \
+            -not -path "./.git/*" -not -path "./build/*" -not -path "./.gradle/*" -not -path "./node_modules/*" \
+            -exec sh -c 'if [ -s "$1" ] && [ "$(tail -c1 "$1" | wc -l)" -eq 0 ]; then echo "" >> "$1"; fi' _ {} \;
 
       - name: Check if any files were changed
         id: git_changes
@@ -205,8 +231,10 @@ jobs:
 
             ### 🔧 Changes Applied
             - ✅ Code formatting via \`./gradlew tidy\`
-            - ✅ EditorConfig fixes via \`./gradlew applyEcLint\`
-            - ✅ Java code formatted with google-java-format
+            - ✅ **Java files**: Formatted with Google Java Format (includes EditorConfig compliance)
+            - ✅ **JSON/YAML/Markdown/HTML/CSS/JS**: EditorConfig fixes via Prettier
+            - ✅ **Shell scripts**: Formatted with shfmt (respects EditorConfig)
+            - ✅ **Gradle/Groovy/Properties**: Manual EditorConfig fixes (trailing whitespace, final newlines)
             - ✅ Gradle/Groovy scripts formatted with spotless
             - ✅ Dependency catalog formatting
             - ✅ All formatting validation checks now pass
