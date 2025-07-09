@@ -51,8 +51,8 @@ import org.apache.lucene.util.SuppressForbidden;
  * ASCII-only TLDs, including punycode forms of internationalized TLDs (output file cmdline arg #1).
  */
 public class GenerateJflexTLDMacros {
-  private static PrintStream syserr = getSysErr();
-  private static PrintStream sysout = getSysOut();
+  private static final PrintStream syserr = getSysErr();
+  private static final PrintStream sysout = getSysOut();
 
   @SuppressForbidden(reason = "Uses System.err, which is fine here.")
   private static PrintStream getSysErr() {

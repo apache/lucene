@@ -36,7 +36,7 @@ import org.apache.lucene.util.SuppressForbidden;
  * (.brk).
  */
 public class RBBIRuleCompiler {
-  private static PrintStream syserr = getSysErr();
+  private static final PrintStream syserr = getSysErr();
 
   @SuppressForbidden(reason = "Uses System.err, which is fine here.")
   private static PrintStream getSysErr() {

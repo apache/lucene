@@ -32,7 +32,7 @@ import org.gradle.api.provider.Provider;
 
 /** Registers global build constants and extensions. */
 public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
-  private static Pattern VERSION_PATTERN =
+  private static final Pattern VERSION_PATTERN =
       Pattern.compile("^(?<baseVersion>(?<majorVersion>\\d+)\\.\\d+\\.\\d+)(-(.+))?");
 
   @Override
