@@ -109,67 +109,175 @@ jobs:
           echo "Fixing formatting issues..."
           ./gradlew tidy
 
-      - name: Commit fixes if any
+      - name: Check if formatting fixes were made
         if: steps.initial-validation.outcome == 'failure'
+        id: check_changes
         run: |
+          git add .
+          if git diff --staged --quiet; then
+            echo "No formatting changes were made"
+            echo "changes_made=false" >> $GITHUB_OUTPUT
+          else
+            echo "Formatting changes were made"
+            echo "changes_made=true" >> $GITHUB_OUTPUT
+            echo "Changed files:"
+            git diff --staged --name-only
+          fi
+
+      - name: Create fix branch and commit
+        if: steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true'
+        id: create_fix_branch
+        run: |
+          # Create a new branch for the fixes
+          fix_branch="format-fixes-${{ fromJson(steps.pr_details.outputs.result).head_ref }}-$(date +%s)"
+          echo "fix_branch=$fix_branch" >> $GITHUB_OUTPUT
+
           git config --local user.email "action@github.com"
           git config --local user.name "Lucene Format Bot"
-          git add .
-          if ! git diff --staged --quiet; then
-            git commit -m "Apply automatic formatting fixes
 
-            Fixes applied by @lucene-format-bot in response to:
-            ${{ github.event.comment.html_url }}
+          git checkout -b "$fix_branch"
+          git commit -m "Apply automatic formatting fixes
 
-            Original PR: #${{ github.event.issue.number }}"
-            git push
-          fi
+          Fixes applied by @lucene-format-bot in response to:
+          ${{ github.event.comment.html_url }}
+
+          Original PR: #${{ github.event.issue.number }}
+
+          Changes applied:
+          $(git diff --name-only HEAD~1)"
+
+          git push origin "$fix_branch"
 
       - name: Final validation
         run: |
           echo "Running final validation..."
           ./gradlew check -x test
 
-      - name: EditorConfig validation
-        if: steps.changed-files.outputs.any_changed == 'true'
-        continue-on-error: true
-        run: |
-          # Install editorconfig-checker
-          echo "Installing editorconfig-checker..."
-          curl -L https://github.com/editorconfig-checker/editorconfig-checker/releases/download/v3.0.3/ec-linux-amd64.tar.gz -o /tmp/ec.tar.gz
-          tar -xzf /tmp/ec.tar.gz -C /tmp
-          chmod +x /tmp/bin/ec-linux-amd64
-
-          # Check changed files only
-          echo "Validating EditorConfig compliance for changed files..."
-          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | while read file; do
-            if [ -f "$file" ]; then
-              echo "Checking: $file"
-              /tmp/bin/ec-linux-amd64 "$file" || true
-            fi
-          done
-
-      - name: Comment on PR with success
-        if: success()
+      - name: Create PR for fixes
+        if: steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true'
+        id: create_pr
         uses: actions/github-script@v7
         with:
           script: |
-            const comment = `## ✅ Formatting Complete
+            const { data: fixPr } = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🤖 Apply formatting fixes to #${{ github.event.issue.number }}`,
+              head: '${{ steps.create_fix_branch.outputs.fix_branch }}',
+              base: '${{ fromJson(steps.pr_details.outputs.result).head_ref }}',
+              body: `## Automatic Formatting Fixes
 
-            The formatting bot has successfully processed this PR!
+            This PR applies automatic formatting fixes to address validation failures in #${{ github.event.issue.number }}.
 
             ### 🔧 Changes Applied
-            - ✅ **Full validation**: \`./gradlew check -x test\`
-            - ✅ **Formatting fixes**: \`./gradlew tidy\` (applied if needed)
-            - ✅ **EditorConfig validation**: Checked compliance for changed files
-            - ✅ **Final validation**: Confirmed all checks pass
+            - ✅ **Formatting fixes**: \`./gradlew tidy\` applied to fix validation errors
+            - ✅ **Validation**: All formatting checks now pass
+
+            ### 📝 Details
+            - **Triggered by**: ${{ github.event.comment.html_url }}
+            - **Original PR**: #${{ github.event.issue.number }}
+            - **Fix branch**: \`${{ steps.create_fix_branch.outputs.fix_branch }}\`
+            - **Files checked**: ${{ steps.changed-files.outputs.all_changed_files_count || '0' }} files
+
+            ### 🚀 Next Steps
+            Review and merge this PR to apply the formatting fixes to the original branch.
+
+            ---
+            *This PR was created automatically by the Lucene Format Bot 🤖*`
+            });
+
+            return {
+              pr_number: fixPr.number,
+              pr_url: fixPr.html_url
+            };
+
+      - name: Comment on PR with success (fixes applied)
+        if: success() && steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = '${{ fromJson(steps.create_pr.outputs.result).pr_number }}';
+            const comment = `## ✅ Formatting Fixes Applied
+
+            The formatting bot has successfully created a PR with formatting fixes!
+
+            ### 🔧 Changes Applied
+            - ✅ **Initial validation**: Found formatting issues
+            - ✅ **Formatting fixes**: Applied \`./gradlew tidy\`
+            - ✅ **Final validation**: All checks now pass
+            - ✅ **Fix PR created**: #${prNumber}
 
             ### 📝 Details
             - **Triggered by**: ${{ github.event.comment.html_url }}
             - **Files checked**: ${{ steps.changed-files.outputs.all_changed_files_count || '0' }} files
-            - **Validation**: All formatting checks now pass
+            - **Fix PR**: #${prNumber}
 
-            The PR is now ready for review!
+            ### 🚀 Next Steps
+            Review and merge PR #${prNumber} to apply the formatting fixes to this branch.
+
+            ---
+            *This was performed automatically by the Lucene Format Bot 🤖*`;
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Comment on PR with success (no fixes needed)
+        if: success() && steps.initial-validation.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = `## ✅ No Formatting Issues Found
+
+            The formatting bot has validated this PR and found no issues!
+
+            ### 🔧 Validation Results
+            - ✅ **Initial validation**: \`./gradlew check -x test\` passed
+            - ✅ **No fixes needed**: Code already complies with formatting standards
+
+            ### 📝 Details
+            - **Triggered by**: ${{ github.event.comment.html_url }}
+            - **Files checked**: ${{ steps.changed-files.outputs.all_changed_files_count || '0' }} files
+
+            The PR is ready for review!
+
+            ---
+            *This was performed automatically by the Lucene Format Bot 🤖*`;
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Comment on PR with success (fixes made but no changes)
+        if: success() && steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = `## ⚠️ Formatting Issues Detected (No Auto-fixes Available)
+
+            The formatting bot found issues but was unable to automatically fix them.
+
+            ### 🔧 Validation Results
+            - ❌ **Initial validation**: \`./gradlew check -x test\` failed
+            - ⚠️ **Formatting attempt**: \`./gradlew tidy\` ran but made no changes
+            - ✅ **Final validation**: Checks now pass (issues may be non-formatting related)
+
+            ### 🛠️ Possible Causes
+            - Issues that cannot be automatically fixed
+            - Build configuration problems
+            - Non-formatting validation failures
+
+            ### 📝 Details
+            - **Triggered by**: ${{ github.event.comment.html_url }}
+            - **Files checked**: ${{ steps.changed-files.outputs.all_changed_files_count || '0' }} files
+
+            **Recommendation**: Review the validation failures manually and apply fixes as needed.
 
             ---
             *This was performed automatically by the Lucene Format Bot 🤖*`;
@@ -197,7 +305,7 @@ jobs:
             ### 🛠️ Next Steps:
             1. Check the workflow logs for specific error details
             2. Fix any issues manually if needed
-            3. Re-trigger the bot with \`@lucene-format-bot\`
+            3. Re-trigger the bot with \`/format-fix apply\`
 
             ### 📝 Details
             - **Triggered by**: ${{ github.event.comment.html_url }}
