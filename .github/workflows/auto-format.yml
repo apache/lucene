@@ -40,7 +40,7 @@ jobs:
       - name: Get PR details and checkout
         run: |
           # Get PR details
-          PR_DATA=$(gh pr view ${{ github.event.issue.number }} --json headRefName,headRepository,headRepositoryOwner)
+          PR_DATA=$(gh pr view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json headRefName,headRepository,headRepositoryOwner)
           HEAD_REF=$(echo "$PR_DATA" | jq -r '.headRefName')
           HEAD_REPO=$(echo "$PR_DATA" | jq -r '.headRepository.name')
           HEAD_OWNER=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login')
@@ -159,6 +159,7 @@ jobs:
           *This PR was created automatically by the Auto Format Bot*"
 
           PR_URL=$(gh pr create \
+            --repo ${{ github.repository }} \
             --title "Apply formatting fixes to #${{ github.event.issue.number }}" \
             --body "$PR_BODY" \
             --base "${{ env.head_ref }}" \
@@ -179,7 +180,7 @@ jobs:
       - name: Comment on PR with success (fixes applied)
         if: success() && steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true'
         run: |
-          gh pr comment ${{ github.event.issue.number }} --body "## Formatting Fixes Applied
+          gh pr comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "## Formatting Fixes Applied
 
           The formatting bot has successfully created a PR with formatting fixes!
 
@@ -197,7 +198,7 @@ jobs:
       - name: Comment on PR with success (no fixes needed)
         if: success() && steps.initial-validation.outcome == 'success'
         run: |
-          gh pr comment ${{ github.event.issue.number }} --body "## No Formatting Issues Found
+          gh pr comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "## No Formatting Issues Found
 
           The formatting bot has validated this PR and found no issues!
 
@@ -213,7 +214,7 @@ jobs:
       - name: Comment on PR with success (fixes made but no changes)
         if: success() && steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'false'
         run: |
-          gh pr comment ${{ github.event.issue.number }} --body "## Formatting Issues Detected (No Auto-fixes Available)
+          gh pr comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "## Formatting Issues Detected (No Auto-fixes Available)
 
           The formatting bot found issues but was unable to automatically fix them.
 
@@ -237,7 +238,7 @@ jobs:
       - name: Comment on PR with failure
         if: failure()
         run: |
-          gh pr comment ${{ github.event.issue.number }} --body "## Formatting Failed
+          gh pr comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "## Formatting Failed
 
           The formatting bot encountered issues while processing this PR.
 
