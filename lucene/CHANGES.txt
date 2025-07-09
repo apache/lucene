@@ -253,6 +253,8 @@ Other
 
 * GITHUB#14898: Fix typo in Circle2D.java (Hokuto Joel Ide)
 
+* GITHUB#14839: Add support for sparse SortedDocValues to LuceneTestCase.assertDocValuesEquals (Parker Timmins)
+
 ======================= Lucene 10.2.2 =======================
 
 Bug Fixes
