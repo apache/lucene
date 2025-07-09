@@ -40,6 +40,11 @@ public class LeafNode extends Node {
   }
 
   @Override
+  public byte getChildKey(int pos) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public Node getChild(int pos) {
     throw new UnsupportedOperationException();
   }
@@ -71,6 +76,11 @@ public class LeafNode extends Node {
 
   @Override
   void setChildren(Node[] children) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  Node[] getChildren() {
     throw new UnsupportedOperationException();
   }
 }

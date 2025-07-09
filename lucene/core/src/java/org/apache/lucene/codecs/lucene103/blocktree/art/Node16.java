@@ -53,6 +53,20 @@ public class Node16 extends Node {
   }
 
   @Override
+  public byte getChildKey(int pos) {
+    int posInLong;
+    if (pos <= 7) {
+      posInLong = pos;
+      byte[] firstBytes = LongUtils.toBDBytes(firstChildIndex);
+      return firstBytes[posInLong];
+    } else {
+      posInLong = pos - 8;
+      byte[] secondBytes = LongUtils.toBDBytes(secondChildIndex);
+      return secondBytes[posInLong];
+    }
+  }
+
+  @Override
   public Node getChild(int pos) {
     return children[pos];
   }
@@ -142,6 +156,11 @@ public class Node16 extends Node {
   @Override
   public void setChildren(Node[] children) {
     System.arraycopy(children, 0, this.children, 0, children.length);
+  }
+
+  @Override
+  Node[] getChildren() {
+    return children;
   }
 
   @Override

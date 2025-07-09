@@ -14,13 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene103.art;
+package org.apache.lucene.codecs.lucene103.blocktree.art;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.lucene103.blocktree.art.ARTBuilder;
-import org.apache.lucene.codecs.lucene103.blocktree.art.ARTReader;
-import org.apache.lucene.codecs.lucene103.blocktree.art.NodeType;
-import org.apache.lucene.codecs.lucene103.blocktree.art.Output;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;

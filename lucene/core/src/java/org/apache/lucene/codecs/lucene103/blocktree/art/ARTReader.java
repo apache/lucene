@@ -17,8 +17,10 @@
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
 import java.io.IOException;
+import java.util.function.BiConsumer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
 
 public class ARTReader {
   private Node root;
@@ -37,7 +39,7 @@ public class ARTReader {
     this.root = read(dataInput);
   }
 
-  public Node read(IndexInput dataInput) throws IOException {
+  private Node read(IndexInput dataInput) throws IOException {
     // TODO: Read specify node by node's fp like trie.
     Node node = Node.read(dataInput);
 
@@ -54,6 +56,40 @@ public class ARTReader {
       }
       node.setChildren(children);
       return node;
+    }
+  }
+
+  /**
+   * Collect all key, output pairs. Used for tests only. The recursive impl need to be avoided if
+   * someone plans to use for production one day.
+   *
+   * @param consumer
+   */
+  void visit(BiConsumer<BytesRef, Output> consumer) {
+    visit(root, new BytesRefBuilder(), consumer);
+  }
+
+  private void visit(Node node, BytesRefBuilder prefix, BiConsumer<BytesRef, Output> consumer) {
+    if (node.output != null) {
+      if (node.nodeType == NodeType.LEAF_NODE) {
+        prefix.append(node.key);
+        consumer.accept(prefix.toBytesRef(), node.output);
+        return;
+      } else {
+        prefix.append(node.prefix, 0, node.prefixLength);
+        consumer.accept(prefix.toBytesRef(), node.output);
+      }
+    }
+
+    int pos = -1;
+    while ((pos = node.getNextLargerPos(pos)) != -1) {
+      byte key = node.getChildKey(pos);
+      Node child = node.getChild(pos);
+      // Clone prefix.
+      BytesRefBuilder clonePrefix = new BytesRefBuilder();
+      clonePrefix.copyBytes(prefix);
+      clonePrefix.append(key);
+      visit(child, clonePrefix, consumer);
     }
   }
 

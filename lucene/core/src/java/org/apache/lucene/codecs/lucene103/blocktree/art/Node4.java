@@ -43,6 +43,13 @@ public class Node4 extends Node {
   }
 
   @Override
+  public byte getChildKey(int pos) {
+    int shiftLeftLen = (3 - pos) * 8;
+    byte v = (byte) (childIndex >> shiftLeftLen);
+    return v;
+  }
+
+  @Override
   public Node getChild(int pos) {
     return children[pos];
   }
@@ -106,6 +113,11 @@ public class Node4 extends Node {
   @Override
   public void setChildren(Node[] children) {
     System.arraycopy(children, 0, this.children, 0, children.length);
+  }
+
+  @Override
+  Node[] getChildren() {
+    return children;
   }
 
   @Override

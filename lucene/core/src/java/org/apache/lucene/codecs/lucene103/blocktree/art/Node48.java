@@ -36,12 +36,32 @@ public class Node48 extends Node {
 
   @Override
   public int getChildPos(byte k) {
+    // Different with other type's node, this pos is a position value(byte value) to calculate the
+    // position
+    // (long position and byte position) in childIndex, the value in this position is the index in
+    // children.
     int unsignedIdx = Byte.toUnsignedInt(k);
     int childIdx = childrenIdx(unsignedIdx, childIndex);
     if (childIdx != EMPTY_VALUE) {
       return unsignedIdx;
     }
     return ILLEGAL_IDX;
+  }
+
+  /**
+   * Get child index in children array.
+   *
+   * @param k
+   * @return
+   */
+  public int getChildIndex(byte k) {
+    int unsignedIdx = Byte.toUnsignedInt(k);
+    return childrenIdx(unsignedIdx, childIndex);
+  }
+
+  @Override
+  public byte getChildKey(int pos) {
+    return (byte) pos;
   }
 
   @Override
@@ -197,6 +217,11 @@ public class Node48 extends Node {
         }
       }
     }
+  }
+
+  @Override
+  Node[] getChildren() {
+    return children;
   }
 
   @Override

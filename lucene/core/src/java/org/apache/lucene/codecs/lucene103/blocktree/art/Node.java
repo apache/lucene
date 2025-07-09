@@ -39,8 +39,6 @@ public abstract class Node {
   public int prefixLength;
   // the compressed path path (prefix)
   protected byte[] prefix;
-  // number of non-null children, the largest value will not beyond 255
-  // to benefit calculation, we keep the value as a short type
   protected short count;
   public static final int ILLEGAL_IDX = -1;
 
@@ -66,6 +64,14 @@ public abstract class Node {
    * @return the child position corresponding to the key 'k'
    */
   public abstract int getChildPos(byte k);
+
+  /**
+   * get the corresponding key byte of the requested position
+   *
+   * @param pos the position
+   * @return the corresponding key byte
+   */
+  public abstract byte getChildKey(int pos);
 
   /**
    * get the child at the specified position in the node, the 'pos' range from 0 to count
@@ -322,6 +328,13 @@ public abstract class Node {
    * @param children all the not null children nodes in key byte ascending order, no null element.
    */
   abstract void setChildren(Node[] children);
+
+  /**
+   * Get the node's children.
+   *
+   * @return
+   */
+  abstract Node[] getChildren();
 
   @Override
   public String toString() {
