@@ -74,6 +74,11 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   }
 
   @Override
+  public FlatVectorsScorer getLucene99ScalarQuantizedVectorsScorer() {
+    return Lucene99MemorySegmentScalarQuantizedVectorScorer.INSTANCE;
+  }
+
+  @Override
   public PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException {
     if (PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS
         && input instanceof MemorySegmentAccessInput msai) {
