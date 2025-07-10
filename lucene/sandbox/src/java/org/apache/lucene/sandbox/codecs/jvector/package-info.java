@@ -15,26 +15,9 @@
  * limitations under the License.
  */
 
-
-plugins {
-  id 'java-library'
-}
-
-description = 'Various third party contributions and new ideas'
-
-java {
-  modularity.inferModulePath = true
-}
-
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:queries')
-  moduleApi project(':lucene:facet')
-  moduleTestImplementation project(':lucene:test-framework')
-
-  moduleImplementation('io.github.jbellis:jvector:4.0.0-beta.6') {
-    exclude group: 'org.slf4j', module: 'slf4j-api'
-  }
-
-  moduleImplementation 'org.slf4j:slf4j-api:2.0.17'
-}
+/**
+ * This package contains the implementation of the JVector codec, a Lucene codec for approximate
+ * nearest neighbor search using vector quantization and HNSW graph indexing. It is based on the
+ * OpenSearch JVector codec and optimized for Lucene.
+ */
+package org.apache.lucene.sandbox.codecs.jvector;
