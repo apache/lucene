@@ -78,4 +78,9 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
     }
     return new PostingDecodingUtil(input);
   }
+
+  @Override
+  public BitSetUtil newBitSetUtil() {
+    return PanamaBitSetUtil.INSTANCE;
+  }
 }

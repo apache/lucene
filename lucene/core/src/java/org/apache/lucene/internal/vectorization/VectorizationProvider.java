@@ -125,6 +125,8 @@ public abstract class VectorizationProvider {
   /** Create a new {@link PostingDecodingUtil} for the given {@link IndexInput}. */
   public abstract PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException;
 
+  public abstract BitSetUtil newBitSetUtil();
+
   // *** Lookup mechanism: ***
 
   private static final Logger LOG = Logger.getLogger(VectorizationProvider.class.getName());
