@@ -1,4 +1,4 @@
-name: Lucene Auto Format Bot
+name: Auto Format Bot
 
 on:
   issue_comment:
@@ -61,6 +61,19 @@ jobs:
           echo "head_ref=$HEAD_REF" >> $GITHUB_ENV
           echo "head_repo_full=$HEAD_OWNER/$HEAD_REPO" >> $GITHUB_ENV
 
+      - name: Detect if PR is from fork
+        run: |
+          HEAD_OWNER=$(echo "${{ env.head_repo_full }}" | cut -d'/' -f1)
+          REPO_OWNER="${{ github.repository_owner }}"
+
+          if [[ "$HEAD_OWNER" != "$REPO_OWNER" ]]; then
+            echo "is_fork=true" >> $GITHUB_ENV
+            echo "PR is from fork: ${{ env.head_repo_full }}"
+          else
+            echo "is_fork=false" >> $GITHUB_ENV
+            echo "PR is from same repository"
+          fi
+
       - name: Checkout PR code
         uses: actions/checkout@v4
         with:
@@ -121,8 +134,8 @@ jobs:
             git diff --staged --name-only
           fi
 
-      - name: Create fix branch and commit
-        if: steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true'
+      - name: Create fix branch and commit (same-repo)
+        if: steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true' && env.is_fork == 'false'
         id: create_fix_branch
         run: |
           # Create a new branch for the fixes
@@ -131,12 +144,12 @@ jobs:
           echo "fix_branch=$fix_branch" >> $GITHUB_ENV
 
           git config --local user.email "action@github.com"
-          git config --local user.name "Lucene Format Bot"
+          git config --local user.name "Auto Format Bot"
 
           git checkout -b "$fix_branch"
           git commit -m "Apply automatic formatting fixes
 
-          Fixes applied by @lucene-format-bot in response to:
+          Fixes applied by @auto-format-bot in response to:
           ${{ github.event.comment.html_url }}
 
           Original PR: #${{ github.event.issue.number }}
@@ -146,13 +159,32 @@ jobs:
 
           git push origin "$fix_branch"
 
+      - name: Commit directly to fork PR
+        if: steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true' && env.is_fork == 'true'
+        id: commit_to_fork
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "Auto Format Bot"
+
+          git commit -m "Apply automatic formatting fixes
+
+          Fixes applied by @auto-format-bot in response to:
+          ${{ github.event.comment.html_url }}
+
+          Original PR: #${{ github.event.issue.number }}
+
+          Changes applied:
+          $(git diff --name-only HEAD~1)"
+
+          git push origin "${{ env.head_ref }}"
+
       - name: Final validation
         run: |
           echo "Running final validation..."
           ./gradlew check -x test
 
-      - name: Create PR for fixes
-        if: steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true'
+      - name: Create PR for fixes (same-repo only)
+        if: steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true' && env.is_fork == 'false'
         id: create_pr
         run: |
           PR_BODY="## Automatic Formatting Fixes
@@ -189,8 +221,8 @@ jobs:
             --method POST \
             --input - <<< '{"content":"+1"}'
 
-      - name: Comment on PR with success (fixes applied)
-        if: success() && steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true'
+      - name: Comment on PR with success (fixes applied to same-repo)
+        if: success() && steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true' && env.is_fork == 'false'
         run: |
           gh pr comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "## Formatting Fixes Applied
 
@@ -202,6 +234,20 @@ jobs:
 
           ### 🚀 Next Steps
           Review and merge PR #${{ steps.create_pr.outputs.pr_number }} to apply the formatting fixes to this branch.
+
+          ---
+          *This was performed automatically by the Auto Format Bot*"
+
+      - name: Comment on PR with success (fixes applied to fork)
+        if: success() && steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true' && env.is_fork == 'true'
+        run: |
+          gh pr comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "## Formatting Fixes Applied
+
+          The formatting bot has commited the formatting fixes to this PR!
+
+          ### 📝 Details
+          - **Triggered by**: ${{ github.event.comment.html_url }}
+          - **Action taken**: Direct commit to this PR branch
 
           ---
           *This was performed automatically by the Auto Format Bot*"
