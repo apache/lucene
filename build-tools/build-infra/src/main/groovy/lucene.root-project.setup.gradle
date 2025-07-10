@@ -167,35 +167,5 @@ allprojects {
 
       return result
     }
-
-    // Convert a list of strings, tasks and task providers into resolved tasks or task providers.
-    resolveTaskRefs = {List<Object> refs ->
-      def resolved = refs.collect {
-        if (it instanceof Task) return it
-        if (it instanceof TaskProvider) return it
-        if (it instanceof String) return project.tasks.named((String) it)
-        throw new GradleException("Can't resolve task: ${it}")
-      }
-      return resolved
-    }
-
-    // Forces sequential ordering of a list of tasks (via mustRunAfter).
-    // This method should not be required in 99% of cases, consider regular dependsOn links.
-    // This method does NOT imply any ordering between dependencies of task on the input
-    // list - the execution of these may still be unordered.
-    mustRunInOrder = {List<Object> taskList ->
-      project.afterEvaluate {
-        def resolved = resolveTaskRefs(taskList)
-
-        // Enforce sequential ordering between tasks (this does NOT apply to their dependencies!)
-        for (int i = 1; i < resolved.size(); i++) {
-          resolved[i].configure {
-            logger.info("Scheduling " + resolved[i].name + " to run after " + resolved[i - 1].name)
-            mustRunAfter resolved[i - 1]
-          }
-        }
-      }
-      return taskList
-    }
   }
 }
