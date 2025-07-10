@@ -90,21 +90,29 @@ jobs:
 
       - uses: ./.github/actions/prepare-for-build
 
+      #this replaces ana06/get-changed-files@v2.3.0 since it doesn't support issue comment triggers
       - name: Get changed files
         id: changed-files
-        uses: ana06/get-changed-files@25f79e676e7ea1868813e21465014798211fad8c
-        with:
-          filter: |
-            **/*.java
-            **/*.gradle
-            **/*.groovy
-            **/*.md
-            **/*.properties
-            **/*.xml
-            **/*.py
-            **/*.sh
-            **/*.bat
-            **/*.cmd
+        run: |
+          echo "Getting changed files for PR #${{ github.event.issue.number }}..."
+
+          ALL_FILES=$(gh pr diff ${{ github.event.issue.number }} --name-only --repo ${{ github.repository }})
+
+          FILTERED_FILES=$(echo "$ALL_FILES" | grep -E '\.(java|gradle|groovy|md|properties|xml|py|sh|bat|cmd)$' || true)
+
+          echo "All changed files:"
+          echo "$ALL_FILES"
+          echo
+          echo "Filtered files for formatting check:"
+          echo "$FILTERED_FILES"
+
+          echo "all<<EOF" >> $GITHUB_OUTPUT
+          echo "$ALL_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          echo "filtered<<EOF" >> $GITHUB_OUTPUT
+          echo "$FILTERED_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Initial validation
         id: initial-validation
