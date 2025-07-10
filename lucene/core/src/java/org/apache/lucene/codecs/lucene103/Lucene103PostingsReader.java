@@ -1064,11 +1064,9 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
           System.arraycopy(docBuffer, start, buffer.docs, 0, buffer.size);
           break;
         case UNARY:
-          docBitSet.forEach(
-              doc - docBitSetBase,
-              upTo - docBitSetBase,
-              docBitSetBase,
-              d -> buffer.docs[buffer.size++] = d);
+          buffer.size =
+              docInUtil.denseBitsetToArray(
+                  docBitSet, doc - docBitSetBase, upTo - docBitSetBase, docBitSetBase, buffer.docs);
           break;
       }
 

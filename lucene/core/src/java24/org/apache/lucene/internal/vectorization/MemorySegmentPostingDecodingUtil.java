@@ -19,7 +19,9 @@ package org.apache.lucene.internal.vectorization;
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import java.nio.ByteOrder;
+import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.IntVector;
+import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.store.IndexInput;
@@ -28,6 +30,13 @@ final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
 
   private static final VectorSpecies<Integer> INT_SPECIES =
       PanamaVectorConstants.PRERERRED_INT_SPECIES;
+  private static final byte[] IDENTITY_BYTES = new byte[64];
+
+  static {
+    for (int i = 0; i < IDENTITY_BYTES.length; i++) {
+      IDENTITY_BYTES[i] = (byte) i;
+    }
+  }
 
   private final MemorySegment memorySegment;
 
@@ -80,5 +89,55 @@ final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
     vector.lanewise(VectorOperators.AND, cMask).intoArray(c, cIndex + i);
 
     in.seek(endOffset);
+  }
+
+  @Override
+  @SuppressWarnings("fallthrough")
+  int word2Array(long word, int base, int[] docs, int offset) {
+    if (PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE != 512) {
+      return super.word2Array(word, base, docs, offset);
+    }
+
+    if (word == 0L) {
+      return offset;
+    }
+
+    int bitCount = Long.bitCount(word);
+
+    VectorMask<Byte> mask = VectorMask.fromLong(ByteVector.SPECIES_512, word);
+    ByteVector indices =
+        ByteVector.fromArray(ByteVector.SPECIES_512, IDENTITY_BYTES, 0).compress(mask);
+
+    switch ((bitCount - 1) >> 4) {
+      case 3:
+        indices
+            .convert(VectorOperators.B2I, 3)
+            .reinterpretAsInts()
+            .add(base)
+            .intoArray(docs, offset + 48);
+      case 2:
+        indices
+            .convert(VectorOperators.B2I, 2)
+            .reinterpretAsInts()
+            .add(base)
+            .intoArray(docs, offset + 32);
+      case 1:
+        indices
+            .convert(VectorOperators.B2I, 1)
+            .reinterpretAsInts()
+            .add(base)
+            .intoArray(docs, offset + 16);
+      case 0:
+        indices
+            .convert(VectorOperators.B2I, 0)
+            .reinterpretAsInts()
+            .add(base)
+            .intoArray(docs, offset);
+        break;
+      default:
+        throw new IllegalStateException(bitCount + "");
+    }
+
+    return offset + bitCount;
   }
 }

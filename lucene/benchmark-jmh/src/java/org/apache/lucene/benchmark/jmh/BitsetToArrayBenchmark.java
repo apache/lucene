@@ -1,9 +1,8 @@
 package org.apache.lucene.benchmark.jmh;
 
 import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
 import java.util.SplittableRandom;
-
+import java.util.concurrent.TimeUnit;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
@@ -31,11 +30,11 @@ import org.openjdk.jmh.annotations.Warmup;
 @Fork(
     value = 1,
     jvmArgsAppend = {
-        "-Xmx1g",
-        "-Xms1g",
-        "-XX:+AlwaysPreTouch",
-        "--add-modules",
-        "jdk.incubator.vector"
+      "-Xmx1g",
+      "-Xms1g",
+      "-XX:+AlwaysPreTouch",
+      "--add-modules",
+      "jdk.incubator.vector"
     })
 public class BitsetToArrayBenchmark {
 
@@ -122,18 +121,33 @@ public class BitsetToArrayBenchmark {
   @SuppressWarnings("fallthrough")
   private static void word2Array_512(long word, int base, int[] docs, int offset, int bitCount) {
     VectorMask<Byte> mask = VectorMask.fromLong(SPECIES_512, word);
-    ByteVector indices = ByteVector.fromArray(SPECIES_512, IDENTITY_BYTES, 0)
-        .compress(mask);
+    ByteVector indices = ByteVector.fromArray(SPECIES_512, IDENTITY_BYTES, 0).compress(mask);
 
     switch ((bitCount - 1) >>> 4) {
       case 3:
-        indices.convert(VectorOperators.B2I, 3).reinterpretAsInts().add(base).intoArray(docs, offset + 48);
+        indices
+            .convert(VectorOperators.B2I, 3)
+            .reinterpretAsInts()
+            .add(base)
+            .intoArray(docs, offset + 48);
       case 2:
-        indices.convert(VectorOperators.B2I, 2).reinterpretAsInts().add(base).intoArray(docs, offset + 32);
+        indices
+            .convert(VectorOperators.B2I, 2)
+            .reinterpretAsInts()
+            .add(base)
+            .intoArray(docs, offset + 32);
       case 1:
-        indices.convert(VectorOperators.B2I, 1).reinterpretAsInts().add(base).intoArray(docs, offset + 16);
+        indices
+            .convert(VectorOperators.B2I, 1)
+            .reinterpretAsInts()
+            .add(base)
+            .intoArray(docs, offset + 16);
       case 0:
-        indices.convert(VectorOperators.B2I, 0).reinterpretAsInts().add(base).intoArray(docs, offset);
+        indices
+            .convert(VectorOperators.B2I, 0)
+            .reinterpretAsInts()
+            .add(base)
+            .intoArray(docs, offset);
         break;
       default:
         throw new IllegalStateException(bitCount + "");
@@ -178,13 +192,29 @@ public class BitsetToArrayBenchmark {
 
     switch ((bitCount - 1) >>> 3) {
       case 3:
-        indices.convert(VectorOperators.B2I, 3).reinterpretAsInts().add(base).intoArray(docs, offset + 24);
+        indices
+            .convert(VectorOperators.B2I, 3)
+            .reinterpretAsInts()
+            .add(base)
+            .intoArray(docs, offset + 24);
       case 2:
-        indices.convert(VectorOperators.B2I, 2).reinterpretAsInts().add(base).intoArray(docs, offset + 16);
+        indices
+            .convert(VectorOperators.B2I, 2)
+            .reinterpretAsInts()
+            .add(base)
+            .intoArray(docs, offset + 16);
       case 1:
-        indices.convert(VectorOperators.B2I, 1).reinterpretAsInts().add(base).intoArray(docs, offset + 8);
+        indices
+            .convert(VectorOperators.B2I, 1)
+            .reinterpretAsInts()
+            .add(base)
+            .intoArray(docs, offset + 8);
       case 0:
-        indices.convert(VectorOperators.B2I, 0).reinterpretAsInts().add(base).intoArray(docs, offset);
+        indices
+            .convert(VectorOperators.B2I, 0)
+            .reinterpretAsInts()
+            .add(base)
+            .intoArray(docs, offset);
         break;
       default:
         throw new IllegalStateException(bitCount + "");
@@ -200,7 +230,7 @@ public class BitsetToArrayBenchmark {
   }
 
   public static void main(String[] args) {
-    for (int bitSetSize : new int[]{128, 256, 512, 1024}) {
+    for (int bitSetSize : new int[] {128, 256, 512, 1024}) {
       BitsetToArrayBenchmark baseline = new BitsetToArrayBenchmark();
       baseline.bitSetSize = bitSetSize;
       baseline.setup();
@@ -218,14 +248,17 @@ public class BitsetToArrayBenchmark {
           throw new IllegalArgumentException("incorrect size: " + size);
         }
 
-        if (Arrays.equals(baseline.resultArray, 0, FIXED_SET_BITS, candidate.resultArray, 0, FIXED_SET_BITS)
+        if (Arrays.equals(
+                baseline.resultArray, 0, FIXED_SET_BITS, candidate.resultArray, 0, FIXED_SET_BITS)
             == false) {
           throw new IllegalArgumentException(
               "incorrect docs,"
                   + "\nbaseline: "
-                  + Arrays.toString(ArrayUtil.copyOfSubArray(baseline.resultArray, 0, FIXED_SET_BITS))
+                  + Arrays.toString(
+                      ArrayUtil.copyOfSubArray(baseline.resultArray, 0, FIXED_SET_BITS))
                   + "\ncandidate: "
-                  + Arrays.toString(ArrayUtil.copyOfSubArray(candidate.resultArray, 0, FIXED_SET_BITS)));
+                  + Arrays.toString(
+                      ArrayUtil.copyOfSubArray(candidate.resultArray, 0, FIXED_SET_BITS)));
         }
       }
 
@@ -238,17 +271,19 @@ public class BitsetToArrayBenchmark {
           throw new IllegalArgumentException("incorrect size: " + size);
         }
 
-        if (Arrays.equals(baseline.resultArray, 0, FIXED_SET_BITS, candidate.resultArray, 0, FIXED_SET_BITS)
+        if (Arrays.equals(
+                baseline.resultArray, 0, FIXED_SET_BITS, candidate.resultArray, 0, FIXED_SET_BITS)
             == false) {
           throw new IllegalArgumentException(
               "incorrect docs,"
                   + "\nbaseline: "
-                  + Arrays.toString(ArrayUtil.copyOfSubArray(baseline.resultArray, 0, FIXED_SET_BITS))
+                  + Arrays.toString(
+                      ArrayUtil.copyOfSubArray(baseline.resultArray, 0, FIXED_SET_BITS))
                   + "\ncandidate: "
-                  + Arrays.toString(ArrayUtil.copyOfSubArray(candidate.resultArray, 0, FIXED_SET_BITS)));
+                  + Arrays.toString(
+                      ArrayUtil.copyOfSubArray(candidate.resultArray, 0, FIXED_SET_BITS)));
         }
       }
-
     }
   }
 }
