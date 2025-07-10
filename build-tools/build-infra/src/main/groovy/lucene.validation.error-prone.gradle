@@ -77,12 +77,6 @@ allprojects { prj ->
       }
 
       tasks.withType(JavaCompile).configureEach { task ->
-        // Disable errorprone on the MR-JAR tasks
-        if (task.name ==~ /compileMain\d+Java/) {
-          options.errorprone.enabled = false
-          return
-        }
-
         // Exclude certain files (generated ones, mostly).
         switch (project.path) {
           case ":lucene:core":
