@@ -154,6 +154,7 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
     }
   }
 
+  @SuppressWarnings("restricted") // TODO: encapsulate the unsafeness into the LibFaissC
   private void writeFloatField(
       FieldInfo fieldInfo, FloatVectorValues floatVectorValues, IntToIntFunction oldToNewDocId)
       throws IOException {

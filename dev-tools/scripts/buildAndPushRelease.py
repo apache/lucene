@@ -16,6 +16,7 @@
 
 import argparse
 import datetime
+import getpass
 import os
 import re
 import subprocess
@@ -404,8 +405,6 @@ def main():
       print("Will not prompt for gpg password. Make sure your signing setup supports this.")
       c.key_password = None
     else:
-      import getpass
-
       c.key_password = getpass.getpass("Enter GPG keystore password: ")
   else:
     c.key_id = None

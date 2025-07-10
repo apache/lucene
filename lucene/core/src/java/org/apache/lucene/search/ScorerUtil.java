@@ -117,6 +117,27 @@ class ScorerUtil {
   }
 
   /**
+   * Compute a minimum required score, so that (float) MathUtil.sumUpperBound(minRequiredScore +
+   * maxRemainingScore, numScorers) <= minCompetitiveScore. The computed value may not be the
+   * greatest value that meets this condition, which means that we may fail to filter out some docs.
+   * However, this doesn't hurt correctness, it just means that these docs will be filtered out
+   * later, and the extra work required to compute an optimal value would unlikely result in a
+   * speedup.
+   */
+  static double minRequiredScore(
+      double maxRemainingScore, float minCompetitiveScore, int numScorers) {
+    double minRequiredScore = minCompetitiveScore - maxRemainingScore;
+    // note: we want the float ulp in order to converge faster, not the double ulp
+    double subtraction = Math.ulp(minCompetitiveScore);
+    while (minRequiredScore > 0
+        && (float) MathUtil.sumUpperBound(minRequiredScore + maxRemainingScore, numScorers)
+            >= minCompetitiveScore) {
+      minRequiredScore -= subtraction;
+    }
+    return minRequiredScore;
+  }
+
+  /**
    * Filters competitive hits from the provided {@link DocAndScoreAccBuffer}.
    *
    * <p>This method removes documents from the buffer that cannot possibly have a score competitive
@@ -128,18 +149,20 @@ class ScorerUtil {
       double maxRemainingScore,
       float minCompetitiveScore,
       int numScorers) {
-    if ((float) MathUtil.sumUpperBound(maxRemainingScore, numScorers) >= minCompetitiveScore) {
+    double minRequiredScore = minRequiredScore(maxRemainingScore, minCompetitiveScore, numScorers);
+
+    if (minRequiredScore <= 0) {
       return;
     }
 
     int newSize = 0;
     for (int i = 0; i < buffer.size; ++i) {
-      float maxPossibleScore =
-          (float) MathUtil.sumUpperBound(buffer.scores[i] + maxRemainingScore, numScorers);
-      if (maxPossibleScore >= minCompetitiveScore) {
-        buffer.docs[newSize] = buffer.docs[i];
-        buffer.scores[newSize] = buffer.scores[i];
-        newSize++;
+      int doc = buffer.docs[i];
+      double score = buffer.scores[i];
+      buffer.docs[newSize] = doc;
+      buffer.scores[newSize] = score;
+      if (score >= minRequiredScore) {
+        newSize += 1;
       }
     }
     buffer.size = newSize;

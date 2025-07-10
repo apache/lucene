@@ -1,3 +1,5 @@
+import org.apache.lucene.gradle.plugins.spotless.GoogleJavaFormatPlugin
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -25,7 +27,6 @@ plugins {
 
   id "lucene.help"
 
-  id "lucene.java.alternative-jdk-support"
   id "lucene.java-projects.conventions"
 
   id "lucene.java.core.mrjar"
@@ -33,12 +34,10 @@ plugins {
   id "lucene.java.slowest-tests-at-end"
   id "lucene.java.show-failed-tests-at-end"
   id "lucene.java.profiling"
-  id "lucene.java.beasting"
   id "lucene.java.coverage"
   id "lucene.java.modules"
 
   id "lucene.validation.spotless-groovy"
-  id "lucene.validation.google-java-format"
   id "lucene.validation.lockfile"
   id "lucene.validation.gradle-versions-cleanup"
   id "lucene.validation.gradlew-scripts-customizations"
@@ -69,7 +68,6 @@ plugins {
   id "lucene.documentation.changes-to-html"
   id "lucene.documentation.markdown"
   id "lucene.documentation.render-javadoc"
-  id "lucene.documentation.check-broken-links"
 
   id "lucene.regenerate"
   id "lucene.regenerate.jflex"

@@ -26,6 +26,9 @@ API Changes
   to ValueQueryNode. Made existing implementations public in all classes which
   implement ValueQueryNode. (Peter Barna, Adam Schwartz)
 
+* GITHUB#14873: Change PriorityQueue to take a LessThan interface implementation
+  in its constructor rather than overriding the lessThan abstract method (Simon Cooper)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -61,6 +64,9 @@ Bug Fixes
   returns a string which can be parsed back into the original node.
   (Peter Barna, Adam Schwartz)
 
+* GITHUB#14847: Allow Faiss vector format to index >2GB of vectors per-field per-segment by using MemorySegment APIs
+  (instead of ByteBuffer) to copy bytes to native memory. (Kaival Parikh)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -85,6 +91,8 @@ Other
 * GITHUB#14613: Rewrite APIJAR extractor to use Java 24 classfile API and kill ASM dependency also for build system.  (Uwe Schindler)
 
 * GITHUB#14705: Use Comparators for some PriorityQueue implementations. (Simon Cooper)
+* GITHUB#14761: Use more Comparators for PriorityQueue implementations. (Simon Cooper)
+* GITHUB#14817: Refactor some complex uses of PriorityQueue to use Comparators. (Simon Cooper)
 
 ======================= Lucene 10.3.0 =======================
 
@@ -97,6 +105,8 @@ API Changes
 
 * GITHUB#14426: Support determining desired off-heap memory requirements through
   KnnVectorsReader::getOffHeapByteSize (Chris Hegarty)
+
+* GITHUB#14899: Deprecate MergeSpecification#segString(Directory) (kitoha)
 
 New Features
 ---------------------
@@ -112,6 +122,11 @@ New Features
 * GITHUB#14708: Add a DoubleValuesSource for full precision vector similarity scores. (Vigya Sharma)
 
 * GITHUB#14784: Make pack methods public for BigIntegerPoint and HalfFloatPoint. (Prudhvi Godithi)
+
+* GITHUB#14009: Add a new Query that can rescore other Query based on a generic DoubleValueSource
+  and trim the results down to top N (Anh Dung Bui)
+
+* GITHUB#14729: Support for Re-Ranking Queries using Late Interaction Model Multi-Vectors. (Vigya Sharma, Jim Ferenczi)
 
 Improvements
 ---------------------
@@ -187,8 +202,22 @@ Optimizations
 
 * GITHUB#14772: Implement ConstantScoreScorer#nextDocsAndScores. (Ge Song)
 
+* GITHUB#14854: Using BatchScoreBulkScorer on CombinedFieldQuery. (Ge Song)
+
+* GITHUB#14827: Pre-calculate minRequiredScore to speedup filterCompetitiveHits. (Ge Song, Adrien Grand)
+
+* GITHUB#14906: Use branchless way to speedup filterCompetitiveHits. (Adrien Grand, Ge Song)
+
+Changes in Runtime Behavior
+---------------------
+* GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
+  tier from 10 to 8. This is expected to result in slightly faster search and
+  slightly slower indexing. (Adrien Grand)
+
 Bug Fixes
 ---------------------
+* GITHUB#14880: NPE exception could occur in Luke on Windows when using network shares (wuth)
+
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
   used if the DoubleValuesSource needed scores. (David Smiley)
 
@@ -222,6 +251,9 @@ Other
 
 * GITHUB#14667: Fix documentation regarding benchmark running. (Viliam Durina)
 
+* GITHUB#14898: Fix typo in Circle2D.java (Hokuto Joel Ide)
+
+* GITHUB#14839: Add support for sparse SortedDocValues to LuceneTestCase.assertDocValuesEquals (Parker Timmins)
 
 ======================= Lucene 10.2.2 =======================
 

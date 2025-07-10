@@ -14,32 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.gradle.plugins.java;
 
-sourceSets {
-  main.java.srcDirs = ['src/java']
-  main.resources.srcDirs = ['src/resources']
-  test.java.srcDirs = ['src/test']
-  test.resources.srcDirs = ['src/test-files']
-}
+import org.gradle.api.DefaultTask;
+import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.Optional;
+import org.gradle.internal.jvm.Jvm;
 
-tasks.named('processTestResources').configure {
-  from('src/test') {
-    exclude '**/*.java'
-  }
-}
+/** A temporary stub before all of RenderJavadocTask is ported from the gradle script. */
+public abstract class RenderJavadocTaskBase extends DefaultTask {
+  @Optional
+  @Input
+  public abstract Property<String> getExecutable();
 
-// if 'src/tools' exists, add it as a separate sourceSet.
-if (project.file('src/tools/java').exists()) {
-  sourceSets {
-    tools {
-      java {
-        srcDirs = ['src/tools/java']
-      }
-    }
-  }
-
-  // Inherit any dependencies for this source set from the main source set.
-  configurations {
-    toolsImplementation.extendsFrom implementation
+  public RenderJavadocTaskBase() {
+    getExecutable()
+        .convention(
+            getProject()
+                .getProviders()
+                .provider(() -> Jvm.current().getJavadocExecutable().toString()));
   }
 }

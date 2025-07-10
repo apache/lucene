@@ -232,7 +232,7 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
     var config = newIndexWriterConfig().setCodec(TestUtil.getDefaultCodec());
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, config)) {
-      final int numDocs = random().nextInt(5000);
+      final int numDocs = TestUtil.nextInt(random(), 1, 100);
       for (int i = 0; i < numDocs; ++i) {
         Document doc = new Document();
         doc.add(new LongPoint("f2", i));

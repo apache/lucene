@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
 /**
@@ -29,13 +30,13 @@ import java.util.function.Supplier;
  * cost implemented here is linear.
  *
  * <p><b>NOTE</b>: This class pre-allocates an array of length {@code maxSize+1} and pre-fills it
- * with elements if instantiated via the {@link #PriorityQueue(int,Supplier)} constructor.
+ * with elements if instantiated via the {@link #PriorityQueue(int,LessThan,Supplier)} constructor.
  *
  * <p><b>NOTE</b>: Iteration order is not specified.
  *
  * @lucene.internal
  */
-public abstract class PriorityQueue<T> implements Iterable<T> {
+public class PriorityQueue<T> implements Iterable<T> {
 
   /** Represents a {@code <} operation, which is less prescriptive than {@link Comparator} */
   @FunctionalInterface
@@ -45,54 +46,36 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
 
   /** Create a {@code PriorityQueue} that orders elements using the specified {@code lessThan} */
   public static <T> PriorityQueue<T> usingLessThan(int maxSize, LessThan<? super T> lessThan) {
-    return new PriorityQueue<>(maxSize) {
-      @Override
-      protected boolean lessThan(T a, T b) {
-        return lessThan.lessThan(a, b);
-      }
-    };
+    return new PriorityQueue<>(maxSize, lessThan);
   }
 
   /** Create a {@code PriorityQueue} that orders elements using the specified {@code lessThan} */
   public static <T> PriorityQueue<T> usingLessThan(
       int maxSize, Supplier<T> sentinelObjectSupplier, LessThan<? super T> lessThan) {
-    return new PriorityQueue<>(maxSize, sentinelObjectSupplier) {
-      @Override
-      protected boolean lessThan(T a, T b) {
-        return lessThan.lessThan(a, b);
-      }
-    };
+    return new PriorityQueue<>(maxSize, lessThan, sentinelObjectSupplier);
   }
 
   /** Create a {@code PriorityQueue} that orders elements using the specified {@code comparator} */
   public static <T> PriorityQueue<T> usingComparator(
       int maxSize, Comparator<? super T> comparator) {
-    return new PriorityQueue<>(maxSize) {
-      @Override
-      protected boolean lessThan(T a, T b) {
-        return comparator.compare(a, b) < 0;
-      }
-    };
+    return new PriorityQueue<>(maxSize, (a, b) -> comparator.compare(a, b) < 0);
   }
 
   /** Create a {@code PriorityQueue} that orders elements using the specified {@code comparator} */
   public static <T> PriorityQueue<T> usingComparator(
       int maxSize, Supplier<T> sentinelObjectSupplier, Comparator<? super T> comparator) {
-    return new PriorityQueue<>(maxSize, sentinelObjectSupplier) {
-      @Override
-      protected boolean lessThan(T a, T b) {
-        return comparator.compare(a, b) < 0;
-      }
-    };
+    return new PriorityQueue<>(
+        maxSize, (a, b) -> comparator.compare(a, b) < 0, sentinelObjectSupplier);
   }
 
   private int size = 0;
   private final int maxSize;
   private final T[] heap;
+  private final LessThan<? super T> lessThan;
 
-  /** Create an empty priority queue of the configured size. */
-  public PriorityQueue(int maxSize) {
-    this(maxSize, () -> null);
+  /** Create an empty priority queue of the configured size using the specified {@link LessThan}. */
+  public PriorityQueue(int maxSize, LessThan<? super T> lessThan) {
+    this(maxSize, lessThan, () -> null);
   }
 
   /**
@@ -110,7 +93,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
    * recommended:
    *
    * <pre class="prettyprint">
-   * PriorityQueue&lt;MyObject&gt; pq = new MyQueue&lt;MyObject&gt;(numHits);
+   * PriorityQueue&lt;MyObject&gt; pq = new PriorityQueue&lt;MyObject&gt;(numHits, lessThan);
    * // save the 'top' element, which is guaranteed to not be null.
    * MyObject pqTop = pq.top();
    * &lt;...&gt;
@@ -123,9 +106,10 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
    * <b>NOTE:</b> the given supplier will be called {@code maxSize} times, relying on a new object
    * to be returned and will not check if it's null again. Therefore you should ensure any call to
    * this method creates a new instance and behaves consistently, e.g., it cannot return null if it
-   * previously returned non-null and all returned instances must {@link #lessThan compare equal}.
+   * previously returned non-null and all returned instances must {@link LessThan compare equal}.
    */
-  public PriorityQueue(int maxSize, Supplier<T> sentinelObjectSupplier) {
+  public PriorityQueue(
+      int maxSize, LessThan<? super T> lessThan, Supplier<T> sentinelObjectSupplier) {
     final int heapSize;
 
     if (0 == maxSize) {
@@ -148,6 +132,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
     final T[] h = (T[]) new Object[heapSize];
     this.heap = h;
     this.maxSize = maxSize;
+    this.lessThan = lessThan;
 
     // If sentinel objects are supported, populate the queue with them
     T sentinel = sentinelObjectSupplier.get();
@@ -179,9 +164,8 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
 
     // Heap with size S always takes first S elements of the array,
     // and thus it's safe to fill array further - no actual non-sentinel value will be overwritten.
-    Iterator<T> iterator = elements.iterator();
-    while (iterator.hasNext()) {
-      this.heap[size + 1] = iterator.next();
+    for (T element : elements) {
+      this.heap[size + 1] = element;
       this.size++;
     }
 
@@ -190,14 +174,6 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
       downHeap(i);
     }
   }
-
-  /**
-   * Determines the ordering of objects in this priority queue. Subclasses must define this one
-   * method.
-   *
-   * @return <code>true</code> iff parameter <code>a</code> is less than parameter <code>b</code>.
-   */
-  protected abstract boolean lessThan(T a, T b);
 
   /**
    * Adds an Object to a PriorityQueue in log(size) time. If one tries to add more objects than
@@ -225,7 +201,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
     if (size < maxSize) {
       add(element);
       return null;
-    } else if (size > 0 && lessThan(heap[1], element)) {
+    } else if (size > 0 && lessThan.lessThan(heap[1], element)) {
       T ret = heap[1];
       heap[1] = element;
       updateTop();
@@ -320,11 +296,35 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
     return false;
   }
 
+  /**
+   * Moves the contents of this queue into a new array created by {@code newArray}, lowest items
+   * first
+   */
+  public T[] drainToArrayLowestFirst(IntFunction<T[]> newArray) {
+    T[] array = newArray.apply(size);
+    for (int i = 0; i < array.length; i++) {
+      array[i] = pop();
+    }
+    return array;
+  }
+
+  /**
+   * Moves the contents of this queue into a new array created by {@code newArray}, highest items
+   * first
+   */
+  public T[] drainToArrayHighestFirst(IntFunction<T[]> newArray) {
+    T[] array = newArray.apply(size);
+    for (int i = array.length - 1; i >= 0; i--) {
+      array[i] = pop();
+    }
+    return array;
+  }
+
   private boolean upHeap(int origPos) {
     int i = origPos;
     T node = heap[i]; // save bottom node
     int j = i >>> 1;
-    while (j > 0 && lessThan(node, heap[j])) {
+    while (j > 0 && lessThan.lessThan(node, heap[j])) {
       heap[i] = heap[j]; // shift parents down
       i = j;
       j = j >>> 1;
@@ -337,15 +337,15 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
     T node = heap[i]; // save top node
     int j = i << 1; // find smaller child
     int k = j + 1;
-    if (k <= size && lessThan(heap[k], heap[j])) {
+    if (k <= size && lessThan.lessThan(heap[k], heap[j])) {
       j = k;
     }
-    while (j <= size && lessThan(heap[j], node)) {
+    while (j <= size && lessThan.lessThan(heap[j], node)) {
       heap[i] = heap[j]; // shift up child
       i = j;
       j = i << 1;
       k = j + 1;
-      if (k <= size && lessThan(heap[k], heap[j])) {
+      if (k <= size && lessThan.lessThan(heap[k], heap[j])) {
         j = k;
       }
     }
@@ -363,7 +363,7 @@ public abstract class PriorityQueue<T> implements Iterable<T> {
 
   @Override
   public Iterator<T> iterator() {
-    return new Iterator<T>() {
+    return new Iterator<>() {
 
       int i = 1;
 

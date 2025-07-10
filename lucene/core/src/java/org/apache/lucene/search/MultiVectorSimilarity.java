@@ -14,17 +14,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.lucene.search;
 
-/**
- * Used by {@link BulkScorer}s that need to pass a {@link Scorable} to {@link
- * LeafCollector#setScorer}.
- */
-final class Score extends Scorable {
-  float score;
+import org.apache.lucene.index.VectorSimilarityFunction;
 
-  @Override
-  public float score() {
-    return score;
-  }
+/**
+ * Interface to define the similarity function between multi-vectors
+ *
+ * @lucene.experimental
+ */
+public interface MultiVectorSimilarity {
+
+  /**
+   * Computes similarity between two multi-vectors using provided {@link VectorSimilarityFunction}
+   *
+   * <p>Provided multi-vectors can have varying number of composing token vectors, but their token
+   * vectors should have the same dimension.
+   *
+   * @param outer a multi-vector
+   * @param inner another multi-vector
+   * @return similarity score between two multi-vectors
+   */
+  float compare(
+      float[][] outer, float[][] inner, VectorSimilarityFunction vectorSimilarityFunction);
 }

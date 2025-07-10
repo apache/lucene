@@ -5,6 +5,8 @@ invalid:
 valid:
   - import java.lang.foo.bar;
   - import static java.lang.Foo.bar;
+  - import java.lang.foo.*;
+  - import static java.lang.Foo.*;
 ---
 id: confusing-type-inference
 invalid:
@@ -41,3 +43,62 @@ valid:
   - |
     /* BLAH BLAH Unless required by applicable law BLAH BLAH */
     package foo;
+---
+id: javadoc-author-tag
+invalid:
+  - |
+    /** @author foo */
+valid:
+  - |
+    // notjavadoc @author
+  - |
+    /* notjavadoc @author */
+---
+id: nocommit-comment
+invalid:
+  - |
+    // nocommit: fix this
+  - |
+    /* nocommit: fix this */
+valid:
+  - boolean nocommit = false;
+---
+id: tood-comment
+invalid:
+  - |
+    // TOOD: fix this
+  - |
+    /* TOOD: fix this */
+valid:
+  - |
+    var foo = "TOOD: whatever";
+---
+id: missing-spi-block-tag
+invalid:
+  - |
+    public class X extends TokenizerFactory {}
+  - |
+    public class X extends TokenFilterFactory implements A,B,C {}
+  - |
+    public final class X extends CharFilterFactory {}
+  - |
+    @Foo
+    public class X extends CharFilterFactory {}
+  - |
+    /** boo */
+    public class X extends TokenizerFactory {}
+  - |
+    /* not javadoc
+    * @lucene.spi {@value #NAME}
+    */
+    public class X extends TokenizerFactory {}
+valid:
+  - |
+    /** this is javadoc
+    * @lucene.spi {@value #NAME}
+    */
+    public class X extends TokenizerFactory {}
+  - |
+    public abstract class X extends TokenizerFactory {}
+  - |
+    private class X extends TokenizerFactory {}

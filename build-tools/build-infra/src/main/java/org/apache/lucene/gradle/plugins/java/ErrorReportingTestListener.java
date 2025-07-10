@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.gradle;
+package org.apache.lucene.gradle.plugins.java;
 
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionValueSource;
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsExtension;
