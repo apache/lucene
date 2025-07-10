@@ -14,21 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.gradle;
 
-// Prints per-project test summary.
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-tasks.withType(Test).configureEach { task ->
-  afterSuite { desc, result ->
-    if (!desc.parent) {
-      if (result.testCount > 0) {
-        def components = [
-          "test(s)"   : result.testCount,
-          "failure(s)": result.failedTestCount,
-          "skipped"   : result.skippedTestCount
-        ].findAll { k, v -> v > 0 }.collect { k, v -> "$v $k" }.join(", ")
-
-        logger.lifecycle("${task.path} (${result.resultType}): ${components}")
-      }
-    }
-  }
+/**
+ * Forbidden-api suppression for build-infra.
+ *
+ * @see org.apache.lucene.gradle.plugins.java.ApplyForbiddenApisPlugin
+ */
+@Retention(RetentionPolicy.CLASS)
+@Target({ElementType.CONSTRUCTOR, ElementType.FIELD, ElementType.METHOD, ElementType.TYPE})
+public @interface SuppressForbidden {
+  /** A reason for suppressing should always be given. */
+  String reason();
 }

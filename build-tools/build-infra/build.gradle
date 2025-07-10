@@ -36,6 +36,13 @@ java {
 
 gradlePlugin {
   automatedPublishing = false
+
+  plugins {
+    luceneJavaProjectConventions {
+      id = 'lucene.java-projects.conventions'
+      implementationClass = 'org.apache.lucene.gradle.plugins.java.JavaProjectConventionsPlugin'
+    }
+  }
 }
 
 // Convert a plugin dependency to a regular dependency so that we can

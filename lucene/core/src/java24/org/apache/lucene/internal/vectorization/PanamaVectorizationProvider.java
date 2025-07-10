@@ -25,6 +25,7 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MemorySegmentAccessInput;
 import org.apache.lucene.util.Constants;
+import org.apache.lucene.util.SuppressForbidden;
 
 /** A vectorization provider that leverages the Panama Vector API. */
 final class PanamaVectorizationProvider extends VectorizationProvider {
@@ -47,6 +48,11 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
 
     this.vectorUtilSupport = new PanamaVectorUtilSupport();
 
+    logIncubatorSetup();
+  }
+
+  @SuppressForbidden(reason = "We log at info level here, it's fine.")
+  private void logIncubatorSetup() {
     var log = Logger.getLogger(getClass().getName());
     log.info(
         String.format(

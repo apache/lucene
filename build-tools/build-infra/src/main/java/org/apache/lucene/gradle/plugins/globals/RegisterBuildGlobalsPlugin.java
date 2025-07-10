@@ -21,6 +21,7 @@ import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin;
 import com.carrotsearch.randomizedtesting.SeedUtils;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -31,7 +32,7 @@ import org.gradle.api.provider.Provider;
 
 /** Registers global build constants and extensions. */
 public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
-  private static Pattern VERSION_PATTERN =
+  private static final Pattern VERSION_PATTERN =
       Pattern.compile("^(?<baseVersion>(?<majorVersion>\\d+)\\.\\d+\\.\\d+)(-(.+))?");
 
   @Override
@@ -43,9 +44,9 @@ public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
     project.setVersion(luceneVersion);
 
     var tstamp = ZonedDateTime.now();
-    String buildDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(tstamp);
-    String buildTime = DateTimeFormatter.ofPattern("HH:mm:ss").format(tstamp);
-    String buildYear = DateTimeFormatter.ofPattern("yyyy").format(tstamp);
+    String buildDate = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ROOT).format(tstamp);
+    String buildTime = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.ROOT).format(tstamp);
+    String buildYear = DateTimeFormatter.ofPattern("yyyy", Locale.ROOT).format(tstamp);
 
     String baseVersion = getBaseVersion(luceneVersion);
     String majorVersion = getMajorVersion(luceneVersion);
@@ -60,7 +61,8 @@ public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
             .addOption(
                 "tests.seed",
                 "The \"root\" randomization seed for options and test parameters.",
-                project.provider(() -> String.format("%08X", new Random().nextLong())));
+                project.provider(
+                    () -> String.format(Locale.ROOT, "%08X", new Random().nextLong())));
     String rootSeed = rootSeedOption.get();
 
     // We take just the root seed, ignoring any chained sub-seeds.
