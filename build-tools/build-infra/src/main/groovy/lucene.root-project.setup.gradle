@@ -69,32 +69,6 @@ tasks.register("checkJdkInternalsExportedToGradle", {
   }
 })
 
-//
-// Expose parts of the final project version to the build. We can't use Runtime.Version, sadly.
-//
-def buildGlobals = rootProject.extensions.getByName("buildGlobals")
-ext {
-  // TODO: remove ext properties in favor of using the global extension directly in Java plugins code (typed refs).
-
-  // Minimum Java version required to compile and run Lucene.
-  minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
-
-  // Build timestamp.
-  buildDate = buildGlobals.buildDate
-  buildTime = buildGlobals.buildTime
-  buildYear = buildGlobals.buildYear
-}
-
-//
-// Set certain root project properties eagerly so that plugins
-// and scripts have them available.
-//
-ext {
-  isIdea = Boolean.parseBoolean(System.getProperty("idea.active", "false"))
-  isIdeaSync = Boolean.parseBoolean(System.getProperty("idea.sync.active", "false"))
-  isIdeaBuild = (isIdea && !isIdeaSync)
-}
-
 // Wire up included builds to some validation tasks.
 tasks.matching {it.name == "tidy"}.configureEach {
   dependsOn gradle.includedBuilds*.task(":tidy")

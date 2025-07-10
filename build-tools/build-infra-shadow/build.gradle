@@ -70,7 +70,7 @@ tasks.matching {
 }
 
 // make certain tasks think their sources are from build-infra.
-if (!isIdea) {
+if (!buildGlobals.intellijIdea.get().isIdea) {
   plugins.withType(JavaPlugin).configureEach {
     SourceSet main = sourceSets.main
     main.java.srcDirs = rootProject.files("build-tools/build-infra/src/main/java")

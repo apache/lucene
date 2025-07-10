@@ -21,7 +21,6 @@ import java.util.List;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.VersionCatalog;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Provider;
@@ -34,8 +33,7 @@ public class JavacConfigurationPlugin extends LuceneGradlePlugin {
   public void apply(Project project) {
     requiresAppliedPlugin(project, JavaPlugin.class);
 
-    VersionCatalog versionCatalog = getVersionCatalog(project);
-    JavaVersion minJavaVersion = JavaVersion.toVersion(versionCatalog.findVersion("minJava").get());
+    JavaVersion minJavaVersion = getLuceneBuildGlobals(project).getMinJavaVersion().get();
 
     BuildOptionsExtension buildOptions =
         project.getExtensions().getByType(BuildOptionsExtension.class);

@@ -27,6 +27,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.gradle.api.GradleException;
+import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.provider.Provider;
 
@@ -68,6 +69,14 @@ public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
     // We take just the root seed, ignoring any chained sub-seeds.
     long rootSeedLong = SeedUtils.parseSeedChain(rootSeed)[0];
 
+    // Parse the minimum Java version required to run Lucene.
+    JavaVersion minJavaVersion =
+        JavaVersion.toVersion(getVersionCatalog(project).findVersion("minJava").get().toString());
+
+    boolean isIdea = Boolean.parseBoolean(System.getProperty("idea.active", "false"));
+    boolean isIdeaSync = Boolean.parseBoolean(System.getProperty("idea.sync.active", "false"));
+    boolean isIdeaBuild = (isIdea && !isIdeaSync);
+
     project.allprojects(
         p -> {
           var globals =
@@ -85,6 +94,11 @@ public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
           globals
               .getProjectSeedAsLong()
               .convention(rootSeedLong ^ p.getPath().hashCode())
+              .finalizeValue();
+          globals.getMinJavaVersion().convention(minJavaVersion).finalizeValue();
+          globals
+              .getIntellijIdea()
+              .convention(new IntellijIdea(isIdea, isIdeaSync, isIdeaBuild))
               .finalizeValue();
         });
   }

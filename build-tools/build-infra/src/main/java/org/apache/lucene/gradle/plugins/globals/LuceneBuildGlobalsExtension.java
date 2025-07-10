@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.gradle.plugins.globals;
 
+import org.gradle.api.JavaVersion;
 import org.gradle.api.provider.Property;
 
 /** Global build constants. */
@@ -61,4 +62,10 @@ public abstract class LuceneBuildGlobalsExtension {
 
   /** Return the root randomization seed as a {@code long} value. */
   public abstract Property<Long> getRootSeedAsLong();
+
+  /** Minimum Java version required for this version of Lucene. */
+  public abstract Property<JavaVersion> getMinJavaVersion();
+
+  /** If set, returns certain flags helpful for configuring the build for the intellij idea IDE. */
+  public abstract Property<IntellijIdea> getIntellijIdea();
 }
