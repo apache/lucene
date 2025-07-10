@@ -18,7 +18,7 @@ import org.apache.lucene.gradle.plugins.spotless.GoogleJavaFormatPlugin
  */
 
 plugins {
-  // Apply convention plugins from the composite build-infra project.
+  // Apply build plugins from the composite build-infra project.
   // The order of plugins does matter (most of the time).
   id "lucene.root-project.check-environment"
   id "lucene.root-project.setup"

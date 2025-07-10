@@ -38,7 +38,12 @@ gradlePlugin {
   automatedPublishing = false
 
   plugins {
-    luceneJavaProjectConventions {
+    CheckEnvironmentPlugin {
+      id = 'lucene.root-project.check-environment'
+      implementationClass = 'org.apache.lucene.gradle.plugins.misc.CheckEnvironmentPlugin'
+    }
+
+    JavaProjectConventionsPlugin {
       id = 'lucene.java-projects.conventions'
       implementationClass = 'org.apache.lucene.gradle.plugins.java.JavaProjectConventionsPlugin'
     }
@@ -88,7 +93,7 @@ dependencies {
   implementation plugin(deps.plugins.versionCatalogUpdate)
 }
 
-def hasJavaFlightRecorder = ModuleLayer.boot().findModule('jdk.jfr').map{ otherModule ->
+def hasJavaFlightRecorder = ModuleLayer.boot().findModule('jdk.jfr').map {otherModule ->
   this.getClass().module.canRead(otherModule)
 }.orElse(false)
 if (!hasJavaFlightRecorder) {
