@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /** Information about upcoming impacts, ie. (freq, norm) pairs. */
 public abstract class Impacts {
@@ -46,4 +47,11 @@ public abstract class Impacts {
    * that are greater than or equal to the impacts that actually appear in postings.
    */
   public abstract List<Impact> getImpacts(int level);
+
+  public void forEach(int level, Consumer<Impact> consumer) {
+    List<Impact> impacts = getImpacts(level);
+    for (int i = 0; i < impacts.size(); i++) {
+      consumer.accept(impacts.get(i));
+    }
+  }
 }

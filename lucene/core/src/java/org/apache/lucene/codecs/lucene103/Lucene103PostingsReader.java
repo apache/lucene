@@ -32,6 +32,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.RandomAccess;
+import java.util.function.Consumer;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PostingsReaderBase;
@@ -1380,11 +1381,31 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
             return DUMMY_IMPACTS;
           }
 
+          @Override
+          public void forEach(int level, Consumer<Impact> consumer) {
+            if (indexHasFreq == false) {
+              consumer.accept(DUMMY_IMPACTS_NO_FREQS.get(0));
+            } else if (level == 0 && level0LastDocID != NO_MORE_DOCS) {
+              travelImpacts(level0SerializedImpacts, level0Impacts, consumer);
+            } else if (level == 1) {
+              travelImpacts(level1SerializedImpacts, level1Impacts, consumer);
+            } else {
+              consumer.accept(DUMMY_IMPACTS.get(0));
+            }
+          }
+
           private List<Impact> readImpacts(BytesRef serialized, MutableImpactList impactsList) {
             var scratch = this.scratch;
             scratch.reset(serialized.bytes, 0, serialized.length);
             Lucene103PostingsReader.readImpacts(scratch, impactsList);
             return impactsList;
+          }
+
+          private void travelImpacts(
+              BytesRef serialized, MutableImpactList impactsList, Consumer<Impact> consumer) {
+            var scratch = this.scratch;
+            scratch.reset(serialized.bytes, 0, serialized.length);
+            Lucene103PostingsReader.travelImpacts(scratch, impactsList, consumer);
           }
         };
 
@@ -1453,6 +1474,13 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
     public int size() {
       return length;
     }
+
+    @Override
+    public void forEach(Consumer<? super Impact> action) {
+      for (int i = 0; i < length; i++) {
+        action.accept(impacts[i]);
+      }
+    }
   }
 
   static MutableImpactList readImpacts(ByteArrayDataInput in, MutableImpactList reuse) {
@@ -1479,6 +1507,33 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
     }
     reuse.length = length;
     return reuse;
+  }
+
+  static void travelImpacts(
+      ByteArrayDataInput in, MutableImpactList reuse, Consumer<Impact> consumer) {
+    int freq = 0;
+    long norm = 0;
+    int length = 0;
+    while (in.getPosition() < in.length()) {
+      int freqDelta = in.readVInt();
+      if ((freqDelta & 0x01) != 0) {
+        freq += 1 + (freqDelta >>> 1);
+        try {
+          norm += 1 + in.readZLong();
+        } catch (IOException e) {
+          throw new RuntimeException(e); // cannot happen on a BADI
+        }
+      } else {
+        freq += 1 + (freqDelta >>> 1);
+        norm++;
+      }
+      Impact impact = reuse.impacts[length];
+      impact.freq = freq;
+      impact.norm = norm;
+      length++;
+      consumer.accept(impact);
+    }
+    reuse.length = length;
   }
 
   @Override

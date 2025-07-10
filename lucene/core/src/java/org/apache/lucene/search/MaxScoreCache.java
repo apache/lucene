@@ -33,6 +33,10 @@ import org.apache.lucene.util.ArrayUtil;
  */
 public final class MaxScoreCache {
 
+  private static class FloatBox {
+    float value;
+  }
+
   private final ImpactsSource impactsSource;
   private final SimScorer scorer;
   private final float globalMaxScore;
@@ -69,14 +73,37 @@ public final class MaxScoreCache {
     }
   }
 
+  //  private float computeMaxScore(List<Impact> impacts) {
+  //    float maxScore = 0;
+  //    var scorer = this.scorer;
+  //    for (int i = 0, length = impacts.size(); i < length; i++) {
+  //      Impact impact = impacts.get(i);
+  //      maxScore = Math.max(scorer.score(impact.freq, impact.norm), maxScore);
+  //    }
+  //    return maxScore;
+  //  }
+
   private float computeMaxScore(List<Impact> impacts) {
-    float maxScore = 0;
+    final FloatBox maxScore = new FloatBox();
+    maxScore.value = 0;
     var scorer = this.scorer;
-    for (int i = 0, length = impacts.size(); i < length; i++) {
-      Impact impact = impacts.get(i);
-      maxScore = Math.max(scorer.score(impact.freq, impact.norm), maxScore);
-    }
-    return maxScore;
+    impacts.forEach(
+        impact -> {
+          maxScore.value = Math.max(scorer.score(impact.freq, impact.norm), maxScore.value);
+        });
+    return maxScore.value;
+  }
+
+  private float computeMaxScore(Impacts impacts, int level) {
+    final FloatBox maxScore = new FloatBox();
+    maxScore.value = 0;
+    var scorer = this.scorer;
+    impacts.forEach(
+        level,
+        impact -> {
+          maxScore.value = Math.max(scorer.score(impact.freq, impact.norm), maxScore.value);
+        });
+    return maxScore.value;
   }
 
   /**
@@ -118,7 +145,8 @@ public final class MaxScoreCache {
     ensureCacheSize(level + 1);
     final int levelUpTo = impacts.getDocIdUpTo(level);
     if (maxScoreCacheUpTo[level] < levelUpTo) {
-      maxScoreCache[level] = computeMaxScore(impacts.getImpacts(level));
+      //      maxScoreCache[level] = computeMaxScore(impacts.getImpacts(level));
+      maxScoreCache[level] = computeMaxScore(impacts, level);
       maxScoreCacheUpTo[level] = levelUpTo;
     }
     return maxScoreCache[level];
