@@ -24,7 +24,7 @@
 # PreCommit jobs on ASF Jenkins: https://builds.apache.org/view/PreCommit+Builds/
 #
 # ------------>8-------------------------->8-------------------------->8------------
- 
+
 #!/usr/bin/env bash
 
 # This is a modified copy of the script from Jenkins project "PreCommit-HADOOP-Build"

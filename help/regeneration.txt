@@ -31,7 +31,7 @@ Execution failed for task ':lucene:core:generateStandardTokenizerChecksumCheck'.
   Expected:
     lucene/core/[...]/StandardTokenizerImpl.java=8e33c2698446c1c7a9479796a41316d1932ceda8
 
-The message shows you which resources have mismatches on checksums (in this case 
+The message shows you which resources have mismatches on checksums (in this case
 StandardTokenizerImpl.java) but also the *module* where the generated
 resource exists and the *task name* that should be used to regenerate this resource:
 
@@ -43,12 +43,12 @@ To resolve the problem, try to:
 changed) and then decide whether to update the generated resource's template (or whatever
 it is using to emit the generated resource);
 
-2) regenerate the derived resources, possibly saving new checksums. If you decide to 
+2) regenerate the derived resources, possibly saving new checksums. If you decide to
 regenerate, just run the task hinted at in the error message, for example:
 
 gradlew :lucene:core:generateStandardTokenizerIfChanged
 
-This regenerates all resources the task "generateStandardTokenizer" produces 
+This regenerates all resources the task "generateStandardTokenizer" produces
 and updates the corresponding checksums.
 
 
@@ -61,7 +61,7 @@ by running:
 
 gradlew regenerate
 
-It is typically much wiser to limit the scope of regeneration to only 
+It is typically much wiser to limit the scope of regeneration to only
 the module you're working with though:
 
 gradlew -p lucene/analysis/common regenerate
@@ -93,8 +93,8 @@ Resource checksums, incremental generation and advanced topics
 --------------------------------------------------------------
 
 Many resource generation tasks require specific tools (perl, python, bash shell)
-and resources that may not be available on all platforms. In LUCENE-9868 we tried 
-to make resource generation tasks "incremental" so that they only run if their 
+and resources that may not be available on all platforms. In LUCENE-9868 we tried
+to make resource generation tasks "incremental" so that they only run if their
 sources (or outputs) have changed. So if you run the generic "regenerate" task, many of the
 actual regeneration sub-tasks will be "skipped" - you can see this if you run gradle with
 plain console, for example:
@@ -138,11 +138,11 @@ but discouraged:
 gradlew -p lucene/analysis/common generateUnicodePropsInternal --rerun-tasks
 
 The reason is that some of these generation tasks require follow-up (for example
-source code tidying) and, more importantly, the checksums for these 
+source code tidying) and, more importantly, the checksums for these
 regenerated resources won't be saved (so the next time you run 'check' it'll fail
 with checksum mismatches).
 
-Finally, if you do feel like force-regenerating everything, remember to exclude this 
+Finally, if you do feel like force-regenerating everything, remember to exclude this
 monster...
 
 gradlew regenerate -x generateUAX29URLEmailTokenizerInternal --rerun-tasks

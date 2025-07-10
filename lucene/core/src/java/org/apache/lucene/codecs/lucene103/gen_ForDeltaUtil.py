@@ -286,7 +286,7 @@ def writeRemainder(bpv, next_primitive, remaining_bits_per_int, o, num_values, f
       remaining_bits = remaining_bits_per_int-b
     f.write('      ints[intsIdx + %d] = l%d;\n' %(i, i))
   f.write('    }\n')
-  
+
 def writeDecode(bpv, f):
   next_primitive = primitive_size_for_bpv(bpv)
   if next_primitive % bpv == 0:

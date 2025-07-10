@@ -2,7 +2,7 @@
 
 # Step 1: Plural Reduction
 {  "Plural", 3, 1, {"s"},
-  # bons -> bom 
+  # bons -> bom
   {"ns",1,"m"},
   # balões -> balão
   {"ões",3,"ão"},
@@ -29,7 +29,7 @@
 {  "Adverb", 0, 0, {},
   # felizmente -> feliz
   {"mente",4,"",{"experimente"}}};
-  
+
 # Step 3: Feminine Reduction
 {  "Feminine", 3, 1, {"a","ã"},
   # chefona -> chefão
@@ -91,7 +91,7 @@
   {"aço",4,"",{"antebraço"}},
   {"aça",4},
   # casadão -> cans
-  {"adão",4}, 
+  {"adão",4},
   {"idão",4},
   # corpázio -> corp
   {"ázio",3,"",{"topázio"}},
@@ -250,7 +250,7 @@
   {"ismo",3,"",{"cinismo"}}};
 
 # Step 6: Verb Suffix Reduction
-{  "Verb", 0, 0, {}, 
+{  "Verb", 0, 0, {},
   # cantaríamo -> cant
   {"aríamo",2},
   # cantássemo -> cant
@@ -442,11 +442,11 @@
   # bebi -> beb
   {"i",3}};
 
-# Step 7: Vowel Removal 
-{  "Vowel", 0, 0, {}, 
+# Step 7: Vowel Removal
+{  "Vowel", 0, 0, {},
   {"bil",2,"vel"},
   {"gue",2,"g",{"gangue","jegue"}},
-  {"á",3}, 
+  {"á",3},
   {"ê",3,"",{"bebê"}},
   # menina -> menin
   {"a",3,"",{"ásia"}},

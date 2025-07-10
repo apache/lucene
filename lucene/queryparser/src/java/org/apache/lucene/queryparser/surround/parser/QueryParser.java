@@ -37,7 +37,7 @@ import org.apache.lucene.queryparser.charstream.FastCharStream;
  *   upper-cased, and the non-unary operators (everything but NOT) support
  *   both infix <code>(a AND b AND c)</code> and prefix <code>AND(a, b,
  *   c)</code> notation. </p>
- 
+
  *  <p>The W and N operators express a positional relationship among their
  *  operands.  W is ordered, and N is unordered.  The distance is 1 by
  *  default, meaning the operands are adjacent, or may be provided as a

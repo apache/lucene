@@ -16,18 +16,19 @@
  */
 package org.apache.lucene.search;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
@@ -37,6 +38,7 @@ import org.apache.lucene.search.knn.TopKnnCollectorManager;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Uses {@link KnnVectorsReader#search} to perform nearest neighbour search.
@@ -53,6 +55,9 @@ import org.apache.lucene.util.Bits;
 abstract class AbstractKnnVectorQuery extends Query {
 
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
+  // Constant controlling the degree of additional result exploration done during
+  // pro-rata search of segments.
+  private static final int LAMBDA = 16;
 
   protected final String field;
   protected final int k;
@@ -93,22 +98,65 @@ abstract class AbstractKnnVectorQuery extends Query {
         new TimeLimitingKnnCollectorManager(
             getKnnCollectorManager(k, indexSearcher), indexSearcher.getTimeout());
     TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
-    List<LeafReaderContext> leafReaderContexts = reader.leaves();
+    List<LeafReaderContext> leafReaderContexts = new ArrayList<>(reader.leaves());
     List<Callable<TopDocs>> tasks = new ArrayList<>(leafReaderContexts.size());
     for (LeafReaderContext context : leafReaderContexts) {
       tasks.add(() -> searchLeaf(context, filterWeight, knnCollectorManager));
     }
-    TopDocs[] perLeafResults = taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new);
-
-    // Merge sort the results
-    TopDocs topK = mergeLeafResults(perLeafResults);
+    Map<Integer, TopDocs> perLeafResults = new HashMap<>();
+    TopDocs topK = runSearchTasks(tasks, taskExecutor, perLeafResults, leafReaderContexts);
+    int reentryCount = 0;
+    if (topK.scoreDocs.length > 0
+        && perLeafResults.size() > 1
+        // don't re-enter the search if we early terminated
+        && topK.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
+      float minTopKScore = topK.scoreDocs[topK.scoreDocs.length - 1].score;
+      TimeLimitingKnnCollectorManager knnCollectorManagerInner =
+          new TimeLimitingKnnCollectorManager(
+              new ReentrantKnnCollectorManager(
+                  new TopKnnCollectorManager(k, indexSearcher), perLeafResults),
+              indexSearcher.getTimeout());
+      Iterator<LeafReaderContext> ctxIter = leafReaderContexts.iterator();
+      while (ctxIter.hasNext()) {
+        LeafReaderContext ctx = ctxIter.next();
+        TopDocs perLeaf = perLeafResults.get(ctx.ord);
+        if (perLeaf.scoreDocs.length > 0
+            && perLeaf.scoreDocs[perLeaf.scoreDocs.length - 1].score >= minTopKScore) {
+          // All this leaf's hits are at or above the global topK min score; explore it further
+          ++reentryCount;
+          tasks.add(() -> searchLeaf(ctx, filterWeight, knnCollectorManagerInner));
+        } else {
+          // This leaf is tapped out; discard the context from the active list so we maintain
+          // correspondence between tasks and leaves
+          ctxIter.remove();
+        }
+      }
+      assert leafReaderContexts.size() == tasks.size();
+      assert perLeafResults.size() == reader.leaves().size();
+      topK = runSearchTasks(tasks, taskExecutor, perLeafResults, leafReaderContexts);
+    }
     if (topK.scoreDocs.length == 0) {
       return new MatchNoDocsQuery();
     }
-    return createRewrittenQuery(reader, topK);
+    return DocAndScoreQuery.createDocAndScoreQuery(reader, topK, reentryCount);
   }
 
-  private TopDocs searchLeaf(
+  private TopDocs runSearchTasks(
+      List<Callable<TopDocs>> tasks,
+      TaskExecutor taskExecutor,
+      Map<Integer, TopDocs> perLeafResults,
+      List<LeafReaderContext> leafReaderContexts)
+      throws IOException {
+    List<TopDocs> taskResults = taskExecutor.invokeAll(tasks);
+    for (int i = 0; i < taskResults.size(); i++) {
+      perLeafResults.put(leafReaderContexts.get(i).ord, taskResults.get(i));
+    }
+    tasks.clear();
+    // Merge sort the results
+    return mergeLeafResults(perLeafResults.values().toArray(TopDocs[]::new));
+  }
+
+  protected TopDocs searchLeaf(
       LeafReaderContext ctx,
       Weight filterWeight,
       TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager)
@@ -143,19 +191,23 @@ abstract class AbstractKnnVectorQuery extends Query {
     final int cost = acceptDocs.cardinality();
     QueryTimeout queryTimeout = timeLimitingKnnCollectorManager.getQueryTimeout();
 
-    if (cost <= k) {
-      // If there are <= k possible matches, short-circuit and perform exact search, since HNSW
-      // must always visit at least k documents
+    float leafProportion = ctx.reader().maxDoc() / (float) ctx.parent.reader().maxDoc();
+    int perLeafTopK = perLeafTopKCalculation(k, leafProportion);
+
+    if (cost <= perLeafTopK) {
+      // If there are <= perLeafTopK possible matches, short-circuit and perform exact search, since
+      // HNSW must always visit at least perLeafTopK documents
       return exactSearch(ctx, new BitSetIterator(acceptDocs, cost), queryTimeout);
     }
 
     // Perform the approximate kNN search
     // We pass cost + 1 here to account for the edge case when we explore exactly cost vectors
     TopDocs results = approximateSearch(ctx, acceptDocs, cost + 1, timeLimitingKnnCollectorManager);
+
     if ((results.totalHits.relation() == TotalHits.Relation.EQUAL_TO
-            // We know that there are more than `k` available docs, if we didn't even get `k`
-            // something weird happened, and we need to drop to exact search
-            && results.scoreDocs.length >= k)
+            // We know that there are more than `perLeafTopK` available docs, if we didn't even get
+            // `perLeafTopK` something weird happened, and we need to drop to exact search
+            && results.scoreDocs.length >= perLeafTopK)
         // Return partial results only when timeout is met
         || (queryTimeout != null && queryTimeout.shouldExit())) {
       return results;
@@ -171,20 +223,52 @@ abstract class AbstractKnnVectorQuery extends Query {
       // If we already have a BitSet and no deletions, reuse the BitSet
       return bitSetIterator.getBitSet();
     } else {
-      // Create a new BitSet from matching and live docs
-      FilteredDocIdSetIterator filterIterator =
-          new FilteredDocIdSetIterator(iterator) {
-            @Override
-            protected boolean match(int doc) {
-              return liveDocs == null || liveDocs.get(doc);
-            }
-          };
-      return BitSet.of(filterIterator, maxDoc);
+      int threshold = maxDoc >> 7; // same as BitSet#of
+      if (iterator.cost() >= threshold) {
+        // take advantage of Disi#intoBitset and Bits#applyMask
+        FixedBitSet bitSet = new FixedBitSet(maxDoc);
+        bitSet.or(iterator);
+        if (liveDocs != null) {
+          liveDocs.applyMask(bitSet, 0);
+        }
+        return bitSet;
+      } else {
+        FilteredDocIdSetIterator filterIterator =
+            new FilteredDocIdSetIterator(iterator) {
+              @Override
+              protected boolean match(int doc) {
+                return liveDocs == null || liveDocs.get(doc);
+              }
+            };
+        return BitSet.of(filterIterator, maxDoc); // create a sparse bitset
+      }
     }
   }
 
   protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
-    return new TopKnnCollectorManager(k, searcher);
+    KnnCollectorManager manager =
+        (visitedLimit, strategy, context) -> {
+          @SuppressWarnings("resource")
+          float leafProportion =
+              context.reader().maxDoc() / (float) context.parent.reader().maxDoc();
+          int perLeafTopK = perLeafTopKCalculation(k, leafProportion);
+          // if we divided by zero above, leafProportion can be NaN and then this would be 0
+          assert perLeafTopK > 0;
+          return new TopKnnCollector(perLeafTopK, visitedLimit, strategy);
+        };
+    return manager;
+  }
+
+  /*
+   * Returns perLeafTopK, the expected number (K * leafProportion) of hits in a leaf with the given
+   * proportion of the entire index, plus three standard deviations of a binomial distribution. Math
+   * says there is a 95% probability that this segment's contribution to the global top K hits are
+   * <= perLeafTopK.
+   */
+  private static int perLeafTopKCalculation(int k, float leafProportion) {
+    return (int)
+        Math.max(
+            1, k * leafProportion + LAMBDA * Math.sqrt(k * leafProportion * (1 - leafProportion)));
   }
 
   protected abstract TopDocs approximateSearch(
@@ -264,39 +348,50 @@ abstract class AbstractKnnVectorQuery extends Query {
     return TopDocs.merge(k, perLeafResults);
   }
 
-  private Query createRewrittenQuery(IndexReader reader, TopDocs topK) {
-    int len = topK.scoreDocs.length;
+  // forked from SeededKnnVectorQuery.SeededCollectorManager
+  private class ReentrantKnnCollectorManager implements KnnCollectorManager {
+    final KnnCollectorManager knnCollectorManager;
+    final Map<Integer, TopDocs> perLeafResults;
 
-    assert len > 0;
-    float maxScore = topK.scoreDocs[0].score;
-
-    Arrays.sort(topK.scoreDocs, Comparator.comparingInt(a -> a.doc));
-    int[] docs = new int[len];
-    float[] scores = new float[len];
-    for (int i = 0; i < len; i++) {
-      docs[i] = topK.scoreDocs[i].doc;
-      scores[i] = topK.scoreDocs[i].score;
+    ReentrantKnnCollectorManager(
+        KnnCollectorManager knnCollectorManager, Map<Integer, TopDocs> perLeafResults) {
+      this.knnCollectorManager = knnCollectorManager;
+      this.perLeafResults = perLeafResults;
     }
-    int[] segmentStarts = findSegmentStarts(reader.leaves(), docs);
-    return new DocAndScoreQuery(docs, scores, maxScore, segmentStarts, reader.getContext().id());
-  }
 
-  static int[] findSegmentStarts(List<LeafReaderContext> leaves, int[] docs) {
-    int[] starts = new int[leaves.size() + 1];
-    starts[starts.length - 1] = docs.length;
-    if (starts.length == 2) {
-      return starts;
-    }
-    int resultIndex = 0;
-    for (int i = 1; i < starts.length - 1; i++) {
-      int upper = leaves.get(i).docBase;
-      resultIndex = Arrays.binarySearch(docs, resultIndex, docs.length, upper);
-      if (resultIndex < 0) {
-        resultIndex = -1 - resultIndex;
+    @Override
+    public KnnCollector newCollector(
+        int visitLimit, KnnSearchStrategy searchStrategy, LeafReaderContext ctx)
+        throws IOException {
+      KnnCollector delegateCollector =
+          knnCollectorManager.newCollector(visitLimit, searchStrategy, ctx);
+      TopDocs seedTopDocs = perLeafResults.get(ctx.ord);
+      VectorScorer scorer = createVectorScorer(ctx, ctx.reader().getFieldInfos().fieldInfo(field));
+      if (seedTopDocs.totalHits.value() == 0 || scorer == null) {
+        // shouldn't happen - we only come here when there are results
+        assert false;
+        // on the other hand, it should be safe to return no results?
+        return delegateCollector;
       }
-      starts[i] = resultIndex;
+      DocIdSetIterator vectorIterator = scorer.iterator();
+      // Handle sparse
+      if (vectorIterator instanceof IndexedDISI indexedDISI) {
+        vectorIterator = IndexedDISI.asDocIndexIterator(indexedDISI);
+      }
+      // Most underlying iterators are indexed, so we can map the seed docs to the vector docs
+      if (vectorIterator instanceof KnnVectorValues.DocIndexIterator indexIterator) {
+        DocIdSetIterator seedDocs =
+            new SeededKnnVectorQuery.MappedDISI(
+                indexIterator, new SeededKnnVectorQuery.TopDocsDISI(seedTopDocs, ctx));
+        return knnCollectorManager.newCollector(
+            visitLimit,
+            new KnnSearchStrategy.Seeded(seedDocs, seedTopDocs.scoreDocs.length, searchStrategy),
+            ctx);
+      }
+      // could lead to an infinite loop if this ever happens
+      assert false;
+      return delegateCollector;
     }
-    return starts;
   }
 
   @Override
@@ -344,163 +439,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     return filter;
   }
 
-  /** Caches the results of a KnnVector search: a list of docs and their scores */
-  static class DocAndScoreQuery extends Query {
-
-    private final int[] docs;
-    private final float[] scores;
-    private final float maxScore;
-    private final int[] segmentStarts;
-    private final Object contextIdentity;
-
-    /**
-     * Constructor
-     *
-     * @param docs the global docids of documents that match, in ascending order
-     * @param scores the scores of the matching documents
-     * @param segmentStarts the indexes in docs and scores corresponding to the first matching
-     *     document in each segment. If a segment has no matching documents, it should be assigned
-     *     the index of the next segment that does. There should be a final entry that is always
-     *     docs.length-1.
-     * @param contextIdentity an object identifying the reader context that was used to build this
-     *     query
-     */
-    DocAndScoreQuery(
-        int[] docs, float[] scores, float maxScore, int[] segmentStarts, Object contextIdentity) {
-      this.docs = docs;
-      this.scores = scores;
-      this.maxScore = maxScore;
-      this.segmentStarts = segmentStarts;
-      this.contextIdentity = contextIdentity;
-    }
-
-    @Override
-    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-        throws IOException {
-      if (searcher.getIndexReader().getContext().id() != contextIdentity) {
-        throw new IllegalStateException("This DocAndScore query was created by a different reader");
-      }
-      return new Weight(this) {
-        @Override
-        public Explanation explain(LeafReaderContext context, int doc) {
-          int found = Arrays.binarySearch(docs, doc + context.docBase);
-          if (found < 0) {
-            return Explanation.noMatch("not in top " + docs.length + " docs");
-          }
-          return Explanation.match(scores[found] * boost, "within top " + docs.length + " docs");
-        }
-
-        @Override
-        public int count(LeafReaderContext context) {
-          return segmentStarts[context.ord + 1] - segmentStarts[context.ord];
-        }
-
-        @Override
-        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-          if (segmentStarts[context.ord] == segmentStarts[context.ord + 1]) {
-            return null;
-          }
-          final var scorer =
-              new Scorer() {
-                final int lower = segmentStarts[context.ord];
-                final int upper = segmentStarts[context.ord + 1];
-                int upTo = -1;
-
-                @Override
-                public DocIdSetIterator iterator() {
-                  return new DocIdSetIterator() {
-                    @Override
-                    public int docID() {
-                      return docIdNoShadow();
-                    }
-
-                    @Override
-                    public int nextDoc() {
-                      if (upTo == -1) {
-                        upTo = lower;
-                      } else {
-                        ++upTo;
-                      }
-                      return docIdNoShadow();
-                    }
-
-                    @Override
-                    public int advance(int target) throws IOException {
-                      return slowAdvance(target);
-                    }
-
-                    @Override
-                    public long cost() {
-                      return upper - lower;
-                    }
-                  };
-                }
-
-                @Override
-                public float getMaxScore(int docId) {
-                  return maxScore * boost;
-                }
-
-                @Override
-                public float score() {
-                  return scores[upTo] * boost;
-                }
-
-                /**
-                 * move the implementation of docID() into a differently-named method so we can call
-                 * it from DocIDSetIterator.docID() even though this class is anonymous
-                 *
-                 * @return the current docid
-                 */
-                private int docIdNoShadow() {
-                  if (upTo == -1) {
-                    return -1;
-                  }
-                  if (upTo >= upper) {
-                    return NO_MORE_DOCS;
-                  }
-                  return docs[upTo] - context.docBase;
-                }
-
-                @Override
-                public int docID() {
-                  return docIdNoShadow();
-                }
-              };
-          return new DefaultScorerSupplier(scorer);
-        }
-
-        @Override
-        public boolean isCacheable(LeafReaderContext ctx) {
-          return true;
-        }
-      };
-    }
-
-    @Override
-    public String toString(String field) {
-      return "DocAndScoreQuery[" + docs[0] + ",...][" + scores[0] + ",...]," + maxScore;
-    }
-
-    @Override
-    public void visit(QueryVisitor visitor) {
-      visitor.visitLeaf(this);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (sameClassAs(obj) == false) {
-        return false;
-      }
-      return contextIdentity == ((DocAndScoreQuery) obj).contextIdentity
-          && Arrays.equals(docs, ((DocAndScoreQuery) obj).docs)
-          && Arrays.equals(scores, ((DocAndScoreQuery) obj).scores);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(
-          classHash(), contextIdentity, Arrays.hashCode(docs), Arrays.hashCode(scores));
-    }
+  public KnnSearchStrategy getSearchStrategy() {
+    return searchStrategy;
   }
 }

@@ -238,7 +238,7 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
     public AssertingSeededKnnVectorQuery(
         AbstractKnnVectorQuery query, Query seed, Weight seedWeight, AtomicInteger seedCalls) {
-      super(query, seed, seedWeight);
+      super(query, seed, seedWeight, query.field, query.k, query.filter, query.searchStrategy);
       this.seedCalls = seedCalls;
     }
 
@@ -275,10 +275,10 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
       @Override
       public KnnCollector newCollector(
-          int numVisisted, KnnSearchStrategy searchStrategy, LeafReaderContext context)
+          int numVisited, KnnSearchStrategy searchStrategy, LeafReaderContext context)
           throws IOException {
         KnnCollector knnCollector =
-            knnCollectorManager.newCollector(numVisisted, searchStrategy, context);
+            knnCollectorManager.newCollector(numVisited, searchStrategy, context);
         if (knnCollector.getSearchStrategy() instanceof KnnSearchStrategy.Seeded seeded) {
           if (seedCalls == null && seeded.numberOfEntryPoints() > 0) {
             fail("Expected non-seeded collector but received: " + knnCollector);

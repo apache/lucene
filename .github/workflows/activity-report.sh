@@ -23,10 +23,10 @@ echo "Date range covered by this report: $SINCE_TS .. $UNTIL_TS"
 
 echo "## Commits and issue summary:"
 echo -n "* The number of commits to the main branch: "
-git log main --pretty='format:%h,%as,%an,%s' --since="$SINCE" --before="$UNTIL" | wc -l 
+git log main --pretty='format:%h,%as,%an,%s' --since="$SINCE" --before="$UNTIL" | wc -l
 
 echo -n "* The number of commits to any branch: "
-git log --all --pretty='format:%h,%as,%an,%s' --since="$SINCE" --before="$UNTIL" | wc -l 
+git log --all --pretty='format:%h,%as,%an,%s' --since="$SINCE" --before="$UNTIL" | wc -l
 
 echo -n "* The number of issues filed: "
 gh issue list --state all --search "created:$SINCE_TS..$UNTIL_TS" --repo $REPO --limit 1000 --json id | jq length
@@ -44,6 +44,12 @@ echo
 echo "## Top contributors in the given time period (all commits, any branch)"
 echo '```'
 git log --all --pretty='format:%an' --since="$SINCE" --before="$UNTIL" | sort | uniq -c | sort -r -n
+echo '```'
+
+echo
+echo "## Top non-committer contributors in the given time period (all commits, any branch)"
+echo '```'
+git log --all --pretty='format:%an | %ae' --since="$SINCE" --before="$UNTIL" | sort | uniq -c | sort -r -n | grep -v -f .github/workflows/activity-report-known-committers.txt
 echo '```'
 
 echo

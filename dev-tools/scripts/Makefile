@@ -44,7 +44,7 @@ autofix: ruff-fix reformat
 
 # lints sources
 ruff: env
-	# validate sources with ruff linter
+	# validate sources with ruff linter: if this fails, try "make autofix".
 	$(VENV)/bin/ruff check $(SOURCES)
 
 # fixes (safe) issues that are autofixable such as deprecated/renamed APIs

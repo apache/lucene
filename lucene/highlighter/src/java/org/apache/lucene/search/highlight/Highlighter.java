@@ -18,12 +18,14 @@ package org.apache.lucene.search.highlight;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
+import org.apache.lucene.util.FloatComparator;
 import org.apache.lucene.util.PriorityQueue;
 
 /**
@@ -177,7 +179,11 @@ public class Highlighter {
     fragmentScorer.startFragment(currentFrag);
     docFrags.add(currentFrag);
 
-    FragmentQueue fragQueue = new FragmentQueue(maxNumFragments);
+    PriorityQueue<TextFragment> fragQueue =
+        PriorityQueue.usingComparator(
+            maxNumFragments,
+            FloatComparator.comparing(TextFragment::getScore)
+                .thenComparing(Comparator.comparingInt(TextFragment::getFragNum).reversed()));
 
     try {
 
@@ -286,10 +292,7 @@ public class Highlighter {
       }
 
       // return the most relevant fragments
-      TextFragment[] frag = new TextFragment[fragQueue.size()];
-      for (int i = frag.length - 1; i >= 0; i--) {
-        frag[i] = fragQueue.pop();
-      }
+      TextFragment[] frag = fragQueue.drainToArrayHighestFirst(TextFragment[]::new);
 
       // merge any contiguous fragments to improve readability
       if (mergeContiguousFragments) {
@@ -451,18 +454,6 @@ public class Highlighter {
   private static void ensureArgumentNotNull(Object argument, String message) {
     if (argument == null) {
       throw new IllegalArgumentException(message);
-    }
-  }
-
-  static class FragmentQueue extends PriorityQueue<TextFragment> {
-    FragmentQueue(int size) {
-      super(size);
-    }
-
-    @Override
-    public final boolean lessThan(TextFragment fragA, TextFragment fragB) {
-      if (fragA.getScore() == fragB.getScore()) return fragA.fragNum > fragB.fragNum;
-      else return fragA.getScore() < fragB.getScore();
     }
   }
 }

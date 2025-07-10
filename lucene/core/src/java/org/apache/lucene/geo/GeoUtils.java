@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.geo;
 
-import static org.apache.lucene.util.SloppyMath.cos;
 import static org.apache.lucene.util.SloppyMath.haversinMeters;
 
 import org.apache.lucene.index.PointValues;
@@ -24,7 +23,28 @@ import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.util.SloppyMath;
 
 /**
- * Basic reusable geo-spatial utility methods
+ * Utility methods for geo-spatial calculations and coordinate validation.
+ *
+ * <p>This class provides:
+ *
+ * <ul>
+ *   <li>Coordinate validation methods
+ *   <li>Earth model constants
+ *   <li>Common geometric calculations
+ *   <li>Coordinate normalization utilities
+ * </ul>
+ *
+ * <p>Important Constants:
+ *
+ * <ul>
+ *   <li>Earth's mean radius: 6,371,008.7714 meters
+ *   <li>Latitude range: -90° to +90°
+ *   <li>Longitude range: -180° to +180°
+ * </ul>
+ *
+ * <p>Note: This class uses a spherical Earth model for simplicity and performance. For applications
+ * requiring higher precision, consider using a geodetic library that implements the WGS84 ellipsoid
+ * model.
  *
  * @lucene.experimental
  */
@@ -85,30 +105,6 @@ public final class GeoUtils {
               + " and "
               + MAX_LON_INCL);
     }
-  }
-
-  // some sloppyish stuff, do we really need this to be done in a sloppy way?
-  // unless it is performance sensitive, we should try to remove.
-  private static final double PIO2 = Math.PI / 2D;
-
-  /**
-   * Returns the trigonometric sine of an angle converted as a cos operation.
-   *
-   * <p>Note that this is not quite right... e.g. sin(0) != 0
-   *
-   * <p>Special cases:
-   *
-   * <ul>
-   *   <li>If the argument is {@code NaN} or an infinity, then the result is {@code NaN}.
-   * </ul>
-   *
-   * @param a an angle, in radians.
-   * @return the sine of the argument.
-   * @see Math#sin(double)
-   */
-  // TODO: deprecate/remove this? at least its no longer public.
-  public static double sloppySin(double a) {
-    return cos(a - PIO2);
   }
 
   /**
