@@ -5,7 +5,7 @@ import org.apache.lucene.util.FixedBitSet;
 
 public class BitSetUtil {
 
-  static BitSetUtil INSTANCE = new BitSetUtil();
+  static final BitSetUtil INSTANCE = new BitSetUtil();
 
   BitSetUtil() {}
 

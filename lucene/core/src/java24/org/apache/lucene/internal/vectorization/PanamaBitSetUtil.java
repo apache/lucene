@@ -6,7 +6,7 @@ import jdk.incubator.vector.VectorOperators;
 
 public class PanamaBitSetUtil extends BitSetUtil {
 
-  static PanamaBitSetUtil INSTANCE = new PanamaBitSetUtil();
+  static final PanamaBitSetUtil INSTANCE = new PanamaBitSetUtil();
 
   private static final byte[] IDENTITY_BYTES = new byte[64];
 
