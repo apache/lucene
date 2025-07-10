@@ -64,7 +64,7 @@ public class TestLateInteractionField extends LuceneTestCase {
     expectThrows(IllegalArgumentException.class, () -> LateInteractionField.encode(emptyTokens));
 
     final int dim = 128;
-    float[][] value = new float[random().nextInt(3, 12)][];
+    float[][] value = new float[random().nextInt(20, 30)][];
     for (int i = 0; i < value.length; i++) {
       if (random().nextBoolean()) {
         value[i] = TestVectorUtil.randomVector(dim);
