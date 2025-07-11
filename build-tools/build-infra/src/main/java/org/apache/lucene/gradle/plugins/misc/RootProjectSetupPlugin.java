@@ -56,14 +56,17 @@ public class RootProjectSetupPlugin extends LuceneGradlePlugin {
     // Register other root-level plugins.
     PluginContainer plugins = rootProject.getPlugins();
     plugins.apply(RegisterBuildGlobalsPlugin.class);
-    plugins.apply(RegenerateTasksSupportPlugin.class);
     plugins.apply(GitInfoPlugin.class);
-    plugins.apply(GitGrepPlugin.class);
-    plugins.apply(AstGrepPlugin.class);
-    plugins.apply(EditorConfigLintPlugin.class);
 
     // Apply common configuration to all projects.
     rootProject.getAllprojects().forEach(this::applyCommonConfiguration);
+
+    // Register more root-level plugins
+    plugins.apply(RegenerateTasksSupportPlugin.class);
+    plugins.apply(GitGrepPlugin.class);
+    plugins.apply(AstGrepPlugin.class);
+    plugins.apply(EditorConfigLintPlugin.class);
+    plugins.apply(HelpPlugin.class);
 
     // wire up included composite builds to validation tasks.
     connectCompositeTasksToMainBuild(rootProject);
