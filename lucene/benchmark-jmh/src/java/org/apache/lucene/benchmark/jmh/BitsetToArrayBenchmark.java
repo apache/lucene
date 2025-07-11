@@ -342,23 +342,17 @@ public class BitsetToArrayBenchmark {
 
   private static int _denseBranchLessParallel(
       long word, int[] resultArray, int offset, int base, int[] scratch) {
-    int lWord = (int) word;
-    int hWord = (int) (word >>> 32);
+    final int lWord = (int) word;
+    final int hWord = (int) (word >>> 32);
 
-    // manual unrolling the loop to help CPU parallel
-    for (int i = 0, i16 = i + 16; i < 16; i++, i16++) {
+    for (int i = 0; i < 32; i++) {
       scratch[i] = (lWord >>> i) & 1;
-      scratch[i16] = (lWord >>> i16) & 1;
       scratch[i + 32] = (hWord >>> i) & 1;
-      scratch[i + 48] = (hWord >>> i16) & 1;
     }
-    // like above, manual unrolling the loop to help CPU parallel
-    int offset32 = offset + Integer.bitCount(lWord);
-    for (int i = 0, i32 = i + 32; i < 32; i++, i32++) {
+
+    for (int i = 0; i < 64; i++) {
       resultArray[offset] = base + i;
-      resultArray[offset32] = base + i32;
       offset += scratch[i];
-      offset32 += scratch[i32];
     }
 
     return offset;

@@ -303,7 +303,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
       UNARY
     }
 
-    private final BitSetUtil bitSetUtil = new BitSetUtil();
+    private BitSetUtil bitSetUtil;
     private ForDeltaUtil forDeltaUtil;
     private PForUtil pforUtil;
 
@@ -518,6 +518,8 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
 
       if (forDeltaUtil == null && docFreq >= BLOCK_SIZE) {
         forDeltaUtil = new ForDeltaUtil();
+        assert bitSetUtil == null;
+        bitSetUtil = new BitSetUtil();
       }
       totalTermFreq = indexHasFreq ? termState.totalTermFreq : termState.docFreq;
       if (needsFreq && pforUtil == null && totalTermFreq >= BLOCK_SIZE) {
