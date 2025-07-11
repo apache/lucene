@@ -26,8 +26,10 @@ import java.util.Locale;
 import org.apache.lucene.gradle.SuppressForbidden;
 import org.gradle.api.GradleException;
 import org.gradle.api.logging.LogLevel;
+import org.gradle.api.logging.Logger;
 import org.gradle.api.tasks.Exec;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.process.ExecResult;
 
 /**
  * An {@link org.gradle.api.tasks.Exec} task that does not emit any output unless the executed
@@ -58,24 +60,29 @@ public class QuietExec extends Exec {
         os.flush();
 
         var result = super.getExecutionResult().get();
-        boolean failed = result.getExitValue() != 0;
-        boolean shouldLogOutput = failed || (getLogger().isInfoEnabled());
-        if (shouldLogOutput) {
-          String output = getOutputAsString(outputFile);
-          getLogger().log(failed ? LogLevel.ERROR : LogLevel.INFO, output);
-        }
-
-        if (failed) {
-          throw new GradleException(
-              String.format(
-                  Locale.ROOT,
-                  "The executed process '%s' returned an unexpected status code: %d, full process output logged above.",
-                  super.getExecutable(),
-                  result.getExitValue()));
-        }
+        processResult(result, outputFile, getExecutable(), getLogger());
       }
     } catch (IOException e) {
       throw new GradleException("QuietExec failed: " + e.getMessage(), e);
+    }
+  }
+
+  public static void processResult(
+      ExecResult result, File outputFile, String executable, Logger logger) throws IOException {
+    boolean failed = result.getExitValue() != 0;
+    boolean shouldLogOutput = failed || (logger.isInfoEnabled());
+    if (shouldLogOutput) {
+      String output = getOutputAsString(outputFile);
+      logger.log(failed ? LogLevel.ERROR : LogLevel.INFO, output);
+    }
+
+    if (failed) {
+      throw new GradleException(
+          String.format(
+              Locale.ROOT,
+              "The executed process '%s' returned an unexpected status code: %d, full process output logged above.",
+              executable,
+              result.getExitValue()));
     }
   }
 
@@ -86,25 +93,25 @@ public class QuietExec extends Exec {
 
   @Override
   public Exec setStandardInput(InputStream inputStream) {
-    throw propertyUnsupported();
+    throw propertyUnsupported("standardInput");
   }
 
   @Override
   public Exec setStandardOutput(OutputStream outputStream) {
-    throw propertyUnsupported();
+    throw propertyUnsupported("standardOutput");
   }
 
   @Override
   public Exec setIgnoreExitValue(boolean ignoreExitValue) {
-    throw propertyUnsupported();
+    throw propertyUnsupported("ignoreExitValue");
   }
 
   @Override
   public Exec setErrorOutput(OutputStream outputStream) {
-    throw propertyUnsupported();
+    throw propertyUnsupported("errorOutput");
   }
 
-  private GradleException propertyUnsupported() {
-    throw new GradleException("Quiet exec does not support custom input/output streams.");
+  private GradleException propertyUnsupported(String propName) {
+    throw new GradleException("Quiet exec does not support setting this property: " + propName);
   }
 }

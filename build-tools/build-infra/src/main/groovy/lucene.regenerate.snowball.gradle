@@ -72,7 +72,7 @@ configure(project(":lucene:analysis:common")) {
   }
 
   // runs shell script to regenerate stemmers, base stemming subclasses, test data, and stopwords.
-  def snowballInternal = tasks.register("snowballInternal", QuietExec, {
+  def snowballInternal = tasks.register("generateSnowballInternal", QuietExec, {
     description = "Regenerate snowball stemmers."
     group = "generation"
 

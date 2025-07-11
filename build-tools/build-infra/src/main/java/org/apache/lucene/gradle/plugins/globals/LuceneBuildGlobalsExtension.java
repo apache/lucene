@@ -16,8 +16,23 @@
  */
 package org.apache.lucene.gradle.plugins.globals;
 
+import java.io.File;
+import java.io.FilterOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.util.concurrent.atomic.AtomicReference;
+import javax.inject.Inject;
+import org.apache.lucene.gradle.plugins.misc.QuietExec;
+import org.gradle.api.Action;
+import org.gradle.api.GradleException;
 import org.gradle.api.JavaVersion;
+import org.gradle.api.Task;
 import org.gradle.api.provider.Property;
+import org.gradle.process.ExecOperations;
+import org.gradle.process.ExecResult;
+import org.gradle.process.ExecSpec;
 
 /** Global build constants. */
 public abstract class LuceneBuildGlobalsExtension {
@@ -68,4 +83,44 @@ public abstract class LuceneBuildGlobalsExtension {
 
   /** If set, returns certain flags helpful for configuring the build for the intellij idea IDE. */
   public abstract Property<IntellijIdea> getIntellijIdea();
+
+  /**
+   * An immediate equivalent of the {@link org.apache.lucene.gradle.plugins.misc.QuietExec} task.
+   * This should be avoided but is sometimes handy.
+   */
+  public void quietExec(Task owner, Action<ExecSpec> configureAction) {
+    try {
+      File outputFile = File.createTempFile("exec-output-", ".txt", owner.getTemporaryDir());
+      AtomicReference<String> executable = new AtomicReference<>();
+      ExecResult result;
+      try (OutputStream os =
+          new FilterOutputStream(Files.newOutputStream(outputFile.toPath())) {
+            @Override
+            public void close() {
+              // no-op. we close this stream manually.
+            }
+          }) {
+        result =
+            getExecOps()
+                .exec(
+                    spec -> {
+                      configureAction.execute(spec);
+
+                      spec.setStandardInput(InputStream.nullInputStream());
+                      spec.setStandardOutput(os);
+                      spec.setErrorOutput(os);
+                      spec.setIgnoreExitValue(true);
+
+                      executable.set(spec.getExecutable());
+                    });
+      }
+      QuietExec.processResult(result, outputFile, executable.get(), owner.getLogger());
+    } catch (IOException e) {
+      throw new GradleException("quietExec failed: " + e.getMessage(), e);
+    }
+  }
+
+  /** For internal use. */
+  @Inject
+  protected abstract ExecOperations getExecOps();
 }

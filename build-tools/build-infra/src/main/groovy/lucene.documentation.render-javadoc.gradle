@@ -534,12 +534,12 @@ abstract class RenderJavadocTask extends RenderJavadocTaskBase {
     def javadocCmd = project.file(executable.get())
     logger.info("Javadoc executable used: ${javadocCmd}")
 
-    project.quietExec {
+    buildGlobals.quietExec(this, {
       executable javadocCmd
 
       args += ["@${optionsFile}"]
       args += jOpts
-    }
+    })
 
     // append some special table css, prettify css
     ant.concat(destfile: "${outputDir}/stylesheet.css", append: "true", fixlastline: "true", encoding: "UTF-8") {
