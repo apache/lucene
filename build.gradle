@@ -58,8 +58,6 @@ plugins {
 
   id "lucene.datasets.external-datasets"
 
-  id "lucene.hacks.downloader-retries"
-  id "lucene.hacks.wipe-gradle-temp"
   id "lucene.hacks.turbocharge-jvm-opts"
   id "lucene.hacks.dummy-outputs"
 

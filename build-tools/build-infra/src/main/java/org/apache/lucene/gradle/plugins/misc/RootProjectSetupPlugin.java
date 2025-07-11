@@ -25,6 +25,8 @@ import org.apache.lucene.gradle.plugins.eclint.EditorConfigLintPlugin;
 import org.apache.lucene.gradle.plugins.gitgrep.GitGrepPlugin;
 import org.apache.lucene.gradle.plugins.gitinfo.GitInfoPlugin;
 import org.apache.lucene.gradle.plugins.globals.RegisterBuildGlobalsPlugin;
+import org.apache.lucene.gradle.plugins.hacks.HacksPlugin;
+import org.apache.lucene.gradle.plugins.hacks.WipeGradleTempPlugin;
 import org.apache.lucene.gradle.plugins.help.BuildOptionGroupsPlugin;
 import org.apache.lucene.gradle.plugins.regenerate.RegenerateTasksSupportPlugin;
 import org.gradle.api.Project;
@@ -67,6 +69,8 @@ public class RootProjectSetupPlugin extends LuceneGradlePlugin {
     plugins.apply(AstGrepPlugin.class);
     plugins.apply(EditorConfigLintPlugin.class);
     plugins.apply(HelpPlugin.class);
+    plugins.apply(HacksPlugin.class);
+    plugins.apply(WipeGradleTempPlugin.class);
 
     // wire up included composite builds to validation tasks.
     connectCompositeTasksToMainBuild(rootProject);
