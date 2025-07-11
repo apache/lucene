@@ -43,7 +43,7 @@ public class TestsSummaryPlugin extends LuceneGradlePlugin {
                   new TestListener() {
                     @Override
                     public void afterSuite(TestDescriptor suite, TestResult result) {
-                      if (suite.getParent() != null) {
+                      if (suite.getParent() == null) {
                         if (result.getTestCount() > 0) {
                           StringBuilder sb = new StringBuilder();
                           sb.append(task.getPath())
@@ -67,7 +67,7 @@ public class TestsSummaryPlugin extends LuceneGradlePlugin {
                     }
 
                     private static String pluralize(long count, String verb) {
-                      return verb + (count == 1 ? "" : "s");
+                      return count + (verb + (count == 1 ? "" : "s"));
                     }
 
                     @Override

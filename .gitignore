@@ -10,8 +10,8 @@ gradle/wrapper/gradle-wrapper.jar
 
 # IntelliJ IDEA
 /.idea/
-#    IntelliJ creates this folder, ignore.
-/dev-tools/missing-doclet/out/
+# IntelliJ creates this folder, ignore.
+/build-tools/build-infra/out/
 
 # Eclipse
 /.project
