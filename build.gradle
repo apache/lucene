@@ -80,6 +80,7 @@ plugins {
   id "lucene.regenerate.antlr"
   id "lucene.regenerate.unicode-test-classes"
   id "lucene.regenerate.extract-jdk-apis"
+  id "lucene.regenerate.snowball"
 }
 
 description = 'Grandparent project for Apache Lucene Core'

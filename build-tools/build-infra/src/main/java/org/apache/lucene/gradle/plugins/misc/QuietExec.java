@@ -75,7 +75,7 @@ public class QuietExec extends Exec {
         }
       }
     } catch (IOException e) {
-      throw new GradleException("quietExec failed: " + e.getMessage(), e);
+      throw new GradleException("QuietExec failed: " + e.getMessage(), e);
     }
   }
 
