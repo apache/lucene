@@ -312,35 +312,30 @@ public class MMapDirectory extends FSDirectory {
     // Work around for JDK-8259028: we need to unwrap our test-only file system layers
     path = Unwrappable.unwrapAll(path);
 
-    boolean success = false;
     final boolean confined = context.hints().contains(ReadOnceHint.INSTANCE);
     Function<IOContext, ReadAdvice> toReadAdvice =
         c -> readAdviceOverride.apply(name, c).orElseGet(() -> toReadAdvice(c));
     final Arena arena = confined ? Arena.ofConfined() : getSharedArena(name, arenas);
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
-      final IndexInput in =
-          MemorySegmentIndexInput.newInstance(
-              resourceDescription,
+      return MemorySegmentIndexInput.newInstance(
+          resourceDescription,
+          arena,
+          map(
               arena,
-              map(
-                  arena,
-                  resourceDescription,
-                  fc,
-                  toReadAdvice.apply(context),
-                  chunkSizePower,
-                  preload.test(name, context),
-                  fileSize),
-              fileSize,
+              resourceDescription,
+              fc,
+              toReadAdvice.apply(context),
               chunkSizePower,
-              confined,
-              toReadAdvice);
-      success = true;
-      return in;
-    } finally {
-      if (success == false) {
-        arena.close();
-      }
+              preload.test(name, context),
+              fileSize),
+          fileSize,
+          chunkSizePower,
+          confined,
+          toReadAdvice);
+    } catch (Throwable t) {
+      arena.close();
+      throw t;
     }
   }
 

@@ -76,16 +76,11 @@ public class NIOFSDirectory extends FSDirectory {
     ensureCanRead(name);
     Path path = getDirectory().resolve(name);
     FileChannel fc = FileChannel.open(path, StandardOpenOption.READ);
-    boolean success = false;
     try {
-      final NIOFSIndexInput indexInput =
-          new NIOFSIndexInput("NIOFSIndexInput(path=\"" + path + "\")", fc, context);
-      success = true;
-      return indexInput;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(fc);
-      }
+      return new NIOFSIndexInput("NIOFSIndexInput(path=\"" + path + "\")", fc, context);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, fc);
+      throw t;
     }
   }
 

@@ -95,7 +95,6 @@ public final class SegmentReader extends CodecReader {
     core = new SegmentCoreReaders(si.info.dir, si, context);
     segDocValues = new SegmentDocValues();
 
-    boolean success = false;
     final Codec codec = si.info.getCodec();
     try {
       if (si.hasDeletions()) {
@@ -111,16 +110,14 @@ public final class SegmentReader extends CodecReader {
       fieldInfos = initFieldInfos();
       docValuesProducer = initDocValuesProducer();
       assert assertLiveDocs(isNRT, hardLiveDocs, liveDocs);
-      success = true;
-    } finally {
+    } catch (Throwable t) {
       // With lock-less commits, it's entirely possible (and
       // fine) to hit a FileNotFound exception above.  In
       // this case, we want to explicitly close any subset
       // of things that were opened so that we don't have to
       // wait for a GC to do so.
-      if (!success) {
-        doClose();
-      }
+      doClose();
+      throw t;
     }
   }
 
@@ -155,15 +152,12 @@ public final class SegmentReader extends CodecReader {
     core.incRef();
     this.segDocValues = sr.segDocValues;
 
-    boolean success = false;
     try {
       fieldInfos = initFieldInfos();
       docValuesProducer = initDocValuesProducer();
-      success = true;
-    } finally {
-      if (!success) {
-        doClose();
-      }
+    } catch (Throwable t) {
+      doClose();
+      throw t;
     }
   }
 

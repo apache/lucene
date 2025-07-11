@@ -601,9 +601,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
     IOContext context =
         IOContext.flush(new FlushInfo(newSegment.info.maxDoc(), newSegment.sizeInBytes()));
 
-    boolean success = false;
     try {
-
       if (indexWriterConfig.getUseCompoundFile()) {
         Set<String> originalFiles = newSegment.info.files();
         // TODO: like addIndexes, we are relying on createCompoundFile to successfully cleanup...
@@ -662,17 +660,14 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
         newSegment.setDelCount(delCount);
         newSegment.advanceDelGen();
       }
-
-      success = true;
-    } finally {
-      if (!success) {
-        if (infoStream.isEnabled("DWPT")) {
-          infoStream.message(
-              "DWPT",
-              "hit exception creating compound file for newly flushed segment "
-                  + newSegment.info.name);
-        }
+    } catch (Throwable t) {
+      if (infoStream.isEnabled("DWPT")) {
+        infoStream.message(
+            "DWPT",
+            "hit exception creating compound file for newly flushed segment "
+                + newSegment.info.name);
       }
+      throw t;
     }
   }
 

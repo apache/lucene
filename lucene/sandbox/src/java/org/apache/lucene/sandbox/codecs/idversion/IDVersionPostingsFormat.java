@@ -80,31 +80,23 @@ public class IDVersionPostingsFormat extends PostingsFormat {
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
     PostingsWriterBase postingsWriter = new IDVersionPostingsWriter(state.liveDocs);
-    boolean success = false;
     try {
-      FieldsConsumer ret =
-          new VersionBlockTreeTermsWriter(state, postingsWriter, minTermsInBlock, maxTermsInBlock);
-      success = true;
-      return ret;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(postingsWriter);
-      }
+      return new VersionBlockTreeTermsWriter(
+          state, postingsWriter, minTermsInBlock, maxTermsInBlock);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, postingsWriter);
+      throw t;
     }
   }
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
     PostingsReaderBase postingsReader = new IDVersionPostingsReader();
-    boolean success = false;
     try {
-      FieldsProducer ret = new VersionBlockTreeTermsReader(postingsReader, state);
-      success = true;
-      return ret;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(postingsReader);
-      }
+      return new VersionBlockTreeTermsReader(postingsReader, state);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, postingsReader);
+      throw t;
     }
   }
 

@@ -248,7 +248,6 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
   public static IndexSearcher getSearcher(
       SearcherFactory searcherFactory, IndexReader reader, IndexReader previousReader)
       throws IOException {
-    boolean success = false;
     final IndexSearcher searcher;
     try {
       searcher = searcherFactory.newSearcher(reader, previousReader);
@@ -260,11 +259,9 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
                 + reader
                 + ")");
       }
-      success = true;
-    } finally {
-      if (!success) {
-        reader.decRef();
-      }
+    } catch (Throwable t) {
+      reader.decRef();
+      throw t;
     }
     return searcher;
   }

@@ -975,7 +975,6 @@ public class BKDWriter implements Closeable {
         new BKDRadixSelector(config, maxPointsSortInHeap, tempDir, tempFileNamePrefix);
 
     final long dataStartFP = dataOut.getFilePointer();
-    boolean success = false;
     try {
 
       final int[] parentSplits = new int[config.numIndexDims()];
@@ -1000,12 +999,9 @@ public class BKDWriter implements Closeable {
       assert tempDir.getCreatedFiles().isEmpty();
       // System.out.println("write time: " + ((System.nanoTime() - t1) / (double)
       //   TimeUnit.SECONDS.toNanos(1)) + " ms");
-
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.deleteFilesIgnoringExceptions(tempDir, tempDir.getCreatedFiles());
-      }
+    } catch (Throwable t) {
+      IOUtils.deleteFilesSuppressingExceptions(t, tempDir, tempDir.getCreatedFiles());
+      throw t;
     }
 
     LongValues leafBlockLongValues = leafBlockFPs.build();

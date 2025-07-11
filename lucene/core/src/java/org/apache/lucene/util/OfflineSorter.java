@@ -290,7 +290,6 @@ public class OfflineSorter {
     // So we can remove any partially written temp files on exception:
     TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(dir);
 
-    boolean success = false;
     try (ByteSequencesReader is = getReader(dir.openChecksumInput(inputFileName), inputFileName)) {
       while (true) {
         Partition part = readPartition(is);
@@ -354,17 +353,14 @@ public class OfflineSorter {
       sortInfo.totalTimeMS = System.currentTimeMillis() - startMS;
 
       CodecUtil.checkFooter(is.in);
-
-      success = true;
-
       return result;
 
     } catch (InterruptedException ie) {
+      IOUtils.deleteFilesSuppressingExceptions(ie, trackingDir, trackingDir.getCreatedFiles());
       throw new ThreadInterruptedException(ie);
-    } finally {
-      if (success == false) {
-        IOUtils.deleteFilesIgnoringExceptions(trackingDir, trackingDir.getCreatedFiles());
-      }
+    } catch (Throwable t) {
+      IOUtils.deleteFilesSuppressingExceptions(t, trackingDir, trackingDir.getCreatedFiles());
+      throw t;
     }
   }
 
@@ -430,7 +426,6 @@ public class OfflineSorter {
     if (partitionsInRAM != null) {
       partitionsInRAM.acquire();
     }
-    boolean success = false;
     try {
       long start = System.currentTimeMillis();
       SortableBytesRefArray buffer;
@@ -475,12 +470,12 @@ public class OfflineSorter {
         }
       }
       sortInfo.readTimeMS += System.currentTimeMillis() - start;
-      success = true;
       return new Partition(buffer, exhausted);
-    } finally {
-      if (success == false && partitionsInRAM != null) {
+    } catch (Throwable t) {
+      if (partitionsInRAM != null) {
         partitionsInRAM.release();
       }
+      throw t;
     }
   }
 
