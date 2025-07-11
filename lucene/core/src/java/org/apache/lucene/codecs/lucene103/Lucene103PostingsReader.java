@@ -1070,14 +1070,14 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
           System.arraycopy(docBuffer, start, buffer.docs, 0, buffer.size);
           break;
         case UNARY:
-          buffer.size = denseBitsetToArray(
-              docBitSet,
-              doc - docBitSetBase,
-              upTo - docBitSetBase,
-              docBitSetBase,
-              buffer.docs,
-              scratch
-          );
+          buffer.size =
+              denseBitsetToArray(
+                  docBitSet,
+                  doc - docBitSetBase,
+                  upTo - docBitSetBase,
+                  docBitSetBase,
+                  buffer.docs,
+                  scratch);
           break;
       }
 
@@ -1089,7 +1089,8 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
       advance(upTo);
     }
 
-    private static int denseBitsetToArray(FixedBitSet bitSet, int from, int to, int base, int[] array, int[] scratch) {
+    private static int denseBitsetToArray(
+        FixedBitSet bitSet, int from, int to, int base, int[] array, int[] scratch) {
       Objects.checkFromToIndex(from, to, bitSet.length());
 
       int offset = 0;

@@ -16,10 +16,9 @@
  */
 package org.apache.lucene.benchmark.jmh;
 
-import java.util.concurrent.TimeUnit;
 import java.util.SplittableRandom;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
-
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -40,11 +39,7 @@ import org.openjdk.jmh.annotations.Warmup;
 @Measurement(iterations = 5, time = 1)
 @Fork(
     value = 1,
-    jvmArgsAppend = {
-        "-Xmx1g",
-        "-Xms1g",
-        "-XX:+AlwaysPreTouch"
-    })
+    jvmArgsAppend = {"-Xmx1g", "-Xms1g", "-XX:+AlwaysPreTouch"})
 public class BitsetToArrayBenchmark {
 
   private final SplittableRandom R = new SplittableRandom(4314123142L);
@@ -329,7 +324,8 @@ public class BitsetToArrayBenchmark {
 
   static int[] IDENTITY = IntStream.range(0, 32).toArray();
 
-  private static int _denseBranchLessVectorized(long word, int[] resultArray, int offset, int base, int[] scratch) {
+  private static int _denseBranchLessVectorized(
+      long word, int[] resultArray, int offset, int base, int[] scratch) {
     int lWord = (int) word;
     int hWord = (int) (word >>> 32);
 
@@ -381,5 +377,3 @@ public class BitsetToArrayBenchmark {
     return to;
   }
 }
-
-
