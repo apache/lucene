@@ -18,7 +18,6 @@ package org.apache.lucene.benchmark.jmh;
 
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -99,8 +98,13 @@ public class BitsetToArrayBenchmark {
   }
 
   @Benchmark
-  public int denseBranchLessVectorized() {
-    return _denseBranchLessVectorized(word, resultArray, offset, base, scratch);
+  public int denseBranchLessParallel() {
+    return _denseBranchLessParallel(word, resultArray, offset, base, scratch);
+  }
+
+  @Benchmark
+  public int denseBranchLessCmov() {
+    return _denseBranchLessCmov(word, resultArray, offset, base, scratch);
   }
 
   @Benchmark
@@ -182,6 +186,20 @@ public class BitsetToArrayBenchmark {
       offset += hWord & 1;
       hWord >>>= 1;
     }
+    return offset;
+  }
+
+  private static int _denseBranchLessCmov(
+      long word, int[] resultArray, int offset, int base, int[] scratch) {
+    for (int j = 0; j < Long.SIZE; ++j) {
+      resultArray[offset] = base + j;
+      long bit = word & (1L << j);
+      if (bit
+          != 0L) { // can be compiled into cmovne bitCount = 20/30/40/50 (branch is unpredictable).
+        offset = offset + 1;
+      }
+    }
+
     return offset;
   }
 
@@ -322,22 +340,25 @@ public class BitsetToArrayBenchmark {
     return offset;
   }
 
-  static int[] IDENTITY = IntStream.range(0, 32).toArray();
-
-  private static int _denseBranchLessVectorized(
+  private static int _denseBranchLessParallel(
       long word, int[] resultArray, int offset, int base, int[] scratch) {
     int lWord = (int) word;
     int hWord = (int) (word >>> 32);
 
-    // vectorized loop
-    for (int i = 0; i < 32; i++) {
-      scratch[i] = (lWord >>> IDENTITY[i]) & 1;
-      scratch[i + 32] = (hWord >>> IDENTITY[i]) & 1;
+    // manual unrolling the loop to help CPU parallel
+    for (int i = 0, i16 = i + 16; i < 16; i++, i16++) {
+      scratch[i] = (lWord >>> i) & 1;
+      scratch[i16] = (lWord >>> i16) & 1;
+      scratch[i + 32] = (hWord >>> i) & 1;
+      scratch[i + 48] = (hWord >>> i16) & 1;
     }
-
-    for (int i = 0; i < 64; i++) {
+    // like above, manual unrolling the loop to help CPU parallel
+    int offset32 = offset + Integer.bitCount(lWord);
+    for (int i = 0, i32 = i + 32; i < 32; i++, i32++) {
       resultArray[offset] = base + i;
+      resultArray[offset32] = base + i32;
       offset += scratch[i];
+      offset32 += scratch[i32];
     }
 
     return offset;
@@ -362,8 +383,8 @@ public class BitsetToArrayBenchmark {
 
   private static int _hybrid(long word, int[] resultArray, int offset, int base, int[] scratch) {
     int bitCount = Long.bitCount(word);
-    if (bitCount > 32) {
-      return _denseBranchLessVectorized(word, resultArray, offset, base, scratch);
+    if (bitCount >= 32) {
+      return _denseBranchLessParallel(word, resultArray, offset, base, scratch);
     }
 
     int to = offset + Long.bitCount(word);
