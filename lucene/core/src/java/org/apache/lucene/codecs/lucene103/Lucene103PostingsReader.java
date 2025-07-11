@@ -31,7 +31,9 @@ import java.util.AbstractList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.RandomAccess;
+import java.util.stream.IntStream;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PostingsReaderBase;
@@ -78,6 +80,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
   // We stopped storing a placeholder impact with freq=1 for fields with DOCS after 9.12.0
   private static final List<Impact> DUMMY_IMPACTS_NO_FREQS =
       Collections.singletonList(new Impact(1, 1L));
+  private static int[] IDENTITY = IntStream.range(0, 32).toArray();
 
   private final IndexInput docIn;
   private final IndexInput posIn;
@@ -1035,6 +1038,8 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
       }
     }
 
+    private final int[] scratch = new int[64];
+
     @Override
     public void nextPostings(int upTo, DocAndFloatFeatureBuffer buffer) throws IOException {
       assert needsRefilling == false;
@@ -1064,11 +1069,14 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
           System.arraycopy(docBuffer, start, buffer.docs, 0, buffer.size);
           break;
         case UNARY:
-          docBitSet.forEach(
+          buffer.size = denseBitsetToArray(
+              docBitSet,
               doc - docBitSetBase,
               upTo - docBitSetBase,
               docBitSetBase,
-              d -> buffer.docs[buffer.size++] = d);
+              buffer.docs,
+              scratch
+          );
           break;
       }
 
@@ -1078,6 +1086,65 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
       }
 
       advance(upTo);
+    }
+
+    private static int denseBitsetToArray(FixedBitSet bitSet, int from, int to, int base, int[] array, int[] scratch) {
+      Objects.checkFromToIndex(from, to, bitSet.length());
+
+      int offset = 0;
+      long[] bits = bitSet.getBits();
+      // First, align `from` with a word start, ie. a multiple of Long.SIZE (64)
+      if ((from & 0x3F) != 0) {
+        long word = bits[from >> 6] >>> from;
+        int numBitsTilNextWord = -from & 0x3F;
+        if (to - from < numBitsTilNextWord) {
+          // All bits are in a single word
+          word &= (1L << (to - from)) - 1L;
+          return word2Array(word, from + base, array, offset, scratch);
+        }
+        offset = word2Array(word, from + base, array, offset, scratch);
+        from += numBitsTilNextWord;
+        assert (from & 0x3F) == 0;
+      }
+
+      for (int i = from >> 6, end = to >> 6; i < end; ++i) {
+        long word = bits[i];
+        offset = word2Array(word, base + (i << 6), array, offset, scratch);
+      }
+
+      // Now handle remaining bits in the last partial word
+      if ((to & 0x3F) != 0) {
+        long word = bits[to >> 6] & ((1L << to) - 1);
+        offset = word2Array(word, base + (to & ~0x3F), array, offset, scratch);
+      }
+
+      return offset;
+    }
+
+    private static int word2Array(long word, int base, int[] docs, int offset, int[] scratch) {
+      final int bitCount = Long.bitCount(word);
+
+      if (bitCount >= 32) {
+        final int lWord = (int) word;
+        final int hWord = (int) (word >>> 32);
+        // vectorized loop
+        for (int i = 0; i < 32; i++) {
+          scratch[i] = (lWord >>> IDENTITY[i]) & 1;
+          scratch[i + 32] = (hWord >>> IDENTITY[i]) & 1;
+        }
+        for (int i = 0; i < 64; i++) {
+          docs[offset] = base + i;
+          offset += scratch[i];
+        }
+      } else {
+        for (int i = 0; i < bitCount; i++) {
+          int ntz = Long.numberOfTrailingZeros(word);
+          docs[offset++] = base + ntz;
+          word ^= 1L << ntz;
+        }
+      }
+
+      return offset;
     }
 
     private int computeBufferEndBoundary(int upTo) {
