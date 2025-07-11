@@ -9,7 +9,7 @@ commons-codec = "1.18.0"
 # benchmark/ bzip2 compression
 commons-compress = "1.27.1"
 # See ecj-lint.gradle (used for more linting).
-ecj = "4.36M1"
+ecj = "3.42.0"
 # java linting
 errorprone = "2.38.0"
 # markdown documentation generation
@@ -102,7 +102,7 @@ zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
 benmanes-versions = "com.github.ben-manes.versions:0.52.0"
 carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.0"
 carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.1.0"
-errorprone = "net.ltgt.errorprone:4.2.0"
+errorprone = "net.ltgt.errorprone:4.3.0"
 forbiddenapis = "de.thetaphi.forbiddenapis:3.9"
 jacocolog = "org.barfuin.gradle.jacocolog:3.1.0"
 owasp-dependencycheck = "org.owasp.dependencycheck:12.1.3"

@@ -15,16 +15,19 @@
  * limitations under the License.
  */
 
+import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension
+
 if (project != project.rootProject) {
   throw new GradleException("Applicable to rootProject only: " + project.path)
 }
 
 configure(rootProject) {
-  def urlVersion = rootProject.ext.baseVersion.replace('.', '_')
+  LuceneBuildGlobalsExtension buildGlobals = rootProject.extensions.getByType(LuceneBuildGlobalsExtension)
+  def urlVersion = buildGlobals.baseVersion.replace('.', '_')
 
   Provider<String> luceneJavadocUrl = buildOptions.addOption("lucene.javadoc.url",
       "External Javadoc URL for documentation generator.", provider {
-        if (project.version != project.baseVersion) {
+        if (buildGlobals.snapshotBuild) {
           // non-release build does not cross-link between modules.
           return null
         } else {
@@ -66,6 +69,16 @@ configure(project(':lucene:documentation')) {
     dependsOn 'changesToHtml', 'copyDocumentationAssets',
         'markdownToHtml', 'createDocumentationIndex'
   })
+
+  // in CI, fully build documentation. this is very costly, way too
+  // much for a developer workflow, but it validates build machinery,
+  // and link references from overview.html, that javac won't catch
+  LuceneBuildGlobalsExtension buildGlobals = rootProject.extensions.getByType(LuceneBuildGlobalsExtension)
+  if (buildGlobals.isCIBuild) {
+    tasks.named("check").configure {
+      dependsOn 'documentation'
+    }
+  }
 
   tasks.register("copyDocumentationAssets", Copy, {
     includeEmptyDirs = false

@@ -375,13 +375,8 @@ public final class MultiTermsEnum extends BaseTermsEnum {
     final int[] stack;
 
     TermMergeQueue(int size) {
-      super(size);
+      super(size, (a, b) -> a.compareTermTo(b) < 0);
       this.stack = new int[size];
-    }
-
-    @Override
-    protected boolean lessThan(TermsEnumWithSlice termsA, TermsEnumWithSlice termsB) {
-      return termsA.compareTermTo(termsB) < 0;
     }
 
     /**

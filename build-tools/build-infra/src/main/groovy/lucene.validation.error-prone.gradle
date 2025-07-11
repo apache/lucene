@@ -15,21 +15,26 @@
  * limitations under the License.
  */
 
+import org.apache.lucene.gradle.plugins.java.AlternativeJdkSupportPlugin
+import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension
+
 // Applies error-prone for additional linting.
 
 if (project != project.rootProject) {
   throw new GradleException("Applicable to rootProject only: " + project.path)
 }
 
+LuceneBuildGlobalsExtension buildGlobals = rootProject.extensions.getByType(LuceneBuildGlobalsExtension)
+
 Provider<Boolean> errorproneOption = buildOptions.addBooleanOption("validation.errorprone",
-    "Applies error-prone for additional source code linting.", provider { -> rootProject.ext.isCIBuild as boolean })
+    "Applies error-prone for additional source code linting.", buildGlobals.isCIBuild)
 
 // make sure we can apply error-prone or provide a reason why we can't.
 String skipReason = null
-if (rootProject.ext.usesAltJvm) {
+if (rootProject.getExtensions().getByType(AlternativeJdkSupportPlugin.AltJvmExtension).altJvmUsed.get()) {
   skipReason = "won't work with alternative java toolchain"
 } else if (errorproneOption.get() == false) {
-  if (rootProject.ext.isCIBuild) {
+  if (buildGlobals.isCIBuild) {
     throw new GradleException("Odd, errorprone linting should always be enabled on CI builds.")
   } else {
     skipReason = "skipped on builds not running inside CI environments, pass -Pvalidation.errorprone=true to enable"
@@ -162,7 +167,7 @@ allprojects { prj ->
           // '-Xep:CheckReturnValue:OFF', // we don't use these annotations
           '-Xep:CollectionToArraySafeParameter:ERROR',
           // '-Xep:ComparableType:OFF',
-          // '-Xep:ComparingThisWithNull:ERROR', // we use ast-grep for this check
+          // '-Xep:ComparingThisWithNull:OFF', // we use ast-grep for this check
           '-Xep:ComparisonOutOfRange:ERROR',
           // '-Xep:CompatibleWithAnnotationMisuse:OFF', // we don't use this annotation
           // '-Xep:CompileTimeConstant:OFF', // we don't use this annotation
@@ -194,7 +199,7 @@ allprojects { prj ->
           // '-Xep:FloggerLogVarargs:OFF', // we don't use flogger
           // '-Xep:FloggerSplitLogStatement:OFF', // we don't use flogger
           // '-Xep:ForOverride:OFF', // we don't use this annotation
-          // '-Xep:FormatString:OFF',
+          '-Xep:FormatString:ERROR',
           // '-Xep:FormatStringAnnotation:OFF', // we don't use this annotation
           // '-Xep:FromTemporalAccessor:OFF', // we don't use .from(LocalDate) etc
           '-Xep:FunctionalInterfaceMethodChanged:ERROR',
@@ -395,7 +400,7 @@ allprojects { prj ->
           // '-Xep:DoNotMockAutoValue:OFF', // we don't use autovalue
           // '-Xep:DoubleCheckedLocking:OFF', // TODO: there are problems
           '-Xep:DuplicateDateFormatField:WARN',
-          '-Xep:EmptyBlockTag:WARN',
+          // '-Xep:EmptyBlockTag:OFF', // ECJ takes care
           // '-Xep:EmptyCatch:OFF', // ECJ takes care
           // '-Xep:EmptySetMultibindingContributions:OFF', // we don't use this annotation
           // '-Xep:EnumOrdinal:OFF', // noisy
@@ -570,11 +575,11 @@ allprojects { prj ->
           // '-Xep:StreamResourceLeak:OFF', // TODO: there are problems
           '-Xep:StreamToIterable:WARN',
           // '-Xep:StringCaseLocaleUsage:OFF', // noisy, can use forbidden-apis for this
-          '-Xep:StringCharset:WARN',
+          // '-Xep:StringCharset:OFF', // we use ast-grep for this
           '-Xep:StringFormatWithLiteral:WARN',
           // '-Xep:StringSplitter:OFF', // noisy, can use forbidden-apis for this
           '-Xep:SystemConsoleNull:WARN',
-          '-Xep:SunApi:WARN',
+          // '-Xep:SunApi:OFF', // we use forbidden-apis for this
           '-Xep:SuperCallToObjectMethod:WARN',
           // '-Xep:SwigMemoryLeak:OFF', // we don't use swig
           // '-Xep:SynchronizeOnNonFinalField:OFF', // noisy
@@ -582,7 +587,7 @@ allprojects { prj ->
           // '-Xep:ThreadLocalUsage:OFF', // noisy
           // '-Xep:ThreadPriorityCheck:OFF', // noisy, forbidden APIs can do this
           // '-Xep:ThrowIfUncheckedKnownUnchecked:OFF', // we don't use these google libraries
-          '-Xep:ThreeLetterTimeZoneID:WARN',
+          // '-Xep:ThreeLetterTimeZoneID:OFF', // we use ast-grep for this
           '-Xep:TimeUnitConversionChecker:WARN',
           // '-Xep:ToStringReturnsNull:OFF', // TODO: there are problems
           // '-Xep:TruthAssertExpected:OFF', // we don't use truth

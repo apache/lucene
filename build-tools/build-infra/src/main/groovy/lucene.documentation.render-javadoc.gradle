@@ -1,4 +1,5 @@
 import org.gradle.internal.jvm.Jvm
+import org.apache.lucene.gradle.plugins.java.RenderJavadocTaskBase
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -60,12 +61,7 @@ allprojects {
 
     if (project.path == ':lucene:luke' || !(project in rootProject.ext.mavenProjects)) {
       // These projects are not part of the public API so we don't render their javadocs
-      // as part of the site's creation. A side-effect of this is that javadocs would not
-      // be linted for these projects. To avoid this, we connect the regular javadoc task
-      // to check so that everything is validated.
-      project.tasks.named("check").configure {
-        dependsOn renderJavadoc
-      }
+      // as part of the site's creation. Linting happens via javac
     } else {
       tasks.register("renderSiteJavadoc", RenderJavadocTask, {
         description = "Generates Javadoc API documentation for the site (relative links)."
@@ -269,7 +265,7 @@ class OfflineLink implements Serializable {
 }
 
 @CacheableTask
-class RenderJavadocTask extends DefaultTask {
+abstract class RenderJavadocTask extends RenderJavadocTaskBase {
   @InputFiles
   @PathSensitive(PathSensitivity.RELATIVE)
   @IgnoreEmptyDirectories
@@ -329,11 +325,6 @@ class RenderJavadocTask extends DefaultTask {
   @Optional
   ListProperty<String> extraOpts = project.objects.listProperty(String)
 
-  @Optional
-  @Input
-  final Property<String> executable = project.objects.property(String).convention(
-  project.provider { Jvm.current().javadocExecutable.toString() })
-
   @InputDirectory
   @PathSensitive(PathSensitivity.RELATIVE)
   @IgnoreEmptyDirectories
@@ -368,13 +359,11 @@ class RenderJavadocTask extends DefaultTask {
         .collect {  dir -> project.file("${dir}/overview.html") }
         .findAll { overviewFile -> overviewFile.exists() }
 
-    if (!overviewFiles.isEmpty()) {
-      assert overviewFiles.size() == 1 : "More than one overview file?: " + overviewFiles
-      opts << [
-        '-overview',
-        project.file("${overviewFiles.getFirst()}/overview.html")
-      ]
-    }
+    assert overviewFiles.size() == 1 : "Must be exactly one overview.html file: " + overviewFiles
+    opts << [
+      '-overview',
+      project.file(overviewFiles.getFirst())
+    ]
 
     opts << ['-d', outputDir]
     opts << '-protected'

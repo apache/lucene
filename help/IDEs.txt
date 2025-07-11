@@ -29,15 +29,6 @@ Run the following to set up Eclipse project files:
 
 Open the lucene checkout in VSCode.
 
-Install the recommended "Extension Pack for Java" if asked.
-
-View -> Command Palette -> Preferences: Open Settings UI
-Type 'java.import.gradle.enabled' and uncheck it.
-Type 'java.import.maven.enabled' and uncheck it.
-
-Restart VSCode.
-
-
 Neovim
 ======
 

@@ -48,7 +48,10 @@ public class BuildOptionGroupsPlugin implements Plugin<Project> {
                             "hunspell.repo.path",
                             "validation.owasp",
                             "validation.owasp.apikey",
-                            "validation.owasp.threshold"));
+                            "validation.owasp.threshold",
+                            "tests.linedocsfile",
+                            "tests.LUCENE_VERSION",
+                            "tests.bwcdir"));
 
                     optionGroups.group("Test profiling", "tests\\.profile\\.(.*)");
 

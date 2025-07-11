@@ -658,7 +658,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertEquals(3, scorer.firstRequiredScorer); // no required clauses
 
     // less than the minimum score of every clause
-    scorer.minCompetitiveScore = 0.09f;
+    scorer.scorable.minCompetitiveScore = 0.09f;
     Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
@@ -666,7 +666,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertEquals(3, scorer.firstRequiredScorer); // no required clauses
 
     // equal to the maximum score of `the`
-    scorer.minCompetitiveScore = 0.1f;
+    scorer.scorable.minCompetitiveScore = 0.1f;
     Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
@@ -674,7 +674,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertEquals(3, scorer.firstRequiredScorer); // no required clauses
 
     // gt than the minimum score of `the`
-    scorer.minCompetitiveScore = 0.11f;
+    scorer.scorable.minCompetitiveScore = 0.11f;
     Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
@@ -683,7 +683,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertSame(the, scorer.allScorers[0].scorer);
 
     // equal to the sum of the max scores of the and quick
-    scorer.minCompetitiveScore = 1.1f;
+    scorer.scorable.minCompetitiveScore = 1.1f;
     Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
@@ -692,7 +692,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertSame(the, scorer.allScorers[0].scorer);
 
     // greater than the sum of the max scores of the and quick
-    scorer.minCompetitiveScore = 1.11f;
+    scorer.scorable.minCompetitiveScore = 1.11f;
     Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
@@ -703,7 +703,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertSame(fox, scorer.allScorers[2].scorer);
 
     // equal to the sum of the max scores of the and fox
-    scorer.minCompetitiveScore = 1.2f;
+    scorer.scorable.minCompetitiveScore = 1.2f;
     Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
@@ -714,7 +714,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertSame(fox, scorer.allScorers[2].scorer);
 
     // greater than the sum of the max scores of the and fox
-    scorer.minCompetitiveScore = 1.21f;
+    scorer.scorable.minCompetitiveScore = 1.21f;
     Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
@@ -725,7 +725,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertSame(fox, scorer.allScorers[2].scorer);
 
     // equal to the sum of the max scores of quick and fox
-    scorer.minCompetitiveScore = 2.1f;
+    scorer.scorable.minCompetitiveScore = 2.1f;
     Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
@@ -736,7 +736,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertSame(fox, scorer.allScorers[2].scorer);
 
     // greater than the sum of the max scores of quick and fox
-    scorer.minCompetitiveScore = 2.11f;
+    scorer.scorable.minCompetitiveScore = 2.11f;
     Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
@@ -747,7 +747,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertSame(fox, scorer.allScorers[2].scorer);
 
     // greater than the sum of the max scores of quick and fox
-    scorer.minCompetitiveScore = 2.11f;
+    scorer.scorable.minCompetitiveScore = 2.11f;
     Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
@@ -758,7 +758,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertSame(fox, scorer.allScorers[2].scorer);
 
     // equal to the sum of the max scores of all terms
-    scorer.minCompetitiveScore = 2.2f;
+    scorer.scorable.minCompetitiveScore = 2.2f;
     Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
@@ -769,7 +769,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertSame(fox, scorer.allScorers[2].scorer);
 
     // greater than the sum of the max scores of all terms
-    scorer.minCompetitiveScore = 2.21f;
+    scorer.scorable.minCompetitiveScore = 2.21f;
     Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertFalse(scorer.partitionScorers()); // no possible match in this window

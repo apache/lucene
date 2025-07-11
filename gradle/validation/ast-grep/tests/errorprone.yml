@@ -103,3 +103,22 @@ invalid:
     public void main() {}
   - |
     public static int main() {}
+---
+id: ThreeLetterTimeZoneID
+invalid:
+  - TimeZone.getTimeZone("EST")
+valid:
+  - TimeZone.getTimeZone("UTC")
+  - TimeZone.getTimeZone("America/New_York")
+---
+id: StringCharset
+invalid:
+  - |
+    new String(bytes, "UTF-8")
+  - |
+    "abc".getBytes("UTF-16LE")
+valid:
+  - |
+    new String(bytes, "GB2312")
+  - |
+    new String(bytes, StandardCharsets.UTF_8)
