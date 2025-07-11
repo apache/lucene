@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.gradle.plugins.globals;
 
+import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsExtension;
 import java.io.File;
 import java.io.FilterOutputStream;
 import java.io.IOException;
@@ -24,7 +25,6 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.inject.Inject;
-import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsExtension;
 import org.apache.lucene.gradle.plugins.misc.QuietExec;
 import org.gradle.api.Action;
 import org.gradle.api.GradleException;
