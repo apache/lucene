@@ -57,8 +57,7 @@ public class TestsSummaryPlugin extends LuceneGradlePlugin {
                                 .append(pluralize(result.getFailedTestCount(), " failure"));
                           }
                           if (result.getSkippedTestCount() > 0) {
-                            sb.append(", ")
-                                .append(pluralize(result.getSkippedTestCount(), " skipped"));
+                            sb.append(", ").append(result.getSkippedTestCount()).append(" skipped");
                           }
 
                           task.getLogger().lifecycle(sb.toString());
@@ -67,7 +66,7 @@ public class TestsSummaryPlugin extends LuceneGradlePlugin {
                     }
 
                     private static String pluralize(long count, String verb) {
-                      return count + (verb + (count == 1 ? "" : "s"));
+                      return count + " " + verb + (count == 1 ? "" : "s");
                     }
 
                     @Override
