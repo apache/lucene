@@ -131,7 +131,8 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
                   long.class, IndexInput.class, MemorySegment.class, long.class, long.class));
 
     } catch (NoSuchMethodException | IllegalAccessException e) {
-      throw new AssertionError("reader / writer functions are missing or inaccessible", e);
+      throw new LinkageError(
+          "FaissLibraryNativeImpl reader / writer functions are missing or inaccessible", e);
     }
   }
 

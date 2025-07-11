@@ -47,14 +47,14 @@ interface FaissLibrary {
     try {
       cls = lookup.findClass("org.apache.lucene.sandbox.codecs.faiss.FaissLibraryNativeImpl");
     } catch (ClassNotFoundException | IllegalAccessException e) {
-      throw new AssertionError("FaissLibraryNativeImpl class is missing or inaccessible", e);
+      throw new LinkageError("FaissLibraryNativeImpl class is missing or inaccessible", e);
     }
 
     final MethodHandle constr;
     try {
       constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
     } catch (NoSuchMethodException | IllegalAccessException e) {
-      throw new AssertionError("FaissLibraryNativeImpl constructor is missing or inaccessible", e);
+      throw new LinkageError("FaissLibraryNativeImpl constructor is missing or inaccessible", e);
     }
 
     try {
