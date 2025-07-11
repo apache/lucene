@@ -19,6 +19,7 @@ import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.lucene.gradle.plugins.misc.QuietExec
+import org.apache.lucene.gradle.plugins.regenerate.RegenerateTaskExtension
 import java.util.function.Function
 
 // Create common 'regenerate' task sub-tasks can hook into.
@@ -41,7 +42,7 @@ String valueToString(String sourceTaskName, String key, Object val) {
   }
 
   if (val instanceof List) {
-    val = "[" + ((List<?>) val).collect { valueToString(sourceTaskName, key, it) }.join(", ") + "]"
+    val = "[" + ((List<?>) val).collect {valueToString(sourceTaskName, key, it)}.join(", ") + "]"
   }
 
   if (!(val instanceof String)) {
@@ -55,7 +56,7 @@ String valueToString(String sourceTaskName, String key, Object val) {
 /**
  * Compute all "checksummed" key-value pairs.
  */
-def computeChecksummedEntries = { Task sourceTask ->
+def computeChecksummedEntries = {Task sourceTask ->
   // An flat ordered map of key-value pairs.
   Map<String, String> allEntries = new TreeMap<>()
 
@@ -68,15 +69,13 @@ def computeChecksummedEntries = { Task sourceTask ->
   // we don't want to inspect all properties of QuietExec since it
   // contains local paths, etc. omit those. It could probably be modeled
   // as a specific extension on the sourceTask (?).
-  if (sourceTask instanceof QuietExec) {
-    props.keySet().removeAll(Set.of(
-        "args",
-        "executable",
-        "ignoreExitValue"
-    ))
+
+  def regenerateExt = sourceTask.getExtensions().findByType(RegenerateTaskExtension)
+  if (regenerateExt != null) {
+    props.keySet().removeAll(regenerateExt.getIgnoredInputs().get())
   }
 
-  props.forEach { key, val ->
+  props.forEach {key, val ->
     allEntries.put("property:" + key, valueToString(sourceTask.path, key, val))
   }
 
@@ -85,10 +84,16 @@ def computeChecksummedEntries = { Task sourceTask ->
 
   // Compute checksums for root-project relative paths
   def digestUtils = new DigestUtils(DigestUtils.getSha1Digest())
-  allFiles.files.forEach { file ->
+  allFiles.files.forEach {file ->
     allEntries.put(
         sourceTask.project.rootDir.relativePath(file),
         file.exists() ? digestUtils.digestAsHex(file).trim() : "--")
+  }
+
+  if (sourceTask.getLogger().isEnabled(LogLevel.INFO)) {
+    sourceTask.getLogger().info("Checksum properties:\n" + allEntries.entrySet().collect {
+      e -> "  " + e.getKey() + ": " + e.getValue()
+    }.join("\n"));
   }
 
   return allEntries
@@ -98,8 +103,8 @@ ext {
   /**
    * Utility function to read a file, apply changes to its content and write it back.
    */
-  modifyFile = { File path, Function<String, String> modify ->
-    Function<String, String> normalizeEols = { text -> text.replace("\r\n", "\n") }
+  modifyFile = {File path, Function<String, String> modify ->
+    Function<String, String> normalizeEols = {text -> text.replace("\r\n", "\n")}
 
     String original = path.getText("UTF-8")
     String modified = normalizeEols.apply(original)
@@ -112,15 +117,15 @@ ext {
 }
 
 configure([
-  project(":lucene:analysis:common"),
-  project(":lucene:analysis:icu"),
-  project(":lucene:analysis:kuromoji"),
-  project(":lucene:analysis:nori"),
-  project(":lucene:backward-codecs"),
-  project(":lucene:core"),
-  project(":lucene:queryparser"),
-  project(":lucene:expressions"),
-  project(":lucene:test-framework"),
+    project(":lucene:analysis:common"),
+    project(":lucene:analysis:icu"),
+    project(":lucene:analysis:kuromoji"),
+    project(":lucene:analysis:nori"),
+    project(":lucene:backward-codecs"),
+    project(":lucene:core"),
+    project(":lucene:queryparser"),
+    project(":lucene:expressions"),
+    project(":lucene:test-framework"),
 ]) {
   tasks.register("regenerate", {
     description = "Rerun any code or static data generation tasks."
@@ -193,14 +198,14 @@ configure([
     wrapWithPersistentChecksums2 = {TaskProvider sourceTaskProvider, Map<String, Object> extraConfig = [:] ->
       wrapWithPersistentChecksums(sourceTaskProvider.get(), extraConfig)
     }
-    wrapWithPersistentChecksums = { Task sourceTask, Map<String, Object> extraConfig = [:] ->
+    wrapWithPersistentChecksums = {Task sourceTask, Map<String, Object> extraConfig = [:] ->
       if (!sourceTask.name.endsWith("Internal")) {
         throw new GradleException("Wrapped task must follow the convention name of *Internal: ${sourceTask.name}")
       }
 
       String sourceTaskName = sourceTask.name.replaceAll('Internal$', '')
 
-      def toList = { value ->
+      def toList = {value ->
         if (value instanceof List) {
           return value
         } else if (value == null) {
@@ -211,12 +216,12 @@ configure([
       }
 
       List<Object> andThenTasks = toList(extraConfig.get("andThenTasks"))
-      List<Object> ignoreWithSource =  toList(extraConfig.get("ignoreWithSource"))
+      List<Object> ignoreWithSource = toList(extraConfig.get("ignoreWithSource"))
 
       // Schedule must-run-afters
       List<Object> mustRunBefore = toList(extraConfig.get("mustRunBefore"))
       // TODO: maybe ensure all task refs here are strings?
-      tasks.matching { it.name in mustRunBefore }.configureEach {
+      tasks.matching {it.name in mustRunBefore}.configureEach {
         mustRunAfter sourceTask
       }
 
@@ -256,11 +261,11 @@ configure([
             expected = expected - same
 
             throw new GradleException("Checksums mismatch for derived resources; you might have" +
-            " modified a generated resource (regenerate task: ${sourceTaskName}):\n" +
-            "Current:\n  ${current.entrySet().join('\n  ')}\n\n" +
-            "Expected:\n  ${expected.entrySet().join('\n  ')}\n\n" +
-            "Input files for this task are:\n  " + sourceTask.inputs.files.join('\n  ') + "\n\n" +
-            "Files generated by this task are:\n  " + sourceTask.outputs.files.join('\n  ')
+                " modified a generated resource (regenerate task: ${sourceTaskName}):\n" +
+                "Current:\n  ${current.entrySet().join('\n  ')}\n\n" +
+                "Expected:\n  ${expected.entrySet().join('\n  ')}\n\n" +
+                "Input files for this task are:\n  " + sourceTask.inputs.files.join('\n  ') + "\n\n" +
+                "Files generated by this task are:\n  " + sourceTask.outputs.files.join('\n  ')
             )
           }
         }
@@ -278,7 +283,7 @@ configure([
           def updatedChecksums = computeChecksummedEntries(sourceTask)
           checksumsFile.setText(
               JsonOutput.prettyPrint(JsonOutput.toJson(new TreeMap<String,
-              String>(updatedChecksums))) + '\n', "UTF-8")
+                  String>(updatedChecksums))) + '\n', "UTF-8")
 
           logger.warn("Updated generated file checksums for task ${sourceTask.path}.")
         }
@@ -286,10 +291,10 @@ configure([
 
       Task conditionalTask = tasks.create("${sourceTaskName}", {
         def deps = [
-          checksumLoadTask,
-          sourceTask,
-          *andThenTasks,
-          checksumSaveTask
+            checksumLoadTask,
+            sourceTask,
+            *andThenTasks,
+            checksumSaveTask
         ].flatten()
 
         dependsOn deps
@@ -304,7 +309,7 @@ configure([
 
       // Load checksums before the source task executes, otherwise it's always ignored.
       project.afterEvaluate {
-        resolveTaskRefs([sourceTask, *ignoreWithSource]).each { t ->
+        resolveTaskRefs([sourceTask, *ignoreWithSource]).each {t ->
           t.configure {
             dependsOn checksumLoadTask
           }
@@ -325,13 +330,13 @@ configure([
       if (!gradle.startParameter.isRerunTasks()) {
         project.afterEvaluate {
           resolveTaskRefs([
-            sourceTask,
-            *ignoreWithSource,
-            checksumSaveTask
-          ]).each { t ->
+              sourceTask,
+              *ignoreWithSource,
+              checksumSaveTask
+          ]).each {t ->
             t.configure {
               logger.info("Making " + t.name + " run only if " + checksumLoadTask.name + " indicates changes")
-              onlyIf { !checksumLoadTask.checksumMatch }
+              onlyIf {!checksumLoadTask.checksumMatch}
             }
           }
         }
