@@ -18,13 +18,38 @@
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import org.apache.commons.codec.digest.DigestUtils
-
+import org.apache.lucene.gradle.plugins.misc.QuietExec
 import java.util.function.Function
 
 // Create common 'regenerate' task sub-tasks can hook into.
 
 if (project != project.rootProject) {
   throw new GradleException("Applicable to rootProject only: " + project.path)
+}
+
+String valueToString(String sourceTaskName, String key, Object val) {
+  // Handle closures and other lazy providers.
+  if (val instanceof Provider<?>) {
+    val = val.get()
+  }
+  if (val instanceof Closure<?>) {
+    val = val.call()
+  }
+
+  if (val instanceof Boolean || val instanceof Number) {
+    val = val.toString()
+  }
+
+  if (val instanceof List) {
+    val = "[" + ((List<?>) val).collect { valueToString(sourceTaskName, key, it) }.join(", ") + "]"
+  }
+
+  if (!(val instanceof String)) {
+    throw new GradleException("Input properties of wrapped tasks must all be " +
+        "strings: ${key} in ${sourceTaskName} is not: ${val.class.getName()}")
+  }
+
+  return (String) val
 }
 
 /**
@@ -38,21 +63,21 @@ def computeChecksummedEntries = { Task sourceTask ->
   // or closures returning simple strings.
   //
   // Don't overcomplicate things with other serializable types.
-  Map<String, Object> props = sourceTask.inputs.properties
-  props.forEach { key, val ->
-    // Handle closures and other lazy providers.
-    if (val instanceof Provider<?>) {
-      val = val.get()
-    }
-    if (val instanceof Closure<?>) {
-      val = val.call()
-    }
+  Map<String, Object> props = new LinkedHashMap<>(sourceTask.inputs.properties)
 
-    if (!(val instanceof String)) {
-      throw new GradleException("Input properties of wrapped tasks must all be " +
-      "strings: ${key} in ${sourceTask.name} is not.")
-    }
-    allEntries.put("property:" + key, (String) val)
+  // we don't want to inspect all properties of QuietExec since it
+  // contains local paths, etc. omit those. It could probably be modeled
+  // as a specific extension on the sourceTask (?).
+  if (sourceTask instanceof QuietExec) {
+    props.keySet().removeAll(Set.of(
+        "args",
+        "executable",
+        "ignoreExitValue"
+    ))
+  }
+
+  props.forEach { key, val ->
+    allEntries.put("property:" + key, valueToString(sourceTask.path, key, val))
   }
 
   // Collect all of task inputs/ output files and compute their checksums.
@@ -165,6 +190,9 @@ configure([
     //   ignoreWithSource: any other tasks that should be ignored if the internal task is ignored
     //     (checksums are identical)
     //   mustRunBefore: any tasks which should be scheduled to run after the internal task.
+    wrapWithPersistentChecksums2 = {TaskProvider sourceTaskProvider, Map<String, Object> extraConfig = [:] ->
+      wrapWithPersistentChecksums(sourceTaskProvider.get(), extraConfig)
+    }
     wrapWithPersistentChecksums = { Task sourceTask, Map<String, Object> extraConfig = [:] ->
       if (!sourceTask.name.endsWith("Internal")) {
         throw new GradleException("Wrapped task must follow the convention name of *Internal: ${sourceTask.name}")

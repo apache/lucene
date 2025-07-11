@@ -71,6 +71,7 @@ plugins {
 
   id "lucene.regenerate"
   id "lucene.regenerate.jflex"
+  id "lucene.regenerate.forUtil"
   id "lucene.regenerate.moman"
   id "lucene.regenerate.kuromoji"
   id "lucene.regenerate.nori"
