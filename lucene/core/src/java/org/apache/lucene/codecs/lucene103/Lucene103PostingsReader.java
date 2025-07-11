@@ -80,7 +80,8 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
   // We stopped storing a placeholder impact with freq=1 for fields with DOCS after 9.12.0
   private static final List<Impact> DUMMY_IMPACTS_NO_FREQS =
       Collections.singletonList(new Impact(1, 1L));
-  private static int[] IDENTITY = IntStream.range(0, 32).toArray();
+
+  private static final int[] IDENTITY = IntStream.range(0, 32).toArray();
 
   private final IndexInput docIn;
   private final IndexInput posIn;
