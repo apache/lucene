@@ -19,13 +19,13 @@ package org.apache.lucene.monitor;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.DisjunctionMaxQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.util.CollectionUtil;
 
 /**
  * Split a disjunction query into its consituent parts, so that they can be indexed and run
@@ -44,7 +44,7 @@ public class QueryDecomposer {
     if (q instanceof BooleanQuery) return decomposeBoolean((BooleanQuery) q);
 
     if (q instanceof DisjunctionMaxQuery) {
-      Set<Query> subqueries = new HashSet<>();
+      Set<Query> subqueries = new LinkedHashSet<>();
       for (Query subq : ((DisjunctionMaxQuery) q).getDisjuncts()) {
         subqueries.addAll(decompose(subq));
       }
@@ -61,7 +61,7 @@ public class QueryDecomposer {
   public Set<Query> decomposeBoostQuery(BoostQuery q) {
     if (q.getBoost() == 1.0) return decompose(q.getQuery());
 
-    Set<Query> boostedDecomposedQueries = new HashSet<>();
+    Set<Query> boostedDecomposedQueries = new LinkedHashSet<>();
     for (Query subq : decompose(q.getQuery())) {
       boostedDecomposedQueries.add(new BoostQuery(subq, q.getBoost()));
     }
@@ -77,7 +77,7 @@ public class QueryDecomposer {
   public Set<Query> decomposeBoolean(BooleanQuery q) {
     if (q.getMinimumNumberShouldMatch() > 1) return Collections.singleton(q);
 
-    Set<Query> subqueries = new HashSet<>();
+    Set<Query> subqueries = new LinkedHashSet<>();
     Set<Query> exclusions = new HashSet<>();
     Set<Query> mandatory = new HashSet<>();
 
@@ -104,7 +104,7 @@ public class QueryDecomposer {
 
     // If there are exclusions, then we need to add them to all the decomposed
     // queries
-    Set<Query> rewrittenSubqueries = CollectionUtil.newHashSet(subqueries.size());
+    Set<Query> rewrittenSubqueries = new LinkedHashSet<>();
     for (Query subquery : subqueries) {
       BooleanQuery.Builder bq = new BooleanQuery.Builder();
       bq.add(subquery, BooleanClause.Occur.MUST);
