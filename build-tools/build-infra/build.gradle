@@ -43,6 +43,11 @@ gradlePlugin {
       implementationClass = 'org.apache.lucene.gradle.plugins.misc.CheckEnvironmentPlugin'
     }
 
+    RootProjectSetupPlugin {
+      id = 'lucene.root-project.setup'
+      implementationClass = 'org.apache.lucene.gradle.plugins.misc.RootProjectSetupPlugin'
+    }
+
     JavaProjectConventionsPlugin {
       id = 'lucene.java-projects.conventions'
       implementationClass = 'org.apache.lucene.gradle.plugins.java.JavaProjectConventionsPlugin'

@@ -49,7 +49,7 @@ tasks.register("assembleSourceTgz", QuietExec, {
   inputs.property("git-revision", gitRev)
   outputs.file sourceTgzFile
 
-  executable = project.externalTool("git")
+  executable = buildGlobals.externalTool("git")
   workingDir = project.rootDir
 
   // An explicit GIT_DIR to prevent .git upward scanning if something goes wrong.

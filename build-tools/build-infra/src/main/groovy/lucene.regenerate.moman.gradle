@@ -57,8 +57,8 @@ configure(project(":lucene:core")) {
       templateFiles.each { prog ->
         logger.lifecycle("Executing: ${prog} in ${targetDir}")
         buildGlobals.quietExec(it, {
-          workingDir targetDir
-          executable project.externalTool("python3")
+          workingDir = targetDir
+          executable = buildGlobals.externalTool("python3")
           args = ['-B', "${prog}"]
         })
       }
@@ -85,8 +85,8 @@ configure(project(":lucene:core")) {
       ['1', '2'].each { num ->
         ['True', 'False'].each { transpose ->
           buildGlobals.quietExec(it, {
-            workingDir targetDir
-            executable project.externalTool("python3")
+            workingDir = targetDir
+            executable = buildGlobals.externalTool("python3")
             args = [
               '-B',
               templateFile.toString(),

@@ -31,7 +31,7 @@ void addGenerateFromPythonTask(Project project, File genDir, String taskName, St
     outputs.file genOutput
 
     workingDir = genDir
-    executable = project.externalTool("python3")
+    executable = buildGlobals.externalTool("python3")
     args = ['-B', genScript.toString()]
   })
 

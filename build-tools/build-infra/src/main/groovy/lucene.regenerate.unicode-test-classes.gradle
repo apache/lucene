@@ -35,8 +35,8 @@ configure(project(":lucene:test-framework")) {
         inputs.property "unicodeVersion", unicodeVersion
         outputs.file genOutput
 
-        workingDir genDir
-        executable project.externalTool("perl")
+        workingDir = genDir
+        executable = buildGlobals.externalTool("perl")
         args = [
             genScript,
             "-v",
@@ -66,8 +66,8 @@ configure(project(":lucene:test-framework")) {
     inputs.property "unicodeVersion", unicodeVersion
     outputs.file genOutput
 
-    workingDir genDir
-    executable project.externalTool("perl")
+    workingDir = genDir
+    executable = buildGlobals.externalTool("perl")
     args = [
         genScript,
         "-v",

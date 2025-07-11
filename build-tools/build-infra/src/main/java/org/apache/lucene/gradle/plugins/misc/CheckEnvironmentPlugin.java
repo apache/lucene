@@ -17,6 +17,7 @@
 package org.apache.lucene.gradle.plugins.misc;
 
 import java.util.Locale;
+import java.util.Set;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.gradle.api.GradleException;
 import org.gradle.api.JavaVersion;
@@ -30,6 +31,9 @@ import org.gradle.util.GradleVersion;
  * JVM is supported, etc.
  */
 public class CheckEnvironmentPlugin extends LuceneGradlePlugin {
+  public static final String CHECK_JDK_INTERNALS_EXPOSED_TO_GRADLE_TASK =
+      "checkJdkInternalsExportedToGradle";
+
   @Override
   public void apply(Project rootProject) {
     applicableToRootProjectOnly(rootProject);
@@ -98,5 +102,34 @@ public class CheckEnvironmentPlugin extends LuceneGradlePlugin {
         }
       }
     }
+
+    rootProject
+        .getTasks()
+        .register(
+            CHECK_JDK_INTERNALS_EXPOSED_TO_GRADLE_TASK,
+            task -> {
+              task.doFirst(
+                  t -> {
+                    var jdkCompilerModule =
+                        ModuleLayer.boot().findModule("jdk.compiler").orElseThrow();
+                    var gradleModule = getClass().getModule();
+                    var internalsExported =
+                        Set.of(
+                                "com.sun.tools.javac.api",
+                                "com.sun.tools.javac.file",
+                                "com.sun.tools.javac.parser",
+                                "com.sun.tools.javac.tree",
+                                "com.sun.tools.javac.util")
+                            .stream()
+                            .allMatch(pkg -> jdkCompilerModule.isExported(pkg, gradleModule));
+
+                    if (!internalsExported) {
+                      throw new GradleException(
+                          "Certain gradle tasks and plugins require access to jdk.compiler"
+                              + " internals, your gradle.properties might have just been generated or could be"
+                              + " out of sync (see gradle/template.gradle.properties)");
+                    }
+                  });
+            });
   }
 }

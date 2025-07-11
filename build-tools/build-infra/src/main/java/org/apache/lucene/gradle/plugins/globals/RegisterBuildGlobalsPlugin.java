@@ -56,6 +56,12 @@ public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
         System.getenv().keySet().stream()
             .anyMatch(key -> key.matches("(?i)((JENKINS|HUDSON)(_\\w+)?|CI)"));
 
+    // Set up build options for external tools.
+    var buildOptions = getBuildOptions(project);
+    buildOptions.addOption("lucene.tool.python3", "External python3 executable (path or name)", "python3");
+    buildOptions.addOption("lucene.tool.perl", "External perl executable (path or name)", "perl");
+    buildOptions.addOption("lucene.tool.git", "External git executable (path or name)", "git");
+
     // Pick the "root" seed from which everything else that is randomized is derived.
     Provider<String> rootSeedOption =
         getBuildOptions(project)

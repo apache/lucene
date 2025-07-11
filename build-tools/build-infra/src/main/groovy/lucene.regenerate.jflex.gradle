@@ -179,7 +179,7 @@ configure(project(":lucene:analysis:common")) {
     outputs.files target
     inputs.file script
 
-    executable = project.externalTool("python3")
+    executable = buildGlobals.externalTool("python3")
     workingDir = target.parentFile
     args += [
         "-B",

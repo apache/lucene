@@ -24,10 +24,12 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.inject.Inject;
+import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsExtension;
 import org.apache.lucene.gradle.plugins.misc.QuietExec;
 import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.JavaVersion;
+import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.provider.Property;
 import org.gradle.process.ExecOperations;
@@ -85,6 +87,21 @@ public abstract class LuceneBuildGlobalsExtension {
   public abstract Property<IntellijIdea> getIntellijIdea();
 
   /**
+   * Returns the path to the provided named external tool. Developers may set up different tool
+   * paths using local build options.
+   */
+  public String externalTool(String name) {
+    var buildOptions =
+        getProject().getRootProject().getExtensions().getByType(BuildOptionsExtension.class);
+    var optionKey = "lucene.tool." + name;
+    if (!buildOptions.hasOption(optionKey)) {
+      throw new GradleException(
+          "External tool of this name has no corresponding build option: " + optionKey);
+    }
+    return buildOptions.getOption(optionKey).asStringProvider().get();
+  }
+
+  /**
    * An immediate equivalent of the {@link org.apache.lucene.gradle.plugins.misc.QuietExec} task.
    * This should be avoided but is sometimes handy.
    */
@@ -123,4 +140,8 @@ public abstract class LuceneBuildGlobalsExtension {
   /** For internal use. */
   @Inject
   protected abstract ExecOperations getExecOps();
+
+  /** For internal use. */
+  @Inject
+  protected abstract Project getProject();
 }

@@ -21,6 +21,8 @@ plugins {
   // Apply build plugins from the composite build-infra project.
   // The order of plugins does matter (most of the time).
   id "lucene.root-project.check-environment"
+
+  id "base"
   id "lucene.root-project.setup"
 
   id "lucene.all-projects.conventions"
