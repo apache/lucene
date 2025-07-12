@@ -6,3 +6,64 @@ invalid:
   - import static jdk.incubator.vector.VectorOperators.ADD
 valid:
   - import java.util.List
+---
+id: unchecked-slow-vector-feature
+invalid:
+  - import static jdk.incubator.vector.VectorOperators.FMA
+    a.lanewise(FMA, b, c)
+  - import static jdk.incubator.vector.VectorOperators.FMA
+    if (other) {
+      a.lanewise(FMA, b, c)
+    }
+  - import static jdk.incubator.vector.VectorOperators.FMA
+    if (Constants.HAS_FAST_VECTOR_FMA || other) {
+      a.lanewise(FMA, b, c)
+    }
+  - import static jdk.incubator.vector.VectorOperators.FMA
+    if (!Constants.HAS_FAST_VECTOR_FMA) {
+      a.lanewise(FMA, b, c)
+    }
+  - import static jdk.incubator.vector.VectorOperators.FMA
+    if (Constants.HAS_FAST_VECTOR_FMA) {
+      somethingElse()
+    } else {
+      a.lanewise(FMA, b, c)
+    }
+  - import jdk.incubator.vector.VectorOperators
+    a.lanewise(VectorOperators.FMA, b, c)
+  # note: doesn't actually chase types yet
+  - import jdk.incubator.vector.ByteVector
+    ByteVector x = ByteVector.fromMemorySegment()
+    x.fma(other, other)
+valid:
+  - |
+    import static jdk.incubator.vector.VectorOperators.FMA
+    if (Constants.HAS_FAST_VECTOR_FMA) {
+      a.lanewise(FMA, b, c)
+    }
+  - |
+    import static jdk.incubator.vector.VectorOperators.FMA
+    if (Constants.HAS_FAST_VECTOR_FMA && other) {
+      a.lanewise(FMA, b, c)
+    }
+  - |
+    import static jdk.incubator.vector.VectorOperators.FMA
+    if (other && Constants.HAS_FAST_VECTOR_FMA) {
+      a.lanewise(FMA, b, c)
+    }
+  - |
+    import static jdk.incubator.vector.VectorOperators.FMA
+    if (other) {
+      somethingSafe()
+    } else if (Constants.HAS_FAST_VECTOR_FMA) {
+      a.lanewise(FMA, b, c)
+    }
+  - |
+    import static jdk.incubator.vector.VectorOperators.FMA
+    if (Constants.HAS_FAST_VECTOR_FMA) {
+      if (somethingElse) {
+        for (var foo : bar) {
+          a.lanewise(FMA, b, c)
+        }
+      }
+    }
