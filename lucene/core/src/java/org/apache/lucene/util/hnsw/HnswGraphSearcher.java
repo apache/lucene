@@ -275,7 +275,6 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     int size = getGraphSize(graph);
 
     prepareScratchState(size);
-
     for (int ep : eps) {
       if (visited.getAndSet(ep) == false) {
         if (results.earlyTerminated()) {
@@ -312,37 +311,117 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
 
       int topCandidateNode = candidates.pop();
       graphSeek(graph, level, topCandidateNode);
+
+      // -- process neighbours in bulk, 4 at a time
+      int[] friendOrds = new int[4];
+      int ordCount = 0;
+      if (scorer.supportsBulk() && graphNeighborCount(graph) >= 4) {
+        float[] scores = new float[4];
+        while (true) {
+          ordCount = loadFourUnvisitedNeighbors(graph, visited, friendOrds);
+          if (ordCount < 4) {
+            break; // fewer than 4 neighbors, fall back to non-bulk processing
+          }
+          assert assertOrds(friendOrds, size, visited);
+
+          scorer.scoreBulk(scores, friendOrds[0], friendOrds[1], friendOrds[2], friendOrds[3]);
+          for (int i = 0; i < 4; i++) {
+            int friendOrd = friendOrds[i];
+            float friendSimilarity = scores[i];
+            if (visited.getAndSet(friendOrd)) {
+              continue;
+            }
+            if (results.earlyTerminated()) {
+              break;
+            }
+            float oldMinAcceptedSimilarity = minAcceptedSimilarity;
+            minAcceptedSimilarity =
+                processNeighbor(
+                    results, friendOrd, friendSimilarity, minAcceptedSimilarity, acceptOrds);
+            if (minAcceptedSimilarity > oldMinAcceptedSimilarity) {
+              // we adjusted our minAcceptedSimilarity, so we should explore the next equivalent
+              // if necessary
+              shouldExploreMinSim = true;
+            }
+          }
+        }
+      }
+      // -- process remaining neighbors
       int friendOrd;
-      while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
+      while ((friendOrd = ordCount > 0 ? friendOrds[--ordCount] : graphNextNeighbor(graph))
+          != NO_MORE_DOCS) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
         if (visited.getAndSet(friendOrd)) {
           continue;
         }
-
         if (results.earlyTerminated()) {
           break;
         }
         float friendSimilarity = scorer.score(friendOrd);
-        results.incVisitedCount(1);
-        if (friendSimilarity >= minAcceptedSimilarity) {
-          candidates.add(friendOrd, friendSimilarity);
-          if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            if (results.collect(friendOrd, friendSimilarity)) {
-              float oldMinAcceptedSimilarity = minAcceptedSimilarity;
-              minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
-              if (minAcceptedSimilarity > oldMinAcceptedSimilarity) {
-                // we adjusted our minAcceptedSimilarity, so we should explore the next equivalent
-                // if necessary
-                shouldExploreMinSim = true;
-              }
-            }
-          }
+        float oldMinAcceptedSimilarity = minAcceptedSimilarity;
+        minAcceptedSimilarity =
+            processNeighbor(
+                results, friendOrd, friendSimilarity, minAcceptedSimilarity, acceptOrds);
+        if (minAcceptedSimilarity > oldMinAcceptedSimilarity) {
+          // we adjusted our minAcceptedSimilarity, so we should explore the next equivalent
+          // if necessary
+          shouldExploreMinSim = true;
         }
       }
       if (results.getSearchStrategy() != null) {
         results.getSearchStrategy().nextVectorsBlock();
       }
     }
+  }
+
+  private int loadFourUnvisitedNeighbors(HnswGraph graph, BitSet visited, int[] friendOrds)
+      throws IOException {
+    int count = 0;
+
+    for (int i = 0; i < 4; i++) {
+      int ord;
+      do {
+        ord = graphNextNeighbor(graph);
+        if (ord == NO_MORE_DOCS) {
+          return count;
+        }
+      } while (visited.get(ord));
+
+      friendOrds[i] = ord;
+      count++;
+    }
+
+    return count;
+  }
+
+  static boolean assertOrds(int[] friendOrds, int size, BitSet visited) {
+    assert friendOrds[0] < size : "friendOrd=" + friendOrds[0] + "; size=" + size;
+    assert friendOrds[1] < size : "friendOrd=" + friendOrds[1] + "; size=" + size;
+    assert friendOrds[2] < size : "friendOrd=" + friendOrds[2] + "; size=" + size;
+    assert friendOrds[3] < size : "friendOrd=" + friendOrds[3] + "; size=" + size;
+    assert !visited.get(friendOrds[0]);
+    assert !visited.get(friendOrds[1]);
+    assert !visited.get(friendOrds[2]);
+    assert !visited.get(friendOrds[3]);
+    return true;
+  }
+
+  private float processNeighbor(
+      KnnCollector results,
+      int friendOrd,
+      float friendSimilarity,
+      float minAcceptedSimilarity,
+      Bits acceptOrds) {
+    results.incVisitedCount(1);
+    if (friendSimilarity >= minAcceptedSimilarity) {
+      candidates.add(friendOrd, friendSimilarity);
+      if (acceptOrds == null || acceptOrds.get(friendOrd)) {
+        if (results.collect(friendOrd, friendSimilarity)) {
+          return Math.nextUp(results.minCompetitiveSimilarity());
+        }
+      }
+    }
+    return minAcceptedSimilarity;
   }
 
   private void prepareScratchState(int capacity) {
@@ -375,6 +454,10 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     return graph.nextNeighbor();
   }
 
+  int graphNeighborCount(HnswGraph graph) {
+    return graph.neighborCount();
+  }
+
   static int getGraphSize(HnswGraph graph) {
     return graph.maxNodeId() + 1;
   }
@@ -400,6 +483,11 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     void graphSeek(HnswGraph graph, int level, int targetNode) {
       cur = ((OnHeapHnswGraph) graph).getNeighbors(level, targetNode);
       upto = -1;
+    }
+
+    @Override
+    int graphNeighborCount(HnswGraph graph) {
+      return cur.size();
     }
 
     @Override

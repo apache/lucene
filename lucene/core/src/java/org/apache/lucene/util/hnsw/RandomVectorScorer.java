@@ -34,6 +34,31 @@ public interface RandomVectorScorer {
    */
   float score(int node) throws IOException;
 
+  // TODO:
+  default boolean supportsBulk() {
+    return false;
+  }
+
+  /**
+   * Bulk scores the given 4 nodes.
+   *
+   * @param scores the scores - must be of length >= 4
+   * @param node1 a random node in the graph
+   * @param node2 a random node in the graph
+   * @param node3 a random node in the graph
+   * @param node4 a random node in the graph
+   */
+  // TODO: consider replacing with supportsBulkScorer or Optional<BulkScorer>
+  // so that can avoid potentially slower path?
+  default void scoreBulk(float[] scores, int node1, int node2, int node3, int node4)
+      throws IOException {
+    throw new UnsupportedOperationException("bulk scoring is not supported");
+    //    scores[0] = score(node1);
+    //    scores[1] = score(node2);
+    //    scores[2] = score(node3);
+    //    scores[3] = score(node4);
+  }
+
   /**
    * @return the maximum possible ordinal for this scorer
    */

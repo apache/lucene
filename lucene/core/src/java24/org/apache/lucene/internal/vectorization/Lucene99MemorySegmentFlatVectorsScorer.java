@@ -21,7 +21,9 @@ import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.HasIndexSlice;
 import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.index.ListFloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
@@ -41,6 +43,33 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
   @Override
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityType, KnnVectorValues vectorValues) throws IOException {
+    return switch (vectorValues.getEncoding()) {
+      case FLOAT32 -> getFloatScoringSupplier((FloatVectorValues) vectorValues, similarityType);
+      case BYTE -> getByteScorerSupplier((ByteVectorValues) vectorValues, similarityType);
+    };
+  }
+
+  private RandomVectorScorerSupplier getFloatScoringSupplier(
+      FloatVectorValues vectorValues, VectorSimilarityFunction similarityType) throws IOException {
+    if (vectorValues instanceof ListFloatVectorValues listFloatVectorValues) {
+      return listFloatVectorValues.getScorer(similarityType); // on-heap
+    }
+    if (similarityType == VectorSimilarityFunction.DOT_PRODUCT) { // just for now
+      if (vectorValues instanceof HasIndexSlice sliceableValues
+          && sliceableValues.getSlice() != null) {
+        var scorer =
+            Lucene99MemorySegmentFloatVectorScorerSupplier.create(
+                similarityType, sliceableValues.getSlice(), vectorValues);
+        if (scorer.isPresent()) {
+          return scorer.get();
+        }
+      }
+    }
+    return delegate.getRandomVectorScorerSupplier(similarityType, vectorValues);
+  }
+
+  private RandomVectorScorerSupplier getByteScorerSupplier(
+      ByteVectorValues vectorValues, VectorSimilarityFunction similarityType) throws IOException {
     // a quantized values here is a wrapping or delegation issue
     assert !(vectorValues instanceof QuantizedByteVectorValues);
     // currently only supports binary vectors
@@ -61,7 +90,21 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
   public RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityType, KnnVectorValues vectorValues, float[] target)
       throws IOException {
-    // currently only supports binary vectors, so always delegate
+    if (similarityType == VectorSimilarityFunction.DOT_PRODUCT) { // just for now
+      if (vectorValues instanceof FloatVectorValues fvv
+          && fvv instanceof HasIndexSlice floatVectorValues
+          && floatVectorValues.getSlice() != null) {
+        var scorer =
+            Lucene99MemorySegmentFloatVectorScorer.create(
+                similarityType, floatVectorValues.getSlice(), fvv, target);
+        if (scorer.isPresent()) {
+          //          var x  = scorer.get(); // TODO: remove debugging
+          //          System.out.println("HEGO scorer = x=" + x);
+          //          return x;
+          return scorer.get();
+        }
+      }
+    }
     return delegate.getRandomVectorScorer(similarityType, vectorValues, target);
   }
 

@@ -1,0 +1,180 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.lucene.internal.vectorization;
+
+import java.io.IOException;
+import java.lang.foreign.MemorySegment;
+import java.util.Optional;
+import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.store.FilterIndexInput;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.MemorySegmentAccessInput;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
+
+abstract sealed class Lucene99MemorySegmentFloatVectorScorer
+    extends RandomVectorScorer.AbstractRandomVectorScorer {
+
+  final FloatVectorValues values;
+  final int vectorByteSize;
+  final MemorySegmentAccessInput input;
+  final float[] query;
+  byte[] scratch;
+
+  /**
+   * Return an optional whose value, if present, is the scorer. Otherwise, an empty optional is
+   * returned.
+   */
+  public static Optional<Lucene99MemorySegmentFloatVectorScorer> create(
+      VectorSimilarityFunction type,
+      IndexInput input,
+      FloatVectorValues values,
+      float[] queryVector) {
+    input = FilterIndexInput.unwrapOnlyTest(input);
+    if (!(input instanceof MemorySegmentAccessInput msInput)) {
+      return Optional.empty();
+    }
+    checkInvariants(values.size(), values.getVectorByteLength(), input);
+    return switch (type) {
+      case COSINE -> Optional.empty(); // of(new CosineScorer(msInput, values, queryVector));
+      case DOT_PRODUCT -> Optional.of(new DotProductScorer(msInput, values, queryVector));
+      case EUCLIDEAN -> Optional.empty(); // of(new EuclideanScorer(msInput, values, queryVector));
+      case MAXIMUM_INNER_PRODUCT ->
+          Optional.empty(); // of(new MaxInnerProductScorer(msInput, values, queryVector));
+    };
+  }
+
+  Lucene99MemorySegmentFloatVectorScorer(
+      MemorySegmentAccessInput input, FloatVectorValues values, float[] queryVector) {
+    super(values);
+    this.values = values;
+    this.input = input;
+    this.vectorByteSize = values.getVectorByteLength();
+    this.query = queryVector;
+  }
+
+  @Override
+  public final boolean supportsBulk() {
+    return true;
+  }
+
+  final MemorySegment getSegment(int ord) throws IOException {
+    checkOrdinal(ord);
+    long byteOffset = (long) ord * vectorByteSize;
+    MemorySegment seg = input.segmentSliceOrNull(byteOffset, vectorByteSize);
+    if (seg == null) {
+      if (scratch == null) {
+        scratch = new byte[vectorByteSize];
+      }
+      input.readBytes(
+          byteOffset, scratch, 0, vectorByteSize); // TODO: test the impact of byte array here!?
+      seg = MemorySegment.ofArray(scratch);
+    }
+    return seg;
+  }
+
+  //  final float[] getVectorFromOrd(int ord) throws IOException {
+  //    checkOrdinal(ord);
+  //    long byteOffset = (long) ord * vectorByteSize;
+  //    if (scratch == null) {
+  //      scratch = new byte[vectorByteSize];
+  //    }
+  //    return input.readBytes(byteOffset, scratch, 0, vectorByteSize);
+  //  }
+
+  static void checkInvariants(int maxOrd, int vectorByteLength, IndexInput input) {
+    if (input.length() < (long) vectorByteLength * maxOrd) {
+      throw new IllegalArgumentException("input length is less than expected vector data");
+    }
+  }
+
+  final void checkOrdinal(int ord) {
+    if (ord < 0 || ord >= maxOrd()) {
+      throw new IllegalArgumentException("illegal ordinal: " + ord);
+    }
+  }
+
+  //  static final class CosineScorer extends Lucene99MemorySegmentByteVectorScorer {
+  //    CosineScorer(MemorySegmentAccessInput input, KnnVectorValues values, byte[] query) {
+  //      super(input, values, query);
+  //    }
+  //
+  //    @Override
+  //    public float score(int node) throws IOException {
+  //      checkOrdinal(node);
+  //      float raw = PanamaVectorUtilSupport.cosine(query, getSegment(node));
+  //      return (1 + raw) / 2;
+  //    }
+  //  }
+
+  static final class DotProductScorer extends Lucene99MemorySegmentFloatVectorScorer {
+    DotProductScorer(MemorySegmentAccessInput input, FloatVectorValues values, float[] query) {
+      super(input, values, query);
+    }
+
+    @Override
+    public float score(int node) throws IOException {
+      checkOrdinal(node);
+      // just delegates to ...
+      return VectorSimilarityFunction.DOT_PRODUCT.compare(query, values.vectorValue(node));
+    }
+
+    @Override
+    public void scoreBulk(float[] scores, int node1, int node2, int node3, int node4)
+        throws IOException {
+      MemorySegment ms1 = getSegment(node1);
+      MemorySegment ms2 = getSegment(node2);
+      MemorySegment ms3 = getSegment(node3);
+      MemorySegment ms4 = getSegment(node4);
+      PanamaVectorUtilSupport.dotProductBulkQueryFromArray(scores, query, ms1, ms2, ms3, ms4);
+      scores[0] = Math.max((1 + scores[0]) / 2, 0);
+      scores[1] = Math.max((1 + scores[1]) / 2, 0);
+      scores[2] = Math.max((1 + scores[2]) / 2, 0);
+      scores[3] = Math.max((1 + scores[3]) / 2, 0);
+    }
+  }
+
+  //  static final class EuclideanScorer extends Lucene99MemorySegmentByteVectorScorer {
+  //    EuclideanScorer(MemorySegmentAccessInput input, KnnVectorValues values, byte[] query) {
+  //      super(input, values, query);
+  //    }
+  //
+  //    @Override
+  //    public float score(int node) throws IOException {
+  //      checkOrdinal(node);
+  //      float raw = PanamaVectorUtilSupport.squareDistance(query, getSegment(node));
+  //      return 1 / (1f + raw);
+  //    }
+  //  }
+  //
+  //  static final class MaxInnerProductScorer extends Lucene99MemorySegmentByteVectorScorer {
+  //    MaxInnerProductScorer(MemorySegmentAccessInput input, KnnVectorValues values, byte[] query)
+  // {
+  //      super(input, values, query);
+  //    }
+  //
+  //    @Override
+  //    public float score(int node) throws IOException {
+  //      checkOrdinal(node);
+  //      float raw = PanamaVectorUtilSupport.dotProduct(query, getSegment(node));
+  //      if (raw < 0) {
+  //        return 1 / (1 + -1 * raw);
+  //      }
+  //      return raw + 1;
+  //    }
+  //  }
+}

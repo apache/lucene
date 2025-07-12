@@ -21,6 +21,7 @@ import java.io.IOException;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.index.ListFloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
@@ -41,7 +42,7 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
       throws IOException {
     switch (vectorValues.getEncoding()) {
       case FLOAT32 -> {
-        return new FloatScoringSupplier((FloatVectorValues) vectorValues, similarityFunction);
+        return getFloatScoringSupplier((FloatVectorValues) vectorValues, similarityFunction);
       }
       case BYTE -> {
         return new ByteScoringSupplier((ByteVectorValues) vectorValues, similarityFunction);
@@ -50,6 +51,15 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
     throw new IllegalArgumentException(
         "vectorValues must be an instance of FloatVectorValues or ByteVectorValues, got a "
             + vectorValues.getClass().getName());
+  }
+
+  static RandomVectorScorerSupplier getFloatScoringSupplier(
+      FloatVectorValues vectorValues, VectorSimilarityFunction similarityFunction)
+      throws IOException {
+//    if (vectorValues instanceof ListFloatVectorValues listFloatVectorValues) {
+//      return listFloatVectorValues.getScorer(similarityFunction);
+//    }
+    return new FloatScoringSupplier(vectorValues, similarityFunction);
   }
 
   @Override
@@ -175,7 +185,8 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
     private final VectorSimilarityFunction similarityFunction;
 
     public FloatVectorScorer(
-        FloatVectorValues values, float[] query, VectorSimilarityFunction similarityFunction) {
+        FloatVectorValues values, float[] query, VectorSimilarityFunction similarityFunction)
+        throws IOException {
       super(values);
       this.values = values;
       this.query = query;

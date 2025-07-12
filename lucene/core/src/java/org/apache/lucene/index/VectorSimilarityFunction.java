@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import static org.apache.lucene.util.VectorUtil.cosine;
 import static org.apache.lucene.util.VectorUtil.dotProduct;
+import static org.apache.lucene.util.VectorUtil.dotProductBulk;
 import static org.apache.lucene.util.VectorUtil.dotProductScore;
 import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
 import static org.apache.lucene.util.VectorUtil.squareDistance;
@@ -58,6 +59,16 @@ public enum VectorSimilarityFunction {
     @Override
     public float compare(byte[] v1, byte[] v2) {
       return dotProductScore(v1, v2);
+    }
+
+    @Override
+    public void compareBulk(
+        float[] scores, float[] q, float[] d1, float[] d2, float[] d3, float[] d4) {
+      dotProductBulk(scores, q, d1, d2, d3, d4);
+      scores[0] = Math.max((1 + scores[0]) / 2, 0);
+      scores[1] = Math.max((1 + scores[1]) / 2, 0);
+      scores[2] = Math.max((1 + scores[2]) / 2, 0);
+      scores[3] = Math.max((1 + scores[3]) / 2, 0);
     }
   },
 
@@ -105,6 +116,15 @@ public enum VectorSimilarityFunction {
    * @return the value of the similarity function applied to the two vectors
    */
   public abstract float compare(float[] v1, float[] v2);
+
+  /** */
+  public void compareBulk(
+      float[] scores, float[] q, float[] d1, float[] d2, float[] d3, float[] d4) {
+    scores[0] = compare(q, d1);
+    scores[1] = compare(q, d2);
+    scores[2] = compare(q, d3);
+    scores[3] = compare(q, d4);
+  }
 
   /**
    * Calculates a similarity score between the two vectors with a specified function. Higher

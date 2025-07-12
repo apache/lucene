@@ -19,11 +19,13 @@ package org.apache.lucene.internal.vectorization;
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class TestVectorUtilSupport extends BaseVectorizationTestCase {
@@ -57,6 +59,38 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertFloatReturningProviders(p -> p.dotProduct(a, b));
     assertFloatReturningProviders(p -> p.squareDistance(a, b));
     assertFloatReturningProviders(p -> p.cosine(a, b));
+  }
+
+  // @com.carrotsearch.randomizedtesting.annotations.Repeat(iterations = 100)
+  public void testFloatVectorsBulk() {
+    int numVectors = random().nextInt(16, 256) & ~3;
+    float[][] floats = new float[numVectors][];
+    for (int v = 0; v < numVectors; v++) {
+      floats[v] = new float[size];
+      for (int i = 0; i < size; ++i) {
+        floats[v][i] = random().nextFloat();
+      }
+    }
+
+    List<Integer> list = IntStream.range(0, numVectors).boxed().collect(Collectors.toList());
+    Collections.shuffle(list, random());
+    int[] indices = list.stream().mapToInt(i -> i).toArray();
+
+    float[] defaultScores = new float[4];
+    float[] panamaScores = new float[4];
+    for (int v = 0; v < numVectors; v += 4) {
+      float[] vec1 = floats[indices[v + 0]];
+      float[] vec2 = floats[indices[v + 1]];
+      float[] vec3 = floats[indices[v + 2]];
+      float[] vec4 = floats[indices[v + 3]];
+      LUCENE_PROVIDER
+          .getVectorUtilSupport()
+          .dotProductBulk(defaultScores, floats[0], vec1, vec2, vec3, vec4);
+      PANAMA_PROVIDER
+          .getVectorUtilSupport()
+          .dotProductBulk(panamaScores, floats[0], vec1, vec2, vec3, vec4);
+      assertArrayEquals(defaultScores, panamaScores, (float) delta);
+    }
   }
 
   public void testBinaryVectors() {
