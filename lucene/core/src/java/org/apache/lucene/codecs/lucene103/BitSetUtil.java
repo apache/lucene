@@ -21,7 +21,21 @@ import org.apache.lucene.util.FixedBitSet;
 
 class BitSetUtil {
 
-  final int denseBitsetToArray(FixedBitSet bitSet, int from, int to, int base, int[] array) {
+  /**
+   * Converts set bits in the given bitset to an array of document IDs. Only processes bits from
+   * index {@code from} (inclusive) to {@code to} (exclusive) and returns the number of bits set in
+   * this range.
+   *
+   * <p>Each set bit's position is converted to a document ID by adding the {@code base} value and
+   * stored in the provided {@code array}.
+   *
+   * <p>NOTE: Caller need to ensure the {@code array} has a length greater than or equal to {@code
+   * bitSet.cardinality(from, to) + 1}.
+   */
+  static int denseBitsetToArray(FixedBitSet bitSet, int from, int to, int base, int[] array) {
+    assert bitSet.cardinality(from, to) + 1 <= array.length
+        : "Array length must be at least bitSet.cardinality(from, to) + 1";
+
     Objects.checkFromToIndex(from, to, bitSet.length());
 
     int offset = 0;
@@ -54,7 +68,7 @@ class BitSetUtil {
     return offset;
   }
 
-  private int word2Array(long word, int base, int[] docs, int offset) {
+  private static int word2Array(long word, int base, int[] docs, int offset) {
     final int bitCount = Long.bitCount(word);
 
     if (bitCount >= 32) {
@@ -70,7 +84,7 @@ class BitSetUtil {
     return offset;
   }
 
-  private int denseWord2Array(long word, int base, int[] docs, int offset) {
+  private static int denseWord2Array(long word, int base, int[] docs, int offset) {
     final int lWord = (int) word;
     final int hWord = (int) (word >>> 32);
     final int offset32 = offset + Integer.bitCount(lWord);

@@ -54,7 +54,7 @@ public class BitsetToArrayBenchmark {
   @Setup(Level.Trial)
   public void setup() {
     base = R.nextInt(1000);
-    resultArray = new int[bitCount + Long.SIZE];
+    resultArray = new int[bitCount + 64];
   }
 
   @Setup(Level.Invocation)
