@@ -1,0 +1,38 @@
+# Special policing of vectorization sources to prevent performance traps!
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: illegal-incubator-usage
+language: java
+ignores:
+  # the only place vector api code should sit.
+  - "**/internal/vectorization/PanamaVector{Constants,UtilSupport}.java"
+  # TODO: move this vector logic to PanamaVectorUtilSupport!
+  - "**/internal/vectorization/MemorySegmentPostingDecodingUtil.java"
+rule:
+  kind: scoped_identifier
+  all:
+    - has:
+        field: scope
+        pattern: jdk
+    - has:
+        field: name
+        pattern: incubator
+severity: error
+message: Incubator APIs must not be used
+note: Move logic to `PanamaVectorUtilSupport`
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: unchecked-slow-vector-feature
+language: java
+files:
+  - "**/internal/vectorization/**.java"
+rule:
+  all:
+    - matches: slow-vector-feature
+    - not:
+        inside:
+          matches: vector-feature-check
+          stopBy: end
+severity: error
+message: "Vector API feature `$IDENTIFIER` may be slow on some hardware"
+note: guard usage inside `if` with `Constants.HAS_<FEATURE>` check

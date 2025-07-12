@@ -1,0 +1,40 @@
+# Matches a block guarded by a feature check.
+# Note, this rule doesn't do fancy flow analysis.
+# It can be made more complex to support more idioms, or we can keep logic restricted.
+# Remember the constant check will be removed by C2 which is required for vectors to be fast anyway.
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: vector-feature-check
+language: java
+rule:
+  # java block of code, e.g. {}
+  kind: block
+  # inside or nested inside if/elseif
+  inside:
+    field: consequence
+    kind: if_statement
+    stopBy: end
+    # condition contains a Constants.* guard
+    has:
+      field: condition
+      kind: parenthesized_expression
+      has:
+        pattern:
+          selector: field_access
+          context: if (Constants.$FEATURE_CHECK)
+        stopBy: end
+      # unary/binary operations other than && are not allowed in the feature check
+      not:
+        any:
+          - has:
+              kind: binary_expression
+              stopBy: end
+              not:
+                has:
+                  pattern: "&&"
+          - has:
+              kind: unary_expression
+              stopBy: end
+constraints:
+  FEATURE_CHECK:
+    regex: ^HAS[_]

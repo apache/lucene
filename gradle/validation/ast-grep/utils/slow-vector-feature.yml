@@ -1,0 +1,70 @@
+# Matches a vector API feature which may be slow on some hardware
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: slow-vector-feature
+language: java
+utils:
+  # imported as $IMPORT from the vector api
+  has-import:
+    pattern: $$$
+    inside:
+      kind: program
+      stopBy: end
+      has:
+        kind: import_declaration
+        any:
+          - pattern: import static $PACKAGE.$IMPORT;
+          - pattern: import $PACKAGE.$IMPORT;
+    # don't match identifiers inside import statements themselves
+    not:
+      inside:
+        kind: import_declaration
+        stopBy: end
+rule:
+  any:
+    # unqualified access (field or method) with matching static import
+    - kind: identifier
+      all:
+        # matches name on bad list
+        - pattern: $IDENTIFIER
+        # also matches vector api import
+        - pattern: $IMPORT
+        - matches: has-import
+    # qualified constant field access with matching import
+    - kind: field_access
+      all:
+        - has:
+            field: field
+            pattern: $IDENTIFIER
+        - has:
+            field: object
+            pattern: $IMPORT
+            matches: has-import
+    # qualified method call (not a helper function with same name)
+    - kind: method_invocation
+      all:
+        # matches name on bad list
+        - has:
+            field: name
+            pattern: $IDENTIFIER
+        # any receiver, but it must have one
+        # TODO: refine if people complain :)
+        - has:
+            field: object
+            pattern: $$$
+constraints:
+  PACKAGE:
+    regex: ^jdk.incubator.vector
+  # slow methods and constants in the vector API
+  # please send a pull request if you find others!
+  IDENTIFIER:
+    any:
+      # falls back to BigInteger
+      - pattern: fma
+      - pattern: FMA
+      # not supported on NEON
+      - pattern: compress
+      - pattern: COMPRESS_BITS
+      # not supported on NEON
+      - pattern: expand
+      - pattern: EXPAND_BITS

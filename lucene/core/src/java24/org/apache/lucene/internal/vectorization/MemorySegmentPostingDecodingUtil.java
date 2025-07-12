@@ -36,6 +36,8 @@ final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
     this.memorySegment = memorySegment;
   }
 
+  // FIXME: move this logic to PanamaVectorUtilSupport.
+
   private static void shift(
       IntVector vector, int bShift, int dec, int maxIter, int bMask, int[] b, int count, int i) {
     for (int j = 0; j <= maxIter; ++j) {
