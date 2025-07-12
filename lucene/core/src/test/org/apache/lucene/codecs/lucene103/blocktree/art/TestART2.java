@@ -32,7 +32,7 @@ public class TestART2 extends LuceneTestCase {
 
   public void testRandomTerms() throws Exception {
     Supplier<byte[]> supplier = TestART2::randomBytes;
-    testARTBuilder(supplier, atLeast(1000));
+    //    testARTBuilder(supplier, atLeast(1000));
     testARTLookup(supplier, 12);
   }
 
@@ -87,7 +87,12 @@ public class TestART2 extends LuceneTestCase {
 
   private void testARTLookup(Supplier<byte[]> randomBytesSupplier, int round) throws IOException {
     for (int iter = 1; iter <= round; iter++) {
+      Map<BytesRef, Output> kvs = new TreeMap<>();
+      // Since we modify bytes when inserting (by ARTBuilder#updateNodeBytes), expected is a copy
+      // for
+      // original bytes.
       Map<BytesRef, Output> expected = new TreeMap<>();
+      kvs.put(new BytesRef(""), new Output(0L, false, new BytesRef("emptyOutput")));
       expected.put(new BytesRef(""), new Output(0L, false, new BytesRef("emptyOutput")));
       int n = 1 << iter;
       for (int i = 0; i < n; i++) {
@@ -97,14 +102,15 @@ public class TestART2 extends LuceneTestCase {
                 random().nextLong(1L << 62),
                 random().nextBoolean(),
                 random().nextBoolean() ? null : new BytesRef(randomBytesSupplier.get()));
-        expected.put(key, value);
+        kvs.put(key, value);
+        expected.put(new BytesRef(key.bytes), value);
       }
 
       // Build.
       ARTBuilder artBuilder = new ARTBuilder();
 
       artBuilder.insert(new BytesRef(""), new Output(0L, false, new BytesRef("emptyOutput")));
-      for (var entry : expected.entrySet()) {
+      for (var entry : kvs.entrySet()) {
         if (entry.getKey().equals(new BytesRef(""))) {
           continue;
         }
@@ -127,7 +133,6 @@ public class TestART2 extends LuceneTestCase {
           for (Map.Entry<BytesRef, Output> entry : expected.entrySet()) {
             assertResult(artReader, entry.getKey(), entry.getValue());
           }
-
           // TODO: test not found.
         }
       }

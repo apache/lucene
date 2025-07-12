@@ -120,9 +120,16 @@ public class ARTBuilder {
         return node4;
       } else {
         assert key.length > 0;
+        assert leafNode.key.offset + leafNode.key.length <= leafNode.key.bytes.length;
         byte[] prefix = leafNode.key.bytes;
         int commonPrefix =
-            ARTUtil.commonPrefixLength(prefix, depth, prefix.length, key.bytes, depth, key.length);
+            ARTUtil.commonPrefixLength(
+                prefix,
+                depth,
+                leafNode.key.offset + leafNode.key.length,
+                key.bytes,
+                depth,
+                key.offset + key.length);
         Node4 node4 = new Node4(commonPrefix);
         // copy common prefix
         node4.prefixLength = commonPrefix;
@@ -131,7 +138,8 @@ public class ARTBuilder {
         }
         // generate two leaf nodes as the children of the fresh node4
         // Save output to parent node for node without commonPrefix. e.g. abc1, abc10.
-        if (depth + commonPrefix < leafNode.key.length) {
+
+        if (depth + commonPrefix < leafNode.key.offset + leafNode.key.length) {
           Node4.insert(node4, leafNode, prefix[depth + commonPrefix]);
           updateNodeBytes(leafNode, depth + commonPrefix + 1);
         } else {

@@ -98,6 +98,16 @@ public class ARTReader {
   }
 
   public Output find(BytesRef key) {
+    if (key.length == 0) {
+      // We may search "";
+      if (root.nodeType == NodeType.LEAF_NODE && root.key == null) {
+        return root.output;
+      } else if (root.prefixLength == 0) {
+        return root.output;
+      } else {
+        return null;
+      }
+    }
     return find(root, key);
   }
 
@@ -126,6 +136,7 @@ public class ARTReader {
           return node.output;
         }
       }
+
       int pos = node.getChildPos(key.bytes[key.offset]);
       if (pos == Node.ILLEGAL_IDX) {
         return null;
