@@ -354,7 +354,7 @@ public class BitsetToArrayBenchmark {
 
     resultArray[offset32] = base + 32 + Integer.numberOfTrailingZeros(hWord);
 
-    return offset;
+    return hOffset;
   }
 
   private static int _denseInvert(long word, int[] resultArray, int offset, int base) {
