@@ -227,12 +227,12 @@ public abstract class IndexInput extends DataInput implements Closeable {
   public void prefetch(long offset, long length) throws IOException {}
 
   /**
-   * Optional method: Give a hint to this input about the change in read access pattern. IndexInput
+   * Optional method: Updates the {@code IOContext} to specify a new read access pattern. IndexInput
    * implementations may take advantage of this hint to optimize reads from storage.
    *
    * <p>The default implementation is a no-op.
    */
-  public void updateReadAdvice(ReadAdvice readAdvice) throws IOException {}
+  public void updateIOContext(IOContext context) throws IOException {}
 
   /**
    * Returns a hint whether all the contents of this input are resident in physical memory. It's a
