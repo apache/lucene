@@ -32,7 +32,6 @@ import org.gradle.api.provider.ValueSource;
 import org.gradle.api.provider.ValueSourceParameters;
 import org.gradle.api.services.BuildServiceParameters;
 import org.gradle.process.ExecOperations;
-import org.jetbrains.annotations.Nullable;
 
 public abstract class GitInfoValueSource
     implements ValueSource<Map<String, String>, GitInfoValueSource.Parameters> {
@@ -44,7 +43,7 @@ public abstract class GitInfoValueSource
   public abstract ExecOperations getExecOps();
 
   @Override
-  public @Nullable Map<String, String> obtain() {
+  public Map<String, String> obtain() {
     try (var baos = new ByteArrayOutputStream();
         var out = new BufferedOutputStream(baos)) {
       var result =

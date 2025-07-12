@@ -14,17 +14,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.gradle.plugins.hacks;
 
-import de.undercouch.gradle.tasks.download.DownloadTaskPlugin
-import de.undercouch.gradle.tasks.download.Download
+import de.undercouch.gradle.tasks.download.Download;
+import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
+import org.gradle.api.Project;
 
-// Configures the Download task to retry on temporary network glitches.
+/** This applies various odd hacks that we probably should not need. */
+public class HacksPlugin extends LuceneGradlePlugin {
 
-allprojects {project ->
-  // Limit configuration to just those projects that actually have the plugin enabled.
-  plugins.withType(DownloadTaskPlugin).configureEach {
-    project.tasks.withType(Download).configureEach {
-      it.retries 3
-    }
+  @Override
+  public void apply(Project rootProject) {
+    applicableToRootProjectOnly(rootProject);
+
+    rootProject
+        .getAllprojects()
+        .forEach(
+            project -> {
+              applyRetryDownloads(project);
+            });
+  }
+
+  private void applyRetryDownloads(Project project) {
+    project
+        .getTasks()
+        .withType(Download.class)
+        .configureEach(
+            task -> {
+              task.retries(3);
+            });
   }
 }

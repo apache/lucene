@@ -83,6 +83,7 @@ public class GitGrepPlugin extends LuceneGradlePlugin {
               task.doFirst(
                   _ -> {
                     try {
+                      Files.createDirectories(inputFile.getParent());
                       Files.write(inputFile, invalidPatterns);
                     } catch (IOException e) {
                       throw new UncheckedIOException(e);

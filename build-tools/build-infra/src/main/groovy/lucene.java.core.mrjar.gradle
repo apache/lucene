@@ -57,7 +57,7 @@ configure(project(":lucene:core")) {
 
     tasks.named('jar').configure {
       boolean needMRJAR = false
-      int minJavaVersion = Integer.parseInt(JavaVersion.toVersion(deps.versions.minJava.get()).majorVersion)
+      int minJavaVersion = Integer.parseInt(buildGlobals.getMinJavaVersion().get().majorVersion)
 
       mrjarJavaVersions.each { jdkVersion ->
         // the sourceSet which corresponds to the minimum/base Java version

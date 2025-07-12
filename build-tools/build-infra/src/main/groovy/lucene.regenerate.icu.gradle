@@ -105,7 +105,7 @@ configure(project(":lucene:analysis:icu")) {
         ]
       }
 
-      project.quietExec {
+      buildGlobals.quietExec(it, {
         executable gennorm
         args = [
           "-v",
@@ -115,16 +115,16 @@ configure(project(":lucene:analysis:icu")) {
           "${buildDir}/utr30.tmp",
           *(inputFiles.collect { it.name })
         ]
-      }
+      })
 
-      project.quietExec {
+      buildGlobals.quietExec(it, {
         executable icupkg
         args = [
           "-tb",
           "${buildDir}/utr30.tmp",
           outputFile
         ]
-      }
+      })
     }
   }
 
@@ -208,17 +208,17 @@ configure(project(":lucene:analysis:icu")) {
       project.delete icuSrcDir
 
       // Extract the tgz
-      project.quietExec {
+      buildGlobals.quietExec(it, {
         executable "tar"
         workingDir icuBuildDir
         args = [
           "-zxf",
           icuSrcTgz
         ]
-      }
+      })
 
       // Compile: (cd icu/source && ./configure --prefix=$(pwd) --enable-rpath && make -j4)
-      project.quietExec {
+      buildGlobals.quietExec(it, {
         executable "sh"
 
         workingDir icuSrcDir
@@ -229,23 +229,23 @@ configure(project(":lucene:analysis:icu")) {
           "--prefix=${icuSrcDir}",
           "--enable-rpath"
         ]
-      }
+      })
 
-      project.quietExec {
+      buildGlobals.quietExec(it, {
         executable "make"
         workingDir icuSrcDir
         args = [
           "-j${buildOptions['tests.jvms'].get()}"
         ]
-      }
+      })
 
       // Test that the binaries work:  derb -V
       logger.lifecycle("Compiled ICU, checking...")
-      project.quietExec {
+      buildGlobals.quietExec(it, {
         executable "./derb"
         workingDir icuBinDir
         args = ["-V"]
-      }
+      })
     }
   }
 }

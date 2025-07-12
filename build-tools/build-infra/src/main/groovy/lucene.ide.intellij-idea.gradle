@@ -21,7 +21,7 @@ if (project != project.rootProject) {
   throw new GradleException("Applicable to rootProject only: " + project.path)
 }
 
-if (rootProject.ext.isIdea) {
+if (buildGlobals.intellijIdea.get().isIdea) {
   logger.warn("IntelliJ Idea IDE detected.")
 
   allprojects {
@@ -37,7 +37,7 @@ if (rootProject.ext.isIdea) {
   }
 }
 
-if (rootProject.ext.isIdeaSync) {
+if (buildGlobals.intellijIdea.get().isIdeaSync) {
   allprojects {
     // disable all MR-JAR folders by hiding them from IDE after evaluation:
     plugins.withType(JavaPlugin).configureEach {
@@ -52,7 +52,7 @@ if (rootProject.ext.isIdeaSync) {
   }
 }
 
-if (rootProject.ext.isIdeaBuild) {
+if (buildGlobals.intellijIdea.get().isIdeaBuild) {
   // Skip certain long tasks that are dependencies
   // of 'assemble' if we're building from within IntelliJ.
   def skipTasks = [
