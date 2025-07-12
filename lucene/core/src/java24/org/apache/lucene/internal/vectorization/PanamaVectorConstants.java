@@ -30,6 +30,7 @@ final class PanamaVectorConstants {
   static final boolean ENABLE_INTEGER_VECTORS;
 
   static final VectorSpecies<Integer> PRERERRED_INT_SPECIES;
+  static final VectorSpecies<Double> PREFERRED_DOUBLE_SPECIES;
 
   static {
     // default to platform supported bitsize
@@ -46,6 +47,8 @@ final class PanamaVectorConstants {
 
     PRERERRED_INT_SPECIES =
         VectorSpecies.of(int.class, VectorShape.forBitSize(PREFERRED_VECTOR_BITSIZE));
+    PREFERRED_DOUBLE_SPECIES =
+        VectorSpecies.of(double.class, VectorShape.forBitSize(PREFERRED_VECTOR_BITSIZE));
   }
 
   private PanamaVectorConstants() {}

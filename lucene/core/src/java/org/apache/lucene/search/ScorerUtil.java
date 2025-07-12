@@ -26,6 +26,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.PriorityQueue;
+import org.apache.lucene.util.VectorUtil;
 
 /** Util class for Scorer related methods */
 class ScorerUtil {
@@ -155,17 +156,8 @@ class ScorerUtil {
       return;
     }
 
-    int newSize = 0;
-    for (int i = 0; i < buffer.size; ++i) {
-      int doc = buffer.docs[i];
-      double score = buffer.scores[i];
-      buffer.docs[newSize] = doc;
-      buffer.scores[newSize] = score;
-      if (score >= minRequiredScore) {
-        newSize += 1;
-      }
-    }
-    buffer.size = newSize;
+    buffer.size =
+        VectorUtil.filterByScore(buffer.docs, buffer.scores, minRequiredScore, buffer.size);
   }
 
   /**

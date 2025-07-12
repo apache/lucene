@@ -208,6 +208,8 @@ Optimizations
 
 * GITHUB#14906: Use branchless way to speedup filterCompetitiveHits. (Adrien Grand, Ge Song)
 
+* GITHUB#14896: Vectorize filterCompetitiveHits (Ge Song, Adrien Grand)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
