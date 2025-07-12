@@ -1,0 +1,8 @@
+# Prevent vector api calls from spreading haphazardly without checks
+---
+id: illegal-incubator-usage
+invalid:
+  - import jdk.incubator.vector.FloatVector
+  - import static jdk.incubator.vector.VectorOperators.ADD
+valid:
+  - import java.util.List
