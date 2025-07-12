@@ -16,8 +16,12 @@
  */
 package org.apache.lucene.benchmark.jmh;
 
+import java.util.Arrays;
+import java.util.Random;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.function.IntSupplier;
+import org.apache.lucene.util.ArrayUtil;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -54,7 +58,7 @@ public class BitsetToArrayBenchmark {
   @Setup(Level.Trial)
   public void setup() {
     base = R.nextInt(1000);
-    resultArray = new int[bitCount + 64];
+    resultArray = new int[bitCount + 64 + Long.SIZE];
   }
 
   @Setup(Level.Invocation)
@@ -144,13 +148,13 @@ public class BitsetToArrayBenchmark {
       resultArray[i] = base + ntz;
       word ^= 1L << ntz;
       ntz = Long.numberOfTrailingZeros(word);
-      resultArray[i] = base + ntz;
+      resultArray[i + 1] = base + ntz;
       word ^= 1L << ntz;
       ntz = Long.numberOfTrailingZeros(word);
-      resultArray[i] = base + ntz;
+      resultArray[i + 2] = base + ntz;
       word ^= 1L << ntz;
       ntz = Long.numberOfTrailingZeros(word);
-      resultArray[i] = base + ntz;
+      resultArray[i + 3] = base + ntz;
       word ^= 1L << ntz;
     }
 
@@ -366,9 +370,10 @@ public class BitsetToArrayBenchmark {
 
       int ones = Long.numberOfTrailingZeros(~word);
       word >>>= ones;
-      for (; bit < ones; bit++) {
-        resultArray[offset++] = base + bit;
+      for (int i = 0; i < ones; i++) {
+        resultArray[offset++] = i + bit;
       }
+      bit += ones;
     }
 
     return offset;
@@ -389,5 +394,41 @@ public class BitsetToArrayBenchmark {
     }
 
     return to;
+  }
+
+  public static void main(String[] args) {
+    Random r = new Random(System.currentTimeMillis());
+    long word = r.nextLong();
+    int[] expected = new int[64 + Long.SIZE];
+    int expectedSize = _whileLoop(word, expected, 0, 0);
+
+    int[] actual = new int[64 + Long.SIZE];
+    for (IntSupplier supplier :
+        new IntSupplier[] {
+          () -> _whileLoop(word, actual, 0, 0),
+          () -> _forLoop(word, actual, 0, 0),
+          () -> _forLoopManualUnrolling(word, actual, 0, 0),
+          () -> _dense(word, actual, 0, 0),
+          () -> _denseBranchLess(word, actual, 0, 0),
+          () -> _denseBranchLessUnrolling(word, actual, 0, 0),
+          () -> _denseBranchLessParallel(word, actual, 0, 0),
+          () -> _denseBranchLessCmov(word, actual, 0, 0),
+          () -> _denseInvert(word, actual, 0, 0),
+          () -> _hybrid(word, actual, 0, 0)
+        }) {
+      int actualSize = supplier.getAsInt();
+      if (actualSize != expectedSize) {
+        throw new AssertionError("Expected size: " + expectedSize + ", but got: " + actualSize);
+      }
+      if (Arrays.equals(expected, 0, expectedSize, actual, 0, actualSize) == false) {
+        throw new AssertionError(
+            "Arrays do not match for supplier: "
+                + supplier
+                + ", expected: "
+                + Arrays.toString(ArrayUtil.copyOfSubArray(expected, 0, expectedSize))
+                + ", but got: "
+                + Arrays.toString(ArrayUtil.copyOfSubArray(actual, 0, actualSize)));
+      }
+    }
   }
 }
