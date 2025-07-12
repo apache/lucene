@@ -44,6 +44,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.internal.vectorization.BitSetUtil;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.search.DocAndFloatFeatureBuffer;
@@ -302,6 +303,8 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
        */
       UNARY
     }
+
+    private final BitSetUtil bitSetUtil = VECTORIZATION_PROVIDER.newBitSetUtil();
 
     private ForDeltaUtil forDeltaUtil;
     private PForUtil pforUtil;
@@ -1064,11 +1067,9 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
           System.arraycopy(docBuffer, start, buffer.docs, 0, buffer.size);
           break;
         case UNARY:
-          docBitSet.forEach(
-              doc - docBitSetBase,
-              upTo - docBitSetBase,
-              docBitSetBase,
-              d -> buffer.docs[buffer.size++] = d);
+          buffer.size =
+              bitSetUtil.denseBitsetToArray(
+                  docBitSet, doc - docBitSetBase, upTo - docBitSetBase, docBitSetBase, buffer.docs);
           break;
       }
 
