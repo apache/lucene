@@ -21,8 +21,6 @@ import org.apache.lucene.util.FixedBitSet;
 
 class BitSetUtil {
 
-  private final int[] scratch = new int[64];
-
   final int denseBitsetToArray(FixedBitSet bitSet, int from, int to, int base, int[] array) {
     Objects.checkFromToIndex(from, to, bitSet.length());
 
@@ -75,18 +73,18 @@ class BitSetUtil {
   private int denseWord2Array(long word, int base, int[] docs, int offset) {
     final int lWord = (int) word;
     final int hWord = (int) (word >>> 32);
-    final int[] scratch = this.scratch;
+    final int offset32 = offset + Integer.bitCount(lWord);
+    int hOffset = offset32;
 
     for (int i = 0; i < 32; i++) {
-      scratch[i] = (lWord >>> i) & 1;
-      scratch[i + 32] = (hWord >>> i) & 1;
-    }
-
-    for (int i = 0; i < 64; i++) {
       docs[offset] = base + i;
-      offset += scratch[i];
+      docs[hOffset] = base + i + 32;
+      offset += (lWord >>> i) & 1;
+      hOffset += (hWord >>> i) & 1;
     }
 
-    return offset;
+    docs[offset32] = base + 32 + Integer.numberOfTrailingZeros(hWord);
+
+    return hOffset;
   }
 }

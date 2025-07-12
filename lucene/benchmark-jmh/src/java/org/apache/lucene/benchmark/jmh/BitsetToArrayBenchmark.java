@@ -46,7 +46,6 @@ public class BitsetToArrayBenchmark {
   @Param({"5", "10", "20", "30", "40", "50", "60"})
   int bitCount;
 
-  private final int[] scratch = new int[64];
   private long word;
   private int[] resultArray;
   private int base;
@@ -99,12 +98,12 @@ public class BitsetToArrayBenchmark {
 
   @Benchmark
   public int denseBranchLessParallel() {
-    return _denseBranchLessParallel(word, resultArray, offset, base, scratch);
+    return _denseBranchLessParallel(word, resultArray, offset, base);
   }
 
   @Benchmark
   public int denseBranchLessCmov() {
-    return _denseBranchLessCmov(word, resultArray, offset, base, scratch);
+    return _denseBranchLessCmov(word, resultArray, offset, base);
   }
 
   @Benchmark
@@ -114,7 +113,7 @@ public class BitsetToArrayBenchmark {
 
   @Benchmark
   public int hybrid() {
-    return _hybrid(word, resultArray, offset, base, scratch);
+    return _hybrid(word, resultArray, offset, base);
   }
 
   private static int _whileLoop(long word, int[] resultArray, int offset, int base) {
@@ -189,8 +188,7 @@ public class BitsetToArrayBenchmark {
     return offset;
   }
 
-  private static int _denseBranchLessCmov(
-      long word, int[] resultArray, int offset, int base, int[] scratch) {
+  private static int _denseBranchLessCmov(long word, int[] resultArray, int offset, int base) {
     for (int j = 0; j < Long.SIZE; ++j) {
       resultArray[offset] = base + j;
       long bit = word & (1L << j);
@@ -340,20 +338,21 @@ public class BitsetToArrayBenchmark {
     return offset;
   }
 
-  private static int _denseBranchLessParallel(
-      long word, int[] resultArray, int offset, int base, int[] scratch) {
+  private static int _denseBranchLessParallel(long word, int[] resultArray, int offset, int base) {
     final int lWord = (int) word;
     final int hWord = (int) (word >>> 32);
 
+    final int offset32 = offset + Integer.bitCount(lWord);
+    int hOffset = offset32;
+
     for (int i = 0; i < 32; i++) {
-      scratch[i] = (lWord >>> i) & 1;
-      scratch[i + 32] = (hWord >>> i) & 1;
+      resultArray[offset] = base + i;
+      resultArray[hOffset] = base + i + 32;
+      offset += (lWord >>> i) & 1;
+      hOffset += (hWord >>> i) & 1;
     }
 
-    for (int i = 0; i < 64; i++) {
-      resultArray[offset] = base + i;
-      offset += scratch[i];
-    }
+    resultArray[offset32] = base + 32 + Integer.numberOfTrailingZeros(hWord);
 
     return offset;
   }
@@ -375,10 +374,10 @@ public class BitsetToArrayBenchmark {
     return offset;
   }
 
-  private static int _hybrid(long word, int[] resultArray, int offset, int base, int[] scratch) {
+  private static int _hybrid(long word, int[] resultArray, int offset, int base) {
     int bitCount = Long.bitCount(word);
     if (bitCount >= 32) {
-      return _denseBranchLessParallel(word, resultArray, offset, base, scratch);
+      return _denseBranchLessParallel(word, resultArray, offset, base);
     }
 
     int to = offset + Long.bitCount(word);
