@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import java.util.Locale;
 import java.util.logging.Logger;
-import jdk.incubator.vector.FloatVector;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MemorySegmentAccessInput;
@@ -37,10 +36,6 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   private final VectorUtilSupport vectorUtilSupport;
 
   PanamaVectorizationProvider() {
-    // hack to work around for JDK-8309727:
-    FloatVector.fromArray(
-        FloatVector.SPECIES_PREFERRED, new float[FloatVector.SPECIES_PREFERRED.length()], 0);
-
     if (PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE < 128) {
       throw new UnsupportedOperationException(
           "Vector bit size is less than 128: " + PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE);
