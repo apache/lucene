@@ -109,6 +109,7 @@ invalid:
     module org.apache.lucene.foo {
       requires jdk.incubator.something;
     }
+  - import jdk.incubator.something.SomethingElse;
 valid:
   - |
     module org.apache.lucene.foo {
