@@ -109,13 +109,11 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
                   project, task, sourceSets, ruleGroup, forbiddenApisDir);
             });
 
-    // Configure defaults for the MR-JAR feature sourceSets: ignore missing classes and add vector
-    // code signatures files
+    // Configure defaults for the MR-JAR feature sourceSets: add vector code signatures files
     allForbiddenApisTasks
         .matching(task -> task.getName().matches("forbiddenApisMain\\d+"))
         .configureEach(
             task -> {
-              task.setFailOnMissingClasses(false);
               // trick forbiddenapis jdk-nonportable signatures which report the following a
               // violation:
               // Due to a bug in forbiddenapis we add them first to suppress them later.
