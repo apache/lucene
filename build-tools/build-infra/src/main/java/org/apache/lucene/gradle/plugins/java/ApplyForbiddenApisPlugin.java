@@ -122,6 +122,7 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
               var vectorExclusions = Set.of("jdk.internal.vm.vector.VectorSupport$Vector");
               task.getSignatures().addAll(vectorExclusions);
               task.getSignaturesWithSeveritySuppress().addAll(vectorExclusions);
+              // add specific vector-incubator signatures
               task.setSignaturesFiles(
                   task.getSignaturesFiles()
                       .plus(
