@@ -1,3 +1,5 @@
+import de.thetaphi.forbiddenapis.gradle.CheckForbiddenApis
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -29,9 +31,13 @@ configure(project(":lucene:core")) {
       configurations["main${jdkVersion}Implementation"].extendsFrom(configurations.maybeCreate("implementation"))
       dependencies.add("main${jdkVersion}Implementation", sourceSets.main.output)
 
-      tasks.named("compileMain${jdkVersion}Java").configure {
-        def apijar = apijars.file("jdk${jdkVersion}-api.jar")
+      def apijar = apijars.file("jdk${jdkVersion}-api.jar")
 
+      tasks.withType(CheckForbiddenApis).named("forbiddenApisMain${jdkVersion}").configure {
+        it.classpath = it.classpath + files(apijar)
+      }
+
+      tasks.named("compileMain${jdkVersion}Java").configure {
         // TODO: this depends on the order of argument configuration...
         int releaseIndex = options.compilerArgs.indexOf("--release")
         options.compilerArgs.removeAt(releaseIndex)
