@@ -23,9 +23,7 @@ import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.SuppressForbidden;
 
-@SuppressForbidden(reason = "vectors module is allowed here")
 final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
 
   private static final VectorSpecies<Integer> INT_SPECIES =

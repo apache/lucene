@@ -50,7 +50,6 @@ import org.apache.lucene.util.SuppressForbidden;
  *
  * Setting these properties will make this code run EXTREMELY slow!
  */
-@SuppressForbidden(reason = "vectors module is allowed here")
 final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   // preferred vector sizes, which can be altered for testing
