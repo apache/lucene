@@ -1,4 +1,7 @@
-@defaultMessage Potentially slow on some CPUs, please check the CPU has feature: FMA may fallback to BigDecimal
+# Some vector APIs are only fast on specific hardware, and fallback to very slow
+# pure-java implementations. List them here, to prevent traps.
+
+@defaultMessage Potentially slow on some CPUs, please check Constants.HAS_FAST_VECTOR_FMA: FMA may fallback to BigDecimal
 jdk.incubator.vector.Float16#fma(**)
 jdk.incubator.vector.FloatVector#fma(**)
 jdk.incubator.vector.DoubleVector#fma(**)
