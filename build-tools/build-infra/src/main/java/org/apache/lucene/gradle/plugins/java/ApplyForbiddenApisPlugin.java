@@ -109,7 +109,8 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
                   project, task, sourceSets, ruleGroup, forbiddenApisDir);
             });
 
-    // Configure defaults for the MR-JAR feature sourceSets: ignore missing classes
+    // Configure defaults for the MR-JAR feature sourceSets: ignore missing classes and add vector
+    // code signatures files
     allForbiddenApisTasks
         .matching(task -> task.getName().matches("forbiddenApisMain\\d+"))
         .configureEach(
@@ -121,6 +122,13 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
               var vectorExclusions = Set.of("jdk.internal.vm.vector.VectorSupport$Vector");
               task.getSignatures().addAll(vectorExclusions);
               task.getSignaturesWithSeveritySuppress().addAll(vectorExclusions);
+              task.setSignaturesFiles(
+                  task.getSignaturesFiles()
+                      .plus(
+                          project.files(
+                              forbiddenApisDir
+                                  .resolve("non-standard/incubator-vector.txt")
+                                  .toFile())));
             });
 
     // Configure non-standard, per-project stuff.
