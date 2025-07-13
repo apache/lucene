@@ -116,7 +116,8 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
             task -> {
               // trick forbiddenapis jdk-nonportable signatures which report the following a
               // violation:
-              // Due to a bug in forbiddenapis we add them first to suppress them later.
+              // Due to a bug in forbiddenapis we add them first to suppress them later:
+              // https://github.com/policeman-tools/forbidden-apis/issues/267
               var vectorExclusions = Set.of("jdk.internal.vm.vector.VectorSupport$Vector");
               task.getSignatures().addAll(vectorExclusions);
               task.getSignaturesWithSeveritySuppress().addAll(vectorExclusions);
