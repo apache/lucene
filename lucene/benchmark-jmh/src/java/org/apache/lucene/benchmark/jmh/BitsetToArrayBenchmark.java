@@ -111,23 +111,25 @@ public class BitsetToArrayBenchmark {
   }
 
   @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public int denseBranchLessVectorized512() {
     return _denseBranchLessVectorized512(word, resultArray, offset, base);
   }
 
   @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public int denseBranchLessVectorized() {
     return _denseBranchLessVectorized(word, resultArray, offset, base);
   }
 
   @Benchmark
-  @Fork(jvmArgsPrepend = {"-XX:UseAVX=2"})
+  @Fork(jvmArgsPrepend = {"-XX:UseAVX=2", "--add-modules=jdk.incubator.vector"})
   public int denseBranchLessVectorized512AVX2() {
     return _denseBranchLessVectorized512(word, resultArray, offset, base);
   }
 
   @Benchmark
-  @Fork(jvmArgsPrepend = {"-XX:UseAVX=2"})
+  @Fork(jvmArgsPrepend = {"-XX:UseAVX=2", "--add-modules=jdk.incubator.vector"})
   public int denseBranchLessVectorizedAVX2() {
     return _denseBranchLessVectorized(word, resultArray, offset, base);
   }

@@ -81,7 +81,7 @@ public class BitSetUtil {
     }
   }
 
-  static int sparseWord2Array(long word, int base, int[] docs, int offset, int bitCount) {
+  private static int sparseWord2Array(long word, int base, int[] docs, int offset, int bitCount) {
     assert Long.bitCount(word) == bitCount;
 
     final int to = offset + bitCount;

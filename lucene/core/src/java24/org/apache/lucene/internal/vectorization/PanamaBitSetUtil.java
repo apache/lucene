@@ -29,7 +29,6 @@ public class PanamaBitSetUtil extends BitSetUtil {
   private static final VectorSpecies<Integer> INT_SPECIES =
       PanamaVectorConstants.PRERERRED_INT_SPECIES;
   private static final int MASK = (1 << INT_SPECIES.length()) - 1;
-  private static final int DENSE_THRESHOLD = 2 * Long.SIZE / INT_SPECIES.length();
   private static final int[] IDENTITY = IntStream.range(0, Long.SIZE).toArray();
   private static final int[] IDENTITY_MASK = IntStream.range(0, 16).map(i -> 1 << i).toArray();
 
@@ -37,15 +36,6 @@ public class PanamaBitSetUtil extends BitSetUtil {
 
   @Override
   int word2Array(long word, int base, int[] docs, int offset) {
-    int bitCount = Long.bitCount(word);
-    if (bitCount >= DENSE_THRESHOLD) {
-      return denseWord2Array(word, base, docs, offset);
-    } else {
-      return sparseWord2Array(word, base, docs, offset, bitCount);
-    }
-  }
-
-  private static int denseWord2Array(long word, int base, int[] docs, int offset) {
     offset = intWord2Array((int) word, docs, offset, base);
     return intWord2Array((int) (word >>> 32), docs, offset, base + 32);
   }
