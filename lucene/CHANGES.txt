@@ -114,6 +114,8 @@ Optimizations
 
 * GITHUB#14906: Use branchless way to speedup filterCompetitiveHits. (Adrien Grand, Ge Song)
 
+* GITHUB#14935: Speed up PostingsEnum#nextPostings when block is encoded as bitset. (Guo Feng)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
