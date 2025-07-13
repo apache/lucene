@@ -14,21 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.gradle.plugins.java;
 
-// Prints per-project test summary.
+import org.gradle.api.DefaultTask;
+import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.Optional;
+import org.gradle.internal.jvm.Jvm;
 
-tasks.withType(Test).configureEach { task ->
-  afterSuite { desc, result ->
-    if (!desc.parent) {
-      if (result.testCount > 0) {
-        def components = [
-          "test(s)"   : result.testCount,
-          "failure(s)": result.failedTestCount,
-          "skipped"   : result.skippedTestCount
-        ].findAll { k, v -> v > 0 }.collect { k, v -> "$v $k" }.join(", ")
+/** A temporary stub before all of RenderJavadocTask is ported from the gradle script. */
+public abstract class RenderJavadocTaskBase extends DefaultTask {
+  @Optional
+  @Input
+  public abstract Property<String> getExecutable();
 
-        logger.lifecycle("${task.path} (${result.resultType}): ${components}")
-      }
-    }
+  public RenderJavadocTaskBase() {
+    getExecutable()
+        .convention(
+            getProject()
+                .getProviders()
+                .provider(() -> Jvm.current().getJavadocExecutable().toString()));
   }
 }

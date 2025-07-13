@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.gradle;
+package org.apache.lucene.gradle.plugins.java;
 
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionValueSource;
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsExtension;
@@ -153,7 +153,7 @@ public class ErrorReportingTestListener implements TestOutputListener, TestListe
     }
   }
 
-  private static Pattern SANITIZE = Pattern.compile("[^a-zA-Z .\\-_0-9]+");
+  private static final Pattern SANITIZE = Pattern.compile("[^a-zA-Z .\\-_0-9]+");
 
   public static String getOutputLogName(TestDescriptor suite) {
     return SANITIZE.matcher("OUTPUT-" + suite.getName() + ".txt").replaceAll("_");

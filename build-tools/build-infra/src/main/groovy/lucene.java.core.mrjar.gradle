@@ -30,7 +30,7 @@ configure(project(":lucene:core")) {
       dependencies.add("main${jdkVersion}Implementation", sourceSets.main.output)
 
       tasks.named("compileMain${jdkVersion}Java").configure {
-        def apijar = apijars.file("jdk${jdkVersion}.apijar")
+        def apijar = apijars.file("jdk${jdkVersion}-api.jar")
 
         // TODO: this depends on the order of argument configuration...
         int releaseIndex = options.compilerArgs.indexOf("--release")
