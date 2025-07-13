@@ -27,14 +27,12 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 /**
- * Unit tests for MultiTenantCMSManager: budgeting, dynamic rebalancing,
- * live IndexWriter integration, and auto-unregister behavior.
+ * Unit tests for MultiTenantCMSManager: budgeting, dynamic rebalancing, live IndexWriter
+ * integration, and auto-unregister behavior.
  */
 public class TestMultiTenantCMSManager extends LuceneTestCase {
 
-  /**
-   * Subclass to count actual merges.
-   */
+  /** Subclass to count actual merges. */
   static class TrackingCMS extends ConcurrentMergeScheduler {
     private final AtomicInteger mergeCount = new AtomicInteger();
 
@@ -50,9 +48,7 @@ public class TestMultiTenantCMSManager extends LuceneTestCase {
     }
   }
 
-  /**
-   * Test basic registration and budgeting across multiple schedulers.
-   */
+  /** Test basic registration and budgeting across multiple schedulers. */
   public void testRegistrationAndThreadBudgeting() {
     MultiTenantCMSManager manager = MultiTenantCMSManager.getInstance();
     manager.unregisterAllForTest();
@@ -86,9 +82,7 @@ public class TestMultiTenantCMSManager extends LuceneTestCase {
         manager.getRegisteredSchedulersForTest().isEmpty());
   }
 
-  /**
-   * Test that unregistering adjusts budgets dynamically.
-   */
+  /** Test that unregistering adjusts budgets dynamically. */
   public void testUnregisterRebalancing() {
     MultiTenantCMSManager manager = MultiTenantCMSManager.getInstance();
     manager.unregisterAllForTest();
@@ -114,9 +108,7 @@ public class TestMultiTenantCMSManager extends LuceneTestCase {
         manager.getRegisteredSchedulersForTest().contains(a));
   }
 
-  /**
-   * Integrate with a live IndexWriter and ensure merges occur under the manager.
-   */
+  /** Integrate with a live IndexWriter and ensure merges occur under the manager. */
   public void testLiveIndexWriterIntegration() throws Exception {
     MultiTenantCMSManager manager = MultiTenantCMSManager.getInstance();
     manager.unregisterAllForTest();
@@ -142,24 +134,21 @@ public class TestMultiTenantCMSManager extends LuceneTestCase {
     dir.close();
   }
 
-  /**
-   * Test that closing a CMS unregisters it from the manager.
-   */
+  /** Test that closing a CMS unregisters it from the manager. */
   public void testWrapperAutoUnregisterOnClose() throws IOException {
     MultiTenantCMSManager manager = MultiTenantCMSManager.getInstance();
     manager.unregisterAllForTest();
 
-    ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler() {
-      @Override
-      public void close() throws IOException {
-        MultiTenantCMSManager.getInstance().unregister(this);
-        super.close();
-      }
-    };
+    ConcurrentMergeScheduler cms =
+        new ConcurrentMergeScheduler() {
+          @Override
+          public void close() throws IOException {
+            MultiTenantCMSManager.getInstance().unregister(this);
+            super.close();
+          }
+        };
     manager.register(cms);
-    assertTrue(
-        "Should be registered",
-        manager.getRegisteredSchedulersForTest().contains(cms));
+    assertTrue("Should be registered", manager.getRegisteredSchedulersForTest().contains(cms));
 
     cms.close();
     assertFalse(
