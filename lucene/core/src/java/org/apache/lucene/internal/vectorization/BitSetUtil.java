@@ -25,7 +25,21 @@ public class BitSetUtil {
 
   BitSetUtil() {}
 
+  /**
+   * Converts set bits in the given bitset to an array of document IDs. Only processes bits from
+   * index {@code from} (inclusive) to {@code to} (exclusive) and returns the number of bits set in
+   * this range.
+   *
+   * <p>Each set bit's position is converted to a document ID by adding the {@code base} value and
+   * stored in the provided {@code array}.
+   *
+   * <p>NOTE: Caller need to ensure the {@code array} has a length greater than or equal to {@code
+   * bitSet.cardinality(from, to) + 16}.
+   */
   public final int denseBitsetToArray(FixedBitSet bitSet, int from, int to, int base, int[] array) {
+    assert bitSet.cardinality(from, to) + 16 <= array.length
+        : "Array length must be at least bitSet.cardinality(from, to) + 16";
+
     Objects.checkFromToIndex(from, to, bitSet.length());
 
     int offset = 0;
@@ -59,36 +73,42 @@ public class BitSetUtil {
   }
 
   int word2Array(long word, int base, int[] docs, int offset) {
-    if (word == 0) {
-      return offset;
+    int bitCount = Long.bitCount(word);
+    if (bitCount >= 32) {
+      return denseWord2Array(word, base, docs, offset);
+    } else {
+      return sparseWord2Array(word, base, docs, offset, bitCount);
     }
+  }
 
-    final int bitCount = Long.bitCount(word);
-    int i = 0;
+  static int sparseWord2Array(long word, int base, int[] docs, int offset, int bitCount) {
+    assert Long.bitCount(word) == bitCount;
 
-    // Unroll the loop for 4 iterations at a time, as we know it is dense.
-    for (; i < bitCount - 3; i += 4) {
-      int ntz = Long.numberOfTrailingZeros(word);
-      docs[offset++] = base + ntz;
-      word ^= 1L << ntz;
-      ntz = Long.numberOfTrailingZeros(word);
-      docs[offset++] = base + ntz;
-      word ^= 1L << ntz;
-      ntz = Long.numberOfTrailingZeros(word);
-      docs[offset++] = base + ntz;
-      word ^= 1L << ntz;
-      ntz = Long.numberOfTrailingZeros(word);
-      docs[offset++] = base + ntz;
-      word ^= 1L << ntz;
-    }
-
-    // Handle the remaining bits
-    for (; i < bitCount; i++) {
+    final int to = offset + bitCount;
+    while (offset < to) {
       int ntz = Long.numberOfTrailingZeros(word);
       docs[offset++] = base + ntz;
       word ^= 1L << ntz;
     }
 
-    return offset;
+    return to;
+  }
+
+  private static int denseWord2Array(long word, int base, int[] docs, int offset) {
+    final int lWord = (int) word;
+    final int hWord = (int) (word >>> 32);
+    final int offset32 = offset + Integer.bitCount(lWord);
+    int hOffset = offset32;
+
+    for (int i = 0; i < 32; i++) {
+      docs[offset] = base + i;
+      docs[hOffset] = base + i + 32;
+      offset += (lWord >>> i) & 1;
+      hOffset += (hWord >>> i) & 1;
+    }
+
+    docs[offset32] = base + 32 + Integer.numberOfTrailingZeros(hWord);
+
+    return hOffset;
   }
 }

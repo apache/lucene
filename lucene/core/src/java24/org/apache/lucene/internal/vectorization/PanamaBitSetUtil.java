@@ -16,71 +16,57 @@
  */
 package org.apache.lucene.internal.vectorization;
 
-import jdk.incubator.vector.ByteVector;
+import java.util.stream.IntStream;
+import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
+import jdk.incubator.vector.VectorSpecies;
 
 public class PanamaBitSetUtil extends BitSetUtil {
 
   static final PanamaBitSetUtil INSTANCE = new PanamaBitSetUtil();
 
-  private static final byte[] IDENTITY_BYTES = new byte[64];
-
-  static {
-    for (int i = 0; i < IDENTITY_BYTES.length; i++) {
-      IDENTITY_BYTES[i] = (byte) i;
-    }
-  }
+  private static final VectorSpecies<Integer> INT_SPECIES =
+      PanamaVectorConstants.PRERERRED_INT_SPECIES;
+  private static final int MASK = (1 << INT_SPECIES.length()) - 1;
+  private static final int DENSE_THRESHOLD = Long.SIZE / INT_SPECIES.length();
+  private static final int[] IDENTITY = IntStream.range(0, Long.SIZE).toArray();
+  private static final int[] IDENTITY_MASK = IntStream.range(0, 16).map(i -> 1 << i).toArray();
 
   PanamaBitSetUtil() {}
 
   @Override
-  @SuppressWarnings("fallthrough")
   int word2Array(long word, int base, int[] docs, int offset) {
-    if (PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE != 512) {
-      return super.word2Array(word, base, docs, offset);
-    }
-
-    if (word == 0L) {
-      return offset;
-    }
-
     int bitCount = Long.bitCount(word);
+    if (bitCount >= DENSE_THRESHOLD) {
+      return denseWord2Array(word, base, docs, offset);
+    } else {
+      return sparseWord2Array(word, base, docs, offset, bitCount);
+    }
+  }
 
-    VectorMask<Byte> mask = VectorMask.fromLong(ByteVector.SPECIES_512, word);
-    ByteVector indices =
-        ByteVector.fromArray(ByteVector.SPECIES_512, IDENTITY_BYTES, 0).compress(mask);
+  private static int denseWord2Array(long word, int base, int[] docs, int offset) {
+    offset = intWord2Array((int) word, docs, offset, base);
+    return intWord2Array((int) (word >>> 32), docs, offset, base + 32);
+  }
 
-    switch ((bitCount - 1) >> 4) {
-      case 3:
-        indices
-            .convert(VectorOperators.B2I, 3)
-            .reinterpretAsInts()
-            .add(base)
-            .intoArray(docs, offset + 48);
-      case 2:
-        indices
-            .convert(VectorOperators.B2I, 2)
-            .reinterpretAsInts()
-            .add(base)
-            .intoArray(docs, offset + 32);
-      case 1:
-        indices
-            .convert(VectorOperators.B2I, 1)
-            .reinterpretAsInts()
-            .add(base)
-            .intoArray(docs, offset + 16);
-      case 0:
-        indices
-            .convert(VectorOperators.B2I, 0)
-            .reinterpretAsInts()
-            .add(base)
-            .intoArray(docs, offset);
-        break;
-      default:
-        throw new IllegalStateException(bitCount + "");
+  private static int intWord2Array(int word, int[] resultArray, int offset, int base) {
+    IntVector bitMask = IntVector.fromArray(INT_SPECIES, IDENTITY_MASK, 0);
+
+    for (int i = 0; i < Integer.SIZE; i += INT_SPECIES.length()) {
+      VectorMask<Integer> mask =
+          IntVector.broadcast(INT_SPECIES, word).and(bitMask).compare(VectorOperators.NE, 0);
+
+      IntVector.fromArray(INT_SPECIES, IDENTITY, i)
+          .add(base)
+          .compress(mask)
+          .reinterpretAsInts()
+          .intoArray(resultArray, offset);
+
+      offset += Integer.bitCount(word & MASK); // faster than mask.trueCount()
+      word >>>= INT_SPECIES.length();
     }
 
-    return offset + bitCount;
+    return offset;
   }
 }
