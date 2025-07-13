@@ -69,6 +69,7 @@ import org.apache.lucene.util.VectorUtil;
 public final class Lucene103PostingsReader extends PostingsReaderBase {
 
   static final VectorizationProvider VECTORIZATION_PROVIDER = VectorizationProvider.getInstance();
+  private static final BitSetUtil BIT_SET_UTIL = VECTORIZATION_PROVIDER.newBitSetUtil();
   // Dummy impacts, composed of the maximum possible term frequency and the lowest possible
   // (unsigned) norm value. This is typically used on tail blocks, which don't actually record
   // impacts as the storage overhead would not be worth any query evaluation speedup, since there's
@@ -303,8 +304,6 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
        */
       UNARY
     }
-
-    private final BitSetUtil bitSetUtil = VECTORIZATION_PROVIDER.newBitSetUtil();
 
     private ForDeltaUtil forDeltaUtil;
     private PForUtil pforUtil;
@@ -1069,7 +1068,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
           break;
         case UNARY:
           buffer.size =
-              bitSetUtil.denseBitsetToArray(
+              BIT_SET_UTIL.denseBitsetToArray(
                   docBitSet, doc - docBitSetBase, upTo - docBitSetBase, docBitSetBase, buffer.docs);
           break;
       }
