@@ -36,6 +36,27 @@ public class TestART2 extends LuceneTestCase {
     testARTLookup(supplier, 12);
   }
 
+  public void testVeryLongTerms() throws Exception {
+    Supplier<byte[]> supplier =
+        () -> {
+          byte[] bytes = new byte[65535];
+          for (int i = 1; i < bytes.length; i++) {
+            bytes[i] = (byte) random().nextInt(i / 256 + 1);
+          }
+          return bytes;
+        };
+    testARTLookup(supplier, 5);
+  }
+
+  public void testOneByteTerms() throws Exception {
+    // heavily test single byte terms to generate various label distribution.
+    Supplier<byte[]> supplier = () -> new byte[] {(byte) random().nextInt()};
+    int round = atLeast(50);
+    for (int i = 0; i < round; i++) {
+      testARTLookup(supplier, 10);
+    }
+  }
+
   private void testARTBuilder(Supplier<byte[]> randomBytesSupplier, int count) {
     Map<BytesRef, Output> kvs = new TreeMap<>();
     // Since we modify bytes when inserting (by ARTBuilder#updateNodeBytes), expected is a copy for
