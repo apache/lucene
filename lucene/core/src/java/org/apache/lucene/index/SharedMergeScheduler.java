@@ -11,9 +11,15 @@ import java.util.concurrent.TimeUnit;
  */
 public class SharedMergeScheduler extends MergeScheduler {
 
-  /** Shared thread pool executor used by all IndexWriters using this scheduler. */
-  private static final ExecutorService sharedExecutor =
-      Executors.newFixedThreadPool(4); // Adjust the number of threads as needed
+ /**
+ * Executor service provided externally to handle merge tasks.
+ * Allows sharing a thread pool across IndexWriters if configured that way.
+ */
+  private final ExecutorService sharedExecutor;
+
+  public SharedMergeScheduler(ExecutorService sharedExecutor) {
+      this.sharedExecutor = sharedExecutor;
+  }
 
   /**
    * Retrieves pending merge tasks from the given {@link MergeSource} and submits them to the shared
