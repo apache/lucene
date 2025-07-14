@@ -32,7 +32,7 @@ public class TestART2 extends LuceneTestCase {
 
   public void testRandomTerms() throws Exception {
     Supplier<byte[]> supplier = TestART2::randomBytes;
-    //    testARTBuilder(supplier, atLeast(1000));
+    testARTBuilder(supplier, atLeast(1000));
     testARTLookup(supplier, 12);
   }
 
@@ -69,20 +69,7 @@ public class TestART2 extends LuceneTestCase {
     ARTReader artReader = new ARTReader(artBuilder.root);
 
     artReader.visit(actual::put);
-    //    assertEquals(expected, actual);
-    assertTreeMap(expected, actual);
-    System.out.println();
-  }
-
-  private void assertTreeMap(Map<BytesRef, Output> excepted, Map<BytesRef, Output> actual) {
-    assert excepted.size() == actual.size();
-    for (var entry : excepted.entrySet()) {
-      if (actual.containsKey(entry.getKey()) == false) {
-        System.out.println();
-      } else if (entry.getValue().equals(actual.get(entry.getKey())) == false) {
-        System.out.println();
-      }
-    }
+    assertEquals(expected, actual);
   }
 
   private void testARTLookup(Supplier<byte[]> randomBytesSupplier, int round) throws IOException {

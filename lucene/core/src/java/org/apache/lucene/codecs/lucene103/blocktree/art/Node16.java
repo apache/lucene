@@ -141,6 +141,7 @@ public class Node16 extends Node {
     }
   }
 
+  @Override
   public void saveChildIndex(IndexOutput dataOutput) throws IOException {
     // little endian
     dataOutput.writeLong(Long.reverseBytes(firstChildIndex));

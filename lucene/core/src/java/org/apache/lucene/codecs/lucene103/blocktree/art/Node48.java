@@ -48,12 +48,6 @@ public class Node48 extends Node {
     return ILLEGAL_IDX;
   }
 
-  /**
-   * Get child index in children array.
-   *
-   * @param k
-   * @return
-   */
   public int getChildIndex(byte k) {
     int unsignedIdx = Byte.toUnsignedInt(k);
     return childrenIdx(unsignedIdx, childIndex);
@@ -184,6 +178,7 @@ public class Node48 extends Node {
     childIndex[longPos] = LongUtils.fromBDBytes(bytes);
   }
 
+  @Override
   public void saveChildIndex(IndexOutput dataOutput) throws IOException {
     for (int i = 0; i < 32; i++) {
       long longV = childIndex[i];

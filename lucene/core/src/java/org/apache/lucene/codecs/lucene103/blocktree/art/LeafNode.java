@@ -66,6 +66,7 @@ public class LeafNode extends Node {
     throw new UnsupportedOperationException();
   }
 
+  @Override
   public void saveChildIndex(IndexOutput dataOutput) throws IOException {
     // empty
     // TODO: save key

@@ -122,6 +122,7 @@ public class Node256 extends Node {
     bitmapMask[longIdx] = newVal;
   }
 
+  @Override
   public void saveChildIndex(IndexOutput dataOutput) throws IOException {
     // little endian
     for (long longV : bitmapMask) {
@@ -162,6 +163,7 @@ public class Node256 extends Node {
     return children;
   }
 
+  @Override
   public boolean equals(Object obj) {
     if (this == obj) {
       return true;

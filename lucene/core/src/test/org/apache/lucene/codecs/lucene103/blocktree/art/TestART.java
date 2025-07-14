@@ -30,17 +30,13 @@ public class TestART extends LuceneTestCase {
     // Build.
     ARTBuilder artBuilder = new ARTBuilder();
     // Add a null child.
-    artBuilder.insert(
-        new BytesRef(("abc").getBytes()), new Output(0, false, new BytesRef(("abc"))));
-    artBuilder.insert(new BytesRef("abc1".getBytes()), new Output(0, false, new BytesRef("abc1")));
-    artBuilder.insert(
-        new BytesRef("abc10".getBytes()), new Output(0, false, new BytesRef("abc10")));
-    artBuilder.insert(
-        new BytesRef("abc100".getBytes()), new Output(0, false, new BytesRef("abc100")));
-    artBuilder.insert(new BytesRef("abc2".getBytes()), new Output(0, false, new BytesRef("abc2")));
-    artBuilder.insert(
-        new BytesRef("abc234".getBytes()), new Output(0, false, new BytesRef("abc234")));
-    artBuilder.insert(new BytesRef("abc3".getBytes()), new Output(0, false, new BytesRef("abc3")));
+    artBuilder.insert(new BytesRef(("abc")), new Output(0, false, new BytesRef(("abc"))));
+    artBuilder.insert(new BytesRef("abc1"), new Output(0, false, new BytesRef("abc1")));
+    artBuilder.insert(new BytesRef("abc10"), new Output(0, false, new BytesRef("abc10")));
+    artBuilder.insert(new BytesRef("abc100"), new Output(0, false, new BytesRef("abc100")));
+    artBuilder.insert(new BytesRef("abc2"), new Output(0, false, new BytesRef("abc2")));
+    artBuilder.insert(new BytesRef("abc234"), new Output(0, false, new BytesRef("abc234")));
+    artBuilder.insert(new BytesRef("abc3"), new Output(0, false, new BytesRef("abc3")));
 
     assertEquals(3, artBuilder.root.prefixLength);
     assertEquals(NodeType.NODE4, artBuilder.root.nodeType);
@@ -80,11 +76,9 @@ public class TestART extends LuceneTestCase {
     // Build.
     ARTBuilder artBuilder = new ARTBuilder();
     // Add a null child.
-    artBuilder.insert(
-        new BytesRef(("abc").getBytes()), new Output(0, false, new BytesRef(("abc"))));
+    artBuilder.insert(new BytesRef(("abc")), new Output(0, false, new BytesRef(("abc"))));
     for (int i = 0; i < 10; i++) {
-      artBuilder.insert(
-          new BytesRef(("abc" + i).getBytes()), new Output(0, false, new BytesRef(("abc" + i))));
+      artBuilder.insert(new BytesRef(("abc" + i)), new Output(0, false, new BytesRef(("abc" + i))));
     }
     assertEquals(NodeType.NODE16, artBuilder.root.nodeType);
 
@@ -117,8 +111,7 @@ public class TestART extends LuceneTestCase {
     // Build.
     ARTBuilder artBuilder = new ARTBuilder();
     // Add a null child.
-    artBuilder.insert(
-        new BytesRef(("abc").getBytes()), new Output(0, false, new BytesRef(("abc"))));
+    artBuilder.insert(new BytesRef(("abc")), new Output(0, false, new BytesRef(("abc"))));
     for (byte i = 65; i < 91; i++) {
       byte[] bytes = {97, 98, 99, i};
       artBuilder.insert(new BytesRef(bytes), new Output(0, false, new BytesRef(bytes)));
@@ -154,8 +147,7 @@ public class TestART extends LuceneTestCase {
     // Build.
     ARTBuilder artBuilder = new ARTBuilder();
     // Add a null child.
-    artBuilder.insert(
-        new BytesRef(("abc").getBytes()), new Output(0, false, new BytesRef(("abc"))));
+    artBuilder.insert(new BytesRef(("abc")), new Output(0, false, new BytesRef(("abc"))));
     for (int i = -128; i <= 127; i++) {
       byte[] bytes = {97, 98, 99, (byte) i};
       artBuilder.insert(new BytesRef(bytes), new Output(0, false, new BytesRef(bytes)));

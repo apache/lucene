@@ -104,12 +104,7 @@ public abstract class Node {
    */
   public abstract int getMaxPos();
 
-  /**
-   * Read node from data input.
-   *
-   * @param dataInput
-   * @return
-   */
+  /** Read node from data input. */
   public static Node read(IndexInput dataInput) throws IOException {
     // Node type.
     int nodeTypeOrdinal = dataInput.readByte();
@@ -170,12 +165,7 @@ public abstract class Node {
     return node;
   }
 
-  /**
-   * Write node to output.
-   *
-   * @param data
-   * @throws IOException
-   */
+  /** Write node to output. */
   public void save(IndexOutput data) throws IOException {
     // Node type.
     data.writeByte((byte) this.nodeType.ordinal());
@@ -221,20 +211,10 @@ public abstract class Node {
     saveChildIndex(data);
   }
 
-  /**
-   * Write childIndex to output.
-   *
-   * @param dataOutput
-   * @throws IOException
-   */
+  /** Write childIndex to output. */
   public abstract void saveChildIndex(IndexOutput dataOutput) throws IOException;
 
-  /**
-   * Write childIndex to output.
-   *
-   * @param dataInput
-   * @throws IOException
-   */
+  /** Write childIndex to output. */
   public abstract void readChildIndex(IndexInput dataInput) throws IOException;
 
   protected static int bytesRequiredVLong(long v) {
@@ -275,6 +255,8 @@ public abstract class Node {
         return Node48.insert(current, childNode, key);
       case NODE256:
         return Node256.insert(current, childNode, key);
+      case LEAF_NODE:
+      case DUMMY_ROOT:
       default:
         throw new IllegalArgumentException("Not supported node type!");
     }
@@ -332,18 +314,14 @@ public abstract class Node {
    */
   abstract void setChildren(Node[] children);
 
-  /**
-   * Get the node's children.
-   *
-   * @return
-   */
+  /** Get the node's children. */
   abstract Node[] getChildren();
 
   @Override
   public String toString() {
     StringBuilder stb = new StringBuilder();
     stb.append(" nodeType=").append(nodeType);
-    stb.append(" prefix=").append(prefix == null ? "" : new String(prefix));
+    stb.append(" prefix=").append(prefix == null ? "" : Arrays.toString(prefix));
     // May throw exception.
     stb.append(" key=").append(key == null ? "" : key.utf8ToString());
     stb.append(" count=").append(count);

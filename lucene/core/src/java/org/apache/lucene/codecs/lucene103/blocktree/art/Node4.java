@@ -101,6 +101,7 @@ public class Node4 extends Node {
     }
   }
 
+  @Override
   public void saveChildIndex(IndexOutput dataOutput) throws IOException {
     dataOutput.writeInt(childIndex);
   }

@@ -62,8 +62,6 @@ public class ARTReader {
   /**
    * Collect all key, output pairs. Used for tests only. The recursive impl need to be avoided if
    * someone plans to use for production one day.
-   *
-   * @param consumer
    */
   void visit(BiConsumer<BytesRef, Output> consumer) {
     visit(root, new BytesRefBuilder(), consumer);
@@ -93,6 +91,11 @@ public class ARTReader {
       BytesRefBuilder clonePrefix = new BytesRefBuilder();
       clonePrefix.copyBytes(prefix);
       clonePrefix.append(key);
+
+      // We append prefix with output in next visit.
+      if (child.output == null && child.prefixLength > 0) {
+        clonePrefix.append(child.prefix, 0, child.prefixLength);
+      }
       visit(child, clonePrefix, consumer);
     }
   }
