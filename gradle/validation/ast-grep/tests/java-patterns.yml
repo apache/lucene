@@ -102,3 +102,16 @@ valid:
     public abstract class X extends TokenizerFactory {}
   - |
     private class X extends TokenizerFactory {}
+---
+id: incubator-module-dependency
+invalid:
+  - |
+    module org.apache.lucene.foo {
+      requires jdk.incubator.something;
+    }
+  - import jdk.incubator.something.SomethingElse;
+valid:
+  - |
+    module org.apache.lucene.foo {
+      requires org.apache.lucene.bar;
+    }
