@@ -100,7 +100,7 @@ public final class Constants {
 
   /** true for arm cpu with SVE support. */
   private static final boolean HAS_SVE =
-      HotspotVMOptions.get("UseSVE").map(Integer::valueOf).orElse(0) > 0;
+      HotspotVMOptions.get("UseSVE").map(Integer::valueOf).orElse(0) >= 1;
 
   /** true iff we know VFMA has faster throughput than separate vmul/vadd. */
   public static final boolean HAS_FAST_VECTOR_FMA = hasFastVectorFMA();

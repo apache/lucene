@@ -7,7 +7,7 @@ jdk.incubator.vector.FloatVector#fma(**)
 jdk.incubator.vector.DoubleVector#fma(**)
 jdk.incubator.vector.VectorOperators#FMA
 
-@defaultMessage Potentially slow on some CPUs, please check the CPU has feature: Unsupported on NEON
+@defaultMessage Potentially slow on some CPUs, please check Constants.HAS_FAST_COMPRESS: Unsupported on NEON
 jdk.incubator.vector.ByteVector#compress(**)
 jdk.incubator.vector.IntVector#compress(**)
 jdk.incubator.vector.ShortVector#compress(**)
