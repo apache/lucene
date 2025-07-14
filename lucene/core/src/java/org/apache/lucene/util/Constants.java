@@ -164,11 +164,11 @@ public final class Constants {
   }
 
   private static boolean hasFastCompress() {
-    if (OS_ARCH.equals("aarch64") && MAC_OS_X == false && HAS_SVE) {
+    if (OS_ARCH.equals("aarch64") && HAS_SVE) {
       return true;
     }
 
-    if (OS_ARCH.equals("amd64") && HAS_AVX2 && MAX_VECTOR_SIZE >= 32) {
+    if (OS_ARCH.equals("amd64") && HAS_AVX2) {
       return true;
     }
     return false;
