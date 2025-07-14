@@ -14,21 +14,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.gradle.plugins.hacks;
 
-// Prints per-project test summary.
+import de.undercouch.gradle.tasks.download.Download;
+import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
+import org.gradle.api.Project;
 
-tasks.withType(Test).configureEach { task ->
-  afterSuite { desc, result ->
-    if (!desc.parent) {
-      if (result.testCount > 0) {
-        def components = [
-          "test(s)"   : result.testCount,
-          "failure(s)": result.failedTestCount,
-          "skipped"   : result.skippedTestCount
-        ].findAll { k, v -> v > 0 }.collect { k, v -> "$v $k" }.join(", ")
+/** This applies various odd hacks that we probably should not need. */
+public class HacksPlugin extends LuceneGradlePlugin {
 
-        logger.lifecycle("${task.path} (${result.resultType}): ${components}")
-      }
-    }
+  @Override
+  public void apply(Project rootProject) {
+    applicableToRootProjectOnly(rootProject);
+
+    rootProject
+        .getAllprojects()
+        .forEach(
+            project -> {
+              applyRetryDownloads(project);
+            });
+  }
+
+  private void applyRetryDownloads(Project project) {
+    project
+        .getTasks()
+        .withType(Download.class)
+        .configureEach(
+            task -> {
+              task.retries(3);
+            });
   }
 }

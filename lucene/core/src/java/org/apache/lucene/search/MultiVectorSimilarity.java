@@ -15,16 +15,27 @@
  * limitations under the License.
  */
 
-import de.undercouch.gradle.tasks.download.DownloadTaskPlugin
-import de.undercouch.gradle.tasks.download.Download
+package org.apache.lucene.search;
 
-// Configures the Download task to retry on temporary network glitches.
+import org.apache.lucene.index.VectorSimilarityFunction;
 
-allprojects {project ->
-  // Limit configuration to just those projects that actually have the plugin enabled.
-  plugins.withType(DownloadTaskPlugin).configureEach {
-    project.tasks.withType(Download).configureEach {
-      it.retries 3
-    }
-  }
+/**
+ * Interface to define the similarity function between multi-vectors
+ *
+ * @lucene.experimental
+ */
+public interface MultiVectorSimilarity {
+
+  /**
+   * Computes similarity between two multi-vectors using provided {@link VectorSimilarityFunction}
+   *
+   * <p>Provided multi-vectors can have varying number of composing token vectors, but their token
+   * vectors should have the same dimension.
+   *
+   * @param outer a multi-vector
+   * @param inner another multi-vector
+   * @return similarity score between two multi-vectors
+   */
+  float compare(
+      float[][] outer, float[][] inner, VectorSimilarityFunction vectorSimilarityFunction);
 }
