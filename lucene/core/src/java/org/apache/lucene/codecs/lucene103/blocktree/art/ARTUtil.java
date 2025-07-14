@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene103.blocktree.art;
 
 import java.util.Arrays;
 
+/** Util to handle bytes. */
 public class ARTUtil {
 
   // find common prefix length

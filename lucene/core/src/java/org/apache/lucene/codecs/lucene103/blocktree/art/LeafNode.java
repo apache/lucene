@@ -21,6 +21,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 
+/** An ART node without children. */
 public class LeafNode extends Node {
   /**
    * constructor

@@ -22,6 +22,10 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 
+/**
+ * Visit or find(search) terms. We can read an ART from disk, or from root node directly(similar to
+ * the usage of fst in org.apache.lucene.analysis.charfilter.NormalizeCharMap).
+ */
 public class ARTReader {
   private Node root;
 

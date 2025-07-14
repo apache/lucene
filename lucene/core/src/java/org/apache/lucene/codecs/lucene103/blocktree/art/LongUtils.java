@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
+/** Util to convert long to bytes, or bytes to long. */
 public class LongUtils {
   /**
    * to big endian bytes representation

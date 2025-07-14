@@ -23,7 +23,10 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
-// TODO: Save to disk.
+/**
+ * Builds an ART from pre-sorted terms with outputs. We can save built ART to disk and read it by
+ * {@link ARTBuilder}.
+ */
 public class ARTBuilder {
   public Node root;
 

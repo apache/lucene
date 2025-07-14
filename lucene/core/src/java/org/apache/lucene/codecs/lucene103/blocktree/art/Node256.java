@@ -23,6 +23,7 @@ import java.util.Arrays;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 
+/** An ART node with children, the children's count limit from 49 to 256. */
 public class Node256 extends Node {
 
   // For testing.

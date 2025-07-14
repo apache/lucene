@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
+/** Node type enum. */
 public enum NodeType {
   NODE4,
   NODE16,

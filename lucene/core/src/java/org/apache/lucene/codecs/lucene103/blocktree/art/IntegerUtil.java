@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
+/** Util to convert int to bytes, or bytes to int. */
 public class IntegerUtil {
 
   /**
