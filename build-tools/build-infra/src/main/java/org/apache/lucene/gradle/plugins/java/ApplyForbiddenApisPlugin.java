@@ -39,7 +39,6 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskCollection;
 import org.gradle.api.tasks.TaskContainer;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * This configures the application of forbidden-API signature files.
@@ -287,7 +286,7 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
     return signatureLocations;
   }
 
-  private static @NotNull HashSet<ResolvedDependencyResult> getAllDependencies(
+  private static HashSet<ResolvedDependencyResult> getAllDependencies(
       ResolvedComponentResult graphRoot) {
     HashSet<ResolvedDependencyResult> allResolved = new HashSet<>();
     ArrayDeque<DependencyResult> queue = new ArrayDeque<>(graphRoot.getDependencies());
