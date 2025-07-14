@@ -94,11 +94,22 @@ public final class Constants {
   private static final boolean HAS_SSE4A =
       HotspotVMOptions.get("UseXmmI2F").map(Boolean::valueOf).orElse(false);
 
+  /** true for cpu with AVX support at least AVX2. */
+  private static final boolean HAS_AVX2 =
+      HotspotVMOptions.get("UseAVX").map(Integer::valueOf).orElse(0) >= 2;
+
+  /** true for arm cpu with SVE support. */
+  private static final boolean HAS_SVE =
+      HotspotVMOptions.get("UseSVE").map(Integer::valueOf).orElse(0) > 0;
+
   /** true iff we know VFMA has faster throughput than separate vmul/vadd. */
   public static final boolean HAS_FAST_VECTOR_FMA = hasFastVectorFMA();
 
   /** true iff we know FMA has faster throughput than separate mul/add. */
   public static final boolean HAS_FAST_SCALAR_FMA = hasFastScalarFMA();
+
+  /** true iff we know Compress has faster throughput than one by one move. */
+  public static final boolean HAS_FAST_COMPRESS = hasFastCompress();
 
   private static boolean hasFastVectorFMA() {
     if (HAS_FMA) {
@@ -149,6 +160,17 @@ public final class Constants {
       }
     }
     // everyone else is slow, until proven otherwise by benchmarks
+    return false;
+  }
+
+  private static boolean hasFastCompress() {
+    if (OS_ARCH.equals("aarch64") && MAC_OS_X == false && HAS_SVE) {
+      return true;
+    }
+
+    if (OS_ARCH.equals("amd64") && HAS_AVX2 && MAX_VECTOR_SIZE >= 32) {
+      return true;
+    }
     return false;
   }
 

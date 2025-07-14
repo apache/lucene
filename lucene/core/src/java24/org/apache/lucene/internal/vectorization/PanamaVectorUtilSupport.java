@@ -1008,17 +1008,12 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return correction;
   }
 
-  // Experiments suggest that we need at least 4 lanes (double)
-  // so that the overhead of going with the vector approach, compress values
-  // and counting trues on vector masks pays off.
-  private static final boolean ENABLE_FILTER_BY_SCORE_VECTOR_OPTO = DOUBLE_SPECIES.length() >= 4;
-
   @Override
   public int filterByScore(
       int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
     int newUpto = 0;
     int i = 0;
-    if (ENABLE_FILTER_BY_SCORE_VECTOR_OPTO) {
+    if (Constants.HAS_FAST_COMPRESS) {
       for (int bound = DOUBLE_SPECIES.loopBound(upTo); i < bound; i += DOUBLE_SPECIES.length()) {
         DoubleVector scoreVector = DoubleVector.fromArray(DOUBLE_SPECIES, scoreBuffer, i);
         IntVector docVector = IntVector.fromArray(INT_FOR_DOUBLE_SPECIES, docBuffer, i);
