@@ -35,15 +35,17 @@ public class SharedMergeScheduler extends MergeScheduler {
       final MergePolicy.OneMerge merge = mergeSource.getNextMerge();
       if (merge == null) break;
 
-      sharedExecutor.submit(
-          () -> {
-            try {
+      Runnable mergeRunnable = () -> {
+          try {
               mergeSource.merge(merge);
-            } catch (IOException e) {
+          } catch (IOException e) {
               throw new RuntimeException(e);
-            }
-          });
-    }
+          }
+      };
+
+      MergeTaskWrapper wrappedTask = new MergeTaskWrapper(mergeRunnable, mergeSource, merge.totalBytesSize());
+      sharedExecutor.submit(wrappedTask.getMergeTask());
+          }
   }
 
   /**
