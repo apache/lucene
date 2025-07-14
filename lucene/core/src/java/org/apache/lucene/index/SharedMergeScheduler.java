@@ -3,6 +3,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * SharedMergeScheduler is an experimental MergeScheduler that submits merge tasks to a shared
@@ -45,6 +46,15 @@ public class SharedMergeScheduler extends MergeScheduler {
    */
   @Override
   public void close() {
-    // no-op for now; in a full version we would shut down the executor
+      sharedExecutor.shutdown();
+      try {
+          if (!sharedExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+              sharedExecutor.shutdownNow();
+          }
+      } catch (InterruptedException e) {
+          sharedExecutor.shutdownNow();
+          Thread.currentThread().interrupt();
+      }
   }
+
 }
