@@ -15,7 +15,5 @@
  * limitations under the License.
  */
 
-/**
- * Explore ART.
- */
+/** Explore ART. */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
