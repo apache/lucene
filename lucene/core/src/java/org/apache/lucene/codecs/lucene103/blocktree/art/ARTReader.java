@@ -88,15 +88,15 @@ public class ARTReader {
       byte key = node.getChildKey(pos);
       Node child = node.getChild(pos);
       // Clone prefix.
-      BytesRefBuilder clonePrefix = new BytesRefBuilder();
-      clonePrefix.copyBytes(prefix);
-      clonePrefix.append(key);
+      BytesRefBuilder clonedPrefix = new BytesRefBuilder();
+      clonedPrefix.copyBytes(prefix);
+      clonedPrefix.append(key);
 
       // We append prefix with output in next visit.
       if (child.output == null && child.prefixLength > 0) {
-        clonePrefix.append(child.prefix, 0, child.prefixLength);
+        clonedPrefix.append(child.prefix, 0, child.prefixLength);
       }
-      visit(child, clonePrefix, consumer);
+      visit(child, clonedPrefix, consumer);
     }
   }
 
