@@ -1005,6 +1005,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return correction;
   }
 
+  @SuppressForbidden(reason = "Uses compress and cast only where fast and carefully contained")
   @Override
   public int filterByScore(
       int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {

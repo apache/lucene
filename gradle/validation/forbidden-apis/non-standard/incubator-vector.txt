@@ -18,3 +18,6 @@ jdk.incubator.vector.IntVector#expand(**)
 jdk.incubator.vector.ShortVector#expand(**)
 jdk.incubator.vector.LongVector#expand(**)
 jdk.incubator.vector.VectorOperators#EXPAND_BITS
+
+@defaultMessage Potentially slow on some CPUs, please check Constants.HAS_SVE and Constants.HAS_AVX2
+jdk.incubator.vector.VectorMask#cast(**)
