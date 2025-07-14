@@ -168,7 +168,7 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
             false);
     Provider<Boolean> haltOnFailureOption =
         buildOptions.addBooleanOption(
-            "tests.haltonfailure", "Halt processing early on test failure.", false);
+            "tests.haltonfailure", "Halt processing early on test failure.", true);
     Provider<Boolean> failFastOption =
         buildOptions.addBooleanOption("tests.failfast", "Stop the build early on failure.", false);
     Provider<Boolean> rerunOption =
