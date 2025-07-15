@@ -739,13 +739,13 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
         } else {
           disi.slice.seek(fp);
           boolean found = advanceWithinBlock(disi, destTo);
-          if (found && disi.doc < destTo) {
+          if (found && disi.doc < upTo) {
             throw new IllegalStateException(
                 "There are bits set in the source bitset that are not accounted for."
                     + " doc="
                     + disi.doc
-                    + " destTo="
-                    + destTo
+                    + " upTo="
+                    + upTo
                     + " disi.block="
                     + disi.block);
           }
