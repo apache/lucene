@@ -152,7 +152,7 @@ allprojects {
           }
         } else {
           // This combination simply does not make any sense (in my opinion).
-          throw GradleException("Test source set is modular and main source set is class-based, this makes no sense: " + project.path)
+          throw new GradleException("Test source set is modular and main source set is class-based, this makes no sense: " + project.path)
         }
       } else {
         if (mainIsModular) {
