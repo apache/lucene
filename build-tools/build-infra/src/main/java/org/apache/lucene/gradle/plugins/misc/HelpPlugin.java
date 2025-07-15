@@ -73,7 +73,7 @@ public class HelpPlugin extends LuceneGradlePlugin {
             task.setGroup("Help (developer guides and hints)");
             task.setDescription(helpEntry.description);
             task.doFirst(
-                t -> {
+                _ -> {
                   try {
                     println("\n" + Files.readString(rootProject.file(helpEntry.path).toPath()));
                   } catch (IOException e) {
@@ -89,7 +89,7 @@ public class HelpPlugin extends LuceneGradlePlugin {
         .configure(
             task -> {
               task.doFirst(
-                  t -> {
+                  _ -> {
                     printf("");
                     printf(
                         "This is Lucene %s build file (gradle %s). See some guidelines in files",
@@ -118,7 +118,7 @@ public class HelpPlugin extends LuceneGradlePlugin {
             "checkAllHelpFilesExist",
             task -> {
               task.doFirst(
-                  t -> {
+                  _ -> {
                     helpFiles.forEach(
                         helpFile -> {
                           if (!rootProject.file(helpFile.path).exists()) {

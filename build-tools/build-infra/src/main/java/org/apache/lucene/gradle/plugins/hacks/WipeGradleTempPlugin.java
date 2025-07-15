@@ -60,7 +60,7 @@ public abstract class WipeGradleTempPlugin extends LuceneGradlePlugin {
                   .getPlugins()
                   .withType(JavaPlugin.class)
                   .configureEach(
-                      unused -> {
+                      _ -> {
                         wipeAfterTests(project);
                       });
             });
@@ -97,7 +97,7 @@ public abstract class WipeGradleTempPlugin extends LuceneGradlePlugin {
     rootProject
         .getGradle()
         .buildFinished(
-            unused -> {
+            _ -> {
               cleanUpRedirectedTmpDir(rootProject);
               cleanUpGradlesTempDir(rootProject);
             });
