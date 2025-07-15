@@ -46,7 +46,6 @@ import org.apache.lucene.util.SuppressForbidden;
  *
  * <ul>
  *   <li>tests.vectorsize (int)
- *   <li>tests.forceintegervectors (boolean)
  * </ul>
  *
  * Setting these properties will make this code run EXTREMELY slow!
@@ -79,6 +78,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   // the way FMA should work! if available use it, otherwise fall back to mul/add
+  @SuppressForbidden(reason = "Uses FMA only where fast and carefully contained")
   private static FloatVector fma(FloatVector a, FloatVector b, FloatVector c) {
     if (Constants.HAS_FAST_VECTOR_FMA) {
       return a.fma(b, c);
@@ -313,9 +313,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     int i = 0;
     int res = 0;
 
-    // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
-    // vectors (256-bit on intel to dodge performance landmines)
-    if (a.byteSize() >= 16 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
+    // only vectorize if we'll at least enter the loop a single time
+    if (a.byteSize() >= 16) {
       // compute vectorized dot product consistent with VPDPBUSD instruction
       if (VECTOR_BITSIZE >= 512) {
         i += BYTE_SPECIES.loopBound(a.byteSize());
@@ -409,7 +408,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         } else if (VECTOR_BITSIZE == 256) {
           i += ByteVector.SPECIES_128.loopBound(packed.length);
           res += dotProductBody256Int4Packed(unpacked, packed, i);
-        } else if (PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
+        } else {
           i += ByteVector.SPECIES_64.loopBound(packed.length);
           res += dotProductBody128Int4Packed(unpacked, packed, i);
         }
@@ -425,7 +424,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     } else {
       if (VECTOR_BITSIZE >= 512 || VECTOR_BITSIZE == 256) {
         return dotProduct(a, b);
-      } else if (a.length >= 32 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
+      } else if (a.length >= 32) {
         i += ByteVector.SPECIES_128.loopBound(a.length);
         res += int4DotProductBody128(a, b, i);
       }
@@ -581,9 +580,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     int norm1 = 0;
     int norm2 = 0;
 
-    // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
-    // vectors (256-bit on intel to dodge performance landmines)
-    if (a.byteSize() >= 16 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
+    // only vectorize if we'll at least enter the loop a single time
+    if (a.byteSize() >= 16) {
       final float[] ret;
       if (VECTOR_BITSIZE >= 512) {
         i += BYTE_SPECIES.loopBound((int) a.byteSize());
@@ -704,9 +702,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     int i = 0;
     int res = 0;
 
-    // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
-    // vectors (256-bit on intel to dodge performance landmines)
-    if (a.byteSize() >= 16 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
+    // only vectorize if we'll at least enter the loop a single time
+    if (a.byteSize() >= 16) {
       if (VECTOR_BITSIZE >= 256) {
         i += BYTE_SPECIES.loopBound((int) a.byteSize());
         res += squareDistanceBody256(a, b, i);
@@ -798,7 +795,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   public long int4BitDotProduct(byte[] q, byte[] d) {
     assert q.length == d.length * 4;
     // 128 / 8 == 16
-    if (d.length >= 16 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
+    if (d.length >= 16) {
       if (VECTOR_BITSIZE >= 256) {
         return int4BitDotProduct256(q, d);
       } else if (VECTOR_BITSIZE == 128) {
