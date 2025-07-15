@@ -412,8 +412,8 @@ public class TestIndexedDISI extends LuceneTestCase {
         IndexedDISI disi =
             new IndexedDISI(in, 0L, length, jumpTableEntryCount, denseRankPower, set.cardinality());
         FixedBitSet disiSet = new FixedBitSet(maxDoc);
-        disiSet.or(
-            disi); // This would throw IOOB if bitset size is not handled correctly as per #14882
+        // This would throw IOOB if bitset size is not handled correctly as per #14882
+        disiSet.or(disi);
       }
     }
   }
