@@ -411,7 +411,9 @@ public class TestIndexedDISI extends LuceneTestCase {
       try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
         IndexedDISI disi =
             new IndexedDISI(in, 0L, length, jumpTableEntryCount, denseRankPower, set.cardinality());
-        set.or(disi); // This would throw IOOB if bitset size is not handled correctly as per #14882
+        FixedBitSet disiSet = new FixedBitSet(maxDoc);
+        disiSet.or(
+            disi); // This would throw IOOB if bitset size is not handled correctly as per #14882
       }
     }
   }
