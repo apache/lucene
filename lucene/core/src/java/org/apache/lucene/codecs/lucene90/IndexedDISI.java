@@ -27,6 +27,7 @@ import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.RoaringDocIdSet;
 
 /**
@@ -720,9 +721,9 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
           disi.bitSet = new FixedBitSet(BLOCK_SIZE);
         }
         int destFrom = disi.doc - offset;
-        int disiTo = upTo - offset > bitSet.length() ? bitSet.length() : upTo;
+        int destTo = MathUtil.unsignedMin(upTo, offset + bitSet.length());
         int sourceFrom = disi.doc & 0xFFFF;
-        int sourceTo = Math.min(disiTo - disi.block, BLOCK_SIZE);
+        int sourceTo = Math.min(destTo - disi.block, BLOCK_SIZE);
 
         long fp = disi.slice.getFilePointer();
         disi.slice.seek(fp - Long.BYTES); // seek back a long to include current word (disi.word).
@@ -731,13 +732,24 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
         FixedBitSet.orRange(disi.bitSet, sourceFrom, bitSet, destFrom, sourceTo - sourceFrom);
 
         int blockEnd = disi.block | 0xFFFF;
-        if (disiTo > blockEnd) {
+        if (destTo > blockEnd) {
           disi.slice.seek(disi.blockEnd);
           disi.index += disi.bitSet.cardinality(sourceFrom, sourceTo);
           return false;
         } else {
           disi.slice.seek(fp);
-          return advanceWithinBlock(disi, disiTo);
+          boolean found = advanceWithinBlock(disi, destTo);
+          if (found && disi.doc < destTo) {
+            throw new IllegalStateException(
+                "There are bits set in the source bitset that are not accounted for."
+                    + " doc="
+                    + disi.doc
+                    + " destTo="
+                    + destTo
+                    + " disi.block="
+                    + disi.block);
+          }
+          return found;
         }
       }
 
