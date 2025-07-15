@@ -53,7 +53,13 @@ tasks.register("assembleSourceTgz", QuietExec, {
   workingDir = project.rootDir
 
   // An explicit GIT_DIR to prevent .git upward scanning if something goes wrong.
-  environment("GIT_DIR", "${gitInfoExt.getDotGitDir().get().asFile.toString()}")
+  if (gitInfoExt.getDotGitDir().isPresent()) {
+    environment("GIT_DIR", gitInfoExt.getDotGitDir().get().asFile.toString())
+  } else {
+    doFirst {
+      throw new GradleException("Can't assemble source tgz without a full git clone.")
+    }
+  }
 
   args += [
       "archive",
