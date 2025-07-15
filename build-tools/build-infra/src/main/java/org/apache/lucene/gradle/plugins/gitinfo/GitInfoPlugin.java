@@ -54,7 +54,7 @@ public class GitInfoPlugin extends LuceneGradlePlugin {
                       Path gitLocation = projectDirectory.getAsFile().toPath().resolve(".git");
                       if (!Files.exists(gitLocation)) {
                         // don't return anything from the provider if we can't locate the .git
-                        // folder.
+                        // folder. This will result in the property returning false from isPresent.
                         return null;
                       }
 
