@@ -217,7 +217,7 @@ public class IndexWriter
    * avoid slowdown in other commit threads since prepareCommitInternal doesn't need to iterate over
    * the segments if this flag has not been set
    */
-  private volatile boolean updateIndexCreationVersion = false;
+  private volatile boolean updateIndexSupportedVersion = false;
 
   /** Used only for testing. */
   static void setMaxDocs(int maxDocs) {
@@ -3745,12 +3745,12 @@ public class IndexWriter
               // sneak into the commit point:
               toCommit = segmentInfos.clone();
 
-              if (this.updateIndexCreationVersion
+              if (this.updateIndexSupportedVersion
                   && toCommit.getIndexCreatedVersionMajor() < Version.LATEST.major) {
                 try {
                   toCommit.setIndexCreatedVersionMajorToLatest();
                 } finally {
-                  this.updateIndexCreationVersion = false;
+                  this.updateIndexSupportedVersion = false;
                 }
               }
 
@@ -4143,7 +4143,7 @@ public class IndexWriter
   public final long commitAndUpdateVersionCreatedMajor() throws IOException {
     ensureOpen();
     synchronized (commitLock) {
-      updateIndexCreationVersion = true;
+      updateIndexSupportedVersion = true;
       return commitInternal(config.getMergePolicy());
     }
   }

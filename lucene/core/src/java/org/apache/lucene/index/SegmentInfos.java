@@ -159,8 +159,9 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   private Version minSegmentLuceneVersion;
 
   /** The Lucene version major that was used to create the index. */
-  private int indexCreatedVersionMajor;
+  private final int indexCreatedVersionMajor;
 
+  private int maxIndexSupportedVersionMajor;
   /**
    * Sole constructor.
    *
@@ -177,6 +178,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
           "indexCreatedVersionMajor must be >= 6, got: " + indexCreatedVersionMajor);
     }
     this.indexCreatedVersionMajor = indexCreatedVersionMajor;
+    this.maxIndexSupportedVersionMajor = this.indexCreatedVersionMajor+1;
   }
 
   /** Returns {@link SegmentCommitInfo} at the provided index. */
