@@ -582,7 +582,6 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         return;
       }
 
-      boolean success = false;
       try {
         // OK to spawn a new merge thread to handle this
         // merge:
@@ -597,12 +596,9 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
         newMergeThread.start();
         updateMergeThreads();
-
-        success = true;
-      } finally {
-        if (!success) {
-          mergeSource.onMergeFinished(merge);
-        }
+      } catch (Throwable t) {
+        mergeSource.onMergeFinished(merge);
+        throw t;
       }
     }
   }

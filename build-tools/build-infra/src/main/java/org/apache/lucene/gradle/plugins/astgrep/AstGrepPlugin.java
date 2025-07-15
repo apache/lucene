@@ -19,6 +19,7 @@ package org.apache.lucene.gradle.plugins.astgrep;
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsExtension;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.gradle.plugins.misc.QuietExec;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -43,7 +44,7 @@ public class AstGrepPlugin implements Plugin<Project> {
     var testAstGrepRules =
         tasks.register(
             "testAstGrepRules",
-            Exec.class,
+            QuietExec.class,
             (task) -> {
               task.setArgs(
                   List.of(
@@ -89,7 +90,6 @@ public class AstGrepPlugin implements Plugin<Project> {
                       task.setEnabled(false);
                     }
 
-                    task.setIgnoreExitValue(false);
                     if (astToolOption.isPresent()) {
                       task.setExecutable(astToolOption.get());
                     }

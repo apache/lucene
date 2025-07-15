@@ -14,9 +14,9 @@ your code so that it complies with the convention and passes gradle
 
 IMPORTANT: wildcard imports are banned but google java format doesn't
 detect or fix this. There is a check for wildcard imports implemented
-on top of the ast-grep tool (https://ast-grep.github.io/). It is
-optional. If you'd like to have it run on gradle's check task, install
-ast-grep locally and add this build option to
+on top of the ast-grep tool (https://ast-grep.github.io/). This tool is
+optional. If you'd like to run it locally on gradle's 'check' task,
+install ast-grep locally and add this build option to
 build-options.local.properties:
 
 lucene.tool.ast-grep=ast-grep
@@ -27,6 +27,17 @@ majority of cases the formatter will do a great job of cleaning up the
 code. Occasionally you may want to rewrite the code (introduce a local
 variable or reshape code paths) so that it's easier to read after
 automatic formatting.
+
+
+Other file formatting
+=====================
+
+CI is configured to run additional linting using eclint
+(https://gitlab.com/greut/eclint). This tool is optional. If you'd like
+to run it locally on gradle's 'check' task, install eclint locally and add
+this build option to build-options.local.properties:
+
+lucene.tool.eclint=eclint
 
 
 Gradle scripts
