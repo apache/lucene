@@ -59,7 +59,7 @@ spatial4j = "0.8"
 # benchmark/ XML parsing
 xerces = "2.12.2"
 # external datasets decompression
-zstd = "1.5.7-3"
+zstd = "1.5.7-4"
 
 [libraries]
 antlr-core = { module = "org.antlr:antlr4", version.ref = "antlr" }
