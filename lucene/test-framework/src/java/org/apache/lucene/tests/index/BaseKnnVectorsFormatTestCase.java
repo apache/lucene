@@ -2203,8 +2203,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     assertEquals(6L, (long) r.get("e"));
   }
 
-  private static Query buildExactKnnQuery(
-      String fieldName, float[] queryVector, int totalDocs) {
+  private static Query buildExactKnnQuery(String fieldName, float[] queryVector, int totalDocs) {
     return new KnnFloatVectorQuery(fieldName, queryVector, totalDocs) {
       @Override
       protected TopDocs approximateSearch(
