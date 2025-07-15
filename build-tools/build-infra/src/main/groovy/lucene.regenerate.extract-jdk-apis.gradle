@@ -46,9 +46,9 @@ configure(project(":lucene:core")) {
           'file.encoding': 'UTF-8',
         ]
         args = [
-          rootProject.minJavaVersion.toString(),
+          buildGlobals.getMinJavaVersion().get().toString(),
           jdkVersion,
-          apijars.file("jdk${jdkVersion}.apijar"),
+          apijars.file("jdk${jdkVersion}-api.jar"),
         ]
       }
 
