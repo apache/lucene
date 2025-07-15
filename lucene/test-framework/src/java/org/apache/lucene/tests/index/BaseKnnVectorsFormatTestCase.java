@@ -81,13 +81,14 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
-import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.codecs.asserting.AssertingKnnVectorsFormat;
@@ -1980,9 +1981,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       for (String queryString : testQueries) {
         computeLineEmbedding(queryString, queryEmbedding);
 
-        // pass match-all "filter" to force full traversal, bypassing graph
-        KnnFloatVectorQuery exactQuery =
-            new KnnFloatVectorQuery("field", queryEmbedding, 1000, new MatchAllDocsQuery());
+        // gather exact results first
+        Query exactQuery = buildExactKnnQuery("field", queryEmbedding, 10000);
         assertEquals(numQueries, searcher.count(exactQuery)); // Same for exact search
 
         KnnFloatVectorQuery query = new KnnFloatVectorQuery("field", queryEmbedding, efSearch);
@@ -2201,5 +2201,20 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     assertEquals(105L, (long) r.get("c"));
     assertEquals(101L, (long) r.get("d"));
     assertEquals(6L, (long) r.get("e"));
+  }
+
+  private static Query buildExactKnnQuery(
+      String fieldName, float[] queryVector, int totalDocs) {
+    return new KnnFloatVectorQuery(fieldName, queryVector, totalDocs) {
+      @Override
+      protected TopDocs approximateSearch(
+          LeafReaderContext context,
+          Bits acceptDocs,
+          int visitedLimit,
+          KnnCollectorManager knnCollectorManager)
+          throws IOException {
+        return exactSearch(context, DocIdSetIterator.all(totalDocs), null);
+      }
+    };
   }
 }
