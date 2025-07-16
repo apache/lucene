@@ -109,7 +109,7 @@ public class CheckEnvironmentPlugin extends LuceneGradlePlugin {
             CHECK_JDK_INTERNALS_EXPOSED_TO_GRADLE_TASK,
             task -> {
               task.doFirst(
-                  t -> {
+                  _ -> {
                     var jdkCompilerModule =
                         ModuleLayer.boot().findModule("jdk.compiler").orElseThrow();
                     var gradleModule = getClass().getModule();

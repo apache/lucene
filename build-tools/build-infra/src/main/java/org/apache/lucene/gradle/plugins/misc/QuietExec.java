@@ -41,6 +41,7 @@ public class QuietExec extends Exec {
   }
 
   @TaskAction
+  @Override
   protected void exec() {
     try {
       // TODO: maybe add an output stream that spills to disk only when necessary here?
