@@ -18,7 +18,6 @@ package org.apache.lucene.internal.vectorization;
 
 import java.util.stream.IntStream;
 import jdk.incubator.vector.IntVector;
-import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
 
@@ -44,12 +43,9 @@ public class PanamaBitSetUtil extends BitSetUtil {
     IntVector bitMask = IntVector.fromArray(INT_SPECIES, IDENTITY_MASK, 0);
 
     for (int i = 0; i < Integer.SIZE; i += INT_SPECIES.length()) {
-      VectorMask<Integer> mask =
-          IntVector.broadcast(INT_SPECIES, word).and(bitMask).compare(VectorOperators.NE, 0);
-
       IntVector.fromArray(INT_SPECIES, IDENTITY, i)
           .add(base)
-          .compress(mask)
+          .compress(bitMask.and(word).compare(VectorOperators.NE, 0))
           .reinterpretAsInts()
           .intoArray(resultArray, offset);
 
