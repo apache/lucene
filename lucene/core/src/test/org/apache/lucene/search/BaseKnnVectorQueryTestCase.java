@@ -250,6 +250,20 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
+  public void testMatchAllFilter() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+
+      // make sure we don't drop to exact search, even though the filter matches fewer than k docs
+      Query kvq =
+          getThrowingKnnVectorQuery("field", new float[] {0, 0}, 10, new MatchAllDocsQuery());
+      TopDocs topDocs = searcher.search(kvq, 3);
+      assertEquals(3, topDocs.totalHits.value());
+    }
+  }
+
   /** testDimensionMismatch */
   public void testDimensionMismatch() throws IOException {
     try (Directory indexStore =
