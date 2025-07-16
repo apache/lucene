@@ -72,16 +72,28 @@ abstract class AbstractKnnVectorQuery extends Query {
 
     final Weight filterWeight;
     if (filter != null) {
-      BooleanQuery booleanQuery =
-          new BooleanQuery.Builder()
-              .add(filter, BooleanClause.Occur.FILTER)
-              .add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER)
-              .build();
-      Query rewritten = indexSearcher.rewrite(booleanQuery);
-      if (rewritten.getClass() == MatchNoDocsQuery.class) {
-        return rewritten;
+      // rewrite inner filter query first to determine if its a match all
+      // or match no docs query, so we can skip the knn search
+      Query rewrittenFilter = filter.rewrite(indexSearcher);
+      if (rewrittenFilter.getClass() == MatchNoDocsQuery.class) {
+        // If the filter is a match no docs query, we can also skip it
+        return rewrittenFilter;
       }
-      filterWeight = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE_NO_SCORES, 1f);
+      if (rewrittenFilter.getClass() != MatchAllDocsQuery.class) {
+        BooleanQuery booleanQuery =
+            new BooleanQuery.Builder()
+                .add(filter, BooleanClause.Occur.FILTER)
+                .add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER)
+                .build();
+        Query rewritten = indexSearcher.rewrite(booleanQuery);
+        if (rewritten.getClass() == MatchNoDocsQuery.class) {
+          return rewritten;
+        }
+        filterWeight = rewritten.createWeight(indexSearcher, ScoreMode.COMPLETE_NO_SCORES, 1f);
+      } else {
+        // If the filter is a match all docs query, we can skip it
+        filterWeight = null;
+      }
     } else {
       filterWeight = null;
     }

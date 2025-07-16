@@ -116,6 +116,8 @@ Optimizations
 
 * GITHUB#14935: Speed up PostingsEnum#nextPostings when block is encoded as bitset. (Guo Feng)
 
+* GITHUB#14936: Don't do the filtered knn path when the provided filter is a MatchAllDocsQuery. (Ben Trent)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
