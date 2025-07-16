@@ -7,7 +7,7 @@ jdk.incubator.vector.FloatVector#fma(**)
 jdk.incubator.vector.DoubleVector#fma(**)
 jdk.incubator.vector.VectorOperators#FMA
 
-@defaultMessage Potentially slow on some CPUs, please check Constants.HAS_FAST_COMPRESS: Unsupported on NEON
+@defaultMessage Potentially slow on some CPUs, please check Constants.HAS_FAST_COMPRESS_MASK_CAST: Unsupported on NEON
 jdk.incubator.vector.ByteVector#compress(**)
 jdk.incubator.vector.IntVector#compress(**)
 jdk.incubator.vector.ShortVector#compress(**)
@@ -18,6 +18,4 @@ jdk.incubator.vector.IntVector#expand(**)
 jdk.incubator.vector.ShortVector#expand(**)
 jdk.incubator.vector.LongVector#expand(**)
 jdk.incubator.vector.VectorOperators#EXPAND_BITS
-
-@defaultMessage Potentially slow on some CPUs, please check Constants.HAS_SVE and Constants.HAS_AVX2
 jdk.incubator.vector.VectorMask#cast(**)

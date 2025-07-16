@@ -108,8 +108,8 @@ public final class Constants {
   /** true iff we know FMA has faster throughput than separate mul/add. */
   public static final boolean HAS_FAST_SCALAR_FMA = hasFastScalarFMA();
 
-  /** true iff we know Compress has faster throughput than one by one move. */
-  public static final boolean HAS_FAST_COMPRESS = hasFastCompress();
+  /** true iff we know Compress and Cast has fast throughput. */
+  public static final boolean HAS_FAST_COMPRESS_MASK_CAST = hasFastCompressMaskCast();
 
   private static boolean hasFastVectorFMA() {
     if (HAS_FMA) {
@@ -163,7 +163,7 @@ public final class Constants {
     return false;
   }
 
-  private static boolean hasFastCompress() {
+  private static boolean hasFastCompressMaskCast() {
     if (OS_ARCH.equals("aarch64") && HAS_SVE) {
       return true;
     }
