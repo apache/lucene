@@ -1011,7 +1011,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
     int newUpto = 0;
     int i = 0;
-    if (Constants.HAS_FAST_COMPRESS) {
+    if (Constants.HAS_FAST_COMPRESS_MASK_CAST) {
       for (int bound = DOUBLE_SPECIES.loopBound(upTo); i < bound; i += DOUBLE_SPECIES.length()) {
         DoubleVector scoreVector = DoubleVector.fromArray(DOUBLE_SPECIES, scoreBuffer, i);
         IntVector docVector = IntVector.fromArray(INT_FOR_DOUBLE_SPECIES, docBuffer, i);
