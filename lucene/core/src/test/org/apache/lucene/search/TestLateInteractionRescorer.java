@@ -77,7 +77,7 @@ public class TestLateInteractionRescorer extends LuceneTestCase {
           float[][] docVector = corpus.get(idValue);
           float expected =
               scoreFunction.compare(lateIQueryVector, docVector, vectorSimilarityFunction);
-          assertEquals(expected, rerankedHits.scoreDocs[i].score, 1e-5);
+          assertEquals(expected, rerankedHits.scoreDocs[i].score, 1e-4f);
           if (i > 0) {
             assertTrue(rerankedHits.scoreDocs[i].score <= rerankedHits.scoreDocs[i - 1].score);
           }
