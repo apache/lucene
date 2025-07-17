@@ -45,7 +45,7 @@ public class QueryDecomposer {
 
     if (q instanceof DisjunctionMaxQuery) {
       Set<Query> subqueries = new LinkedHashSet<>();
-      for (Query subq : ((DisjunctionMaxQuery) q).getDisjuncts()) {
+      for (Query subq : ((DisjunctionMaxQuery) q).getDisjunctsInOriginalOrder()) {
         subqueries.addAll(decompose(subq));
       }
       return subqueries;
