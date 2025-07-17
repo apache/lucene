@@ -1,3 +1,4 @@
+import org.apache.lucene.gradle.plugins.misc.CheckEnvironmentPlugin
 import org.apache.lucene.gradle.plugins.spotless.GoogleJavaFormatPlugin
 
 /*
@@ -18,14 +19,12 @@ import org.apache.lucene.gradle.plugins.spotless.GoogleJavaFormatPlugin
  */
 
 plugins {
-  // Apply convention plugins from the composite build-infra project.
+  // Apply build plugins from the composite build-infra project.
   // The order of plugins does matter (most of the time).
   id "lucene.root-project.check-environment"
+
+  id "base"
   id "lucene.root-project.setup"
-
-  id "lucene.all-projects.conventions"
-
-  id "lucene.help"
 
   id "lucene.java-projects.conventions"
 
@@ -59,8 +58,6 @@ plugins {
 
   id "lucene.datasets.external-datasets"
 
-  id "lucene.hacks.downloader-retries"
-  id "lucene.hacks.wipe-gradle-temp"
   id "lucene.hacks.turbocharge-jvm-opts"
   id "lucene.hacks.dummy-outputs"
 
@@ -71,6 +68,7 @@ plugins {
 
   id "lucene.regenerate"
   id "lucene.regenerate.jflex"
+  id "lucene.regenerate.forUtil"
   id "lucene.regenerate.moman"
   id "lucene.regenerate.kuromoji"
   id "lucene.regenerate.nori"
@@ -79,6 +77,7 @@ plugins {
   id "lucene.regenerate.antlr"
   id "lucene.regenerate.unicode-test-classes"
   id "lucene.regenerate.extract-jdk-apis"
+  id "lucene.regenerate.snowball"
 }
 
 description = 'Grandparent project for Apache Lucene Core'

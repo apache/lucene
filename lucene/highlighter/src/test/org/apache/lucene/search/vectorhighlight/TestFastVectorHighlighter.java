@@ -222,7 +222,7 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
           highlighter.getBestFragments(fieldQuery, reader, docId, field, 18, 1);
       // highlighted results are centered
       assertEquals(1, bestFragments.length);
-      assertEquals("<b>foo</b> is <b>highlighted</b> and", bestFragments[0]);
+      assertEquals("<b>foo</b> is <b>highlighted</b>", bestFragments[0]);
     }
     {
       BooleanQuery.Builder query = new BooleanQuery.Builder();
@@ -234,11 +234,12 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
       String[] bestFragments =
           highlighter.getBestFragments(fieldQuery, reader, docId, field, 18, 1);
       // highlighted results are centered
-      assertEquals(0, bestFragments.length);
+      assertEquals(1, bestFragments.length);
+      assertEquals("be <b>highlighted</b>", bestFragments[0]);
       bestFragments = highlighter.getBestFragments(fieldQuery, reader, docId, field, 30, 1);
       // highlighted results are centered
       assertEquals(1, bestFragments.length);
-      assertEquals("a <b>test</b> where <b>foo</b> is <b>highlighted</b> and", bestFragments[0]);
+      assertEquals("<b>test</b> where <b>foo</b> is <b>highlighted</b> and", bestFragments[0]);
     }
     {
       PhraseQuery query = new PhraseQuery(3, field, "test", "foo", "highlighted");
@@ -250,7 +251,7 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
       bestFragments = highlighter.getBestFragments(fieldQuery, reader, docId, field, 30, 1);
       // highlighted results are centered
       assertEquals(1, bestFragments.length);
-      assertEquals("a <b>test</b> where <b>foo</b> is <b>highlighted</b> and", bestFragments[0]);
+      assertEquals("<b>test</b> where <b>foo</b> is <b>highlighted</b> and", bestFragments[0]);
     }
     {
       PhraseQuery query = new PhraseQuery(30, field, "test", "foo", "highlighted");
@@ -271,12 +272,13 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
       FieldQuery fieldQuery = highlighter.getFieldQuery(query.build(), reader);
       String[] bestFragments =
           highlighter.getBestFragments(fieldQuery, reader, docId, field, 18, 1);
-      assertEquals(0, bestFragments.length);
+      assertEquals(1, bestFragments.length);
+      assertEquals("be <b>highlighted</b>", bestFragments[0]);
 
       bestFragments = highlighter.getBestFragments(fieldQuery, reader, docId, field, 30, 1);
       // highlighted results are centered
       assertEquals(1, bestFragments.length);
-      assertEquals("a <b>test</b> where <b>foo</b> is <b>highlighted</b> and", bestFragments[0]);
+      assertEquals("<b>test</b> where <b>foo</b> is <b>highlighted</b> and", bestFragments[0]);
     }
 
     field = "long_term";

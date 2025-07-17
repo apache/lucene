@@ -210,6 +210,10 @@ Optimizations
 
 * GITHUB#14935: Speed up PostingsEnum#nextPostings when block is encoded as bitset. (Guo Feng)
 
+* GITHUB#14936: Don't do the filtered knn path when the provided filter is a MatchAllDocsQuery. (Ben Trent)
+
+* GITHUB#14896: Vectorize filterCompetitiveHits (Ge Song, Adrien Grand)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
@@ -233,6 +237,9 @@ Bug Fixes
 * GITHUB#14755: Fix too many documents collected when only bool-filter condition is present. (Ke Wei)
 
 * GITHUB#14838: Make it possible to extend Patience/Seeded knn queries (Tommaso Teofili)
+
+* GITHUB#14922: Fix for IndexedDISI.Dense#intoBitSetWithinBlock to take into account the provided bitset size
+  and avoid throwing IndexOutOfBoundsException (Panagiotis Bailis)
 
 Build
 ---------------------

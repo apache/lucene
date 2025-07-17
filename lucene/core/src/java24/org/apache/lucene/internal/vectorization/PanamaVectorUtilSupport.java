@@ -27,6 +27,7 @@ import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2S;
 
 import java.lang.foreign.MemorySegment;
 import jdk.incubator.vector.ByteVector;
+import jdk.incubator.vector.DoubleVector;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.LongVector;
@@ -54,6 +55,11 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   // preferred vector sizes, which can be altered for testing
   private static final VectorSpecies<Float> FLOAT_SPECIES;
+  private static final VectorSpecies<Double> DOUBLE_SPECIES =
+      PanamaVectorConstants.PREFERRED_DOUBLE_SPECIES;
+  // This create a vector species which we make sure have exact half bits of DOUBLE_SPECIES
+  private static final VectorSpecies<Integer> INT_FOR_DOUBLE_SPECIES =
+      VectorSpecies.of(int.class, VectorShape.forBitSize(DOUBLE_SPECIES.vectorBitSize() / 2));
   private static final VectorSpecies<Integer> INT_SPECIES =
       PanamaVectorConstants.PRERERRED_INT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES;
@@ -78,6 +84,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   // the way FMA should work! if available use it, otherwise fall back to mul/add
+  @SuppressForbidden(reason = "Uses FMA only where fast and carefully contained")
   private static FloatVector fma(FloatVector a, FloatVector b, FloatVector c) {
     if (Constants.HAS_FAST_VECTOR_FMA) {
       return a.fma(b, c);
@@ -996,5 +1003,34 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
             .recalculateOffset(vector, i, oldAlpha, oldMinQuantile);
 
     return correction;
+  }
+
+  @SuppressForbidden(reason = "Uses compress and cast only where fast and carefully contained")
+  @Override
+  public int filterByScore(
+      int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
+    int newUpto = 0;
+    int i = 0;
+    if (Constants.HAS_FAST_COMPRESS_MASK_CAST) {
+      for (int bound = DOUBLE_SPECIES.loopBound(upTo); i < bound; i += DOUBLE_SPECIES.length()) {
+        DoubleVector scoreVector = DoubleVector.fromArray(DOUBLE_SPECIES, scoreBuffer, i);
+        IntVector docVector = IntVector.fromArray(INT_FOR_DOUBLE_SPECIES, docBuffer, i);
+        VectorMask<Double> mask = scoreVector.compare(VectorOperators.GE, minScoreInclusive);
+        scoreVector.compress(mask).intoArray(scoreBuffer, newUpto);
+        docVector.compress(mask.cast(INT_FOR_DOUBLE_SPECIES)).intoArray(docBuffer, newUpto);
+        newUpto += mask.trueCount();
+      }
+    }
+
+    for (; i < upTo; ++i) {
+      int doc = docBuffer[i];
+      double score = scoreBuffer[i];
+      docBuffer[newUpto] = doc;
+      scoreBuffer[newUpto] = score;
+      if (score >= minScoreInclusive) {
+        newUpto++;
+      }
+    }
+    return newUpto;
   }
 }
