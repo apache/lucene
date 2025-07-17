@@ -115,9 +115,7 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
   protected class BandwidthTrackingMergeThread extends MergeThread {
     private final double mergeBandwidthMB;
 
-    /**
-     * Creates a new BandwidthTrackingMergeThread for the given merge.
-     */
+    /** Creates a new BandwidthTrackingMergeThread for the given merge. */
     public BandwidthTrackingMergeThread(MergeSource mergeSource, OneMerge merge) {
       super(mergeSource, merge);
       this.mergeBandwidthMB = merge.estimatedMergeBytes / (1024.0 * 1024.0);
