@@ -36,7 +36,7 @@ public class BitSetUtil {
    * <p>NOTE: Caller need to ensure the {@code array} has a length greater than or equal to {@code
    * bitSet.cardinality(from, to) + 16}.
    */
-  public final int denseBitsetToArray(FixedBitSet bitSet, int from, int to, int base, int[] array) {
+  public final int bitsetToArray(FixedBitSet bitSet, int from, int to, int base, int[] array) {
     assert bitSet.cardinality(from, to) + 16 <= array.length
         : "Array length must be at least bitSet.cardinality(from, to) + 16";
 

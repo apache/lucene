@@ -44,7 +44,6 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.internal.vectorization.BitSetUtil;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.search.DocAndFloatFeatureBuffer;
@@ -69,7 +68,7 @@ import org.apache.lucene.util.VectorUtil;
 public final class Lucene103PostingsReader extends PostingsReaderBase {
 
   static final VectorizationProvider VECTORIZATION_PROVIDER = VectorizationProvider.getInstance();
-  private static final BitSetUtil BIT_SET_UTIL = VECTORIZATION_PROVIDER.newBitSetUtil();
+
   // Dummy impacts, composed of the maximum possible term frequency and the lowest possible
   // (unsigned) norm value. This is typically used on tail blocks, which don't actually record
   // impacts as the storage overhead would not be worth any query evaluation speedup, since there's
@@ -1052,7 +1051,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
       }
 
       // Only return docs from the current block
-      // +16 to make bitSetUtil#denseBitsetToArray work, see its java doc.
+      // +16 to make bitSetUtil#bitsetToArray work, see its java doc.
       buffer.growNoCopy(BLOCK_SIZE + 16);
       upTo = (int) Math.min(upTo, level0LastDocID + 1L);
 
@@ -1068,8 +1067,8 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
           break;
         case UNARY:
           buffer.size =
-              BIT_SET_UTIL.denseBitsetToArray(
-                  docBitSet, doc - docBitSetBase, upTo - docBitSetBase, docBitSetBase, buffer.docs);
+              docBitSet.toArray(
+                  doc - docBitSetBase, upTo - docBitSetBase, docBitSetBase, buffer.docs);
           break;
       }
 
