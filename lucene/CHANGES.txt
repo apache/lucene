@@ -212,6 +212,8 @@ Optimizations
 
 * GITHUB#14936: Don't do the filtered knn path when the provided filter is a MatchAllDocsQuery. (Ben Trent)
 
+* GITHUB#14896: Vectorize filterCompetitiveHits (Ge Song, Adrien Grand)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
