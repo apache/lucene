@@ -76,6 +76,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   private final FlatVectorsWriter flatVectorWriter;
   private final int numMergeWorkers;
   private final TaskExecutor mergeExec;
+  private final boolean bypassTinySegments;
 
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
@@ -88,11 +89,24 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       int numMergeWorkers,
       TaskExecutor mergeExec)
       throws IOException {
+    this(state, M, beamWidth, flatVectorWriter, numMergeWorkers, mergeExec, false);
+  }
+
+  public Lucene99HnswVectorsWriter(
+      SegmentWriteState state,
+      int M,
+      int beamWidth,
+      FlatVectorsWriter flatVectorWriter,
+      int numMergeWorkers,
+      TaskExecutor mergeExec,
+      boolean bypassTinySegments)
+      throws IOException {
     this.M = M;
     this.flatVectorWriter = flatVectorWriter;
     this.beamWidth = beamWidth;
     this.numMergeWorkers = numMergeWorkers;
     this.mergeExec = mergeExec;
+    this.bypassTinySegments = bypassTinySegments;
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -135,7 +149,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
             fieldInfo,
             M,
             beamWidth,
-            segmentWriteState.infoStream);
+            segmentWriteState.infoStream,
+            bypassTinySegments);
     fields.add(newField);
     return newField;
   }
@@ -359,7 +374,13 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       // TODO: separate random access vector values from DocIdSetIterator?
       OnHeapHnswGraph graph = null;
       int[][] vectorIndexNodeOffsets = null;
-      if (scorerSupplier.totalVectorCount() > 0) {
+      // Check if we should bypass graph building for tiny segments
+      boolean makeHnswGraph =
+          scorerSupplier.totalVectorCount() > 0
+              && (bypassTinySegments == false
+                  || scorerSupplier.totalVectorCount()
+                      >= Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD);
+      if (makeHnswGraph) {
         // build graph
         HnswGraphMerger merger =
             createGraphMerger(
@@ -556,11 +577,18 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         RamUsageEstimator.shallowSizeOfInstance(FieldWriter.class);
 
     private final FieldInfo fieldInfo;
-    private final HnswGraphBuilder hnswGraphBuilder;
+    private HnswGraphBuilder hnswGraphBuilder; // only created when needed
     private int lastDocID = -1;
     private int node = 0;
     private final FlatFieldVectorsWriter<T> flatFieldVectorsWriter;
     private UpdateableRandomVectorScorer scorer;
+    private final boolean bypassTinySegments;
+    private final List<T> bufferedVectors;
+    private final int M;
+    private final int beamWidth;
+    private final InfoStream infoStream;
+    private final RandomVectorScorerSupplier scorerSupplier;
+    private boolean graphBuilderInitialized = false;
 
     @SuppressWarnings("unchecked")
     static FieldWriter<?> create(
@@ -569,7 +597,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         FieldInfo fieldInfo,
         int M,
         int beamWidth,
-        InfoStream infoStream)
+        InfoStream infoStream,
+        boolean bypassTinySegments)
         throws IOException {
       return switch (fieldInfo.getVectorEncoding()) {
         case BYTE ->
@@ -579,7 +608,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 fieldInfo,
                 M,
                 beamWidth,
-                infoStream);
+                infoStream,
+                bypassTinySegments);
         case FLOAT32 ->
             new FieldWriter<>(
                 scorer,
@@ -587,7 +617,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 fieldInfo,
                 M,
                 beamWidth,
-                infoStream);
+                infoStream,
+                bypassTinySegments);
       };
     }
 
@@ -598,10 +629,21 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         FieldInfo fieldInfo,
         int M,
         int beamWidth,
-        InfoStream infoStream)
+        InfoStream infoStream,
+        boolean bypassTinySegments)
         throws IOException {
       this.fieldInfo = fieldInfo;
-      RandomVectorScorerSupplier scorerSupplier =
+      this.M = M;
+      this.beamWidth = beamWidth;
+      this.infoStream = infoStream;
+      this.bypassTinySegments = bypassTinySegments;
+      this.flatFieldVectorsWriter = Objects.requireNonNull(flatFieldVectorsWriter);
+      if (bypassTinySegments) {
+        this.bufferedVectors = new ArrayList<>();
+      } else {
+        this.bufferedVectors = null;
+      }
+      this.scorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE ->
                 scorer.getRandomVectorScorerSupplier(
@@ -616,11 +658,32 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                         (List<float[]>) flatFieldVectorsWriter.getVectors(),
                         fieldInfo.getVectorDimension()));
           };
+
+      if (bypassTinySegments == false) {
+        // Initialize graph builder if optimization is disabled
+        initializeGraphBuilder();
+      }
+    }
+
+    private void initializeGraphBuilder() throws IOException {
+      if (graphBuilderInitialized) {
+        return;
+      }
       this.scorer = scorerSupplier.scorer();
-      hnswGraphBuilder =
+      this.hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
-      hnswGraphBuilder.setInfoStream(infoStream);
-      this.flatFieldVectorsWriter = Objects.requireNonNull(flatFieldVectorsWriter);
+      this.hnswGraphBuilder.setInfoStream(infoStream);
+      this.graphBuilderInitialized = true;
+    }
+
+    private void replayBufferedVectors() throws IOException {
+      if (bufferedVectors == null || bufferedVectors.isEmpty()) {
+        return;
+      }
+      for (int i = 0; i < bufferedVectors.size(); i++) {
+        scorer.setScoringOrdinal(i);
+        hnswGraphBuilder.addGraphNode(i, scorer);
+      }
     }
 
     @Override
@@ -632,8 +695,23 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 + "\" appears more than once in this document (only one value is allowed per field)");
       }
       flatFieldVectorsWriter.addValue(docID, vectorValue);
-      scorer.setScoringOrdinal(node);
-      hnswGraphBuilder.addGraphNode(node, scorer);
+      // Check if we need to initialize graph builder for tiny segment optimization
+      if (bypassTinySegments
+          && graphBuilderInitialized == false
+          && node >= Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD) {
+        initializeGraphBuilder();
+        // Replay buffered vectors
+        replayBufferedVectors();
+        bufferedVectors.clear();
+      }
+      if (hnswGraphBuilder != null) {
+        // Graph builder is active, add to graph
+        scorer.setScoringOrdinal(node);
+        hnswGraphBuilder.addGraphNode(node, scorer);
+      } else if (bypassTinySegments) {
+        // Store for later replay
+        bufferedVectors.add(vectorValue);
+      }
       node++;
       lastDocID = docID;
     }
@@ -649,18 +727,24 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
     OnHeapHnswGraph getGraph() throws IOException {
       assert flatFieldVectorsWriter.isFinished();
-      if (node > 0) {
+      if (hnswGraphBuilder != null && node > 0) {
         return hnswGraphBuilder.getCompletedGraph();
       } else {
+        // No graph
         return null;
       }
     }
 
     @Override
     public long ramBytesUsed() {
-      return SHALLOW_SIZE
-          + flatFieldVectorsWriter.ramBytesUsed()
-          + hnswGraphBuilder.getGraph().ramBytesUsed();
+      long total = SHALLOW_SIZE + flatFieldVectorsWriter.ramBytesUsed();
+      if (hnswGraphBuilder != null) {
+        total += hnswGraphBuilder.getGraph().ramBytesUsed();
+      }
+      if (bufferedVectors != null) {
+        total += RamUsageEstimator.sizeOfCollection(bufferedVectors);
+      }
+      return total;
     }
   }
 }
