@@ -21,10 +21,11 @@ import org.apache.lucene.index.MergePolicy.OneMerge;
 
 /**
  * A {@link MergeScheduler} that extends {@link ConcurrentMergeScheduler} with bandwidth tracking
- * and limiting capabilities. This scheduler maintains a bandwidth rate bucket that is divided
- * among active merges. When bandwidth is limited, merges are throttled to preserve system resources.
+ * and limiting capabilities. This scheduler maintains a bandwidth rate bucket that is divided among
+ * active merges. When bandwidth is limited, merges are throttled to preserve system resources.
  *
- * <p>Key features: Global bandwidth rate bucket with configurable capacity, dynamic per-merge throttling.
+ * Key features: Global bandwidth rate bucket with configurable capacity, dynamic per-merge
+ * throttling.
  *
  * @lucene.experimental
  */
@@ -48,9 +49,7 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
     super();
   }
 
-  /**
-   * Set the global bandwidth rate bucket in MB/s (default 1000 MB/s)
-   */
+  /** Set the global bandwidth rate bucket in MB/s (default 1000 MB/s) */
   public void setBandwidthRateBucket(double mbPerSec) {
     if (mbPerSec < MIN_MERGE_MB_PER_SEC || mbPerSec > MAX_MERGE_MB_PER_SEC) {
       throw new IllegalArgumentException(
@@ -64,13 +63,12 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
     updateMergeThreads();
   }
 
-  /**
-   * Get the global bandwidth rate bucket in MB/s
-   */
+  /** Get the global bandwidth rate bucket in MB/s */
   public double getBandwidthRateBucket() {
     return bandwidthRateBucket;
   }
 
+  /** Distributes the global bandwidth rate bucket evenly among all active merge threads. */
   @Override
   protected synchronized void updateMergeThreads() {
     super.updateMergeThreads();
@@ -86,6 +84,8 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
                 MIN_MERGE_MB_PER_SEC,
                 Math.min(MAX_MERGE_MB_PER_SEC, bandwidthRateBucket / activeMerges))
             : Double.POSITIVE_INFINITY;
+
+    // Apply the calculated rate limit to each active merge thread
     for (MergeThread mergeThread : mergeThreads) {
       if (mergeThread.isAlive()) {
         mergeThread.rateLimiter.setMBPerSec(perMergeRate);
@@ -93,12 +93,14 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
     }
   }
 
+  /** Creates a custom merge thread with bandwidth tracking capabilities. */
   @Override
   protected synchronized MergeThread getMergeThread(MergeSource mergeSource, OneMerge merge)
       throws IOException {
     return new BandwidthTrackingMergeThread(mergeSource, merge);
   }
 
+  /** Returns a string representation including the current bandwidth rate bucket setting. */
   @Override
   public String toString() {
     return getClass().getSimpleName()
@@ -112,10 +114,12 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
   /** Merge thread that logs the rate limiter value after merge completes. */
   protected class BandwidthTrackingMergeThread extends MergeThread {
     private final double mergeBandwidthMB;
+
     public BandwidthTrackingMergeThread(MergeSource mergeSource, OneMerge merge) {
       super(mergeSource, merge);
       this.mergeBandwidthMB = merge.estimatedMergeBytes / (1024.0 * 1024.0);
     }
+
     @Override
     public void run() {
       long startTime = System.currentTimeMillis();
@@ -129,12 +133,6 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
                   + " MB)");
         }
         super.run(); // IO throttling is handled by the RateLimiter
-        // System.out.println(
-        //     "[BandwidthCappedMergeScheduler] Merge thread for segment "
-        //         + getSegmentName(merge)
-        //         + " ran at "
-        //         + String.format(java.util.Locale.US, "%.2f", this.rateLimiter.getMBPerSec())
-        //         + " MB/s");
       } finally {
         long duration = System.currentTimeMillis() - startTime;
         if (verbose()) {

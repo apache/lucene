@@ -27,14 +27,12 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
-import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
@@ -43,9 +41,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.SuppressForbidden;
 
-/**
- * Comprehensive tests for {@link BandwidthCappedMergeScheduler}.
- */
+/** Comprehensive tests for {@link BandwidthCappedMergeScheduler}. */
 public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
 
   public void testBasicFunctionality() throws Exception {
@@ -81,21 +77,29 @@ public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
     BandwidthCappedMergeScheduler scheduler = new BandwidthCappedMergeScheduler();
 
     // Test invalid bandwidth rates
-    expectThrows(IllegalArgumentException.class, () -> {
-      scheduler.setBandwidthRateBucket(4.0); // below minimum
-    });
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          scheduler.setBandwidthRateBucket(4.0); // below minimum
+        });
 
-    expectThrows(IllegalArgumentException.class, () -> {
-      scheduler.setBandwidthRateBucket(10241.0); // above maximum
-    });
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          scheduler.setBandwidthRateBucket(10241.0); // above maximum
+        });
 
-    expectThrows(IllegalArgumentException.class, () -> {
-      scheduler.setBandwidthRateBucket(0.0);
-    });
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          scheduler.setBandwidthRateBucket(0.0);
+        });
 
-    expectThrows(IllegalArgumentException.class, () -> {
-      scheduler.setBandwidthRateBucket(-1.0);
-    });
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          scheduler.setBandwidthRateBucket(-1.0);
+        });
 
     scheduler.close();
   }
@@ -129,8 +133,11 @@ public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
       for (int i = 0; i < 20; i++) {
         Document doc = new Document();
         doc.add(new StringField("id", String.valueOf(i), Field.Store.YES));
-        doc.add(new TextField("content", "content " + i + " " + 
-            RandomStrings.randomRealisticUnicodeOfLength(random(), 100), Field.Store.YES));
+        doc.add(
+            new TextField(
+                "content",
+                "content " + i + " " + RandomStrings.randomRealisticUnicodeOfLength(random(), 100),
+                Field.Store.YES));
         writer.addDocument(doc);
 
         if (i % 5 == 0) {
@@ -168,7 +175,11 @@ public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
       for (int i = 0; i < 50; i++) {
         Document doc = new Document();
         doc.add(new StringField("id", String.valueOf(i), Field.Store.YES));
-        doc.add(new TextField("content", RandomStrings.randomRealisticUnicodeOfLength(random(), 200), Field.Store.YES));
+        doc.add(
+            new TextField(
+                "content",
+                RandomStrings.randomRealisticUnicodeOfLength(random(), 200),
+                Field.Store.YES));
         writer.addDocument(doc);
 
         if (i % 10 == 0) {
@@ -201,8 +212,11 @@ public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
 
       for (int j = 0; j < 15; j++) {
         Document doc = new Document();
-        doc.add(newTextField("content", "a b c " + 
-            RandomStrings.randomRealisticUnicodeOfLength(random(), 50), Field.Store.NO));
+        doc.add(
+            newTextField(
+                "content",
+                "a b c " + RandomStrings.randomRealisticUnicodeOfLength(random(), 50),
+                Field.Store.NO));
         writer.addDocument(doc);
       }
 
@@ -280,14 +294,16 @@ public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
     Set<Thread> mergeThreadSet = ConcurrentHashMap.newKeySet();
 
     // Track merge threads
-    BandwidthCappedMergeScheduler trackingScheduler = new BandwidthCappedMergeScheduler() {
-      @Override
-      protected synchronized MergeThread getMergeThread(MergeSource mergeSource, MergePolicy.OneMerge merge) throws IOException {
-        MergeThread thread = super.getMergeThread(mergeSource, merge);
-        mergeThreadSet.add(thread);
-        return thread;
-      }
-    };
+    BandwidthCappedMergeScheduler trackingScheduler =
+        new BandwidthCappedMergeScheduler() {
+          @Override
+          protected synchronized MergeThread getMergeThread(
+              MergeSource mergeSource, MergePolicy.OneMerge merge) throws IOException {
+            MergeThread thread = super.getMergeThread(mergeSource, merge);
+            mergeThreadSet.add(thread);
+            return thread;
+          }
+        };
     trackingScheduler.setBandwidthRateBucket(50.0);
 
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
@@ -322,22 +338,23 @@ public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
     scheduler.setBandwidthRateBucket(50.0);
 
     List<String> messages = Collections.synchronizedList(new ArrayList<>());
-    InfoStream infoStream = new InfoStream() {
-      @Override
-      public void close() {}
+    InfoStream infoStream =
+        new InfoStream() {
+          @Override
+          public void close() {}
 
-      @Override
-      public void message(String component, String message) {
-        if (component.equals("MS")) {
-          messages.add(message);
-        }
-      }
+          @Override
+          public void message(String component, String message) {
+            if (component.equals("MS")) {
+              messages.add(message);
+            }
+          }
 
-      @Override
-      public boolean isEnabled(String component) {
-        return component.equals("MS");
-      }
-    };
+          @Override
+          public boolean isEnabled(String component) {
+            return component.equals("MS");
+          }
+        };
 
     IndexWriterConfig config = newIndexWriterConfig();
     config.setMergeScheduler(scheduler);
@@ -407,7 +424,9 @@ public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
       for (int i = 0; i < 10; i++) {
         Document doc = new Document();
         doc.add(new StringField("id", String.valueOf(i), Field.Store.YES));
-        doc.add(new KnnFloatVectorField("vector", new float[]{random().nextFloat(), random().nextFloat()}));
+        doc.add(
+            new KnnFloatVectorField(
+                "vector", new float[] {random().nextFloat(), random().nextFloat()}));
         writer.addDocument(doc);
       }
 
@@ -434,7 +453,11 @@ public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
       for (int i = 0; i < 20; i++) {
         Document doc = new Document();
         doc.add(new StringField("id", String.valueOf(i), Field.Store.YES));
-        doc.add(new TextField("content", RandomStrings.randomRealisticUnicodeOfLength(random(), 500), Field.Store.YES));
+        doc.add(
+            new TextField(
+                "content",
+                RandomStrings.randomRealisticUnicodeOfLength(random(), 500),
+                Field.Store.YES));
         writer.addDocument(doc);
       }
 
@@ -461,26 +484,28 @@ public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
     // Create multiple threads that access bandwidth methods concurrently
     for (int i = 0; i < 3; i++) {
       final int threadId = i;
-      Thread t = new Thread(() -> {
-        try {
-          startLatch.await();
+      Thread t =
+          new Thread(
+              () -> {
+                try {
+                  startLatch.await();
 
-          for (int j = 0; j < 100; j++) {
-            double bandwidth = scheduler.getBandwidthRateBucket();
-            assertTrue("Bandwidth should be positive", bandwidth > 0);
+                  for (int j = 0; j < 100; j++) {
+                    double bandwidth = scheduler.getBandwidthRateBucket();
+                    assertTrue("Bandwidth should be positive", bandwidth > 0);
 
-            // Test setting bandwidth
-            scheduler.setBandwidthRateBucket(50.0 + (j % 10));
+                    // Test setting bandwidth
+                    scheduler.setBandwidthRateBucket(50.0 + (j % 10));
 
-            Thread.yield();
-          }
-        } catch (Exception e) {
-          failed.set(true);
-          e.printStackTrace();
-        } finally {
-          doneLatch.countDown();
-        }
-      });
+                    Thread.yield();
+                  }
+                } catch (Exception e) {
+                  failed.set(true);
+                  e.printStackTrace();
+                } finally {
+                  doneLatch.countDown();
+                }
+              });
       t.start();
     }
 
@@ -497,7 +522,9 @@ public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
     BandwidthCappedMergeScheduler scheduler = new BandwidthCappedMergeScheduler();
 
     // Test that it properly inherits from ConcurrentMergeScheduler
-    assertTrue("Should be instance of ConcurrentMergeScheduler", scheduler instanceof ConcurrentMergeScheduler);
+    assertTrue(
+        "Should be instance of ConcurrentMergeScheduler",
+        scheduler instanceof ConcurrentMergeScheduler);
     assertTrue("Should be instance of MergeScheduler", scheduler instanceof MergeScheduler);
 
     // Test inherited methods work
@@ -588,14 +615,16 @@ public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
   public void testBandwidthTrackingMergeThread() throws IOException {
     Directory dir = newDirectory();
     final AtomicInteger mergeThreadCount = new AtomicInteger(0);
-    
-    BandwidthCappedMergeScheduler scheduler = new BandwidthCappedMergeScheduler() {
-      @Override
-      protected synchronized MergeThread getMergeThread(MergeSource mergeSource, MergePolicy.OneMerge merge) throws IOException {
-        mergeThreadCount.incrementAndGet();
-        return super.getMergeThread(mergeSource, merge);
-      }
-    };
+
+    BandwidthCappedMergeScheduler scheduler =
+        new BandwidthCappedMergeScheduler() {
+          @Override
+          protected synchronized MergeThread getMergeThread(
+              MergeSource mergeSource, MergePolicy.OneMerge merge) throws IOException {
+            mergeThreadCount.incrementAndGet();
+            return super.getMergeThread(mergeSource, merge);
+          }
+        };
     scheduler.setBandwidthRateBucket(100.0);
 
     IndexWriterConfig config = newIndexWriterConfig();
@@ -606,7 +635,11 @@ public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
       for (int i = 0; i < 10; i++) {
         Document doc = new Document();
         doc.add(new StringField("id", String.valueOf(i), Field.Store.YES));
-        doc.add(new TextField("content", RandomStrings.randomRealisticUnicodeOfLength(random(), 100), Field.Store.YES));
+        doc.add(
+            new TextField(
+                "content",
+                RandomStrings.randomRealisticUnicodeOfLength(random(), 100),
+                Field.Store.YES));
         writer.addDocument(doc);
       }
 
@@ -665,7 +698,7 @@ public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
 
   public void testDefaultBandwidthValue() throws IOException {
     BandwidthCappedMergeScheduler scheduler = new BandwidthCappedMergeScheduler();
-    
+
     // Should start with default value of 1000 MB/s
     assertEquals(1000.0, scheduler.getBandwidthRateBucket(), 0.001);
 
