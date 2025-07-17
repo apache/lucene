@@ -208,7 +208,7 @@ Optimizations
 
 * GITHUB#14906: Use branchless way to speedup filterCompetitiveHits. (Adrien Grand, Ge Song)
 
-* GITHUB#14935,GH14910: Speed up PostingsEnum#nextPostings when block is encoded as bitset. (Guo Feng)
+* GITHUB#14935,GH#14910: Speed up PostingsEnum#nextPostings when block is encoded as bitset. (Guo Feng)
 
 * GITHUB#14936: Don't do the filtered knn path when the provided filter is a MatchAllDocsQuery. (Ben Trent)
 
