@@ -24,7 +24,7 @@ import org.apache.lucene.index.MergePolicy.OneMerge;
  * and limiting capabilities. This scheduler maintains a bandwidth rate bucket that is divided among
  * active merges. When bandwidth is limited, merges are throttled to preserve system resources.
  *
- * Key features: Global bandwidth rate bucket with configurable capacity, dynamic per-merge
+ * <p>Key features: Global bandwidth rate bucket with configurable capacity, dynamic per-merge
  * throttling.
  *
  * @lucene.experimental

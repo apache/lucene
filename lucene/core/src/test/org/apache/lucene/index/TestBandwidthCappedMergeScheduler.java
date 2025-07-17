@@ -483,7 +483,6 @@ public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
 
     // Create multiple threads that access bandwidth methods concurrently
     for (int i = 0; i < 3; i++) {
-      final int threadId = i;
       Thread t =
           new Thread(
               () -> {
