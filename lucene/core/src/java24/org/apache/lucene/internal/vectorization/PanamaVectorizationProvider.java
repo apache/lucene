@@ -91,6 +91,11 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
 
   @Override
   public BitSetUtil newBitSetUtil() {
-    return PanamaBitSetUtil.INSTANCE;
+    if (Constants.HAS_FAST_COMPRESS_MASK_CAST
+        && PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE >= 256) {
+      return PanamaBitSetUtil.INSTANCE;
+    } else {
+      return BitSetUtil.INSTANCE;
+    }
   }
 }

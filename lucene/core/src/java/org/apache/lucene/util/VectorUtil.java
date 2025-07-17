@@ -18,6 +18,7 @@
 package org.apache.lucene.util;
 
 import java.util.stream.IntStream;
+import org.apache.lucene.internal.vectorization.BitSetUtil;
 import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 
