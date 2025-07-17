@@ -20,6 +20,7 @@ import java.util.stream.IntStream;
 import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
+import org.apache.lucene.util.SuppressForbidden;
 
 public class PanamaBitSetUtil extends BitSetUtil {
 
@@ -39,6 +40,7 @@ public class PanamaBitSetUtil extends BitSetUtil {
     return intWord2Array((int) (word >>> 32), docs, offset, base + 32);
   }
 
+  @SuppressForbidden(reason = "Uses compress only where fast and carefully contained")
   private static int intWord2Array(int word, int[] resultArray, int offset, int base) {
     IntVector bitMask = IntVector.fromArray(INT_SPECIES, IDENTITY_MASK, 0);
 
