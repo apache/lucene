@@ -68,7 +68,6 @@ import org.apache.lucene.util.VectorUtil;
 public final class Lucene103PostingsReader extends PostingsReaderBase {
 
   static final VectorizationProvider VECTORIZATION_PROVIDER = VectorizationProvider.getInstance();
-
   // Dummy impacts, composed of the maximum possible term frequency and the lowest possible
   // (unsigned) norm value. This is typically used on tail blocks, which don't actually record
   // impacts as the storage overhead would not be worth any query evaluation speedup, since there's
@@ -1051,7 +1050,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
       }
 
       // Only return docs from the current block
-      // +16 to make bitSetUtil#bitsetToArray work, see its java doc.
+      // +16 to make BitSetUtil#bitsetToArray work, see its java doc.
       buffer.growNoCopy(BLOCK_SIZE + 16);
       upTo = (int) Math.min(upTo, level0LastDocID + 1L);
 
