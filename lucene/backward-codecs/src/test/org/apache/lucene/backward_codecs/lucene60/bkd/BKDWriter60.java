@@ -814,7 +814,7 @@ public class BKDWriter60 implements Closeable {
       scratchBytesRef1.bytes = leafValues;
 
       final IntFunction<BytesRef> packedValues =
-          new IntFunction<BytesRef>() {
+          new IntFunction<>() {
             @Override
             public BytesRef apply(int i) {
               scratchBytesRef1.offset = packedBytesLength * i;
@@ -1795,7 +1795,7 @@ public class BKDWriter60 implements Closeable {
 
       // Write the full values:
       IntFunction<BytesRef> packedValues =
-          new IntFunction<BytesRef>() {
+          new IntFunction<>() {
             @Override
             public BytesRef apply(int i) {
               reader.getValue(from + i, scratchBytesRef1);
@@ -2052,7 +2052,7 @@ public class BKDWriter60 implements Closeable {
 
       // Write the full values:
       IntFunction<BytesRef> packedValues =
-          new IntFunction<BytesRef>() {
+          new IntFunction<>() {
             final BytesRef scratch = new BytesRef();
 
             {

@@ -1574,7 +1574,7 @@ final class IndexingChain implements Accountable {
    */
   <T extends IndexableField> ReservedField<T> markAsReserved(T field) {
     getOrAddPerField(field.name(), true);
-    return new ReservedField<T>(field);
+    return new ReservedField<>(field);
   }
 
   static final class ReservedField<T extends IndexableField> implements IndexableField {

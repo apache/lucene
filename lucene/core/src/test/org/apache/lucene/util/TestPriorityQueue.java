@@ -215,7 +215,7 @@ public class TestPriorityQueue extends LuceneTestCase {
     Integer lastLeast = null;
 
     // Basic insertion of new content
-    ArrayList<Integer> sds = new ArrayList<Integer>(numDocsInPQ);
+    ArrayList<Integer> sds = new ArrayList<>(numDocsInPQ);
     for (int i = 0; i < numDocsInPQ * 10; i++) {
       Integer newEntry = Math.abs(random.nextInt());
       sds.add(newEntry);

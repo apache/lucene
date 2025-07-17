@@ -148,24 +148,24 @@ public class TestDistinctValuesCollector extends AbstractGroupingTestCase {
     assertEquals(4, gcs.size());
 
     compareNull(gcs.get(0).groupValue);
-    List<Comparable<?>> countValues = new ArrayList<Comparable<?>>(gcs.get(0).uniqueValues);
+    List<Comparable<?>> countValues = new ArrayList<>(gcs.get(0).uniqueValues);
     assertEquals(1, countValues.size());
     compare("1", countValues.get(0));
 
     compare("1", gcs.get(1).groupValue);
-    countValues = new ArrayList<Comparable<?>>(gcs.get(1).uniqueValues);
+    countValues = new ArrayList<>(gcs.get(1).uniqueValues);
     Collections.sort(countValues, nullComparator);
     assertEquals(2, countValues.size());
     compare("1", countValues.get(0));
     compare("2", countValues.get(1));
 
     compare("2", gcs.get(2).groupValue);
-    countValues = new ArrayList<Comparable<?>>(gcs.get(2).uniqueValues);
+    countValues = new ArrayList<>(gcs.get(2).uniqueValues);
     assertEquals(1, countValues.size());
     compareNull(countValues.get(0));
 
     compare("3", gcs.get(3).groupValue);
-    countValues = new ArrayList<Comparable<?>>(gcs.get(3).uniqueValues);
+    countValues = new ArrayList<>(gcs.get(3).uniqueValues);
     assertEquals(1, countValues.size());
     compare("1", countValues.get(0));
 
@@ -180,19 +180,19 @@ public class TestDistinctValuesCollector extends AbstractGroupingTestCase {
     assertEquals(3, gcs.size());
 
     compare("1", gcs.get(0).groupValue);
-    countValues = new ArrayList<Comparable<?>>(gcs.get(0).uniqueValues);
+    countValues = new ArrayList<>(gcs.get(0).uniqueValues);
     assertEquals(2, countValues.size());
     Collections.sort(countValues, nullComparator);
     compare("1", countValues.get(0));
     compare("2", countValues.get(1));
 
     compare("2", gcs.get(1).groupValue);
-    countValues = new ArrayList<Comparable<?>>(gcs.get(1).uniqueValues);
+    countValues = new ArrayList<>(gcs.get(1).uniqueValues);
     assertEquals(1, countValues.size());
     compareNull(countValues.get(0));
 
     compare("3", gcs.get(2).groupValue);
-    countValues = new ArrayList<Comparable<?>>(gcs.get(2).uniqueValues);
+    countValues = new ArrayList<>(gcs.get(2).uniqueValues);
     assertEquals(1, countValues.size());
     compare("1", countValues.get(0));
 
@@ -207,13 +207,13 @@ public class TestDistinctValuesCollector extends AbstractGroupingTestCase {
     assertEquals(2, gcs.size());
 
     compare("1", gcs.get(0).groupValue);
-    countValues = new ArrayList<Comparable<?>>(gcs.get(0).uniqueValues);
+    countValues = new ArrayList<>(gcs.get(0).uniqueValues);
     // B/c the only one document matched with blob inside the author 1 group
     assertEquals(1, countValues.size());
     compare("1", countValues.get(0));
 
     compare("3", gcs.get(1).groupValue);
-    countValues = new ArrayList<Comparable<?>>(gcs.get(1).uniqueValues);
+    countValues = new ArrayList<>(gcs.get(1).uniqueValues);
     assertEquals(1, countValues.size());
     compare("1", countValues.get(0));
 
