@@ -785,7 +785,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
         bitSet.set(random().nextInt(bitSet.length()));
       }
 
-      int[] array = new int[BLOCK_SIZE + 1];
+      int[] array = new int[BLOCK_SIZE + 16];
       int from, to, size;
       if (random().nextBoolean()) {
         from = 0;
