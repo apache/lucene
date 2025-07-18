@@ -873,7 +873,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
 
     @Override
     public Iterator<String> iterator() {
-      return new Iterator<String>() {
+      return new Iterator<>() {
         int i = 0;
 
         @Override

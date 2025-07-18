@@ -205,7 +205,7 @@ public final class ListOfOutputs<T> extends Outputs<Object> {
   }
 
   private static final long BASE_LIST_NUM_BYTES =
-      RamUsageEstimator.shallowSizeOf(new ArrayList<Object>());
+      RamUsageEstimator.shallowSizeOf(new ArrayList<>());
 
   @Override
   public long ramBytesUsed(Object output) {
