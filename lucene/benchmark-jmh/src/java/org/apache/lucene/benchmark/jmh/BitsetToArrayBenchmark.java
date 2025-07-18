@@ -340,6 +340,7 @@ public class BitsetToArrayBenchmark {
   private static final int[] IDENTITY = IntStream.range(0, Long.SIZE).toArray();
   private static final int[] IDENTITY_MASK = IntStream.range(0, 16).map(i -> 1 << i).toArray();
   private static final int MASK = (1 << IntVector.SPECIES_PREFERRED.length()) - 1;
+//  private static final IntVector BIT_MASK = IntVector.fromArray(IntVector.SPECIES_PREFERRED, IDENTITY_MASK, 0);
 
   private static int _denseBranchLessVectorized(
       long word, int[] resultArray, int offset, int base) {
@@ -349,18 +350,13 @@ public class BitsetToArrayBenchmark {
 
   private static int _denseBranchLessVectorizedInt(
       int word, int[] resultArray, int offset, int base) {
+    IntVector baseVector = IntVector.broadcast(IntVector.SPECIES_PREFERRED, base);
     IntVector bitMask = IntVector.fromArray(IntVector.SPECIES_PREFERRED, IDENTITY_MASK, 0);
 
     for (int i = 0; i < Integer.SIZE; i += IntVector.SPECIES_PREFERRED.length()) {
-      VectorMask<Integer> mask =
-          IntVector.broadcast(IntVector.SPECIES_PREFERRED, word)
-              .and(bitMask)
-              .compare(VectorOperators.NE, 0);
-
       IntVector.fromArray(IntVector.SPECIES_PREFERRED, IDENTITY, i)
-          .add(base)
-          .compress(mask)
-          .reinterpretAsInts()
+          .add(baseVector)
+          .compress(bitMask.and(word).compare(VectorOperators.NE, 0))
           .intoArray(resultArray, offset);
 
       offset += Integer.bitCount(word & MASK); // faster than mask.trueCount()
