@@ -21,12 +21,8 @@ import java.util.Random;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.IntSupplier;
-import java.util.stream.IntStream;
-import jdk.incubator.vector.ByteVector;
-import jdk.incubator.vector.IntVector;
-import jdk.incubator.vector.VectorMask;
-import jdk.incubator.vector.VectorOperators;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.FixedBitSet;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -52,101 +48,156 @@ public class BitsetToArrayBenchmark {
 
   private final SplittableRandom R = new SplittableRandom(4314123142L);
 
-  @Param({"5", "10", "20", "30", "40", "50", "60"})
-  int bitCount;
+  @Param({"256", "384", "512", "768", "1024"})
+  int bitLength;
 
-  private long word;
-  private int[] resultArray;
   private int base;
-  private int offset;
+  private FixedBitSet bitSet;
+  private final int[] resultArray = new int[128 + 16];
+  private final int[] scratch = new int[32];
 
   @Setup(Level.Trial)
   public void setup() {
+    bitSet = new FixedBitSet(bitLength);
+    if (bitLength % Long.SIZE != 0) {
+      throw new IllegalArgumentException(
+          "bitLength must be a multiple of 64, but was: " + bitLength);
+    }
+  }
+
+  @Setup(Level.Iteration)
+  public void setupIteration() {
+    while (bitSet.cardinality() < 128) {
+      bitSet.set(R.nextInt(bitLength));
+    }
     base = R.nextInt(1000);
-    resultArray = new int[bitCount + 64 + Long.SIZE];
   }
 
   @Setup(Level.Invocation)
   public void setupInvocation() {
-    word = 0L;
-    while (Long.bitCount(word) < bitCount) {
-      word |= 1L << R.nextInt(64);
+    // light-weight shuffle of bits
+    long[] bits = bitSet.getBits();
+    long first = bits[0], last = bits[bits.length - 1];
+    for (int i = 0; i < bits.length - 1; i++) {
+      bits[i] = Long.reverseBytes((bits[i] << 31) | (bits[i + 1] >>> 33));
     }
-    offset = R.nextInt(64);
+    bits[bits.length - 1] = Long.reverseBytes((last << 31) | (first >>> 33));
   }
 
   @Benchmark
   public int whileLoop() {
-    return _whileLoop(word, resultArray, offset, base);
+    int offset = 0;
+    for (long bit : bitSet.getBits()) {
+      offset = _whileLoop(bit, resultArray, offset, base);
+    }
+    return offset;
   }
 
   @Benchmark
   public int forLoop() {
-    return _forLoop(word, resultArray, offset, base);
+    int offset = 0;
+    for (long bit : bitSet.getBits()) {
+      offset = _forLoop(bit, resultArray, offset, base);
+    }
+    return offset;
   }
 
   @Benchmark
   public int forLoopManualUnrolling() {
-    return _forLoopManualUnrolling(word, resultArray, offset, base);
+    int offset = 0;
+    for (long bit : bitSet.getBits()) {
+      offset = _forLoopManualUnrolling(bit, resultArray, offset, base);
+    }
+    return offset;
   }
 
   @Benchmark
   public int dense() {
-    return _dense(word, resultArray, offset, base);
+    int offset = 0;
+    for (long bit : bitSet.getBits()) {
+      offset = _dense(bit, resultArray, offset, base);
+    }
+    return offset;
   }
 
   @Benchmark
   public int denseBranchLess() {
-    return _denseBranchLess(word, resultArray, offset, base);
+    int offset = 0;
+    for (long bit : bitSet.getBits()) {
+      offset = _denseBranchLess(bit, resultArray, offset, base);
+    }
+    return offset;
   }
 
   @Benchmark
   public int denseBranchLessUnrolling() {
-    return _denseBranchLessUnrolling(word, resultArray, offset, base);
+    int offset = 0;
+    for (long bit : bitSet.getBits()) {
+      offset = _denseBranchLessUnrolling(bit, resultArray, offset, base);
+    }
+    return offset;
   }
 
   @Benchmark
   public int denseBranchLessParallel() {
-    return _denseBranchLessParallel(word, resultArray, offset, base);
-  }
-
-  @Benchmark
-  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
-  public int denseBranchLessVectorized512() {
-    return _denseBranchLessVectorized512(word, resultArray, offset, base);
-  }
-
-  @Benchmark
-  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
-  public int denseBranchLessVectorized() {
-    return _denseBranchLessVectorized(word, resultArray, offset, base);
-  }
-
-  @Benchmark
-  @Fork(jvmArgsPrepend = {"-XX:UseAVX=2", "--add-modules=jdk.incubator.vector"})
-  public int denseBranchLessVectorized512AVX2() {
-    return _denseBranchLessVectorized512(word, resultArray, offset, base);
-  }
-
-  @Benchmark
-  @Fork(jvmArgsPrepend = {"-XX:UseAVX=2", "--add-modules=jdk.incubator.vector"})
-  public int denseBranchLessVectorizedAVX2() {
-    return _denseBranchLessVectorized(word, resultArray, offset, base);
+    int offset = 0;
+    for (long bit : bitSet.getBits()) {
+      offset = _denseBranchLessParallel(bit, resultArray, offset, base);
+    }
+    return offset;
   }
 
   @Benchmark
   public int denseBranchLessCmov() {
-    return _denseBranchLessCmov(word, resultArray, offset, base);
+    int offset = 0;
+    for (long bit : bitSet.getBits()) {
+      offset = _denseBranchLessCmov(bit, resultArray, offset, base);
+    }
+    return offset;
   }
 
   @Benchmark
   public int denseInvert() {
-    return _denseInvert(word, resultArray, offset, base);
+    int offset = 0;
+    for (long bit : bitSet.getBits()) {
+      offset = _denseInvert(bit, resultArray, offset, base);
+    }
+    return offset;
   }
 
   @Benchmark
   public int hybrid() {
-    return _hybrid(word, resultArray, offset, base);
+    int offset = 0;
+    for (long bit : bitSet.getBits()) {
+      offset = _hybrid(bit, resultArray, offset, base);
+    }
+    return offset;
+  }
+
+  @Benchmark
+  public int hybridUnrolling() {
+    int offset = 0, i = 0;
+    long[] bits = bitSet.getBits();
+    for (int to = bits.length - 3; i < to; i += 4) {
+      int bitCount1 = Long.bitCount(bits[i]);
+      int bitCount2 = Long.bitCount(bits[i + 1]);
+      int bitCount3 = Long.bitCount(bits[i + 2]);
+      int bitCount4 = Long.bitCount(bits[i + 3]);
+      int offset1 = bitCount1 + offset;
+      int offset2 = bitCount2 + offset1;
+      int offset3 = bitCount3 + offset2;
+      _hybridBitCount(bits[i], resultArray, offset, bitCount1, base);
+      _hybridBitCount(bits[i + 1], resultArray, offset1, bitCount2, base);
+      _hybridBitCount(bits[i + 2], resultArray, offset2, bitCount3, base);
+      _hybridBitCount(bits[i + 3], resultArray, offset3, bitCount4, base);
+      offset = offset3 + bitCount4;
+    }
+    for (; i < bits.length; i++) {
+      int bitCount = Long.bitCount(bits[i]);
+      _hybridBitCount(bits[i], resultArray, offset, bitCount, base);
+      offset += bitCount;
+    }
+    return offset;
   }
 
   private static int _whileLoop(long word, int[] resultArray, int offset, int base) {
@@ -390,94 +441,6 @@ public class BitsetToArrayBenchmark {
     return hOffset;
   }
 
-  private static final byte[] IDENTITY_BYTES = new byte[64];
-
-  static {
-    for (int i = 0; i < IDENTITY_BYTES.length; i++) {
-      IDENTITY_BYTES[i] = (byte) i;
-    }
-  }
-
-  // NOCOMMIT remove vectorized methods and requirement on vector module before merge.
-  @SuppressWarnings("fallthrough")
-  private static int _denseBranchLessVectorized512(
-      long word, int[] resultArray, int offset, int base) {
-    if (word == 0L) {
-      return offset;
-    }
-
-    int bitCount = Long.bitCount(word);
-
-    VectorMask<Byte> mask = VectorMask.fromLong(ByteVector.SPECIES_512, word);
-    ByteVector indices =
-        ByteVector.fromArray(ByteVector.SPECIES_512, IDENTITY_BYTES, 0).compress(mask);
-
-    switch ((bitCount - 1) >> 4) {
-      case 3:
-        indices
-            .convert(VectorOperators.B2I, 3)
-            .reinterpretAsInts()
-            .add(base)
-            .intoArray(resultArray, offset + 48);
-      case 2:
-        indices
-            .convert(VectorOperators.B2I, 2)
-            .reinterpretAsInts()
-            .add(base)
-            .intoArray(resultArray, offset + 32);
-      case 1:
-        indices
-            .convert(VectorOperators.B2I, 1)
-            .reinterpretAsInts()
-            .add(base)
-            .intoArray(resultArray, offset + 16);
-      case 0:
-        indices
-            .convert(VectorOperators.B2I, 0)
-            .reinterpretAsInts()
-            .add(base)
-            .intoArray(resultArray, offset);
-        break;
-      default:
-        throw new IllegalStateException(bitCount + "");
-    }
-
-    return offset + bitCount;
-  }
-
-  private static final int[] IDENTITY = IntStream.range(0, Long.SIZE).toArray();
-  private static final int[] IDENTITY_MASK = IntStream.range(0, 16).map(i -> 1 << i).toArray();
-  private static final int MASK = (1 << IntVector.SPECIES_PREFERRED.length()) - 1;
-
-  private static int _denseBranchLessVectorized(
-      long word, int[] resultArray, int offset, int base) {
-    offset = _denseBranchLessVectorizedInt((int) word, resultArray, offset, base);
-    return _denseBranchLessVectorizedInt((int) (word >>> 32), resultArray, offset, base + 32);
-  }
-
-  private static int _denseBranchLessVectorizedInt(
-      int word, int[] resultArray, int offset, int base) {
-    IntVector bitMask = IntVector.fromArray(IntVector.SPECIES_PREFERRED, IDENTITY_MASK, 0);
-
-    for (int i = 0; i < Integer.SIZE; i += IntVector.SPECIES_PREFERRED.length()) {
-      VectorMask<Integer> mask =
-          IntVector.broadcast(IntVector.SPECIES_PREFERRED, word)
-              .and(bitMask)
-              .compare(VectorOperators.NE, 0);
-
-      IntVector.fromArray(IntVector.SPECIES_PREFERRED, IDENTITY, i)
-          .add(base)
-          .compress(mask)
-          .reinterpretAsInts()
-          .intoArray(resultArray, offset);
-
-      offset += Integer.bitCount(word & MASK); // faster than mask.trueCount()
-      word >>>= IntVector.SPECIES_PREFERRED.length();
-    }
-
-    return offset;
-  }
-
   private static int _denseInvert(long word, int[] resultArray, int offset, int base) {
     int bit = 0;
     while (word != 0L) {
@@ -513,6 +476,31 @@ public class BitsetToArrayBenchmark {
     return to;
   }
 
+  private static void _hybridBitCount(
+      long word, int[] resultArray, int offset, int bitCount, int base) {
+    if (bitCount >= 32) {
+      final int lWord = (int) word;
+      final int hWord = (int) (word >>> 32);
+      final int offset32 = offset + Integer.bitCount(lWord);
+
+      int hOffset = offset32;
+      for (int i = 0; i < 32; i++) {
+        resultArray[offset] = base + i;
+        resultArray[hOffset] = base + i + 32;
+        offset += (lWord >>> i) & 1;
+        hOffset += (hWord >>> i) & 1;
+      }
+
+      resultArray[offset32] = base + 32 + Integer.numberOfTrailingZeros(hWord);
+    } else {
+      for (int i = offset, to = offset + bitCount; i < to; i++) {
+        int ntz = Long.numberOfTrailingZeros(word);
+        resultArray[i] = base + ntz;
+        word ^= 1L << ntz;
+      }
+    }
+  }
+
   public static void main(String[] args) {
     Random r = new Random(System.currentTimeMillis());
     long word = r.nextLong();
@@ -529,11 +517,14 @@ public class BitsetToArrayBenchmark {
           () -> _denseBranchLess(word, actual, 0, 0),
           () -> _denseBranchLessUnrolling(word, actual, 0, 0),
           () -> _denseBranchLessParallel(word, actual, 0, 0),
-          () -> _denseBranchLessVectorized512(word, actual, 0, 0),
-          () -> _denseBranchLessVectorized(word, actual, 0, 0),
           () -> _denseBranchLessCmov(word, actual, 0, 0),
           () -> _denseInvert(word, actual, 0, 0),
-          () -> _hybrid(word, actual, 0, 0)
+          () -> _hybrid(word, actual, 0, 0),
+          () -> {
+            int bitCount = Long.bitCount(word);
+            _hybridBitCount(word, actual, 0, bitCount, 0);
+            return bitCount;
+          }
         }) {
       int actualSize = supplier.getAsInt();
       if (actualSize != expectedSize) {
