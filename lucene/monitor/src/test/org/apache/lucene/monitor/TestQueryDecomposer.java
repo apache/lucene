@@ -20,6 +20,7 @@ package org.apache.lucene.monitor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.lucene.index.Term;
@@ -47,41 +48,44 @@ public class TestQueryDecomposer extends MonitorTestBase {
 
   public void testNestedDisjunctions() {
     Query q = parse("(hello goodbye) world");
-    List<Query> expected = Arrays.asList(parse("world"), parse("hello"), parse("goodbye"));
-    assertEquals(expected, new ArrayList<>(decomposer.decompose(q)));
+    Set<Query> expected =
+        new HashSet<>(Arrays.asList(parse("hello"), parse("goodbye"), parse("world")));
+    assertEquals(expected, decomposer.decompose(q));
   }
 
   public void testExclusions() {
-    List<Query> expected = Arrays.asList(parse("+world -goodbye"), parse("+hello -goodbye"));
-    assertEquals(expected, new ArrayList<>(decomposer.decompose(parse("hello world -goodbye"))));
+    Set<Query> expected =
+        new HashSet<>(Arrays.asList(parse("+hello -goodbye"), parse("+world -goodbye")));
+    assertEquals(expected, decomposer.decompose(parse("hello world -goodbye")));
   }
 
   public void testNestedExclusions() {
-    List<Query> expected =
-        Arrays.asList(parse("+(+world -goodbye) -greeting"), parse("+(+hello -goodbye) -greeting"));
-    assertEquals(
-        expected,
-        new ArrayList<>(decomposer.decompose(parse("((hello world) -goodbye) -greeting"))));
+    Set<Query> expected =
+        new HashSet<>(
+            Arrays.asList(
+                parse("+(+hello -goodbye) -greeting"), parse("+(+world -goodbye) -greeting")));
+    assertEquals(expected, decomposer.decompose(parse("((hello world) -goodbye) -greeting")));
   }
 
   public void testSingleValuedConjunctions() {
-    List<Query> expected = Arrays.asList(parse("world"), parse("hello"));
-    assertEquals(expected, new ArrayList<>(decomposer.decompose(parse("+(hello world)"))));
+    Set<Query> expected = new HashSet<>(Arrays.asList(parse("hello"), parse("world")));
+    assertEquals(expected, decomposer.decompose(parse("+(hello world)")));
   }
 
   public void testSingleValuedConjunctWithExclusions() {
-    List<Query> expected = Arrays.asList(parse("+world -goodbye"), parse("+hello -goodbye"));
-    assertEquals(expected, new ArrayList<>(decomposer.decompose(parse("+(hello world) -goodbye"))));
+    Set<Query> expected =
+        new HashSet<>(Arrays.asList(parse("+hello -goodbye"), parse("+world -goodbye")));
+    assertEquals(expected, decomposer.decompose(parse("+(hello world) -goodbye")));
   }
 
   public void testBoostsArePreserved() {
-    List<Query> expected = Arrays.asList(parse("world^0.7"), parse("hello^0.7"));
-    assertEquals(expected, new ArrayList<>(decomposer.decompose(parse("+(hello world)^0.7"))));
-    expected = Arrays.asList(parse("+world^0.7 -goodbye"), parse("+hello^0.7 -goodbye"));
-    assertEquals(
-        expected, new ArrayList<>(decomposer.decompose(parse("+(hello world)^0.7 -goodbye"))));
-    expected = Arrays.asList(parse("world^0.8"), parse("(hello^0.5)^0.8"));
-    assertEquals(expected, new ArrayList<>(decomposer.decompose(parse("+(hello^0.5 world)^0.8"))));
+    Set<Query> expected = new HashSet<>(Arrays.asList(parse("hello^0.7"), parse("world^0.7")));
+    assertEquals(expected, decomposer.decompose(parse("+(hello world)^0.7")));
+    expected =
+        new HashSet<>(Arrays.asList(parse("+hello^0.7 -goodbye"), parse("+world^0.7 -goodbye")));
+    assertEquals(expected, decomposer.decompose(parse("+(hello world)^0.7 -goodbye")));
+    expected = new HashSet<>(Arrays.asList(parse("(hello^0.5)^0.8"), parse("world^0.8")));
+    assertEquals(expected, decomposer.decompose(parse("+(hello^0.5 world)^0.8")));
   }
 
   public void testDisjunctionMaxDecomposition() {
@@ -89,14 +93,15 @@ public class TestQueryDecomposer extends MonitorTestBase {
         new DisjunctionMaxQuery(
             Arrays.asList(new TermQuery(new Term("f", "t1")), new TermQuery(new Term("f", "t2"))),
             0.1f);
-    List<Query> expected = Arrays.asList(parse("f:t1"), parse("f:t2"));
-    assertEquals(expected, new ArrayList<>(decomposer.decompose(q)));
+    Set<Query> expected = new HashSet<>(Arrays.asList(parse("f:t1"), parse("f:t2")));
+    assertEquals(expected, decomposer.decompose(q));
   }
 
   public void testNestedDisjunctionMaxDecomposition() {
     Query q = new DisjunctionMaxQuery(Arrays.asList(parse("hello goodbye"), parse("world")), 0.1f);
-    List<Query> expected = Arrays.asList(parse("world"), parse("hello"), parse("goodbye"));
-    assertEquals(expected, new ArrayList<>(decomposer.decompose(q)));
+    Set<Query> expected =
+        new HashSet<>(Arrays.asList(parse("hello"), parse("goodbye"), parse("world")));
+    assertEquals(expected, decomposer.decompose(q));
   }
 
   public void testFilterAndShouldClause() {
