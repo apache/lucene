@@ -107,6 +107,7 @@ final class PosixNativeAccess extends NativeAccess {
     return findFunction(linker, stdlib, "getpagesize", FunctionDescriptor.of(ValueLayout.JAVA_INT));
   }
 
+  @SuppressWarnings("restricted") // unsafe functionality is used
   private static MethodHandle findFunction(
       Linker linker, SymbolLookup lookup, String name, FunctionDescriptor desc) {
     final MemorySegment symbol =

@@ -46,10 +46,12 @@ dependencies {
   implementation deps.randomizedtesting.runner
   implementation deps.gjf
   implementation deps.jgit
+  implementation deps.ecj
 
   implementation plugin(deps.plugins.carrotsearch.buildopts)
   implementation plugin(deps.plugins.carrotsearch.dependencychecks)
   implementation plugin(deps.plugins.forbiddenapis)
+  implementation plugin(deps.plugins.undercouch.download)
 }
 
 tasks.matching {
@@ -59,18 +61,11 @@ tasks.matching {
     "validateJarChecksums",
     "validateJarLicenses",
     "collectJarInfos",
-    "compileJava",
+    // we do need to compile the sources so that forbidden apis are applied (?)
+    // "compileJava",
     "compileTestJava",
     "assemble"
   ]
 }.configureEach {
   enabled = false
-}
-
-// make certain tasks think their sources are from build-infra.
-if (!isIdea) {
-  plugins.withType(JavaPlugin).configureEach {
-    SourceSet main = sourceSets.main
-    main.java.srcDirs = rootProject.files("build-tools/build-infra/src/main/java")
-  }
 }

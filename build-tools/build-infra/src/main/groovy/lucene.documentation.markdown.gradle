@@ -26,7 +26,8 @@ import com.vladsch.flexmark.parser.ParserEmulationProfile;
 import com.vladsch.flexmark.util.ast.Document;
 import com.vladsch.flexmark.util.data.MutableDataSet;
 import com.vladsch.flexmark.util.sequence.Escaping;
-import groovy.text.SimpleTemplateEngine;
+import groovy.text.SimpleTemplateEngine
+import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension
 
 configure(project(':lucene:documentation')) {
   tasks.register("markdownToHtml", Copy, {
@@ -58,6 +59,13 @@ configure(project(':lucene:documentation')) {
 
     // list all properties used by the template here to allow uptodate checks to be correct:
     inputs.property('version', project.version)
+
+    def buildGlobals = project.extensions.getByType(LuceneBuildGlobalsExtension)
+
+    binding.put("project", [
+      "version": project.version,
+      "majorVersion": buildGlobals.majorVersion
+    ])
 
     binding.put('defaultCodecPackage', providers.provider {
       // static Codec defaultCodec   =   LOADER    .   lookup    (   "LuceneXXX"  )   ;
@@ -156,9 +164,7 @@ class MarkdownTemplateTask extends DefaultTask {
   @TaskAction
   void transform() {
     def engine = new SimpleTemplateEngine();
-    def resolvedBinding = binding.get() + [
-      project : project
-    ]
+    def resolvedBinding = new HashMap(binding.get())
     String markdown = templateFile.withReader('UTF-8') {
       engine.createTemplate(it).make(resolvedBinding).toString();
     }

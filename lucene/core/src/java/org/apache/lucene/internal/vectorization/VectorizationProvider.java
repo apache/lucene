@@ -46,7 +46,6 @@ import org.apache.lucene.util.VectorUtil;
 public abstract class VectorizationProvider {
 
   static final OptionalInt TESTS_VECTOR_SIZE;
-  static final boolean TESTS_FORCE_INTEGER_VECTORS;
   static final int UPPER_JAVA_FEATURE_VERSION = getUpperJavaFeatureVersion();
 
   static {
@@ -63,16 +62,6 @@ public abstract class VectorizationProvider {
       // ignored
     }
     TESTS_VECTOR_SIZE = vs;
-
-    boolean enforce = false;
-    try {
-      enforce = Boolean.getBoolean("tests.forceintegervectors");
-    } catch (
-        @SuppressWarnings("unused")
-        SecurityException se) {
-      // ignored
-    }
-    TESTS_FORCE_INTEGER_VECTORS = enforce;
   }
 
   private static final String UPPER_JAVA_FEATURE_VERSION_SYSPROP =
@@ -157,9 +146,9 @@ public abstract class VectorizationProvider {
       vectorMod.ifPresent(VectorizationProvider.class.getModule()::addReads);
       // check for testMode and otherwise fallback to default if slowness could happen
       if (!testMode) {
-        if (TESTS_VECTOR_SIZE.isPresent() || TESTS_FORCE_INTEGER_VECTORS) {
+        if (TESTS_VECTOR_SIZE.isPresent()) {
           LOG.warning(
-              "Vector bitsize and/or integer vectors enforcement; using default vectorization provider outside of testMode");
+              "Vector bitsize enforcement; using default vectorization provider outside of testMode");
           return new DefaultVectorizationProvider();
         }
         if (Constants.IS_CLIENT_VM) {

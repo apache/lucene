@@ -53,9 +53,9 @@ public class GitInfoPlugin extends LuceneGradlePlugin {
                           project.getRootProject().getLayout().getProjectDirectory();
                       Path gitLocation = projectDirectory.getAsFile().toPath().resolve(".git");
                       if (!Files.exists(gitLocation)) {
-                        throw new GradleException(
-                            "Can't locate .git (probably not a git clone?): "
-                                + gitLocation.toAbsolutePath());
+                        // don't return anything from the provider if we can't locate the .git
+                        // folder. This will result in the property returning false from isPresent.
+                        return null;
                       }
 
                       if (Files.isDirectory(gitLocation)) {
