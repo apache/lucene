@@ -17,15 +17,24 @@
 
 package org.apache.lucene.monitor;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.DisjunctionMaxQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CollectionUtil;
+import org.apache.lucene.util.StringHelper;
 
 /**
  * Split a disjunction query into its consituent parts, so that they can be indexed and run
@@ -48,7 +57,7 @@ public class QueryDecomposer {
       for (Query subq : ((DisjunctionMaxQuery) q).getDisjuncts()) {
         subqueries.addAll(decompose(subq));
       }
-      return subqueries;
+      return order(subqueries);
     }
 
     if (q instanceof BoostQuery) {
@@ -65,7 +74,7 @@ public class QueryDecomposer {
     for (Query subq : decompose(q.getQuery())) {
       boostedDecomposedQueries.add(new BoostQuery(subq, q.getBoost()));
     }
-    return boostedDecomposedQueries;
+    return order(boostedDecomposedQueries);
   }
 
   /**
@@ -91,7 +100,7 @@ public class QueryDecomposer {
     }
 
     // More than one MUST clause, or a single MUST clause with disjunctions
-    if (mandatory.size() > 1 || (mandatory.size() == 1 && subqueries.size() > 0))
+    if (mandatory.size() > 1 || (mandatory.size() == 1 && !subqueries.isEmpty()))
       return Collections.singleton(q);
 
     // If we only have a single MUST clause and no SHOULD clauses, then we can
@@ -100,7 +109,7 @@ public class QueryDecomposer {
       subqueries.addAll(decompose(mandatory.iterator().next()));
     }
 
-    if (exclusions.size() == 0) return subqueries;
+    if (exclusions.isEmpty()) return order(subqueries);
 
     // If there are exclusions, then we need to add them to all the decomposed
     // queries
@@ -113,6 +122,49 @@ public class QueryDecomposer {
       }
       rewrittenSubqueries.add(bq.build());
     }
-    return rewrittenSubqueries;
+    return order(rewrittenSubqueries);
+  }
+
+  private Set<Query> order(Collection<? extends Query> subqueries) {
+    return new LinkedHashSet<>(
+        subqueries.stream()
+            .map(SortableDisjunction::new)
+            .collect(
+                Collectors.toMap(
+                    sd -> sd.sortVal,
+                    sd -> sd.query,
+                    (a, b) ->
+                        new BooleanQuery.Builder()
+                            .add(a, BooleanClause.Occur.SHOULD)
+                            .add(b, BooleanClause.Occur.SHOULD)
+                            .build(),
+                    TreeMap::new))
+            .values());
+  }
+
+  static final class SortableDisjunction extends QueryVisitor {
+
+    private static final int FOREVER_SEED = 31;
+    private final Set<List<BytesRef>> seen = new HashSet<>();
+    private final Query query;
+    private long sortVal;
+
+    public SortableDisjunction(Query query) {
+      this.query = query;
+      query.visit(this);
+    }
+
+    @Override
+    public void consumeTerms(Query query, Term... terms) {
+      for (Term ter : terms) {
+        BytesRef field = new BytesRef(ter.field());
+        var key = List.of(field, ter.bytes());
+        if (!seen.contains(key)) {
+          sortVal += StringHelper.murmurhash3_x86_32(field, FOREVER_SEED);
+          sortVal += StringHelper.murmurhash3_x86_32(ter.bytes(), FOREVER_SEED);
+          seen.add(key);
+        }
+      }
+    }
   }
 }
