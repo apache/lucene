@@ -128,7 +128,7 @@ public class QueryDecomposer {
   private Set<Query> groupAndOrder(Collection<? extends Query> subqueries) {
     return new LinkedHashSet<>(
         subqueries.stream()
-            .map(SortableDisjunction::new)
+            .map(SortableDisjunct::new)
             .collect(
                 Collectors.toMap(
                     sd -> sd.sortVal,
@@ -142,14 +142,14 @@ public class QueryDecomposer {
             .values());
   }
 
-  static final class SortableDisjunction extends QueryVisitor {
+  static final class SortableDisjunct extends QueryVisitor {
 
     private static final int FOREVER_SEED = 31;
     private final Set<List<BytesRef>> seen = new HashSet<>();
     private final Query query;
     private long sortVal;
 
-    public SortableDisjunction(Query query) {
+    public SortableDisjunct(Query query) {
       this.query = query;
       query.visit(this);
     }
