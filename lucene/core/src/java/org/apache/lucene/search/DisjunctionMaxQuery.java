@@ -86,6 +86,13 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
   }
 
   /**
+   * @return the disjuncts in the same order as the input Query collection.
+   */
+  public Collection<Query> getDisjunctsInOriginalOrder() {
+    return Collections.unmodifiableCollection(orderedQueries);
+  }
+
+  /**
    * @return tie breaker value for multiple matches.
    */
   public float getTieBreakerMultiplier() {
