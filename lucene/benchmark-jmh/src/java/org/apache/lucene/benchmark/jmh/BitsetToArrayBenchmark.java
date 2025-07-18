@@ -206,7 +206,7 @@ public class BitsetToArrayBenchmark {
 
   // NOCOMMIT remove vector module requirement if merge
   @Benchmark
-  @Fork(jvmArgsAppend = {"--add-modules=jdk.incubator.vector", "-XX:UseAVX=3"})
+  @Fork(jvmArgsAppend = {"--add-modules=jdk.incubator.vector"})
   public int denseBranchLessVectorized() {
     int offset = 0;
     for (long bit : bitSet.getBits()) {
@@ -226,7 +226,7 @@ public class BitsetToArrayBenchmark {
   }
 
   @Benchmark
-  @Fork(jvmArgsAppend = {"--add-modules=jdk.incubator.vector", "-XX:UseAVX=3"})
+  @Fork(jvmArgsAppend = {"--add-modules=jdk.incubator.vector"})
   public int denseBranchLessVectorizedFromLong() {
     int offset = 0;
     for (long bit : bitSet.getBits()) {
@@ -338,9 +338,7 @@ public class BitsetToArrayBenchmark {
   }
 
   private static final int[] IDENTITY = IntStream.range(0, Long.SIZE).toArray();
-  private static final int[] IDENTITY_MASK = IntStream.range(0, 16).map(i -> 1 << i).toArray();
   private static final int MASK = (1 << IntVector.SPECIES_PREFERRED.length()) - 1;
-//  private static final IntVector BIT_MASK = IntVector.fromArray(IntVector.SPECIES_PREFERRED, IDENTITY_MASK, 0);
 
   private static int _denseBranchLessVectorized(
       long word, int[] resultArray, int offset, int base) {
@@ -351,12 +349,11 @@ public class BitsetToArrayBenchmark {
   private static int _denseBranchLessVectorizedInt(
       int word, int[] resultArray, int offset, int base) {
     IntVector baseVector = IntVector.broadcast(IntVector.SPECIES_PREFERRED, base);
-    IntVector bitMask = IntVector.fromArray(IntVector.SPECIES_PREFERRED, IDENTITY_MASK, 0);
 
     for (int i = 0; i < Integer.SIZE; i += IntVector.SPECIES_PREFERRED.length()) {
       IntVector.fromArray(IntVector.SPECIES_PREFERRED, IDENTITY, i)
           .add(baseVector)
-          .compress(bitMask.and(word).compare(VectorOperators.NE, 0))
+          .compress(VectorMask.fromLong(IntVector.SPECIES_PREFERRED, word))
           .intoArray(resultArray, offset);
 
       offset += Integer.bitCount(word & MASK); // faster than mask.trueCount()
