@@ -57,7 +57,7 @@ public class QueryDecomposer {
       for (Query subq : ((DisjunctionMaxQuery) q).getDisjuncts()) {
         subqueries.addAll(decompose(subq));
       }
-      return order(subqueries);
+      return groupAndOrder(subqueries);
     }
 
     if (q instanceof BoostQuery) {
@@ -74,7 +74,7 @@ public class QueryDecomposer {
     for (Query subq : decompose(q.getQuery())) {
       boostedDecomposedQueries.add(new BoostQuery(subq, q.getBoost()));
     }
-    return order(boostedDecomposedQueries);
+    return groupAndOrder(boostedDecomposedQueries);
   }
 
   /**
@@ -109,7 +109,7 @@ public class QueryDecomposer {
       subqueries.addAll(decompose(mandatory.iterator().next()));
     }
 
-    if (exclusions.isEmpty()) return order(subqueries);
+    if (exclusions.isEmpty()) return groupAndOrder(subqueries);
 
     // If there are exclusions, then we need to add them to all the decomposed
     // queries
@@ -122,10 +122,10 @@ public class QueryDecomposer {
       }
       rewrittenSubqueries.add(bq.build());
     }
-    return order(rewrittenSubqueries);
+    return groupAndOrder(rewrittenSubqueries);
   }
 
-  private Set<Query> order(Collection<? extends Query> subqueries) {
+  private Set<Query> groupAndOrder(Collection<? extends Query> subqueries) {
     return new LinkedHashSet<>(
         subqueries.stream()
             .map(SortableDisjunction::new)
