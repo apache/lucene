@@ -21,6 +21,11 @@ import java.util.Random;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.IntSupplier;
+import java.util.stream.IntStream;
+import jdk.incubator.vector.ByteVector;
+import jdk.incubator.vector.IntVector;
+import jdk.incubator.vector.VectorMask;
+import jdk.incubator.vector.VectorOperators;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.FixedBitSet;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -48,7 +53,7 @@ public class BitsetToArrayBenchmark {
 
   private final SplittableRandom R = new SplittableRandom(4314123142L);
 
-  @Param({"256", "384", "512", "768", "1024"})
+  @Param({"192", "256", "384", "512", "768", "1024"})
   int bitLength;
 
   private int base;
@@ -199,6 +204,37 @@ public class BitsetToArrayBenchmark {
     return offset;
   }
 
+  // NOCOMMIT remove vector module requirement if merge
+  @Benchmark
+  @Fork(jvmArgsAppend = {"--add-modules=jdk.incubator.vector", "-XX:UseAVX=3"})
+  public int denseBranchLessVectorized() {
+    int offset = 0;
+    for (long bit : bitSet.getBits()) {
+      offset = _denseBranchLessVectorized(bit, resultArray, offset, base);
+    }
+    return offset;
+  }
+
+  @Benchmark
+  @Fork(jvmArgsAppend = {"--add-modules=jdk.incubator.vector", "-XX:UseAVX=2"})
+  public int denseBranchLessVectorizedAVX2() {
+    int offset = 0;
+    for (long bit : bitSet.getBits()) {
+      offset = _denseBranchLessVectorized(bit, resultArray, offset, base);
+    }
+    return offset;
+  }
+
+  @Benchmark
+  @Fork(jvmArgsAppend = {"--add-modules=jdk.incubator.vector", "-XX:UseAVX=3"})
+  public int denseBranchLessVectorizedFromLong() {
+    int offset = 0;
+    for (long bit : bitSet.getBits()) {
+      offset = _denseBranchLessVectorizedFromLong(bit, resultArray, offset, base);
+    }
+    return offset;
+  }
+
   private static int _whileLoop(long word, int[] resultArray, int offset, int base) {
     while (word != 0) {
       int bit = Long.numberOfTrailingZeros(word);
@@ -244,6 +280,94 @@ public class BitsetToArrayBenchmark {
     }
 
     return to;
+  }
+
+  private static final byte[] IDENTITY_BYTES = new byte[64];
+
+  static {
+    for (int i = 0; i < IDENTITY_BYTES.length; i++) {
+      IDENTITY_BYTES[i] = (byte) i;
+    }
+  }
+
+  // NOCOMMIT remove vectorized methods and requirement on vector module before merge.
+  @SuppressWarnings("fallthrough")
+  private static int _denseBranchLessVectorizedFromLong(
+      long word, int[] resultArray, int offset, int base) {
+    if (word == 0L) {
+      return offset;
+    }
+
+    int bitCount = Long.bitCount(word);
+
+    VectorMask<Byte> mask = VectorMask.fromLong(ByteVector.SPECIES_512, word);
+    ByteVector indices =
+        ByteVector.fromArray(ByteVector.SPECIES_512, IDENTITY_BYTES, 0).compress(mask);
+
+    switch ((bitCount - 1) >> 4) {
+      case 3:
+        indices
+            .convert(VectorOperators.B2I, 3)
+            .reinterpretAsInts()
+            .add(base)
+            .intoArray(resultArray, offset + 48);
+      case 2:
+        indices
+            .convert(VectorOperators.B2I, 2)
+            .reinterpretAsInts()
+            .add(base)
+            .intoArray(resultArray, offset + 32);
+      case 1:
+        indices
+            .convert(VectorOperators.B2I, 1)
+            .reinterpretAsInts()
+            .add(base)
+            .intoArray(resultArray, offset + 16);
+      case 0:
+        indices
+            .convert(VectorOperators.B2I, 0)
+            .reinterpretAsInts()
+            .add(base)
+            .intoArray(resultArray, offset);
+        break;
+      default:
+        throw new IllegalStateException(bitCount + "");
+    }
+
+    return offset + bitCount;
+  }
+
+  private static final int[] IDENTITY = IntStream.range(0, Long.SIZE).toArray();
+  private static final int[] IDENTITY_MASK = IntStream.range(0, 16).map(i -> 1 << i).toArray();
+  private static final int MASK = (1 << IntVector.SPECIES_PREFERRED.length()) - 1;
+
+  private static int _denseBranchLessVectorized(
+      long word, int[] resultArray, int offset, int base) {
+    offset = _denseBranchLessVectorizedInt((int) word, resultArray, offset, base);
+    return _denseBranchLessVectorizedInt((int) (word >>> 32), resultArray, offset, base + 32);
+  }
+
+  private static int _denseBranchLessVectorizedInt(
+      int word, int[] resultArray, int offset, int base) {
+    IntVector bitMask = IntVector.fromArray(IntVector.SPECIES_PREFERRED, IDENTITY_MASK, 0);
+
+    for (int i = 0; i < Integer.SIZE; i += IntVector.SPECIES_PREFERRED.length()) {
+      VectorMask<Integer> mask =
+          IntVector.broadcast(IntVector.SPECIES_PREFERRED, word)
+              .and(bitMask)
+              .compare(VectorOperators.NE, 0);
+
+      IntVector.fromArray(IntVector.SPECIES_PREFERRED, IDENTITY, i)
+          .add(base)
+          .compress(mask)
+          .reinterpretAsInts()
+          .intoArray(resultArray, offset);
+
+      offset += Integer.bitCount(word & MASK); // faster than mask.trueCount()
+      word >>>= IntVector.SPECIES_PREFERRED.length();
+    }
+
+    return offset;
   }
 
   private static int _dense(long word, int[] resultArray, int offset, int base) {
