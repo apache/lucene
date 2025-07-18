@@ -5,11 +5,18 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+
 /**
  * SharedMergeScheduler is an experimental MergeScheduler that submits merge tasks to a shared
  * thread pool across IndexWriters.
  */
 public class SharedMergeScheduler extends MergeScheduler {
+ 
+  // Tracks submitted merges per writer
+  private final ConcurrentHashMap<IndexWriter, Set<MergeTaskWrapper>> writerToMerges = new ConcurrentHashMap<>();
 
  /**
  * Executor service provided externally to handle merge tasks.
@@ -36,24 +43,42 @@ public class SharedMergeScheduler extends MergeScheduler {
       if (merge == null) break;
 
       Runnable mergeRunnable = () -> {
-          try {
-              mergeSource.merge(merge);
-          } catch (IOException e) {
-              throw new RuntimeException(e);
-          }
+            try {
+                mergeSource.merge(merge);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
       };
 
+
       MergeTaskWrapper wrappedTask = new MergeTaskWrapper(mergeRunnable, (IndexWriter) mergeSource, merge.totalBytesSize());
-      executor.submit(wrappedTask.getMergeTask());
-          }
+
+      // Registering this task under the writer 
+      writerToMerges.computeIfAbsent((IndexWriter) mergeSource, k -> new CopyOnWriteArraySet<>()).add(wrappedTask);
+
+      // Submitting task to executor
+      executor.submit(() -> {
+        try {
+            wrappedTask.getMergeTask().run();
+        } finally {
+            writerToMerges.getOrDefault((IndexWriter) mergeSource, Set.of()).remove(wrappedTask);
+        }
+      });
+
+    }
   }
 
   /**
    * Closes the merge scheduler. This implementation is currently a no-op.
    */
-  @Override
-  public void close() {
-      // No-op. Executor is owned by caller, not by this scheduler.
+  //@Override
+  public void close(IndexWriter writer) {  
+    Set<MergeTaskWrapper> tasks = writerToMerges.remove(writer);  
+    if (tasks != null) {  
+        for (MergeTaskWrapper task : tasks) {  
+            // Placeholder for canceling tasks if needed.  
+        }  
+    }  
   }
 
 }
