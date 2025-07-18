@@ -53,7 +53,7 @@ public class BitsetToArrayBenchmark {
 
   private final SplittableRandom R = new SplittableRandom(4314123142L);
 
-  @Param({"192", "256", "384", "512", "768", "1024"})
+  @Param({"256", "384", "512", "768", "1024"})
   int bitLength;
 
   private int base;
