@@ -2,10 +2,10 @@ package org.apache.lucene.index;
 
 public class MergeTaskWrapper {
     private final Runnable mergeTask;
-    private final Object sourceWriter; // Can be IndexWriter or its ID
+    private final IndexWriter sourceWriter;
     private final long mergeSize;      // For priority-based scheduling
 
-    public MergeTaskWrapper(Runnable mergeTask, Object sourceWriter, long mergeSize) {
+    public MergeTaskWrapper(Runnable mergeTask, IndexWriter sourceWriter, long mergeSize) {
         this.mergeTask = mergeTask;
         this.sourceWriter = sourceWriter;
         this.mergeSize = mergeSize;
@@ -15,7 +15,7 @@ public class MergeTaskWrapper {
         return mergeTask;
     }
 
-    public Object getSourceWriter() {
+    public IndexWriter getSourceWriter() {
         return sourceWriter;
     }
 

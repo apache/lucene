@@ -15,10 +15,10 @@ public class SharedMergeScheduler extends MergeScheduler {
  * Executor service provided externally to handle merge tasks.
  * Allows sharing a thread pool across IndexWriters if configured that way.
  */
-  private final ExecutorService sharedExecutor;
+  private final ExecutorService executor;
 
-  public SharedMergeScheduler(ExecutorService sharedExecutor) {
-      this.sharedExecutor = sharedExecutor;
+  public SharedMergeScheduler(ExecutorService executor) {
+      this.executor = executor;
   }
 
   /**
@@ -43,26 +43,17 @@ public class SharedMergeScheduler extends MergeScheduler {
           }
       };
 
-      MergeTaskWrapper wrappedTask = new MergeTaskWrapper(mergeRunnable, mergeSource, merge.totalBytesSize());
-      sharedExecutor.submit(wrappedTask.getMergeTask());
+      MergeTaskWrapper wrappedTask = new MergeTaskWrapper(mergeRunnable, (IndexWriter) mergeSource, merge.totalBytesSize());
+      executor.submit(wrappedTask.getMergeTask());
           }
   }
 
   /**
-   * Closes the merge scheduler. This implementation is currently a no-op. In a production-ready
-   * version, the shared executor should be properly shut down.
+   * Closes the merge scheduler. This implementation is currently a no-op.
    */
   @Override
   public void close() {
-      sharedExecutor.shutdown();
-      try {
-          if (!sharedExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
-              sharedExecutor.shutdownNow();
-          }
-      } catch (InterruptedException e) {
-          sharedExecutor.shutdownNow();
-          Thread.currentThread().interrupt();
-      }
+      // No-op. Executor is owned by caller, not by this scheduler.
   }
 
 }
