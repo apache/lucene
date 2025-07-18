@@ -54,7 +54,6 @@ public class BitsetToArrayBenchmark {
   private int base;
   private FixedBitSet bitSet;
   private final int[] resultArray = new int[128 + 16];
-  private final int[] scratch = new int[32];
 
   @Setup(Level.Trial)
   public void setup() {
