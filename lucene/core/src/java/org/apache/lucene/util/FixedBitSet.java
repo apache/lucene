@@ -19,8 +19,6 @@ package org.apache.lucene.util;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
-import org.apache.lucene.internal.vectorization.BitSetUtil;
-import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.search.CheckedIntConsumer;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -36,8 +34,6 @@ public final class FixedBitSet extends BitSet {
 
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(FixedBitSet.class);
-  private static final BitSetUtil BIT_SET_UTIL =
-      VectorizationProvider.getInstance().newBitSetUtil();
 
   // An array that is small enough to use reasonable amounts of RAM and large enough to allow
   // Arrays#mismatch to use SIMD instructions and multiple registers under the hood.
@@ -876,11 +872,43 @@ public final class FixedBitSet extends BitSet {
   }
 
   /**
-   * A wrapper for {@link BitSetUtil#bitsetToArray}
+   * Converts set bits in the given bitset to an array of document IDs. Only processes bits from
+   * index {@code from} (inclusive) to {@code to} (exclusive) and returns the number of bits set in
+   * this range.
    *
-   * @see BitSetUtil#bitsetToArray
+   * <p>Each set bit's position is converted to a document ID by adding the {@code base} value and
+   * stored in the provided {@code array}.
+   *
+   * <p>NOTE: Caller need to ensure the {@code array} has a length greater than or equal to {@code
+   * bitSet.cardinality(from, to) + 16}.
    */
   public int toArray(int from, int to, int base, int[] array) {
-    return BIT_SET_UTIL.bitsetToArray(this, from, to, base, array);
+    Objects.checkFromToIndex(from, to, length());
+
+    int offset = 0;
+    // First, align `from` with a word start, ie. a multiple of Long.SIZE (64)
+    if ((from & 0x3F) != 0) {
+      long bits = this.bits[from >> 6] >>> from;
+      int numBitsTilNextWord = -from & 0x3F;
+      if (to - from < numBitsTilNextWord) {
+        // All bits are in a single word
+        bits &= (1L << (to - from)) - 1L;
+        return VectorUtil.wordToArray(bits, from + base, array, offset);
+      }
+      offset = VectorUtil.wordToArray(bits, from + base, array, offset);
+      from += numBitsTilNextWord;
+      assert (from & 0x3F) == 0;
+    }
+
+    for (int i = from >> 6, end = to >> 6; i < end; ++i) {
+      offset = VectorUtil.wordToArray(bits[i], base + (i << 6), array, offset);
+    }
+
+    // Now handle remaining bits in the last partial word
+    if ((to & 0x3F) != 0) {
+      long bits = this.bits[to >> 6] & ((1L << to) - 1);
+      offset = VectorUtil.wordToArray(bits, base + (to & ~0x3F), array, offset);
+    }
+    return offset;
   }
 }

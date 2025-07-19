@@ -26,6 +26,7 @@ import static jdk.incubator.vector.VectorOperators.S2I;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2S;
 
 import java.lang.foreign.MemorySegment;
+import java.util.stream.IntStream;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.DoubleVector;
 import jdk.incubator.vector.FloatVector;
@@ -66,6 +67,9 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   private static final VectorSpecies<Short> SHORT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES_128 = ByteVector.SPECIES_128;
   private static final VectorSpecies<Byte> BYTE_SPECIES_256 = ByteVector.SPECIES_256;
+  private static final int MASK = (1 << INT_SPECIES.length()) - 1;
+  private static final int[] IDENTITY = IntStream.range(0, Long.SIZE).toArray();
+  private static final int[] IDENTITY_MASK = IntStream.range(0, 16).map(i -> 1 << i).toArray();
 
   static final int VECTOR_BITSIZE;
 
@@ -1032,5 +1036,38 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       }
     }
     return newUpto;
+  }
+
+  @Override
+  public int wordToArray(long word, int base, int[] array, int offset) {
+    if (Constants.HAS_FAST_COMPRESS_MASK_CAST == false || VECTOR_BITSIZE < 256) {
+      return DefaultVectorUtilSupport.word2Array(word, base, array, offset);
+    }
+    if (VECTOR_BITSIZE == 256) {
+      int bitCount = Long.bitCount(word);
+      if (bitCount < 16) {
+        return DefaultVectorUtilSupport.sparseWord2Array(word, base, array, offset, bitCount);
+      }
+    }
+    offset = intWord2Array((int) word, array, offset, base);
+    return intWord2Array((int) (word >>> 32), array, offset, base + 32);
+  }
+
+  @SuppressForbidden(
+      reason = "Uses compress only where Constants.HAS_FAST_COMPRESS_MASK_CAST checked")
+  private static int intWord2Array(int word, int[] array, int offset, int base) {
+    IntVector baseVector = IntVector.broadcast(IntVector.SPECIES_PREFERRED, base);
+
+    for (int i = 0; i < Integer.SIZE; i += IntVector.SPECIES_PREFERRED.length()) {
+      IntVector.fromArray(IntVector.SPECIES_PREFERRED, IDENTITY, i)
+          .add(baseVector)
+          .compress(VectorMask.fromLong(IntVector.SPECIES_PREFERRED, word))
+          .intoArray(array, offset);
+
+      offset += Integer.bitCount(word & MASK); // faster than mask.trueCount()
+      word >>>= IntVector.SPECIES_PREFERRED.length();
+    }
+
+    return offset;
   }
 }

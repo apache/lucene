@@ -397,4 +397,18 @@ public final class VectorUtil {
     }
     return IMPL.filterByScore(docBuffer, scoreBuffer, minScoreInclusive, upTo);
   }
+
+  /**
+   * Converts a long word (treated as a bit set) into an array of integers. Each set bit in the word
+   * is represented as an integer in the array, with the bit position added to the base value.
+   *
+   * @param word the long value to be processed as a bit set
+   * @param base a base value added to each bit position
+   * @param array the destination array to store the results
+   * @param offset the starting position in the array to begin writing
+   * @return the next available position in the array after writing
+   */
+  public static int wordToArray(long word, int base, int[] array, int offset) {
+    return IMPL.wordToArray(word, base, array, offset);
+  }
 }

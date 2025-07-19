@@ -325,4 +325,49 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     }
     return newSize;
   }
+
+  @Override
+  public int wordToArray(long word, int base, int[] array, int offset) {
+    return word2Array(word, base, array, offset);
+  }
+
+  static int word2Array(long word, int base, int[] array, int offset) {
+    int bitCount = Long.bitCount(word);
+    if (bitCount >= 32) {
+      return denseWord2Array(word, base, array, offset);
+    } else {
+      return sparseWord2Array(word, base, array, offset, bitCount);
+    }
+  }
+
+  static int sparseWord2Array(long word, int base, int[] docs, int offset, int bitCount) {
+    assert Long.bitCount(word) == bitCount;
+
+    final int to = offset + bitCount;
+    for (; offset < to; offset++) {
+      int ntz = Long.numberOfTrailingZeros(word);
+      docs[offset] = base + ntz;
+      word ^= 1L << ntz;
+    }
+
+    return to;
+  }
+
+  private static int denseWord2Array(long word, int base, int[] docs, int offset) {
+    final int lWord = (int) word;
+    final int hWord = (int) (word >>> 32);
+    final int offset32 = offset + Integer.bitCount(lWord);
+    int hOffset = offset32;
+
+    for (int i = 0; i < 32; i++) {
+      docs[offset] = base + i;
+      docs[hOffset] = base + i + 32;
+      offset += (lWord >>> i) & 1;
+      hOffset += (hWord >>> i) & 1;
+    }
+
+    docs[offset32] = base + 32 + Integer.numberOfTrailingZeros(hWord);
+
+    return hOffset;
+  }
 }

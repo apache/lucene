@@ -44,9 +44,4 @@ final class DefaultVectorizationProvider extends VectorizationProvider {
   public PostingDecodingUtil newPostingDecodingUtil(IndexInput input) {
     return new PostingDecodingUtil(input);
   }
-
-  @Override
-  public BitSetUtil newBitSetUtil() {
-    return BitSetUtil.INSTANCE;
-  }
 }
