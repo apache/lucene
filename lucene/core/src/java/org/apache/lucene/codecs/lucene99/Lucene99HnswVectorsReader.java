@@ -49,6 +49,7 @@ import org.apache.lucene.store.PreloadHint;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -532,9 +533,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       arcCount = dataIn.readVInt();
       assert arcCount <= currentNeighborsBuffer.length : "too many neighbors: " + arcCount;
       if (arcCount > 0) {
-        currentNeighborsBuffer[0] = dataIn.readVInt();
+        GroupVIntUtil.readGroupVInts(dataIn, currentNeighborsBuffer, arcCount);
         for (int i = 1; i < arcCount; i++) {
-          currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + dataIn.readVInt();
+          currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + currentNeighborsBuffer[i];
         }
       }
       arc = -1;
