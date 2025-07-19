@@ -457,7 +457,7 @@ public class IntObjectHashMap<VType>
     private int slot;
 
     public EntryIterator() {
-      cursor = new IntObjectCursor<VType>();
+      cursor = new IntObjectCursor<>();
       int seed = nextIterationSeed();
       increment = iterationIncrement(seed);
       slot = seed & mask;

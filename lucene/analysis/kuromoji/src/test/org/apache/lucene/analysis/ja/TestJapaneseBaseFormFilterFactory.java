@@ -27,13 +27,11 @@ import org.apache.lucene.tests.util.StringMockResourceLoader;
 /** Simple tests for {@link JapaneseBaseFormFilterFactory} */
 public class TestJapaneseBaseFormFilterFactory extends BaseTokenStreamTestCase {
   public void testBasics() throws IOException {
-    JapaneseTokenizerFactory tokenizerFactory =
-        new JapaneseTokenizerFactory(new HashMap<String, String>());
+    JapaneseTokenizerFactory tokenizerFactory = new JapaneseTokenizerFactory(new HashMap<>());
     tokenizerFactory.inform(new StringMockResourceLoader(""));
     TokenStream ts = tokenizerFactory.create(newAttributeFactory());
     ((Tokenizer) ts).setReader(new StringReader("それはまだ実験段階にあります"));
-    JapaneseBaseFormFilterFactory factory =
-        new JapaneseBaseFormFilterFactory(new HashMap<String, String>());
+    JapaneseBaseFormFilterFactory factory = new JapaneseBaseFormFilterFactory(new HashMap<>());
     ts = factory.create(ts);
     assertTokenStreamContents(ts, new String[] {"それ", "は", "まだ", "実験", "段階", "に", "ある", "ます"});
   }
