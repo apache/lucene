@@ -17,9 +17,11 @@
 
 package org.apache.lucene.monitor;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
@@ -40,8 +42,8 @@ public class TestQueryDecomposer extends MonitorTestBase {
 
   public void testSimpleDisjunctions() {
     Query q = parse("hello world");
-    Set<Query> expected = new HashSet<>(Arrays.asList(parse("hello"), parse("world")));
-    assertEquals(expected, decomposer.decompose(q));
+    List<Query> expected = Arrays.asList(parse("world"), parse("hello"));
+    assertEquals(expected, new ArrayList<>(decomposer.decompose(q)));
   }
 
   public void testNestedDisjunctions() {
@@ -112,5 +114,61 @@ public class TestQueryDecomposer extends MonitorTestBase {
             .build();
 
     assertEquals(Collections.singleton(q), decomposer.decompose(q));
+  }
+
+  public void testDisjunctionCollapsesDistinct() {
+    Query q =
+        new DisjunctionMaxQuery(
+            Arrays.asList(parse("hello goodbye"), parse("goodbye hello")), 0.1f);
+    List<Query> expected = Arrays.asList(parse("field:hello"), parse("field:goodbye"));
+    assertEquals(expected, new ArrayList<>(decomposer.decompose(q)));
+  }
+
+  public void testDisjunctionWithBoostCollapsesDistinct() {
+    Query q =
+        new DisjunctionMaxQuery(
+            Arrays.asList(parse("hello^0.7 goodbye^0.6"), parse("goodbye^0.6 hello^0.7")), 0.1f);
+    List<Query> expected = Arrays.asList(parse("(field:hello)^0.7"), parse("(field:goodbye)^0.6"));
+    assertEquals(expected, new ArrayList<>(decomposer.decompose(q)));
+  }
+
+  public void testDisjunctionWithNoOpBoostCollapsesDistinct() {
+    Query q =
+        new DisjunctionMaxQuery(
+            Arrays.asList(parse("hello^1.0 goodbye^1.0"), parse("goodbye^1.0 hello^1.0")), 0.1f);
+    List<Query> expected = Arrays.asList(parse("field:hello"), parse("field:goodbye"));
+    assertEquals(expected, new ArrayList<>(decomposer.decompose(q)));
+  }
+
+  public void testDisjunctionTermEquivalentGroupingOfDistinctQueries() {
+    Query q =
+        new DisjunctionMaxQuery(
+            Arrays.asList(parse("hello^0.7 goodbye^0.6"), parse("goodbye^0.7 hello^0.6")), 0.1f);
+    List<Query> expected =
+        Arrays.asList(
+            parse("(field:hello)^0.7 (field:hello)^0.6"),
+            parse("(field:goodbye)^0.6 (field:goodbye)^0.7"));
+    assertEquals(expected, new ArrayList<>(decomposer.decompose(q)));
+  }
+
+  public void testBooleanTermEquivalentGroupingOfDistinctQueries() {
+    Query q = parse("(hello OR (goodbye AND test) OR (world OR (\"test goodbye\")))");
+    List<Query> expected =
+        Arrays.asList(
+            parse("field:world"),
+            parse("field:hello"),
+            parse("(+field:goodbye +field:test) field:\"test goodbye\""));
+    assertEquals(expected, new ArrayList<>(decomposer.decompose(q)));
+  }
+
+  public void testBooleanTermEquivalentGroupingRespectsFields() {
+    Query q = parse("(hello OR (goodbye AND test) OR (world OR (f:\"test goodbye\")))");
+    List<Query> expected =
+        Arrays.asList(
+            parse("field:world"),
+            parse("field:hello"),
+            parse("(+field:goodbye +field:test)"),
+            parse("f:\"test goodbye\""));
+    assertEquals(expected, new ArrayList<>(decomposer.decompose(q)));
   }
 }
