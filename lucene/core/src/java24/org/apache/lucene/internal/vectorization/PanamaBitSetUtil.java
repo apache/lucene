@@ -42,17 +42,16 @@ public class PanamaBitSetUtil extends BitSetUtil {
 
   @SuppressForbidden(reason = "Uses compress only where fast and carefully contained")
   private static int intWord2Array(int word, int[] resultArray, int offset, int base) {
-    IntVector bitMask = IntVector.fromArray(INT_SPECIES, IDENTITY_MASK, 0);
+    IntVector baseVector = IntVector.broadcast(IntVector.SPECIES_PREFERRED, base);
 
-    for (int i = 0; i < Integer.SIZE; i += INT_SPECIES.length()) {
-      IntVector.fromArray(INT_SPECIES, IDENTITY, i)
-          .add(base)
-          .compress(bitMask.and(word).compare(VectorOperators.NE, 0))
-          .reinterpretAsInts()
+    for (int i = 0; i < Integer.SIZE; i += IntVector.SPECIES_PREFERRED.length()) {
+      IntVector.fromArray(IntVector.SPECIES_PREFERRED, IDENTITY, i)
+          .add(baseVector)
+          .compress(VectorMask.fromLong(IntVector.SPECIES_PREFERRED, word))
           .intoArray(resultArray, offset);
 
       offset += Integer.bitCount(word & MASK); // faster than mask.trueCount()
-      word >>>= INT_SPECIES.length();
+      word >>>= IntVector.SPECIES_PREFERRED.length();
     }
 
     return offset;
