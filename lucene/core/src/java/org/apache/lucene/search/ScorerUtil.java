@@ -139,6 +139,34 @@ class ScorerUtil {
   }
 
   /**
+   * Filters competitive hits from the provided {@link DocAndFloatFeatureBuffer}.
+   *
+   * <p>This method removes documents from the buffer that cannot possibly have a score competitive
+   * enough to exceed the minimum competitive score, given the maximum remaining score and the
+   * number of scorers.
+   */
+  static void filterCompetitiveHits(
+      DocAndFloatFeatureBuffer buffer,
+      double maxRemainingScore,
+      float minCompetitiveScore,
+      int numScorers) {
+    double minRequiredScoreDouble =
+        minRequiredScore(maxRemainingScore, minCompetitiveScore, numScorers);
+    float minRequiredScore = (float) minRequiredScoreDouble;
+    if ((double) minRequiredScore > minRequiredScoreDouble) { // the cast rounded up
+      minRequiredScore = Math.nextDown(minRequiredScore);
+    }
+    assert (double) minRequiredScore <= minRequiredScoreDouble;
+
+    if (minRequiredScore <= 0) {
+      return;
+    }
+
+    buffer.size =
+        VectorUtil.filterByScore(buffer.docs, buffer.features, minRequiredScore, buffer.size);
+  }
+
+  /**
    * Filters competitive hits from the provided {@link DocAndScoreAccBuffer}.
    *
    * <p>This method removes documents from the buffer that cannot possibly have a score competitive

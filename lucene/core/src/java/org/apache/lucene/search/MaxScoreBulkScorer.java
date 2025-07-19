@@ -22,6 +22,7 @@ import java.util.List;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.MathUtil;
+import org.apache.lucene.util.VectorUtil;
 
 final class MaxScoreBulkScorer extends BulkScorer {
 
@@ -40,6 +41,8 @@ final class MaxScoreBulkScorer extends BulkScorer {
   // Index of the first scorer that is required, this scorer and all following scorers are required
   // for a document to match.
   int firstRequiredScorer;
+  // Index of the first scorer that may produce positive scores on this window.
+  int firstNonNullScorer;
   // The minimum value of minCompetitiveScore that would produce a more favorable partitioning.
   float nextMinCompetitiveScore;
   private final long cost;
@@ -230,8 +233,39 @@ final class MaxScoreBulkScorer extends BulkScorer {
         docAndScoreBuffer.size > 0;
         top.scorer.nextDocsAndScores(upTo, acceptDocs, docAndScoreBuffer)) {
 
-      docAndScoreAccBuffer.copyFrom(docAndScoreBuffer);
-      scoreNonEssentialClauses(collector, docAndScoreAccBuffer, firstEssentialScorer);
+      if (firstNonNullScorer >= firstEssentialScorer) {
+        // Note: firstNonNullScorer may be > firstEssentialScorer if minCompetitiveScore=0 since
+        // hits with a score of 0 are still competitive
+        // There are no non-essential clauses, filter non-competitive hits and collect directly
+
+        int[] docs = docAndScoreBuffer.docs;
+        float[] scores = docAndScoreBuffer.features;
+        int size = docAndScoreBuffer.size;
+        size = VectorUtil.filterByScore(docs, scores, scorable.minCompetitiveScore, size);
+
+        for (int i = 0; i < size; ++i) {
+          scorable.score = scores[i];
+          collector.collect(docs[i]);
+        }
+      } else {
+        // Filter based on float scores before promoting them to doubles so that vectorization can
+        // work on 2x more values at once.
+        ScorerUtil.filterCompetitiveHits(
+            docAndScoreBuffer,
+            maxScoreSums[firstEssentialScorer - 1],
+            scorable.minCompetitiveScore,
+            allScorers.length);
+
+        docAndScoreAccBuffer.copyFrom(docAndScoreBuffer);
+
+        // Apply the last non-essential clause here instead of delegating it to
+        // `scoreNonEssentialClauses` so that it doesn't re-do filtering by score.
+        DisiWrapper scorer = allScorers[firstEssentialScorer - 1];
+        ScorerUtil.applyOptionalClause(docAndScoreAccBuffer, scorer.iterator, scorer.scorable);
+        scorer.doc = scorer.iterator.docID();
+
+        scoreNonEssentialClauses(collector, docAndScoreAccBuffer, firstEssentialScorer - 1);
+      }
     }
 
     top.doc = top.iterator.docID();
@@ -250,11 +284,19 @@ final class MaxScoreBulkScorer extends BulkScorer {
         docAndScoreBuffer.size > 0;
         lead1.scorer.nextDocsAndScores(max, acceptDocs, docAndScoreBuffer)) {
 
+      // Filter based on float scores before promoting them to doubles so that vectorization can
+      // work on 2x more values at once.
+      ScorerUtil.filterCompetitiveHits(
+          docAndScoreBuffer,
+          maxScoreSums[allScorers.length - 2],
+          scorable.minCompetitiveScore,
+          allScorers.length);
+
       docAndScoreAccBuffer.copyFrom(docAndScoreBuffer);
 
       for (int i = allScorers.length - 2; i >= firstRequiredScorer; --i) {
 
-        if (scorable.minCompetitiveScore > 0) {
+        if (i < allScorers.length - 2 && scorable.minCompetitiveScore > 0) {
           ScorerUtil.filterCompetitiveHits(
               docAndScoreAccBuffer,
               maxScoreSums[i],
@@ -371,7 +413,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
       throws IOException {
     numCandidates += buffer.size;
 
-    for (int i = numNonEssentialClauses - 1; i >= 0; --i) {
+    for (int i = numNonEssentialClauses - 1; i >= firstNonNullScorer; --i) {
       DisiWrapper scorer = allScorers[i];
       assert scorable.minCompetitiveScore > 0
           : "All clauses are essential if minCompetitiveScore is equal to zero";
@@ -381,9 +423,20 @@ final class MaxScoreBulkScorer extends BulkScorer {
       scorer.doc = scorer.iterator.docID();
     }
 
-    for (int i = 0; i < buffer.size; ++i) {
-      scorable.score = (float) buffer.scores[i];
-      collector.collect(buffer.docs[i]);
+    // The collector already filters hits whose score is less than the min competitive score, but
+    // doing it here is a bit more efficient.
+    int[] docs = buffer.docs;
+    docAndScoreBuffer.growNoCopy(buffer.size);
+    float[] scores = docAndScoreBuffer.features;
+    int size = buffer.size;
+    for (int i = 0; i < size; ++i) {
+      scores[i] = (float) buffer.scores[i];
+    }
+    size = VectorUtil.filterByScore(docs, scores, scorable.minCompetitiveScore, size);
+
+    for (int i = 0; i < size; ++i) {
+      scorable.score = scores[i];
+      collector.collect(docs[i]);
     }
   }
 
@@ -408,10 +461,14 @@ final class MaxScoreBulkScorer extends BulkScorer {
               (double) scorer2.maxWindowScore / Math.max(1L, scorer2.cost));
         });
     double maxScoreSum = 0;
+    firstNonNullScorer = 0;
     firstEssentialScorer = 0;
     nextMinCompetitiveScore = Float.POSITIVE_INFINITY;
     for (int i = 0; i < allScorers.length; ++i) {
       final DisiWrapper w = scratch[i];
+      if (w.maxWindowScore == 0f) {
+        firstNonNullScorer = i + 1;
+      }
       double newMaxScoreSum = maxScoreSum + w.maxWindowScore;
       float maxScoreSumFloat =
           (float) MathUtil.sumUpperBound(newMaxScoreSum, firstEssentialScorer + 1);
