@@ -18,6 +18,7 @@ package org.apache.lucene.internal.vectorization;
 
 import java.util.stream.IntStream;
 import jdk.incubator.vector.IntVector;
+import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.util.SuppressForbidden;
