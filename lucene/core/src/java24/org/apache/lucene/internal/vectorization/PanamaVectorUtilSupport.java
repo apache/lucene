@@ -325,13 +325,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     @Override
     public ByteVector load(VectorSpecies<Byte> species, int index) {
-      assert index + species.length() < length();
+      assert index + species.length() <= length();
       return ByteVector.fromArray(species, arr, index);
     }
 
     @Override
     public byte tail(int index) {
-      assert index < length();
+      assert index <= length();
       return arr[index];
     }
   }
@@ -344,13 +344,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     @Override
     public ByteVector load(VectorSpecies<Byte> species, int index) {
-      assert index + species.length() < length();
+      assert index + species.length() <= length();
       return ByteVector.fromMemorySegment(species, segment, index, LITTLE_ENDIAN);
     }
 
     @Override
     public byte tail(int index) {
-      assert index < length();
+      assert index <= length();
       return segment.get(JAVA_BYTE, index);
     }
   }
