@@ -1050,8 +1050,8 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
       }
 
       // Only return docs from the current block
-      // +1 to make BitSetUtil#denseBitsetToArray work, see its java doc.
-      buffer.growNoCopy(BLOCK_SIZE + 1);
+      // +16 to make BitSetUtil#bitsetToArray work, see its java doc.
+      buffer.growNoCopy(BLOCK_SIZE + 16);
       upTo = (int) Math.min(upTo, level0LastDocID + 1L);
 
       // Frequencies are decoded lazily, calling freq() makes sure that the freq block is decoded
@@ -1066,8 +1066,8 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
           break;
         case UNARY:
           buffer.size =
-              BitSetUtil.denseBitsetToArray(
-                  docBitSet, doc - docBitSetBase, upTo - docBitSetBase, docBitSetBase, buffer.docs);
+              docBitSet.toArray(
+                  doc - docBitSetBase, upTo - docBitSetBase, docBitSetBase, buffer.docs);
           break;
       }
 

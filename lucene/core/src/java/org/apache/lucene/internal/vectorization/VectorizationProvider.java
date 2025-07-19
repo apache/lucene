@@ -114,6 +114,8 @@ public abstract class VectorizationProvider {
   /** Create a new {@link PostingDecodingUtil} for the given {@link IndexInput}. */
   public abstract PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException;
 
+  public abstract BitSetUtil newBitSetUtil();
+
   // *** Lookup mechanism: ***
 
   private static final Logger LOG = Logger.getLogger(VectorizationProvider.class.getName());
@@ -206,7 +208,8 @@ public abstract class VectorizationProvider {
           "org.apache.lucene.util.VectorUtil",
           "org.apache.lucene.codecs.lucene103.Lucene103PostingsReader",
           "org.apache.lucene.codecs.lucene103.PostingIndexInput",
-          "org.apache.lucene.tests.util.TestSysoutsLimits");
+          "org.apache.lucene.tests.util.TestSysoutsLimits",
+          "org.apache.lucene.util.FixedBitSet");
 
   private static void ensureCaller() {
     final boolean validCaller =

@@ -19,6 +19,8 @@ package org.apache.lucene.util;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import org.apache.lucene.internal.vectorization.BitSetUtil;
+import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.search.CheckedIntConsumer;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -34,6 +36,8 @@ public final class FixedBitSet extends BitSet {
 
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(FixedBitSet.class);
+  private static final BitSetUtil BIT_SET_UTIL =
+      VectorizationProvider.getInstance().newBitSetUtil();
 
   // An array that is small enough to use reasonable amounts of RAM and large enough to allow
   // Arrays#mismatch to use SIMD instructions and multiple registers under the hood.
@@ -869,5 +873,14 @@ public final class FixedBitSet extends BitSet {
       consumer.accept(base + ntz);
       bits ^= 1L << ntz;
     }
+  }
+
+  /**
+   * A wrapper for {@link BitSetUtil#bitsetToArray}
+   *
+   * @see BitSetUtil#bitsetToArray
+   */
+  public int toArray(int from, int to, int base, int[] array) {
+    return BIT_SET_UTIL.bitsetToArray(this, from, to, base, array);
   }
 }

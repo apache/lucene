@@ -14,12 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene103;
+package org.apache.lucene.internal.vectorization;
 
 import java.util.Objects;
 import org.apache.lucene.util.FixedBitSet;
 
-class BitSetUtil {
+public class BitSetUtil {
+
+  static final BitSetUtil INSTANCE = new BitSetUtil();
+
+  BitSetUtil() {}
 
   /**
    * Converts set bits in the given bitset to an array of document IDs. Only processes bits from
@@ -30,11 +34,11 @@ class BitSetUtil {
    * stored in the provided {@code array}.
    *
    * <p>NOTE: Caller need to ensure the {@code array} has a length greater than or equal to {@code
-   * bitSet.cardinality(from, to) + 1}.
+   * bitSet.cardinality(from, to) + 16}.
    */
-  static int denseBitsetToArray(FixedBitSet bitSet, int from, int to, int base, int[] array) {
-    assert bitSet.cardinality(from, to) + 1 <= array.length
-        : "Array length must be at least bitSet.cardinality(from, to) + 1";
+  public final int bitsetToArray(FixedBitSet bitSet, int from, int to, int base, int[] array) {
+    assert bitSet.cardinality(from, to) + 16 <= array.length
+        : "Array length must be at least bitSet.cardinality(from, to) + 16";
 
     Objects.checkFromToIndex(from, to, bitSet.length());
 
@@ -68,20 +72,26 @@ class BitSetUtil {
     return offset;
   }
 
-  private static int word2Array(long word, int base, int[] docs, int offset) {
-    final int bitCount = Long.bitCount(word);
-
+  int word2Array(long word, int base, int[] docs, int offset) {
+    int bitCount = Long.bitCount(word);
     if (bitCount >= 32) {
       return denseWord2Array(word, base, docs, offset);
+    } else {
+      return sparseWord2Array(word, base, docs, offset, bitCount);
     }
+  }
 
-    for (int i = 0; i < bitCount; i++) {
+  private static int sparseWord2Array(long word, int base, int[] docs, int offset, int bitCount) {
+    assert Long.bitCount(word) == bitCount;
+
+    final int to = offset + bitCount;
+    while (offset < to) {
       int ntz = Long.numberOfTrailingZeros(word);
       docs[offset++] = base + ntz;
       word ^= 1L << ntz;
     }
 
-    return offset;
+    return to;
   }
 
   private static int denseWord2Array(long word, int base, int[] docs, int offset) {
