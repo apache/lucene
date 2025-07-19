@@ -181,7 +181,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
               docAndScoreAccBuffer, sumOfOtherClause, scorable.minCompetitiveScore, scorers.length);
         }
 
-        ScorerUtil.applyRequiredClause(docAndScoreAccBuffer, iterators[i], scorables[i]);
+        scorers[i].applyAsRequiredClause(docAndScoreAccBuffer);
       }
 
       for (int i = 0; i < docAndScoreAccBuffer.size; ++i) {

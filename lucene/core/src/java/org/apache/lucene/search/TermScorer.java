@@ -19,12 +19,14 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.index.NormAndFreqBuffer;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.LongsRef;
 
 /**
@@ -39,6 +41,8 @@ public final class TermScorer extends Scorer {
   private final NumericDocValues norms;
   private final ImpactsDISI impactsDisi;
   private final MaxScoreCache maxScoreCache;
+  private final NormAndFreqBuffer normAndFreqBuffer = new NormAndFreqBuffer();
+  private int[] freqs = IntsRef.EMPTY_INTS;
   private long[] normValues = LongsRef.EMPTY_LONGS;
 
   /** Construct a {@link TermScorer} that will iterate all documents. */
@@ -169,6 +173,23 @@ public final class TermScorer extends Scorer {
       // Unless SimScorer#score is megamorphic, SimScorer#score should inline and (part of) score
       // computations should auto-vectorize.
       buffer.features[i] = scorer.score(buffer.features[i], normValues[i]);
+    }
+  }
+
+  @Override
+  public void applyAsRequiredClause(DocAndScoreAccBuffer buffer) throws IOException {
+    normAndFreqBuffer.growNoCopy(buffer.size);
+    postingsEnum.nextRequiredFreqBuffer(buffer, normAndFreqBuffer.freqs);
+    for (int i = 0; i < buffer.size; i++) {
+      if (norms == null || norms.advanceExact(buffer.docs[i]) == false) {
+        normAndFreqBuffer.norms[i] = 1L;
+      } else {
+        normAndFreqBuffer.norms[i] = norms.longValue();
+      }
+    }
+
+    for (int i = 0; i < buffer.size; i++) {
+      buffer.scores[i] += scorer.score(normAndFreqBuffer.freqs[i], normAndFreqBuffer.norms[i]);
     }
   }
 }

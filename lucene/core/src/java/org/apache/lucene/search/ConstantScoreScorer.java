@@ -163,4 +163,28 @@ public final class ConstantScoreScorer extends Scorer {
     Arrays.fill(buffer.features, 0, size, score);
     buffer.size = size;
   }
+
+  @Override
+  public void applyAsRequiredClause(DocAndScoreAccBuffer buffer) throws IOException {
+    int intersectionSize = 0;
+    int curDoc = disi.docID();
+    for (int i = 0; i < buffer.size; ++i) {
+      int targetDoc = buffer.docs[i];
+      if (curDoc < targetDoc) {
+        curDoc = disi.advance(targetDoc);
+      }
+      if (curDoc == targetDoc) {
+        buffer.docs[intersectionSize] = targetDoc;
+        buffer.scores[intersectionSize] = buffer.scores[i];
+        intersectionSize++;
+      }
+    }
+
+    buffer.size = intersectionSize;
+    if (score != 0) {
+      for (int i = 0; i < intersectionSize; ++i) {
+        buffer.scores[i] += score;
+      }
+    }
+  }
 }
