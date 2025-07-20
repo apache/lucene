@@ -216,6 +216,8 @@ Optimizations
 
 * GITHUB#14806: Utilize docIdRunEnd on ReqExclBulkScorer. (Ge Song)
 
+* GITHUB#14970: Further speed up filtering hits by score. (Adrien Grand)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
