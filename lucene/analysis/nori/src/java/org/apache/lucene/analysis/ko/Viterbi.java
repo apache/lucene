@@ -18,7 +18,6 @@ package org.apache.lucene.analysis.ko;
 
 import java.io.IOException;
 import java.util.EnumMap;
-
 import org.apache.lucene.analysis.ko.dict.CharacterDefinition;
 import org.apache.lucene.analysis.ko.dict.KoMorphData;
 import org.apache.lucene.analysis.ko.dict.TokenInfoDictionary;
