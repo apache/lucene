@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import org.apache.lucene.search.DocAndFloatFeatureBuffer;
-import org.apache.lucene.search.DocAndScoreAccBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
@@ -142,23 +141,5 @@ public abstract class PostingsEnum extends DocIdSetIterator {
       ++size;
     }
     buffer.size = size;
-  }
-
-  public void nextRequiredFreqBuffer(DocAndScoreAccBuffer buffer, int[] freq) throws IOException {
-    int intersectionSize = 0;
-    int curDoc = docID();
-    for (int i = 0; i < buffer.size; i++) {
-      int targetDoc = buffer.docs[i];
-      if (curDoc < targetDoc) {
-        curDoc = advance(targetDoc);
-      }
-      if (curDoc == targetDoc) {
-        buffer.docs[intersectionSize] = targetDoc;
-        buffer.scores[intersectionSize] = buffer.scores[i];
-        freq[intersectionSize] = freq();
-        intersectionSize++;
-      }
-    }
-    buffer.size = intersectionSize;
   }
 }

@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.index.ImpactsEnum;
-import org.apache.lucene.index.NormAndFreqBuffer;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SlowImpactsEnum;
@@ -41,7 +40,6 @@ public final class TermScorer extends Scorer {
   private final NumericDocValues norms;
   private final ImpactsDISI impactsDisi;
   private final MaxScoreCache maxScoreCache;
-  private final NormAndFreqBuffer normAndFreqBuffer = new NormAndFreqBuffer();
   private int[] freqs = IntsRef.EMPTY_INTS;
   private long[] normValues = LongsRef.EMPTY_LONGS;
 
@@ -178,18 +176,38 @@ public final class TermScorer extends Scorer {
 
   @Override
   public void applyAsRequiredClause(DocAndScoreAccBuffer buffer) throws IOException {
-    normAndFreqBuffer.growNoCopy(buffer.size);
-    postingsEnum.nextRequiredFreqBuffer(buffer, normAndFreqBuffer.freqs);
-    for (int i = 0; i < buffer.size; i++) {
+    int size = buffer.size;
+    if (freqs.length < size) {
+      freqs = ArrayUtil.growNoCopy(freqs, size);
+      normValues = new long[freqs.length];
+    }
+
+    int intersectionSize = 0;
+    int curDoc = docID();
+    for (int i = 0; i < size; i++) {
+      int targetDoc = buffer.docs[i];
+      if (curDoc < targetDoc) {
+        curDoc = postingsEnum.advance(targetDoc);
+      }
+      if (curDoc == targetDoc) {
+        buffer.docs[intersectionSize] = targetDoc;
+        buffer.scores[intersectionSize] = buffer.scores[i];
+        freqs[intersectionSize] = postingsEnum.freq();
+        intersectionSize++;
+      }
+    }
+    buffer.size = intersectionSize;
+
+    for (int i = 0; i < intersectionSize; i++) {
       if (norms == null || norms.advanceExact(buffer.docs[i]) == false) {
-        normAndFreqBuffer.norms[i] = 1L;
+        normValues[i] = 1L;
       } else {
-        normAndFreqBuffer.norms[i] = norms.longValue();
+        normValues[i] = norms.longValue();
       }
     }
 
-    for (int i = 0; i < buffer.size; i++) {
-      buffer.scores[i] += scorer.score(normAndFreqBuffer.freqs[i], normAndFreqBuffer.norms[i]);
+    for (int i = 0; i < intersectionSize; i++) {
+      buffer.scores[i] += scorer.score(freqs[i], normValues[i]);
     }
   }
 }
