@@ -182,10 +182,10 @@ configure(project(":lucene:analysis:common")) {
     executable = buildGlobals.externalTool("python3")
     workingDir = target.parentFile
     args += [
-        "-B",
-        // don't write any bytecode cache
-        script,
-        target
+      "-B",
+      // don't write any bytecode cache
+      script,
+      target
     ]
 
     doLast {
@@ -193,7 +193,7 @@ configure(project(":lucene:analysis:common")) {
           file: target,
           encoding: "UTF-8",
           eol: "lf"
-      )
+          )
     }
   })
 

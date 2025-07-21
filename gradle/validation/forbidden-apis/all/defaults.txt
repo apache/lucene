@@ -21,6 +21,8 @@ java.util.concurrent.Executors#newSingleThreadScheduledExecutor()
 java.util.concurrent.Executors#newScheduledThreadPool(int)
 java.util.concurrent.Executors#defaultThreadFactory()
 java.util.concurrent.Executors#privilegedThreadFactory()
+java.util.concurrent.ThreadPoolExecutor#<init>(int, int, long, java.util.concurrent.TimeUnit, java.util.concurrent.BlockingQueue)
+java.util.concurrent.ThreadPoolExecutor#<init>(int, int, long, java.util.concurrent.TimeUnit, java.util.concurrent.BlockingQueue, java.util.concurrent.RejectedExecutionHandler)
 
 @defaultMessage Properties files should be read/written with Reader/Writer, using UTF-8 charset. This allows reading older files with unicode escapes, too.
 java.util.Properties#load(java.io.InputStream)

@@ -38,9 +38,9 @@ configure(project(":lucene:test-framework")) {
         workingDir = genDir
         executable = buildGlobals.externalTool("perl")
         args = [
-            genScript,
-            "-v",
-            unicodeVersion
+          genScript,
+          "-v",
+          unicodeVersion
         ]
       })
 
@@ -52,28 +52,28 @@ configure(project(":lucene:test-framework")) {
   ])
 
   def generateJavaUnicodeWordBreakTestInternal = tasks.register("generateJavaUnicodeWordBreakTestInternal",
-    QuietExec, {
-    def unicodeVersion = "12.1"
+      QuietExec, {
+        def unicodeVersion = "12.1"
 
-    def genDir = file("src/java/org/apache/lucene/tests/analysis/standard")
-    def genScript = file("${genDir}/generateJavaUnicodeWordBreakTest.pl")
-    def genOutput = file("${genDir}/WordBreakTestUnicode_${unicodeVersion.replace('.', '_')}.java")
+        def genDir = file("src/java/org/apache/lucene/tests/analysis/standard")
+        def genScript = file("${genDir}/generateJavaUnicodeWordBreakTest.pl")
+        def genOutput = file("${genDir}/WordBreakTestUnicode_${unicodeVersion.replace('.', '_')}.java")
 
-    description = "Regenerate ${genOutput}"
-    group = "generation"
+        description = "Regenerate ${genOutput}"
+        group = "generation"
 
-    inputs.file genScript
-    inputs.property "unicodeVersion", unicodeVersion
-    outputs.file genOutput
+        inputs.file genScript
+        inputs.property "unicodeVersion", unicodeVersion
+        outputs.file genOutput
 
-    workingDir = genDir
-    executable = buildGlobals.externalTool("perl")
-    args = [
-        genScript,
-        "-v",
-        unicodeVersion
-    ]
-  })
+        workingDir = genDir
+        executable = buildGlobals.externalTool("perl")
+        args = [
+          genScript,
+          "-v",
+          unicodeVersion
+        ]
+      })
 
   regenerate.dependsOn wrapWithPersistentChecksums2(generateJavaUnicodeWordBreakTestInternal, [
     andThenTasks: [
