@@ -37,6 +37,7 @@ import org.apache.lucene.store.RateLimitedIndexOutput;
 import org.apache.lucene.store.RateLimiter;
 import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
@@ -948,7 +949,13 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
     public CachedExecutor() {
       this.executor =
-          new ThreadPoolExecutor(0, 1024, 1L, TimeUnit.MINUTES, new SynchronousQueue<>());
+          new ThreadPoolExecutor(
+              0,
+              1024,
+              1L,
+              TimeUnit.MINUTES,
+              new SynchronousQueue<>(),
+              new NamedThreadFactory("CachedExecutor"));
     }
 
     void shutdown() {

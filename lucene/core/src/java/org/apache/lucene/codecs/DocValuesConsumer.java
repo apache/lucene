@@ -1086,13 +1086,13 @@ public abstract class DocValuesConsumer implements Closeable {
       final Iterable<Number> values,
       final Number missingValue) {
     assert isSingleValued(docToValueCount);
-    return new Iterable<Number>() {
+    return new Iterable<>() {
 
       @Override
       public Iterator<Number> iterator() {
         final Iterator<Number> countIterator = docToValueCount.iterator();
         final Iterator<Number> valuesIterator = values.iterator();
-        return new Iterator<Number>() {
+        return new Iterator<>() {
 
           @Override
           public boolean hasNext() {
