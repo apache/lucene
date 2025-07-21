@@ -199,6 +199,37 @@ public class TestTessellator extends LuceneTestCase {
     assertEquals("at least three non-collinear points required", ex.getMessage());
   }
 
+  public void testInvalidPolygonHoleDisjoint() throws Exception {
+    String wkt =
+        "POLYGON((172.42 51.3, 180.0 51.3, 180.0 71.4, 172.42 71.4, 172.42 51.3), "
+            + "(-180.0 51.3, -129.99 51.3, -129.99 71.4, -180.0 71.4, -180.0 51.3))";
+    Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
+    IllegalArgumentException ex =
+        expectThrows(IllegalArgumentException.class, () -> Tessellator.tessellate(polygon, true));
+    assertEquals(
+        "Illegal hole detected: [[-180.0, 51.3], [-129.99, 51.3], [-129.99, 71.4], [-180.0, 71.4], [-180.0, 51.3]]",
+        ex.getMessage());
+
+    float[] xs = new float[polygon.numPoints()];
+    float[] ys = new float[polygon.numPoints()];
+    for (int i = 0; i < polygon.numPoints(); i++) {
+      xs[i] = (float) polygon.getPolyLon(i);
+      ys[i] = (float) polygon.getPolyLat(i);
+    }
+    float[] xsHole = new float[polygon.getHole(0).numPoints()];
+    float[] ysHole = new float[polygon.getHole(0).numPoints()];
+    for (int i = 0; i < polygon.getHole(0).numPoints(); i++) {
+      xsHole[i] = (float) polygon.getHole(0).getPolyLon(i);
+      ysHole[i] = (float) polygon.getHole(0).getPolyLat(i);
+    }
+    XYPolygon xyPolygon = new XYPolygon(xs, ys, new XYPolygon(xsHole, ysHole));
+    ex =
+        expectThrows(IllegalArgumentException.class, () -> Tessellator.tessellate(xyPolygon, true));
+    assertEquals(
+        "Illegal hole detected: [[-180.0, 51.3], [-129.99, 51.3], [-129.99, 71.4], [-180.0, 71.4], [-180.0, 51.3]]",
+        ex.getMessage());
+  }
+
   public void testComplexPolygon01() throws Exception {
     String wkt =
         "POLYGON((58.8792517 54.9160937, 58.8762477 54.9154524, 58.8735011 54.9140217, 58.8726428 54.9127389, 58.8731146 54.9122507, 58.8741877 54.9120482, 58.8771918 54.9117028, 58.88011 54.913331, 58.8801175 54.9137036, 58.8805885 54.9143186, 58.8807109 54.9148604, 58.88011 54.915551, 58.8792517 54.9160937), "
