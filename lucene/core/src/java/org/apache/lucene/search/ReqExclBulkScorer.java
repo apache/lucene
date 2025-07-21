@@ -59,7 +59,7 @@ final class ReqExclBulkScorer extends BulkScorer {
       if (exclDoc == upTo) {
         if (exclTwoPhase == null) {
           // from upTo to docIdRunEnd() are excluded, so we scored up to docIdRunEnd()
-          upTo = exclApproximation.docIDRunEnd();
+          upTo = Math.min(exclApproximation.docIDRunEnd(), max);
         } else if (exclTwoPhase.matches()) {
           // upTo is excluded so we can consider that we scored up to upTo+1
           upTo += 1;
