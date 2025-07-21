@@ -145,7 +145,7 @@ public class QueryDecomposer {
   static final class SortableDisjunct extends QueryVisitor {
 
     private static final int FOREVER_SEED = 31;
-    private final Set<List<BytesRef>> seen = new HashSet<>();
+    private final Set<Term> seen = new HashSet<>();
     private final Query query;
     private long sortVal;
 
@@ -158,11 +158,10 @@ public class QueryDecomposer {
     public void consumeTerms(Query query, Term... terms) {
       for (Term ter : terms) {
         BytesRef field = new BytesRef(ter.field());
-        var key = List.of(field, ter.bytes());
-        if (!seen.contains(key)) {
+        if (!seen.contains(ter)) {
           sortVal += StringHelper.murmurhash3_x86_32(field, FOREVER_SEED);
           sortVal += StringHelper.murmurhash3_x86_32(ter.bytes(), FOREVER_SEED);
-          seen.add(key);
+          seen.add(ter);
         }
       }
     }
