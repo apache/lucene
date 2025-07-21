@@ -57,7 +57,7 @@ public class TestTessellator extends LuceneTestCase {
   }
 
   public void testSimpleTessellation() throws Exception {
-    Polygon poly = GeoTestUtil.createRegularPolygon(0.0, 0.0, 100000, 100000);
+    Polygon poly = GeoTestUtil.createRegularPolygon(0.0, 0.0, 1000000, 100000);
     Polygon inner =
         new Polygon(
             new double[] {-1.0, -1.0, 0.5, 1.0, 1.0, 0.5, -1.0},
