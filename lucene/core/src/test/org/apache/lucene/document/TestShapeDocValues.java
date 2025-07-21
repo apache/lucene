@@ -214,17 +214,26 @@ public class TestShapeDocValues extends LuceneTestCase {
   }
 
   private Polygon getTestPolygonWithHole() {
-    Polygon poly = GeoTestUtil.createRegularPolygon(0.0, 0.0, 100000, 7);
-    Polygon inner =
-        new Polygon(
-            new double[] {-1.0, -1.0, 0.5, 1.0, 1.0, 0.5, -1.0},
-            new double[] {1.0, -1.0, -0.5, -1.0, 1.0, 0.5, 1.0});
-    Polygon inner2 =
-        new Polygon(
-            new double[] {-1.0, -1.0, 0.5, 1.0, 1.0, 0.5, -1.0},
-            new double[] {-2.0, -4.0, -3.5, -4.0, -2.0, -2.5, -2.0});
+    while (true) {
+      Polygon poly = GeoTestUtil.createRegularPolygon(0.0, 0.0, 100000, 7);
+      Polygon inner =
+          new Polygon(
+              new double[] {-1.0, -1.0, 0.5, 1.0, 1.0, 0.5, -1.0},
+              new double[] {1.0, -1.0, -0.5, -1.0, 1.0, 0.5, 1.0});
+      Polygon inner2 =
+          new Polygon(
+              new double[] {-1.0, -1.0, 0.5, 1.0, 1.0, 0.5, -1.0},
+              new double[] {-2.0, -4.0, -3.5, -4.0, -2.0, -2.5, -2.0});
 
-    return new Polygon(poly.getPolyLats(), poly.getPolyLons(), inner, inner2);
+      Polygon polygon = new Polygon(poly.getPolyLats(), poly.getPolyLons(), inner, inner2);
+      try {
+        getTessellation(polygon);
+        return polygon;
+      } catch (IllegalArgumentException iae) {
+        // ignore invalid polygon
+        continue;
+      }
+    }
   }
 
   private List<ShapeField.DecodedTriangle> getTessellation(Geometry p) {
