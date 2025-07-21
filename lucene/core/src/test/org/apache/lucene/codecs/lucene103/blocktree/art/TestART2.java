@@ -86,10 +86,9 @@ public class TestART2 extends LuceneTestCase {
     }
 
     Map<BytesRef, Output> actual = new TreeMap<>();
-    // Search.
-    ARTReader artReader = new ARTReader(artBuilder.root);
 
-    artReader.visit(actual::put);
+    // Visit.
+    artBuilder.visit(actual::put);
     assertEquals(expected, actual);
   }
 
