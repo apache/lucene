@@ -229,7 +229,7 @@ public class TestShapeDocValues extends LuceneTestCase {
       try {
         getTessellation(polygon);
         return polygon;
-      } catch (IllegalArgumentException iae) {
+      } catch (@SuppressWarnings("unused") IllegalArgumentException iae) {
         // ignore invalid polygon
         continue;
       }
