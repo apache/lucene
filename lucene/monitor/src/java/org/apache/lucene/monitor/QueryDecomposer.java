@@ -148,7 +148,7 @@ public class QueryDecomposer {
     private final Query query;
     private long sortVal;
 
-    public SortableDisjunct(Query query) {
+    SortableDisjunct(Query query) {
       this.query = query;
       query.visit(this);
     }
@@ -156,9 +156,8 @@ public class QueryDecomposer {
     @Override
     public void consumeTerms(Query query, Term... terms) {
       for (Term ter : terms) {
-        BytesRef field = new BytesRef(ter.field());
         if (!seen.contains(ter)) {
-          sortVal += StringHelper.murmurhash3_x86_32(field, FOREVER_SEED);
+          sortVal += StringHelper.murmurhash3_x86_32(new BytesRef(ter.field()), FOREVER_SEED);
           sortVal += StringHelper.murmurhash3_x86_32(ter.bytes(), FOREVER_SEED);
           seen.add(ter);
         }
