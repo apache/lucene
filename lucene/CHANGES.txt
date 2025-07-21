@@ -243,7 +243,7 @@ Bug Fixes
 * GITHUB#14922: Fix for IndexedDISI.Dense#intoBitSetWithinBlock to take into account the provided bitset size
   and avoid throwing IndexOutOfBoundsException (Panagiotis Bailis)
 
- * GITHUB#14974: Lucene tessellator always fails if it cannot process a hole instrad of just ignore it.
+ * GITHUB#14974: Lucene tessellator now always fails if it cannot process a hole instead of just ignoring it.
    (Ignacio Vera)
 
 Build
