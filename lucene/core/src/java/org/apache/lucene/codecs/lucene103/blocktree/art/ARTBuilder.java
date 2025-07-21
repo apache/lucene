@@ -18,10 +18,14 @@ package org.apache.lucene.codecs.lucene103.blocktree.art;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.function.BiConsumer;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
 
 /**
  * Builds an ART from pre-sorted terms with outputs. We can save built ART to disk and read it by
@@ -71,6 +75,58 @@ public class ARTBuilder {
     Node freshRoot = insert(root, key, 0, output);
     if (freshRoot != root) {
       this.root = freshRoot;
+    }
+  }
+
+  /** Append an art builder to this. */
+  public void append(ARTBuilder artBuilder) {
+    // TODO: Improve this or PendingBlock#subIndices store kvs?.
+    Map<BytesRef, Output> kvs = new TreeMap<>();
+    visit(artBuilder.root, new BytesRefBuilder(), kvs::put);
+
+    for (var entry : kvs.entrySet()) {
+      insert(entry.getKey(), entry.getValue());
+    }
+  }
+
+  /**
+   * Collect all key, output pairs. Used for tests only. The recursive impl need to be avoided if
+   * someone plans to use for production one day.
+   */
+  void visit(BiConsumer<BytesRef, Output> consumer) {
+    visit(root, new BytesRefBuilder(), consumer);
+  }
+
+  private void visit(Node node, BytesRefBuilder prefix, BiConsumer<BytesRef, Output> consumer) {
+    if (node.output != null) {
+      if (node.nodeType == NodeType.LEAF_NODE) {
+        if (node.key != null) {
+          prefix.append(node.key);
+        }
+        consumer.accept(prefix.toBytesRef(), node.output);
+        return;
+      } else {
+        if (node.prefixLength > 0) {
+          prefix.append(node.prefix, 0, node.prefixLength);
+        }
+        consumer.accept(prefix.toBytesRef(), node.output);
+      }
+    }
+
+    int pos = -1;
+    while ((pos = node.getNextLargerPos(pos)) != -1) {
+      byte key = node.getChildKey(pos);
+      Node child = node.getChild(pos);
+      // Clone prefix.
+      BytesRefBuilder clonedPrefix = new BytesRefBuilder();
+      clonedPrefix.copyBytes(prefix);
+      clonedPrefix.append(key);
+
+      // We append prefix with output in next visit.
+      if (child.output == null && child.prefixLength > 0) {
+        clonedPrefix.append(child.prefix, 0, child.prefixLength);
+      }
+      visit(child, clonedPrefix, consumer);
     }
   }
 

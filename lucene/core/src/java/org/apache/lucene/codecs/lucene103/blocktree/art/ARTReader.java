@@ -17,10 +17,8 @@
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
 import java.io.IOException;
-import java.util.function.BiConsumer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefBuilder;
 
 /**
  * Visit or find(search) terms. We can read an ART from disk, or from root node directly(similar to
@@ -60,47 +58,6 @@ public class ARTReader {
       }
       node.setChildren(children);
       return node;
-    }
-  }
-
-  /**
-   * Collect all key, output pairs. Used for tests only. The recursive impl need to be avoided if
-   * someone plans to use for production one day.
-   */
-  void visit(BiConsumer<BytesRef, Output> consumer) {
-    visit(root, new BytesRefBuilder(), consumer);
-  }
-
-  private void visit(Node node, BytesRefBuilder prefix, BiConsumer<BytesRef, Output> consumer) {
-    if (node.output != null) {
-      if (node.nodeType == NodeType.LEAF_NODE) {
-        if (node.key != null) {
-          prefix.append(node.key);
-        }
-        consumer.accept(prefix.toBytesRef(), node.output);
-        return;
-      } else {
-        if (node.prefixLength > 0) {
-          prefix.append(node.prefix, 0, node.prefixLength);
-        }
-        consumer.accept(prefix.toBytesRef(), node.output);
-      }
-    }
-
-    int pos = -1;
-    while ((pos = node.getNextLargerPos(pos)) != -1) {
-      byte key = node.getChildKey(pos);
-      Node child = node.getChild(pos);
-      // Clone prefix.
-      BytesRefBuilder clonedPrefix = new BytesRefBuilder();
-      clonedPrefix.copyBytes(prefix);
-      clonedPrefix.append(key);
-
-      // We append prefix with output in next visit.
-      if (child.output == null && child.prefixLength > 0) {
-        clonedPrefix.append(child.prefix, 0, child.prefixLength);
-      }
-      visit(child, clonedPrefix, consumer);
     }
   }
 
