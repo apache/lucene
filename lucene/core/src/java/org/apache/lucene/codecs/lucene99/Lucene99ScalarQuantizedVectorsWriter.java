@@ -19,7 +19,9 @@ package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.codecs.KnnVectorsWriter.MergedVectorValues.hasVectorValues;
 import static org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
-import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.*;
+import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.DYNAMIC_CONFIDENCE_INTERVAL;
+import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_COMPONENT;
+import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.calculateDefaultConfidenceInterval;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
 
@@ -167,7 +169,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
             state.segmentSuffix,
             Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION);
     this.rawVectorDelegate = rawVectorDelegate;
-    boolean success = false;
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
       quantizedVectorData =
@@ -185,11 +186,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
           version,
           state.segmentInfo.getId(),
           state.segmentSuffix);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -480,7 +479,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         segmentWriteState.directory.createTempOutput(
             quantizedVectorData.getName(), "temp", segmentWriteState.context);
     IndexInput quantizationDataInput = null;
-    boolean success = false;
     try {
       MergedQuantizedVectorValues byteVectorValues =
           MergedQuantizedVectorValues.mergeQuantizedByteVectorValues(
@@ -507,8 +505,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
           mergedQuantizationState.getLowerQuantile(),
           mergedQuantizationState.getUpperQuantile(),
           docsWithField);
-      success = true;
       final IndexInput finalQuantizationDataInput = quantizationDataInput;
+      quantizationDataInput = null;
+
       return new ScalarQuantizedCloseableRandomVectorScorerSupplier(
           () -> {
             IOUtils.close(finalQuantizationDataInput);
@@ -524,13 +523,12 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
                   compress,
                   fieldInfo.getVectorSimilarityFunction(),
                   vectorsScorer,
-                  quantizationDataInput)));
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(tempQuantizedVectorData, quantizationDataInput);
-        IOUtils.deleteFilesIgnoringExceptions(
-            segmentWriteState.directory, tempQuantizedVectorData.getName());
-      }
+                  finalQuantizationDataInput)));
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, tempQuantizedVectorData, quantizationDataInput);
+      IOUtils.deleteFilesSuppressingExceptions(
+          t, segmentWriteState.directory, tempQuantizedVectorData.getName());
+      throw t;
     }
   }
 

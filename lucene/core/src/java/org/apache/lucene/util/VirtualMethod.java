@@ -17,8 +17,6 @@
 package org.apache.lucene.util;
 
 import java.lang.reflect.Method;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -60,11 +58,6 @@ import java.util.Set;
  *    VirtualMethod.compareImplementationDistance(this.getClass(), oldMethod, newMethod) &gt; 0);
  * </pre>
  *
- * <p>It is important to use {@link AccessController#doPrivileged(PrivilegedAction)} for the actual
- * call to get the implementation distance because the subclass may be in a different package. The
- * static constructors do not need to use {@code AccessController} because it just initializes our
- * own method reference. The caller should have access to all declared members in its own class.
- *
  * <p>{@link #getImplementationDistance} returns the distance of the subclass that overrides this
  * method. The one with the larger distance should be used preferable. This way also more
  * complicated method rename scenarios can be handled (think of 2.9 {@code TokenStream}
@@ -81,7 +74,7 @@ public final class VirtualMethod<C> {
   private final String method;
   private final Class<?>[] parameters;
   private final ClassValue<Integer> distanceOfClass =
-      new ClassValue<Integer>() {
+      new ClassValue<>() {
         @Override
         protected Integer computeValue(Class<?> subclazz) {
           return Integer.valueOf(reflectImplementationDistance(subclazz));

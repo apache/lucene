@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.compound;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.logging.Logger;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
@@ -42,6 +43,9 @@ import org.apache.lucene.util.ResourceLoaderAware;
 public class DictionaryCompoundWordTokenFilterFactory extends TokenFilterFactory
     implements ResourceLoaderAware {
 
+  private static final Logger LOG =
+      Logger.getLogger(DictionaryCompoundWordTokenFilterFactory.class.getName());
+
   /** SPI name */
   public static final String NAME = "dictionaryCompoundWord";
 
@@ -50,7 +54,6 @@ public class DictionaryCompoundWordTokenFilterFactory extends TokenFilterFactory
   private final int minWordSize;
   private final int minSubwordSize;
   private final int maxSubwordSize;
-  private final boolean onlyLongestMatch;
   private final boolean onlyLongestMatchIgnoreSubwords;
 
   /** Creates a new DictionaryCompoundWordTokenFilterFactory */
@@ -62,7 +65,12 @@ public class DictionaryCompoundWordTokenFilterFactory extends TokenFilterFactory
         getInt(args, "minSubwordSize", CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE);
     maxSubwordSize =
         getInt(args, "maxSubwordSize", CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE);
-    onlyLongestMatch = getBoolean(args, "onlyLongestMatch", true);
+
+    boolean onlyLongestMatch = getBoolean(args, "onlyLongestMatch", true);
+    if (onlyLongestMatch)
+      LOG.warning(
+          "onlyLongestMatch has been removed and replaced by onlyLongestMatchIgnoreSubwords");
+
     onlyLongestMatchIgnoreSubwords = getBoolean(args, "onlyLongestMatchIgnoreSubwords", true);
 
     if (!args.isEmpty()) {
@@ -92,7 +100,6 @@ public class DictionaryCompoundWordTokenFilterFactory extends TokenFilterFactory
         minWordSize,
         minSubwordSize,
         maxSubwordSize,
-        onlyLongestMatch,
         onlyLongestMatchIgnoreSubwords);
   }
 }

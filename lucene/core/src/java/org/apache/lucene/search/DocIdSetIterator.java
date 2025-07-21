@@ -203,7 +203,7 @@ public abstract class DocIdSetIterator {
    * @lucene.internal
    */
   public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-    assert offset <= docID();
+    assert offset <= docID() : "offset=" + offset + " docID()=" + docID() + " upTo=" + upTo;
     for (int doc = docID(); doc < upTo; doc = nextDoc()) {
       bitSet.set(doc - offset);
     }

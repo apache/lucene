@@ -49,6 +49,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.search.knn.TopKnnCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -246,6 +247,20 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       Query kvq = getKnnVectorQuery("field", new float[] {0, 0}, 10, filter);
       TopDocs topDocs = searcher.search(kvq, 3);
       assertEquals(0, topDocs.totalHits.value());
+    }
+  }
+
+  public void testMatchAllFilter() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+
+      // make sure we don't drop to exact search, even though the filter matches fewer than k docs
+      Query kvq =
+          getThrowingKnnVectorQuery("field", new float[] {0, 0}, 10, new MatchAllDocsQuery());
+      TopDocs topDocs = searcher.search(kvq, 3);
+      assertEquals(3, topDocs.totalHits.value());
     }
   }
 
@@ -496,7 +511,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     assertRandomConsistency(false);
   }
 
-  @AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/14180")
+  // @AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/14180")
   public void testRandomConsistencyMultiThreaded() throws IOException {
     assertRandomConsistency(true);
   }
@@ -1218,5 +1233,11 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       }
       return true;
     }
+  }
+
+  public void testStrategy() {
+    AbstractKnnVectorQuery vector = getKnnVectorQuery("vector", randomVector(10), 3);
+    assertNotNull(vector.getSearchStrategy());
+    assertTrue(vector.getSearchStrategy() instanceof KnnSearchStrategy.Hnsw);
   }
 }

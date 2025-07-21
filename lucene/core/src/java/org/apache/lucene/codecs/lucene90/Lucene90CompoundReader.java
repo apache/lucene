@@ -30,7 +30,6 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 
@@ -65,7 +64,6 @@ final class Lucene90CompoundReader extends CompoundDirectory {
     String entriesFileName =
         IndexFileNames.segmentFileName(segmentName, "", Lucene90CompoundFormat.ENTRIES_EXTENSION);
     this.entries = readEntries(si.getId(), directory, entriesFileName);
-    boolean success = false;
 
     // find the last FileEntry in the map (largest offset+length) and add length of codec footer:
     final long expectedLength =
@@ -75,7 +73,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
                 .orElseGet(() -> CodecUtil.indexHeaderLength(Lucene90CompoundFormat.DATA_CODEC, ""))
             + CodecUtil.footerLength();
 
-    handle = directory.openInput(dataFileName, IOContext.DEFAULT.withReadAdvice(ReadAdvice.NORMAL));
+    handle = directory.openInput(dataFileName, IOContext.DEFAULT);
     try {
       CodecUtil.checkIndexHeader(
           handle, Lucene90CompoundFormat.DATA_CODEC, version, version, si.getId(), "");
@@ -93,12 +91,9 @@ final class Lucene90CompoundReader extends CompoundDirectory {
             "length should be " + expectedLength + " bytes, but is " + handle.length() + " instead",
             handle);
       }
-
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(handle);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, handle);
+      throw t;
     }
   }
 
@@ -169,7 +164,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
               + entries.keySet()
               + ")");
     }
-    return handle.slice(name, entry.offset, entry.length, context.readAdvice());
+    return handle.slice(name, entry.offset, entry.length, context);
   }
 
   /** Returns an array of strings, one for each file in the directory. */

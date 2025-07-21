@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 
-apply plugin: 'java-library'
-
 description = 'Lucene index files replication utility'
 
 dependencies {
@@ -24,4 +22,3 @@ dependencies {
 
   moduleTestImplementation project(':lucene:test-framework')
 }
-

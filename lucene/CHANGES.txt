@@ -22,14 +22,33 @@ API Changes
 
 * GITHUB#14291: Remove IOException from ScorerSupplier#setTopLevelScoringClause signature (Luca Cavanna)
 
+* GITHUB#7865: Added public CharSequence getTermEscaped(EscapeQuerySyntax)
+  to ValueQueryNode. Made existing implementations public in all classes which
+  implement ValueQueryNode. (Peter Barna, Adam Schwartz)
+
+* GITHUB#14873: Change PriorityQueue to take a LessThan interface implementation
+  in its constructor rather than overriding the lessThan abstract method (Simon Cooper)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
 
+* GITHUB#14178: Add a Faiss-based vector format in the sandbox module. (Kaival Parikh)
+
+* GITHUB#14792: Introduced OffHeapQuantizedFloatVectorValues class to access float vectors when only quantized byte vectors are available in the index. (Pulkit Gupta)
+
 Improvements
 ---------------------
 
-(No changes)
+* GITHUB#14972: Require named thread factory in ThreadPoolExecutor constructors. (Dawid Weiss)
+
+* GITHUB#14597: Rewrite expressions compiler to use Java 24+ Classfile library instead of ASM.
+  This avoids clashes with other ASM versions on classpath because it removes the dependency.
+  (Uwe Schindler)
+
+* GITHUB#14226: Use optimistic-with-checking KNN Query execution strategy in place of cross-thread
+  global queue min-score checking. Improves performance and consistency. (Mike Sokolov, Dzung Bui,
+  Ben Trent)
 
 Optimizations
 ---------------------
@@ -43,14 +62,39 @@ Bug Fixes
 
 * GITHUB#14075: Remove duplicate and add missing entry on brazilian portuguese stopwords list. (Arthur Caccavo)
 
+* GITHUB#7865 AbstractRangeQueryNode#toQueryString(EscapeQuerySyntax) now
+  returns a string which can be parsed back into the original node.
+  (Peter Barna, Adam Schwartz)
+
+* GITHUB#14847: Allow Faiss vector format to index >2GB of vectors per-field per-segment by using MemorySegment APIs
+  (instead of ByteBuffer) to copy bytes to native memory. (Kaival Parikh)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
 
+Build
+---------------------
+* GITHUB#14804: Detect and ban wildcard imports in Java (Robert Muir, Dawid Weiss)
+
+* GITHUB#14808: Add support for validating sources using ast-grep tool rules #14808
+  (Robert Muir, Dawid Weiss)
+
 Other
 ---------------------
 
+* GITHUB#14801: Removed all security manager and java.security-related code, which is effectively dead
+  in Java 24+. (Dawid Weiss)
+
 * GITHUB#14229: Bump minimum required Java version to 25
+
+* GITHUB#14564: Remove abstractions from MMapDirectory as we need no MR-JAR anymore.  (Uwe Schindler)
+
+* GITHUB#14613: Rewrite APIJAR extractor to use Java 24 classfile API and kill ASM dependency also for build system.  (Uwe Schindler)
+
+* GITHUB#14705: Use Comparators for some PriorityQueue implementations. (Simon Cooper)
+* GITHUB#14761: Use more Comparators for PriorityQueue implementations. (Simon Cooper)
+* GITHUB#14817: Refactor some complex uses of PriorityQueue to use Comparators. (Simon Cooper)
 
 ======================= Lucene 10.3.0 =======================
 
@@ -61,27 +105,143 @@ API Changes
 
 * GITHUB#14417: Support modifying segmentInfos.counter in IndexWriter (Jialiang Guo)
 
+* GITHUB#14426: Support determining desired off-heap memory requirements through
+  KnnVectorsReader::getOffHeapByteSize (Chris Hegarty)
+
+* GITHUB#14899: Deprecate MergeSpecification#segString(Directory) (kitoha)
+
 New Features
 ---------------------
-(No changes)
+* GITHUB#14404: Introducing DocValuesMultiRangeQuery.SortedNumericStabbingBuilder into sandbox.
+  (Mikhail Khludnev)
+
+* GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
+  along with limiting number of child documents to retrieve per parent. (Jinny Wang)
+
+* GITHUB#14776: Add a Rescorer that uses values from provided DoubleValuesSource to re-score
+  first pass hits. (Vigya Sharma)
+
+* GITHUB#14708: Add a DoubleValuesSource for full precision vector similarity scores. (Vigya Sharma)
+
+* GITHUB#14784: Make pack methods public for BigIntegerPoint and HalfFloatPoint. (Prudhvi Godithi)
+
+* GITHUB#14009: Add a new Query that can rescore other Query based on a generic DoubleValueSource
+  and trim the results down to top N (Anh Dung Bui)
+
+* GITHUB#14729: Support for Re-Ranking Queries using Late Interaction Model Multi-Vectors. (Vigya Sharma, Jim Ferenczi)
 
 Improvements
 ---------------------
-* GITHUB#14458 : Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
+* GITHUB#14458: Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
 
 * GITHUB#14476: Removing unnecessary splitX in ComponentTree (Ankit Jain)
+
+* GITHUB#14534: Improve user-facing docs for geo package (Ankit Jain)
+
+* GITHUB#14602: Refactor the expressions compiler to use official ClassData BSM with indexed lookup
+  (Uwe Schindler)
+
+* GITHUB#14672: Numeric sort queries can take advantage of DocValuesSkipper to dynamic prune. (Guo Feng)
+
+* GITHUB#14443: Support adaptive refresh in Searcher Managers (Vigya Sharma)
+
+* GITHUB#14737: Clean up redundant code and comments in query node classes. (Stefan Vodita)
+
+* GITHUB#14816: Expose search strategy in KNN query
 
 Optimizations
 ---------------------
 * GITHUB#14418: Quick exit on filter query matching no docs when rewriting knn query. (Pan Guixin)
 
+* GITHUB#14439, GITHUB#14560, GITHUB#14622: Efficient Histogram Collection using multi range traversal over PointTrees (Ankit Jain)
+
 * GITHUB#14268: PointInSetQuery early exit on non-matching segments. (hanbj)
 
 * GITHUB#14425: KeywordField.newSetQuery() reuses prefixed terms (Mikhail Khludnev)
 
+* GITHUB#14333: Introduce a specialized trie for block tree index, instead of FST. (Guo Feng)
+
+* GITHUB#14447: Compute the doc range more efficiently when flushing doc block. (Pan Guixin)
+
+* GITHUB#14529, GITHUB#14555, GITHUB#14618: Impl intoBitset for IndexedDISI and Docvalues. (Guo Feng)
+
+* GITHUB#14552: Speed up flush of softdelete by intoBitset. (Guo Feng)
+
+* GITHUB#14609: Optimizes PointRangeQuery by rewriting to MatchAllDocsQuery/FieldExistsQuery/MatchNoDocsQuery if all
+  docs in index are contained or excluded (Elliott Bradshaw)
+
+* GITHUB#14679: Optimize exhaustive evaluation of disjunctive queries.
+  (Adrien Grand)
+
+* GITHUB#14700: Return MatchNoDocsQuery when IndexOrDocValuesQuery::rewrite does not match
+  (Chris Hegarty)
+
+* GITHUB#14701: Optimize top-n bulk scorers by evaluating scoring windows in a
+  term-at-a-time fashion instead of doc-at-a-time. (Adrien Grand)
+
+* GITHUB#14709: Speed up TermQuery by Scorer#nextDocsAndScores. (Guo Feng)
+
+* GITHUB#14626: Avoid unnecessary comparison for CELL_CROSSES_QUERY cases (Ankit Jain)
+
+* GITHUB#14674: Optimize AbstractKnnVectorQuery#createBitSet with intoBitset. (Guo Feng)
+
+* GITHUB#14714: Move HitQueue in TopScoreDocCollector to a LongHeap. (Guo Feng)
+
+* GITHUB#14720: Cache high-order bits of hashcode to speed up BytesRefHash. (Pan Guixin)
+
+* GITHUB#14753: Implement IndexedDISI#docIDRunEnd. (Ge Song)
+
+* GITHUB#14774: Use IntArrayList/IntHashSet to replace usages of List/Set of Integer. (Zhang Chao)
+
+* GITHUB#14836: Sometimes use FixedBitSet when doing HNSW searches. This slightly improves HNSW
+  search performance on smaller graphs. (Ben Trent)
+
+* GITHUB#14830: Optimize FieldExistsQuery to leverage index statistic in DocValuesSkipper. (Pan Guixin)
+
+* GITHUB#14851: Fewer virtual calls to enhance performance of point queries. (Ke Wei)
+
+* GITHUB#14834: Optimize CombinedFieldQuery by nextDocsAndScores. (Ge Song)
+
+* GITHUB#14772: Implement ConstantScoreScorer#nextDocsAndScores. (Ge Song)
+
+* GITHUB#14854: Using BatchScoreBulkScorer on CombinedFieldQuery. (Ge Song)
+
+* GITHUB#14827: Pre-calculate minRequiredScore to speedup filterCompetitiveHits. (Ge Song, Adrien Grand)
+
+* GITHUB#14906: Use branchless way to speedup filterCompetitiveHits. (Adrien Grand, Ge Song)
+
+* GITHUB#14935: Speed up PostingsEnum#nextPostings when block is encoded as bitset. (Guo Feng)
+
+* GITHUB#14936: Don't do the filtered knn path when the provided filter is a MatchAllDocsQuery. (Ben Trent)
+
+* GITHUB#14896: Vectorize filterCompetitiveHits (Ge Song, Adrien Grand)
+
+Changes in Runtime Behavior
+---------------------
+* GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
+  tier from 10 to 8. This is expected to result in slightly faster search and
+  slightly slower indexing. (Adrien Grand)
+
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#14880: NPE exception could occur in Luke on Windows when using network shares (wuth)
+
+* GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
+  used if the DoubleValuesSource needed scores. (David Smiley)
+
+* GITHUB#14682 : Fix for add char and token filters in Luke Analysis tab. (Amir Raza)
+
+* GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
+  instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
+
+* GITHUB#14727: Fix several resource leaks. (Xu Chengxin)
+
+* GITHUB#14755: Fix too many documents collected when only bool-filter condition is present. (Ke Wei)
+
+* GITHUB#14838: Make it possible to extend Patience/Seeded knn queries (Tommaso Teofili)
+
+* GITHUB#14922: Fix for IndexedDISI.Dense#intoBitSetWithinBlock to take into account the provided bitset size
+  and avoid throwing IndexOutOfBoundsException (Panagiotis Bailis)
 
 Build
 ---------------------
@@ -90,6 +250,49 @@ Build
 Other
 ---------------------
 * GITHUB#14474: Minor refactor of ComponentTree (Ankit Jain)
+* GITHUB#14459: Minor refactoring of DocValuesConsumer to allow subclasses to reuse some of its merge logic. (Martijn van Groningen)
+
+* GITHUB#7145: Adding basic unit tests for SpanWithinQuery. (Jakub Slowinski)
+
+* GITHUB#14516: Move sloppySin into SloppyMath from GeoUtils (Ankit Jain)
+
+* GITHUB#14627, GITHUB#11920, GITHUB#14706: Fix mock filesystem WindowsFS to also
+  work on Windows. This is required to make tests pass on Windows 11 which no
+  longer has all limitations of previous Windows versions.  (Uwe Schindler)
+
+* GITHUB#14667: Fix documentation regarding benchmark running. (Viliam Durina)
+
+* GITHUB#14898: Fix typo in Circle2D.java (Hokuto Joel Ide)
+
+* GITHUB#14839: Add support for sparse SortedDocValues to LuceneTestCase.assertDocValuesEquals (Parker Timmins)
+
+======================= Lucene 10.2.2 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#14527, GITHUB#14765: Reduce NeighborArray heap memory. (weizijun, Ben Trent)
+
+* GITHUB##14732: Fix IndexSortSortedNumericDocValuesRangeQuery for int sort (Mayya Sharipova)
+
+
+======================= Lucene 10.2.1 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#14522: Fix DISIDocIdStream::count so that it does not try to count beyond max.
+  (Chris Hegarty)
+
+* GITHUB#14523, GITHUB#14530: Correct TermOrdValComparator competitive iterator so that it forces sparse
+  field iteration to be at least scoring window baseline when doing intoBitSet. (Ben Trent, Adrien Grand)
+
+* GITHUB#14445: Provide better impacts for fields indexed with IndexOptions.DOCS GITHUB#14511 (Aniketh Jain)
+
+* GITHUB#14543: Fixed lead cost computations for bulk scorers of conjunctive
+  queries that mix MUST and FILTER clauses, and disjunctive queries that
+  configure a minimum number of matching SHOULD clauses.
+  (Peter Alfonsi, Adrien Grand)
 
 ======================= Lucene 10.2.0 =======================
 
@@ -717,6 +920,55 @@ Build
 
 * GITHUB#13698: Upgrade to gradle 8.10 (Dawid Weiss)
 
+======================== Lucene 9.12.2 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
+  used if the DoubleValuesSource needed scores. (David Smiley)
+
+* GITHUB#14527, GITHUB#14765: Reduce NeighborArray heap memory. (weizijun, Ben Trent)
+
+* GITHUB##14732: Fix IndexSortSortedNumericDocValuesRangeQuery for int sort (Mayya Sharipova)
+
+
+======================== Lucene 9.12.1 =======================
+
+Bug Fixes
+---------------------
+
+
+* GITHUB#13947: Fix ord-to-doc mapping when searching Lucene 9.0.0 hnsw indices (Michael Sokolov, Ben Trent)
+
+* GITHUB#13867: Fix backwards compatibility bug that caused 9.12.0 to
+  incorrectly throw IllegalStateException when trying to open an
+  IndexReader on an index created with quantized (int4, int7, int8)
+  KNN vectors using Lucene99HnswScalarQuantizedVectorsFormat.  This
+  was an accidental backwards compatibility break: such indices should
+  be readable and writable by any future 9.x and 10.x Lucene releases.
+  But note that int8 compression was buggy and can no longer be
+  written but can be read from an existing index.  (Ionut
+  Anghelcovici, Michael McCandless)
+
+* GITHUB#13841: Improve Tessellatorlogic when two holes share the same vertex with the polygon which was failing
+  in valid polygons. (Ignacio Vera)
+
+* GITHUB#13986: Allow easier configuration of the Panama Vectorization provider with
+  newer Java versions. Set the `org.apache.lucene.vectorization.upperJavaFeatureVersion`
+  system property to increase the set of Java versions that Panama Vectorization will
+  provide optimized implementations for. (Chris Hegarty)
+
+* GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
+  their corresponding ordinals. (Paul King)
+
+* GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public (Luca Cavanna)
+
+API Changes
+---------------------
+
+* GITHUB#13845: Add missing with-discountOverlaps Similarity constructor variants. (Pierre Salagnac, Christine Poerschke, Robert Muir)
+
 ======================== Lucene 9.12.0 =======================
 
 Security Fixes
@@ -786,7 +1038,7 @@ Improvements
 
 * GITHUB#13285: Early terminate graph searches of AbstractVectorSimilarityQuery to follow timeout set from
   IndexSearcher#setTimeout(QueryTimeout). (Kaival Parikh)
-  
+
 * GITHUB#13633: Add ability to read/write knn vector values to a MemoryIndex. (Ben Trent)
 
 * GITHUB#12627: patch HNSW graphs to improve reachability of all nodes from entry points
@@ -1703,7 +1955,7 @@ New Features
   closed while queries are running can no longer crash the JVM. To disable this feature,
   pass the following sysprop on Java command line:
   "-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false" (Uwe Schindler)
-  
+
 * GITHUB#12252 Add function queries for computing similarity scores between knn vectors. (Elia Porciani, Alessandro Benedetti)
 
 Improvements
@@ -2382,7 +2634,7 @@ New Features
 * LUCENE-10385: Implement Weight#count on IndexSortSortedNumericDocValuesRangeQuery
   to speed up computing the number of hits when possible. (Lu Xugang, Luca Cavanna, Adrien Grand)
 
-* LUCENE-10422: Monitor Improvements: `Monitor` can use a custom `Directory` 
+* LUCENE-10422: Monitor Improvements: `Monitor` can use a custom `Directory`
   implementation. `Monitor` can be created with a readonly `QueryIndex` in order to
   have readonly `Monitor` instances. (Niko Usai)
 
@@ -2441,7 +2693,7 @@ Optimizations
   term of each block as a dictionary when compressing suffixes of the other 63
   terms of the block. (Adrien Grand)
 
-* LUCENE-10411: Add nearest neighbors vectors support to ExitableDirectoryReader. 
+* LUCENE-10411: Add nearest neighbors vectors support to ExitableDirectoryReader.
   (Zach Chen, Adrien Grand, Julie Tibshirani, Tomoko Uchida)
 
 * LUCENE-10542: FieldSource exists implementations can avoid value retrieval (Kevin Risden)
@@ -2606,7 +2858,7 @@ New Features
   points are indexed.
   (Quentin Pradet, Adrien Grand)
 
-* LUCENE-10263: Added Weight#count to NormsFieldExistsQuery to speed up the query if all 
+* LUCENE-10263: Added Weight#count to NormsFieldExistsQuery to speed up the query if all
   documents have the field.. (Alan Woodward)
 
 * LUCENE-10248: Add SpanishPluralStemFilter, for precise stemming of Spanish plurals.
@@ -2632,14 +2884,14 @@ New Features
 
 * LUCENE-10403: Add ArrayUtil#grow(T[]). (Greg Miller)
 
-* LUCENE-10414: Add fn:fuzzyTerm interval function to flexible query parser (Dawid Weiss, 
+* LUCENE-10414: Add fn:fuzzyTerm interval function to flexible query parser (Dawid Weiss,
   Alan Woodward)
-  
+
 * LUCENE-10378: Implement Weight#count for PointRangeQuery to provide a faster way to calculate
   the number of matching range docs when each doc has at-most one point and the points are 1-dimensional.
   (Gautam Worah, Ignacio Vera, Adrien Grand)
 
-* LUCENE-10415: FunctionScoreQuery and IndexOrDocValuesQuery delegate Weight#count. (Ignacio Vera)     
+* LUCENE-10415: FunctionScoreQuery and IndexOrDocValuesQuery delegate Weight#count. (Ignacio Vera)
 
 * LUCENE-10382: Add support for filtering in KnnVectorQuery. This allows for finding the
   nearest k documents that also match a query. (Julie Tibshirani, Joel Bernstein)
@@ -2656,10 +2908,10 @@ Improvements
 
 * LUCENE-10238: Upgrade icu4j dependency to 70.1. (Dawid Weiss)
 
-* LUCENE-9820: Extract BKD tree interface and move intersecting logic to the 
+* LUCENE-9820: Extract BKD tree interface and move intersecting logic to the
   PointValues abstract class. (Ignacio Vera, Adrien Grand)
-  
-* LUCENE-10262: Lift up restrictions for navigating PointValues#PointTree 
+
+* LUCENE-10262: Lift up restrictions for navigating PointValues#PointTree
   added in LUCENE-9820 (Ignacio Vera)
 
 * LUCENE-9538: Detect polygon self-intersections in the Tessellator. (Ignacio Vera)
@@ -2774,8 +3026,8 @@ Bug Fixes
 
 * LUCENE-10407: Containing intervals could sometimes yield incorrect matches when wrapped
   in a disjunction. (Alan Woodward, Dawid Weiss)
-  
-* LUCENE-10405: When using the MemoryIndex, binary and Sorted doc values are stored 
+
+* LUCENE-10405: When using the MemoryIndex, binary and Sorted doc values are stored
    as BytesRef instead of BytesRefHash so they don't have a limit on size. (Ignacio Vera)
 
 * LUCENE-10428: Queries with a misbehaving score function may no longer cause
@@ -2807,7 +3059,7 @@ Other
 
 * LUCENE-10413: Make Ukrainian default stop words list available as a public getter. (Alan Woodward)
 
-* LUCENE-10437: Polygon tessellator throws a more informative error message when the provided polygon 
+* LUCENE-10437: Polygon tessellator throws a more informative error message when the provided polygon
   does not contain enough no-collinear points. (Ignacio Vera)
 
 ======================= Lucene 9.0.0 =======================
@@ -2926,7 +3178,7 @@ API Changes
   only applicable for fields that are indexed with doc values only. (Mayya Sharipova,
   Adrien Grand, Simon Willnauer)
 
-* LUCENE-9047: Directory API is now little endian. (Ignacio Vera, Adrien Grand)  
+* LUCENE-9047: Directory API is now little endian. (Ignacio Vera, Adrien Grand)
 
 * LUCENE-9948: No longer require the user to specify whether-or-not a field is multi-valued in
   LongValueFacetCounts (detect automatically based on what is indexed). (Greg Miller)
@@ -3139,7 +3391,7 @@ Improvements
   (David Smiley)
 
 * LUCENE-10062: Switch taxonomy faceting to use numeric doc values for storing ordinals instead of binary doc values
-  with its own custom encoding. (Greg Miller) 
+  with its own custom encoding. (Greg Miller)
 
 Bug fixes
 ---------------------
@@ -3262,10 +3514,10 @@ Other
 * LUCENE-9822: Add assertion to PFOR exception encoding, documenting the BLOCK_SIZE assumption. (Greg Miller)
 
 * LUCENE-9883: Turn on ecj missingEnumCaseDespiteDefault setting. (Zach Chen)
- 
-* LUCENE-9705: Make new versions of all index formats for the Lucene90 codec and move 
-  the existing ones to the backwards codecs. (Julie Tibshirani, Ignacio Vera)  
-  
+
+* LUCENE-9705: Make new versions of all index formats for the Lucene90 codec and move
+  the existing ones to the backwards codecs. (Julie Tibshirani, Ignacio Vera)
+
 * LUCENE-9907: Remove dependency on PackedInts#getReader() from the current codecs and move the
   method to backwards codec. (Ignacio Vera)
 

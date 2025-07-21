@@ -42,6 +42,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.MockRandomMergePolicy;
@@ -480,10 +481,10 @@ public class TestIndexWriterDelete extends LuceneTestCase {
   // Verify that we can call deleteAll repeatedly without leaking field numbers such that we trigger
   // OOME
   // on creation of FieldInfos. See https://issues.apache.org/jira/browse/LUCENE-9617
-  @Nightly // Takes 1-2 minutes to run on a 16-core machine
+  @Monster("Takes 1-2 minutes but writes tons of files to disk.")
   public void testDeleteAllRepeated() throws IOException, InterruptedException {
     final int breakingFieldCount = 50_000_000;
-    try (Directory dir = newDirectory()) {
+    try (Directory dir = FSDirectory.open(createTempDir())) {
       // Avoid flushing until the end of the test to save time.
       IndexWriterConfig conf =
           newIndexWriterConfig()

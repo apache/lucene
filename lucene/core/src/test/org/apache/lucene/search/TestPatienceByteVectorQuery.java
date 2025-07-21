@@ -30,13 +30,27 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestVectorUtil;
+import org.junit.Before;
 
 public class TestPatienceByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
+  private boolean wrapSeeded;
+
+  @Before
+  @Override
+  public void setUp() throws Exception {
+    super.setUp();
+    wrapSeeded = random().nextBoolean();
+  }
+
   @Override
   PatienceKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
-    return PatienceKnnVectorQuery.fromByteQuery(
-        new KnnByteVectorQuery(field, floatToBytes(query), k, queryFilter));
+    KnnByteVectorQuery knnQuery =
+        new KnnByteVectorQuery(field, floatToBytes(query), k, queryFilter);
+    return wrapSeeded
+        ? PatienceKnnVectorQuery.fromSeededQuery(
+            SeededKnnVectorQuery.fromByteQuery(knnQuery, new MatchNoDocsQuery()))
+        : PatienceKnnVectorQuery.fromByteQuery(knnQuery);
   }
 
   @Override
@@ -80,7 +94,13 @@ public class TestPatienceByteVectorQuery extends BaseKnnVectorQueryTestCase {
         IndexReader reader = DirectoryReader.open(indexStore)) {
       AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10);
       assertEquals(
-          "PatienceKnnVectorQuery{saturationThreshold=0.995, patience=7, delegate=KnnByteVectorQuery:field[0,...][10]}",
+          "PatienceKnnVectorQuery{saturationThreshold=0.995, patience=7, delegate="
+              + (wrapSeeded
+                  ? "SeededKnnVectorQuery{seed=MatchNoDocsQuery(\"\"), seedWeight=null, delegate="
+                  : "")
+              + "KnnByteVectorQuery:field[0,...][10]"
+              + (wrapSeeded ? "}" : "")
+              + "}",
           query.toString("ignored"));
 
       assertDocScoreQueryToString(query.rewrite(newSearcher(reader)));
@@ -89,7 +109,13 @@ public class TestPatienceByteVectorQuery extends BaseKnnVectorQueryTestCase {
       Query filter = new TermQuery(new Term("id", "text"));
       query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10, filter);
       assertEquals(
-          "PatienceKnnVectorQuery{saturationThreshold=0.995, patience=7, delegate=KnnByteVectorQuery:field[0,...][10][id:text]}",
+          "PatienceKnnVectorQuery{saturationThreshold=0.995, patience=7, delegate="
+              + (wrapSeeded
+                  ? "SeededKnnVectorQuery{seed=MatchNoDocsQuery(\"\"), seedWeight=null, delegate="
+                  : "")
+              + "KnnByteVectorQuery:field[0,...][10][id:text]"
+              + (wrapSeeded ? "}" : "")
+              + "}",
           query.toString("ignored"));
     }
   }

@@ -304,7 +304,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
   private record DocValuesSub<T extends KnnVectorValues>(T sub, int docStart, int ordStart) {
     @SuppressWarnings("unchecked")
     DocValuesSub<T> copy() throws IOException {
-      return new DocValuesSub<T>((T) (sub.copy()), docStart, ordStart);
+      return new DocValuesSub<>((T) (sub.copy()), docStart, ordStart);
     }
   }
 
@@ -850,6 +850,15 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
         i++;
       }
       return new MergedFloatVectorValues(dimension, size, subs);
+    }
+
+    @Override
+    public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+      Map<String, Long> map = new HashMap<>();
+      for (var reader : readers) {
+        map = KnnVectorsReader.mergeOffHeapByteSizeMaps(map, reader.getOffHeapByteSize(fieldInfo));
+      }
+      return map;
     }
 
     class MergedFloatVectorValues extends FloatVectorValues {

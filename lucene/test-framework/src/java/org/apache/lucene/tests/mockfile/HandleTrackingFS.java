@@ -290,7 +290,7 @@ public abstract class HandleTrackingFS extends FilterFileSystemProvider {
   public DirectoryStream<Path> newDirectoryStream(Path dir, Filter<? super Path> filter)
       throws IOException {
     Filter<Path> wrappedFilter =
-        new Filter<Path>() {
+        new Filter<>() {
           @Override
           public boolean accept(Path entry) throws IOException {
             return filter.accept(wrapPath(entry));

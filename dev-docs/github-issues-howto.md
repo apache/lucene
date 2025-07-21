@@ -7,7 +7,7 @@ to you under the Apache License, Version 2.0 (the
 "License"); you may not use this file except in compliance
 with the License.  You may obtain a copy of the License at
 
-  http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing,
 software distributed under the License is distributed on an
@@ -42,18 +42,18 @@ The Milestone associated with an Issue/PR should be the same version in [CHANGES
 There are a few pre-defined label families to organize/search issues.
 
 - `type` (color code `#ffbb00`) : issue type
-  - `type:bug` is attached to bug reports
-  - `type:enhancement` is attached to enhancement requests or suggestions
-  - `type:test` is attached to test improvements or failure reports
-  - `type:task` is attached to general tasks
-  - `type:documentation` is attached to tasks relate to documentation
-- `affects-version` (color code `#f19072`) : the versions in which a bug was found 
-  - this may be used with `type:bug` 
-  - (example) `affects-version:9.1.0`
+    - `type:bug` is attached to bug reports
+    - `type:enhancement` is attached to enhancement requests or suggestions
+    - `type:test` is attached to test improvements or failure reports
+    - `type:task` is attached to general tasks
+    - `type:documentation` is attached to tasks relate to documentation
+- `affects-version` (color code `#f19072`) : the versions in which a bug was found
+    - this may be used with `type:bug`
+    - (example) `affects-version:9.1.0`
 - `module` (color code `#a0d8ef`) : Lucene module
-  - (example) `module:core/index`, `module:analysis`
+    - (example) `module:core/index`, `module:analysis`
 - `tool` (color code `#a0d8ef`) : tooling
-  - (example) `tool:build`, `tool:release-wizard`
+    - (example) `tool:build`, `tool:release-wizard`
 
 A `type` label is automatically attached to an issue by the issue template that the reporter selected. Other labels such as `affects-version` may be manually added by committers.
 

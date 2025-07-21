@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
+import java.util.function.IntUnaryOperator;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DocValues;
@@ -857,51 +858,47 @@ public final class BPIndexReorderer extends AbstractBPReorderer {
     }
 
     final int maxDoc = reader.maxDoc();
-    ForwardIndex forwardIndex = null;
-    IndexOutput postingsOutput = null;
-    boolean success = false;
     try {
-      postingsOutput = trackingDir.createTempOutput("postings", "", IOContext.DEFAULT);
-      int numTerms = writePostings(reader, fields, trackingDir, postingsOutput, parallelism);
-      CodecUtil.writeFooter(postingsOutput);
-      postingsOutput.close();
-      final ForwardIndex finalForwardIndex =
-          forwardIndex = buildForwardIndex(trackingDir, postingsOutput.getName(), maxDoc, numTerms);
-      trackingDir.deleteFile(postingsOutput.getName());
-      postingsOutput = null;
-
-      int[] sortedDocs = new int[maxDoc];
-      for (int i = 0; i < maxDoc; ++i) {
-        sortedDocs[i] = i;
+      int numTerms;
+      String postingsName;
+      try (IndexOutput postingsOutput =
+          trackingDir.createTempOutput("postings", "", IOContext.DEFAULT)) {
+        numTerms = writePostings(reader, fields, trackingDir, postingsOutput, parallelism);
+        CodecUtil.writeFooter(postingsOutput);
+        postingsName = postingsOutput.getName();
       }
 
-      BitSet parents = null;
-      String parentField = reader.getFieldInfos().getParentField();
-      if (parentField != null) {
-        parents = BitSet.of(DocValues.getNumeric(reader, parentField), maxDoc);
-      }
+      try (ForwardIndex forwardIndex =
+          buildForwardIndex(trackingDir, postingsName, maxDoc, numTerms)) {
+        trackingDir.deleteFile(postingsName);
 
-      try (CloseableThreadLocal<PerThreadState> threadLocal =
-          new CloseableThreadLocal<>() {
-            @Override
-            protected PerThreadState initialValue() {
-              return new PerThreadState(numTerms, finalForwardIndex.clone());
-            }
-          }) {
-        IntsRef docs = new IntsRef(sortedDocs, 0, sortedDocs.length);
-        new IndexReorderingTask(docs, new float[maxDoc], threadLocal, parents, executor, 0).call();
-      }
+        int[] sortedDocs = new int[maxDoc];
+        Arrays.setAll(sortedDocs, IntUnaryOperator.identity());
 
-      success = true;
-      return sortedDocs;
-    } finally {
-      if (success) {
-        IOUtils.close(forwardIndex);
+        BitSet parents = null;
+        String parentField = reader.getFieldInfos().getParentField();
+        if (parentField != null) {
+          parents = BitSet.of(DocValues.getNumeric(reader, parentField), maxDoc);
+        }
+
+        try (CloseableThreadLocal<PerThreadState> threadLocal =
+            new CloseableThreadLocal<>() {
+              @Override
+              protected PerThreadState initialValue() {
+                return new PerThreadState(numTerms, forwardIndex.clone());
+              }
+            }) {
+          IntsRef docs = new IntsRef(sortedDocs, 0, sortedDocs.length);
+          new IndexReorderingTask(docs, new float[maxDoc], threadLocal, parents, executor, 0)
+              .call();
+        }
+
         IOUtils.deleteFiles(trackingDir, trackingDir.getCreatedFiles());
-      } else {
-        IOUtils.closeWhileHandlingException(postingsOutput, forwardIndex);
-        IOUtils.deleteFilesIgnoringExceptions(trackingDir, trackingDir.getCreatedFiles());
+        return sortedDocs;
       }
+    } catch (Throwable t) {
+      IOUtils.deleteFilesSuppressingExceptions(t, trackingDir, trackingDir.getCreatedFiles());
+      throw t;
     }
   }
 

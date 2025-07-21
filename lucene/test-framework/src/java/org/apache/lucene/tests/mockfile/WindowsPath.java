@@ -18,20 +18,17 @@ package org.apache.lucene.tests.mockfile;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.HashSet;
+import java.util.Set;
 
 class WindowsPath extends FilterPath {
 
-  static final HashSet<Character> RESERVED_CHARACTERS =
-      new HashSet<>(Arrays.asList('<', '>', ':', '\"', '\\', '|', '?', '*'));
+  static final Set<Character> RESERVED_CHARACTERS =
+      Set.of('<', '>', ':', '\"', '\\', '|', '?', '*');
 
-  static final HashSet<String> RESERVED_NAMES =
-      new HashSet<>(
-          Arrays.asList(
-              "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
-              "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8",
-              "LPT9"));
+  static final Set<String> RESERVED_NAMES =
+      Set.of(
+          "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
+          "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9");
 
   WindowsPath(Path path, FilterFileSystem fileSystem) {
     super(path, fileSystem);

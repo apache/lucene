@@ -1,4 +1,4 @@
-# output conversion 
+# output conversion
 SET UTF-8
 
 # Testing also whitespace and comments.
@@ -9,12 +9,12 @@ OCONV	b	B	# tab, tab, tab
 OCONV  c  C		# 2xspace, 2xspace, 2xtab
 OCONV	 d 	D # tab+space, space+tab, space
 OCONV e E #
-OCONV é É 	
+OCONV é É
 # Only comment. Note that line above ends with space+tab.
 
  # space
   # 2xspace
-	# tab
-		# 2xtab
+  # tab
+    # 2xtab
  	# space+tab
-	 # tab+space
+   # tab+space
