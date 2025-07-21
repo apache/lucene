@@ -425,10 +425,10 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
     // The collector already filters hits whose score is less than the min competitive score, but
     // doing it here is a bit more efficient.
-    int[] docs = buffer.docs;
-    docAndScoreBuffer.growNoCopy(buffer.size);
-    float[] scores = docAndScoreBuffer.features;
     int size = buffer.size;
+    int[] docs = buffer.docs;
+    docAndScoreBuffer.growNoCopy(size);
+    float[] scores = docAndScoreBuffer.features;
     for (int i = 0; i < size; ++i) {
       scores[i] = (float) buffer.scores[i];
     }
