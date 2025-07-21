@@ -243,6 +243,9 @@ Bug Fixes
 * GITHUB#14922: Fix for IndexedDISI.Dense#intoBitSetWithinBlock to take into account the provided bitset size
   and avoid throwing IndexOutOfBoundsException (Panagiotis Bailis)
 
+ * GITHUB#14974: Lucene tessellator always fails if it cannot process a hole instrad of just ignore it.
+   (Ignacio Vera)
+
 Build
 ---------------------
 * Upgrade forbiddenapis to version 3.9.  (Uwe Schindler)

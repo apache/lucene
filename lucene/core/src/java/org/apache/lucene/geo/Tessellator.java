@@ -344,6 +344,7 @@ public final class Tessellator {
         // Filter the new polygon.
         outerNode = filterPoints(outerNode, outerNode.next);
       } else {
+        // cannot process the hole, it is not inside the polygond.
         String polygon;
         if (h instanceof Polygon holePoly) {
           polygon = Polygon.verticesToGeoJSON(holePoly.getPolyLats(), holePoly.getPolyLons());
