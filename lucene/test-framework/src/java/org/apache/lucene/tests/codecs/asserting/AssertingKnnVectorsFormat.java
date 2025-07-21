@@ -230,8 +230,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     public void close() throws IOException {
       assert !mergeInstance;
       delegate.close();
-      delegate.close();
-      assert finishMergeCount.get() <= 0 || mergeInstanceCount.get() == finishMergeCount.get();
+      assert mergeInstanceCount.get() == finishMergeCount.get();
     }
 
     @Override

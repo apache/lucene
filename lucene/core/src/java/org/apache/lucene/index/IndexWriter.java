@@ -3432,23 +3432,26 @@ public class IndexWriter
             globalFieldNumberMap,
             context,
             intraMergeExecutor);
-
-    if (!merger.shouldMerge()) {
-      return;
-    }
-
-    merge.checkAborted();
-    synchronized (this) {
-      runningAddIndexesMerges.add(merger);
-    }
-    merge.mergeStartNS = System.nanoTime();
     try {
-      merger.merge(); // merge 'em
-    } finally {
-      synchronized (this) {
-        runningAddIndexesMerges.remove(merger);
-        notifyAll();
+      if (!merger.shouldMerge()) {
+        return;
       }
+
+      merge.checkAborted();
+      synchronized (this) {
+        runningAddIndexesMerges.add(merger);
+      }
+      merge.mergeStartNS = System.nanoTime();
+      try {
+        merger.merge(); // merge 'em
+      } finally {
+        synchronized (this) {
+          runningAddIndexesMerges.remove(merger);
+          notifyAll();
+        }
+      }
+    } finally {
+      merger.cleanupMerge();
     }
 
     merge.setMergeInfo(
@@ -5218,32 +5221,36 @@ public class IndexWriter
               globalFieldNumberMap,
               context,
               intraMergeExecutor);
-      merge.info.setSoftDelCount(Math.toIntExact(softDeleteCount.get()));
-      merge.checkAborted();
-
       MergeState mergeState = merger.mergeState;
       MergeState.DocMap[] docMaps;
-      if (reorderDocMaps == null) {
-        docMaps = mergeState.docMaps;
-      } else {
-        // Since the reader was reordered, we passed a merged view to MergeState and from its
-        // perspective there is a single input segment to the merge and the
-        // SlowCompositeCodecReaderWrapper is effectively doing the merge.
-        assert mergeState.docMaps.length == 1
-            : "Got " + mergeState.docMaps.length + " docMaps, but expected 1";
-        MergeState.DocMap compactionDocMap = mergeState.docMaps[0];
-        docMaps = new MergeState.DocMap[reorderDocMaps.length];
-        for (int i = 0; i < docMaps.length; ++i) {
-          MergeState.DocMap reorderDocMap = reorderDocMaps[i];
-          docMaps[i] = docID -> compactionDocMap.get(reorderDocMap.get(docID));
+      try {
+        merge.info.setSoftDelCount(Math.toIntExact(softDeleteCount.get()));
+        merge.checkAborted();
+
+        if (reorderDocMaps == null) {
+          docMaps = mergeState.docMaps;
+        } else {
+          // Since the reader was reordered, we passed a merged view to MergeState and from its
+          // perspective there is a single input segment to the merge and the
+          // SlowCompositeCodecReaderWrapper is effectively doing the merge.
+          assert mergeState.docMaps.length == 1
+              : "Got " + mergeState.docMaps.length + " docMaps, but expected 1";
+          MergeState.DocMap compactionDocMap = mergeState.docMaps[0];
+          docMaps = new MergeState.DocMap[reorderDocMaps.length];
+          for (int i = 0; i < docMaps.length; ++i) {
+            MergeState.DocMap reorderDocMap = reorderDocMaps[i];
+            docMaps[i] = docID -> compactionDocMap.get(reorderDocMap.get(docID));
+          }
         }
-      }
 
-      merge.mergeStartNS = System.nanoTime();
+        merge.mergeStartNS = System.nanoTime();
 
-      // This is where all the work happens:
-      if (merger.shouldMerge()) {
-        merger.merge();
+        // This is where all the work happens:
+        if (merger.shouldMerge()) {
+          merger.merge();
+        }
+      } finally {
+        merger.cleanupMerge();
       }
 
       assert mergeState.segmentInfo == merge.info.info;
