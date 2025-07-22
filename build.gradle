@@ -28,7 +28,6 @@ plugins {
 
   id "lucene.java-projects.conventions"
 
-  id "lucene.java.core.mrjar"
   id "lucene.java.fail-on-no-tests"
   id "lucene.java.slowest-tests-at-end"
   id "lucene.java.show-failed-tests-at-end"
@@ -76,7 +75,6 @@ plugins {
   id "lucene.regenerate.javacc"
   id "lucene.regenerate.antlr"
   id "lucene.regenerate.unicode-test-classes"
-  id "lucene.regenerate.extract-jdk-apis"
   id "lucene.regenerate.snowball"
 }
 

@@ -18,7 +18,6 @@ package org.apache.lucene.gradle.plugins.misc;
 
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin;
 import java.util.Collection;
-import java.util.List;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.apache.lucene.gradle.plugins.astgrep.AstGrepPlugin;
 import org.apache.lucene.gradle.plugins.eclint.EditorConfigLintPlugin;
@@ -34,7 +33,6 @@ import org.gradle.api.file.DuplicatesStrategy;
 import org.gradle.api.initialization.IncludedBuild;
 import org.gradle.api.plugins.BasePlugin;
 import org.gradle.api.plugins.BasePluginExtension;
-import org.gradle.api.plugins.ExtraPropertiesExtension;
 import org.gradle.api.plugins.PluginContainer;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
@@ -74,15 +72,6 @@ public class RootProjectSetupPlugin extends LuceneGradlePlugin {
 
     // wire up included composite builds to validation tasks.
     connectCompositeTasksToMainBuild(rootProject);
-
-    // TODO: this shouldn't be here but it's used in multiple scripts that are racy in
-    // lazy-evaluation.
-    {
-      Project project = rootProject.project(":lucene:core");
-      var ext = project.getExtensions().getByType(ExtraPropertiesExtension.class);
-      ext.set("mrjarJavaVersions", List.of(24));
-      ext.set("apijars", project.getLayout().getProjectDirectory().dir("src/generated/jdk"));
-    }
   }
 
   private void applyCommonConfiguration(Project project) {
