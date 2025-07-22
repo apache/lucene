@@ -40,7 +40,6 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.IOUtils;
 
 class SimpleTextDocValuesWriter extends DocValuesConsumer {
   static final BytesRef END = new BytesRef("END");
@@ -583,20 +582,13 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
   @Override
   public void close() throws IOException {
     if (data != null) {
-      boolean success = false;
-      try {
+      try (IndexOutput _ = data) {
         assert !fieldsSeen.isEmpty();
         // TODO: sheisty to do this here?
         SimpleTextUtil.write(data, END);
         SimpleTextUtil.writeNewline(data);
         SimpleTextUtil.writeChecksum(data, scratch);
-        success = true;
       } finally {
-        if (success) {
-          IOUtils.close(data);
-        } else {
-          IOUtils.closeWhileHandlingException(data);
-        }
         data = null;
       }
     }

@@ -83,7 +83,6 @@ class SimpleTextPointsReader extends PointsReader {
       SimpleTextUtil.checkFooter(in);
     }
 
-    boolean success = false;
     String fileName =
         IndexFileNames.segmentFileName(
             readState.segmentInfo.name,
@@ -94,11 +93,9 @@ class SimpleTextPointsReader extends PointsReader {
       for (Map.Entry<String, Long> ent : fieldToFileOffset.entrySet()) {
         readers.put(ent.getKey(), initReader(ent.getValue()));
       }
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
 
     this.readState = readState;

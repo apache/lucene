@@ -78,21 +78,13 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
 
   public SimpleTextTermVectorsReader(Directory directory, SegmentInfo si, IOContext context)
       throws IOException {
-    boolean success = false;
     try {
       in =
           directory.openInput(
               IndexFileNames.segmentFileName(si.name, "", VECTORS_EXTENSION), context);
-      success = true;
-    } finally {
-      if (!success) {
-        try {
-          close();
-        } catch (
-            @SuppressWarnings("unused")
-            Throwable t) {
-        } // ensure we throw our original exception
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
     readIndex(si.maxDoc());
   }
