@@ -124,6 +124,8 @@ Optimizations
 
 * GITHUB#14896: Vectorize filterCompetitiveHits (Ge Song, Adrien Grand)
 
+* GITHUB#14976: Utilize docIdRunEnd on ReqExclBulkScorer. (Ge Song)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
