@@ -29,6 +29,7 @@ import org.apache.lucene.gradle.plugins.hacks.WipeGradleTempPlugin;
 import org.apache.lucene.gradle.plugins.help.BuildOptionGroupsPlugin;
 import org.apache.lucene.gradle.plugins.regenerate.RegenerateTasksSupportPlugin;
 import org.apache.lucene.gradle.plugins.spotless.GradleGroovyFormatPlugin;
+import org.apache.lucene.gradle.plugins.spotless.ValidateSourcePatternsPlugin;
 import org.gradle.api.Project;
 import org.gradle.api.file.DuplicatesStrategy;
 import org.gradle.api.initialization.IncludedBuild;
@@ -71,6 +72,7 @@ public class RootProjectSetupPlugin extends LuceneGradlePlugin {
     plugins.apply(HacksPlugin.class);
     plugins.apply(WipeGradleTempPlugin.class);
     plugins.apply(GradleGroovyFormatPlugin.class);
+    plugins.apply(ValidateSourcePatternsPlugin.class);
 
     // wire up included composite builds to validation tasks.
     connectCompositeTasksToMainBuild(rootProject);
