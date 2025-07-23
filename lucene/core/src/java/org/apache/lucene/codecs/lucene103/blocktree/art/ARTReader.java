@@ -61,6 +61,57 @@ public class ARTReader {
     }
   }
 
+  /**
+   * Find the next node from a cached (searched) one, that is useful when seeking in
+   * SegmentTermsEnum.
+   */
+  public Node findTargetNode(Node node, BytesRef target, Node child) {
+    assert node != null;
+    if (node.nodeType.equals(NodeType.LEAF_NODE)) {
+      if (node.key.equals(target)) {
+        // Match, Use this node's output.
+        return null;
+      } else {
+        // Not match, keep in this node.
+        return node;
+      }
+    } else {
+      if (node.prefixLength > 0) {
+        int commonLength =
+            ARTUtil.commonPrefixLength(
+                target.bytes,
+                target.offset,
+                target.offset + target.length,
+                node.prefix,
+                0,
+                node.prefixLength);
+        if (commonLength != node.prefixLength) {
+          // Not match, keep in this node.
+          return node;
+        }
+        // common prefix is the same, then increase the offset.
+        target.offset += node.prefixLength;
+        target.length -= node.prefixLength;
+        // Work end, match.
+        if (target.length == 0) {
+          // Match, Use this node's output.
+          return null;
+        }
+      }
+
+      // Get child.
+      int childPos = child.getChildPos(target.bytes[target.offset]);
+      target.offset++;
+      if (childPos != Node.ILLEGAL_IDX) {
+        return child.getChild(childPos);
+      } else {
+        // Not match, keep in this node.
+        return node;
+      }
+    }
+  }
+
+  /** Find output for the given key(input). Return null if not found. */
   public Output find(BytesRef key) {
     if (key.length == 0) {
       // We may search "";
