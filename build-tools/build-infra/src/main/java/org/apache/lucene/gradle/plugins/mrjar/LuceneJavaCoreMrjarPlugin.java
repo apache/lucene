@@ -53,7 +53,10 @@ public class LuceneJavaCoreMrjarPlugin extends LuceneGradlePlugin {
 
     requiresAppliedPlugin(project, JavaPlugin.class);
 
-    List<Integer> mrjarJavaVersions = List.of(24);
+    project.getExtensions().create(MrJarsExtension.NAME, MrJarsExtension.class);
+  }
+
+  static void setupMrJarInfrastructure(Project project, List<Integer> mrjarJavaVersions) {
     Directory apijars = project.getLayout().getProjectDirectory().dir("src/generated/jdk");
 
     var javaExt = project.getExtensions().getByType(JavaPluginExtension.class);
