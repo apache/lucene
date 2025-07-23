@@ -14,18 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.util;
 
-import java.util.function.IntConsumer;
+import java.io.IOException;
 
-/** Like {@link IntConsumer}, but may throw checked exceptions. */
+/**
+ * An IO operation with a single int input that may throw an IOException.
+ *
+ * @see java.util.function.IntConsumer
+ */
 @FunctionalInterface
-public interface CheckedIntConsumer<T extends Exception> {
-
+public interface IOIntConsumer {
   /**
-   * Process the given value.
+   * Performs this operation on the given argument.
    *
-   * @see IntConsumer#accept(int)
+   * @param value the value to accept
+   * @throws IOException if producing the result throws an {@link IOException}
    */
-  void accept(int value) throws T;
+  void accept(int value) throws IOException;
 }

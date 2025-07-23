@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.util.IOIntConsumer;
 
 final class RangeDocIdStream extends DocIdStream {
 
@@ -37,7 +38,7 @@ final class RangeDocIdStream extends DocIdStream {
   }
 
   @Override
-  public void forEach(int upTo, CheckedIntConsumer<IOException> consumer) throws IOException {
+  public void forEach(int upTo, IOIntConsumer consumer) throws IOException {
     if (upTo > this.upTo) {
       upTo = Math.min(upTo, max);
       for (int doc = this.upTo; doc < upTo; ++doc) {
