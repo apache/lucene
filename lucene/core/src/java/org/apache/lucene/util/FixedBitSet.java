@@ -19,7 +19,6 @@ package org.apache.lucene.util;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
-import org.apache.lucene.search.CheckedIntConsumer;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 
@@ -832,8 +831,7 @@ public final class FixedBitSet extends BitSet {
    * bit index and call {@code consumer} on it. This is internally used by queries that use bit sets
    * as intermediate representations of their matches.
    */
-  public void forEach(int from, int to, int base, CheckedIntConsumer<IOException> consumer)
-      throws IOException {
+  public void forEach(int from, int to, int base, IOIntConsumer consumer) throws IOException {
     Objects.checkFromToIndex(from, to, length());
 
     // First, align `from` with a word start, ie. a multiple of Long.SIZE (64)
@@ -862,8 +860,7 @@ public final class FixedBitSet extends BitSet {
     }
   }
 
-  private static void forEach(long bits, int base, CheckedIntConsumer<IOException> consumer)
-      throws IOException {
+  private static void forEach(long bits, int base, IOIntConsumer consumer) throws IOException {
     while (bits != 0L) {
       int ntz = Long.numberOfTrailingZeros(bits);
       consumer.accept(base + ntz);
