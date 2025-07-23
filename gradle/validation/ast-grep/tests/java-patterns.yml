@@ -120,19 +120,16 @@ id: javadoc-only-inheriting-super
 invalid:
   - /** {@inheritDoc} */
   - /** {@inheritDoc } */
-  - |
-    /**
-     * {@inheritDoc}
-     */
+  - "/**\n * {@inheritDoc}\n */"
 valid:
   - |
     /**
-     * {@inheritDoc}
-     *
-     * And something.
-     */
+    * {@inheritDoc}
+    *
+    * And something.
+    */
   - |
     /**
-     * Something and...
-     * {@inheritDoc}
-     */
+    * Something and...
+    * {@inheritDoc}
+    */
