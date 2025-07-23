@@ -97,9 +97,7 @@ class ValidateSourcePatternsTask extends DefaultTask {
 
   @TaskAction
   public void check() {
-    def invalidPatterns = [
-      (~$/\Q/**\E((?:\s)|(?:\*))*\Q{@inheritDoc}\E((?:\s)|(?:\*))*\Q*/\E/$) : '{@inheritDoc} on its own is unnecessary',
-    ]
+    def invalidPatterns = []
 
     def violations = new TreeSet();
     def reportViolation = { f, name ->
