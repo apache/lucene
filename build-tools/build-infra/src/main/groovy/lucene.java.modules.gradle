@@ -19,6 +19,7 @@
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
+import org.apache.lucene.gradle.plugins.java.ModularPathsExtensionApi
 
 // Configures miscellaneous aspects required to support the java module system layer.
 
@@ -79,7 +80,7 @@ allprojects {
 
         // LUCENE-10304: if we modify the classpath here, IntelliJ no longer sees the dependencies as compile-time
         // dependencies, don't know why.
-        if (!rootProject.ext.isIdeaSync) {
+        if (!buildGlobals.intellijIdea.get().isIdeaSync) {
           task.classpath = modularPaths.compilationClasspath
         }
 
@@ -122,7 +123,7 @@ allprojects {
 
     // LUCENE-10304: if we modify the classpath here, IntelliJ no longer sees the dependencies as compile-time
     // dependencies, don't know why.
-    if (!rootProject.ext.isIdeaSync) {
+    if (!buildGlobals.intellijIdea.get().isIdeaSync) {
       def jarTask = project.tasks.getByName(mainSourceSet.getJarTaskName())
       def testJarTask = project.tasks.getByName(testSourceSet.getJarTaskName())
 
@@ -151,7 +152,7 @@ allprojects {
           }
         } else {
           // This combination simply does not make any sense (in my opinion).
-          throw GradleException("Test source set is modular and main source set is class-based, this makes no sense: " + project.path)
+          throw new GradleException("Test source set is modular and main source set is class-based, this makes no sense: " + project.path)
         }
       } else {
         if (mainIsModular) {
@@ -274,7 +275,7 @@ allprojects {
 // moduleImplementation - 'requires'
 // moduleCompileOnly    - 'requires static'
 //
-class ModularPathsExtension implements Cloneable, Iterable<Object> {
+class ModularPathsExtension implements Cloneable, Iterable<Object>, ModularPathsExtensionApi {
   /**
    * Determines how paths are split between module path and classpath.
    */

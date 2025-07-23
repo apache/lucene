@@ -401,7 +401,7 @@ public final class IOUtils {
    *     directories) cannot be removed.
    */
   public static void rm(Path... locations) throws IOException {
-    LinkedHashMap<Path, Throwable> unremoved = rm(new LinkedHashMap<Path, Throwable>(), locations);
+    LinkedHashMap<Path, Throwable> unremoved = rm(new LinkedHashMap<>(), locations);
     if (!unremoved.isEmpty()) {
       StringBuilder b =
           new StringBuilder("Could not remove the following files (in the order of attempts):\n");

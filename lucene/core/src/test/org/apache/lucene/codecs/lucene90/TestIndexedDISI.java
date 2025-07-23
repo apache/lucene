@@ -388,6 +388,36 @@ public class TestIndexedDISI extends LuceneTestCase {
     }
   }
 
+  public void testDenseBitSizeLessThanBlockSize() throws IOException {
+    final byte denseRankPower = (byte) (random().nextInt(7) + 7);
+    try (Directory dir = newDirectory()) {
+      // initialize a maxDoc that is less than IndexedDISI.BLOCK_SIZE
+      int maxDoc = random().nextInt(4096 * 2, 65536);
+      FixedBitSet set = new FixedBitSet(maxDoc);
+      for (int i = 0; i < maxDoc; i += 2) { // Set every other to ensure dense
+        set.set(i);
+      }
+      int jumpTableEntryCount; // this should always be 0 given that maxDoc < BLOCK_SIZE
+      long length;
+      try (IndexOutput out = dir.createOutput("foo", IOContext.DEFAULT)) {
+        jumpTableEntryCount =
+            IndexedDISI.writeBitSet(
+                new BitSetIterator(set, set.cardinality()), out, denseRankPower);
+        length = out.getFilePointer();
+        assertTrue(
+            "jumpTableEntryCount should be 0 for dense bitsets with size < BLOCK_SIZE",
+            0 == jumpTableEntryCount);
+      }
+      try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
+        IndexedDISI disi =
+            new IndexedDISI(in, 0L, length, jumpTableEntryCount, denseRankPower, set.cardinality());
+        FixedBitSet disiSet = new FixedBitSet(maxDoc);
+        // This would throw IOOB if bitset size is not handled correctly as per #14882
+        disiSet.or(disi);
+      }
+    }
+  }
+
   public void testIllegalDenseRankPower() throws IOException {
 
     // Legal values

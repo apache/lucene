@@ -15,253 +15,60 @@
  * limitations under the License.
  */
 
+import org.apache.lucene.gradle.plugins.misc.QuietExec
+
 // Regenerates "ForUtil.java" code used by codecs.
 
+void addGenerateFromPythonTask(Project project, File genDir, String taskName, String pyScript, String javaFile) {
+  var generateTaskProvider = project.getTasks().register(
+      "generate" + taskName + "Internal", QuietExec, {
+        description = "Regenerate " + javaFile + " using " + pyScript + " in " + genDir
+        group = "generation"
+
+        def genScript = project.file("${genDir}/${pyScript}")
+        def genOutput = project.file("${genDir}/${javaFile}")
+        inputs.file genScript
+        outputs.file genOutput
+
+        workingDir = genDir
+        executable = buildGlobals.externalTool("python3")
+        args = ['-B', genScript.toString()]
+      })
+
+  var wrapped = project.wrapWithPersistentChecksums2(generateTaskProvider, [
+    andThenTasks: ["applyGoogleJavaFormat"],
+    mustRunBefore: ["compileJava"]
+  ])
+
+  project.getTasks().named("regenerate").configure {
+    dependsOn wrapped
+  }
+}
+
 configure(project(":lucene:core")) {
-
-  task generateForUtilInternal() {
-    description = "Regenerate gen_ForUtil.py"
-    group = "generation"
-
-    def genDir = file("src/java/org/apache/lucene/codecs/lucene103")
-    def genScript = file("${genDir}/gen_ForUtil.py")
-    def genOutput = file("${genDir}/ForUtil.java")
-
-    inputs.file genScript
-    outputs.file genOutput
-
-    doLast {
-      quietExec {
-        workingDir genDir
-        executable project.externalTool("python3")
-        args = ['-B', genScript]
-      }
-    }
-  }
-
-  regenerate.dependsOn wrapWithPersistentChecksums(generateForUtilInternal, [
-    andThenTasks: [
-      "applyGoogleJavaFormat"
-    ],
-    mustRunBefore: ["compileJava"]
-  ])
-
-  task generateForDeltaUtilInternal() {
-    description = "Regenerate gen_ForDeltaUtil.py"
-    group = "generation"
-
-    def genDir = file("src/java/org/apache/lucene/codecs/lucene103")
-    def genScript = file("${genDir}/gen_ForDeltaUtil.py")
-    def genOutput = file("${genDir}/ForDeltaUtil.java")
-
-    inputs.file genScript
-    outputs.file genOutput
-
-    doLast {
-      quietExec {
-        workingDir genDir
-        executable project.externalTool("python3")
-        args = ['-B', genScript]
-      }
-    }
-  }
-
-  regenerate.dependsOn wrapWithPersistentChecksums(generateForDeltaUtilInternal, [
-    andThenTasks: [
-      "applyGoogleJavaFormat"
-    ],
-    mustRunBefore: ["compileJava"]
-  ])
+  addGenerateFromPythonTask(project,
+      file("src/java/org/apache/lucene/codecs/lucene103"), "ForUtil", "gen_ForUtil.py", "ForUtil.java")
+  addGenerateFromPythonTask(project,
+      file("src/java/org/apache/lucene/codecs/lucene103"), "ForDeltaUtil", "gen_ForDeltaUtil.py", "ForDeltaUtil.java")
 }
 
 configure(project(":lucene:backward-codecs")) {
+  addGenerateFromPythonTask(project,
+      file("src/java/org/apache/lucene/backward_codecs/lucene84"), "ForUtil84", "gen_ForUtil.py", "ForUtil.java")
 
-  task generateForUtil84Internal() {
-    description = "Regenerate gen_ForUtil.py"
-    group = "generation"
+  addGenerateFromPythonTask(project,
+      file("src/java/org/apache/lucene/backward_codecs/lucene90"), "ForUtil90", "gen_ForUtil.py", "ForUtil.java")
 
-    def genDir = file("src/java/org/apache/lucene/backward_codecs/lucene84")
-    def genScript = file("${genDir}/gen_ForUtil.py")
-    def genOutput = file("${genDir}/ForUtil.java")
+  addGenerateFromPythonTask(project,
+      file("src/java/org/apache/lucene/backward_codecs/lucene99"), "ForUtil99", "gen_ForUtil.py", "ForUtil.java")
 
-    inputs.file genScript
-    outputs.file genOutput
+  addGenerateFromPythonTask(project,
+      file("src/java/org/apache/lucene/backward_codecs/lucene912"), "ForUtil912", "gen_ForUtil.py", "ForUtil.java")
+  addGenerateFromPythonTask(project,
+      file("src/java/org/apache/lucene/backward_codecs/lucene912"), "ForDeltaUtil912", "gen_ForDeltaUtil.py", "ForDeltaUtil.java")
 
-    doLast {
-      quietExec {
-        workingDir genDir
-        executable project.externalTool("python3")
-        args = ['-B', genScript]
-      }
-    }
-  }
-
-  regenerate.dependsOn wrapWithPersistentChecksums(generateForUtil84Internal, [
-    andThenTasks: [
-      "applyGoogleJavaFormat"
-    ],
-    mustRunBefore: ["compileJava"]
-  ])
-
-  task generateForUtil90Internal() {
-    description = "Regenerate gen_ForUtil.py"
-    group = "generation"
-
-    def genDir = file("src/java/org/apache/lucene/backward_codecs/lucene90")
-    def genScript = file("${genDir}/gen_ForUtil.py")
-    def genOutput = file("${genDir}/ForUtil.java")
-
-    inputs.file genScript
-    outputs.file genOutput
-
-    doLast {
-      quietExec {
-        workingDir genDir
-        executable project.externalTool("python3")
-        args = ['-B', genScript]
-      }
-    }
-  }
-
-  regenerate.dependsOn wrapWithPersistentChecksums(generateForUtil90Internal, [
-    andThenTasks: [
-      "applyGoogleJavaFormat"
-    ],
-    mustRunBefore: ["compileJava"]
-  ])
-
-  task generateForUtil99Internal() {
-    description = "Regenerate gen_ForUtil.py"
-    group = "generation"
-
-    def genDir = file("src/java/org/apache/lucene/backward_codecs/lucene99")
-    def genScript = file("${genDir}/gen_ForUtil.py")
-    def genOutput = file("${genDir}/ForUtil.java")
-
-    inputs.file genScript
-    outputs.file genOutput
-
-    doLast {
-      quietExec {
-        workingDir genDir
-        executable project.externalTool("python3")
-        args = ['-B', genScript]
-      }
-    }
-  }
-
-  regenerate.dependsOn wrapWithPersistentChecksums(generateForUtil99Internal, [
-    andThenTasks: [
-      "applyGoogleJavaFormat"
-    ],
-    mustRunBefore: ["compileJava"]
-  ])
-
-  task generateForUtil912Internal() {
-    description = "Regenerate gen_ForUtil.py"
-    group = "generation"
-
-    def genDir = file("src/java/org/apache/lucene/backward_codecs/lucene912")
-    def genScript = file("${genDir}/gen_ForUtil.py")
-    def genOutput = file("${genDir}/ForUtil.java")
-
-    inputs.file genScript
-    outputs.file genOutput
-
-    doLast {
-      quietExec {
-        workingDir genDir
-        executable project.externalTool("python3")
-        args = ['-B', genScript]
-      }
-    }
-  }
-
-  regenerate.dependsOn wrapWithPersistentChecksums(generateForUtil912Internal, [
-    andThenTasks: [
-      "applyGoogleJavaFormat"
-    ],
-    mustRunBefore: ["compileJava"]
-  ])
-
-  task generateForDeltaUtil912Internal() {
-    description = "Regenerate gen_ForDeltaUtil.py"
-    group = "generation"
-
-    def genDir = file("src/java/org/apache/lucene/backward_codecs/lucene912")
-    def genScript = file("${genDir}/gen_ForDeltaUtil.py")
-    def genOutput = file("${genDir}/ForDeltaUtil.java")
-
-    inputs.file genScript
-    outputs.file genOutput
-
-    doLast {
-      quietExec {
-        workingDir genDir
-        executable project.externalTool("python3")
-        args = ['-B', genScript]
-      }
-    }
-  }
-
-  regenerate.dependsOn wrapWithPersistentChecksums(generateForDeltaUtil912Internal, [
-    andThenTasks: [
-      "applyGoogleJavaFormat"
-    ],
-    mustRunBefore: ["compileJava"]
-  ])
-
-  task generateForUtil101Internal() {
-    description = "Regenerate gen_ForUtil.py"
-    group = "generation"
-
-    def genDir = file("src/java/org/apache/lucene/backward_codecs/lucene101")
-    def genScript = file("${genDir}/gen_ForUtil.py")
-    def genOutput = file("${genDir}/ForUtil.java")
-
-    inputs.file genScript
-    outputs.file genOutput
-
-    doLast {
-      quietExec {
-        workingDir genDir
-        executable project.externalTool("python3")
-        args = ['-B', genScript]
-      }
-    }
-  }
-
-  regenerate.dependsOn wrapWithPersistentChecksums(generateForUtil101Internal, [
-    andThenTasks: [
-      "applyGoogleJavaFormat"
-    ],
-    mustRunBefore: ["compileJava"]
-  ])
-
-  task generateForDeltaUtil101Internal() {
-    description = "Regenerate gen_ForDeltaUtil.py"
-    group = "generation"
-
-    def genDir = file("src/java/org/apache/lucene/backward_codecs/lucene101")
-    def genScript = file("${genDir}/gen_ForDeltaUtil.py")
-    def genOutput = file("${genDir}/ForDeltaUtil.java")
-
-    inputs.file genScript
-    outputs.file genOutput
-
-    doLast {
-      quietExec {
-        workingDir genDir
-        executable project.externalTool("python3")
-        args = ['-B', genScript]
-      }
-    }
-  }
-
-  regenerate.dependsOn wrapWithPersistentChecksums(generateForDeltaUtil101Internal, [
-    andThenTasks: [
-      "applyGoogleJavaFormat"
-    ],
-    mustRunBefore: ["compileJava"]
-  ])
+  addGenerateFromPythonTask(project,
+      file("src/java/org/apache/lucene/backward_codecs/lucene101"), "ForUtil101", "gen_ForUtil.py", "ForUtil.java")
+  addGenerateFromPythonTask(project,
+      file("src/java/org/apache/lucene/backward_codecs/lucene101"), "ForDeltaUtil101", "gen_ForDeltaUtil.py", "ForDeltaUtil.java")
 }

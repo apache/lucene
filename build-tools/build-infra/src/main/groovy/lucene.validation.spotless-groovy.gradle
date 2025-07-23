@@ -69,6 +69,7 @@ tasks.named("spotlessGradleScripts").configure {
   mustRunAfter ":lucene:build-tools:build-infra-shadow:applyGoogleJavaFormat"
   mustRunAfter ":lucene:build-tools:build-infra-shadow:pluginUnderTestMetadata"
   mustRunAfter ":lucene:build-tools:build-infra-shadow:pluginDescriptors"
+  mustRunAfter ":lucene:build-tools:build-infra-shadow:compileJava"
 }
 
 tasks.named("tidy").configure {

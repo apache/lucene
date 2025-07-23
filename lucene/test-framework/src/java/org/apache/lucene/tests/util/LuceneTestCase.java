@@ -2600,9 +2600,12 @@ public abstract class LuceneTestCase extends Assert {
             assertEquals(info, left, right);
           }
           // bytes
-          for (int docID = 0; docID < leftReader.maxDoc(); docID++) {
-            assertEquals(docID, leftValues.nextDoc());
+          while (true) {
+            int docID = leftValues.nextDoc();
             assertEquals(docID, rightValues.nextDoc());
+            if (docID == NO_MORE_DOCS) {
+              break;
+            }
             final BytesRef left = BytesRef.deepCopyOf(leftValues.lookupOrd(leftValues.ordValue()));
             final BytesRef right = rightValues.lookupOrd(rightValues.ordValue());
             assertEquals(info, left, right);
@@ -3117,7 +3120,7 @@ public abstract class LuceneTestCase extends Assert {
 
   static {
     boolean enabled = false;
-    assert enabled = true; // Intentional side-effect!!!
+    assert (enabled = true) == true; // Intentional side-effect!!!
     assertsAreEnabled = enabled;
   }
 
