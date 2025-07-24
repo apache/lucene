@@ -152,18 +152,18 @@ class ScorerUtil {
       int numScorers) {
     double minRequiredScoreDouble =
         minRequiredScore(maxRemainingScore, minCompetitiveScore, numScorers);
-    float minRequiredScore = (float) minRequiredScoreDouble;
-    if ((double) minRequiredScore > minRequiredScoreDouble) { // the cast rounded up
-      minRequiredScore = Math.nextDown(minRequiredScore);
+    float minRequiredScoreFloat = (float) minRequiredScoreDouble;
+    if ((double) minRequiredScoreFloat > minRequiredScoreDouble) { // the cast rounded up
+      minRequiredScoreFloat = Math.nextDown(minRequiredScoreFloat);
     }
-    assert (double) minRequiredScore <= minRequiredScoreDouble;
+    assert (double) minRequiredScoreFloat <= minRequiredScoreDouble;
 
-    if (minRequiredScore <= 0) {
+    if (minRequiredScoreFloat <= 0) {
       return;
     }
 
     buffer.size =
-        VectorUtil.filterByScore(buffer.docs, buffer.features, minRequiredScore, buffer.size);
+        VectorUtil.filterByScore(buffer.docs, buffer.features, minRequiredScoreFloat, buffer.size);
   }
 
   /**

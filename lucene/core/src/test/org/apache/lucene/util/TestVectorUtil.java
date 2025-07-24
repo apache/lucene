@@ -413,7 +413,7 @@ public class TestVectorUtil extends LuceneTestCase {
       b2.size = VectorUtil.filterByScore(b2.docs, b2.features, minScoreInclusive, upTo);
       assertEquals(b1.size, b2.size);
       assertTrue(Arrays.equals(b1.docs, 0, b1.size, b2.docs, 0, b2.size));
-      // two double array should be exactly the same, so just use simple Arrays.equals
+      // two float array should be exactly the same, so just use simple Arrays.equals
       assertTrue(Arrays.equals(b1.features, 0, b1.size, b2.features, 0, b2.size));
     }
   }
