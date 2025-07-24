@@ -216,6 +216,8 @@ Optimizations
 
 * GITHUB#14896: Vectorize filterCompetitiveHits (Ge Song, Adrien Grand)
 
+* GITHUB#14976: Utilize docIdRunEnd on ReqExclBulkScorer. (Ge Song)
+
 * GITHUB#14970: Further speed up filtering hits by score. (Adrien Grand)
 
 Changes in Runtime Behavior
