@@ -78,7 +78,7 @@ field.
 ## Add codec headers and footers to all files
 
 Use `CodecUtil` to add headers and footers to all files of the index. This
-helps make sure that we are opening the right file and differenciate Lucene
+helps make sure that we are opening the right file and differentiate Lucene
 bugs from file corruptions.
 
 ## Validate checksums of the metadata file when opening a segment
