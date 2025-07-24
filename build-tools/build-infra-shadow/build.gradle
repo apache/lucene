@@ -44,6 +44,9 @@ dependencies {
   implementation localGroovy()
   implementation deps.commons.codec
   implementation deps.randomizedtesting.runner
+  implementation deps.rat
+  implementation deps.zstd
+
   implementation deps.gjf
   implementation deps.jgit
   implementation deps.ecj
