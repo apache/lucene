@@ -5,7 +5,7 @@ antlr = "4.13.2"
 # test assertions
 assertj = "3.27.3"
 # analysis/phonetic/ algorithms, gradle build checksums
-commons-codec = "1.18.0"
+commons-codec = "1.19.0"
 # benchmark/ bzip2 compression
 commons-compress = "1.27.1"
 # See ecj-lint.gradle (used for more linting).

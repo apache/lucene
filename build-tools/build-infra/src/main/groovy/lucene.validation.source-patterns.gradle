@@ -97,8 +97,12 @@ class ValidateSourcePatternsTask extends DefaultTask {
 
   @TaskAction
   public void check() {
+<<<<<<< HEAD
     def invalidPatterns = [
     ]
+=======
+    def invalidPatterns = []
+>>>>>>> origin/main
 
     def violations = new TreeSet();
     def reportViolation = { f, name ->
