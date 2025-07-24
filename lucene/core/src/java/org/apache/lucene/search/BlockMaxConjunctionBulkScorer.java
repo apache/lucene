@@ -166,15 +166,24 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       return;
     }
 
+    // two equal consecutive values mean that the first clause always returns a score of zero, so we
+    // don't need to filter hits by score again.
+    boolean leadingClauseHasZeroScores = sumOfOtherClauses[1] == sumOfOtherClauses[0];
+
     for (scorers[0].nextDocsAndScores(max, acceptDocs, docAndScoreBuffer);
         docAndScoreBuffer.size > 0;
         scorers[0].nextDocsAndScores(max, acceptDocs, docAndScoreBuffer)) {
+
+      if (leadingClauseHasZeroScores == false) {
+        ScorerUtil.filterCompetitiveHits(
+            docAndScoreBuffer, sumOfOtherClauses[1], scorable.minCompetitiveScore, scorers.length);
+      }
 
       docAndScoreAccBuffer.copyFrom(docAndScoreBuffer);
 
       for (int i = 1; i < scorers.length; ++i) {
         double sumOfOtherClause = sumOfOtherClauses[i];
-        if (sumOfOtherClause != sumOfOtherClauses[i - 1]) {
+        if (i > 1 && sumOfOtherClause != sumOfOtherClauses[i - 1]) {
           // two equal consecutive values mean that the first clause always returns a score of zero,
           // so we don't need to filter hits by score again.
           ScorerUtil.filterCompetitiveHits(

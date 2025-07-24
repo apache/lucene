@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.VectorUtil;
 
 /**
  * A bulk scorer used when {@link ScoreMode#needsScores()} is true and {@link
@@ -49,11 +50,16 @@ class BatchScoreBulkScorer extends BulkScorer {
     for (scorer.nextDocsAndScores(max, acceptDocs, buffer);
         buffer.size > 0;
         scorer.nextDocsAndScores(max, acceptDocs, buffer)) {
+
+      // The collector already filters hits whose scores is less than the minimum competitive score,
+      // but doing it here is a bit more efficient.
+      buffer.size =
+          VectorUtil.filterByScore(
+              buffer.docs, buffer.features, scorable.minCompetitiveScore, buffer.size);
+
       for (int i = 0, size = buffer.size; i < size; i++) {
-        float score = scorable.score = buffer.features[i];
-        if (score >= scorable.minCompetitiveScore) {
-          collector.collect(buffer.docs[i]);
-        }
+        scorable.score = buffer.features[i];
+        collector.collect(buffer.docs[i]);
       }
       scorer.setMinCompetitiveScore(scorable.minCompetitiveScore);
     }
