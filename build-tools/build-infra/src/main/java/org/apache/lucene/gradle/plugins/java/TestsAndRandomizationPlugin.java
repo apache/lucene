@@ -432,8 +432,7 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
 
               var loggingFileProvider =
                   project.getObjects().newInstance(LoggingFileArgumentProvider.class);
-              Path loggingConfigFile =
-                  super.gradlePluginResource(project, "testing/logging.properties");
+              Path loggingConfigFile = gradlePluginResource(project, "testing/logging.properties");
               loggingFileProvider.getLoggingConfigFile().set(loggingConfigFile.toFile());
               loggingFileProvider.getTempDir().set(tmpDirOption.get());
               task.getJvmArgumentProviders().add(loggingFileProvider);
