@@ -342,9 +342,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     }
     // Write the size after duplicates are removed
     vectorIndex.writeVInt(actualSize);
-    for (int i = 0; i < actualSize; i++) {
-      vectorIndex.writeVInt(scratch[i]);
-    }
+    vectorIndex.writeGroupVInts(scratch, actualSize);
   }
 
   @Override
@@ -444,9 +442,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         }
         // Write the size after duplicates are removed
         vectorIndex.writeVInt(actualSize);
-        for (int i = 0; i < actualSize; i++) {
-          vectorIndex.writeVInt(scratch[i]);
-        }
+        vectorIndex.writeGroupVInts(scratch, actualSize);
+
         offsets[level][nodeOffsetId++] =
             Math.toIntExact(vectorIndex.getFilePointer() - offsetStart);
       }
