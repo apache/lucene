@@ -76,11 +76,14 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   private final FieldInfos fieldInfos;
   private final IntObjectHashMap<FieldEntry> fields;
   private final IndexInput vectorIndex;
+  private final boolean bypassTinySegments;
 
-  public Lucene99HnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
+  public Lucene99HnswVectorsReader(
+      SegmentReadState state, FlatVectorsReader flatVectorsReader, boolean bypassTinySegments)
       throws IOException {
     this.fields = new IntObjectHashMap<>();
     this.flatVectorsReader = flatVectorsReader;
+    this.bypassTinySegments = bypassTinySegments;
     this.fieldInfos = state.fieldInfos;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -122,12 +125,18 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
   }
 
+  public Lucene99HnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
+      throws IOException {
+    this(state, flatVectorsReader, false);
+  }
+
   private Lucene99HnswVectorsReader(
       Lucene99HnswVectorsReader reader, FlatVectorsReader flatVectorsReader) {
     this.flatVectorsReader = flatVectorsReader;
     this.fieldInfos = reader.fieldInfos;
     this.fields = reader.fields;
     this.vectorIndex = reader.vectorIndex;
+    this.bypassTinySegments = reader.bypassTinySegments;
   }
 
   @Override
@@ -326,16 +335,19 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     final KnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
     final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
-    HnswGraph graph = getGraph(fieldEntry);
-    boolean doHnsw = knnCollector.k() < scorer.maxOrd();
+    boolean doHnsw =
+        knnCollector.k() < scorer.maxOrd()
+            && (bypassTinySegments == false
+                || fieldEntry.size() > Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD);
     // Take into account if quantized? E.g. some scorer cost?
     int filteredDocCount = 0;
     // The approximate number of vectors that would be visited if we did not filter
-    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graph.size());
+    int unfilteredVisit =
+        HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), fieldEntry.size());
     if (acceptDocs instanceof BitSet bitSet) {
       // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
       // size as that is illogical
-      filteredDocCount = Math.min(bitSet.approximateCardinality(), graph.size());
+      filteredDocCount = Math.min(bitSet.approximateCardinality(), fieldEntry.size());
       if (unfilteredVisit >= filteredDocCount) {
         doHnsw = false;
       }
