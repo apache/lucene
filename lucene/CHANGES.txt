@@ -69,6 +69,8 @@ Bug Fixes
 * GITHUB#14847: Allow Faiss vector format to index >2GB of vectors per-field per-segment by using MemorySegment APIs
   (instead of ByteBuffer) to copy bytes to native memory. (Kaival Parikh)
 
+* GITHUB#14985: Add delegate method copyFrom for FilterDirectory. (Ve Lee)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
