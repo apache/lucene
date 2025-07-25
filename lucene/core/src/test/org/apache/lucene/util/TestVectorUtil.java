@@ -23,6 +23,7 @@ import java.util.Random;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.vectorization.BaseVectorizationTestCase;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
+import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.search.DocAndScoreAccBuffer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -391,7 +392,46 @@ public class TestVectorUtil extends LuceneTestCase {
     return length;
   }
 
-  public void testFilterByScore() {
+  public void testFilterByFloatScore() {
+    for (int iter = 0; iter < 1_000; ++iter) {
+      int padding = TestUtil.nextInt(random(), 0, 5);
+      DocAndFloatFeatureBuffer b1 = new DocAndFloatFeatureBuffer();
+      DocAndFloatFeatureBuffer b2 = new DocAndFloatFeatureBuffer();
+      b1.growNoCopy(128 + padding);
+      b2.growNoCopy(128 + padding);
+
+      int doc = 0;
+      for (int i = 0; i < 128 + padding; ++i) {
+        doc += TestUtil.nextInt(random(), 1, 1000);
+        b1.docs[i] = b2.docs[i] = doc;
+        b1.features[i] = b2.features[i] = random().nextFloat();
+      }
+
+      float minScoreInclusive = random().nextFloat();
+      int upTo = TestUtil.nextInt(random(), 0, 127);
+      b1.size = slowFilterByScore(b1.docs, b1.features, minScoreInclusive, upTo);
+      b2.size = VectorUtil.filterByScore(b2.docs, b2.features, minScoreInclusive, upTo);
+      assertEquals(b1.size, b2.size);
+      assertTrue(Arrays.equals(b1.docs, 0, b1.size, b2.docs, 0, b2.size));
+      // two float array should be exactly the same, so just use simple Arrays.equals
+      assertTrue(Arrays.equals(b1.features, 0, b1.size, b2.features, 0, b2.size));
+    }
+  }
+
+  private static int slowFilterByScore(
+      int[] docBuffer, float[] scoreBuffer, float minScoreInclusive, int upTo) {
+    int newSize = 0;
+    for (int i = 0; i < upTo; i++) {
+      if (scoreBuffer[i] >= minScoreInclusive) {
+        docBuffer[newSize] = docBuffer[i];
+        scoreBuffer[newSize] = scoreBuffer[i];
+        newSize++;
+      }
+    }
+    return newSize;
+  }
+
+  public void testFilterByDoubleScore() {
     for (int iter = 0; iter < 1_000; ++iter) {
       int padding = TestUtil.nextInt(random(), 0, 5);
       DocAndScoreAccBuffer b1 = new DocAndScoreAccBuffer();
