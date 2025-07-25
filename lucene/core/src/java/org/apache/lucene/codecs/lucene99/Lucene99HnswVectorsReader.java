@@ -71,6 +71,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene99HnswVectorsFormat.class);
+  // Number of ordinals to score at a time when scoring exhaustively rather than using HNSW.
+  private static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
   private final FlatVectorsReader flatVectorsReader;
   private final FieldInfos fieldInfos;
@@ -344,15 +346,33 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       HnswGraphSearcher.search(
           scorer, collector, getGraph(fieldEntry), acceptedOrds, filteredDocCount);
     } else {
-      // if k is larger than the number of vectors, we can just iterate over all vectors
-      // and collect them
+      // if k is larger than the number of vectors we expect to visit in an HNSW search,
+      // we can just iterate over all vectors and collect them.
+      int[] ords = new int[EXHAUSTIVE_BULK_SCORE_ORDS];
+      float[] scores = new float[EXHAUSTIVE_BULK_SCORE_ORDS];
+      int numOrds = 0;
       for (int i = 0; i < scorer.maxOrd(); i++) {
         if (acceptedOrds == null || acceptedOrds.get(i)) {
           if (knnCollector.earlyTerminated()) {
             break;
           }
+          ords[numOrds++] = i;
+          if (numOrds == ords.length) {
+            scorer.bulkScore(ords, scores, numOrds);
+            for (int j = 0; j < numOrds; j++) {
+              knnCollector.incVisitedCount(1);
+              knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
+            }
+            numOrds = 0;
+          }
+        }
+      }
+
+      if (numOrds > 0) {
+        scorer.bulkScore(ords, scores, numOrds);
+        for (int j = 0; j < numOrds; j++) {
           knnCollector.incVisitedCount(1);
-          knnCollector.collect(scorer.ordToDoc(i), scorer.score(i));
+          knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
         }
       }
     }
