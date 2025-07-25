@@ -32,7 +32,7 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
 
   final int vectorByteSize;
   final MemorySegmentAccessInput input;
-  final MemorySegment query;
+  final byte[] query;
   byte[] scratch;
 
   /**
@@ -61,7 +61,7 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
     super(values);
     this.input = input;
     this.vectorByteSize = values.getVectorByteLength();
-    this.query = MemorySegment.ofArray(queryVector);
+    this.query = queryVector;
   }
 
   final MemorySegment getSegment(int ord) throws IOException {
@@ -113,7 +113,7 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
       checkOrdinal(node);
       // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
       float raw = PanamaVectorUtilSupport.dotProduct(query, getSegment(node));
-      return 0.5f + raw / (float) (query.byteSize() * (1 << 15));
+      return 0.5f + raw / (float) (query.length * (1 << 15));
     }
   }
 
