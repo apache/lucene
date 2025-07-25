@@ -104,20 +104,20 @@ public class ListFloatVectorValues extends FloatVectorValues {
       return similarityFunction.compare(vectors.get(queryOrd), vectors.get(node));
     }
 
-    @Override
-    public boolean supportsBulk() {
-      return true;
-    }
-
-    @Override
-    public void scoreBulk(float[] scores, int node1, int node2, int node3, int node4) {
-      float[] query = vectors.get(queryOrd);
-      float[] vec1 = vectors.get(node1);
-      float[] vec2 = vectors.get(node2);
-      float[] vec3 = vectors.get(node3);
-      float[] vec4 = vectors.get(node4);
-      similarityFunction.compareBulk(scores, query, vec1, vec2, vec3, vec4);
-    }
+    //    @Override
+    //    public void bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
+    //
+    //    }
+    //
+    //    @Override
+    //    public void bulkScore(float[] scores, int node1, int node2, int node3, int node4) {
+    //      float[] query = vectors.get(queryOrd);
+    //      float[] vec1 = vectors.get(node1);
+    //      float[] vec2 = vectors.get(node2);
+    //      float[] vec3 = vectors.get(node3);
+    //      float[] vec4 = vectors.get(node4);
+    //      similarityFunction.compareBulk(scores, query, vec1, vec2, vec3, vec4);
+    //    }
 
     @Override
     public void setScoringOrdinal(int node) {

@@ -67,11 +67,6 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
     this.query = queryVector;
   }
 
-  @Override
-  public final boolean supportsBulk() {
-    return true;
-  }
-
   final MemorySegment getSegment(int ord) throws IOException {
     checkOrdinal(ord);
     long byteOffset = (long) ord * vectorByteSize;
@@ -134,17 +129,27 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
     }
 
     @Override
-    public void scoreBulk(float[] scores, int node1, int node2, int node3, int node4)
-        throws IOException {
-      MemorySegment ms1 = getSegment(node1);
-      MemorySegment ms2 = getSegment(node2);
-      MemorySegment ms3 = getSegment(node3);
-      MemorySegment ms4 = getSegment(node4);
-      PanamaVectorUtilSupport.dotProductBulkQueryFromArray(scores, query, ms1, ms2, ms3, ms4);
-      scores[0] = Math.max((1 + scores[0]) / 2, 0);
-      scores[1] = Math.max((1 + scores[1]) / 2, 0);
-      scores[2] = Math.max((1 + scores[2]) / 2, 0);
-      scores[3] = Math.max((1 + scores[3]) / 2, 0);
+    public void bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
+      int i = 0;
+      final int limit = nodes.length & ~3;
+      for (; i < limit; i += 4) {
+        MemorySegment ms1 = getSegment(nodes[i]);
+        MemorySegment ms2 = getSegment(nodes[i + 1]);
+        MemorySegment ms3 = getSegment(nodes[i + 2]);
+        MemorySegment ms4 = getSegment(nodes[i + 3]);
+        PanamaVectorUtilSupport.dotProductBulkQueryFromArray(scores, query, ms1, ms2, ms3, ms4);
+        scores[i + 0] = normalizeDotProduct(scores[0]);
+        scores[i + 1] = normalizeDotProduct(scores[1]);
+        scores[i + 2] = normalizeDotProduct(scores[2]);
+        scores[i + 3] = normalizeDotProduct(scores[3]);
+      }
+      for (; i < nodes.length; i += 4) {
+        scores[i] = score(nodes[i]);
+      }
+    }
+
+    static float normalizeDotProduct(float value) {
+      return Math.max((1 + value) / 2, 0);
     }
   }
 

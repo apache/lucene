@@ -21,7 +21,6 @@ import java.io.IOException;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
-import org.apache.lucene.index.ListFloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
@@ -56,9 +55,9 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
   static RandomVectorScorerSupplier getFloatScoringSupplier(
       FloatVectorValues vectorValues, VectorSimilarityFunction similarityFunction)
       throws IOException {
-//    if (vectorValues instanceof ListFloatVectorValues listFloatVectorValues) {
-//      return listFloatVectorValues.getScorer(similarityFunction);
-//    }
+    //    if (vectorValues instanceof ListFloatVectorValues listFloatVectorValues) {
+    //      return listFloatVectorValues.getScorer(similarityFunction);
+    //    }
     return new FloatScoringSupplier(vectorValues, similarityFunction);
   }
 

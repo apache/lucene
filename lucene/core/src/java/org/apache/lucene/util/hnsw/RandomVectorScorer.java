@@ -34,29 +34,19 @@ public interface RandomVectorScorer {
    */
   float score(int node) throws IOException;
 
-  // TODO:
-  default boolean supportsBulk() {
-    return false;
-  }
-
   /**
-   * Bulk scores the given 4 nodes.
+   * Score a list of numNodes and store the results in the scores array.
    *
-   * @param scores the scores - must be of length >= 4
-   * @param node1 a random node in the graph
-   * @param node2 a random node in the graph
-   * @param node3 a random node in the graph
-   * @param node4 a random node in the graph
+   * <p>This may be more efficient than calling {@link #score(int)} for each node.
+   *
+   * @param nodes array of nodes to score.
+   * @param scores output array of scores corresponding to each node.
+   * @param numNodes number of nodes to score. Must not exceed length of nodes or scores arrays.
    */
-  // TODO: consider replacing with supportsBulkScorer or Optional<BulkScorer>
-  // so that can avoid potentially slower path?
-  default void scoreBulk(float[] scores, int node1, int node2, int node3, int node4)
-      throws IOException {
-    throw new UnsupportedOperationException("bulk scoring is not supported");
-    //    scores[0] = score(node1);
-    //    scores[1] = score(node2);
-    //    scores[2] = score(node3);
-    //    scores[3] = score(node4);
+  default void bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
+    for (int i = 0; i < numNodes; i++) {
+      scores[i] = score(nodes[i]);
+    }
   }
 
   /**

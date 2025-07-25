@@ -20,13 +20,11 @@ import static java.lang.foreign.ValueLayout.JAVA_FLOAT_UNALIGNED;
 import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 
 import java.io.IOException;
-import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -37,7 +35,6 @@ import java.util.stream.IntStream;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
-import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -74,7 +71,12 @@ import org.openjdk.jmh.annotations.Warmup;
 // engage some noise reduction
 @Fork(
     value = 3,
-    jvmArgsAppend = {"-Xmx2g", "-Xms2g", "-XX:+AlwaysPreTouch", "--add-modules=jdk.incubator.vector"})
+    jvmArgsAppend = {
+      "-Xmx2g",
+      "-Xms2g",
+      "-XX:+AlwaysPreTouch",
+      "--add-modules=jdk.incubator.vector"
+    })
 public class VectorScorerFloat32Benchmark {
 
   @Param({"1024"})
@@ -92,8 +94,8 @@ public class VectorScorerFloat32Benchmark {
   public static final int NUM_VECTORS = 128_000;
   public static final int VEC_TO_SCORE = 20_000;
 
-
-  static final ValueLayout.OfFloat JAVA_FLOAT_LE = ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
+  static final ValueLayout.OfFloat JAVA_FLOAT_LE =
+      ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
 
   static float[] randomVector(int dims, Random random) {
     float[] fa = new float[dims];
@@ -103,11 +105,9 @@ public class VectorScorerFloat32Benchmark {
     return fa;
   }
 
-  @Setup(Level.Iteration)
-  public void init() throws IOException {
+  @Setup(Level.Trial)
+  public void setup() throws IOException {
     var random = ThreadLocalRandom.current();
-    scores = new float[VEC_TO_SCORE];
-
     path = Files.createTempDirectory("VectorScorerFloat32Benchmark");
     dir = new MMapDirectory(path);
     try (IndexOutput out = dir.createOutput("vector.data", IOContext.DEFAULT)) {
@@ -119,6 +119,13 @@ public class VectorScorerFloat32Benchmark {
         out.writeBytes(ba, 0, ba.length);
       }
     }
+  }
+
+  @Setup(Level.Iteration)
+  public void perIterationInit() throws IOException {
+    var random = ThreadLocalRandom.current();
+
+    scores = new float[VEC_TO_SCORE];
     in = dir.openInput("vector.data", IOContext.DEFAULT);
 
     // default scorer
@@ -138,8 +145,8 @@ public class VectorScorerFloat32Benchmark {
     scorer.setScoringOrdinal(0);
 
     List<Integer> list = IntStream.range(0, NUM_VECTORS).boxed().collect(Collectors.toList());
-    Collections.shuffle(list);
-    indices = list.stream().limit(VEC_TO_SCORE).mapToInt( i-> i).toArray(); // just use 10k
+    Collections.shuffle(list, random);
+    indices = list.stream().limit(VEC_TO_SCORE).mapToInt(i -> i).toArray(); // just use 10k
   }
 
   @TearDown
@@ -168,14 +175,7 @@ public class VectorScorerFloat32Benchmark {
 
   @Benchmark
   public float[] dotProductNewBulkScore() throws IOException {
-    float[] scratchScores = new float[4];
-    for (int v = 0; v < VEC_TO_SCORE; v += 4) {
-      scorer.scoreBulk(scratchScores, indices[v], indices[v + 1], indices[v + 2], indices[v + 3]);
-      scores[v + 0] = scratchScores[0];
-      scores[v + 1] = scratchScores[1];
-      scores[v + 2] = scratchScores[2];
-      scores[v + 3] = scratchScores[3];
-    }
+    scorer.bulkScore(indices, scores, indices.length);
     return scores;
   }
 
@@ -183,7 +183,12 @@ public class VectorScorerFloat32Benchmark {
       int dims, int size, IndexInput in, VectorSimilarityFunction sim) throws IOException {
     int byteSize = dims * Float.BYTES;
     return new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
-        dims, size, in.slice("test", 0, in.length()), byteSize, new ThrowingFlatVectorScorer(), sim);
+        dims,
+        size,
+        in.slice("test", 0, in.length()),
+        byteSize,
+        new ThrowingFlatVectorScorer(),
+        sim);
   }
 
   static final class ThrowingFlatVectorScorer implements FlatVectorsScorer {

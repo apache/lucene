@@ -162,25 +162,31 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
         }
 
         @Override
-        public boolean supportsBulk() {
-          return true;
+        public void bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
+          // TODO checkOrdinal(node1 ....);
+          float[] scratchScores = new float[4];
+          int i = 0;
+          MemorySegment query = getSegment(queryOrd, queryScratch);
+          final int limit = nodes.length & ~3;
+          for (; i < limit; i += 4) {
+            MemorySegment ms1 = getSegment(nodes[i], scratch1);
+            MemorySegment ms2 = getSegment(nodes[i + 1], scratch2);
+            MemorySegment ms3 = getSegment(nodes[i + 2], scratch3);
+            MemorySegment ms4 = getSegment(nodes[i + 3], scratch4);
+            PanamaVectorUtilSupport.dotProductBulkFromSegments(
+                scratchScores, query, ms1, ms2, ms3, ms4, dims);
+            scores[i + 0] = normalizeDotProduct(scratchScores[0]);
+            scores[i + 1] = normalizeDotProduct(scratchScores[1]);
+            scores[i + 2] = normalizeDotProduct(scratchScores[2]);
+            scores[i + 3] = normalizeDotProduct(scratchScores[3]);
+          }
+          for (; i < nodes.length; i += 4) {
+            scores[i] = score(nodes[i]);
+          }
         }
 
-        @Override
-        public void scoreBulk(float[] scores, int node1, int node2, int node3, int node4)
-            throws IOException {
-          // TODO checkOrdinal(node1 ....);
-          MemorySegment query = getSegment(queryOrd, queryScratch);
-          MemorySegment ms1 = getSegment(node1, scratch1);
-          MemorySegment ms2 = getSegment(node2, scratch2);
-          MemorySegment ms3 = getSegment(node3, scratch3);
-          MemorySegment ms4 = getSegment(node4, scratch4);
-          PanamaVectorUtilSupport.dotProductBulkFromSegments(
-              scores, query, ms1, ms2, ms3, ms4, dims);
-          scores[0] = Math.max((1 + scores[0]) / 2, 0);
-          scores[1] = Math.max((1 + scores[1]) / 2, 0);
-          scores[2] = Math.max((1 + scores[2]) / 2, 0);
-          scores[3] = Math.max((1 + scores[3]) / 2, 0);
+        static float normalizeDotProduct(float value) {
+          return Math.max((1 + value) / 2, 0);
         }
 
         @Override

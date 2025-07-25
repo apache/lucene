@@ -242,11 +242,6 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     }
 
     @Override
-    int graphNeighborCount(HnswGraph graph) {
-      return size;
-    }
-
-    @Override
     int graphNextNeighbor(HnswGraph graph) {
       if (++upto < size) {
         return nodeBuffer[upto];
