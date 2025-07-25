@@ -91,7 +91,86 @@ public class MergeState {
   /** Indicates if the index needs to be sorted * */
   public boolean needsIndexSort;
 
-  /** Sole constructor. */
+  /** Returns the document ID maps. */
+  public DocMap[] getDocMaps() {
+    return docMaps;
+  }
+
+  /** Returns the segment info of the newly merged segment. */
+  public SegmentInfo getSegmentInfo() {
+    return segmentInfo;
+  }
+
+  /** Returns the field infos of the newly merged segment. */
+  public FieldInfos getMergeFieldInfos() {
+    return mergeFieldInfos;
+  }
+
+  /** Returns the stored fields readers being merged. */
+  public StoredFieldsReader[] getStoredFieldsReaders() {
+    return storedFieldsReaders;
+  }
+
+  /** Returns the term vectors readers being merged. */
+  public TermVectorsReader[] getTermVectorsReaders() {
+    return termVectorsReaders;
+  }
+
+  /** Returns the norms producers being merged. */
+  public NormsProducer[] getNormsProducers() {
+    return normsProducers;
+  }
+
+  /** Returns the DocValues producers being merged. */
+  public DocValuesProducer[] getDocValuesProducers() {
+    return docValuesProducers;
+  }
+
+  /** Returns the field infos being merged. */
+  public FieldInfos[] getFieldInfos() {
+    return fieldInfos;
+  }
+
+  /** Returns the live docs for each reader. */
+  public Bits[] getLiveDocs() {
+    return liveDocs;
+  }
+
+  /** Returns the postings to merge. */
+  public FieldsProducer[] getFieldsProducers() {
+    return fieldsProducers;
+  }
+
+  /** Returns the point readers to merge. */
+  public PointsReader[] getPointsReaders() {
+    return pointsReaders;
+  }
+
+  /** Returns the vector readers to merge. */
+  public KnnVectorsReader[] getKnnVectorsReaders() {
+    return knnVectorsReaders;
+  }
+
+  /** Returns the max docs per reader. */
+  public int[] getMaxDocs() {
+    return maxDocs;
+  }
+
+  /** Returns the info stream for debugging messages. */
+  public InfoStream getInfoStream() {
+    return infoStream;
+  }
+
+  /** Returns the executor for intra merge activity. */
+  public Executor getIntraMergeTaskExecutor() {
+    return intraMergeTaskExecutor;
+  }
+
+  /** Returns whether the index needs to be sorted. */
+  public boolean getNeedsIndexSort() {
+    return needsIndexSort;
+  }
+
   MergeState(
       List<CodecReader> readers,
       SegmentInfo segmentInfo,
