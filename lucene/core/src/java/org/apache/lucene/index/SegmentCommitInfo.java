@@ -414,4 +414,9 @@ public class SegmentCommitInfo {
   public byte[] getId() {
     return id == null ? null : id.clone();
   }
+
+  /** Returns the SegmentInfo that we wrap. */
+  public SegmentInfo getInfo() {
+    return info;
+  }
 }
