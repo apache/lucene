@@ -73,6 +73,7 @@ public class RootProjectSetupPlugin extends LuceneGradlePlugin {
     plugins.apply(WipeGradleTempPlugin.class);
     plugins.apply(GradleGroovyFormatPlugin.class);
     plugins.apply(ValidateSourcePatternsPlugin.class);
+    plugins.apply(ConfigureLockFilePlugin.class);
 
     // wire up included composite builds to validation tasks.
     connectCompositeTasksToMainBuild(rootProject);

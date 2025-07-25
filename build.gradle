@@ -25,7 +25,6 @@ plugins {
 
   id "base"
   id "lucene.root-project.setup"
-
   id "lucene.java-projects.conventions"
 
   id "lucene.java.fail-on-no-tests"
@@ -35,7 +34,6 @@ plugins {
   id "lucene.java.coverage"
   id "lucene.java.modules"
 
-  id "lucene.validation.lockfile"
   id "lucene.validation.gradle-versions-cleanup"
   id "lucene.validation.gradlew-scripts-customizations"
   id "lucene.validation.error-prone"
