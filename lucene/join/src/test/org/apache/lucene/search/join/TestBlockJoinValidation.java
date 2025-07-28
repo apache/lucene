@@ -40,7 +40,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BitSet;
 
 public class TestBlockJoinValidation extends LuceneTestCase {
 
@@ -131,7 +131,7 @@ public class TestBlockJoinValidation extends LuceneTestCase {
         indexSearcher.createWeight(
             indexSearcher.rewrite(blockJoinQuery), org.apache.lucene.search.ScoreMode.COMPLETE, 1);
     Scorer scorer = weight.scorer(context);
-    final Bits parentDocs = parentsFilter.getBitSet(context);
+    final BitSet parentDocs = parentsFilter.getBitSet(context);
 
     int target;
     do {

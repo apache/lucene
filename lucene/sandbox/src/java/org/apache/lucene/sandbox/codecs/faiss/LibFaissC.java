@@ -397,8 +397,6 @@ final class LibFaissC {
       FixedBitSet fixedBitSet =
           switch (acceptDocs) {
             case null -> null;
-            case FixedBitSet bitSet -> bitSet;
-            // TODO: Add optimized case for SparseFixedBitSet
             case Bits bits -> FixedBitSet.copyOf(bits);
           };
 

@@ -27,6 +27,7 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BitDocIdSet;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RoaringDocIdSet;
 import org.apache.lucene.util.SparseFixedBitSet;
@@ -347,6 +348,22 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
         next = DocIdSetIterator.NO_MORE_DOCS;
       }
       return next;
+    }
+
+    @Override
+    public Bits asReadOnlyBits() {
+      return new Bits() {
+
+        @Override
+        public boolean get(int index) {
+          return JavaUtilBitSet.this.get(index);
+        }
+
+        @Override
+        public int length() {
+          return JavaUtilBitSet.this.length();
+        }
+      };
     }
   }
 }

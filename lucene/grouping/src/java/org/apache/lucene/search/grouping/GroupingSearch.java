@@ -162,7 +162,9 @@ public class GroupingSearch {
     matchingGroups = allGroups ? allGroupsCollector.getGroups() : Collections.emptyList();
     matchingGroupHeads =
         allGroupHeads
-            ? allGroupHeadsCollector.retrieveGroupHeads(searcher.getIndexReader().maxDoc())
+            ? allGroupHeadsCollector
+                .retrieveGroupHeads(searcher.getIndexReader().maxDoc())
+                .asReadOnlyBits()
             : new Bits.MatchNoBits(searcher.getIndexReader().maxDoc());
 
     Collection<SearchGroup> topSearchGroups = firstPassCollector.getTopGroups(groupOffset);
