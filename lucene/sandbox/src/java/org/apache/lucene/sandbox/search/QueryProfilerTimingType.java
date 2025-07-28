@@ -41,9 +41,7 @@ public enum QueryProfilerTimingType {
     this.leafLevel = leafLevel;
   }
 
-  /**
-   * Indicates if the operation runs on a LeafReader as opposed to the top-level IndexReader
-   */
+  /** Indicates if the operation runs on a LeafReader as opposed to the top-level IndexReader */
   public boolean isLeafLevel() {
     return leafLevel;
   }

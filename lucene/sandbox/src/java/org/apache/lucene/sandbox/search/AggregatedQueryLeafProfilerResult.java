@@ -35,12 +35,15 @@ public class AggregatedQueryLeafProfilerResult {
   public AggregatedQueryLeafProfilerResult(
       Thread thread, Map<String, Long> breakdown, long startTime, long totalTime) {
     this.thread = thread;
-    this.breakdown = Collections.unmodifiableMap(Objects.requireNonNull(breakdown, "required breakdown argument missing"));
+    this.breakdown =
+        Collections.unmodifiableMap(
+            Objects.requireNonNull(breakdown, "required breakdown argument missing"));
     this.startTime = startTime;
     this.totalTime = totalTime;
   }
 
-  /** Returns the thread that executed query for these leaves
+  /**
+   * Returns the thread that executed query for these leaves
    *
    * @return thread that executed query node
    */
@@ -48,7 +51,8 @@ public class AggregatedQueryLeafProfilerResult {
     return thread;
   }
 
-  /** Returns the timing breakdown for this node.
+  /**
+   * Returns the timing breakdown for this node.
    *
    * @return map containing time breakdown across different operation types
    */
