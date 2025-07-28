@@ -220,6 +220,8 @@ Optimizations
 
 * GITHUB#14991: Refactor for loop at PointRangeQuery hot path. (Ge Song)
 
+* GITHUB#14998: Speed up flushing of live docs. (Adrien Grand)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
