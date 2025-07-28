@@ -37,7 +37,7 @@ IndexSearcher.setDefaultQueryCache(new LRUQueryCache(maxCachedQueries, maxRamByt
 
 ### BitSet no longer implements Bits
 
-You could call `BitSet#asReadOnlyBits` if you would like to use a `BitSet` as
+You should call `BitSet#asReadOnlyBits` if you would like to use a `BitSet` as
 `Bits`.
 
 ## Migration from Lucene 9.x to Lucene 10.0
