@@ -250,4 +250,10 @@ public class FileSwitchDirectory extends Directory {
       return Collections.unmodifiableSet(combined);
     }
   }
+
+  @Override
+  public void copyFrom(Directory from, String src, String dest, IOContext context)
+      throws IOException {
+    getDirectory(dest).copyFrom(from, src, dest, context);
+  }
 }
