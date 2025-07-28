@@ -22,66 +22,53 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-/** Implementation of QueryLeafProfilerAggregator that aggregates leaf breakdowns at thread level */
-class QueryLeafProfilerThreadAggregator implements QueryLeafProfilerAggregator {
-  private final ConcurrentMap<Long, QueryLeafProfilerBreakdown> queryThreadBreakdowns;
+/** QueryLeafProfilerAggregator that aggregates leaf breakdowns at thread level */
+class QueryLeafProfilerThreadAggregator {
+  private final ConcurrentMap<Thread, QueryLeafProfilerBreakdown> queryThreadBreakdowns;
   private long queryStartTime = Long.MAX_VALUE;
-  private long queryEndTime = Long.MIN_VALUE;
+  private long queryTotalTime = 0;
 
   public QueryLeafProfilerThreadAggregator() {
     queryThreadBreakdowns = new ConcurrentHashMap<>();
   }
 
-  @Override
-  public QueryProfilerResult.AggregationType getAggregationType() {
-    return QueryProfilerResult.AggregationType.THREAD;
-  }
-
-  @Override
   public long getQueryStartTime() {
     return queryStartTime;
   }
 
-  @Override
-  public long getQueryEndTime() {
-    return queryEndTime;
+  public long getQueryTotalTime() {
+    return queryTotalTime;
   }
 
-  private QueryLeafProfilerBreakdown getQuerySliceProfilerBreakdown() {
-    final long currentThreadId = Thread.currentThread().threadId();
+  private QueryLeafProfilerBreakdown getQueryThreadProfilerBreakdown() {
+    final Thread currentThread = Thread.currentThread();
     // See please https://bugs.openjdk.java.net/browse/JDK-8161372
-    final QueryLeafProfilerBreakdown profilerBreakdown = queryThreadBreakdowns.get(currentThreadId);
+    final QueryLeafProfilerBreakdown profilerBreakdown = queryThreadBreakdowns.get(currentThread);
 
     if (profilerBreakdown != null) {
       return profilerBreakdown;
     }
 
     return queryThreadBreakdowns.computeIfAbsent(
-        currentThreadId, _ -> new QueryLeafProfilerBreakdown());
+        currentThread, _ -> new QueryLeafProfilerBreakdown());
   }
 
-  @Override
   public QueryProfilerTimer getTimer(QueryProfilerTimingType timingType) {
     assert timingType.isLeafLevel();
 
-    return getQuerySliceProfilerBreakdown().getTimer(timingType);
+    return getQueryThreadProfilerBreakdown().getTimer(timingType);
   }
 
-  @Override
   public List<AggregatedQueryLeafProfilerResult> getAggregatedQueryLeafProfilerResults() {
-    final List<AggregatedQueryLeafProfilerResult> sliceProfilerResults = new ArrayList<>();
-    for (Long sliceId : queryThreadBreakdowns.keySet()) {
+    final List<AggregatedQueryLeafProfilerResult> profilerResults = new ArrayList<>();
+    for (Thread thread : queryThreadBreakdowns.keySet()) {
       final AggregatedQueryLeafProfilerResult aggregatedQueryLeafProfilerResult =
-          queryThreadBreakdowns.get(sliceId).getSliceProfilerResult(sliceId);
+          queryThreadBreakdowns.get(thread).getLeafProfilerResult(thread);
       queryStartTime = Math.min(queryStartTime, aggregatedQueryLeafProfilerResult.getStartTime());
-      queryEndTime =
-          Math.max(
-              queryEndTime,
-              aggregatedQueryLeafProfilerResult.getStartTime()
-                  + aggregatedQueryLeafProfilerResult.getTotalTime());
-      sliceProfilerResults.add(aggregatedQueryLeafProfilerResult);
+      queryTotalTime += aggregatedQueryLeafProfilerResult.getTotalTime();
+      profilerResults.add(aggregatedQueryLeafProfilerResult);
     }
 
-    return sliceProfilerResults;
+    return profilerResults;
   }
 }

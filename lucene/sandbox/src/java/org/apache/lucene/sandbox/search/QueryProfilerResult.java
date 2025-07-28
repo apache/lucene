@@ -31,20 +31,10 @@ import java.util.Objects;
  * queries if applicable
  */
 public class QueryProfilerResult {
-  enum AggregationType {
-    // Leaf level is most verbose, practically no aggregation
-    LEAF,
-    // Aggregate leaf level breakdowns based on slice
-    SLICE,
-    // Aggregate leaf level breakdowns based on thread execution
-    THREAD
-  }
-
   private final String type;
   private final String description;
   private final long startTime;
   private final long totalTime;
-  private final AggregationType aggregationType;
   private final Map<String, Long> queryBreakdowns;
   private final List<AggregatedQueryLeafProfilerResult> aggregatedQueryLeafBreakdowns;
   private final List<QueryProfilerResult> childrenProfileResults;
@@ -52,7 +42,6 @@ public class QueryProfilerResult {
   public QueryProfilerResult(
       String type,
       String description,
-      AggregationType aggregationType,
       Map<String, Long> queryBreakdowns,
       List<AggregatedQueryLeafProfilerResult> aggregatedQueryLeafBreakdowns,
       List<QueryProfilerResult> childrenProfileResults,
@@ -60,7 +49,6 @@ public class QueryProfilerResult {
       long totalTime) {
     this.type = type;
     this.description = description;
-    this.aggregationType = aggregationType;
     this.queryBreakdowns =
         Objects.requireNonNull(queryBreakdowns, "required breakdown argument missing");
     this.aggregatedQueryLeafBreakdowns =
@@ -80,11 +68,6 @@ public class QueryProfilerResult {
   /** Retrieve the lucene description of this query (e.g. the "explain" text) */
   public String getDescription() {
     return description;
-  }
-
-  /** Retrieve the aggregation type of leaf level breakdowns for this query */
-  public AggregationType getAggregationType() {
-    return aggregationType;
   }
 
   /** The timing breakdown for this node. */

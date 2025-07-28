@@ -27,29 +27,40 @@ import java.util.Objects;
  * representation, rather than the entity that collects the timing profile.
  */
 public class AggregatedQueryLeafProfilerResult {
-  private final long id;
+  private final Thread thread;
   private final Map<String, Long> breakdown;
   private final long startTime;
   private final long totalTime;
 
   public AggregatedQueryLeafProfilerResult(
-      long id, Map<String, Long> breakdown, long startTime, long totalTime) {
-    this.id = id;
-    this.breakdown = Objects.requireNonNull(breakdown, "required breakdown argument missing");
+      Thread thread, Map<String, Long> breakdown, long startTime, long totalTime) {
+    this.thread = thread;
+    this.breakdown = Collections.unmodifiableMap(Objects.requireNonNull(breakdown, "required breakdown argument missing"));
     this.startTime = startTime;
     this.totalTime = totalTime;
   }
 
-  /** Retrieve the lucene description of this query (e.g. the "explain" text) */
-  public long getId() {
-    return id;
+  /** Returns the thread that executed query for these leaves
+   *
+   * @return thread that executed query node
+   */
+  public Thread getThread() {
+    return thread;
   }
 
-  /** The timing breakdown for this node. */
+  /** Returns the timing breakdown for this node.
+   *
+   * @return map containing time breakdown across different operation types
+   */
   public Map<String, Long> getTimeBreakdown() {
-    return Collections.unmodifiableMap(breakdown);
+    return breakdown;
   }
 
+  /**
+   * Returns the start time for this query node execution.
+   *
+   * @return start time in nanoseconds
+   */
   public long getStartTime() {
     return startTime;
   }

@@ -20,6 +20,7 @@ package org.apache.lucene.sandbox.search;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.Map;
 import org.apache.lucene.util.CollectionUtil;
 
@@ -33,6 +34,8 @@ public class QueryLeafProfilerBreakdown {
 
   /** The accumulated timings for this query node */
   private final QueryProfilerTimer[] timers;
+
+  EnumMap<QueryProfilerTimingType, QueryProfilerTimer> map;
 
   /** Sole constructor. */
   public QueryLeafProfilerBreakdown() {
@@ -56,7 +59,7 @@ public class QueryLeafProfilerBreakdown {
     return Collections.unmodifiableMap(map);
   }
 
-  public final AggregatedQueryLeafProfilerResult getSliceProfilerResult(long sliceId) {
+  public final AggregatedQueryLeafProfilerResult getLeafProfilerResult(Thread thread) {
     final Map<String, Long> map = CollectionUtil.newHashMap(LEAF_LEVEL_TIMING_TYPE.size() * 2);
     long sliceStartTime = Long.MAX_VALUE;
     long sliceEndTime = Long.MIN_VALUE;
@@ -74,7 +77,7 @@ public class QueryLeafProfilerBreakdown {
       map.put(type.toString() + "_count", timer.getCount());
     }
     return new AggregatedQueryLeafProfilerResult(
-        sliceId, map, sliceStartTime, sliceEndTime - sliceStartTime);
+        thread, map, sliceStartTime, sliceEndTime - sliceStartTime);
   }
 
   public final long toTotalTime() {

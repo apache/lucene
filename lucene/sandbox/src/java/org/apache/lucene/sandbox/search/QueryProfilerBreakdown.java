@@ -35,7 +35,7 @@ class QueryProfilerBreakdown {
       Arrays.stream(QueryProfilerTimingType.values()).filter(t -> !t.isLeafLevel()).toList();
   private final Map<QueryProfilerTimingType, QueryProfilerTimer> queryProfilerTimers;
 
-  private final QueryLeafProfilerAggregator queryLeafProfilerAggregator;
+  private final QueryLeafProfilerThreadAggregator queryLeafProfilerAggregator;
 
   /** Sole constructor. */
   public QueryProfilerBreakdown() {
@@ -61,35 +61,33 @@ class QueryProfilerBreakdown {
   public final QueryProfilerResult getQueryProfilerResult(
       Query query, List<QueryProfilerResult> childrenProfileResults) {
     long queryStartTime = Long.MAX_VALUE;
-    long queryEndTime = Long.MIN_VALUE;
+    long queryTotalTime = 0;
     final Map<String, Long> breakdownMap =
         CollectionUtil.newHashMap(QUERY_LEVEL_TIMING_TYPE.size() * 2);
     for (QueryProfilerTimingType type : QUERY_LEVEL_TIMING_TYPE) {
       final QueryProfilerTimer timer = queryProfilerTimers.get(type);
       if (timer.getCount() > 0) {
         queryStartTime = Math.min(queryStartTime, timer.getEarliestTimerStartTime());
-        queryEndTime =
-            Math.max(
-                queryEndTime, timer.getEarliestTimerStartTime() + timer.getApproximateTiming());
+        queryTotalTime += timer.getApproximateTiming();
       }
+      // TODO: Should we put only non-zero timer values in the final output?
       breakdownMap.put(type.toString(), queryProfilerTimers.get(type).getApproximateTiming());
       breakdownMap.put(type.toString() + "_count", queryProfilerTimers.get(type).getCount());
     }
 
-    final List<AggregatedQueryLeafProfilerResult> sliceProfilerResults =
+    final List<AggregatedQueryLeafProfilerResult> threadProfilerResults =
         queryLeafProfilerAggregator.getAggregatedQueryLeafProfilerResults();
     queryStartTime = Math.min(queryStartTime, queryLeafProfilerAggregator.getQueryStartTime());
-    queryEndTime = Math.max(queryEndTime, queryLeafProfilerAggregator.getQueryEndTime());
+    queryTotalTime += queryLeafProfilerAggregator.getQueryTotalTime();
 
     return new QueryProfilerResult(
         getTypeFromQuery(query),
         getDescriptionFromQuery(query),
-        queryLeafProfilerAggregator.getAggregationType(),
         Collections.unmodifiableMap(breakdownMap),
-        sliceProfilerResults,
+        threadProfilerResults,
         childrenProfileResults,
         queryStartTime,
-        queryEndTime - queryStartTime);
+        queryTotalTime);
   }
 
   private String getTypeFromQuery(Query query) {
