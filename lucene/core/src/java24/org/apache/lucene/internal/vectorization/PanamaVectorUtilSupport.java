@@ -1008,35 +1008,6 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   @SuppressForbidden(reason = "Uses compress and cast only where fast and carefully contained")
   @Override
   public int filterByScore(
-      int[] docBuffer, float[] scoreBuffer, float minScoreInclusive, int upTo) {
-    int newUpto = 0;
-    int i = 0;
-    if (Constants.HAS_FAST_COMPRESS_MASK_CAST) {
-      for (int bound = FLOAT_SPECIES.loopBound(upTo); i < bound; i += FLOAT_SPECIES.length()) {
-        FloatVector scoreVector = FloatVector.fromArray(FLOAT_SPECIES, scoreBuffer, i);
-        IntVector docVector = IntVector.fromArray(INT_SPECIES, docBuffer, i);
-        VectorMask<Float> mask = scoreVector.compare(VectorOperators.GE, minScoreInclusive);
-        scoreVector.compress(mask).intoArray(scoreBuffer, newUpto);
-        docVector.compress(mask.cast(INT_SPECIES)).intoArray(docBuffer, newUpto);
-        newUpto += mask.trueCount();
-      }
-    }
-
-    for (; i < upTo; ++i) {
-      int doc = docBuffer[i];
-      float score = scoreBuffer[i];
-      docBuffer[newUpto] = doc;
-      scoreBuffer[newUpto] = score;
-      if (score >= minScoreInclusive) {
-        newUpto++;
-      }
-    }
-    return newUpto;
-  }
-
-  @SuppressForbidden(reason = "Uses compress and cast only where fast and carefully contained")
-  @Override
-  public int filterByScore(
       int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
     int newUpto = 0;
     int i = 0;

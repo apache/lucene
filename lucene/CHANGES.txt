@@ -218,8 +218,6 @@ Optimizations
 
 * GITHUB#14976: Utilize docIdRunEnd on ReqExclBulkScorer. (Ge Song)
 
-* GITHUB#14970: Further speed up filtering hits by score. (Adrien Grand)
-
 * GITHUB#14991: Refactor for loop at PointRangeQuery hot path. (Ge Song)
 
 Changes in Runtime Behavior
