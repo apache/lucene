@@ -50,6 +50,10 @@ Improvements
   global queue min-score checking. Improves performance and consistency. (Mike Sokolov, Dzung Bui,
   Ben Trent)
 
+* GITHUB#15002: Remove synchronized WeakHashMap from IndexReader. This was added to help prevent
+  SIGSEGV with the old unsafe "mmap hack", which has been replaced by MemorySegments.
+  (Uwe Schindler, Robert Muir)
+
 Optimizations
 ---------------------
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
