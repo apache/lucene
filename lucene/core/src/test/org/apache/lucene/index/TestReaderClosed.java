@@ -105,9 +105,7 @@ public class TestReaderClosed extends LuceneTestCase {
       if (ace == null) {
         throw new AssertionError("Query failed, but not due to an AlreadyClosedException", e);
       }
-      assertEquals(
-          "this IndexReader cannot be used anymore as one of its child readers was closed",
-          ace.getMessage());
+      assertEquals("this IndexReader is closed", ace.getMessage());
     } finally {
       // close executor: in case of wrap-wrap-wrapping
       searcher.getIndexReader().close();
