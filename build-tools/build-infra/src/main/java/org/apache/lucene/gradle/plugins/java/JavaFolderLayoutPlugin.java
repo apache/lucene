@@ -40,6 +40,20 @@ public class JavaFolderLayoutPlugin extends LuceneGradlePlugin {
     mainSrcSet.java(srcSetDir -> srcSetDir.setSrcDirs(List.of("src/java")));
     mainSrcSet.resources(resources -> resources.setSrcDirs(List.of("src/resources")));
 
+    // point build-infra-shadow's main sources at build-infra sources so that we can
+    // reapply the build to ourselves.
+    if (project.getPath().equals(":lucene:build-tools:build-infra-shadow")
+        && !getLuceneBuildGlobals(project).getIntellijIdea().get().isIdea()) {
+      mainSrcSet.java(
+          srcSetDir -> {
+            srcSetDir.setSrcDirs(
+                List.of(
+                    getProjectRootPath(project)
+                        .resolve("build-tools/build-infra/src/main/java")
+                        .toFile()));
+          });
+    }
+
     SourceSet testSrcSet = sourceSets.named("test").get();
     testSrcSet.java(srcSetDir -> srcSetDir.setSrcDirs(List.of("src/test")));
     testSrcSet.resources(resources -> resources.setSrcDirs(List.of("src/test-files")));

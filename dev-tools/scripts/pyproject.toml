@@ -94,7 +94,7 @@ ignore = [
   "PLW0603", # using global statement to update variable is discouraged
   "PLW2901", # loop variable overwritten by assignment target
   "PTH104",  # os.rename should be replaced by Path.rename
-  "PTH107",  # os.remove shoudl be replaced by Path.unlink
+  "PTH107",  # os.remove should be replaced by Path.unlink
   "PTH109",  # os.getcwd should be replaced by Path.cwd
   "PTH110",  # os.path.exists should be replaced by Path.exists
   "PTH111",  # os.path.expanduser should be replaced by Path.expanduser
@@ -126,7 +126,7 @@ ignore = [
   "S506",    # probable use of unsafe yaml loader, consider yaml.safe_load
   "S602",    # subprocess call with shell=True identified, security issue
   "S603",    # subprocess call: check for execution of untrusted input
-  "S605",    # starting a process wtih a shell, seems safe, but may be changed in future
+  "S605",    # starting a process with a shell, seems safe, but may be changed in future
   "S607",    # starting a process with a partial executable path
   "S701",    # consider using jinja autoescape=True to mitigate XSS
   "SIM102",  # use single if statement instead of nested if statement

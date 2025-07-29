@@ -27,6 +27,7 @@ import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.RoaringDocIdSet;
 
 /**
@@ -473,7 +474,7 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
 
   @Override
   public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-    assert doc >= offset;
+    assert doc >= offset : "offset=" + offset + " doc=" + doc;
     while (doc < upTo && method.intoBitSetWithinBlock(this, upTo, bitSet, offset) == false) {
       readBlockHeader();
       boolean found = method.advanceWithinBlock(this, block);
@@ -719,10 +720,10 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
         if (disi.bitSet == null) {
           disi.bitSet = new FixedBitSet(BLOCK_SIZE);
         }
-
-        int sourceFrom = disi.doc & 0xFFFF;
-        int sourceTo = Math.min(upTo - disi.block, BLOCK_SIZE);
         int destFrom = disi.doc - offset;
+        int destTo = MathUtil.unsignedMin(upTo, offset + bitSet.length());
+        int sourceFrom = disi.doc & 0xFFFF;
+        int sourceTo = Math.min(destTo - disi.block, BLOCK_SIZE);
 
         long fp = disi.slice.getFilePointer();
         disi.slice.seek(fp - Long.BYTES); // seek back a long to include current word (disi.word).
@@ -731,13 +732,24 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
         FixedBitSet.orRange(disi.bitSet, sourceFrom, bitSet, destFrom, sourceTo - sourceFrom);
 
         int blockEnd = disi.block | 0xFFFF;
-        if (upTo > blockEnd) {
+        if (destTo > blockEnd) {
           disi.slice.seek(disi.blockEnd);
           disi.index += disi.bitSet.cardinality(sourceFrom, sourceTo);
           return false;
         } else {
           disi.slice.seek(fp);
-          return advanceWithinBlock(disi, upTo);
+          boolean found = advanceWithinBlock(disi, destTo);
+          if (found && disi.doc < upTo) {
+            throw new IllegalStateException(
+                "There are bits set in the source bitset that are not accounted for."
+                    + " doc="
+                    + disi.doc
+                    + " upTo="
+                    + upTo
+                    + " disi.block="
+                    + disi.block);
+          }
+          return found;
         }
       }
 

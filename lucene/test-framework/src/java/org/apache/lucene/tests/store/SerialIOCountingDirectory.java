@@ -40,7 +40,7 @@ public class SerialIOCountingDirectory extends FilterDirectory {
   private static final int PAGE_READAHEAD = 4;
   private final LongAdder counter = new LongAdder();
   private final CloseableThreadLocal<Boolean> pendingFetch =
-      new CloseableThreadLocal<Boolean>() {
+      new CloseableThreadLocal<>() {
         @Override
         protected Boolean initialValue() {
           return Boolean.FALSE;

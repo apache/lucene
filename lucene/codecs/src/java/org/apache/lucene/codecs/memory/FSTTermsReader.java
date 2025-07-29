@@ -759,7 +759,7 @@ public class FSTTermsReader extends FieldsProducer {
     final ArrayList<FST.Arc<T>> queue = new ArrayList<>();
     final BitSet seen = new BitSet();
     final FST.BytesReader reader = fst.getBytesReader();
-    final FST.Arc<T> startArc = fst.getFirstArc(new FST.Arc<T>());
+    final FST.Arc<T> startArc = fst.getFirstArc(new FST.Arc<>());
     queue.add(startArc);
     while (!queue.isEmpty()) {
       final FST.Arc<T> arc = queue.remove(0);

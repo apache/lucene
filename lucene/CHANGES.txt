@@ -40,6 +40,8 @@ New Features
 Improvements
 ---------------------
 
+* GITHUB#14972: Require named thread factory in ThreadPoolExecutor constructors. (Dawid Weiss)
+
 * GITHUB#14597: Rewrite expressions compiler to use Java 24+ Classfile library instead of ASM.
   This avoids clashes with other ASM versions on classpath because it removes the dependency.
   (Uwe Schindler)
@@ -52,6 +54,8 @@ Optimizations
 ---------------------
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
 * GITHUB#14022: Optimize DFS marking of connected components in HNSW by reducing stack depth, improving performance and reducing allocations. (Viswanath Kuchibhotla)
+
+* GITHUB#14874: Improve off-heap KNN byte vector query performance in cases where indexing and search are performed by the same process. (Kaival Parikh)
 
 Bug Fixes
 ---------------------
@@ -208,6 +212,16 @@ Optimizations
 
 * GITHUB#14906: Use branchless way to speedup filterCompetitiveHits. (Adrien Grand, Ge Song)
 
+* GITHUB#14935: Speed up PostingsEnum#nextPostings when block is encoded as bitset. (Guo Feng)
+
+* GITHUB#14936: Don't do the filtered knn path when the provided filter is a MatchAllDocsQuery. (Ben Trent)
+
+* GITHUB#14896: Vectorize filterCompetitiveHits (Ge Song, Adrien Grand)
+
+* GITHUB#14976: Utilize docIdRunEnd on ReqExclBulkScorer. (Ge Song)
+
+* GITHUB#14991: Refactor for loop at PointRangeQuery hot path. (Ge Song)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
@@ -231,6 +245,9 @@ Bug Fixes
 * GITHUB#14755: Fix too many documents collected when only bool-filter condition is present. (Ke Wei)
 
 * GITHUB#14838: Make it possible to extend Patience/Seeded knn queries (Tommaso Teofili)
+
+* GITHUB#14922: Fix for IndexedDISI.Dense#intoBitSetWithinBlock to take into account the provided bitset size
+  and avoid throwing IndexOutOfBoundsException (Panagiotis Bailis)
 
 Build
 ---------------------
