@@ -481,7 +481,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   /** Read the nearest-neighbors graph from the index input */
-  private static final class OffHeapHnswGraph extends HnswGraph {
+  static final class OffHeapHnswGraph extends HnswGraph {
 
     final IndexInput dataIn;
     final int[][] nodesByLevel;

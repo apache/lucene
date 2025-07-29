@@ -32,6 +32,7 @@ import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
@@ -69,6 +70,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
   private static final long SHALLOW_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(Lucene99HnswVectorsWriter.class);
+  static final int DELETE_THRESHOLD_PERCENT = 30;
+
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorIndex;
   private final int M;
@@ -347,12 +350,195 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     }
   }
 
+  /**
+   * Processes an off-heap HNSW graph, removing deleted nodes and writing the graph structure to the
+   * vector index.
+   *
+   * @param graph The off-heap graph to process
+   * @param docMap Mapping from old document IDs to new document IDs
+   * @param graphSize The size of the graph (number of vectors)
+   * @param offsets Array to store the byte offsets for each node at each level
+   * @return A mock HnswGraph implementation that provides access to the graph structure
+   * @throws IOException If an error occurs while writing to the vector index
+   */
+  private HnswGraph deleteNodesWriteGraph(
+      Lucene99HnswVectorsReader.OffHeapHnswGraph graph,
+      MergeState.DocMap docMap,
+      int graphSize,
+      int[][] offsets)
+      throws IOException {
+    if (graph == null) return null;
+
+    int[] scratch = new int[graph.maxConn() * 2];
+    final int numLevels = graph.numLevels();
+    final int[][] validNodesPerLevel = new int[numLevels][];
+
+    // Process all levels
+    for (int level = 0; level < numLevels; level++) {
+      int[] sortedNodes = NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
+
+      // Count and collect valid nodes
+      int validNodeCount = 0;
+      for (int node : sortedNodes) {
+        if (docMap.get(node) != -1) {
+          validNodeCount++;
+        }
+      }
+
+      // Special case for top level with no valid nodes
+      if (level == numLevels - 1 && validNodeCount == 0 && level > 0) {
+        validNodeCount = 1; // We'll create one connection to lower level
+      }
+
+      validNodesPerLevel[level] = new int[validNodeCount];
+      offsets[level] = new int[validNodeCount];
+
+      int validNodeIndex = 0;
+      int nodeOffsetId = 0;
+
+      // Process nodes at this level
+      for (int node : sortedNodes) {
+        if (docMap.get(node) == -1) {
+          continue;
+        }
+
+        // Store mapped node ID
+        int mappedNode = docMap.get(node);
+        validNodesPerLevel[level][validNodeIndex++] = mappedNode;
+
+        // Process neighbors
+        graph.seek(level, node);
+        long offsetStart = vectorIndex.getFilePointer();
+
+        // Process and write neighbors with delta encoding
+        writeNeighbors(graph, docMap, scratch, level == 0 ? graphSize : 0);
+
+        offsets[level][nodeOffsetId++] =
+            Math.toIntExact(vectorIndex.getFilePointer() - offsetStart);
+      }
+
+      // Special case for empty top level
+      if (level == numLevels - 1 && validNodeIndex == 0 && level > 0) {
+        int entryNode = validNodesPerLevel[level - 1][0];
+        validNodesPerLevel[level][0] = entryNode;
+
+        long offsetStart = vectorIndex.getFilePointer();
+        vectorIndex.writeVInt(1);
+        vectorIndex.writeVInt(entryNode);
+        offsets[level][0] = Math.toIntExact(vectorIndex.getFilePointer() - offsetStart);
+      }
+    }
+
+    return new HnswGraph() {
+      @Override
+      public int nextNeighbor() {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public void seek(int level, int target) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public int size() {
+        return graphSize;
+      }
+
+      @Override
+      public int numLevels() throws IOException {
+        return numLevels;
+      }
+
+      @Override
+      public int maxConn() {
+        return graph.maxConn();
+      }
+
+      @Override
+      public int entryNode() {
+        return validNodesPerLevel[0][0];
+      }
+
+      @Override
+      public int neighborCount() {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public NodesIterator getNodesOnLevel(int level) {
+        return new ArrayNodesIterator(validNodesPerLevel[level], validNodesPerLevel[level].length);
+      }
+    };
+  }
+
+  /** Writes neighbors with delta encoding to the vector index. */
+  private void writeNeighbors(
+      Lucene99HnswVectorsReader.OffHeapHnswGraph graph,
+      MergeState.DocMap docMap,
+      int[] scratch,
+      int maxNode)
+      throws IOException {
+    int lastNode = -1;
+    int actualSize = 0;
+
+    int neighborLength = graph.neighborCount();
+    for (int i = 0; i < neighborLength; i++) {
+      int curNode = docMap.get(graph.nextNeighbor());
+      if (curNode == -1 || curNode == lastNode || (maxNode > 0 && curNode >= maxNode)) {
+        continue;
+      }
+
+      scratch[actualSize++] = lastNode == -1 ? curNode : curNode - lastNode;
+      lastNode = curNode;
+    }
+
+    vectorIndex.writeVInt(actualSize);
+    for (int i = 0; i < actualSize; i++) {
+      vectorIndex.writeVInt(scratch[i]);
+    }
+  }
+
   @Override
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     CloseableRandomVectorScorerSupplier scorerSupplier =
         flatVectorWriter.mergeOneFieldToIndex(fieldInfo, mergeState);
     try {
       long vectorIndexOffset = vectorIndex.getFilePointer();
+
+      if (mergeState.liveDocs.length == 1
+          && (mergeState.knnVectorsReaders[0] instanceof PerFieldKnnVectorsFormat.FieldsReader)) {
+        PerFieldKnnVectorsFormat.FieldsReader fieldsReader =
+            (PerFieldKnnVectorsFormat.FieldsReader) mergeState.knnVectorsReaders[0];
+        HnswGraph oldGraph = fieldsReader.getGraph(fieldInfo.name);
+        int oldGraphSize = oldGraph.size();
+        int newLength = scorerSupplier.totalVectorCount();
+        int maxDocLength = mergeState.maxDocs[0];
+        if (oldGraphSize == maxDocLength) {
+
+          if (((oldGraphSize - newLength) * 100) / oldGraphSize < DELETE_THRESHOLD_PERCENT) {
+            int[][] offsets = new int[oldGraph.numLevels()][];
+            HnswGraph reconstructedGraph =
+                deleteNodesWriteGraph(
+                    (Lucene99HnswVectorsReader.OffHeapHnswGraph) oldGraph,
+                    mergeState.docMaps[0],
+                    newLength,
+                    offsets);
+
+            long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
+            writeMeta(
+                fieldInfo,
+                vectorIndexOffset,
+                vectorIndexLength,
+                scorerSupplier.totalVectorCount(),
+                reconstructedGraph,
+                offsets);
+
+            IOUtils.close(scorerSupplier);
+            return;
+          }
+        }
+      }
       // build the graph using the temporary vector data
       // we use Lucene99HnswVectorsReader.DenseOffHeapVectorValues for the graph construction
       // doesn't need to know docIds
