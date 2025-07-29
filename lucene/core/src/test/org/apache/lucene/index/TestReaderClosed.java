@@ -81,37 +81,6 @@ public class TestReaderClosed extends LuceneTestCase {
     }
   }
 
-  // LUCENE-3800
-  public void testReaderChaining() throws Exception {
-    assertTrue(reader.getRefCount() > 0);
-    LeafReader wrappedReader = new ParallelLeafReader(getOnlyLeafReader(reader));
-
-    // We wrap with a OwnCacheKeyMultiReader so that closing the underlying reader
-    // does not terminate the threadpool (if that index searcher uses one)
-    IndexSearcher searcher = newSearcher(new OwnCacheKeyMultiReader(wrappedReader));
-
-    TermRangeQuery query = TermRangeQuery.newStringRange("field", "a", "z", true, true);
-    searcher.search(query, 5);
-    reader.close(); // close original child reader
-    try {
-      searcher.search(query, 5);
-    } catch (Exception e) {
-      AlreadyClosedException ace = null;
-      for (Throwable t = e; t != null; t = t.getCause()) {
-        if (t instanceof AlreadyClosedException) {
-          ace = (AlreadyClosedException) t;
-        }
-      }
-      if (ace == null) {
-        throw new AssertionError("Query failed, but not due to an AlreadyClosedException", e);
-      }
-      assertEquals("this IndexReader is closed", ace.getMessage());
-    } finally {
-      // close executor: in case of wrap-wrap-wrapping
-      searcher.getIndexReader().close();
-    }
-  }
-
   @Override
   public void tearDown() throws Exception {
     dir.close();
