@@ -220,7 +220,7 @@ Optimizations
 
 * GITHUB#14991: Refactor for loop at PointRangeQuery hot path. (Ge Song)
 
-* GITHUB#: Remove full integrity check from SortingStoredFieldsConsumer (Martijn van Groningen)
+* GITHUB#15001: Remove full integrity check from SortingStoredFieldsConsumer (Martijn van Groningen)
 
 Changes in Runtime Behavior
 ---------------------
