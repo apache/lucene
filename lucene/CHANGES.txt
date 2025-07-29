@@ -220,6 +220,8 @@ Optimizations
 
 * GITHUB#14991: Refactor for loop at PointRangeQuery hot path. (Ge Song)
 
+* GITHUB#15004: Wraps all iterator with likelyImpactsEnum under BlockMaxConjunctionBulkScorer. (Ge Song)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
