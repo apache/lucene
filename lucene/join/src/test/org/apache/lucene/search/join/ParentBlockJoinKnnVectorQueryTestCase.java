@@ -409,7 +409,6 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
     int dimension = atLeast(5);
     int numIters = atLeast(10);
     boolean everyDocHasAVector = random().nextBoolean();
-    int numChildren = 0;
     int numParentsWithChildren = 0;
     try (Directory d = newDirectory()) {
       RandomIndexWriter w = new RandomIndexWriter(random(), d);
@@ -419,7 +418,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
         if (random().nextInt(5) == 1) {
           if (family.isEmpty() == false) {
             ++numParentsWithChildren;
-            //System.out.println("parent w/children id=" + i);
+            // System.out.println("parent w/children id=" + i);
             doc.add(new StoredField("id", Integer.toString(i)));
           } else {
             doc.add(new StoredField("id", "pnoc" + Integer.toString(i)));
@@ -440,12 +439,13 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
       // trailing children with no parent document are dropped
       try (IndexReader reader = DirectoryReader.open(d)) {
         BitSetProducer parentFilter =
-                new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
+            new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
         IndexSearcher searcher = newSearcher(reader);
         for (int i = 0; i < numIters; i++) {
           int k = random().nextInt(80) + 1;
           // TODO: test with child filter
-          Query query = getParentJoinKnnQuery("field", randomVector(dimension), null, k, parentFilter);
+          Query query =
+              getParentJoinKnnQuery("field", randomVector(dimension), null, k, parentFilter);
           int n = random().nextInt(100) + 1;
           TopDocs results = searcher.search(query, n);
           int expected = Math.min(Math.min(n, k), numParentsWithChildren);
@@ -458,7 +458,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
               System.out.println("result id=" + reader.storedFields().document(doc.doc).get("id"));
             }
           }
-           */
+`           */
           assertEquals(expected, results.scoreDocs.length);
           assertTrue(results.totalHits.value() >= results.scoreDocs.length);
           // verify the results are in descending score order
