@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
@@ -251,7 +252,8 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * @lucene.experimental
    */
   public final TopDocs searchNearestVectors(
-      String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
+      String field, float[] target, int k, AcceptDocs acceptDocs, int visitedLimit)
+      throws IOException {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
       return TopDocsCollector.EMPTY_TOPDOCS;
@@ -295,7 +297,8 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * @lucene.experimental
    */
   public final TopDocs searchNearestVectors(
-      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
+      String field, byte[] target, int k, AcceptDocs acceptDocs, int visitedLimit)
+      throws IOException {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
       return TopDocsCollector.EMPTY_TOPDOCS;
@@ -340,7 +343,8 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * @lucene.experimental
    */
   public abstract void searchNearestVectors(
-      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException;
+      String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException;
 
   /**
    * Return the k nearest neighbor documents as determined by comparison of their vector values for
@@ -369,7 +373,8 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * @lucene.experimental
    */
   public abstract void searchNearestVectors(
-      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException;
+      String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException;
 
   /**
    * Get the {@link FieldInfos} describing all fields in this reader.

@@ -191,7 +191,8 @@ abstract class AbstractKnnVectorQuery extends Query {
     final Bits liveDocs = reader.getLiveDocs();
 
     if (filterWeight == null) {
-      return approximateSearch(ctx, liveDocs, Integer.MAX_VALUE, timeLimitingKnnCollectorManager);
+      return approximateSearch(
+          ctx, AcceptDocs.fromBits(liveDocs), Integer.MAX_VALUE, timeLimitingKnnCollectorManager);
     }
 
     Scorer scorer = filterWeight.scorer(ctx);
@@ -199,8 +200,8 @@ abstract class AbstractKnnVectorQuery extends Query {
       return NO_RESULTS;
     }
 
-    BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, reader.maxDoc());
-    final int cost = acceptDocs.cardinality();
+    BitSet liveBitset = createBitSet(scorer.iterator(), liveDocs, reader.maxDoc());
+    final int cost = liveBitset.cardinality();
     QueryTimeout queryTimeout = timeLimitingKnnCollectorManager.getQueryTimeout();
 
     float leafProportion = ctx.reader().maxDoc() / (float) ctx.parent.reader().maxDoc();
@@ -209,8 +210,15 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (cost <= perLeafTopK) {
       // If there are <= perLeafTopK possible matches, short-circuit and perform exact search, since
       // HNSW must always visit at least perLeafTopK documents
-      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost), queryTimeout);
+      return exactSearch(ctx, new BitSetIterator(liveBitset, cost), queryTimeout);
     }
+
+    AcceptDocs acceptDocs =
+        AcceptDocs.fromConjunction(
+            List.of(
+                new BitSetIterator(liveBitset, cost),
+                createVectorScorer(ctx, ctx.reader().getFieldInfos().fieldInfo(field)).iterator()),
+            reader.maxDoc());
 
     // Perform the approximate kNN search
     // We pass cost + 1 here to account for the edge case when we explore exactly cost vectors
@@ -225,7 +233,7 @@ abstract class AbstractKnnVectorQuery extends Query {
       return results;
     } else {
       // We stopped the kNN search because it visited too many nodes, so fall back to exact search
-      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost), queryTimeout);
+      return exactSearch(ctx, new BitSetIterator(liveBitset, cost), queryTimeout);
     }
   }
 
@@ -285,7 +293,7 @@ abstract class AbstractKnnVectorQuery extends Query {
 
   protected abstract TopDocs approximateSearch(
       LeafReaderContext context,
-      Bits acceptDocs,
+      AcceptDocs acceptDocs,
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException;

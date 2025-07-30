@@ -37,6 +37,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
@@ -292,7 +293,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
-  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
     search(
@@ -303,7 +304,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.BYTE);
     search(
@@ -316,7 +317,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   private void search(
       FieldEntry fieldEntry,
       KnnCollector knnCollector,
-      Bits acceptDocs,
+      AcceptDocs acceptDocs,
       IOSupplier<RandomVectorScorer> scorerSupplier)
       throws IOException {
     if (fieldEntry.size() == 0 || knnCollector.k() == 0) {
@@ -325,14 +326,15 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     final RandomVectorScorer scorer = scorerSupplier.get();
     final KnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
-    final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
+    Bits accepted = acceptDocs != null ? acceptDocs.getBits() : null;
+    final Bits acceptedOrds = scorer.getAcceptOrds(accepted);
     HnswGraph graph = getGraph(fieldEntry);
     boolean doHnsw = knnCollector.k() < scorer.maxOrd();
     // Take into account if quantized? E.g. some scorer cost?
     int filteredDocCount = 0;
     // The approximate number of vectors that would be visited if we did not filter
     int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graph.size());
-    if (acceptDocs instanceof BitSet bitSet) {
+    if (accepted instanceof BitSet bitSet) {
       // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
       // size as that is illogical
       filteredDocCount = Math.min(bitSet.approximateCardinality(), graph.size());

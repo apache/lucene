@@ -33,6 +33,7 @@ import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.ExitableDirectoryReader.ExitingReaderException;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PrefixQuery;
@@ -466,7 +467,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
                   "vector",
                   TestVectorUtil.randomVector(dimension),
                   5,
-                  leaf.getLiveDocs(),
+                  AcceptDocs.fromBits(leaf.getLiveDocs()),
                   Integer.MAX_VALUE));
     } else {
       KnnVectorValues values = leaf.getFloatVectorValues("vector");
@@ -476,7 +477,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
           "vector",
           TestVectorUtil.randomVector(dimension),
           5,
-          leaf.getLiveDocs(),
+          AcceptDocs.fromBits(leaf.getLiveDocs()),
           Integer.MAX_VALUE);
     }
 
@@ -541,7 +542,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
                   "vector",
                   TestVectorUtil.randomVectorBytes(dimension),
                   5,
-                  leaf.getLiveDocs(),
+                  AcceptDocs.fromBits(leaf.getLiveDocs()),
                   Integer.MAX_VALUE));
 
     } else {
@@ -552,7 +553,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
           "vector",
           TestVectorUtil.randomVectorBytes(dimension),
           5,
-          leaf.getLiveDocs(),
+          AcceptDocs.fromBits(leaf.getLiveDocs()),
           Integer.MAX_VALUE);
     }
 

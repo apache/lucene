@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.FilterLeafReader.FilterTerms;
 import org.apache.lucene.index.FilterLeafReader.FilterTermsEnum;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
@@ -333,13 +334,13 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
 
     @Override
     public void searchNearestVectors(
-        String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+        String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
 
       // when acceptDocs is null due to no doc deleted, we will instantiate a new one that would
       // match all docs to allow timeout checking.
       final Bits updatedAcceptDocs =
-          acceptDocs == null ? new Bits.MatchAllBits(maxDoc()) : acceptDocs;
+          acceptDocs.getBits() == null ? new Bits.MatchAllBits(maxDoc()) : acceptDocs.getBits();
 
       Bits timeoutCheckingAcceptDocs =
           new Bits() {
@@ -361,17 +362,18 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
             }
           };
 
-      in.searchNearestVectors(field, target, knnCollector, timeoutCheckingAcceptDocs);
+      in.searchNearestVectors(
+          field, target, knnCollector, AcceptDocs.fromBits(timeoutCheckingAcceptDocs));
     }
 
     @Override
     public void searchNearestVectors(
-        String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+        String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
       // when acceptDocs is null due to no doc deleted, we will instantiate a new one that would
       // match all docs to allow timeout checking.
       final Bits updatedAcceptDocs =
-          acceptDocs == null ? new Bits.MatchAllBits(maxDoc()) : acceptDocs;
+          acceptDocs.getBits() == null ? new Bits.MatchAllBits(maxDoc()) : acceptDocs.getBits();
 
       Bits timeoutCheckingAcceptDocs =
           new Bits() {
@@ -393,7 +395,8 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
             }
           };
 
-      in.searchNearestVectors(field, target, knnCollector, timeoutCheckingAcceptDocs);
+      in.searchNearestVectors(
+          field, target, knnCollector, AcceptDocs.fromBits(timeoutCheckingAcceptDocs));
     }
 
     private void checkAndThrowForSearchVectors() {

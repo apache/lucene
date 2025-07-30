@@ -38,6 +38,7 @@ import java.util.Locale;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -391,11 +392,11 @@ final class LibFaissC {
       VectorSimilarityFunction function,
       float[] query,
       KnnCollector knnCollector,
-      Bits acceptDocs) {
+      AcceptDocs acceptDocs) {
 
     try (Arena temp = Arena.ofConfined()) {
       FixedBitSet fixedBitSet =
-          switch (acceptDocs) {
+          switch (acceptDocs.getBits()) {
             case null -> null;
             case FixedBitSet bitSet -> bitSet;
             // TODO: Add optimized case for SparseFixedBitSet
@@ -476,6 +477,8 @@ final class LibFaissC {
 
         knnCollector.collect((int) ids[i], score);
       }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 
