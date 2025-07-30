@@ -30,8 +30,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorScorer;
@@ -179,6 +182,79 @@ public class TestFlatVectorScorer extends LuceneTestCase {
     }
   }
 
+  public void testBulkScorerBytes() throws IOException {
+    int dims = random().nextInt(1, 1024);
+    int size = random().nextInt(2, 255);
+    String fileName = "testBulkScorerBytes";
+    try (Directory dir = newDirectory.get()) {
+      try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+        for (int i = 0; i < size; i++) {
+          byte[] ba = randomByteVector(dims);
+          out.writeBytes(ba, 0, ba.length);
+        }
+      }
+      try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+        assert in.length() == (long) dims * size * Byte.BYTES;
+        for (var sim : List.of(COSINE, DOT_PRODUCT, EUCLIDEAN, MAXIMUM_INNER_PRODUCT)) {
+          var values = byteVectorValues(dims, size, in, sim);
+          var scorer = flatVectorsScorer.getRandomVectorScorer(sim, values, randomByteVector(dims));
+          int[] indices = randomIndices(size);
+          float[] expectedScores = new float[size];
+          for (int i = 0; i < size; i++) {
+            expectedScores[i] = scorer.score(indices[i]);
+          }
+          float[] bulkScores = new float[size];
+          scorer.bulkScore(indices, bulkScores, size);
+          assertArrayEquals(expectedScores, bulkScores, 0.0f);
+        }
+      }
+    }
+  }
+
+  public void testBulkScorerFloats() throws IOException {
+    int dims = random().nextInt(1, 1024);
+    int size = random().nextInt(2, 255);
+    String fileName = "testBulkScorerFloats";
+    try (Directory dir = newDirectory.get()) {
+      try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+        for (int i = 0; i < size; i++) {
+          byte[] ba = concat(randomFloatVector(dims));
+          out.writeBytes(ba, 0, ba.length);
+        }
+      }
+      try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+        assert in.length() == (long) dims * size * Float.BYTES;
+        for (var sim : List.of(COSINE, DOT_PRODUCT, EUCLIDEAN, MAXIMUM_INNER_PRODUCT)) {
+          var values = floatVectorValues(dims, size, in, sim);
+          var scorer =
+              flatVectorsScorer.getRandomVectorScorer(sim, values, randomFloatVector(dims));
+          int[] indices = randomIndices(size);
+          float[] expectedScores = new float[size];
+          for (int i = 0; i < size; i++) {
+            expectedScores[i] = scorer.score(indices[i]);
+          }
+          float[] bulkScores = new float[size];
+          scorer.bulkScore(indices, bulkScores, size);
+          assertArrayEquals(expectedScores, bulkScores, 0.0f);
+        }
+      }
+    }
+  }
+
+  static byte[] randomByteVector(int dims) {
+    byte[] ba = new byte[dims];
+    random().nextBytes(ba);
+    return ba;
+  }
+
+  static float[] randomFloatVector(int dims) {
+    float[] fa = new float[dims];
+    for (int i = 0; i < dims; ++i) {
+      fa[i] = random().nextFloat();
+    }
+    return fa;
+  }
+
   ByteVectorValues byteVectorValues(int dims, int size, IndexInput in, VectorSimilarityFunction sim)
       throws IOException {
     return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
@@ -218,6 +294,13 @@ public class TestFlatVectorScorer extends LuceneTestCase {
       }
       return baos.toByteArray();
     }
+  }
+
+  /** Returns an int[] of the given size with valued from 0 to size shuffled. */
+  public static int[] randomIndices(int size) {
+    List<Integer> list = IntStream.range(0, size).boxed().collect(Collectors.toList());
+    Collections.shuffle(list, random());
+    return list.stream().mapToInt(i -> i).toArray();
   }
 
   public static <T> void assertThat(T actual, Matcher<? super T> matcher) {
