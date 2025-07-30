@@ -408,18 +408,26 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
     int dimension = atLeast(5);
     int numIters = atLeast(10);
     boolean everyDocHasAVector = random().nextBoolean();
+    int numChildren = 0;
+    int numParents = 0;
+    int numParentsWithChildren = 0;
     try (Directory d = newDirectory()) {
       RandomIndexWriter w = new RandomIndexWriter(random(), d);
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
         if (random().nextInt(5) == 1) {
+          ++numParents;
+          if (numChildren > 0) {
+            ++numParentsWithChildren;
+            numChildren = 0;
+          }
           doc.add(new StringField("docType", "_parent", Field.Store.NO));
         } else if (everyDocHasAVector || random().nextInt(10) != 2) {
           // NOTE: only child documents are allowed to have a vector!
           // Otherwise the query's assumptions are invalidated??
           doc.add(getKnnVectorField("field", randomVector(dimension)));
+          ++numChildren;
         }
-
         w.addDocument(doc);
       }
       w.close();
@@ -433,7 +441,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
           Query query = getParentJoinKnnQuery("field", randomVector(dimension), null, k, parentFilter);
           int n = random().nextInt(100) + 1;
           TopDocs results = searcher.search(query, n);
-          int expected = Math.min(Math.min(n, k), reader.numDocs());
+          int expected = Math.min(Math.min(n, k), numParentsWithChildren);
           // we may get fewer results than requested if there are deletions, but this test doesn't
           // test that
           assert reader.hasDeletions() == false;
