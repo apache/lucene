@@ -410,40 +410,34 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
     int numIters = atLeast(10);
     boolean everyDocHasAVector = random().nextBoolean();
     int numChildren = 0;
-    int numParents = 0;
     int numParentsWithChildren = 0;
     try (Directory d = newDirectory()) {
       RandomIndexWriter w = new RandomIndexWriter(random(), d);
       for (int i = 0; i < numDocs; i++) {
+        List<Document> family = new ArrayList<>();
         Document doc = new Document();
         if (random().nextInt(5) == 1) {
-          ++numParents;
-          if (numChildren > 0) {
+          if (family.isEmpty() == false) {
             ++numParentsWithChildren;
-            numChildren = 0;
+            //System.out.println("parent w/children id=" + i);
             doc.add(new StoredField("id", Integer.toString(i)));
-            System.out.println("parent: " + i);
           } else {
             doc.add(new StoredField("id", "pnoc" + Integer.toString(i)));
           }
           doc.add(new StringField("docType", "_parent", Field.Store.NO));
+          family.add(doc);
+          w.addDocuments(family);
+          family.clear();
         } else if (everyDocHasAVector || random().nextInt(10) != 2) {
           // NOTE: only child documents are allowed to have a vector!
           // Otherwise the query's assumptions are invalidated??
           doc.add(getKnnVectorField("field", randomVector(dimension)));
           doc.add(new StoredField("id", "c" + Integer.toString(i)));
-          ++numChildren;
+          family.add(doc);
         }
-        w.addDocument(doc);
       }
       w.close();
-      int maxResults;
-      if (numChildren > 0) {
-        // trailing children with no parent document are collected as if they had a ghost parent
-        maxResults = numParentsWithChildren + 1;
-      }  else {
-        maxResults = numParentsWithChildren;
-      }
+      // trailing children with no parent document are dropped
       try (IndexReader reader = DirectoryReader.open(d)) {
         BitSetProducer parentFilter =
                 new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
@@ -454,15 +448,17 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
           Query query = getParentJoinKnnQuery("field", randomVector(dimension), null, k, parentFilter);
           int n = random().nextInt(100) + 1;
           TopDocs results = searcher.search(query, n);
-          int expected = Math.min(Math.min(n, k), maxResults);
+          int expected = Math.min(Math.min(n, k), numParentsWithChildren);
           // we may get fewer results than requested if there are deletions, but this test doesn't
           // test that
           assert reader.hasDeletions() == false;
+          /*
           if (expected != results.scoreDocs.length) {
             for (ScoreDoc doc : results.scoreDocs) {
               System.out.println("result id=" + reader.storedFields().document(doc.doc).get("id"));
             }
           }
+           */
           assertEquals(expected, results.scoreDocs.length);
           assertTrue(results.totalHits.value() >= results.scoreDocs.length);
           // verify the results are in descending score order
