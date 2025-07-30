@@ -20,6 +20,7 @@ import org.apache.lucene.gradle.plugins.gitinfo.GitInfoExtension
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import org.apache.lucene.gradle.plugins.misc.QuietExec
 
 plugins {
   id 'signing'
@@ -42,33 +43,34 @@ Provider<String> gitRev = gitStatus.getting("git.commit")
 
 // Prepare the "source" distribution artifact. We use raw git export, no additional complexity needed.
 Provider<RegularFile> sourceTgzFile = project.layout.buildDirectory.file("packages/lucene-${version}-src.tgz")
-tasks.register("assembleSourceTgz", {
+tasks.register("assembleSourceTgz", QuietExec, {
   description = "Assemble source Lucene artifact as a .tgz file."
 
   inputs.property("git-revision", gitRev)
-
   outputs.file sourceTgzFile
 
-  doFirst {
-    quietExec {
-      executable = project.externalTool("git")
-      workingDir = project.rootDir
+  executable = buildGlobals.externalTool("git")
+  workingDir = project.rootDir
 
-      // An explicit GIT_DIR to prevent .git upward scanning if something goes wrong.
-      environment("GIT_DIR", gitInfoExt.getDotGitDir().get().asFile)
-
-      args += [
-        "archive",
-        "--format",
-        "tgz",
-        "--prefix",
-        "lucene-${version}/",
-        "--output",
-        sourceTgzFile.get().asFile,
-        "HEAD"
-      ]
+  // An explicit GIT_DIR to prevent .git upward scanning if something goes wrong.
+  if (gitInfoExt.getDotGitDir().isPresent()) {
+    environment("GIT_DIR", gitInfoExt.getDotGitDir().get().asFile.toString())
+  } else {
+    doFirst {
+      throw new GradleException("Can't assemble source tgz without a full git clone.")
     }
   }
+
+  args += [
+    "archive",
+    "--format",
+    "tgz",
+    "--prefix",
+    "lucene-${version}/",
+    "--output",
+    sourceTgzFile.get().asFile,
+    "HEAD"
+  ]
 })
 
 

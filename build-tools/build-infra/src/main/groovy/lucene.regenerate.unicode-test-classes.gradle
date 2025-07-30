@@ -15,70 +15,67 @@
  * limitations under the License.
  */
 
+import org.apache.lucene.gradle.plugins.misc.QuietExec
+
 // Regenerates test classes from unicode data.
 
 configure(project(":lucene:test-framework")) {
-  task generateEmojiTokenizationTestInternal() {
-    def unicodeVersion = "12.1"
+  def generateEmojiTokenizationTestInternal =
+      tasks.register("generateEmojiTokenizationTestInternal", QuietExec, {
+        def unicodeVersion = "12.1"
 
-    def genDir = file("src/java/org/apache/lucene/tests/analysis/standard")
-    def genScript = file("${genDir}/generateEmojiTokenizationTest.pl")
-    def genOutput = file("${genDir}/EmojiTokenizationTestUnicode_${unicodeVersion.replace('.', '_')}.java")
+        def genDir = file("src/java/org/apache/lucene/tests/analysis/standard")
+        def genScript = file("${genDir}/generateEmojiTokenizationTest.pl")
+        def genOutput = file("${genDir}/EmojiTokenizationTestUnicode_${unicodeVersion.replace('.', '_')}.java")
 
-    description = "Regenerate ${genOutput}"
-    group = "generation"
+        description = "Regenerate ${genOutput}"
+        group = "generation"
 
-    inputs.file genScript
-    inputs.property "unicodeVersion", unicodeVersion
-    outputs.file genOutput
+        inputs.file genScript
+        inputs.property "unicodeVersion", unicodeVersion
+        outputs.file genOutput
 
-    doLast {
-      quietExec {
-        workingDir genDir
-        executable project.externalTool("perl")
+        workingDir = genDir
+        executable = buildGlobals.externalTool("perl")
         args = [
           genScript,
           "-v",
           unicodeVersion
         ]
-      }
-    }
-  }
-  regenerate.dependsOn wrapWithPersistentChecksums(generateEmojiTokenizationTestInternal, [
+      })
+
+  regenerate.dependsOn wrapWithPersistentChecksums2(generateEmojiTokenizationTestInternal, [
     andThenTasks: [
       "applyGoogleJavaFormat"
     ],
     mustRunBefore: ["compileJava"]
   ])
 
-  task generateJavaUnicodeWordBreakTestInternal() {
-    def unicodeVersion = "12.1"
+  def generateJavaUnicodeWordBreakTestInternal = tasks.register("generateJavaUnicodeWordBreakTestInternal",
+      QuietExec, {
+        def unicodeVersion = "12.1"
 
-    def genDir = file("src/java/org/apache/lucene/tests/analysis/standard")
-    def genScript = file("${genDir}/generateJavaUnicodeWordBreakTest.pl")
-    def genOutput = file("${genDir}/WordBreakTestUnicode_${unicodeVersion.replace('.', '_')}.java")
+        def genDir = file("src/java/org/apache/lucene/tests/analysis/standard")
+        def genScript = file("${genDir}/generateJavaUnicodeWordBreakTest.pl")
+        def genOutput = file("${genDir}/WordBreakTestUnicode_${unicodeVersion.replace('.', '_')}.java")
 
-    description = "Regenerate ${genOutput}"
-    group = "generation"
+        description = "Regenerate ${genOutput}"
+        group = "generation"
 
-    inputs.file genScript
-    inputs.property "unicodeVersion", unicodeVersion
-    outputs.file genOutput
+        inputs.file genScript
+        inputs.property "unicodeVersion", unicodeVersion
+        outputs.file genOutput
 
-    doLast {
-      quietExec {
-        workingDir genDir
-        executable project.externalTool("perl")
+        workingDir = genDir
+        executable = buildGlobals.externalTool("perl")
         args = [
           genScript,
           "-v",
           unicodeVersion
         ]
-      }
-    }
-  }
+      })
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateJavaUnicodeWordBreakTestInternal, [
+  regenerate.dependsOn wrapWithPersistentChecksums2(generateJavaUnicodeWordBreakTestInternal, [
     andThenTasks: [
       "applyGoogleJavaFormat"
     ],

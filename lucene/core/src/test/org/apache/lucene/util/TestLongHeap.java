@@ -105,7 +105,7 @@ public class TestLongHeap extends LuceneTestCase {
     Long lastLeast = null;
 
     // Basic insertion of new content
-    ArrayList<Long> sds = new ArrayList<Long>(numDocsInPQ);
+    ArrayList<Long> sds = new ArrayList<>(numDocsInPQ);
     for (int i = 0; i < numDocsInPQ * 10; i++) {
       long newEntry = Math.abs(random.nextLong());
       sds.add(newEntry);

@@ -168,9 +168,10 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
             false);
     Provider<Boolean> haltOnFailureOption =
         buildOptions.addBooleanOption(
-            "tests.haltonfailure", "Halt processing early on test failure.", false);
+            "tests.haltonfailure", "Stop processing on test failures.", true);
     Provider<Boolean> failFastOption =
-        buildOptions.addBooleanOption("tests.failfast", "Stop the build early on failure.", false);
+        buildOptions.addBooleanOption(
+            "tests.failfast", "Stop the build on the first failed test.", false);
     Provider<Boolean> rerunOption =
         buildOptions.addBooleanOption(
             "tests.rerun",
@@ -482,7 +483,7 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
 
               // Disable automatic test class detection, rely on class names only. This is needed
               // for testing
-              // against JDKs where the bytecode is unparseable by Gradle, for example.
+              // against JDKs where the bytecode is unparsable by Gradle, for example.
               // We require all tests to start with Test*, this simplifies include patterns greatly.
               task.setScanForTestClasses(false);
               task.include("**/Test*.class");

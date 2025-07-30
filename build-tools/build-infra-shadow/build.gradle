@@ -51,6 +51,7 @@ dependencies {
   implementation plugin(deps.plugins.carrotsearch.buildopts)
   implementation plugin(deps.plugins.carrotsearch.dependencychecks)
   implementation plugin(deps.plugins.forbiddenapis)
+  implementation plugin(deps.plugins.undercouch.download)
 }
 
 tasks.matching {
@@ -67,12 +68,4 @@ tasks.matching {
   ]
 }.configureEach {
   enabled = false
-}
-
-// make certain tasks think their sources are from build-infra.
-if (!isIdea) {
-  plugins.withType(JavaPlugin).configureEach {
-    SourceSet main = sourceSets.main
-    main.java.srcDirs = rootProject.files("build-tools/build-infra/src/main/java")
-  }
 }
