@@ -207,6 +207,18 @@ public class TestFlatVectorScorer extends LuceneTestCase {
           float[] bulkScores = new float[size];
           scorer.bulkScore(indices, bulkScores, size);
           assertArrayEquals(expectedScores, bulkScores, 0.0f);
+
+          // score through the supplier/updatableScorer interface
+          var ss = flatVectorsScorer.getRandomVectorScorerSupplier(sim, values);
+          var updatableScorer = ss.scorer();
+          var targetNode = random().nextInt(size);
+          updatableScorer.setScoringOrdinal(targetNode);
+          for (int i = 0; i < size; i++) {
+            expectedScores[i] = updatableScorer.score(indices[i]);
+          }
+          bulkScores = new float[size];
+          updatableScorer.bulkScore(indices, bulkScores, size);
+          assertArrayEquals(expectedScores, bulkScores, 0.0f);
         }
       }
     }
@@ -236,6 +248,18 @@ public class TestFlatVectorScorer extends LuceneTestCase {
           }
           float[] bulkScores = new float[size];
           scorer.bulkScore(indices, bulkScores, size);
+          assertArrayEquals(expectedScores, bulkScores, 0.0f);
+
+          // score through the supplier/updatableScorer interface
+          var ss = flatVectorsScorer.getRandomVectorScorerSupplier(sim, values);
+          var updatableScorer = ss.scorer();
+          var targetNode = random().nextInt(size);
+          updatableScorer.setScoringOrdinal(targetNode);
+          for (int i = 0; i < size; i++) {
+            expectedScores[i] = updatableScorer.score(indices[i]);
+          }
+          bulkScores = new float[size];
+          updatableScorer.bulkScore(indices, bulkScores, size);
           assertArrayEquals(expectedScores, bulkScores, 0.0f);
         }
       }
