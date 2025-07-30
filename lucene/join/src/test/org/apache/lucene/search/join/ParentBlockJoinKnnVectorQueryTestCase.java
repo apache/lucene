@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -420,17 +421,29 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
           if (numChildren > 0) {
             ++numParentsWithChildren;
             numChildren = 0;
+            doc.add(new StoredField("id", Integer.toString(i)));
+            System.out.println("parent: " + i);
+          } else {
+            doc.add(new StoredField("id", "pnoc" + Integer.toString(i)));
           }
           doc.add(new StringField("docType", "_parent", Field.Store.NO));
         } else if (everyDocHasAVector || random().nextInt(10) != 2) {
           // NOTE: only child documents are allowed to have a vector!
           // Otherwise the query's assumptions are invalidated??
           doc.add(getKnnVectorField("field", randomVector(dimension)));
+          doc.add(new StoredField("id", "c" + Integer.toString(i)));
           ++numChildren;
         }
         w.addDocument(doc);
       }
       w.close();
+      int maxResults;
+      if (numChildren > 0) {
+        // trailing children with no parent document are collected as if they had a ghost parent
+        maxResults = numParentsWithChildren + 1;
+      }  else {
+        maxResults = numParentsWithChildren;
+      }
       try (IndexReader reader = DirectoryReader.open(d)) {
         BitSetProducer parentFilter =
                 new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
@@ -441,10 +454,15 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
           Query query = getParentJoinKnnQuery("field", randomVector(dimension), null, k, parentFilter);
           int n = random().nextInt(100) + 1;
           TopDocs results = searcher.search(query, n);
-          int expected = Math.min(Math.min(n, k), numParentsWithChildren);
+          int expected = Math.min(Math.min(n, k), maxResults);
           // we may get fewer results than requested if there are deletions, but this test doesn't
           // test that
           assert reader.hasDeletions() == false;
+          if (expected != results.scoreDocs.length) {
+            for (ScoreDoc doc : results.scoreDocs) {
+              System.out.println("result id=" + reader.storedFields().document(doc.doc).get("id"));
+            }
+          }
           assertEquals(expected, results.scoreDocs.length);
           assertTrue(results.totalHits.value() >= results.scoreDocs.length);
           // verify the results are in descending score order
