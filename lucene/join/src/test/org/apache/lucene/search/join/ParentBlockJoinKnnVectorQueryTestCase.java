@@ -412,12 +412,14 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
       RandomIndexWriter w = new RandomIndexWriter(random(), d);
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
-        if (everyDocHasAVector || random().nextInt(10) != 2) {
-          doc.add(getKnnVectorField("field", randomVector(dimension)));
-        }
         if (random().nextInt(5) == 1) {
           doc.add(new StringField("docType", "_parent", Field.Store.NO));
+        } else if (everyDocHasAVector || random().nextInt(10) != 2) {
+          // NOTE: only child documents are allowed to have a vector!
+          // Otherwise the query's assumptions are invalidated??
+          doc.add(getKnnVectorField("field", randomVector(dimension)));
         }
+
         w.addDocument(doc);
       }
       w.close();
