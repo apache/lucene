@@ -55,6 +55,8 @@ Optimizations
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
 * GITHUB#14022: Optimize DFS marking of connected components in HNSW by reducing stack depth, improving performance and reducing allocations. (Viswanath Kuchibhotla)
 
+* GITHUB#14874: Improve off-heap KNN byte vector query performance in cases where indexing and search are performed by the same process. (Kaival Parikh)
+
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
@@ -217,8 +219,6 @@ Optimizations
 * GITHUB#14896: Vectorize filterCompetitiveHits (Ge Song, Adrien Grand)
 
 * GITHUB#14976: Utilize docIdRunEnd on ReqExclBulkScorer. (Ge Song)
-
-* GITHUB#14970: Further speed up filtering hits by score. (Adrien Grand)
 
 * GITHUB#14991: Refactor for loop at PointRangeQuery hot path. (Ge Song)
 

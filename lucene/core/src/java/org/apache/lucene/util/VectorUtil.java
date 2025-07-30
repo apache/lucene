@@ -390,31 +390,10 @@ public final class VectorUtil {
    * @return how many pairs left after filter
    */
   public static int filterByScore(
-      int[] docBuffer, float[] scoreBuffer, float minScoreInclusive, int upTo) {
-    if (docBuffer.length < upTo || scoreBuffer.length < upTo) {
-      throw new IllegalArgumentException(
-          "docBuffer and scoreBuffer should be at least as long as upTo");
-    }
-    return IMPL.filterByScore(docBuffer, scoreBuffer, minScoreInclusive, upTo);
-  }
-
-  /**
-   * filter both {@code docBuffer} and {@code scoreBuffer} with {@code minScoreInclusive}, each
-   * {@code docBuffer} and {@code scoreBuffer} of the same index forms a pair, pairs with score not
-   * greater than or equal to {@code minScoreInclusive} will be filtered out from the array.
-   *
-   * @param docBuffer doc buffer contains docs (or some other value forms a pair with {@code
-   *     scoreBuffer})
-   * @param scoreBuffer score buffer contains scores to be compared with {@code minScoreInclusive}
-   * @param minScoreInclusive minimal required score to not be filtered out
-   * @param upTo where the filter should end
-   * @return how many pairs left after filter
-   */
-  public static int filterByScore(
       int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
-    if (docBuffer.length < upTo || scoreBuffer.length < upTo) {
+    if (docBuffer.length != scoreBuffer.length || docBuffer.length < upTo) {
       throw new IllegalArgumentException(
-          "docBuffer and scoreBuffer should be at least as long as upTo");
+          "docBuffer and scoreBuffer should keep same length and at least as long as upTo");
     }
     return IMPL.filterByScore(docBuffer, scoreBuffer, minScoreInclusive, upTo);
   }
