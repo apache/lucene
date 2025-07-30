@@ -72,6 +72,8 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
     return parent;
   }
 
+  abstract float[] randomVector(int dim);
+
   abstract Query getParentJoinKnnQuery(
       String fieldName, float[] queryVector, Query childFilter, int k, BitSetProducer parentBitSet);
 
@@ -107,8 +109,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(d)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         // Create parent filter directly, tests use "check" to verify parentIds exist. Production
-        // may not
-        // verify we handle it gracefully
+        // may not verify we handle it gracefully
         BitSetProducer parentFilter =
             new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
         Query query = getParentJoinKnnQuery("field", new float[] {2, 2}, null, 3, parentFilter);
@@ -398,6 +399,52 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
         return false;
       }
       return true;
+    }
+  }
+
+  /** Tests with random vectors, number of documents, etc. Uses RandomIndexWriter. */
+  public void testRandom() throws IOException {
+    int numDocs = atLeast(100);
+    int dimension = atLeast(5);
+    int numIters = atLeast(10);
+    boolean everyDocHasAVector = random().nextBoolean();
+    try (Directory d = newDirectory()) {
+      RandomIndexWriter w = new RandomIndexWriter(random(), d);
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        if (everyDocHasAVector || random().nextInt(10) != 2) {
+          doc.add(getKnnVectorField("field", randomVector(dimension)));
+        }
+        if (random().nextInt(5) == 1) {
+          doc.add(new StringField("docType", "_parent", Field.Store.NO));
+        }
+        w.addDocument(doc);
+      }
+      w.close();
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        BitSetProducer parentFilter =
+                new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
+        IndexSearcher searcher = newSearcher(reader);
+        for (int i = 0; i < numIters; i++) {
+          int k = random().nextInt(80) + 1;
+          // TODO: test with child filter
+          Query query = getParentJoinKnnQuery("field", randomVector(dimension), null, k, parentFilter);
+          int n = random().nextInt(100) + 1;
+          TopDocs results = searcher.search(query, n);
+          int expected = Math.min(Math.min(n, k), reader.numDocs());
+          // we may get fewer results than requested if there are deletions, but this test doesn't
+          // test that
+          assert reader.hasDeletions() == false;
+          assertEquals(expected, results.scoreDocs.length);
+          assertTrue(results.totalHits.value() >= results.scoreDocs.length);
+          // verify the results are in descending score order
+          float last = Float.MAX_VALUE;
+          for (ScoreDoc scoreDoc : results.scoreDocs) {
+            assertTrue(scoreDoc.score <= last);
+            last = scoreDoc.score;
+          }
+        }
+      }
     }
   }
 }
