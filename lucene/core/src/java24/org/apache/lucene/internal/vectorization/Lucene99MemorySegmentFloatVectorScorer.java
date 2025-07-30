@@ -130,20 +130,22 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
 
     @Override
     public void bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
+      float[] scratchScores = new float[4];
       int i = 0;
-      final int limit = nodes.length & ~3;
+      final int limit = numNodes & ~3;
       for (; i < limit; i += 4) {
         MemorySegment ms1 = getSegment(nodes[i]);
         MemorySegment ms2 = getSegment(nodes[i + 1]);
         MemorySegment ms3 = getSegment(nodes[i + 2]);
         MemorySegment ms4 = getSegment(nodes[i + 3]);
-        PanamaVectorUtilSupport.dotProductBulkQueryFromArray(scores, query, ms1, ms2, ms3, ms4);
-        scores[i + 0] = normalizeDotProduct(scores[0]);
-        scores[i + 1] = normalizeDotProduct(scores[1]);
-        scores[i + 2] = normalizeDotProduct(scores[2]);
-        scores[i + 3] = normalizeDotProduct(scores[3]);
+        PanamaVectorUtilSupport.dotProductBulkQueryFromArray(
+            scratchScores, query, ms1, ms2, ms3, ms4);
+        scores[i + 0] = normalizeDotProduct(scratchScores[0]);
+        scores[i + 1] = normalizeDotProduct(scratchScores[1]);
+        scores[i + 2] = normalizeDotProduct(scratchScores[2]);
+        scores[i + 3] = normalizeDotProduct(scratchScores[3]);
       }
-      for (; i < nodes.length; i += 4) {
+      for (; i < numNodes; i++) {
         scores[i] = score(nodes[i]);
       }
     }

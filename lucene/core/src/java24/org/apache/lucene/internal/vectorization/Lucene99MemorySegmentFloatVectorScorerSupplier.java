@@ -167,7 +167,7 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
           float[] scratchScores = new float[4];
           int i = 0;
           MemorySegment query = getSegment(queryOrd, queryScratch);
-          final int limit = nodes.length & ~3;
+          final int limit = numNodes & ~3;
           for (; i < limit; i += 4) {
             MemorySegment ms1 = getSegment(nodes[i], scratch1);
             MemorySegment ms2 = getSegment(nodes[i + 1], scratch2);
@@ -180,7 +180,7 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
             scores[i + 2] = normalizeDotProduct(scratchScores[2]);
             scores[i + 3] = normalizeDotProduct(scratchScores[3]);
           }
-          for (; i < nodes.length; i += 4) {
+          for (; i < numNodes; i++) {
             scores[i] = score(nodes[i]);
           }
         }

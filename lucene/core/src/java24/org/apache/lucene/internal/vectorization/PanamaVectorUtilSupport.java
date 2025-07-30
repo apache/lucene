@@ -55,7 +55,7 @@ import org.apache.lucene.util.SuppressForbidden;
  */
 final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
-  private static ByteOrder LE = ByteOrder.LITTLE_ENDIAN;
+  private static final ByteOrder LE = ByteOrder.LITTLE_ENDIAN;
 
   // preferred vector sizes, which can be altered for testing
   private static final VectorSpecies<Float> FLOAT_SPECIES;
