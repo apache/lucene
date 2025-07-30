@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -72,6 +73,8 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
     return parent;
   }
 
+  abstract float[] randomVector(int dim);
+
   abstract Query getParentJoinKnnQuery(
       String fieldName, float[] queryVector, Query childFilter, int k, BitSetProducer parentBitSet);
 
@@ -107,8 +110,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(d)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         // Create parent filter directly, tests use "check" to verify parentIds exist. Production
-        // may not
-        // verify we handle it gracefully
+        // may not verify we handle it gracefully
         BitSetProducer parentFilter =
             new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
         Query query = getParentJoinKnnQuery("field", new float[] {2, 2}, null, 3, parentFilter);
@@ -398,6 +400,75 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
         return false;
       }
       return true;
+    }
+  }
+
+  /** Tests with random vectors, number of documents, etc. Uses RandomIndexWriter. */
+  public void testRandom() throws IOException {
+    int numDocs = atLeast(100);
+    int dimension = atLeast(5);
+    int numIters = atLeast(10);
+    boolean everyDocHasAVector = random().nextBoolean();
+    int numParentsWithChildren = 0;
+    try (Directory d = newDirectory()) {
+      RandomIndexWriter w = new RandomIndexWriter(random(), d);
+      for (int i = 0; i < numDocs; i++) {
+        List<Document> family = new ArrayList<>();
+        Document doc = new Document();
+        if (random().nextInt(5) == 1) {
+          if (family.isEmpty() == false) {
+            ++numParentsWithChildren;
+            // System.out.println("parent w/children id=" + i);
+            doc.add(new StoredField("id", Integer.toString(i)));
+          } else {
+            doc.add(new StoredField("id", "pnoc" + Integer.toString(i)));
+          }
+          doc.add(new StringField("docType", "_parent", Field.Store.NO));
+          family.add(doc);
+          w.addDocuments(family);
+          family.clear();
+        } else if (everyDocHasAVector || random().nextInt(10) != 2) {
+          // NOTE: only child documents are allowed to have a vector!
+          // Otherwise the query's assumptions are invalidated??
+          doc.add(getKnnVectorField("field", randomVector(dimension)));
+          doc.add(new StoredField("id", "c" + Integer.toString(i)));
+          family.add(doc);
+        }
+      }
+      w.close();
+      // trailing children with no parent document are dropped
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        BitSetProducer parentFilter =
+            new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
+        IndexSearcher searcher = newSearcher(reader);
+        for (int i = 0; i < numIters; i++) {
+          int k = random().nextInt(80) + 1;
+          // TODO: test with child filter
+          Query query =
+              getParentJoinKnnQuery("field", randomVector(dimension), null, k, parentFilter);
+          int n = random().nextInt(100) + 1;
+          TopDocs results = searcher.search(query, n);
+          int expected = Math.min(Math.min(n, k), numParentsWithChildren);
+          // we may get fewer results than requested if there are deletions, but this test doesn't
+          // test that
+          assert reader.hasDeletions() == false;
+          /*
+                    if (expected != results.scoreDocs.length) {
+                      for (ScoreDoc doc : results.scoreDocs) {
+                        System.out.println("result id=" + reader.storedFields().document(doc.doc).get("id"));
+                      }
+                    }
+          `           */
+          assertEquals(expected, results.scoreDocs.length);
+          assertTrue(results.totalHits.value() >= results.scoreDocs.length);
+          // verify the results are in descending score order
+          float last = Float.MAX_VALUE;
+          for (ScoreDoc scoreDoc : results.scoreDocs) {
+            assertTrue(scoreDoc.score <= last);
+            last = scoreDoc.score;
+          }
+        }
+      }
     }
   }
 }
