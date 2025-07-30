@@ -90,6 +90,7 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
   public RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityType, KnnVectorValues vectorValues, float[] target)
       throws IOException {
+    checkDimensions(target.length, vectorValues.dimension());
     if (similarityType == VectorSimilarityFunction.DOT_PRODUCT) { // just for now
       if (vectorValues instanceof FloatVectorValues fvv
           && fvv instanceof HasIndexSlice floatVectorValues
