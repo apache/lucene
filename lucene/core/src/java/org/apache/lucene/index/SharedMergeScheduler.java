@@ -1,6 +1,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.concurrent.Future;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -8,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * SharedMergeScheduler is an experimental MergeScheduler that submits merge tasks to a shared
@@ -16,12 +18,13 @@ import java.util.concurrent.CopyOnWriteArraySet;
 public class SharedMergeScheduler extends MergeScheduler {
  
   // Tracks submitted merges per writer
-  private final ConcurrentHashMap<IndexWriter, Set<MergeTaskWrapper>> writerToMerges = new ConcurrentHashMap<>();
+  private final Set<MergeTaskWrapper> mergeTasks = ConcurrentHashMap.newKeySet();
 
- /**
- * Executor service provided externally to handle merge tasks.
- * Allows sharing a thread pool across IndexWriters if configured that way.
- */
+  private final AtomicInteger submittedTasks = new AtomicInteger();
+  private final AtomicInteger completedTasks = new AtomicInteger();
+  private final Set<String> mergeThreadNames = java.util.Collections.newSetFromMap(new ConcurrentHashMap<>());
+  private final ConcurrentHashMap<IndexWriter, CopyOnWriteArraySet<MergeTaskWrapper>> writerToMerges = new ConcurrentHashMap<>();
+
   private final ExecutorService executor;
 
   public SharedMergeScheduler(ExecutorService executor) {
@@ -38,47 +41,73 @@ public class SharedMergeScheduler extends MergeScheduler {
    */
   @Override
   public void merge(MergeSource mergeSource, MergeTrigger trigger) throws IOException {
-    while (true) {
+    while (mergeSource.hasPendingMerges()) {
       final MergePolicy.OneMerge merge = mergeSource.getNextMerge();
-      if (merge == null) break;
+
+      MergeTaskWrapper wrappedTask = new MergeTaskWrapper(this, null, merge.totalBytesSize());
 
       Runnable mergeRunnable = () -> {
+            mergeThreadNames.add(Thread.currentThread().getName());
             try {
+                if (wrappedTask.isAborted()) {
+                    return;
+                }
                 mergeSource.merge(merge);
             } catch (IOException e) {
                 throw new RuntimeException(e);
-            }
+            } finally {
+                // No cleanup required here at the moment.
+                }
       };
 
+      wrappedTask.setRunnable(mergeRunnable);
 
-      MergeTaskWrapper wrappedTask = new MergeTaskWrapper(mergeRunnable, (IndexWriter) mergeSource, merge.totalBytesSize());
+      mergeTasks.add(wrappedTask);
+      submittedTasks.incrementAndGet();
 
-      // Registering this task under the writer 
-      writerToMerges.computeIfAbsent((IndexWriter) mergeSource, k -> new CopyOnWriteArraySet<>()).add(wrappedTask);
-
-      // Submitting task to executor
-      executor.submit(() -> {
-        try {
-            wrappedTask.getMergeTask().run();
-        } finally {
-            writerToMerges.getOrDefault((IndexWriter) mergeSource, Set.of()).remove(wrappedTask);
-        }
-      });
+      Future<?> f = executor.submit(wrappedTask);
+      wrappedTask.setFuture(f);
 
     }
   }
 
-  /**
-   * Closes the merge scheduler. This implementation is currently a no-op.
-   */
+
   //@Override
-  public void close(IndexWriter writer) {  
-    Set<MergeTaskWrapper> tasks = writerToMerges.remove(writer);  
-    if (tasks != null) {  
-        for (MergeTaskWrapper task : tasks) {  
-            // Placeholder for canceling tasks if needed.  
-        }  
-    }  
-  }
+  public void close(IndexWriter writer) {
+        CopyOnWriteArraySet<MergeTaskWrapper> tasks = writerToMerges.remove(writer);
+        if (tasks != null) {
+            for (MergeTaskWrapper task : tasks) {
+                task.markAborted();
+            }
+        }
+    }
+
+  void onTaskFinished(MergeTaskWrapper task) {
+    completedTasks.incrementAndGet();
+    mergeTasks.remove(task);  // Clean up from the global task set
+   }
+
+  /* ===================== PACKAGE-PRIVATE TEST HOOKS ===================== */
+
+    int getActiveMergeTaskCount() {
+        return writerToMerges.values().stream().mapToInt(Set::size).sum();
+    }
+
+    int getSubmittedTaskCount() {
+        return submittedTasks.get();
+    }
+
+    int getCompletedTaskCount() {
+        return completedTasks.get();
+    }
+
+    Set<String> getMergeThreadNames() {
+        return java.util.Collections.unmodifiableSet(mergeThreadNames);
+    }
+
+    boolean hasWriter(IndexWriter w) {
+        return writerToMerges.containsKey(w);
+    }
 
 }
+
