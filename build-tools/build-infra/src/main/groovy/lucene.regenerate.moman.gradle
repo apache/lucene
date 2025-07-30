@@ -56,11 +56,11 @@ configure(project(":lucene:core")) {
     doLast {
       templateFiles.each { prog ->
         logger.lifecycle("Executing: ${prog} in ${targetDir}")
-        quietExec {
-          workingDir targetDir
-          executable project.externalTool("python3")
+        buildGlobals.quietExec(it, {
+          workingDir = targetDir
+          executable = buildGlobals.externalTool("python3")
           args = ['-B', "${prog}"]
-        }
+        })
       }
       // Correct line endings for Windows.
       project.ant.fixcrlf(
@@ -84,9 +84,9 @@ configure(project(":lucene:core")) {
     doLast {
       ['1', '2'].each { num ->
         ['True', 'False'].each { transpose ->
-          quietExec {
-            workingDir targetDir
-            executable project.externalTool("python3")
+          buildGlobals.quietExec(it, {
+            workingDir = targetDir
+            executable = buildGlobals.externalTool("python3")
             args = [
               '-B',
               templateFile.toString(),
@@ -94,7 +94,7 @@ configure(project(":lucene:core")) {
               transpose,
               "${momanDir}/finenight/python"
             ]
-          }
+          })
         }
       }
       project.ant.fixcrlf(

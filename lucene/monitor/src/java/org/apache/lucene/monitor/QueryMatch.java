@@ -36,7 +36,7 @@ public class QueryMatch {
 
   public static final MatcherFactory<QueryMatch> SIMPLE_MATCHER =
       searcher ->
-          new CollectingMatcher<QueryMatch>(searcher, ScoreMode.COMPLETE_NO_SCORES) {
+          new CollectingMatcher<>(searcher, ScoreMode.COMPLETE_NO_SCORES) {
             @Override
             public QueryMatch resolve(QueryMatch match1, QueryMatch match2) {
               return match1;

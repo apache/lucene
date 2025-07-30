@@ -39,7 +39,6 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskCollection;
 import org.gradle.api.tasks.TaskContainer;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * This configures the application of forbidden-API signature files.
@@ -109,12 +108,26 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
                   project, task, sourceSets, ruleGroup, forbiddenApisDir);
             });
 
-    // Configure defaults for the MR-JAR feature sourceSets: ignore missing classes
+    // Configure defaults for the MR-JAR feature sourceSets: add vector code signatures files
     allForbiddenApisTasks
         .matching(task -> task.getName().matches("forbiddenApisMain\\d+"))
         .configureEach(
             task -> {
-              task.setFailOnMissingClasses(false);
+              // trick forbiddenapis jdk-nonportable signatures which report the following a
+              // violation:
+              // Due to a bug in forbiddenapis we add them first to suppress them later:
+              // https://github.com/policeman-tools/forbidden-apis/issues/267
+              var vectorExclusions = Set.of("jdk.internal.vm.vector.VectorSupport$Vector");
+              task.getSignatures().addAll(vectorExclusions);
+              task.getSignaturesWithSeveritySuppress().addAll(vectorExclusions);
+              // add specific vector-incubator signatures
+              task.setSignaturesFiles(
+                  task.getSignaturesFiles()
+                      .plus(
+                          project.files(
+                              forbiddenApisDir
+                                  .resolve("non-standard/incubator-vector.txt")
+                                  .toFile())));
             });
 
     // Configure non-standard, per-project stuff.
@@ -273,7 +286,7 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
     return signatureLocations;
   }
 
-  private static @NotNull HashSet<ResolvedDependencyResult> getAllDependencies(
+  private static HashSet<ResolvedDependencyResult> getAllDependencies(
       ResolvedComponentResult graphRoot) {
     HashSet<ResolvedDependencyResult> allResolved = new HashSet<>();
     ArrayDeque<DependencyResult> queue = new ArrayDeque<>(graphRoot.getDependencies());

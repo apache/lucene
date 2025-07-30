@@ -80,7 +80,7 @@ allprojects {
 
         // LUCENE-10304: if we modify the classpath here, IntelliJ no longer sees the dependencies as compile-time
         // dependencies, don't know why.
-        if (!rootProject.ext.isIdeaSync) {
+        if (!buildGlobals.intellijIdea.get().isIdeaSync) {
           task.classpath = modularPaths.compilationClasspath
         }
 
@@ -123,7 +123,7 @@ allprojects {
 
     // LUCENE-10304: if we modify the classpath here, IntelliJ no longer sees the dependencies as compile-time
     // dependencies, don't know why.
-    if (!rootProject.ext.isIdeaSync) {
+    if (!buildGlobals.intellijIdea.get().isIdeaSync) {
       def jarTask = project.tasks.getByName(mainSourceSet.getJarTaskName())
       def testJarTask = project.tasks.getByName(testSourceSet.getJarTaskName())
 
@@ -152,7 +152,7 @@ allprojects {
           }
         } else {
           // This combination simply does not make any sense (in my opinion).
-          throw GradleException("Test source set is modular and main source set is class-based, this makes no sense: " + project.path)
+          throw new GradleException("Test source set is modular and main source set is class-based, this makes no sense: " + project.path)
         }
       } else {
         if (mainIsModular) {

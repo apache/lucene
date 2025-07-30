@@ -47,6 +47,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.IOSupplier;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 
@@ -54,10 +55,10 @@ public class TestFlatVectorScorer extends LuceneTestCase {
 
   private static final AtomicInteger count = new AtomicInteger();
   private final FlatVectorsScorer flatVectorsScorer;
-  private final ThrowingSupplier<Directory> newDirectory;
+  private final IOSupplier<Directory> newDirectory;
 
   public TestFlatVectorScorer(
-      FlatVectorsScorer flatVectorsScorer, ThrowingSupplier<Directory> newDirectory) {
+      FlatVectorsScorer flatVectorsScorer, IOSupplier<Directory> newDirectory) {
     this.flatVectorsScorer = flatVectorsScorer;
     this.newDirectory = newDirectory;
   }
@@ -70,7 +71,7 @@ public class TestFlatVectorScorer extends LuceneTestCase {
             new Lucene99ScalarQuantizedVectorScorer(new DefaultFlatVectorScorer()),
             FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
     var dirs =
-        List.<ThrowingSupplier<Directory>>of(
+        List.<IOSupplier<Directory>>of(
             TestFlatVectorScorer::newDirectory,
             () -> new MMapDirectory(createTempDir(count.getAndIncrement() + "-")));
 
@@ -305,10 +306,5 @@ public class TestFlatVectorScorer extends LuceneTestCase {
 
   public static <T> void assertThat(T actual, Matcher<? super T> matcher) {
     MatcherAssert.assertThat("", actual, matcher);
-  }
-
-  @FunctionalInterface
-  public interface ThrowingSupplier<T> {
-    T get() throws IOException;
   }
 }

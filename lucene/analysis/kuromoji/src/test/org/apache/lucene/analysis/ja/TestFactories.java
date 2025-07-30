@@ -155,7 +155,7 @@ public class TestFactories extends BaseTokenStreamTestCase {
 
   // some silly classes just so we can use checkRandomData
   private TokenizerFactory assertingTokenizer =
-      new TokenizerFactory(new HashMap<String, String>()) {
+      new TokenizerFactory(new HashMap<>()) {
         @Override
         public MockTokenizer create(AttributeFactory factory) {
           return new MockTokenizer(factory);
