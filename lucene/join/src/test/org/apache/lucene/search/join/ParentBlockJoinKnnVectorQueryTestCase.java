@@ -22,8 +22,10 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.lucene.document.Document;
@@ -401,6 +403,49 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
       }
       return true;
     }
+  }
+
+  public void testTwoSegments() throws IOException {
+    // see https://github.com/apache/lucene/issues/15005
+    int dim = random().nextInt(1, 10);
+    try (Directory d = newDirectory()) {
+      RandomIndexWriter writer = new RandomIndexWriter(random(), d, newIndexWriterConfig());
+      writer.addDocuments(createFamily("a", 2, dim));
+      writer.addDocuments(createFamily("b", 3, dim));
+      writer.commit();
+      writer.addDocuments(createFamily("c", 1, dim));
+      writer.close();
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        BitSetProducer parentFilter =
+            new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
+        IndexSearcher searcher = newSearcher(reader);
+        Query query = getParentJoinKnnQuery("field", randomVector(dim), null, 3, parentFilter);
+        TopDocs results = searcher.search(query, 3);
+        assertEquals(3, results.scoreDocs.length);
+        assertTrue(results.totalHits.value() >= results.scoreDocs.length);
+        Set<String> resultParentIds = new HashSet<>();
+        for (ScoreDoc scoreDoc : results.scoreDocs) {
+          String parentId = reader.storedFields().document(scoreDoc.doc).get("parentId");
+          assertFalse(resultParentIds.contains(parentId));
+          resultParentIds.add(parentId);
+        }
+        assertEquals(Set.of("a", "b", "c"), resultParentIds);
+      }
+    }
+  }
+
+  private List<Document> createFamily(String parentId, int size, int dim) {
+    List<Document> family = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      Document doc = new Document();
+      doc.add(getKnnVectorField("field", randomVector(dim)));
+      doc.add(new StoredField("parentId", parentId));
+      family.add(doc);
+    }
+    Document doc = new Document();
+    doc.add(new StringField("docType", "_parent", Field.Store.NO));
+    family.add(doc);
+    return family;
   }
 
   /** Tests with random vectors, number of documents, etc. Uses RandomIndexWriter. */
