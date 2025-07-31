@@ -1109,7 +1109,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   static final ValueLayout.OfFloat LAYOUT_LE_FLOAT =
       ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
 
-  interface FloatVectorLoader {
+  sealed interface FloatVectorLoader {
     /** Returns the number of float elements. */
     int length();
 
@@ -1146,13 +1146,14 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     @Override
     public FloatVector load(VectorSpecies<Float> species, int index) {
       assert index + species.length() <= length();
-      return FloatVector.fromMemorySegment(species, segment, index, LITTLE_ENDIAN);
+      return FloatVector.fromMemorySegment(
+          species, segment, (long) index * Float.BYTES, LITTLE_ENDIAN);
     }
 
     @Override
     public float tail(int index) {
       assert index <= length();
-      return segment.get(LAYOUT_LE_FLOAT, index);
+      return segment.get(LAYOUT_LE_FLOAT, (long) index * Float.BYTES);
     }
   }
 
