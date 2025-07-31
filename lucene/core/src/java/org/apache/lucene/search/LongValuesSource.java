@@ -281,6 +281,15 @@ public abstract class LongValuesSource implements SegmentCacheable {
     }
 
     @Override
+    public SortField inverseSort() {
+      LongValuesSortField inverse = new LongValuesSortField(producer, !reverse);
+      if (missingValue != null) {
+        inverse.setMissingValue(missingValue);
+      }
+      return inverse;
+    }
+
+    @Override
     public void setMissingValue(Object missingValue) {
       if (missingValue instanceof Number) {
         this.missingValue = missingValue;
