@@ -309,6 +309,7 @@ public class NeighborArray {
       throws IOException {
     float minAcceptedSimilarity = scores.get(candidateIndex);
     if (candidateIndex == uncheckedIndexes[uncheckedCursor]) {
+      // the candidate itself is unchecked
       for (int i = candidateIndex - 1; i >= 0; i--) {
         float neighborSimilarity = scorer.score(nodes.get(i));
         // candidate node is too similar to node i given its score relative to the base node
