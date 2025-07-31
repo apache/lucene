@@ -110,7 +110,7 @@ public class TestParentBlockJoinByteKnnVectorQuery extends ParentBlockJoinKnnVec
 
   @Override
   float[] randomVector(int dim) {
-    BytesRef v = TestUtil.randomBinaryTerm(random(), TestUtil.nextInt(random(), 1, 100));
+    BytesRef v = TestUtil.randomBinaryTerm(random(), dim);
     // clip at -127 to avoid overflow
     for (int i = v.offset; i < v.offset + v.length; i++) {
       if (v.bytes[i] == -128) {
