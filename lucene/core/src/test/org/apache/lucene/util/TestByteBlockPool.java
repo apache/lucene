@@ -17,10 +17,12 @@
 package org.apache.lucene.util;
 
 import com.carrotsearch.randomizedtesting.generators.RandomBytes;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import org.apache.lucene.store.ByteArrayRandomAccessInput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -55,7 +57,7 @@ public class TestByteBlockPool extends LuceneTestCase {
     }
   }
 
-  public void testReadAndWrite() {
+  public void testReadAndWrite() throws IOException {
     Counter bytesUsed = Counter.newCounter();
     ByteBlockPool pool = new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(bytesUsed));
     pool.nextBuffer();
@@ -70,7 +72,13 @@ public class TestByteBlockPool extends LuceneTestCase {
         final String value = TestUtil.randomRealisticUnicodeString(random(), maxLength);
         list.add(new BytesRef(value));
         ref.copyChars(value);
-        pool.append(ref.get());
+        if (random().nextBoolean()) {
+          pool.append(ref.get());
+        } else {
+          BytesRef bytesRef = ref.get();
+          pool.append(
+              new ByteArrayRandomAccessInput(bytesRef.bytes), bytesRef.offset, bytesRef.length);
+        }
       }
       // verify
       long position = 0;

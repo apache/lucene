@@ -459,7 +459,8 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
       throw new IllegalStateException();
     } else {
       // The index uses the BinaryDocValuesField format to store the mapping
-      ret = new FacetLabel(FacetsConfig.stringToPath(values.binaryValue().utf8ToString()));
+      ret =
+          new FacetLabel(FacetsConfig.stringToPath(values.randomAccessInputValue().utf8ToString()));
     }
 
     synchronized (categoryCache) {
@@ -580,8 +581,8 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
         boolean success = values.advanceExact(ordinals[i] - leafReaderDocBase);
         assert success;
         bulkPath[originalPosition[i]] =
-            new FacetLabel(FacetsConfig.stringToPath(values.binaryValue().utf8ToString()));
-
+            new FacetLabel(
+                FacetsConfig.stringToPath(values.randomAccessInputValue().utf8ToString()));
         uncachedOrdinalPositions.add(i);
       }
     }
