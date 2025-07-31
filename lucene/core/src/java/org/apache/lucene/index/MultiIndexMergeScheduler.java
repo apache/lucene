@@ -80,7 +80,7 @@ class MultiIndexMergeScheduler extends MergeScheduler {
    * <p>CombinedMergeScheduler should <b><i>not</i></b> be passed directly to IndexWriter.
    */
   static class CombinedMergeScheduler extends ConcurrentMergeScheduler {
-    static CombinedMergeScheduler singleton = new CombinedMergeScheduler();
+    static final CombinedMergeScheduler singleton = new CombinedMergeScheduler();
 
     // A filter pattern
     static class TaggedMergeSource implements MergeScheduler.MergeSource {
