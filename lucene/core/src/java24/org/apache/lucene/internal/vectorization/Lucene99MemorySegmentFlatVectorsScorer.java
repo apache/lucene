@@ -23,7 +23,6 @@ import org.apache.lucene.codecs.lucene95.HasIndexSlice;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
-import org.apache.lucene.index.ListFloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
@@ -51,10 +50,7 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
 
   private RandomVectorScorerSupplier getFloatScoringSupplier(
       FloatVectorValues vectorValues, VectorSimilarityFunction similarityType) throws IOException {
-    if (vectorValues instanceof ListFloatVectorValues listFloatVectorValues) {
-      return listFloatVectorValues.getScorer(similarityType); // on-heap
-    }
-    if (similarityType == VectorSimilarityFunction.DOT_PRODUCT) { // just for now
+    if (similarityType == VectorSimilarityFunction.DOT_PRODUCT) { // dot product for now
       if (vectorValues instanceof HasIndexSlice sliceableValues
           && sliceableValues.getSlice() != null) {
         var scorer =

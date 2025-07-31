@@ -63,15 +63,6 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public void dotProductBulk(
-      float[] scores, float[] q, float[] d1, float[] d2, float[] d3, float[] d4) {
-    scores[0] = dotProduct(q, d1);
-    scores[1] = dotProduct(q, d2);
-    scores[2] = dotProduct(q, d3);
-    scores[3] = dotProduct(q, d4);
-  }
-
-  @Override
   public float cosine(float[] a, float[] b) {
     float sum = 0.0f;
     float norm1 = 0.0f;

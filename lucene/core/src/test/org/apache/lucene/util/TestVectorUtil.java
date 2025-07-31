@@ -31,38 +31,14 @@ public class TestVectorUtil extends LuceneTestCase {
 
   public static final double DELTA = 1e-4;
 
-  static final Class<IllegalArgumentException> IAE = IllegalArgumentException.class;
-
   public void testBasicDotProduct() {
     assertEquals(5, VectorUtil.dotProduct(new float[] {1, 2, 3}, new float[] {-10, 0, 5}), 0);
-  }
-
-  public void testBasicDotProductBulk() {
-    var vec1 = new float[] {1, 2, 3};
-    var vec2 = new float[] {-10, 0, 5};
-    var vec3 = new float[] {2, 3, 4};
-    var vec4 = new float[] {3, 2, 1};
-    var vec5 = new float[] {10, 11, 12};
-    float[] scores = new float[4];
-    VectorUtil.dotProductBulk(scores, vec1, vec2, vec3, vec4, vec5);
-    assertEquals(5, scores[0], 0);
-    assertEquals(20, scores[1], 0);
-    assertEquals(10, scores[2], 0);
-    assertEquals(68, scores[3], 0);
   }
 
   public void testSelfDotProduct() {
     // the dot product of a vector with itself is equal to the sum of the squares of its components
     float[] v = randomVector();
     assertEquals(l2(v), VectorUtil.dotProduct(v, v), DELTA);
-
-    // bulk
-    float[] scores = new float[4];
-    VectorUtil.dotProductBulk(scores, v, v, v, v, v);
-    assertEquals(l2(v), scores[0], DELTA);
-    assertEquals(l2(v), scores[1], DELTA);
-    assertEquals(l2(v), scores[2], DELTA);
-    assertEquals(l2(v), scores[3], DELTA);
   }
 
   public void testOrthogonalDotProduct() {
@@ -74,28 +50,11 @@ public class TestVectorUtil extends LuceneTestCase {
     u[0] = v[1];
     u[1] = -v[0];
     assertEquals(0, VectorUtil.dotProduct(u, v), DELTA);
-
-    // bulk
-    float[] scores = new float[4];
-    Arrays.fill(scores, Float.NaN);
-    VectorUtil.dotProductBulk(scores, u, v, v, v, v);
-    assertEquals(0, scores[0], DELTA);
-    assertEquals(0, scores[1], DELTA);
-    assertEquals(0, scores[2], DELTA);
-    assertEquals(0, scores[3], DELTA);
   }
 
   public void testDotProductThrowsForDimensionMismatch() {
     float[] v = {1, 0, 0}, u = {0, 1};
     expectThrows(IllegalArgumentException.class, () -> VectorUtil.dotProduct(u, v));
-
-    float[] scores = new float[4];
-    expectThrows(IAE, () -> VectorUtil.dotProductBulk(v, v, v, v, v, v));
-    expectThrows(IAE, () -> VectorUtil.dotProductBulk(scores, v, v, v, v, u));
-    expectThrows(IAE, () -> VectorUtil.dotProductBulk(scores, v, v, v, u, v));
-    expectThrows(IAE, () -> VectorUtil.dotProductBulk(scores, v, v, u, v, v));
-    expectThrows(IAE, () -> VectorUtil.dotProductBulk(scores, v, u, v, v, v));
-    expectThrows(IAE, () -> VectorUtil.dotProductBulk(scores, u, v, v, v, v));
   }
 
   public void testSelfSquareDistance() {

@@ -27,9 +27,6 @@ public interface VectorUtilSupport {
   /** Calculates the dot product of the given float arrays. */
   float dotProduct(float[] a, float[] b);
 
-  /** Calculates four dot products of the given float arrays. */
-  void dotProductBulk(float[] scores, float[] q, float[] d1, float[] d2, float[] d3, float[] d4);
-
   /** Returns the cosine similarity between the two vectors. */
   float cosine(float[] v1, float[] v2);
 

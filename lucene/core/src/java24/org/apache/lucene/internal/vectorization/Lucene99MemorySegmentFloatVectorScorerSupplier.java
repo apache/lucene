@@ -91,50 +91,14 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
     return seg;
   }
 
-  // debugging
-  //  final float[] getFloatValue(int ord) throws IOException {
-  //    long byteOffset = (long) ord * vectorByteSize;
-  //    float[] fa = new float[dims];
-  //    for (int i = 0; i < fa.length; i++) {
-  //      fa[i] = Float.intBitsToFloat(input.readInt(byteOffset + i));
-  //    }
-  //    return fa;
+  // final void readFloatVector(float[] array, int ord) throws IOException {
+  //  assert array.length == dims;
+  //  long byteOffset = (long) ord * vectorByteSize;
+  //  for (int i = 0; i < array.length; i++) {
+  //    array[i] = Float.intBitsToFloat(input.readInt(byteOffset + i));
   //  }
+  // }
 
-  //  static final class CosineSupplier extends Lucene99MemorySegmentByteVectorScorerSupplier {
-  //
-  //    CosineSupplier(MemorySegmentAccessInput input, KnnVectorValues values) {
-  //      super(input, values);
-  //    }
-  //
-  //    @Override
-  //    public UpdateableRandomVectorScorer scorer() {
-  //      return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(values) {
-  //        private int queryOrd = 0;
-  //
-  //        @Override
-  //        public float score(int node) throws IOException {
-  //          checkOrdinal(node);
-  //          float raw =
-  //              PanamaVectorUtilSupport.cosine(getFirstSegment(queryOrd), getSecondSegment(node));
-  //          return (1 + raw) / 2;
-  //        }
-  //
-  //        @Override
-  //        public void setScoringOrdinal(int node) {
-  //          checkOrdinal(node);
-  //          queryOrd = node;
-  //        }
-  //      };
-  //    }
-  //
-  //    @Override
-  //    public CosineSupplier copy() throws IOException {
-  //      return new CosineSupplier(input.clone(), values);
-  //    }
-  //  }
-
-  // TODO revert back to KnnVectorValues - since it does not have a getValue, so no danger of copy
   static final class DotProductSupplier extends Lucene99MemorySegmentFloatVectorScorerSupplier {
 
     DotProductSupplier(MemorySegmentAccessInput input, FloatVectorValues values) {
@@ -149,16 +113,13 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
         @Override
         public float score(int node) throws IOException {
           checkOrdinal(node);
+          float[] scratchScores = new float[4];
           MemorySegment query = getSegment(queryOrd, queryScratch);
           MemorySegment ms = getSegment(node, scratch1);
-          //          float[] qv = getFloatValue(queryOrd);
-          //          float[] qv = getFloatValue(node);
-
-          // TODO: wasteful?  TODO: add a single overload for this one? Hmm.... yet another one! :-(
-          // PanamaVectorUtilSupport.dotProductBulkFromSegments(scratchScores, query, ms1, ms1, ms1,
-          // ms1, dims);
-          float dot = PanamaVectorUtilSupport.dotProductBulkFromTwoSegments(query, ms, dims);
-          return Math.max((1 + dot) / 2, 0);
+          // TODO: this could be improved
+          PanamaVectorUtilSupport.dotProductBulkFromSegments(
+              scratchScores, query, ms, ms, ms, ms, dims);
+          return normalizeDotProduct(scratchScores[0]);
         }
 
         @Override
@@ -202,76 +163,4 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
       return new DotProductSupplier(input.clone(), values);
     }
   }
-
-  //  static final class EuclideanSupplier extends Lucene99MemorySegmentByteVectorScorerSupplier {
-  //
-  //    EuclideanSupplier(MemorySegmentAccessInput input, KnnVectorValues values) {
-  //      super(input, values);
-  //    }
-  //
-  //    @Override
-  //    public UpdateableRandomVectorScorer scorer() {
-  //      return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(values) {
-  //        private int queryOrd = 0;
-  //
-  //        @Override
-  //        public float score(int node) throws IOException {
-  //          checkOrdinal(node);
-  //          float raw =
-  //              PanamaVectorUtilSupport.squareDistance(
-  //                  getFirstSegment(queryOrd), getSecondSegment(node));
-  //          return 1 / (1f + raw);
-  //        }
-  //
-  //        @Override
-  //        public void setScoringOrdinal(int node) {
-  //          checkOrdinal(node);
-  //          queryOrd = node;
-  //        }
-  //      };
-  //    }
-  //
-  //    @Override
-  //    public EuclideanSupplier copy() throws IOException {
-  //      return new EuclideanSupplier(input.clone(), values);
-  //    }
-  //  }
-
-  //  static final class MaxInnerProductSupplier extends
-  // Lucene99MemorySegmentByteVectorScorerSupplier {
-  //
-  //    MaxInnerProductSupplier(MemorySegmentAccessInput input, KnnVectorValues values) {
-  //      super(input, values);
-  //    }
-  //
-  //    @Override
-  //    public UpdateableRandomVectorScorer scorer() {
-  //      return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(values) {
-  //        private int queryOrd = 0;
-  //
-  //        @Override
-  //        public float score(int node) throws IOException {
-  //          checkOrdinal(node);
-  //          float raw =
-  //              PanamaVectorUtilSupport.dotProduct(getFirstSegment(queryOrd),
-  // getSecondSegment(node));
-  //          if (raw < 0) {
-  //            return 1 / (1 + -1 * raw);
-  //          }
-  //          return raw + 1;
-  //        }
-  //
-  //        @Override
-  //        public void setScoringOrdinal(int node) {
-  //          checkOrdinal(node);
-  //          queryOrd = node;
-  //        }
-  //      };
-  //    }
-  //
-  //    @Override
-  //    public MaxInnerProductSupplier copy() throws IOException {
-  //      return new MaxInnerProductSupplier(input.clone(), values);
-  //    }
-  //  }
 }

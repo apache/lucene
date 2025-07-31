@@ -88,6 +88,31 @@ public abstract class FloatVectorValues extends KnnVectorValues {
    * @return a {@link FloatVectorValues} instance
    */
   public static FloatVectorValues fromFloats(List<float[]> vectors, int dim) {
-    return new ListFloatVectorValues(vectors, dim);
+    return new FloatVectorValues() {
+      @Override
+      public int size() {
+        return vectors.size();
+      }
+
+      @Override
+      public int dimension() {
+        return dim;
+      }
+
+      @Override
+      public float[] vectorValue(int targetOrd) {
+        return vectors.get(targetOrd);
+      }
+
+      @Override
+      public FloatVectorValues copy() {
+        return this;
+      }
+
+      @Override
+      public DocIndexIterator iterator() {
+        return createDenseIterator();
+      }
+    };
   }
 }

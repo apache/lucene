@@ -70,26 +70,6 @@ public final class VectorUtil {
   }
 
   /**
-   * Computes four the vector dot products. Query vector and data vector 1, ...
-   *
-   * @throws IllegalArgumentException if the vectors' dimensions differ.
-   */
-  public static void dotProductBulk(
-      float[] scores, float[] q, float[] d1, float[] d2, float[] d3, float[] d4) {
-    if (scores.length < 4) {
-      throw new IllegalArgumentException("not enough room for scores:" + scores.length);
-    }
-    if (q.length != d1.length
-        || d1.length != d2.length
-        || d2.length != d3.length
-        || d3.length != d4.length) {
-      throw new IllegalArgumentException(
-          "vector dimensions differ: " + q.length + "!=" + d1.length);
-    }
-    IMPL.dotProductBulk(scores, q, d1, d2, d3, d4);
-  }
-
-  /**
    * Returns the cosine similarity between the two vectors.
    *
    * @throws IllegalArgumentException if the vectors' dimensions differ.

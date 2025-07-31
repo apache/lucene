@@ -103,19 +103,6 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
     }
   }
 
-  //  static final class CosineScorer extends Lucene99MemorySegmentByteVectorScorer {
-  //    CosineScorer(MemorySegmentAccessInput input, KnnVectorValues values, byte[] query) {
-  //      super(input, values, query);
-  //    }
-  //
-  //    @Override
-  //    public float score(int node) throws IOException {
-  //      checkOrdinal(node);
-  //      float raw = PanamaVectorUtilSupport.cosine(query, getSegment(node));
-  //      return (1 + raw) / 2;
-  //    }
-  //  }
-
   static final class DotProductScorer extends Lucene99MemorySegmentFloatVectorScorer {
     DotProductScorer(MemorySegmentAccessInput input, FloatVectorValues values, float[] query) {
       super(input, values, query);
@@ -124,7 +111,7 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
     @Override
     public float score(int node) throws IOException {
       checkOrdinal(node);
-      // just delegates to ...
+      // just delegates to existing scorer that copies on-heap
       return VectorSimilarityFunction.DOT_PRODUCT.compare(query, values.vectorValue(node));
     }
 
@@ -138,8 +125,8 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
         MemorySegment ms2 = getSegment(nodes[i + 1]);
         MemorySegment ms3 = getSegment(nodes[i + 2]);
         MemorySegment ms4 = getSegment(nodes[i + 3]);
-        PanamaVectorUtilSupport.dotProductBulkQueryFromArray(
-            scratchScores, query, ms1, ms2, ms3, ms4);
+        PanamaVectorUtilSupport.dotProductBulkFromArray(
+            scratchScores, query, ms1, ms2, ms3, ms4, query.length);
         scores[i + 0] = normalizeDotProduct(scratchScores[0]);
         scores[i + 1] = normalizeDotProduct(scratchScores[1]);
         scores[i + 2] = normalizeDotProduct(scratchScores[2]);
@@ -154,34 +141,4 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
       return Math.max((1 + value) / 2, 0);
     }
   }
-
-  //  static final class EuclideanScorer extends Lucene99MemorySegmentByteVectorScorer {
-  //    EuclideanScorer(MemorySegmentAccessInput input, KnnVectorValues values, byte[] query) {
-  //      super(input, values, query);
-  //    }
-  //
-  //    @Override
-  //    public float score(int node) throws IOException {
-  //      checkOrdinal(node);
-  //      float raw = PanamaVectorUtilSupport.squareDistance(query, getSegment(node));
-  //      return 1 / (1f + raw);
-  //    }
-  //  }
-  //
-  //  static final class MaxInnerProductScorer extends Lucene99MemorySegmentByteVectorScorer {
-  //    MaxInnerProductScorer(MemorySegmentAccessInput input, KnnVectorValues values, byte[] query)
-  // {
-  //      super(input, values, query);
-  //    }
-  //
-  //    @Override
-  //    public float score(int node) throws IOException {
-  //      checkOrdinal(node);
-  //      float raw = PanamaVectorUtilSupport.dotProduct(query, getSegment(node));
-  //      if (raw < 0) {
-  //        return 1 / (1 + -1 * raw);
-  //      }
-  //      return raw + 1;
-  //    }
-  //  }
 }
