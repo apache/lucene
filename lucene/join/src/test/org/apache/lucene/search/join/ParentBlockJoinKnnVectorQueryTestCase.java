@@ -453,12 +453,12 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
           // test that
           assert reader.hasDeletions() == false;
           /*
-          if (expected != results.scoreDocs.length) {
-            for (ScoreDoc doc : results.scoreDocs) {
-              System.out.println("result id=" + reader.storedFields().document(doc.doc).get("id"));
-            }
-          }
-`           */
+                    if (expected != results.scoreDocs.length) {
+                      for (ScoreDoc doc : results.scoreDocs) {
+                        System.out.println("result id=" + reader.storedFields().document(doc.doc).get("id"));
+                      }
+                    }
+          `           */
           assertEquals(expected, results.scoreDocs.length);
           assertTrue(results.totalHits.value() >= results.scoreDocs.length);
           // verify the results are in descending score order
