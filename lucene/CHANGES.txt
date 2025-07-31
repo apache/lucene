@@ -116,6 +116,9 @@ API Changes
 
 * GITHUB#14899: Deprecate MergeSpecification#segString(Directory) (kitoha)
 
+* GITHUB#14978: Add a bulk scoring interface to RandomVectorScorer
+  (Trevor McCulloch, Chris Hegarty)
+
 New Features
 ---------------------
 * GITHUB#14404: Introducing DocValuesMultiRangeQuery.SortedNumericStabbingBuilder into sandbox.
