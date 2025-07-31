@@ -421,7 +421,6 @@ public class HnswGraphBuilder implements HnswBuilder {
    */
   private boolean diversityCheck(float score, NeighborArray neighbors, RandomVectorScorer scorer)
       throws IOException {
-    // TODO: consider bulk scoring here
     for (int i = 0; i < neighbors.size(); i++) {
       float neighborSimilarity = scorer.score(neighbors.nodes()[i]);
       if (neighborSimilarity >= score) {

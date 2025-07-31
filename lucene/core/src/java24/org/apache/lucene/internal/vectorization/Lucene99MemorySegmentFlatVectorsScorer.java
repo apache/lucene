@@ -95,9 +95,6 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
             Lucene99MemorySegmentFloatVectorScorer.create(
                 similarityType, floatVectorValues.getSlice(), fvv, target);
         if (scorer.isPresent()) {
-          //          var x  = scorer.get(); // TODO: remove debugging
-          //          System.out.println("HEGO scorer = x=" + x);
-          //          return x;
           return scorer.get();
         }
       }

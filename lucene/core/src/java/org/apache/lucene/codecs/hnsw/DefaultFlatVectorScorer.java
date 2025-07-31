@@ -39,16 +39,17 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
       throws IOException {
-    return switch (vectorValues.getEncoding()) {
-      case FLOAT32 -> getFloatScoringSupplier((FloatVectorValues) vectorValues, similarityFunction);
-      case BYTE -> new ByteScoringSupplier((ByteVectorValues) vectorValues, similarityFunction);
-    };
-  }
-
-  static RandomVectorScorerSupplier getFloatScoringSupplier(
-      FloatVectorValues vectorValues, VectorSimilarityFunction similarityFunction)
-      throws IOException {
-    return new FloatScoringSupplier(vectorValues, similarityFunction);
+    switch (vectorValues.getEncoding()) {
+      case FLOAT32 -> {
+        return new FloatScoringSupplier((FloatVectorValues) vectorValues, similarityFunction);
+      }
+      case BYTE -> {
+        return new ByteScoringSupplier((ByteVectorValues) vectorValues, similarityFunction);
+      }
+    }
+    throw new IllegalArgumentException(
+        "vectorValues must be an instance of FloatVectorValues or ByteVectorValues, got a "
+            + vectorValues.getClass().getName());
   }
 
   @Override
@@ -174,8 +175,7 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
     private final VectorSimilarityFunction similarityFunction;
 
     public FloatVectorScorer(
-        FloatVectorValues values, float[] query, VectorSimilarityFunction similarityFunction)
-        throws IOException {
+        FloatVectorValues values, float[] query, VectorSimilarityFunction similarityFunction) {
       super(values);
       this.values = values;
       this.query = query;
