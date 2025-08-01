@@ -97,7 +97,8 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       throws IOException {
     int filteredDocCount = 0;
     if (acceptOrds instanceof BitSet bitSet) {
-      // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
+      // Use approximate cardinality as this is good enough, but ensure we don't
+      // exceed the graph
       // size as that is illogical
       filteredDocCount = Math.min(bitSet.approximateCardinality(), graph.size());
     }
@@ -233,7 +234,8 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
       foundBetter = true;
       visited.set(currentEp);
-      // Keep searching the given level until we stop finding a better candidate entry point
+      // Keep searching the given level until we stop finding a better candidate entry
+      // point
       while (foundBetter) {
         foundBetter = false;
         graphSeek(graph, level, currentEp);
@@ -298,10 +300,12 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       }
     }
 
-    // A bound that holds the minimum similarity to the query vector that a candidate vector must
+    // A bound that holds the minimum similarity to the query vector that a
+    // candidate vector must
     // have to be considered.
     float minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
-    // We should allow exploring equivalent minAcceptedSimilarity values at least once
+    // We should allow exploring equivalent minAcceptedSimilarity values at least
+    // once
     boolean shouldExploreMinSim = true;
     while (candidates.size() > 0 && results.earlyTerminated() == false) {
       // get the best candidate (closest or best scoring)
@@ -335,10 +339,11 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
         bulkNodes[numNodes++] = friendOrd;
       }
 
-      if (numNodes > 0) {
-        numNodes = (int) Math.min((long) numNodes, results.visitLimit() - results.visitedCount());
-        scorer.bulkScore(bulkNodes, bulkScores, numNodes);
-        results.incVisitedCount(numNodes);
+      numNodes = (int) Math.min((long) numNodes, results.visitLimit() - results.visitedCount());
+      results.incVisitedCount(numNodes);
+      if (numNodes > 0
+          && scorer.bulkScore(bulkNodes, bulkScores, numNodes)
+              > results.minCompetitiveSimilarity()) {
         for (int i = 0; i < numNodes; i++) {
           int node = bulkNodes[i];
           float score = bulkScores[i];
@@ -349,7 +354,8 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
                 float oldMinAcceptedSimilarity = minAcceptedSimilarity;
                 minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
                 if (minAcceptedSimilarity > oldMinAcceptedSimilarity) {
-                  // we adjusted our minAcceptedSimilarity, so we should explore the next equivalent
+                  // we adjusted our minAcceptedSimilarity, so we should explore the next
+                  // equivalent
                   // if necessary
                   shouldExploreMinSim = true;
                 }
