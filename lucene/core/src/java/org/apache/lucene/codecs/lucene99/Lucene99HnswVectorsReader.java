@@ -71,8 +71,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene99HnswVectorsFormat.class);
-  // Number of ordinals to score at a time when scoring exhaustively rather than
-  // using HNSW.
+  // Number of ordinals to score at a time when scoring exhaustively rather than using HNSW.
   private static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
   private final FlatVectorsReader flatVectorsReader;
@@ -336,8 +335,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     // The approximate number of vectors that would be visited if we did not filter
     int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graph.size());
     if (acceptDocs instanceof BitSet bitSet) {
-      // Use approximate cardinality as this is good enough, but ensure we don't
-      // exceed the graph size as that is illogical
+      // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
+      // size as that is illogical
       filteredDocCount = Math.min(bitSet.approximateCardinality(), graph.size());
       if (unfilteredVisit >= filteredDocCount) {
         doHnsw = false;
@@ -347,8 +346,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       HnswGraphSearcher.search(
           scorer, collector, getGraph(fieldEntry), acceptedOrds, filteredDocCount);
     } else {
-      // if k is larger than the number of vectors we expect to visit in an HNSW
-      // search, we can just iterate over all vectors and collect them.
+      // if k is larger than the number of vectors we expect to visit in an HNSW search,
+      // we can just iterate over all vectors and collect them.
       int[] ords = new int[EXHAUSTIVE_BULK_SCORE_ORDS];
       float[] scores = new float[EXHAUSTIVE_BULK_SCORE_ORDS];
       int numOrds = 0;
@@ -438,8 +437,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       int dimension,
       int size,
       int[][] nodesByLevel,
-      // for each level the start offsets in vectorIndex file from where to read
-      // neighbours
+      // for each level the start offsets in vectorIndex file from where to read neighbours
       DirectMonotonicReader.Meta offsetsMeta,
       long offsetsOffset,
       int offsetsBlockShift,
