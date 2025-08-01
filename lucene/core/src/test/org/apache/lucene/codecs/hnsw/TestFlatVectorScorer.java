@@ -68,21 +68,19 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
 
   @ParametersFactory
   public static Iterable<Object[]> parametersFactory() {
-    var scorers =
-        List.of(
-            DefaultFlatVectorScorer.INSTANCE,
-            new Lucene99ScalarQuantizedVectorScorer(new DefaultFlatVectorScorer()),
-            FlatVectorScorerUtil.getLucene99FlatVectorsScorer(),
-            maybePanamaProvider().getLucene99FlatVectorsScorer());
-    var dirs =
-        List.<IOSupplier<Directory>>of(
-            TestFlatVectorScorer::newDirectory,
-            () -> new MMapDirectory(createTempDir(count.getAndIncrement() + "-")));
+    var scorers = List.of(
+        DefaultFlatVectorScorer.INSTANCE,
+        new Lucene99ScalarQuantizedVectorScorer(new DefaultFlatVectorScorer()),
+        FlatVectorScorerUtil.getLucene99FlatVectorsScorer(),
+        maybePanamaProvider().getLucene99FlatVectorsScorer());
+    var dirs = List.<IOSupplier<Directory>>of(
+        TestFlatVectorScorer::newDirectory,
+        () -> new MMapDirectory(createTempDir(count.getAndIncrement() + "-")));
 
     List<Object[]> objs = new ArrayList<>();
     for (var scorer : scorers) {
       for (var dir : dirs) {
-        objs.add(new Object[] {scorer, dir});
+        objs.add(new Object[] { scorer, dir });
       }
     }
     return objs;
@@ -97,9 +95,9 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
 
   // Tests that the creation of another scorer does not disturb previous scorers
   public void testMultipleByteScorers() throws IOException {
-    byte[] vec0 = new byte[] {0, 0, 0, 0};
-    byte[] vec1 = new byte[] {1, 1, 1, 1};
-    byte[] vec2 = new byte[] {15, 15, 15, 15};
+    byte[] vec0 = new byte[] { 0, 0, 0, 0 };
+    byte[] vec1 = new byte[] { 1, 1, 1, 1 };
+    byte[] vec2 = new byte[] { 15, 15, 15, 15 };
 
     String fileName = "testMultipleByteScorers";
     try (Directory dir = newDirectory.get()) {
@@ -125,9 +123,9 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
 
   // Tests that the creation of another scorer does not perturb previous scorers
   public void testMultipleFloatScorers() throws IOException {
-    float[] vec0 = new float[] {0, 0, 0, 0};
-    float[] vec1 = new float[] {1, 1, 1, 1};
-    float[] vec2 = new float[] {15, 15, 15, 15};
+    float[] vec0 = new float[] { 0, 0, 0, 0 };
+    float[] vec1 = new float[] { 1, 1, 1, 1 };
+    float[] vec2 = new float[] { 15, 15, 15, 15 };
 
     String fileName = "testMultipleFloatScorers";
     try (Directory dir = newDirectory.get()) {
@@ -236,17 +234,18 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
     final int dims = values.dimension();
     final int size = values.size();
     final float delta = 1e-3f * size;
-    var scorer =
-        values.getEncoding() == VectorEncoding.BYTE
-            ? flatVectorsScorer.getRandomVectorScorer(sim, values, randomByteVector(dims))
-            : flatVectorsScorer.getRandomVectorScorer(sim, values, randomFloatVector(dims));
+    var scorer = values.getEncoding() == VectorEncoding.BYTE
+        ? flatVectorsScorer.getRandomVectorScorer(sim, values, randomByteVector(dims))
+        : flatVectorsScorer.getRandomVectorScorer(sim, values, randomFloatVector(dims));
     int[] indices = randomIndices(size);
     float[] expectedScores = new float[size];
+    float expectedMaxScore = Float.NEGATIVE_INFINITY;
     for (int i = 0; i < size; i++) {
       expectedScores[i] = scorer.score(indices[i]);
+      expectedMaxScore = Math.max(expectedMaxScore, expectedScores[i]);
     }
     float[] bulkScores = new float[size];
-    scorer.bulkScore(indices, bulkScores, size);
+    assertEquals(expectedMaxScore, scorer.bulkScore(indices, bulkScores, size), 0.001);
     assertArrayEquals(expectedScores, bulkScores, delta);
     assertNoScoreBeyondNumNodes(scorer, size);
   }
@@ -262,11 +261,14 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
     updatableScorer.setScoringOrdinal(targetNode);
     int[] indices = randomIndices(size);
     float[] expectedScores = new float[size];
+    float expectedMaxScore = Float.NEGATIVE_INFINITY;
     for (int i = 0; i < size; i++) {
       expectedScores[i] = updatableScorer.score(indices[i]);
+      expectedMaxScore = Math.max(expectedMaxScore, expectedScores[i]);
     }
     float[] bulkScores = new float[size];
     updatableScorer.bulkScore(indices, bulkScores, size);
+    assertEquals(expectedMaxScore, updatableScorer.bulkScore(indices, bulkScores, size), 0.001);
     assertArrayEquals(expectedScores, bulkScores, delta);
     assertNoScoreBeyondNumNodes(updatableScorer, size);
   }
