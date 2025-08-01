@@ -25,6 +25,7 @@ import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.LongsRef;
 
 /**
@@ -39,6 +40,7 @@ public final class TermScorer extends Scorer {
   private final NumericDocValues norms;
   private final ImpactsDISI impactsDisi;
   private final MaxScoreCache maxScoreCache;
+  private int[] freqs = IntsRef.EMPTY_INTS;
   private long[] normValues = LongsRef.EMPTY_LONGS;
 
   /** Construct a {@link TermScorer} that will iterate all documents. */
@@ -169,6 +171,43 @@ public final class TermScorer extends Scorer {
       // Unless SimScorer#score is megamorphic, SimScorer#score should inline and (part of) score
       // computations should auto-vectorize.
       buffer.features[i] = scorer.score(buffer.features[i], normValues[i]);
+    }
+  }
+
+  @Override
+  public void applyAsRequiredClause(DocAndScoreAccBuffer buffer) throws IOException {
+    int size = buffer.size;
+    if (freqs.length < size) {
+      freqs = ArrayUtil.growNoCopy(freqs, size);
+      normValues = new long[freqs.length];
+    }
+
+    int intersectionSize = 0;
+    int curDoc = docID();
+    for (int i = 0; i < size; i++) {
+      int targetDoc = buffer.docs[i];
+      if (curDoc < targetDoc) {
+        curDoc = postingsEnum.advance(targetDoc);
+      }
+      if (curDoc == targetDoc) {
+        buffer.docs[intersectionSize] = targetDoc;
+        buffer.scores[intersectionSize] = buffer.scores[i];
+        freqs[intersectionSize] = postingsEnum.freq();
+        intersectionSize++;
+      }
+    }
+    buffer.size = intersectionSize;
+
+    for (int i = 0; i < intersectionSize; i++) {
+      if (norms == null || norms.advanceExact(buffer.docs[i]) == false) {
+        normValues[i] = 1L;
+      } else {
+        normValues[i] = norms.longValue();
+      }
+    }
+
+    for (int i = 0; i < intersectionSize; i++) {
+      buffer.scores[i] += scorer.score(freqs[i], normValues[i]);
     }
   }
 }
