@@ -60,7 +60,7 @@ class MultiIndexMergeScheduler extends MergeScheduler {
   /** Close this scheduler for one directory/index. Called automatically by IndexWriter. */
   @Override
   public void close() throws IOException {
-    this.combinedMergeScheduler.close(this.directory);
+    this.combinedMergeScheduler.sync(this.directory);
   }
 
   // We created this method because we cannot easily override the initialize() method
@@ -127,7 +127,7 @@ class MultiIndexMergeScheduler extends MergeScheduler {
     // The implementation is copied from sync() in ConcurrentMergeScheduler in Lucene code, with
     // only one additional check:
     //     ((InstrumentedMergeThread) t).getDirectory().equals(directory).
-    public void close(Directory directory) {
+    public void sync(Directory directory) {
       boolean interrupted = false;
       try {
         while (true) {

@@ -37,8 +37,8 @@ public class TestMultiIndexMergeScheduler extends LuceneTestCase {
             directory,
             new MultiIndexMergeScheduler.CombinedMergeScheduler() {
               @Override
-              public void close(Directory directory) {
-                super.close(directory);
+              public void sync(Directory directory) {
+                super.sync(directory);
                 assertTrue(directoriesToBeClosed.remove(directory));
               }
             });
@@ -83,9 +83,9 @@ public class TestMultiIndexMergeScheduler extends LuceneTestCase {
     var combinedScheduler =
         new MultiIndexMergeScheduler.CombinedMergeScheduler() {
           @Override
-          public void close(Directory directory) {
+          public void sync(Directory directory) {
             // Blocks and waits for one MultiIndexMergeScheduler's merges to finish.
-            super.close(directory);
+            super.sync(directory);
             // Record success for this Directory for the unit test.
             assertTrue(directories.remove(directory));
           }
