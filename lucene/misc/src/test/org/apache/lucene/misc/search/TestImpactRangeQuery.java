@@ -287,21 +287,6 @@ public class TestImpactRangeQuery extends LuceneTestCase {
       }
     }
 
-    // Compare with regular query to see if we're getting different ordering
-    TopDocs regularResults = searcher.search(baseQuery, 20);
-    int regularHighScoringInTop10 = 0;
-    int regularLowScoringInTop10 = 0;
-
-    for (int i = 0; i < Math.min(10, regularResults.scoreDocs.length); i++) {
-      Document doc = storedFields.document(regularResults.scoreDocs[i].doc);
-      int id = Integer.parseInt(doc.get("id"));
-      if (id < 10) {
-        regularHighScoringInTop10++;
-      } else {
-        regularLowScoringInTop10++;
-      }
-    }
-
     // If range prioritization is working, we should see all high-scoring docs first
     assertTrue(
         "Range prioritization should favor high-scoring docs",
@@ -572,11 +557,11 @@ public class TestImpactRangeQuery extends LuceneTestCase {
 
     // Test early termination - collect any 10 documents
     EarlyTerminatingCollector earlyCollector = new EarlyTerminatingCollector(10, 0.0f);
-    boolean terminatedEarly = false;
     try {
       searcher.search(impactQuery, earlyCollector);
     } catch (CollectionTerminatedException e) {
-      terminatedEarly = true;
+      // Expected when collector reaches maxDocs
+      assert e != null;
     }
 
     // The collector should have collected some documents
