@@ -126,7 +126,7 @@ class MultiIndexMergeScheduler extends MergeScheduler {
 
     // The implementation is copied from sync() in ConcurrentMergeScheduler in Lucene code, with
     // only one additional check:
-    //     ((InstrumentedMergeThread) t).getDirectory().equals(directory).
+    //     .((TaggedMergeSource) t.mergeSource).getDirectory()equals(directory).
     public void sync(Directory directory) {
       boolean interrupted = false;
       try {
@@ -139,7 +139,7 @@ class MultiIndexMergeScheduler extends MergeScheduler {
               if (t.isAlive()
                   && t != Thread.currentThread()
                   // Only wait for merge threads for the current index to finish
-                  && ((InstrumentedMergeThread) t).getDirectory().equals(directory)) {
+                  && ((TaggedMergeSource) t.mergeSource).getDirectory().equals(directory)) {
                 toSync = t;
                 break;
               }
@@ -163,40 +163,6 @@ class MultiIndexMergeScheduler extends MergeScheduler {
         if (interrupted) {
           Thread.currentThread().interrupt();
         }
-      }
-    }
-
-    @Override
-    protected synchronized ConcurrentMergeScheduler.MergeThread getMergeThread(
-        MergeSource mergeSource, MergePolicy.OneMerge merge) {
-      String threadNamePrefix = "Lucene Merge Thread #" + this.mergeThreadCounter++;
-      var taggedMergeSource = (TaggedMergeSource) mergeSource;
-      Directory directory = taggedMergeSource.getDirectory();
-      ConcurrentMergeScheduler.MergeThread thread =
-          new InstrumentedMergeThread(mergeSource, merge, directory);
-      thread.setDaemon(true);
-      thread.setName(threadNamePrefix + " " + directory.toString());
-      super.mergeThreads.add(thread);
-      return thread;
-    }
-
-    public class InstrumentedMergeThread extends MergeThread {
-      private final MergePolicy.OneMerge merge;
-      private final Directory directory;
-
-      public MergePolicy.OneMerge getOneMerge() {
-        return this.merge;
-      }
-
-      public Directory getDirectory() {
-        return this.directory;
-      }
-
-      public InstrumentedMergeThread(
-          MergeSource mergeSource, MergePolicy.OneMerge merge, Directory directory) {
-        super(mergeSource, merge);
-        this.merge = merge;
-        this.directory = directory;
       }
     }
   }
