@@ -103,7 +103,11 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
     StoredFieldsWriter sortWriter =
         codec.storedFieldsFormat().fieldsWriter(state.directory, state.segmentInfo, state.context);
     try {
-      reader.checkIntegrity();
+      // Don't perform a full integrity check via reader.checkIntegrity() here,
+      // in order to avoid reading the tmp stored field files twice.
+      // The light-weight integrity check via Lucene90CompressingStoredFieldsReader should be
+      // sufficient
+      // in the context of flushing.
       CopyVisitor visitor = new CopyVisitor(sortWriter);
       for (int docID = 0; docID < state.segmentInfo.maxDoc(); docID++) {
         sortWriter.startDocument();
