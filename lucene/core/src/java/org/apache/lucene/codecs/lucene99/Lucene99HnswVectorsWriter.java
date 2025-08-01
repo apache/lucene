@@ -356,7 +356,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     }
     // Write the size after duplicates are removed
     vectorIndex.writeVInt(actualSize);
-    if (version == 1) {
+    if (version >= Lucene99HnswVectorsFormat.VERSION_GROUPVARINT) {
       vectorIndex.writeGroupVInts(scratch, actualSize);
     } else {
       for (int i = 0; i < actualSize; i++) {
@@ -462,7 +462,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         }
         // Write the size after duplicates are removed
         vectorIndex.writeVInt(actualSize);
-        if (version == 1) {
+        if (version >= Lucene99HnswVectorsFormat.VERSION_GROUPVARINT) {
           vectorIndex.writeGroupVInts(scratch, actualSize);
         } else {
           for (int i = 0; i < actualSize; i++) {
