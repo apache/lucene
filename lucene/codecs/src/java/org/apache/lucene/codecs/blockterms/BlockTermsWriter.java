@@ -96,7 +96,6 @@ public class BlockTermsWriter extends FieldsConsumer {
     this.termsIndexWriter = termsIndexWriter;
     maxDoc = state.segmentInfo.maxDoc();
     out = state.directory.createOutput(termsFileName, state.context);
-    boolean success = false;
     try {
       fieldInfos = state.fieldInfos;
       CodecUtil.writeIndexHeader(
@@ -108,11 +107,9 @@ public class BlockTermsWriter extends FieldsConsumer {
       // System.out.println("BTW.init seg=" + state.segmentName);
 
       postingsWriter.init(out, state); // have consumer write its format/header
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(out);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, out);
+      throw t;
     }
   }
 

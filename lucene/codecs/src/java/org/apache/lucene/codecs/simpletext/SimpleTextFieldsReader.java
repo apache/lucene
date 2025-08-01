@@ -80,14 +80,11 @@ class SimpleTextFieldsReader extends FieldsProducer {
             SimpleTextPostingsFormat.getPostingsFileName(
                 state.segmentInfo.name, state.segmentSuffix),
             state.context);
-    boolean success = false;
     try {
       fields = readFields(in.clone());
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 

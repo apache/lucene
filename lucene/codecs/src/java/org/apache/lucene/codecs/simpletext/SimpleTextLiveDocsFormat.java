@@ -31,7 +31,6 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.CharsRefBuilder;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.StringHelper;
 
 /**
@@ -58,11 +57,8 @@ public class SimpleTextLiveDocsFormat extends LiveDocsFormat {
 
     String fileName =
         IndexFileNames.fileNameFromGeneration(info.info.name, LIVEDOCS_EXTENSION, info.getDelGen());
-    ChecksumIndexInput in = null;
-    boolean success = false;
-    try {
-      in = dir.openChecksumInput(fileName);
 
+    try (ChecksumIndexInput in = dir.openChecksumInput(fileName)) {
       SimpleTextUtil.readLine(in, scratch);
       assert StringHelper.startsWith(scratch.get(), SIZE);
       int size = parseIntAt(scratch.get(), SIZE.length, scratchUTF16);
@@ -79,14 +75,7 @@ public class SimpleTextLiveDocsFormat extends LiveDocsFormat {
 
       SimpleTextUtil.checkFooter(in);
 
-      success = true;
       return new SimpleTextBits(bits, size);
-    } finally {
-      if (success) {
-        IOUtils.close(in);
-      } else {
-        IOUtils.closeWhileHandlingException(in);
-      }
     }
   }
 
@@ -105,10 +94,8 @@ public class SimpleTextLiveDocsFormat extends LiveDocsFormat {
     String fileName =
         IndexFileNames.fileNameFromGeneration(
             info.info.name, LIVEDOCS_EXTENSION, info.getNextDelGen());
-    IndexOutput out = null;
-    boolean success = false;
-    try {
-      out = dir.createOutput(fileName, context);
+
+    try (IndexOutput out = dir.createOutput(fileName, context)) {
       SimpleTextUtil.write(out, SIZE);
       SimpleTextUtil.write(out, Integer.toString(size), scratch);
       SimpleTextUtil.writeNewline(out);
@@ -124,13 +111,6 @@ public class SimpleTextLiveDocsFormat extends LiveDocsFormat {
       SimpleTextUtil.write(out, END);
       SimpleTextUtil.writeNewline(out);
       SimpleTextUtil.writeChecksum(out, scratch);
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(out);
-      } else {
-        IOUtils.closeWhileHandlingException(out);
-      }
     }
   }
 

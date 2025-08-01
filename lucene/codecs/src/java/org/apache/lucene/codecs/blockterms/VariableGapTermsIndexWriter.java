@@ -187,7 +187,6 @@ public class VariableGapTermsIndexWriter extends TermsIndexWriterBase {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, TERMS_INDEX_EXTENSION);
 
-    boolean success = false;
     try {
       metaOut = state.directory.createOutput(metaFileName, state.context);
       out = state.directory.createOutput(indexFileName, state.context);
@@ -199,11 +198,9 @@ public class VariableGapTermsIndexWriter extends TermsIndexWriterBase {
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           out, CODEC_NAME, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
