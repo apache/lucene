@@ -76,6 +76,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   private final FlatVectorsWriter flatVectorWriter;
   private final int numMergeWorkers;
   private final TaskExecutor mergeExec;
+  private final int version;
 
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
@@ -88,11 +89,24 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       int numMergeWorkers,
       TaskExecutor mergeExec)
       throws IOException {
+    this(state, M, beamWidth, flatVectorWriter, numMergeWorkers, mergeExec, 1);
+  }
+
+  Lucene99HnswVectorsWriter(
+      SegmentWriteState state,
+      int M,
+      int beamWidth,
+      FlatVectorsWriter flatVectorWriter,
+      int numMergeWorkers,
+      TaskExecutor mergeExec,
+      int version)
+      throws IOException {
     this.M = M;
     this.flatVectorWriter = flatVectorWriter;
     this.beamWidth = beamWidth;
     this.numMergeWorkers = numMergeWorkers;
     this.mergeExec = mergeExec;
+    this.version = version;
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -111,13 +125,13 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       CodecUtil.writeIndexHeader(
           meta,
           Lucene99HnswVectorsFormat.META_CODEC_NAME,
-          Lucene99HnswVectorsFormat.VERSION_CURRENT,
+          version,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorIndex,
           Lucene99HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
-          Lucene99HnswVectorsFormat.VERSION_CURRENT,
+          version,
           state.segmentInfo.getId(),
           state.segmentSuffix);
     } catch (Throwable t) {
@@ -342,7 +356,13 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     }
     // Write the size after duplicates are removed
     vectorIndex.writeVInt(actualSize);
-    vectorIndex.writeGroupVInts(scratch, actualSize);
+    if (version == 1) {
+      vectorIndex.writeGroupVInts(scratch, actualSize);
+    } else {
+      for (int i = 0; i < actualSize; i++) {
+        vectorIndex.writeVInt(scratch[i]);
+      }
+    }
   }
 
   @Override
@@ -442,7 +462,13 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         }
         // Write the size after duplicates are removed
         vectorIndex.writeVInt(actualSize);
-        vectorIndex.writeGroupVInts(scratch, actualSize);
+        if (version == 1) {
+          vectorIndex.writeGroupVInts(scratch, actualSize);
+        } else {
+          for (int i = 0; i < actualSize; i++) {
+            vectorIndex.writeVInt(scratch[i]);
+          }
+        }
 
         offsets[level][nodeOffsetId++] =
             Math.toIntExact(vectorIndex.getFilePointer() - offsetStart);

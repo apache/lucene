@@ -81,7 +81,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   private final FieldInfos fieldInfos;
   private final IntObjectHashMap<FieldEntry> fields;
   private final IndexInput vectorIndex;
-  private final Populator dataReader;
+  private final int version;
 
   public Lucene99HnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
       throws IOException {
@@ -109,6 +109,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       } finally {
         CodecUtil.checkFooter(meta, priorE);
       }
+      this.version = versionMeta;
       this.vectorIndex =
           openDataInput(
               state,
@@ -126,13 +127,6 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;
     }
-    if (versionMeta == VERSION_GROUPVARINT) {
-      dataReader = new GVIPopulator();
-    } else if (versionMeta == VERSION_START) {
-      dataReader = new VIPopulator();
-    } else {
-      throw new AssertionError("We should never reach this error");
-    }
   }
 
   private Lucene99HnswVectorsReader(
@@ -141,7 +135,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     this.fieldInfos = reader.fieldInfos;
     this.fields = reader.fields;
     this.vectorIndex = reader.vectorIndex;
-    this.dataReader = reader.dataReader;
+    this.version = reader.version;
   }
 
   @Override
@@ -564,7 +558,17 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       arcCount = dataIn.readVInt();
       assert arcCount <= currentNeighborsBuffer.length : "too many neighbors: " + arcCount;
       if (arcCount > 0) {
-        dataReader.populate(dataIn, currentNeighborsBuffer, arcCount);
+        if (version >= VERSION_GROUPVARINT) {
+          GroupVIntUtil.readGroupVInts(dataIn, currentNeighborsBuffer, arcCount);
+          for (int i = 1; i < arcCount; i++) {
+            currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + currentNeighborsBuffer[i];
+          }
+        } else {
+          currentNeighborsBuffer[0] = dataIn.readVInt();
+          for (int i = 1; i < arcCount; i++) {
+            currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + dataIn.readVInt();
+          }
+        }
       }
       arc = -1;
       arcUpTo = 0;
@@ -611,32 +615,6 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         return new ArrayNodesIterator(size());
       } else {
         return new ArrayNodesIterator(nodesByLevel[level], nodesByLevel[level].length);
-      }
-    }
-  }
-
-  interface Populator {
-    void populate(DataInput dataIn, int[] arr, int arcCount) throws IOException;
-  }
-
-  final class GVIPopulator implements Populator {
-
-    @Override
-    public void populate(DataInput dataIn, int[] arr, int arcCount) throws IOException {
-      GroupVIntUtil.readGroupVInts(dataIn, arr, arcCount);
-      for (int i = 1; i < arcCount; i++) {
-        arr[i] = arr[i - 1] + arr[i];
-      }
-    }
-  }
-
-  final class VIPopulator implements Populator {
-
-    @Override
-    public void populate(DataInput dataIn, int[] arr, int arcCount) throws IOException {
-      arr[0] = dataIn.readVInt();
-      for (int i = 1; i < arcCount; i++) {
-        arr[i] = arr[i - 1] + dataIn.readVInt();
       }
     }
   }

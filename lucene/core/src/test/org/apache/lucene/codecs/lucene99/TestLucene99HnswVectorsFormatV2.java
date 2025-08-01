@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.backward_codecs.lucene99;
+package org.apache.lucene.codecs.lucene99;
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
@@ -25,6 +25,6 @@ public class TestLucene99HnswVectorsFormatV2 extends BaseKnnVectorsFormatTestCas
 
   @Override
   protected Codec getCodec() {
-    return TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormatV0());
+    return TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(0));
   }
 }
