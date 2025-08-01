@@ -97,8 +97,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       throws IOException {
     int filteredDocCount = 0;
     if (acceptOrds instanceof BitSet bitSet) {
-      // Use approximate cardinality as this is good enough, but ensure we don't
-      // exceed the graph
+      // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
       // size as that is illogical
       filteredDocCount = Math.min(bitSet.approximateCardinality(), graph.size());
     }
@@ -234,8 +233,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
       foundBetter = true;
       visited.set(currentEp);
-      // Keep searching the given level until we stop finding a better candidate entry
-      // point
+      // Keep searching the given level until we stop finding a better candidate entry point
       while (foundBetter) {
         foundBetter = false;
         graphSeek(graph, level, currentEp);
