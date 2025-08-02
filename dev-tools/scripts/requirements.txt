@@ -9,7 +9,7 @@ ics==0.7.2
 # terminal processing in releaseWizard
 console-menu==0.8.0
 # pull request processing in githubPRs
-PyGithub==2.6.1
+PyGithub==2.7.0
 # JIRA processing in githubPRs
 jira==3.8.0
 # type-checking in "make lint"
