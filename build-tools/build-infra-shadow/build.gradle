@@ -44,6 +44,9 @@ dependencies {
   implementation localGroovy()
   implementation deps.commons.codec
   implementation deps.randomizedtesting.runner
+  implementation deps.rat
+  implementation deps.zstd
+
   implementation deps.gjf
   implementation deps.jgit
   implementation deps.ecj
@@ -51,6 +54,7 @@ dependencies {
   implementation plugin(deps.plugins.carrotsearch.buildopts)
   implementation plugin(deps.plugins.carrotsearch.dependencychecks)
   implementation plugin(deps.plugins.forbiddenapis)
+  implementation plugin(deps.plugins.spotless)
   implementation plugin(deps.plugins.undercouch.download)
 }
 
