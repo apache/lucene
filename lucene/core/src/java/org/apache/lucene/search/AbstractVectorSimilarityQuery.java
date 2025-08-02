@@ -73,7 +73,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
 
   protected abstract TopDocs approximateSearch(
       LeafReaderContext context,
-      Bits acceptDocs,
+      AcceptDocs acceptDocs,
       int visitLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException;
@@ -128,7 +128,10 @@ abstract class AbstractVectorSimilarityQuery extends Query {
           // Return exhaustive results
           TopDocs results =
               approximateSearch(
-                  context, liveDocs, Integer.MAX_VALUE, timeLimitingKnnCollectorManager);
+                  context,
+                  AcceptDocs.fromBits(liveDocs),
+                  Integer.MAX_VALUE,
+                  timeLimitingKnnCollectorManager);
           return VectorSimilarityScorerSupplier.fromScoreDocs(boost, results.scoreDocs);
         } else {
           Scorer scorer = filterWeight.scorer(context);
@@ -174,7 +177,11 @@ abstract class AbstractVectorSimilarityQuery extends Query {
 
           // Perform an approximate search
           TopDocs results =
-              approximateSearch(context, acceptDocs, cardinality, timeLimitingKnnCollectorManager);
+              approximateSearch(
+                  context,
+                  AcceptDocs.fromBits(acceptDocs),
+                  cardinality,
+                  timeLimitingKnnCollectorManager);
 
           if (results.totalHits.relation() == TotalHits.Relation.EQUAL_TO
               // Return partial results only when timeout is met

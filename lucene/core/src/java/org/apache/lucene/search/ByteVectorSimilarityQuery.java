@@ -24,7 +24,6 @@ import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.knn.KnnCollectorManager;
-import org.apache.lucene.util.Bits;
 
 /**
  * Search for all (approximate) byte vectors above a similarity threshold.
@@ -109,7 +108,7 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
   @SuppressWarnings("resource")
   protected TopDocs approximateSearch(
       LeafReaderContext context,
-      Bits acceptDocs,
+      AcceptDocs acceptDocs,
       int visitLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
