@@ -57,7 +57,8 @@ public class TestBlockJoinSelector extends LuceneTestCase {
     childDocsWithValue.set(8);
     childDocsWithValue.set(16);
 
-    final Bits docsWithValue = BlockJoinSelector.wrap(childDocsWithValue, parents, children);
+    final Bits docsWithValue =
+        BlockJoinSelector.wrap(childDocsWithValue.asReadOnlyBits(), parents, children);
     assertFalse(docsWithValue.get(0));
     assertTrue(docsWithValue.get(5));
     assertFalse(docsWithValue.get(6));
@@ -259,7 +260,7 @@ public class TestBlockJoinSelector extends LuceneTestCase {
 
     final NumericDocValues mins =
         BlockJoinSelector.wrap(
-            DocValues.singleton(new CannedNumericDocValues(longs, docsWithValue)),
+            DocValues.singleton(new CannedNumericDocValues(longs, docsWithValue.asReadOnlyBits())),
             BlockJoinSelector.Type.MIN,
             parents,
             toIter(children));
@@ -271,7 +272,7 @@ public class TestBlockJoinSelector extends LuceneTestCase {
 
     final NumericDocValues maxs =
         BlockJoinSelector.wrap(
-            DocValues.singleton(new CannedNumericDocValues(longs, docsWithValue)),
+            DocValues.singleton(new CannedNumericDocValues(longs, docsWithValue.asReadOnlyBits())),
             BlockJoinSelector.Type.MAX,
             parents,
             toIter(children));

@@ -518,7 +518,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
             buildScorer(vectors, getTargetVector()),
             numAccepted,
             hnsw,
-            acceptOrds,
+            acceptOrds.asReadOnlyBits(),
             Integer.MAX_VALUE);
     TopDocs nodes = nn.topDocs();
     assertEquals(numAccepted, nodes.scoreDocs.length);
@@ -773,7 +773,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
           }
         };
     HnswGraphSearcher.search(
-        buildScorer(vectorValues, target), collector, hnsw, new BitSet.MatchAllBits(numVectors));
+        buildScorer(vectorValues, target), collector, hnsw, new Bits.MatchAllBits(numVectors));
     assertEquals(numVectors, collector.numCollected());
   }
 
@@ -1320,7 +1320,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         bits.set(i);
       }
     }
-    return bits;
+    return bits.asReadOnlyBits();
   }
 
   static float[] randomVector(Random random, int dim) {

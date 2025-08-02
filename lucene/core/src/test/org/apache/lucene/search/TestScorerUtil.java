@@ -44,7 +44,7 @@ public class TestScorerUtil extends LuceneTestCase {
   public void testLikelyFixedBits() throws IOException {
     assertNull(ScorerUtil.likelyLiveDocs(null));
 
-    Bits bits1 = new SparseFixedBitSet(10);
+    Bits bits1 = new SparseFixedBitSet(10).asReadOnlyBits();
     assertNotSame(bits1, ScorerUtil.likelyLiveDocs(bits1));
     Bits bits2 = new Bits.MatchAllBits(10);
     assertNotSame(bits2, ScorerUtil.likelyLiveDocs(bits2));

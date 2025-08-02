@@ -161,7 +161,7 @@ public class PKIndexSplitter {
         }
       }
 
-      this.liveDocs = bits;
+      this.liveDocs = bits.asReadOnlyBits();
       this.numDocs = bits.cardinality();
     }
 

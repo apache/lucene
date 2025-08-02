@@ -458,7 +458,9 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
         flushState.softDelCountOnFlush = 0;
       } else {
         flushState.softDelCountOnFlush =
-            PendingSoftDeletes.countSoftDeletes(softDeletedDocs, flushState.liveDocs);
+            PendingSoftDeletes.countSoftDeletes(
+                softDeletedDocs,
+                flushState.liveDocs == null ? null : flushState.liveDocs.asReadOnlyBits());
         assert flushState.segmentInfo.maxDoc()
             >= flushState.softDelCountOnFlush + flushState.delCountOnFlush;
       }
@@ -654,9 +656,11 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
         if (sortMap == null) {
           bits = flushedSegment.liveDocs;
         } else {
-          bits = sortLiveDocs(flushedSegment.liveDocs, sortMap);
+          bits = sortLiveDocs(flushedSegment.liveDocs.asReadOnlyBits(), sortMap);
         }
-        codec.liveDocsFormat().writeLiveDocs(bits, directory, info, delCount, context);
+        codec
+            .liveDocsFormat()
+            .writeLiveDocs(bits.asReadOnlyBits(), directory, info, delCount, context);
         newSegment.setDelCount(delCount);
         newSegment.advanceDelGen();
       }

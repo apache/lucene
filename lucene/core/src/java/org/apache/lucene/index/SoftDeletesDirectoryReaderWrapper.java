@@ -133,17 +133,18 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
       return reader;
     }
     Bits liveDocs = reader.getLiveDocs();
-    final FixedBitSet bits;
+    final FixedBitSet bitSet;
     if (liveDocs != null) {
-      bits = FixedBitSet.copyOf(liveDocs);
+      bitSet = FixedBitSet.copyOf(liveDocs);
     } else {
-      bits = new FixedBitSet(reader.maxDoc());
-      bits.set(0, reader.maxDoc());
+      bitSet = new FixedBitSet(reader.maxDoc());
+      bitSet.set(0, reader.maxDoc());
     }
-    int numSoftDeletes = PendingSoftDeletes.applySoftDeletes(iterator, bits);
+    int numSoftDeletes = PendingSoftDeletes.applySoftDeletes(iterator, bitSet);
     if (numSoftDeletes == 0) {
       return reader;
     }
+    Bits bits = bitSet.asReadOnlyBits();
     int numDeletes = reader.numDeletedDocs() + numSoftDeletes;
     int numDocs = reader.maxDoc() - numDeletes;
     assert assertDocCounts(numDocs, numSoftDeletes, reader);
@@ -188,11 +189,11 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
 
   static final class SoftDeletesFilterLeafReader extends FilterLeafReader {
     private final LeafReader reader;
-    private final FixedBitSet bits;
+    private final Bits bits;
     private final int numDocs;
     private final CacheHelper readerCacheHelper;
 
-    private SoftDeletesFilterLeafReader(LeafReader reader, FixedBitSet bits, int numDocs) {
+    private SoftDeletesFilterLeafReader(LeafReader reader, Bits bits, int numDocs) {
       super(reader);
       this.reader = reader;
       this.bits = bits;
@@ -226,11 +227,11 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
 
   static final class SoftDeletesFilterCodecReader extends FilterCodecReader {
     private final LeafReader reader;
-    private final FixedBitSet bits;
+    private final Bits bits;
     private final int numDocs;
     private final CacheHelper readerCacheHelper;
 
-    private SoftDeletesFilterCodecReader(CodecReader reader, FixedBitSet bits, int numDocs) {
+    private SoftDeletesFilterCodecReader(CodecReader reader, Bits bits, int numDocs) {
       super(reader);
       this.reader = reader;
       this.bits = bits;
