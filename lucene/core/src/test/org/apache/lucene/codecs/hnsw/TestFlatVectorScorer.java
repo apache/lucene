@@ -242,11 +242,13 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
             : flatVectorsScorer.getRandomVectorScorer(sim, values, randomFloatVector(dims));
     int[] indices = randomIndices(size);
     float[] expectedScores = new float[size];
+    float expectedMaxScore = Float.NEGATIVE_INFINITY;
     for (int i = 0; i < size; i++) {
       expectedScores[i] = scorer.score(indices[i]);
+      expectedMaxScore = Math.max(expectedMaxScore, expectedScores[i]);
     }
     float[] bulkScores = new float[size];
-    scorer.bulkScore(indices, bulkScores, size);
+    assertEquals(expectedMaxScore, scorer.bulkScore(indices, bulkScores, size), 0.001);
     assertArrayEquals(expectedScores, bulkScores, delta);
     assertNoScoreBeyondNumNodes(scorer, size);
   }
@@ -262,11 +264,14 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
     updatableScorer.setScoringOrdinal(targetNode);
     int[] indices = randomIndices(size);
     float[] expectedScores = new float[size];
+    float expectedMaxScore = Float.NEGATIVE_INFINITY;
     for (int i = 0; i < size; i++) {
       expectedScores[i] = updatableScorer.score(indices[i]);
+      expectedMaxScore = Math.max(expectedMaxScore, expectedScores[i]);
     }
     float[] bulkScores = new float[size];
     updatableScorer.bulkScore(indices, bulkScores, size);
+    assertEquals(expectedMaxScore, updatableScorer.bulkScore(indices, bulkScores, size), 0.001);
     assertArrayEquals(expectedScores, bulkScores, delta);
     assertNoScoreBeyondNumNodes(updatableScorer, size);
   }
