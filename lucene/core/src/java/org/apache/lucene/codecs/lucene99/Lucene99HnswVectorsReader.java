@@ -552,9 +552,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       arcCount = dataIn.readVInt();
       assert arcCount <= currentNeighborsBuffer.length : "too many neighbors: " + arcCount;
       if (arcCount > 0) {
-        currentNeighborsBuffer[0] = dataIn.readVInt();
-        for (int i = 1; i < arcCount; i++) {
-          currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + dataIn.readVInt();
+        // Faster prefix sum computation (see #14979)
+        int sum = 0;
+        for (int i = 0; i < arcCount; i++) {
+          sum += dataIn.readVInt();
+          currentNeighborsBuffer[i] = sum;
         }
       }
       arc = -1;
