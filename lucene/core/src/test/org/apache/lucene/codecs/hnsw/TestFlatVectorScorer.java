@@ -204,11 +204,13 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
           var values = byteVectorValues(dims, size, in, sim);
           assertBulkEqualsNonBulk(values, sim);
           assertBulkEqualsNonBulkSupplier(values, sim);
+          assertScoresAgainstDefaultFlatScorer(values, sim);
         }
       }
     }
   }
 
+  // @com.carrotsearch.randomizedtesting.annotations.Repeat(iterations = 10)
   public void testBulkScorerFloats() throws IOException {
     int dims = random().nextInt(1, 1024);
     int size = random().nextInt(2, 255);
@@ -226,6 +228,7 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
           var values = floatVectorValues(dims, size, in, sim);
           assertBulkEqualsNonBulk(values, sim);
           assertBulkEqualsNonBulkSupplier(values, sim);
+          assertScoresAgainstDefaultFlatScorer(values, sim);
         }
       }
     }
@@ -269,6 +272,29 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
     updatableScorer.bulkScore(indices, bulkScores, size);
     assertArrayEquals(expectedScores, bulkScores, delta);
     assertNoScoreBeyondNumNodes(updatableScorer, size);
+  }
+
+  // asserts scores against the default scorer.
+  void assertScoresAgainstDefaultFlatScorer(KnnVectorValues values, VectorSimilarityFunction sim)
+      throws IOException {
+    final int size = values.size();
+    final float delta = 1e-3f * size;
+    var targetNode = random().nextInt(size);
+    int[] indices = randomIndices(size);
+    var defaultScorer =
+        DefaultFlatVectorScorer.INSTANCE.getRandomVectorScorerSupplier(sim, values).scorer();
+    defaultScorer.setScoringOrdinal(targetNode);
+    float[] expectedScores = new float[size];
+    for (int i = 0; i < size; i++) {
+      expectedScores[i] = defaultScorer.score(indices[i]);
+    }
+
+    var ss = flatVectorsScorer.getRandomVectorScorerSupplier(sim, values);
+    var updatableScorer = ss.scorer();
+    updatableScorer.setScoringOrdinal(targetNode);
+    float[] bulkScores = new float[size];
+    updatableScorer.bulkScore(indices, bulkScores, size);
+    assertArrayEquals(expectedScores, bulkScores, delta);
   }
 
   void assertNoScoreBeyondNumNodes(RandomVectorScorer scorer, int maxSize) throws IOException {

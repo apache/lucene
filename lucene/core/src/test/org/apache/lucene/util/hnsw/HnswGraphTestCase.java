@@ -91,7 +91,7 @@ import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   VectorSimilarityFunction similarityFunction;
-  DefaultFlatVectorScorer flatVectorScorer = new DefaultFlatVectorScorer();
+  DefaultFlatVectorScorer flatVectorScorer = DefaultFlatVectorScorer.INSTANCE;
 
   abstract VectorEncoding getVectorEncoding();
 
