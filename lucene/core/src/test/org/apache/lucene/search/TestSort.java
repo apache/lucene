@@ -170,6 +170,12 @@ public class TestSort extends LuceneTestCase {
     assertEquals("bar", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
     assertEquals("foo", searcher.storedFields().document(td.scoreDocs[1].doc).get("value"));
 
+    td = searcher.search(new MatchAllDocsQuery(), 10, sort.inverse());
+    assertEquals(2, td.totalHits.value());
+    // inverse of normal order is reverse
+    assertEquals("foo", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
+    assertEquals("bar", searcher.storedFields().document(td.scoreDocs[1].doc).get("value"));
+
     ir.close();
     dir.close();
   }
@@ -197,6 +203,12 @@ public class TestSort extends LuceneTestCase {
     // 'foo' comes after 'bar' in reverse order
     assertEquals("foo", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
     assertEquals("bar", searcher.storedFields().document(td.scoreDocs[1].doc).get("value"));
+
+    td = searcher.search(new MatchAllDocsQuery(), 10, sort.inverse());
+    assertEquals(2, td.totalHits.value());
+    // inverse of reverse order is normal ordering
+    assertEquals("bar", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
+    assertEquals("foo", searcher.storedFields().document(td.scoreDocs[1].doc).get("value"));
 
     ir.close();
     dir.close();
@@ -231,6 +243,13 @@ public class TestSort extends LuceneTestCase {
     assertEquals("4", searcher.storedFields().document(td.scoreDocs[1].doc).get("value"));
     assertEquals("300000", searcher.storedFields().document(td.scoreDocs[2].doc).get("value"));
 
+    td = searcher.search(new MatchAllDocsQuery(), 10, sort.inverse());
+    assertEquals(3, td.totalHits.value());
+    // inverse of normal numeric order is reverse
+    assertEquals("300000", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
+    assertEquals("4", searcher.storedFields().document(td.scoreDocs[1].doc).get("value"));
+    assertEquals("-1", searcher.storedFields().document(td.scoreDocs[2].doc).get("value"));
+
     ir.close();
     dir.close();
   }
@@ -264,6 +283,13 @@ public class TestSort extends LuceneTestCase {
     assertEquals("4", searcher.storedFields().document(td.scoreDocs[1].doc).get("value"));
     assertEquals("-1", searcher.storedFields().document(td.scoreDocs[2].doc).get("value"));
 
+    td = searcher.search(new MatchAllDocsQuery(), 10, sort.inverse());
+    assertEquals(3, td.totalHits.value());
+    // inverse of reverse is normal numeric order
+    assertEquals("-1", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
+    assertEquals("4", searcher.storedFields().document(td.scoreDocs[1].doc).get("value"));
+    assertEquals("300000", searcher.storedFields().document(td.scoreDocs[2].doc).get("value"));
+
     ir.close();
     dir.close();
   }
@@ -294,6 +320,13 @@ public class TestSort extends LuceneTestCase {
     assertEquals("-1", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
     assertNull(searcher.storedFields().document(td.scoreDocs[1].doc).get("value"));
     assertEquals("4", searcher.storedFields().document(td.scoreDocs[2].doc).get("value"));
+
+    td = searcher.search(new MatchAllDocsQuery(), 10, sort.inverse());
+    assertEquals(3, td.totalHits.value());
+    // make sure the missing value is kept during the inverse generation
+    assertEquals("4", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
+    assertNull(searcher.storedFields().document(td.scoreDocs[1].doc).get("value"));
+    assertEquals("-1", searcher.storedFields().document(td.scoreDocs[2].doc).get("value"));
 
     ir.close();
     dir.close();
@@ -329,6 +362,13 @@ public class TestSort extends LuceneTestCase {
     assertEquals("-1", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
     assertEquals("4", searcher.storedFields().document(td.scoreDocs[1].doc).get("value"));
     assertNull(searcher.storedFields().document(td.scoreDocs[2].doc).get("value"));
+
+    td = searcher.search(new MatchAllDocsQuery(), 10, sort.inverse());
+    assertEquals(3, td.totalHits.value());
+    // make sure the missing last is reversed during the inverse generation
+    assertNull(searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
+    assertEquals("4", searcher.storedFields().document(td.scoreDocs[1].doc).get("value"));
+    assertEquals("-1", searcher.storedFields().document(td.scoreDocs[2].doc).get("value"));
 
     ir.close();
     dir.close();
@@ -843,6 +883,26 @@ public class TestSort extends LuceneTestCase {
     assertEquals(4, td.totalHits.value());
     assertEquals("bar", searcher.storedFields().document(td.scoreDocs[0].doc).get("value1"));
     assertEquals("0", searcher.storedFields().document(td.scoreDocs[0].doc).get("value2"));
+
+    // Inverse the sort and make sure that each sortField is inversed
+    td = searcher.search(new MatchAllDocsQuery(), 10, sort.inverse());
+    assertEquals(4, td.totalHits.value());
+    // 'foo' comes before 'bar'
+    assertEquals("foo", searcher.storedFields().document(td.scoreDocs[0].doc).get("value1"));
+    assertEquals("foo", searcher.storedFields().document(td.scoreDocs[1].doc).get("value1"));
+    assertEquals("bar", searcher.storedFields().document(td.scoreDocs[2].doc).get("value1"));
+    assertEquals("bar", searcher.storedFields().document(td.scoreDocs[3].doc).get("value1"));
+    // 1 comes before 0
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("value2"));
+    assertEquals("0", searcher.storedFields().document(td.scoreDocs[1].doc).get("value2"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[2].doc).get("value2"));
+    assertEquals("0", searcher.storedFields().document(td.scoreDocs[3].doc).get("value2"));
+
+    // Now with overflow
+    td = searcher.search(new MatchAllDocsQuery(), 1, sort.inverse());
+    assertEquals(4, td.totalHits.value());
+    assertEquals("foo", searcher.storedFields().document(td.scoreDocs[0].doc).get("value1"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("value2"));
 
     ir.close();
     dir.close();
