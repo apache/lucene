@@ -141,8 +141,17 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
             scores[i + 2] = normalizeDotProduct(scratchScores[2]);
             scores[i + 3] = normalizeDotProduct(scratchScores[3]);
           }
-          for (; i < numNodes; i++) {
-            scores[i] = score(nodes[i]);
+          // Handle remaining 1–3 nodes in bulk (if any)
+          int remaining = numNodes - i;
+          if (remaining > 0) {
+            MemorySegment ms1 = getSegment(nodes[i], scratch1);
+            MemorySegment ms2 = (remaining > 1) ? getSegment(nodes[i + 1], scratch2) : ms1;
+            MemorySegment ms3 = (remaining > 2) ? getSegment(nodes[i + 2], scratch3) : ms1;
+            PanamaVectorUtilSupport.dotProductBulkFromSegments(
+                scratchScores, query, ms1, ms2, ms3, ms1, dims);
+            scores[i] = normalizeDotProduct(scratchScores[0]);
+            if (remaining > 1) scores[i + 1] = normalizeDotProduct(scratchScores[1]);
+            if (remaining > 2) scores[i + 2] = normalizeDotProduct(scratchScores[2]);
           }
         }
 
