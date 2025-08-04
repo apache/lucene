@@ -104,6 +104,10 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
   }
 
   static final class DotProductScorer extends Lucene99MemorySegmentFloatVectorScorer {
+
+    static final MemorySegmentBulkVectorOps.DotProductArrays DOT_OPS =
+        new MemorySegmentBulkVectorOps.DotProductArrays();
+
     DotProductScorer(MemorySegmentAccessInput input, FloatVectorValues values, float[] query) {
       super(input, values, query);
     }
@@ -125,8 +129,7 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
         MemorySegment ms2 = getSegment(nodes[i + 1]);
         MemorySegment ms3 = getSegment(nodes[i + 2]);
         MemorySegment ms4 = getSegment(nodes[i + 3]);
-        PanamaVectorUtilSupport.dotProductBulkFromArray(
-            scratchScores, query, ms1, ms2, ms3, ms4, query.length);
+        DOT_OPS.dotProductBulk(scratchScores, query, ms1, ms2, ms3, ms4, query.length);
         scores[i + 0] = normalizeDotProduct(scratchScores[0]);
         scores[i + 1] = normalizeDotProduct(scratchScores[1]);
         scores[i + 2] = normalizeDotProduct(scratchScores[2]);
@@ -138,8 +141,7 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
         MemorySegment ms1 = getSegment(nodes[i]);
         MemorySegment ms2 = (remaining > 1) ? getSegment(nodes[i + 1]) : ms1;
         MemorySegment ms3 = (remaining > 2) ? getSegment(nodes[i + 2]) : ms1;
-        PanamaVectorUtilSupport.dotProductBulkFromArray(
-            scratchScores, query, ms1, ms2, ms3, ms1, query.length);
+        DOT_OPS.dotProductBulk(scratchScores, query, ms1, ms2, ms3, ms1, query.length);
         scores[i] = normalizeDotProduct(scratchScores[0]);
         if (remaining > 1) scores[i + 1] = normalizeDotProduct(scratchScores[1]);
         if (remaining > 2) scores[i + 2] = normalizeDotProduct(scratchScores[2]);

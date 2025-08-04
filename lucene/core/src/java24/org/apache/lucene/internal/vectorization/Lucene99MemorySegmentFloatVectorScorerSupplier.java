@@ -101,6 +101,9 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
 
   static final class DotProductSupplier extends Lucene99MemorySegmentFloatVectorScorerSupplier {
 
+    static final MemorySegmentBulkVectorOps.DotProductSegments DOT_OPS =
+        new MemorySegmentBulkVectorOps.DotProductSegments();
+
     DotProductSupplier(MemorySegmentAccessInput input, FloatVectorValues values) {
       super(input, values);
     }
@@ -117,8 +120,7 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
           MemorySegment query = getSegment(queryOrd, queryScratch);
           MemorySegment ms = getSegment(node, scratch1);
           // TODO: this could be improved
-          PanamaVectorUtilSupport.dotProductBulkFromSegments(
-              scratchScores, query, ms, ms, ms, ms, dims);
+          DOT_OPS.dotProductBulk(scratchScores, query, ms, ms, ms, ms, dims);
           return normalizeDotProduct(scratchScores[0]);
         }
 
@@ -134,8 +136,7 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
             MemorySegment ms2 = getSegment(nodes[i + 1], scratch2);
             MemorySegment ms3 = getSegment(nodes[i + 2], scratch3);
             MemorySegment ms4 = getSegment(nodes[i + 3], scratch4);
-            PanamaVectorUtilSupport.dotProductBulkFromSegments(
-                scratchScores, query, ms1, ms2, ms3, ms4, dims);
+            DOT_OPS.dotProductBulk(scratchScores, query, ms1, ms2, ms3, ms4, dims);
             scores[i + 0] = normalizeDotProduct(scratchScores[0]);
             scores[i + 1] = normalizeDotProduct(scratchScores[1]);
             scores[i + 2] = normalizeDotProduct(scratchScores[2]);
@@ -147,8 +148,7 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
             MemorySegment ms1 = getSegment(nodes[i], scratch1);
             MemorySegment ms2 = (remaining > 1) ? getSegment(nodes[i + 1], scratch2) : ms1;
             MemorySegment ms3 = (remaining > 2) ? getSegment(nodes[i + 2], scratch3) : ms1;
-            PanamaVectorUtilSupport.dotProductBulkFromSegments(
-                scratchScores, query, ms1, ms2, ms3, ms1, dims);
+            DOT_OPS.dotProductBulk(scratchScores, query, ms1, ms2, ms3, ms1, dims);
             scores[i] = normalizeDotProduct(scratchScores[0]);
             if (remaining > 1) scores[i + 1] = normalizeDotProduct(scratchScores[1]);
             if (remaining > 2) scores[i + 2] = normalizeDotProduct(scratchScores[2]);
