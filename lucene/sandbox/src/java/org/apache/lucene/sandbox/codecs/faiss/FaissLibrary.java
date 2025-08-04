@@ -17,9 +17,6 @@
 package org.apache.lucene.sandbox.codecs.faiss;
 
 import java.io.Closeable;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
@@ -34,37 +31,15 @@ import org.apache.lucene.util.hnsw.IntToIntFunction;
  * @lucene.experimental
  */
 interface FaissLibrary {
-  FaissLibrary INSTANCE = lookup();
+  FaissLibrary INSTANCE = new FaissLibraryNativeImpl();
 
-  // TODO: Use vectorized version where available
+  // TODO: Use SIMD version at runtime. The "faiss_c" library is linked to the main "faiss" library,
+  //  which does not use SIMD instructions. However, there are SIMD versions of "faiss" (like
+  //  "faiss_avx2", "faiss_avx512", "faiss_sve", etc.) available, which can be used by changing the
+  //  dependencies of "faiss_c" using the "patchelf" utility. Figure out how to do this dynamically,
+  //  or via modifications to upstream Faiss.
   String NAME = "faiss_c";
   String VERSION = "1.11.0";
-
-  private static FaissLibrary lookup() {
-    final MethodHandles.Lookup lookup = MethodHandles.lookup();
-
-    final Class<?> cls;
-    try {
-      cls = lookup.findClass("org.apache.lucene.sandbox.codecs.faiss.FaissLibraryNativeImpl");
-    } catch (ClassNotFoundException | IllegalAccessException e) {
-      throw new LinkageError("FaissLibraryNativeImpl class is missing or inaccessible", e);
-    }
-
-    final MethodHandle constr;
-    try {
-      constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
-    } catch (NoSuchMethodException | IllegalAccessException e) {
-      throw new LinkageError("FaissLibraryNativeImpl constructor is missing or inaccessible", e);
-    }
-
-    try {
-      return (FaissLibrary) constr.invoke();
-    } catch (RuntimeException | Error e) {
-      throw e;
-    } catch (Throwable t) {
-      throw new AssertionError("Should not throw checked exceptions", t);
-    }
-  }
 
   interface Index extends Closeable {
     void search(float[] query, KnnCollector knnCollector, Bits acceptDocs);
