@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexUpgrader;
@@ -131,7 +132,7 @@ public class TestIndexUpgradeBackwardsCompatibility extends BackwardsCompatibili
     // add dummy segments (which are all in current
     // version) to single segment index
     MergePolicy mp = random().nextBoolean() ? newLogMergePolicy() : newTieredMergePolicy();
-    IndexWriterConfig iwc = new IndexWriterConfig(null).setMergePolicy(mp);
+    IndexWriterConfig iwc = new IndexWriterConfig((Analyzer) null).setMergePolicy(mp);
     IndexWriter w = new IndexWriter(directory, iwc);
     w.addIndexes(ramDir);
     try (w) {
