@@ -101,8 +101,8 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
 
   static final class DotProductSupplier extends Lucene99MemorySegmentFloatVectorScorerSupplier {
 
-    static final MemorySegmentBulkVectorOps.DotProductSegments DOT_OPS =
-        new MemorySegmentBulkVectorOps.DotProductSegments();
+    static final MemorySegmentBulkVectorOps.DotFromQuerySegment DOT_OPS =
+        new MemorySegmentBulkVectorOps.DotFromQuerySegment();
 
     DotProductSupplier(MemorySegmentAccessInput input, FloatVectorValues values) {
       super(input, values);

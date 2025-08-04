@@ -28,6 +28,7 @@ import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
 
+/** Implementations of bulk vector comparison operations. Currently only supports float32. */
 public final class MemorySegmentBulkVectorOps {
 
   static final VectorSpecies<Float> FLOAT_SPECIES =
@@ -86,7 +87,7 @@ public final class MemorySegmentBulkVectorOps {
     }
   }
 
-  public static final class DotProductArrays extends AbstractDotProduct {
+  public static final class DotFromQueryArray extends AbstractDotProduct {
 
     public void dotProductBulk(
         float[] scores,
@@ -100,7 +101,7 @@ public final class MemorySegmentBulkVectorOps {
     }
   }
 
-  public static final class DotProductSegments extends AbstractDotProduct {
+  public static final class DotFromQuerySegment extends AbstractDotProduct {
 
     public void dotProductBulk(
         float[] scores,
