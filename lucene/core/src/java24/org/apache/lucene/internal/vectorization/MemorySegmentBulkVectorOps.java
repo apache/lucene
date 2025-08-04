@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.internal.vectorization;
 
-import static java.nio.ByteOrder.LITTLE_ENDIAN;
 import static org.apache.lucene.internal.vectorization.PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE;
 import static org.apache.lucene.internal.vectorization.PanamaVectorUtilSupport.fma;
 
@@ -33,9 +32,8 @@ public final class MemorySegmentBulkVectorOps {
 
   static final VectorSpecies<Float> FLOAT_SPECIES =
       VectorSpecies.of(float.class, VectorShape.forBitSize(PREFERRED_VECTOR_BITSIZE));
-
-  static final ValueLayout.OfFloat LAYOUT_LE_FLOAT =
-      ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
+  static final ByteOrder LE = ByteOrder.LITTLE_ENDIAN;
+  static final ValueLayout.OfFloat LAYOUT_LE_FLOAT = ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(LE);
 
   private MemorySegmentBulkVectorOps() {}
 
@@ -76,8 +74,7 @@ public final class MemorySegmentBulkVectorOps {
     @Override
     public FloatVector load(VectorSpecies<Float> species, int index) {
       // assert index + species.length() <= length();
-      return FloatVector.fromMemorySegment(
-          species, segment, (long) index * Float.BYTES, LITTLE_ENDIAN);
+      return FloatVector.fromMemorySegment(species, segment, (long) index * Float.BYTES, LE);
     }
 
     @Override
@@ -135,10 +132,10 @@ public final class MemorySegmentBulkVectorOps {
       final int limit = FLOAT_SPECIES.loopBound(elementCount);
       for (; i < limit; i += FLOAT_SPECIES.length()) {
         final int offset = i * Float.BYTES;
-        FloatVector dv1 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d1, offset, LITTLE_ENDIAN);
-        FloatVector dv2 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d2, offset, LITTLE_ENDIAN);
-        FloatVector dv3 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d3, offset, LITTLE_ENDIAN);
-        FloatVector dv4 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d4, offset, LITTLE_ENDIAN);
+        FloatVector dv1 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d1, offset, LE);
+        FloatVector dv2 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d2, offset, LE);
+        FloatVector dv3 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d3, offset, LE);
+        FloatVector dv4 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d4, offset, LE);
         FloatVector qv = q.load(FLOAT_SPECIES, i);
         sv1 = fma(qv, dv1, sv1);
         sv2 = fma(qv, dv2, sv2);
