@@ -130,6 +130,8 @@ Optimizations
 
 * GITHUB#15010: Improve off-heap KNN byte vector query performance in cases where indexing and search are performed by the same process. (Kaival Parikh)
 
+* GITHUB#15001: Remove full integrity check from SortingStoredFieldsConsumer (Martijn van Groningen)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
