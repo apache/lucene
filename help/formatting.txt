@@ -39,6 +39,9 @@ this build option to build-options.local.properties:
 
 lucene.tool.eclint=eclint
 
+A side effect of enabling eclint is that the 'tidy' task will also attempt
+to fix offendling eclint violations (if possible).
+
 
 Gradle scripts
 ==============

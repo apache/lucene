@@ -46,15 +46,12 @@ public class RefCount<T> {
   public final void decRef() throws IOException {
     final int rc = refCount.decrementAndGet();
     if (rc == 0) {
-      boolean success = false;
       try {
         release();
-        success = true;
-      } finally {
-        if (!success) {
-          // Put reference back on failure
-          refCount.incrementAndGet();
-        }
+      } catch (Throwable t) {
+        // Put reference back on failure
+        refCount.incrementAndGet();
+        throw t;
       }
     } else if (rc < 0) {
       throw new IllegalStateException(

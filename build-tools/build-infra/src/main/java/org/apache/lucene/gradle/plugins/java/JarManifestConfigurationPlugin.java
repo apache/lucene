@@ -26,7 +26,6 @@ import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.bundling.Jar;
-import org.jetbrains.annotations.NotNull;
 
 /** Sets up the Jar task in gradle: manifest attributes, extra META-INF files, etc. */
 public class JarManifestConfigurationPlugin extends LuceneGradlePlugin {
@@ -110,7 +109,7 @@ public class JarManifestConfigurationPlugin extends LuceneGradlePlugin {
             });
   }
 
-  private static @NotNull String getImplementationVersion(
+  private static String getImplementationVersion(
       Project project, String gitRev, LuceneBuildGlobalsExtension globals) {
     if (globals.snapshotBuild) {
       return project.getVersion() + " " + gitRev + " [snapshot build, details omitted]";

@@ -19,6 +19,7 @@ package org.apache.lucene.gradle.plugins.spotless;
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsExtension;
 import java.util.List;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
+import org.apache.lucene.gradle.plugins.misc.CheckEnvironmentPlugin;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileTree;
 import org.gradle.api.plugins.JavaPlugin;
@@ -66,14 +67,15 @@ public class GoogleJavaFormatPlugin extends LuceneGradlePlugin {
     tasks.named("tidy", tidy -> tidy.dependsOn(applyTask));
     tasks.named("check", check -> check.dependsOn(checkTask));
 
-    // Configure details depending on the project.
-
     for (var t : List.of(applyTask, checkTask)) {
       t.configure(
           task -> {
             task.getBatchSize().set(batchSizeOption);
+            task.dependsOn(":" + CheckEnvironmentPlugin.CHECK_JDK_INTERNALS_EXPOSED_TO_GRADLE_TASK);
           });
     }
+
+    // Configure details depending on the project.
 
     for (var t : List.of(applyTask, checkTask)) {
       t.configure(

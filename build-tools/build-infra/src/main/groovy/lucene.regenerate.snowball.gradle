@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import org.apache.lucene.gradle.plugins.misc.QuietExec
 import de.undercouch.gradle.tasks.download.Download
 import org.apache.tools.ant.taskdefs.condition.Os
 
@@ -71,7 +72,7 @@ configure(project(":lucene:analysis:common")) {
   }
 
   // runs shell script to regenerate stemmers, base stemming subclasses, test data, and stopwords.
-  task snowballInternal() {
+  def snowballInternal = tasks.register("generateSnowballInternal", QuietExec, {
     description = "Regenerate snowball stemmers."
     group = "generation"
 
@@ -97,22 +98,18 @@ configure(project(":lucene:analysis:common")) {
     } else {
       dependsOn downloadSnowballStemmers
       dependsOn downloadSnowballWebsite
-
-      doFirst {
-        project.quietExec {
-          executable "bash"
-          args = [
-            snowballScript,
-            snowballStemmerDir,
-            snowballWebsiteDir,
-            projectDir
-          ]
-        }
-      }
     }
-  }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(snowballInternal, [
+    executable "bash"
+    args = [
+      snowballScript,
+      snowballStemmerDir,
+      snowballWebsiteDir,
+      projectDir
+    ]
+  })
+
+  regenerate.dependsOn wrapWithPersistentChecksums2(snowballInternal, [
     andThenTasks: [
       "applyGoogleJavaFormat"
     ],

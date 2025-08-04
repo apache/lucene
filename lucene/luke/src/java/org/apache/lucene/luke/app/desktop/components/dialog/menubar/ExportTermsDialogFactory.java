@@ -75,9 +75,9 @@ public final class ExportTermsDialogFactory implements DialogOpener.DialogFactor
 
   private final IndexHandler indexHandler;
 
-  private final JComboBox<String> fieldCombo = new JComboBox<String>();
+  private final JComboBox<String> fieldCombo = new JComboBox<>();
 
-  private final JComboBox<String> delimiterCombo = new JComboBox<String>();
+  private final JComboBox<String> delimiterCombo = new JComboBox<>();
 
   private final JTextField destDir = new JTextField();
 
@@ -234,7 +234,7 @@ public final class ExportTermsDialogFactory implements DialogOpener.DialogFactor
           Executors.newSingleThreadExecutor(new NamedThreadFactory("export-terms-dialog"));
 
       SwingWorker<Void, Void> task =
-          new SwingWorker<Void, Void>() {
+          new SwingWorker<>() {
 
             String filename;
 

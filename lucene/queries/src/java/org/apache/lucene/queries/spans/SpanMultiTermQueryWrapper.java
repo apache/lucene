@@ -153,10 +153,10 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
   public static final SpanRewriteMethod SCORING_SPAN_QUERY_REWRITE =
       new SpanRewriteMethod() {
         private final ScoringRewrite<List<SpanQuery>> delegate =
-            new ScoringRewrite<List<SpanQuery>>() {
+            new ScoringRewrite<>() {
               @Override
               protected List<SpanQuery> getTopLevelBuilder() {
-                return new ArrayList<SpanQuery>();
+                return new ArrayList<>();
               }
 
               @Override
@@ -203,7 +203,7 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
     /** Create a TopTermsSpanBooleanQueryRewrite for at most <code>size</code> terms. */
     public TopTermsSpanBooleanQueryRewrite(int size) {
       delegate =
-          new TopTermsRewrite<List<SpanQuery>>(size) {
+          new TopTermsRewrite<>(size) {
             @Override
             protected int getMaxSize() {
               return Integer.MAX_VALUE;
@@ -211,7 +211,7 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
 
             @Override
             protected List<SpanQuery> getTopLevelBuilder() {
-              return new ArrayList<SpanQuery>();
+              return new ArrayList<>();
             }
 
             @Override

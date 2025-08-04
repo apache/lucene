@@ -27,6 +27,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.gradle.api.GradleException;
+import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.provider.Provider;
 
@@ -55,6 +56,13 @@ public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
         System.getenv().keySet().stream()
             .anyMatch(key -> key.matches("(?i)((JENKINS|HUDSON)(_\\w+)?|CI)"));
 
+    // Set up build options for external tools.
+    var buildOptions = getBuildOptions(project);
+    buildOptions.addOption(
+        "lucene.tool.python3", "External python3 executable (path or name)", "python3");
+    buildOptions.addOption("lucene.tool.perl", "External perl executable (path or name)", "perl");
+    buildOptions.addOption("lucene.tool.git", "External git executable (path or name)", "git");
+
     // Pick the "root" seed from which everything else that is randomized is derived.
     Provider<String> rootSeedOption =
         getBuildOptions(project)
@@ -67,6 +75,14 @@ public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
 
     // We take just the root seed, ignoring any chained sub-seeds.
     long rootSeedLong = SeedUtils.parseSeedChain(rootSeed)[0];
+
+    // Parse the minimum Java version required to run Lucene.
+    JavaVersion minJavaVersion =
+        JavaVersion.toVersion(getVersionCatalog(project).findVersion("minJava").get().toString());
+
+    boolean isIdea = Boolean.parseBoolean(System.getProperty("idea.active", "false"));
+    boolean isIdeaSync = Boolean.parseBoolean(System.getProperty("idea.sync.active", "false"));
+    boolean isIdeaBuild = (isIdea && !isIdeaSync);
 
     project.allprojects(
         p -> {
@@ -85,6 +101,11 @@ public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
           globals
               .getProjectSeedAsLong()
               .convention(rootSeedLong ^ p.getPath().hashCode())
+              .finalizeValue();
+          globals.getMinJavaVersion().convention(minJavaVersion).finalizeValue();
+          globals
+              .getIntellijIdea()
+              .convention(new IntellijIdea(isIdea, isIdeaSync, isIdeaBuild))
               .finalizeValue();
         });
   }

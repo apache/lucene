@@ -27,10 +27,10 @@ final class PanamaVectorConstants {
   static final int PREFERRED_VECTOR_BITSIZE;
 
   /** Whether integer vectors can be trusted to actually be fast. */
-  static final boolean HAS_FAST_INTEGER_VECTORS;
+  static final boolean ENABLE_INTEGER_VECTORS;
 
-  static final VectorSpecies<Long> PRERERRED_LONG_SPECIES;
   static final VectorSpecies<Integer> PRERERRED_INT_SPECIES;
+  static final VectorSpecies<Double> PREFERRED_DOUBLE_SPECIES;
 
   static {
     // default to platform supported bitsize
@@ -42,13 +42,13 @@ final class PanamaVectorConstants {
     // to be fair, they do document this thing only works well with AVX2/AVX3 and Neon
     boolean isAMD64withoutAVX2 =
         Constants.OS_ARCH.equals("amd64") && PREFERRED_VECTOR_BITSIZE < 256;
-    HAS_FAST_INTEGER_VECTORS =
-        VectorizationProvider.TESTS_FORCE_INTEGER_VECTORS || (isAMD64withoutAVX2 == false);
+    ENABLE_INTEGER_VECTORS =
+        (isAMD64withoutAVX2 == false) || VectorizationProvider.TESTS_VECTOR_SIZE.isPresent();
 
-    PRERERRED_LONG_SPECIES =
-        VectorSpecies.of(long.class, VectorShape.forBitSize(PREFERRED_VECTOR_BITSIZE));
     PRERERRED_INT_SPECIES =
         VectorSpecies.of(int.class, VectorShape.forBitSize(PREFERRED_VECTOR_BITSIZE));
+    PREFERRED_DOUBLE_SPECIES =
+        VectorSpecies.of(double.class, VectorShape.forBitSize(PREFERRED_VECTOR_BITSIZE));
   }
 
   private PanamaVectorConstants() {}

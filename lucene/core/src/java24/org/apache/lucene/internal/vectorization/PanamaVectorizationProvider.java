@@ -46,6 +46,11 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
           "Vector bit size is less than 128: " + PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE);
     }
 
+    if (PanamaVectorConstants.ENABLE_INTEGER_VECTORS == false) {
+      throw new UnsupportedOperationException(
+          "CPU type or flags do not guarantee support for fast integer vectorization");
+    }
+
     this.vectorUtilSupport = new PanamaVectorUtilSupport();
 
     logIncubatorSetup();
@@ -60,7 +65,7 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
             "Java vector incubator API enabled; uses preferredBitSize=%d%s%s",
             PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE,
             Constants.HAS_FAST_VECTOR_FMA ? "; FMA enabled" : "",
-            PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS ? "" : "; floating-point vectors only"));
+            VectorizationProvider.TESTS_VECTOR_SIZE.isPresent() ? "; testMode enabled" : ""));
   }
 
   @Override
@@ -75,8 +80,7 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
 
   @Override
   public PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException {
-    if (PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS
-        && input instanceof MemorySegmentAccessInput msai) {
+    if (input instanceof MemorySegmentAccessInput msai) {
       MemorySegment ms = msai.segmentSliceOrNull(0, input.length());
       if (ms != null) {
         return new MemorySegmentPostingDecodingUtil(input, ms);

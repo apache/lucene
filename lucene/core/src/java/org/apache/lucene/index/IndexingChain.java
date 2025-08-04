@@ -368,7 +368,6 @@ final class IndexingChain implements Accountable {
   /** Writes all buffered points. */
   private void writePoints(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
     PointsWriter pointsWriter = null;
-    boolean success = false;
     try {
       for (int i = 0; i < fieldHash.length; i++) {
         PerField perField = fieldHash[i];
@@ -396,21 +395,17 @@ final class IndexingChain implements Accountable {
       }
       if (pointsWriter != null) {
         pointsWriter.finish();
+        pointsWriter.close();
       }
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(pointsWriter);
-      } else {
-        IOUtils.closeWhileHandlingException(pointsWriter);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, pointsWriter);
+      throw t;
     }
   }
 
   /** Writes all buffered doc values (called from {@link #flush}). */
   private void writeDocValues(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
     DocValuesConsumer dvConsumer = null;
-    boolean success = false;
     try {
       for (int i = 0; i < fieldHash.length; i++) {
         PerField perField = fieldHash[i];
@@ -450,13 +445,12 @@ final class IndexingChain implements Accountable {
       // null/"" depending on how docs landed in segments?
       // but we can't detect all cases, and we should leave
       // this behavior undefined. dv is not "schemaless": it's column-stride.
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(dvConsumer);
-      } else {
-        IOUtils.closeWhileHandlingException(dvConsumer);
+      if (dvConsumer != null) {
+        dvConsumer.close();
       }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, dvConsumer);
+      throw t;
     }
 
     if (state.fieldInfos.hasDocValues() == false) {
@@ -473,7 +467,6 @@ final class IndexingChain implements Accountable {
   }
 
   private void writeNorms(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
-    boolean success = false;
     NormsConsumer normsConsumer = null;
     try {
       if (state.fieldInfos.hasNorms()) {
@@ -494,13 +487,12 @@ final class IndexingChain implements Accountable {
           }
         }
       }
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(normsConsumer);
-      } else {
-        IOUtils.closeWhileHandlingException(normsConsumer);
+      if (normsConsumer != null) {
+        normsConsumer.close();
       }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, normsConsumer);
+      throw t;
     }
   }
 
@@ -1582,7 +1574,7 @@ final class IndexingChain implements Accountable {
    */
   <T extends IndexableField> ReservedField<T> markAsReserved(T field) {
     getOrAddPerField(field.name(), true);
-    return new ReservedField<T>(field);
+    return new ReservedField<>(field);
   }
 
   static final class ReservedField<T extends IndexableField> implements IndexableField {
