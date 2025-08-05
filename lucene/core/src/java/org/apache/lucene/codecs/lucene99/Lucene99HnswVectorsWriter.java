@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.codecs.KnnVectorsWriter.MergedVectorValues.hasVectorValues;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.VERSION_CURRENT;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.VERSION_GROUPVARINT;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.SIMILARITY_FUNCTIONS;
 
@@ -90,9 +91,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       int numMergeWorkers,
       TaskExecutor mergeExec)
       throws IOException {
-    this(state, M, beamWidth, flatVectorWriter, numMergeWorkers, mergeExec, 1);
+    this(state, M, beamWidth, flatVectorWriter, numMergeWorkers, mergeExec, VERSION_CURRENT);
   }
 
+  //Test-only constructor, should not be called directly outside of tests.
   Lucene99HnswVectorsWriter(
       SegmentWriteState state,
       int M,
