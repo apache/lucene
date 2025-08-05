@@ -3,16 +3,16 @@ Jinja2==3.1.6
 # parsing and processing of releaseWizard.yaml
 PyYAML==6.0.2
 # international holidays in releaseWizard
-holidays==0.75
+holidays==0.77
 # calendar processing in releaseWizard
 ics==0.7.2
 # terminal processing in releaseWizard
 console-menu==0.8.0
 # pull request processing in githubPRs
-PyGithub==2.6.1
+PyGithub==2.7.0
 # JIRA processing in githubPRs
 jira==3.8.0
 # type-checking in "make lint"
-basedpyright==1.29.5
+basedpyright==1.31.0
 # linting in "make lint"
-ruff==0.12.1
+ruff==0.12.7

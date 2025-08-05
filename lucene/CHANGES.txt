@@ -50,6 +50,10 @@ Improvements
   global queue min-score checking. Improves performance and consistency. (Mike Sokolov, Dzung Bui,
   Ben Trent)
 
+* GITHUB#15002: Remove synchronized WeakHashMap from IndexReader. This was added to help prevent
+  SIGSEGV with the old unsafe "mmap hack", which has been replaced by MemorySegments.
+  (Uwe Schindler, Robert Muir)
+
 Optimizations
 ---------------------
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
@@ -111,6 +115,9 @@ API Changes
   KnnVectorsReader::getOffHeapByteSize (Chris Hegarty)
 
 * GITHUB#14899: Deprecate MergeSpecification#segString(Directory) (kitoha)
+
+* GITHUB#14978: Add a bulk scoring interface to RandomVectorScorer
+  (Trevor McCulloch, Chris Hegarty)
 
 New Features
 ---------------------
@@ -222,6 +229,8 @@ Optimizations
 
 * GITHUB#14991: Refactor for loop at PointRangeQuery hot path. (Ge Song)
 
+* GITHUB#15001: Remove full integrity check from SortingStoredFieldsConsumer (Martijn van Groningen)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
@@ -230,6 +239,9 @@ Changes in Runtime Behavior
 
 Bug Fixes
 ---------------------
+* GITHUB*15025: flush segments in addIndexes, not in addIndexesReaderMerge;
+  reduces extra needless merge activity
+
 * GITHUB#14880: NPE exception could occur in Luke on Windows when using network shares (wuth)
 
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
