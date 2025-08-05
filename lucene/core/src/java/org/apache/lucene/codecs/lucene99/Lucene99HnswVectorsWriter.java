@@ -94,7 +94,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     this(state, M, beamWidth, flatVectorWriter, numMergeWorkers, mergeExec, VERSION_CURRENT);
   }
 
-  //Test-only constructor, should not be called directly outside of tests.
+  // Test-only constructor, should not be called directly outside of tests.
   Lucene99HnswVectorsWriter(
       SegmentWriteState state,
       int M,
