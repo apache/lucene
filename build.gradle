@@ -35,7 +35,6 @@ plugins {
   id "lucene.java.modules"
 
   id "lucene.validation.gradle-versions-cleanup"
-  id "lucene.validation.gradlew-scripts-customizations"
   id "lucene.validation.error-prone"
   id "lucene.validation.jar-checks"
   id "lucene.validation.rat-sources"
