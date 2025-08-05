@@ -125,8 +125,9 @@ class MultiIndexMergeScheduler extends MergeScheduler {
     }
 
     // The implementation is copied from sync() in ConcurrentMergeScheduler in Lucene code, with
-    // only one additional check:
-    //     .((TaggedMergeSource) t.mergeSource).getDirectory()equals(directory).
+    // only these additional checks:
+    //     && t.mergeSource instanceof TaggedMergeSource
+    //     && ((TaggedMergeSource) t.mergeSource).getDirectory().equals(directory).
     public void sync(Directory directory) {
       boolean interrupted = false;
       try {
@@ -139,6 +140,7 @@ class MultiIndexMergeScheduler extends MergeScheduler {
               if (t.isAlive()
                   && t != Thread.currentThread()
                   // Only wait for merge threads for the current index to finish
+                  && t.mergeSource instanceof TaggedMergeSource
                   && ((TaggedMergeSource) t.mergeSource).getDirectory().equals(directory)) {
                 toSync = t;
                 break;
