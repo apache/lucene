@@ -146,15 +146,6 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
   }
 
   /**
-   * Constructs a format using the default parameters and the specific writer version.
-   *
-   * @param writeVersion the version used for the writer to encode docID's (VarInt=0, GroupVarInt=1)
-   */
-  Lucene99HnswVectorsFormat(int writeVersion) {
-    this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, null, writeVersion);
-  }
-
-  /**
    * Constructs a format using the given graph construction parameters.
    *
    * @param maxConn the maximum number of connections to a node in the HNSW graph
@@ -165,7 +156,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
   }
 
   /**
-   * Constructs a format using the given graph construction parameters and scalar quantization.
+   * Constructs a format using the given graph construction parameters.
    *
    * @param maxConn the maximum number of connections to a node in the HNSW graph
    * @param beamWidth the size of the queue maintained during graph construction.
@@ -177,11 +168,12 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    */
   public Lucene99HnswVectorsFormat(
       int maxConn, int beamWidth, int numMergeWorkers, ExecutorService mergeExec) {
-    this(maxConn, beamWidth, numMergeWorkers, mergeExec, 1);
+    this(maxConn, beamWidth, numMergeWorkers, mergeExec, VERSION_CURRENT);
   }
 
   /**
-   * Constructs a format using the given graph construction parameters and scalar quantization.
+   * Constructs a format using the given graph construction parameters. (This is a Test-Only
+   * Constructor)
    *
    * @param maxConn the maximum number of connections to a node in the HNSW graph
    * @param beamWidth the size of the queue maintained during graph construction.
@@ -230,14 +222,14 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-      return new Lucene99HnswVectorsWriter(
-          state,
-          maxConn,
-          beamWidth,
-          flatVectorsFormat.fieldsWriter(state),
-          numMergeWorkers,
-          mergeExec,
-          writeVersion);
+    return new Lucene99HnswVectorsWriter(
+        state,
+        maxConn,
+        beamWidth,
+        flatVectorsFormat.fieldsWriter(state),
+        numMergeWorkers,
+        mergeExec,
+        writeVersion);
   }
 
   @Override

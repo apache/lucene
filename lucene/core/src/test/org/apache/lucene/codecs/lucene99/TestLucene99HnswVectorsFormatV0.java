@@ -17,14 +17,20 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_NUM_MERGE_WORKER;
+
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
-public class TestLucene99HnswVectorsFormatV2 extends BaseKnnVectorsFormatTestCase {
+public class TestLucene99HnswVectorsFormatV0 extends BaseKnnVectorsFormatTestCase {
 
   @Override
   protected Codec getCodec() {
-    return TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(0));
+    return TestUtil.alwaysKnnVectorsFormat(
+        new Lucene99HnswVectorsFormat(
+            DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, null, 0));
   }
 }

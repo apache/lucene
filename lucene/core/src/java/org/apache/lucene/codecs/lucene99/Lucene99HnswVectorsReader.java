@@ -18,7 +18,6 @@
 package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.VERSION_GROUPVARINT;
-import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.VERSION_START;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;

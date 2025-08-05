@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.codecs.KnnVectorsWriter.MergedVectorValues.hasVectorValues;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.VERSION_GROUPVARINT;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.SIMILARITY_FUNCTIONS;
 
 import java.io.IOException;
@@ -356,7 +357,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     }
     // Write the size after duplicates are removed
     vectorIndex.writeVInt(actualSize);
-    if (version >= Lucene99HnswVectorsFormat.VERSION_GROUPVARINT) {
+    if (version >= VERSION_GROUPVARINT) {
       vectorIndex.writeGroupVInts(scratch, actualSize);
     } else {
       for (int i = 0; i < actualSize; i++) {
@@ -462,7 +463,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         }
         // Write the size after duplicates are removed
         vectorIndex.writeVInt(actualSize);
-        if (version >= Lucene99HnswVectorsFormat.VERSION_GROUPVARINT) {
+        if (version >= VERSION_GROUPVARINT) {
           vectorIndex.writeGroupVInts(scratch, actualSize);
         } else {
           for (int i = 0; i < actualSize; i++) {
