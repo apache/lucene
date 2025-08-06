@@ -31,6 +31,8 @@ import org.gradle.api.Project;
  * automatically.
  */
 public class CheckGradlewScriptsTweakedPlugin extends LuceneGradlePlugin {
+  public static final String TASK_NAME = "gradlewScriptsTweaked";
+
   @Override
   public void apply(Project rootProject) {
     applicableToRootProjectOnly(rootProject);
@@ -43,7 +45,7 @@ public class CheckGradlewScriptsTweakedPlugin extends LuceneGradlePlugin {
         project
             .getTasks()
             .register(
-                "gradlewScriptsTweaked",
+                TASK_NAME,
                 task -> {
                   var scripts =
                       Stream.of("gradlew", "gradlew.bat")

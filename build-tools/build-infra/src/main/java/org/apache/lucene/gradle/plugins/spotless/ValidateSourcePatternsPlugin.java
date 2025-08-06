@@ -52,6 +52,8 @@ import org.gradle.internal.logging.progress.ProgressLoggerFactory;
 
 /** Checks for invalid usage patterns in source files. */
 public class ValidateSourcePatternsPlugin extends LuceneGradlePlugin {
+  public static final String TASK_NAME = "validateSourcePatterns";
+
   @Override
   public void apply(Project project) {
     applicableToRootProjectOnly(project);
@@ -64,7 +66,7 @@ public class ValidateSourcePatternsPlugin extends LuceneGradlePlugin {
         project
             .getTasks()
             .register(
-                "validateSourcePatterns",
+                TASK_NAME,
                 ValidateSourcePatternsTask.class,
                 task -> {
                   task.setGroup("Verification");
