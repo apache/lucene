@@ -19,6 +19,7 @@ package org.apache.lucene.tests.util;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.internal.tests.TestSecrets;
 
+/** Test-specific vectorization utilities */
 public class VectorizationTestUtils {
 
   private static final FlatVectorsScorer flatVectorsScorer =
