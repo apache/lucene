@@ -33,7 +33,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
-import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
@@ -43,6 +42,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.tests.util.VectorizationTestUtils;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
@@ -79,6 +79,9 @@ import org.openjdk.jmh.annotations.Warmup;
     })
 public class VectorScorerFloat32Benchmark {
 
+  static final FlatVectorsScorer OPTIMIZED_SCORER =
+      VectorizationTestUtils.getFlatVectorsScorer();
+
   @Param({"1024"})
   int size;
 
@@ -89,21 +92,13 @@ public class VectorScorerFloat32Benchmark {
   IndexInput in;
   KnnVectorValues vectorValuesA, vectorValuesB;
   UpdateableRandomVectorScorer defScorer;
-  UpdateableRandomVectorScorer scorer;
+  UpdateableRandomVectorScorer optScorer;
 
   public static final int NUM_VECTORS = 128_000;
   public static final int VEC_TO_SCORE = 20_000;
 
   static final ValueLayout.OfFloat JAVA_FLOAT_LE =
       ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
-
-  static float[] randomVector(int dims, Random random) {
-    float[] fa = new float[dims];
-    for (int i = 0; i < dims; ++i) {
-      fa[i] = random.nextFloat();
-    }
-    return fa;
-  }
 
   @Setup(Level.Trial)
   public void setup() throws IOException {
@@ -138,11 +133,8 @@ public class VectorScorerFloat32Benchmark {
 
     vectorValuesB = vectorValues(size, NUM_VECTORS, in, DOT_PRODUCT);
     // may or may not be
-    scorer =
-        FlatVectorScorerUtil.getLucene99FlatVectorsScorer()
-            .getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValuesB)
-            .scorer();
-    scorer.setScoringOrdinal(0);
+    optScorer = OPTIMIZED_SCORER.getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValuesB).scorer();
+    optScorer.setScoringOrdinal(0);
 
     List<Integer> list = IntStream.range(0, NUM_VECTORS).boxed().collect(Collectors.toList());
     Collections.shuffle(list, random);
@@ -166,17 +158,31 @@ public class VectorScorerFloat32Benchmark {
   }
 
   @Benchmark
-  public float[] dotProductNewScorer() throws IOException {
+  public float[] dotProductDefaultBulk() throws IOException {
+    defScorer.bulkScore(indices, scores, indices.length);
+    return scores;
+  }
+
+  @Benchmark
+  public float[] dotProductOptScorer() throws IOException {
     for (int v = 0; v < VEC_TO_SCORE; v++) {
-      scores[v] = scorer.score(indices[v]);
+      scores[v] = optScorer.score(indices[v]);
     }
     return scores;
   }
 
   @Benchmark
-  public float[] dotProductNewBulkScore() throws IOException {
-    scorer.bulkScore(indices, scores, indices.length);
+  public float[] dotProductOptBulkScore() throws IOException {
+    optScorer.bulkScore(indices, scores, indices.length);
     return scores;
+  }
+
+  static float[] randomVector(int dims, Random random) {
+    float[] fa = new float[dims];
+    for (int i = 0; i < dims; ++i) {
+      fa[i] = random.nextFloat();
+    }
+    return fa;
   }
 
   static KnnVectorValues vectorValues(

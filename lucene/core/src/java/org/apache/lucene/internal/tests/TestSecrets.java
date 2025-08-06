@@ -23,6 +23,7 @@ import org.apache.lucene.index.ConcurrentMergeScheduler;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.SegmentReader;
+import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.store.FilterIndexInput;
 
 /**
@@ -50,6 +51,7 @@ public final class TestSecrets {
     ensureInitialized.accept(SegmentReader.class);
     ensureInitialized.accept(IndexWriter.class);
     ensureInitialized.accept(FilterIndexInput.class);
+    ensureInitialized.accept(VectorizationProvider.class);
   }
 
   @SuppressWarnings("NonFinalStaticField")
@@ -66,6 +68,9 @@ public final class TestSecrets {
 
   @SuppressWarnings("NonFinalStaticField")
   private static FilterIndexInputAccess filterIndexInputAccess;
+
+  @SuppressWarnings("NonFinalStaticField")
+  private static VectorizationAccess vectorizationAccess;
 
   private TestSecrets() {}
 
@@ -99,6 +104,12 @@ public final class TestSecrets {
     return Objects.requireNonNull(filterIndexInputAccess);
   }
 
+  /** Return the accessor to internal secrets for an {@link VectorizationAccess}. */
+  public static VectorizationAccess getVectorizationAccess() {
+    ensureCaller();
+    return Objects.requireNonNull(vectorizationAccess);
+  }
+
   /** For internal initialization only. */
   public static void setIndexWriterAccess(IndexWriterAccess indexWriterAccess) {
     ensureNull(TestSecrets.indexWriterAccess);
@@ -127,6 +138,12 @@ public final class TestSecrets {
   public static void setFilterInputIndexAccess(FilterIndexInputAccess filterIndexInputAccess) {
     ensureNull(TestSecrets.filterIndexInputAccess);
     TestSecrets.filterIndexInputAccess = filterIndexInputAccess;
+  }
+
+  /** For internal initialization only. */
+  public static void setVectorizationAccess(VectorizationAccess vectorizationAccess) {
+    ensureNull(TestSecrets.vectorizationAccess);
+    TestSecrets.vectorizationAccess = vectorizationAccess;
   }
 
   private static void ensureNull(Object ob) {

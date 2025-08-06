@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.internal.vectorization;
 
+import static org.apache.lucene.util.VectorUtil.normalizeToUnitInterval;
+
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import java.util.Optional;
@@ -75,8 +77,7 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
       if (scratch == null) {
         scratch = new byte[vectorByteSize];
       }
-      input.readBytes(
-          byteOffset, scratch, 0, vectorByteSize); // TODO: test the impact of byte array here!?
+      input.readBytes(byteOffset, scratch, 0, vectorByteSize);
       seg = MemorySegment.ofArray(scratch);
     }
     return seg;
@@ -130,10 +131,10 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
         MemorySegment ms3 = getSegment(nodes[i + 2]);
         MemorySegment ms4 = getSegment(nodes[i + 3]);
         DOT_OPS.dotProductBulk(scratchScores, query, ms1, ms2, ms3, ms4, query.length);
-        scores[i + 0] = normalizeDotProduct(scratchScores[0]);
-        scores[i + 1] = normalizeDotProduct(scratchScores[1]);
-        scores[i + 2] = normalizeDotProduct(scratchScores[2]);
-        scores[i + 3] = normalizeDotProduct(scratchScores[3]);
+        scores[i + 0] = normalizeToUnitInterval(scratchScores[0]);
+        scores[i + 1] = normalizeToUnitInterval(scratchScores[1]);
+        scores[i + 2] = normalizeToUnitInterval(scratchScores[2]);
+        scores[i + 3] = normalizeToUnitInterval(scratchScores[3]);
       }
       // Handle remaining 1–3 nodes in bulk (if any)
       int remaining = numNodes - i;
@@ -142,14 +143,10 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
         MemorySegment ms2 = (remaining > 1) ? getSegment(nodes[i + 1]) : ms1;
         MemorySegment ms3 = (remaining > 2) ? getSegment(nodes[i + 2]) : ms1;
         DOT_OPS.dotProductBulk(scratchScores, query, ms1, ms2, ms3, ms1, query.length);
-        scores[i] = normalizeDotProduct(scratchScores[0]);
-        if (remaining > 1) scores[i + 1] = normalizeDotProduct(scratchScores[1]);
-        if (remaining > 2) scores[i + 2] = normalizeDotProduct(scratchScores[2]);
+        scores[i] = normalizeToUnitInterval(scratchScores[0]);
+        if (remaining > 1) scores[i + 1] = normalizeToUnitInterval(scratchScores[1]);
+        if (remaining > 2) scores[i + 2] = normalizeToUnitInterval(scratchScores[2]);
       }
-    }
-
-    static float normalizeDotProduct(float value) {
-      return Math.max((1 + value) / 2, 0);
     }
   }
 }

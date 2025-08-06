@@ -210,7 +210,7 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
     }
   }
 
-  // @com.carrotsearch.randomizedtesting.annotations.Repeat(iterations = 10)
+  // @com.carrotsearch.randomizedtesting.annotations.Repeat(iterations = 100)
   public void testBulkScorerFloats() throws IOException {
     int dims = random().nextInt(1, 1024);
     int size = random().nextInt(2, 255);
@@ -231,6 +231,21 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
           assertScoresAgainstDefaultFlatScorer(values, sim);
         }
       }
+    }
+  }
+
+  public void testOnHeapBulkScorerFloats() throws IOException {
+    int dims = random().nextInt(1, 1024);
+    int size = random().nextInt(2, 255);
+    List<float[]> vectors = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      vectors.add(randomFloatVector(dims));
+    }
+    var values = FloatVectorValues.fromFloats(vectors, dims);
+    for (var sim : List.of(COSINE, DOT_PRODUCT, EUCLIDEAN, MAXIMUM_INNER_PRODUCT)) {
+      assertBulkEqualsNonBulk(values, sim);
+      assertBulkEqualsNonBulkSupplier(values, sim);
+      assertScoresAgainstDefaultFlatScorer(values, sim);
     }
   }
 

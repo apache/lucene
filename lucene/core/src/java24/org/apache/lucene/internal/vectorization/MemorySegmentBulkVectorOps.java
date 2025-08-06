@@ -110,6 +110,25 @@ public final class MemorySegmentBulkVectorOps {
         int elementCount) {
       super.dotProductBulk(scores, new FloatMemorySegmentLoader(q), d1, d2, d3, d4, elementCount);
     }
+
+    public float dotProduct(MemorySegment q, MemorySegment d, int elementCount) {
+      int i = 0;
+      FloatVector sv = FloatVector.zero(FLOAT_SPECIES);
+      final int limit = FLOAT_SPECIES.loopBound(elementCount);
+      for (; i < limit; i += FLOAT_SPECIES.length()) {
+        final long offset = (long) i * Float.BYTES;
+        FloatVector qv = FloatVector.fromMemorySegment(FLOAT_SPECIES, q, offset, LE);
+        FloatVector dv = FloatVector.fromMemorySegment(FLOAT_SPECIES, d, offset, LE);
+        sv = fma(qv, dv, sv);
+      }
+      float score = sv.reduceLanes(VectorOperators.ADD);
+
+      for (; i < elementCount; i++) {
+        final long offset = (long) i * Float.BYTES;
+        score += q.get(LAYOUT_LE_FLOAT, offset) * d.get(LAYOUT_LE_FLOAT, offset);
+      }
+      return score;
+    }
   }
 
   abstract static class AbstractDotProduct {
@@ -131,7 +150,7 @@ public final class MemorySegmentBulkVectorOps {
 
       final int limit = FLOAT_SPECIES.loopBound(elementCount);
       for (; i < limit; i += FLOAT_SPECIES.length()) {
-        final int offset = i * Float.BYTES;
+        final long offset = (long) i * Float.BYTES;
         FloatVector dv1 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d1, offset, LE);
         FloatVector dv2 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d2, offset, LE);
         FloatVector dv3 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d3, offset, LE);
@@ -148,7 +167,7 @@ public final class MemorySegmentBulkVectorOps {
       scores[3] = sv4.reduceLanes(VectorOperators.ADD);
 
       for (; i < elementCount; i++) {
-        final int offset = i * Float.BYTES;
+        final long offset = (long) i * Float.BYTES;
         final float qValue = q.tail(i);
         scores[0] += qValue * d1.get(LAYOUT_LE_FLOAT, offset);
         scores[1] += qValue * d2.get(LAYOUT_LE_FLOAT, offset);

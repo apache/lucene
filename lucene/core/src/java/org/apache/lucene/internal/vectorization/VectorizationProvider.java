@@ -29,6 +29,8 @@ import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.internal.tests.TestSecrets;
+import org.apache.lucene.internal.tests.VectorizationAccess;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.VectorUtil;
@@ -228,5 +230,15 @@ public abstract class VectorizationProvider {
     private Holder() {}
 
     static final VectorizationProvider INSTANCE = lookup(false);
+  }
+
+  static {
+    TestSecrets.setVectorizationAccess(
+        new VectorizationAccess() {
+          @Override
+          public FlatVectorsScorer getLucene99FlatVectorsScorer() {
+            return lookup(true).getLucene99FlatVectorsScorer();
+          }
+        });
   }
 }

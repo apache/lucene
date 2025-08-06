@@ -14,19 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.tests.util;
 
-/** Lucene JMH benchmarks. */
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.internal.tests.TestSecrets;
 
-// jmh.core is not modularized and causes a warning. Suppressing it until it is modularized.
-@SuppressWarnings("requires-automatic")
-module org.apache.lucene.benchmark.jmh {
-  requires jmh.core;
-  requires jdk.unsupported;
-  requires org.apache.lucene.core;
-  requires org.apache.lucene.expressions;
-  requires org.apache.lucene.sandbox;
-  requires org.apache.lucene.test_framework;
+public class VectorizationTestUtils {
 
-  exports org.apache.lucene.benchmark.jmh;
-  exports org.apache.lucene.benchmark.jmh.jmh_generated;
+  private static final FlatVectorsScorer flatVectorsScorer =
+      TestSecrets.getVectorizationAccess().getLucene99FlatVectorsScorer();
+
+  /**
+   * Returns the Lucene99FlatVectorsScorer from
+   * VectorizationProvider#getLucene99FlatVectorsScorer().
+   */
+  public static FlatVectorsScorer getFlatVectorsScorer() {
+    return flatVectorsScorer;
+  }
 }

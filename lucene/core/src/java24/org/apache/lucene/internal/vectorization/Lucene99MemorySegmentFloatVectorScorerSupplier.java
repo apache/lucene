@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.internal.vectorization;
 
+import static org.apache.lucene.util.VectorUtil.normalizeToUnitInterval;
+
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import java.util.Optional;
@@ -116,12 +118,10 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
         @Override
         public float score(int node) throws IOException {
           checkOrdinal(node);
-          float[] scratchScores = new float[4];
           MemorySegment query = getSegment(queryOrd, queryScratch);
           MemorySegment ms = getSegment(node, scratch1);
-          // TODO: this could be improved
-          DOT_OPS.dotProductBulk(scratchScores, query, ms, ms, ms, ms, dims);
-          return normalizeDotProduct(scratchScores[0]);
+          var raw = DOT_OPS.dotProduct(query, ms, dims);
+          return normalizeToUnitInterval(raw);
         }
 
         @Override
@@ -137,10 +137,10 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
             MemorySegment ms3 = getSegment(nodes[i + 2], scratch3);
             MemorySegment ms4 = getSegment(nodes[i + 3], scratch4);
             DOT_OPS.dotProductBulk(scratchScores, query, ms1, ms2, ms3, ms4, dims);
-            scores[i + 0] = normalizeDotProduct(scratchScores[0]);
-            scores[i + 1] = normalizeDotProduct(scratchScores[1]);
-            scores[i + 2] = normalizeDotProduct(scratchScores[2]);
-            scores[i + 3] = normalizeDotProduct(scratchScores[3]);
+            scores[i + 0] = normalizeToUnitInterval(scratchScores[0]);
+            scores[i + 1] = normalizeToUnitInterval(scratchScores[1]);
+            scores[i + 2] = normalizeToUnitInterval(scratchScores[2]);
+            scores[i + 3] = normalizeToUnitInterval(scratchScores[3]);
           }
           // Handle remaining 1–3 nodes in bulk (if any)
           int remaining = numNodes - i;
@@ -149,14 +149,10 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
             MemorySegment ms2 = (remaining > 1) ? getSegment(nodes[i + 1], scratch2) : ms1;
             MemorySegment ms3 = (remaining > 2) ? getSegment(nodes[i + 2], scratch3) : ms1;
             DOT_OPS.dotProductBulk(scratchScores, query, ms1, ms2, ms3, ms1, dims);
-            scores[i] = normalizeDotProduct(scratchScores[0]);
-            if (remaining > 1) scores[i + 1] = normalizeDotProduct(scratchScores[1]);
-            if (remaining > 2) scores[i + 2] = normalizeDotProduct(scratchScores[2]);
+            scores[i] = normalizeToUnitInterval(scratchScores[0]);
+            if (remaining > 1) scores[i + 1] = normalizeToUnitInterval(scratchScores[1]);
+            if (remaining > 2) scores[i + 2] = normalizeToUnitInterval(scratchScores[2]);
           }
-        }
-
-        static float normalizeDotProduct(float value) {
-          return Math.max((1 + value) / 2, 0);
         }
 
         @Override

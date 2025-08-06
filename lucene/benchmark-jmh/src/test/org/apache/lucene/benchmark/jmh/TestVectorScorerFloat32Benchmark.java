@@ -22,15 +22,14 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestVectorScorerFloat32Benchmark extends LuceneTestCase {
 
-  // @com.carrotsearch.randomizedtesting.annotations.Repeat(iterations = 10)
   public void testDotProduct() throws IOException {
     float delta = 1e-3f * 1024;
     var bench = new VectorScorerFloat32Benchmark();
     bench.size = 1024;
     bench.setup();
     bench.perIterationInit();
-    // assert bench.defScorer.getClass().getName().contains("DefaultFlatVectorScorer");
-    // assert bench.scorer.getClass().getName().contains("MemorySegmentFloatVectorScorer");
+    assert bench.defScorer.getClass().getName().contains("DefaultFlatVectorScorer");
+    assert bench.optScorer.getClass().getName().contains("MemorySegmentFloatVectorScorer");
 
     try {
       Arrays.fill(bench.scores, 0.0f);
@@ -38,12 +37,17 @@ public class TestVectorScorerFloat32Benchmark extends LuceneTestCase {
       var expectedScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
 
       Arrays.fill(bench.scores, 0.0f);
-      bench.dotProductNewScorer();
+      bench.dotProductDefaultBulk();
+      var bulkScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+      assertArrayEquals(expectedScores, bulkScores, delta);
+
+      Arrays.fill(bench.scores, 0.0f);
+      bench.dotProductOptScorer();
       var actualScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
       assertArrayEquals(expectedScores, actualScores, delta);
 
       Arrays.fill(bench.scores, 0.0f);
-      bench.dotProductNewBulkScore();
+      bench.dotProductOptBulkScore();
       actualScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
       assertArrayEquals(expectedScores, actualScores, delta);
     } finally {
