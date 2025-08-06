@@ -122,6 +122,17 @@ public class TestVectorUtil extends LuceneTestCase {
     expectThrows(IllegalArgumentException.class, () -> VectorUtil.l2normalize(v));
   }
 
+  public void testNormalizeToUnitInterval() {
+    for (int i = 0; i < 100; i++) {
+      // Generates a float in the range [-1.0, 1.0)
+      float f = random().nextFloat() * 2 - 1;
+      float v = VectorUtil.normalizeToUnitInterval(f);
+      assertTrue(v >= 0);
+      assertTrue(v <= 1);
+      assertEquals(Math.max((1 + f) / 2, 0), v, 0.0f);
+    }
+  }
+
   public void testExtremeNumerics() {
     float[] v1 = new float[1536];
     float[] v2 = new float[1536];
