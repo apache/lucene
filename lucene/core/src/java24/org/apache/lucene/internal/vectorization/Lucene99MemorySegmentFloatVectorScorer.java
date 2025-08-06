@@ -83,15 +83,6 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
     return seg;
   }
 
-  //  final float[] getVectorFromOrd(int ord) throws IOException {
-  //    checkOrdinal(ord);
-  //    long byteOffset = (long) ord * vectorByteSize;
-  //    if (scratch == null) {
-  //      scratch = new byte[vectorByteSize];
-  //    }
-  //    return input.readBytes(byteOffset, scratch, 0, vectorByteSize);
-  //  }
-
   static void checkInvariants(int maxOrd, int vectorByteLength, IndexInput input) {
     if (input.length() < (long) vectorByteLength * maxOrd) {
       throw new IllegalArgumentException("input length is less than expected vector data");

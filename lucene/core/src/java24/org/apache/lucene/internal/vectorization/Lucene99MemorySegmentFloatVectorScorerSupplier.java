@@ -93,14 +93,6 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
     return seg;
   }
 
-  // final void readFloatVector(float[] array, int ord) throws IOException {
-  //  assert array.length == dims;
-  //  long byteOffset = (long) ord * vectorByteSize;
-  //  for (int i = 0; i < array.length; i++) {
-  //    array[i] = Float.intBitsToFloat(input.readInt(byteOffset + i));
-  //  }
-  // }
-
   static final class DotProductSupplier extends Lucene99MemorySegmentFloatVectorScorerSupplier {
 
     static final MemorySegmentBulkVectorOps.DotFromQuerySegment DOT_OPS =
