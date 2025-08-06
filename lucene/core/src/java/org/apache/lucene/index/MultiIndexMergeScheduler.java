@@ -117,17 +117,10 @@ class MultiIndexMergeScheduler extends MergeScheduler {
       }
     }
 
-    // Same functionality as calling initialize() in MergeScheduler, used by
-    // MultiIndexMergeScheduler to
-    // initialize the wrapped per index CombinedMergeScheduler.
     public void setInfoStream(InfoStream infoStream) {
       this.infoStream = infoStream;
     }
 
-    // The implementation is copied from sync() in ConcurrentMergeScheduler in Lucene code, with
-    // only these additional checks:
-    //     && t.mergeSource instanceof TaggedMergeSource
-    //     && ((TaggedMergeSource) t.mergeSource).getDirectory().equals(directory).
     public void sync(Directory directory) {
       boolean interrupted = false;
       try {
