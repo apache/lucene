@@ -79,8 +79,7 @@ import org.openjdk.jmh.annotations.Warmup;
     })
 public class VectorScorerFloat32Benchmark {
 
-  static final FlatVectorsScorer OPTIMIZED_SCORER =
-      VectorizationTestUtils.getFlatVectorsScorer();
+  static final FlatVectorsScorer OPTIMIZED_SCORER = VectorizationTestUtils.getFlatVectorsScorer();
 
   @Param({"1024"})
   int size;
