@@ -52,8 +52,6 @@ plugins {
 
   id "lucene.datasets.external-datasets"
 
-  id "lucene.hacks.turbocharge-jvm-opts"
-
   id "lucene.documentation"
   id "lucene.documentation.changes-to-html"
   id "lucene.documentation.markdown"

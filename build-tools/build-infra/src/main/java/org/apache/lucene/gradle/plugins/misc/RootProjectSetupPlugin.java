@@ -25,6 +25,7 @@ import org.apache.lucene.gradle.plugins.gitgrep.GitGrepPlugin;
 import org.apache.lucene.gradle.plugins.gitinfo.GitInfoPlugin;
 import org.apache.lucene.gradle.plugins.globals.RegisterBuildGlobalsPlugin;
 import org.apache.lucene.gradle.plugins.hacks.HacksPlugin;
+import org.apache.lucene.gradle.plugins.hacks.TuneJvmOptionsPlugin;
 import org.apache.lucene.gradle.plugins.hacks.WipeGradleTempPlugin;
 import org.apache.lucene.gradle.plugins.help.BuildOptionGroupsPlugin;
 import org.apache.lucene.gradle.plugins.regenerate.RegenerateTasksSupportPlugin;
@@ -75,6 +76,14 @@ public class RootProjectSetupPlugin extends LuceneGradlePlugin {
     plugins.apply(ValidateSourcePatternsPlugin.class);
     plugins.apply(ConfigureLockFilePlugin.class);
     plugins.apply(CheckGradlewScriptsTweakedPlugin.class);
+
+    // Apply more convention plugins to all projects.
+    rootProject
+        .getAllprojects()
+        .forEach(
+            project -> {
+              project.getPlugins().apply(TuneJvmOptionsPlugin.class);
+            });
 
     // wire up included composite builds to validation tasks.
     connectCompositeTasksToMainBuild(rootProject);
