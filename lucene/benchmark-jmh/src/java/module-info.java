@@ -25,7 +25,6 @@ module org.apache.lucene.benchmark.jmh {
   requires org.apache.lucene.core;
   requires org.apache.lucene.expressions;
   requires org.apache.lucene.sandbox;
-  requires org.apache.lucene.test_framework;
 
   exports org.apache.lucene.benchmark.jmh;
   exports org.apache.lucene.benchmark.jmh.jmh_generated;
