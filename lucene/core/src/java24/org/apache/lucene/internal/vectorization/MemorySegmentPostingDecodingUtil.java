@@ -47,6 +47,7 @@ final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
   }
 
   @Override
+  @SuppressWarnings("NarrowCalculation") // count * 4 won't overflow integer here
   public void splitInts(
       int count, int[] b, int bShift, int dec, int bMask, int[] c, int cIndex, int cMask)
       throws IOException {
