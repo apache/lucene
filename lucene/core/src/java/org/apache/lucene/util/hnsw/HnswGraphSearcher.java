@@ -335,10 +335,11 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
         bulkNodes[numNodes++] = friendOrd;
       }
 
-      if (numNodes > 0) {
-        numNodes = (int) Math.min((long) numNodes, results.visitLimit() - results.visitedCount());
-        scorer.bulkScore(bulkNodes, bulkScores, numNodes);
-        results.incVisitedCount(numNodes);
+      numNodes = (int) Math.min((long) numNodes, results.visitLimit() - results.visitedCount());
+      results.incVisitedCount(numNodes);
+      if (numNodes > 0
+          && scorer.bulkScore(bulkNodes, bulkScores, numNodes)
+              > results.minCompetitiveSimilarity()) {
         for (int i = 0; i < numNodes; i++) {
           int node = bulkNodes[i];
           float score = bulkScores[i];
