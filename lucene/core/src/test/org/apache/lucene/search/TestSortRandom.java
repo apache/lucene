@@ -28,6 +28,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -52,6 +53,10 @@ public class TestSortRandom extends LuceneTestCase {
     testRandomStringSort(SortField.Type.STRING);
   }
 
+  public void testRandomStringValSort() throws Exception {
+    testRandomStringSort(SortField.Type.STRING_VAL);
+  }
+
   private void testRandomStringSort(SortField.Type type) throws Exception {
     Random random = new Random(random().nextLong());
 
@@ -60,7 +65,7 @@ public class TestSortRandom extends LuceneTestCase {
     final RandomIndexWriter writer = new RandomIndexWriter(random, dir);
     final boolean allowDups = random.nextBoolean();
     final Set<String> seen = new HashSet<>();
-    final int maxLength = TestUtil.nextInt(random, 5, 100);
+    final int maxLength = TestUtil.nextInt(random, 5, 1000);
     if (VERBOSE) {
       System.out.println(
           "TEST: NUM_DOCS=" + NUM_DOCS + " maxLength=" + maxLength + " allowDups=" + allowDups);
@@ -94,7 +99,11 @@ public class TestSortRandom extends LuceneTestCase {
         }
 
         br = new BytesRef(s);
-        doc.add(new SortedDocValuesField("stringdv", br));
+        if (type == SortField.Type.STRING) {
+          doc.add(new SortedDocValuesField("stringdv", br));
+        } else {
+          doc.add(new BinaryDocValuesField("stringdv", br));
+        }
         docValues.add(br);
 
       } else {

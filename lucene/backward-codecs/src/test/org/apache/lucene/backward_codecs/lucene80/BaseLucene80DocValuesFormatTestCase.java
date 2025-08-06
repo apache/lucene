@@ -338,7 +338,8 @@ public abstract class BaseLucene80DocValuesFormatTestCase
           assertEquals(value.longValue(), numeric.longValue());
           assertTrue(sorted.ordValue() >= 0);
           assertEquals(new BytesRef(Long.toString(value)), sorted.lookupOrd(sorted.ordValue()));
-          assertEquals(new BytesRef(Long.toString(value)), binary.binaryValue());
+          assertEquals(
+              new BytesRef(Long.toString(value)), binary.randomAccessInputValue().toBytesRef());
         }
 
         final IndexableField[] valuesFields = doc.getFields("values");

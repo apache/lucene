@@ -781,8 +781,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       BinaryDocValues textDV =
           MultiDocValues.getBinaryValues(searcher.getIndexReader(), TEXT_FIELD_NAME);
       textDV.advance(fd.doc);
-      BytesRef term = textDV.binaryValue();
-      String text = term.utf8ToString();
+      String text = textDV.randomAccessInputValue().utf8ToString();
       long score = (Long) fd.fields[0];
 
       // This will just be null if app didn't pass payloads to build():
@@ -793,7 +792,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       BytesRef payload;
       if (payloadsDV != null) {
         if (payloadsDV.advance(fd.doc) == fd.doc) {
-          payload = BytesRef.deepCopyOf(payloadsDV.binaryValue());
+          payload = payloadsDV.randomAccessInputValue().toBytesRef();
         } else {
           payload = new BytesRef(BytesRef.EMPTY_BYTES);
         }
