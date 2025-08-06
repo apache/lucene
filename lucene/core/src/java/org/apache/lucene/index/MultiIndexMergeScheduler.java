@@ -20,6 +20,19 @@ import java.io.IOException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.InfoStream;
 
+/**
+ * Multi-index or multi-tenant merge scheduling.
+ *
+ * MultiIndexMergeScheduler builds on existing functionality in ConcurrentMergeScheduler by
+ * automatically tracking merge sources and merge threads and the index Directory that each
+ * applies to, and then shunting all of them into a single ConcurrentMergeScheduler instance.
+ *
+ * The multi-tenant merge scheduling can be used easily by creating a MultiIndexMergeScheduler
+ * instance for each index and then using each instance normally, the same way you would use a
+ * lone ConcurrentMergeScheduler.
+ *
+ * @lucene.experimental
+ */
 class MultiIndexMergeScheduler extends MergeScheduler {
   private final Directory directory;
   private final CombinedMergeScheduler combinedMergeScheduler;
