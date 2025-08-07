@@ -104,7 +104,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
 
     @Override
     public Iterator<Document> iterator() {
-      return new Iterator<Document>() {
+      return new Iterator<>() {
         int upto;
 
         @Override
@@ -1366,7 +1366,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     SegmentInfos sis = SegmentInfos.readLatestCommit(dir);
     for (SegmentCommitInfo si : sis) {
       assertTrue(si.info.getUseCompoundFile());
-      List<String> victims = new ArrayList<String>(si.info.files());
+      List<String> victims = new ArrayList<>(si.info.files());
       Collections.shuffle(victims, random());
       dir.deleteFile(victims.get(0));
       corrupted = true;

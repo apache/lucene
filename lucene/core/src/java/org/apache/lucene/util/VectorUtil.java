@@ -309,6 +309,20 @@ public final class VectorUtil {
   }
 
   /**
+   * Converts a dot product or cosine similarity value to a normalized score in the [0, 1] range.
+   *
+   * <p>This transformation is necessary when consistent non-negative scores are required. It maps
+   * input values from [-1, 1] to [0, 1] using the formula: (1 + value) / 2. Any result below 0 is
+   * clamped to 0 for numerical safety.
+   *
+   * @param value the similarity value (dot product or cosine), typically in the range [-1, 1]
+   * @return a normalized score between 0 and 1
+   */
+  public static float normalizeToUnitInterval(float value) {
+    return Math.max((1 + value) / 2, 0);
+  }
+
+  /**
    * Checks if a float vector only has finite components.
    *
    * @param v bytes containing a vector
@@ -375,5 +389,26 @@ public final class VectorUtil {
       float maxQuantile) {
     return IMPL.recalculateScalarQuantizationOffset(
         vector, oldAlpha, oldMinQuantile, scale, alpha, minQuantile, maxQuantile);
+  }
+
+  /**
+   * filter both {@code docBuffer} and {@code scoreBuffer} with {@code minScoreInclusive}, each
+   * {@code docBuffer} and {@code scoreBuffer} of the same index forms a pair, pairs with score not
+   * greater than or equal to {@code minScoreInclusive} will be filtered out from the array.
+   *
+   * @param docBuffer doc buffer contains docs (or some other value forms a pair with {@code
+   *     scoreBuffer})
+   * @param scoreBuffer score buffer contains scores to be compared with {@code minScoreInclusive}
+   * @param minScoreInclusive minimal required score to not be filtered out
+   * @param upTo where the filter should end
+   * @return how many pairs left after filter
+   */
+  public static int filterByScore(
+      int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
+    if (docBuffer.length != scoreBuffer.length || docBuffer.length < upTo) {
+      throw new IllegalArgumentException(
+          "docBuffer and scoreBuffer should keep same length and at least as long as upTo");
+    }
+    return IMPL.filterByScore(docBuffer, scoreBuffer, minScoreInclusive, upTo);
   }
 }

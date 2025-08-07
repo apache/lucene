@@ -80,23 +80,35 @@ abstract class AbstractKnnVectorQuery extends Query {
 
     final Weight filterWeight;
     if (filter != null) {
-      BooleanQuery booleanQuery =
-          new BooleanQuery.Builder()
-              .add(filter, BooleanClause.Occur.FILTER)
-              .add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER)
-              .build();
-      Query rewritten = indexSearcher.rewrite(booleanQuery);
-      if (rewritten.getClass() == MatchNoDocsQuery.class) {
-        return rewritten;
+      // rewrite inner filter query first to determine if its a match all
+      // or match no docs query, so we can skip the knn search
+      Query rewrittenFilter = filter.rewrite(indexSearcher);
+      if (rewrittenFilter.getClass() == MatchNoDocsQuery.class) {
+        // If the filter is a match no docs query, we can also skip it
+        return rewrittenFilter;
       }
-      filterWeight = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE_NO_SCORES, 1f);
+      if (rewrittenFilter.getClass() != MatchAllDocsQuery.class) {
+        BooleanQuery booleanQuery =
+            new BooleanQuery.Builder()
+                .add(filter, BooleanClause.Occur.FILTER)
+                .add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER)
+                .build();
+        Query rewritten = indexSearcher.rewrite(booleanQuery);
+        if (rewritten.getClass() == MatchNoDocsQuery.class) {
+          return rewritten;
+        }
+        filterWeight = rewritten.createWeight(indexSearcher, ScoreMode.COMPLETE_NO_SCORES, 1f);
+      } else {
+        // If the filter is a match all docs query, we can skip it
+        filterWeight = null;
+      }
     } else {
       filterWeight = null;
     }
 
+    KnnCollectorManager knnCollectorManagerInner = getKnnCollectorManager(k, indexSearcher);
     TimeLimitingKnnCollectorManager knnCollectorManager =
-        new TimeLimitingKnnCollectorManager(
-            getKnnCollectorManager(k, indexSearcher), indexSearcher.getTimeout());
+        new TimeLimitingKnnCollectorManager(knnCollectorManagerInner, indexSearcher.getTimeout());
     TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
     List<LeafReaderContext> leafReaderContexts = new ArrayList<>(reader.leaves());
     List<Callable<TopDocs>> tasks = new ArrayList<>(leafReaderContexts.size());
@@ -108,10 +120,12 @@ abstract class AbstractKnnVectorQuery extends Query {
     int reentryCount = 0;
     if (topK.scoreDocs.length > 0
         && perLeafResults.size() > 1
+        // only re-enter if we used the optimistic collection
+        && knnCollectorManagerInner instanceof OptimisticKnnCollectorManager
         // don't re-enter the search if we early terminated
         && topK.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
       float minTopKScore = topK.scoreDocs[topK.scoreDocs.length - 1].score;
-      TimeLimitingKnnCollectorManager knnCollectorManagerInner =
+      TimeLimitingKnnCollectorManager knnCollectorManagerPhase2 =
           new TimeLimitingKnnCollectorManager(
               new ReentrantKnnCollectorManager(
                   new TopKnnCollectorManager(k, indexSearcher), perLeafResults),
@@ -124,7 +138,7 @@ abstract class AbstractKnnVectorQuery extends Query {
             && perLeaf.scoreDocs[perLeaf.scoreDocs.length - 1].score >= minTopKScore) {
           // All this leaf's hits are at or above the global topK min score; explore it further
           ++reentryCount;
-          tasks.add(() -> searchLeaf(ctx, filterWeight, knnCollectorManagerInner));
+          tasks.add(() -> searchLeaf(ctx, filterWeight, knnCollectorManagerPhase2));
         } else {
           // This leaf is tapped out; discard the context from the active list so we maintain
           // correspondence between tasks and leaves
@@ -246,17 +260,27 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
-    KnnCollectorManager manager =
-        (visitedLimit, strategy, context) -> {
-          @SuppressWarnings("resource")
-          float leafProportion =
-              context.reader().maxDoc() / (float) context.parent.reader().maxDoc();
-          int perLeafTopK = perLeafTopKCalculation(k, leafProportion);
-          // if we divided by zero above, leafProportion can be NaN and then this would be 0
-          assert perLeafTopK > 0;
-          return new TopKnnCollector(perLeafTopK, visitedLimit, strategy);
-        };
-    return manager;
+    return new OptimisticKnnCollectorManager(k);
+  }
+
+  static class OptimisticKnnCollectorManager implements KnnCollectorManager {
+    private final int k;
+
+    OptimisticKnnCollectorManager(int k) {
+      this.k = k;
+    }
+
+    @Override
+    public KnnCollector newCollector(
+        int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context)
+        throws IOException {
+      @SuppressWarnings("resource")
+      float leafProportion = context.reader().maxDoc() / (float) context.parent.reader().maxDoc();
+      int perLeafTopK = perLeafTopKCalculation(k, leafProportion);
+      // if we divided by zero above, leafProportion can be NaN and then this would be 0
+      assert perLeafTopK > 0;
+      return new TopKnnCollector(perLeafTopK, visitedLimit, searchStrategy);
+    }
   }
 
   /*

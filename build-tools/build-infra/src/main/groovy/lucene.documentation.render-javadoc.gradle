@@ -1,5 +1,6 @@
 import org.gradle.internal.jvm.Jvm
 import org.apache.lucene.gradle.plugins.java.RenderJavadocTaskBase
+import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -37,6 +38,8 @@ allprojects {
       relativeDocPath = project.path.replaceFirst(/:\w+:/, "").replace(':', '/')
     }
 
+    JavaVersion minJavaVersion = buildGlobals.minJavaVersion.get()
+
     def renderJavadoc = tasks.register("renderJavadoc", RenderJavadocTask, {
       description = "Generates Javadoc API documentation for each module. This directly invokes javadoc tool."
       group = "documentation"
@@ -45,7 +48,7 @@ allprojects {
       dependsOn sourceSets.main.compileClasspath
       classpath = sourceSets.main.compileClasspath
       srcDirSet = sourceSets.main.java
-      releaseVersion = rootProject.ext.minJavaVersion
+      releaseVersion = minJavaVersion
 
       outputDir = project.tasks.named("javadoc").get().destinationDir
     })
@@ -71,7 +74,7 @@ allprojects {
         dependsOn sourceSets.main.compileClasspath
         classpath = sourceSets.main.compileClasspath
         srcDirSet = sourceSets.main.java
-        releaseVersion = rootProject.ext.minJavaVersion
+        releaseVersion = minJavaVersion
 
         relativeProjectLinks = true
 
@@ -321,10 +324,6 @@ abstract class RenderJavadocTask extends RenderJavadocTaskBase {
   @Input
   List<String> javadocMissingIgnore = []
 
-  @Input
-  @Optional
-  ListProperty<String> extraOpts = project.objects.listProperty(String)
-
   @InputDirectory
   @PathSensitive(PathSensitivity.RELATIVE)
   @IgnoreEmptyDirectories
@@ -388,9 +387,11 @@ abstract class RenderJavadocTask extends RenderJavadocTaskBase {
         classpath.asPath
       ]
     }
+
+    LuceneBuildGlobalsExtension buildGlobals = project.rootProject.extensions.getByType(LuceneBuildGlobalsExtension)
     opts << [
       '-bottom',
-      "<i>Copyright &copy; 2000-${project.buildYear} Apache Software Foundation. All Rights Reserved.</i>"
+      "<i>Copyright &copy; 2000-${buildGlobals.buildYear} Apache Software Foundation. All Rights Reserved.</i>"
     ]
 
     opts << [
@@ -529,12 +530,12 @@ abstract class RenderJavadocTask extends RenderJavadocTaskBase {
     def javadocCmd = project.file(executable.get())
     logger.info("Javadoc executable used: ${javadocCmd}")
 
-    project.quietExec {
+    buildGlobals.quietExec(this, {
       executable javadocCmd
 
       args += ["@${optionsFile}"]
       args += jOpts
-    }
+    })
 
     // append some special table css, prettify css
     ant.concat(destfile: "${outputDir}/stylesheet.css", append: "true", fixlastline: "true", encoding: "UTF-8") {

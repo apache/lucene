@@ -168,9 +168,10 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
             false);
     Provider<Boolean> haltOnFailureOption =
         buildOptions.addBooleanOption(
-            "tests.haltonfailure", "Halt processing early on test failure.", false);
+            "tests.haltonfailure", "Stop processing on test failures.", true);
     Provider<Boolean> failFastOption =
-        buildOptions.addBooleanOption("tests.failfast", "Stop the build early on failure.", false);
+        buildOptions.addBooleanOption(
+            "tests.failfast", "Stop the build on the first failed test.", false);
     Provider<Boolean> rerunOption =
         buildOptions.addBooleanOption(
             "tests.rerun",
@@ -431,8 +432,7 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
 
               var loggingFileProvider =
                   project.getObjects().newInstance(LoggingFileArgumentProvider.class);
-              Path loggingConfigFile =
-                  super.gradlePluginResource(project, "testing/logging.properties");
+              Path loggingConfigFile = gradlePluginResource(project, "testing/logging.properties");
               loggingFileProvider.getLoggingConfigFile().set(loggingConfigFile.toFile());
               loggingFileProvider.getTempDir().set(tmpDirOption.get());
               task.getJvmArgumentProviders().add(loggingFileProvider);
@@ -482,7 +482,7 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
 
               // Disable automatic test class detection, rely on class names only. This is needed
               // for testing
-              // against JDKs where the bytecode is unparseable by Gradle, for example.
+              // against JDKs where the bytecode is unparsable by Gradle, for example.
               // We require all tests to start with Test*, this simplifies include patterns greatly.
               task.setScanForTestClasses(false);
               task.include("**/Test*.class");
@@ -543,20 +543,14 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
     Provider<Boolean> defaultVectorizationOption =
         buildOptions.addBooleanOption(
             "tests.defaultvectorization",
-            "Uses defaults for running tests with correct JVM settings to test Panama vectorization (tests.jvmargs, tests.vectorsize, tests.forceintegervectors).",
+            "Uses defaults for running tests with correct JVM settings to test Panama vectorization (tests.jvmargs, tests.vectorsize).",
             false);
     buildOptions.addOption(
         "tests.vectorsize",
         "Sets preferred vector size in bits.",
         project.provider(() -> defaultVectorizationOption.get() ? "default" : randomVectorSize));
 
-    buildOptions.addBooleanOption(
-        "tests.forceintegervectors",
-        "Forces use of integer vectors even when slow.",
-        project.provider(
-            () -> defaultVectorizationOption.get() ? false : (randomVectorSize != "default")));
-
-    optionsInheritedAsProperties.addAll(List.of("tests.vectorsize", "tests.forceintegervectors"));
+    optionsInheritedAsProperties.add("tests.vectorsize");
 
     return defaultVectorizationOption.get();
   }

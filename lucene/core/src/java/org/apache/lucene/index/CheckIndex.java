@@ -87,6 +87,7 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.CommandLineUtil;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOBooleanSupplier;
+import org.apache.lucene.util.IOFunction;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongBitSet;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -3563,11 +3564,6 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
-  @FunctionalInterface
-  private interface DocValuesIteratorSupplier {
-    DocValuesIterator get(FieldInfo fi) throws IOException;
-  }
-
   private static void checkDocValueSkipper(FieldInfo fi, DocValuesSkipper skipper)
       throws IOException {
     String fieldName = fi.name;
@@ -3656,13 +3652,13 @@ public final class CheckIndex implements Closeable {
     }
   }
 
-  private static void checkDVIterator(FieldInfo fi, DocValuesIteratorSupplier producer)
-      throws IOException {
+  private static void checkDVIterator(
+      FieldInfo fi, IOFunction<FieldInfo, DocValuesIterator> producer) throws IOException {
     String field = fi.name;
 
     // Check advance
-    DocValuesIterator it1 = producer.get(fi);
-    DocValuesIterator it2 = producer.get(fi);
+    DocValuesIterator it1 = producer.apply(fi);
+    DocValuesIterator it2 = producer.apply(fi);
     int i = 0;
     for (int doc = it1.nextDoc(); ; doc = it1.nextDoc()) {
 
@@ -3709,8 +3705,8 @@ public final class CheckIndex implements Closeable {
     }
 
     // Check advanceExact
-    it1 = producer.get(fi);
-    it2 = producer.get(fi);
+    it1 = producer.apply(fi);
+    it2 = producer.apply(fi);
     i = 0;
     int lastDoc = -1;
     for (int doc = it1.nextDoc(); doc != NO_MORE_DOCS; doc = it1.nextDoc()) {
