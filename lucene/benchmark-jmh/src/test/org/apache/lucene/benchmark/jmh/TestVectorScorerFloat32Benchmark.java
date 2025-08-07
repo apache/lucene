@@ -19,6 +19,7 @@ package org.apache.lucene.benchmark.jmh;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.ArrayUtil;
 import org.junit.After;
 import org.junit.Before;
 
@@ -45,21 +46,21 @@ public class TestVectorScorerFloat32Benchmark extends LuceneTestCase {
   public void testDotProduct() throws IOException {
     Arrays.fill(bench.scores, 0.0f);
     bench.dotProductDefault();
-    var expectedScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+    var expectedScores = ArrayUtil.copyArray(bench.scores);
 
     Arrays.fill(bench.scores, 0.0f);
     bench.dotProductDefaultBulk();
-    var bulkScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+    var bulkScores = ArrayUtil.copyArray(bench.scores);
     assertArrayEquals(expectedScores, bulkScores, delta);
 
     Arrays.fill(bench.scores, 0.0f);
     bench.dotProductOptScorer();
-    var actualScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+    var actualScores = ArrayUtil.copyArray(bench.scores);
     assertArrayEquals(expectedScores, actualScores, delta);
 
     Arrays.fill(bench.scores, 0.0f);
     bench.dotProductOptBulkScore();
-    actualScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+    actualScores = ArrayUtil.copyArray(bench.scores);
     assertArrayEquals(expectedScores, actualScores, delta);
   }
 
