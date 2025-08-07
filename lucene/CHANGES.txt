@@ -61,8 +61,6 @@ Optimizations
 
 * GITHUB#14874: Improve off-heap KNN byte vector query performance in cases where indexing and search are performed by the same process. (Kaival Parikh)
 
-* GITHUB#14932: Switched to GroupVarInt Encoding for HNSW Graph edges, added backwards compatibility (Akira Lonske)
-
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
@@ -162,6 +160,8 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#14932: Switched to GroupVarInt Encoding for HNSW Graph edges, added backwards compatibility (Akira Lonske)
+
 * GITHUB#14418: Quick exit on filter query matching no docs when rewriting knn query. (Pan Guixin)
 
 * GITHUB#14439, GITHUB#14560, GITHUB#14622: Efficient Histogram Collection using multi range traversal over PointTrees (Ankit Jain)
