@@ -204,6 +204,7 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
           var values = byteVectorValues(dims, size, in, sim);
           assertBulkEqualsNonBulk(values, sim);
           assertBulkEqualsNonBulkSupplier(values, sim);
+          assertScoresAgainstDefaultFlatScorer(values, sim);
         }
       }
     }
@@ -226,8 +227,24 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
           var values = floatVectorValues(dims, size, in, sim);
           assertBulkEqualsNonBulk(values, sim);
           assertBulkEqualsNonBulkSupplier(values, sim);
+          assertScoresAgainstDefaultFlatScorer(values, sim);
         }
       }
+    }
+  }
+
+  public void testOnHeapBulkScorerFloats() throws IOException {
+    int dims = random().nextInt(1, 1024);
+    int size = random().nextInt(2, 255);
+    List<float[]> vectors = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      vectors.add(randomFloatVector(dims));
+    }
+    var values = FloatVectorValues.fromFloats(vectors, dims);
+    for (var sim : List.of(COSINE, DOT_PRODUCT, EUCLIDEAN, MAXIMUM_INNER_PRODUCT)) {
+      assertBulkEqualsNonBulk(values, sim);
+      assertBulkEqualsNonBulkSupplier(values, sim);
+      assertScoresAgainstDefaultFlatScorer(values, sim);
     }
   }
 
@@ -256,19 +273,46 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
       throws IOException {
     final int size = values.size();
     final float delta = 1e-3f * size;
-    var ss = flatVectorsScorer.getRandomVectorScorerSupplier(sim, values);
-    var updatableScorer = ss.scorer();
+    var supplier = flatVectorsScorer.getRandomVectorScorerSupplier(sim, values);
+    for (var ss : List.of(supplier, supplier.copy())) {
+      var updatableScorer = ss.scorer();
+      var targetNode = random().nextInt(size);
+      updatableScorer.setScoringOrdinal(targetNode);
+      int[] indices = randomIndices(size);
+      float[] expectedScores = new float[size];
+      for (int i = 0; i < size; i++) {
+        expectedScores[i] = updatableScorer.score(indices[i]);
+      }
+      float[] bulkScores = new float[size];
+      updatableScorer.bulkScore(indices, bulkScores, size);
+      assertArrayEquals(expectedScores, bulkScores, delta);
+      assertNoScoreBeyondNumNodes(updatableScorer, size);
+    }
+  }
+
+  // asserts scores against the default scorer.
+  void assertScoresAgainstDefaultFlatScorer(KnnVectorValues values, VectorSimilarityFunction sim)
+      throws IOException {
+    final int size = values.size();
+    final float delta = 1e-3f * size;
     var targetNode = random().nextInt(size);
-    updatableScorer.setScoringOrdinal(targetNode);
     int[] indices = randomIndices(size);
+    var defaultScorer =
+        DefaultFlatVectorScorer.INSTANCE.getRandomVectorScorerSupplier(sim, values).scorer();
+    defaultScorer.setScoringOrdinal(targetNode);
     float[] expectedScores = new float[size];
     for (int i = 0; i < size; i++) {
-      expectedScores[i] = updatableScorer.score(indices[i]);
+      expectedScores[i] = defaultScorer.score(indices[i]);
     }
-    float[] bulkScores = new float[size];
-    updatableScorer.bulkScore(indices, bulkScores, size);
-    assertArrayEquals(expectedScores, bulkScores, delta);
-    assertNoScoreBeyondNumNodes(updatableScorer, size);
+
+    var supplier = flatVectorsScorer.getRandomVectorScorerSupplier(sim, values);
+    for (var ss : List.of(supplier, supplier.copy())) {
+      var updatableScorer = ss.scorer();
+      updatableScorer.setScoringOrdinal(targetNode);
+      float[] bulkScores = new float[size];
+      updatableScorer.bulkScore(indices, bulkScores, size);
+      assertArrayEquals(expectedScores, bulkScores, delta);
+    }
   }
 
   void assertNoScoreBeyondNumNodes(RandomVectorScorer scorer, int maxSize) throws IOException {
