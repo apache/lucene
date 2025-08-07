@@ -209,7 +209,7 @@ public final class MemorySegmentBulkVectorOps {
       super.cosineBulk(scores, new FloatMemorySegmentLoader(q), d1, d2, d3, d4, elementCount);
     }
 
-    public float cosineBulk(MemorySegment q, MemorySegment d, int elementCount) {
+    public float cosine(MemorySegment q, MemorySegment d, int elementCount) {
       int i = 0;
       FloatVector sv = FloatVector.zero(FLOAT_SPECIES);
       FloatVector qvNorm = FloatVector.zero(FLOAT_SPECIES);

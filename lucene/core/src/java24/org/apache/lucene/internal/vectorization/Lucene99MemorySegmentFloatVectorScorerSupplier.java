@@ -99,7 +99,7 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
       return new AbstractBulkScorer(values) {
         @Override
         float vectorOp(MemorySegment query, MemorySegment ms, int elementCount) {
-          return COS_OPS.cosineBulk(query, ms, dims);
+          return COS_OPS.cosine(query, ms, dims);
         }
 
         @Override
