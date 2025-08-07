@@ -19,37 +19,47 @@ package org.apache.lucene.benchmark.jmh;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.junit.After;
+import org.junit.Before;
 
 public class TestVectorScorerFloat32Benchmark extends LuceneTestCase {
 
-  public void testDotProduct() throws IOException {
-    float delta = 1e-3f * 1024;
-    var bench = new VectorScorerFloat32Benchmark();
+  VectorScorerFloat32Benchmark bench;
+  float delta;
+
+  @Before
+  public void setup() throws IOException {
+    bench = new VectorScorerFloat32Benchmark();
     bench.size = 1024;
+    bench.numVectors = random().nextInt(1, 256);
+    bench.numVectorsToScore = random().nextInt(bench.numVectors);
+    delta = 1e-3f * bench.size;
     bench.setup();
-    bench.perIterationInit();
+  }
 
-    try {
-      Arrays.fill(bench.scores, 0.0f);
-      bench.dotProductDefault();
-      var expectedScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+  @After
+  public void teardown() throws IOException {
+    bench.teardown();
+  }
 
-      Arrays.fill(bench.scores, 0.0f);
-      bench.dotProductDefaultBulk();
-      var bulkScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
-      assertArrayEquals(expectedScores, bulkScores, delta);
+  public void testDotProduct() throws IOException {
+    Arrays.fill(bench.scores, 0.0f);
+    bench.dotProductDefault();
+    var expectedScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
 
-      Arrays.fill(bench.scores, 0.0f);
-      bench.dotProductOptScorer();
-      var actualScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
-      assertArrayEquals(expectedScores, actualScores, delta);
+    Arrays.fill(bench.scores, 0.0f);
+    bench.dotProductDefaultBulk();
+    var bulkScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+    assertArrayEquals(expectedScores, bulkScores, delta);
 
-      Arrays.fill(bench.scores, 0.0f);
-      bench.dotProductOptBulkScore();
-      actualScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
-      assertArrayEquals(expectedScores, actualScores, delta);
-    } finally {
-      bench.teardown();
-    }
+    Arrays.fill(bench.scores, 0.0f);
+    bench.dotProductOptScorer();
+    var actualScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+    assertArrayEquals(expectedScores, actualScores, delta);
+
+    Arrays.fill(bench.scores, 0.0f);
+    bench.dotProductOptBulkScore();
+    actualScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+    assertArrayEquals(expectedScores, actualScores, delta);
   }
 }

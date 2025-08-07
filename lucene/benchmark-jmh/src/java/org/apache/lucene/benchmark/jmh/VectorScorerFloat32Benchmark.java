@@ -80,19 +80,19 @@ import org.openjdk.jmh.annotations.Warmup;
 public class VectorScorerFloat32Benchmark {
 
   @Param({"1024"})
-  int size;
+  public int size;
+
+  public int numVectors = 128_000;
+  public int numVectorsToScore = 20_000;
 
   float[] scores;
   int[] indices;
   Path path;
   Directory dir;
   IndexInput in;
-  KnnVectorValues vectorValuesA, vectorValuesB;
-  UpdateableRandomVectorScorer defScorer;
-  UpdateableRandomVectorScorer optScorer;
-
-  public static final int NUM_VECTORS = 128_000;
-  public static final int VEC_TO_SCORE = 20_000;
+  KnnVectorValues values;
+  UpdateableRandomVectorScorer defDotScorer;
+  UpdateableRandomVectorScorer optDotScorer;
 
   static final ValueLayout.OfFloat JAVA_FLOAT_LE =
       ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
@@ -105,40 +105,36 @@ public class VectorScorerFloat32Benchmark {
     try (IndexOutput out = dir.createOutput("vector.data", IOContext.DEFAULT)) {
       var ba = new byte[size * Float.BYTES];
       var seg = MemorySegment.ofArray(ba);
-      for (int v = 0; v < NUM_VECTORS; v++) {
+      for (int v = 0; v < numVectors; v++) {
         var src = MemorySegment.ofArray(randomVector(size, random));
         MemorySegment.copy(src, JAVA_FLOAT_UNALIGNED, 0L, seg, JAVA_FLOAT_LE, 0L, size);
         out.writeBytes(ba, 0, ba.length);
       }
     }
+    perIterationInit();
   }
 
   @Setup(Level.Iteration)
   public void perIterationInit() throws IOException {
     var random = ThreadLocalRandom.current();
-
-    scores = new float[VEC_TO_SCORE];
+    scores = new float[numVectorsToScore];
     in = dir.openInput("vector.data", IOContext.DEFAULT);
+    int targetOrd = random.nextInt(numVectors);
 
     // default scorer
-    vectorValuesA = vectorValues(size, NUM_VECTORS, in, DOT_PRODUCT);
-    defScorer =
-        DefaultFlatVectorScorer.INSTANCE
-            .getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValuesA)
-            .scorer();
-    defScorer.setScoringOrdinal(0);
+    values = vectorValues(size, numVectors, in, DOT_PRODUCT);
+    var def = DefaultFlatVectorScorer.INSTANCE;
+    defDotScorer = def.getRandomVectorScorerSupplier(DOT_PRODUCT, values.copy()).scorer();
+    defDotScorer.setScoringOrdinal(targetOrd);
 
-    vectorValuesB = vectorValues(size, NUM_VECTORS, in, DOT_PRODUCT);
-    // may or may not be
-    optScorer =
-        FlatVectorScorerUtil.getLucene99FlatVectorsScorer()
-            .getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValuesB)
-            .scorer();
-    optScorer.setScoringOrdinal(0);
+    // optimized scorer
+    var opt = FlatVectorScorerUtil.getLucene99FlatVectorsScorer();
+    optDotScorer = opt.getRandomVectorScorerSupplier(DOT_PRODUCT, values.copy()).scorer();
+    optDotScorer.setScoringOrdinal(targetOrd);
 
-    List<Integer> list = IntStream.range(0, NUM_VECTORS).boxed().collect(Collectors.toList());
+    List<Integer> list = IntStream.range(0, numVectors).boxed().collect(Collectors.toList());
     Collections.shuffle(list, random);
-    indices = list.stream().limit(VEC_TO_SCORE).mapToInt(i -> i).toArray();
+    indices = list.stream().limit(numVectorsToScore).mapToInt(i -> i).toArray();
   }
 
   @TearDown
@@ -151,29 +147,29 @@ public class VectorScorerFloat32Benchmark {
 
   @Benchmark
   public float[] dotProductDefault() throws IOException {
-    for (int v = 0; v < VEC_TO_SCORE; v++) {
-      scores[v] = defScorer.score(indices[v]);
+    for (int v = 0; v < numVectorsToScore; v++) {
+      scores[v] = defDotScorer.score(indices[v]);
     }
     return scores;
   }
 
   @Benchmark
   public float[] dotProductDefaultBulk() throws IOException {
-    defScorer.bulkScore(indices, scores, indices.length);
+    defDotScorer.bulkScore(indices, scores, indices.length);
     return scores;
   }
 
   @Benchmark
   public float[] dotProductOptScorer() throws IOException {
-    for (int v = 0; v < VEC_TO_SCORE; v++) {
-      scores[v] = optScorer.score(indices[v]);
+    for (int v = 0; v < numVectorsToScore; v++) {
+      scores[v] = optDotScorer.score(indices[v]);
     }
     return scores;
   }
 
   @Benchmark
   public float[] dotProductOptBulkScore() throws IOException {
-    optScorer.bulkScore(indices, scores, indices.length);
+    optDotScorer.bulkScore(indices, scores, indices.length);
     return scores;
   }
 
