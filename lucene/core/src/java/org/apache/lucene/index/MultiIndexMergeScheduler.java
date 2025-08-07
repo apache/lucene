@@ -23,24 +23,26 @@ import org.apache.lucene.util.InfoStream;
 /**
  * Multi-index or multi-tenant merge scheduling.
  *
- * MultiIndexMergeScheduler builds on existing functionality in ConcurrentMergeScheduler by
- * automatically tracking merge sources and merge threads and the index Directory that each
- * applies to, and then shunting all of them into a single ConcurrentMergeScheduler instance.
+ * <p>MultiIndexMergeScheduler builds on existing functionality in ConcurrentMergeScheduler by
+ * automatically tracking merge sources and merge threads and the index Directory that each applies
+ * to, and then shunting all of them into a single ConcurrentMergeScheduler instance.
  *
- * The multi-tenant merge scheduling can be used easily by creating a MultiIndexMergeScheduler
- * instance for each index and then using each instance normally, the same way you would use a
- * lone ConcurrentMergeScheduler.
+ * <p>The multi-tenant merge scheduling can be used easily by creating a MultiIndexMergeScheduler
+ * instance for each index and then using each instance normally, the same way you would use a lone
+ * ConcurrentMergeScheduler.
  *
  * @lucene.experimental
  */
 class MultiIndexMergeScheduler extends MergeScheduler {
   private final Directory directory;
   private final CombinedMergeScheduler combinedMergeScheduler;
+  private final boolean manageSingleton;
 
   /** The main MultiIndexMergeScheduler constructor -- use this one. */
   public MultiIndexMergeScheduler(Directory directory) {
     this.directory = directory;
-    this.combinedMergeScheduler = CombinedMergeScheduler.singleton;
+    this.combinedMergeScheduler = CombinedMergeScheduler.incrementSingletonReference();
+    this.manageSingleton = true;
   }
 
   /** Alternate MultiIndexMergeScheduler constructor for unit testing or tenant grouping. */
@@ -48,6 +50,7 @@ class MultiIndexMergeScheduler extends MergeScheduler {
       Directory directory, CombinedMergeScheduler combinedMergeScheduler) {
     this.directory = directory;
     this.combinedMergeScheduler = combinedMergeScheduler;
+    this.manageSingleton = false;
   }
 
   public Directory getDirectory() {
@@ -74,6 +77,9 @@ class MultiIndexMergeScheduler extends MergeScheduler {
   @Override
   public void close() throws IOException {
     this.combinedMergeScheduler.sync(this.directory);
+    if (this.manageSingleton) {
+      CombinedMergeScheduler.decrementSingletonReference();
+    }
   }
 
   // We created this method because we cannot easily override the initialize() method
@@ -93,7 +99,30 @@ class MultiIndexMergeScheduler extends MergeScheduler {
    * <p>CombinedMergeScheduler should <b><i>not</i></b> be passed directly to IndexWriter.
    */
   static class CombinedMergeScheduler extends ConcurrentMergeScheduler {
-    static final CombinedMergeScheduler singleton = new CombinedMergeScheduler();
+    private static CombinedMergeScheduler singleton = null;
+    private static int singletonRefCount = 0;
+
+    private static synchronized CombinedMergeScheduler incrementSingletonReference() {
+      if (singleton == null) {
+        singleton = new CombinedMergeScheduler();
+      }
+      singletonRefCount++;
+      return singleton;
+    }
+
+    private static synchronized void decrementSingletonReference() throws IOException {
+      if (singletonRefCount < 1) {
+        throw new IllegalStateException("decrementSingletonReference() called too many times");
+      }
+      singletonRefCount--;
+      if (singletonRefCount == 0) {
+        singleton = null;
+      }
+    }
+
+    public static synchronized CombinedMergeScheduler peekSingleton() {
+      return singleton;
+    }
 
     // A filter pattern
     static class TaggedMergeSource implements MergeScheduler.MergeSource {

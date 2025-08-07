@@ -208,4 +208,32 @@ public class TestMultiIndexMergeScheduler extends LuceneTestCase {
       directory.close();
     }
   }
+
+  public void testReferenceCounting() throws Exception {
+    assertTrue(MultiIndexMergeScheduler.CombinedMergeScheduler.peekSingleton() == null); // 0
+
+    Directory directory1 = newDirectory();
+    MultiIndexMergeScheduler mims1 = new MultiIndexMergeScheduler(directory1);
+    assertTrue(MultiIndexMergeScheduler.CombinedMergeScheduler.peekSingleton() != null); // 1
+
+    Directory directory2 = newDirectory();
+    MultiIndexMergeScheduler mims2 = new MultiIndexMergeScheduler(directory2);
+    assertTrue(MultiIndexMergeScheduler.CombinedMergeScheduler.peekSingleton() != null); // 2
+
+    mims1.close();
+    directory1.close();
+    assertTrue(MultiIndexMergeScheduler.CombinedMergeScheduler.peekSingleton() != null); // 1
+
+    mims2.close();
+    directory2.close();
+    assertTrue(MultiIndexMergeScheduler.CombinedMergeScheduler.peekSingleton() == null); // 0
+
+    Directory directory3 = newDirectory();
+    MultiIndexMergeScheduler mims3 = new MultiIndexMergeScheduler(directory3);
+    assertTrue(MultiIndexMergeScheduler.CombinedMergeScheduler.peekSingleton() != null); // 1
+
+    mims3.close();
+    directory3.close();
+    assertTrue(MultiIndexMergeScheduler.CombinedMergeScheduler.peekSingleton() == null); // 0
+  }
 }
