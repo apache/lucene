@@ -210,7 +210,6 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
     }
   }
 
-  @com.carrotsearch.randomizedtesting.annotations.Repeat(iterations = 100)
   public void testBulkScorerFloats() throws IOException {
     int dims = random().nextInt(1, 1024);
     int size = random().nextInt(2, 255);

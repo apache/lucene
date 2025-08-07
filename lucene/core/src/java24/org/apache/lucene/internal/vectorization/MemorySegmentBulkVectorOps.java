@@ -141,7 +141,6 @@ public final class MemorySegmentBulkVectorOps {
         MemorySegment d3,
         MemorySegment d4,
         int elementCount) {
-      // assert scores.length == 4;
       int i = 0;
       FloatVector sv1 = FloatVector.zero(FLOAT_SPECIES);
       FloatVector sv2 = FloatVector.zero(FLOAT_SPECIES);
@@ -161,19 +160,23 @@ public final class MemorySegmentBulkVectorOps {
         sv3 = fma(qv, dv3, sv3);
         sv4 = fma(qv, dv4, sv4);
       }
-      scores[0] = sv1.reduceLanes(VectorOperators.ADD);
-      scores[1] = sv2.reduceLanes(VectorOperators.ADD);
-      scores[2] = sv3.reduceLanes(VectorOperators.ADD);
-      scores[3] = sv4.reduceLanes(VectorOperators.ADD);
+      float sum1 = sv1.reduceLanes(VectorOperators.ADD);
+      float sum2 = sv2.reduceLanes(VectorOperators.ADD);
+      float sum3 = sv3.reduceLanes(VectorOperators.ADD);
+      float sum4 = sv4.reduceLanes(VectorOperators.ADD);
 
       for (; i < elementCount; i++) {
         final long offset = (long) i * Float.BYTES;
         final float qValue = q.tail(i);
-        scores[0] += qValue * d1.get(LAYOUT_LE_FLOAT, offset);
-        scores[1] += qValue * d2.get(LAYOUT_LE_FLOAT, offset);
-        scores[2] += qValue * d3.get(LAYOUT_LE_FLOAT, offset);
-        scores[3] += qValue * d4.get(LAYOUT_LE_FLOAT, offset);
+        sum1 = fma(qValue, d1.get(LAYOUT_LE_FLOAT, offset), sum1);
+        sum2 = fma(qValue, d2.get(LAYOUT_LE_FLOAT, offset), sum2);
+        sum3 = fma(qValue, d3.get(LAYOUT_LE_FLOAT, offset), sum3);
+        sum4 = fma(qValue, d4.get(LAYOUT_LE_FLOAT, offset), sum4);
       }
+      scores[0] = sum1;
+      scores[1] = sum2;
+      scores[2] = sum3;
+      scores[3] = sum4;
     }
   }
 }

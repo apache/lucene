@@ -94,7 +94,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @SuppressForbidden(reason = "Uses FMA only where fast and carefully contained")
-  private static float fma(float a, float b, float c) {
+  static float fma(float a, float b, float c) {
     if (Constants.HAS_FAST_SCALAR_FMA) {
       return Math.fma(a, b, c);
     } else {
