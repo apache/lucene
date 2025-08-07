@@ -33,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
+import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
@@ -42,7 +43,6 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
-import org.apache.lucene.tests.util.VectorizationTestUtils;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
@@ -78,8 +78,6 @@ import org.openjdk.jmh.annotations.Warmup;
       "--add-modules=jdk.incubator.vector"
     })
 public class VectorScorerFloat32Benchmark {
-
-  static final FlatVectorsScorer OPTIMIZED_SCORER = VectorizationTestUtils.getFlatVectorsScorer();
 
   @Param({"1024"})
   int size;
@@ -132,12 +130,15 @@ public class VectorScorerFloat32Benchmark {
 
     vectorValuesB = vectorValues(size, NUM_VECTORS, in, DOT_PRODUCT);
     // may or may not be
-    optScorer = OPTIMIZED_SCORER.getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValuesB).scorer();
+    optScorer =
+        FlatVectorScorerUtil.getLucene99FlatVectorsScorer()
+            .getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValuesB)
+            .scorer();
     optScorer.setScoringOrdinal(0);
 
     List<Integer> list = IntStream.range(0, NUM_VECTORS).boxed().collect(Collectors.toList());
     Collections.shuffle(list, random);
-    indices = list.stream().limit(VEC_TO_SCORE).mapToInt(i -> i).toArray(); // just use 10k
+    indices = list.stream().limit(VEC_TO_SCORE).mapToInt(i -> i).toArray();
   }
 
   @TearDown

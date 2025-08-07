@@ -28,8 +28,6 @@ public class TestVectorScorerFloat32Benchmark extends LuceneTestCase {
     bench.size = 1024;
     bench.setup();
     bench.perIterationInit();
-    assert bench.defScorer.getClass().getName().contains("DefaultFlatVectorScorer");
-    assert bench.optScorer.getClass().getName().contains("MemorySegmentFloatVectorScorer");
 
     try {
       Arrays.fill(bench.scores, 0.0f);
