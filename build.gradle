@@ -41,7 +41,6 @@ plugins {
   id "lucene.validation.owasp"
 
   id "lucene.ide.intellij-idea"
-  id "lucene.ide.eclipse"
 
   id "lucene.publications.maven"
   id "lucene.publications.maven-to-nexus-releases"
