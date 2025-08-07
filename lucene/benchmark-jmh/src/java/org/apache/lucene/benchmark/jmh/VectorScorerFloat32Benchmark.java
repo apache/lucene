@@ -16,12 +16,10 @@
  */
 package org.apache.lucene.benchmark.jmh;
 
-import static java.lang.foreign.ValueLayout.JAVA_FLOAT_UNALIGNED;
 import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 
 import java.io.IOException;
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -94,9 +92,6 @@ public class VectorScorerFloat32Benchmark {
   UpdateableRandomVectorScorer defDotScorer;
   UpdateableRandomVectorScorer optDotScorer;
 
-  static final ValueLayout.OfFloat JAVA_FLOAT_LE =
-      ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
-
   @Setup(Level.Trial)
   public void setup() throws IOException {
     var random = ThreadLocalRandom.current();
@@ -104,10 +99,9 @@ public class VectorScorerFloat32Benchmark {
     dir = new MMapDirectory(path);
     try (IndexOutput out = dir.createOutput("vector.data", IOContext.DEFAULT)) {
       var ba = new byte[size * Float.BYTES];
-      var seg = MemorySegment.ofArray(ba);
+      var buf = ByteBuffer.wrap(ba).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer();
       for (int v = 0; v < numVectors; v++) {
-        var src = MemorySegment.ofArray(randomVector(size, random));
-        MemorySegment.copy(src, JAVA_FLOAT_UNALIGNED, 0L, seg, JAVA_FLOAT_LE, 0L, size);
+        buf.put(0, randomVector(size, random));
         out.writeBytes(ba, 0, ba.length);
       }
     }
