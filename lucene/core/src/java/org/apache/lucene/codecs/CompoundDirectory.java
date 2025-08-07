@@ -85,4 +85,10 @@ public abstract class CompoundDirectory extends Directory {
   public final Lock obtainLock(String name) {
     throw new UnsupportedOperationException();
   }
+
+  @Override
+  public void copyFrom(Directory from, String src, String dest, IOContext context)
+      throws IOException {
+    throw new UnsupportedOperationException();
+  }
 }
