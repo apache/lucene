@@ -62,4 +62,67 @@ public class TestVectorScorerFloat32Benchmark extends LuceneTestCase {
     actualScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
     assertArrayEquals(expectedScores, actualScores, delta);
   }
+
+  public void testCosine() throws IOException {
+    Arrays.fill(bench.scores, 0.0f);
+    bench.cosineDefault();
+    var expectedScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+
+    Arrays.fill(bench.scores, 0.0f);
+    bench.cosineDefaultBulk();
+    var bulkScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+    assertArrayEquals(expectedScores, bulkScores, delta);
+
+    Arrays.fill(bench.scores, 0.0f);
+    bench.cosineOptScorer();
+    var actualScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+    assertArrayEquals(expectedScores, actualScores, delta);
+
+    Arrays.fill(bench.scores, 0.0f);
+    bench.cosineOptBulkScore();
+    actualScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+    assertArrayEquals(expectedScores, actualScores, delta);
+  }
+
+  public void testEuclidean() throws IOException {
+    Arrays.fill(bench.scores, 0.0f);
+    bench.euclideanDefault();
+    var expectedScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+
+    Arrays.fill(bench.scores, 0.0f);
+    bench.euclideanDefaultBulk();
+    var bulkScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+    assertArrayEquals(expectedScores, bulkScores, delta);
+
+    Arrays.fill(bench.scores, 0.0f);
+    bench.euclideanOptScorer();
+    var actualScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+    assertArrayEquals(expectedScores, actualScores, delta);
+
+    Arrays.fill(bench.scores, 0.0f);
+    bench.euclideanOptBulkScore();
+    actualScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+    assertArrayEquals(expectedScores, actualScores, delta);
+  }
+
+  public void testMip() throws IOException {
+    Arrays.fill(bench.scores, 0.0f);
+    bench.mipDefault();
+    var expectedScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+
+    Arrays.fill(bench.scores, 0.0f);
+    bench.mipDefaultBulk();
+    var bulkScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+    assertArrayEquals(expectedScores, bulkScores, delta);
+
+    Arrays.fill(bench.scores, 0.0f);
+    bench.mipOptScorer();
+    var actualScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+    assertArrayEquals(expectedScores, actualScores, delta);
+
+    Arrays.fill(bench.scores, 0.0f);
+    bench.mipOptBulkScore();
+    actualScores = Arrays.copyOfRange(bench.scores, 0, bench.scores.length);
+    assertArrayEquals(expectedScores, actualScores, delta);
+  }
 }
