@@ -210,7 +210,7 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
     }
   }
 
-  // @com.carrotsearch.randomizedtesting.annotations.Repeat(iterations = 100)
+  @com.carrotsearch.randomizedtesting.annotations.Repeat(iterations = 100)
   public void testBulkScorerFloats() throws IOException {
     int dims = random().nextInt(1, 1024);
     int size = random().nextInt(2, 255);
@@ -274,19 +274,21 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
       throws IOException {
     final int size = values.size();
     final float delta = 1e-3f * size;
-    var ss = flatVectorsScorer.getRandomVectorScorerSupplier(sim, values);
-    var updatableScorer = ss.scorer();
-    var targetNode = random().nextInt(size);
-    updatableScorer.setScoringOrdinal(targetNode);
-    int[] indices = randomIndices(size);
-    float[] expectedScores = new float[size];
-    for (int i = 0; i < size; i++) {
-      expectedScores[i] = updatableScorer.score(indices[i]);
+    var supplier = flatVectorsScorer.getRandomVectorScorerSupplier(sim, values);
+    for (var ss : List.of(supplier, supplier.copy())) {
+      var updatableScorer = ss.scorer();
+      var targetNode = random().nextInt(size);
+      updatableScorer.setScoringOrdinal(targetNode);
+      int[] indices = randomIndices(size);
+      float[] expectedScores = new float[size];
+      for (int i = 0; i < size; i++) {
+        expectedScores[i] = updatableScorer.score(indices[i]);
+      }
+      float[] bulkScores = new float[size];
+      updatableScorer.bulkScore(indices, bulkScores, size);
+      assertArrayEquals(expectedScores, bulkScores, delta);
+      assertNoScoreBeyondNumNodes(updatableScorer, size);
     }
-    float[] bulkScores = new float[size];
-    updatableScorer.bulkScore(indices, bulkScores, size);
-    assertArrayEquals(expectedScores, bulkScores, delta);
-    assertNoScoreBeyondNumNodes(updatableScorer, size);
   }
 
   // asserts scores against the default scorer.
@@ -304,12 +306,14 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
       expectedScores[i] = defaultScorer.score(indices[i]);
     }
 
-    var ss = flatVectorsScorer.getRandomVectorScorerSupplier(sim, values);
-    var updatableScorer = ss.scorer();
-    updatableScorer.setScoringOrdinal(targetNode);
-    float[] bulkScores = new float[size];
-    updatableScorer.bulkScore(indices, bulkScores, size);
-    assertArrayEquals(expectedScores, bulkScores, delta);
+    var supplier = flatVectorsScorer.getRandomVectorScorerSupplier(sim, values);
+    for (var ss : List.of(supplier, supplier.copy())) {
+      var updatableScorer = ss.scorer();
+      updatableScorer.setScoringOrdinal(targetNode);
+      float[] bulkScores = new float[size];
+      updatableScorer.bulkScore(indices, bulkScores, size);
+      assertArrayEquals(expectedScores, bulkScores, delta);
+    }
   }
 
   void assertNoScoreBeyondNumNodes(RandomVectorScorer scorer, int maxSize) throws IOException {
