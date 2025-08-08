@@ -7,6 +7,8 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#11023: Removing deprecated parameters from CheckIndex. (Jakub Slowinski)
+
 * GITHUB#14165: TieredMergePolicy's maxMergeAtOnce parameter was removed. (Adrien Grand)
 
 * GITHUB#14160: Adjusts the default HNSW search behavior so that filter optimized search is enabled
