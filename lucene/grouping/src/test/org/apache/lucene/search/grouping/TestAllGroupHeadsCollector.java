@@ -50,7 +50,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 
@@ -431,10 +431,9 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
     return true;
   }
 
-  private boolean openBitSetContains(int[] expectedDocs, Bits actual, int maxDoc)
+  private boolean openBitSetContains(int[] expectedDocs, BitSet actual, int maxDoc)
       throws IOException {
-    assert actual instanceof FixedBitSet;
-    if (expectedDocs.length != ((FixedBitSet) actual).cardinality()) {
+    if (expectedDocs.length != actual.cardinality()) {
       return false;
     }
 

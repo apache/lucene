@@ -137,7 +137,7 @@ public final class SoftDeletesRetentionMergePolicy extends OneMergeWrappingMerge
               + " maxDoc: "
               + reader.maxDoc();
       return FilterCodecReader.wrapLiveDocs(
-          reader, cloneLiveDocs, reader.numDocs() + numExtraLiveDocs);
+          reader, cloneLiveDocs.asReadOnlyBits(), reader.numDocs() + numExtraLiveDocs);
     } else {
       return reader;
     }

@@ -784,46 +784,19 @@ public final class FixedBitSet extends BitSet {
   public static FixedBitSet copyOf(Bits bits) {
     if (bits instanceof FixedBits fixedBits) {
       // restore the original FixedBitSet
-      bits = fixedBits.bitSet;
+      return fixedBits.bitSet.clone();
     }
 
-    if (bits instanceof FixedBitSet) {
-      return ((FixedBitSet) bits).clone();
-    } else {
-      int length = bits.length();
-      FixedBitSet bitSet = new FixedBitSet(length);
-      bitSet.set(0, length);
-      for (int i = 0; i < length; ++i) {
-        if (bits.get(i) == false) {
-          bitSet.clear(i);
-        }
-      }
-      return bitSet;
-    }
-  }
-
-  /**
-   * Convert this instance to read-only {@link Bits}. This is useful in the case that this {@link
-   * FixedBitSet} is returned as a {@link Bits} instance, to make sure that consumers may not get
-   * write access back by casting to a {@link FixedBitSet}. NOTE: Changes to this {@link
-   * FixedBitSet} will be reflected on the returned {@link Bits}.
-   */
-  public Bits asReadOnlyBits() {
-    return new FixedBits(bits, numBits);
+    int length = bits.length();
+    FixedBitSet bitSet = new FixedBitSet(length);
+    bitSet.set(0, length);
+    bits.applyMask(bitSet, 0);
+    return bitSet;
   }
 
   @Override
-  public void applyMask(FixedBitSet bitSet, int offset) {
-    // Note: Some scorers don't track maxDoc and may thus call this method with an offset that is
-    // beyond bitSet.length()
-    int length = Math.min(bitSet.length(), length() - offset);
-    if (length >= 0) {
-      andRange(this, offset, bitSet, 0, length);
-    }
-    if (length < bitSet.length()
-        && bitSet.nextSetBit(Math.max(0, length)) != DocIdSetIterator.NO_MORE_DOCS) {
-      throw new IllegalArgumentException("Some bits are set beyond the end of live docs");
-    }
+  public Bits asReadOnlyBits() {
+    return new FixedBits(bits, numBits);
   }
 
   /**

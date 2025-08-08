@@ -112,7 +112,7 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
             result.set(doc);
           }
         },
-        acceptDocs,
+        acceptDocs.asReadOnlyBits(),
         0,
         DocIdSetIterator.NO_MORE_DOCS);
 
@@ -128,7 +128,7 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
             maxDoc,
             0f);
     CountingLeafCollector collector = new CountingLeafCollector();
-    scorer.score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
+    scorer.score(collector, acceptDocs.asReadOnlyBits(), 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(acceptDocs.cardinality(), collector.count);
   }
 
@@ -365,7 +365,7 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
             result.set(doc);
           }
         },
-        acceptDocs,
+        acceptDocs.asReadOnlyBits(),
         0,
         DocIdSetIterator.NO_MORE_DOCS);
 
@@ -379,7 +379,7 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
             maxDoc,
             0f);
     CountingLeafCollector collector = new CountingLeafCollector();
-    scorer.score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
+    scorer.score(collector, acceptDocs.asReadOnlyBits(), 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(acceptDocs.cardinality(), collector.count);
   }
 
@@ -459,7 +459,7 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
             result.set(doc);
           }
         },
-        acceptDocs,
+        acceptDocs.asReadOnlyBits(),
         0,
         DocIdSetIterator.NO_MORE_DOCS);
 
@@ -477,7 +477,7 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
             maxDoc,
             0f);
     CountingLeafCollector collector = new CountingLeafCollector();
-    scorer.score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
+    scorer.score(collector, acceptDocs.asReadOnlyBits(), 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(expected.cardinality(), collector.count);
   }
 
@@ -626,7 +626,7 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
             result.set(doc);
           }
         },
-        acceptDocs,
+        acceptDocs.asReadOnlyBits(),
         0,
         DocIdSetIterator.NO_MORE_DOCS);
 
@@ -643,7 +643,7 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     Collections.shuffle(clauses, random());
     scorer = new DenseConjunctionBulkScorer(clauses, Collections.emptyList(), maxDoc, 0f);
     CountingLeafCollector collector = new CountingLeafCollector();
-    scorer.score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
+    scorer.score(collector, acceptDocs.asReadOnlyBits(), 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(expected.cardinality(), collector.count);
   }
 
@@ -732,7 +732,7 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
             result.set(doc);
           }
         },
-        acceptDocs,
+        acceptDocs.asReadOnlyBits(),
         0,
         DocIdSetIterator.NO_MORE_DOCS);
 
@@ -748,7 +748,7 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     Collections.shuffle(clauses, random());
     scorer = new DenseConjunctionBulkScorer(clauses, Collections.emptyList(), maxDoc, 0f);
     CountingLeafCollector collector = new CountingLeafCollector();
-    scorer.score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
+    scorer.score(collector, acceptDocs.asReadOnlyBits(), 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(expected.cardinality(), collector.count);
   }
 
@@ -854,7 +854,7 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
             result.set(doc);
           }
         },
-        acceptDocs,
+        acceptDocs.asReadOnlyBits(),
         0,
         DocIdSetIterator.NO_MORE_DOCS);
 
@@ -876,7 +876,7 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
             maxDoc,
             0f);
     CountingLeafCollector collector = new CountingLeafCollector();
-    scorer.score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
+    scorer.score(collector, acceptDocs.asReadOnlyBits(), 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(expected.cardinality(), collector.count);
   }
 

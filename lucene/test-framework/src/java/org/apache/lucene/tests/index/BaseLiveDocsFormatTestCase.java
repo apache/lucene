@@ -104,9 +104,9 @@ public abstract class BaseLiveDocsFormatTestCase extends LuceneTestCase {
 
     final Bits bits;
     if (fixedBitSet) {
-      bits = liveDocs;
+      bits = liveDocs.asReadOnlyBits();
     } else {
-      // Make sure the impl doesn't only work with a FixedBitSet
+      // Make sure the impl doesn't only work with FixedBitSet#asReadOnlyBits
       bits =
           new Bits() {
 

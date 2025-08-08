@@ -29,6 +29,8 @@ API Changes
 * GITHUB#14873: Change PriorityQueue to take a LessThan interface implementation
   in its constructor rather than overriding the lessThan abstract method (Simon Cooper)
 
+* GITHUB#14996: BitSet no longer implements Bits. (Adrien Grand)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
