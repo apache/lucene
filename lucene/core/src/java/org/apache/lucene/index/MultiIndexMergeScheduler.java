@@ -41,7 +41,7 @@ class MultiIndexMergeScheduler extends MergeScheduler {
   /** The main MultiIndexMergeScheduler constructor -- use this one. */
   public MultiIndexMergeScheduler(Directory directory) {
     this.directory = directory;
-    this.combinedMergeScheduler = CombinedMergeScheduler.incrementSingletonReference();
+    this.combinedMergeScheduler = CombinedMergeScheduler.acquireSingleton();
     this.manageSingleton = true;
   }
 
@@ -78,7 +78,7 @@ class MultiIndexMergeScheduler extends MergeScheduler {
   public void close() throws IOException {
     this.combinedMergeScheduler.sync(this.directory);
     if (this.manageSingleton) {
-      CombinedMergeScheduler.decrementSingletonReference();
+      CombinedMergeScheduler.releaseSingleton();
     }
   }
 
@@ -102,7 +102,7 @@ class MultiIndexMergeScheduler extends MergeScheduler {
     private static CombinedMergeScheduler singleton = null;
     private static int singletonRefCount = 0;
 
-    private static synchronized CombinedMergeScheduler incrementSingletonReference() {
+    private static synchronized CombinedMergeScheduler acquireSingleton() {
       if (singleton == null) {
         singleton = new CombinedMergeScheduler();
       }
@@ -110,7 +110,7 @@ class MultiIndexMergeScheduler extends MergeScheduler {
       return singleton;
     }
 
-    private static synchronized void decrementSingletonReference() throws IOException {
+    private static synchronized void releaseSingleton() throws IOException {
       if (singletonRefCount < 1) {
         throw new IllegalStateException("decrementSingletonReference() called too many times");
       }
