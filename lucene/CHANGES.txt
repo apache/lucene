@@ -231,6 +231,9 @@ Optimizations
 
 * GITHUB#15001: Remove full integrity check from SortingStoredFieldsConsumer (Martijn van Groningen)
 
+* GITHUB#15039: Score computations are now more reliably vectorized.
+  (Adrien Grand, Guo Feng)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
