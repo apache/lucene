@@ -18,7 +18,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.List;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
@@ -38,7 +38,7 @@ public abstract class AcceptDocs {
    * @return Bits instance for random access, or null if not available
    * @throws IOException if an I/O error occurs
    */
-  public abstract Bits getBits() throws IOException;
+  public abstract Bits bits() throws IOException;
 
   /**
    * Get an iterator of accepted docs.
@@ -46,149 +46,136 @@ public abstract class AcceptDocs {
    * @return DocIdSetIterator for sequential access
    * @throws IOException if an I/O error occurs
    */
-  public abstract DocIdSetIterator getIterator() throws IOException;
+  public abstract DocIdSetIterator iterator() throws IOException;
 
   /**
    * Return an approximation of the number of accepted documents.
    *
    * @return approximate cost
    */
-  public abstract long cost();
+  public abstract int cost();
 
   /**
-   * Create AcceptDocs from a Bits instance.
+   * Create AcceptDocs from a {@link Bits} instance representing live documents. A {@code null}
+   * instance is interpreted as matching all documents, like in {@link LeafReader#getLiveDocs()}.
    *
    * @param bits the Bits instance for random access
+   * @param maxDoc the number of documents in the reader
    * @return AcceptDocs wrapping the Bits
    */
-  public static AcceptDocs fromBits(Bits bits) {
-    if (bits == null) {
-      return new AcceptAllDocs();
+  public static AcceptDocs fromLiveDocs(Bits bits, int maxDoc) {
+    if (bits instanceof BitSet bitSet) {
+      return new BitSetAcceptDocs(bitSet);
     }
-    return new BitsAcceptDocs(bits);
+    return new BitsAcceptDocs(bits, maxDoc);
   }
 
   /**
-   * Create AcceptDocs from a DocIdSetIterator.
+   * Create AcceptDocs from a DocIdSetIterator, optionally filtered by live documents.
    *
    * @param iterator a DocIdSetIterator iterator
+   * @param liveDocs Bits representing live documents, or {@code null} if
+   * @param maxDoc the number of documents in the reader
    * @return AcceptDocs wrapping the iterator
    */
-  public static AcceptDocs fromIterator(DocIdSetIterator iterator, int maxDoc) {
-    if (iterator == null) {
-      return new AcceptAllDocs();
-    }
-    return new IteratorAcceptDocs(iterator, maxDoc);
+  public static AcceptDocs fromIterator(DocIdSetIterator iterator, Bits liveDocs, int maxDoc)
+      throws IOException {
+    BitSet bitSet = createBitSet(iterator, liveDocs, maxDoc);
+    return new BitSetAcceptDocs(bitSet);
   }
 
-  /**
-   * Create AcceptDocs from a conjunction of DocIdSetIterators
-   *
-   * @param disiList list of required iterators
-   * @return AcceptDocs wrapping the conjunction
-   */
-  public static AcceptDocs fromConjunction(List<DocIdSetIterator> disiList, int maxDoc) {
-    if (disiList.isEmpty()) {
-      return new AcceptAllDocs();
-    }
-    if (disiList.size() == 1) {
-      return new IteratorAcceptDocs(disiList.getFirst(), maxDoc);
-    }
-    return new IteratorAcceptDocs(ConjunctionDISI.createConjunction(disiList, List.of()), maxDoc);
-  }
-
-  /** Impl that accepts all documents. */
-  private static class AcceptAllDocs extends AcceptDocs {
-    @Override
-    public Bits getBits() {
-      return null;
-    }
-
-    @Override
-    public DocIdSetIterator getIterator() {
-      return DocIdSetIterator.all(Integer.MAX_VALUE);
-    }
-
-    @Override
-    public long cost() {
-      return Integer.MAX_VALUE;
+  private static BitSet createBitSet(DocIdSetIterator iterator, Bits liveDocs, int maxDoc)
+      throws IOException {
+    if (liveDocs == null && iterator instanceof BitSetIterator bitSetIterator) {
+      // If we already have a BitSet and no deletions, reuse the BitSet
+      return bitSetIterator.getBitSet();
+    } else {
+      int threshold = maxDoc >> 7; // same as BitSet#of
+      if (iterator.cost() >= threshold) {
+        // take advantage of Disi#intoBitset and Bits#applyMask
+        FixedBitSet bitSet = new FixedBitSet(maxDoc);
+        bitSet.or(iterator);
+        if (liveDocs != null) {
+          liveDocs.applyMask(bitSet, 0);
+        }
+        return bitSet;
+      } else {
+        FilteredDocIdSetIterator filterIterator =
+            new FilteredDocIdSetIterator(iterator) {
+              @Override
+              protected boolean match(int doc) {
+                return liveDocs == null || liveDocs.get(doc);
+              }
+            };
+        return BitSet.of(filterIterator, maxDoc); // create a sparse bitset
+      }
     }
   }
 
-  /** Impl backed by Bits */
+  /** Impl backed by Bits, expected to be somewhat dense. */
   private static class BitsAcceptDocs extends AcceptDocs {
     private final Bits bits;
-    private DocIdSetIterator iterator;
-    private final long cost;
-
-    BitsAcceptDocs(Bits bits) {
-      this.bits = bits;
-      // estimated cost
-      if (bits instanceof BitSet bitSet) {
-        this.cost = bitSet.cardinality();
-      } else {
-        this.cost = bits.length();
-      }
-    }
-
-    @Override
-    public Bits getBits() {
-      return bits;
-    }
-
-    @Override
-    public DocIdSetIterator getIterator() {
-      if (iterator == null) {
-        if (bits instanceof BitSet bitSet) {
-          iterator = new BitSetIterator(bitSet, cost);
-        } else {
-          FixedBitSet bitSet = new FixedBitSet(bits.length());
-          for (int i = 0; i < bits.length(); i++) {
-            if (bits.get(i)) {
-              bitSet.set(i);
-            }
-          }
-          iterator = new BitSetIterator(bitSet, bitSet.cardinality());
-        }
-      }
-      return iterator;
-    }
-
-    @Override
-    public long cost() {
-      return cost;
-    }
-  }
-
-  /** Impl backed by DocIdSetIterator */
-  private static class IteratorAcceptDocs extends AcceptDocs {
-    private final DocIdSetIterator iterator;
-    private final long cost;
-    private Bits bits;
     private final int maxDoc;
 
-    IteratorAcceptDocs(DocIdSetIterator iterator, int maxDoc) {
-      this.iterator = iterator;
-      this.cost = iterator.cost();
+    BitsAcceptDocs(Bits bits, int maxDoc) {
+      this.bits = bits;
       this.maxDoc = maxDoc;
     }
 
     @Override
-    public Bits getBits() throws IOException {
-      if (bits == null) {
-        bits = BitSet.of(iterator, maxDoc);
-      }
+    public Bits bits() {
       return bits;
     }
 
     @Override
-    public DocIdSetIterator getIterator() {
+    public DocIdSetIterator iterator() {
+      DocIdSetIterator iterator = DocIdSetIterator.all(maxDoc);
+      if (bits != null) {
+        iterator =
+            new FilteredDocIdSetIterator(iterator) {
+              @Override
+              protected boolean match(int doc) {
+                return bits.get(doc);
+              }
+            };
+      }
       return iterator;
     }
 
     @Override
-    public long cost() {
-      return cost;
+    public int cost() {
+      // We have no better estimate. This should be ok in practice since background merges should
+      // keep the number of deletes under control (< 20% by default).
+      return maxDoc;
+    }
+  }
+
+  /** Impl backed by a {@link BitSet} */
+  private static class BitSetAcceptDocs extends AcceptDocs {
+
+    private final BitSet bitSet;
+    private int cardinality = -1;
+
+    BitSetAcceptDocs(BitSet bitSet) {
+      this.bitSet = bitSet;
+    }
+
+    @Override
+    public Bits bits() throws IOException {
+      return bitSet;
+    }
+
+    @Override
+    public DocIdSetIterator iterator() throws IOException {
+      return new BitSetIterator(bitSet, cost());
+    }
+
+    @Override
+    public synchronized int cost() {
+      if (cardinality == -1) {
+        cardinality = bitSet.cardinality();
+      }
+      return cardinality;
     }
   }
 }

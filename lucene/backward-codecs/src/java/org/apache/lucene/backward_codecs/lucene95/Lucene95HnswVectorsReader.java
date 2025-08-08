@@ -314,7 +314,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
         getGraph(fieldEntry),
-        vectorValues.getAcceptOrds(acceptDocs != null ? acceptDocs.getBits() : null));
+        vectorValues.getAcceptOrds(acceptDocs.bits()));
   }
 
   @Override
@@ -342,7 +342,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
         getGraph(fieldEntry),
-        vectorValues.getAcceptOrds(acceptDocs != null ? acceptDocs.getBits() : null));
+        vectorValues.getAcceptOrds(acceptDocs.bits()));
   }
 
   /** Get knn graph values; used for testing */

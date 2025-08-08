@@ -251,7 +251,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
         getGraph(fieldEntry),
-        vectorValues.getAcceptOrds(acceptDocs != null ? acceptDocs.getBits() : null));
+        vectorValues.getAcceptOrds(acceptDocs.bits()));
   }
 
   @Override

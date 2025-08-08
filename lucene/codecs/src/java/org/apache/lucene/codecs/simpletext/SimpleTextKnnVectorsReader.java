@@ -195,9 +195,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
     for (int ord = 0; ord < values.size(); ord++) {
       int doc = values.ordToDoc(ord);
-      if (acceptDocs != null
-          && acceptDocs.getBits() != null
-          && acceptDocs.getBits().get(doc) == false) {
+      if (acceptDocs.bits() != null && acceptDocs.bits().get(doc) == false) {
         continue;
       }
 
@@ -228,9 +226,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
 
     for (int ord = 0; ord < values.size(); ord++) {
       int doc = values.ordToDoc(ord);
-      if (acceptDocs != null
-          && acceptDocs.getBits() != null
-          && acceptDocs.getBits().get(doc) == false) {
+      if (acceptDocs.bits() != null && acceptDocs.bits().get(doc) == false) {
         continue;
       }
 

@@ -237,7 +237,7 @@ class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
     if (scorer == null) return;
     OrdinalTranslatedKnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
-    Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs != null ? acceptDocs.getBits() : null);
+    Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs.bits());
     for (int i = 0; i < scorer.maxOrd(); i++) {
       if (acceptedOrds == null || acceptedOrds.get(i)) {
         collector.collect(i, scorer.score(i));

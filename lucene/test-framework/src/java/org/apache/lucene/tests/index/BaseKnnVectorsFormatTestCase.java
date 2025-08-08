@@ -835,7 +835,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                 "v",
                 randomNormalizedVector(4),
                 1,
-                AcceptDocs.fromBits(leafReader.getLiveDocs()),
+                AcceptDocs.fromLiveDocs(leafReader.getLiveDocs(), leafReader.maxDoc()),
                 Integer.MAX_VALUE);
         assertEquals(0, results.scoreDocs.length);
       }
@@ -1498,7 +1498,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                       fieldName,
                       randomNormalizedVector(dimension),
                       k,
-                      AcceptDocs.fromBits(liveDocs),
+                      AcceptDocs.fromLiveDocs(liveDocs, ctx.reader().maxDoc()),
                       visitedLimit);
           assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, results.totalHits.relation());
           assertEquals(visitedLimit, results.totalHits.value());
@@ -1512,7 +1512,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                       fieldName,
                       randomNormalizedVector(dimension),
                       k,
-                      AcceptDocs.fromBits(liveDocs),
+                      AcceptDocs.fromLiveDocs(liveDocs, ctx.reader().maxDoc()),
                       visitedLimit);
           assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation());
           assertTrue(results.totalHits.value() <= visitedLimit);
@@ -1598,7 +1598,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                       fieldName,
                       randomNormalizedVector(dimension),
                       k,
-                      AcceptDocs.fromBits(liveDocs),
+                      AcceptDocs.fromLiveDocs(liveDocs, ctx.reader().maxDoc()),
                       Integer.MAX_VALUE);
           assertEquals(Math.min(k, size), results.scoreDocs.length);
           for (int i = 0; i < k - 1; i++) {

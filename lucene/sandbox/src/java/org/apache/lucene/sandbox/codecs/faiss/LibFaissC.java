@@ -396,7 +396,7 @@ final class LibFaissC {
 
     try (Arena temp = Arena.ofConfined()) {
       FixedBitSet fixedBitSet =
-          switch (acceptDocs.getBits()) {
+          switch (acceptDocs.bits()) {
             case null -> null;
             case FixedBitSet bitSet -> bitSet;
             // TODO: Add optimized case for SparseFixedBitSet

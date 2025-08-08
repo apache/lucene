@@ -326,7 +326,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     final RandomVectorScorer scorer = scorerSupplier.get();
     final KnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
-    Bits accepted = acceptDocs != null ? acceptDocs.getBits() : null;
+    Bits accepted = acceptDocs.bits();
     final Bits acceptedOrds = scorer.getAcceptOrds(accepted);
     HnswGraph graph = getGraph(fieldEntry);
     boolean doHnsw = knnCollector.k() < scorer.maxOrd();

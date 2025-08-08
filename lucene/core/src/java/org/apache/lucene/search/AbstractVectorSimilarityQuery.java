@@ -26,10 +26,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
-import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Search for all (approximate) vectors above a similarity threshold.
@@ -129,7 +126,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
           TopDocs results =
               approximateSearch(
                   context,
-                  AcceptDocs.fromBits(liveDocs),
+                  AcceptDocs.fromLiveDocs(liveDocs, leafReader.maxDoc()),
                   Integer.MAX_VALUE,
                   timeLimitingKnnCollectorManager);
           return VectorSimilarityScorerSupplier.fromScoreDocs(boost, results.scoreDocs);
@@ -140,36 +137,10 @@ abstract class AbstractVectorSimilarityQuery extends Query {
             return null;
           }
 
-          BitSet acceptDocs;
-          if (liveDocs == null && scorer.iterator() instanceof BitSetIterator bitSetIterator) {
-            // If there are no deletions, and matching docs are already cached
-            acceptDocs = bitSetIterator.getBitSet();
-          } else {
-            // Else collect all matching docs
-            DocIdSetIterator iterator = scorer.iterator();
-            final int maxDoc = leafReader.maxDoc();
-            int threshold = maxDoc >> 7; // same as BitSet#of
-            if (iterator.cost() >= threshold) {
-              // take advantage of Disi#intoBitset and Bits#applyMask
-              FixedBitSet bitSet = new FixedBitSet(maxDoc);
-              bitSet.or(iterator);
-              if (liveDocs != null) {
-                liveDocs.applyMask(bitSet, 0);
-              }
-              acceptDocs = bitSet;
-            } else {
-              FilteredDocIdSetIterator filterIterator =
-                  new FilteredDocIdSetIterator(iterator) {
-                    @Override
-                    protected boolean match(int doc) {
-                      return liveDocs == null || liveDocs.get(doc);
-                    }
-                  };
-              acceptDocs = BitSet.of(filterIterator, maxDoc); // create a sparse bitset
-            }
-          }
+          AcceptDocs acceptDocs =
+              AcceptDocs.fromIterator(scorer.iterator(), liveDocs, leafReader.maxDoc());
 
-          int cardinality = acceptDocs.cardinality();
+          int cardinality = acceptDocs.cost();
           if (cardinality == 0) {
             // If there are no live matching docs
             return null;
@@ -177,11 +148,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
 
           // Perform an approximate search
           TopDocs results =
-              approximateSearch(
-                  context,
-                  AcceptDocs.fromBits(acceptDocs),
-                  cardinality,
-                  timeLimitingKnnCollectorManager);
+              approximateSearch(context, acceptDocs, cardinality, timeLimitingKnnCollectorManager);
 
           if (results.totalHits.relation() == TotalHits.Relation.EQUAL_TO
               // Return partial results only when timeout is met
@@ -191,10 +158,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
           } else {
             // Return a lazy-loading iterator
             return VectorSimilarityScorerSupplier.fromAcceptDocs(
-                boost,
-                createVectorScorer(context),
-                new BitSetIterator(acceptDocs, cardinality),
-                resultSimilarity);
+                boost, createVectorScorer(context), acceptDocs.iterator(), resultSimilarity);
           }
         }
       }
