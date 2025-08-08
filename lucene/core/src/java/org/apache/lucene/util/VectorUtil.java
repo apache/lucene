@@ -323,6 +323,19 @@ public final class VectorUtil {
   }
 
   /**
+   * Maps a non-negative squared distance to a similarity score in the range (0, 1].
+   *
+   * <p>Uses the transformation: {@code similarity = 1 / (1 + squaredDistance)}. Smaller distances
+   * yield scores closer to 1; larger distances approach 0.
+   *
+   * @param squaredDistance squared Euclidean distance (must be ≥ 0)
+   * @return similarity score in (0, 1]
+   */
+  public static float normalizeDistanceToUnitInterval(float squaredDistance) {
+    return 1.0f / (1.0f + squaredDistance);
+  }
+
+  /**
    * Checks if a float vector only has finite components.
    *
    * @param v bytes containing a vector
