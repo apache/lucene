@@ -116,6 +116,7 @@ class MultiIndexMergeScheduler extends MergeScheduler {
       }
       singletonRefCount--;
       if (singletonRefCount == 0) {
+        singleton.close();
         singleton = null;
       }
     }
