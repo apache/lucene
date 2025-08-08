@@ -45,9 +45,8 @@ class MultiIndexMergeScheduler extends MergeScheduler {
     this.manageSingleton = true;
   }
 
-  /** Alternate MultiIndexMergeScheduler constructor for unit testing or tenant grouping. */
-  public MultiIndexMergeScheduler(
-      Directory directory, CombinedMergeScheduler combinedMergeScheduler) {
+  /** Alternate MultiIndexMergeScheduler constructor for unit testing. Does not close() the CMS. */
+  MultiIndexMergeScheduler(Directory directory, CombinedMergeScheduler combinedMergeScheduler) {
     this.directory = directory;
     this.combinedMergeScheduler = combinedMergeScheduler;
     this.manageSingleton = false;
