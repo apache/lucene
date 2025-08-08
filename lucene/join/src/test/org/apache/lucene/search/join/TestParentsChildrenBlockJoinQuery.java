@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.lucene.document.*;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
@@ -340,7 +341,7 @@ public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
     Directory dir = newDirectory();
     final RandomIndexWriter writer =
         new RandomIndexWriter(
-            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
+            random(), dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE));
 
     // Add documents
     List<Document> docs = new ArrayList<>();
