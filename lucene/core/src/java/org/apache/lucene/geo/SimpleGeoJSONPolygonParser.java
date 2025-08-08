@@ -156,10 +156,10 @@ class SimpleGeoJSONPolygonParser {
         o = parseString();
       } else if (ch == 't') {
         scan("true");
-        o = Boolean.TRUE;
+        o = true;
       } else if (ch == 'f') {
         scan("false");
-        o = Boolean.FALSE;
+        o = false;
       } else if (ch == 'n') {
         scan("null");
         o = null;

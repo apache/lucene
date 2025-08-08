@@ -16,49 +16,54 @@
  */
 package org.apache.lucene.internal.vectorization;
 
+import static org.apache.lucene.util.VectorUtil.normalizeToUnitInterval;
+
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import java.util.Optional;
-import org.apache.lucene.index.ByteVectorValues;
-import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MemorySegmentAccessInput;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
-abstract sealed class Lucene99MemorySegmentByteVectorScorer
+abstract sealed class Lucene99MemorySegmentFloatVectorScorer
     extends RandomVectorScorer.AbstractRandomVectorScorer {
 
+  final FloatVectorValues values;
   final int vectorByteSize;
   final MemorySegmentAccessInput input;
-  final byte[] query;
+  final float[] query;
   byte[] scratch;
 
   /**
    * Return an optional whose value, if present, is the scorer. Otherwise, an empty optional is
    * returned.
    */
-  public static Optional<Lucene99MemorySegmentByteVectorScorer> create(
-      VectorSimilarityFunction type, IndexInput input, KnnVectorValues values, byte[] queryVector) {
-    assert values instanceof ByteVectorValues;
+  public static Optional<Lucene99MemorySegmentFloatVectorScorer> create(
+      VectorSimilarityFunction type,
+      IndexInput input,
+      FloatVectorValues values,
+      float[] queryVector) {
     input = FilterIndexInput.unwrapOnlyTest(input);
     if (!(input instanceof MemorySegmentAccessInput msInput)) {
       return Optional.empty();
     }
     checkInvariants(values.size(), values.getVectorByteLength(), input);
     return switch (type) {
-      case COSINE -> Optional.of(new CosineScorer(msInput, values, queryVector));
+      case COSINE -> Optional.empty(); // of(new CosineScorer(msInput, values, queryVector));
       case DOT_PRODUCT -> Optional.of(new DotProductScorer(msInput, values, queryVector));
-      case EUCLIDEAN -> Optional.of(new EuclideanScorer(msInput, values, queryVector));
+      case EUCLIDEAN -> Optional.empty(); // of(new EuclideanScorer(msInput, values, queryVector));
       case MAXIMUM_INNER_PRODUCT ->
-          Optional.of(new MaxInnerProductScorer(msInput, values, queryVector));
+          Optional.empty(); // of(new MaxInnerProductScorer(msInput, values, queryVector));
     };
   }
 
-  Lucene99MemorySegmentByteVectorScorer(
-      MemorySegmentAccessInput input, KnnVectorValues values, byte[] queryVector) {
+  Lucene99MemorySegmentFloatVectorScorer(
+      MemorySegmentAccessInput input, FloatVectorValues values, float[] queryVector) {
     super(values);
+    this.values = values;
     this.input = input;
     this.vectorByteSize = values.getVectorByteLength();
     this.query = queryVector;
@@ -90,59 +95,49 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
     }
   }
 
-  static final class CosineScorer extends Lucene99MemorySegmentByteVectorScorer {
-    CosineScorer(MemorySegmentAccessInput input, KnnVectorValues values, byte[] query) {
+  static final class DotProductScorer extends Lucene99MemorySegmentFloatVectorScorer {
+
+    static final MemorySegmentBulkVectorOps.DotFromQueryArray DOT_OPS =
+        new MemorySegmentBulkVectorOps.DotFromQueryArray();
+
+    DotProductScorer(MemorySegmentAccessInput input, FloatVectorValues values, float[] query) {
       super(input, values, query);
     }
 
     @Override
     public float score(int node) throws IOException {
       checkOrdinal(node);
-      float raw = PanamaVectorUtilSupport.cosine(query, getSegment(node));
-      return (1 + raw) / 2;
-    }
-  }
-
-  static final class DotProductScorer extends Lucene99MemorySegmentByteVectorScorer {
-    DotProductScorer(MemorySegmentAccessInput input, KnnVectorValues values, byte[] query) {
-      super(input, values, query);
+      // just delegates to existing scorer that copies on-heap
+      return VectorSimilarityFunction.DOT_PRODUCT.compare(query, values.vectorValue(node));
     }
 
     @Override
-    public float score(int node) throws IOException {
-      checkOrdinal(node);
-      // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
-      float raw = PanamaVectorUtilSupport.dotProduct(query, getSegment(node));
-      return 0.5f + raw / (float) (query.length * (1 << 15));
-    }
-  }
-
-  static final class EuclideanScorer extends Lucene99MemorySegmentByteVectorScorer {
-    EuclideanScorer(MemorySegmentAccessInput input, KnnVectorValues values, byte[] query) {
-      super(input, values, query);
-    }
-
-    @Override
-    public float score(int node) throws IOException {
-      checkOrdinal(node);
-      float raw = PanamaVectorUtilSupport.squareDistance(query, getSegment(node));
-      return 1 / (1f + raw);
-    }
-  }
-
-  static final class MaxInnerProductScorer extends Lucene99MemorySegmentByteVectorScorer {
-    MaxInnerProductScorer(MemorySegmentAccessInput input, KnnVectorValues values, byte[] query) {
-      super(input, values, query);
-    }
-
-    @Override
-    public float score(int node) throws IOException {
-      checkOrdinal(node);
-      float raw = PanamaVectorUtilSupport.dotProduct(query, getSegment(node));
-      if (raw < 0) {
-        return 1 / (1 + -1 * raw);
+    public void bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
+      float[] scratchScores = new float[4];
+      int i = 0;
+      final int limit = numNodes & ~3;
+      for (; i < limit; i += 4) {
+        MemorySegment ms1 = getSegment(nodes[i]);
+        MemorySegment ms2 = getSegment(nodes[i + 1]);
+        MemorySegment ms3 = getSegment(nodes[i + 2]);
+        MemorySegment ms4 = getSegment(nodes[i + 3]);
+        DOT_OPS.dotProductBulk(scratchScores, query, ms1, ms2, ms3, ms4, query.length);
+        scores[i + 0] = normalizeToUnitInterval(scratchScores[0]);
+        scores[i + 1] = normalizeToUnitInterval(scratchScores[1]);
+        scores[i + 2] = normalizeToUnitInterval(scratchScores[2]);
+        scores[i + 3] = normalizeToUnitInterval(scratchScores[3]);
       }
-      return raw + 1;
+      // Handle remaining 1–3 nodes in bulk (if any)
+      int remaining = numNodes - i;
+      if (remaining > 0) {
+        MemorySegment ms1 = getSegment(nodes[i]);
+        MemorySegment ms2 = (remaining > 1) ? getSegment(nodes[i + 1]) : ms1;
+        MemorySegment ms3 = (remaining > 2) ? getSegment(nodes[i + 2]) : ms1;
+        DOT_OPS.dotProductBulk(scratchScores, query, ms1, ms2, ms3, ms1, query.length);
+        scores[i] = normalizeToUnitInterval(scratchScores[0]);
+        if (remaining > 1) scores[i + 1] = normalizeToUnitInterval(scratchScores[1]);
+        if (remaining > 2) scores[i + 2] = normalizeToUnitInterval(scratchScores[2]);
+      }
     }
   }
 }

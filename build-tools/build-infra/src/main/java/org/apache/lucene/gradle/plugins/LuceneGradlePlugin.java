@@ -70,7 +70,7 @@ public abstract class LuceneGradlePlugin implements Plugin<Project> {
    * Returns a filesystem path to a given resource that the plugin uses. At the moment, these
    * resources are located under the top-level {@code gradle/} folder.
    */
-  protected final Path gradlePluginResource(Project project, String relativePath) {
+  protected static Path gradlePluginResource(Project project, String relativePath) {
     return project
         .getLayout()
         .getSettingsDirectory()
@@ -81,7 +81,7 @@ public abstract class LuceneGradlePlugin implements Plugin<Project> {
   }
 
   /** Utility method returning {@link BuildOptionsExtension}. */
-  protected final BuildOptionsExtension getBuildOptions(Project project) {
+  protected static BuildOptionsExtension getBuildOptions(Project project) {
     return project.getExtensions().getByType(BuildOptionsExtension.class);
   }
 
@@ -89,7 +89,7 @@ public abstract class LuceneGradlePlugin implements Plugin<Project> {
    * Return the {@link org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension} with
    * global Lucene constants.
    */
-  protected final LuceneBuildGlobalsExtension getLuceneBuildGlobals(Project project) {
+  protected static LuceneBuildGlobalsExtension getLuceneBuildGlobals(Project project) {
     return project.getExtensions().getByType(LuceneBuildGlobalsExtension.class);
   }
 }
