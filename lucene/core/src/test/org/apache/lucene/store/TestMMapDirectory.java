@@ -21,6 +21,7 @@ import static java.util.stream.Collectors.toList;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -137,28 +138,26 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     var flush = IOContext.flush(new FlushInfo(1, 2));
     var merge = IOContext.merge(new MergeInfo(1, 2, true, 4));
     var random = new DefaultIOContext(DataAccessHint.RANDOM);
-    var preload = new DefaultIOContext(PreloadHint.INSTANCE);
-    var postings = new DefaultIOContext(FileDataHint.POSTINGS);
-    var vectors = new DefaultIOContext(FileDataHint.KNN_VECTORS);
-    var data = new DefaultIOContext(FileTypeHint.DATA);
-    var index = new DefaultIOContext(FileTypeHint.INDEX);
-    var readonce = new DefaultIOContext(ReadOnceHint.INSTANCE);
-
+    var sequential = new DefaultIOContext(DataAccessHint.SEQUENTIAL);
     assertEquals(ReadAdvice.SEQUENTIAL, func.apply("a", merge).get());
     assertEquals(ReadAdvice.SEQUENTIAL, func.apply("b", flush).get());
-    assertEquals(ReadAdvice.SEQUENTIAL, func.apply("c", IOContext.READONCE).get());
+    assertEquals(ReadAdvice.SEQUENTIAL, func.apply("c", sequential).get());
     assertEquals(ReadAdvice.RANDOM, func.apply("d", random).get());
-    assertEquals(Constants.DEFAULT_READADVICE, func.apply("e", preload).get());
-    assertEquals(Constants.DEFAULT_READADVICE, func.apply("f", postings).get());
-    assertEquals(Constants.DEFAULT_READADVICE, func.apply("g", vectors).get());
-    assertEquals(Constants.DEFAULT_READADVICE, func.apply("i", data).get());
-    assertEquals(Constants.DEFAULT_READADVICE, func.apply("j", index).get());
-    assertEquals(Constants.DEFAULT_READADVICE, func.apply("k", readonce).get());
-    assertEquals(Constants.DEFAULT_READADVICE, func.apply("l", IOContext.DEFAULT).get());
 
-    var l1 = List.of(flush, merge, random, preload, postings, vectors, index, readonce);
-    var l2 = List.of(IOContext.DEFAULT, IOContext.READONCE);
-    testWithAdviseByContext(Stream.concat(l1.stream(), l2.stream()).toList());
+    // hint types other than DataAccessHint
+    List<IOContext.FileOpenHint> hints = new ArrayList<>();
+    hints.addAll(Arrays.asList(FileDataHint.values()));
+    hints.addAll(Arrays.asList(FileTypeHint.values()));
+    hints.addAll(Arrays.asList(PreloadHint.values()));
+    hints.addAll(Arrays.asList(ReadOnceHint.values()));
+    for (var hint : hints) {
+      var context = new DefaultIOContext(hint);
+      assertEquals(Constants.DEFAULT_READADVICE, func.apply("e", context).get());
+    }
+
+    var l1 = List.of(flush, merge, random, sequential, IOContext.DEFAULT, IOContext.READONCE);
+    var l2 = hints.stream().map(DefaultIOContext::new);
+    testWithAdviseByContext(Stream.concat(l1.stream(), l2).toList());
   }
 
   // trivially exercises MMapDirectory.ADVISE_BY_CONTEXT with different contexts
