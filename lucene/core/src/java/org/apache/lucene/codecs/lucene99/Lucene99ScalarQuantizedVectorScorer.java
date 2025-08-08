@@ -23,6 +23,7 @@ import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.FloatToFloatFunction;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
@@ -294,11 +295,6 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       System.arraycopy(values.vectorValue(node), 0, targetBytes, 0, targetBytes.length);
       offsetCorrection = values.getScoreCorrectionConstant(node);
     }
-  }
-
-  @FunctionalInterface
-  private interface FloatToFloatFunction {
-    float apply(float f);
   }
 
   private static final class ScalarQuantizedRandomVectorScorerSupplier

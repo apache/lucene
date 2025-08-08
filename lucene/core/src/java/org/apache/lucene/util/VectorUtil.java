@@ -213,6 +213,14 @@ public final class VectorUtil {
     return IMPL.int4DotProduct(unpacked, false, packed, true);
   }
 
+  public static int int4DotProductPackedPacked(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.length + " != " + b.length);
+    }
+    return IMPL.int4DotProduct(a, true, b, true);
+  }
+
   /**
    * Dot product computed over int4 (values between [0,15]) bytes and a binary vector.
    *

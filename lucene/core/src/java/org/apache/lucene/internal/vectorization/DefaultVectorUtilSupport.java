@@ -154,8 +154,16 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked) {
-    assert (apacked && bpacked) == false;
-    if (apacked || bpacked) {
+    if (apacked && bpacked) {
+      int total = 0;
+      for (int i = 0; i < a.length; i++) {
+        byte aByte = a[i];
+        byte bByte = b[i];
+        total += (aByte & 0x0F) * (bByte & 0x0F);
+        total += ((aByte & 0xFF) >> 4) * ((bByte & 0xFF) >> 4);
+      }
+      return total;
+    } else if (apacked || bpacked) {
       byte[] packed = apacked ? a : b;
       byte[] unpacked = apacked ? b : a;
       int total = 0;
