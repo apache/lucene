@@ -19,12 +19,21 @@ package org.apache.lucene.benchmark.jmh;
 import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
-import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
+import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
@@ -50,8 +59,8 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
-@BenchmarkMode(Mode.Throughput)
-@OutputTimeUnit(TimeUnit.MICROSECONDS)
+@BenchmarkMode(Mode.AverageTime)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
 // first iteration is complete garbage, so make sure we really warmup
 @Warmup(iterations = 4, time = 1)
@@ -60,59 +69,122 @@ import org.openjdk.jmh.annotations.Warmup;
 // engage some noise reduction
 @Fork(
     value = 3,
-    jvmArgsAppend = {"-Xmx2g", "-Xms2g", "-XX:+AlwaysPreTouch"})
-public class VectorScorerBenchmark {
+    jvmArgsAppend = {
+      "-Xmx2g",
+      "-Xms2g",
+      "-XX:+AlwaysPreTouch",
+      "--add-modules=jdk.incubator.vector"
+    })
+public class VectorScorerFloat32Benchmark {
 
-  @Param({"1", "128", "207", "256", "300", "512", "702", "1024"})
+  @Param({"1024"})
   public int size;
 
+  public int numVectors = 128_000;
+  public int numVectorsToScore = 20_000;
+
+  float[] scores;
+  int[] indices;
+  Path path;
   Directory dir;
   IndexInput in;
-  KnnVectorValues vectorValues;
-  byte[] vec1, vec2;
-  UpdateableRandomVectorScorer scorer;
+  KnnVectorValues values;
+  UpdateableRandomVectorScorer defDotScorer;
+  UpdateableRandomVectorScorer optDotScorer;
+
+  @Setup(Level.Trial)
+  public void setup() throws IOException {
+    var random = ThreadLocalRandom.current();
+    path = Files.createTempDirectory("VectorScorerFloat32Benchmark");
+    dir = new MMapDirectory(path);
+    try (IndexOutput out = dir.createOutput("vector.data", IOContext.DEFAULT)) {
+      var ba = new byte[size * Float.BYTES];
+      var buf = ByteBuffer.wrap(ba).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer();
+      for (int v = 0; v < numVectors; v++) {
+        buf.put(0, randomVector(size, random));
+        out.writeBytes(ba, 0, ba.length);
+      }
+    }
+    perIterationInit();
+  }
 
   @Setup(Level.Iteration)
-  public void init() throws IOException {
-    vec1 = new byte[size];
-    vec2 = new byte[size];
-    ThreadLocalRandom.current().nextBytes(vec1);
-    ThreadLocalRandom.current().nextBytes(vec2);
-
-    dir = new MMapDirectory(Files.createTempDirectory("VectorScorerBenchmark"));
-    try (IndexOutput out = dir.createOutput("vector.data", IOContext.DEFAULT)) {
-      out.writeBytes(vec1, 0, vec1.length);
-      out.writeBytes(vec2, 0, vec2.length);
-    }
+  public void perIterationInit() throws IOException {
+    var random = ThreadLocalRandom.current();
+    scores = new float[numVectorsToScore];
     in = dir.openInput("vector.data", IOContext.DEFAULT);
-    vectorValues = vectorValues(size, 2, in, DOT_PRODUCT);
-    scorer =
-        FlatVectorScorerUtil.getLucene99FlatVectorsScorer()
-            .getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValues)
-            .scorer();
-    scorer.setScoringOrdinal(0);
+    int targetOrd = random.nextInt(numVectors);
+
+    // default scorer
+    values = vectorValues(size, numVectors, in, DOT_PRODUCT);
+    var def = DefaultFlatVectorScorer.INSTANCE;
+    defDotScorer = def.getRandomVectorScorerSupplier(DOT_PRODUCT, values.copy()).scorer();
+    defDotScorer.setScoringOrdinal(targetOrd);
+
+    // optimized scorer
+    var opt = FlatVectorScorerUtil.getLucene99FlatVectorsScorer();
+    optDotScorer = opt.getRandomVectorScorerSupplier(DOT_PRODUCT, values.copy()).scorer();
+    optDotScorer.setScoringOrdinal(targetOrd);
+
+    List<Integer> list = IntStream.range(0, numVectors).boxed().collect(Collectors.toList());
+    Collections.shuffle(list, random);
+    indices = list.stream().limit(numVectorsToScore).mapToInt(i -> i).toArray();
   }
 
   @TearDown
   public void teardown() throws IOException {
-    IOUtils.close(dir, in);
+    IOUtils.close(in);
+    dir.deleteFile("vector.data");
+    IOUtils.close(dir);
+    Files.delete(path);
   }
 
   @Benchmark
-  public float binaryDotProductDefault() throws IOException {
-    return scorer.score(1);
+  public float[] dotProductDefault() throws IOException {
+    for (int v = 0; v < numVectorsToScore; v++) {
+      scores[v] = defDotScorer.score(indices[v]);
+    }
+    return scores;
   }
 
   @Benchmark
-  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
-  public float binaryDotProductMemSeg() throws IOException {
-    return scorer.score(1);
+  public float[] dotProductDefaultBulk() throws IOException {
+    defDotScorer.bulkScore(indices, scores, indices.length);
+    return scores;
+  }
+
+  @Benchmark
+  public float[] dotProductOptScorer() throws IOException {
+    for (int v = 0; v < numVectorsToScore; v++) {
+      scores[v] = optDotScorer.score(indices[v]);
+    }
+    return scores;
+  }
+
+  @Benchmark
+  public float[] dotProductOptBulkScore() throws IOException {
+    optDotScorer.bulkScore(indices, scores, indices.length);
+    return scores;
+  }
+
+  static float[] randomVector(int dims, Random random) {
+    float[] fa = new float[dims];
+    for (int i = 0; i < dims; ++i) {
+      fa[i] = random.nextFloat();
+    }
+    return fa;
   }
 
   static KnnVectorValues vectorValues(
       int dims, int size, IndexInput in, VectorSimilarityFunction sim) throws IOException {
-    return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
-        dims, size, in.slice("test", 0, in.length()), dims, new ThrowingFlatVectorScorer(), sim);
+    int byteSize = dims * Float.BYTES;
+    return new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
+        dims,
+        size,
+        in.slice("test", 0, in.length()),
+        byteSize,
+        new ThrowingFlatVectorScorer(),
+        sim);
   }
 
   static final class ThrowingFlatVectorScorer implements FlatVectorsScorer {
