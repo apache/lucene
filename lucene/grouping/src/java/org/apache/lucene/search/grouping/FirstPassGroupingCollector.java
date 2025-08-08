@@ -131,7 +131,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       buildSortedSet();
     }
 
-    final Collection<SearchGroup<T>> result = new ArrayList<>();
+    final Collection<SearchGroup<T>> result = new ArrayList<>(orderedGroups.size() - groupOffset);
     int upto = 0;
     final int sortFieldCount = comparators.length;
     for (CollectedSearchGroup<T> group : orderedGroups) {
@@ -324,7 +324,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
 
   private void buildSortedSet() throws IOException {
     final Comparator<CollectedSearchGroup<?>> comparator =
-        new Comparator<CollectedSearchGroup<?>>() {
+        new Comparator<>() {
           @Override
           public int compare(CollectedSearchGroup<?> o1, CollectedSearchGroup<?> o2) {
             for (int compIDX = 0; ; compIDX++) {

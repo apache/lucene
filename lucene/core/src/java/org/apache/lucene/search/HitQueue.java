@@ -62,6 +62,7 @@ public final class HitQueue extends PriorityQueue<ScoreDoc> {
   public HitQueue(int size, boolean prePopulate) {
     super(
         size,
+        HitQueue::lessThan,
         prePopulate
             ? () -> {
               // Always set the doc Id to MAX_VALUE so that it won't be favored by
@@ -72,8 +73,7 @@ public final class HitQueue extends PriorityQueue<ScoreDoc> {
             : () -> null);
   }
 
-  @Override
-  protected final boolean lessThan(ScoreDoc hitA, ScoreDoc hitB) {
+  private static boolean lessThan(ScoreDoc hitA, ScoreDoc hitB) {
     int cmp = Float.compare(hitA.score, hitB.score);
     if (cmp == 0) {
       return hitA.doc > hitB.doc;

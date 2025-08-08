@@ -1,3 +1,6 @@
+import org.apache.lucene.gradle.plugins.misc.CheckEnvironmentPlugin
+import org.apache.lucene.gradle.plugins.spotless.GoogleJavaFormatPlugin
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,35 +19,24 @@
  */
 
 plugins {
-  // Apply convention plugins from the composite build-infra project.
+  // Apply build plugins from the composite build-infra project.
   // The order of plugins does matter (most of the time).
   id "lucene.root-project.check-environment"
+
+  id "base"
   id "lucene.root-project.setup"
-
-  id "lucene.all-projects.conventions"
-
-  id "lucene.help"
-
-  id "lucene.java.alternative-jdk-support"
   id "lucene.java-projects.conventions"
 
-  id "lucene.java.core.mrjar"
   id "lucene.java.fail-on-no-tests"
   id "lucene.java.slowest-tests-at-end"
   id "lucene.java.show-failed-tests-at-end"
   id "lucene.java.profiling"
-  id "lucene.java.beasting"
   id "lucene.java.coverage"
   id "lucene.java.modules"
 
-  id "lucene.validation.spotless-groovy"
-  id "lucene.validation.google-java-format"
-  id "lucene.validation.lockfile"
   id "lucene.validation.gradle-versions-cleanup"
-  id "lucene.validation.gradlew-scripts-customizations"
   id "lucene.validation.error-prone"
   id "lucene.validation.jar-checks"
-  id "lucene.validation.source-patterns"
   id "lucene.validation.rat-sources"
   id "lucene.validation.owasp"
 
@@ -60,19 +52,14 @@ plugins {
 
   id "lucene.datasets.external-datasets"
 
-  id "lucene.hacks.downloader-retries"
-  id "lucene.hacks.wipe-gradle-temp"
-  id "lucene.hacks.turbocharge-jvm-opts"
-  id "lucene.hacks.dummy-outputs"
-
   id "lucene.documentation"
   id "lucene.documentation.changes-to-html"
   id "lucene.documentation.markdown"
   id "lucene.documentation.render-javadoc"
-  id "lucene.documentation.check-broken-links"
 
   id "lucene.regenerate"
   id "lucene.regenerate.jflex"
+  id "lucene.regenerate.forUtil"
   id "lucene.regenerate.moman"
   id "lucene.regenerate.kuromoji"
   id "lucene.regenerate.nori"
@@ -80,7 +67,7 @@ plugins {
   id "lucene.regenerate.javacc"
   id "lucene.regenerate.antlr"
   id "lucene.regenerate.unicode-test-classes"
-  id "lucene.regenerate.extract-jdk-apis"
+  id "lucene.regenerate.snowball"
 }
 
 description = 'Grandparent project for Apache Lucene Core'

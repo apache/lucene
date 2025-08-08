@@ -50,7 +50,7 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
   // used for numerics
   static final BytesRef ORIGIN = new BytesRef("  origin "); // for deltas
 
-  static final BytesRef MINVALUE = new BytesRef("  minalue ");
+  static final BytesRef MINVALUE = new BytesRef("  minvalue ");
   static final BytesRef MAXVALUE = new BytesRef("  maxvalue ");
 
   static final BytesRef PATTERN = new BytesRef("  pattern ");

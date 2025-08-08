@@ -22,9 +22,9 @@ package org.apache.lucene.queryparser.surround.parser;
 @SuppressWarnings ("unused")
 public class QueryParserTokenManager implements QueryParserConstants {
 
-  /** Debug output. */
+  // Debug output.
   // (debugStream omitted).
-  /** Set debug output. */
+  // Set debug output.
   // (setDebugStream omitted).
 private final int jjStopStringLiteralDfa_1(int pos, long active0){
    switch (pos)

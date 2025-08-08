@@ -189,6 +189,20 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field);
     final FloatVectorValues rawVectorValues = rawVectorsReader.getFloatVectorValues(field);
+    if (rawVectorValues.size() == 0) {
+      return OffHeapQuantizedFloatVectorValues.load(
+          fieldEntry.ordToDoc,
+          fieldEntry.dimension,
+          fieldEntry.size,
+          fieldEntry.scalarQuantizer,
+          fieldEntry.similarityFunction,
+          vectorScorer,
+          fieldEntry.compress,
+          fieldEntry.vectorDataOffset,
+          fieldEntry.vectorDataLength,
+          quantizedVectorData);
+    }
+
     OffHeapQuantizedByteVectorValues quantizedByteVectorValues =
         OffHeapQuantizedByteVectorValues.load(
             fieldEntry.ordToDoc,

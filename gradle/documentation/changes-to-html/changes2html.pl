@@ -489,7 +489,7 @@ for my $rel (@releases) {
                   my $prefix = $1;
                   my $code = $2;
                   $code =~ s/\s+$//;
-                  "$prefix<pre><code>$code></code></pre>"
+                  "$prefix<pre><code>$code</code></pre>"
                 }gise;
 
       $item = markup_trailing_attribution($item) unless ($item =~ /\n[ ]*-/);

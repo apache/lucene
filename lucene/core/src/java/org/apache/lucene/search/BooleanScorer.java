@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Comparator;
 import org.apache.lucene.internal.hppc.LongArrayList;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
@@ -48,7 +47,7 @@ final class BooleanScorer extends BulkScorer {
   final DisiWrapper[] leads;
   final PriorityQueue<DisiWrapper> head;
   final PriorityQueue<DisiWrapper> tail;
-  final Score score = new Score();
+  final SimpleScorable score = new SimpleScorable();
   final int minShouldMatch;
   final long cost;
   final boolean needsScores;
@@ -73,10 +72,8 @@ final class BooleanScorer extends BulkScorer {
     }
     this.leads = new DisiWrapper[scorers.size()];
     this.head =
-        PriorityQueue.usingComparator(
-            scorers.size() - minShouldMatch + 1, Comparator.comparingInt(d -> d.doc));
-    this.tail =
-        PriorityQueue.usingComparator(minShouldMatch - 1, Comparator.comparingLong(d -> d.cost));
+        PriorityQueue.usingLessThan(scorers.size() - minShouldMatch + 1, (a, b) -> a.doc < b.doc);
+    this.tail = PriorityQueue.usingLessThan(minShouldMatch - 1, (a, b) -> a.cost < b.cost);
     this.minShouldMatch = minShouldMatch;
     this.needsScores = needsScores;
     LongArrayList costs = new LongArrayList(scorers.size());

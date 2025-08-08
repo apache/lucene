@@ -39,12 +39,7 @@ public abstract class TopOrdAndNumberQueue extends PriorityQueue<TopOrdAndNumber
 
   /** Sole constructor. */
   public TopOrdAndNumberQueue(int topN) {
-    super(topN);
-  }
-
-  @Override
-  public boolean lessThan(TopOrdAndNumberQueue.OrdAndValue a, TopOrdAndNumberQueue.OrdAndValue b) {
-    return a.lessThan(b);
+    super(topN, OrdAndValue::lessThan);
   }
 
   /**

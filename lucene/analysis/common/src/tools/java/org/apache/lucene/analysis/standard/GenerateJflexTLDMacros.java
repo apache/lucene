@@ -20,6 +20,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.PrintStream;
 import java.io.Writer;
 import java.net.URI;
 import java.net.URL;
@@ -39,6 +40,7 @@ import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * Generates a file containing JFlex macros to accept valid ASCII TLDs (top level domains), for
@@ -49,11 +51,23 @@ import java.util.stream.Collectors;
  * ASCII-only TLDs, including punycode forms of internationalized TLDs (output file cmdline arg #1).
  */
 public class GenerateJflexTLDMacros {
+  private static final PrintStream syserr = getSysErr();
+  private static final PrintStream sysout = getSysOut();
+
+  @SuppressForbidden(reason = "Uses System.err, which is fine here.")
+  private static PrintStream getSysErr() {
+    return System.err;
+  }
+
+  @SuppressForbidden(reason = "Uses System.out, which is fine here.")
+  private static PrintStream getSysOut() {
+    return System.err;
+  }
 
   public static void main(String... args) throws Exception {
     if (args.length != 3 || args[0].equals("--help") || args[0].equals("-help")) {
-      System.err.println("Cmd line params:");
-      System.err.println(
+      syserr.println("Cmd line params:");
+      syserr.println(
           "  java "
               + GenerateJflexTLDMacros.class.getName()
               + "<ZoneFileURL> <JFlexOutputFile> <TLDListFile>");
@@ -132,10 +146,10 @@ public class GenerateJflexTLDMacros {
     for (int suffixLength = 0; suffixLength < TLDsBySuffixLength.size(); ++suffixLength) {
       int domainsAtThisSuffixLength = TLDsBySuffixLength.get(suffixLength).size();
       totalDomains += domainsAtThisSuffixLength;
-      System.out.printf(
+      sysout.printf(
           Locale.ROOT, "%30s: %4d TLDs%n", getMacroName(suffixLength), domainsAtThisSuffixLength);
     }
-    System.out.printf(Locale.ROOT, "%30s: %4d TLDs%n", "Total", totalDomains);
+    sysout.printf(Locale.ROOT, "%30s: %4d TLDs%n", "Total", totalDomains);
   }
 
   /**
@@ -160,7 +174,7 @@ public class GenerateJflexTLDMacros {
         processedTLDsLongestFirst.put(line.toLowerCase(Locale.ROOT), Boolean.FALSE);
       }
     }
-    System.out.println(
+    sysout.println(
         "Found "
             + processedTLDsLongestFirst.size()
             + " TLDs in IANA TLD Database at "

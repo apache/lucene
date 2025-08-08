@@ -41,7 +41,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   private final Scorable[] scorables;
   private final DocIdSetIterator[] iterators;
   private final DocIdSetIterator lead;
-  private final DocAndScore scorable = new DocAndScore();
+  private final SimpleScorable scorable = new SimpleScorable();
   private final double[] sumOfOtherClauses;
   private final int maxDoc;
   private final DocAndFloatFeatureBuffer docAndScoreBuffer = new DocAndFloatFeatureBuffer();
@@ -84,7 +84,10 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
     collector.setScorer(scorable);
 
-    int windowMin = scoreDocFirstUntilDynamicPruning(collector, acceptDocs, min, max);
+    int windowMin = Math.max(lead.docID(), min);
+    if (scorable.minCompetitiveScore == 0) {
+      windowMin = scoreDocFirstUntilDynamicPruning(collector, acceptDocs, min, max);
+    }
 
     while (windowMin < max) {
       // Use impacts of the least costly scorer to compute windows
@@ -202,21 +205,5 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   @Override
   public long cost() {
     return lead.cost();
-  }
-
-  private static class DocAndScore extends Scorable {
-
-    float score;
-    float minCompetitiveScore;
-
-    @Override
-    public float score() throws IOException {
-      return score;
-    }
-
-    @Override
-    public void setMinCompetitiveScore(float minScore) throws IOException {
-      this.minCompetitiveScore = minScore;
-    }
   }
 }

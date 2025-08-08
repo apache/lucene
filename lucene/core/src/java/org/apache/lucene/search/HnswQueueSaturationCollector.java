@@ -37,7 +37,8 @@ public class HnswQueueSaturationCollector extends KnnCollector.Decorator {
   private int previousQueueSize;
   private int currentQueueSize;
 
-  HnswQueueSaturationCollector(KnnCollector delegate, double saturationThreshold, int patience) {
+  public HnswQueueSaturationCollector(
+      KnnCollector delegate, double saturationThreshold, int patience) {
     super(delegate);
     this.delegate = delegate;
     this.previousQueueSize = 0;
