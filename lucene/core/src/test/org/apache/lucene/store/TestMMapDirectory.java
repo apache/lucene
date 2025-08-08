@@ -21,6 +21,7 @@ import static java.util.stream.Collectors.toList;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -32,6 +33,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -122,11 +124,60 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         out.writeBytes(bytes, 0, bytes.length);
       }
 
-      dir.setReadAdviceOverride((_, _) -> Optional.of(ReadAdvice.NORMAL));
+      dir.setReadAdvice((_, _) -> Optional.of(ReadAdvice.NORMAL));
       try (final IndexInput in = dir.openInput("test", IOContext.DEFAULT)) {
         final byte[] readBytes = new byte[size];
         in.readBytes(readBytes, 0, readBytes.length);
         assertArrayEquals(bytes, readBytes);
+      }
+    }
+  }
+
+  public void testAdviseByContextFunc() throws IOException {
+    var func = MMapDirectory.ADVISE_BY_CONTEXT;
+    var flush = IOContext.flush(new FlushInfo(1, 2));
+    var merge = IOContext.merge(new MergeInfo(1, 2, true, 4));
+    var random = new DefaultIOContext(DataAccessHint.RANDOM);
+    var sequential = new DefaultIOContext(DataAccessHint.SEQUENTIAL);
+    assertEquals(ReadAdvice.SEQUENTIAL, func.apply("a", merge).get());
+    assertEquals(ReadAdvice.SEQUENTIAL, func.apply("b", flush).get());
+    assertEquals(ReadAdvice.SEQUENTIAL, func.apply("c", sequential).get());
+    assertEquals(ReadAdvice.RANDOM, func.apply("d", random).get());
+
+    // hint types other than DataAccessHint
+    List<IOContext.FileOpenHint> hints = new ArrayList<>();
+    hints.addAll(Arrays.asList(FileDataHint.values()));
+    hints.addAll(Arrays.asList(FileTypeHint.values()));
+    hints.addAll(Arrays.asList(PreloadHint.values()));
+    hints.addAll(Arrays.asList(ReadOnceHint.values()));
+    for (var hint : hints) {
+      var context = new DefaultIOContext(hint);
+      assertEquals(Constants.DEFAULT_READADVICE, func.apply("e", context).get());
+    }
+
+    var l1 = List.of(flush, merge, random, sequential, IOContext.DEFAULT, IOContext.READONCE);
+    var l2 = hints.stream().map(DefaultIOContext::new);
+    testWithAdviseByContext(Stream.concat(l1.stream(), l2).toList());
+  }
+
+  // trivially exercises MMapDirectory.ADVISE_BY_CONTEXT with different contexts
+  void testWithAdviseByContext(List<IOContext> contexts) throws IOException {
+    final int size = 8 * 1024;
+    byte[] bytes = new byte[size];
+    random().nextBytes(bytes);
+
+    try (MMapDirectory dir = new MMapDirectory(createTempDir("testWithAdviseByContext"))) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(bytes, 0, bytes.length);
+      }
+      dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
+
+      for (var context : contexts) {
+        try (final IndexInput in = dir.openInput("test", context)) {
+          final byte[] readBytes = new byte[size];
+          in.readBytes(readBytes, 0, readBytes.length);
+          assertArrayEquals(bytes, readBytes);
+        }
       }
     }
   }
