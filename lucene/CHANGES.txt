@@ -148,6 +148,12 @@ Changes in Runtime Behavior
   tier from 10 to 8. This is expected to result in slightly faster search and
   slightly slower indexing. (Adrien Grand)
 
+* GITHUB#15040: The default ReadAdvice has been changed from RANDOM to NORMAL. MMapDirectory
+  will no longer set any specific read advice out-of-the-box. Rather there is a straightforward
+  way to enable previous behaviour (in 10.2), either by setting:
+  `dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT)`, or setting the system property
+  `-Dorg.apache.lucene.store.defaultReadAdvice=RANDOM`. (Chris Hegarty)
+
 Bug Fixes
 ---------------------
 * GITHUB*15025: flush segments in addIndexes, not in addIndexesReaderMerge;
