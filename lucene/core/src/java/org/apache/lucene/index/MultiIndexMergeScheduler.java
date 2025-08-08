@@ -98,7 +98,10 @@ class MultiIndexMergeScheduler extends MergeScheduler {
    * <p>CombinedMergeScheduler should <b><i>not</i></b> be passed directly to IndexWriter.
    */
   static class CombinedMergeScheduler extends ConcurrentMergeScheduler {
+    @SuppressWarnings("NonFinalStaticField")
     private static CombinedMergeScheduler singleton = null;
+
+    @SuppressWarnings("NonFinalStaticField")
     private static int singletonRefCount = 0;
 
     private static synchronized CombinedMergeScheduler acquireSingleton() {
