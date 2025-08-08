@@ -124,7 +124,7 @@ public abstract class KnnVectorsReader implements Closeable {
    *
    * <p>The default implementation returns {@code this}
    */
-  public KnnVectorsReader getMergeInstance() {
+  public KnnVectorsReader getMergeInstance() throws IOException {
     return this;
   }
 

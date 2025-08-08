@@ -25,7 +25,6 @@ import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
 
 /**
  * Used by MockDirectoryWrapper to create an input stream that keeps track of when it's been closed.
@@ -186,10 +185,10 @@ public class MockIndexInputWrapper extends FilterIndexInput {
   }
 
   @Override
-  public void updateReadAdvice(ReadAdvice readAdvice) throws IOException {
+  public void updateIOContext(IOContext context) throws IOException {
     ensureOpen();
     ensureAccessible();
-    in.updateReadAdvice(readAdvice);
+    in.updateIOContext(context);
   }
 
   @Override
