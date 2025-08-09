@@ -19,6 +19,7 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.FieldInfo;
@@ -114,6 +115,9 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
         docId != NO_MORE_DOCS;
         docId = initializerIterator.nextDoc()) {
       int newId = initDocMap.get(docId);
+      if (newId == -1) {
+        continue;
+      }
       maxNewDocID = Math.max(newId, maxNewDocID);
       assert newIdToOldOrdinal.containsKey(newId) == false;
       newIdToOldOrdinal.put(newId, initializerIterator.index());
@@ -123,6 +127,7 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
       return new int[0];
     }
     final int[] oldToNewOrdinalMap = new int[initGraphSize];
+    Arrays.fill(oldToNewOrdinalMap, -1);
     KnnVectorValues.DocIndexIterator mergedVectorIterator = mergedVectorValues.iterator();
     for (int newDocId = mergedVectorIterator.nextDoc();
         newDocId <= maxNewDocID;
