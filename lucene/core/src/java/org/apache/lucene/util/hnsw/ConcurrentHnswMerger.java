@@ -19,7 +19,6 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.Comparator;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.FieldInfo;
@@ -57,14 +56,12 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
     OnHeapHnswGraph graph;
     BitSet initializedNodes = null;
 
-    if (graphReaders.size() == 0) {
+    if (largestGraphReader == null) {
       graph = new OnHeapHnswGraph(M, maxOrd);
     } else {
-      graphReaders.sort(Comparator.comparingInt(GraphReader::graphSize).reversed());
-      GraphReader initGraphReader = graphReaders.get(0);
-      KnnVectorsReader initReader = initGraphReader.reader();
-      MergeState.DocMap initDocMap = initGraphReader.initDocMap();
-      int initGraphSize = initGraphReader.graphSize();
+      KnnVectorsReader initReader = largestGraphReader.reader();
+      MergeState.DocMap initDocMap = largestGraphReader.initDocMap();
+      int initGraphSize = largestGraphReader.graphSize();
       HnswGraph initializerGraph = ((HnswGraphProvider) initReader).getGraph(fieldInfo.name);
 
       if (initializerGraph.size() == 0) {
