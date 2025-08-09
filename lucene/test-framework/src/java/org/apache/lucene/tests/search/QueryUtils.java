@@ -42,6 +42,7 @@ import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocIdStream;
@@ -245,11 +246,11 @@ public class QueryUtils {
 
       @Override
       public void searchNearestVectors(
-          String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+          String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {}
 
       @Override
       public void searchNearestVectors(
-          String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+          String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {}
 
       @Override
       public FieldInfos getFieldInfos() {

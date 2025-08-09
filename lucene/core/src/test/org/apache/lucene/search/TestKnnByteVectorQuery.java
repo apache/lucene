@@ -28,7 +28,6 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.TestVectorUtil;
 
 public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
@@ -149,7 +148,7 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     @Override
     protected TopDocs approximateSearch(
         LeafReaderContext context,
-        Bits acceptDocs,
+        AcceptDocs acceptDocs,
         int visitedLimit,
         KnnCollectorManager knnCollectorManager)
         throws IOException {

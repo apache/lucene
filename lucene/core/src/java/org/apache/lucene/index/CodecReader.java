@@ -25,8 +25,8 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.util.Bits;
 
 /** LeafReader implemented by codec APIs. */
 public abstract class CodecReader extends LeafReader {
@@ -260,7 +260,8 @@ public abstract class CodecReader extends LeafReader {
 
   @Override
   public final void searchNearestVectors(
-      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+      String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null
@@ -274,7 +275,8 @@ public abstract class CodecReader extends LeafReader {
 
   @Override
   public final void searchNearestVectors(
-      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+      String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null

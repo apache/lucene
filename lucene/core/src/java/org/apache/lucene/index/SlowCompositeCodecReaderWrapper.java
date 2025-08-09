@@ -34,6 +34,7 @@ import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.MultiDocValues.MultiSortedDocValues;
 import org.apache.lucene.index.MultiDocValues.MultiSortedSetDocValues;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
@@ -1026,13 +1027,15 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+    public void search(
+        String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+    public void search(
+        String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
       throw new UnsupportedOperationException();
     }

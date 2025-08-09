@@ -27,7 +27,6 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
-import org.apache.lucene.util.Bits;
 
 /**
  * This is a version of knn vector query that provides a query seed to initiate the vector search.
@@ -149,7 +148,7 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
   @Override
   protected TopDocs approximateSearch(
       LeafReaderContext context,
-      Bits acceptDocs,
+      AcceptDocs acceptDocs,
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
