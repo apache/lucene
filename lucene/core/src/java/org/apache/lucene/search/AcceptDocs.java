@@ -74,7 +74,7 @@ public abstract class AcceptDocs {
    * Create AcceptDocs from a DocIdSetIterator, optionally filtered by live documents.
    *
    * @param iterator a DocIdSetIterator iterator
-   * @param liveDocs Bits representing live documents, or {@code null} if
+   * @param liveDocs Bits representing live documents, or {@code null} if no deleted docs
    * @param maxDoc the number of documents in the reader
    * @return AcceptDocs wrapping the iterator
    */
