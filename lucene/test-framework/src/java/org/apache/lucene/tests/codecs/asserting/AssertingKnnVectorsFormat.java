@@ -204,13 +204,13 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
         @Override
         public void search(
-            String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
+            String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
           assert false : "This instance should only be used for merging";
         }
 
         @Override
         public void search(
-            String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
+            String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
           assert false : "This instance should only be used for merging";
         }
 
