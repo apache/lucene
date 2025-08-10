@@ -11,13 +11,13 @@ commons-compress = "1.27.1"
 # See ecj-lint.gradle (used for more linting).
 ecj = "3.42.0"
 # java linting
-errorprone = "2.38.0"
+errorprone = "2.41.0"
 # markdown documentation generation
 flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
 googleJavaFormat = "1.28.0"
 # gradle build support
-groovy = "4.0.27"
+groovy = "4.0.28"
 # test assertions
 hamcrest = "3.0"
 # analysis/icu/, gradle regeneration unicode support
@@ -45,7 +45,7 @@ morfologik-ukrainian = "4.9.1"
 # benchmark/ html parsing
 nekohtml = "1.9.22"
 # analysis/opennlp/ support
-opennlp = "2.5.4"
+opennlp = "2.5.5"
 # distribution.tests/ process management
 procfork = "1.0.6"
 # unit tests

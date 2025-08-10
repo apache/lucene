@@ -335,7 +335,6 @@ public abstract class FilterLeafReader extends LeafReader {
       throw new NullPointerException("incoming LeafReader must not be null");
     }
     this.in = in;
-    in.registerParentReader(this);
   }
 
   @Override

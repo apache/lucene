@@ -14,8 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import org.apache.lucene.gradle.plugins.mrjar.LuceneJavaCoreMrjarPlugin
+import org.apache.lucene.gradle.plugins.mrjar.MrJarsExtension
 
-
+plugins.apply(LuceneJavaCoreMrjarPlugin)
 
 description = 'Lucene core library'
 
@@ -23,3 +25,6 @@ dependencies {
   moduleTestImplementation project(':lucene:codecs')
   moduleTestImplementation project(':lucene:test-framework')
 }
+
+// Setup api stub generation and multi-release jar support for the following JDKs.
+project.getExtensions().getByType(MrJarsExtension).setupFor(24)

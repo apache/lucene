@@ -197,7 +197,6 @@ public class ParallelLeafReader extends LeafReader {
       if (!closeSubReaders) {
         reader.incRef();
       }
-      reader.registerParentReader(this);
     }
   }
 

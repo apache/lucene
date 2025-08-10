@@ -96,7 +96,7 @@ public abstract class FlatVectorsReader extends KnnVectorsReader implements Acco
    * <p>The default implementation returns {@code this}
    */
   @Override
-  public FlatVectorsReader getMergeInstance() {
+  public FlatVectorsReader getMergeInstance() throws IOException {
     return this;
   }
 }

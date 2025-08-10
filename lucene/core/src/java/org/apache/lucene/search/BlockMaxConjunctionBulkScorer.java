@@ -84,7 +84,10 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
     collector.setScorer(scorable);
 
-    int windowMin = scoreDocFirstUntilDynamicPruning(collector, acceptDocs, min, max);
+    int windowMin = Math.max(lead.docID(), min);
+    if (scorable.minCompetitiveScore == 0) {
+      windowMin = scoreDocFirstUntilDynamicPruning(collector, acceptDocs, min, max);
+    }
 
     while (windowMin < max) {
       // Use impacts of the least costly scorer to compute windows
