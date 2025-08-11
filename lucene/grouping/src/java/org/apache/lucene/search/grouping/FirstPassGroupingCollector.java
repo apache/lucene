@@ -23,6 +23,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.TreeSet;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Pruning;
@@ -91,9 +92,16 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
     for (int i = 0; i < sortFields.length; i++) {
       final SortField sortField = sortFields[i];
 
+      final Pruning pruning;
+      if (i == 0) {
+        pruning = compIDXEnd >= 0 ? Pruning.GREATER_THAN : Pruning.GREATER_THAN_OR_EQUAL_TO;
+      } else {
+        pruning = Pruning.NONE;
+      }
+
       // use topNGroups + 1 so we have a spare slot to use for comparing (tracked by
       // this.spareSlot):
-      comparators[i] = sortField.getComparator(topNGroups + 1, Pruning.NONE);
+      comparators[i] = sortField.getComparator(topNGroups + 1, pruning);
       reversed[i] = sortField.getReverse() ? -1 : 1;
     }
 
@@ -238,6 +246,9 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
         // number of groups; from here on we will drop
         // bottom group when we insert new one:
         buildSortedSet();
+
+        // Allow pruning for compatible leaf comparators.
+        leafComparators[0].setHitsThresholdReached();
       }
 
     } else {
@@ -325,6 +336,11 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
         }
       }
     }
+  }
+
+  @Override
+  public DocIdSetIterator competitiveIterator() throws IOException {
+    return leafComparators[0].competitiveIterator();
   }
 
   private void buildSortedSet() throws IOException {
