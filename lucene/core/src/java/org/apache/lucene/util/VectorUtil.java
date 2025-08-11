@@ -48,7 +48,7 @@ import org.apache.lucene.internal.vectorization.VectorizationProvider;
  */
 public final class VectorUtil {
 
-  private static final float EPSILON = 1e-4f;
+  public static final float EPSILON = 1e-4f;
 
   private static final VectorUtilSupport IMPL =
       VectorizationProvider.getInstance().getVectorUtilSupport();
@@ -138,23 +138,7 @@ public final class VectorUtil {
    * @throws IllegalArgumentException when the vector is all zero and throwOnZero is true
    */
   public static float[] l2normalize(float[] v, boolean throwOnZero) {
-    double l1norm = IMPL.dotProduct(v, v);
-    if (l1norm == 0) {
-      if (throwOnZero) {
-        throw new IllegalArgumentException("Cannot normalize a zero-length vector");
-      } else {
-        return v;
-      }
-    }
-    if (Math.abs(l1norm - 1.0d) <= EPSILON) {
-      return v;
-    }
-    int dim = v.length;
-    double l2norm = Math.sqrt(l1norm);
-    for (int i = 0; i < dim; i++) {
-      v[i] /= (float) l2norm;
-    }
-    return v;
+    return IMPL.l2normalize(v, throwOnZero);
   }
 
   /**
