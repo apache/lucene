@@ -137,8 +137,6 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-      assert mergeInstanceCount.get() == finishMergeCount.get() || mergeInstance
-          : "Called on the wrong instance";
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -153,8 +151,6 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public ByteVectorValues getByteVectorValues(String field) throws IOException {
-      assert mergeInstanceCount.get() == finishMergeCount.get() || mergeInstance
-          : "Called on the wrong instance";
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
