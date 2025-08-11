@@ -867,4 +867,18 @@ public final class FixedBitSet extends BitSet {
       bits ^= 1L << ntz;
     }
   }
+
+  public static int cardinality(Bits bits, int from, int to) {
+    assert bits != null;
+    if (bits instanceof FixedBits fixedBits) {
+      return fixedBits.bitSet.cardinality(from, to);
+    }
+    int count = 0;
+    for (int i = from; i < to; i++) {
+      if (bits.get(i)) {
+        count++;
+      }
+    }
+    return count;
+  }
 }
