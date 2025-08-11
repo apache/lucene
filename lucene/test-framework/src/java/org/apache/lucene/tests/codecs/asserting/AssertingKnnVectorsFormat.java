@@ -114,20 +114,13 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
       implements HnswGraphProvider {
     public final KnnVectorsReader delegate;
     private final FieldInfos fis;
-    private final boolean mergeInstance;
     private final AtomicInteger mergeInstanceCount = new AtomicInteger();
     private final AtomicInteger finishMergeCount = new AtomicInteger();
 
     private AssertingKnnVectorsReader(KnnVectorsReader delegate, FieldInfos fis) {
-      this(delegate, fis, false);
-    }
-
-    private AssertingKnnVectorsReader(
-        KnnVectorsReader delegate, FieldInfos fis, boolean mergeInstance) {
       assert delegate != null;
       this.delegate = delegate;
       this.fis = fis;
-      this.mergeInstance = mergeInstance;
     }
 
     @Override
@@ -137,8 +130,6 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-      assert mergeInstanceCount.get() == finishMergeCount.get() || mergeInstance
-          : "Called on the wrong instance";
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -153,8 +144,6 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public ByteVectorValues getByteVectorValues(String field) throws IOException {
-      assert mergeInstanceCount.get() == finishMergeCount.get() || mergeInstance
-          : "Called on the wrong instance";
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -196,8 +185,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
       mergeInstanceCount.incrementAndGet();
       AtomicInteger parentMergeFinishCount = this.finishMergeCount;
 
-      return new AssertingKnnVectorsReader(
-          mergeVectorsReader, AssertingKnnVectorsReader.this.fis, true) {
+      return new AssertingKnnVectorsReader(mergeVectorsReader, AssertingKnnVectorsReader.this.fis) {
         private boolean finished;
 
         @Override
