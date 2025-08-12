@@ -49,7 +49,6 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.PreloadHint;
 import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOSupplier;
@@ -341,13 +340,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     int filteredDocCount = 0;
     // The approximate number of vectors that would be visited if we did not filter
     int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graph.size());
-    if (accepted instanceof BitSet bitSet) {
-      // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
-      // size as that is illogical
-      filteredDocCount = Math.min(bitSet.approximateCardinality(), graph.size());
-      if (unfilteredVisit >= filteredDocCount) {
-        doHnsw = false;
-      }
+    // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
+    // size as that is illogical
+    filteredDocCount = Math.min(acceptDocs.cost(), graph.size());
+    if (unfilteredVisit >= filteredDocCount) {
+      doHnsw = false;
     }
     if (doHnsw) {
       HnswGraphSearcher.search(
