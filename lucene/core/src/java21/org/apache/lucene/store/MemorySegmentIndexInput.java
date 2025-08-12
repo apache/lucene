@@ -327,7 +327,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
         this.curSegment = seg;
       }
       this.curPosition = Objects.checkIndex(pos & chunkSizeMask, curSegment.byteSize() + 1);
-    } catch (IndexOutOfBoundsException _) {
+    } catch (IndexOutOfBoundsException unnamedVariable) {
       throw handlePositionalIOOBE("seek", pos);
     }
   }
@@ -443,7 +443,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
     try {
       final int si = (int) (pos >> chunkSizePower);
       return segments[si].get(LAYOUT_BYTE, pos & chunkSizeMask);
-    } catch (IndexOutOfBoundsException _) {
+    } catch (IndexOutOfBoundsException unnamedVariable) {
       throw handlePositionalIOOBE("read", pos);
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
@@ -485,7 +485,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
         curAvail = segments[si].byteSize();
       }
       MemorySegment.copy(segments[si], LAYOUT_BYTE, pos, b, offset, len);
-    } catch (IndexOutOfBoundsException _) {
+    } catch (IndexOutOfBoundsException unnamedVariable) {
       throw handlePositionalIOOBE("read", pos);
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
@@ -500,7 +500,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
       this.curPosition = pos & chunkSizeMask;
       this.curSegmentIndex = si;
       this.curSegment = seg;
-    } catch (IndexOutOfBoundsException _) {
+    } catch (IndexOutOfBoundsException unnamedVariable) {
       throw handlePositionalIOOBE("read", pos);
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
@@ -749,7 +749,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
       ensureOpen();
       try {
         curPosition = Objects.checkIndex(pos, length + 1);
-      } catch (IndexOutOfBoundsException _) {
+      } catch (IndexOutOfBoundsException unnamedVariable) {
         throw handlePositionalIOOBE("seek", pos);
       }
     }
@@ -764,7 +764,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
     public byte readByte(long pos) throws IOException {
       try {
         return curSegment.get(LAYOUT_BYTE, pos);
-      } catch (IndexOutOfBoundsException _) {
+      } catch (IndexOutOfBoundsException unnamedVariable) {
         throw handlePositionalIOOBE("read", pos);
       } catch (NullPointerException | IllegalStateException e) {
         throw alreadyClosed(e);
@@ -775,7 +775,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
     public void readBytes(long pos, byte[] bytes, int offset, int length) throws IOException {
       try {
         MemorySegment.copy(curSegment, LAYOUT_BYTE, pos, bytes, offset, length);
-      } catch (IndexOutOfBoundsException _) {
+      } catch (IndexOutOfBoundsException unnamedVariable) {
         throw handlePositionalIOOBE("read", pos);
       } catch (NullPointerException | IllegalStateException e) {
         throw alreadyClosed(e);
@@ -786,7 +786,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
     public short readShort(long pos) throws IOException {
       try {
         return curSegment.get(LAYOUT_LE_SHORT, pos);
-      } catch (IndexOutOfBoundsException _) {
+      } catch (IndexOutOfBoundsException unnamedVariable) {
         throw handlePositionalIOOBE("read", pos);
       } catch (NullPointerException | IllegalStateException e) {
         throw alreadyClosed(e);
@@ -797,7 +797,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
     public int readInt(long pos) throws IOException {
       try {
         return curSegment.get(LAYOUT_LE_INT, pos);
-      } catch (IndexOutOfBoundsException _) {
+      } catch (IndexOutOfBoundsException unnamedVariable) {
         throw handlePositionalIOOBE("read", pos);
       } catch (NullPointerException | IllegalStateException e) {
         throw alreadyClosed(e);
@@ -808,7 +808,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
     public long readLong(long pos) throws IOException {
       try {
         return curSegment.get(LAYOUT_LE_LONG, pos);
-      } catch (IndexOutOfBoundsException _) {
+      } catch (IndexOutOfBoundsException unnamedVariable) {
         throw handlePositionalIOOBE("read", pos);
       } catch (NullPointerException | IllegalStateException e) {
         throw alreadyClosed(e);
@@ -820,7 +820,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
       try {
         Objects.checkIndex(pos + len, this.length + 1);
         return curSegment.asSlice(pos, len);
-      } catch (IndexOutOfBoundsException _) {
+      } catch (IndexOutOfBoundsException unnamedVariable) {
         throw handlePositionalIOOBE("segmentSliceOrNull", pos);
       }
     }
