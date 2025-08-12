@@ -239,6 +239,8 @@ Optimizations
 
 * GITHUB#14980: Add bulk off-heap scoring for float32 vectors (Chris Hegarty)
 
+* GITHUB#15045: Use FixedBitSet#cardinality for counting liveDocs in CheckIndex (Zhang Chao)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
