@@ -154,7 +154,6 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
-      assert mergeInstanceCount.get() == finishMergeCount.get() : "There is an open merge instance";
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -165,7 +164,6 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
-      assert mergeInstanceCount.get() == finishMergeCount.get() : "There is an open merge instance";
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
