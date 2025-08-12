@@ -17,6 +17,7 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.VERSION_GROUPVARINT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
@@ -49,6 +50,7 @@ import org.apache.lucene.store.PreloadHint;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -78,6 +80,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   private final FieldInfos fieldInfos;
   private final IntObjectHashMap<FieldEntry> fields;
   private final IndexInput vectorIndex;
+  private final int version;
 
   public Lucene99HnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
       throws IOException {
@@ -105,6 +108,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       } finally {
         CodecUtil.checkFooter(meta, priorE);
       }
+      this.version = versionMeta;
       this.vectorIndex =
           openDataInput(
               state,
@@ -130,10 +134,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     this.fieldInfos = reader.fieldInfos;
     this.fields = reader.fields;
     this.vectorIndex = reader.vectorIndex;
+    this.version = reader.version;
   }
 
   @Override
-  public KnnVectorsReader getMergeInstance() {
+  public KnnVectorsReader getMergeInstance() throws IOException {
     return new Lucene99HnswVectorsReader(this, this.flatVectorsReader.getMergeInstance());
   }
 
@@ -501,7 +506,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   /** Read the nearest-neighbors graph from the index input */
-  private static final class OffHeapHnswGraph extends HnswGraph {
+  private final class OffHeapHnswGraph extends HnswGraph {
 
     final IndexInput dataIn;
     final int[][] nodesByLevel;
@@ -552,9 +557,16 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       arcCount = dataIn.readVInt();
       assert arcCount <= currentNeighborsBuffer.length : "too many neighbors: " + arcCount;
       if (arcCount > 0) {
-        currentNeighborsBuffer[0] = dataIn.readVInt();
-        for (int i = 1; i < arcCount; i++) {
-          currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + dataIn.readVInt();
+        if (version >= VERSION_GROUPVARINT) {
+          GroupVIntUtil.readGroupVInts(dataIn, currentNeighborsBuffer, arcCount);
+          for (int i = 1; i < arcCount; i++) {
+            currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + currentNeighborsBuffer[i];
+          }
+        } else {
+          currentNeighborsBuffer[0] = dataIn.readVInt();
+          for (int i = 1; i < arcCount; i++) {
+            currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + dataIn.readVInt();
+          }
         }
       }
       arc = -1;

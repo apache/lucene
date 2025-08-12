@@ -17,6 +17,7 @@
 package org.apache.lucene.gradle.plugins.java;
 
 import org.gradle.api.DefaultTask;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Optional;
@@ -28,11 +29,17 @@ public abstract class RenderJavadocTaskBase extends DefaultTask {
   @Input
   public abstract Property<String> getExecutable();
 
+  @Input
+  @Optional
+  public abstract ListProperty<String> getExtraOpts();
+
   public RenderJavadocTaskBase() {
     getExecutable()
         .convention(
             getProject()
                 .getProviders()
                 .provider(() -> Jvm.current().getJavadocExecutable().toString()));
+
+    getExtraOpts().set(getProject().getObjects().listProperty(String.class));
   }
 }

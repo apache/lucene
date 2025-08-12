@@ -176,13 +176,13 @@ public final class Constants {
 
   /**
    * The default {@link ReadAdvice} used for opening index files. It will be {@link
-   * ReadAdvice#RANDOM} by default, unless set by system property {@code
+   * ReadAdvice#NORMAL} by default, unless set by system property {@code
    * org.apache.lucene.store.defaultReadAdvice}.
    */
   public static final ReadAdvice DEFAULT_READADVICE =
       Optional.ofNullable(getSysProp("org.apache.lucene.store.defaultReadAdvice"))
           .map(a -> ReadAdvice.valueOf(a.toUpperCase(Locale.ROOT)))
-          .orElse(ReadAdvice.RANDOM);
+          .orElse(ReadAdvice.NORMAL);
 
   private static String getSysProp(String property) {
     return System.getProperty(property);
