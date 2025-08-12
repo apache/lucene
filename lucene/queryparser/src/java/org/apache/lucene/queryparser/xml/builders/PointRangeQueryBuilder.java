@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.queryparser.xml.builders;
 
+import java.util.Locale;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
@@ -75,7 +76,7 @@ public class PointRangeQueryBuilder implements QueryBuilder {
     String field = DOMUtils.getAttributeWithInheritanceOrFail(e, "fieldName");
     final String lowerTerm = DOMUtils.getAttribute(e, "lowerTerm", null);
     final String upperTerm = DOMUtils.getAttribute(e, "upperTerm", null);
-    String type = DOMUtils.getAttribute(e, "type", "int").toLowerCase();
+    String type = DOMUtils.getAttribute(e, "type", "int").toLowerCase(Locale.getDefault());
 
     try {
       return switch (type) {
