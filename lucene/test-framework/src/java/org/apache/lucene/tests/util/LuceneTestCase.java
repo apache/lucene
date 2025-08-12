@@ -3120,7 +3120,7 @@ public abstract class LuceneTestCase extends Assert {
 
   static {
     boolean enabled = false;
-    assert enabled = true; // Intentional side-effect!!!
+    assert (enabled = true) == true; // Intentional side-effect!!!
     assertsAreEnabled = enabled;
   }
 

@@ -132,7 +132,7 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
 
   private class FieldsWriter extends FieldsConsumer {
     final SegmentWriteState writeState;
-    final List<Closeable> toClose = new ArrayList<Closeable>();
+    final List<Closeable> toClose = new ArrayList<>();
 
     public FieldsWriter(SegmentWriteState writeState) {
       this.writeState = writeState;

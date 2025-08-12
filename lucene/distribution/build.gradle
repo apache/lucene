@@ -62,14 +62,14 @@ tasks.register("assembleSourceTgz", QuietExec, {
   }
 
   args += [
-      "archive",
-      "--format",
-      "tgz",
-      "--prefix",
-      "lucene-${version}/",
-      "--output",
-      sourceTgzFile.get().asFile,
-      "HEAD"
+    "archive",
+    "--format",
+    "tgz",
+    "--prefix",
+    "lucene-${version}/",
+    "--output",
+    sourceTgzFile.get().asFile,
+    "HEAD"
   ]
 })
 

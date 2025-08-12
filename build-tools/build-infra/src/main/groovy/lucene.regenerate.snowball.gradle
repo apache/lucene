@@ -79,10 +79,10 @@ configure(project(":lucene:analysis:common")) {
     inputs.files fileTree(
         dir: "src/java/org/tartarus/snowball",
         include: [
-            "Among.java",
-            "SnowballStemmer.java",
-            "SnowballProgram.java",
-            "ext/*Stemmer.java"
+          "Among.java",
+          "SnowballStemmer.java",
+          "SnowballProgram.java",
+          "ext/*Stemmer.java"
         ])
 
     inputs.files fileTree(
@@ -102,10 +102,10 @@ configure(project(":lucene:analysis:common")) {
 
     executable "bash"
     args = [
-        snowballScript,
-        snowballStemmerDir,
-        snowballWebsiteDir,
-        projectDir
+      snowballScript,
+      snowballStemmerDir,
+      snowballWebsiteDir,
+      projectDir
     ]
   })
 

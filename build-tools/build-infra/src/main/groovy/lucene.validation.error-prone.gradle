@@ -77,12 +77,6 @@ allprojects { prj ->
       }
 
       tasks.withType(JavaCompile).configureEach { task ->
-        // Disable errorprone on the MR-JAR tasks
-        if (task.name ==~ /compileMain\d+Java/) {
-          options.errorprone.enabled = false
-          return
-        }
-
         // Exclude certain files (generated ones, mostly).
         switch (project.path) {
           case ":lucene:core":
@@ -161,6 +155,7 @@ allprojects { prj ->
           // '-Xep:BanClassLoader:OFF', // implemented with forbidden APIs instead
           // '-Xep:BanJNDI:OFF', // implemented with forbidden APIs instead
           // '-Xep:BoxedPrimitiveEquality:OFF', // TODO: there are problems
+          '-Xep:BooleanLiteral:ERROR',
           // '-Xep:BundleDeserializationCast:OFF', // we don't use android
           '-Xep:ChainingConstructorIgnoresParameter:ERROR',
           // '-Xep:CheckNotNullMultipleTimes:OFF', // we don't use guava
@@ -189,12 +184,14 @@ allprojects { prj ->
           // '-Xep:DurationGetTemporalUnit:OFF', // we don't use Duration.get()
           // '-Xep:DurationTemporalUnit:OFF', // we don't use Duration.of() etc
           // '-Xep:DurationToLongTimeUnit:OFF', // we don't use TimeUnit.convert Duration, etc
+          // '-Xep:EffectivelyPrivate:ERROR', // TODO: many violations of this.
           // '-Xep:EmptyTopLevelDeclaration:OFF', // noisy
           '-Xep:EqualsHashCode:ERROR',
           '-Xep:EqualsNaN:ERROR',
           '-Xep:EqualsNull:ERROR',
           '-Xep:EqualsReference:ERROR',
           '-Xep:EqualsWrongThing:ERROR',
+          // '-Xep:ExpensiveLenientFormatString', // we don't use guava
           // '-Xep:FloggerFormatString:OFF', // we don't use flogger
           // '-Xep:FloggerLogVarargs:OFF', // we don't use flogger
           // '-Xep:FloggerSplitLogStatement:OFF', // we don't use flogger
@@ -333,6 +330,7 @@ allprojects { prj ->
           '-Xep:UnnecessaryCheckNotNull:ERROR',
           // '-Xep:UnnecessaryCopy:OFF', // we don't use google collections
           '-Xep:UnnecessaryTypeArgument:ERROR',
+          // '-Xep:UnnecessaryQualifier:OFF', // we don't use guava
           '-Xep:UnsafeWildcard:ERROR',
           '-Xep:UnusedAnonymousClass:ERROR',
           '-Xep:UnusedCollectionModifiedInPlace:ERROR',

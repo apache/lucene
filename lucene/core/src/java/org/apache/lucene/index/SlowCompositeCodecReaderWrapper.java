@@ -304,7 +304,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
   private record DocValuesSub<T extends KnnVectorValues>(T sub, int docStart, int ordStart) {
     @SuppressWarnings("unchecked")
     DocValuesSub<T> copy() throws IOException {
-      return new DocValuesSub<T>((T) (sub.copy()), docStart, ordStart);
+      return new DocValuesSub<>((T) (sub.copy()), docStart, ordStart);
     }
   }
 

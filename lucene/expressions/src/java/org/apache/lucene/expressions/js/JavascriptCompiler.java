@@ -344,7 +344,7 @@ public final class JavascriptCompiler {
       final Map<String, Integer> externalsMap,
       final Map<String, Integer> constantsMap) {
     // to completely hide the ANTLR visitor we use an anonymous impl:
-    return new JavascriptBaseVisitor<Void>() {
+    return new JavascriptBaseVisitor<>() {
       private final Deque<TypeKind> typeStack = new ArrayDeque<>();
 
       @Override

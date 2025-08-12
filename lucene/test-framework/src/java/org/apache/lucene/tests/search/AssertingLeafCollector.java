@@ -17,7 +17,6 @@
 package org.apache.lucene.tests.search;
 
 import java.io.IOException;
-import org.apache.lucene.search.CheckedIntConsumer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.FilterDocIdSetIterator;
@@ -25,6 +24,7 @@ import org.apache.lucene.search.FilterLeafCollector;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IOIntConsumer;
 
 /** Wraps another Collector and checks that order is respected. */
 class AssertingLeafCollector extends FilterLeafCollector {
@@ -128,7 +128,7 @@ class AssertingLeafCollector extends FilterLeafCollector {
     }
 
     @Override
-    public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
+    public void forEach(IOIntConsumer consumer) throws IOException {
       assert lastUpTo != DocIdSetIterator.NO_MORE_DOCS : "exhausted";
       stream.forEach(
           doc -> {
@@ -143,7 +143,7 @@ class AssertingLeafCollector extends FilterLeafCollector {
     }
 
     @Override
-    public void forEach(int upTo, CheckedIntConsumer<IOException> consumer) throws IOException {
+    public void forEach(int upTo, IOIntConsumer consumer) throws IOException {
       assert lastUpTo < upTo : "upTo=" + upTo + " but previous upTo=" + lastUpTo;
       stream.forEach(
           doc -> {

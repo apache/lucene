@@ -15,28 +15,22 @@
  * limitations under the License.
  */
 
-import java.nio.file.Files
+package org.apache.lucene.codecs.lucene99;
 
-// LUCENE-9505: utility function that sets up dummy outputs for a task so that
-// clean[TaskName] works and allows selective re-runs.
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_NUM_MERGE_WORKER;
 
-allprojects {
-  tasks.matching {
-    it.name.startsWith("ecjLint") ||
-        it.name in [
-          "gradlewScriptsTweaked",
-          "validateSourcePatterns"
-        ]
-  }.configureEach { Task task ->
-    task.logger.info("Adding a dummy-output to ${task.path}.")
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
-    File dummyOutput = layout.buildDirectory.file("tasks/${task.name}/dummy-output.txt").get().asFile
-    task.outputs.file(dummyOutput)
+public class TestLucene99HnswVectorsFormatV0 extends BaseKnnVectorsFormatTestCase {
 
-    task.doLast {
-      if (!dummyOutput.exists()) {
-        Files.createFile(dummyOutput.toPath())
-      }
-    }
+  @Override
+  protected Codec getCodec() {
+    return TestUtil.alwaysKnnVectorsFormat(
+        new Lucene99HnswVectorsFormat(
+            DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, null, 0));
   }
 }

@@ -18,10 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
-import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.store.AlreadyClosedException;
 
@@ -146,24 +143,6 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
     void onClose(CacheKey key) throws IOException;
   }
 
-  private final Set<IndexReader> parentReaders =
-      Collections.synchronizedSet(
-          Collections.newSetFromMap(new WeakHashMap<IndexReader, Boolean>()));
-
-  /**
-   * Expert: This method is called by {@code IndexReader}s which wrap other readers (e.g. {@link
-   * CompositeReader} or {@link FilterLeafReader}) to register the parent at the child (this reader)
-   * on construction of the parent. When this reader is closed, it will mark all registered parents
-   * as closed, too. The references to parent readers are weak only, so they can be GCed once they
-   * are no longer in use.
-   *
-   * @lucene.experimental
-   */
-  public final void registerParentReader(IndexReader reader) {
-    ensureOpen();
-    parentReaders.add(reader);
-  }
-
   /**
    * For test framework use only.
    *
@@ -171,18 +150,6 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
    */
   protected void notifyReaderClosedListeners() throws IOException {
     // nothing to notify in the base impl
-  }
-
-  private void reportCloseToParentReaders() throws IOException {
-    synchronized (parentReaders) {
-      for (IndexReader parent : parentReaders) {
-        parent.closedByChild = true;
-        // cross memory barrier by a fake write:
-        parent.refCount.addAndGet(0);
-        // recurse:
-        parent.reportCloseToParentReaders();
-      }
-    }
   }
 
   /** Expert: returns the current refCount for this reader */
@@ -253,8 +220,7 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
     final int rc = refCount.decrementAndGet();
     if (rc == 0) {
       closed = true;
-      try (Closeable _ = this::reportCloseToParentReaders;
-          Closeable _ = this::notifyReaderClosedListeners) {
+      try (Closeable _ = this::notifyReaderClosedListeners) {
         doClose();
       }
     } else if (rc < 0) {

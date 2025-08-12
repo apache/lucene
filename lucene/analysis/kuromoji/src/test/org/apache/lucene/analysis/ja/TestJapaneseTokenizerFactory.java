@@ -28,7 +28,7 @@ import org.apache.lucene.tests.util.StringMockResourceLoader;
 /** Simple tests for {@link JapaneseTokenizerFactory} */
 public class TestJapaneseTokenizerFactory extends BaseTokenStreamTestCase {
   public void testSimple() throws IOException {
-    JapaneseTokenizerFactory factory = new JapaneseTokenizerFactory(new HashMap<String, String>());
+    JapaneseTokenizerFactory factory = new JapaneseTokenizerFactory(new HashMap<>());
     factory.inform(new StringMockResourceLoader(""));
     TokenStream ts = factory.create(newAttributeFactory());
     ((Tokenizer) ts).setReader(new StringReader("これは本ではない"));
@@ -41,7 +41,7 @@ public class TestJapaneseTokenizerFactory extends BaseTokenStreamTestCase {
 
   /** Test that search mode is enabled and working by default */
   public void testDefaults() throws IOException {
-    JapaneseTokenizerFactory factory = new JapaneseTokenizerFactory(new HashMap<String, String>());
+    JapaneseTokenizerFactory factory = new JapaneseTokenizerFactory(new HashMap<>());
     factory.inform(new StringMockResourceLoader(""));
     TokenStream ts = factory.create(newAttributeFactory());
     ((Tokenizer) ts).setReader(new StringReader("シニアソフトウェアエンジニア"));
