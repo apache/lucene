@@ -243,6 +243,8 @@ Optimizations
 
 * GITHUB#14980: Add bulk off-heap scoring for float32 vectors (Chris Hegarty)
 
+* GITHUB#15004: Wraps all iterator with likelyImpactsEnum under BlockMaxConjunctionBulkScorer. (Ge Song)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
