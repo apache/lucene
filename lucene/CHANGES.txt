@@ -63,6 +63,8 @@ Optimizations
 
 * GITHUB#14874: Improve off-heap KNN byte vector query performance in cases where indexing and search are performed by the same process. (Kaival Parikh)
 
+* GITHUB#15050: Use switch expression for optimized type checks in PointRangeQueryBuilder (Sandesh Kumar)
+
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
