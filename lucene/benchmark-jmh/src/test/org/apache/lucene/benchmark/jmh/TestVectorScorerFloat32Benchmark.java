@@ -32,10 +32,12 @@ public class TestVectorScorerFloat32Benchmark extends LuceneTestCase {
   public void setup() throws IOException {
     bench = new VectorScorerFloat32Benchmark();
     bench.size = 1024;
+    bench.pollute = true;
     bench.numVectors = random().nextInt(1, 256);
     bench.numVectorsToScore = random().nextInt(bench.numVectors);
     delta = 1e-3f * bench.size;
     bench.setup();
+    bench.perIterationInit();
   }
 
   @After
