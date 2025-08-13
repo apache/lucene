@@ -106,14 +106,16 @@ abstract class AbstractKnnVectorQuery extends Query {
       filterWeight = null;
     }
 
-    KnnCollectorManager knnCollectorManagerInner = getKnnCollectorManager(k, indexSearcher);
-    TimeLimitingKnnCollectorManager knnCollectorManager =
-        new TimeLimitingKnnCollectorManager(knnCollectorManagerInner, indexSearcher.getTimeout());
+    KnnCollectorManager knnCollectorManager = getKnnCollectorManager(k, indexSearcher);
+    OptimisticKnnCollectorManager optimisticCollectorManager =
+        new OptimisticKnnCollectorManager(k, knnCollectorManager);
+    TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager =
+        new TimeLimitingKnnCollectorManager(optimisticCollectorManager, indexSearcher.getTimeout());
     TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
     List<LeafReaderContext> leafReaderContexts = new ArrayList<>(reader.leaves());
     List<Callable<TopDocs>> tasks = new ArrayList<>(leafReaderContexts.size());
     for (LeafReaderContext context : leafReaderContexts) {
-      tasks.add(() -> searchLeaf(context, filterWeight, knnCollectorManager));
+      tasks.add(() -> searchLeaf(context, filterWeight, timeLimitingKnnCollectorManager));
     }
     Map<Integer, TopDocs> perLeafResults = new HashMap<>();
     TopDocs topK = runSearchTasks(tasks, taskExecutor, perLeafResults, leafReaderContexts);
@@ -121,14 +123,14 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (topK.scoreDocs.length > 0
         && perLeafResults.size() > 1
         // only re-enter if we used the optimistic collection
-        && knnCollectorManagerInner instanceof OptimisticKnnCollectorManager
+        && knnCollectorManager.isOptimistic()
         // don't re-enter the search if we early terminated
         && topK.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
       float minTopKScore = topK.scoreDocs[topK.scoreDocs.length - 1].score;
       TimeLimitingKnnCollectorManager knnCollectorManagerPhase2 =
           new TimeLimitingKnnCollectorManager(
               new ReentrantKnnCollectorManager(
-                  new TopKnnCollectorManager(k, indexSearcher), perLeafResults),
+                  getKnnCollectorManager(k, indexSearcher), perLeafResults),
               indexSearcher.getTimeout());
       Iterator<LeafReaderContext> ctxIter = leafReaderContexts.iterator();
       while (ctxIter.hasNext()) {
@@ -260,26 +262,33 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
-    return new OptimisticKnnCollectorManager(k);
+    return new TopKnnCollectorManager(k, searcher);
   }
 
   static class OptimisticKnnCollectorManager implements KnnCollectorManager {
     private final int k;
+    private final KnnCollectorManager delegate;
 
-    OptimisticKnnCollectorManager(int k) {
+    OptimisticKnnCollectorManager(int k, KnnCollectorManager delegate) {
       this.k = k;
+      this.delegate = delegate;
     }
 
     @Override
     public KnnCollector newCollector(
         int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context)
         throws IOException {
-      @SuppressWarnings("resource")
-      float leafProportion = context.reader().maxDoc() / (float) context.parent.reader().maxDoc();
-      int perLeafTopK = perLeafTopKCalculation(k, leafProportion);
-      // if we divided by zero above, leafProportion can be NaN and then this would be 0
-      assert perLeafTopK > 0;
-      return new TopKnnCollector(perLeafTopK, visitedLimit, searchStrategy);
+      // The delegate supports optimistic collection
+      if (delegate.isOptimistic()) {
+        @SuppressWarnings("resource")
+        float leafProportion = context.reader().maxDoc() / (float) context.parent.reader().maxDoc();
+        int perLeafTopK = perLeafTopKCalculation(k, leafProportion);
+        // if we divided by zero above, leafProportion can be NaN and then this would be 0
+        assert perLeafTopK > 0;
+        return delegate.newOptimisticCollector(visitedLimit, searchStrategy, context, perLeafTopK);
+      }
+      // We don't support optimistic collection, so just do regular execution path
+      return delegate.newCollector(visitedLimit, searchStrategy, context);
     }
   }
 

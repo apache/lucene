@@ -274,6 +274,25 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
           saturationThreshold,
           patience);
     }
+
+    @Override
+    public KnnCollector newOptimisticCollector(
+        int visitLimit, KnnSearchStrategy searchStrategy, LeafReaderContext ctx, int k)
+        throws IOException {
+      if (knnCollectorManager.isOptimistic()) {
+        return new HnswQueueSaturationCollector(
+            knnCollectorManager.newOptimisticCollector(visitLimit, searchStrategy, ctx, k),
+            saturationThreshold,
+            patience);
+      } else {
+        return null;
+      }
+    }
+
+    @Override
+    public boolean isOptimistic() {
+      return knnCollectorManager.isOptimistic();
+    }
   }
 
   @Override
