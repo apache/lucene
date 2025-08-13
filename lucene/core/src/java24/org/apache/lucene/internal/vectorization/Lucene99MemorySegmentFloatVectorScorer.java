@@ -33,9 +33,8 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
 
   final FloatVectorValues values;
   final int vectorByteSize;
-  final MemorySegmentAccessInput input;
+  final MemorySegment seg;
   final float[] query;
-  byte[] scratch;
 
   /**
    * Return an optional whose value, if present, is the scorer. Otherwise, an empty optional is
@@ -45,15 +44,18 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
       VectorSimilarityFunction type,
       IndexInput input,
       FloatVectorValues values,
-      float[] queryVector) {
+      float[] queryVector)
+      throws IOException {
     input = FilterIndexInput.unwrapOnlyTest(input);
-    if (!(input instanceof MemorySegmentAccessInput msInput)) {
+    MemorySegment seg;
+    if (!(input instanceof MemorySegmentAccessInput msInput
+        && (seg = msInput.segmentSliceOrNull(0L, msInput.length())) != null)) {
       return Optional.empty();
     }
     checkInvariants(values.size(), values.getVectorByteLength(), input);
     return switch (type) {
       case COSINE -> Optional.empty(); // of(new CosineScorer(msInput, values, queryVector));
-      case DOT_PRODUCT -> Optional.of(new DotProductScorer(msInput, values, queryVector));
+      case DOT_PRODUCT -> Optional.of(new DotProductScorer(seg, values, queryVector));
       case EUCLIDEAN -> Optional.empty(); // of(new EuclideanScorer(msInput, values, queryVector));
       case MAXIMUM_INNER_PRODUCT ->
           Optional.empty(); // of(new MaxInnerProductScorer(msInput, values, queryVector));
@@ -61,26 +63,12 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
   }
 
   Lucene99MemorySegmentFloatVectorScorer(
-      MemorySegmentAccessInput input, FloatVectorValues values, float[] queryVector) {
+      MemorySegment seg, FloatVectorValues values, float[] queryVector) {
     super(values);
     this.values = values;
-    this.input = input;
+    this.seg = seg;
     this.vectorByteSize = values.getVectorByteLength();
     this.query = queryVector;
-  }
-
-  final MemorySegment getSegment(int ord) throws IOException {
-    checkOrdinal(ord);
-    long byteOffset = (long) ord * vectorByteSize;
-    MemorySegment seg = input.segmentSliceOrNull(byteOffset, vectorByteSize);
-    if (seg == null) {
-      if (scratch == null) {
-        scratch = new byte[vectorByteSize];
-      }
-      input.readBytes(byteOffset, scratch, 0, vectorByteSize);
-      seg = MemorySegment.ofArray(scratch);
-    }
-    return seg;
   }
 
   static void checkInvariants(int maxOrd, int vectorByteLength, IndexInput input) {
@@ -97,10 +85,12 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
 
   static final class DotProductScorer extends Lucene99MemorySegmentFloatVectorScorer {
 
-    static final MemorySegmentBulkVectorOps.DotFromQueryArray DOT_OPS =
-        new MemorySegmentBulkVectorOps.DotFromQueryArray();
+    static final MemorySegmentBulkVectorOps.DotProduct DOT_OPS =
+        MemorySegmentBulkVectorOps.DOT_INSTANCE;
 
-    DotProductScorer(MemorySegmentAccessInput input, FloatVectorValues values, float[] query) {
+    final float[] scratchScores = new float[4];
+
+    DotProductScorer(MemorySegment input, FloatVectorValues values, float[] query) {
       super(input, values, query);
     }
 
@@ -113,15 +103,14 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
 
     @Override
     public void bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
-      float[] scratchScores = new float[4];
       int i = 0;
       final int limit = numNodes & ~3;
       for (; i < limit; i += 4) {
-        MemorySegment ms1 = getSegment(nodes[i]);
-        MemorySegment ms2 = getSegment(nodes[i + 1]);
-        MemorySegment ms3 = getSegment(nodes[i + 2]);
-        MemorySegment ms4 = getSegment(nodes[i + 3]);
-        DOT_OPS.dotProductBulk(scratchScores, query, ms1, ms2, ms3, ms4, query.length);
+        long addr1 = (long) nodes[i] * vectorByteSize;
+        long addr2 = (long) nodes[i + 1] * vectorByteSize;
+        long addr3 = (long) nodes[i + 2] * vectorByteSize;
+        long addr4 = (long) nodes[i + 3] * vectorByteSize;
+        DOT_OPS.dotProductBulk(seg, scratchScores, query, addr1, addr2, addr3, addr4, query.length);
         scores[i + 0] = normalizeToUnitInterval(scratchScores[0]);
         scores[i + 1] = normalizeToUnitInterval(scratchScores[1]);
         scores[i + 2] = normalizeToUnitInterval(scratchScores[2]);
@@ -130,10 +119,10 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
       // Handle remaining 1–3 nodes in bulk (if any)
       int remaining = numNodes - i;
       if (remaining > 0) {
-        MemorySegment ms1 = getSegment(nodes[i]);
-        MemorySegment ms2 = (remaining > 1) ? getSegment(nodes[i + 1]) : ms1;
-        MemorySegment ms3 = (remaining > 2) ? getSegment(nodes[i + 2]) : ms1;
-        DOT_OPS.dotProductBulk(scratchScores, query, ms1, ms2, ms3, ms1, query.length);
+        long addr1 = (long) nodes[i] * vectorByteSize;
+        long addr2 = (remaining > 1) ? (long) nodes[i + 1] * vectorByteSize : addr1;
+        long addr3 = (remaining > 2) ? (long) nodes[i + 2] * vectorByteSize : addr1;
+        DOT_OPS.dotProductBulk(seg, scratchScores, query, addr1, addr2, addr3, addr1, query.length);
         scores[i] = normalizeToUnitInterval(scratchScores[0]);
         if (remaining > 1) scores[i + 1] = normalizeToUnitInterval(scratchScores[1]);
         if (remaining > 2) scores[i + 2] = normalizeToUnitInterval(scratchScores[2]);

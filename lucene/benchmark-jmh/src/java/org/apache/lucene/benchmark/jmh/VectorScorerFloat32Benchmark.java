@@ -80,6 +80,9 @@ public class VectorScorerFloat32Benchmark {
   @Param({"1024"})
   public int size;
 
+  @Param({"true", "false"})
+  public boolean pollute = false;
+
   public int numVectors = 128_000;
   public int numVectorsToScore = 20_000;
 
@@ -105,7 +108,6 @@ public class VectorScorerFloat32Benchmark {
         out.writeBytes(ba, 0, ba.length);
       }
     }
-    perIterationInit();
   }
 
   @Setup(Level.Iteration)
@@ -129,6 +131,10 @@ public class VectorScorerFloat32Benchmark {
     List<Integer> list = IntStream.range(0, numVectors).boxed().collect(Collectors.toList());
     Collections.shuffle(list, random);
     indices = list.stream().limit(numVectorsToScore).mapToInt(i -> i).toArray();
+
+    if (pollute) {
+      pollute(random);
+    }
   }
 
   @TearDown
@@ -137,6 +143,18 @@ public class VectorScorerFloat32Benchmark {
     dir.deleteFile("vector.data");
     IOUtils.close(dir);
     Files.delete(path);
+  }
+
+  public void pollute(Random random) throws IOException {
+    float[] vec = randomVector(size, random);
+    var opt = FlatVectorScorerUtil.getLucene99FlatVectorsScorer();
+    var scorer = opt.getRandomVectorScorer(DOT_PRODUCT, values.copy(), vec);
+    for (int i = 0; i < 2; i++) {
+      for (int v = 0; v < numVectorsToScore; v++) {
+        scores[v] = scorer.score(indices[v]);
+      }
+      scorer.bulkScore(indices, scores, indices.length);
+    }
   }
 
   @Benchmark
