@@ -201,7 +201,7 @@ public abstract class DataInput implements Cloneable {
     long i = 0;
     for (int shift = 0; shift < 64; shift += 7) {
       byte b = readByte();
-      i |= (long)(b & 0x7F) << shift;
+      i |= (long) (b & 0x7F) << shift;
       if ((b & 0x80) == 0) {
         break;
       }
