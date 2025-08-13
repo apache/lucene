@@ -22,13 +22,8 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
-import org.apache.lucene.util.hnsw.BlockingFloatHeap;
 
-/**
- * TopKnnCollectorManager responsible for creating {@link TopKnnCollector} instances. When
- * concurrency is supported, the {@link BlockingFloatHeap} is used to track the global top scores
- * collected across all leaves.
- */
+/** TopKnnCollectorManager responsible for creating {@link TopKnnCollector} instances. */
 public class TopKnnCollectorManager implements KnnCollectorManager {
 
   // the number of docs to collect
