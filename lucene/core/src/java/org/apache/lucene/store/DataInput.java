@@ -190,8 +190,8 @@ public abstract class DataInput implements Cloneable {
   }
 
   /**
-   * Reads a long stored in variable-length format. Reads between one and ten bytes. Smaller values
-   * take fewer bytes. Negative numbers should be avoided as they always encode to ten bytes.
+   * Reads a long stored in variable-length format. Reads between one and nine bytes. Smaller values
+   * take fewer bytes. Negative numbers are not supported.
    *
    * <p>The format is described further in {@link DataOutput#writeVInt(int)}.
    *
@@ -199,6 +199,7 @@ public abstract class DataInput implements Cloneable {
    */
   public long readVLong() throws IOException {
     long i = 0;
+    // NB: we may be called internally to decode negative (10 byte) values.
     for (int shift = 0; shift < 64; shift += 7) {
       byte b = readByte();
       i |= (long) (b & 0x7F) << shift;
