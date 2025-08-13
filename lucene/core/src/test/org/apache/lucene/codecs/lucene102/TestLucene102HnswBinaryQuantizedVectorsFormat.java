@@ -66,7 +66,7 @@ public class TestLucene102HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
           }
         };
     String expectedPattern =
-        "Lucene102HnswBinaryQuantizedVectorsFormat(name=Lucene102HnswBinaryQuantizedVectorsFormat, maxConn=10, beamWidth=20,"
+        "Lucene102HnswBinaryQuantizedVectorsFormat(name=Lucene102HnswBinaryQuantizedVectorsFormat, maxConn=10, beamWidth=20, tinySegmentsThreshold=10,"
             + " flatVectorFormat=Lucene102BinaryQuantizedVectorsFormat(name=Lucene102BinaryQuantizedVectorsFormat,"
             + " flatVectorScorer=Lucene102BinaryFlatVectorsScorer(nonQuantizedDelegate=%s()),"
             + " rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s())))";

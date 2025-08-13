@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.codecs.KnnVectorsWriter.MergedVectorValues.hasVectorValues;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.SIMILARITY_FUNCTIONS;
 
 import java.io.IOException;
@@ -53,6 +54,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.HnswGraphMerger;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.IncrementalHnswGraphMerger;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
@@ -76,7 +78,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   private final FlatVectorsWriter flatVectorWriter;
   private final int numMergeWorkers;
   private final TaskExecutor mergeExec;
-  private final boolean bypassTinySegments;
+  private final int tinySegmentsThreshold;
 
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
@@ -89,7 +91,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       int numMergeWorkers,
       TaskExecutor mergeExec)
       throws IOException {
-    this(state, M, beamWidth, flatVectorWriter, numMergeWorkers, mergeExec, false);
+    this(state, M, beamWidth, flatVectorWriter, numMergeWorkers, mergeExec, HNSW_GRAPH_THRESHOLD);
   }
 
   public Lucene99HnswVectorsWriter(
@@ -99,14 +101,14 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       FlatVectorsWriter flatVectorWriter,
       int numMergeWorkers,
       TaskExecutor mergeExec,
-      boolean bypassTinySegments)
+      int tinySegmentsThreshold)
       throws IOException {
     this.M = M;
     this.flatVectorWriter = flatVectorWriter;
     this.beamWidth = beamWidth;
     this.numMergeWorkers = numMergeWorkers;
     this.mergeExec = mergeExec;
-    this.bypassTinySegments = bypassTinySegments;
+    this.tinySegmentsThreshold = tinySegmentsThreshold;
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -150,7 +152,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
             M,
             beamWidth,
             segmentWriteState.infoStream,
-            bypassTinySegments);
+            tinySegmentsThreshold);
     fields.add(newField);
     return newField;
   }
@@ -377,9 +379,9 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       // Check if we should bypass graph building for tiny segments
       boolean makeHnswGraph =
           scorerSupplier.totalVectorCount() > 0
-              && (bypassTinySegments == false
-                  || scorerSupplier.totalVectorCount()
-                      >= Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD);
+              && (scorerSupplier.totalVectorCount()
+                  >= graphCreationThreshold(
+                      tinySegmentsThreshold, scorerSupplier.totalVectorCount()));
       if (makeHnswGraph) {
         // build graph
         HnswGraphMerger merger =
@@ -571,6 +573,11 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     throw new IllegalArgumentException("invalid distance function: " + func);
   }
 
+  private static int graphCreationThreshold(int k, int numNodes) {
+    return (int)
+        Math.pow(10, String.valueOf(HnswGraphSearcher.expectedVisitedNodes(k, numNodes)).length());
+  }
+
   private static class FieldWriter<T> extends KnnFieldVectorsWriter<T> {
 
     private static final long SHALLOW_SIZE =
@@ -582,13 +589,12 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     private int node = 0;
     private final FlatFieldVectorsWriter<T> flatFieldVectorsWriter;
     private UpdateableRandomVectorScorer scorer;
-    private final boolean bypassTinySegments;
+    private final int graphThreshold;
     private final List<T> bufferedVectors;
     private final int M;
     private final int beamWidth;
     private final InfoStream infoStream;
     private final RandomVectorScorerSupplier scorerSupplier;
-    private boolean graphBuilderInitialized = false;
 
     @SuppressWarnings("unchecked")
     static FieldWriter<?> create(
@@ -598,7 +604,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         int M,
         int beamWidth,
         InfoStream infoStream,
-        boolean bypassTinySegments)
+        int tinySegmentsThreshold)
         throws IOException {
       return switch (fieldInfo.getVectorEncoding()) {
         case BYTE ->
@@ -609,7 +615,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 M,
                 beamWidth,
                 infoStream,
-                bypassTinySegments);
+                tinySegmentsThreshold);
         case FLOAT32 ->
             new FieldWriter<>(
                 scorer,
@@ -618,7 +624,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 M,
                 beamWidth,
                 infoStream,
-                bypassTinySegments);
+                tinySegmentsThreshold);
       };
     }
 
@@ -630,15 +636,17 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         int M,
         int beamWidth,
         InfoStream infoStream,
-        boolean bypassTinySegments)
+        int tinySegmentsThreshold)
         throws IOException {
       this.fieldInfo = fieldInfo;
       this.M = M;
       this.beamWidth = beamWidth;
       this.infoStream = infoStream;
-      this.bypassTinySegments = bypassTinySegments;
       this.flatFieldVectorsWriter = Objects.requireNonNull(flatFieldVectorsWriter);
-      if (bypassTinySegments) {
+      this.graphThreshold =
+          graphCreationThreshold(
+              tinySegmentsThreshold, flatFieldVectorsWriter.getDocsWithFieldSet().cardinality());
+      if (graphThreshold > 0) {
         this.bufferedVectors = new ArrayList<>();
       } else {
         this.bufferedVectors = null;
@@ -659,21 +667,20 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                         fieldInfo.getVectorDimension()));
           };
 
-      if (bypassTinySegments == false) {
+      if (graphThreshold <= 0) {
         // Initialize graph builder if optimization is disabled
         initializeGraphBuilder();
       }
     }
 
     private void initializeGraphBuilder() throws IOException {
-      if (graphBuilderInitialized) {
+      if (hnswGraphBuilder != null) {
         return;
       }
       this.scorer = scorerSupplier.scorer();
       this.hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
       this.hnswGraphBuilder.setInfoStream(infoStream);
-      this.graphBuilderInitialized = true;
     }
 
     private void replayBufferedVectors() throws IOException {
@@ -696,9 +703,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       }
       flatFieldVectorsWriter.addValue(docID, vectorValue);
       // Check if we need to initialize graph builder for tiny segment optimization
-      if (bypassTinySegments
-          && graphBuilderInitialized == false
-          && node >= Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD) {
+      if (hnswGraphBuilder == null && node >= graphThreshold) {
         initializeGraphBuilder();
         // Replay buffered vectors
         replayBufferedVectors();
@@ -708,7 +713,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         // Graph builder is active, add to graph
         scorer.setScoringOrdinal(node);
         hnswGraphBuilder.addGraphNode(node, scorer);
-      } else if (bypassTinySegments) {
+      } else {
         // Store for later replay
         bufferedVectors.add(vectorValue);
       }

@@ -76,14 +76,14 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   private final FieldInfos fieldInfos;
   private final IntObjectHashMap<FieldEntry> fields;
   private final IndexInput vectorIndex;
-  private final boolean bypassTinySegments;
+  private final int tinySegmentsThreshold;
 
   public Lucene99HnswVectorsReader(
-      SegmentReadState state, FlatVectorsReader flatVectorsReader, boolean bypassTinySegments)
+      SegmentReadState state, FlatVectorsReader flatVectorsReader, int tinySegmentsThreshold)
       throws IOException {
     this.fields = new IntObjectHashMap<>();
     this.flatVectorsReader = flatVectorsReader;
-    this.bypassTinySegments = bypassTinySegments;
+    this.tinySegmentsThreshold = tinySegmentsThreshold;
     this.fieldInfos = state.fieldInfos;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -127,7 +127,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   public Lucene99HnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
       throws IOException {
-    this(state, flatVectorsReader, false);
+    this(state, flatVectorsReader, 10);
   }
 
   private Lucene99HnswVectorsReader(
@@ -136,7 +136,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     this.fieldInfos = reader.fieldInfos;
     this.fields = reader.fields;
     this.vectorIndex = reader.vectorIndex;
-    this.bypassTinySegments = reader.bypassTinySegments;
+    this.tinySegmentsThreshold = reader.tinySegmentsThreshold;
   }
 
   @Override
@@ -335,10 +335,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     final KnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
     final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
-    boolean doHnsw =
-        knnCollector.k() < scorer.maxOrd()
-            && (bypassTinySegments == false
-                || fieldEntry.size() > Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD);
+    boolean doHnsw = knnCollector.k() < scorer.maxOrd() && fieldEntry.vectorIndexLength > 0;
     // Take into account if quantized? E.g. some scorer cost?
     int filteredDocCount = 0;
     // The approximate number of vectors that would be visited if we did not filter
