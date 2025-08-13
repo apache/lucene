@@ -35,7 +35,7 @@ public final class MemorySegmentBulkVectorOps {
   static final ByteOrder LE = ByteOrder.LITTLE_ENDIAN;
   static final ValueLayout.OfFloat LAYOUT_LE_FLOAT = ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(LE);
 
-  public static DotProduct DOT_INSTANCE = new DotProduct();
+  public static final DotProduct DOT_INSTANCE = new DotProduct();
 
   private MemorySegmentBulkVectorOps() {}
 

@@ -107,17 +107,18 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
         }
 
         @Override
-        public void bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
+        public void bulkScore(int[] nodes, float[] scores, int numNodes) {
           // TODO checkOrdinal(node1 ....);
           int i = 0;
           long queryAddr = (long) queryOrd * vectorByteSize;
           final int limit = numNodes & ~3;
           for (; i < limit; i += 4) {
-            long addr1 = (long) nodes[i + 0] * vectorByteSize;
-            long addr2 = (long) nodes[i + 1] * vectorByteSize;
-            long addr3 = (long) nodes[i + 2] * vectorByteSize;
-            long addr4 = (long) nodes[i + 3] * vectorByteSize;
-            DOT_OPS.dotProductBulk(seg, scratchScores, queryAddr, addr1, addr2, addr3, addr4, dims);
+            long offset1 = (long) nodes[i + 0] * vectorByteSize;
+            long offset2 = (long) nodes[i + 1] * vectorByteSize;
+            long offset3 = (long) nodes[i + 2] * vectorByteSize;
+            long offset4 = (long) nodes[i + 3] * vectorByteSize;
+            DOT_OPS.dotProductBulk(
+                seg, scratchScores, queryAddr, offset1, offset2, offset3, offset4, dims);
             scores[i + 0] = normalizeToUnitInterval(scratchScores[0]);
             scores[i + 1] = normalizeToUnitInterval(scratchScores[1]);
             scores[i + 2] = normalizeToUnitInterval(scratchScores[2]);
