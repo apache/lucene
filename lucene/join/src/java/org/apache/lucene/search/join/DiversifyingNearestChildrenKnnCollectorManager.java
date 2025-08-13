@@ -19,6 +19,7 @@ package org.apache.lucene.search.join;
 
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
@@ -41,7 +42,8 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
    * @param k - the number of top k vectors to collect
    * @param parentsFilter Filter identifying the parent documents.
    */
-  public DiversifyingNearestChildrenKnnCollectorManager(int k, BitSetProducer parentsFilter) {
+  public DiversifyingNearestChildrenKnnCollectorManager(
+      int k, BitSetProducer parentsFilter, IndexSearcher indexSearcher) {
     this.k = k;
     this.parentsFilter = parentsFilter;
   }
