@@ -17,6 +17,7 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.VERSION_GROUPVARINT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
@@ -49,6 +50,7 @@ import org.apache.lucene.store.PreloadHint;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -62,62 +64,62 @@ import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
- * Reads vectors from the index segments along with index data structures supporting KNN search.
+ * Reads vectors from the index segments along with index data structures
+ * supporting KNN search.
  *
  * @lucene.experimental
  */
 public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     implements QuantizedVectorsReader, HnswGraphProvider {
 
-  private static final long SHALLOW_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(Lucene99HnswVectorsFormat.class);
-  // Number of ordinals to score at a time when scoring exhaustively rather than using HNSW.
+  private static final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(Lucene99HnswVectorsFormat.class);
+  // Number of ordinals to score at a time when scoring exhaustively rather than
+  // using HNSW.
   private static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
   private final FlatVectorsReader flatVectorsReader;
   private final FieldInfos fieldInfos;
   private final IntObjectHashMap<FieldEntry> fields;
   private final IndexInput vectorIndex;
+  private final int version;
 
   public Lucene99HnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
       throws IOException {
     this.fields = new IntObjectHashMap<>();
     this.flatVectorsReader = flatVectorsReader;
     this.fieldInfos = state.fieldInfos;
-    String metaFileName =
-        IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene99HnswVectorsFormat.META_EXTENSION);
+    String metaFileName = IndexFileNames.segmentFileName(
+        state.segmentInfo.name, state.segmentSuffix, Lucene99HnswVectorsFormat.META_EXTENSION);
     int versionMeta = -1;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
       try {
-        versionMeta =
-            CodecUtil.checkIndexHeader(
-                meta,
-                Lucene99HnswVectorsFormat.META_CODEC_NAME,
-                Lucene99HnswVectorsFormat.VERSION_START,
-                Lucene99HnswVectorsFormat.VERSION_CURRENT,
-                state.segmentInfo.getId(),
-                state.segmentSuffix);
+        versionMeta = CodecUtil.checkIndexHeader(
+            meta,
+            Lucene99HnswVectorsFormat.META_CODEC_NAME,
+            Lucene99HnswVectorsFormat.VERSION_START,
+            Lucene99HnswVectorsFormat.VERSION_CURRENT,
+            state.segmentInfo.getId(),
+            state.segmentSuffix);
         readFields(meta);
       } catch (Throwable exception) {
         priorE = exception;
       } finally {
         CodecUtil.checkFooter(meta, priorE);
       }
-      this.vectorIndex =
-          openDataInput(
-              state,
-              versionMeta,
-              Lucene99HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
-              Lucene99HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
-              state.context.withHints(
-                  // Even though this input is referred to an `indexIn`, it doesn't qualify as
-                  // FileTypeHint#INDEX since it's a large file
-                  FileTypeHint.DATA,
-                  FileDataHint.KNN_VECTORS,
-                  DataAccessHint.RANDOM,
-                  PreloadHint.INSTANCE));
+      this.version = versionMeta;
+      this.vectorIndex = openDataInput(
+          state,
+          versionMeta,
+          Lucene99HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
+          Lucene99HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
+          state.context.withHints(
+              // Even though this input is referred to an `indexIn`, it doesn't qualify as
+              // FileTypeHint#INDEX since it's a large file
+              FileTypeHint.DATA,
+              FileDataHint.KNN_VECTORS,
+              DataAccessHint.RANDOM,
+              PreloadHint.INSTANCE));
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;
@@ -130,10 +132,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     this.fieldInfos = reader.fieldInfos;
     this.fields = reader.fields;
     this.vectorIndex = reader.vectorIndex;
+    this.version = reader.version;
   }
 
   @Override
-  public KnnVectorsReader getMergeInstance() {
+  public KnnVectorsReader getMergeInstance() throws IOException {
     return new Lucene99HnswVectorsReader(this, this.flatVectorsReader.getMergeInstance());
   }
 
@@ -149,18 +152,16 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       String codecName,
       IOContext context)
       throws IOException {
-    String fileName =
-        IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
+    String fileName = IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
     IndexInput in = state.directory.openInput(fileName, context);
     try {
-      int versionVectorData =
-          CodecUtil.checkIndexHeader(
-              in,
-              codecName,
-              Lucene99HnswVectorsFormat.VERSION_START,
-              Lucene99HnswVectorsFormat.VERSION_CURRENT,
-              state.segmentInfo.getId(),
-              state.segmentSuffix);
+      int versionVectorData = CodecUtil.checkIndexHeader(
+          in,
+          codecName,
+          Lucene99HnswVectorsFormat.VERSION_START,
+          Lucene99HnswVectorsFormat.VERSION_CURRENT,
+          state.segmentInfo.getId(),
+          state.segmentSuffix);
       if (versionMeta != versionVectorData) {
         throw new CorruptIndexException(
             "Format versions mismatch: meta="
@@ -208,12 +209,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   // to avoid an undesirable dependency on the declaration and order of values
   // in VectorSimilarityFunction. The list values and order must be identical
   // to that of {@link o.a.l.c.l.Lucene94FieldInfosFormat#SIMILARITY_FUNCTIONS}.
-  public static final List<VectorSimilarityFunction> SIMILARITY_FUNCTIONS =
-      List.of(
-          VectorSimilarityFunction.EUCLIDEAN,
-          VectorSimilarityFunction.DOT_PRODUCT,
-          VectorSimilarityFunction.COSINE,
-          VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
+  public static final List<VectorSimilarityFunction> SIMILARITY_FUNCTIONS = List.of(
+      VectorSimilarityFunction.EUCLIDEAN,
+      VectorSimilarityFunction.DOT_PRODUCT,
+      VectorSimilarityFunction.COSINE,
+      VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
 
   public static VectorSimilarityFunction readSimilarityFunction(DataInput input)
       throws IOException {
@@ -325,8 +325,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       return;
     }
     final RandomVectorScorer scorer = scorerSupplier.get();
-    final KnnCollector collector =
-        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
+    final KnnCollector collector = new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
     final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
     HnswGraph graph = getGraph(fieldEntry);
     boolean doHnsw = knnCollector.k() < scorer.maxOrd();
@@ -335,7 +334,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     // The approximate number of vectors that would be visited if we did not filter
     int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graph.size());
     if (acceptDocs instanceof BitSet bitSet) {
-      // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
+      // Use approximate cardinality as this is good enough, but ensure we don't
+      // exceed the graph
       // size as that is illogical
       filteredDocCount = Math.min(bitSet.approximateCardinality(), graph.size());
       if (unfilteredVisit >= filteredDocCount) {
@@ -346,7 +346,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       HnswGraphSearcher.search(
           scorer, collector, getGraph(fieldEntry), acceptedOrds, filteredDocCount);
     } else {
-      // if k is larger than the number of vectors we expect to visit in an HNSW search,
+      // if k is larger than the number of vectors we expect to visit in an HNSW
+      // search,
       // we can just iterate over all vectors and collect them.
       int[] ords = new int[EXHAUSTIVE_BULK_SCORE_ORDS];
       float[] scores = new float[EXHAUSTIVE_BULK_SCORE_ORDS];
@@ -435,7 +436,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       int dimension,
       int size,
       int[][] nodesByLevel,
-      // for each level the start offsets in vectorIndex file from where to read neighbours
+      // for each level the start offsets in vectorIndex file from where to read
+      // neighbours
       DirectMonotonicReader.Meta offsetsMeta,
       long offsetsOffset,
       int offsetsBlockShift,
@@ -501,7 +503,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   /** Read the nearest-neighbors graph from the index input */
-  private static final class OffHeapHnswGraph extends HnswGraph {
+  private final class OffHeapHnswGraph extends HnswGraph {
 
     final IndexInput dataIn;
     final int[][] nodesByLevel;
@@ -518,16 +520,13 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     private final int[] currentNeighborsBuffer;
 
     OffHeapHnswGraph(FieldEntry entry, IndexInput vectorIndex) throws IOException {
-      this.dataIn =
-          vectorIndex.slice("graph-data", entry.vectorIndexOffset, entry.vectorIndexLength);
+      this.dataIn = vectorIndex.slice("graph-data", entry.vectorIndexOffset, entry.vectorIndexLength);
       this.nodesByLevel = entry.nodesByLevel;
       this.numLevels = entry.numLevels;
       this.entryNode = numLevels > 1 ? nodesByLevel[numLevels - 1][0] : 0;
       this.size = entry.size();
-      final RandomAccessInput addressesData =
-          vectorIndex.randomAccessSlice(entry.offsetsOffset, entry.offsetsLength);
-      this.graphLevelNodeOffsets =
-          DirectMonotonicReader.getInstance(entry.offsetsMeta, addressesData);
+      final RandomAccessInput addressesData = vectorIndex.randomAccessSlice(entry.offsetsOffset, entry.offsetsLength);
+      this.graphLevelNodeOffsets = DirectMonotonicReader.getInstance(entry.offsetsMeta, addressesData);
       this.currentNeighborsBuffer = new int[entry.M * 2];
       this.maxConn = entry.M;
       graphLevelNodeIndexOffsets = new long[numLevels];
@@ -541,10 +540,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
     @Override
     public void seek(int level, int targetOrd) throws IOException {
-      int targetIndex =
-          level == 0
-              ? targetOrd
-              : Arrays.binarySearch(nodesByLevel[level], 0, nodesByLevel[level].length, targetOrd);
+      int targetIndex = level == 0
+          ? targetOrd
+          : Arrays.binarySearch(nodesByLevel[level], 0, nodesByLevel[level].length, targetOrd);
       assert targetIndex >= 0
           : "seek level=" + level + " target=" + targetOrd + " not found: " + targetIndex;
       // unsafe; no bounds checking
@@ -552,11 +550,19 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       arcCount = dataIn.readVInt();
       assert arcCount <= currentNeighborsBuffer.length : "too many neighbors: " + arcCount;
       if (arcCount > 0) {
-        // Faster prefix sum computation (see #14979)
         int sum = 0;
-        for (int i = 0; i < arcCount; i++) {
-          sum += dataIn.readVInt();
-          currentNeighborsBuffer[i] = sum;
+        if (version >= VERSION_GROUPVARINT) {
+          GroupVIntUtil.readGroupVInts(dataIn, currentNeighborsBuffer, arcCount);
+          // Faster prefix sum computation (see #14979)
+          for (int i = 0; i < arcCount; i++) {
+            sum += currentNeighborsBuffer[i];
+            currentNeighborsBuffer[i] = sum;
+          }
+        } else {
+          for (int i = 0; i < arcCount; i++) {
+            sum += dataIn.readVInt();
+            currentNeighborsBuffer[i] = sum;
+          }
         }
       }
       arc = -1;

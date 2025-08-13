@@ -85,7 +85,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   // the way FMA should work! if available use it, otherwise fall back to mul/add
   @SuppressForbidden(reason = "Uses FMA only where fast and carefully contained")
-  private static FloatVector fma(FloatVector a, FloatVector b, FloatVector c) {
+  static FloatVector fma(FloatVector a, FloatVector b, FloatVector c) {
     if (Constants.HAS_FAST_VECTOR_FMA) {
       return a.fma(b, c);
     } else {
@@ -94,7 +94,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @SuppressForbidden(reason = "Uses FMA only where fast and carefully contained")
-  private static float fma(float a, float b, float c) {
+  static float fma(float a, float b, float c) {
     if (Constants.HAS_FAST_SCALAR_FMA) {
       return Math.fma(a, b, c);
     } else {

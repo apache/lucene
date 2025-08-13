@@ -1,5 +1,3 @@
-import java.nio.charset.StandardCharsets
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,31 +14,24 @@ import java.nio.charset.StandardCharsets
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.gradle.plugins.mrjar;
 
-// Check if Lucene customizations to gradlew scripts are present.
+import java.util.stream.IntStream;
+import javax.inject.Inject;
+import org.gradle.api.Project;
 
-if (project != project.rootProject) {
-  throw new GradleException("Applicable to rootProject only: " + project.path)
-}
+public abstract class MrJarsExtension {
+  public static final String NAME = "mrJars";
 
-def gradlewScriptsTweaked = tasks.register("gradlewScriptsTweaked", {
-  def scripts = [
-    file("gradlew"),
-    file("gradlew.bat")
-  ]
+  @Inject
+  public abstract Project getProject();
 
-  inputs.files(scripts)
-
-  doFirst {
-    scripts.each { file ->
-      def content = new String(file.readBytes(), StandardCharsets.US_ASCII)
-      if (content.indexOf("START OF LUCENE CUSTOMIZATION") < 0) {
-        throw new GradleException("Launch script ${file} does not have Lucene customizations?")
-      }
-    }
+  /**
+   * Immediately configures additional tasks and infrastructure for apijar stubs for the provided
+   * list of Java feature JDKs.
+   */
+  public void setupFor(int... jdkVersions) {
+    LuceneJavaCoreMrjarPlugin.setupMrJarInfrastructure(
+        getProject(), IntStream.of(jdkVersions).boxed().toList());
   }
-})
-
-tasks.named("check").configure {
-  dependsOn gradlewScriptsTweaked
 }
