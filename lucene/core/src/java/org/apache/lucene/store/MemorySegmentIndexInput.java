@@ -276,7 +276,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   @Override
   public final int readVInt() throws IOException {
     // To encode a full 32 bit value 7 bits at a time we need 5 bytes. Any bytes read beyond that
-    // point will cause the value to overflow.
+    // point overflows.
     final int MAX_VINT_SIZE = 5;
     if (curSegment != null && curSegment.byteSize() - curPosition >= MAX_VINT_SIZE) {
       byte b = curSegment.get(LAYOUT_BYTE, curPosition++);
@@ -309,8 +309,61 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
 
   @Override
   public final long readVLong() throws IOException {
-    // this can make JVM less confused (see LUCENE-10366)
-    return super.readVLong();
+    // To encode a full 64 bit value 7 bits at a time we need 10 bytes. Any bytes read beyond that
+    // point overflows.
+    final int MAX_VLONG_SIZE = 10;
+    if (curSegment != null && curSegment.byteSize() - curPosition >= MAX_VLONG_SIZE) {
+      byte b = curSegment.get(LAYOUT_BYTE, curPosition++);
+      long i = b & 0x7F;
+      if ((b & 0x80) == 0) {
+        return i;
+      }
+      b = curSegment.get(LAYOUT_BYTE, curPosition++);
+      i |= (b & 0x7F) << 7;
+      if ((b & 0x80) == 0) {
+        return i;
+      }
+      b = curSegment.get(LAYOUT_BYTE, curPosition++);
+      i |= (b & 0x7F) << 14;
+      if ((b & 0x80) == 0) {
+        return i;
+      }
+      b = curSegment.get(LAYOUT_BYTE, curPosition++);
+      i |= (b & 0x7F) << 21;
+      if ((b & 0x80) == 0) {
+        return i;
+      }
+      b = curSegment.get(LAYOUT_BYTE, curPosition++);
+      i |= (long) (b & 0x7F) << 28;
+      if ((b & 0x80) == 0) {
+        return i;
+      }
+      b = curSegment.get(LAYOUT_BYTE, curPosition++);
+      i |= (long) (b & 0x7F) << 35;
+      if ((b & 0x80) == 0) {
+        return i;
+      }
+      b = curSegment.get(LAYOUT_BYTE, curPosition++);
+      i |= (long) (b & 0x7F) << 42;
+      if ((b & 0x80) == 0) {
+        return i;
+      }
+      b = curSegment.get(LAYOUT_BYTE, curPosition++);
+      i |= (long) (b & 0x7F) << 49;
+      if ((b & 0x80) == 0) {
+        return i;
+      }
+      b = curSegment.get(LAYOUT_BYTE, curPosition++);
+      i |= (long) (b & 0x7F) << 56;
+      if ((b & 0x80) == 0) {
+        return i;
+      }
+      b = curSegment.get(LAYOUT_BYTE, curPosition++);
+      return i | (long) (b & 0x7F) << 63;
+    } else {
+      // this can make JVM less confused (see LUCENE-10366)
+      return super.readVLong();
+    }
   }
 
   @Override
