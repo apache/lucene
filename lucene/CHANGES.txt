@@ -300,6 +300,8 @@ Other
 
 * GITHUB#14839: Add support for sparse SortedDocValues to LuceneTestCase.assertDocValuesEquals (Parker Timmins)
 
+* GITHUB#15053: Code Cleanup of DOMUtils (Sandesh Kumar)
+
 ======================= Lucene 10.2.2 =======================
 
 Bug Fixes
