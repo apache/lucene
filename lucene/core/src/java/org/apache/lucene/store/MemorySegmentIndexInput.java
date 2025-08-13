@@ -278,7 +278,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     // To encode a full 32 bit value 7 bits at a time we need 5 bytes. Any bytes read beyond that
     // point will cause the value to overflow.
     final int MAX_VINT_SIZE = 5;
-    if (curSegment.byteSize() - curPosition >= MAX_VINT_SIZE) {
+    if (curSegment != null && curSegment.byteSize() - curPosition >= MAX_VINT_SIZE) {
       byte b = curSegment.get(LAYOUT_BYTE, curPosition++);
       int i = b & 0x7F;
       if ((b & 0x80) == 0) {
