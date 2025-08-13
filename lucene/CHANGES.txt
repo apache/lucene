@@ -63,8 +63,6 @@ Optimizations
 
 * GITHUB#14874: Improve off-heap KNN byte vector query performance in cases where indexing and search are performed by the same process. (Kaival Parikh)
 
-* GITHUB#15050: Use switch expression for optimized type checks in PointRangeQueryBuilder (Sandesh Kumar)
-
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
@@ -301,6 +299,8 @@ Other
 * GITHUB#14898: Fix typo in Circle2D.java (Hokuto Joel Ide)
 
 * GITHUB#14839: Add support for sparse SortedDocValues to LuceneTestCase.assertDocValuesEquals (Parker Timmins)
+
+* GITHUB#15050: Use switch expression for optimized type checks in PointRangeQueryBuilder (Sandesh Kumar)
 
 ======================= Lucene 10.2.2 =======================
 
