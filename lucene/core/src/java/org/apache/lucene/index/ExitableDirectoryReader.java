@@ -395,7 +395,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public int cost() {
+      public int cost() throws IOException {
         return in.cost();
       }
     }

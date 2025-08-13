@@ -35,7 +35,9 @@ public abstract class AcceptDocs {
   /**
    * Random access to the accepted documents.
    *
-   * @return Bits instance for random access, or null if not available
+   * <p><b>NOTE</b>: This must not be called if the {@link #iterator()} has already been used.
+   *
+   * @return Bits instance for random access, or null if all documents are accepted
    * @throws IOException if an I/O error occurs
    */
   public abstract Bits bits() throws IOException;
@@ -43,17 +45,24 @@ public abstract class AcceptDocs {
   /**
    * Get an iterator of accepted docs.
    *
+   * <p><b>NOTE</b>: This method doesn't return a new iterator, but a reference to a shared
+   * instance.
+   *
    * @return DocIdSetIterator for sequential access
    * @throws IOException if an I/O error occurs
    */
   public abstract DocIdSetIterator iterator() throws IOException;
 
   /**
-   * Return an approximation of the number of accepted documents.
+   * Return an approximation of the number of accepted documents. This is typically useful to decide
+   * whether to consume these accept docs using random access ({@link #bits()}) or sequential access
+   * ({@link #iterator()}).
+   *
+   * <p><b>NOTE</b>: This must not be called if the {@link #iterator()} has already been used.
    *
    * @return approximate cost
    */
-  public abstract int cost();
+  public abstract int cost() throws IOException;
 
   /**
    * Create AcceptDocs from a {@link Bits} instance representing live documents. A {@code null}
@@ -65,7 +74,8 @@ public abstract class AcceptDocs {
    */
   public static AcceptDocs fromLiveDocs(Bits bits, int maxDoc) {
     if (bits instanceof BitSet bitSet) {
-      return new BitSetAcceptDocs(bitSet);
+      DocIdSetIterator iterator = new BitSetIterator(bitSet, bitSet.approximateCardinality());
+      return new DocIdSetIteratorAcceptDocs(iterator, null, maxDoc);
     }
     return new BitsAcceptDocs(bits, maxDoc);
   }
@@ -80,8 +90,7 @@ public abstract class AcceptDocs {
    */
   public static AcceptDocs fromIterator(DocIdSetIterator iterator, Bits liveDocs, int maxDoc)
       throws IOException {
-    BitSet bitSet = createBitSet(iterator, liveDocs, maxDoc);
-    return new BitSetAcceptDocs(bitSet);
+    return new DocIdSetIteratorAcceptDocs(iterator, liveDocs, maxDoc);
   }
 
   private static BitSet createBitSet(DocIdSetIterator iterator, Bits liveDocs, int maxDoc)
@@ -117,20 +126,12 @@ public abstract class AcceptDocs {
   /** Impl backed by Bits, expected to be somewhat dense. */
   private static class BitsAcceptDocs extends AcceptDocs {
     private final Bits bits;
+    private final DocIdSetIterator iterator;
     private final int maxDoc;
 
     BitsAcceptDocs(Bits bits, int maxDoc) {
       this.bits = bits;
       this.maxDoc = maxDoc;
-    }
-
-    @Override
-    public Bits bits() {
-      return bits;
-    }
-
-    @Override
-    public DocIdSetIterator iterator() {
       DocIdSetIterator iterator = DocIdSetIterator.all(maxDoc);
       if (bits != null) {
         iterator =
@@ -141,6 +142,16 @@ public abstract class AcceptDocs {
               }
             };
       }
+      this.iterator = iterator;
+    }
+
+    @Override
+    public Bits bits() {
+      return bits;
+    }
+
+    @Override
+    public DocIdSetIterator iterator() {
       return iterator;
     }
 
@@ -152,31 +163,58 @@ public abstract class AcceptDocs {
     }
   }
 
-  /** Impl backed by a {@link BitSet} */
-  private static class BitSetAcceptDocs extends AcceptDocs {
+  /** Impl backed by a {@link DocIdSetIterator} */
+  private static class DocIdSetIteratorAcceptDocs extends AcceptDocs {
 
-    private final BitSet bitSet;
+    private final Bits liveDocs;
+    private final int maxDoc;
+
+    private DocIdSetIterator iterator;
+    private BitSet bitSet = null;
     private int cardinality = -1;
 
-    BitSetAcceptDocs(BitSet bitSet) {
-      this.bitSet = bitSet;
+    DocIdSetIteratorAcceptDocs(DocIdSetIterator iterator, Bits liveDocs, int maxDoc) {
+      this.iterator = iterator;
+      this.liveDocs = liveDocs;
+      this.maxDoc = maxDoc;
+      if (iterator.docID() != -1) {
+        throw new IllegalArgumentException(
+            "Iterator must be unpositioned, but got current doc ID: " + iterator.docID());
+      }
+    }
+
+    /**
+     * The {@link BitSet} is computed lazily so that it is never created in case only the {@link
+     * #iterator} is needed
+     */
+    private void loadIntoBitSetIfNecessary() throws IOException {
+      // Usage of AcceptDocs should be confined to a single thread, so this doesn't need
+      // synchronization.
+      if (bitSet == null) {
+        if (iterator.docID() != -1) {
+          throw new IllegalStateException(
+              "It is illegal to call #cardinality() or #bits() after the iterator has been used");
+        }
+        bitSet = createBitSet(iterator, liveDocs, maxDoc);
+        cardinality = bitSet.cardinality();
+        iterator = new BitSetIterator(bitSet, cardinality);
+      }
     }
 
     @Override
     public Bits bits() throws IOException {
+      loadIntoBitSetIfNecessary();
       return bitSet;
     }
 
     @Override
     public DocIdSetIterator iterator() throws IOException {
-      return new BitSetIterator(bitSet, cost());
+      return iterator;
     }
 
     @Override
-    public synchronized int cost() {
-      if (cardinality == -1) {
-        cardinality = bitSet.cardinality();
-      }
+    public int cost() throws IOException {
+      loadIntoBitSetIfNecessary();
       return cardinality;
     }
   }

@@ -36,6 +36,7 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.tests.search.AssertingAcceptDocs;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
@@ -164,6 +165,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
       assert fi != null
           && fi.getVectorDimension() > 0
           && fi.getVectorEncoding() == VectorEncoding.FLOAT32;
+      acceptDocs = AssertingAcceptDocs.wrap(acceptDocs);
       delegate.search(field, target, knnCollector, acceptDocs);
     }
 
@@ -175,6 +177,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
       assert fi != null
           && fi.getVectorDimension() > 0
           && fi.getVectorEncoding() == VectorEncoding.BYTE;
+      acceptDocs = AssertingAcceptDocs.wrap(acceptDocs);
       delegate.search(field, target, knnCollector, acceptDocs);
     }
 
