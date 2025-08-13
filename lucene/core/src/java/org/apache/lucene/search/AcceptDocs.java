@@ -100,14 +100,16 @@ public abstract class AcceptDocs {
         }
         return bitSet;
       } else {
-        FilteredDocIdSetIterator filterIterator =
-            new FilteredDocIdSetIterator(iterator) {
-              @Override
-              protected boolean match(int doc) {
-                return liveDocs == null || liveDocs.get(doc);
-              }
-            };
-        return BitSet.of(filterIterator, maxDoc); // create a sparse bitset
+        if (liveDocs != null) {
+          iterator =
+              new FilteredDocIdSetIterator(iterator) {
+                @Override
+                protected boolean match(int doc) {
+                  return liveDocs.get(doc);
+                }
+              };
+        }
+        return BitSet.of(iterator, maxDoc); // create a sparse bitset
       }
     }
   }
