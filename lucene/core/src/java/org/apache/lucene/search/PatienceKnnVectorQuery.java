@@ -191,7 +191,7 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
 
   @Override
   protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
-    return delegate.getKnnCollectorManager(k, searcher);
+    return new PatienceCollectorManager(delegate.getKnnCollectorManager(k, searcher));
   }
 
   @Override
@@ -201,8 +201,7 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
-    return delegate.approximateSearch(
-        context, acceptDocs, visitedLimit, new PatienceCollectorManager(knnCollectorManager));
+    return delegate.approximateSearch(context, acceptDocs, visitedLimit, knnCollectorManager);
   }
 
   @Override
