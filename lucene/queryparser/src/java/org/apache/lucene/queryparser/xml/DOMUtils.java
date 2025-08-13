@@ -16,13 +16,8 @@
  */
 package org.apache.lucene.queryparser.xml;
 
-import java.io.Reader;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
-import org.xml.sax.InputSource;
 
 /** Helper methods for parsing XML */
 public class DOMUtils {
@@ -44,11 +39,7 @@ public class DOMUtils {
   }
 
   public static String getAttributeOrFail(Element e, String name) throws ParserException {
-    String v = e.getAttribute(name);
-    if (null == v) {
-      throw new ParserException(e.getTagName() + " missing \"" + name + "\" attribute");
-    }
-    return v;
+    return e.getAttribute(name);
   }
 
   public static String getAttributeWithInheritanceOrFail(Element e, String name)
@@ -61,9 +52,8 @@ public class DOMUtils {
   }
 
   public static String getNonBlankTextOrFail(Element e) throws ParserException {
-    String v = getText(e);
-    if (null != v) v = v.trim();
-    if (null == v || 0 == v.length()) {
+    String v = getText(e).trim();
+    if (v.isEmpty()) {
       throw new ParserException(e.getTagName() + " has no text");
     }
     return v;
@@ -86,7 +76,7 @@ public class DOMUtils {
    */
   public static String getAttributeWithInheritance(Element element, String attributeName) {
     String result = element.getAttribute(attributeName);
-    if ((result == null) || (result.isEmpty())) {
+    if (result.isEmpty()) {
       Node n = element.getParentNode();
       if ((n == element) || (n == null)) {
         return null;
@@ -99,45 +89,27 @@ public class DOMUtils {
     return result;
   }
 
-  /* Convenience method where there is only one child Element of a given name */
-  public static String getChildTextByTagName(Element e, String tagName) {
-    Element child = getChildByTagName(e, tagName);
-    return child != null ? getText(child) : null;
-  }
-
-  /* Convenience method to append a new child with text*/
-  public static Element insertChild(Element parent, String tagName, String text) {
-    Element child = parent.getOwnerDocument().createElement(tagName);
-    parent.appendChild(child);
-    if (text != null) {
-      child.appendChild(child.getOwnerDocument().createTextNode(text));
-    }
-    return child;
-  }
-
-  public static String getAttribute(Element element, String attributeName, String deflt) {
+  public static String getAttribute(Element element, String attributeName, String defaultValue) {
     String result = element.getAttribute(attributeName);
-    return (result == null) || (result.isEmpty()) ? deflt : result;
+    return result.isEmpty() ? defaultValue : result;
   }
 
-  public static float getAttribute(Element element, String attributeName, float deflt) {
+  public static float getAttribute(Element element, String attributeName, float defaultValue) {
     String result = element.getAttribute(attributeName);
-    return (result == null) || (result.isEmpty()) ? deflt : Float.parseFloat(result);
+    return result.isEmpty() ? defaultValue : Float.parseFloat(result);
   }
 
-  public static int getAttribute(Element element, String attributeName, int deflt) {
+  public static int getAttribute(Element element, String attributeName, int defaultValue) {
     String result = element.getAttribute(attributeName);
-    return (result == null) || (result.isEmpty()) ? deflt : Integer.parseInt(result);
+    return result.isEmpty() ? defaultValue : Integer.parseInt(result);
   }
 
-  public static boolean getAttribute(Element element, String attributeName, boolean deflt) {
+  public static boolean getAttribute(Element element, String attributeName, boolean defaultValue) {
     String result = element.getAttribute(attributeName);
-    return (result == null) || (result.isEmpty()) ? deflt : Boolean.valueOf(result);
+    return result.isEmpty() ? defaultValue : Boolean.parseBoolean(result);
   }
 
   /* Returns text of node and all child nodes - without markup */
-  // MH changed to Node from Element 25/11/2005
-
   public static String getText(Node e) {
     StringBuilder sb = new StringBuilder();
     getTextBuffer(e, sb);
@@ -161,45 +133,12 @@ public class DOMUtils {
             sb.append(kid.getNodeValue());
             break;
           }
-        case Node.ELEMENT_NODE:
-          {
-            getTextBuffer(kid, sb);
-            break;
-          }
-        case Node.ENTITY_REFERENCE_NODE:
+        case Node.ELEMENT_NODE, Node.ENTITY_REFERENCE_NODE:
           {
             getTextBuffer(kid, sb);
             break;
           }
       }
     }
-  }
-
-  /**
-   * Helper method to parse an XML file into a DOM tree, given a reader.
-   *
-   * @param is reader of the XML file to be parsed
-   * @return an org.w3c.dom.Document object
-   */
-  public static Document loadXML(Reader is) {
-    DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-    DocumentBuilder db = null;
-
-    try {
-      db = dbf.newDocumentBuilder();
-    } catch (Exception se) {
-      throw new RuntimeException("Parser configuration error", se);
-    }
-
-    // Step 3: parse the input file
-    org.w3c.dom.Document doc = null;
-    try {
-      doc = db.parse(new InputSource(is));
-      // doc = db.parse(is);
-    } catch (Exception se) {
-      throw new RuntimeException("Error parsing file:" + se, se);
-    }
-
-    return doc;
   }
 }
