@@ -275,17 +275,32 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
 
   @Override
   public final int readVInt() throws IOException {
-    // leb128 contains 7 bits of payload in every byte. 5 bytes have 35 bits of payload, so you may
-    // have overflowed; reading more than 5 bytes means you have definitely overflowed.
+    // To encode a full 32 bit value 7 bits at a time we need 5 bytes. Any bytes read beyond that
+    // point will cause the value to overflow.
     final int MAX_VINT_SIZE = 5;
     if (curSegment.byteSize() - curPosition >= MAX_VINT_SIZE) {
       byte b = curSegment.get(LAYOUT_BYTE, curPosition++);
       int i = b & 0x7F;
-      for (int shift = 7; (b & 0x80) != 0 && shift < 35; shift += 7) {
-        b = curSegment.get(LAYOUT_BYTE, curPosition++);
-        i |= (b & 0x7F) << shift;
+      if ((b & 0x80) == 0) {
+        return i;
       }
-      return i;
+      b = curSegment.get(LAYOUT_BYTE, curPosition++);
+      i |= (b & 0x7F) << 7;
+      if ((b & 0x80) == 0) {
+        return i;
+      }
+      b = curSegment.get(LAYOUT_BYTE, curPosition++);
+      i |= (b & 0x7F) << 14;
+      if ((b & 0x80) == 0) {
+        return i;
+      }
+      b = curSegment.get(LAYOUT_BYTE, curPosition++);
+      i |= (b & 0x7F) << 21;
+      if ((b & 0x80) == 0) {
+        return i;
+      }
+      b = curSegment.get(LAYOUT_BYTE, curPosition++);
+      return i | (b & 0x7F) << 28;
     } else {
       // this can make JVM less confused (see LUCENE-10366)
       return super.readVInt();
