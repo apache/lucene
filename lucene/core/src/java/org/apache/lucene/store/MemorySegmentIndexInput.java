@@ -275,8 +275,21 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
 
   @Override
   public final int readVInt() throws IOException {
-    // this can make JVM less confused (see LUCENE-10366)
-    return super.readVInt();
+    // leb128 contains 7 bits of payload in every byte. 5 bytes have 35 bits of payload, so you may
+    // have overflowed; reading more than 5 bytes means you have definitely overflowed.
+    final int MAX_VINT_SIZE = 5;
+    if (curSegment.byteSize() - curPosition >= MAX_VINT_SIZE) {
+      byte b = curSegment.get(LAYOUT_BYTE, curPosition++);
+      int i = b & 0x7F;
+      for (int shift = 7; (b & 0x80) != 0 && shift < 35; shift += 7) {
+        b = curSegment.get(LAYOUT_BYTE, curPosition++);
+        i |= (b & 0x7F) << shift;
+      }
+      return i;
+    } else {
+      // this can make JVM less confused (see LUCENE-10366)
+      return super.readVInt();
+    }
   }
 
   @Override
