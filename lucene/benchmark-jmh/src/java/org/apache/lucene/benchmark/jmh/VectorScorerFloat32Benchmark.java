@@ -78,7 +78,7 @@ import org.openjdk.jmh.annotations.Warmup;
       "-XX:+AlwaysPreTouch",
       "--add-modules=jdk.incubator.vector"
     })
-/**
+/*
  * Benchmark to compare the performance of float32 vector scoring using the default and optimized
  * scorers. While there are benchmark methods for each of the similarities, it is often most useful
  * to compare equivalent subsets, e.g. .*dot.*
@@ -170,7 +170,6 @@ public class VectorScorerFloat32Benchmark {
     // type pollution on virtual calls, etc.
     float[] vec = randomVector(size, random);
     var opt = FlatVectorScorerUtil.getLucene99FlatVectorsScorer();
-    var scorer = opt.getRandomVectorScorer(DOT_PRODUCT, values.copy(), vec);
 
     for (int i = 0; i < 2; i++) {
       dotProductOptScorer();
@@ -181,10 +180,12 @@ public class VectorScorerFloat32Benchmark {
       euclideanOptBulkScore();
       mipOptScorer();
       mipOptBulkScore();
-      for (int v = 0; v < numVectorsToScore; v++) {
-        scores[v] = scorer.score(indices[v]);
+      for (var sim : List.of(COSINE, DOT_PRODUCT, EUCLIDEAN, MAXIMUM_INNER_PRODUCT)) {
+        var scorer = opt.getRandomVectorScorer(sim, values.copy(), vec);
+        for (int v = 0; v < numVectorsToScore; v++) {
+          scores[v] = scorer.score(indices[v]);
+        }
       }
-      scorer.bulkScore(indices, scores, indices.length);
     }
   }
 
