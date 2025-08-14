@@ -1265,7 +1265,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         int k = 10;
 
         // Calculate the expected visited nodes for this search
-        float leafProportion = reader.maxDoc() / (float) reader.maxDoc(); // 1.0 since we forced merge
+        float leafProportion =
+            reader.maxDoc() / (float) reader.maxDoc(); // 1.0 since we forced merge
         int perLeafK = perLeafTopKCalculation(k, leafProportion);
         int expectedVisited = expectedVisitedNodes(perLeafK, reader.maxDoc());
 
@@ -1274,48 +1275,55 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         Query exactFilter = IntPoint.newRangeQuery("tag", 0, exactSearchCost - 1);
 
         // Should use exact search and expect an exception as we are using a throwing query
-        TopDocs exactResults = searcher.search(
-            getKnnVectorQuery("field", randomVector(dimension), k, exactFilter),
-            numDocs);
+        TopDocs exactResults =
+            searcher.search(
+                getKnnVectorQuery("field", randomVector(dimension), k, exactFilter), numDocs);
 
-        assertEquals("Exact search should return min(k, filterCost) results",
+        assertEquals(
+            "Exact search should return min(k, filterCost) results",
             Math.min(k, exactSearchCost),
             exactResults.scoreDocs.length);
         expectThrows(
             UnsupportedOperationException.class,
-            () -> searcher.search(
-                getThrowingKnnVectorQuery("field", randomVector(dimension), k, exactFilter),
-                numDocs));
+            () ->
+                searcher.search(
+                    getThrowingKnnVectorQuery("field", randomVector(dimension), k, exactFilter),
+                    numDocs));
 
         // Create a filter with cost well above the expected visited nodes threshold.
         // Here approximate search should be used
         int approxSearchCost = expectedVisited * 4; // 400% of threshold
         Query approxFilter = IntPoint.newRangeQuery("tag", 0, approxSearchCost - 1);
 
-        // Should use approximate search - should not throw exception as exact search should not be done
-        TopDocs approxResults = searcher.search(
-            getThrowingKnnVectorQuery("field", randomVector(dimension), k, approxFilter),
-            numDocs);
+        // Should use approximate search - should not throw exception as exact search should not be
+        // done
+        TopDocs approxResults =
+            searcher.search(
+                getThrowingKnnVectorQuery("field", randomVector(dimension), k, approxFilter),
+                numDocs);
 
         assertTrue(approxResults.scoreDocs.length > 0);
-        assertTrue("Approximate search should return at most k results",
+        assertTrue(
+            "Approximate search should return at most k results",
             approxResults.scoreDocs.length <= k);
 
         // Should use exact search at threshold
         Query thresholdFilter = IntPoint.newRangeQuery("tag", 0, expectedVisited - 1);
-        TopDocs thresholdResults = searcher.search(
-            getKnnVectorQuery("field", randomVector(dimension), k, thresholdFilter),
-            numDocs);
+        TopDocs thresholdResults =
+            searcher.search(
+                getKnnVectorQuery("field", randomVector(dimension), k, thresholdFilter), numDocs);
 
-        assertEquals("Threshold search should return min(k, filterCost) results",
+        assertEquals(
+            "Threshold search should return min(k, filterCost) results",
             Math.min(k, exactSearchCost),
             thresholdResults.scoreDocs.length);
 
         expectThrows(
             UnsupportedOperationException.class,
-            () -> searcher.search(
-                getThrowingKnnVectorQuery("field", randomVector(dimension), k, thresholdFilter),
-                numDocs));
+            () ->
+                searcher.search(
+                    getThrowingKnnVectorQuery("field", randomVector(dimension), k, thresholdFilter),
+                    numDocs));
       }
     }
   }

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.util.hnsw.HnswGraphSearcher.expectedVisitedNodes;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,8 +41,6 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
-
-import static org.apache.lucene.util.hnsw.HnswGraphSearcher.expectedVisitedNodes;
 
 /**
  * Uses {@link KnnVectorsReader#search} to perform nearest neighbour search.
@@ -210,7 +210,8 @@ abstract class AbstractKnnVectorQuery extends Query {
     int perLeafTopK = perLeafTopKCalculation(k, leafProportion);
     int expectedVisitedNodesEstimate = expectedVisitedNodes(perLeafTopK, documentSize);
     if (cost <= expectedVisitedNodesEstimate) {
-      // If there are <= expectedVisitedNodes possible matches, short-circuit and perform exact search, since
+      // If there are <= expectedVisitedNodes possible matches, short-circuit and perform exact
+      // search, since
       // HNSW must always visit at least expectedVisitedNodes documents
       return exactSearch(ctx, new BitSetIterator(acceptDocs, cost), queryTimeout);
     }
