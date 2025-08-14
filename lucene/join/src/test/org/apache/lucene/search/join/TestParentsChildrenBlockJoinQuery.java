@@ -27,6 +27,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -353,7 +354,7 @@ public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
     Directory dir = newDirectory();
     final RandomIndexWriter writer =
         new RandomIndexWriter(
-            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
+            random(), dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE));
 
     // Add documents
     List<Document> docs = new ArrayList<>();

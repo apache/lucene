@@ -35,111 +35,68 @@ public final class MemorySegmentBulkVectorOps {
   static final ByteOrder LE = ByteOrder.LITTLE_ENDIAN;
   static final ValueLayout.OfFloat LAYOUT_LE_FLOAT = ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(LE);
 
+  public static final DotProduct DOT_INSTANCE = new DotProduct();
+  public static final Cosine COS_INSTANCE = new Cosine();
+  public static final SqrDistance SQR_INSTANCE = new SqrDistance();
+
   private MemorySegmentBulkVectorOps() {}
 
-  sealed interface FloatVectorLoader {
-    /** Returns the number of float elements. */
-    int length();
+  public static final class DotProduct {
 
-    FloatVector load(VectorSpecies<Float> species, int index);
-
-    float tail(int index);
-  }
-
-  record FloatArrayLoader(float[] arr) implements FloatVectorLoader {
-    @Override
-    public int length() {
-      return arr.length;
-    }
-
-    @Override
-    public FloatVector load(VectorSpecies<Float> species, int index) {
-      // assert index + species.length() <= length();
-      return FloatVector.fromArray(species, arr, index);
-    }
-
-    @Override
-    public float tail(int index) {
-      // assert index <= length();
-      return arr[index];
-    }
-  }
-
-  record FloatMemorySegmentLoader(MemorySegment segment) implements FloatVectorLoader {
-    @Override
-    public int length() {
-      return Math.toIntExact(segment.byteSize() / Float.BYTES);
-    }
-
-    @Override
-    public FloatVector load(VectorSpecies<Float> species, int index) {
-      // assert index + species.length() <= length();
-      return FloatVector.fromMemorySegment(species, segment, (long) index * Float.BYTES, LE);
-    }
-
-    @Override
-    public float tail(int index) {
-      // assert index <= length();
-      return segment.get(LAYOUT_LE_FLOAT, (long) index * Float.BYTES);
-    }
-  }
-
-  public static final class DotFromQueryArray extends AbstractDotProduct {
+    private DotProduct() {}
 
     public void dotProductBulk(
+        MemorySegment dataSeg,
         float[] scores,
         float[] q,
-        MemorySegment d1,
-        MemorySegment d2,
-        MemorySegment d3,
-        MemorySegment d4,
+        long d1,
+        long d2,
+        long d3,
+        long d4,
         int elementCount) {
-      super.dotProductBulk(scores, new FloatArrayLoader(q), d1, d2, d3, d4, elementCount);
+      dotProductBulkImpl(dataSeg, scores, q, -1L, d1, d2, d3, d4, elementCount);
     }
-  }
-
-  public static final class DotFromQuerySegment extends AbstractDotProduct {
 
     public void dotProductBulk(
+        MemorySegment seg,
         float[] scores,
-        MemorySegment q,
-        MemorySegment d1,
-        MemorySegment d2,
-        MemorySegment d3,
-        MemorySegment d4,
+        long q,
+        long d1,
+        long d2,
+        long d3,
+        long d4,
         int elementCount) {
-      super.dotProductBulk(scores, new FloatMemorySegmentLoader(q), d1, d2, d3, d4, elementCount);
+      dotProductBulkImpl(seg, scores, null, q, d1, d2, d3, d4, elementCount);
     }
 
-    public float dotProduct(MemorySegment q, MemorySegment d, int elementCount) {
+    public float dotProduct(MemorySegment seg, long q, long d, int elementCount) {
       int i = 0;
       FloatVector sv = FloatVector.zero(FLOAT_SPECIES);
       final int limit = FLOAT_SPECIES.loopBound(elementCount);
       for (; i < limit; i += FLOAT_SPECIES.length()) {
         final long offset = (long) i * Float.BYTES;
-        FloatVector qv = FloatVector.fromMemorySegment(FLOAT_SPECIES, q, offset, LE);
-        FloatVector dv = FloatVector.fromMemorySegment(FLOAT_SPECIES, d, offset, LE);
+        FloatVector qv = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, q + offset, LE);
+        FloatVector dv = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, d + offset, LE);
         sv = fma(qv, dv, sv);
       }
       float score = sv.reduceLanes(VectorOperators.ADD);
 
       for (; i < elementCount; i++) {
         final long offset = (long) i * Float.BYTES;
-        score += q.get(LAYOUT_LE_FLOAT, offset) * d.get(LAYOUT_LE_FLOAT, offset);
+        score += seg.get(LAYOUT_LE_FLOAT, q + offset) * seg.get(LAYOUT_LE_FLOAT, d + offset);
       }
       return score;
     }
-  }
 
-  abstract static class AbstractDotProduct {
-
-    protected void dotProductBulk(
+    private void dotProductBulkImpl(
+        MemorySegment seg,
         float[] scores,
-        FloatVectorLoader q,
-        MemorySegment d1,
-        MemorySegment d2,
-        MemorySegment d3,
-        MemorySegment d4,
+        float[] qArray,
+        long qOffset,
+        long d1,
+        long d2,
+        long d3,
+        long d4,
         int elementCount) {
       int i = 0;
       FloatVector sv1 = FloatVector.zero(FLOAT_SPECIES);
@@ -150,11 +107,16 @@ public final class MemorySegmentBulkVectorOps {
       final int limit = FLOAT_SPECIES.loopBound(elementCount);
       for (; i < limit; i += FLOAT_SPECIES.length()) {
         final long offset = (long) i * Float.BYTES;
-        FloatVector dv1 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d1, offset, LE);
-        FloatVector dv2 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d2, offset, LE);
-        FloatVector dv3 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d3, offset, LE);
-        FloatVector dv4 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d4, offset, LE);
-        FloatVector qv = q.load(FLOAT_SPECIES, i);
+        FloatVector dv1 = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, d1 + offset, LE);
+        FloatVector dv2 = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, d2 + offset, LE);
+        FloatVector dv3 = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, d3 + offset, LE);
+        FloatVector dv4 = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, d4 + offset, LE);
+        FloatVector qv;
+        if (qOffset == -1L) {
+          qv = FloatVector.fromArray(FLOAT_SPECIES, qArray, i);
+        } else {
+          qv = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, qOffset + offset, LE);
+        }
         sv1 = fma(qv, dv1, sv1);
         sv2 = fma(qv, dv2, sv2);
         sv3 = fma(qv, dv3, sv3);
@@ -167,11 +129,16 @@ public final class MemorySegmentBulkVectorOps {
 
       for (; i < elementCount; i++) {
         final long offset = (long) i * Float.BYTES;
-        final float qValue = q.tail(i);
-        sum1 = fma(qValue, d1.get(LAYOUT_LE_FLOAT, offset), sum1);
-        sum2 = fma(qValue, d2.get(LAYOUT_LE_FLOAT, offset), sum2);
-        sum3 = fma(qValue, d3.get(LAYOUT_LE_FLOAT, offset), sum3);
-        sum4 = fma(qValue, d4.get(LAYOUT_LE_FLOAT, offset), sum4);
+        float qValue;
+        if (qOffset == -1L) {
+          qValue = qArray[i];
+        } else {
+          qValue = seg.get(LAYOUT_LE_FLOAT, qOffset + offset);
+        }
+        sum1 = fma(qValue, seg.get(LAYOUT_LE_FLOAT, d1 + offset), sum1);
+        sum2 = fma(qValue, seg.get(LAYOUT_LE_FLOAT, d2 + offset), sum2);
+        sum3 = fma(qValue, seg.get(LAYOUT_LE_FLOAT, d3 + offset), sum3);
+        sum4 = fma(qValue, seg.get(LAYOUT_LE_FLOAT, d4 + offset), sum4);
       }
       scores[0] = sum1;
       scores[1] = sum2;
@@ -182,34 +149,35 @@ public final class MemorySegmentBulkVectorOps {
 
   // -- cosine
 
-  public static final class CosineFromQueryArray extends AbstractCosineProduct {
+  public static final class Cosine {
+
+    private Cosine() {}
 
     public void cosineBulk(
+        MemorySegment dataSeg,
         float[] scores,
         float[] q,
-        MemorySegment d1,
-        MemorySegment d2,
-        MemorySegment d3,
-        MemorySegment d4,
+        long d1,
+        long d2,
+        long d3,
+        long d4,
         int elementCount) {
-      super.cosineBulk(scores, new FloatArrayLoader(q), d1, d2, d3, d4, elementCount);
+      cosineBulkImpl(dataSeg, scores, q, -1L, d1, d2, d3, d4, elementCount);
     }
-  }
-
-  public static final class CosineFromQuerySegment extends AbstractCosineProduct {
 
     public void cosineBulk(
+        MemorySegment seg,
         float[] scores,
-        MemorySegment q,
-        MemorySegment d1,
-        MemorySegment d2,
-        MemorySegment d3,
-        MemorySegment d4,
+        long q,
+        long d1,
+        long d2,
+        long d3,
+        long d4,
         int elementCount) {
-      super.cosineBulk(scores, new FloatMemorySegmentLoader(q), d1, d2, d3, d4, elementCount);
+      cosineBulkImpl(seg, scores, null, q, d1, d2, d3, d4, elementCount);
     }
 
-    public float cosine(MemorySegment q, MemorySegment d, int elementCount) {
+    public float cosine(MemorySegment seg, long q, long d, int elementCount) {
       int i = 0;
       FloatVector sv = FloatVector.zero(FLOAT_SPECIES);
       FloatVector qvNorm = FloatVector.zero(FLOAT_SPECIES);
@@ -217,8 +185,8 @@ public final class MemorySegmentBulkVectorOps {
       final int limit = FLOAT_SPECIES.loopBound(elementCount);
       for (; i < limit; i += FLOAT_SPECIES.length()) {
         final long offset = (long) i * Float.BYTES;
-        FloatVector qv = FloatVector.fromMemorySegment(FLOAT_SPECIES, q, offset, LE);
-        FloatVector dv = FloatVector.fromMemorySegment(FLOAT_SPECIES, d, offset, LE);
+        FloatVector qv = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, q + offset, LE);
+        FloatVector dv = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, q + offset, LE);
         sv = fma(qv, dv, sv);
         qvNorm = fma(qv, qv, qvNorm);
         dvNorm = fma(dv, dv, dvNorm);
@@ -229,27 +197,25 @@ public final class MemorySegmentBulkVectorOps {
 
       for (; i < elementCount; i++) {
         final long offset = (long) i * Float.BYTES;
-        final float qValue = q.get(LAYOUT_LE_FLOAT, offset);
-        final float dValue = d.get(LAYOUT_LE_FLOAT, offset);
+        final float qValue = seg.get(LAYOUT_LE_FLOAT, q + offset);
+        final float dValue = seg.get(LAYOUT_LE_FLOAT, d + offset);
         sum = fma(qValue, dValue, sum);
         qNorm = fma(qValue, qValue, qNorm);
         dNorm = fma(dValue, dValue, dNorm);
       }
       return (float) (sum / Math.sqrt((double) qNorm * (double) dNorm));
     }
-  }
 
-  abstract static class AbstractCosineProduct {
-
-    protected void cosineBulk(
+    private void cosineBulkImpl(
+        MemorySegment seg,
         float[] scores,
-        FloatVectorLoader q,
-        MemorySegment d1,
-        MemorySegment d2,
-        MemorySegment d3,
-        MemorySegment d4,
+        float[] qArray,
+        long qOffset,
+        long d1,
+        long d2,
+        long d3,
+        long d4,
         int elementCount) {
-      // assert scores.length == 4;
       int i = 0;
       FloatVector sv1 = FloatVector.zero(FLOAT_SPECIES);
       FloatVector sv2 = FloatVector.zero(FLOAT_SPECIES);
@@ -265,11 +231,16 @@ public final class MemorySegmentBulkVectorOps {
       final int limit = FLOAT_SPECIES.loopBound(elementCount);
       for (; i < limit; i += FLOAT_SPECIES.length()) {
         final long offset = (long) i * Float.BYTES;
-        FloatVector dv1 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d1, offset, LE);
-        FloatVector dv2 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d2, offset, LE);
-        FloatVector dv3 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d3, offset, LE);
-        FloatVector dv4 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d4, offset, LE);
-        FloatVector qv = q.load(FLOAT_SPECIES, i);
+        FloatVector dv1 = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, d1 + offset, LE);
+        FloatVector dv2 = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, d2 + offset, LE);
+        FloatVector dv3 = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, d3 + offset, LE);
+        FloatVector dv4 = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, d4 + offset, LE);
+        FloatVector qv;
+        if (qOffset == -1L) {
+          qv = FloatVector.fromArray(FLOAT_SPECIES, qArray, i);
+        } else {
+          qv = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, qOffset + offset, LE);
+        }
         qvNorm = fma(qv, qv, qvNorm);
         dv1Norm = fma(dv1, dv1, dv1Norm);
         sv1 = fma(qv, dv1, sv1);
@@ -292,11 +263,16 @@ public final class MemorySegmentBulkVectorOps {
 
       for (; i < elementCount; i++) {
         final long offset = (long) i * Float.BYTES;
-        final float qValue = q.tail(i);
-        final float d1Value = d1.get(LAYOUT_LE_FLOAT, offset);
-        final float d2Value = d2.get(LAYOUT_LE_FLOAT, offset);
-        final float d3Value = d3.get(LAYOUT_LE_FLOAT, offset);
-        final float d4Value = d4.get(LAYOUT_LE_FLOAT, offset);
+        final float qValue;
+        if (qOffset == -1L) {
+          qValue = qArray[i];
+        } else {
+          qValue = seg.get(LAYOUT_LE_FLOAT, qOffset + offset);
+        }
+        final float d1Value = seg.get(LAYOUT_LE_FLOAT, d1 + offset);
+        final float d2Value = seg.get(LAYOUT_LE_FLOAT, d2 + offset);
+        final float d3Value = seg.get(LAYOUT_LE_FLOAT, d3 + offset);
+        final float d4Value = seg.get(LAYOUT_LE_FLOAT, d4 + offset);
         sum1 = fma(qValue, d1Value, sum1);
         sum2 = fma(qValue, d2Value, sum2);
         sum3 = fma(qValue, d3Value, sum3);
@@ -316,41 +292,42 @@ public final class MemorySegmentBulkVectorOps {
 
   // -- square distance
 
-  public static final class SqrDistanceFromQueryArray extends AbstractSqrDistance {
+  public static final class SqrDistance {
+
+    private SqrDistance() {}
 
     public void sqrDistanceBulk(
+        MemorySegment dataSeg,
         float[] scores,
         float[] q,
-        MemorySegment d1,
-        MemorySegment d2,
-        MemorySegment d3,
-        MemorySegment d4,
+        long d1,
+        long d2,
+        long d3,
+        long d4,
         int elementCount) {
-      super.sqrDistanceBulk(scores, new FloatArrayLoader(q), d1, d2, d3, d4, elementCount);
+      sqrDistanceBulkImpl(dataSeg, scores, q, -1L, d1, d2, d3, d4, elementCount);
     }
-  }
-
-  public static final class SqrDistanceFromQuerySegment extends AbstractSqrDistance {
 
     public void sqrDistanceBulk(
+        MemorySegment seg,
         float[] scores,
-        MemorySegment q,
-        MemorySegment d1,
-        MemorySegment d2,
-        MemorySegment d3,
-        MemorySegment d4,
+        long q,
+        long d1,
+        long d2,
+        long d3,
+        long d4,
         int elementCount) {
-      super.sqrDistanceBulk(scores, new FloatMemorySegmentLoader(q), d1, d2, d3, d4, elementCount);
+      sqrDistanceBulkImpl(seg, scores, null, q, d1, d2, d3, d4, elementCount);
     }
 
-    public float sqrDistance(MemorySegment q, MemorySegment d, int elementCount) {
+    public float sqrDistance(MemorySegment seg, long q, long d, int elementCount) {
       int i = 0;
       FloatVector sv = FloatVector.zero(FLOAT_SPECIES);
       final int limit = FLOAT_SPECIES.loopBound(elementCount);
       for (; i < limit; i += FLOAT_SPECIES.length()) {
         final long offset = (long) i * Float.BYTES;
-        FloatVector qv = FloatVector.fromMemorySegment(FLOAT_SPECIES, q, offset, LE);
-        FloatVector dv = FloatVector.fromMemorySegment(FLOAT_SPECIES, d, offset, LE);
+        FloatVector qv = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, q + offset, LE);
+        FloatVector dv = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, d + offset, LE);
         FloatVector diff = qv.sub(dv);
         sv = fma(diff, diff, sv);
       }
@@ -358,22 +335,21 @@ public final class MemorySegmentBulkVectorOps {
 
       for (; i < elementCount; i++) {
         final long offset = (long) i * Float.BYTES;
-        float diff = q.get(LAYOUT_LE_FLOAT, offset) - d.get(LAYOUT_LE_FLOAT, offset);
+        float diff = seg.get(LAYOUT_LE_FLOAT, q + offset) - seg.get(LAYOUT_LE_FLOAT, d + offset);
         score = fma(diff, diff, score);
       }
       return score;
     }
-  }
 
-  abstract static class AbstractSqrDistance {
-
-    protected void sqrDistanceBulk(
+    private void sqrDistanceBulkImpl(
+        MemorySegment seg,
         float[] scores,
-        FloatVectorLoader q,
-        MemorySegment d1,
-        MemorySegment d2,
-        MemorySegment d3,
-        MemorySegment d4,
+        float[] qArray,
+        long qOffset,
+        long d1,
+        long d2,
+        long d3,
+        long d4,
         int elementCount) {
       int i = 0;
       FloatVector sv1 = FloatVector.zero(FLOAT_SPECIES);
@@ -384,11 +360,16 @@ public final class MemorySegmentBulkVectorOps {
       final int limit = FLOAT_SPECIES.loopBound(elementCount);
       for (; i < limit; i += FLOAT_SPECIES.length()) {
         final long offset = (long) i * Float.BYTES;
-        FloatVector dv1 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d1, offset, LE);
-        FloatVector dv2 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d2, offset, LE);
-        FloatVector dv3 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d3, offset, LE);
-        FloatVector dv4 = FloatVector.fromMemorySegment(FLOAT_SPECIES, d4, offset, LE);
-        FloatVector qv = q.load(FLOAT_SPECIES, i);
+        FloatVector dv1 = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, d1 + offset, LE);
+        FloatVector dv2 = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, d2 + offset, LE);
+        FloatVector dv3 = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, d3 + offset, LE);
+        FloatVector dv4 = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, d4 + offset, LE);
+        FloatVector qv;
+        if (qOffset == -1L) {
+          qv = FloatVector.fromArray(FLOAT_SPECIES, qArray, i);
+        } else {
+          qv = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, qOffset + offset, LE);
+        }
         FloatVector diff1 = qv.sub(dv1);
         FloatVector diff2 = qv.sub(dv2);
         FloatVector diff3 = qv.sub(dv3);
@@ -405,11 +386,16 @@ public final class MemorySegmentBulkVectorOps {
 
       for (; i < elementCount; i++) {
         final long offset = (long) i * Float.BYTES;
-        final float qValue = q.tail(i);
-        float diff1 = qValue - d1.get(LAYOUT_LE_FLOAT, offset);
-        float diff2 = qValue - d2.get(LAYOUT_LE_FLOAT, offset);
-        float diff3 = qValue - d3.get(LAYOUT_LE_FLOAT, offset);
-        float diff4 = qValue - d4.get(LAYOUT_LE_FLOAT, offset);
+        final float qValue;
+        if (qOffset == -1L) {
+          qValue = qArray[i];
+        } else {
+          qValue = seg.get(LAYOUT_LE_FLOAT, qOffset + offset);
+        }
+        float diff1 = qValue - seg.get(LAYOUT_LE_FLOAT, d1 + offset);
+        float diff2 = qValue - seg.get(LAYOUT_LE_FLOAT, d2 + offset);
+        float diff3 = qValue - seg.get(LAYOUT_LE_FLOAT, d3 + offset);
+        float diff4 = qValue - seg.get(LAYOUT_LE_FLOAT, d4 + offset);
         sum1 = fma(diff1, diff1, sum1);
         sum2 = fma(diff2, diff2, sum2);
         sum3 = fma(diff3, diff3, sum3);

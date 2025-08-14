@@ -88,6 +88,9 @@ public class VectorScorerFloat32Benchmark {
   @Param({"1024"})
   public int size;
 
+  @Param({"true", "false"})
+  public boolean pollute = false;
+
   public int numVectors = 128_000;
   public int numVectorsToScore = 20_000;
 
@@ -113,8 +116,6 @@ public class VectorScorerFloat32Benchmark {
         out.writeBytes(ba, 0, ba.length);
       }
     }
-    perIterationInit();
-    pollute();
   }
 
   @Setup(Level.Iteration)
@@ -150,11 +151,19 @@ public class VectorScorerFloat32Benchmark {
     List<Integer> list = IntStream.range(0, numVectors).boxed().collect(Collectors.toList());
     Collections.shuffle(list, random);
     indices = list.stream().limit(numVectorsToScore).mapToInt(i -> i).toArray();
+
+    if (pollute) {
+      pollute(random);
+    }
   }
 
-  void pollute() throws IOException {
+  void pollute(Random random) throws IOException {
     // exercise various similarities to ensure they don't have negative effects, e.g.,
     // type pollution on virtual calls, etc.
+    float[] vec = randomVector(size, random);
+    var opt = FlatVectorScorerUtil.getLucene99FlatVectorsScorer();
+    var scorer = opt.getRandomVectorScorer(DOT_PRODUCT, values.copy(), vec);
+
     for (int i = 0; i < 2; i++) {
       dotProductOptScorer();
       dotProductOptBulkScore();
@@ -164,6 +173,10 @@ public class VectorScorerFloat32Benchmark {
       euclideanOptBulkScore();
       mipOptScorer();
       mipOptBulkScore();
+      for (int v = 0; v < numVectorsToScore; v++) {
+        scores[v] = scorer.score(indices[v]);
+      }
+      scorer.bulkScore(indices, scores, indices.length);
     }
   }
 
