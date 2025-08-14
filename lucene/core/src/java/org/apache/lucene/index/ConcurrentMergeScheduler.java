@@ -583,6 +583,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         // OK to spawn a new merge thread to handle this
         // merge:
         final MergeThread newMergeThread = getMergeThread(mergeSource, merge);
+        mergeThreads.add(newMergeThread);
 
         updateIOThrottle(newMergeThread.merge, newMergeThread.rateLimiter);
 
@@ -670,7 +671,6 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     final MergeThread thread = new MergeThread(mergeSource, merge);
     thread.setDaemon(true);
     thread.setName("Lucene Merge Thread #" + mergeThreadCounter++);
-    mergeThreads.add(thread);
     return thread;
   }
 

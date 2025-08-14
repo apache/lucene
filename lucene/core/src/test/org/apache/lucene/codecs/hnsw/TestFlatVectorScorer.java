@@ -77,7 +77,8 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
     var dirs =
         List.<IOSupplier<Directory>>of(
             TestFlatVectorScorer::newDirectory,
-            () -> new MMapDirectory(createTempDir(count.getAndIncrement() + "-")));
+            () -> new MMapDirectory(createTempDir(count.getAndIncrement() + "-")),
+            () -> new MMapDirectory(createTempDir(count.getAndIncrement() + "-"), 1024));
 
     List<Object[]> objs = new ArrayList<>();
     for (var scorer : scorers) {
