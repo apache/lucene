@@ -112,6 +112,10 @@ public class TestDoubleValuesSource extends LuceneTestCase {
     FieldDoc first = (FieldDoc) results.scoreDocs[0];
     assertEquals(LEAST_DOUBLE_VALUE, first.fields[0]);
 
+    results = searcher.search(new MatchAllDocsQuery(), 1, new Sort(oneFieldSort).inverse());
+    first = (FieldDoc) results.scoreDocs[0];
+    assertEquals(Double.MIN_VALUE, first.fields[0]);
+
     // sort increasing, missing last
     oneFieldSort = onefield.getSortField(false);
     oneFieldSort.setMissingValue(Double.MAX_VALUE);
@@ -119,6 +123,10 @@ public class TestDoubleValuesSource extends LuceneTestCase {
     results = searcher.search(new MatchAllDocsQuery(), 1, new Sort(oneFieldSort));
     first = (FieldDoc) results.scoreDocs[0];
     assertEquals(LEAST_DOUBLE_VALUE, first.fields[0]);
+
+    results = searcher.search(new MatchAllDocsQuery(), 1, new Sort(oneFieldSort).inverse());
+    first = (FieldDoc) results.scoreDocs[0];
+    assertEquals(Double.MAX_VALUE, first.fields[0]);
   }
 
   public void testSimpleFieldEquivalences() throws Exception {
@@ -225,6 +233,12 @@ public class TestDoubleValuesSource extends LuceneTestCase {
     TopDocs actual = searcher.search(query, size, mutatedSort, random().nextBoolean());
 
     CheckHits.checkEqual(query, expected.scoreDocs, actual.scoreDocs);
+
+    TopDocs actualInverse =
+        searcher.search(query, size, mutatedSort.inverse(), random().nextBoolean());
+    TopDocs expectedInverse = searcher.search(query, size, sort.inverse(), random().nextBoolean());
+
+    CheckHits.checkEqual(query, expectedInverse.scoreDocs, actualInverse.scoreDocs);
 
     if (size < actual.totalHits.value()) {
       expected = searcher.searchAfter(expected.scoreDocs[size - 1], query, size, sort);
