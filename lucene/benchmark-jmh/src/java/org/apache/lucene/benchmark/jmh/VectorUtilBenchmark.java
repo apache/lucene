@@ -54,6 +54,7 @@ public class VectorUtilBenchmark {
   private byte[] bytesA;
   private byte[] bytesB;
   private byte[] halfBytesA;
+  private byte[] halfBytesAPacked;
   private byte[] halfBytesB;
   private byte[] halfBytesBPacked;
   private float[] floatsA;
@@ -84,6 +85,9 @@ public class VectorUtilBenchmark {
     }
     // pack the half byte arrays
     if (size % 2 == 0) {
+      halfBytesAPacked = new byte[(size + 1) >> 1];
+      compressBytes(halfBytesA, halfBytesAPacked);
+
       halfBytesBPacked = new byte[(size + 1) >> 1];
       compressBytes(halfBytesB, halfBytesBPacked);
     }
@@ -146,7 +150,7 @@ public class VectorUtilBenchmark {
     if (size % 2 != 0) {
       throw new RuntimeException("Size must be even for this benchmark");
     }
-    int v = VectorUtil.int4DotProductPacked(halfBytesA, halfBytesBPacked);
+    int v = VectorUtil.int4DotProductSinglePacked(halfBytesA, halfBytesBPacked);
     if (v != expectedhalfByteDotProduct) {
       throw new RuntimeException("Expected " + expectedhalfByteDotProduct + " but got " + v);
     }
@@ -159,11 +163,28 @@ public class VectorUtilBenchmark {
     if (size % 2 != 0) {
       throw new RuntimeException("Size must be even for this benchmark");
     }
-    int v = VectorUtil.int4DotProductPacked(halfBytesA, halfBytesBPacked);
+    int v = VectorUtil.int4DotProductSinglePacked(halfBytesA, halfBytesBPacked);
     if (v != expectedhalfByteDotProduct) {
       throw new RuntimeException("Expected " + expectedhalfByteDotProduct + " but got " + v);
     }
     return v;
+  }
+
+  @Benchmark
+  public int binaryHalfByteScalarPackedPacked() {
+    if (size % 2 != 0) {
+      throw new RuntimeException("Size must be even for this benchmark");
+    }
+    return VectorUtil.int4DotProductBothPacked(halfBytesAPacked, halfBytesBPacked);
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int binaryHalfByteVectorPackedPacked() {
+    if (size % 2 != 0) {
+      throw new RuntimeException("Size must be even for this benchmark");
+    }
+    return VectorUtil.int4DotProductBothPacked(halfBytesAPacked, halfBytesBPacked);
   }
 
   @Benchmark
