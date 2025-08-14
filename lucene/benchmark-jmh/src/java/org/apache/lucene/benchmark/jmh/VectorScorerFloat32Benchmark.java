@@ -157,7 +157,15 @@ public class VectorScorerFloat32Benchmark {
     }
   }
 
-  void pollute(Random random) throws IOException {
+  @TearDown
+  public void teardown() throws IOException {
+    IOUtils.close(in);
+    dir.deleteFile("vector.data");
+    IOUtils.close(dir);
+    Files.delete(path);
+  }
+
+  public void pollute(Random random) throws IOException {
     // exercise various similarities to ensure they don't have negative effects, e.g.,
     // type pollution on virtual calls, etc.
     float[] vec = randomVector(size, random);
@@ -178,14 +186,6 @@ public class VectorScorerFloat32Benchmark {
       }
       scorer.bulkScore(indices, scores, indices.length);
     }
-  }
-
-  @TearDown
-  public void teardown() throws IOException {
-    IOUtils.close(in);
-    dir.deleteFile("vector.data");
-    IOUtils.close(dir);
-    Files.delete(path);
   }
 
   // -- dot product
