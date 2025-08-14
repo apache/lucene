@@ -117,7 +117,9 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   protected CachedExecutor intraMergeExecutor;
 
   /** Sole constructor, with all settings set to default values. */
-  public ConcurrentMergeScheduler() {}
+  public ConcurrentMergeScheduler() {
+    MultiTenantCMSManager.getInstance().register(this);
+  }
 
   /**
    * Expert: directly set the maximum number of merge threads and simultaneous merges allowed.
@@ -466,6 +468,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
   @Override
   public void close() throws IOException {
+    MultiTenantCMSManager.getInstance().unregister(this);
     super.close();
     try {
       sync();
@@ -473,6 +476,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
       if (intraMergeExecutor != null) {
         intraMergeExecutor.shutdown();
       }
+      MultiTenantCMSManager.getInstance().unregister(this);
     }
   }
 
