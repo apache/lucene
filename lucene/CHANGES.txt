@@ -199,6 +199,8 @@ Other
 
 * GITHUB#14839: Add support for sparse SortedDocValues to LuceneTestCase.assertDocValuesEquals (Parker Timmins)
 
+* GITHUB#15050: Use switch expression for optimized type checks in PointRangeQueryBuilder (Sandesh Kumar)
+
 ======================= Lucene 10.2.2 =======================
 
 Bug Fixes
