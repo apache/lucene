@@ -40,6 +40,8 @@ import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
+import static org.apache.lucene.util.hnsw.HnswGraphSearcher.expectedVisitedNodes;
+
 /**
  * Uses {@link KnnVectorsReader#search} to perform nearest neighbour search.
  *
@@ -200,17 +202,16 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (scorer == null) {
       return NO_RESULTS;
     }
-
-    BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, reader.maxDoc());
+    int documentSize = reader.maxDoc();
+    BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, documentSize);
     final int cost = acceptDocs.cardinality();
     QueryTimeout queryTimeout = timeLimitingKnnCollectorManager.getQueryTimeout();
-
-    float leafProportion = ctx.reader().maxDoc() / (float) ctx.parent.reader().maxDoc();
+    float leafProportion = documentSize / (float) ctx.parent.reader().maxDoc();
     int perLeafTopK = perLeafTopKCalculation(k, leafProportion);
-
-    if (cost <= perLeafTopK) {
-      // If there are <= perLeafTopK possible matches, short-circuit and perform exact search, since
-      // HNSW must always visit at least perLeafTopK documents
+    int expectedVisitedNodesEstimate = expectedVisitedNodes(perLeafTopK, documentSize);
+    if (cost <= expectedVisitedNodesEstimate) {
+      // If there are <= expectedVisitedNodes possible matches, short-circuit and perform exact search, since
+      // HNSW must always visit at least expectedVisitedNodes documents
       return exactSearch(ctx, new BitSetIterator(acceptDocs, cost), queryTimeout);
     }
 
@@ -289,7 +290,7 @@ abstract class AbstractKnnVectorQuery extends Query {
    * says there is a 95% probability that this segment's contribution to the global top K hits are
    * <= perLeafTopK.
    */
-  private static int perLeafTopKCalculation(int k, float leafProportion) {
+  static int perLeafTopKCalculation(int k, float leafProportion) {
     return (int)
         Math.max(
             1, k * leafProportion + LAMBDA * Math.sqrt(k * leafProportion * (1 - leafProportion)));

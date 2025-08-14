@@ -19,7 +19,9 @@ package org.apache.lucene.search;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
+import static org.apache.lucene.search.AbstractKnnVectorQuery.perLeafTopKCalculation;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.util.hnsw.HnswGraphSearcher.expectedVisitedNodes;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -1239,5 +1241,82 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     AbstractKnnVectorQuery vector = getKnnVectorQuery("vector", randomVector(10), 3);
     assertNotNull(vector.getSearchStrategy());
     assertTrue(vector.getSearchStrategy() instanceof KnnSearchStrategy.Hnsw);
+  }
+
+  /** Tests exact and approximate search trigger behaviour */
+  public void testExactAndApproximateSearchTriggerBehaviour() throws IOException {
+    int numDocs = 1000;
+    int dimension = atLeast(5);
+    try (Directory d = newDirectoryForTest()) {
+      IndexWriterConfig iwc = configStandardCodec();
+      RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc);
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        doc.add(getKnnVectorField("field", randomVector(dimension)));
+        doc.add(new NumericDocValuesField("tag", i));
+        doc.add(new IntPoint("tag", i));
+        w.addDocument(doc);
+      }
+      w.forceMerge(1);
+      w.close();
+
+      try (DirectoryReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = newSearcher(reader);
+        int k = 10;
+
+        // Calculate the expected visited nodes for this search
+        float leafProportion = reader.maxDoc() / (float) reader.maxDoc(); // 1.0 since we forced merge
+        int perLeafK = perLeafTopKCalculation(k, leafProportion);
+        int expectedVisited = expectedVisitedNodes(perLeafK, reader.maxDoc());
+
+        // Create a filter with cost well below the expected visited nodes threshold
+        int exactSearchCost = expectedVisited / 4; // 25% of threshold
+        Query exactFilter = IntPoint.newRangeQuery("tag", 0, exactSearchCost - 1);
+
+        // Should use exact search and expect an exception as we are using a throwing query
+        TopDocs exactResults = searcher.search(
+            getKnnVectorQuery("field", randomVector(dimension), k, exactFilter),
+            numDocs);
+
+        assertEquals("Exact search should return min(k, filterCost) results",
+            Math.min(k, exactSearchCost),
+            exactResults.scoreDocs.length);
+        expectThrows(
+            UnsupportedOperationException.class,
+            () -> searcher.search(
+                getThrowingKnnVectorQuery("field", randomVector(dimension), k, exactFilter),
+                numDocs));
+
+        // Create a filter with cost well above the expected visited nodes threshold.
+        // Here approximate search should be used
+        int approxSearchCost = expectedVisited * 4; // 400% of threshold
+        Query approxFilter = IntPoint.newRangeQuery("tag", 0, approxSearchCost - 1);
+
+        // Should use approximate search - should not throw exception as exact search should not be done
+        TopDocs approxResults = searcher.search(
+            getThrowingKnnVectorQuery("field", randomVector(dimension), k, approxFilter),
+            numDocs);
+
+        assertTrue(approxResults.scoreDocs.length > 0);
+        assertTrue("Approximate search should return at most k results",
+            approxResults.scoreDocs.length <= k);
+
+        // Should use exact search at threshold
+        Query thresholdFilter = IntPoint.newRangeQuery("tag", 0, expectedVisited - 1);
+        TopDocs thresholdResults = searcher.search(
+            getKnnVectorQuery("field", randomVector(dimension), k, thresholdFilter),
+            numDocs);
+
+        assertEquals("Threshold search should return min(k, filterCost) results",
+            Math.min(k, exactSearchCost),
+            thresholdResults.scoreDocs.length);
+
+        expectThrows(
+            UnsupportedOperationException.class,
+            () -> searcher.search(
+                getThrowingKnnVectorQuery("field", randomVector(dimension), k, thresholdFilter),
+                numDocs));
+      }
+    }
   }
 }
