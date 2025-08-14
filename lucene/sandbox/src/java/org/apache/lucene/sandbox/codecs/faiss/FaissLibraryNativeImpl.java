@@ -40,6 +40,7 @@ import java.util.stream.Collectors;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -313,10 +314,10 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
     }
 
     @Override
-    public void search(float[] query, KnnCollector knnCollector, Bits acceptDocs) {
+    public void search(float[] query, KnnCollector knnCollector, AcceptDocs acceptDocs) {
       try (Arena temp = Arena.ofConfined()) {
         FixedBitSet fixedBitSet =
-            switch (acceptDocs) {
+            switch (acceptDocs.bits()) {
               case null -> null;
               case FixedBitSet bitSet -> bitSet;
               // TODO: Add optimized case for SparseFixedBitSet
@@ -384,6 +385,8 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
           float distance = distancesPointer.getAtIndex(JAVA_FLOAT, i);
           knnCollector.collect(id, scaler.scale(distance));
         }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
       }
     }
 

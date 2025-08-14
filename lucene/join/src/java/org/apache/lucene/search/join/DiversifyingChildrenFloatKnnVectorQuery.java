@@ -24,6 +24,7 @@ import java.util.Objects;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.HitQueue;
 import org.apache.lucene.search.IndexSearcher;
@@ -38,7 +39,6 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.Bits;
 
 /**
  * kNN float vector query that joins matching children vector documents with their parent doc id.
@@ -161,7 +161,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
   @Override
   protected TopDocs approximateSearch(
       LeafReaderContext context,
-      Bits acceptDocs,
+      AcceptDocs acceptDocs,
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {

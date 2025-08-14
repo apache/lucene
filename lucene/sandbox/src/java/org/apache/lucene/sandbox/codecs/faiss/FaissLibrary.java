@@ -19,10 +19,10 @@ package org.apache.lucene.sandbox.codecs.faiss;
 import java.io.Closeable;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.IntToIntFunction;
 
 /**
@@ -42,7 +42,7 @@ interface FaissLibrary {
   String VERSION = "1.11.0";
 
   interface Index extends Closeable {
-    void search(float[] query, KnnCollector knnCollector, Bits acceptDocs);
+    void search(float[] query, KnnCollector knnCollector, AcceptDocs acceptDocs);
 
     void write(IndexOutput output);
   }
