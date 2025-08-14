@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import static org.apache.lucene.util.VectorUtil.cosine;
 import static org.apache.lucene.util.VectorUtil.dotProduct;
 import static org.apache.lucene.util.VectorUtil.dotProductScore;
+import static org.apache.lucene.util.VectorUtil.normalizeDistanceToUnitInterval;
 import static org.apache.lucene.util.VectorUtil.normalizeToUnitInterval;
 import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
 import static org.apache.lucene.util.VectorUtil.squareDistance;
@@ -34,7 +35,7 @@ public enum VectorSimilarityFunction {
   EUCLIDEAN {
     @Override
     public float compare(float[] v1, float[] v2) {
-      return 1 / (1 + squareDistance(v1, v2));
+      return normalizeDistanceToUnitInterval(squareDistance(v1, v2));
     }
 
     @Override
