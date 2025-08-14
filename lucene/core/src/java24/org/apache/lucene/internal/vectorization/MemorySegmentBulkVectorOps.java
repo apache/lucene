@@ -186,7 +186,7 @@ public final class MemorySegmentBulkVectorOps {
       for (; i < limit; i += FLOAT_SPECIES.length()) {
         final long offset = (long) i * Float.BYTES;
         FloatVector qv = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, q + offset, LE);
-        FloatVector dv = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, q + offset, LE);
+        FloatVector dv = FloatVector.fromMemorySegment(FLOAT_SPECIES, seg, d + offset, LE);
         sv = fma(qv, dv, sv);
         qvNorm = fma(qv, qv, qvNorm);
         dvNorm = fma(dv, dv, dvNorm);

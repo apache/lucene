@@ -88,7 +88,7 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
       long offset2 = (long) nodes[i + 1] * vectorByteSize;
       long offset3 = (long) nodes[i + 2] * vectorByteSize;
       long offset4 = (long) nodes[i + 3] * vectorByteSize;
-      vectorOp(seg, scratchScores, query, offset1, offset2, offset3, offset4, query.length);
+      vectorOp(seg, scratchScores, offset1, offset2, offset3, offset4, query.length);
       scores[i + 0] = normalizeRawScore(scratchScores[0]);
       scores[i + 1] = normalizeRawScore(scratchScores[1]);
       scores[i + 2] = normalizeRawScore(scratchScores[2]);
@@ -100,7 +100,7 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
       long addr1 = (long) nodes[i] * vectorByteSize;
       long addr2 = (remaining > 1) ? (long) nodes[i + 1] * vectorByteSize : addr1;
       long addr3 = (remaining > 2) ? (long) nodes[i + 2] * vectorByteSize : addr1;
-      vectorOp(seg, scratchScores, query, addr1, addr2, addr3, addr1, query.length);
+      vectorOp(seg, scratchScores, addr1, addr2, addr3, addr3, query.length);
       scores[i] = normalizeRawScore(scratchScores[0]);
       if (remaining > 1) scores[i + 1] = normalizeRawScore(scratchScores[1]);
       if (remaining > 2) scores[i + 2] = normalizeRawScore(scratchScores[2]);
@@ -110,7 +110,6 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
   abstract void vectorOp(
       MemorySegment seg,
       float[] scores,
-      float[] query,
       long node1Offset,
       long node2Offset,
       long node3Offset,
@@ -139,7 +138,6 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
     void vectorOp(
         MemorySegment seg,
         float[] scores,
-        float[] query,
         long node1Offset,
         long node2Offset,
         long node3Offset,
@@ -175,7 +173,6 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
     void vectorOp(
         MemorySegment seg,
         float[] scores,
-        float[] query,
         long node1Offset,
         long node2Offset,
         long node3Offset,
@@ -211,7 +208,6 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
     void vectorOp(
         MemorySegment seg,
         float[] scores,
-        float[] query,
         long node1Offset,
         long node2Offset,
         long node3Offset,
@@ -248,7 +244,6 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
     void vectorOp(
         MemorySegment seg,
         float[] scores,
-        float[] query,
         long node1Offset,
         long node2Offset,
         long node3Offset,
