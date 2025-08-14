@@ -50,15 +50,13 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
 
   private RandomVectorScorerSupplier getFloatScoringSupplier(
       FloatVectorValues vectorValues, VectorSimilarityFunction similarityType) throws IOException {
-    if (similarityType == VectorSimilarityFunction.DOT_PRODUCT) { // dot product for now
-      if (vectorValues instanceof HasIndexSlice sliceableValues
-          && sliceableValues.getSlice() != null) {
-        var scorer =
-            Lucene99MemorySegmentFloatVectorScorerSupplier.create(
-                similarityType, sliceableValues.getSlice(), vectorValues);
-        if (scorer.isPresent()) {
-          return scorer.get();
-        }
+    if (vectorValues instanceof HasIndexSlice sliceableValues
+        && sliceableValues.getSlice() != null) {
+      var scorer =
+          Lucene99MemorySegmentFloatVectorScorerSupplier.create(
+              similarityType, sliceableValues.getSlice(), vectorValues);
+      if (scorer.isPresent()) {
+        return scorer.get();
       }
     }
     return delegate.getRandomVectorScorerSupplier(similarityType, vectorValues);
@@ -87,16 +85,14 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
       VectorSimilarityFunction similarityType, KnnVectorValues vectorValues, float[] target)
       throws IOException {
     checkDimensions(target.length, vectorValues.dimension());
-    if (similarityType == VectorSimilarityFunction.DOT_PRODUCT) { // just for now
-      if (vectorValues instanceof FloatVectorValues fvv
-          && fvv instanceof HasIndexSlice floatVectorValues
-          && floatVectorValues.getSlice() != null) {
-        var scorer =
-            Lucene99MemorySegmentFloatVectorScorer.create(
-                similarityType, floatVectorValues.getSlice(), fvv, target);
-        if (scorer.isPresent()) {
-          return scorer.get();
-        }
+    if (vectorValues instanceof FloatVectorValues fvv
+        && fvv instanceof HasIndexSlice floatVectorValues
+        && floatVectorValues.getSlice() != null) {
+      var scorer =
+          Lucene99MemorySegmentFloatVectorScorer.create(
+              similarityType, floatVectorValues.getSlice(), fvv, target);
+      if (scorer.isPresent()) {
+        return scorer.get();
       }
     }
     return delegate.getRandomVectorScorer(similarityType, vectorValues, target);
