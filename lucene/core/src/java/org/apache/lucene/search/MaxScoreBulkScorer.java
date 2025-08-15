@@ -262,8 +262,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
               allScorers.length);
         }
 
-        DisiWrapper scorer = allScorers[i];
-        ScorerUtil.applyRequiredClause(docAndScoreAccBuffer, scorer.iterator, scorer.scorable);
+        allScorers[i].scorer.applyAsRequiredClause(docAndScoreAccBuffer);
       }
 
       scoreNonEssentialClauses(collector, docAndScoreAccBuffer, firstRequiredScorer);
