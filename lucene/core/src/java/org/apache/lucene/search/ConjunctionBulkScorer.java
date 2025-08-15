@@ -96,6 +96,7 @@ final class ConjunctionBulkScorer extends BulkScorer {
     if (collectorIterator != null) {
       otherIterators = new ArrayList<>(otherIterators);
       otherIterators.add(collectorIterator);
+      otherIterators.sort(Comparator.comparingLong(DocIdSetIterator::cost));
     }
 
     final DocIdSetIterator[] others = otherIterators.toArray(DocIdSetIterator[]::new);

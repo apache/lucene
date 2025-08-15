@@ -198,6 +198,9 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
 
     int bitsetWindowMax = MathUtil.unsignedMin(minDocIDRunEnd, WINDOW_SIZE + min);
 
+    if (collector.competitiveIterator() != null) {
+      windowApproximations.sort(Comparator.comparingLong(DocIdSetIterator::cost));
+    }
     if (windowTwoPhases.isEmpty()) {
       scoreWindowUsingBitSet(collector, acceptDocs, windowApproximations, min, bitsetWindowMax);
     } else {
