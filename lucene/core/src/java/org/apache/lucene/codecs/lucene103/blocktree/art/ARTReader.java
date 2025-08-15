@@ -65,6 +65,7 @@ public class ARTReader {
    * Find the next node from a cached (searched) one, that is useful when seeking in
    * SegmentTermsEnum.
    */
+  // TODO: Assign child if need.
   public Node findTargetNode(Node node, BytesRef target, Node child) {
     assert node != null;
 
