@@ -76,7 +76,7 @@ public class PointRangeQueryBuilder implements QueryBuilder {
     String field = DOMUtils.getAttributeWithInheritanceOrFail(e, "fieldName");
     final String lowerTerm = DOMUtils.getAttribute(e, "lowerTerm", null);
     final String upperTerm = DOMUtils.getAttribute(e, "upperTerm", null);
-    String type = DOMUtils.getAttribute(e, "type", "int").toLowerCase(Locale.getDefault());
+    String type = DOMUtils.getAttribute(e, "type", "int").toLowerCase(Locale.ROOT);
 
     try {
       return switch (type) {
