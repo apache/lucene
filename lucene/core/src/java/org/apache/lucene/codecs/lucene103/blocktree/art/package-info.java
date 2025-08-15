@@ -16,4 +16,5 @@
  */
 
 /** Explore ART. */
+// TODO: more description.
 package org.apache.lucene.codecs.lucene103.blocktree.art;

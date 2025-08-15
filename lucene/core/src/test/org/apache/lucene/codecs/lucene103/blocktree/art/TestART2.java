@@ -138,7 +138,8 @@ public class TestART2 extends LuceneTestCase {
           ARTReader artReader = new ARTReader(indexIn.slice("outputs", start, end - start));
 
           for (Map.Entry<BytesRef, Output> entry : expected.entrySet()) {
-            assertResult(artReader, entry.getKey(), entry.getValue());
+            assertResult(artReader, new BytesRef(entry.getKey().bytes), entry.getValue());
+            assertResultStepByNode(artReader, entry.getKey(), entry.getValue());
           }
           // TODO: test not found.
         }
@@ -150,6 +151,24 @@ public class TestART2 extends LuceneTestCase {
       throws IOException {
     Output output = reader.find(term);
     assertEquals(expected, output);
+  }
+
+  private static void assertResultStepByNode(ARTReader reader, BytesRef term, Output expected)
+      throws IOException {
+    Node node = reader.getRoot();
+    Node targetNode = null;
+    while ((targetNode = reader.findTargetNode(node, term, null)) != null) {
+      if (node == targetNode) {
+        break;
+      }
+      node = targetNode;
+    }
+    if (targetNode == null) {
+      assertEquals(expected, node.output);
+      return;
+    }
+    // Not match.
+    assertEquals(expected, null);
   }
 
   private static byte[] randomBytes() {

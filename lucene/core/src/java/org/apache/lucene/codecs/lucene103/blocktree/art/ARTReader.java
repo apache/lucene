@@ -67,6 +67,22 @@ public class ARTReader {
    */
   public Node findTargetNode(Node node, BytesRef target, Node child) {
     assert node != null;
+
+    // TODO: Target length is 0 may never happen, when we search step by step?
+    if (target.length == 0) {
+      // We may search "";
+      if (node.nodeType == NodeType.LEAF_NODE && node.key == null) {
+        // Match, Use this node's output.
+        return null;
+      } else if (node.prefixLength == 0) {
+        // Match, Use this node's output.
+        return null;
+      } else {
+        // Not match, keep in this node.
+        return node;
+      }
+    }
+
     if (node.nodeType.equals(NodeType.LEAF_NODE)) {
       if (node.key.equals(target)) {
         // Match, Use this node's output.
@@ -100,10 +116,11 @@ public class ARTReader {
       }
 
       // Get child.
-      int childPos = child.getChildPos(target.bytes[target.offset]);
+      int childPos = node.getChildPos(target.bytes[target.offset]);
       target.offset++;
+      target.length--;
       if (childPos != Node.ILLEGAL_IDX) {
-        return child.getChild(childPos);
+        return node.getChild(childPos);
       } else {
         // Not match, keep in this node.
         return node;

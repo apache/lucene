@@ -57,6 +57,11 @@ public abstract class Node {
     }
   }
 
+  /** Return node's output. */
+  public Output getOutput() {
+    return output;
+  }
+
   /**
    * get the position of a child corresponding to the input key 'k'
    *
