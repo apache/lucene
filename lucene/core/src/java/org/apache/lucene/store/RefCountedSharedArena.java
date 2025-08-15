@@ -20,6 +20,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.ref.Cleaner;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * A reference counted shared Arena.
@@ -183,6 +184,7 @@ final class RefCountedSharedArena implements Arena {
     }
 
     @Override
+    @SuppressForbidden(reason = "Uses system.out to print out the leak source.")
     public void run() {
       // Runs on Cleaner thread when the internal Arena becomes phantom-reachable.
       final int v = state.get();
