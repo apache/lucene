@@ -176,6 +176,8 @@ Bug Fixes
 * GITHUB#14922: Fix for IndexedDISI.Dense#intoBitSetWithinBlock to take into account the provided bitset size
   and avoid throwing IndexOutOfBoundsException (Panagiotis Bailis)
 
+* GITHUB#15074: Fix to use READONCE when reading segment infos (Chris Hegarty)
+
 Build
 ---------------------
 * Upgrade forbiddenapis to version 3.9.  (Uwe Schindler)
