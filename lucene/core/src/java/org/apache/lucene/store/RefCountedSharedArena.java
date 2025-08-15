@@ -57,9 +57,7 @@ final class RefCountedSharedArena implements Arena {
   private static final Cleaner CLEANER;
 
   static {
-    boolean ae = false;
-    assert (ae = true); // sets to true only when -ea is used
-    ASSERTS_ENABLED = ae;
+    ASSERTS_ENABLED = RefCountedSharedArena.class.desiredAssertionStatus();
     CLEANER = ASSERTS_ENABLED ? Cleaner.create() : null;
   }
 
