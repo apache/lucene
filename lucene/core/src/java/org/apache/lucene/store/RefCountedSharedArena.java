@@ -18,6 +18,7 @@ package org.apache.lucene.store;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.lang.ref.Cleaner;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -49,6 +50,19 @@ final class RefCountedSharedArena implements Arena {
   // acquire decrement; effectively decrements permits and increments ref count
   private static final int ACQUIRE_DECREMENT = REMAINING_UNIT - 1; // 0xffff
 
+  /** True iff JVM assertions are enabled for this class. */
+  private static final boolean ASSERTS_ENABLED;
+
+  /** Cleaner only created when assertions are enabled (avoids overhead otherwise). */
+  private static final Cleaner CLEANER;
+
+  static {
+    boolean ae = false;
+    assert (ae = true); // sets to true only when -ea is used
+    ASSERTS_ENABLED = ae;
+    CLEANER = ASSERTS_ENABLED ? Cleaner.create() : null;
+  }
+
   private final String segmentName;
   private final Runnable onClose;
   private final Arena arena;
@@ -56,6 +70,9 @@ final class RefCountedSharedArena implements Arena {
   // high 16 bits contain the total remaining acquires; monotonically decreasing
   // low 16 bit contain the current ref count
   private final AtomicInteger state;
+
+  /** Captured allocation site for leak diagnostics (assertions only). */
+  private final Throwable allocationSite; // null when assertions are disabled
 
   RefCountedSharedArena(String segmentName, Runnable onClose) {
     this(segmentName, onClose, DEFAULT_MAX_PERMITS);
@@ -69,6 +86,16 @@ final class RefCountedSharedArena implements Arena {
     this.onClose = onClose;
     this.arena = Arena.ofShared();
     this.state = new AtomicInteger(maxPermits << 16);
+
+    if (ASSERTS_ENABLED) {
+      // Capture where this RefCountedSharedArena was created to aid leak debugging.
+      this.allocationSite =
+          new Throwable("Allocation site of RefCountedSharedArena for segment: " + segmentName);
+      // Register the *internal* Arena as the referent so the check runs when it is GC'ed.
+      CLEANER.register(this.arena, new LeakCheck(state, segmentName, allocationSite));
+    } else {
+      this.allocationSite = null;
+    }
   }
 
   static boolean validMaxPermits(int v) {
@@ -141,5 +168,43 @@ final class RefCountedSharedArena implements Arena {
         + ", arena="
         + arena
         + "]";
+  }
+
+  /** Cleaning action that verifies no leaked references remain at GC time. */
+  private static final class LeakCheck implements Runnable {
+    private final AtomicInteger state;
+    private final String segmentName;
+    private final Throwable allocationSite;
+
+    LeakCheck(AtomicInteger state, String segmentName, Throwable allocationSite) {
+      // Important: do not capture the parent RefCountedSharedArena or the Arena;
+      // only keep what we need to diagnose.
+      this.state = state;
+      this.segmentName = segmentName;
+      this.allocationSite = allocationSite;
+    }
+
+    @Override
+    public void run() {
+      // Runs on Cleaner thread when the internal Arena becomes phantom-reachable.
+      final int v = state.get();
+      if (v != CLOSED) {
+        final int remainingPermits = (v >>> 16);
+        final int refCount = (v & 0xFFFF);
+        String msg =
+            "[RefCountedSharedArena] LEAK DETECTED for segment '"
+                + segmentName
+                + "': "
+                + "state="
+                + v
+                + " (remainingPermits="
+                + remainingPermits
+                + ", refCount="
+                + refCount
+                + ")";
+        allocationSite.printStackTrace(System.err);
+        throw new AssertionError(msg + " (check the logs for allocation call site))");
+      }
+    }
   }
 }
