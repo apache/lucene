@@ -81,7 +81,6 @@ public class FSTTermsReader extends FieldsProducer {
 
     IndexInput in = this.fstTermsInput;
 
-    boolean success = false;
     try {
       CodecUtil.checkIndexHeader(
           in,
@@ -110,11 +109,9 @@ public class FSTTermsReader extends FieldsProducer {
         TermsReader previous = fields.put(fieldInfo.name, current);
         checkFieldSummary(state.segmentInfo, in, current, previous);
       }
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(in);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, in);
+      throw t;
     }
   }
 

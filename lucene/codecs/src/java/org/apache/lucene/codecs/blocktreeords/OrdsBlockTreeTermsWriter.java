@@ -178,7 +178,6 @@ public final class OrdsBlockTreeTermsWriter extends FieldsConsumer {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, TERMS_EXTENSION);
     out = state.directory.createOutput(termsFileName, state.context);
-    boolean success = false;
     IndexOutput indexOut = null;
     try {
       fieldInfos = state.fieldInfos;
@@ -204,11 +203,9 @@ public final class OrdsBlockTreeTermsWriter extends FieldsConsumer {
       // System.out.println("BTW.init seg=" + state.segmentName);
 
       postingsWriter.init(out, state); // have consumer write its format/header
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(out, indexOut);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, out, indexOut);
+      throw t;
     }
     this.indexOut = indexOut;
   }
@@ -928,9 +925,9 @@ public final class OrdsBlockTreeTermsWriter extends FieldsConsumer {
     }
     closed = true;
 
-    boolean success = false;
-    try {
-
+    try (out;
+        indexOut;
+        postingsWriter) {
       final long dirStart = out.getFilePointer();
       final long indexDirStart = indexOut.getFilePointer();
 
@@ -960,13 +957,6 @@ public final class OrdsBlockTreeTermsWriter extends FieldsConsumer {
       CodecUtil.writeFooter(out);
       indexOut.writeLong(indexDirStart);
       CodecUtil.writeFooter(indexOut);
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(out, indexOut, postingsWriter);
-      } else {
-        IOUtils.closeWhileHandlingException(out, indexOut, postingsWriter);
-      }
     }
   }
 
