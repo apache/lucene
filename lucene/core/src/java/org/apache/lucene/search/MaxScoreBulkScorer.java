@@ -253,10 +253,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
         lead1.scorer.nextDocsAndScores(max, acceptDocs, docAndScoreBuffer)) {
 
       int idx =
-          scorable.minCompetitiveScore > 0
-              ? VectorUtil.findNextGEQ(
-                  docAndScoreBuffer.docs, maxOtherDoc, 0, docAndScoreBuffer.size)
-              : 0;
+          VectorUtil.findNextGEQ(docAndScoreBuffer.docs, maxOtherDoc, 0, docAndScoreBuffer.size);
       docAndScoreAccBuffer.copyFrom(docAndScoreBuffer, idx);
 
       for (int i = allScorers.length - 2; i >= firstRequiredScorer; --i) {
