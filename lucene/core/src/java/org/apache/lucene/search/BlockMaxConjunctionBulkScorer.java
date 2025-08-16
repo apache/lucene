@@ -56,8 +56,11 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     this.scorables =
         Arrays.stream(this.scorers).map(ScorerUtil::likelyTermScorer).toArray(Scorable[]::new);
     this.iterators =
-        Arrays.stream(this.scorers).map(Scorer::iterator).toArray(DocIdSetIterator[]::new);
-    lead = ScorerUtil.likelyImpactsEnum(iterators[0]);
+        Arrays.stream(this.scorers)
+            .map(Scorer::iterator)
+            .map(ScorerUtil::likelyImpactsEnum)
+            .toArray(DocIdSetIterator[]::new);
+    lead = iterators[0];
     this.sumOfOtherClauses = new double[this.scorers.length];
     Arrays.fill(sumOfOtherClauses, Double.POSITIVE_INFINITY);
     this.maxDoc = maxDoc;

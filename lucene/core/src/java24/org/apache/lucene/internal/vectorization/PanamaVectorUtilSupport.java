@@ -24,6 +24,7 @@ import static jdk.incubator.vector.VectorOperators.B2S;
 import static jdk.incubator.vector.VectorOperators.LSHR;
 import static jdk.incubator.vector.VectorOperators.S2I;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2S;
+import static org.apache.lucene.util.VectorUtil.EPSILON;
 
 import java.lang.foreign.MemorySegment;
 import jdk.incubator.vector.ByteVector;
@@ -85,7 +86,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   // the way FMA should work! if available use it, otherwise fall back to mul/add
   @SuppressForbidden(reason = "Uses FMA only where fast and carefully contained")
-  private static FloatVector fma(FloatVector a, FloatVector b, FloatVector c) {
+  static FloatVector fma(FloatVector a, FloatVector b, FloatVector c) {
     if (Constants.HAS_FAST_VECTOR_FMA) {
       return a.fma(b, c);
     } else {
@@ -94,7 +95,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @SuppressForbidden(reason = "Uses FMA only where fast and carefully contained")
-  private static float fma(float a, float b, float c) {
+  static float fma(float a, float b, float c) {
     if (Constants.HAS_FAST_SCALAR_FMA) {
       return Math.fma(a, b, c);
     } else {
@@ -1102,5 +1103,56 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       }
     }
     return newUpto;
+  }
+
+  public float[] l2normalize(float[] v, boolean throwOnZero) {
+    double l1norm = this.dotProduct(v, v);
+    if (l1norm == 0) {
+      if (throwOnZero) {
+        throw new IllegalArgumentException("Cannot normalize a zero-length vector");
+      } else {
+        return v;
+      }
+    }
+    if (Math.abs(l1norm - 1.0d) <= EPSILON) {
+      return v;
+    }
+
+    float invNorm = 1.0f / (float) Math.sqrt(l1norm);
+    int i = 0;
+
+    // if the array size is large (> 2x platform vector size), it's worth the overhead to vectorize
+    if (v.length > 2 * FLOAT_SPECIES.length()) {
+      i += FLOAT_SPECIES.loopBound(v.length);
+      l2normalizeBody(v, invNorm, i);
+    }
+
+    for (; i < v.length; i++) {
+      v[i] *= invNorm;
+    }
+    return v;
+  }
+
+  private void l2normalizeBody(float[] v, float invNorm, int limit) {
+    FloatVector invNormVector = FloatVector.broadcast(FLOAT_SPECIES, invNorm);
+    int i = 0;
+    int unrolledLimit = limit - 3 * FLOAT_SPECIES.length();
+
+    for (; i < unrolledLimit; i += 4 * FLOAT_SPECIES.length()) {
+      FloatVector.fromArray(FLOAT_SPECIES, v, i).mul(invNormVector).intoArray(v, i);
+      FloatVector.fromArray(FLOAT_SPECIES, v, i + FLOAT_SPECIES.length())
+          .mul(invNormVector)
+          .intoArray(v, i + FLOAT_SPECIES.length());
+      FloatVector.fromArray(FLOAT_SPECIES, v, i + 2 * FLOAT_SPECIES.length())
+          .mul(invNormVector)
+          .intoArray(v, i + 2 * FLOAT_SPECIES.length());
+      FloatVector.fromArray(FLOAT_SPECIES, v, i + 3 * FLOAT_SPECIES.length())
+          .mul(invNormVector)
+          .intoArray(v, i + 3 * FLOAT_SPECIES.length());
+    }
+
+    for (; i < limit; i += FLOAT_SPECIES.length()) {
+      FloatVector.fromArray(FLOAT_SPECIES, v, i).mul(invNormVector).intoArray(v, i);
+    }
   }
 }

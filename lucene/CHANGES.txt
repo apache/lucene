@@ -29,6 +29,8 @@ API Changes
 * GITHUB#14873: Change PriorityQueue to take a LessThan interface implementation
   in its constructor rather than overriding the lessThan abstract method (Simon Cooper)
 
+* GITHUB#14844: Change IndexInput.updateReadAdvice to take an IOContext instead (Simon Cooper)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -61,7 +63,7 @@ Optimizations
 
 * GITHUB#14874: Improve off-heap KNN byte vector query performance in cases where indexing and search are performed by the same process. (Kaival Parikh)
 
-* GITHUB#14932: Switched to GroupVarInt Encoding for HNSW Graph edges, added backwards compatibility (Akira Lonske)
+* GITHUB#15043: Vectorize L2 normalize function. (Ramakrishna Chilaka)
 
 Bug Fixes
 ---------------------
@@ -123,6 +125,8 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#15015: MultiIndexMergeScheduler: a production multi-tenant merge scheduler (Shawn Yarbrough)
+
 * GITHUB#14404: Introducing DocValuesMultiRangeQuery.SortedNumericStabbingBuilder into sandbox.
   (Mikhail Khludnev)
 
@@ -162,6 +166,8 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#14932: Switched to GroupVarInt Encoding for HNSW Graph edges, added backwards compatibility (Akira Lonske)
+
 * GITHUB#14418: Quick exit on filter query matching no docs when rewriting knn query. (Pan Guixin)
 
 * GITHUB#14439, GITHUB#14560, GITHUB#14622: Efficient Histogram Collection using multi range traversal over PointTrees (Ankit Jain)
@@ -233,11 +239,21 @@ Optimizations
 
 * GITHUB#15001: Remove full integrity check from SortingStoredFieldsConsumer (Martijn van Groningen)
 
+* GITHUB#14980, GITHUB#15037: Add bulk off-heap scoring for float32 vectors (Chris Hegarty)
+
+* GITHUB#15004: Wraps all iterator with likelyImpactsEnum under BlockMaxConjunctionBulkScorer. (Ge Song)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
   tier from 10 to 8. This is expected to result in slightly faster search and
   slightly slower indexing. (Adrien Grand)
+
+* GITHUB#15040: The default ReadAdvice has been changed from RANDOM to NORMAL. MMapDirectory
+  will no longer set any specific read advice out-of-the-box. Rather there is a straightforward
+  way to enable previous behaviour (in 10.2), either by setting:
+  `dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT)`, or setting the system property
+  `-Dorg.apache.lucene.store.defaultReadAdvice=RANDOM`. (Chris Hegarty)
 
 Bug Fixes
 ---------------------
@@ -263,6 +279,8 @@ Bug Fixes
 * GITHUB#14922: Fix for IndexedDISI.Dense#intoBitSetWithinBlock to take into account the provided bitset size
   and avoid throwing IndexOutOfBoundsException (Panagiotis Bailis)
 
+* GITHUB#15074: Fix to use READONCE when reading segment infos (Chris Hegarty)
+
 Build
 ---------------------
 * Upgrade forbiddenapis to version 3.9.  (Uwe Schindler)
@@ -285,6 +303,8 @@ Other
 * GITHUB#14898: Fix typo in Circle2D.java (Hokuto Joel Ide)
 
 * GITHUB#14839: Add support for sparse SortedDocValues to LuceneTestCase.assertDocValuesEquals (Parker Timmins)
+
+* GITHUB#15050: Use switch expression for optimized type checks in PointRangeQueryBuilder (Sandesh Kumar)
 
 ======================= Lucene 10.2.2 =======================
 
