@@ -634,7 +634,7 @@ public class TestDocValuesQueries extends LuceneTestCase {
         assertCount(
             searcher, SortedNumericDocValuesField.newSlowRangeQuery("with_index", 0, 50), 0);
         assertCount(
-            searcher, SortedNumericDocValuesField.newSlowRangeQuery("with_index", 50, 250), -1);
+            searcher, SortedNumericDocValuesField.newSlowRangeQuery("with_index", 50, 250), 98);
         assertCount(
             searcher, SortedNumericDocValuesField.newSlowRangeQuery("with_index", 150, 250), -1);
         assertCount(

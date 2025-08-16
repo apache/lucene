@@ -195,11 +195,10 @@ final class SortedNumericDocValuesRangeQuery extends Query {
           return 0;
         }
         if (skipper.docCount() == context.reader().maxDoc()
-            && context.reader().hasDeletions() == false
             && skipper.minValue() >= lowerValue
             && skipper.maxValue() <= upperValue) {
 
-          return context.reader().maxDoc();
+          return context.reader().numDocs();
         }
         return -1;
       }
