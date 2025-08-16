@@ -313,6 +313,12 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
         }
 
         @Override
+        public void copyFrom(Directory from, String src, String dest, IOContext context)
+            throws IOException {
+          throw new UnsupportedOperationException();
+        }
+
+        @Override
         public void close() throws IOException {
           throw new UnsupportedOperationException();
         }

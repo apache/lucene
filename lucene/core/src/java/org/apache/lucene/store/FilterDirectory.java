@@ -112,6 +112,12 @@ public abstract class FilterDirectory extends Directory {
   }
 
   @Override
+  public void copyFrom(Directory from, String src, String dest, IOContext context)
+      throws IOException {
+    in.copyFrom(from, src, dest, context);
+  }
+
+  @Override
   public String toString() {
     return getClass().getSimpleName() + "(" + in.toString() + ")";
   }
