@@ -133,7 +133,7 @@ public class TestPerFieldDocValuesFormat extends BaseDocValuesFormatTestCase {
 
       BinaryDocValues dv2 = ireader.leaves().get(0).reader().getBinaryDocValues("dv2");
       assertEquals(hitDocID, dv2.advance(hitDocID));
-      final BytesRef term = dv2.binaryValue();
+      final BytesRef term = dv2.randomAccessInputValue().toBytesRef();
       assertEquals(new BytesRef("hello world"), term);
     }
 

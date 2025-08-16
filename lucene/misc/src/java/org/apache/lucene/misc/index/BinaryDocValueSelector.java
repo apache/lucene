@@ -32,6 +32,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
@@ -50,11 +51,15 @@ public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector,
 
   @Override
   public BitSet getFilteredDocs(CodecReader reader) throws IOException {
-    BinaryDocValues binaryDocValues = reader.getBinaryDocValues(field);
+    BinaryDocValues binaryDV = reader.getBinaryDocValues(field);
     FixedBitSet bits = new FixedBitSet(reader.maxDoc());
+    final BytesRefBuilder bytesRefBuilder = new BytesRefBuilder();
     for (int docid = 0; docid < reader.maxDoc(); docid++) {
-      if (binaryDocValues.advanceExact(docid) && keySet.contains(binaryDocValues.binaryValue())) {
-        bits.set(docid);
+      if (binaryDV.advanceExact(docid)) {
+        bytesRefBuilder.copyBytes(binaryDV.randomAccessInputValue());
+        if (keySet.contains(bytesRefBuilder.get())) {
+          bits.set(docid);
+        }
       }
     }
     return bits;
@@ -86,7 +91,7 @@ public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector,
           }
 
           if (binaryDocValues.advanceExact(docid)) {
-            keySet.add(BytesRef.deepCopyOf(binaryDocValues.binaryValue()));
+            keySet.add(binaryDocValues.randomAccessInputValue().toBytesRef());
           } else {
             throw new AssertionError("Document " + docid + " doesn't have key " + field);
           }
@@ -116,7 +121,7 @@ public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector,
 
         for (int docid = 0; docid < context.reader().maxDoc(); docid++) {
           if (binaryDocValues.advanceExact(docid)) {
-            keySet.add(BytesRef.deepCopyOf(binaryDocValues.binaryValue()));
+            keySet.add(binaryDocValues.randomAccessInputValue().toBytesRef());
           } else {
             throw new AssertionError("Document " + docid + " doesn't have key " + field);
           }

@@ -110,8 +110,8 @@ public class TestMultiDocValues extends LuceneTestCase {
     for (int i = 0; i < numDocs; i++) {
       assertEquals(i, multi.nextDoc());
       assertEquals(i, single.nextDoc());
-      final BytesRef expected = BytesRef.deepCopyOf(single.binaryValue());
-      final BytesRef actual = multi.binaryValue();
+      final BytesRef expected = single.randomAccessInputValue().toBytesRef();
+      final BytesRef actual = multi.randomAccessInputValue().toBytesRef();
       assertEquals(expected, actual);
     }
     testRandomAdvance(

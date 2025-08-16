@@ -30,6 +30,7 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
 
 /**
  * Base query class for ShapeDocValues queries. Concrete implementations include: {@link
@@ -73,9 +74,12 @@ abstract class BaseShapeDocValuesQuery extends SpatialQuery {
 
     final TwoPhaseIterator iterator =
         new TwoPhaseIterator(values) {
+          final BytesRefBuilder builder = new BytesRefBuilder();
+
           @Override
           public boolean matches() throws IOException {
-            return match(getShapeDocValues(values.binaryValue()));
+            builder.copyBytes(values.randomAccessInputValue());
+            return match(getShapeDocValues(builder.toBytesRef()));
           }
 
           @Override

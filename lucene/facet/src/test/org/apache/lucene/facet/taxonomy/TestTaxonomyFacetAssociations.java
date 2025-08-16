@@ -174,7 +174,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     for (LeafReaderContext ctx : reader.leaves()) {
       BinaryDocValues dv = DocValues.getBinary(ctx.reader(), "$facets.float");
       for (int doc = dv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = dv.nextDoc()) {
-        final BytesRef bytesRef = dv.binaryValue();
+        final BytesRef bytesRef = dv.randomAccessInputValue().toBytesRef();
         byte[] bytes = bytesRef.bytes;
         int end = bytesRef.offset + bytesRef.length;
         int offset = bytesRef.offset;
