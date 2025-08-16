@@ -26,6 +26,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.DisjunctionMaxQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
@@ -110,7 +111,7 @@ public class TestMonitorPersistence extends MonitorTestBase {
     }
   }
 
-  public void testReadingAfterBreakingUpgrade() throws IOException {
+  public void testReadingAfterHashOrderChange() throws IOException {
     Document doc = new Document();
     doc.add(newTextField(FIELD, "test", Field.Store.NO));
     Function<String, Query> parser =
@@ -143,12 +144,56 @@ public class TestMonitorPersistence extends MonitorTestBase {
     }
   }
 
+  public void testReadingDismaxAfterHashOrderChange() throws IOException {
+    Document doc = new Document();
+    doc.add(newTextField(FIELD, "test", Field.Store.NO));
+    Function<String, Query> parser =
+        queryStr -> {
+          var query =
+              new DisjunctionMaxQuery(
+                  ((BooleanQuery) MonitorTestBase.parse(queryStr))
+                      .getClauses(BooleanClause.Occur.SHOULD),
+                  0.8f);
+          return incompatibleDisMaxQuery(query);
+        };
+    try (Monitor monitor = newMonitorWithPersistence(parser)) {
+      StringBuilder queryStr = new StringBuilder("(");
+      for (int i = 0; i < 100; ++i) {
+        queryStr.append("test").append(i).append(" OR ");
+      }
+      queryStr.append(" test)");
+      var query =
+          new DisjunctionMaxQuery(
+              ((BooleanQuery) parse(queryStr.toString())).getClauses(BooleanClause.Occur.SHOULD),
+              0.8f);
+      var mq =
+          new MonitorQuery(
+              "1", incompatibleDisMaxQuery(query), queryStr.toString(), Collections.emptyMap());
+      monitor.register(mq);
+      assertEquals(1, monitor.getQueryCount());
+      assertEquals(1, monitor.match(doc, QueryMatch.SIMPLE_MATCHER).getMatchCount());
+    }
+
+    SimulateUpgradeQuery.HASHCODE_FACTOR = ~StringHelper.GOOD_FAST_HASH_SEED;
+
+    try (Monitor monitor2 = newMonitorWithPersistence(parser)) {
+      assertEquals(1, monitor2.getQueryCount());
+      assertEquals(1, monitor2.match(doc, QueryMatch.SIMPLE_MATCHER).getMatchCount());
+    }
+  }
+
   private static BooleanQuery incompatibleBooleanQuery(BooleanQuery query) {
     var booleanBuilder = new BooleanQuery.Builder();
     for (var clause : query) {
       booleanBuilder.add(new SimulateUpgradeQuery(clause.query()), BooleanClause.Occur.SHOULD);
     }
     return booleanBuilder.build();
+  }
+
+  private static DisjunctionMaxQuery incompatibleDisMaxQuery(DisjunctionMaxQuery query) {
+    return new DisjunctionMaxQuery(
+        query.getDisjuncts().stream().map(SimulateUpgradeQuery::new).toList(),
+        query.getTieBreakerMultiplier());
   }
 
   private static final class SimulateUpgradeQuery extends Query {
