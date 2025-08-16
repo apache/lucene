@@ -178,7 +178,8 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
         docAndScoreBuffer.size > 0;
         scorers[0].nextDocsAndScores(max, acceptDocs, docAndScoreBuffer)) {
 
-      int idx = VectorUtil.findNextGEQ(docAndScoreBuffer.docs, maxOtherDoc, 0, docAndScoreBuffer.size);
+      int idx =
+          VectorUtil.findNextGEQ(docAndScoreBuffer.docs, maxOtherDoc, 0, docAndScoreBuffer.size);
       docAndScoreAccBuffer.copyFrom(docAndScoreBuffer, idx);
 
       for (int i = 1; i < scorers.length; ++i) {
