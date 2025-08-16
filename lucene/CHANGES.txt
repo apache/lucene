@@ -241,6 +241,8 @@ Optimizations
 
 * GITHUB#15004: Wraps all iterator with likelyImpactsEnum under BlockMaxConjunctionBulkScorer. (Ge Song)
 
+* GITHUB#15080: Use DocValuesSkippers in SortedNumericDocValuesRangeQuery#count(). (Alan Woodward)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per

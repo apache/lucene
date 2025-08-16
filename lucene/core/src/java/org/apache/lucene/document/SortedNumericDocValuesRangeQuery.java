@@ -184,6 +184,24 @@ final class SortedNumericDocValuesRangeQuery extends Query {
         return ConstantScoreScorerSupplier.fromIterator(
             TwoPhaseIterator.asDocIdSetIterator(iterator), score(), scoreMode, maxDoc);
       }
+
+      @Override
+      public int count(LeafReaderContext context) throws IOException {
+        DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
+        if (skipper == null) {
+          return -1;
+        }
+        if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
+          return 0;
+        }
+        if (skipper.docCount() == context.reader().maxDoc()
+            && skipper.minValue() >= lowerValue
+            && skipper.maxValue() <= upperValue) {
+
+          return context.reader().numDocs();
+        }
+        return -1;
+      }
     };
   }
 
