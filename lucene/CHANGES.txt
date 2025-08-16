@@ -241,6 +241,8 @@ Optimizations
 
 * GITHUB#15004: Wraps all iterator with likelyImpactsEnum under BlockMaxConjunctionBulkScorer. (Ge Song)
 
+* GITHUB#15081: Filter by maxOtherDoc first to reduce the overhead of filterCompetitiveHits. (Ge Song)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per

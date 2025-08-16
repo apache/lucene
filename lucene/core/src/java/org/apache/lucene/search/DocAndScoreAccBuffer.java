@@ -67,11 +67,20 @@ public final class DocAndScoreAccBuffer {
    * doubles.
    */
   public void copyFrom(DocAndFloatFeatureBuffer buffer) {
-    growNoCopy(buffer.size);
-    System.arraycopy(buffer.docs, 0, docs, 0, buffer.size);
-    for (int i = 0; i < buffer.size; ++i) {
-      scores[i] = buffer.features[i];
+    copyFrom(buffer, 0);
+  }
+
+  /**
+   * Copy content from the given {@link DocAndFloatFeatureBuffer}, expanding float scores to
+   * doubles, starting at the given index,
+   */
+  public void copyFrom(DocAndFloatFeatureBuffer buffer, int start) {
+    int newSize = buffer.size - start;
+    growNoCopy(newSize);
+    System.arraycopy(buffer.docs, start, docs, 0, newSize);
+    for (int i = 0; i < newSize; ++i) {
+      scores[i] = buffer.features[i + start];
     }
-    this.size = buffer.size;
+    this.size = newSize;
   }
 }
