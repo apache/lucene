@@ -11,6 +11,10 @@ Bug Fixes
 
 * GITHUB#15074: Fix to use READONCE when reading segment infos (Chris Hegarty)
 
+* GITHUB#15078: Reduce the default RefCountedSharedArena.DEFAULT_MAX_PERMITS to 64. To restore
+  previous behavior set `-Dorg.apache.lucene.store.MMapDirectory.sharedArenaMaxPermits=1024`.
+  (Chris Hegarty)
+
 ======================== Lucene 9.12.2 =======================
 
 
