@@ -30,6 +30,7 @@ import org.apache.lucene.gradle.plugins.hacks.WipeGradleTempPlugin;
 import org.apache.lucene.gradle.plugins.help.BuildOptionGroupsPlugin;
 import org.apache.lucene.gradle.plugins.ide.EclipseSupportPlugin;
 import org.apache.lucene.gradle.plugins.ide.IdeaSupportPlugin;
+import org.apache.lucene.gradle.plugins.java.FailOnNoMatchingFilteredTestsPlugin;
 import org.apache.lucene.gradle.plugins.regenerate.RegenerateTasksSupportPlugin;
 import org.apache.lucene.gradle.plugins.spotless.GradleGroovyFormatPlugin;
 import org.apache.lucene.gradle.plugins.spotless.ValidateSourcePatternsPlugin;
@@ -81,6 +82,8 @@ public class RootProjectSetupPlugin extends LuceneGradlePlugin {
 
     plugins.apply(EclipseSupportPlugin.class);
     plugins.apply(IdeaSupportPlugin.class);
+
+    plugins.apply(FailOnNoMatchingFilteredTestsPlugin.class);
 
     // Apply more convention plugins to all projects.
     rootProject
