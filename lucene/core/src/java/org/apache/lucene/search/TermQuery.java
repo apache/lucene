@@ -56,7 +56,7 @@ public class TermQuery extends Query {
       }
       this.scoreMode = scoreMode;
       this.termStates = termStates;
-      this.similarity = searcher.getSimilarity();
+      this.similarity = ScorerUtil.likelyBM25Similarity(searcher.getSimilarity());
 
       final CollectionStatistics collectionStats;
       final TermStatistics termStats;
