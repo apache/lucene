@@ -281,6 +281,8 @@ Bug Fixes
 
 * GITHUB#15074: Fix to use READONCE when reading segment infos (Chris Hegarty)
 
+* GITHUB#14886: Fix for lucene-monitor to prevent missed matches caused by inconsistent cache and index.
+
 Build
 ---------------------
 * Upgrade forbiddenapis to version 3.9.  (Uwe Schindler)
