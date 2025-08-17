@@ -332,17 +332,16 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     final RandomVectorScorer scorer = scorerSupplier.get();
     final KnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
-    Bits accepted = acceptDocs.bits();
-    final Bits acceptedOrds = scorer.getAcceptOrds(accepted);
     HnswGraph graph = getGraph(fieldEntry);
-    boolean doHnsw = knnCollector.k() < scorer.maxOrd();
     // Take into account if quantized? E.g. some scorer cost?
-    int filteredDocCount = 0;
-    // The approximate number of vectors that would be visited if we did not filter
-    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graph.size());
     // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
     // size as that is illogical
-    filteredDocCount = Math.min(acceptDocs.cost(), graph.size());
+    int filteredDocCount = Math.min(acceptDocs.cost(), graph.size());
+    Bits accepted = acceptDocs.bits();
+    final Bits acceptedOrds = scorer.getAcceptOrds(accepted);
+    boolean doHnsw = knnCollector.k() < scorer.maxOrd();
+    // The approximate number of vectors that would be visited if we did not filter
+    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graph.size());
     if (unfilteredVisit >= filteredDocCount) {
       doHnsw = false;
     }

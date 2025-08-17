@@ -35,7 +35,7 @@ public abstract class AcceptDocs {
   /**
    * Random access to the accepted documents.
    *
-   * <p><b>NOTE</b>: This must not be called if the {@link #iterator()} has already been used.
+   * <p><b>NOTE</b>: This must not be called after {@link #iterator()}.
    *
    * @return Bits instance for random access, or null if all documents are accepted
    * @throws IOException if an I/O error occurs
@@ -58,7 +58,7 @@ public abstract class AcceptDocs {
    * whether to consume these accept docs using random access ({@link #bits()}) or sequential access
    * ({@link #iterator()}).
    *
-   * <p><b>NOTE</b>: This must not be called if the {@link #iterator()} has already been used.
+   * <p><b>NOTE</b>: This must not be called after {@link #iterator()}.
    *
    * @return approximate cost
    */
@@ -190,11 +190,11 @@ public abstract class AcceptDocs {
     private void loadIntoBitSetIfNecessary() throws IOException {
       // Usage of AcceptDocs should be confined to a single thread, so this doesn't need
       // synchronization.
+      if (iterator.docID() != -1) {
+        throw new IllegalStateException(
+            "It is illegal to call #cost() or #bits() after #iterator()");
+      }
       if (bitSet == null) {
-        if (iterator.docID() != -1) {
-          throw new IllegalStateException(
-              "It is illegal to call #cardinality() or #bits() after the iterator has been used");
-        }
         bitSet = createBitSet(iterator, liveDocs, maxDoc);
         cardinality = bitSet.cardinality();
         iterator = new BitSetIterator(bitSet, cardinality);
