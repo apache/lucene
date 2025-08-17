@@ -40,8 +40,6 @@ plugins {
   id "lucene.validation.rat-sources"
   id "lucene.validation.owasp"
 
-  id "lucene.ide.intellij-idea"
-
   id "lucene.publications.maven"
   id "lucene.publications.maven-to-nexus-releases"
   id "lucene.publications.maven-to-nexus-snapshots"
