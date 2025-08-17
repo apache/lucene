@@ -253,6 +253,10 @@ Changes in Runtime Behavior
   `dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT)`, or setting the system property
   `-Dorg.apache.lucene.store.defaultReadAdvice=RANDOM`. (Chris Hegarty)
 
+* GITHUB#15078: Reduce the default RefCountedSharedArena.DEFAULT_MAX_PERMITS to 64. To restore
+  previous behavior set the `-Dorg.apache.lucene.store.MMapDirectory.sharedArenaMaxPermits=1024`.
+  (Chris Hegarty)
+
 Bug Fixes
 ---------------------
 * GITHUB*15025: flush segments in addIndexes, not in addIndexesReaderMerge;
