@@ -160,7 +160,8 @@ class WritableQueryIndex extends QueryIndex {
                   }
                   ids.add(id);
                   try {
-                    MonitorQuery mq = serializer.deserialize(dataValues.mq.binaryValue());
+                    MonitorQuery mq =
+                        serializer.deserialize(dataValues.mq.randomAccessInputValue());
                     for (QueryCacheEntry entry : QueryCacheEntry.decompose(mq, decomposer)) {
                       newCache.put(entry.cacheId, entry);
                     }

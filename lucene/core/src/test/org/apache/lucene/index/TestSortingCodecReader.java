@@ -288,7 +288,9 @@ public class TestSortingCodecReader extends LuceneTestCase {
                 }
               }
 
-              assertEquals(new BytesRef(ids.longValue() + ""), binary_dv.binaryValue());
+              assertEquals(
+                  new BytesRef(ids.longValue() + ""),
+                  binary_dv.randomAccessInputValue().toBytesRef());
               assertEquals(
                   new BytesRef(ids.longValue() + ""),
                   binary_sorted_dv.lookupOrd(binary_sorted_dv.ordValue()));

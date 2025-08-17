@@ -533,7 +533,9 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     BinaryDocValues controlBinaryDocValues = controlLeafReader.getBinaryDocValues("binary");
     assertEquals(0, binaryDocValues.nextDoc());
     assertEquals(0, controlBinaryDocValues.nextDoc());
-    assertEquals(controlBinaryDocValues.binaryValue(), binaryDocValues.binaryValue());
+    assertEquals(
+        controlBinaryDocValues.randomAccessInputValue().toBytesRef(),
+        binaryDocValues.randomAccessInputValue().toBytesRef());
 
     SortedDocValues sortedDocValues = leafReader.getSortedDocValues("sorted");
     SortedDocValues controlSortedDocValues = controlLeafReader.getSortedDocValues("sorted");

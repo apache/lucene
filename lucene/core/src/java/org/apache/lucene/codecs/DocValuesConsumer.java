@@ -47,6 +47,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongBitSet;
 import org.apache.lucene.util.LongValues;
+import org.apache.lucene.util.RandomAccessInputRef;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**
@@ -378,8 +379,8 @@ public abstract class DocValuesConsumer implements Closeable {
       }
 
       @Override
-      public BytesRef binaryValue() throws IOException {
-        return current.values.binaryValue();
+      public RandomAccessInputRef randomAccessInputValue() throws IOException {
+        return current.values.randomAccessInputValue();
       }
     };
   }

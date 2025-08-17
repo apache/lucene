@@ -46,6 +46,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.RandomAccessInputRef;
 
 public class TestMixedDocValuesUpdates extends LuceneTestCase {
 
@@ -492,7 +493,8 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
     assertNotNull(binaryIdValues);
 
     assertEquals(doc + 1, numericIdValues.longValue());
-    assertEquals(new BytesRef(new byte[] {(byte) (doc + 1)}), binaryIdValues.binaryValue());
+    RandomAccessInputRef inputRef = binaryIdValues.randomAccessInputValue();
+    assertEquals((byte) (doc + 1), inputRef.bytes.readByte(inputRef.offset));
     IOUtils.close(reader, writer, dir);
   }
 
@@ -621,7 +623,8 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
 
       BinaryDocValues bdv = r.getBinaryDocValues("val-bin");
       assertEquals(0, bdv.nextDoc());
-      assertEquals(new BytesRef(new byte[] {(byte) 5}), bdv.binaryValue());
+      RandomAccessInputRef inputRef = bdv.randomAccessInputValue();
+      assertEquals((byte) 5, inputRef.bytes.readByte(inputRef.offset));
       assertEquals(DocIdSetIterator.NO_MORE_DOCS, bdv.nextDoc());
     }
 

@@ -30,8 +30,7 @@ import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
-import org.apache.lucene.util.BitUtil;
-import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.RandomAccessInputRef;
 
 /**
  * Aggregates float values associated with facet fields. Supports two different approaches:
@@ -181,14 +180,13 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
           ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits().iterator(), dv));
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-        final BytesRef bytesRef = dv.binaryValue();
-        byte[] bytes = bytesRef.bytes;
-        int end = bytesRef.offset + bytesRef.length;
-        int offset = bytesRef.offset;
+        final RandomAccessInputRef input = dv.randomAccessInputValue();
+        long offset = input.offset;
+        long end = offset + input.length;
         while (offset < end) {
-          int ord = (int) BitUtil.VH_BE_INT.get(bytes, offset);
+          int ord = Integer.reverseBytes(input.bytes.readInt(offset));
           offset += 4;
-          float value = (float) BitUtil.VH_BE_FLOAT.get(bytes, offset);
+          float value = Float.intBitsToFloat(Integer.reverseBytes(input.bytes.readInt(offset)));
           offset += 4;
           float currentValue = getValue(ord);
           float newValue = aggregationFunction.aggregate(currentValue, value);

@@ -54,10 +54,12 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
+import org.apache.lucene.store.ByteArrayRandomAccessInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.RandomAccessInputRef;
 import org.apache.lucene.util.StringHelper;
 
 class SimpleTextDocValuesReader extends DocValuesProducer {
@@ -366,6 +368,9 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         };
     return new BinaryDocValues() {
 
+      private final ByteArrayRandomAccessInput bytes = new ByteArrayRandomAccessInput();
+      private final RandomAccessInputRef inputRef = new RandomAccessInputRef(bytes);
+
       @Override
       public int nextDoc() throws IOException {
         return docsWithField.nextDoc();
@@ -392,8 +397,12 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
       }
 
       @Override
-      public BytesRef binaryValue() throws IOException {
-        return values.apply(docsWithField.docID());
+      public RandomAccessInputRef randomAccessInputValue() {
+        BytesRef bytesRef = values.apply(docsWithField.docID());
+        bytes.reset(bytesRef.bytes);
+        inputRef.offset = bytesRef.offset;
+        inputRef.length = bytesRef.length;
+        return inputRef;
       }
     };
   }
@@ -653,8 +662,8 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         if (docID() == NO_MORE_DOCS) {
           return;
         }
-        String csv = binary.binaryValue().utf8ToString();
-        if (csv.length() == 0) {
+        String csv = binary.randomAccessInputValue().utf8ToString();
+        if (csv.isEmpty()) {
           values = new long[0];
         } else {
           String[] s = csv.split(",");
