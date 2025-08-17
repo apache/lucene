@@ -18,7 +18,8 @@
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import org.apache.commons.codec.digest.DigestUtils
-
+import org.apache.lucene.gradle.plugins.misc.QuietExec
+import org.apache.lucene.gradle.plugins.regenerate.RegenerateTaskExtension
 import java.util.function.Function
 
 // Create common 'regenerate' task sub-tasks can hook into.
@@ -27,10 +28,35 @@ if (project != project.rootProject) {
   throw new GradleException("Applicable to rootProject only: " + project.path)
 }
 
+String valueToString(String sourceTaskName, String key, Object val) {
+  // Handle closures and other lazy providers.
+  if (val instanceof Provider<?>) {
+    val = val.get()
+  }
+  if (val instanceof Closure<?>) {
+    val = val.call()
+  }
+
+  if (val instanceof Boolean || val instanceof Number) {
+    val = val.toString()
+  }
+
+  if (val instanceof List) {
+    val = "[" + ((List<?>) val).collect {valueToString(sourceTaskName, key, it)}.join(", ") + "]"
+  }
+
+  if (!(val instanceof String)) {
+    throw new GradleException("Input properties of wrapped tasks must all be " +
+    "strings: ${key} in ${sourceTaskName} is not: ${val.class.getName()}")
+  }
+
+  return (String) val
+}
+
 /**
  * Compute all "checksummed" key-value pairs.
  */
-def computeChecksummedEntries = { Task sourceTask ->
+def computeChecksummedEntries = {Task sourceTask ->
   // An flat ordered map of key-value pairs.
   Map<String, String> allEntries = new TreeMap<>()
 
@@ -38,21 +64,19 @@ def computeChecksummedEntries = { Task sourceTask ->
   // or closures returning simple strings.
   //
   // Don't overcomplicate things with other serializable types.
-  Map<String, Object> props = sourceTask.inputs.properties
-  props.forEach { key, val ->
-    // Handle closures and other lazy providers.
-    if (val instanceof Provider<?>) {
-      val = val.get()
-    }
-    if (val instanceof Closure<?>) {
-      val = val.call()
-    }
+  Map<String, Object> props = new LinkedHashMap<>(sourceTask.inputs.properties)
 
-    if (!(val instanceof String)) {
-      throw new GradleException("Input properties of wrapped tasks must all be " +
-      "strings: ${key} in ${sourceTask.name} is not.")
-    }
-    allEntries.put("property:" + key, (String) val)
+  // we don't want to inspect all properties of QuietExec since it
+  // contains local paths, etc. omit those. It could probably be modeled
+  // as a specific extension on the sourceTask (?).
+
+  def regenerateExt = sourceTask.getExtensions().findByType(RegenerateTaskExtension)
+  if (regenerateExt != null) {
+    props.keySet().removeAll(regenerateExt.getIgnoredInputs().get())
+  }
+
+  props.forEach {key, val ->
+    allEntries.put("property:" + key, valueToString(sourceTask.path, key, val))
   }
 
   // Collect all of task inputs/ output files and compute their checksums.
@@ -60,10 +84,16 @@ def computeChecksummedEntries = { Task sourceTask ->
 
   // Compute checksums for root-project relative paths
   def digestUtils = new DigestUtils(DigestUtils.getSha1Digest())
-  allFiles.files.forEach { file ->
+  allFiles.files.forEach {file ->
     allEntries.put(
         sourceTask.project.rootDir.relativePath(file),
         file.exists() ? digestUtils.digestAsHex(file).trim() : "--")
+  }
+
+  if (sourceTask.getLogger().isEnabled(LogLevel.INFO)) {
+    sourceTask.getLogger().info("Checksum properties:\n" + allEntries.entrySet().collect { e ->
+      "  " + e.getKey() + ": " + e.getValue()
+    }.join("\n"));
   }
 
   return allEntries
@@ -73,8 +103,8 @@ ext {
   /**
    * Utility function to read a file, apply changes to its content and write it back.
    */
-  modifyFile = { File path, Function<String, String> modify ->
-    Function<String, String> normalizeEols = { text -> text.replace("\r\n", "\n") }
+  modifyFile = {File path, Function<String, String> modify ->
+    Function<String, String> normalizeEols = {text -> text.replace("\r\n", "\n")}
 
     String original = path.getText("UTF-8")
     String modified = normalizeEols.apply(original)
@@ -101,6 +131,36 @@ configure([
     description = "Rerun any code or static data generation tasks."
     group = "generation"
   })
+
+  // Convert a list of strings, tasks and task providers into resolved tasks or task providers.
+  def resolveTaskRefs = {List<Object> refs ->
+    def resolved = refs.collect {
+      if (it instanceof Task) return it
+      if (it instanceof TaskProvider) return it
+      if (it instanceof String) return project.tasks.named((String) it)
+      throw new GradleException("Can't resolve task: ${it}")
+    }
+    return resolved
+  }
+
+  // Forces sequential ordering of a list of tasks (via mustRunAfter).
+  // This method should not be required in 99% of cases, consider regular dependsOn links.
+  // This method does NOT imply any ordering between dependencies of task on the input
+  // list - the execution of these may still be unordered.
+  def mustRunInOrder = {List<Object> taskList ->
+    project.afterEvaluate {
+      def resolved = resolveTaskRefs(taskList)
+
+      // Enforce sequential ordering between tasks (this does NOT apply to their dependencies!)
+      for (int i = 1; i < resolved.size(); i++) {
+        resolved[i].configure {
+          logger.info("Scheduling " + resolved[i].name + " to run after " + resolved[i - 1].name)
+          mustRunAfter resolved[i - 1]
+        }
+      }
+    }
+    return taskList
+  }
 
   project.ext {
     // This utility method implements the logic required for "persistent" incremental
@@ -135,14 +195,17 @@ configure([
     //   ignoreWithSource: any other tasks that should be ignored if the internal task is ignored
     //     (checksums are identical)
     //   mustRunBefore: any tasks which should be scheduled to run after the internal task.
-    wrapWithPersistentChecksums = { Task sourceTask, Map<String, Object> extraConfig = [:] ->
+    wrapWithPersistentChecksums2 = {TaskProvider sourceTaskProvider, Map<String, Object> extraConfig = [:] ->
+      wrapWithPersistentChecksums(sourceTaskProvider.get(), extraConfig)
+    }
+    wrapWithPersistentChecksums = {Task sourceTask, Map<String, Object> extraConfig = [:] ->
       if (!sourceTask.name.endsWith("Internal")) {
         throw new GradleException("Wrapped task must follow the convention name of *Internal: ${sourceTask.name}")
       }
 
       String sourceTaskName = sourceTask.name.replaceAll('Internal$', '')
 
-      def toList = { value ->
+      def toList = {value ->
         if (value instanceof List) {
           return value
         } else if (value == null) {
@@ -153,12 +216,12 @@ configure([
       }
 
       List<Object> andThenTasks = toList(extraConfig.get("andThenTasks"))
-      List<Object> ignoreWithSource =  toList(extraConfig.get("ignoreWithSource"))
+      List<Object> ignoreWithSource = toList(extraConfig.get("ignoreWithSource"))
 
       // Schedule must-run-afters
       List<Object> mustRunBefore = toList(extraConfig.get("mustRunBefore"))
       // TODO: maybe ensure all task refs here are strings?
-      tasks.matching { it.name in mustRunBefore }.configureEach {
+      tasks.matching {it.name in mustRunBefore}.configureEach {
         mustRunAfter sourceTask
       }
 
@@ -246,7 +309,7 @@ configure([
 
       // Load checksums before the source task executes, otherwise it's always ignored.
       project.afterEvaluate {
-        resolveTaskRefs([sourceTask, *ignoreWithSource]).each { t ->
+        resolveTaskRefs([sourceTask, *ignoreWithSource]).each {t ->
           t.configure {
             dependsOn checksumLoadTask
           }
@@ -270,10 +333,10 @@ configure([
             sourceTask,
             *ignoreWithSource,
             checksumSaveTask
-          ]).each { t ->
+          ]).each {t ->
             t.configure {
               logger.info("Making " + t.name + " run only if " + checksumLoadTask.name + " indicates changes")
-              onlyIf { !checksumLoadTask.checksumMatch }
+              onlyIf {!checksumLoadTask.checksumMatch}
             }
           }
         }

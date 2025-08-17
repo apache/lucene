@@ -100,4 +100,20 @@ public interface VectorUtilSupport {
       float alpha,
       float minQuantile,
       float maxQuantile);
+
+  /**
+   * filter both {@code docBuffer} and {@code scoreBuffer} with {@code minScoreInclusive}, each
+   * {@code docBuffer} and {@code scoreBuffer} of the same index forms a pair, pairs with score not
+   * greater than or equal to {@code minScoreInclusive} will be filtered out from the array.
+   *
+   * @param docBuffer doc buffer contains docs (or some other value forms a pair with {@code
+   *     scoreBuffer})
+   * @param scoreBuffer score buffer contains scores to be compared with {@code minScoreInclusive}
+   * @param minScoreInclusive minimal required score to not be filtered out
+   * @param upTo where the filter should end
+   * @return how many pairs left after filter
+   */
+  int filterByScore(int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo);
+
+  float[] l2normalize(float[] v, boolean throwOnZero);
 }

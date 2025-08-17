@@ -58,7 +58,7 @@ package org.apache.lucene.analysis.en;
 import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.util.OpenStringBuilder;
 
-/**
+/*
  * Title: Kstemmer
  *
  * <p>Description: This is a java version of Bob Krovetz' kstem stemmer

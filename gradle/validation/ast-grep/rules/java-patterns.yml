@@ -5,7 +5,7 @@
 id: java-lang-import
 language: java
 rule:
-  pattern: import java.lang.$REF
+  pattern: import java.lang.$REF;
   kind: import_declaration
 fix: ""
 severity: error
@@ -91,3 +91,61 @@ transform:
 fix: $NEWTEXT
 severity: error
 message: please write as `TODO:` instead
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: missing-spi-block-tag
+language: java
+ignores:
+  - "**/src/test/**"
+rule:
+  pattern:
+    selector: superclass
+    context: class $CLASS extends $SUPERCLASS
+  inside:
+    kind: class_declaration
+    # public, and not abstract
+    has:
+      kind: modifiers
+      has:
+        regex: public
+      not:
+        has:
+          regex: abstract
+    # not documented
+    not:
+      follows:
+        matches: javadoc
+        regex: "@lucene.spi [{]@value #NAME[}]"
+constraints:
+  SUPERCLASS:
+    regex: ^(Tokenizer|TokenFilter|CharFilter)Factory$
+severity: error
+message: Public factory is missing @lucene.spi javadoc block tag.
+note: |
+  Document with `@lucene.spi {@value #NAME}`
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: incubator-module-dependency
+language: java
+files:
+  - "**/module-info.java"
+rule:
+  kind: scoped_identifier
+  all:
+    - has:
+        field: scope
+        pattern: jdk
+    - has:
+        field: name
+        pattern: incubator
+severity: error
+message: Module dependency on incubator APIs
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: javadoc-only-inheriting-super
+language: java
+rule:
+  matches: javadoc
+  regex: "^/\\*\\*([ \r\n*])*[{]@inheritDoc[ \r\n]*[}]([ \r\n*])*\\*/$"
+severity: error
+message: "{@inheritDoc} on its own is unnecessary"

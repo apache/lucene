@@ -2269,7 +2269,7 @@ public class TestIndexWriter extends LuceneTestCase {
                   new Iterable<Document>() {
                     @Override
                     public Iterator<Document> iterator() {
-                      return new Iterator<Document>() {
+                      return new Iterator<>() {
 
                         @Override
                         public boolean hasNext() {

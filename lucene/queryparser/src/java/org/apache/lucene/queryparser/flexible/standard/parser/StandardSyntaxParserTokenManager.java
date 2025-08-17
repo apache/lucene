@@ -73,9 +73,9 @@ package org.apache.lucene.queryparser.flexible.standard.parser;
 @SuppressWarnings ("unused")
 public class StandardSyntaxParserTokenManager implements StandardSyntaxParserConstants {
 
-  /** Debug output. */
+  // Debug output.
   // (debugStream omitted).
-  /** Set debug output. */
+  // Set debug output.
   // (setDebugStream omitted).
 private final int jjStopStringLiteralDfa_2(int pos, long active0){
    switch (pos)

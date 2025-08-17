@@ -623,7 +623,7 @@ public class TestFuzzyQuery extends LuceneTestCase {
       // we don't look at scores here:
       List<TermAndScore>[] expected = new List[3];
       for (int ed = 0; ed < 3; ed++) {
-        expected[ed] = new ArrayList<TermAndScore>();
+        expected[ed] = new ArrayList<>();
       }
       for (String term : terms) {
         if (term.startsWith(queryPrefix) == false) {
