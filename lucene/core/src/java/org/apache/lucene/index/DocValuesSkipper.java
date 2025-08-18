@@ -125,9 +125,11 @@ public abstract class DocValuesSkipper {
   }
 
   /**
-   * Returns the minimum value for a field across all segments, or {@link Long#MIN_VALUE} if not available
-   * @param searcher  a searcher over the index
-   * @param field     the field to retrieve values for
+   * Returns the minimum value for a field across all segments, or {@link Long#MIN_VALUE} if not
+   * available
+   *
+   * @param searcher a searcher over the index
+   * @param field the field to retrieve values for
    */
   public static long globalMinValue(IndexSearcher searcher, String field) throws IOException {
     long minValue = Long.MAX_VALUE;
@@ -143,9 +145,11 @@ public abstract class DocValuesSkipper {
   }
 
   /**
-   * Returns the maximum value for a field across all segments, or {@link Long#MIN_VALUE} if not available
-   * @param searcher  a searcher over the index
-   * @param field     the field to retrieve values for
+   * Returns the maximum value for a field across all segments, or {@link Long#MIN_VALUE} if not
+   * available
+   *
+   * @param searcher a searcher over the index
+   * @param field the field to retrieve values for
    */
   public static long globalMaxValue(IndexSearcher searcher, String field) throws IOException {
     long maxValue = Long.MIN_VALUE;
@@ -162,8 +166,9 @@ public abstract class DocValuesSkipper {
 
   /**
    * Returns the total skipper document count for a field across all segments
-   * @param searcher  a searcher over the index
-   * @param field     the field to retrieve values for
+   *
+   * @param searcher a searcher over the index
+   * @param field the field to retrieve values for
    */
   public static int globalDocCount(IndexSearcher searcher, String field) throws IOException {
     int docCount = 0;
