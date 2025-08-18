@@ -198,14 +198,18 @@ public class TestMonitorPersistence extends MonitorTestBase {
   private static BooleanQuery incompatibleBooleanQuery(BooleanQuery query, int hashcodeFactor) {
     var booleanBuilder = new BooleanQuery.Builder();
     for (var clause : query) {
-      booleanBuilder.add(new SimulateUpgradeQuery(clause.query(), hashcodeFactor), BooleanClause.Occur.SHOULD);
+      booleanBuilder.add(
+          new SimulateUpgradeQuery(clause.query(), hashcodeFactor), BooleanClause.Occur.SHOULD);
     }
     return booleanBuilder.build();
   }
 
-  private static DisjunctionMaxQuery incompatibleDisMaxQuery(DisjunctionMaxQuery query, int hashcodeFactor) {
+  private static DisjunctionMaxQuery incompatibleDisMaxQuery(
+      DisjunctionMaxQuery query, int hashcodeFactor) {
     return new DisjunctionMaxQuery(
-        query.getDisjuncts().stream().map(q -> new SimulateUpgradeQuery(q, hashcodeFactor)).toList(),
+        query.getDisjuncts().stream()
+            .map(q -> new SimulateUpgradeQuery(q, hashcodeFactor))
+            .toList(),
         query.getTieBreakerMultiplier());
   }
 
