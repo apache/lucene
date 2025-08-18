@@ -98,53 +98,16 @@ final class SortedNumericDocValuesRangeQuery extends Query {
     if (lowerValue > upperValue) {
       return new MatchNoDocsQuery();
     }
-    Query skipperRewrite = rewriteWithSkipper(indexSearcher);
-    if (skipperRewrite != null) {
-      return skipperRewrite;
+    long globalMin = DocValuesSkipper.globalMinValue(indexSearcher, field);
+    long globalMax = DocValuesSkipper.globalMaxValue(indexSearcher, field);
+    if (lowerValue > globalMax || upperValue < globalMin) {
+      return new MatchNoDocsQuery();
+    }
+    if (lowerValue <= globalMin && upperValue >= globalMax &&
+        DocValuesSkipper.globalDocCount(indexSearcher, field) == indexSearcher.getIndexReader().maxDoc()) {
+      return new MatchAllDocsQuery();
     }
     return super.rewrite(indexSearcher);
-  }
-
-  private enum SkipperState {
-    UNSET,
-    MATCH_ALL,
-    MATCH_NONE
-  }
-
-  private Query rewriteWithSkipper(IndexSearcher searcher) throws IOException {
-    SkipperState state = SkipperState.UNSET;
-    for (LeafReaderContext ctx : searcher.getLeafContexts()) {
-      DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper(field);
-      if (skipper == null) {
-        return null;
-      }
-      if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
-        switch (state) {
-          case UNSET -> state = SkipperState.MATCH_NONE;
-          case MATCH_ALL -> {
-            return null;
-          }
-          case MATCH_NONE -> {}
-        }
-      } else if (skipper.docCount() == ctx.reader().maxDoc()
-          && skipper.minValue() >= lowerValue
-          && skipper.maxValue() <= upperValue) {
-        switch (state) {
-          case UNSET -> state = SkipperState.MATCH_ALL;
-          case MATCH_ALL -> {}
-          case MATCH_NONE -> {
-            return null;
-          }
-        }
-      } else {
-        return null;
-      }
-    }
-    return switch (state) {
-      case UNSET -> null;
-      case MATCH_ALL -> new MatchAllDocsQuery();
-      case MATCH_NONE -> new MatchNoDocsQuery();
-    };
   }
 
   @Override
