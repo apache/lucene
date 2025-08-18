@@ -63,6 +63,8 @@ Optimizations
 
 * GITHUB#14874: Improve off-heap KNN byte vector query performance in cases where indexing and search are performed by the same process. (Kaival Parikh)
 
+* GITHUB#15043: Vectorize L2 normalize function. (Ramakrishna Chilaka)
+
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
@@ -241,6 +243,11 @@ Optimizations
 
 * GITHUB#15004: Wraps all iterator with likelyImpactsEnum under BlockMaxConjunctionBulkScorer. (Ge Song)
 
+* GITHUB#15080: Use DocValuesSkippers in SortedNumericDocValuesRangeQuery#count(). (Alan Woodward)
+
+* GITHUB#15039: Score computations are now more reliably vectorized.
+  (Adrien Grand, Guo Feng)
+
 * GITHUB#15081: Filter by maxOtherDoc first to reduce the overhead of filterCompetitiveHits. (Ge Song)
 
 Changes in Runtime Behavior
@@ -254,6 +261,10 @@ Changes in Runtime Behavior
   way to enable previous behaviour (in 10.2), either by setting:
   `dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT)`, or setting the system property
   `-Dorg.apache.lucene.store.defaultReadAdvice=RANDOM`. (Chris Hegarty)
+
+* GITHUB#15078: Reduce the default RefCountedSharedArena.DEFAULT_MAX_PERMITS to 64. To restore
+  previous behavior set the `-Dorg.apache.lucene.store.MMapDirectory.sharedArenaMaxPermits=1024`.
+  (Chris Hegarty)
 
 Bug Fixes
 ---------------------
@@ -278,6 +289,8 @@ Bug Fixes
 
 * GITHUB#14922: Fix for IndexedDISI.Dense#intoBitSetWithinBlock to take into account the provided bitset size
   and avoid throwing IndexOutOfBoundsException (Panagiotis Bailis)
+
+* GITHUB#15074: Fix to use READONCE when reading segment infos (Chris Hegarty)
 
 Build
 ---------------------
