@@ -707,4 +707,5 @@ public class TestDocValuesQueries extends LuceneTestCase {
       }
     }
   }
+
 }
