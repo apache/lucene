@@ -187,6 +187,11 @@ Bug Fixes
 
 * GITHUB#15074: Fix to use READONCE when reading segment infos (Chris Hegarty)
 
+* GITHUB#14886: Prevent missed matches in lucene-monitor caused by unstable
+  iteration of sub-queries in BooleanQuery and DisjunctionMaxQuery. This
+  resulted in query branches being wrongly ignored if the QueryIndex was
+  built by a different JVM. (Luke Kot-Zaniewski)
+
 Build
 ---------------------
 * Upgrade forbiddenapis to version 3.9.  (Uwe Schindler)
