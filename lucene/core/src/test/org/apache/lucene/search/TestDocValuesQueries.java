@@ -687,7 +687,8 @@ public class TestDocValuesQueries extends LuceneTestCase {
             searcher.rewrite(SortedNumericDocValuesField.newSlowRangeQuery("super_sparse", 0, 50)),
             instanceOf(MatchNoDocsQuery.class));
         assertThat(
-            searcher.rewrite(SortedNumericDocValuesField.newSlowRangeQuery("super_sparse", 250, 350)),
+            searcher.rewrite(
+                SortedNumericDocValuesField.newSlowRangeQuery("super_sparse", 250, 350)),
             instanceOf(MatchNoDocsQuery.class));
         assertThat(
             searcher
