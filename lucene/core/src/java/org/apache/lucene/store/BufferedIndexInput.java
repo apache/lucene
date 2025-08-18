@@ -156,7 +156,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
         GroupVIntUtil.readGroupVInt(
             this,
             buffer.remaining(),
-            ByteBuffersDataInput.VH_BUFFER_GET_INT,
+            GroupVIntUtil.VH_BUFFER_GET_INT,
             buffer,
             buffer.position(),
             dst,

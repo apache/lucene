@@ -18,9 +18,6 @@ package org.apache.lucene.store;
 
 import java.io.EOFException;
 import java.io.IOException;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.lang.invoke.VarHandle;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -41,17 +38,6 @@ import org.apache.lucene.util.RamUsageEstimator;
  */
 public final class ByteBuffersDataInput extends DataInput
     implements Accountable, RandomAccessInput {
-
-  // also used by BufferedIndexInput, this needs to cast the long parameter to the ByteBuffer's int
-  // coordinate
-  static final VarHandle VH_BUFFER_GET_INT =
-      MethodHandles.filterCoordinates(
-          MethodHandles.byteBufferViewVarHandle(int[].class, ByteOrder.LITTLE_ENDIAN),
-          0,
-          MethodHandles.identity(Object.class)
-              .asType(MethodType.methodType(ByteBuffer.class, Object.class)),
-          MethodHandles.explicitCastArguments(
-              MethodHandles.identity(long.class), MethodType.methodType(int.class, long.class)));
 
   private final ByteBuffer[] blocks;
   private final FloatBuffer[] floatBuffers;
@@ -228,7 +214,13 @@ public final class ByteBuffersDataInput extends DataInput
     // `pos +=` will use an old pos value plus return value, thereby missing 1 byte.
     final int len =
         GroupVIntUtil.readGroupVInt(
-            this, block.limit() - blockOffset, VH_BUFFER_GET_INT, block, blockOffset, dst, offset);
+            this,
+            block.limit() - blockOffset,
+            GroupVIntUtil.VH_BUFFER_GET_INT,
+            block,
+            blockOffset,
+            dst,
+            offset);
     pos += len;
   }
 
