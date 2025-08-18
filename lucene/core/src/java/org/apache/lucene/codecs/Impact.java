@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.index;
+package org.apache.lucene.codecs;
 
 /** Per-document scoring factors. */
 public final class Impact {
