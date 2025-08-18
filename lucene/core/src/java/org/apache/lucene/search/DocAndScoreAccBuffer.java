@@ -67,19 +67,25 @@ public final class DocAndScoreAccBuffer {
    * doubles.
    */
   public void copyFrom(DocAndFloatFeatureBuffer buffer) {
-    copyFrom(buffer, 0);
+    growNoCopy(buffer.size);
+    System.arraycopy(buffer.docs, 0, docs, 0, buffer.size);
+    for (int i = 0; i < buffer.size; ++i) {
+      scores[i] = buffer.features[i];
+    }
+    this.size = buffer.size;
   }
 
-  /**
-   * Copy content from the given {@link DocAndFloatFeatureBuffer}, expanding float scores to
-   * doubles, starting at the given index,
-   */
-  public void copyFrom(DocAndFloatFeatureBuffer buffer, int start) {
-    int newSize = buffer.size - start;
-    growNoCopy(newSize);
-    System.arraycopy(buffer.docs, start, docs, 0, newSize);
-    for (int i = 0; i < newSize; ++i) {
-      scores[i] = buffer.features[i + start];
+  public void copyWithMinDocRequired(DocAndFloatFeatureBuffer buffer, int minDocInclusive) {
+    growNoCopy(buffer.size);
+    int newSize = 0;
+    for (int i = 0; i < buffer.size; ++i) {
+      int doc = buffer.docs[i];
+      double score = buffer.features[i];
+      docs[newSize] = doc;
+      scores[newSize] = score;
+      if (doc >= minDocInclusive) {
+        newSize++;
+      }
     }
     this.size = newSize;
   }

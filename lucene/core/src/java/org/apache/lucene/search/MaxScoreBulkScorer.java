@@ -22,7 +22,6 @@ import java.util.List;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.MathUtil;
-import org.apache.lucene.util.VectorUtil;
 
 final class MaxScoreBulkScorer extends BulkScorer {
 
@@ -252,9 +251,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
         docAndScoreBuffer.size > 0;
         lead1.scorer.nextDocsAndScores(max, acceptDocs, docAndScoreBuffer)) {
 
-      int idx =
-          VectorUtil.findNextGEQ(docAndScoreBuffer.docs, maxOtherDoc, 0, docAndScoreBuffer.size);
-      docAndScoreAccBuffer.copyFrom(docAndScoreBuffer, idx);
+      docAndScoreAccBuffer.copyWithMinDocRequired(docAndScoreBuffer, maxOtherDoc);
 
       for (int i = allScorers.length - 2; i >= firstRequiredScorer; --i) {
 

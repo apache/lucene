@@ -23,7 +23,6 @@ import java.util.List;
 import org.apache.lucene.search.Weight.DefaultBulkScorer;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.MathUtil;
-import org.apache.lucene.util.VectorUtil;
 
 /**
  * BulkScorer implementation of {@link BlockMaxConjunctionScorer} that focuses on top-level
@@ -178,9 +177,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
         docAndScoreBuffer.size > 0;
         scorers[0].nextDocsAndScores(max, acceptDocs, docAndScoreBuffer)) {
 
-      int idx =
-          VectorUtil.findNextGEQ(docAndScoreBuffer.docs, maxOtherDoc, 0, docAndScoreBuffer.size);
-      docAndScoreAccBuffer.copyFrom(docAndScoreBuffer, idx);
+      docAndScoreAccBuffer.copyWithMinDocRequired(docAndScoreBuffer, maxOtherDoc);
 
       for (int i = 1; i < scorers.length; ++i) {
         double sumOfOtherClause = sumOfOtherClauses[i];
