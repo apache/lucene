@@ -59,9 +59,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       MethodHandles.filterCoordinates(
           LAYOUT_LE_INT.varHandle(),
           0,
-          MethodHandles.explicitCastArguments(
-              MethodHandles.identity(Object.class),
-              MethodType.methodType(MemorySegment.class, Object.class)));
+          MethodHandles.identity(Object.class)
+              .asType(MethodType.methodType(MemorySegment.class, Object.class)));
 
   final long length;
   final long chunkSizeMask;

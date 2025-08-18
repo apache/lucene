@@ -48,9 +48,8 @@ public final class ByteBuffersDataInput extends DataInput
       MethodHandles.filterCoordinates(
           MethodHandles.byteBufferViewVarHandle(int[].class, ByteOrder.LITTLE_ENDIAN),
           0,
-          MethodHandles.explicitCastArguments(
-              MethodHandles.identity(Object.class),
-              MethodType.methodType(ByteBuffer.class, Object.class)),
+          MethodHandles.identity(Object.class)
+              .asType(MethodType.methodType(ByteBuffer.class, Object.class)),
           MethodHandles.explicitCastArguments(
               MethodHandles.identity(long.class), MethodType.methodType(int.class, long.class)));
 
