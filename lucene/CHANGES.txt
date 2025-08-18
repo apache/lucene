@@ -290,7 +290,10 @@ Bug Fixes
 
 * GITHUB#15074: Fix to use READONCE when reading segment infos (Chris Hegarty)
 
-* GITHUB#14886: Fix for lucene-monitor to prevent missed matches caused by inconsistent cache and index.
+* GITHUB#14886: Prevent missed matches in lucene-monitor caused by unstable
+  iteration of sub-queries in BooleanQuery and DisjunctionMaxQuery. This
+  resulted in query branches being wrongly ignored if the QueryIndex was
+  built by a different JVM. (Luke Kot-Zaniewski)
 
 Build
 ---------------------
