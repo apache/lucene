@@ -22,6 +22,7 @@ import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SlowImpactsEnum;
+import org.apache.lucene.search.similarities.Similarity.BulkSimScorer;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
@@ -37,6 +38,7 @@ public final class TermScorer extends Scorer {
   private final PostingsEnum postingsEnum;
   private final DocIdSetIterator iterator;
   private final SimScorer scorer;
+  private final BulkSimScorer bulkScorer;
   private final NumericDocValues norms;
   private final ImpactsDISI impactsDisi;
   private final MaxScoreCache maxScoreCache;
@@ -51,6 +53,7 @@ public final class TermScorer extends Scorer {
     impactsDisi = null;
     this.scorer = scorer;
     this.norms = norms;
+    this.bulkScorer = scorer.asBulkSimScorer();
   }
 
   /**
@@ -73,6 +76,7 @@ public final class TermScorer extends Scorer {
     }
     this.scorer = scorer;
     this.norms = norms;
+    this.bulkScorer = scorer.asBulkSimScorer();
   }
 
   @Override
@@ -167,11 +171,7 @@ public final class TermScorer extends Scorer {
       }
     }
 
-    for (int i = 0; i < size; ++i) {
-      // Unless SimScorer#score is megamorphic, SimScorer#score should inline and (part of) score
-      // computations should auto-vectorize.
-      buffer.features[i] = scorer.score(buffer.features[i], normValues[i]);
-    }
+    bulkScorer.score(buffer.size, buffer.features, normValues, buffer.features);
   }
 
   @Override

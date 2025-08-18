@@ -16,7 +16,10 @@
  */
 package org.apache.lucene.benchmark.jmh;
 
+import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
+import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
+import static org.apache.lucene.index.VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -75,10 +78,18 @@ import org.openjdk.jmh.annotations.Warmup;
       "-XX:+AlwaysPreTouch",
       "--add-modules=jdk.incubator.vector"
     })
+/*
+ * Benchmark to compare the performance of float32 vector scoring using the default and optimized
+ * scorers. While there are benchmark methods for each of the similarities, it is often most useful
+ * to compare equivalent subsets, e.g. .*dot.*
+ */
 public class VectorScorerFloat32Benchmark {
 
   @Param({"1024"})
   public int size;
+
+  @Param({"true", "false"})
+  public boolean pollute = false;
 
   public int numVectors = 128_000;
   public int numVectorsToScore = 20_000;
@@ -89,8 +100,8 @@ public class VectorScorerFloat32Benchmark {
   Directory dir;
   IndexInput in;
   KnnVectorValues values;
-  UpdateableRandomVectorScorer defDotScorer;
-  UpdateableRandomVectorScorer optDotScorer;
+  UpdateableRandomVectorScorer defDotScorer, defCosScorer, defEucScorer, defMipScorer;
+  UpdateableRandomVectorScorer optDotScorer, optCosScorer, optEucScorer, optMipScorer;
 
   @Setup(Level.Trial)
   public void setup() throws IOException {
@@ -105,7 +116,6 @@ public class VectorScorerFloat32Benchmark {
         out.writeBytes(ba, 0, ba.length);
       }
     }
-    perIterationInit();
   }
 
   @Setup(Level.Iteration)
@@ -119,16 +129,32 @@ public class VectorScorerFloat32Benchmark {
     values = vectorValues(size, numVectors, in, DOT_PRODUCT);
     var def = DefaultFlatVectorScorer.INSTANCE;
     defDotScorer = def.getRandomVectorScorerSupplier(DOT_PRODUCT, values.copy()).scorer();
+    defCosScorer = def.getRandomVectorScorerSupplier(COSINE, values.copy()).scorer();
+    defEucScorer = def.getRandomVectorScorerSupplier(EUCLIDEAN, values.copy()).scorer();
+    defMipScorer = def.getRandomVectorScorerSupplier(MAXIMUM_INNER_PRODUCT, values.copy()).scorer();
     defDotScorer.setScoringOrdinal(targetOrd);
+    defCosScorer.setScoringOrdinal(targetOrd);
+    defEucScorer.setScoringOrdinal(targetOrd);
+    defMipScorer.setScoringOrdinal(targetOrd);
 
     // optimized scorer
     var opt = FlatVectorScorerUtil.getLucene99FlatVectorsScorer();
     optDotScorer = opt.getRandomVectorScorerSupplier(DOT_PRODUCT, values.copy()).scorer();
+    optCosScorer = opt.getRandomVectorScorerSupplier(COSINE, values.copy()).scorer();
+    optEucScorer = opt.getRandomVectorScorerSupplier(EUCLIDEAN, values.copy()).scorer();
+    optMipScorer = opt.getRandomVectorScorerSupplier(MAXIMUM_INNER_PRODUCT, values.copy()).scorer();
     optDotScorer.setScoringOrdinal(targetOrd);
+    optCosScorer.setScoringOrdinal(targetOrd);
+    optEucScorer.setScoringOrdinal(targetOrd);
+    optMipScorer.setScoringOrdinal(targetOrd);
 
     List<Integer> list = IntStream.range(0, numVectors).boxed().collect(Collectors.toList());
     Collections.shuffle(list, random);
     indices = list.stream().limit(numVectorsToScore).mapToInt(i -> i).toArray();
+
+    if (pollute) {
+      pollute(random);
+    }
   }
 
   @TearDown
@@ -138,6 +164,32 @@ public class VectorScorerFloat32Benchmark {
     IOUtils.close(dir);
     Files.delete(path);
   }
+
+  public void pollute(Random random) throws IOException {
+    // exercise various similarities to ensure they don't have negative effects, e.g.,
+    // type pollution on virtual calls, etc.
+    float[] vec = randomVector(size, random);
+    var opt = FlatVectorScorerUtil.getLucene99FlatVectorsScorer();
+
+    for (int i = 0; i < 2; i++) {
+      dotProductOptScorer();
+      dotProductOptBulkScore();
+      cosineOptScorer();
+      cosineDefaultBulk();
+      euclideanOptScorer();
+      euclideanOptBulkScore();
+      mipOptScorer();
+      mipOptBulkScore();
+      for (var sim : List.of(COSINE, DOT_PRODUCT, EUCLIDEAN, MAXIMUM_INNER_PRODUCT)) {
+        var scorer = opt.getRandomVectorScorer(sim, values.copy(), vec);
+        for (int v = 0; v < numVectorsToScore; v++) {
+          scores[v] = scorer.score(indices[v]);
+        }
+      }
+    }
+  }
+
+  // -- dot product
 
   @Benchmark
   public float[] dotProductDefault() throws IOException {
@@ -164,6 +216,96 @@ public class VectorScorerFloat32Benchmark {
   @Benchmark
   public float[] dotProductOptBulkScore() throws IOException {
     optDotScorer.bulkScore(indices, scores, indices.length);
+    return scores;
+  }
+
+  // -- euclidean
+
+  @Benchmark
+  public float[] euclideanDefault() throws IOException {
+    for (int v = 0; v < numVectorsToScore; v++) {
+      scores[v] = defEucScorer.score(indices[v]);
+    }
+    return scores;
+  }
+
+  @Benchmark
+  public float[] euclideanDefaultBulk() throws IOException {
+    defEucScorer.bulkScore(indices, scores, indices.length);
+    return scores;
+  }
+
+  @Benchmark
+  public float[] euclideanOptScorer() throws IOException {
+    for (int v = 0; v < numVectorsToScore; v++) {
+      scores[v] = optEucScorer.score(indices[v]);
+    }
+    return scores;
+  }
+
+  @Benchmark
+  public float[] euclideanOptBulkScore() throws IOException {
+    optEucScorer.bulkScore(indices, scores, indices.length);
+    return scores;
+  }
+
+  // -- euclidean
+
+  @Benchmark
+  public float[] cosineDefault() throws IOException {
+    for (int v = 0; v < numVectorsToScore; v++) {
+      scores[v] = defCosScorer.score(indices[v]);
+    }
+    return scores;
+  }
+
+  @Benchmark
+  public float[] cosineDefaultBulk() throws IOException {
+    defCosScorer.bulkScore(indices, scores, indices.length);
+    return scores;
+  }
+
+  @Benchmark
+  public float[] cosineOptScorer() throws IOException {
+    for (int v = 0; v < numVectorsToScore; v++) {
+      scores[v] = optCosScorer.score(indices[v]);
+    }
+    return scores;
+  }
+
+  @Benchmark
+  public float[] cosineOptBulkScore() throws IOException {
+    optCosScorer.bulkScore(indices, scores, indices.length);
+    return scores;
+  }
+
+  // -- max inner product
+
+  @Benchmark
+  public float[] mipDefault() throws IOException {
+    for (int v = 0; v < numVectorsToScore; v++) {
+      scores[v] = defMipScorer.score(indices[v]);
+    }
+    return scores;
+  }
+
+  @Benchmark
+  public float[] mipDefaultBulk() throws IOException {
+    defMipScorer.bulkScore(indices, scores, indices.length);
+    return scores;
+  }
+
+  @Benchmark
+  public float[] mipOptScorer() throws IOException {
+    for (int v = 0; v < numVectorsToScore; v++) {
+      scores[v] = optMipScorer.score(indices[v]);
+    }
+    return scores;
+  }
+
+  @Benchmark
+  public float[] mipOptBulkScore() throws IOException {
+    optMipScorer.bulkScore(indices, scores, indices.length);
     return scores;
   }
 
