@@ -29,7 +29,6 @@ plugins {
 
   id "lucene.java.slowest-tests-at-end"
   id "lucene.java.show-failed-tests-at-end"
-  id "lucene.java.profiling"
   id "lucene.java.modules"
 
   id "lucene.validation.gradle-versions-cleanup"
