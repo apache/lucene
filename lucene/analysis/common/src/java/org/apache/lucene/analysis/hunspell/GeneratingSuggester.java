@@ -92,14 +92,17 @@ class GeneratingSuggester {
 
           speller.checkCanceled.run();
 
-          String root = rootChars.toString();
           IntsRef forms = entry.forms();
           for (int i = 0; i < forms.length; i++) {
-            if (isSuggestible.test(forms.ints[forms.offset + i])) {
-              roots.add(new Weighted<>(new Root<>(root, forms.ints[forms.offset + i]), sc));
-              if (roots.size() == MAX_ROOTS) {
-                roots.poll();
-              }
+            int form = forms.ints[forms.offset + i];
+            if (!isSuggestible.test(form)
+                || roots.size() == MAX_ROOTS && isWorseThan(sc, rootChars, roots.peek())) {
+              continue;
+            }
+
+            roots.add(new Weighted<>(new Root<>(rootChars.toString(), form), sc));
+            if (roots.size() > MAX_ROOTS) {
+              roots.poll();
             }
           }
         });

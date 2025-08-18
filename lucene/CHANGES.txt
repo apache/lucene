@@ -65,6 +65,8 @@ Optimizations
 
 * GITHUB#15043: Vectorize L2 normalize function. (Ramakrishna Chilaka)
 
+* GITHUB#15085: Hunspell suggestions: Ensure candidate roots are not worse before updating. (Ilia Permiashkin)
+
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
