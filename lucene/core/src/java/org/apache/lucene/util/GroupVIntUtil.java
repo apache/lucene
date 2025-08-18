@@ -17,6 +17,7 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import java.lang.invoke.VarHandle;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 
@@ -126,15 +127,6 @@ public final class GroupVIntUtil {
   }
 
   /**
-   * Provides an abstraction for read int values, so that decoding logic can be reused in different
-   * DataInput.
-   */
-  @FunctionalInterface
-  public static interface IntReader {
-    int read(long v);
-  }
-
-  /**
    * Faster implementation of read single group, It read values from the buffer that would not cross
    * boundaries.
    *
@@ -149,7 +141,13 @@ public final class GroupVIntUtil {
    *     #MAX_LENGTH_PER_GROUP}
    */
   public static int readGroupVInt(
-      DataInput in, long remaining, IntReader reader, long pos, long[] dst, int offset)
+      DataInput in,
+      long remaining,
+      VarHandle reader,
+      Object referent,
+      long pos,
+      long[] dst,
+      int offset)
       throws IOException {
     if (remaining < MAX_LENGTH_PER_GROUP) {
       readGroupVInt(in, dst, offset);
@@ -163,13 +161,13 @@ public final class GroupVIntUtil {
     final int n4Minus1 = flag & 0x03;
 
     // This code path has fewer conditionals and tends to be significantly faster in benchmarks
-    dst[offset] = reader.read(pos) & LONG_MASKS[n1Minus1];
+    dst[offset] = (int) reader.get(referent, pos) & LONG_MASKS[n1Minus1];
     pos += 1 + n1Minus1;
-    dst[offset + 1] = reader.read(pos) & LONG_MASKS[n2Minus1];
+    dst[offset + 1] = (int) reader.get(referent, pos) & LONG_MASKS[n2Minus1];
     pos += 1 + n2Minus1;
-    dst[offset + 2] = reader.read(pos) & LONG_MASKS[n3Minus1];
+    dst[offset + 2] = (int) reader.get(referent, pos) & LONG_MASKS[n3Minus1];
     pos += 1 + n3Minus1;
-    dst[offset + 3] = reader.read(pos) & LONG_MASKS[n4Minus1];
+    dst[offset + 3] = (int) reader.get(referent, pos) & LONG_MASKS[n4Minus1];
     pos += 1 + n4Minus1;
     return (int) (pos - posStart);
   }
@@ -189,7 +187,13 @@ public final class GroupVIntUtil {
    *     #MAX_LENGTH_PER_GROUP}
    */
   public static int readGroupVInt(
-      DataInput in, long remaining, IntReader reader, long pos, int[] dst, int offset)
+      DataInput in,
+      long remaining,
+      VarHandle reader,
+      Object referent,
+      long pos,
+      int[] dst,
+      int offset)
       throws IOException {
     if (remaining < MAX_LENGTH_PER_GROUP) {
       readGroupVInt(in, dst, offset);
@@ -203,13 +207,13 @@ public final class GroupVIntUtil {
     final int n4Minus1 = flag & 0x03;
 
     // This code path has fewer conditionals and tends to be significantly faster in benchmarks
-    dst[offset] = reader.read(pos) & INT_MASKS[n1Minus1];
+    dst[offset] = (int) reader.get(referent, pos) & INT_MASKS[n1Minus1];
     pos += 1 + n1Minus1;
-    dst[offset + 1] = reader.read(pos) & INT_MASKS[n2Minus1];
+    dst[offset + 1] = (int) reader.get(referent, pos) & INT_MASKS[n2Minus1];
     pos += 1 + n2Minus1;
-    dst[offset + 2] = reader.read(pos) & INT_MASKS[n3Minus1];
+    dst[offset + 2] = (int) reader.get(referent, pos) & INT_MASKS[n3Minus1];
     pos += 1 + n3Minus1;
-    dst[offset + 3] = reader.read(pos) & INT_MASKS[n4Minus1];
+    dst[offset + 3] = (int) reader.get(referent, pos) & INT_MASKS[n4Minus1];
     pos += 1 + n4Minus1;
     return (int) (pos - posStart);
   }

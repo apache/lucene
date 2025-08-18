@@ -23,6 +23,9 @@ import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
@@ -51,6 +54,14 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   static final ValueLayout.OfFloat LAYOUT_LE_FLOAT =
       ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
   private static final Optional<NativeAccess> NATIVE_ACCESS = NativeAccess.getImplementation();
+
+  private static final VarHandle VH_MEMSEG_GET_INT =
+      MethodHandles.filterCoordinates(
+          LAYOUT_LE_INT.varHandle(),
+          0,
+          MethodHandles.explicitCastArguments(
+              MethodHandles.identity(Object.class),
+              MethodType.methodType(MemorySegment.class, Object.class)));
 
   final long length;
   final long chunkSizeMask;
@@ -454,7 +465,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           GroupVIntUtil.readGroupVInt(
               this,
               curSegment.byteSize() - curPosition,
-              p -> curSegment.get(LAYOUT_LE_INT, p),
+              VH_MEMSEG_GET_INT,
+              curSegment,
               curPosition,
               dst,
               offset);
