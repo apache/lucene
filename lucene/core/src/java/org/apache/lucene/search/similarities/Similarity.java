@@ -17,6 +17,7 @@
 package org.apache.lucene.search.similarities;
 
 import java.util.Collections;
+import java.util.Objects;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.FieldInvertState;
@@ -209,6 +210,16 @@ public abstract class Similarity {
     public abstract float score(float freq, long norm);
 
     /**
+     * Return a {@link BulkSimScorer} that produces the exact same scores as this {@link SimScorer}
+     * but is more efficient at bulk-computing scores.
+     *
+     * <p><b>NOTE</b>: The returned instance is not thread-safe.
+     */
+    public BulkSimScorer asBulkSimScorer() {
+      return new DefaultBulkSimScorer(this);
+    }
+
+    /**
      * Explain the score for a single document
      *
      * @param freq Explanation of how the sloppy term frequency was computed
@@ -221,6 +232,40 @@ public abstract class Similarity {
           score(freq.getValue().floatValue(), norm),
           "score(freq=" + freq.getValue() + "), with freq of:",
           Collections.singleton(freq));
+    }
+  }
+
+  /** Specialization of {@link SimScorer} for bulk-computation of scores. */
+  public interface BulkSimScorer {
+
+    /**
+     * Bulk computation of scores. For each index {@code i} in [0, size), scores[i] is computed as
+     * score(freqs[i], norms[i]). The default implementation does the following:
+     *
+     * <pre class="prettyprint">
+     * for (int i = 0; i &lt; size; ++i) {
+     *   scores[i] = score(freqs[i], norms[i]);
+     * }
+     * </pre>
+     *
+     * <p><b>NOTE</b>: It is legal to pass the same {@code freqs} and {@code scores} arrays.
+     */
+    void score(int size, float[] freqs, long[] norms, float[] scores);
+  }
+
+  private static class DefaultBulkSimScorer implements BulkSimScorer {
+
+    private final SimScorer scorer;
+
+    DefaultBulkSimScorer(SimScorer scorer) {
+      this.scorer = Objects.requireNonNull(scorer);
+    }
+
+    @Override
+    public void score(int size, float[] freqs, long[] norms, float[] scores) {
+      for (int i = 0; i < size; ++i) {
+        scores[i] = scorer.score(freqs[i], norms[i]);
+      }
     }
   }
 }
