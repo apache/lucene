@@ -45,6 +45,11 @@ final class FeatureSortField extends SortField {
   }
 
   @Override
+  public SortField inverseSort() {
+    throw new UnsupportedOperationException("Inverse sort not supported on FeatureSortField");
+  }
+
+  @Override
   public FieldComparator<?> getComparator(int numHits, Pruning pruning) {
     return new FeatureComparator(numHits, getField(), featureName);
   }
