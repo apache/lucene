@@ -41,7 +41,7 @@ public final class GroupVIntUtil {
   /**
    * A {@link VarHandle} which allows to read ints from a {@link ByteBuffer} using {@code long}
    * offsets. The handle can be used with the {@code readGroupVInt()} methods taking a {@code
-   * VarHandle} and {@code ByteBuffer} referee.
+   * VarHandle} and {@code ByteBuffer} storage parameter.
    *
    * @see #readGroupVInt(DataInput, long, VarHandle, Object, long, int[], int)
    * @see #readGroupVInt(DataInput, long, VarHandle, Object, long, long[], int)
