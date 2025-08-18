@@ -665,6 +665,9 @@ public class TestDocValuesQueries extends LuceneTestCase {
         if (i != 55) {
           doc.add(SortedNumericDocValuesField.indexedField("sparse", 100 + i));
         }
+        if (i == 74) {
+          doc.add(SortedNumericDocValuesField.indexedField("super_sparse", 174));
+        }
         iw.addDocument(doc);
       }
       iw.commit();
@@ -680,6 +683,18 @@ public class TestDocValuesQueries extends LuceneTestCase {
         assertThat(
             searcher.rewrite(SortedNumericDocValuesField.newSlowRangeQuery("sparse", 0, 50)),
             instanceOf(MatchNoDocsQuery.class));
+        assertThat(
+            searcher.rewrite(SortedNumericDocValuesField.newSlowRangeQuery("super_sparse", 0, 50)),
+            instanceOf(MatchNoDocsQuery.class));
+        assertThat(
+            searcher.rewrite(SortedNumericDocValuesField.newSlowRangeQuery("super_sparse", 250, 350)),
+            instanceOf(MatchNoDocsQuery.class));
+        assertThat(
+            searcher
+                .rewrite(SortedNumericDocValuesField.newSlowRangeQuery("super_sparse", 174, 174))
+                .getClass()
+                .toString(),
+            containsString("SortedNumericDocValuesRangeQuery"));
         assertThat(
             searcher
                 .rewrite(SortedNumericDocValuesField.newSlowRangeQuery("with_index", 0, 150))

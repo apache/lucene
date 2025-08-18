@@ -134,6 +134,9 @@ public abstract class DocValuesSkipper {
   public static long globalMinValue(IndexSearcher searcher, String field) throws IOException {
     long minValue = Long.MAX_VALUE;
     for (LeafReaderContext ctx : searcher.getLeafContexts()) {
+      if (ctx.reader().getFieldInfos().fieldInfo(field) == null) {
+        continue; // no field values in this segment, so we can ignore it
+      }
       DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper(field);
       if (skipper == null) {
         minValue = Long.MIN_VALUE;
@@ -154,6 +157,9 @@ public abstract class DocValuesSkipper {
   public static long globalMaxValue(IndexSearcher searcher, String field) throws IOException {
     long maxValue = Long.MIN_VALUE;
     for (LeafReaderContext ctx : searcher.getLeafContexts()) {
+      if (ctx.reader().getFieldInfos().fieldInfo(field) == null) {
+        continue; // no field values in this segment, so we can ignore it
+      }
       DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper(field);
       if (skipper == null) {
         maxValue = Long.MAX_VALUE;
