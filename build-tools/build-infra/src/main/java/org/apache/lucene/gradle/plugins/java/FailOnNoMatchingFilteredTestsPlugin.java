@@ -17,11 +17,13 @@
 package org.apache.lucene.gradle.plugins.java;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Inject;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
+import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.services.BuildService;
 import org.gradle.api.services.BuildServiceParameters;
@@ -36,53 +38,97 @@ import org.gradle.api.tasks.testing.TestResult;
  * usually caused by a typo in the filter pattern.
  */
 public class FailOnNoMatchingFilteredTestsPlugin extends LuceneGradlePlugin {
+  private static final String SERVICE_NAME = "testCountService";
+  private static final String CHECK_TASK_NAME = "checkAnyTestIncludedAfterFiltering";
+
+  public abstract static class RootExtPlugin extends LuceneGradlePlugin {
+    @Override
+    public void apply(Project project) {
+      applicableToRootProjectOnly(project);
+
+      // Register the shared build service that will do the end-of-build check
+      Provider<TestCountService> serviceProvider =
+          project
+              .getGradle()
+              .getSharedServices()
+              .registerIfAbsent(SERVICE_NAME, TestCountService.class, _ -> {});
+
+      project
+          .getTasks()
+          .register(
+              CHECK_TASK_NAME,
+              task -> {
+                task.usesService(serviceProvider);
+                task.doFirst(
+                    _ -> {
+                      var service = serviceProvider.get();
+                      int tasks = service.executedTasks.get();
+                      int tests = service.executedTests.get();
+                      if (tasks > 0 && tests == 0) {
+                        throw new GradleException(
+                            String.format(
+                                Locale.ROOT,
+                                "%d test %s executed but no tests matched the provided --tests filters?",
+                                tasks,
+                                tasks == 1 ? "task" : "tasks"));
+                      }
+                    });
+              });
+    }
+  }
+
   @Override
   public void apply(Project project) {
-    applicableToRootProjectOnly(project);
+    requiresAppliedPlugin(project, JavaPlugin.class);
+
+    if (project != project.getRootProject()) {
+      project.getRootProject().getPlugins().apply(RootExtPlugin.class);
+    }
 
     // Detect if test filtering is in effect.
     List<String> taskNames = project.getGradle().getStartParameter().getTaskNames();
     boolean doCount = taskNames.stream().anyMatch("--tests"::equals);
 
-    // Register the shared build service that will do the end-of-build check
-    Provider<TestCountService> service =
-        project
-            .getGradle()
-            .getSharedServices()
-            .registerIfAbsent("testCountService", TestCountService.class, _ -> {});
+    project
+        .getTasks()
+        .withType(Test.class)
+        .configureEach(
+            task -> {
+              // Always: do not fail the Test task itself on no matching tests
+              task.getFilter().setFailOnNoMatchingTests(false);
 
-    project.allprojects(
-        p -> {
-          p.getTasks()
-              .withType(Test.class)
-              .configureEach(
-                  task -> {
-                    // Always: do not fail the Test task itself on no matching tests
-                    task.getFilter().setFailOnNoMatchingTests(false);
+              if (doCount) {
+                @SuppressWarnings("unchecked")
+                Provider<TestCountService> service =
+                    (Provider<TestCountService>)
+                        project
+                            .getGradle()
+                            .getSharedServices()
+                            .getRegistrations()
+                            .getByName(SERVICE_NAME)
+                            .getService();
 
-                    if (doCount) {
-                      task.usesService(service);
-                      task.doFirst(_ -> service.get().incrementExecutedTasks());
-                      task.addTestListener(
-                          new TestListener() {
-                            @Override
-                            public void beforeSuite(TestDescriptor suite) {}
+                task.usesService(service);
+                task.finalizedBy(":" + CHECK_TASK_NAME);
+                task.doFirst(_ -> service.get().incrementExecutedTasks());
+                task.addTestListener(
+                    new TestListener() {
+                      @Override
+                      public void beforeSuite(TestDescriptor suite) {}
 
-                            @Override
-                            public void afterSuite(TestDescriptor suite, TestResult result) {
-                              service.get().addExecutedTests((int) result.getTestCount());
-                            }
+                      @Override
+                      public void afterSuite(TestDescriptor suite, TestResult result) {
+                        service.get().addExecutedTests((int) result.getTestCount());
+                      }
 
-                            @Override
-                            public void beforeTest(TestDescriptor testDescriptor) {}
+                      @Override
+                      public void beforeTest(TestDescriptor testDescriptor) {}
 
-                            @Override
-                            public void afterTest(
-                                TestDescriptor testDescriptor, TestResult result) {}
-                          });
-                    }
-                  });
-        });
+                      @Override
+                      public void afterTest(TestDescriptor testDescriptor, TestResult result) {}
+                    });
+              }
+            });
   }
 
   /**
@@ -90,7 +136,7 @@ public class FailOnNoMatchingFilteredTestsPlugin extends LuceneGradlePlugin {
    * completion if test filtering was applied and no tests ran.
    */
   public abstract static class TestCountService
-      implements BuildService<BuildServiceParameters.None>, AutoCloseable {
+      implements BuildService<BuildServiceParameters.None> {
     private final AtomicInteger executedTests = new AtomicInteger(0);
     private final AtomicInteger executedTasks = new AtomicInteger(0);
 
@@ -103,15 +149,6 @@ public class FailOnNoMatchingFilteredTestsPlugin extends LuceneGradlePlugin {
 
     void addExecutedTests(int n) {
       executedTests.addAndGet(n);
-    }
-
-    @Override
-    public void close() {
-      int tasks = executedTasks.get();
-      int tests = executedTests.get();
-      if (tasks > 0 && tests == 0) {
-        throw new GradleException("No tests matched the provided --tests filters?");
-      }
     }
   }
 }

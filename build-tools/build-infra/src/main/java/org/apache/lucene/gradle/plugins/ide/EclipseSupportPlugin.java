@@ -32,6 +32,7 @@ import org.apache.lucene.gradle.plugins.java.EcjLintPlugin;
 import org.apache.tools.ant.filters.ReplaceTokens;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.VersionCatalog;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
@@ -64,9 +65,8 @@ public class EclipseSupportPlugin extends LuceneGradlePlugin {
             OPT_ECLIPSE_JAVA_VERSION,
             "Set Java version for Eclipse IDE",
             getLuceneBuildGlobals(rootProject).getMinJavaVersion().map(JavaVersion::toString));
-    Provider<String> eclipseErrorsOption =
-        buildOptions.addOption(
-            OPT_ECLIPSE_ERRORS, "Sets eclipse IDE lint level (ignore/warning/error)", "warning");
+    buildOptions.addOption(
+        OPT_ECLIPSE_ERRORS, "Sets eclipse IDE lint level (ignore/warning/error)", "warning");
 
     // Only apply Eclipse configuration setup if an explicit 'eclipse' parameter is invoked.
     if (rootProject.getGradle().getStartParameter().getTaskNames().contains("eclipse")) {
@@ -182,7 +182,7 @@ public class EclipseSupportPlugin extends LuceneGradlePlugin {
   }
 
   private static void addDependencyConfigurations(Project p, EclipseClasspath classpath) {
-    var newConfigurations = new ArrayList<>(classpath.getPlusConfigurations());
+    List<Configuration> newConfigurations = new ArrayList<>(classpath.getPlusConfigurations());
     var conf = p.getConfigurations();
     newConfigurations.add(conf.getByName("compileClasspath"));
     newConfigurations.add(conf.getByName("testCompileClasspath"));
