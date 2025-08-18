@@ -189,7 +189,7 @@ public class CodeProfilingPlugin extends LuceneGradlePlugin {
             task.jvmArgs(
                 List.of(
                     "-XX:StartFlightRecording=dumponexit=true,maxsize=250M,settings="
-                        + getProjectRootPath(project).resolve("gradle/testing/profiling.jfc"),
+                        + gradlePluginResource(project, "testing/profiling.jfc"),
                     "-XX:+UnlockDiagnosticVMOptions",
                     "-XX:+DebugNonSafepoints"));
             task.dependsOn(cleanPreviousProfiles);

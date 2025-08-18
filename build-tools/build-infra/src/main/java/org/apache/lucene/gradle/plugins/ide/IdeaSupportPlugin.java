@@ -23,7 +23,7 @@ import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
 
-/** Adds (limited) development support for Eclipse IDE. */
+/** Adds some development support for IntelliJ Idea IDE. */
 public class IdeaSupportPlugin extends LuceneGradlePlugin {
 
   @Override
