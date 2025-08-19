@@ -114,33 +114,23 @@ public class UniformSplitPostingsFormat extends PostingsFormat {
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
     PostingsWriterBase postingsWriter = new Lucene103PostingsWriter(state);
-    boolean success = false;
     try {
-      FieldsConsumer termsWriter =
-          createUniformSplitTermsWriter(
-              postingsWriter, state, targetNumBlockLines, deltaNumLines, blockEncoder);
-      success = true;
-      return termsWriter;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(postingsWriter);
-      }
+      return createUniformSplitTermsWriter(
+          postingsWriter, state, targetNumBlockLines, deltaNumLines, blockEncoder);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, postingsWriter);
+      throw t;
     }
   }
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
     PostingsReaderBase postingsReader = new Lucene103PostingsReader(state);
-    boolean success = false;
     try {
-      FieldsProducer termsReader =
-          createUniformSplitTermsReader(postingsReader, state, blockDecoder);
-      success = true;
-      return termsReader;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(postingsReader);
-      }
+      return createUniformSplitTermsReader(postingsReader, state, blockDecoder);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, postingsReader);
+      throw t;
     }
   }
 

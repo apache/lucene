@@ -254,7 +254,7 @@ public class TestIntFloatHashMap extends LuceneTestCase {
   public void testPutWithExpansions() {
     final int COUNT = 10000;
     final Random rnd = new Random(random().nextInt());
-    final HashSet<Object> values = new HashSet<Object>();
+    final HashSet<Object> values = new HashSet<>();
 
     for (int i = 0; i < COUNT; i++) {
       final int v = rnd.nextInt();

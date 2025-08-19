@@ -20,6 +20,7 @@ import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsTask;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.lucene.gradle.plugins.ide.EclipseSupportPlugin;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 
@@ -36,7 +37,11 @@ public class BuildOptionGroupsPlugin implements Plugin<Project> {
                   optionGroups -> {
                     optionGroups.group("Lucene version strings", "version\\.(.*)");
 
-                    optionGroups.group("IDE-tweaking options", "eclipse\\.(.+)");
+                    optionGroups.group(
+                        "IDE-tweaking options",
+                        explicitList(
+                            EclipseSupportPlugin.OPT_ECLIPSE_ERRORS,
+                            EclipseSupportPlugin.OPT_ECLIPSE_JAVA_VERSION));
 
                     optionGroups.group(
                         "Optional testing and test resources",
@@ -48,7 +53,10 @@ public class BuildOptionGroupsPlugin implements Plugin<Project> {
                             "hunspell.repo.path",
                             "validation.owasp",
                             "validation.owasp.apikey",
-                            "validation.owasp.threshold"));
+                            "validation.owasp.threshold",
+                            "tests.linedocsfile",
+                            "tests.LUCENE_VERSION",
+                            "tests.bwcdir"));
 
                     optionGroups.group("Test profiling", "tests\\.profile\\.(.*)");
 

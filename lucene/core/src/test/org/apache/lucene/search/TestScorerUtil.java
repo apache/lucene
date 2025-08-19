@@ -36,6 +36,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.SparseFixedBitSet;
 
 public class TestScorerUtil extends LuceneTestCase {
@@ -91,6 +92,40 @@ public class TestScorerUtil extends LuceneTestCase {
         ImpactsEnum ie = te.impacts(PostingsEnum.FREQS);
         assertSame(ie, ScorerUtil.likelyImpactsEnum(ie));
       }
+    }
+  }
+
+  public void testMinRequiredScore() {
+    int iters = atLeast(10000);
+    for (int iter = 0; iter < iters; iter++) {
+      double maxRemainingScore = random().nextDouble();
+      float minCompetitiveScore = random().nextFloat();
+      int numScorers = random().nextInt(1, 1000);
+
+      double minRequiredScore =
+          ScorerUtil.minRequiredScore(maxRemainingScore, minCompetitiveScore, numScorers);
+      if (minCompetitiveScore < maxRemainingScore) {
+        assertTrue(minRequiredScore <= 0);
+      } else {
+        // The value before minRequiredScore must not be able to produce a score >=
+        // minCompetitiveScore.
+        assertFalse(
+            (float)
+                    MathUtil.sumUpperBound(
+                        Math.nextDown(minRequiredScore) + maxRemainingScore, numScorers)
+                >= minCompetitiveScore);
+      }
+
+      // NOTE: we need to assert the internal while loop ends within an acceptable iterations. But
+      // it seems there is no easy way to do this assertion, so the assertion below relies on the
+      // internal implementation detail of ScorerUtil.minRequiredScore
+      double initialMinRequiredScore = minCompetitiveScore - maxRemainingScore;
+      double subtraction = Math.ulp(minCompetitiveScore);
+      int expectConverge = 10;
+      for (int i = 0; i < expectConverge; i++) {
+        initialMinRequiredScore -= subtraction;
+      }
+      assertTrue(initialMinRequiredScore <= minRequiredScore);
     }
   }
 }

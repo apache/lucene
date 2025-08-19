@@ -297,7 +297,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     }
 
     long shouldCost = computeShouldCost();
-    List<Scorer> optional = new ArrayList<Scorer>();
+    List<Scorer> optional = new ArrayList<>();
     for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
       optional.add(ss.get(shouldCost));
     }

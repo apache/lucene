@@ -1,4 +1,6 @@
 import org.gradle.internal.jvm.Jvm
+import org.apache.lucene.gradle.plugins.java.RenderJavadocTaskBase
+import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -36,6 +38,8 @@ allprojects {
       relativeDocPath = project.path.replaceFirst(/:\w+:/, "").replace(':', '/')
     }
 
+    JavaVersion minJavaVersion = buildGlobals.minJavaVersion.get()
+
     def renderJavadoc = tasks.register("renderJavadoc", RenderJavadocTask, {
       description = "Generates Javadoc API documentation for each module. This directly invokes javadoc tool."
       group = "documentation"
@@ -44,7 +48,7 @@ allprojects {
       dependsOn sourceSets.main.compileClasspath
       classpath = sourceSets.main.compileClasspath
       srcDirSet = sourceSets.main.java
-      releaseVersion = rootProject.ext.minJavaVersion
+      releaseVersion = minJavaVersion
 
       outputDir = project.tasks.named("javadoc").get().destinationDir
     })
@@ -60,12 +64,7 @@ allprojects {
 
     if (project.path == ':lucene:luke' || !(project in rootProject.ext.mavenProjects)) {
       // These projects are not part of the public API so we don't render their javadocs
-      // as part of the site's creation. A side-effect of this is that javadocs would not
-      // be linted for these projects. To avoid this, we connect the regular javadoc task
-      // to check so that everything is validated.
-      project.tasks.named("check").configure {
-        dependsOn renderJavadoc
-      }
+      // as part of the site's creation. Linting happens via javac
     } else {
       tasks.register("renderSiteJavadoc", RenderJavadocTask, {
         description = "Generates Javadoc API documentation for the site (relative links)."
@@ -75,7 +74,7 @@ allprojects {
         dependsOn sourceSets.main.compileClasspath
         classpath = sourceSets.main.compileClasspath
         srcDirSet = sourceSets.main.java
-        releaseVersion = rootProject.ext.minJavaVersion
+        releaseVersion = minJavaVersion
 
         relativeProjectLinks = true
 
@@ -269,7 +268,7 @@ class OfflineLink implements Serializable {
 }
 
 @CacheableTask
-class RenderJavadocTask extends DefaultTask {
+abstract class RenderJavadocTask extends RenderJavadocTaskBase {
   @InputFiles
   @PathSensitive(PathSensitivity.RELATIVE)
   @IgnoreEmptyDirectories
@@ -325,15 +324,6 @@ class RenderJavadocTask extends DefaultTask {
   @Input
   List<String> javadocMissingIgnore = []
 
-  @Input
-  @Optional
-  ListProperty<String> extraOpts = project.objects.listProperty(String)
-
-  @Optional
-  @Input
-  final Property<String> executable = project.objects.property(String).convention(
-  project.provider { Jvm.current().javadocExecutable.toString() })
-
   @InputDirectory
   @PathSensitive(PathSensitivity.RELATIVE)
   @IgnoreEmptyDirectories
@@ -368,13 +358,11 @@ class RenderJavadocTask extends DefaultTask {
         .collect {  dir -> project.file("${dir}/overview.html") }
         .findAll { overviewFile -> overviewFile.exists() }
 
-    if (!overviewFiles.isEmpty()) {
-      assert overviewFiles.size() == 1 : "More than one overview file?: " + overviewFiles
-      opts << [
-        '-overview',
-        project.file("${overviewFiles.getFirst()}/overview.html")
-      ]
-    }
+    assert overviewFiles.size() == 1 : "Must be exactly one overview.html file: " + overviewFiles
+    opts << [
+      '-overview',
+      project.file(overviewFiles.getFirst())
+    ]
 
     opts << ['-d', outputDir]
     opts << '-protected'
@@ -399,9 +387,11 @@ class RenderJavadocTask extends DefaultTask {
         classpath.asPath
       ]
     }
+
+    LuceneBuildGlobalsExtension buildGlobals = project.rootProject.extensions.getByType(LuceneBuildGlobalsExtension)
     opts << [
       '-bottom',
-      "<i>Copyright &copy; 2000-${project.buildYear} Apache Software Foundation. All Rights Reserved.</i>"
+      "<i>Copyright &copy; 2000-${buildGlobals.buildYear} Apache Software Foundation. All Rights Reserved.</i>"
     ]
 
     opts << [
@@ -540,12 +530,12 @@ class RenderJavadocTask extends DefaultTask {
     def javadocCmd = project.file(executable.get())
     logger.info("Javadoc executable used: ${javadocCmd}")
 
-    project.quietExec {
+    buildGlobals.quietExec(this, {
       executable javadocCmd
 
       args += ["@${optionsFile}"]
       args += jOpts
-    }
+    })
 
     // append some special table css, prettify css
     ant.concat(destfile: "${outputDir}/stylesheet.css", append: "true", fixlastline: "true", encoding: "UTF-8") {

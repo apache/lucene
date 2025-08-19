@@ -81,7 +81,6 @@ public class FSTTermsReader extends FieldsProducer {
 
     IndexInput in = this.fstTermsInput;
 
-    boolean success = false;
     try {
       CodecUtil.checkIndexHeader(
           in,
@@ -110,11 +109,9 @@ public class FSTTermsReader extends FieldsProducer {
         TermsReader previous = fields.put(fieldInfo.name, current);
         checkFieldSummary(state.segmentInfo, in, current, previous);
       }
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(in);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, in);
+      throw t;
     }
   }
 
@@ -759,7 +756,7 @@ public class FSTTermsReader extends FieldsProducer {
     final ArrayList<FST.Arc<T>> queue = new ArrayList<>();
     final BitSet seen = new BitSet();
     final FST.BytesReader reader = fst.getBytesReader();
-    final FST.Arc<T> startArc = fst.getFirstArc(new FST.Arc<T>());
+    final FST.Arc<T> startArc = fst.getFirstArc(new FST.Arc<>());
     queue.add(startArc);
     while (!queue.isEmpty()) {
       final FST.Arc<T> arc = queue.remove(0);

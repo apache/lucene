@@ -33,7 +33,7 @@ public class TestRollingBuffer extends LuceneTestCase {
   public void test() {
 
     final RollingBuffer<Position> buffer =
-        new RollingBuffer<Position>() {
+        new RollingBuffer<>() {
           @Override
           protected Position newInstance() {
             final Position pos = new Position();

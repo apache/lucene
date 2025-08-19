@@ -59,7 +59,7 @@ public class FSTUtil {
 
     queue.add(
         new Path<>(
-            0, fst.getFirstArc(new FST.Arc<T>()), fst.outputs.getNoOutput(), new IntsRefBuilder()));
+            0, fst.getFirstArc(new FST.Arc<>()), fst.outputs.getNoOutput(), new IntsRefBuilder()));
 
     final FST.Arc<T> scratchArc = new FST.Arc<>();
     final FST.BytesReader fstReader = fst.getBytesReader();

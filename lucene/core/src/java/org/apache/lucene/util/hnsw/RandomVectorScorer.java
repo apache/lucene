@@ -35,6 +35,21 @@ public interface RandomVectorScorer {
   float score(int node) throws IOException;
 
   /**
+   * Score a list of numNodes and store the results in the scores array.
+   *
+   * <p>This may be more efficient than calling {@link #score(int)} for each node.
+   *
+   * @param nodes array of nodes to score.
+   * @param scores output array of scores corresponding to each node.
+   * @param numNodes number of nodes to score. Must not exceed length of nodes or scores arrays.
+   */
+  default void bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
+    for (int i = 0; i < numNodes; i++) {
+      scores[i] = score(nodes[i]);
+    }
+  }
+
+  /**
    * @return the maximum possible ordinal for this scorer
    */
   int maxOrd();

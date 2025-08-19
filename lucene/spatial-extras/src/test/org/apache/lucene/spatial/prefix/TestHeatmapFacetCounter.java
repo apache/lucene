@@ -66,8 +66,8 @@ public class TestHeatmapFacetCounter extends StrategyTestCase {
 
   @After
   public void after() {
-    log.info(
-        "Validated " + cellsValidated + " cells, " + cellValidatedNonZero + " non-zero"); // nowarn
+    System.out.println(
+        "Validated " + cellsValidated + " cells, " + cellValidatedNonZero + " non-zero");
   }
 
   @Test

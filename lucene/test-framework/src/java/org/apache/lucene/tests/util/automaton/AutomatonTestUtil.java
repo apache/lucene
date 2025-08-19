@@ -296,7 +296,7 @@ public class AutomatonTestUtil extends Assert {
     }
   }
 
-  /**
+  /*
    * below are original, unoptimized implementations of DFA operations for testing. These are from
    * brics automaton, full license (BSD) below:
    */
@@ -384,7 +384,7 @@ public class AutomatonTestUtil extends Assert {
 
   /** Simple, original brics implementation of Brzozowski minimize() */
   public static Automaton minimizeSimple(Automaton a) {
-    Set<Integer> initialSet = new HashSet<Integer>();
+    Set<Integer> initialSet = new HashSet<>();
     a = determinizeSimple(reverseOriginal(a, initialSet), initialSet);
     initialSet.clear();
     a = determinizeSimple(reverseOriginal(a, initialSet), initialSet);
@@ -491,7 +491,7 @@ public class AutomatonTestUtil extends Assert {
    */
   public static Set<IntsRef> getFiniteStringsRecursive(Automaton a, int limit) {
     HashSet<IntsRef> strings = new HashSet<>();
-    if (!getFiniteStrings(a, 0, new HashSet<Integer>(), strings, new IntsRefBuilder(), limit)) {
+    if (!getFiniteStrings(a, 0, new HashSet<>(), strings, new IntsRefBuilder(), limit)) {
       return strings;
     }
     return strings;

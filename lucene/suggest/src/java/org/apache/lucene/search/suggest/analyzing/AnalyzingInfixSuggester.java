@@ -807,7 +807,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
           leaves.get(segment).reader().getSortedSetDocValues(CONTEXTS_FIELD_NAME);
       Set<BytesRef> contexts;
       if (contextsDV != null) {
-        contexts = new HashSet<BytesRef>();
+        contexts = new HashSet<>();
         int targetDocID = fd.doc - leaves.get(segment).docBase;
         if (contextsDV.advance(targetDocID) == targetDocID) {
           for (int j = 0; j < contextsDV.docValueCount(); j++) {

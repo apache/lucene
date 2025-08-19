@@ -72,3 +72,64 @@ invalid:
 valid:
   - |
     var foo = "TOOD: whatever";
+---
+id: missing-spi-block-tag
+invalid:
+  - |
+    public class X extends TokenizerFactory {}
+  - |
+    public class X extends TokenFilterFactory implements A,B,C {}
+  - |
+    public final class X extends CharFilterFactory {}
+  - |
+    @Foo
+    public class X extends CharFilterFactory {}
+  - |
+    /** boo */
+    public class X extends TokenizerFactory {}
+  - |
+    /* not javadoc
+    * @lucene.spi {@value #NAME}
+    */
+    public class X extends TokenizerFactory {}
+valid:
+  - |
+    /** this is javadoc
+    * @lucene.spi {@value #NAME}
+    */
+    public class X extends TokenizerFactory {}
+  - |
+    public abstract class X extends TokenizerFactory {}
+  - |
+    private class X extends TokenizerFactory {}
+---
+id: incubator-module-dependency
+invalid:
+  - |
+    module org.apache.lucene.foo {
+      requires jdk.incubator.something;
+    }
+  - import jdk.incubator.something.SomethingElse;
+valid:
+  - |
+    module org.apache.lucene.foo {
+      requires org.apache.lucene.bar;
+    }
+---
+id: javadoc-only-inheriting-super
+invalid:
+  - /** {@inheritDoc} */
+  - /** {@inheritDoc } */
+  - "/**\n * {@inheritDoc}\n */"
+valid:
+  - |
+    /**
+    * {@inheritDoc}
+    *
+    * And something.
+    */
+  - |
+    /**
+    * Something and...
+    * {@inheritDoc}
+    */
