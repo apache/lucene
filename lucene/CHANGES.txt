@@ -253,6 +253,8 @@ Optimizations
 * GITHUB#15039: Score computations are now more reliably vectorized.
   (Adrien Grand, Guo Feng)
 
+* GITHUB#15083: Use DocValuesSkippers in SortedNumericDocValuesRangeQuery#rewrite(). (Alan Woodward)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
