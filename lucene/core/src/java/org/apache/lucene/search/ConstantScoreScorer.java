@@ -27,11 +27,11 @@ import org.apache.lucene.util.Bits;
  */
 public final class ConstantScoreScorer extends Scorer {
 
-  private class DocIdSetIteratorWrapper extends DocIdSetIterator {
+  class DocIdSetIteratorWrapper extends DocIdSetIterator {
     int doc = -1;
     DocIdSetIterator delegate;
 
-    DocIdSetIteratorWrapper(DocIdSetIterator delegate) {
+    public DocIdSetIteratorWrapper(DocIdSetIterator delegate) {
       this.delegate = delegate;
     }
 
@@ -53,6 +53,13 @@ public final class ConstantScoreScorer extends Scorer {
     @Override
     public long cost() {
       return delegate.cost();
+    }
+
+    public static DocIdSetIterator unWrapper(DocIdSetIterator iterator) {
+      if (iterator instanceof DocIdSetIteratorWrapper) {
+        return ((DocIdSetIteratorWrapper) iterator).delegate;
+      }
+      return iterator;
     }
   }
 

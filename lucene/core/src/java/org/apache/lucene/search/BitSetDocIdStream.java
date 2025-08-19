@@ -28,10 +28,14 @@ final class BitSetDocIdStream extends DocIdStream {
   private int upTo;
 
   BitSetDocIdStream(FixedBitSet bitSet, int offset) {
+    this(bitSet, offset, offset, Integer.MAX_VALUE);
+  }
+
+  BitSetDocIdStream(FixedBitSet bitSet, int offset, int upTo, int max) {
     this.bitSet = bitSet;
     this.offset = offset;
-    upTo = offset;
-    max = MathUtil.unsignedMin(Integer.MAX_VALUE, offset + bitSet.length());
+    this.upTo = upTo;
+    this.max = MathUtil.unsignedMin(max, offset + bitSet.length());
   }
 
   @Override
