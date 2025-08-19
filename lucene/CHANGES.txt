@@ -65,6 +65,8 @@ Optimizations
 
 * GITHUB#15043: Vectorize L2 normalize function. (Ramakrishna Chilaka)
 
+* GITHUB#15085: Hunspell suggestions: Ensure candidate roots are not worse before updating. (Ilia Permiashkin)
+
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
@@ -164,6 +166,9 @@ Improvements
 
 * GITHUB#14816: Expose search strategy in KNN query
 
+* GITHUB#15089, GITHUB#15079: Refactor GroupVIntUtil functional interface lambda
+  which does not inline correctly in MemorySegmentIndexInput (Uwe Schindler, Robert Muir)
+
 Optimizations
 ---------------------
 * GITHUB#14932: Switched to GroupVarInt Encoding for HNSW Graph edges, added backwards compatibility (Akira Lonske)
@@ -247,6 +252,8 @@ Optimizations
 
 * GITHUB#15039: Score computations are now more reliably vectorized.
   (Adrien Grand, Guo Feng)
+
+* GITHUB#15083: Use DocValuesSkippers in SortedNumericDocValuesRangeQuery#rewrite(). (Alan Woodward)
 
 Changes in Runtime Behavior
 ---------------------
