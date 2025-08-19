@@ -97,16 +97,21 @@ public final class SoftDeletesRetentionMergePolicy extends OneMergeWrappingMerge
   static CodecReader applyRetentionQuery(
       String softDeleteField, Query retentionQuery, CodecReader reader) throws IOException {
     Bits liveDocs = reader.getLiveDocs();
+    // TODO: Move getHardLiveDocs to Parent(LeafReader)?
+    Bits hardLiveDocs = ((SegmentReader) reader).getHardLiveDocs();
     if (liveDocs == null) { // no deletes - just keep going
       return reader;
     }
+    // TODO: It seems wrapLiveDocs is useless?
     CodecReader wrappedReader =
         FilterCodecReader.wrapLiveDocs(
             reader,
-            new Bits() { // only search deleted
+            new Bits() { // only search soft deleted
               @Override
               public boolean get(int index) {
-                return liveDocs.get(index) == false;
+                // TODO: Can we extract softLiveDocs from liveDocs and hardLiveDocs, and use it
+                // directly, even instead of FieldExistsQuery?
+                return liveDocs.get(index) == false && hardLiveDocs.get(index) == true;
               }
 
               @Override
