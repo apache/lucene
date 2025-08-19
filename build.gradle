@@ -27,11 +27,8 @@ plugins {
   id "lucene.root-project.setup"
   id "lucene.java-projects.conventions"
 
-  id "lucene.java.fail-on-no-tests"
   id "lucene.java.slowest-tests-at-end"
   id "lucene.java.show-failed-tests-at-end"
-  id "lucene.java.profiling"
-  id "lucene.java.coverage"
   id "lucene.java.modules"
 
   id "lucene.validation.gradle-versions-cleanup"
@@ -39,9 +36,6 @@ plugins {
   id "lucene.validation.jar-checks"
   id "lucene.validation.rat-sources"
   id "lucene.validation.owasp"
-
-  id "lucene.ide.intellij-idea"
-  id "lucene.ide.eclipse"
 
   id "lucene.publications.maven"
   id "lucene.publications.maven-to-nexus-releases"

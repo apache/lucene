@@ -28,6 +28,8 @@ import org.apache.lucene.gradle.plugins.hacks.HacksPlugin;
 import org.apache.lucene.gradle.plugins.hacks.TuneJvmOptionsPlugin;
 import org.apache.lucene.gradle.plugins.hacks.WipeGradleTempPlugin;
 import org.apache.lucene.gradle.plugins.help.BuildOptionGroupsPlugin;
+import org.apache.lucene.gradle.plugins.ide.EclipseSupportPlugin;
+import org.apache.lucene.gradle.plugins.ide.IdeaSupportPlugin;
 import org.apache.lucene.gradle.plugins.regenerate.RegenerateTasksSupportPlugin;
 import org.apache.lucene.gradle.plugins.spotless.GradleGroovyFormatPlugin;
 import org.apache.lucene.gradle.plugins.spotless.ValidateSourcePatternsPlugin;
@@ -76,6 +78,9 @@ public class RootProjectSetupPlugin extends LuceneGradlePlugin {
     plugins.apply(ValidateSourcePatternsPlugin.class);
     plugins.apply(ConfigureLockFilePlugin.class);
     plugins.apply(CheckGradlewScriptsTweakedPlugin.class);
+
+    plugins.apply(EclipseSupportPlugin.class);
+    plugins.apply(IdeaSupportPlugin.class);
 
     // Apply more convention plugins to all projects.
     rootProject
