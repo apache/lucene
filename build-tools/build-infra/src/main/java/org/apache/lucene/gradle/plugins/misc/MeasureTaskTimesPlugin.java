@@ -33,6 +33,7 @@ import org.gradle.api.services.BuildServiceParameters;
 import org.gradle.build.event.BuildEventsListenerRegistry;
 import org.gradle.tooling.events.FinishEvent;
 import org.gradle.tooling.events.OperationCompletionListener;
+import org.gradle.tooling.events.task.TaskFailureResult;
 import org.gradle.tooling.events.task.TaskFinishEvent;
 import org.gradle.tooling.events.task.TaskSuccessResult;
 
@@ -105,6 +106,8 @@ public class MeasureTaskTimesPlugin extends LuceneGradlePlugin {
     /** Execution time of all successful tasks. Keys are task paths, values are in millis. */
     private final ConcurrentHashMap<String, Long> taskTimes = new ConcurrentHashMap<>();
 
+    private volatile boolean hadFailedTask;
+
     @Override
     public void onFinish(FinishEvent event) {
       if (event instanceof TaskFinishEvent tfe) {
@@ -113,6 +116,10 @@ public class MeasureTaskTimesPlugin extends LuceneGradlePlugin {
               Math.max(0, successResult.getEndTime() - successResult.getStartTime());
           String taskPath = tfe.getDescriptor().getTaskPath();
           taskTimes.compute(taskPath, (_, value) -> (value == null ? 0 : value) + durationMillis);
+        }
+
+        if (tfe.getResult() instanceof TaskFailureResult) {
+          hadFailedTask = true;
         }
       }
     }
@@ -124,7 +131,7 @@ public class MeasureTaskTimesPlugin extends LuceneGradlePlugin {
 
     @Override
     public void close() {
-      if (taskTimes.isEmpty()) return;
+      if (taskTimes.isEmpty() || hadFailedTask) return;
 
       var params = getParameters();
 
