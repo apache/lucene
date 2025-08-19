@@ -24,6 +24,7 @@ import org.apache.lucene.gradle.plugins.eclint.EditorConfigLintPlugin;
 import org.apache.lucene.gradle.plugins.gitgrep.GitGrepPlugin;
 import org.apache.lucene.gradle.plugins.gitinfo.GitInfoPlugin;
 import org.apache.lucene.gradle.plugins.globals.RegisterBuildGlobalsPlugin;
+import org.apache.lucene.gradle.plugins.hacks.DumpGradleStateOnStalledBuildsPlugin;
 import org.apache.lucene.gradle.plugins.hacks.HacksPlugin;
 import org.apache.lucene.gradle.plugins.hacks.TuneJvmOptionsPlugin;
 import org.apache.lucene.gradle.plugins.hacks.WipeGradleTempPlugin;
@@ -81,6 +82,9 @@ public class RootProjectSetupPlugin extends LuceneGradlePlugin {
 
     plugins.apply(EclipseSupportPlugin.class);
     plugins.apply(IdeaSupportPlugin.class);
+
+    plugins.apply(MeasureTaskTimesPlugin.class);
+    plugins.apply(DumpGradleStateOnStalledBuildsPlugin.class);
 
     // Apply more convention plugins to all projects.
     rootProject

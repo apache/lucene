@@ -41,7 +41,6 @@ plugins {
   id "lucene.publications.maven-to-nexus-releases"
   id "lucene.publications.maven-to-nexus-snapshots"
 
-  id "lucene.misc.measure-task-times"
   id "lucene.misc.pylucene"
 
   id "lucene.datasets.external-datasets"
