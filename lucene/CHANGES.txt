@@ -152,8 +152,6 @@ Optimizations
 
 * GITHUB#15085: Hunspell suggestions: Ensure candidate roots are not worse before updating. (Ilia Permiashkin)
 
-* GITHUB#15092: Fix bug where outer isWorseCheck was ignored in `GeneratingSuggester`. (Ilia Permiashkin)
-
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
@@ -197,6 +195,8 @@ Bug Fixes
   iteration of sub-queries in BooleanQuery and DisjunctionMaxQuery. This
   resulted in query branches being wrongly ignored if the QueryIndex was
   built by a different JVM. (Luke Kot-Zaniewski)
+
+* GITHUB#15092: Fix bug where outer isWorseCheck was ignored in `GeneratingSuggester`. (Ilia Permiashkin)
 
 Build
 ---------------------
