@@ -21,6 +21,9 @@ import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
@@ -51,6 +54,37 @@ abstract class MemorySegmentIndexInput extends IndexInput
   static final ValueLayout.OfFloat LAYOUT_LE_FLOAT =
       ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
   private static final Optional<NativeAccess> NATIVE_ACCESS = NativeAccess.getImplementation();
+
+  private static final VarHandle VH_MEMSEG_GET_INT =
+      MethodHandles.filterCoordinates(
+          getLayoutVarHandle(LAYOUT_LE_INT),
+          0,
+          MethodHandles.identity(Object.class)
+              .asType(MethodType.methodType(MemorySegment.class, Object.class)));
+
+  /**
+   * Hack: The preview API changed after release in Java 22:
+   *
+   * <ul>
+   *   <li>In Java 21 the preview API requires {@code
+   *       MethodHandles#memorySegmentViewVarHandle(layout)}.
+   *   <li>In the released API (Java 22) it requires to use {@code layout.varHandle()}, which
+   *       includes the offset coordinate.
+   * </ul>
+   *
+   * The new API existed before, but with different semantics, so we lookup the first one and if the
+   * method does not exist (we can compile against our stubs and see it, but at runtime it may have
+   * disappeared), we use the new API.
+   */
+  private static VarHandle getLayoutVarHandle(ValueLayout layout) {
+    try {
+      return MethodHandles.memorySegmentViewVarHandle(layout);
+    } catch (
+        @SuppressWarnings("unused")
+        NoSuchMethodError e) {
+      return layout.varHandle();
+    }
+  }
 
   final long length;
   final long chunkSizeMask;
@@ -461,7 +495,8 @@ abstract class MemorySegmentIndexInput extends IndexInput
           GroupVIntUtil.readGroupVInt(
               this,
               curSegment.byteSize() - curPosition,
-              p -> curSegment.get(LAYOUT_LE_INT, p),
+              VH_MEMSEG_GET_INT,
+              curSegment,
               curPosition,
               dst,
               offset);
