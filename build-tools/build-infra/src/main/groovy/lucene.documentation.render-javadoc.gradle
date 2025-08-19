@@ -324,10 +324,6 @@ abstract class RenderJavadocTask extends RenderJavadocTaskBase {
   @Input
   List<String> javadocMissingIgnore = []
 
-  @Input
-  @Optional
-  ListProperty<String> extraOpts = project.objects.listProperty(String)
-
   @InputDirectory
   @PathSensitive(PathSensitivity.RELATIVE)
   @IgnoreEmptyDirectories

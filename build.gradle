@@ -25,10 +25,8 @@ plugins {
 
   id "base"
   id "lucene.root-project.setup"
-
   id "lucene.java-projects.conventions"
 
-  id "lucene.java.core.mrjar"
   id "lucene.java.fail-on-no-tests"
   id "lucene.java.slowest-tests-at-end"
   id "lucene.java.show-failed-tests-at-end"
@@ -36,13 +34,9 @@ plugins {
   id "lucene.java.coverage"
   id "lucene.java.modules"
 
-  id "lucene.validation.spotless-groovy"
-  id "lucene.validation.lockfile"
   id "lucene.validation.gradle-versions-cleanup"
-  id "lucene.validation.gradlew-scripts-customizations"
   id "lucene.validation.error-prone"
   id "lucene.validation.jar-checks"
-  id "lucene.validation.source-patterns"
   id "lucene.validation.rat-sources"
   id "lucene.validation.owasp"
 
@@ -57,9 +51,6 @@ plugins {
   id "lucene.misc.pylucene"
 
   id "lucene.datasets.external-datasets"
-
-  id "lucene.hacks.turbocharge-jvm-opts"
-  id "lucene.hacks.dummy-outputs"
 
   id "lucene.documentation"
   id "lucene.documentation.changes-to-html"
@@ -76,7 +67,6 @@ plugins {
   id "lucene.regenerate.javacc"
   id "lucene.regenerate.antlr"
   id "lucene.regenerate.unicode-test-classes"
-  id "lucene.regenerate.extract-jdk-apis"
   id "lucene.regenerate.snowball"
 }
 

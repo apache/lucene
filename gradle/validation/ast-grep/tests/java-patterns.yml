@@ -115,3 +115,21 @@ valid:
     module org.apache.lucene.foo {
       requires org.apache.lucene.bar;
     }
+---
+id: javadoc-only-inheriting-super
+invalid:
+  - /** {@inheritDoc} */
+  - /** {@inheritDoc } */
+  - "/**\n * {@inheritDoc}\n */"
+valid:
+  - |
+    /**
+    * {@inheritDoc}
+    *
+    * And something.
+    */
+  - |
+    /**
+    * Something and...
+    * {@inheritDoc}
+    */

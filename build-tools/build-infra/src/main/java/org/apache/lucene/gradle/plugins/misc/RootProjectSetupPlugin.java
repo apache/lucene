@@ -18,7 +18,6 @@ package org.apache.lucene.gradle.plugins.misc;
 
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin;
 import java.util.Collection;
-import java.util.List;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.apache.lucene.gradle.plugins.astgrep.AstGrepPlugin;
 import org.apache.lucene.gradle.plugins.eclint.EditorConfigLintPlugin;
@@ -26,15 +25,17 @@ import org.apache.lucene.gradle.plugins.gitgrep.GitGrepPlugin;
 import org.apache.lucene.gradle.plugins.gitinfo.GitInfoPlugin;
 import org.apache.lucene.gradle.plugins.globals.RegisterBuildGlobalsPlugin;
 import org.apache.lucene.gradle.plugins.hacks.HacksPlugin;
+import org.apache.lucene.gradle.plugins.hacks.TuneJvmOptionsPlugin;
 import org.apache.lucene.gradle.plugins.hacks.WipeGradleTempPlugin;
 import org.apache.lucene.gradle.plugins.help.BuildOptionGroupsPlugin;
 import org.apache.lucene.gradle.plugins.regenerate.RegenerateTasksSupportPlugin;
+import org.apache.lucene.gradle.plugins.spotless.GradleGroovyFormatPlugin;
+import org.apache.lucene.gradle.plugins.spotless.ValidateSourcePatternsPlugin;
 import org.gradle.api.Project;
 import org.gradle.api.file.DuplicatesStrategy;
 import org.gradle.api.initialization.IncludedBuild;
 import org.gradle.api.plugins.BasePlugin;
 import org.gradle.api.plugins.BasePluginExtension;
-import org.gradle.api.plugins.ExtraPropertiesExtension;
 import org.gradle.api.plugins.PluginContainer;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
@@ -71,18 +72,21 @@ public class RootProjectSetupPlugin extends LuceneGradlePlugin {
     plugins.apply(HelpPlugin.class);
     plugins.apply(HacksPlugin.class);
     plugins.apply(WipeGradleTempPlugin.class);
+    plugins.apply(GradleGroovyFormatPlugin.class);
+    plugins.apply(ValidateSourcePatternsPlugin.class);
+    plugins.apply(ConfigureLockFilePlugin.class);
+    plugins.apply(CheckGradlewScriptsTweakedPlugin.class);
+
+    // Apply more convention plugins to all projects.
+    rootProject
+        .getAllprojects()
+        .forEach(
+            project -> {
+              project.getPlugins().apply(TuneJvmOptionsPlugin.class);
+            });
 
     // wire up included composite builds to validation tasks.
     connectCompositeTasksToMainBuild(rootProject);
-
-    // TODO: this shouldn't be here but it's used in multiple scripts that are racy in
-    // lazy-evaluation.
-    {
-      Project project = rootProject.project(":lucene:core");
-      var ext = project.getExtensions().getByType(ExtraPropertiesExtension.class);
-      ext.set("mrjarJavaVersions", List.of(24));
-      ext.set("apijars", project.getLayout().getProjectDirectory().dir("src/generated/jdk"));
-    }
   }
 
   private void applyCommonConfiguration(Project project) {

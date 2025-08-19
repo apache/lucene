@@ -3156,6 +3156,11 @@ public class IndexWriter
     long seqNo;
 
     try {
+      if (infoStream.isEnabled("IW")) {
+        infoStream.message("IW", "flush at addIndexes(CodecReader...)");
+      }
+      flush(false, true);
+
       // Best effort up front validations
       for (CodecReader leaf : readers) {
         validateMergeReader(leaf);
@@ -3354,11 +3359,6 @@ public class IndexWriter
 
     // long so we can detect int overflow:
     long numDocs = 0;
-    if (infoStream.isEnabled("IW")) {
-      infoStream.message("IW", "flush at addIndexes(CodecReader...)");
-    }
-    flush(false, true);
-
     String mergedName = newSegmentName();
     Directory mergeDirectory = mergeScheduler.wrapForMerge(merge, directory);
     int numSoftDeleted = 0;

@@ -17,7 +17,14 @@
 package org.apache.lucene.gradle.plugins.hacks;
 
 import de.undercouch.gradle.tasks.download.Download;
+import java.io.File;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
+import org.apache.lucene.gradle.plugins.java.EcjLintPlugin;
+import org.apache.lucene.gradle.plugins.misc.CheckGradlewScriptsTweakedPlugin;
+import org.apache.lucene.gradle.plugins.spotless.ValidateSourcePatternsPlugin;
 import org.gradle.api.Project;
 
 /** This applies various odd hacks that we probably should not need. */
@@ -32,6 +39,47 @@ public class HacksPlugin extends LuceneGradlePlugin {
         .forEach(
             project -> {
               applyRetryDownloads(project);
+              addDummyOutputs(project);
+            });
+  }
+
+  /**
+   * Set up dummy outputs for certain tasks so that {@code clean[TaskName]} works, allowing re-runs
+   * and incremental builds.
+   *
+   * @see "https://github.com/apache/lucene/issues/10544"
+   */
+  private void addDummyOutputs(Project project) {
+    project
+        .getTasks()
+        .matching(
+            task -> {
+              var taskName = task.getName();
+              return taskName.startsWith(EcjLintPlugin.TASK_PREFIX)
+                  || taskName.equals(CheckGradlewScriptsTweakedPlugin.TASK_NAME)
+                  || taskName.equals(ValidateSourcePatternsPlugin.TASK_NAME);
+            })
+        .configureEach(
+            task -> {
+              File dummyOutput =
+                  project
+                      .getLayout()
+                      .getBuildDirectory()
+                      .file("tasks/${task.name}/dummy-output.txt")
+                      .get()
+                      .getAsFile();
+              task.getOutputs().file(dummyOutput);
+
+              task.doLast(
+                  _ -> {
+                    if (!dummyOutput.exists()) {
+                      try {
+                        Files.createFile(dummyOutput.toPath());
+                      } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                      }
+                    }
+                  });
             });
   }
 
