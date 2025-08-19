@@ -82,6 +82,8 @@ public class RootProjectSetupPlugin extends LuceneGradlePlugin {
     plugins.apply(EclipseSupportPlugin.class);
     plugins.apply(IdeaSupportPlugin.class);
 
+    plugins.apply(MeasureTaskTimesPlugin.class);
+
     // Apply more convention plugins to all projects.
     rootProject
         .getAllprojects()
