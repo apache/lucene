@@ -20,6 +20,7 @@ import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsTask;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.lucene.gradle.plugins.hacks.DumpGradleStateOnStalledBuildsPlugin;
 import org.apache.lucene.gradle.plugins.ide.EclipseSupportPlugin;
 import org.apache.lucene.gradle.plugins.misc.MeasureTaskTimesPlugin;
 import org.gradle.api.Plugin;
@@ -88,6 +89,7 @@ public class BuildOptionGroupsPlugin implements Plugin<Project> {
                             MeasureTaskTimesPlugin.OPT_TASK_TIMES,
                             MeasureTaskTimesPlugin.OPT_TASK_TIMES_LIMIT,
                             MeasureTaskTimesPlugin.OPT_TASK_TIMES_AGGREGATE,
+                            DumpGradleStateOnStalledBuildsPlugin.OPT_TRACK_GRADLE_STATE,
                             "javac.failOnWarnings",
                             "tests.slowestSuites",
                             "tests.slowestSuites.minTime",
