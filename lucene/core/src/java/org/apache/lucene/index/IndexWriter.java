@@ -470,6 +470,9 @@ public class IndexWriter
         }
       };
 
+  /** The id that is associated with this writer for {@link IndexWriterRAMManager} */
+  public final int ramManagerId;
+
   /**
    * Expert: returns a readonly reader, covering all committed as well as un-committed changes to
    * the index. This provides "near real-time" searching, in that changes made during an IndexWriter
@@ -1204,6 +1207,7 @@ public class IndexWriter
       writeLock = null;
       throw t;
     }
+    this.ramManagerId = config.indexWriterRAMManager.registerWriter(this);
   }
 
   /** Confirms that the incoming index sort (if any) matches the existing index sort (if any). */
@@ -1358,6 +1362,7 @@ public class IndexWriter
    */
   @Override
   public void close() throws IOException {
+    config.indexWriterRAMManager.removeWriter(ramManagerId);
     if (config.getCommitOnClose()) {
       shutdown();
     } else {
@@ -2454,6 +2459,7 @@ public class IndexWriter
     // Ensure that only one thread actually gets to do the
     // closing, and make sure no commit is also in progress:
     if (shouldClose(true)) {
+      config.indexWriterRAMManager.removeWriter(ramManagerId);
       rollbackInternal();
     }
   }
@@ -5976,6 +5982,7 @@ public class IndexWriter
       seqNo = -seqNo;
       processEvents(true);
     }
+    config.flushPolicy.flushRamManager(this);
     return seqNo;
   }
 
