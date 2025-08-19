@@ -24,6 +24,9 @@ import org.gradle.tooling.events.task.TaskSuccessResult;
  * Prints aggregate wall-clock times for all executed gradle tasks (collected across all projects).
  */
 public class MeasureTaskTimesPlugin extends LuceneGradlePlugin {
+  public static final String OPT_TASK_TIMES = "task.times";
+  public static final String OPT_TASK_TIMES_AGGREGATE = "task.times.aggregate";
+  public static final String OPT_TASK_TIMES_LIMIT = "task.times.limit";
 
   private final BuildEventsListenerRegistry listenerRegistry;
 
@@ -39,19 +42,19 @@ public class MeasureTaskTimesPlugin extends LuceneGradlePlugin {
     var buildOptions = getBuildOptions(project);
     var taskTimesOption =
         buildOptions.addBooleanOption(
-            "task.times",
+            OPT_TASK_TIMES,
             "Measures wall-time task execution and provides a summary of the longest tasks at "
                 + "the end of a successful build.",
             false);
 
     var aggregateOption =
         buildOptions.addBooleanOption(
-            "task.times.aggregate",
+            OPT_TASK_TIMES_AGGREGATE,
             "Aggregate task times by unique name (across all projects). If false, unique task paths are printed.",
             true);
 
     var taskCountLimitOption =
-        buildOptions.addIntOption("task.times.limit", "Limit the list to the top-N tasks.", 20);
+        buildOptions.addIntOption(OPT_TASK_TIMES_LIMIT, "Limit the list to the top-N tasks.", 20);
 
     if (!taskTimesOption.get()) {
       return;
