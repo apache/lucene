@@ -1105,6 +1105,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return newUpto;
   }
 
+  @Override
   public float[] l2normalize(float[] v, boolean throwOnZero) {
     double l1norm = this.dotProduct(v, v);
     if (l1norm == 0) {
