@@ -16,11 +16,13 @@
  */
 package org.apache.lucene.internal.vectorization;
 
-import static java.lang.foreign.ValueLayout.JAVA_FLOAT;
+import static java.lang.foreign.ValueLayout.JAVA_INT_UNALIGNED;
 import static org.apache.lucene.codecs.hnsw.ScalarQuantizedVectorScorer.quantizeQuery;
 
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import java.nio.ByteOrder;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorScorer;
@@ -145,6 +147,9 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
       return quantizer;
     }
 
+    private static final ValueLayout.OfInt INT_UNALIGNED_LE =
+        JAVA_INT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
+
     @SuppressWarnings("restricted")
     Node getNode(int ord) throws IOException {
       checkOrdinal(ord);
@@ -157,7 +162,9 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
         input.readBytes(byteOffset, scratch, 0, nodeSize);
         node = MemorySegment.ofArray(scratch);
       }
-      return new Node(node.reinterpret(vectorByteSize), node.get(JAVA_FLOAT, vectorByteSize));
+      return new Node(
+          node.reinterpret(vectorByteSize),
+          Float.intBitsToFloat(node.get(INT_UNALIGNED_LE, vectorByteSize)));
     }
 
     float scoreBody(int ord, float queryOffset) throws IOException {
