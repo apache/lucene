@@ -15,6 +15,9 @@ API Changes
 * GITHUB#14426: Support determining desired off-heap memory requirements through
   KnnVectorsReader::getOffHeapByteSize (Chris Hegarty)
 
+* GITHUB#14893: TieredMergePolicy minimum deletes percentage decreased from 5% inclusive to 0% exclusive.
+  (Stefan Vodita)
+
 * GITHUB#14899: Deprecate MergeSpecification#segString(Directory) (kitoha)
 
 * GITHUB#14978: Add a bulk scoring interface to RandomVectorScorer
@@ -152,6 +155,8 @@ Optimizations
   (Adrien Grand, Guo Feng)
 
 * GITHUB#15083: Use DocValuesSkippers in SortedNumericDocValuesRangeQuery#rewrite(). (Alan Woodward)
+
+* GITHUB#15085, GITHUB#15092: Hunspell suggestions: Ensure candidate roots are not worse before updating. (Ilia Permiashkin)
 
 Changes in Runtime Behavior
 ---------------------
