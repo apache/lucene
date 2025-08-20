@@ -51,7 +51,7 @@ public final class GroupVIntUtil {
 
   /**
    * In Java 21 the {@code MethodHandles#filterArguments(...)} method is preview only, so we invoke
-   * it reflective. For this code it does not make sense to move the whole code to the Java 21
+   * it reflectively. For this code it does not make sense to move the whole code to the Java 21
    * sourceSet as it is a one-time lookup only.
    */
   private static VarHandle getBufferVarHandle() {
