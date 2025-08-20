@@ -86,6 +86,7 @@ import org.apache.lucene.util.IOUtils;
  *
  * @see Directory
  */
+@SuppressWarnings("preview") // javadocs only
 public abstract class FSDirectory extends BaseDirectory {
 
   protected final Path directory; // The underlying filesystem directory
