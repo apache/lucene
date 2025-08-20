@@ -24,6 +24,7 @@ import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.store.IndexInput;
 
+@SuppressWarnings("preview")
 final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
 
   private static final VectorSpecies<Integer> INT_SPECIES =

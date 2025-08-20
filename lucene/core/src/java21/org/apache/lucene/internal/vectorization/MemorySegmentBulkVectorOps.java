@@ -28,6 +28,7 @@ import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
 
 /** Implementations of bulk vector comparison operations. Currently only supports float32. */
+@SuppressWarnings("preview")
 public final class MemorySegmentBulkVectorOps {
 
   static final VectorSpecies<Float> FLOAT_SPECIES =
