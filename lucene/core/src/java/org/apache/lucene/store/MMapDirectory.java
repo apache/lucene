@@ -81,6 +81,7 @@ import org.apache.lucene.util.Constants;
  * @see <a href="https://blog.thetaphi.de/2012/07/use-lucenes-mmapdirectory-on-64bit.html">Blog post
  *     about MMapDirectory</a>
  */
+@SuppressWarnings("preview") // javadocs only
 public class MMapDirectory extends FSDirectory {
 
   /**

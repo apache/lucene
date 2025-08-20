@@ -27,6 +27,7 @@ import org.apache.lucene.store.MemorySegmentAccessInput;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
+@SuppressWarnings("preview")
 abstract sealed class Lucene99MemorySegmentFloatVectorScorer
     extends RandomVectorScorer.AbstractRandomVectorScorer {
 
