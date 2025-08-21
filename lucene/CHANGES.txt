@@ -65,6 +65,8 @@ Optimizations
 
 * GITHUB#15043: Vectorize L2 normalize function. (Ramakrishna Chilaka)
 
+* GITHUB#15085, GITHUB#15092: Hunspell suggestions: Ensure candidate roots are not worse before updating. (Ilia Permiashkin)
+
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
@@ -118,6 +120,9 @@ API Changes
 * GITHUB#14426: Support determining desired off-heap memory requirements through
   KnnVectorsReader::getOffHeapByteSize (Chris Hegarty)
 
+* GITHUB#14893: TieredMergePolicy minimum deletes percentage decreased from 5% inclusive to 0% exclusive.
+  (Stefan Vodita)
+
 * GITHUB#14899: Deprecate MergeSpecification#segString(Directory) (kitoha)
 
 * GITHUB#14978: Add a bulk scoring interface to RandomVectorScorer
@@ -167,6 +172,9 @@ Improvements
 * GITHUB#14737: Clean up redundant code and comments in query node classes. (Stefan Vodita)
 
 * GITHUB#14816: Expose search strategy in KNN query
+
+* GITHUB#15089, GITHUB#15079: Refactor GroupVIntUtil functional interface lambda
+  which does not inline correctly in MemorySegmentIndexInput (Uwe Schindler, Robert Muir)
 
 Optimizations
 ---------------------
@@ -247,6 +255,13 @@ Optimizations
 
 * GITHUB#15004: Wraps all iterator with likelyImpactsEnum under BlockMaxConjunctionBulkScorer. (Ge Song)
 
+* GITHUB#15080: Use DocValuesSkippers in SortedNumericDocValuesRangeQuery#count(). (Alan Woodward)
+
+* GITHUB#15039: Score computations are now more reliably vectorized.
+  (Adrien Grand, Guo Feng)
+
+* GITHUB#15083: Use DocValuesSkippers in SortedNumericDocValuesRangeQuery#rewrite(). (Alan Woodward)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
@@ -288,6 +303,11 @@ Bug Fixes
   and avoid throwing IndexOutOfBoundsException (Panagiotis Bailis)
 
 * GITHUB#15074: Fix to use READONCE when reading segment infos (Chris Hegarty)
+
+* GITHUB#14886: Prevent missed matches in lucene-monitor caused by unstable
+  iteration of sub-queries in BooleanQuery and DisjunctionMaxQuery. This
+  resulted in query branches being wrongly ignored if the QueryIndex was
+  built by a different JVM. (Luke Kot-Zaniewski)
 
 Build
 ---------------------

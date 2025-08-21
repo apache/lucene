@@ -69,23 +69,15 @@ public class SimpleTextStoredFieldsReader extends StoredFieldsReader {
   public SimpleTextStoredFieldsReader(
       Directory directory, SegmentInfo si, FieldInfos fn, IOContext context) throws IOException {
     this.fieldInfos = fn;
-    boolean success = false;
     try {
       in =
           directory.openInput(
               IndexFileNames.segmentFileName(
                   si.name, "", SimpleTextStoredFieldsWriter.FIELDS_EXTENSION),
               context);
-      success = true;
-    } finally {
-      if (!success) {
-        try {
-          close();
-        } catch (
-            @SuppressWarnings("unused")
-            Throwable t) {
-        } // ensure we throw our original exception
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
     readIndex(si.maxDoc());
   }

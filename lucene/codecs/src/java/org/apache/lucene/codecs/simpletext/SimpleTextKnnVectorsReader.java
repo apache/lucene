@@ -79,7 +79,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
             readState.segmentSuffix,
             SimpleTextKnnVectorsFormat.VECTOR_EXTENSION);
 
-    boolean success = false;
     try (ChecksumIndexInput in = readState.directory.openChecksumInput(metaFileName)) {
       int fieldNumber = readInt(in, FIELD_NUMBER);
       while (fieldNumber != -1) {
@@ -106,11 +105,9 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       SimpleTextUtil.checkFooter(in);
 
       dataIn = readState.directory.openInput(vectorFileName, IOContext.DEFAULT);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
