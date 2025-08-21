@@ -94,9 +94,7 @@ public class TestStressRamUsageEstimator extends LuceneTestCase {
           seg[i] = new byte[random().nextInt(7)];
         }
       }
-    } catch (
-        @SuppressWarnings("unused")
-        OutOfMemoryError e) {
+    } catch (OutOfMemoryError _) {
       // Release and quit.
     }
   }
