@@ -1613,9 +1613,7 @@ public class RandomPostingsTester {
           // Try seek by ord sometimes:
           try {
             termsEnum.seekExact(fieldAndTerm.ord);
-          } catch (
-              @SuppressWarnings("unused")
-              UnsupportedOperationException uoe) {
+          } catch (UnsupportedOperationException _) {
             supportsOrds = false;
             assertTrue(termsEnum.seekExact(fieldAndTerm.term));
           }
@@ -1633,9 +1631,7 @@ public class RandomPostingsTester {
       if (supportsOrds) {
         try {
           termOrd = termsEnum.ord();
-        } catch (
-            @SuppressWarnings("unused")
-            UnsupportedOperationException uoe) {
+        } catch (UnsupportedOperationException _) {
           supportsOrds = false;
           termOrd = -1;
         }
@@ -1776,9 +1772,7 @@ public class RandomPostingsTester {
       try {
         iterator.remove();
         throw new AssertionError("Fields.iterator() allows for removal");
-      } catch (
-          @SuppressWarnings("unused")
-          UnsupportedOperationException expected) {
+      } catch (UnsupportedOperationException _) {
         // expected;
       }
     }

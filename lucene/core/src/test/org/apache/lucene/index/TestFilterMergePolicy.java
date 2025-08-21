@@ -27,9 +27,7 @@ public class TestFilterMergePolicy extends LuceneTestCase {
       if (Modifier.isFinal(m.getModifiers()) || Modifier.isPrivate(m.getModifiers())) continue;
       try {
         FilterMergePolicy.class.getDeclaredMethod(m.getName(), m.getParameterTypes());
-      } catch (
-          @SuppressWarnings("unused")
-          NoSuchMethodException e) {
+      } catch (NoSuchMethodException _) {
         fail("FilterMergePolicy needs to override '" + m + "'");
       }
     }

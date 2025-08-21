@@ -520,9 +520,7 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
     for (Closeable f : m.keySet()) {
       try {
         f.close();
-      } catch (
-          @SuppressWarnings("unused")
-          Exception ignored) {
+      } catch (Exception _) {
       }
     }
     corruptFiles(unSyncedFiles);

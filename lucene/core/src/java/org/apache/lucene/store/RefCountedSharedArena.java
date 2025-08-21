@@ -41,7 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 final class RefCountedSharedArena implements Arena {
 
   // default maximum permits
-  static final int DEFAULT_MAX_PERMITS = 1024;
+  static final int DEFAULT_MAX_PERMITS = 64;
 
   private static final int CLOSED = 0;
   // minimum value, beyond which permits are exhausted

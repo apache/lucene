@@ -93,9 +93,7 @@ public class TestDocumentsWriterPerThreadPool extends LuceneTestCase {
                   latch.countDown();
                   pool.getAndLock();
                   fail();
-                } catch (
-                    @SuppressWarnings("unused")
-                    AlreadyClosedException e) {
+                } catch (AlreadyClosedException _) {
                   // fine
                 }
               });

@@ -43,7 +43,7 @@ public class TestLateInteractionRescorer extends LuceneTestCase {
 
   private final String LATE_I_FIELD = "li_vector";
   private final String KNN_FIELD = "knn_vector";
-  private final int DIMENSION = 128;
+  private final int DIMENSION = 16;
 
   public void testBasic() throws Exception {
     List<float[][]> corpus = new ArrayList<>();
@@ -131,7 +131,7 @@ public class TestLateInteractionRescorer extends LuceneTestCase {
 
   private void indexMultiVectors(Directory dir, List<float[][]> corpus) throws IOException {
     final int numDocs = atLeast(1000);
-    final int numSegments = random().nextInt(2, 10);
+    final int numSegments = random().nextInt(2, 5);
     int id = 0;
     try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       for (int j = 0; j < numSegments; j++) {
@@ -163,7 +163,7 @@ public class TestLateInteractionRescorer extends LuceneTestCase {
   }
 
   private float[][] createMultiVector(int dimension) {
-    float[][] value = new float[random().nextInt(3, 12)][];
+    float[][] value = new float[random().nextInt(2, 5)][];
     for (int i = 0; i < value.length; i++) {
       value[i] = randomFloatVector(dimension, random());
     }

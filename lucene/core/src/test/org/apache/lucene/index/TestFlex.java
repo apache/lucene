@@ -80,9 +80,7 @@ public class TestFlex extends LuceneTestCase {
     assertTrue(terms.next() != null);
     try {
       assertEquals(0, terms.ord());
-    } catch (
-        @SuppressWarnings("unused")
-        UnsupportedOperationException uoe) {
+    } catch (UnsupportedOperationException _) {
       // ok -- codec is not required to support this op
     }
     r.close();

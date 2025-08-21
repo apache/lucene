@@ -56,6 +56,7 @@ dependencies {
   implementation plugin(deps.plugins.forbiddenapis)
   implementation plugin(deps.plugins.spotless)
   implementation plugin(deps.plugins.undercouch.download)
+  implementation plugin(deps.plugins.jacocolog)
 }
 
 tasks.matching {

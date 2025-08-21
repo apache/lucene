@@ -31,6 +31,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocValuesRangeIterator;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
@@ -96,6 +97,17 @@ final class SortedNumericDocValuesRangeQuery extends Query {
     }
     if (lowerValue > upperValue) {
       return new MatchNoDocsQuery();
+    }
+    long globalMin = DocValuesSkipper.globalMinValue(indexSearcher, field);
+    long globalMax = DocValuesSkipper.globalMaxValue(indexSearcher, field);
+    if (lowerValue > globalMax || upperValue < globalMin) {
+      return new MatchNoDocsQuery();
+    }
+    if (lowerValue <= globalMin
+        && upperValue >= globalMax
+        && DocValuesSkipper.globalDocCount(indexSearcher, field)
+            == indexSearcher.getIndexReader().maxDoc()) {
+      return new MatchAllDocsQuery();
     }
     return super.rewrite(indexSearcher);
   }
@@ -183,6 +195,24 @@ final class SortedNumericDocValuesRangeQuery extends Query {
         }
         return ConstantScoreScorerSupplier.fromIterator(
             TwoPhaseIterator.asDocIdSetIterator(iterator), score(), scoreMode, maxDoc);
+      }
+
+      @Override
+      public int count(LeafReaderContext context) throws IOException {
+        DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
+        if (skipper == null) {
+          return -1;
+        }
+        if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
+          return 0;
+        }
+        if (skipper.docCount() == context.reader().maxDoc()
+            && skipper.minValue() >= lowerValue
+            && skipper.maxValue() <= upperValue) {
+
+          return context.reader().numDocs();
+        }
+        return -1;
       }
     };
   }

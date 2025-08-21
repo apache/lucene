@@ -118,11 +118,13 @@ public abstract class DataInput implements Cloneable {
    * @see DataOutput#writeVInt(int)
    */
   public int readVInt() throws IOException {
-    byte b = readByte();
-    int i = b & 0x7F;
-    for (int shift = 7; (b & 0x80) != 0; shift += 7) {
-      b = readByte();
+    int i = 0;
+    for (int shift = 0; shift < 32; shift += 7) {
+      byte b = readByte();
       i |= (b & 0x7F) << shift;
+      if ((b & 0x80) == 0) {
+        break;
+      }
     }
     return i;
   }
@@ -196,11 +198,14 @@ public abstract class DataInput implements Cloneable {
    * @see DataOutput#writeVLong(long)
    */
   public long readVLong() throws IOException {
-    byte b = readByte();
-    long i = b & 0x7F;
-    for (int shift = 7; (b & 0x80) != 0; shift += 7) {
-      b = readByte();
-      i |= (b & 0x7FL) << shift;
+    long i = 0;
+    // NB: we may be called internally to decode negative (10 byte) values.
+    for (int shift = 0; shift < 64; shift += 7) {
+      byte b = readByte();
+      i |= (long) (b & 0x7F) << shift;
+      if ((b & 0x80) == 0) {
+        break;
+      }
     }
     return i;
   }

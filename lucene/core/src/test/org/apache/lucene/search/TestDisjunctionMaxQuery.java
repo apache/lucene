@@ -22,6 +22,7 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -491,7 +492,7 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
   }
 
   /* Inspired from TestIntervals.testIntervalDisjunctionToStringStability */
-  public void testToStringOrderMatters() {
+  public void testCasesWhenDisjunctOrderMatters() {
     final int clauseNbr =
         random().nextInt(22) + 4; // ensure a reasonably large minimum number of clauses
     final String[] terms = new String[clauseNbr];
@@ -509,6 +510,13 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
             Arrays.stream(terms).map((term) -> tq("test", term)).toList(), 1.0f);
 
     assertEquals(expected, source.toString(""));
+    Collection<Query> disjuncts = source.getDisjuncts();
+    assertEquals(terms.length, disjuncts.size());
+    int i = 0;
+    for (Query query : disjuncts) {
+      assertEquals(terms[i], ((TermQuery) query).getTerm().text());
+      i++;
+    }
   }
 
   public void testRandomTopDocs() throws Exception {

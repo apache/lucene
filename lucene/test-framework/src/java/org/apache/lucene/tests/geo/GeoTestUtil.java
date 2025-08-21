@@ -462,9 +462,7 @@ public class GeoTestUtil {
             random().nextDouble() * GeoUtils.EARTH_MEAN_RADIUS_METERS * Math.PI / 2.0 + 1.0;
         try {
           return createRegularPolygon(nextLatitude(), nextLongitude(), radiusMeters, gons);
-        } catch (
-            @SuppressWarnings("unused")
-            IllegalArgumentException iae) {
+        } catch (IllegalArgumentException _) {
           // we tried to cross dateline or pole ... try again
         }
       }

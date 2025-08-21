@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.gradle;
+package org.apache.lucene.gradle.plugins.java;
 
 import java.io.IOException;
 import java.nio.file.Paths;

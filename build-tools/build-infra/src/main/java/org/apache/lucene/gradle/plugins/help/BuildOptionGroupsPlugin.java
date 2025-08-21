@@ -20,6 +20,9 @@ import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsTask;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.lucene.gradle.plugins.hacks.DumpGradleStateOnStalledBuildsPlugin;
+import org.apache.lucene.gradle.plugins.ide.EclipseSupportPlugin;
+import org.apache.lucene.gradle.plugins.misc.MeasureTaskTimesPlugin;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 
@@ -36,7 +39,11 @@ public class BuildOptionGroupsPlugin implements Plugin<Project> {
                   optionGroups -> {
                     optionGroups.group("Lucene version strings", "version\\.(.*)");
 
-                    optionGroups.group("IDE-tweaking options", "eclipse\\.(.+)");
+                    optionGroups.group(
+                        "IDE-tweaking options",
+                        explicitList(
+                            EclipseSupportPlugin.OPT_ECLIPSE_ERRORS,
+                            EclipseSupportPlugin.OPT_ECLIPSE_JAVA_VERSION));
 
                     optionGroups.group(
                         "Optional testing and test resources",
@@ -79,7 +86,10 @@ public class BuildOptionGroupsPlugin implements Plugin<Project> {
                         explicitList(
                             "lucene.spotlessGradleScripts",
                             "lucene.gjf.batchSize",
-                            "task.times",
+                            MeasureTaskTimesPlugin.OPT_TASK_TIMES,
+                            MeasureTaskTimesPlugin.OPT_TASK_TIMES_LIMIT,
+                            MeasureTaskTimesPlugin.OPT_TASK_TIMES_AGGREGATE,
+                            DumpGradleStateOnStalledBuildsPlugin.OPT_TRACK_GRADLE_STATE,
                             "javac.failOnWarnings",
                             "tests.slowestSuites",
                             "tests.slowestSuites.minTime",

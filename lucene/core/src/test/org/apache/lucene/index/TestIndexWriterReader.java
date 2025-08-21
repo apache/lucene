@@ -1221,9 +1221,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
                       ASC_SORT ? points.getMinPackedValue() : points.getMaxPackedValue();
                   return LongPoint.decodeDimension(sortValue, 0);
                 }
-              } catch (
-                  @SuppressWarnings("unused")
-                  IOException e) {
+              } catch (IOException _) {
               }
               return MISSING_VALUE;
             });

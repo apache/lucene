@@ -391,9 +391,7 @@ public class CheckHits {
     // TODO: clean this up if we use junit 5 (the assert message is costly)
     try {
       assertEquals(score, value, 0d);
-    } catch (
-        @SuppressWarnings("unused")
-        Exception e) {
+    } catch (Exception _) {
       fail(
           q
               + ": score(doc="
@@ -450,9 +448,7 @@ public class CheckHits {
               if (descr.substring(k2).trim().equals("times others of:")) {
                 maxTimesOthers = true;
               }
-            } catch (
-                @SuppressWarnings("unused")
-                NumberFormatException e) {
+            } catch (NumberFormatException _) {
             }
           }
         }
@@ -502,9 +498,7 @@ public class CheckHits {
         // TODO: clean this up if we use junit 5 (the assert message is costly)
         try {
           assertEquals(combined, value, maxError);
-        } catch (
-            @SuppressWarnings("unused")
-            Exception e) {
+        } catch (Exception _) {
           fail(
               q
                   + ": actual subDetails combined=="

@@ -116,9 +116,7 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
             }
             break;
           }
-        } catch (
-            @SuppressWarnings("unused")
-            IllegalStateException ise) {
+        } catch (IllegalStateException _) {
           // OK: abort closes the writer
           break;
         } catch (Throwable t) {
@@ -176,9 +174,7 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
       dir.setMaxSizeInBytes(0);
       try {
         writer.commit();
-      } catch (
-          @SuppressWarnings("unused")
-          AlreadyClosedException ace) {
+      } catch (AlreadyClosedException _) {
         // OK: abort closes the writer
         assertTrue(writer.isDeleterClosed());
       } finally {
@@ -309,14 +305,10 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
         writer.commit();
         writer.close();
         success = true;
-      } catch (
-          @SuppressWarnings("unused")
-          AlreadyClosedException ace) {
+      } catch (AlreadyClosedException _) {
         // OK: abort closes the writer
         assertTrue(writer.isDeleterClosed());
-      } catch (
-          @SuppressWarnings("unused")
-          IOException ioe) {
+      } catch (IOException _) {
         writer.rollback();
         failure.clearDoFail();
       } finally {
@@ -617,9 +609,7 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
                           writerRef.get().prepareCommit();
                         }
                         writerRef.get().commit();
-                      } catch (@SuppressWarnings("unused")
-                          AlreadyClosedException
-                          | NullPointerException ace) {
+                      } catch (AlreadyClosedException | NullPointerException _) {
                         // ok
                       } finally {
                         commitLock.unlock();
@@ -632,10 +622,7 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
                       }
                       try {
                         writerRef.get().addDocument(docs.nextDoc());
-                      } catch (@SuppressWarnings("unused")
-                          AlreadyClosedException
-                          | NullPointerException
-                          | AssertionError ace) {
+                      } catch (AlreadyClosedException | NullPointerException | AssertionError _) {
                         // ok
                       }
                       break;

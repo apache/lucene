@@ -117,4 +117,6 @@ public interface VectorUtilSupport {
    * @return how many pairs left after filter
    */
   int filterByScore(int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo);
+
+  float[] l2normalize(float[] v, boolean throwOnZero);
 }

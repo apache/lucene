@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.instanceOf;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -578,6 +581,146 @@ public class TestDocValuesQueries extends LuceneTestCase {
 
       reader.close();
       dir.close();
+    }
+  }
+
+  public void testSortedNumericDocValuesRangeQueryCount() throws Exception {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+      for (int i = 0; i < 100; i++) {
+        Document doc = new Document();
+        doc.add(SortedNumericDocValuesField.indexedField("with_index", 100 + i));
+        doc.add(new SortedNumericDocValuesField("without_index", 100 + i));
+        if (i != 55) {
+          doc.add(SortedNumericDocValuesField.indexedField("sparse", 100 + i));
+        }
+        iw.addDocument(doc);
+      }
+      iw.commit();
+      iw.forceMerge(1);
+
+      try (IndexReader reader = iw.getReader()) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+
+        assertCount(
+            searcher, SortedNumericDocValuesField.newSlowRangeQuery("with_index", 0, 50), 0);
+        assertCount(
+            searcher, SortedNumericDocValuesField.newSlowRangeQuery("without_index", 0, 50), -1);
+        assertCount(searcher, SortedNumericDocValuesField.newSlowRangeQuery("sparse", 0, 50), 0);
+
+        assertCount(
+            searcher, SortedNumericDocValuesField.newSlowRangeQuery("with_index", 50, 250), 100);
+        assertCount(
+            searcher, SortedNumericDocValuesField.newSlowRangeQuery("without_index", 50, 250), -1);
+        assertCount(searcher, SortedNumericDocValuesField.newSlowRangeQuery("sparse", 50, 250), -1);
+
+        assertCount(
+            searcher, SortedNumericDocValuesField.newSlowRangeQuery("with_index", 150, 250), -1);
+        assertCount(
+            searcher, SortedNumericDocValuesField.newSlowRangeQuery("without_index", 150, 250), -1);
+        assertCount(
+            searcher, SortedNumericDocValuesField.newSlowRangeQuery("sparse", 150, 250), -1);
+
+        assertCount(
+            searcher, SortedNumericDocValuesField.newSlowRangeQuery("with_index", 250, 350), 0);
+        assertCount(
+            searcher, SortedNumericDocValuesField.newSlowRangeQuery("without_index", 250, 350), -1);
+        assertCount(searcher, SortedNumericDocValuesField.newSlowRangeQuery("sparse", 250, 350), 0);
+      }
+
+      iw.deleteDocuments(SortedNumericDocValuesField.newSlowRangeQuery("with_index", 102, 103));
+      iw.commit();
+
+      try (IndexReader reader = iw.getReader()) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+
+        assertCount(
+            searcher, SortedNumericDocValuesField.newSlowRangeQuery("with_index", 0, 50), 0);
+        assertCount(
+            searcher, SortedNumericDocValuesField.newSlowRangeQuery("with_index", 50, 250), 98);
+        assertCount(
+            searcher, SortedNumericDocValuesField.newSlowRangeQuery("with_index", 150, 250), -1);
+        assertCount(
+            searcher, SortedNumericDocValuesField.newSlowRangeQuery("with_index", 250, 350), 0);
+      }
+    }
+  }
+
+  private void assertCount(IndexSearcher searcher, Query query, int expectedCount)
+      throws IOException {
+    Weight w = searcher.createWeight(query, ScoreMode.COMPLETE, 1.0f);
+    assertEquals(expectedCount, w.count(searcher.reader.leaves().getFirst()));
+  }
+
+  public void testSortedNumericDocValuesRangeQueryRewrites() throws Exception {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+      for (int i = 0; i < 100; i++) {
+        Document doc = new Document();
+        doc.add(SortedNumericDocValuesField.indexedField("with_index", 100 + i));
+        doc.add(new SortedNumericDocValuesField("without_index", 100 + i));
+        if (i % 17 == 0) {
+          iw.commit();
+        }
+        if (i != 55) {
+          doc.add(SortedNumericDocValuesField.indexedField("sparse", 100 + i));
+        }
+        if (i == 74) {
+          doc.add(SortedNumericDocValuesField.indexedField("super_sparse", 174));
+        }
+        iw.addDocument(doc);
+      }
+      iw.commit();
+
+      try (IndexReader reader = iw.getReader()) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        assertThat(
+            searcher.rewrite(SortedNumericDocValuesField.newSlowRangeQuery("with_index", 0, 50)),
+            instanceOf(MatchNoDocsQuery.class));
+        assertThat(
+            searcher.rewrite(SortedNumericDocValuesField.newSlowRangeQuery("with_index", 0, 250)),
+            instanceOf(MatchAllDocsQuery.class));
+        assertThat(
+            searcher.rewrite(SortedNumericDocValuesField.newSlowRangeQuery("sparse", 0, 50)),
+            instanceOf(MatchNoDocsQuery.class));
+        assertThat(
+            searcher.rewrite(SortedNumericDocValuesField.newSlowRangeQuery("super_sparse", 0, 50)),
+            instanceOf(MatchNoDocsQuery.class));
+        assertThat(
+            searcher.rewrite(
+                SortedNumericDocValuesField.newSlowRangeQuery("super_sparse", 250, 350)),
+            instanceOf(MatchNoDocsQuery.class));
+        assertThat(
+            searcher
+                .rewrite(SortedNumericDocValuesField.newSlowRangeQuery("super_sparse", 174, 174))
+                .getClass()
+                .toString(),
+            containsString("SortedNumericDocValuesRangeQuery"));
+        assertThat(
+            searcher
+                .rewrite(SortedNumericDocValuesField.newSlowRangeQuery("with_index", 0, 150))
+                .getClass()
+                .toString(),
+            containsString("SortedNumericDocValuesRangeQuery"));
+        assertThat(
+            searcher
+                .rewrite(SortedNumericDocValuesField.newSlowRangeQuery("with_index", 150, 250))
+                .getClass()
+                .toString(),
+            containsString("SortedNumericDocValuesRangeQuery"));
+        assertThat(
+            searcher
+                .rewrite(SortedNumericDocValuesField.newSlowRangeQuery("with_index", 120, 150))
+                .getClass()
+                .toString(),
+            containsString("SortedNumericDocValuesRangeQuery"));
+        assertThat(
+            searcher
+                .rewrite(SortedNumericDocValuesField.newSlowRangeQuery("sparse", 0, 250))
+                .getClass()
+                .toString(),
+            containsString("SortedNumericDocValuesRangeQuery"));
+      }
     }
   }
 }

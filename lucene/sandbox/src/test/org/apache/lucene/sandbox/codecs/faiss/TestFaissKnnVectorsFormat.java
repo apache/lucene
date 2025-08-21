@@ -48,21 +48,21 @@ public class TestFaissKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
   private static final VectorSimilarityFunction[] SUPPORTED_FUNCTIONS = {DOT_PRODUCT, EUCLIDEAN};
 
   @BeforeClass
-  public static void maybeSuppress() throws ClassNotFoundException {
+  public static void maybeSuppress() {
     // Explicitly run tests
     if (Boolean.getBoolean(FAISS_RUN_TESTS)) {
       return;
     }
 
     // Otherwise check if dependencies are present
-    boolean faissLibraryPresent;
+    boolean dependenciesPresent;
     try {
-      Class.forName("org.apache.lucene.sandbox.codecs.faiss.LibFaissC");
-      faissLibraryPresent = true;
-    } catch (UnsatisfiedLinkError _) {
-      faissLibraryPresent = false;
+      FaissLibrary _ = FaissLibrary.INSTANCE;
+      dependenciesPresent = true;
+    } catch (LinkageError _) {
+      dependenciesPresent = false;
     }
-    assumeTrue("Native libraries present", faissLibraryPresent);
+    assumeTrue("Dependencies present", dependenciesPresent);
   }
 
   @Override

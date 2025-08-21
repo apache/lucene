@@ -219,17 +219,13 @@ public class TestFieldsReader extends LuceneTestCase {
     for (int i = 0; i < 2; i++) {
       try {
         storedFields.document(i);
-      } catch (
-          @SuppressWarnings("unused")
-          IOException ioe) {
+      } catch (IOException _) {
         // expected
         exc = true;
       }
       try {
         storedFields.document(i);
-      } catch (
-          @SuppressWarnings("unused")
-          IOException ioe) {
+      } catch (IOException _) {
         // expected
         exc = true;
       }

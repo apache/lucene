@@ -63,6 +63,10 @@ Optimizations
 
 * GITHUB#14874: Improve off-heap KNN byte vector query performance in cases where indexing and search are performed by the same process. (Kaival Parikh)
 
+* GITHUB#15043: Vectorize L2 normalize function. (Ramakrishna Chilaka)
+
+* GITHUB#15085, GITHUB#15092: Hunspell suggestions: Ensure candidate roots are not worse before updating. (Ilia Permiashkin)
+
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
@@ -116,6 +120,9 @@ API Changes
 * GITHUB#14426: Support determining desired off-heap memory requirements through
   KnnVectorsReader::getOffHeapByteSize (Chris Hegarty)
 
+* GITHUB#14893: TieredMergePolicy minimum deletes percentage decreased from 5% inclusive to 0% exclusive.
+  (Stefan Vodita)
+
 * GITHUB#14899: Deprecate MergeSpecification#segString(Directory) (kitoha)
 
 * GITHUB#14978: Add a bulk scoring interface to RandomVectorScorer
@@ -161,6 +168,9 @@ Improvements
 * GITHUB#14737: Clean up redundant code and comments in query node classes. (Stefan Vodita)
 
 * GITHUB#14816: Expose search strategy in KNN query
+
+* GITHUB#15089, GITHUB#15079: Refactor GroupVIntUtil functional interface lambda
+  which does not inline correctly in MemorySegmentIndexInput (Uwe Schindler, Robert Muir)
 
 Optimizations
 ---------------------
@@ -237,7 +247,16 @@ Optimizations
 
 * GITHUB#15001: Remove full integrity check from SortingStoredFieldsConsumer (Martijn van Groningen)
 
-* GITHUB#14980: Add bulk off-heap scoring for float32 vectors (Chris Hegarty)
+* GITHUB#14980, GITHUB#15037: Add bulk off-heap scoring for float32 vectors (Chris Hegarty)
+
+* GITHUB#15004: Wraps all iterator with likelyImpactsEnum under BlockMaxConjunctionBulkScorer. (Ge Song)
+
+* GITHUB#15080: Use DocValuesSkippers in SortedNumericDocValuesRangeQuery#count(). (Alan Woodward)
+
+* GITHUB#15039: Score computations are now more reliably vectorized.
+  (Adrien Grand, Guo Feng)
+
+* GITHUB#15083: Use DocValuesSkippers in SortedNumericDocValuesRangeQuery#rewrite(). (Alan Woodward)
 
 Changes in Runtime Behavior
 ---------------------
@@ -250,6 +269,10 @@ Changes in Runtime Behavior
   way to enable previous behaviour (in 10.2), either by setting:
   `dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT)`, or setting the system property
   `-Dorg.apache.lucene.store.defaultReadAdvice=RANDOM`. (Chris Hegarty)
+
+* GITHUB#15078: Reduce the default RefCountedSharedArena.DEFAULT_MAX_PERMITS to 64. To restore
+  previous behavior set the `-Dorg.apache.lucene.store.MMapDirectory.sharedArenaMaxPermits=1024`.
+  (Chris Hegarty)
 
 Bug Fixes
 ---------------------
@@ -275,6 +298,13 @@ Bug Fixes
 * GITHUB#14922: Fix for IndexedDISI.Dense#intoBitSetWithinBlock to take into account the provided bitset size
   and avoid throwing IndexOutOfBoundsException (Panagiotis Bailis)
 
+* GITHUB#15074: Fix to use READONCE when reading segment infos (Chris Hegarty)
+
+* GITHUB#14886: Prevent missed matches in lucene-monitor caused by unstable
+  iteration of sub-queries in BooleanQuery and DisjunctionMaxQuery. This
+  resulted in query branches being wrongly ignored if the QueryIndex was
+  built by a different JVM. (Luke Kot-Zaniewski)
+
 Build
 ---------------------
 * Upgrade forbiddenapis to version 3.9.  (Uwe Schindler)
@@ -297,6 +327,8 @@ Other
 * GITHUB#14898: Fix typo in Circle2D.java (Hokuto Joel Ide)
 
 * GITHUB#14839: Add support for sparse SortedDocValues to LuceneTestCase.assertDocValuesEquals (Parker Timmins)
+
+* GITHUB#15050: Use switch expression for optimized type checks in PointRangeQueryBuilder (Sandesh Kumar)
 
 ======================= Lucene 10.2.2 =======================
 

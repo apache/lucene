@@ -16,10 +16,12 @@
  */
 package org.apache.lucene.index;
 
+import com.carrotsearch.randomizedtesting.annotations.Timeout;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.store.Directory;
@@ -63,6 +65,7 @@ public class TestMultiIndexMergeScheduler extends LuceneTestCase {
     assertTrue(directoriesToBeClosed.isEmpty());
   }
 
+  @Timeout(millis = 1000 * 60 * 2)
   public void testCloseMultiple() throws Exception {
     // Write to many indexes and do merges on them.
     // The unit test is randomized but reproducible.
@@ -119,6 +122,7 @@ public class TestMultiIndexMergeScheduler extends LuceneTestCase {
 
     // Randomly spread the documents across the indexes.
     // The merge ordering is calculated beforehand to make this unit test be reproducible.
+    // TODO: why is this a concurrent linked queue if all accesses are under synchronized(lock)?!
     ConcurrentLinkedQueue<Integer> nextDirectoryToWrite = new ConcurrentLinkedQueue<>();
     for (int i = 0; i < DOCUMENT_COUNT; ++i) {
       int r = random().nextInt(DIRECTORY_COUNT);
@@ -126,7 +130,13 @@ public class TestMultiIndexMergeScheduler extends LuceneTestCase {
       ++documentCounts[r];
     }
 
+    // Ensure all threads have at least one document to work with.
+    for (int i = 0; i < documentCounts.length; i++) {
+      documentCounts[i] = Math.max(1, documentCounts[i]);
+    }
+
     // Write documents to each index and force some merges.
+    final AtomicBoolean stop = new AtomicBoolean();
     final ArrayList<Thread> threads = new ArrayList<>();
     final Object lock = new Object();
     for (int schedulerIndex = 0; schedulerIndex < schedulers.size(); schedulerIndex++) {
@@ -138,7 +148,7 @@ public class TestMultiIndexMergeScheduler extends LuceneTestCase {
             public void run() {
               try {
                 IndexWriter writer = writers.get(threadID);
-                while (true) {
+                while (stop.get() == false) {
                   synchronized (lock) {
                     if (!nextDirectoryToWrite.isEmpty()
                         && nextDirectoryToWrite.peek() != threadID) {
@@ -147,15 +157,17 @@ public class TestMultiIndexMergeScheduler extends LuceneTestCase {
                           && nextDirectoryToWrite.peek() != threadID) {
                         try {
                           lock.wait();
-                        } catch (
-                            @SuppressWarnings("unused")
-                            InterruptedException e) {
-                          Thread.currentThread().interrupt();
-                          return;
+                        } catch (InterruptedException e) {
+                          stop.set(true);
+                          throw new RuntimeException("subthread interrupted?", e);
                         }
                       }
                       // awaken
                       continue;
+                    }
+
+                    if (documentCounts[threadID] == 0) {
+                      break;
                     }
 
                     // write a doc
@@ -176,10 +188,8 @@ public class TestMultiIndexMergeScheduler extends LuceneTestCase {
 
                     nextDirectoryToWrite.poll();
                     lock.notifyAll();
-                    if (documentCounts[threadID] == 0) break;
                   }
                 }
-
               } catch (Exception e) {
                 throw new RuntimeException(e);
               }
