@@ -84,7 +84,9 @@ public class NLS {
     try {
       load(clazz);
       bundles.putIfAbsent(bundleName, clazz);
-    } catch (Throwable _) {
+    } catch (
+        @SuppressWarnings("unused")
+        Throwable e) {
       // ignore all errors and exceptions
       // because this function is supposed to be called at class load time.
     }
@@ -100,7 +102,9 @@ public class NLS {
         try {
           Object obj = resourceBundle.getObject(messageKey);
           if (obj != null) return obj;
-        } catch (MissingResourceException _) {
+        } catch (
+            @SuppressWarnings("unused")
+            MissingResourceException e) {
           // just continue it might be on the next resource bundle
         }
       }
@@ -130,7 +134,7 @@ public class NLS {
     try {
       field.set(null, field.getName());
       validateMessage(field.getName(), clazz);
-    } catch (IllegalArgumentException | IllegalAccessException _) {
+    } catch (@SuppressWarnings("unused") IllegalArgumentException | IllegalAccessException e) {
       // should not happen
     }
   }
@@ -146,10 +150,14 @@ public class NLS {
       if (resourceBundle != null) {
         resourceBundle.getObject(key);
       }
-    } catch (MissingResourceException _) {
+    } catch (
+        @SuppressWarnings("unused")
+        MissingResourceException e) {
       // System.err.println("WARN: Message with key:" + key + " and locale: "
       //    + Locale.getDefault() + " not found.");
-    } catch (Throwable _) {
+    } catch (
+        @SuppressWarnings("unused")
+        Throwable e) {
       // ignore all other errors and exceptions
       // since this code is just a test to see if the message is present on the
       // system
