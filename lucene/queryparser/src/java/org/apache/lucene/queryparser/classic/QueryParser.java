@@ -1035,7 +1035,8 @@ if (splitOnWhitespace == false) {
            p = p.next;
          } while (p != null);
 
-         } catch(LookaheadSuccess ls) { }
+         } catch (LookaheadSuccess _) {
+    }
      }
      jj_rescan = false;
   }

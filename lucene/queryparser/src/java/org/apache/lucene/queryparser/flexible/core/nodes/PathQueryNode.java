@@ -152,9 +152,7 @@ public class PathQueryNode extends QueryNodeImpl {
     for (int i = startIndex; i < this.values.size(); i++) {
       try {
         rValues.add(this.values.get(i).clone());
-      } catch (
-          @SuppressWarnings("unused")
-          CloneNotSupportedException e) {
+      } catch (CloneNotSupportedException _) {
         // this will not happen
       }
     }

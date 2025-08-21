@@ -2155,7 +2155,8 @@ if (left.kind == RANGE_QUOTED) {
            p = p.next;
          } while (p != null);
 
-         } catch(LookaheadSuccess ls) { }
+         } catch (LookaheadSuccess _) {
+    }
      }
      jj_rescan = false;
   }

@@ -513,9 +513,7 @@ public abstract class QueryParserBase extends QueryBuilder
 
     try {
       part1 = DateTools.dateToString(df.parse(part1), resolution);
-    } catch (
-        @SuppressWarnings("unused")
-        Exception e) {
+    } catch (Exception _) {
     }
 
     try {
@@ -533,9 +531,7 @@ public abstract class QueryParserBase extends QueryBuilder
         d2 = cal.getTime();
       }
       part2 = DateTools.dateToString(d2, resolution);
-    } catch (
-        @SuppressWarnings("unused")
-        Exception e) {
+    } catch (Exception _) {
     }
 
     return newRangeQuery(field, part1, part2, startInclusive, endInclusive);
@@ -841,9 +837,7 @@ public abstract class QueryParserBase extends QueryBuilder
   protected float getFuzzyDistance(Token fuzzyToken, String termStr) {
     try {
       return Float.parseFloat(fuzzyToken.image.substring(1));
-    } catch (
-        @SuppressWarnings("unused")
-        Exception ignored) {
+    } catch (Exception _) {
     }
     return fuzzyMinSim;
   }
@@ -865,9 +859,7 @@ public abstract class QueryParserBase extends QueryBuilder
     if (fuzzySlop != null) {
       try {
         s = (int) Float.parseFloat(fuzzySlop.image.substring(1));
-      } catch (
-          @SuppressWarnings("unused")
-          Exception ignored) {
+      } catch (Exception _) {
       }
     }
     return getFieldQuery(
@@ -880,9 +872,7 @@ public abstract class QueryParserBase extends QueryBuilder
       float f = (float) 1.0;
       try {
         f = Float.parseFloat(boost.image);
-      } catch (
-          @SuppressWarnings("unused")
-          Exception ignored) {
+      } catch (Exception _) {
         /* Should this be handled somehow? (defaults to "no boost", if
          * boost number is invalid)
          */

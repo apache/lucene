@@ -127,9 +127,7 @@ public class TermRangeQueryNodeProcessor extends QueryNodeProcessorImpl {
           upper.setText(part2);
         }
 
-      } catch (
-          @SuppressWarnings("unused")
-          Exception e) {
+      } catch (Exception _) {
         // not a date
         Analyzer analyzer = getQueryConfigHandler().get(ConfigurationKeys.ANALYZER);
         if (analyzer != null) {

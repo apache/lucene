@@ -520,9 +520,7 @@ public class SimpleQueryParser extends QueryBuilder {
         } else {
           fuzziness = Integer.parseInt(fuzzyString);
         }
-      } catch (
-          @SuppressWarnings("unused")
-          NumberFormatException e) {
+      } catch (NumberFormatException _) {
         // swallow number format exceptions parsing fuzziness
       }
       // negative -> 0
