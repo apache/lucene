@@ -131,14 +131,18 @@ abstract class AbstractVectorSimilarityQuery extends Query {
                   timeLimitingKnnCollectorManager);
           return VectorSimilarityScorerSupplier.fromScoreDocs(boost, results.scoreDocs);
         } else {
-          Scorer scorer = filterWeight.scorer(context);
-          if (scorer == null) {
-            // If the filter does not match any documents
-            return null;
-          }
-
           AcceptDocs acceptDocs =
-              AcceptDocs.fromIterator(scorer.iterator(), liveDocs, leafReader.maxDoc());
+              AcceptDocs.fromIteratorSupplier(
+                  () -> {
+                    Scorer scorer = filterWeight.scorer(context);
+                    if (scorer == null) {
+                      return DocIdSetIterator.empty();
+                    } else {
+                      return scorer.iterator();
+                    }
+                  },
+                  liveDocs,
+                  leafReader.maxDoc());
 
           int cardinality = acceptDocs.cost();
           if (cardinality == 0) {

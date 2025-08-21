@@ -194,12 +194,18 @@ abstract class AbstractKnnVectorQuery extends Query {
       return approximateSearch(ctx, acceptDocs, Integer.MAX_VALUE, timeLimitingKnnCollectorManager);
     }
 
-    Scorer scorer = filterWeight.scorer(ctx);
-    if (scorer == null) {
-      return NO_RESULTS;
-    }
-
-    AcceptDocs acceptDocs = AcceptDocs.fromIterator(scorer.iterator(), liveDocs, reader.maxDoc());
+    AcceptDocs acceptDocs =
+        AcceptDocs.fromIteratorSupplier(
+            () -> {
+              Scorer scorer = filterWeight.scorer(ctx);
+              if (scorer == null) {
+                return DocIdSetIterator.empty();
+              } else {
+                return scorer.iterator();
+              }
+            },
+            liveDocs,
+            reader.maxDoc());
     final int cost = acceptDocs.cost();
     QueryTimeout queryTimeout = timeLimitingKnnCollectorManager.getQueryTimeout();
 

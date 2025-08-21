@@ -337,7 +337,6 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
 
       private final AcceptDocs in;
       private Bits bits;
-      private DocIdSetIterator iterator;
 
       ExitableAcceptDocs(AcceptDocs in) {
         this.in = in;
@@ -375,33 +374,29 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
 
       @Override
       public DocIdSetIterator iterator() throws IOException {
-        if (iterator == null) {
-          iterator =
-              new FilterDocIdSetIterator(in.iterator()) {
-                private int docToCheck = 0;
+        return new FilterDocIdSetIterator(in.iterator()) {
+          private int docToCheck = 0;
 
-                @Override
-                public int advance(int target) throws IOException {
-                  final int advance = super.advance(target);
-                  if (advance >= docToCheck) {
-                    checkAndThrow(in);
-                    docToCheck = advance + DOCS_BETWEEN_TIMEOUT_CHECK;
-                  }
-                  return advance;
-                }
+          @Override
+          public int advance(int target) throws IOException {
+            final int advance = super.advance(target);
+            if (advance >= docToCheck) {
+              checkAndThrow(in);
+              docToCheck = advance + DOCS_BETWEEN_TIMEOUT_CHECK;
+            }
+            return advance;
+          }
 
-                @Override
-                public int nextDoc() throws IOException {
-                  final int nextDoc = super.nextDoc();
-                  if (nextDoc >= docToCheck) {
-                    checkAndThrow(in);
-                    docToCheck = nextDoc + DOCS_BETWEEN_TIMEOUT_CHECK;
-                  }
-                  return nextDoc;
-                }
-              };
-        }
-        return iterator;
+          @Override
+          public int nextDoc() throws IOException {
+            final int nextDoc = super.nextDoc();
+            if (nextDoc >= docToCheck) {
+              checkAndThrow(in);
+              docToCheck = nextDoc + DOCS_BETWEEN_TIMEOUT_CHECK;
+            }
+            return nextDoc;
+          }
+        };
       }
 
       @Override

@@ -34,7 +34,6 @@ public final class AssertingAcceptDocs extends AcceptDocs {
   }
 
   private final AcceptDocs acceptDocs;
-  private boolean iteratorCalled;
   private final Thread creationThread = Thread.currentThread();
 
   private AssertingAcceptDocs(AcceptDocs acceptDocs) {
@@ -45,29 +44,22 @@ public final class AssertingAcceptDocs extends AcceptDocs {
   public Bits bits() throws IOException {
     assert Thread.currentThread() == creationThread
         : "Usage of AcceptDocs should be confined to a single thread";
-    assert iteratorCalled == false : "This must not be called after #iterator";
-    Bits instance1 = acceptDocs.bits();
-    Bits instance2 = acceptDocs.bits();
-    assert instance1 == instance2 : "Don't create a new instance on every invocation of #bits";
-    return instance1;
+    return acceptDocs.bits();
   }
 
   @Override
   public DocIdSetIterator iterator() throws IOException {
     assert Thread.currentThread() == creationThread
         : "Usage of AcceptDocs should be confined to a single thread";
-    DocIdSetIterator instance1 = acceptDocs.iterator();
-    DocIdSetIterator instance2 = acceptDocs.iterator();
-    assert instance1 == instance2 : "Don't create a new instance on every invocation of #iterator";
-    iteratorCalled = true;
-    return instance1;
+    DocIdSetIterator iterator = acceptDocs.iterator();
+    assert iterator.docID() == -1 : "Iterator must be unpositioned";
+    return iterator;
   }
 
   @Override
   public int cost() throws IOException {
     assert Thread.currentThread() == creationThread
         : "Usage of AcceptDocs should be confined to a single thread";
-    assert iteratorCalled == false : "This must not be called after #iterator";
     return acceptDocs.cost();
   }
 }
