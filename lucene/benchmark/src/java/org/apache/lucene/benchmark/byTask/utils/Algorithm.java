@@ -308,9 +308,7 @@ public class Algorithm implements AutoCloseable {
     for (String pkg : taskPackages) {
       try {
         return Class.forName(pkg + '.' + taskName + "Task");
-      } catch (
-          @SuppressWarnings("unused")
-          ClassNotFoundException e) {
+      } catch (ClassNotFoundException _) {
         // failed in this package, might succeed in the next one...
       }
     }

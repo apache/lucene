@@ -2639,8 +2639,7 @@ public class IndexWriter
      */
     try {
       synchronized (fullFlushLock) {
-        try (@SuppressWarnings("unused")
-            Closeable finalizer = docWriter.lockAndAbortAll()) {
+        try (Closeable _ = docWriter.lockAndAbortAll()) {
           processEvents(false);
           synchronized (this) {
             try {
@@ -5875,9 +5874,7 @@ public class IndexWriter
     Collection<String> files;
     try {
       files = info.files();
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException ise) {
+    } catch (IllegalStateException _) {
       // OK
       files = null;
     }

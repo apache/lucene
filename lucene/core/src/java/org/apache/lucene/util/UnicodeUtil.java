@@ -585,9 +585,7 @@ public final class UnicodeUtil {
             w += 2;
           }
           break;
-        } catch (
-            @SuppressWarnings("unused")
-            IndexOutOfBoundsException ex) {
+        } catch (IndexOutOfBoundsException _) {
           int newlen = (int) (Math.ceil((double) codePoints.length * (w + 2) / (r - offset + 1)));
           char[] temp = new char[newlen];
           System.arraycopy(chars, 0, temp, 0, w);
