@@ -86,8 +86,8 @@ public class GroupVIntBenchmark {
       };
 
   final int maxSize = 256;
-  final long[] docs = new long[maxSize];
-  final long[] values = new long[maxSize];
+  final int[] docs = new int[maxSize];
+  final int[] values = new int[maxSize];
 
   IndexInput byteBufferGVIntIn;
   IndexInput nioGVIntIn;
@@ -103,7 +103,7 @@ public class GroupVIntBenchmark {
   @Param({"64"})
   public int size;
 
-  void initArrayInput(long[] docs) throws Exception {
+  void initArrayInput(int[] docs) throws Exception {
     byte[] gVIntBytes = new byte[Integer.BYTES * maxSize * 2];
     byte[] vIntBytes = new byte[Integer.BYTES * maxSize * 2];
     ByteArrayDataOutput vIntOut = new ByteArrayDataOutput(vIntBytes);
@@ -116,7 +116,7 @@ public class GroupVIntBenchmark {
     byteArrayGVIntIn = new ByteArrayDataInput(gVIntBytes);
   }
 
-  void initNioInput(long[] docs) throws Exception {
+  void initNioInput(int[] docs) throws Exception {
     Directory dir = new NIOFSDirectory(Files.createTempDirectory("groupvintdata"));
     IndexOutput out = dir.createOutput("gvint", IOContext.DEFAULT);
     out.writeGroupVInts(docs, docs.length);
@@ -124,13 +124,13 @@ public class GroupVIntBenchmark {
     nioGVIntIn = dir.openInput("gvint", IOContext.DEFAULT);
   }
 
-  void initByteBuffersInput(long[] docs) throws Exception {
+  void initByteBuffersInput(int[] docs) throws Exception {
     ByteBuffersDataOutput buffer = new ByteBuffersDataOutput();
     buffer.writeGroupVInts(docs, docs.length);
     byteBuffersGVIntIn = buffer.toDataInput();
   }
 
-  void initByteBufferInput(long[] docs) throws Exception {
+  void initByteBufferInput(int[] docs) throws Exception {
     Directory dir = new MMapDirectory(Files.createTempDirectory("groupvintdata"));
     IndexOutput vintOut = dir.createOutput("vint", IOContext.DEFAULT);
     IndexOutput gvintOut = dir.createOutput("gvint", IOContext.DEFAULT);
@@ -145,7 +145,7 @@ public class GroupVIntBenchmark {
     byteBufferVIntIn = dir.openInput("vint", IOContext.DEFAULT);
   }
 
-  private void readGroupVIntsBaseline(DataInput in, long[] dst, int limit) throws IOException {
+  private void readGroupVIntsBaseline(DataInput in, int[] dst, int limit) throws IOException {
     int i;
     for (i = 0; i <= limit - 4; i += 4) {
       GroupVIntUtil.readGroupVInt(in, dst, i);
