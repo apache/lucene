@@ -125,16 +125,12 @@ public class LockStressTest {
             }
             try (var _ = verifyLF.obtainLock(lockDir, LOCK_FILE_NAME)) {
               throw new IOException("Double obtain");
-            } catch (
-                @SuppressWarnings("unused")
-                LockObtainFailedException loe) {
+            } catch (LockObtainFailedException _) {
               // pass
             }
           }
           Thread.sleep(sleepTimeMS);
-        } catch (
-            @SuppressWarnings("unused")
-            LockObtainFailedException loe) {
+        } catch (LockObtainFailedException _) {
           // obtain failed
         }
 
@@ -154,9 +150,7 @@ public class LockStressTest {
     // try to get static INSTANCE field of class
     try {
       return (FSLockFactory) Class.forName(lockFactoryClassName).getField("INSTANCE").get(null);
-    } catch (
-        @SuppressWarnings("unused")
-        ReflectiveOperationException e) {
+    } catch (ReflectiveOperationException _) {
       // fall-through
     }
 
@@ -166,7 +160,7 @@ public class LockStressTest {
           .asSubclass(FSLockFactory.class)
           .getConstructor()
           .newInstance();
-    } catch (@SuppressWarnings("unused") ReflectiveOperationException | ClassCastException e) {
+    } catch (ReflectiveOperationException | ClassCastException _) {
       // fall-through
     }
 

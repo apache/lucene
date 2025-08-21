@@ -1674,9 +1674,7 @@ public final class CheckIndex implements Closeable {
           long ord = -1;
           try {
             ord = termsEnum.ord();
-          } catch (
-              @SuppressWarnings("unused")
-              UnsupportedOperationException uoe) {
+          } catch (UnsupportedOperationException _) {
             hasOrd = false;
           }
 
