@@ -26,7 +26,7 @@ import java.util.Set;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.CombinedFieldQuery.FieldAndWeight;
-import org.apache.lucene.search.similarities.Similarity;
+import org.apache.lucene.search.similarities.Similarity.BulkSimScorer;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.LongsRef;
@@ -50,7 +50,7 @@ final class MultiNormsLeafSimScorer {
   }
 
   private final SimScorer scorer;
-  private final Similarity.BulkSimScorer bulkScorer;
+  private final BulkSimScorer bulkScorer;
   private final NumericDocValues norms;
   private long[] normValues = LongsRef.EMPTY_LONGS;
 
