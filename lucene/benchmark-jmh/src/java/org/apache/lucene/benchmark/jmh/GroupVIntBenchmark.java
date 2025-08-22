@@ -89,9 +89,9 @@ public class GroupVIntBenchmark {
   final int[] docs = new int[maxSize];
   final int[] values = new int[maxSize];
 
-  IndexInput byteBufferGVIntIn;
+  IndexInput mmapGVIntIn;
   IndexInput nioGVIntIn;
-  IndexInput byteBufferVIntIn;
+  IndexInput mmapVIntIn;
   ByteBuffersDataInput byteBuffersGVIntIn;
 
   ByteArrayDataInput byteArrayVIntIn;
@@ -130,7 +130,7 @@ public class GroupVIntBenchmark {
     byteBuffersGVIntIn = buffer.toDataInput();
   }
 
-  void initByteBufferInput(int[] docs) throws Exception {
+  void initMMapInput(int[] docs) throws Exception {
     Directory dir = new MMapDirectory(Files.createTempDirectory("groupvintdata"));
     IndexOutput vintOut = dir.createOutput("vint", IOContext.DEFAULT);
     IndexOutput gvintOut = dir.createOutput("gvint", IOContext.DEFAULT);
@@ -141,8 +141,8 @@ public class GroupVIntBenchmark {
     }
     vintOut.close();
     gvintOut.close();
-    byteBufferGVIntIn = dir.openInput("gvint", IOContext.DEFAULT);
-    byteBufferVIntIn = dir.openInput("vint", IOContext.DEFAULT);
+    mmapGVIntIn = dir.openInput("gvint", IOContext.DEFAULT);
+    mmapVIntIn = dir.openInput("vint", IOContext.DEFAULT);
   }
 
   private void readGroupVIntsBaseline(DataInput in, int[] dst, int limit) throws IOException {
@@ -168,7 +168,7 @@ public class GroupVIntBenchmark {
       }
       docs[i] = r.nextInt(1 << (numBits - 1), 1 << numBits);
     }
-    initByteBufferInput(docs);
+    initMMapInput(docs);
     initArrayInput(docs);
     initNioInput(docs);
     initByteBuffersInput(docs);
@@ -176,24 +176,24 @@ public class GroupVIntBenchmark {
 
   @Benchmark
   public void benchMMapDirectoryInputs_readVInt(Blackhole bh) throws IOException {
-    byteBufferVIntIn.seek(0);
+    mmapVIntIn.seek(0);
     for (int i = 0; i < size; i++) {
-      values[i] = byteBufferVIntIn.readVInt();
+      values[i] = mmapVIntIn.readVInt();
     }
     bh.consume(values);
   }
 
   @Benchmark
   public void benchMMapDirectoryInputs_readGroupVInt(Blackhole bh) throws IOException {
-    byteBufferGVIntIn.seek(0);
-    GroupVIntUtil.readGroupVInts(byteBufferGVIntIn, values, size);
+    mmapGVIntIn.seek(0);
+    GroupVIntUtil.readGroupVInts(mmapGVIntIn, values, size);
     bh.consume(values);
   }
 
   @Benchmark
   public void benchMMapDirectoryInputs_readGroupVIntBaseline(Blackhole bh) throws IOException {
-    byteBufferGVIntIn.seek(0);
-    this.readGroupVIntsBaseline(byteBufferGVIntIn, values, size);
+    mmapGVIntIn.seek(0);
+    this.readGroupVIntsBaseline(mmapGVIntIn, values, size);
     bh.consume(values);
   }
 
