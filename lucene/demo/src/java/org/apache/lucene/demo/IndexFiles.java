@@ -212,7 +212,9 @@ public class IndexFiles implements AutoCloseable {
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
               try {
                 indexDoc(writer, file, attrs.lastModifiedTime().toMillis());
-              } catch (IOException _) {
+              } catch (
+                  @SuppressWarnings("unused")
+                  IOException ignore) {
                 ignore.printStackTrace(System.err);
                 // don't index files that can't be read.
               }
