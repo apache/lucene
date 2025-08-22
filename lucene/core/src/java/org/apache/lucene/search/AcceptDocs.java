@@ -109,16 +109,9 @@ public abstract class AcceptDocs {
         }
         return bitSet;
       } else {
-        if (liveDocs != null) {
-          iterator =
-              new FilteredDocIdSetIterator(iterator) {
-                @Override
-                protected boolean match(int doc) {
-                  return liveDocs.get(doc);
-                }
-              };
-        }
-        return BitSet.of(iterator, maxDoc); // create a sparse bitset
+        return BitSet.of(
+            AcceptDocs.getFilteredDocIdSetIterator(iterator, liveDocs),
+            maxDoc); // create a sparse bitset
       }
     }
   }
@@ -132,17 +125,7 @@ public abstract class AcceptDocs {
     BitsAcceptDocs(Bits bits, int maxDoc) {
       this.bits = bits;
       this.maxDoc = maxDoc;
-      DocIdSetIterator iterator = DocIdSetIterator.all(maxDoc);
-      if (bits != null) {
-        iterator =
-            new FilteredDocIdSetIterator(iterator) {
-              @Override
-              protected boolean match(int doc) {
-                return bits.get(doc);
-              }
-            };
-      }
-      this.iterator = iterator;
+      this.iterator = AcceptDocs.getFilteredDocIdSetIterator(DocIdSetIterator.all(maxDoc), bits);
     }
 
     @Override
@@ -231,17 +214,21 @@ public abstract class AcceptDocs {
       if (bitSetAcceptDocs != null) {
         return bitSetAcceptDocs.iterator();
       }
-      DocIdSetIterator iterator = iteratorSupplier.get();
-      if (liveDocs != null) {
-        iterator =
-            new FilteredDocIdSetIterator(iterator) {
-              @Override
-              protected boolean match(int doc) {
-                return liveDocs.get(doc);
-              }
-            };
-      }
-      return iterator;
+      return AcceptDocs.getFilteredDocIdSetIterator(iteratorSupplier.get(), liveDocs);
     }
+  }
+
+  private static DocIdSetIterator getFilteredDocIdSetIterator(
+      DocIdSetIterator iterator, Bits liveDocs) {
+    if (liveDocs != null) {
+      iterator =
+          new FilteredDocIdSetIterator(iterator) {
+            @Override
+            protected boolean match(int doc) {
+              return liveDocs.get(doc);
+            }
+          };
+    }
+    return iterator;
   }
 }
