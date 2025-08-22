@@ -27,7 +27,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import org.apache.lucene.util.BitUtil;
-import org.apache.lucene.util.GroupVIntUtil;
 
 /**
  * Abstract base class for performing read operations of Lucene's low-level data types.
@@ -97,16 +96,6 @@ public abstract class DataInput implements Cloneable {
     final byte b3 = readByte();
     final byte b4 = readByte();
     return ((b4 & 0xFF) << 24) | ((b3 & 0xFF) << 16) | ((b2 & 0xFF) << 8) | (b1 & 0xFF);
-  }
-
-  /**
-   * Override if you have an efficient implementation. In general this is when the input supports
-   * random access.
-   *
-   * @lucene.experimental
-   */
-  public void readGroupVInt(int[] dst, int offset) throws IOException {
-    GroupVIntUtil.readGroupVInt(this, dst, offset);
   }
 
   /**

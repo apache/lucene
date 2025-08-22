@@ -31,7 +31,6 @@ import java.util.function.Function;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
-import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOConsumer;
 
 /**
@@ -424,23 +423,6 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       return segments[si].get(LAYOUT_BYTE, pos & chunkSizeMask);
     } catch (IndexOutOfBoundsException _) {
       throw handlePositionalIOOBE("read", pos);
-    } catch (NullPointerException | IllegalStateException e) {
-      throw alreadyClosed(e);
-    }
-  }
-
-  @Override
-  public void readGroupVInt(int[] dst, int offset) throws IOException {
-    try {
-      final int len =
-          GroupVIntUtil.readGroupVInt(
-              this,
-              curSegment.byteSize() - curPosition,
-              p -> curSegment.get(LAYOUT_LE_INT, p),
-              curPosition,
-              dst,
-              offset);
-      curPosition += len;
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
     }

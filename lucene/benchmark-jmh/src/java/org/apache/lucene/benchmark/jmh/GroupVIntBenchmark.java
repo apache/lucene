@@ -23,8 +23,8 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
-import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
+import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -50,8 +50,8 @@ import org.openjdk.jmh.infra.Blackhole;
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
-@Warmup(iterations = 3, time = 3)
-@Measurement(iterations = 5, time = 5)
+@Warmup(iterations = 4, time = 8)
+@Measurement(iterations = 5, time = 20)
 @Fork(
     value = 1,
     jvmArgsPrepend = {"--add-modules=jdk.unsupported"})
@@ -92,7 +92,7 @@ public class GroupVIntBenchmark {
   IndexInput mmapGVIntIn;
   IndexInput nioGVIntIn;
   IndexInput mmapVIntIn;
-  ByteBuffersDataInput byteBuffersGVIntIn;
+  IndexInput byteBuffersGVIntIn;
 
   ByteArrayDataInput byteArrayVIntIn;
   ByteArrayDataInput byteArrayGVIntIn;
@@ -125,9 +125,11 @@ public class GroupVIntBenchmark {
   }
 
   void initByteBuffersInput(int[] docs) throws Exception {
-    ByteBuffersDataOutput buffer = new ByteBuffersDataOutput();
-    buffer.writeGroupVInts(docs, docs.length);
-    byteBuffersGVIntIn = buffer.toDataInput();
+    Directory dir = new ByteBuffersDirectory();
+    IndexOutput out = dir.createOutput("gvint", IOContext.DEFAULT);
+    out.writeGroupVInts(docs, docs.length);
+    out.close();
+    byteBuffersGVIntIn = dir.openInput("gvint", IOContext.DEFAULT);
   }
 
   void initMMapInput(int[] docs) throws Exception {
@@ -148,7 +150,7 @@ public class GroupVIntBenchmark {
   private void readGroupVIntsBaseline(DataInput in, int[] dst, int limit) throws IOException {
     int i;
     for (i = 0; i <= limit - 4; i += 4) {
-      GroupVIntUtil.readGroupVInt(in, dst, i);
+      GroupVIntUtil.readGroupVInt$Baseline(in, dst, i);
     }
     for (; i < limit; ++i) {
       dst[i] = in.readVInt();
