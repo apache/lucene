@@ -36,16 +36,6 @@ final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
     this.memorySegment = memorySegment;
   }
 
-  private static void shift(
-      IntVector vector, int bShift, int dec, int maxIter, int bMask, int[] b, int count, int i) {
-    for (int j = 0; j <= maxIter; ++j) {
-      vector
-          .lanewise(VectorOperators.LSHR, bShift - j * dec)
-          .lanewise(VectorOperators.AND, bMask)
-          .intoArray(b, count * j + i);
-    }
-  }
-
   @Override
   @SuppressWarnings("NarrowCalculation") // count * 4 won't overflow integer here
   public void splitInts(
@@ -59,26 +49,54 @@ final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
       return;
     }
 
-    int maxIter = (bShift - 1) / dec;
-    long offset = in.getFilePointer();
-    long endOffset = offset + count * Integer.BYTES;
-    int loopBound = INT_SPECIES.loopBound(count - 1);
+    final int maxIter = (bShift - 1) / dec;
+    final long startOffset = in.getFilePointer();
+    final long endOffset = startOffset + (long) count * Integer.BYTES;
+
+    // read into array
+    long offset = startOffset;
+    int loopBound = INT_SPECIES.loopBound(count);
     for (int i = 0;
         i < loopBound;
         i += INT_SPECIES.length(), offset += INT_SPECIES.length() * Integer.BYTES) {
-      IntVector vector =
-          IntVector.fromMemorySegment(INT_SPECIES, memorySegment, offset, ByteOrder.LITTLE_ENDIAN);
-      shift(vector, bShift, dec, maxIter, bMask, b, count, i);
-      vector.lanewise(VectorOperators.AND, cMask).intoArray(c, cIndex + i);
+      IntVector.fromMemorySegment(INT_SPECIES, memorySegment, offset, ByteOrder.LITTLE_ENDIAN)
+          .intoArray(c, cIndex + i);
+    }
+    // tail read
+    int tailStart = count - INT_SPECIES.length();
+    offset = endOffset - INT_SPECIES.length() * Integer.BYTES;
+    IntVector.fromMemorySegment(INT_SPECIES, memorySegment, offset, ByteOrder.LITTLE_ENDIAN)
+        .intoArray(c, cIndex + tailStart);
+
+    // Process each shift level across all elements
+    for (int j = 0; j <= maxIter; ++j) {
+      final int shift = bShift - j * dec;
+      final int bOffset = j * count;
+
+      for (int i = 0; i < loopBound; i += INT_SPECIES.length()) {
+        IntVector.fromArray(INT_SPECIES, c, cIndex + i)
+            .lanewise(VectorOperators.LSHR, shift)
+            .lanewise(VectorOperators.AND, bMask)
+            .intoArray(b, bOffset + i);
+      }
+      // tail split
+      IntVector.fromArray(INT_SPECIES, c, cIndex + tailStart)
+          .lanewise(VectorOperators.LSHR, shift)
+          .lanewise(VectorOperators.AND, bMask)
+          .intoArray(b, bOffset + tailStart);
     }
 
-    // Handle the tail by reading a vector that is aligned with `count` on the right side.
-    int i = count - INT_SPECIES.length();
-    offset = endOffset - INT_SPECIES.length() * Integer.BYTES;
-    IntVector vector =
-        IntVector.fromMemorySegment(INT_SPECIES, memorySegment, offset, ByteOrder.LITTLE_ENDIAN);
-    shift(vector, bShift, dec, maxIter, bMask, b, count, i);
-    vector.lanewise(VectorOperators.AND, cMask).intoArray(c, cIndex + i);
+    // apply cMask to c[] (vectorised)
+    IntVector maskVec = IntVector.broadcast(INT_SPECIES, cMask);
+    for (int i = 0; i < loopBound; i += INT_SPECIES.length()) {
+      IntVector.fromArray(INT_SPECIES, c, cIndex + i)
+          .lanewise(VectorOperators.AND, maskVec)
+          .intoArray(c, cIndex + i);
+    }
+    // tail mask
+    IntVector.fromArray(INT_SPECIES, c, cIndex + tailStart)
+        .lanewise(VectorOperators.AND, maskVec)
+        .intoArray(c, cIndex + tailStart);
 
     in.seek(endOffset);
   }
