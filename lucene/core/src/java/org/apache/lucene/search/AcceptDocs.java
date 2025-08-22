@@ -73,9 +73,6 @@ public abstract class AcceptDocs {
    * @return AcceptDocs wrapping the Bits
    */
   public static AcceptDocs fromLiveDocs(Bits bits, int maxDoc) {
-    if (bits instanceof BitSet bitSet) {
-      return new BitSetAcceptDocs(bitSet);
-    }
     return new BitsAcceptDocs(bits, maxDoc);
   }
 
@@ -89,7 +86,7 @@ public abstract class AcceptDocs {
    * @return AcceptDocs wrapping the iterator
    */
   public static AcceptDocs fromIteratorSupplier(
-      IOSupplier<DocIdSetIterator> iteratorSupplier, Bits liveDocs, int maxDoc) throws IOException {
+      IOSupplier<DocIdSetIterator> iteratorSupplier, Bits liveDocs, int maxDoc) {
     return new DocIdSetIteratorAcceptDocs(iteratorSupplier, liveDocs, maxDoc);
   }
 
@@ -116,7 +113,10 @@ public abstract class AcceptDocs {
     }
   }
 
-  /** Impl backed by Bits, expected to be somewhat dense. */
+  /**
+   * Impl backed by Bits, expected to be somewhat dense, except when a {@link BitSet} is provided,
+   * in which case it's not necessarily dense.
+   */
   private static class BitsAcceptDocs extends AcceptDocs {
     private final Bits bits;
     private final DocIdSetIterator iterator;
@@ -124,8 +124,14 @@ public abstract class AcceptDocs {
 
     BitsAcceptDocs(Bits bits, int maxDoc) {
       this.bits = bits;
-      this.maxDoc = maxDoc;
-      this.iterator = AcceptDocs.getFilteredDocIdSetIterator(DocIdSetIterator.all(maxDoc), bits);
+      if (bits instanceof BitSet bitSet) {
+        Objects.requireNonNull(bitSet);
+        this.maxDoc = bitSet.cardinality();
+        this.iterator = new BitSetIterator(bitSet, this.maxDoc);
+      } else {
+        this.maxDoc = maxDoc;
+        this.iterator = AcceptDocs.getFilteredDocIdSetIterator(DocIdSetIterator.all(maxDoc), bits);
+      }
     }
 
     @Override
@@ -146,32 +152,6 @@ public abstract class AcceptDocs {
     }
   }
 
-  /** Impl backed by a {@link BitSet}, which is not necessarily dense. */
-  private static class BitSetAcceptDocs extends AcceptDocs {
-    private final BitSet bitSet;
-    private final int cardinality;
-
-    BitSetAcceptDocs(BitSet bitSet) {
-      this.bitSet = Objects.requireNonNull(bitSet);
-      this.cardinality = bitSet.cardinality();
-    }
-
-    @Override
-    public Bits bits() {
-      return bitSet;
-    }
-
-    @Override
-    public DocIdSetIterator iterator() {
-      return new BitSetIterator(bitSet, cardinality);
-    }
-
-    @Override
-    public int cost() {
-      return cardinality;
-    }
-  }
-
   /**
    * Impl backed by a {@link DocIdSetIterator}, which lazily creates a {@link BitSet} if {@link
    * #cost()} or {@link #bits()} are called.
@@ -181,7 +161,8 @@ public abstract class AcceptDocs {
     private final IOSupplier<DocIdSetIterator> iteratorSupplier;
     private final Bits liveDocs;
     private final int maxDoc;
-    private BitSetAcceptDocs bitSetAcceptDocs;
+    private BitSet acceptBitSet;
+    private int cardinality;
 
     DocIdSetIteratorAcceptDocs(
         IOSupplier<DocIdSetIterator> iteratorSupplier, Bits liveDocs, int maxDoc) {
@@ -191,28 +172,28 @@ public abstract class AcceptDocs {
     }
 
     private void createBitSetAcceptDocsIfNecessary() throws IOException {
-      if (bitSetAcceptDocs == null) {
-        BitSet bitSet = createBitSet(iterator(), liveDocs, maxDoc);
-        bitSetAcceptDocs = new BitSetAcceptDocs(bitSet);
+      if (acceptBitSet == null) {
+        acceptBitSet = Objects.requireNonNull(createBitSet(iterator(), liveDocs, maxDoc));
+        cardinality = acceptBitSet.cardinality();
       }
     }
 
     @Override
     public Bits bits() throws IOException {
       createBitSetAcceptDocsIfNecessary();
-      return bitSetAcceptDocs.bits();
+      return acceptBitSet;
     }
 
     @Override
     public int cost() throws IOException {
       createBitSetAcceptDocsIfNecessary();
-      return bitSetAcceptDocs.cost();
+      return acceptBitSet.cardinality();
     }
 
     @Override
     public DocIdSetIterator iterator() throws IOException {
-      if (bitSetAcceptDocs != null) {
-        return bitSetAcceptDocs.iterator();
+      if (acceptBitSet != null) {
+        return new BitSetIterator(acceptBitSet, cardinality);
       }
       return AcceptDocs.getFilteredDocIdSetIterator(iteratorSupplier.get(), liveDocs);
     }
