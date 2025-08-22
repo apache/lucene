@@ -302,9 +302,7 @@ public class TestSimpleServer extends LuceneTestCase {
                 while (System.nanoTime() < endTime) {
                   try {
                     Thread.sleep(10);
-                  } catch (
-                      @SuppressWarnings("unused")
-                      InterruptedException e) {
+                  } catch (InterruptedException _) {
                   }
                   if (stop.get()) {
                     break;
@@ -333,9 +331,7 @@ public class TestSimpleServer extends LuceneTestCase {
                     while (true) {
                       try {
                         new CountDownLatch(1).await();
-                      } catch (
-                          @SuppressWarnings("unused")
-                          InterruptedException e) {
+                      } catch (InterruptedException _) {
                         // We'll eventually be killed by an outside process, retry.
                       }
                     }
@@ -363,9 +359,7 @@ public class TestSimpleServer extends LuceneTestCase {
         Socket socket;
         try {
           socket = ss.accept();
-        } catch (
-            @SuppressWarnings("unused")
-            SocketException se) {
+        } catch (SocketException _) {
           // when ClientHandler closes our ss we will hit this
           node.message("top: server socket exc; now exit");
           break;

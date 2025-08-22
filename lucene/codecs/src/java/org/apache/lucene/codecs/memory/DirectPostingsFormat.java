@@ -1922,9 +1922,7 @@ public final class DirectPostingsFormat extends PostingsFormat {
       upto++;
       try {
         return docID = docIDs[upto];
-      } catch (
-          @SuppressWarnings("unused")
-          ArrayIndexOutOfBoundsException e) {
+      } catch (ArrayIndexOutOfBoundsException _) {
       }
       return docID = NO_MORE_DOCS;
     }
