@@ -169,9 +169,6 @@ Improvements
 
 * GITHUB#14816: Expose search strategy in KNN query
 
-* GITHUB#15089, GITHUB#15079: Refactor GroupVIntUtil functional interface lambda
-  which does not inline correctly in MemorySegmentIndexInput (Uwe Schindler, Robert Muir)
-
 Optimizations
 ---------------------
 * GITHUB#14932: Switched to GroupVarInt Encoding for HNSW Graph edges, added backwards compatibility (Akira Lonske)
