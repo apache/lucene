@@ -327,9 +327,7 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
                 0 /* min */,
                 DocIdSetIterator.NO_MORE_DOCS /* max */);
           }
-        } catch (
-            @SuppressWarnings("unused")
-            CollectionTerminatedException e) {
+        } catch (CollectionTerminatedException _) {
         }
         leafCollector.finish();
       }

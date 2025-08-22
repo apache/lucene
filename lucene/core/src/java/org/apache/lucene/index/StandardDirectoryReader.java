@@ -455,9 +455,7 @@ public final class StandardDirectoryReader extends DirectoryReader {
           if (writer != null) {
             try {
               writer.decRefDeleter(segmentInfos);
-            } catch (
-                @SuppressWarnings("unused")
-                AlreadyClosedException ex) {
+            } catch (AlreadyClosedException _) {
               // This is OK, it just means our original writer was
               // closed before we were, and this may leave some
               // un-referenced files in the index, which is

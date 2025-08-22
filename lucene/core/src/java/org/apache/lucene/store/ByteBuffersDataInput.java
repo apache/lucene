@@ -38,7 +38,6 @@ import org.apache.lucene.util.RamUsageEstimator;
  */
 public final class ByteBuffersDataInput extends DataInput
     implements Accountable, RandomAccessInput {
-
   private final ByteBuffer[] blocks;
   private final FloatBuffer[] floatBuffers;
   private final LongBuffer[] longBuffers;
@@ -216,8 +215,7 @@ public final class ByteBuffersDataInput extends DataInput
         GroupVIntUtil.readGroupVInt(
             this,
             block.limit() - blockOffset,
-            GroupVIntUtil.VH_BUFFER_GET_INT,
-            block,
+            p -> block.getInt((int) p),
             blockOffset,
             dst,
             offset);

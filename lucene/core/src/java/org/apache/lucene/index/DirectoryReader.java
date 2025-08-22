@@ -280,7 +280,7 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
           // IOException allowed to throw there, in case
           // segments_N is corrupt
           sis = SegmentInfos.readCommit(dir, fileName, 0);
-        } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException fnfe) {
+        } catch (FileNotFoundException | NoSuchFileException _) {
           // LUCENE-948: on NFS (and maybe others), if
           // you have writers switching back and forth
           // between machines, it's very likely that the

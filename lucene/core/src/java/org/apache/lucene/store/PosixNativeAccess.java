@@ -71,9 +71,7 @@ final class PosixNativeAccess extends NativeAccess {
       instance = new PosixNativeAccess();
     } catch (UnsupportedOperationException uoe) {
       LOG.warning(uoe.getMessage());
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalCallerException ice) {
+    } catch (IllegalCallerException _) {
       LOG.warning(
           String.format(
               Locale.ENGLISH,

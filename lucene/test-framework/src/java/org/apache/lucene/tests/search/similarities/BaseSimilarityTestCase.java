@@ -139,9 +139,7 @@ public abstract class BaseSimilarityTestCase extends LuceneTestCase {
     long upperBound;
     try {
       upperBound = Math.min(MAXTOKENS_FORTESTING, Math.multiplyExact(docCount, Integer.MAX_VALUE));
-    } catch (
-        @SuppressWarnings("unused")
-        ArithmeticException overflow) {
+    } catch (ArithmeticException _) {
       upperBound = MAXTOKENS_FORTESTING;
     }
     final long sumDocFreq;
@@ -207,9 +205,7 @@ public abstract class BaseSimilarityTestCase extends LuceneTestCase {
     try {
       upperBound =
           Math.min(corpus.sumTotalTermFreq(), Math.multiplyExact(docFreq, Integer.MAX_VALUE));
-    } catch (
-        @SuppressWarnings("unused")
-        ArithmeticException overflow) {
+    } catch (ArithmeticException _) {
       upperBound = corpus.sumTotalTermFreq();
     }
     if (corpus.sumTotalTermFreq() == corpus.sumDocFreq()) {
