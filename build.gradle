@@ -33,7 +33,6 @@ plugins {
   id "lucene.validation.error-prone"
   id "lucene.validation.jar-checks"
   id "lucene.validation.rat-sources"
-  id "lucene.validation.owasp"
 
   id "lucene.publications.maven"
   id "lucene.publications.maven-to-nexus-releases"
