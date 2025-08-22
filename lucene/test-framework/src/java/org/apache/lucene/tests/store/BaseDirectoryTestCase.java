@@ -1458,7 +1458,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   }
 
   public void testDataTypes() throws IOException {
-    final long[] values = new long[] {43, 12345, 123456, 1234567890};
+    final int[] values = new int[] {43, 12345, 123456, 1234567890};
     try (Directory dir = getDirectory(createTempDir("testDataTypes"))) {
       IndexOutput out = dir.createOutput("test", IOContext.DEFAULT);
       out.writeByte((byte) 43);
@@ -1468,7 +1468,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       out.writeLong(1234567890123456789L);
       out.close();
 
-      long[] restored = new long[4];
+      int[] restored = new int[4];
       IndexInput in = dir.openInput("test", IOContext.DEFAULT);
       assertEquals(43, in.readByte());
       assertEquals(12345, in.readShort());
@@ -1480,6 +1480,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     }
   }
 
+  @Deprecated
   public void testGroupVIntOverflow() throws IOException {
     try (Directory dir = getDirectory(createTempDir("testGroupVIntOverflow"))) {
       final int size = 32;
@@ -1526,7 +1527,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
 
   protected void doTestGroupVInt(
       Directory dir, int iterations, int minBpv, int maxBpv, int maxNumValues) throws IOException {
-    long[] values = new long[maxNumValues];
+    int[] values = new int[maxNumValues];
     int[] numValuesArray = new int[iterations];
     IndexOutput groupVIntOut = dir.createOutput("group-varint", IOContext.DEFAULT);
     IndexOutput vIntOut = dir.createOutput("vint", IOContext.DEFAULT);
@@ -1537,7 +1538,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       numValuesArray[iter] = TestUtil.nextInt(random(), 1, maxNumValues);
       for (int j = 0; j < numValuesArray[iter]; j++) {
         values[j] = RandomNumbers.randomIntBetween(random(), 0, (int) PackedInts.maxValue(bpv));
-        vIntOut.writeVInt((int) values[j]);
+        vIntOut.writeVInt(values[j]);
       }
       groupVIntOut.writeGroupVInts(values, numValuesArray[iter]);
     }
