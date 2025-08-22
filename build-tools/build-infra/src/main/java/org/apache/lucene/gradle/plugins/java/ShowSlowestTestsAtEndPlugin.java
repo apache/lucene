@@ -33,6 +33,7 @@ import org.gradle.api.tasks.testing.Test;
 import org.gradle.api.tasks.testing.TestDescriptor;
 import org.gradle.api.tasks.testing.TestListener;
 import org.gradle.api.tasks.testing.TestResult;
+import org.gradle.build.event.BuildEventsListenerRegistry;
 import org.gradle.tooling.events.FinishEvent;
 import org.gradle.tooling.events.OperationCompletionListener;
 import org.gradle.tooling.events.task.TaskFailureResult;
@@ -42,15 +43,24 @@ public class ShowSlowestTestsAtEndPlugin extends LuceneGradlePlugin {
   private static final String SERVICE_NAME = "slowestTestsTrackingService";
 
   public abstract static class RootExtPlugin extends LuceneGradlePlugin {
+    /**
+     * @return Returns the injected build events listener registry.
+     */
+    @Inject
+    protected abstract BuildEventsListenerRegistry getListenerRegistry();
+
     @Override
     public void apply(Project project) {
       applicableToRootProjectOnly(project);
 
       // Register the shared build service that will do the end-of-build check
-      project
-          .getGradle()
-          .getSharedServices()
-          .registerIfAbsent(SERVICE_NAME, TestStatsService.class, _ -> {});
+      var service =
+          project
+              .getGradle()
+              .getSharedServices()
+              .registerIfAbsent(SERVICE_NAME, TestStatsService.class, _ -> {});
+
+      getListenerRegistry().onTaskCompletion(service);
     }
   }
 
