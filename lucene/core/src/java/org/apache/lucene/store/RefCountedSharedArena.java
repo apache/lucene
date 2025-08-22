@@ -50,7 +50,11 @@ final class RefCountedSharedArena implements Arena {
   private static final int ACQUIRE_DECREMENT = REMAINING_UNIT - 1; // 0xffff
 
   private final String segmentName;
+
+  // onClose could be called multiple times when the inner Arena's close fails with
+  // IllegalStateException
   private final Runnable onClose;
+
   private final Arena arena;
 
   // high 16 bits contain the total remaining acquires; monotonically decreasing
@@ -99,14 +103,10 @@ final class RefCountedSharedArena implements Arena {
 
   /** Decrements the ref count. */
   void release() {
-    int value;
     while (true) {
-      value = state.get();
+      final int value = state.get();
       final int count = value & 0xFFFF;
-      if (count == 0) {
-        throw new IllegalStateException(value == CLOSED ? "closed" : "nothing to release");
-      }
-      final int newValue = count == 1 ? CLOSED : value - 1;
+      final int newValue = count <= 1 ? CLOSED : value - 1;
       if (this.state.compareAndSet(value, newValue)) {
         if (newValue == CLOSED) {
           onClose.run();
