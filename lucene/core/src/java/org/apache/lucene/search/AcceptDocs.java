@@ -119,17 +119,14 @@ public abstract class AcceptDocs {
    */
   private static class BitsAcceptDocs extends AcceptDocs {
     private final Bits bits;
-    private final DocIdSetIterator iterator;
     private final int maxDoc;
 
     BitsAcceptDocs(Bits bits, int maxDoc) {
       this.bits = bits;
       if (bits instanceof BitSet bitSet) {
         this.maxDoc = Objects.requireNonNull(bitSet).cardinality();
-        this.iterator = null;
       } else {
         this.maxDoc = maxDoc;
-        this.iterator = AcceptDocs.getFilteredDocIdSetIterator(DocIdSetIterator.all(maxDoc), bits);
       }
     }
 
@@ -140,10 +137,10 @@ public abstract class AcceptDocs {
 
     @Override
     public DocIdSetIterator iterator() {
-      if (iterator == null) {
-        return new BitSetIterator((BitSet) bits, maxDoc);
+      if (bits instanceof BitSet bitSet) {
+        return new BitSetIterator(bitSet, maxDoc);
       }
-      return iterator;
+      return AcceptDocs.getFilteredDocIdSetIterator(DocIdSetIterator.all(maxDoc), bits);
     }
 
     @Override
