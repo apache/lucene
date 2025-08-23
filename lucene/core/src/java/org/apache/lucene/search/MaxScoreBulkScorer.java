@@ -246,11 +246,12 @@ final class MaxScoreBulkScorer extends BulkScorer {
     assert essentialQueue.size() == 1;
     assert lead1 == essentialQueue.top();
 
+    int maxOtherDoc = -1;
     for (lead1.scorer.nextDocsAndScores(max, acceptDocs, docAndScoreBuffer);
         docAndScoreBuffer.size > 0;
         lead1.scorer.nextDocsAndScores(max, acceptDocs, docAndScoreBuffer)) {
 
-      docAndScoreAccBuffer.copyFrom(docAndScoreBuffer);
+      docAndScoreAccBuffer.copyWithMinDocRequired(docAndScoreBuffer, maxOtherDoc);
 
       for (int i = allScorers.length - 2; i >= firstRequiredScorer; --i) {
 
@@ -264,6 +265,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
         DisiWrapper scorer = allScorers[i];
         ScorerUtil.applyRequiredClause(docAndScoreAccBuffer, scorer.iterator, scorer.scorable);
+        maxOtherDoc = Math.max(maxOtherDoc, scorer.iterator.docID());
       }
 
       scoreNonEssentialClauses(collector, docAndScoreAccBuffer, firstRequiredScorer);

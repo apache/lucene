@@ -74,4 +74,18 @@ public final class DocAndScoreAccBuffer {
     }
     this.size = buffer.size;
   }
+
+  public void copyWithMinDocRequired(DocAndFloatFeatureBuffer buffer, int minDocInclusive) {
+    int i = 0;
+    for (; i < buffer.size && buffer.docs[i] < minDocInclusive; ++i) {
+      // skip entries with doc IDs below the minimum
+    }
+    int newSize = buffer.size - i;
+    growNoCopy(newSize);
+    System.arraycopy(buffer.docs, i, docs, 0, newSize);
+    for (int j = i; j < buffer.size; ++j) {
+      scores[j - i] = buffer.features[j];
+    }
+    this.size = newSize;
+  }
 }

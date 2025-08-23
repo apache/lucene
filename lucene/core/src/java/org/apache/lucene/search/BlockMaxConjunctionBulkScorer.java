@@ -172,11 +172,12 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       return;
     }
 
+    int maxOtherDoc = -1;
     for (scorers[0].nextDocsAndScores(max, acceptDocs, docAndScoreBuffer);
         docAndScoreBuffer.size > 0;
         scorers[0].nextDocsAndScores(max, acceptDocs, docAndScoreBuffer)) {
 
-      docAndScoreAccBuffer.copyFrom(docAndScoreBuffer);
+      docAndScoreAccBuffer.copyWithMinDocRequired(docAndScoreBuffer, maxOtherDoc);
 
       for (int i = 1; i < scorers.length; ++i) {
         double sumOfOtherClause = sumOfOtherClauses[i];
@@ -188,6 +189,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
         }
 
         ScorerUtil.applyRequiredClause(docAndScoreAccBuffer, iterators[i], scorables[i]);
+        maxOtherDoc = Math.max(iterators[i].docID(), maxOtherDoc);
       }
 
       for (int i = 0; i < docAndScoreAccBuffer.size; ++i) {
@@ -196,10 +198,6 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       }
     }
 
-    int maxOtherDoc = -1;
-    for (int i = 1; i < iterators.length; ++i) {
-      maxOtherDoc = Math.max(iterators[i].docID(), maxOtherDoc);
-    }
     if (lead.docID() < maxOtherDoc) {
       lead.advance(maxOtherDoc);
     }
