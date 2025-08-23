@@ -59,17 +59,6 @@ public final class GroupVIntUtil {
    * @param offset the offset in the array to start storing ints.
    */
   public static void readGroupVInt(DataInput in, int[] dst, int offset) throws IOException {
-    readGroupVInt(true, in, dst, offset);
-  }
-
-  /** DO not use! Only visible for benchmarking purposes! */
-  public static void readGroupVInt$Baseline(DataInput in, int[] dst, int offset)
-      throws IOException {
-    readGroupVInt(false, in, dst, offset);
-  }
-
-  private static void readGroupVInt(boolean optimized, DataInput in, int[] dst, int offset)
-      throws IOException {
     final int flag = in.readByte() & 0xFF;
 
     final int n1Minus1 = flag >> 6;
@@ -79,7 +68,7 @@ public final class GroupVIntUtil {
 
     // if our DataInput implements RandomAccessInput for absolute access and IndexInput for seeking,
     // we use a branch-less implementation:
-    if (optimized && in instanceof RandomAccessInput rin && in instanceof IndexInput iin) {
+    if (in instanceof RandomAccessInput rin && in instanceof IndexInput iin) {
       long pos = iin.getFilePointer();
       if (iin.length() - pos >= MAX_LENGTH_PER_GROUP) {
         dst[offset] = rin.readInt(pos) & INT_MASKS[n1Minus1];
@@ -97,6 +86,22 @@ public final class GroupVIntUtil {
     }
 
     // fall-through: default impl
+    dst[offset] = readIntInGroup(in, n1Minus1);
+    dst[offset + 1] = readIntInGroup(in, n2Minus1);
+    dst[offset + 2] = readIntInGroup(in, n3Minus1);
+    dst[offset + 3] = readIntInGroup(in, n4Minus1);
+  }
+
+  /** DO not use! Only visible for benchmarking purposes! */
+  public static void readGroupVInt$Baseline(DataInput in, int[] dst, int offset)
+      throws IOException {
+    final int flag = in.readByte() & 0xFF;
+
+    final int n1Minus1 = flag >> 6;
+    final int n2Minus1 = (flag >> 4) & 0x03;
+    final int n3Minus1 = (flag >> 2) & 0x03;
+    final int n4Minus1 = flag & 0x03;
+
     dst[offset] = readIntInGroup(in, n1Minus1);
     dst[offset + 1] = readIntInGroup(in, n2Minus1);
     dst[offset + 2] = readIntInGroup(in, n3Minus1);
