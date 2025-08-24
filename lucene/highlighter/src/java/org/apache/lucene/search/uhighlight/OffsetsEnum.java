@@ -103,16 +103,12 @@ public abstract class OffsetsEnum implements Comparable<OffsetsEnum>, Closeable 
     String offset = "";
     try {
       offset = ",[" + startOffset() + "-" + endOffset() + "]";
-    } catch (
-        @SuppressWarnings("unused")
-        Exception e) {
+    } catch (Exception _) {
       // ignore; for debugging only
     }
     try {
       return name + "(term:" + getTerm().utf8ToString() + offset + ")";
-    } catch (
-        @SuppressWarnings("unused")
-        Exception e) {
+    } catch (Exception _) {
       return name;
     }
   }

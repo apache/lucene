@@ -197,9 +197,7 @@ public final class TestUtil {
         try {
           iterator.remove();
           throw new AssertionError("broken iterator (supports remove): " + iterator);
-        } catch (
-            @SuppressWarnings("unused")
-            UnsupportedOperationException expected) {
+        } catch (UnsupportedOperationException _) {
           // ok
         }
       }
@@ -208,9 +206,7 @@ public final class TestUtil {
     try {
       iterator.next();
       throw new AssertionError("broken iterator (allows next() when hasNext==false) " + iterator);
-    } catch (
-        @SuppressWarnings("unused")
-        NoSuchElementException expected) {
+    } catch (NoSuchElementException _) {
       // ok
     }
   }
@@ -232,18 +228,14 @@ public final class TestUtil {
       try {
         iterator.remove();
         throw new AssertionError("broken iterator (supports remove): " + iterator);
-      } catch (
-          @SuppressWarnings("unused")
-          UnsupportedOperationException expected) {
+      } catch (UnsupportedOperationException _) {
         // ok
       }
     }
     try {
       iterator.next();
       throw new AssertionError("broken iterator (allows next() when hasNext==false) " + iterator);
-    } catch (
-        @SuppressWarnings("unused")
-        NoSuchElementException expected) {
+    } catch (NoSuchElementException _) {
       // ok
     }
   }
@@ -255,7 +247,7 @@ public final class TestUtil {
    */
   public static <T> void checkReadOnly(Collection<T> coll) {
     int size = 0;
-    for (@SuppressWarnings("unused") T t : coll) {
+    for (T _ : coll) {
       size += 1;
     }
     if (size != coll.size()) {
@@ -272,9 +264,7 @@ public final class TestUtil {
       try {
         coll.remove(coll.iterator().next());
         throw new AssertionError("broken collection (supports remove): " + coll);
-      } catch (
-          @SuppressWarnings("unused")
-          UnsupportedOperationException e) {
+      } catch (UnsupportedOperationException _) {
         // ok
       }
     }
@@ -282,18 +272,14 @@ public final class TestUtil {
     try {
       coll.add(null);
       throw new AssertionError("broken collection (supports add): " + coll);
-    } catch (
-        @SuppressWarnings("unused")
-        UnsupportedOperationException e) {
+    } catch (UnsupportedOperationException _) {
       // ok
     }
 
     try {
       coll.addAll(Collections.singleton(null));
       throw new AssertionError("broken collection (supports addAll): " + coll);
-    } catch (
-        @SuppressWarnings("unused")
-        UnsupportedOperationException e) {
+    } catch (UnsupportedOperationException _) {
       // ok
     }
 
@@ -1663,9 +1649,7 @@ public final class TestUtil {
         // ignore bugs in Sun's regex impl
         try {
           replacement = p.matcher(nonBmpString).replaceAll("_");
-        } catch (
-            @SuppressWarnings("unused")
-            StringIndexOutOfBoundsException jdkBug) {
+        } catch (StringIndexOutOfBoundsException _) {
           System.out.println("WARNING: your jdk is buggy!");
           System.out.println(
               "Pattern.compile(\""
@@ -1677,9 +1661,7 @@ public final class TestUtil {
         if (replacement != null && UnicodeUtil.validUTF16String(replacement)) {
           return p;
         }
-      } catch (
-          @SuppressWarnings("unused")
-          PatternSyntaxException ignored) {
+      } catch (PatternSyntaxException _) {
         // Loop trying until we hit something that compiles.
       }
     }
@@ -1769,7 +1751,7 @@ public final class TestUtil {
     } else {
       try {
         return br.utf8ToString() + " " + br;
-      } catch (@SuppressWarnings("unused") AssertionError | IllegalArgumentException t) {
+      } catch (AssertionError | IllegalArgumentException _) {
         // If BytesRef isn't actually UTF8, or it's e.g. a
         // prefix of UTF8 that ends mid-unicode-char, we
         // fall back to hex:

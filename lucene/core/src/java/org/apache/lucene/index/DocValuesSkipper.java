@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.IndexSearcher;
 
 /**
  * Skipper for {@link DocValues}.
@@ -121,5 +122,68 @@ public abstract class DocValuesSkipper {
       }
       advance(maxDocID + 1);
     }
+  }
+
+  /**
+   * Returns the minimum value for a field across all segments, or {@link Long#MIN_VALUE} if not
+   * available
+   *
+   * @param searcher a searcher over the index
+   * @param field the field to retrieve values for
+   */
+  public static long globalMinValue(IndexSearcher searcher, String field) throws IOException {
+    long minValue = Long.MAX_VALUE;
+    for (LeafReaderContext ctx : searcher.getLeafContexts()) {
+      if (ctx.reader().getFieldInfos().fieldInfo(field) == null) {
+        continue; // no field values in this segment, so we can ignore it
+      }
+      DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper(field);
+      if (skipper == null) {
+        minValue = Long.MIN_VALUE;
+      } else {
+        minValue = Math.min(minValue, skipper.minValue());
+      }
+    }
+    return minValue;
+  }
+
+  /**
+   * Returns the maximum value for a field across all segments, or {@link Long#MIN_VALUE} if not
+   * available
+   *
+   * @param searcher a searcher over the index
+   * @param field the field to retrieve values for
+   */
+  public static long globalMaxValue(IndexSearcher searcher, String field) throws IOException {
+    long maxValue = Long.MIN_VALUE;
+    for (LeafReaderContext ctx : searcher.getLeafContexts()) {
+      if (ctx.reader().getFieldInfos().fieldInfo(field) == null) {
+        continue; // no field values in this segment, so we can ignore it
+      }
+      DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper(field);
+      if (skipper == null) {
+        maxValue = Long.MAX_VALUE;
+      } else {
+        maxValue = Math.max(maxValue, skipper.maxValue());
+      }
+    }
+    return maxValue;
+  }
+
+  /**
+   * Returns the total skipper document count for a field across all segments
+   *
+   * @param searcher a searcher over the index
+   * @param field the field to retrieve values for
+   */
+  public static int globalDocCount(IndexSearcher searcher, String field) throws IOException {
+    int docCount = 0;
+    for (LeafReaderContext ctx : searcher.getLeafContexts()) {
+      DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper(field);
+      if (skipper != null) {
+        docCount += skipper.docCount();
+      }
+    }
+    return docCount;
   }
 }

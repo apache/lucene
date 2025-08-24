@@ -56,8 +56,11 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     this.scorables =
         Arrays.stream(this.scorers).map(ScorerUtil::likelyTermScorer).toArray(Scorable[]::new);
     this.iterators =
-        Arrays.stream(this.scorers).map(Scorer::iterator).toArray(DocIdSetIterator[]::new);
-    lead = ScorerUtil.likelyImpactsEnum(iterators[0]);
+        Arrays.stream(this.scorers)
+            .map(Scorer::iterator)
+            .map(ScorerUtil::likelyImpactsEnum)
+            .toArray(DocIdSetIterator[]::new);
+    lead = iterators[0];
     this.sumOfOtherClauses = new double[this.scorers.length];
     Arrays.fill(sumOfOtherClauses, Double.POSITIVE_INFINITY);
     this.maxDoc = maxDoc;
@@ -84,7 +87,10 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
     collector.setScorer(scorable);
 
-    int windowMin = scoreDocFirstUntilDynamicPruning(collector, acceptDocs, min, max);
+    int windowMin = Math.max(lead.docID(), min);
+    if (scorable.minCompetitiveScore == 0) {
+      windowMin = scoreDocFirstUntilDynamicPruning(collector, acceptDocs, min, max);
+    }
 
     while (windowMin < max) {
       // Use impacts of the least costly scorer to compute windows
@@ -166,24 +172,15 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       return;
     }
 
-    // two equal consecutive values mean that the first clause always returns a score of zero, so we
-    // don't need to filter hits by score again.
-    boolean leadingClauseHasZeroScores = sumOfOtherClauses[1] == sumOfOtherClauses[0];
-
     for (scorers[0].nextDocsAndScores(max, acceptDocs, docAndScoreBuffer);
         docAndScoreBuffer.size > 0;
         scorers[0].nextDocsAndScores(max, acceptDocs, docAndScoreBuffer)) {
-
-      if (leadingClauseHasZeroScores == false) {
-        ScorerUtil.filterCompetitiveHits(
-            docAndScoreBuffer, sumOfOtherClauses[1], scorable.minCompetitiveScore, scorers.length);
-      }
 
       docAndScoreAccBuffer.copyFrom(docAndScoreBuffer);
 
       for (int i = 1; i < scorers.length; ++i) {
         double sumOfOtherClause = sumOfOtherClauses[i];
-        if (i > 1 && sumOfOtherClause != sumOfOtherClauses[i - 1]) {
+        if (sumOfOtherClause != sumOfOtherClauses[i - 1]) {
           // two equal consecutive values mean that the first clause always returns a score of zero,
           // so we don't need to filter hits by score again.
           ScorerUtil.filterCompetitiveHits(

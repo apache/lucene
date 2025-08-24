@@ -278,7 +278,7 @@ public class TestFloatArrayList extends LuceneTestCase {
 
     count = 0;
     list.resize(0);
-    for (@SuppressWarnings("unused") FloatCursor cursor : list) {
+    for (FloatCursor _ : list) {
       count++;
     }
     assertEquals(0, count);

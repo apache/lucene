@@ -77,9 +77,7 @@ public class TestIntBlockPool extends LuceneTestCase {
     for (int i = 0; i < Integer.MAX_VALUE / INT_BLOCK_SIZE + 1; i++) {
       try {
         pool.nextBuffer();
-      } catch (
-          @SuppressWarnings("unused")
-          ArithmeticException ignored) {
+      } catch (ArithmeticException _) {
         // The offset overflows on the last attempt to call nextBuffer()
         throwsException = true;
         break;
