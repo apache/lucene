@@ -63,6 +63,7 @@ import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.internal.hppc.IntIntHashMap;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldExistsQuery;
@@ -3064,7 +3065,11 @@ public final class CheckIndex implements Closeable {
         if (vectorsReaderSupportsSearch(codecReader, fieldInfo.name)) {
           codecReader
               .getVectorReader()
-              .search(fieldInfo.name, values.vectorValue(count), collector, null);
+              .search(
+                  fieldInfo.name,
+                  values.vectorValue(count),
+                  collector,
+                  AcceptDocs.fromLiveDocs(null, codecReader.maxDoc()));
           TopDocs docs = collector.topDocs();
           if (docs.scoreDocs.length == 0) {
             throw new CheckIndexException(
@@ -3112,7 +3117,11 @@ public final class CheckIndex implements Closeable {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
         codecReader
             .getVectorReader()
-            .search(fieldInfo.name, values.vectorValue(count), collector, null);
+            .search(
+                fieldInfo.name,
+                values.vectorValue(count),
+                collector,
+                AcceptDocs.fromLiveDocs(null, codecReader.maxDoc()));
         TopDocs docs = collector.topDocs();
         if (docs.scoreDocs.length == 0) {
           throw new CheckIndexException(

@@ -128,6 +128,10 @@ API Changes
 * GITHUB#14978: Add a bulk scoring interface to RandomVectorScorer
   (Trevor McCulloch, Chris Hegarty)
 
+* GITHUB#15011: LeafReader#searchNearestVectors now accepts an AcceptDocs
+  instance instead of a Bits instance to identify document IDs to filter.
+  (Shubham Chaudhary, Adrien Grand)
+
 New Features
 ---------------------
 * GITHUB#15015: MultiIndexMergeScheduler: a production multi-tenant merge scheduler (Shawn Yarbrough)

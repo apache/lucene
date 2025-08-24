@@ -38,12 +38,12 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -165,7 +165,8 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void search(String field, float[] vector, KnnCollector knnCollector, Bits acceptDocs) {
+  public void search(
+      String field, float[] vector, KnnCollector knnCollector, AcceptDocs acceptDocs) {
     FaissLibrary.Index index = indexMap.get(field);
     if (index != null) {
       index.search(vector, knnCollector, acceptDocs);
@@ -173,7 +174,8 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void search(String field, byte[] vector, KnnCollector knnCollector, Bits acceptDocs) {
+  public void search(
+      String field, byte[] vector, KnnCollector knnCollector, AcceptDocs acceptDocs) {
     // TODO: Support using SQ8 quantization, see:
     //  - https://github.com/opensearch-project/k-NN/pull/2425
     throw new UnsupportedOperationException("Byte vectors not supported");
