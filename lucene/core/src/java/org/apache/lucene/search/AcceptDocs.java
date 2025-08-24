@@ -122,6 +122,10 @@ public abstract class AcceptDocs {
     private final int maxDoc;
 
     BitsAcceptDocs(Bits bits, int maxDoc) {
+      if (bits != null && bits.length() != maxDoc) {
+        throw new IllegalArgumentException(
+            "Bits length = " + bits.length() + " != maxDoc = " + maxDoc);
+      }
       this.bits = bits;
       if (bits instanceof BitSet bitSet) {
         this.maxDoc = Objects.requireNonNull(bitSet).cardinality();
@@ -165,7 +169,7 @@ public abstract class AcceptDocs {
 
     DocIdSetIteratorAcceptDocs(
         IOSupplier<DocIdSetIterator> iteratorSupplier, Bits liveDocs, int maxDoc) {
-      this.iteratorSupplier = iteratorSupplier;
+      this.iteratorSupplier = Objects.requireNonNull(iteratorSupplier);
       this.liveDocs = liveDocs;
       this.maxDoc = maxDoc;
     }
@@ -194,7 +198,8 @@ public abstract class AcceptDocs {
       if (acceptBitSet != null) {
         return new BitSetIterator(acceptBitSet, cardinality);
       }
-      return AcceptDocs.getFilteredDocIdSetIterator(iteratorSupplier.get(), liveDocs);
+      DocIdSetIterator iterator = Objects.requireNonNull(iteratorSupplier.get());
+      return AcceptDocs.getFilteredDocIdSetIterator(iterator, liveDocs);
     }
   }
 
