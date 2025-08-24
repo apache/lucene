@@ -3284,8 +3284,10 @@ public class IndexWriter
       this.writer = writer;
     }
 
-    public void registerMerge(MergePolicy.OneMerge merge) throws IOException {
-      addEstimatedBytesToMerge(merge);
+    public void registerMerge(MergePolicy.OneMerge merge){
+      try {
+        addEstimatedBytesToMerge(merge);
+      } catch (IOException ignore) { }
       synchronized (IndexWriter.this) {
         pendingAddIndexesMerges.add(merge);
       }
