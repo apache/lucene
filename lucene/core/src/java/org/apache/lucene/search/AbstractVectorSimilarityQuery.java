@@ -152,11 +152,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
 
           // Perform an approximate search
           TopDocs results =
-              approximateSearch(
-                  context,
-                  acceptDocs.asReadOnlyBits(),
-                  cardinality,
-                  timeLimitingKnnCollectorManager);
+              approximateSearch(context, acceptDocs, cardinality, timeLimitingKnnCollectorManager);
 
           if (results.totalHits.relation() == TotalHits.Relation.EQUAL_TO
               // Return partial results only when timeout is met

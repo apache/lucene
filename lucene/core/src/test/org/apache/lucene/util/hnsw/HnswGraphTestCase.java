@@ -773,7 +773,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
           }
         };
     HnswGraphSearcher.search(
-        buildScorer(vectorValues, target), collector, hnsw, new Bits.MatchAllBits(numVectors));
+        buildScorer(vectorValues, target),
+        collector,
+        hnsw,
+        new Bits.MatchAllBits(numVectors),
+        hnsw.size());
     assertEquals(numVectors, collector.numCollected());
   }
 
@@ -1096,7 +1100,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     RandomVectorScorer queryScorer = buildScorer(docVectors, vectorValue(queryVectors, 0));
 
     KnnCollector collector = new TopKnnCollector(topK, Integer.MAX_VALUE);
-    HnswGraphSearcher.search(queryScorer, collector, singleLevelGraph, null);
+    HnswGraphSearcher.search(
+        queryScorer, collector, singleLevelGraph, null, singleLevelGraph.size());
 
     // Check that we visit all nodes
     assertEquals(graph.size(), collector.visitedCount());
