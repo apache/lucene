@@ -3287,7 +3287,9 @@ public class IndexWriter
     public void registerMerge(MergePolicy.OneMerge merge){
       try {
         addEstimatedBytesToMerge(merge);
-      } catch (IOException ignore) { }
+      } catch (IOException ignore) {
+        ignore.printStackTrace(System.err);
+      }
       synchronized (IndexWriter.this) {
         pendingAddIndexesMerges.add(merge);
       }
