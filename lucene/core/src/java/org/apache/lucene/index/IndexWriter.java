@@ -3284,7 +3284,8 @@ public class IndexWriter
       this.writer = writer;
     }
 
-    public void registerMerge(MergePolicy.OneMerge merge) {
+    public void registerMerge(MergePolicy.OneMerge merge) throws IOException {
+      addEstimatedBytesToMerge(merge);
       synchronized (IndexWriter.this) {
         pendingAddIndexesMerges.add(merge);
       }
@@ -4777,6 +4778,20 @@ public class IndexWriter
     closeMergeReaders(merge, true, false);
   }
 
+  public void addEstimatedBytesToMerge(MergePolicy.OneMerge merge) throws IOException {
+    assert merge.estimatedMergeBytes == 0;
+    assert merge.totalMergeBytes == 0;
+    for (SegmentCommitInfo info : merge.segments) {
+      if (info.info.maxDoc() > 0) {
+        final int delCount = numDeletedDocs(info);
+        assert delCount <= info.info.maxDoc();
+        final double delRatio = ((double) delCount) / info.info.maxDoc();
+        merge.estimatedMergeBytes += (long) (info.sizeInBytes() * (1.0 - delRatio));
+        merge.totalMergeBytes += info.sizeInBytes();
+      }
+    }
+  }
+
   /**
    * Checks whether this merge involves any segments already participating in a merge. If not, this
    * merge is "registered", meaning we record that its segments are now participating in a merge,
@@ -4868,17 +4883,7 @@ public class IndexWriter
       mergingSegments.add(info);
     }
 
-    assert merge.estimatedMergeBytes == 0;
-    assert merge.totalMergeBytes == 0;
-    for (SegmentCommitInfo info : merge.segments) {
-      if (info.info.maxDoc() > 0) {
-        final int delCount = numDeletedDocs(info);
-        assert delCount <= info.info.maxDoc();
-        final double delRatio = ((double) delCount) / info.info.maxDoc();
-        merge.estimatedMergeBytes += (long) (info.sizeInBytes() * (1.0 - delRatio));
-        merge.totalMergeBytes += info.sizeInBytes();
-      }
-    }
+    addEstimatedBytesToMerge(merge);
 
     // Merge is now registered
     merge.registerDone = true;
