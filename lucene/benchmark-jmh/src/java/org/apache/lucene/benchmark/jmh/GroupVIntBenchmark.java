@@ -25,7 +25,6 @@ import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ByteBuffersDirectory;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -147,16 +146,6 @@ public class GroupVIntBenchmark {
     mmapVIntIn = dir.openInput("vint", IOContext.DEFAULT);
   }
 
-  private void readGroupVIntsBaseline(DataInput in, int[] dst, int limit) throws IOException {
-    int i;
-    for (i = 0; i <= limit - 4; i += 4) {
-      GroupVIntUtil.readGroupVInt$Baseline(in, dst, i);
-    }
-    for (; i < limit; ++i) {
-      dst[i] = in.readVInt();
-    }
-  }
-
   @Setup(Level.Trial)
   public void init() throws Exception {
     Random r = new Random(0);
@@ -195,7 +184,7 @@ public class GroupVIntBenchmark {
   @Benchmark
   public void benchMMapDirectoryInputs_readGroupVIntBaseline(Blackhole bh) throws IOException {
     mmapGVIntIn.seek(0);
-    this.readGroupVIntsBaseline(mmapGVIntIn, values, size);
+    GroupVIntUtil.readGroupVInts$Baseline(mmapGVIntIn, values, size);
     bh.consume(values);
   }
 
@@ -225,7 +214,7 @@ public class GroupVIntBenchmark {
   @Benchmark
   public void benchNIOFSDirectoryInputs_readGroupVIntBaseline(Blackhole bh) throws IOException {
     nioGVIntIn.seek(0);
-    this.readGroupVIntsBaseline(nioGVIntIn, values, size);
+    GroupVIntUtil.readGroupVInts$Baseline(nioGVIntIn, values, size);
     bh.consume(values);
   }
 
@@ -239,7 +228,7 @@ public class GroupVIntBenchmark {
   @Benchmark
   public void benchByteBuffersIndexInput_readGroupVIntBaseline(Blackhole bh) throws IOException {
     byteBuffersGVIntIn.seek(0);
-    this.readGroupVIntsBaseline(byteBuffersGVIntIn, values, size);
+    GroupVIntUtil.readGroupVInts$Baseline(byteBuffersGVIntIn, values, size);
     bh.consume(values);
   }
 

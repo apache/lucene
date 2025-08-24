@@ -28,8 +28,8 @@ import org.apache.lucene.store.RandomAccessInput;
  * @lucene.internal
  */
 public final class GroupVIntUtil {
-  // the maximum length of a single group-varint is 4 integers + 1 byte flag.
-  public static final int MAX_LENGTH_PER_GROUP = 17;
+  // the maximum length of a single group-varint is 1 byte flag and 4 integers.
+  public static final int MAX_LENGTH_PER_GROUP = Byte.BYTES + 4 * Integer.BYTES;
 
   private static final int[] INT_MASKS = new int[] {0xFF, 0xFFFF, 0xFFFFFF, ~0};
 
@@ -58,7 +58,7 @@ public final class GroupVIntUtil {
    * @param dst the array to read ints into.
    * @param offset the offset in the array to start storing ints.
    */
-  public static void readGroupVInt(DataInput in, int[] dst, int offset) throws IOException {
+  private static void readGroupVInt(DataInput in, int[] dst, int offset) throws IOException {
     final int flag = in.readByte() & 0xFF;
 
     final int n1Minus1 = flag >> 6;
@@ -70,7 +70,7 @@ public final class GroupVIntUtil {
     // we use a branch-less implementation:
     if (in instanceof RandomAccessInput rin && in instanceof IndexInput iin) {
       long pos = iin.getFilePointer();
-      if (iin.length() - pos >= MAX_LENGTH_PER_GROUP) {
+      if (iin.length() - pos >= MAX_LENGTH_PER_GROUP - 1) {
         dst[offset] = rin.readInt(pos) & INT_MASKS[n1Minus1];
         pos += 1 + n1Minus1;
         dst[offset + 1] = rin.readInt(pos) & INT_MASKS[n2Minus1];
@@ -93,7 +93,18 @@ public final class GroupVIntUtil {
   }
 
   /** DO not use! Only visible for benchmarking purposes! */
-  public static void readGroupVInt$Baseline(DataInput in, int[] dst, int offset)
+  public static void readGroupVInts$Baseline(DataInput in, int[] dst, int limit)
+      throws IOException {
+    int i;
+    for (i = 0; i <= limit - 4; i += 4) {
+      readGroupVInt$Baseline(in, dst, i);
+    }
+    for (; i < limit; ++i) {
+      dst[i] = in.readVInt();
+    }
+  }
+
+  private static void readGroupVInt$Baseline(DataInput in, int[] dst, int offset)
       throws IOException {
     final int flag = in.readByte() & 0xFF;
 
