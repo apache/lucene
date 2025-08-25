@@ -118,15 +118,25 @@ public abstract class DataInput implements Cloneable {
    * @see DataOutput#writeVInt(int)
    */
   public int readVInt() throws IOException {
-    int i = 0;
-    for (int shift = 0; shift < 32; shift += 7) {
-      byte b = readByte();
-      i |= (b & 0x7F) << shift;
-      if ((b & 0x80) == 0) {
-        break;
-      }
-    }
-    return i;
+    byte b = readByte();
+    if (b >= 0) return b;
+
+    int i = b & 0x7F;
+    b = readByte();
+    if (b >= 0) return i | (b << 7);
+
+    i |= (b & 0x7F) << 7;
+    b = readByte();
+    if (b >= 0) return i | (b << 14);
+
+    i |= (b & 0x7F) << 14;
+    b = readByte();
+    if (b >= 0) return i | (b << 21);
+
+    i |= (b & 0x7F) << 21;
+    b = readByte();
+    // last byte (no continuation bit)
+    return i | (b << 28);
   }
 
   /**
@@ -198,15 +208,47 @@ public abstract class DataInput implements Cloneable {
    * @see DataOutput#writeVLong(long)
    */
   public long readVLong() throws IOException {
-    long i = 0;
-    // NB: we may be called internally to decode negative (10 byte) values.
-    for (int shift = 0; shift < 64; shift += 7) {
-      byte b = readByte();
-      i |= (long) (b & 0x7F) << shift;
-      if ((b & 0x80) == 0) {
-        break;
-      }
-    }
+    // Unrolled version for performance, avoids loop overhead
+    byte b = readByte();
+    long i = b & 0x7FL;
+    if (b >= 0) return i;
+
+    b = readByte();
+    i |= (long) (b & 0x7F) << 7;
+    if (b >= 0) return i;
+
+    b = readByte();
+    i |= (long) (b & 0x7F) << 14;
+    if (b >= 0) return i;
+
+    b = readByte();
+    i |= (long) (b & 0x7F) << 21;
+    if (b >= 0) return i;
+
+    b = readByte();
+    i |= (long) (b & 0x7F) << 28;
+    if (b >= 0) return i;
+
+    b = readByte();
+    i |= (long) (b & 0x7F) << 35;
+    if (b >= 0) return i;
+
+    b = readByte();
+    i |= (long) (b & 0x7F) << 42;
+    if (b >= 0) return i;
+
+    b = readByte();
+    i |= (long) (b & 0x7F) << 49;
+    if (b >= 0) return i;
+
+    b = readByte();
+    i |= (long) (b & 0x7F) << 56;
+    if (b >= 0) return i;
+
+    // tenth byte (needed for negatives or overflow cases)
+    b = readByte();
+    i |= (long) b << 63;
+
     return i;
   }
 
