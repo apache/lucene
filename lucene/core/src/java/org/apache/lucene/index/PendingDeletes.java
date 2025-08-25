@@ -142,7 +142,7 @@ class PendingDeletes {
 
   private boolean assertCheckLiveDocs(Bits bits, int expectedLength, int expectedDeleteCount) {
     assert bits.length() == expectedLength;
-    int deletedCount = bits.length() - FixedBitSet.cardinality(bits, 0, bits.length());
+    int deletedCount = bits.length() - bitsCardinality(bits);
     assert deletedCount == expectedDeleteCount
         : "deleted: " + deletedCount + " != expected: " + expectedDeleteCount;
     return true;
@@ -250,7 +250,7 @@ class PendingDeletes {
     int count = 0;
     Bits liveDocs = getLiveDocs();
     if (liveDocs != null) {
-      count = FixedBitSet.cardinality(liveDocs, 0, info.info.maxDoc());
+      count = bitsCardinality(liveDocs);
     } else {
       count = info.info.maxDoc();
     }
@@ -288,5 +288,12 @@ class PendingDeletes {
    */
   boolean mustInitOnDelete() {
     return false;
+  }
+
+  int bitsCardinality(Bits bits) {
+    FixedBitSet bitSet = new FixedBitSet(bits.length());
+    bitSet.set(0, bits.length());
+    bits.applyMask(bitSet, 0);
+    return bitSet.cardinality();
   }
 }

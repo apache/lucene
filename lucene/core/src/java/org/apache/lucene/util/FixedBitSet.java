@@ -239,21 +239,6 @@ public final class FixedBitSet extends BitSet {
     return cardinality;
   }
 
-  /** Just like {@link #cardinality(int, int)}, return the number of set bits for {@code Bits}. */
-  public static int cardinality(Bits bits, int from, int to) {
-    assert bits != null;
-    if (bits instanceof FixedBits fixedBits) {
-      return fixedBits.bitSet.cardinality(from, to);
-    }
-    int count = 0;
-    for (int i = from; i < to; i++) {
-      if (bits.get(i)) {
-        count++;
-      }
-    }
-    return count;
-  }
-
   @Override
   public int approximateCardinality() {
     // Naive sampling: compute the number of bits that are set on the first 16 longs every 1024
