@@ -112,6 +112,8 @@ Other
 
 API Changes
 ---------------------
+* GITHUB:#15122: DataInput: Unroll loop in readVInt and readVLong. (Ramakrishna Chilaka)
+
 * GITHUB#14401: Added LeafCollector#collectRange to enable collector to take
   advantage of pre-aggregated data to speed up faceting. (Adrien Grand)
 
