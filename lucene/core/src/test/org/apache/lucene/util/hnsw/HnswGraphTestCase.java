@@ -518,7 +518,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
             buildScorer(vectors, getTargetVector()),
             numAccepted,
             hnsw,
-            acceptOrds,
+            acceptOrds.asReadOnlyBits(),
             Integer.MAX_VALUE);
     TopDocs nodes = nn.topDocs();
     assertEquals(numAccepted, nodes.scoreDocs.length);
@@ -773,7 +773,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
           }
         };
     HnswGraphSearcher.search(
-        buildScorer(vectorValues, target), collector, hnsw, new BitSet.MatchAllBits(numVectors));
+        buildScorer(vectorValues, target),
+        collector,
+        hnsw,
+        new Bits.MatchAllBits(numVectors),
+        hnsw.size());
     assertEquals(numVectors, collector.numCollected());
   }
 
@@ -1096,7 +1100,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     RandomVectorScorer queryScorer = buildScorer(docVectors, vectorValue(queryVectors, 0));
 
     KnnCollector collector = new TopKnnCollector(topK, Integer.MAX_VALUE);
-    HnswGraphSearcher.search(queryScorer, collector, singleLevelGraph, null);
+    HnswGraphSearcher.search(
+        queryScorer, collector, singleLevelGraph, null, singleLevelGraph.size());
 
     // Check that we visit all nodes
     assertEquals(graph.size(), collector.visitedCount());
@@ -1320,7 +1325,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         bits.set(i);
       }
     }
-    return bits;
+    return bits.asReadOnlyBits();
   }
 
   static float[] randomVector(Random random, int dim) {

@@ -315,7 +315,8 @@ final class FieldUpdatesBuffer {
       this.lookAheadTermIterator =
           termSortState != null ? termValues.iterator(termSortState) : null;
       this.byteValuesIterator = isNumeric ? null : byteValues.iterator();
-      updatesWithValue = hasValues == null ? new Bits.MatchAllBits(numUpdates) : hasValues;
+      updatesWithValue =
+          hasValues == null ? new Bits.MatchAllBits(numUpdates) : hasValues.asReadOnlyBits();
     }
 
     /**

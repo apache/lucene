@@ -319,8 +319,7 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
         FixedBitSet fixedBitSet =
             switch (acceptDocs.bits()) {
               case null -> null;
-              case FixedBitSet bitSet -> bitSet;
-              // TODO: Add optimized case for SparseFixedBitSet
+              // TODO: can we avoid copying when bits are instances of (Sparse)FixedBits?
               case Bits bits -> FixedBitSet.copyOf(bits);
             };
 

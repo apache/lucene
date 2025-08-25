@@ -310,11 +310,13 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
     RandomVectorScorer scorer =
         defaultFlatVectorScorer.getRandomVectorScorer(
             fieldEntry.similarityFunction, vectorValues, target);
+    HnswGraph graph = getGraph(fieldEntry);
     HnswGraphSearcher.search(
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
-        getGraph(fieldEntry),
-        vectorValues.getAcceptOrds(acceptDocs.bits()));
+        graph,
+        vectorValues.getAcceptOrds(acceptDocs.bits()),
+        Math.min(graph.size(), acceptDocs.cost()));
   }
 
   @Override
@@ -338,11 +340,13 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
     RandomVectorScorer scorer =
         defaultFlatVectorScorer.getRandomVectorScorer(
             fieldEntry.similarityFunction, vectorValues, target);
+    HnswGraph graph = getGraph(fieldEntry);
     HnswGraphSearcher.search(
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
-        getGraph(fieldEntry),
-        vectorValues.getAcceptOrds(acceptDocs.bits()));
+        graph,
+        vectorValues.getAcceptOrds(acceptDocs.bits()),
+        Math.min(graph.size(), acceptDocs.cost()));
   }
 
   /** Get knn graph values; used for testing */

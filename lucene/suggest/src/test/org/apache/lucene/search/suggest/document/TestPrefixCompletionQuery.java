@@ -96,7 +96,7 @@ public class TestPrefixCompletionQuery extends LuceneTestCase {
           }
         }
       }
-      return bits;
+      return bits.asReadOnlyBits();
     }
   }
 

@@ -563,6 +563,11 @@ public class SparseFixedBitSet extends BitSet {
   }
 
   @Override
+  public Bits asReadOnlyBits() {
+    return new SparseFixedBits(this);
+  }
+
+  @Override
   public long ramBytesUsed() {
     return ramBytesUsed;
   }

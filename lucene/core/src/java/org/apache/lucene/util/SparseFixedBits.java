@@ -16,34 +16,18 @@
  */
 package org.apache.lucene.util;
 
-import org.apache.lucene.search.DocIdSetIterator;
+/** Unmodifiable {@link Bits} view on a {@link SparseFixedBitSet}. */
+final class SparseFixedBits implements Bits {
 
-/** Immutable twin of FixedBitSet. */
-final class FixedBits implements Bits {
+  final SparseFixedBitSet bitSet;
 
-  final FixedBitSet bitSet;
-
-  FixedBits(long[] bits, int length) {
-    this.bitSet = new FixedBitSet(bits, length);
+  SparseFixedBits(SparseFixedBitSet bitSet) {
+    this.bitSet = bitSet;
   }
 
   @Override
   public boolean get(int index) {
     return bitSet.get(index);
-  }
-
-  @Override
-  public void applyMask(FixedBitSet bitSet, int offset) {
-    // Note: Some scorers don't track maxDoc and may thus call this method with an offset that is
-    // beyond bitSet.length()
-    int length = Math.min(bitSet.length(), length() - offset);
-    if (length >= 0) {
-      FixedBitSet.andRange(this.bitSet, offset, bitSet, 0, length);
-    }
-    if (length < bitSet.length()
-        && bitSet.nextSetBit(Math.max(0, length)) != DocIdSetIterator.NO_MORE_DOCS) {
-      throw new IllegalArgumentException("Some bits are set beyond the end of live docs");
-    }
   }
 
   @Override
