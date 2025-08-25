@@ -129,10 +129,10 @@ final class SortedNumericDocValuesRangeQuery extends Query {
         }
 
         int maxDoc = context.reader().maxDoc();
-        int docCount = count(context);
-        if (docCount == 0) {
+        int count = docCount(context);
+        if (count == 0) {
           return null;
-        } else if (docCount == context.reader().numDocs()) {
+        } else if (count == 1) {
           return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, maxDoc);
         }
 
@@ -194,6 +194,17 @@ final class SortedNumericDocValuesRangeQuery extends Query {
 
       @Override
       public int count(LeafReaderContext context) throws IOException {
+        int cnt = docCount(context);
+        return switch (cnt) {
+          case 1 -> context.reader().numDocs();
+          default -> cnt;
+        };
+      }
+
+      /* Returning 1 instead of LeafReader#numDocs as it may run in O(maxDoc)
+       * which is unnecessary when docCount is invoked from ScorerSupplier
+       */
+      private int docCount(LeafReaderContext context) throws IOException {
         final DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
         if (skipper != null) {
           if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
@@ -203,7 +214,7 @@ final class SortedNumericDocValuesRangeQuery extends Query {
               && skipper.minValue() >= lowerValue
               && skipper.maxValue() <= upperValue) {
 
-            return context.reader().numDocs();
+            return 1;
           }
         }
 
