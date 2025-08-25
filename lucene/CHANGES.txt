@@ -15,6 +15,9 @@ Bug Fixes
   previous behavior set `-Dorg.apache.lucene.store.MMapDirectory.sharedArenaMaxPermits=1024`.
   (Chris Hegarty)
 
+* GITHUB#15106: Fix infinite loop when RefCountedSharedArena's underlying
+  Arena#close fails due to concurrent usage of segments.  (Uwe Schindler)  
+
 ======================== Lucene 9.12.2 =======================
 
 
