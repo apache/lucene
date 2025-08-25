@@ -289,8 +289,8 @@ public final class CombinedFieldQuery extends Query implements Accountable {
         CollectionStatistics pseudoCollectionStats = mergeCollectionStatistics(searcher);
         TermStatistics pseudoTermStatistics =
             new TermStatistics(new BytesRef("pseudo_term"), docFreq, Math.max(1, totalTermFreq));
-        this.simWeight =
-            searcher.getSimilarity().scorer(boost, pseudoCollectionStats, pseudoTermStatistics);
+        Similarity similarity = ScorerUtil.likelyBM25Similarity(searcher.getSimilarity());
+        this.simWeight = similarity.scorer(boost, pseudoCollectionStats, pseudoTermStatistics);
       } else {
         this.simWeight = null;
       }
