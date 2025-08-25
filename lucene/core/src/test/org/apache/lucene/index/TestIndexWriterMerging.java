@@ -464,8 +464,11 @@ public class TestIndexWriterMerging extends LuceneTestCase {
 
   public void testAddEstimatedBytesToMerge() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random()))
-        .setMergePolicy(NoMergePolicy.INSTANCE));
+    IndexWriter writer =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(NoMergePolicy.INSTANCE));
 
     Document doc = new Document();
     doc.add(newTextField("field", "content", Field.Store.YES));
@@ -473,7 +476,6 @@ public class TestIndexWriterMerging extends LuceneTestCase {
       writer.addDocument(doc);
     }
     writer.flush();
-
 
     // Create a merge with the segments
     SegmentInfos segmentInfos = writer.cloneSegmentInfos();
