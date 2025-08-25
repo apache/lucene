@@ -190,7 +190,7 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
 
   @Override
   protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
-    return delegate.getKnnCollectorManager(k, searcher);
+    return new PatienceCollectorManager(delegate.getKnnCollectorManager(k, searcher));
   }
 
   @Override
@@ -200,8 +200,7 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
-    return delegate.approximateSearch(
-        context, acceptDocs, visitedLimit, new PatienceCollectorManager(knnCollectorManager));
+    return delegate.approximateSearch(context, acceptDocs, visitedLimit, knnCollectorManager);
   }
 
   @Override
@@ -272,6 +271,25 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
           knnCollectorManager.newCollector(visitLimit, searchStrategy, ctx),
           saturationThreshold,
           patience);
+    }
+
+    @Override
+    public KnnCollector newOptimisticCollector(
+        int visitLimit, KnnSearchStrategy searchStrategy, LeafReaderContext ctx, int k)
+        throws IOException {
+      if (knnCollectorManager.isOptimistic()) {
+        return new HnswQueueSaturationCollector(
+            knnCollectorManager.newOptimisticCollector(visitLimit, searchStrategy, ctx, k),
+            saturationThreshold,
+            patience);
+      } else {
+        return null;
+      }
+    }
+
+    @Override
+    public boolean isOptimistic() {
+      return knnCollectorManager.isOptimistic();
     }
   }
 

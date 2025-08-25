@@ -63,11 +63,14 @@ Improvements
 
 * GITHUB#14737: Clean up redundant code and comments in query node classes. (Stefan Vodita)
 
-* GITHUB#14816: Expose search strategy in KNN query
+* GITHUB#14816: Expose search strategy in KNN query (Tommaso Teofili)
 
 * GITHUB#14226: Use optimistic-with-checking KNN Query execution strategy in place of cross-thread
   global queue min-score checking. Improves performance and consistency. (Mike Sokolov, Dzung Bui,
   Ben Trent)
+
+* GITHUB#15063: Use optimistic-with-checking KNN Query strategy for `DiversifyingChildren*` queries.
+  (Ben Trent)
 
 Optimizations
 ---------------------
