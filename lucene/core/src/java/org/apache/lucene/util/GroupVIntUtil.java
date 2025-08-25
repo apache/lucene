@@ -70,7 +70,7 @@ public final class GroupVIntUtil {
     // we use a branch-less implementation:
     if (in instanceof RandomAccessInput rin && in instanceof IndexInput iin) {
       long pos = iin.getFilePointer();
-      if (iin.length() - pos >= MAX_LENGTH_PER_GROUP - 1) {
+      if (iin.length() - pos >= 4 * Integer.BYTES) {
         dst[offset] = rin.readInt(pos) & INT_MASKS[n1Minus1];
         pos += 1 + n1Minus1;
         dst[offset + 1] = rin.readInt(pos) & INT_MASKS[n2Minus1];
