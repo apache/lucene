@@ -21,6 +21,7 @@ import static org.apache.lucene.util.ByteBlockPool.BYTE_BLOCK_SIZE;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -3287,8 +3288,8 @@ public class IndexWriter
     public void registerMerge(MergePolicy.OneMerge merge) {
       try {
         addEstimatedBytesToMerge(merge);
-      } catch (IOException _) {
-        // ignore and append to pending merges
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
       }
       synchronized (IndexWriter.this) {
         pendingAddIndexesMerges.add(merge);
