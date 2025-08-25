@@ -4782,6 +4782,7 @@ public class IndexWriter
     closeMergeReaders(merge, true, false);
   }
 
+  /** Compute {@code estimatedMergeBytes} and {@code totalMergeBytes} for a merge. */
   public void addEstimatedBytesToMerge(MergePolicy.OneMerge merge) throws IOException {
     assert merge.estimatedMergeBytes == 0;
     assert merge.totalMergeBytes == 0;
