@@ -28,6 +28,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ko.KoreanTokenizer.DecompoundMode;
 import org.apache.lucene.analysis.ko.dict.UserDictionary;
+import org.apache.lucene.analysis.ko.tokenattributes.MetadataAttribute;
 import org.apache.lucene.analysis.ko.tokenattributes.PartOfSpeechAttribute;
 import org.apache.lucene.analysis.ko.tokenattributes.ReadingAttribute;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
@@ -573,6 +574,27 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
       var dict = UserDictionary.open(rulesReader);
       assertTrue(dict.getRightId(3) != 0);
       assertThrows(ArrayIndexOutOfBoundsException.class, () -> dict.getRightId(4));
+    }
+  }
+
+  public void testMetadataAttribute() throws IOException {
+    assertMetadata(analyzer, "자바", "컴퓨터 언어");
+    assertMetadata(analyzer, "java", "컴퓨터 언어");
+    assertMetadata(analyzer, "엘라스틱서치", "검색 엔진");
+
+    assertMetadata(analyzerDecompoundKeep, "엘라스틱서치", "검색 엔진");
+  }
+
+  private void assertMetadata(Analyzer analyzer, String input, String metadata) throws IOException {
+    try (TokenStream ts = analyzer.tokenStream("ignored", input)) {
+      final MetadataAttribute metadataAtt = ts.addAttribute(MetadataAttribute.class);
+      ts.reset();
+      while (ts.incrementToken()) {
+        assertNotNull(metadataAtt.getMetadata());
+        assertEquals(metadata, metadataAtt.getMetadata());
+      }
+      assertFalse(ts.incrementToken());
+      ts.end();
     }
   }
 
