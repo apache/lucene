@@ -135,8 +135,8 @@ public final class StandardTokenizer extends Tokenizer {
     this.scanner = new StandardTokenizerImpl(input);
   }
 
-  // this tokenizer generates three attributes:
-  // term offset, positionIncrement and type
+  // this tokenizer generates four attributes:
+  // term, offset, positionIncrement and type
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
   private final PositionIncrementAttribute posIncrAtt =

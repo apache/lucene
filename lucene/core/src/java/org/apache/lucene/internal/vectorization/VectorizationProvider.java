@@ -56,9 +56,7 @@ public abstract class VectorizationProvider {
               .filter(Predicate.not(Set.of("", "default")::contains))
               .mapToInt(Integer::parseInt)
               .findAny();
-    } catch (
-        @SuppressWarnings("unused")
-        SecurityException se) {
+    } catch (SecurityException _) {
       // ignored
     }
     TESTS_VECTOR_SIZE = vs;
@@ -75,7 +73,7 @@ public abstract class VectorizationProvider {
       if (str != null) {
         runtimeVersion = Math.max(Integer.parseInt(str), runtimeVersion);
       }
-    } catch (@SuppressWarnings("unused") NumberFormatException | SecurityException ignored) {
+    } catch (NumberFormatException | SecurityException _) {
       Logger.getLogger(VectorizationProvider.class.getName())
           .warning(
               "Cannot read sysprop "

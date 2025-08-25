@@ -32,10 +32,12 @@ public class TestVectorScorerFloat32Benchmark extends LuceneTestCase {
   public void setup() throws IOException {
     bench = new VectorScorerFloat32Benchmark();
     bench.size = 1024;
+    bench.pollute = true;
     bench.numVectors = random().nextInt(1, 256);
     bench.numVectorsToScore = random().nextInt(bench.numVectors);
     delta = 1e-3f * bench.size;
     bench.setup();
+    bench.perIterationInit();
   }
 
   @After
@@ -60,6 +62,69 @@ public class TestVectorScorerFloat32Benchmark extends LuceneTestCase {
 
     Arrays.fill(bench.scores, 0.0f);
     bench.dotProductOptBulkScore();
+    actualScores = ArrayUtil.copyArray(bench.scores);
+    assertArrayEquals(expectedScores, actualScores, delta);
+  }
+
+  public void testCosine() throws IOException {
+    Arrays.fill(bench.scores, 0.0f);
+    bench.cosineDefault();
+    var expectedScores = ArrayUtil.copyArray(bench.scores);
+
+    Arrays.fill(bench.scores, 0.0f);
+    bench.cosineDefaultBulk();
+    var bulkScores = ArrayUtil.copyArray(bench.scores);
+    assertArrayEquals(expectedScores, bulkScores, delta);
+
+    Arrays.fill(bench.scores, 0.0f);
+    bench.cosineOptScorer();
+    var actualScores = ArrayUtil.copyArray(bench.scores);
+    assertArrayEquals(expectedScores, actualScores, delta);
+
+    Arrays.fill(bench.scores, 0.0f);
+    bench.cosineOptBulkScore();
+    actualScores = ArrayUtil.copyArray(bench.scores);
+    assertArrayEquals(expectedScores, actualScores, delta);
+  }
+
+  public void testEuclidean() throws IOException {
+    Arrays.fill(bench.scores, 0.0f);
+    bench.euclideanDefault();
+    var expectedScores = ArrayUtil.copyArray(bench.scores);
+
+    Arrays.fill(bench.scores, 0.0f);
+    bench.euclideanDefaultBulk();
+    var bulkScores = ArrayUtil.copyArray(bench.scores);
+    assertArrayEquals(expectedScores, bulkScores, delta);
+
+    Arrays.fill(bench.scores, 0.0f);
+    bench.euclideanOptScorer();
+    var actualScores = ArrayUtil.copyArray(bench.scores);
+    assertArrayEquals(expectedScores, actualScores, delta);
+
+    Arrays.fill(bench.scores, 0.0f);
+    bench.euclideanOptBulkScore();
+    actualScores = ArrayUtil.copyArray(bench.scores);
+    assertArrayEquals(expectedScores, actualScores, delta);
+  }
+
+  public void testMip() throws IOException {
+    Arrays.fill(bench.scores, 0.0f);
+    bench.mipDefault();
+    var expectedScores = ArrayUtil.copyArray(bench.scores);
+
+    Arrays.fill(bench.scores, 0.0f);
+    bench.mipDefaultBulk();
+    var bulkScores = ArrayUtil.copyArray(bench.scores);
+    assertArrayEquals(expectedScores, bulkScores, delta);
+
+    Arrays.fill(bench.scores, 0.0f);
+    bench.mipOptScorer();
+    var actualScores = ArrayUtil.copyArray(bench.scores);
+    assertArrayEquals(expectedScores, actualScores, delta);
+
+    Arrays.fill(bench.scores, 0.0f);
+    bench.mipOptBulkScore();
     actualScores = ArrayUtil.copyArray(bench.scores);
     assertArrayEquals(expectedScores, actualScores, delta);
   }

@@ -521,6 +521,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     }
   }
 
+  /** Create a new score for the given optional clauses. */
   private Scorer opt(
       Collection<ScorerSupplier> optional,
       int minShouldMatch,

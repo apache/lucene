@@ -35,7 +35,6 @@ import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.TestVectorUtil;
 
 public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
@@ -256,7 +255,7 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     @Override
     protected TopDocs approximateSearch(
         LeafReaderContext context,
-        Bits acceptDocs,
+        AcceptDocs acceptDocs,
         int visitedLimit,
         KnnCollectorManager knnCollectorManager)
         throws IOException {

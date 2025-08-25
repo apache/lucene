@@ -905,9 +905,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
       assertEquals(
           TaxonomyReader.ROOT_ORDINAL, tr.getParallelTaxonomyArrays().parents().get(author));
       // ok
-    } catch (
-        @SuppressWarnings("unused")
-        ArrayIndexOutOfBoundsException e) {
+    } catch (ArrayIndexOutOfBoundsException _) {
       fail(
           "After category addition, commit() and refresh(), getParent for "
               + author
