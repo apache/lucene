@@ -1298,15 +1298,12 @@ public final class CheckIndex implements Closeable {
         if (liveDocs == null) {
           throw new CheckIndexException("segment should have deletions, but liveDocs is null");
         } else {
-          int numLive = 0;
-          for (int j = 0; j < liveDocs.length(); j++) {
-            if (liveDocs.get(j)) {
-              numLive++;
-            }
-          }
-          if (numLive != numDocs) {
+          FixedBitSet bitSet = new FixedBitSet(liveDocs.length());
+          bitSet.set(0, liveDocs.length());
+          liveDocs.applyMask(bitSet, 0);
+          if (bitSet.cardinality() != numDocs) {
             throw new CheckIndexException(
-                "liveDocs count mismatch: info=" + numDocs + ", vs bits=" + numLive);
+                "liveDocs count mismatch: info=" + numDocs + ", vs bits=" + bitSet.cardinality());
           }
         }
 
