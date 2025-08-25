@@ -216,7 +216,7 @@ public abstract class Node implements Closeable {
           header = CodecUtil.readIndexHeader(in);
           footer = CodecUtil.readFooter(in);
           checksum = CodecUtil.retrieveChecksum(in);
-        } catch (@SuppressWarnings("unused") EOFException | CorruptIndexException cie) {
+        } catch (EOFException | CorruptIndexException _) {
           // File exists but is busted: we must copy it.  This happens when node had crashed,
           // corrupting an un-fsync'd file.  On init we try
           // to delete such unreferenced files, but virus checker can block that, leaving this bad
@@ -229,7 +229,7 @@ public abstract class Node implements Closeable {
         if (verboseFiles) {
           message("file " + fileName + " has length=" + bytesToString(length));
         }
-      } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
+      } catch (FileNotFoundException | NoSuchFileException _) {
         if (verboseFiles) {
           message("file " + fileName + ": will copy [file does not exist]");
         }

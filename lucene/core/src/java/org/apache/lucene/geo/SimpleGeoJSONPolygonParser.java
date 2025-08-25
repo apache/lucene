@@ -342,9 +342,7 @@ class SimpleGeoJSONPolygonParser {
     // we only handle doubles
     try {
       return Double.parseDouble(b.toString());
-    } catch (
-        @SuppressWarnings("unused")
-        NumberFormatException nfe) {
+    } catch (NumberFormatException _) {
       upto = uptoStart;
       throw newParseException("could not parse number as double");
     }

@@ -497,9 +497,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     boolean v = true;
     try {
       v = Boolean.parseBoolean(System.getProperty(BULK_MERGE_ENABLED_SYSPROP, "true"));
-    } catch (
-        @SuppressWarnings("unused")
-        SecurityException ignored) {
+    } catch (SecurityException _) {
     }
     BULK_MERGE_ENABLED = v;
   }

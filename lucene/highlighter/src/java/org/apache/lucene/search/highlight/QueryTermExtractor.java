@@ -78,9 +78,7 @@ public final class QueryTermExtractor {
         // IDF algorithm taken from ClassicSimilarity class
         float idf = (float) (Math.log(totalNumDocs / (double) (docFreq + 1)) + 1.0);
         terms[i].weight *= idf;
-      } catch (
-          @SuppressWarnings("unused")
-          IOException e) {
+      } catch (IOException _) {
         // ignore
       }
     }

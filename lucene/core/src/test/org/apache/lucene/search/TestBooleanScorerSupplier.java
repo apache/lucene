@@ -28,7 +28,7 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
-public class TestBoolean2ScorerSupplier extends LuceneTestCase {
+public class TestBooleanScorerSupplier extends LuceneTestCase {
 
   private static class FakeWeight extends Weight {
 

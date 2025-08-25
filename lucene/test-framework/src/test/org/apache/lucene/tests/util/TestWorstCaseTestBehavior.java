@@ -31,9 +31,7 @@ public class TestWorstCaseTestBehavior extends LuceneTestCase {
           public void run() {
             try {
               Thread.sleep(10000);
-            } catch (
-                @SuppressWarnings("unused")
-                InterruptedException ignored) {
+            } catch (InterruptedException _) {
               // Ignore.
             }
           }
@@ -97,9 +95,7 @@ public class TestWorstCaseTestBehavior extends LuceneTestCase {
     while (true) {
       try {
         Thread.sleep(1000);
-      } catch (
-          @SuppressWarnings("unused")
-          InterruptedException ignored) {
+      } catch (InterruptedException _) {
       }
     }
   }

@@ -872,7 +872,7 @@ public class IndexWriter
                       count,
                       readerPool.ramBytesUsed() / 1024. / 1024.,
                       ramBufferSizeMB,
-                      ((System.nanoTime() - startNS) / (double) TimeUnit.SECONDS.toNanos(1))));
+                      (System.nanoTime() - startNS) / (double) TimeUnit.SECONDS.toNanos(1)));
             }
           }
         }
@@ -2639,8 +2639,7 @@ public class IndexWriter
      */
     try {
       synchronized (fullFlushLock) {
-        try (@SuppressWarnings("unused")
-            Closeable finalizer = docWriter.lockAndAbortAll()) {
+        try (Closeable _ = docWriter.lockAndAbortAll()) {
           processEvents(false);
           synchronized (this) {
             try {
@@ -2697,6 +2696,7 @@ public class IndexWriter
    * you lose a lot of work that must later be redone.
    */
   private synchronized void abortMerges() throws IOException {
+    long startNS = System.nanoTime();
     merges.disable();
     // Abort all pending & running merges:
     IOUtils.applyToAll(
@@ -2739,7 +2739,10 @@ public class IndexWriter
 
     notifyAll();
     if (infoStream.isEnabled("IW")) {
-      infoStream.message("IW", "all running merges have aborted");
+      double elapsedSec = (System.nanoTime() - startNS) / (double) TimeUnit.SECONDS.toNanos(1);
+      infoStream.message(
+          "IW",
+          String.format(Locale.ROOT, "all running merges have aborted [%.3f seconds]", elapsedSec));
     }
   }
 
@@ -3730,7 +3733,7 @@ public class IndexWriter
         maybeCloseOnTragicEvent();
       }
 
-      if (pointInTimeMerges != null) {
+      if (pointInTimeMerges != null && pointInTimeMerges.merges.size() != 0) {
         if (infoStream.isEnabled("IW")) {
           infoStream.message(
               "IW", "now run merges during commit: " + pointInTimeMerges.segString(directory));
@@ -5871,9 +5874,7 @@ public class IndexWriter
     Collection<String> files;
     try {
       files = info.files();
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException ise) {
+    } catch (IllegalStateException _) {
       // OK
       files = null;
     }
