@@ -129,21 +129,16 @@ final class SortedNumericDocValuesRangeQuery extends Query {
         }
 
         int maxDoc = context.reader().maxDoc();
-        DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
-        if (skipper != null) {
-          if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
-            return null;
-          }
-          if (skipper.docCount() == maxDoc
-              && skipper.minValue() >= lowerValue
-              && skipper.maxValue() <= upperValue) {
-
-            return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, maxDoc);
-          }
+        int docCount = count(context);
+        if (docCount == 0) {
+          return null;
+        } else if (docCount == context.reader().numDocs()) {
+          return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, maxDoc);
         }
 
         SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
         final NumericDocValues singleton = DocValues.unwrapSingleton(values);
+        final DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
         TwoPhaseIterator iterator;
         if (singleton != null) {
           if (skipper != null) {
@@ -199,19 +194,19 @@ final class SortedNumericDocValuesRangeQuery extends Query {
 
       @Override
       public int count(LeafReaderContext context) throws IOException {
-        DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
-        if (skipper == null) {
-          return -1;
-        }
-        if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
-          return 0;
-        }
-        if (skipper.docCount() == context.reader().maxDoc()
-            && skipper.minValue() >= lowerValue
-            && skipper.maxValue() <= upperValue) {
+        final DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
+        if (skipper != null) {
+          if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
+            return 0;
+          }
+          if (skipper.docCount() == context.reader().maxDoc()
+              && skipper.minValue() >= lowerValue
+              && skipper.maxValue() <= upperValue) {
 
-          return context.reader().numDocs();
+            return context.reader().numDocs();
+          }
         }
+
         return -1;
       }
     };
