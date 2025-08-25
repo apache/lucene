@@ -203,6 +203,9 @@ Bug Fixes
   resulted in query branches being wrongly ignored if the QueryIndex was
   built by a different JVM. (Luke Kot-Zaniewski)
 
+* GITHUB#15106: Fix infinite loop when RefCountedSharedArena's underlying
+  Arena#close fails due to concurrent usage of segments.  (Uwe Schindler)
+
 Build
 ---------------------
 * Upgrade forbiddenapis to version 3.9.  (Uwe Schindler)
