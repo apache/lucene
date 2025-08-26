@@ -27,7 +27,6 @@ import org.apache.lucene.index.MergeScheduler;
  *
  * @lucene.experimental
  */
-// nocommit
 public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
 
   /** Global bandwidth cap in MB/s. Mutable so that updates are applied live. */

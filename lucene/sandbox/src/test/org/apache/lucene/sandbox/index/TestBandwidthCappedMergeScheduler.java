@@ -27,20 +27,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.ConcurrentMergeScheduler;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LogDocMergePolicy;
+import org.apache.lucene.index.MergePolicy;
+import org.apache.lucene.index.MergeScheduler;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.sandbox.index.BandwidthCappedMergeScheduler;
-import org.apache.lucene.index.ConcurrentMergeScheduler;
-import org.apache.lucene.index.MergePolicy.OneMerge;
-import org.apache.lucene.index.MergeScheduler;
-import org.apache.lucene.index.MergePolicy;
-import org.apache.lucene.index.LogDocMergePolicy;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
 
 /** Tests for {@link BandwidthCappedMergeScheduler}. */
 public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
