@@ -134,12 +134,10 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
 
   /** Merge thread that logs the rate limiter value after merge completes. */
   protected class BandwidthTrackingMergeThread extends MergeThread {
-    private final double mergeBandwidthMB;
 
     /** Creates a new BandwidthTrackingMergeThread for the given merge. */
     public BandwidthTrackingMergeThread(MergeSource mergeSource, OneMerge merge) {
       super(mergeSource, merge);
-      this.mergeBandwidthMB = merge.estimatedMergeBytes / (1024.0 * 1024.0);
     }
 
     @Override
@@ -150,8 +148,8 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
           message(
               "Starting bandwidth-capped merge: "
                   + getSegmentName(merge)
-                  + " (estimated="
-                  + mergeBandwidthMB
+                  + " (estimatedMergeMB="
+                  + merge.estimatedMergeBytes / (1024.0 * 1024.0)
                   + " MB)");
         }
         super.run(); // IO throttling is handled by the RateLimiter
@@ -159,12 +157,12 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
         long durationNS = System.nanoTime() - startTimeNS;
         if (verbose()) {
           double durationMS = durationNS / 1_000_000.0;
-          double mbPerSec = mergeBandwidthMB / Math.max(durationMS / 1000.0);
+          double mbPerSec = merge.estimatedMergeBytes / (1024.0 * 1024.0) / (durationMS / 1000.0);
           message(
               "Merge completed: "
                   + getSegmentName(merge)
                   + " "
-                  + mergeBandwidthMB
+                  + merge.estimatedMergeBytes / (1024.0 * 1024.0)
                   + " MB in "
                   + String.format(java.util.Locale.US, "%.1f", durationMS)
                   + "ms ("
