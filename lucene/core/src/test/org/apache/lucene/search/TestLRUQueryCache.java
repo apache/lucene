@@ -74,6 +74,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.SuppressForbidden;
 
 public class TestLRUQueryCache extends LuceneTestCase {
@@ -1057,6 +1058,38 @@ public class TestLRUQueryCache extends LuceneTestCase {
     assertEquals(
         new HashSet<>(Arrays.asList(bq2.build(), must, filter, mustNot)),
         new HashSet<>(queryCache.cachedQueries()));
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testCacheRamBytesWithALargeTermQuery() throws IOException {
+    Directory dir = newDirectory();
+    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    Document doc = new Document();
+    doc.add(new StringField("foo", "bar", Store.YES));
+    doc.add(new StringField("foo", "quux", Store.YES));
+    w.addDocument(doc);
+    w.commit();
+    final IndexReader reader = w.getReader();
+    final IndexSearcher searcher = newSearcher(reader);
+    w.close();
+    final LRUQueryCache queryCache =
+        new LRUQueryCache(1000000, 10000000, _ -> true, Float.POSITIVE_INFINITY);
+    searcher.setQueryCache(queryCache);
+    searcher.setQueryCachingPolicy(ALWAYS_CACHE);
+    StringBuilder sb = new StringBuilder();
+    // Create a large string for the field value so it certainly exceeds the default query size we
+    // use ie 1024 bytes.
+    sb.append("a".repeat(1200));
+    String longTerm = sb.toString();
+    TermQuery must = new TermQuery(new Term("foo", longTerm));
+    long queryInBytes = RamUsageEstimator.sizeOf(must, 0);
+    assertTrue(queryInBytes > QUERY_DEFAULT_RAM_BYTES_USED);
+    searcher.search(new ConstantScoreQuery(must), 1);
+
+    assertEquals(1, queryCache.cachedQueries().size());
+    assertTrue(queryCache.ramBytesUsed() >= queryInBytes);
 
     reader.close();
     dir.close();

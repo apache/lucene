@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import static org.apache.lucene.util.RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
 import static org.apache.lucene.util.RamUsageEstimator.LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY;
-import static org.apache.lucene.util.RamUsageEstimator.QUERY_DEFAULT_RAM_BYTES_USED;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -426,10 +425,8 @@ public class LRUQueryCache implements QueryCache, Accountable {
   }
 
   private static long getRamBytesUsed(Query query) {
-    return LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY
-        + (query instanceof Accountable accountableQuery
-            ? accountableQuery.ramBytesUsed()
-            : QUERY_DEFAULT_RAM_BYTES_USED);
+    long queryRamBytesUsed = RamUsageEstimator.sizeOf(query, 0);
+    return LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY + queryRamBytesUsed;
   }
 
   // pkg-private for testing
