@@ -141,7 +141,7 @@ public abstract class DocValuesSkipper {
       if (skipper == null) {
         return Long
             .MIN_VALUE; // minimum cannot be computed correctly since skipper is not enabled for
-                        // some leaf
+        // some leaf
       } else {
         minValue = Math.min(minValue, skipper.minValue());
       }
@@ -166,7 +166,7 @@ public abstract class DocValuesSkipper {
       if (skipper == null) {
         return Long
             .MAX_VALUE; // maximum cannot be computed correctly since skipper is not enabled for
-                        // some leaf
+        // some leaf
       } else {
         maxValue = Math.max(maxValue, skipper.maxValue());
       }
