@@ -20,52 +20,73 @@ import java.io.IOException;
 import org.apache.lucene.index.MergePolicy.OneMerge;
 
 /**
- * A {@link MergeScheduler} that extends {@link ConcurrentMergeScheduler} with bandwidth tracking
- * and limiting capabilities. This scheduler maintains a bandwidth rate bucket that is divided among
- * active merges. When bandwidth is limited, merges are throttled to preserve system resources.
- *
- * <p>Key features: Global bandwidth rate bucket with configurable capacity, dynamic per-merge
- * throttling.
+ * A {@link MergeScheduler} that caps total IO write bandwidth across all running merges to a
+ * specified max MB/sec bandwidth.
  *
  * @lucene.experimental
  */
 // nocommit
 public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
 
-  /** Floor for IO write rate limit (we will never go any lower than this) */
-  private static final double MIN_MERGE_MB_PER_SEC = 5.0;
+  /** Global bandwidth cap in MB/s. Mutable so that updates are applied live. */
+  private double bandwidthMbPerSec;
 
-  /** Ceiling for IO write rate limit (we will never go any higher than this) */
-  private static final double MAX_MERGE_MB_PER_SEC = 10240.0;
-
-  /** Initial value for IO write rate limit */
-  private static final double START_MB_PER_SEC = 1000.0;
-
-  /** Global bandwidth rate bucket in MB/s */
-  private double bandwidthRateBucket = START_MB_PER_SEC;
-
-  /** Default constructor with 1000 MB/s bandwidth rate bucket */
-  public BandwidthCappedMergeScheduler() {
-    super();
-  }
-
-  /** Set the global bandwidth rate bucket in MB/s (default 1000 MB/s) */
-  public void setBandwidthRateBucket(double mbPerSec) {
-    if (mbPerSec < MIN_MERGE_MB_PER_SEC || mbPerSec > MAX_MERGE_MB_PER_SEC) {
-      throw new IllegalArgumentException(
-          "Bandwidth rate must be between "
-              + MIN_MERGE_MB_PER_SEC
-              + " and "
-              + MAX_MERGE_MB_PER_SEC
-              + " MB/s");
+  /** Create a scheduler with a required global bandwidth cap in MB/s. */
+  public BandwidthCappedMergeScheduler(double bandwidthMbPerSec) {
+    if (!(bandwidthMbPerSec > 0.0)
+        || Double.isNaN(bandwidthMbPerSec)
+        || Double.isInfinite(bandwidthMbPerSec)) {
+      throw new IllegalArgumentException("bandwidthMbPerSec must be a finite positive value");
     }
-    this.bandwidthRateBucket = mbPerSec;
-    updateMergeThreads();
+    this.bandwidthMbPerSec = bandwidthMbPerSec;
   }
 
-  /** Get the global bandwidth rate bucket in MB/s */
-  public double getBandwidthRateBucket() {
-    return bandwidthRateBucket;
+  /**
+   * Auto IO throttling is managed by this scheduler's bandwidth cap. Enabling parent CMS IO
+   * throttling is ignored.
+   */
+  @Override
+  public synchronized void enableAutoIOThrottle() {
+    if (verbose()) {
+      message("Ignoring enableAutoIOThrottle; using bandwidth cap instead");
+    }
+    // Intentionally no-op
+  }
+
+  /** Ensure auto IO throttling remains disabled. */
+  @Override
+  public synchronized void disableAutoIOThrottle() {
+    // Make sure parent state is disabled if it was somehow enabled earlier
+    super.disableAutoIOThrottle();
+  }
+
+  /** Always returns false since CMS auto IO throttling is disabled for this scheduler. */
+  @Override
+  public synchronized boolean getAutoIOThrottle() {
+    return false;
+  }
+
+  /** Get the global bandwidth cap in MB/s */
+  public double getMaxMbPerSec() {
+    return bandwidthMbPerSec;
+  }
+
+  /**
+   * Set the global bandwidth cap in MB/s.
+   *
+   * <p>This setting is live: merges that are already running will be adjusted to the new per-merge
+   * rate derived from this cap, without requiring a restart.
+   *
+   * @param bandwidthMbPerSec the new global bandwidth cap in MB/s; must be finite and > 0
+   */
+  public synchronized void setMaxMbPerSec(double bandwidthMbPerSec) {
+    if (!(bandwidthMbPerSec > 0.0)
+        || Double.isNaN(bandwidthMbPerSec)
+        || Double.isInfinite(bandwidthMbPerSec)) {
+      throw new IllegalArgumentException("bandwidthMbPerSec must be a finite positive value");
+    }
+    this.bandwidthMbPerSec = bandwidthMbPerSec;
+    updateMergeThreads();
   }
 
   /** Distributes the global bandwidth rate bucket evenly among all active merge threads. */
@@ -78,12 +99,12 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
         activeMerges++;
       }
     }
-    double perMergeRate =
-        activeMerges > 0
-            ? Math.max(
-                MIN_MERGE_MB_PER_SEC,
-                Math.min(MAX_MERGE_MB_PER_SEC, bandwidthRateBucket / activeMerges))
-            : Double.POSITIVE_INFINITY;
+    double perMergeRate;
+    if (activeMerges > 0) {
+      perMergeRate = Math.max(Double.MIN_VALUE, bandwidthMbPerSec / activeMerges);
+    } else {
+      perMergeRate = Double.POSITIVE_INFINITY;
+    }
 
     // Apply the calculated rate limit to each active merge thread
     for (MergeThread mergeThread : mergeThreads) {
@@ -106,8 +127,8 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
     return getClass().getSimpleName()
         + ": "
         + super.toString()
-        + ", bandwidthRateBucket="
-        + bandwidthRateBucket
+        + ", bandwidthMbPerSec="
+        + bandwidthMbPerSec
         + " MB/s";
   }
 
@@ -123,7 +144,7 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
 
     @Override
     public void run() {
-      long startTime = System.currentTimeMillis();
+      long startTimeNS = System.nanoTime();
       try {
         if (verbose()) {
           message(
@@ -135,16 +156,17 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
         }
         super.run(); // IO throttling is handled by the RateLimiter
       } finally {
-        long duration = System.currentTimeMillis() - startTime;
+        long durationNS = System.nanoTime() - startTimeNS;
         if (verbose()) {
-          double mbPerSec = mergeBandwidthMB / Math.max(duration / 1000.0, 0.001);
+          double durationMS = durationNS / 1_000_000.0;
+          double mbPerSec = mergeBandwidthMB / Math.max(durationMS / 1000.0, 0.001);
           message(
               "Merge completed: "
                   + getSegmentName(merge)
                   + " "
                   + mergeBandwidthMB
                   + " MB in "
-                  + duration
+                  + String.format(java.util.Locale.US, "%.1f", durationMS)
                   + "ms ("
                   + String.format(java.util.Locale.US, "%.2f", mbPerSec)
                   + " MB/s)");
@@ -154,6 +176,6 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
   }
 
   private static String getSegmentName(OneMerge merge) {
-    return merge.info != null ? merge.info.info.name : "_na_";
+    return merge.info.info.name;
   }
 }
