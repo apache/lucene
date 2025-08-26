@@ -432,8 +432,7 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
 
               var loggingFileProvider =
                   project.getObjects().newInstance(LoggingFileArgumentProvider.class);
-              Path loggingConfigFile =
-                  super.gradlePluginResource(project, "testing/logging.properties");
+              Path loggingConfigFile = gradlePluginResource(project, "testing/logging.properties");
               loggingFileProvider.getLoggingConfigFile().set(loggingConfigFile.toFile());
               loggingFileProvider.getTempDir().set(tmpDirOption.get());
               task.getJvmArgumentProviders().add(loggingFileProvider);
@@ -483,7 +482,7 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
 
               // Disable automatic test class detection, rely on class names only. This is needed
               // for testing
-              // against JDKs where the bytecode is unparseable by Gradle, for example.
+              // against JDKs where the bytecode is unparsable by Gradle, for example.
               // We require all tests to start with Test*, this simplifies include patterns greatly.
               task.setScanForTestClasses(false);
               task.include("**/Test*.class");

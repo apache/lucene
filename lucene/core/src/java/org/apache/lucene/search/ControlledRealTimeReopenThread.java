@@ -213,9 +213,7 @@ public class ControlledRealTimeReopenThread<T> extends Thread implements Closeab
           } else {
             break;
           }
-        } catch (
-            @SuppressWarnings("unused")
-            InterruptedException ie) {
+        } catch (InterruptedException _) {
           Thread.currentThread().interrupt();
           return;
         } finally {

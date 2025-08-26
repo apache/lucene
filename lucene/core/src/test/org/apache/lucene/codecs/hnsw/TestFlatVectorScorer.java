@@ -30,31 +30,38 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorScorer;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.vectorization.BaseVectorizationTestCase;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
-import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.IOSupplier;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 
-public class TestFlatVectorScorer extends LuceneTestCase {
+public class TestFlatVectorScorer extends BaseVectorizationTestCase {
 
   private static final AtomicInteger count = new AtomicInteger();
   private final FlatVectorsScorer flatVectorsScorer;
-  private final ThrowingSupplier<Directory> newDirectory;
+  private final IOSupplier<Directory> newDirectory;
 
   public TestFlatVectorScorer(
-      FlatVectorsScorer flatVectorsScorer, ThrowingSupplier<Directory> newDirectory) {
+      FlatVectorsScorer flatVectorsScorer, IOSupplier<Directory> newDirectory) {
     this.flatVectorsScorer = flatVectorsScorer;
     this.newDirectory = newDirectory;
   }
@@ -65,11 +72,13 @@ public class TestFlatVectorScorer extends LuceneTestCase {
         List.of(
             DefaultFlatVectorScorer.INSTANCE,
             new Lucene99ScalarQuantizedVectorScorer(new DefaultFlatVectorScorer()),
-            FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
+            FlatVectorScorerUtil.getLucene99FlatVectorsScorer(),
+            maybePanamaProvider().getLucene99FlatVectorsScorer());
     var dirs =
-        List.<ThrowingSupplier<Directory>>of(
+        List.<IOSupplier<Directory>>of(
             TestFlatVectorScorer::newDirectory,
-            () -> new MMapDirectory(createTempDir(count.getAndIncrement() + "-")));
+            () -> new MMapDirectory(createTempDir(count.getAndIncrement() + "-")),
+            () -> new MMapDirectory(createTempDir(count.getAndIncrement() + "-"), 1024));
 
     List<Object[]> objs = new ArrayList<>();
     for (var scorer : scorers) {
@@ -179,6 +188,157 @@ public class TestFlatVectorScorer extends LuceneTestCase {
     }
   }
 
+  public void testBulkScorerBytes() throws IOException {
+    int dims = random().nextInt(1, 1024);
+    int size = random().nextInt(2, 255);
+    String fileName = "testBulkScorerBytes";
+    try (Directory dir = newDirectory.get()) {
+      try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+        for (int i = 0; i < size; i++) {
+          byte[] ba = randomByteVector(dims);
+          out.writeBytes(ba, 0, ba.length);
+        }
+      }
+      try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+        assert in.length() == (long) dims * size * Byte.BYTES;
+        for (var sim : List.of(COSINE, DOT_PRODUCT, EUCLIDEAN, MAXIMUM_INNER_PRODUCT)) {
+          var values = byteVectorValues(dims, size, in, sim);
+          assertBulkEqualsNonBulk(values, sim);
+          assertBulkEqualsNonBulkSupplier(values, sim);
+          assertScoresAgainstDefaultFlatScorer(values, sim);
+        }
+      }
+    }
+  }
+
+  public void testBulkScorerFloats() throws IOException {
+    int dims = random().nextInt(1, 1024);
+    int size = random().nextInt(2, 255);
+    String fileName = "testBulkScorerFloats";
+    try (Directory dir = newDirectory.get()) {
+      try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+        for (int i = 0; i < size; i++) {
+          byte[] ba = concat(randomFloatVector(dims));
+          out.writeBytes(ba, 0, ba.length);
+        }
+      }
+      try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+        assert in.length() == (long) dims * size * Float.BYTES;
+        for (var sim : List.of(COSINE, DOT_PRODUCT, EUCLIDEAN, MAXIMUM_INNER_PRODUCT)) {
+          var values = floatVectorValues(dims, size, in, sim);
+          assertBulkEqualsNonBulk(values, sim);
+          assertBulkEqualsNonBulkSupplier(values, sim);
+          assertScoresAgainstDefaultFlatScorer(values, sim);
+        }
+      }
+    }
+  }
+
+  public void testOnHeapBulkScorerFloats() throws IOException {
+    int dims = random().nextInt(1, 1024);
+    int size = random().nextInt(2, 255);
+    List<float[]> vectors = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      vectors.add(randomFloatVector(dims));
+    }
+    var values = FloatVectorValues.fromFloats(vectors, dims);
+    for (var sim : List.of(COSINE, DOT_PRODUCT, EUCLIDEAN, MAXIMUM_INNER_PRODUCT)) {
+      assertBulkEqualsNonBulk(values, sim);
+      assertBulkEqualsNonBulkSupplier(values, sim);
+      assertScoresAgainstDefaultFlatScorer(values, sim);
+    }
+  }
+
+  void assertBulkEqualsNonBulk(KnnVectorValues values, VectorSimilarityFunction sim)
+      throws IOException {
+    final int dims = values.dimension();
+    final int size = values.size();
+    final float delta = 1e-3f * size;
+    var scorer =
+        values.getEncoding() == VectorEncoding.BYTE
+            ? flatVectorsScorer.getRandomVectorScorer(sim, values, randomByteVector(dims))
+            : flatVectorsScorer.getRandomVectorScorer(sim, values, randomFloatVector(dims));
+    int[] indices = randomIndices(size);
+    float[] expectedScores = new float[size];
+    for (int i = 0; i < size; i++) {
+      expectedScores[i] = scorer.score(indices[i]);
+    }
+    float[] bulkScores = new float[size];
+    scorer.bulkScore(indices, bulkScores, size);
+    assertArrayEquals(expectedScores, bulkScores, delta);
+    assertNoScoreBeyondNumNodes(scorer, size);
+  }
+
+  // score through the supplier/updatableScorer interface
+  void assertBulkEqualsNonBulkSupplier(KnnVectorValues values, VectorSimilarityFunction sim)
+      throws IOException {
+    final int size = values.size();
+    final float delta = 1e-3f * size;
+    var supplier = flatVectorsScorer.getRandomVectorScorerSupplier(sim, values);
+    for (var ss : List.of(supplier, supplier.copy())) {
+      var updatableScorer = ss.scorer();
+      var targetNode = random().nextInt(size);
+      updatableScorer.setScoringOrdinal(targetNode);
+      int[] indices = randomIndices(size);
+      float[] expectedScores = new float[size];
+      for (int i = 0; i < size; i++) {
+        expectedScores[i] = updatableScorer.score(indices[i]);
+      }
+      float[] bulkScores = new float[size];
+      updatableScorer.bulkScore(indices, bulkScores, size);
+      assertArrayEquals(expectedScores, bulkScores, delta);
+      assertNoScoreBeyondNumNodes(updatableScorer, size);
+    }
+  }
+
+  // asserts scores against the default scorer.
+  void assertScoresAgainstDefaultFlatScorer(KnnVectorValues values, VectorSimilarityFunction sim)
+      throws IOException {
+    final int size = values.size();
+    final float delta = 1e-3f * size;
+    var targetNode = random().nextInt(size);
+    int[] indices = randomIndices(size);
+    var defaultScorer =
+        DefaultFlatVectorScorer.INSTANCE.getRandomVectorScorerSupplier(sim, values).scorer();
+    defaultScorer.setScoringOrdinal(targetNode);
+    float[] expectedScores = new float[size];
+    for (int i = 0; i < size; i++) {
+      expectedScores[i] = defaultScorer.score(indices[i]);
+    }
+
+    var supplier = flatVectorsScorer.getRandomVectorScorerSupplier(sim, values);
+    for (var ss : List.of(supplier, supplier.copy())) {
+      var updatableScorer = ss.scorer();
+      updatableScorer.setScoringOrdinal(targetNode);
+      float[] bulkScores = new float[size];
+      updatableScorer.bulkScore(indices, bulkScores, size);
+      assertArrayEquals(expectedScores, bulkScores, delta);
+    }
+  }
+
+  void assertNoScoreBeyondNumNodes(RandomVectorScorer scorer, int maxSize) throws IOException {
+    int numNodes = random().nextInt(0, maxSize);
+    int[] indices = new int[numNodes + 1];
+    float[] bulkScores = new float[numNodes + 1];
+    bulkScores[bulkScores.length - 1] = Float.NaN;
+    scorer.bulkScore(indices, bulkScores, numNodes);
+    assertEquals(Float.NaN, bulkScores[bulkScores.length - 1], 0.0f);
+  }
+
+  byte[] randomByteVector(int dims) {
+    byte[] ba = new byte[dims];
+    random().nextBytes(ba);
+    return ba;
+  }
+
+  float[] randomFloatVector(int dims) {
+    float[] fa = new float[dims];
+    for (int i = 0; i < dims; ++i) {
+      fa[i] = random().nextFloat();
+    }
+    return fa;
+  }
+
   ByteVectorValues byteVectorValues(int dims, int size, IndexInput in, VectorSimilarityFunction sim)
       throws IOException {
     return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
@@ -220,12 +380,14 @@ public class TestFlatVectorScorer extends LuceneTestCase {
     }
   }
 
-  public static <T> void assertThat(T actual, Matcher<? super T> matcher) {
-    MatcherAssert.assertThat("", actual, matcher);
+  /** Returns an int[] of the given size with valued from 0 to size shuffled. */
+  public static int[] randomIndices(int size) {
+    List<Integer> list = IntStream.range(0, size).boxed().collect(Collectors.toList());
+    Collections.shuffle(list, random());
+    return list.stream().mapToInt(i -> i).toArray();
   }
 
-  @FunctionalInterface
-  public interface ThrowingSupplier<T> {
-    T get() throws IOException;
+  public static <T> void assertThat(T actual, Matcher<? super T> matcher) {
+    MatcherAssert.assertThat("", actual, matcher);
   }
 }

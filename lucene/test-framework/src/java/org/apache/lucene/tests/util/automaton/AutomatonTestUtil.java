@@ -61,9 +61,7 @@ public class AutomatonTestUtil extends Assert {
       try {
         new RegExp(regexp, RegExp.NONE);
         return regexp;
-      } catch (
-          @SuppressWarnings("unused")
-          Exception e) {
+      } catch (Exception _) {
       }
     }
   }
@@ -269,9 +267,7 @@ public class AutomatonTestUtil extends Assert {
           a1 = Operations.complement(a1, DEFAULT_MAX_DETERMINIZED_STATES);
         }
         return a1;
-      } catch (
-          @SuppressWarnings("unused")
-          TooComplexToDeterminizeException tctde) {
+      } catch (TooComplexToDeterminizeException _) {
         // This can (rarely) happen if the random regexp is too hard; just try again...
       }
     }

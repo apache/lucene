@@ -75,7 +75,7 @@ public final class ForDeltaUtil {
     // When the number of bits per value is 4 or less, we can sum up all values in a block without
     // risking overflowing an 8-bits integer. This allows computing the prefix sum by summing up 4
     // values at once.
-    innerPrefixSum8(arr);
+    prefixSum(arr, ONE_BLOCK_SIZE_FOURTH, 0);
     expand8(arr);
     final int l0 = base;
     final int l1 = l0 + arr[ONE_BLOCK_SIZE_FOURTH - 1];
@@ -94,7 +94,7 @@ public final class ForDeltaUtil {
     // When the number of bits per value is 11 or less, we can sum up all values in a block without
     // risking overflowing an 16-bits integer. This allows computing the prefix sum by summing up 2
     // values at once.
-    innerPrefixSum16(arr);
+    prefixSum(arr, HALF_BLOCK_SIZE, 0);
     expand16(arr);
     final int l0 = base;
     final int l1 = base + arr[HALF_BLOCK_SIZE - 1];
@@ -105,112 +105,15 @@ public final class ForDeltaUtil {
   }
 
   private static void prefixSum32(int[] arr, int base) {
-    arr[0] += base;
-    for (int i = 1; i < BLOCK_SIZE; ++i) {
-      arr[i] += arr[i - 1];
+    prefixSum(arr, BLOCK_SIZE, base);
+  }
+
+  private static void prefixSum(int[] arr, int len, int base) {
+    int sum = base;
+    for (int i = 0; i < len; ++i) {
+      sum += arr[i];
+      arr[i] = sum;
     }
-  }
-
-  // For some reason unrolling seems to help
-  private static void innerPrefixSum8(int[] arr) {
-    arr[1] += arr[0];
-    arr[2] += arr[1];
-    arr[3] += arr[2];
-    arr[4] += arr[3];
-    arr[5] += arr[4];
-    arr[6] += arr[5];
-    arr[7] += arr[6];
-    arr[8] += arr[7];
-    arr[9] += arr[8];
-    arr[10] += arr[9];
-    arr[11] += arr[10];
-    arr[12] += arr[11];
-    arr[13] += arr[12];
-    arr[14] += arr[13];
-    arr[15] += arr[14];
-    arr[16] += arr[15];
-    arr[17] += arr[16];
-    arr[18] += arr[17];
-    arr[19] += arr[18];
-    arr[20] += arr[19];
-    arr[21] += arr[20];
-    arr[22] += arr[21];
-    arr[23] += arr[22];
-    arr[24] += arr[23];
-    arr[25] += arr[24];
-    arr[26] += arr[25];
-    arr[27] += arr[26];
-    arr[28] += arr[27];
-    arr[29] += arr[28];
-    arr[30] += arr[29];
-    arr[31] += arr[30];
-  }
-
-  // For some reason unrolling seems to help
-  private static void innerPrefixSum16(int[] arr) {
-    arr[1] += arr[0];
-    arr[2] += arr[1];
-    arr[3] += arr[2];
-    arr[4] += arr[3];
-    arr[5] += arr[4];
-    arr[6] += arr[5];
-    arr[7] += arr[6];
-    arr[8] += arr[7];
-    arr[9] += arr[8];
-    arr[10] += arr[9];
-    arr[11] += arr[10];
-    arr[12] += arr[11];
-    arr[13] += arr[12];
-    arr[14] += arr[13];
-    arr[15] += arr[14];
-    arr[16] += arr[15];
-    arr[17] += arr[16];
-    arr[18] += arr[17];
-    arr[19] += arr[18];
-    arr[20] += arr[19];
-    arr[21] += arr[20];
-    arr[22] += arr[21];
-    arr[23] += arr[22];
-    arr[24] += arr[23];
-    arr[25] += arr[24];
-    arr[26] += arr[25];
-    arr[27] += arr[26];
-    arr[28] += arr[27];
-    arr[29] += arr[28];
-    arr[30] += arr[29];
-    arr[31] += arr[30];
-    arr[32] += arr[31];
-    arr[33] += arr[32];
-    arr[34] += arr[33];
-    arr[35] += arr[34];
-    arr[36] += arr[35];
-    arr[37] += arr[36];
-    arr[38] += arr[37];
-    arr[39] += arr[38];
-    arr[40] += arr[39];
-    arr[41] += arr[40];
-    arr[42] += arr[41];
-    arr[43] += arr[42];
-    arr[44] += arr[43];
-    arr[45] += arr[44];
-    arr[46] += arr[45];
-    arr[47] += arr[46];
-    arr[48] += arr[47];
-    arr[49] += arr[48];
-    arr[50] += arr[49];
-    arr[51] += arr[50];
-    arr[52] += arr[51];
-    arr[53] += arr[52];
-    arr[54] += arr[53];
-    arr[55] += arr[54];
-    arr[56] += arr[55];
-    arr[57] += arr[56];
-    arr[58] += arr[57];
-    arr[59] += arr[58];
-    arr[60] += arr[59];
-    arr[61] += arr[60];
-    arr[62] += arr[61];
-    arr[63] += arr[62];
   }
 
   private final int[] tmp = new int[BLOCK_SIZE];

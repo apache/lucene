@@ -424,9 +424,7 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
       w.commit();
       w.forceMerge(1);
       fail("didn't hit exception");
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalArgumentException iae) {
+    } catch (IllegalArgumentException _) {
       // expected: SMS will hit this
     } catch (IOException | IllegalStateException exc) {
       // expected

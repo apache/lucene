@@ -63,6 +63,7 @@ import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.internal.hppc.IntIntHashMap;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldExistsQuery;
@@ -87,6 +88,7 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.CommandLineUtil;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOBooleanSupplier;
+import org.apache.lucene.util.IOFunction;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongBitSet;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -1673,9 +1675,7 @@ public final class CheckIndex implements Closeable {
           long ord = -1;
           try {
             ord = termsEnum.ord();
-          } catch (
-              @SuppressWarnings("unused")
-              UnsupportedOperationException uoe) {
+          } catch (UnsupportedOperationException _) {
             hasOrd = false;
           }
 
@@ -3065,7 +3065,11 @@ public final class CheckIndex implements Closeable {
         if (vectorsReaderSupportsSearch(codecReader, fieldInfo.name)) {
           codecReader
               .getVectorReader()
-              .search(fieldInfo.name, values.vectorValue(count), collector, null);
+              .search(
+                  fieldInfo.name,
+                  values.vectorValue(count),
+                  collector,
+                  AcceptDocs.fromLiveDocs(null, codecReader.maxDoc()));
           TopDocs docs = collector.topDocs();
           if (docs.scoreDocs.length == 0) {
             throw new CheckIndexException(
@@ -3113,7 +3117,11 @@ public final class CheckIndex implements Closeable {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
         codecReader
             .getVectorReader()
-            .search(fieldInfo.name, values.vectorValue(count), collector, null);
+            .search(
+                fieldInfo.name,
+                values.vectorValue(count),
+                collector,
+                AcceptDocs.fromLiveDocs(null, codecReader.maxDoc()));
         TopDocs docs = collector.topDocs();
         if (docs.scoreDocs.length == 0) {
           throw new CheckIndexException(
@@ -3563,11 +3571,6 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
-  @FunctionalInterface
-  private interface DocValuesIteratorSupplier {
-    DocValuesIterator get(FieldInfo fi) throws IOException;
-  }
-
   private static void checkDocValueSkipper(FieldInfo fi, DocValuesSkipper skipper)
       throws IOException {
     String fieldName = fi.name;
@@ -3656,13 +3659,13 @@ public final class CheckIndex implements Closeable {
     }
   }
 
-  private static void checkDVIterator(FieldInfo fi, DocValuesIteratorSupplier producer)
-      throws IOException {
+  private static void checkDVIterator(
+      FieldInfo fi, IOFunction<FieldInfo, DocValuesIterator> producer) throws IOException {
     String field = fi.name;
 
     // Check advance
-    DocValuesIterator it1 = producer.get(fi);
-    DocValuesIterator it2 = producer.get(fi);
+    DocValuesIterator it1 = producer.apply(fi);
+    DocValuesIterator it2 = producer.apply(fi);
     int i = 0;
     for (int doc = it1.nextDoc(); ; doc = it1.nextDoc()) {
 
@@ -3709,8 +3712,8 @@ public final class CheckIndex implements Closeable {
     }
 
     // Check advanceExact
-    it1 = producer.get(fi);
-    it2 = producer.get(fi);
+    it1 = producer.apply(fi);
+    it2 = producer.apply(fi);
     i = 0;
     int lastDoc = -1;
     for (int doc = it1.nextDoc(); doc != NO_MORE_DOCS; doc = it1.nextDoc()) {

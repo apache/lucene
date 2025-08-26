@@ -290,13 +290,19 @@ public class IndexWriter
 
   private final ReentrantLock writeDocValuesLock = new ReentrantLock();
 
+  /**
+   * Queue for internal atomic events. See {@link DocumentsWriter} for details. Events are executed
+   * concurrently and no order is guaranteed. Each event should only rely on the serializability
+   * within its process method. All actions that must happen before or after a certain action must
+   * be encoded inside the {@link IOConsumer#accept} implementation.
+   */
   static final class EventQueue implements Closeable {
     private volatile boolean closed;
     // we use a semaphore here instead of simply synced methods to allow
     // events to be processed concurrently by multiple threads such that all events
     // for a certain thread are processed once the thread returns from IW
     private final Semaphore permits = new Semaphore(Integer.MAX_VALUE);
-    private final Queue<Event> queue = new ConcurrentLinkedQueue<>();
+    private final Queue<IOConsumer<IndexWriter>> queue = new ConcurrentLinkedQueue<>();
     private final IndexWriter writer;
 
     EventQueue(IndexWriter writer) {
@@ -313,7 +319,7 @@ public class IndexWriter
       }
     }
 
-    boolean add(Event event) {
+    boolean add(IOConsumer<IndexWriter> event) {
       acquire();
       try {
         return queue.add(event);
@@ -334,9 +340,9 @@ public class IndexWriter
     private void processEventsInternal() throws IOException {
       assert Integer.MAX_VALUE - permits.availablePermits() > 0
           : "must acquire a permit before processing events";
-      Event event;
+      IOConsumer<IndexWriter> event;
       while ((event = queue.poll()) != null) {
-        event.process(writer);
+        event.accept(writer);
       }
     }
 
@@ -866,7 +872,7 @@ public class IndexWriter
                       count,
                       readerPool.ramBytesUsed() / 1024. / 1024.,
                       ramBufferSizeMB,
-                      ((System.nanoTime() - startNS) / (double) TimeUnit.SECONDS.toNanos(1))));
+                      (System.nanoTime() - startNS) / (double) TimeUnit.SECONDS.toNanos(1)));
             }
           }
         }
@@ -2633,8 +2639,7 @@ public class IndexWriter
      */
     try {
       synchronized (fullFlushLock) {
-        try (@SuppressWarnings("unused")
-            Closeable finalizer = docWriter.lockAndAbortAll()) {
+        try (Closeable _ = docWriter.lockAndAbortAll()) {
           processEvents(false);
           synchronized (this) {
             try {
@@ -2691,6 +2696,7 @@ public class IndexWriter
    * you lose a lot of work that must later be redone.
    */
   private synchronized void abortMerges() throws IOException {
+    long startNS = System.nanoTime();
     merges.disable();
     // Abort all pending & running merges:
     IOUtils.applyToAll(
@@ -2733,7 +2739,10 @@ public class IndexWriter
 
     notifyAll();
     if (infoStream.isEnabled("IW")) {
-      infoStream.message("IW", "all running merges have aborted");
+      double elapsedSec = (System.nanoTime() - startNS) / (double) TimeUnit.SECONDS.toNanos(1);
+      infoStream.message(
+          "IW",
+          String.format(Locale.ROOT, "all running merges have aborted [%.3f seconds]", elapsedSec));
     }
   }
 
@@ -3150,6 +3159,11 @@ public class IndexWriter
     long seqNo;
 
     try {
+      if (infoStream.isEnabled("IW")) {
+        infoStream.message("IW", "flush at addIndexes(CodecReader...)");
+      }
+      flush(false, true);
+
       // Best effort up front validations
       for (CodecReader leaf : readers) {
         validateMergeReader(leaf);
@@ -3348,11 +3362,6 @@ public class IndexWriter
 
     // long so we can detect int overflow:
     long numDocs = 0;
-    if (infoStream.isEnabled("IW")) {
-      infoStream.message("IW", "flush at addIndexes(CodecReader...)");
-    }
-    flush(false, true);
-
     String mergedName = newSegmentName();
     Directory mergeDirectory = mergeScheduler.wrapForMerge(merge, directory);
     int numSoftDeleted = 0;
@@ -3724,7 +3733,7 @@ public class IndexWriter
         maybeCloseOnTragicEvent();
       }
 
-      if (pointInTimeMerges != null) {
+      if (pointInTimeMerges != null && pointInTimeMerges.merges.size() != 0) {
         if (infoStream.isEnabled("IW")) {
           infoStream.message(
               "IW", "now run merges during commit: " + pointInTimeMerges.segString(directory));
@@ -5424,7 +5433,8 @@ public class IndexWriter
       }
 
       success = true;
-
+    } catch (Throwable t) {
+      throw t;
     } finally {
       // Readers are already closed in commitMerge if we didn't hit
       // an exc:
@@ -5864,9 +5874,7 @@ public class IndexWriter
     Collection<String> files;
     try {
       files = info.files();
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException ise) {
+    } catch (IllegalStateException _) {
       // OK
       files = null;
     }
@@ -5980,24 +5988,6 @@ public class IndexWriter
       maybeMerge(
           getConfig().getMergePolicy(), MergeTrigger.SEGMENT_FLUSH, UNBOUNDED_MAX_MERGE_SEGMENTS);
     }
-  }
-
-  /**
-   * Interface for internal atomic events. See {@link DocumentsWriter} for details. Events are
-   * executed concurrently and no order is guaranteed. Each event should only rely on the
-   * serializability within its process method. All actions that must happen before or after a
-   * certain action must be encoded inside the {@link #process(IndexWriter)} method.
-   */
-  @FunctionalInterface
-  interface Event {
-    /**
-     * Processes the event. This method is called by the {@link IndexWriter} passed as the first
-     * argument.
-     *
-     * @param writer the {@link IndexWriter} that executes the event.
-     * @throws IOException if an {@link IOException} occurs
-     */
-    void process(IndexWriter writer) throws IOException;
   }
 
   /**

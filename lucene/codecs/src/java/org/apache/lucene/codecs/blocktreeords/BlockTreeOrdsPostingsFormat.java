@@ -69,31 +69,23 @@ public class BlockTreeOrdsPostingsFormat extends PostingsFormat {
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
     PostingsWriterBase postingsWriter = new Lucene103PostingsWriter(state);
 
-    boolean success = false;
     try {
-      FieldsConsumer ret =
-          new OrdsBlockTreeTermsWriter(state, postingsWriter, minTermBlockSize, maxTermBlockSize);
-      success = true;
-      return ret;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(postingsWriter);
-      }
+      return new OrdsBlockTreeTermsWriter(
+          state, postingsWriter, minTermBlockSize, maxTermBlockSize);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, postingsWriter);
+      throw t;
     }
   }
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
     PostingsReaderBase postingsReader = new Lucene103PostingsReader(state);
-    boolean success = false;
     try {
-      FieldsProducer ret = new OrdsBlockTreeTermsReader(postingsReader, state);
-      success = true;
-      return ret;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(postingsReader);
-      }
+      return new OrdsBlockTreeTermsReader(postingsReader, state);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, postingsReader);
+      throw t;
     }
   }
 }

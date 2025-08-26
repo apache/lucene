@@ -140,3 +140,12 @@ rule:
         pattern: incubator
 severity: error
 message: Module dependency on incubator APIs
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: javadoc-only-inheriting-super
+language: java
+rule:
+  matches: javadoc
+  regex: "^/\\*\\*([ \r\n*])*[{]@inheritDoc[ \r\n]*[}]([ \r\n*])*\\*/$"
+severity: error
+message: "{@inheritDoc} on its own is unnecessary"
