@@ -99,17 +99,29 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
         activeMerges++;
       }
     }
+    
+    // Use the effective max thread count to avoid counting threads that CMS has paused
+    int effectiveMaxThreads = getMaxThreadCount();
+    if (effectiveMaxThreads == ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS) {
+      int coreCount = Runtime.getRuntime().availableProcessors();
+      effectiveMaxThreads = Math.max(1, coreCount / 2);
+    }
+    int divisor = Math.min(effectiveMaxThreads, activeMerges);
+    
     double perMergeRate;
-    if (activeMerges > 0) {
-      perMergeRate = Math.max(Double.MIN_VALUE, bandwidthMbPerSec / activeMerges);
+    if (divisor > 0) {
+      perMergeRate = Math.max(0.1, bandwidthMbPerSec / divisor); // Use 0.1 MB/s minimum
     } else {
       perMergeRate = Double.POSITIVE_INFINITY;
     }
 
-    // Apply the calculated rate limit to each active merge thread
+    // Apply the calculated rate limit to each active merge thread without unpausing paused threads
     for (MergeThread mergeThread : mergeThreads) {
       if (mergeThread.isAlive()) {
-        mergeThread.rateLimiter.setMBPerSec(perMergeRate);
+        double currentRate = mergeThread.rateLimiter.getMBPerSec();
+        if (currentRate > 0.0) { // Only update if not paused by parent CMS (above soft limit)
+          mergeThread.rateLimiter.setMBPerSec(perMergeRate);
+        }
       }
     }
   }
