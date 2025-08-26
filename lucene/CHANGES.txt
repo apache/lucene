@@ -314,6 +314,9 @@ Bug Fixes
 * GITHUB#15106: Fix infinite loop when RefCountedSharedArena's underlying
   Arena#close fails due to concurrent usage of segments.  (Uwe Schindler)
 
+* GITHUB#14974: Lucene tessellator now always fails if it cannot process a hole instead of just ignoring it.
+   (Ignacio Vera)
+
 Build
 ---------------------
 * Upgrade forbiddenapis to version 3.9.  (Uwe Schindler)
