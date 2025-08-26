@@ -14,10 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.index;
+package org.apache.lucene.sandbox.index;
 
 import java.io.IOException;
+import org.apache.lucene.index.ConcurrentMergeScheduler;
 import org.apache.lucene.index.MergePolicy.OneMerge;
+import org.apache.lucene.index.MergeScheduler;
 
 /**
  * A {@link MergeScheduler} that caps total IO write bandwidth across all running merges to a
@@ -118,9 +120,9 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
     // Apply the calculated rate limit to each active merge thread without unpausing paused threads
     for (MergeThread mergeThread : mergeThreads) {
       if (mergeThread.isAlive()) {
-        double currentRate = mergeThread.rateLimiter.getMBPerSec();
+        double currentRate = mergeThread.getRateLimiter().getMBPerSec();
         if (currentRate > 0.0) { // Only update if not paused by parent CMS (above soft limit)
-          mergeThread.rateLimiter.setMBPerSec(perMergeRate);
+          mergeThread.getRateLimiter().setMBPerSec(perMergeRate);
         }
       }
     }
@@ -155,12 +157,11 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
     @Override
     public void run() {
       long startTimeNS = System.nanoTime();
+      OneMerge merge = getMerge();
       try {
         if (verbose()) {
           message(
-              "Starting bandwidth-capped merge: "
-                  + getSegmentName(merge)
-                  + " (estimatedMergeMB="
+              "Starting bandwidth-capped merge: (estimatedMergeMB="
                   + merge.estimatedMergeBytes / (1024.0 * 1024.0)
                   + " MB)");
         }
@@ -172,8 +173,6 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
           double mbPerSec = merge.estimatedMergeBytes / (1024.0 * 1024.0) / (durationMS / 1000.0);
           message(
               "Merge completed: "
-                  + getSegmentName(merge)
-                  + " "
                   + merge.estimatedMergeBytes / (1024.0 * 1024.0)
                   + " MB in "
                   + String.format(java.util.Locale.US, "%.1f", durationMS)
@@ -183,9 +182,5 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
         }
       }
     }
-  }
-
-  private static String getSegmentName(OneMerge merge) {
-    return merge.info != null ? merge.info.info.name : "_na_";
   }
 }

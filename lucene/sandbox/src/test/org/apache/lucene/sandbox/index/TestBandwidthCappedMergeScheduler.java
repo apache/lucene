@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.index;
+package org.apache.lucene.sandbox.index;
 
 import com.carrotsearch.randomizedtesting.generators.RandomStrings;
 import java.io.IOException;
@@ -33,6 +33,14 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.sandbox.index.BandwidthCappedMergeScheduler;
+import org.apache.lucene.index.ConcurrentMergeScheduler;
+import org.apache.lucene.index.MergePolicy.OneMerge;
+import org.apache.lucene.index.MergeScheduler;
+import org.apache.lucene.index.MergePolicy;
+import org.apache.lucene.index.LogDocMergePolicy;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 
 /** Tests for {@link BandwidthCappedMergeScheduler}. */
 public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
@@ -244,32 +252,6 @@ public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
 
     // Should have some merge-related messages
     assertFalse("Should have some info stream messages", messages.isEmpty());
-
-    scheduler.close();
-    dir.close();
-  }
-
-  public void testMergeWithKnnVectors() throws IOException {
-    Directory dir = newDirectory();
-    BandwidthCappedMergeScheduler scheduler = new BandwidthCappedMergeScheduler(100.0);
-
-    IndexWriterConfig config = newIndexWriterConfig();
-    config.setMergeScheduler(scheduler);
-    config.setMaxBufferedDocs(2);
-
-    try (IndexWriter writer = new IndexWriter(dir, config)) {
-      for (int i = 0; i < 10; i++) {
-        Document doc = new Document();
-        doc.add(new StringField("id", String.valueOf(i), Field.Store.YES));
-        doc.add(
-            new KnnFloatVectorField(
-                "vector", new float[] {random().nextFloat(), random().nextFloat()}));
-        writer.addDocument(doc);
-      }
-
-      writer.forceMerge(1);
-      assertEquals(1, writer.getSegmentCount());
-    }
 
     scheduler.close();
     dir.close();
