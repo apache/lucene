@@ -99,7 +99,7 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
         activeMerges++;
       }
     }
-    
+
     // Use the effective max thread count to avoid counting threads that CMS has paused
     int effectiveMaxThreads = getMaxThreadCount();
     if (effectiveMaxThreads == ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS) {
@@ -107,7 +107,7 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
       effectiveMaxThreads = Math.max(1, coreCount / 2);
     }
     int divisor = Math.min(effectiveMaxThreads, activeMerges);
-    
+
     double perMergeRate;
     if (divisor > 0) {
       perMergeRate = Math.max(0.1, bandwidthMbPerSec / divisor); // Use 0.1 MB/s minimum
