@@ -159,7 +159,7 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
         long durationNS = System.nanoTime() - startTimeNS;
         if (verbose()) {
           double durationMS = durationNS / 1_000_000.0;
-          double mbPerSec = mergeBandwidthMB / Math.max(durationMS / 1000.0, 0.001);
+          double mbPerSec = mergeBandwidthMB / Math.max(durationMS / 1000.0);
           message(
               "Merge completed: "
                   + getSegmentName(merge)
