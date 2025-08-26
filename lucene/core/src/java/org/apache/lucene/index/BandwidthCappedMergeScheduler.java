@@ -186,6 +186,6 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
   }
 
   private static String getSegmentName(OneMerge merge) {
-    return merge.info.info.name;
+    return merge.info != null ? merge.info.info.name : "_na_";
   }
 }
