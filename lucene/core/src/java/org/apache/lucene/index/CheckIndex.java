@@ -1258,12 +1258,7 @@ public final class CheckIndex implements Closeable {
         if (liveDocs == null) {
           throw new CheckIndexException("segment should have deletions, but liveDocs is null");
         } else {
-          int numLive = 0;
-          for (int j = 0; j < liveDocs.length(); j++) {
-            if (liveDocs.get(j)) {
-              numLive++;
-            }
-          }
+          int numLive = bitsCardinality(liveDocs);
           if (numLive != numDocs) {
             throw new CheckIndexException(
                 "liveDocs count mismatch: info=" + numDocs + ", vs bits=" + numLive);
@@ -1307,6 +1302,28 @@ public final class CheckIndex implements Closeable {
     }
 
     return status;
+  }
+
+  /**
+   * Returns the cardinality of the given {@code Bits}.
+   *
+   * <p>This method processes bits in batches of 1024 using {@link Bits#applyMask} and {@link
+   * FixedBitSet#cardinality}, which is faster than checking bits one by one.
+   */
+  static int bitsCardinality(Bits bits) {
+    int cardinality = 0;
+    FixedBitSet copy = new FixedBitSet(1024);
+    for (int offset = 0; offset < bits.length(); offset += copy.length()) {
+      int numBitsToCopy = Math.min(bits.length() - offset, copy.length());
+      copy.set(0, copy.length());
+      if (numBitsToCopy < copy.length()) {
+        // Clear ghost bits
+        copy.clear(numBitsToCopy, copy.length());
+      }
+      bits.applyMask(copy, offset);
+      cardinality += copy.cardinality();
+    }
+    return cardinality;
   }
 
   /** Test field infos. */
