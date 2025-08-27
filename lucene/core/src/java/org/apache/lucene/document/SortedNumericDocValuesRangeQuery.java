@@ -129,10 +129,10 @@ final class SortedNumericDocValuesRangeQuery extends Query {
         }
 
         int maxDoc = context.reader().maxDoc();
-        int count = docCount(context);
+        int count = docCountIgnoringDeletes(context);
         if (count == 0) {
           return null;
-        } else if (count == 1) {
+        } else if (count == maxDoc) {
           return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, maxDoc);
         }
 
@@ -194,17 +194,20 @@ final class SortedNumericDocValuesRangeQuery extends Query {
 
       @Override
       public int count(LeafReaderContext context) throws IOException {
-        int cnt = docCount(context);
-        return switch (cnt) {
-          case 1 -> context.reader().numDocs();
-          default -> cnt;
-        };
+        int maxDoc = context.reader().maxDoc();
+        int cnt = docCountIgnoringDeletes(context);
+        if (cnt == maxDoc) {
+          // Return LeafReader#numDocs that accounts for deleted documents as well
+          return context.reader().numDocs();
+        }
+        return cnt;
       }
 
-      /* Returning 1 instead of LeafReader#numDocs as it may run in O(maxDoc)
-       * which is unnecessary when docCount is invoked from ScorerSupplier
+      /* Returns
+       * # docs within the query range ignoring any deleted documents
+       * -1 if # docs cannot be determined efficiently
        */
-      private int docCount(LeafReaderContext context) throws IOException {
+      private int docCountIgnoringDeletes(LeafReaderContext context) throws IOException {
         final DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
         if (skipper != null) {
           if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
@@ -213,11 +216,9 @@ final class SortedNumericDocValuesRangeQuery extends Query {
           if (skipper.docCount() == context.reader().maxDoc()
               && skipper.minValue() >= lowerValue
               && skipper.maxValue() <= upperValue) {
-
-            return 1;
+            return context.reader().maxDoc();
           }
         }
-
         return -1;
       }
     };
