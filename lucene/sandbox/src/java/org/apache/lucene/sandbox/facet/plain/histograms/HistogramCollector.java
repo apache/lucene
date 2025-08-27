@@ -75,9 +75,9 @@ final class HistogramCollector implements Collector {
 
     // Doc values should be indexed to enable histogram collection
     if (fi.getDocValuesType() != DocValuesType.NUMERIC
-            && fi.getDocValuesType() != DocValuesType.SORTED_NUMERIC) {
+        && fi.getDocValuesType() != DocValuesType.SORTED_NUMERIC) {
       throw new IllegalStateException(
-              "Expected numeric field, but got doc-value type: " + fi.getDocValuesType());
+          "Expected numeric field, but got doc-value type: " + fi.getDocValuesType());
     }
 
     // We can use multi range traversal logic to collect the histogram on numeric
