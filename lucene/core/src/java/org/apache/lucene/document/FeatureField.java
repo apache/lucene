@@ -38,7 +38,7 @@ import org.apache.lucene.search.similarities.Similarity.SimScorer;
 
 /**
  * {@link Field} that can be used to store static scoring factors into documents. This is mostly
- * inspired from the work from Nick Craswell, Stephen Robertson, Hugo Zaragoza and Michael Taylor.
+ * inspired by the work of Nick Craswell, Stephen Robertson, Hugo Zaragoza and Michael Taylor:
  * Relevance weighting for query independent evidence. Proceedings of the 28th annual international
  * ACM SIGIR conference on Research and development in information retrieval. August 15-19, 2005,
  * Salvador, Brazil.

@@ -19,7 +19,6 @@ package org.apache.lucene.util;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
-import org.apache.lucene.search.CheckedIntConsumer;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 
@@ -45,11 +44,12 @@ public final class FixedBitSet extends BitSet {
 
   /**
    * If the given {@link FixedBitSet} is large enough to hold {@code numBits+1}, returns the given
-   * bits, otherwise returns a new {@link FixedBitSet} which can hold the requested number of bits.
+   * bits, otherwise returns a new {@link FixedBitSet} which can hold {@code numBits+1} bits. That
+   * means the bitset returned by this method can be safely called with {@code bits.set(numBits)}
    *
    * <p><b>NOTE:</b> the returned bitset reuses the underlying {@code long[]} of the given {@code
    * bits} if possible. Also, calling {@link #length()} on the returned bits may return a value
-   * greater than {@code numBits}.
+   * greater than {@code numBits+1}.
    */
   public static FixedBitSet ensureCapacity(FixedBitSet bits, int numBits) {
     if (numBits < bits.numBits) {
@@ -831,8 +831,7 @@ public final class FixedBitSet extends BitSet {
    * bit index and call {@code consumer} on it. This is internally used by queries that use bit sets
    * as intermediate representations of their matches.
    */
-  public void forEach(int from, int to, int base, CheckedIntConsumer<IOException> consumer)
-      throws IOException {
+  public void forEach(int from, int to, int base, IOIntConsumer consumer) throws IOException {
     Objects.checkFromToIndex(from, to, length());
 
     // First, align `from` with a word start, ie. a multiple of Long.SIZE (64)
@@ -861,8 +860,7 @@ public final class FixedBitSet extends BitSet {
     }
   }
 
-  private static void forEach(long bits, int base, CheckedIntConsumer<IOException> consumer)
-      throws IOException {
+  private static void forEach(long bits, int base, IOIntConsumer consumer) throws IOException {
     while (bits != 0L) {
       int ntz = Long.numberOfTrailingZeros(bits);
       consumer.accept(base + ntz);

@@ -116,9 +116,10 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
     Field idField = newStringField("id", "", Field.Store.YES);
     doc.add(idField);
 
+    MyMergeScheduler mergeScheduler = new MyMergeScheduler();
     IndexWriterConfig iwc =
         newIndexWriterConfig(new MockAnalyzer(random()))
-            .setMergeScheduler(new MyMergeScheduler())
+            .setMergeScheduler(mergeScheduler)
             .setMaxBufferedDocs(2)
             .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
             .setMergePolicy(newLogMergePolicy());
@@ -135,19 +136,11 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
       for (int i = 0; i < 60; i++) {
         writer.addDocument(doc);
       }
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException ise) {
+    } catch (IllegalStateException _) {
       // OK
     }
 
-    try {
-      ((MyMergeScheduler) writer.getConfig().getMergeScheduler()).sync();
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException ise) {
-      // OK
-    }
+    mergeScheduler.sync();
     writer.rollback();
 
     try {

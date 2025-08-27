@@ -392,9 +392,7 @@ public abstract class StringHelper {
           new DataInputStream(Files.newInputStream(Paths.get("/dev/urandom")))) {
         x0 = is.readLong();
         x1 = is.readLong();
-      } catch (
-          @SuppressWarnings("unused")
-          Exception unavailable) {
+      } catch (Exception _) {
         // may not be available on this platform
         // fall back to lower quality randomness from 3 different sources:
         x0 = System.nanoTime();
@@ -409,9 +407,7 @@ public abstract class StringHelper {
             sb.append(p.getProperty(s));
           }
           x1 |= sb.toString().hashCode();
-        } catch (
-            @SuppressWarnings("unused")
-            SecurityException notallowed) {
+        } catch (SecurityException _) {
           // getting Properties requires wildcard read-write: may not be allowed
           x1 |= StringBuffer.class.hashCode();
         }

@@ -20,6 +20,7 @@ package org.apache.lucene.queries.intervals;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -108,12 +109,10 @@ class UnorderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
     UnorderedIntervalIterator(List<IntervalIterator> subIterators, MatchCallback onMatch) {
       super(subIterators);
       this.queue =
-          new PriorityQueue<IntervalIterator>(subIterators.size()) {
-            @Override
-            protected boolean lessThan(IntervalIterator a, IntervalIterator b) {
-              return a.start() < b.start() || (a.start() == b.start() && a.end() >= b.end());
-            }
-          };
+          PriorityQueue.usingComparator(
+              subIterators.size(),
+              Comparator.comparingInt(IntervalIterator::start)
+                  .thenComparing(Comparator.comparingInt(IntervalIterator::end).reversed()));
       this.subIterators = new IntervalIterator[subIterators.size()];
       this.onMatch = onMatch;
 

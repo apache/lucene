@@ -104,7 +104,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
 
     @Override
     public Iterator<Document> iterator() {
-      return new Iterator<Document>() {
+      return new Iterator<>() {
         int upto;
 
         @Override
@@ -472,18 +472,14 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     for (int i = 0; i < 10; i++) {
       try {
         w.addDocument(doc);
-      } catch (
-          @SuppressWarnings("unused")
-          RuntimeException re) {
+      } catch (RuntimeException _) {
         break;
       }
     }
 
     try {
       ((ConcurrentMergeScheduler) w.getConfig().getMergeScheduler()).sync();
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException ise) {
+    } catch (IllegalStateException _) {
       // OK: merge exc causes tragedy
     }
     assertTrue(testPoint.failed);
@@ -962,9 +958,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       if ((i - 1) % 2 == 0) {
         try {
           writer.commit();
-        } catch (
-            @SuppressWarnings("unused")
-            IOException ioe) {
+        } catch (IOException _) {
           // expected
         }
       }
@@ -1097,9 +1091,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       dir.setRandomIOExceptionRate(0.5);
       try {
         w.forceMerge(1);
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalStateException ise) {
+      } catch (IllegalStateException _) {
         // expected
       } catch (IOException ioe) {
         if (ioe.getCause() == null) {
@@ -1110,9 +1102,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       // System.out.println("TEST: now close IW");
       try {
         w.close();
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalStateException ise) {
+      } catch (IllegalStateException _) {
         // ok
       }
       dir.close();
@@ -1196,9 +1186,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
 
     try {
       writer.close();
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalArgumentException ok) {
+    } catch (IllegalArgumentException _) {
       // ok
     }
 
@@ -1366,7 +1354,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     SegmentInfos sis = SegmentInfos.readLatestCommit(dir);
     for (SegmentCommitInfo si : sis) {
       assertTrue(si.info.getUseCompoundFile());
-      List<String> victims = new ArrayList<String>(si.info.files());
+      List<String> victims = new ArrayList<>(si.info.files());
       Collections.shuffle(victims, random());
       dir.deleteFile(victims.get(0));
       corrupted = true;
@@ -1925,12 +1913,10 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       } catch (AssertionError ex) {
         // This is fine: we tripped IW's assert that all files it's about to fsync do exist:
         assertTrue(ex.getMessage().matches("file .* does not exist; files=\\[.*\\]"));
-      } catch (
-          @SuppressWarnings("unused")
-          CorruptIndexException ex) {
+      } catch (CorruptIndexException _) {
         // Exceptions are fine - we are running out of file handlers here
         continue;
-      } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException ex) {
+      } catch (FileNotFoundException | NoSuchFileException _) {
         continue;
       }
       failure.clearDoFail();
@@ -2116,9 +2102,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
 
       try {
         iw.rollback();
-      } catch (
-          @SuppressWarnings("unused")
-          FakeIOException expected) {
+      } catch (FakeIOException _) {
         // ok, we randomly hit exc here
       }
 
@@ -2189,19 +2173,13 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           // Flush new segment:
           DirectoryReader.open(w).close();
         }
-      } catch (
-          @SuppressWarnings("unused")
-          AlreadyClosedException ace) {
+      } catch (AlreadyClosedException _) {
         // OK: e.g. CMS hit the exc in BG thread and closed the writer
         break;
-      } catch (
-          @SuppressWarnings("unused")
-          FakeIOException fioe) {
+      } catch (FakeIOException _) {
         // OK: e.g. SMS hit the exception
         break;
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalStateException ise) {
+      } catch (IllegalStateException _) {
         // OK: Merge-on-refresh refuses to run because IndexWriter hit a tragedy
         break;
       }

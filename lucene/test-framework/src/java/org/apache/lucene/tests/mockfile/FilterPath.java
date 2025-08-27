@@ -215,7 +215,7 @@ public class FilterPath implements Path, Unwrappable<Path> {
   @Override
   public Iterator<Path> iterator() {
     final Iterator<Path> iterator = delegate.iterator();
-    return new Iterator<Path>() {
+    return new Iterator<>() {
       @Override
       public boolean hasNext() {
         return iterator.hasNext();

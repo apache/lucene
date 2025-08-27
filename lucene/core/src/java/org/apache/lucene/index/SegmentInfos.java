@@ -403,7 +403,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       input.readBytes(segmentID, 0, segmentID.length);
       Codec codec = readCodec(input);
       SegmentInfo info =
-          codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.DEFAULT);
+          codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READONCE);
       info.setCodec(codec);
       totalDocs += info.maxDoc();
       long delGen = CodecUtil.readBELong(input);
@@ -557,25 +557,20 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     generation = nextGeneration;
 
     IndexOutput segnOutput = null;
-    boolean success = false;
 
     try {
       segnOutput = directory.createOutput(segmentFileName, IOContext.DEFAULT);
       write(segnOutput);
       segnOutput.close();
       directory.sync(Collections.singleton(segmentFileName));
-      success = true;
-    } finally {
-      if (success) {
-        pendingCommit = true;
-      } else {
-        // We hit an exception above; try to close the file
-        // but suppress any exception:
-        IOUtils.closeWhileHandlingException(segnOutput);
-        // Try not to leave a truncated segments_N file in
-        // the index:
-        IOUtils.deleteFilesIgnoringExceptions(directory, segmentFileName);
-      }
+      pendingCommit = true;
+    } catch (Throwable t) {
+      // try to close the file but suppress any exception:
+      IOUtils.closeWhileSuppressingExceptions(t, segnOutput);
+      // Try not to leave a truncated segments_N file in
+      // the index:
+      IOUtils.deleteFilesSuppressingExceptions(t, directory, segmentFileName);
+      throw t;
     }
   }
 
@@ -933,7 +928,6 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     if (pendingCommit == false) {
       throw new IllegalStateException("prepareCommit was not called");
     }
-    boolean successRenameAndSync = false;
     final String dest;
     try {
       final String src =
@@ -942,20 +936,16 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       dir.rename(src, dest);
       try {
         dir.syncMetaData();
-        successRenameAndSync = true;
-      } finally {
-        if (successRenameAndSync == false) {
-          // at this point we already created the file but missed to sync directory let's also
-          // remove the
-          // renamed file
-          IOUtils.deleteFilesIgnoringExceptions(dir, dest);
-        }
+      } catch (Throwable t) {
+        // at this point we already created the file but missed to sync directory let's also
+        // remove the renamed file
+        IOUtils.deleteFilesSuppressingExceptions(t, dir, dest);
+        throw t;
       }
-    } finally {
-      if (successRenameAndSync == false) {
-        // deletes pending_segments_N:
-        rollbackCommit(dir);
-      }
+    } catch (Throwable t) {
+      // deletes pending_segments_N:
+      rollbackCommit(dir);
+      throw t;
     }
 
     pendingCommit = false;

@@ -43,7 +43,7 @@ public class TestConfusionMatrixGenerator extends ClassificationTestBase<Object>
       MockAnalyzer analyzer = new MockAnalyzer(random());
       reader = getSampleIndex(analyzer);
       Classifier<BytesRef> classifier =
-          new Classifier<BytesRef>() {
+          new Classifier<>() {
             @Override
             public ClassificationResult<BytesRef> assignClass(String text) throws IOException {
               return new ClassificationResult<>(

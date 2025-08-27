@@ -50,7 +50,11 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
+import org.apache.lucene.search.AcceptDocs;
+import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.tests.search.AssertingAcceptDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
@@ -576,6 +580,38 @@ public class AssertingLeafReader extends FilterLeafReader {
       assert payload == null || payload.length > 0
           : "getPayload() returned payload with invalid length!";
       return payload;
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      assertThread("Docs enums", creationThread);
+      assert state != DocsEnumState.START : "intoBitSet() called before nextDoc()/advance()";
+      in.intoBitSet(upTo, bitSet, offset);
+      assert in.docID() >= upTo;
+      assert in.docID() >= doc;
+      doc = in.docID();
+      if (doc == DocIdSetIterator.NO_MORE_DOCS) {
+        state = DocsEnumState.FINISHED;
+        positionMax = 0;
+      } else {
+        state = DocsEnumState.ITERATING;
+        positionMax = super.freq();
+      }
+      positionCount = 0;
+    }
+
+    @Override
+    public void nextPostings(int upTo, DocAndFloatFeatureBuffer buffer) throws IOException {
+      assert state != DocsEnumState.START : "nextPostings() called before nextDoc()/advance()";
+      in.nextPostings(upTo, buffer);
+      doc = in.docID();
+      if (doc == DocIdSetIterator.NO_MORE_DOCS) {
+        state = DocsEnumState.FINISHED;
+        positionMax = 0;
+      } else {
+        state = DocsEnumState.ITERATING;
+        positionMax = super.freq();
+      }
     }
 
     void reset() {
@@ -1808,6 +1844,22 @@ public class AssertingLeafReader extends FilterLeafReader {
       assert !hasDeletions();
     }
     return liveDocs;
+  }
+
+  @Override
+  public void searchNearestVectors(
+      String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    acceptDocs = AssertingAcceptDocs.wrap(acceptDocs);
+    super.searchNearestVectors(field, target, knnCollector, acceptDocs);
+  }
+
+  @Override
+  public void searchNearestVectors(
+      String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    acceptDocs = AssertingAcceptDocs.wrap(acceptDocs);
+    super.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }
 
   // we don't change behavior of the reader: just validate the API.

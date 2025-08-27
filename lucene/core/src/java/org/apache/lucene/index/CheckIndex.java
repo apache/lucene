@@ -63,6 +63,8 @@ import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.internal.hppc.IntIntHashMap;
+import org.apache.lucene.search.AcceptDocs;
+import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.KnnCollector;
@@ -86,6 +88,7 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.CommandLineUtil;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOBooleanSupplier;
+import org.apache.lucene.util.IOFunction;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongBitSet;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -1295,12 +1298,7 @@ public final class CheckIndex implements Closeable {
         if (liveDocs == null) {
           throw new CheckIndexException("segment should have deletions, but liveDocs is null");
         } else {
-          int numLive = 0;
-          for (int j = 0; j < liveDocs.length(); j++) {
-            if (liveDocs.get(j)) {
-              numLive++;
-            }
-          }
+          int numLive = bitsCardinality(liveDocs);
           if (numLive != numDocs) {
             throw new CheckIndexException(
                 "liveDocs count mismatch: info=" + numDocs + ", vs bits=" + numLive);
@@ -1344,6 +1342,28 @@ public final class CheckIndex implements Closeable {
     }
 
     return status;
+  }
+
+  /**
+   * Returns the cardinality of the given {@code Bits}.
+   *
+   * <p>This method processes bits in batches of 1024 using {@link Bits#applyMask} and {@link
+   * FixedBitSet#cardinality}, which is faster than checking bits one by one.
+   */
+  static int bitsCardinality(Bits bits) {
+    int cardinality = 0;
+    FixedBitSet copy = new FixedBitSet(1024);
+    for (int offset = 0; offset < bits.length(); offset += copy.length()) {
+      int numBitsToCopy = Math.min(bits.length() - offset, copy.length());
+      copy.set(0, copy.length());
+      if (numBitsToCopy < copy.length()) {
+        // Clear ghost bits
+        copy.clear(numBitsToCopy, copy.length());
+      }
+      bits.applyMask(copy, offset);
+      cardinality += copy.cardinality();
+    }
+    return cardinality;
   }
 
   /** Test field infos. */
@@ -1454,6 +1474,7 @@ public final class CheckIndex implements Closeable {
     int computedFieldCount = 0;
 
     PostingsEnum postings = null;
+    PostingsEnum bulkPostings = null;
 
     String lastField = null;
     for (String field : fields) {
@@ -1649,6 +1670,10 @@ public final class CheckIndex implements Closeable {
         sumDocFreq += docFreq;
 
         postings = termsEnum.postings(postings, PostingsEnum.ALL);
+        bulkPostings = termsEnum.postings(bulkPostings, PostingsEnum.ALL);
+        bulkPostings.nextDoc();
+        DocAndFloatFeatureBuffer buffer = new DocAndFloatFeatureBuffer();
+        int bufferIndex = 0;
 
         if (hasFreqs == false) {
           if (termsEnum.totalTermFreq() != termsEnum.docFreq()) {
@@ -1667,9 +1692,7 @@ public final class CheckIndex implements Closeable {
           long ord = -1;
           try {
             ord = termsEnum.ord();
-          } catch (
-              @SuppressWarnings("unused")
-              UnsupportedOperationException uoe) {
+          } catch (UnsupportedOperationException _) {
             hasOrd = false;
           }
 
@@ -1697,6 +1720,31 @@ public final class CheckIndex implements Closeable {
             throw new CheckIndexException(
                 "term " + term + ": doc " + doc + ": freq " + freq + " is out of bounds");
           }
+
+          if (bufferIndex == buffer.size) {
+            bulkPostings.nextPostings(
+                (int) Math.min(Integer.MAX_VALUE, bulkPostings.docID() + 64L), buffer);
+            bufferIndex = 0;
+          }
+          if (bufferIndex >= buffer.size) {
+            throw new CheckIndexException("Doc " + doc + " not found by PostingsEnum#nextPostings");
+          }
+          if (doc != buffer.docs[bufferIndex]) {
+            throw new CheckIndexException(
+                "PostingsEnum#nextPostings returns "
+                    + buffer.docs[bufferIndex]
+                    + " as next doc while PostingsEnum#nextDoc returns "
+                    + doc);
+          }
+          if (freq != buffer.features[bufferIndex]) {
+            throw new CheckIndexException(
+                "PostingsEnum#nextPostings returns "
+                    + buffer.features[bufferIndex]
+                    + " as term freq while PostingsEnum#freq returns "
+                    + freq);
+          }
+          bufferIndex++;
+
           if (hasFreqs == false) {
             // When a field didn't index freq, it must
             // consistently "lie" and pretend that freq was
@@ -3034,7 +3082,11 @@ public final class CheckIndex implements Closeable {
         if (vectorsReaderSupportsSearch(codecReader, fieldInfo.name)) {
           codecReader
               .getVectorReader()
-              .search(fieldInfo.name, values.vectorValue(count), collector, null);
+              .search(
+                  fieldInfo.name,
+                  values.vectorValue(count),
+                  collector,
+                  AcceptDocs.fromLiveDocs(null, codecReader.maxDoc()));
           TopDocs docs = collector.topDocs();
           if (docs.scoreDocs.length == 0) {
             throw new CheckIndexException(
@@ -3082,7 +3134,11 @@ public final class CheckIndex implements Closeable {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
         codecReader
             .getVectorReader()
-            .search(fieldInfo.name, values.vectorValue(count), collector, null);
+            .search(
+                fieldInfo.name,
+                values.vectorValue(count),
+                collector,
+                AcceptDocs.fromLiveDocs(null, codecReader.maxDoc()));
         TopDocs docs = collector.topDocs();
         if (docs.scoreDocs.length == 0) {
           throw new CheckIndexException(
@@ -3532,11 +3588,6 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
-  @FunctionalInterface
-  private interface DocValuesIteratorSupplier {
-    DocValuesIterator get(FieldInfo fi) throws IOException;
-  }
-
   private static void checkDocValueSkipper(FieldInfo fi, DocValuesSkipper skipper)
       throws IOException {
     String fieldName = fi.name;
@@ -3625,13 +3676,13 @@ public final class CheckIndex implements Closeable {
     }
   }
 
-  private static void checkDVIterator(FieldInfo fi, DocValuesIteratorSupplier producer)
-      throws IOException {
+  private static void checkDVIterator(
+      FieldInfo fi, IOFunction<FieldInfo, DocValuesIterator> producer) throws IOException {
     String field = fi.name;
 
     // Check advance
-    DocValuesIterator it1 = producer.get(fi);
-    DocValuesIterator it2 = producer.get(fi);
+    DocValuesIterator it1 = producer.apply(fi);
+    DocValuesIterator it2 = producer.apply(fi);
     int i = 0;
     for (int doc = it1.nextDoc(); ; doc = it1.nextDoc()) {
 
@@ -3678,8 +3729,8 @@ public final class CheckIndex implements Closeable {
     }
 
     // Check advanceExact
-    it1 = producer.get(fi);
-    it2 = producer.get(fi);
+    it1 = producer.apply(fi);
+    it2 = producer.apply(fi);
     i = 0;
     int lastDoc = -1;
     for (int doc = it1.nextDoc(); doc != NO_MORE_DOCS; doc = it1.nextDoc()) {

@@ -21,7 +21,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -366,7 +373,13 @@ public class TestTaskExecutor extends LuceneTestCase {
 
   public void testTaskRejectionDoesNotFailExecution() throws Exception {
     try (ThreadPoolExecutor threadPoolExecutor =
-        new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(1))) {
+        new ThreadPoolExecutor(
+            1,
+            1,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new ArrayBlockingQueue<>(1),
+            new NamedThreadFactory("TestTaskExecutor"))) {
       final int taskCount = 1000; // enough tasks to cause queuing and rejections on the executor
       final ArrayList<Callable<Void>> callables = new ArrayList<>(taskCount);
       final AtomicInteger executedTasks = new AtomicInteger(0);

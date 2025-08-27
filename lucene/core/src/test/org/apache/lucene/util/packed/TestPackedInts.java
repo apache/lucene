@@ -420,11 +420,11 @@ public class TestPackedInts extends LuceneTestCase {
   }
 
   /*
-   Check if the structures properly handle the case where
-   index * bitsPerValue > Integer.MAX_VALUE
-
-   NOTE: this test allocates 256 MB
-  */
+   * Check if the structures properly handle the case where
+   * index * bitsPerValue > Integer.MAX_VALUE
+   *
+   * NOTE: this test allocates 256 MB
+   */
   @Ignore("See LUCENE-4488")
   public void testIntOverflow() {
     int INDEX = (int) Math.pow(2, 30) + 1;
@@ -433,9 +433,7 @@ public class TestPackedInts extends LuceneTestCase {
     Packed64 p64 = null;
     try {
       p64 = new Packed64(INDEX, BITS);
-    } catch (
-        @SuppressWarnings("unused")
-        OutOfMemoryError oome) {
+    } catch (OutOfMemoryError _) {
       // This can easily happen: we're allocating a
       // long[] that needs 256-273 MB.  Heap is 512 MB,
       // but not all of that is available for large
@@ -454,9 +452,7 @@ public class TestPackedInts extends LuceneTestCase {
     Packed64SingleBlock p64sb = null;
     try {
       p64sb = Packed64SingleBlock.create(INDEX, BITS);
-    } catch (
-        @SuppressWarnings("unused")
-        OutOfMemoryError oome) {
+    } catch (OutOfMemoryError _) {
       // Ignore: see comment above
     }
     if (p64sb != null) {

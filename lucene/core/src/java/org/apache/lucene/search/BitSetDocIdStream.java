@@ -18,6 +18,8 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IOIntConsumer;
+import org.apache.lucene.util.MathUtil;
 
 final class BitSetDocIdStream extends DocIdStream {
 
@@ -29,7 +31,7 @@ final class BitSetDocIdStream extends DocIdStream {
     this.bitSet = bitSet;
     this.offset = offset;
     upTo = offset;
-    max = (int) Math.min(Integer.MAX_VALUE, (long) offset + bitSet.length());
+    max = MathUtil.unsignedMin(Integer.MAX_VALUE, offset + bitSet.length());
   }
 
   @Override
@@ -38,7 +40,7 @@ final class BitSetDocIdStream extends DocIdStream {
   }
 
   @Override
-  public void forEach(int upTo, CheckedIntConsumer<IOException> consumer) throws IOException {
+  public void forEach(int upTo, IOIntConsumer consumer) throws IOException {
     if (upTo > this.upTo) {
       upTo = Math.min(upTo, max);
       bitSet.forEach(this.upTo - offset, upTo - offset, offset, consumer);

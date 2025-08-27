@@ -1256,13 +1256,13 @@ public final class DirectPostingsFormat extends PostingsFormat {
           }
 
           /*
-          if (DEBUG) {
-            System.out.println("    check ord=" + termOrd + " term[" + stateUpto + "]=" + (char) label + "(" + label + ") term=" + new BytesRef(terms[termOrd].term).utf8ToString() + " trans " +
-                               (char) state.transitionMin + "(" + state.transitionMin + ")" + "-" + (char) state.transitionMax + "(" + state.transitionMax + ") nextChange=+" + (state.changeOrd - termOrd) + " skips=" + (skips == null ? "null" : Arrays.toString(skips)));
-            System.out.println("    check ord=" + termOrd + " term[" + stateUpto + "]=" + Integer.toHexString(label) + "(" + label + ") term=" + new BytesRef(termBytes, termOffset, termLength) + " trans " +
-                               Integer.toHexString(state.transitionMin) + "(" + state.transitionMin + ")" + "-" + Integer.toHexString(state.transitionMax) + "(" + state.transitionMax + ") nextChange=+" + (state.changeOrd - termOrd) + " skips=" + (skips == null ? "null" : Arrays.toString(skips)));
-          }
-          */
+           * if (DEBUG) {
+           *   System.out.println("    check ord=" + termOrd + " term[" + stateUpto + "]=" + (char) label + "(" + label + ") term=" + new BytesRef(terms[termOrd].term).utf8ToString() + " trans " +
+           *                    (char) state.transitionMin + "(" + state.transitionMin + ")" + "-" + (char) state.transitionMax + "(" + state.transitionMax + ") nextChange=+" + (state.changeOrd - termOrd) + " skips=" + (skips == null ? "null" : Arrays.toString(skips)));
+           *   System.out.println("    check ord=" + termOrd + " term[" + stateUpto + "]=" + Integer.toHexString(label) + "(" + label + ") term=" + new BytesRef(termBytes, termOffset, termLength) + " trans " +
+           *                     Integer.toHexString(state.transitionMin) + "(" + state.transitionMin + ")" + "-" + Integer.toHexString(state.transitionMax) + "(" + state.transitionMax + ") nextChange=+" + (state.changeOrd - termOrd) + " skips=" + (skips == null ? "null" : Arrays.toString(skips)));
+           * }
+           */
 
           final int targetLabel = state.transitionMin;
 
@@ -1922,9 +1922,7 @@ public final class DirectPostingsFormat extends PostingsFormat {
       upto++;
       try {
         return docID = docIDs[upto];
-      } catch (
-          @SuppressWarnings("unused")
-          ArrayIndexOutOfBoundsException e) {
+      } catch (ArrayIndexOutOfBoundsException _) {
       }
       return docID = NO_MORE_DOCS;
     }

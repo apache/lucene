@@ -1238,9 +1238,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
       // trigger an eviction
       searcher.search(new MatchAllDocsQuery(), DummyTotalHitCountCollector.createManager());
       fail();
-    } catch (
-        @SuppressWarnings("unused")
-        ConcurrentModificationException e) {
+    } catch (ConcurrentModificationException _) {
       // expected
     } catch (RuntimeException e) {
       // expected: wrapped when executor is in use
@@ -1953,7 +1951,11 @@ public class TestLRUQueryCache extends LuceneTestCase {
     doc2.add(new StringField("name", "alice", Store.YES));
     doc2.add(new LongPoint("age", 20));
     doc2.add(new SortedNumericDocValuesField("age", 20));
-    w.addDocuments(Arrays.asList(doc1, doc2));
+    Document doc3 = new Document();
+    doc3.add(new StringField("name", "steve", Store.YES));
+    doc3.add(new LongPoint("age", 25));
+    doc3.add(new SortedNumericDocValuesField("age", 25));
+    w.addDocuments(Arrays.asList(doc1, doc2, doc3));
     final IndexReader reader = w.getReader();
     final IndexSearcher searcher = newSearcher(reader);
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
@@ -1964,8 +1966,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
     TermQuery subQuery1 = new TermQuery(new Term("name", "tom"));
     IndexOrDocValuesQuery subQuery2 =
         new IndexOrDocValuesQuery(
-            LongPoint.newRangeQuery("age", 10, 30),
-            SortedNumericDocValuesField.newSlowRangeQuery("age", 10, 30));
+            LongPoint.newRangeQuery("age", 10, 20),
+            SortedNumericDocValuesField.newSlowRangeQuery("age", 10, 20));
     BooleanQuery query = bq.add(subQuery1, Occur.FILTER).add(subQuery2, Occur.FILTER).build();
     Set<Query> cacheSet = new HashSet<>();
 

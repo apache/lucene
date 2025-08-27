@@ -37,7 +37,7 @@ public class TestToStringUtil extends LuceneTestCase {
   // but this isnt even thorough or really probably what we want!
   public void testHepburnTable() {
     Map<String, String> table =
-        new HashMap<String, String>() {
+        new HashMap<>() {
           {
             put("ア", "a");
             put("イ", "i");

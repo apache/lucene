@@ -1,20 +1,20 @@
 /* This code is based on the one originally provided by
    Geir Landrö in his dTree 2.05 package. You can get it
    at : www.destroydrop.com/javascript/tree/.
-   
-   Therefore, the DTDDoc team considers that this code is 
+
+   Therefore, the DTDDoc team considers that this code is
    Copyright (c) 2002-2003 Geir Landrö. Since the original
    author didn't clearly forbids copies of this part, we
    assume we're not doing anything wrong in porviding it
    to you, in a modified or non-modified form.
 */
 
-/*   
+/*
    Geir Landrö : Orignal version, for dTree.
-   
+
    Michael Koehrsen (10/2004) : Original modification to
       allow DTDDoc to use this.
-   
+
    Stefan Champailler (10/2004) : Make sure that the first
       level of the tree is not shown (aesthetic stuff).
 */
@@ -38,8 +38,8 @@ function _CCTreeModelNode(id,label,link,alwaysOpen,initiallyOpen)
     // children and childLabels are parallel arrays.
     // By default, childLabels[i] == children[i].label,
     // but the link operation may optionally specify
-    // a child label that is specific to that parent-child 
-    // relationship.  
+    // a child label that is specific to that parent-child
+    // relationship.
     this.children = new Array();
     this.childLabels = new Array();
 }
@@ -68,24 +68,24 @@ function _CCDisplayNode(modelNode,parentNode,treeId,label)
 
         /* Stefan Champailler : This little fix is clever ! Let's check the
            following tree:
-           
+
            alpha (1) -+-> beta (69)
                       \-> beta (69).
-                      
+
            This describes a tree with three nodes. Two of them are links
            (beta). In that case, both the "beta" node have an id of "1:69".
            So if one calls openNode on any of them, what happens is that only
            one actually gets opened. To prevent that, I change the id of the
-           node on the fly to make sure there are only unique id's. 
-           
+           node on the fly to make sure there are only unique id's.
+
            Please note this code is not very efficient (and yes, the right
            number of slash will be added :)) */
-           
+
         for( var k=0; k<parentNode.children.length; k++) {
             if( parentNode.children[k].id == this.id)
                 this.id = this.id + "/";
         }
-        
+
         /* end of fix */
     }
     else this.id = this.modelNode.id;
@@ -143,7 +143,7 @@ _CCDisplayNode.prototype.toInnerHTML = function()
     var result = indent + this.nodeContent();
 
     /* Recurse deeper in the tree */
-    
+
     if (this.isOpen && this.children)
     {
         var ix;
@@ -210,7 +210,7 @@ _CCDisplayNode.prototype.open = function()
     this.isOpen = true;
     // document.all is known to work on IE but not on Konqueror or Mozilla.
     // So I've changed it to something more portable.
-    
+
     //document.all[this.divId()].innerHTML = this.toInnerHTML();
     document.getElementById(this.divId()).innerHTML = this.toInnerHTML();
 }
@@ -270,7 +270,7 @@ CCTree.prototype.openNode = function(displayNodeId)
     this.allDisplayNodes[displayNodeId].open();
 }
 
-CCTree.prototype.closeNode = function(displayNodeId) 
+CCTree.prototype.closeNode = function(displayNodeId)
 {
     this.allDisplayNodes[displayNodeId].close();
 }

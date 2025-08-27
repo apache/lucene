@@ -31,7 +31,6 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.PagedBytes;
 import org.apache.lucene.util.packed.MonotonicBlockPackedReader;
 
@@ -68,11 +67,8 @@ public class FixedGapTermsIndexReader extends TermsIndexReaderBase {
             state.segmentInfo.name,
             state.segmentSuffix,
             FixedGapTermsIndexWriter.TERMS_INDEX_EXTENSION);
-    final IndexInput in = state.directory.openInput(fileName, state.context);
 
-    boolean success = false;
-
-    try {
+    try (IndexInput in = state.directory.openInput(fileName, state.context)) {
 
       CodecUtil.checkIndexHeader(
           in,
@@ -138,13 +134,7 @@ public class FixedGapTermsIndexReader extends TermsIndexReaderBase {
           throw new CorruptIndexException("duplicate field: " + fieldInfo.name, in);
         }
       }
-      success = true;
     } finally {
-      if (success) {
-        IOUtils.close(in);
-      } else {
-        IOUtils.closeWhileHandlingException(in);
-      }
       termBytesReader = termBytes.freeze(true);
     }
   }

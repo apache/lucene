@@ -26,8 +26,6 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
-import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -72,7 +70,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
 
   protected abstract TopDocs approximateSearch(
       LeafReaderContext context,
-      Bits acceptDocs,
+      AcceptDocs acceptDocs,
       int visitLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException;
@@ -127,32 +125,26 @@ abstract class AbstractVectorSimilarityQuery extends Query {
           // Return exhaustive results
           TopDocs results =
               approximateSearch(
-                  context, liveDocs, Integer.MAX_VALUE, timeLimitingKnnCollectorManager);
+                  context,
+                  AcceptDocs.fromLiveDocs(liveDocs, leafReader.maxDoc()),
+                  Integer.MAX_VALUE,
+                  timeLimitingKnnCollectorManager);
           return VectorSimilarityScorerSupplier.fromScoreDocs(boost, results.scoreDocs);
         } else {
-          Scorer scorer = filterWeight.scorer(context);
-          if (scorer == null) {
-            // If the filter does not match any documents
-            return null;
-          }
+          AcceptDocs acceptDocs =
+              AcceptDocs.fromIteratorSupplier(
+                  () -> {
+                    Scorer scorer = filterWeight.scorer(context);
+                    if (scorer == null) {
+                      return DocIdSetIterator.empty();
+                    } else {
+                      return scorer.iterator();
+                    }
+                  },
+                  liveDocs,
+                  leafReader.maxDoc());
 
-          BitSet acceptDocs;
-          if (liveDocs == null && scorer.iterator() instanceof BitSetIterator bitSetIterator) {
-            // If there are no deletions, and matching docs are already cached
-            acceptDocs = bitSetIterator.getBitSet();
-          } else {
-            // Else collect all matching docs
-            FilteredDocIdSetIterator filtered =
-                new FilteredDocIdSetIterator(scorer.iterator()) {
-                  @Override
-                  protected boolean match(int doc) {
-                    return liveDocs == null || liveDocs.get(doc);
-                  }
-                };
-            acceptDocs = BitSet.of(filtered, leafReader.maxDoc());
-          }
-
-          int cardinality = acceptDocs.cardinality();
+          int cardinality = acceptDocs.cost();
           if (cardinality == 0) {
             // If there are no live matching docs
             return null;
@@ -170,10 +162,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
           } else {
             // Return a lazy-loading iterator
             return VectorSimilarityScorerSupplier.fromAcceptDocs(
-                boost,
-                createVectorScorer(context),
-                new BitSetIterator(acceptDocs, cardinality),
-                resultSimilarity);
+                boost, createVectorScorer(context), acceptDocs.iterator(), resultSimilarity);
           }
         }
       }

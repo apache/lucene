@@ -15,10 +15,6 @@
  * limitations under the License.
  */
 
-plugins {
-  id 'java-library'
-}
-
 configurations {
   // This is a configuration that references an 'folder-expanded' binary distribution
   // tests will run against. The distribution is slightly trimmed (no docs, licenses)
@@ -48,14 +44,14 @@ test {
   // https://github.com/gradle/gradle/issues/12247
   // so we'll use a workaround and pass command-line arguments directly.
   jvmArgumentProviders.add(new CommandLineArgumentProvider() {
-    @Override
-    Iterable<String> asArguments() {
-      return [
-          "-Dlucene.distribution.dir=${configurations.binaryDistribution.singleFile.absolutePath }",
-          "-Dlucene.distribution.version=${project.version}"
-      ]
-    }
-  })
+        @Override
+        Iterable<String> asArguments() {
+          return [
+            "-Dlucene.distribution.dir=${configurations.binaryDistribution.singleFile.absolutePath }",
+            "-Dlucene.distribution.version=${project.version}"
+          ]
+        }
+      })
 
   doFirst {
     logger.lifecycle("Testing binary distribution at: ${configurations.binaryDistribution.singleFile}")

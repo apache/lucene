@@ -17,6 +17,7 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.VERSION_GROUPVARINT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
@@ -37,15 +38,19 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.PreloadHint;
 import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.store.ReadAdvice;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -68,17 +73,19 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene99HnswVectorsFormat.class);
+  // Number of ordinals to score at a time when scoring exhaustively rather than using HNSW.
+  public static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
   private final FlatVectorsReader flatVectorsReader;
   private final FieldInfos fieldInfos;
   private final IntObjectHashMap<FieldEntry> fields;
   private final IndexInput vectorIndex;
+  private final int version;
 
   public Lucene99HnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
       throws IOException {
     this.fields = new IntObjectHashMap<>();
     this.flatVectorsReader = flatVectorsReader;
-    boolean success = false;
     this.fieldInfos = state.fieldInfos;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -101,18 +108,23 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       } finally {
         CodecUtil.checkFooter(meta, priorE);
       }
+      this.version = versionMeta;
       this.vectorIndex =
           openDataInput(
               state,
               versionMeta,
               Lucene99HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
               Lucene99HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
-              state.context.withReadAdvice(ReadAdvice.RANDOM));
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+              state.context.withHints(
+                  // Even though this input is referred to an `indexIn`, it doesn't qualify as
+                  // FileTypeHint#INDEX since it's a large file
+                  FileTypeHint.DATA,
+                  FileDataHint.KNN_VECTORS,
+                  DataAccessHint.RANDOM,
+                  PreloadHint.INSTANCE));
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -122,10 +134,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     this.fieldInfos = reader.fieldInfos;
     this.fields = reader.fields;
     this.vectorIndex = reader.vectorIndex;
+    this.version = reader.version;
   }
 
   @Override
-  public KnnVectorsReader getMergeInstance() {
+  public KnnVectorsReader getMergeInstance() throws IOException {
     return new Lucene99HnswVectorsReader(this, this.flatVectorsReader.getMergeInstance());
   }
 
@@ -144,7 +157,6 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     String fileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
     IndexInput in = state.directory.openInput(fileName, context);
-    boolean success = false;
     try {
       int versionVectorData =
           CodecUtil.checkIndexHeader(
@@ -165,12 +177,10 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
             in);
       }
       CodecUtil.retrieveChecksum(in);
-      success = true;
       return in;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(in);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, in);
+      throw t;
     }
   }
 
@@ -289,7 +299,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
-  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
     search(
@@ -300,7 +310,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.BYTE);
     search(
@@ -313,7 +323,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   private void search(
       FieldEntry fieldEntry,
       KnnCollector knnCollector,
-      Bits acceptDocs,
+      AcceptDocs acceptDocs,
       IOSupplier<RandomVectorScorer> scorerSupplier)
       throws IOException {
     if (fieldEntry.size() == 0 || knnCollector.k() == 0) {
@@ -322,34 +332,50 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     final RandomVectorScorer scorer = scorerSupplier.get();
     final KnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
-    final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
     HnswGraph graph = getGraph(fieldEntry);
-    boolean doHnsw = knnCollector.k() < scorer.maxOrd();
     // Take into account if quantized? E.g. some scorer cost?
-    int filteredDocCount = 0;
+    // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
+    // size as that is illogical
+    int filteredDocCount = Math.min(acceptDocs.cost(), graph.size());
+    Bits accepted = acceptDocs.bits();
+    final Bits acceptedOrds = scorer.getAcceptOrds(accepted);
+    boolean doHnsw = knnCollector.k() < scorer.maxOrd();
     // The approximate number of vectors that would be visited if we did not filter
-    int unfilteredVisit = (int) (Math.log(graph.size()) * knnCollector.k());
-    if (acceptDocs instanceof BitSet bitSet) {
-      // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
-      // size as that is illogical
-      filteredDocCount = Math.min(bitSet.approximateCardinality(), graph.size());
-      if (unfilteredVisit >= filteredDocCount) {
-        doHnsw = false;
-      }
+    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graph.size());
+    if (unfilteredVisit >= filteredDocCount) {
+      doHnsw = false;
     }
     if (doHnsw) {
       HnswGraphSearcher.search(
           scorer, collector, getGraph(fieldEntry), acceptedOrds, filteredDocCount);
     } else {
-      // if k is larger than the number of vectors, we can just iterate over all vectors
-      // and collect them
+      // if k is larger than the number of vectors we expect to visit in an HNSW search,
+      // we can just iterate over all vectors and collect them.
+      int[] ords = new int[EXHAUSTIVE_BULK_SCORE_ORDS];
+      float[] scores = new float[EXHAUSTIVE_BULK_SCORE_ORDS];
+      int numOrds = 0;
       for (int i = 0; i < scorer.maxOrd(); i++) {
         if (acceptedOrds == null || acceptedOrds.get(i)) {
           if (knnCollector.earlyTerminated()) {
             break;
           }
+          ords[numOrds++] = i;
+          if (numOrds == ords.length) {
+            scorer.bulkScore(ords, scores, numOrds);
+            for (int j = 0; j < numOrds; j++) {
+              knnCollector.incVisitedCount(1);
+              knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
+            }
+            numOrds = 0;
+          }
+        }
+      }
+
+      if (numOrds > 0) {
+        scorer.bulkScore(ords, scores, numOrds);
+        for (int j = 0; j < numOrds; j++) {
           knnCollector.incVisitedCount(1);
-          knnCollector.collect(scorer.ordToDoc(i), scorer.score(i));
+          knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
         }
       }
     }
@@ -478,7 +504,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   /** Read the nearest-neighbors graph from the index input */
-  private static final class OffHeapHnswGraph extends HnswGraph {
+  private final class OffHeapHnswGraph extends HnswGraph {
 
     final IndexInput dataIn;
     final int[][] nodesByLevel;
@@ -529,9 +555,16 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       arcCount = dataIn.readVInt();
       assert arcCount <= currentNeighborsBuffer.length : "too many neighbors: " + arcCount;
       if (arcCount > 0) {
-        currentNeighborsBuffer[0] = dataIn.readVInt();
-        for (int i = 1; i < arcCount; i++) {
-          currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + dataIn.readVInt();
+        if (version >= VERSION_GROUPVARINT) {
+          GroupVIntUtil.readGroupVInts(dataIn, currentNeighborsBuffer, arcCount);
+          for (int i = 1; i < arcCount; i++) {
+            currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + currentNeighborsBuffer[i];
+          }
+        } else {
+          currentNeighborsBuffer[0] = dataIn.readVInt();
+          for (int i = 1; i < arcCount; i++) {
+            currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + dataIn.readVInt();
+          }
         }
       }
       arc = -1;

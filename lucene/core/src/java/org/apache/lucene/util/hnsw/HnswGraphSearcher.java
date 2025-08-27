@@ -20,6 +20,7 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
@@ -40,6 +41,35 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   protected final NeighborQueue candidates;
 
   protected BitSet visited;
+
+  protected int[] bulkNodes = null;
+  protected float[] bulkScores = null;
+
+  /**
+   * HNSW search is roughly logarithmic. This doesn't take maxConn into account, but it is a pretty
+   * good approximation.
+   *
+   * @param k neighbors to find
+   * @param graphSize size of the graph
+   * @return expected number of visited nodes
+   */
+  public static int expectedVisitedNodes(int k, int graphSize) {
+    return (int) (Math.log(graphSize) * k);
+  }
+
+  /**
+   * Follows similar logic to {@link FixedBitSet#of(DocIdSetIterator, int)} to determine the best
+   * bit set given the expected number of visited nodes vs total graph size.
+   *
+   * @param k neighbors to find
+   * @param graphSize size of the graph
+   * @return a bit set appropriate for the expected number of visited nodes
+   */
+  static BitSet createBitSet(int k, int graphSize) {
+    return expectedVisitedNodes(k, graphSize) < (graphSize >>> 7)
+        ? new SparseFixedBitSet(graphSize)
+        : new FixedBitSet(graphSize);
+  }
 
   /**
    * Creates a new graph searcher.
@@ -117,7 +147,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       innerSearcher =
           new HnswGraphSearcher(
               new NeighborQueue(knnCollector.k(), true),
-              new SparseFixedBitSet(getGraphSize(graph)));
+              createBitSet(knnCollector.k(), getGraphSize(graph)));
     }
     // Then, check if we the search strategy is seeded
     final AbstractHnswGraphSearcher graphSearcher;
@@ -249,6 +279,11 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
 
     prepareScratchState(size);
 
+    if (bulkNodes == null || bulkNodes.length < graph.maxConn() * 2) {
+      bulkNodes = new int[graph.maxConn() * 2];
+      bulkScores = new float[graph.maxConn() * 2];
+    }
+
     for (int ep : eps) {
       if (visited.getAndSet(ep) == false) {
         if (results.earlyTerminated()) {
@@ -286,6 +321,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       int topCandidateNode = candidates.pop();
       graphSeek(graph, level, topCandidateNode);
       int friendOrd;
+      int numNodes = 0;
       while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
         if (visited.getAndSet(friendOrd)) {
@@ -295,18 +331,28 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
         if (results.earlyTerminated()) {
           break;
         }
-        float friendSimilarity = scorer.score(friendOrd);
-        results.incVisitedCount(1);
-        if (friendSimilarity >= minAcceptedSimilarity) {
-          candidates.add(friendOrd, friendSimilarity);
-          if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            if (results.collect(friendOrd, friendSimilarity)) {
-              float oldMinAcceptedSimilarity = minAcceptedSimilarity;
-              minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
-              if (minAcceptedSimilarity > oldMinAcceptedSimilarity) {
-                // we adjusted our minAcceptedSimilarity, so we should explore the next equivalent
-                // if necessary
-                shouldExploreMinSim = true;
+
+        bulkNodes[numNodes++] = friendOrd;
+      }
+
+      if (numNodes > 0) {
+        numNodes = (int) Math.min((long) numNodes, results.visitLimit() - results.visitedCount());
+        scorer.bulkScore(bulkNodes, bulkScores, numNodes);
+        results.incVisitedCount(numNodes);
+        for (int i = 0; i < numNodes; i++) {
+          int node = bulkNodes[i];
+          float score = bulkScores[i];
+          if (score >= minAcceptedSimilarity) {
+            candidates.add(node, score);
+            if (acceptOrds == null || acceptOrds.get(node)) {
+              if (results.collect(node, score)) {
+                float oldMinAcceptedSimilarity = minAcceptedSimilarity;
+                minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
+                if (minAcceptedSimilarity > oldMinAcceptedSimilarity) {
+                  // we adjusted our minAcceptedSimilarity, so we should explore the next equivalent
+                  // if necessary
+                  shouldExploreMinSim = true;
+                }
               }
             }
           }

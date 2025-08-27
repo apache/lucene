@@ -1,0 +1,58 @@
+name: "Run special checks: module lucene/sandbox"
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - '*'
+
+  push:
+    branches:
+      - 'main'
+      - 'branch_10x'
+
+jobs:
+  faiss-tests:
+    name: tests for the Faiss codec (v${{ matrix.faiss-version }} with JDK ${{ matrix.java }} on ${{ matrix.os }})
+    timeout-minutes: 15
+
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+        java: [ '24' ]
+        faiss-version: [ '1.11.0' ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Install Mamba
+        uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f #v3.2.0
+        with:
+          miniforge-version: 'latest'
+          auto-activate-base: 'false'
+          activate-environment: 'faiss-env'
+          # TODO: Use only conda-forge if possible, see https://github.com/conda-forge/faiss-split-feedstock/pull/88
+          channels: 'pytorch,conda-forge'
+          conda-remove-defaults: 'true'
+
+      - name: Install Faiss
+        run: mamba install faiss-cpu=${{ matrix.faiss-version }}
+
+      - name: Checkout Lucene
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Prepare Lucene workspace
+        uses: ./.github/actions/prepare-for-build
+
+      - name: Run tests for Faiss codec
+        run: >
+          LD_LIBRARY_PATH=$CONDA_PREFIX/lib
+          ./gradlew -p lucene/sandbox
+          -Dtests.faiss.run=true
+          test
+          --tests "org.apache.lucene.sandbox.codecs.faiss.*"
+
+    defaults:
+      run:
+        shell: bash -leo pipefail {0}

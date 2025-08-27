@@ -162,7 +162,7 @@ public class ScalarQuantizer {
    * @param src the source vector
    * @param dest the destination vector
    */
-  void deQuantize(byte[] src, float[] dest) {
+  public void deQuantize(byte[] src, float[] dest) {
     assert src.length == dest.length;
     for (int i = 0; i < src.length; i++) {
       dest[i] = (alpha * src[i]) + minQuantile;
