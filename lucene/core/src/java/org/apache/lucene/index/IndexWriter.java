@@ -21,6 +21,7 @@ import static org.apache.lucene.util.ByteBlockPool.BYTE_BLOCK_SIZE;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -3285,6 +3286,11 @@ public class IndexWriter
     }
 
     public void registerMerge(MergePolicy.OneMerge merge) {
+      try {
+        addEstimatedBytesToMerge(merge);
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
       synchronized (IndexWriter.this) {
         pendingAddIndexesMerges.add(merge);
       }
@@ -4777,6 +4783,21 @@ public class IndexWriter
     closeMergeReaders(merge, true, false);
   }
 
+  /** Compute {@code estimatedMergeBytes} and {@code totalMergeBytes} for a merge. */
+  void addEstimatedBytesToMerge(MergePolicy.OneMerge merge) throws IOException {
+    assert merge.estimatedMergeBytes == 0;
+    assert merge.totalMergeBytes == 0;
+    for (SegmentCommitInfo info : merge.segments) {
+      if (info.info.maxDoc() > 0) {
+        final int delCount = numDeletedDocs(info);
+        assert delCount <= info.info.maxDoc();
+        final double delRatio = ((double) delCount) / info.info.maxDoc();
+        merge.estimatedMergeBytes += (long) (info.sizeInBytes() * (1.0 - delRatio));
+        merge.totalMergeBytes += info.sizeInBytes();
+      }
+    }
+  }
+
   /**
    * Checks whether this merge involves any segments already participating in a merge. If not, this
    * merge is "registered", meaning we record that its segments are now participating in a merge,
@@ -4868,17 +4889,7 @@ public class IndexWriter
       mergingSegments.add(info);
     }
 
-    assert merge.estimatedMergeBytes == 0;
-    assert merge.totalMergeBytes == 0;
-    for (SegmentCommitInfo info : merge.segments) {
-      if (info.info.maxDoc() > 0) {
-        final int delCount = numDeletedDocs(info);
-        assert delCount <= info.info.maxDoc();
-        final double delRatio = ((double) delCount) / info.info.maxDoc();
-        merge.estimatedMergeBytes += (long) (info.sizeInBytes() * (1.0 - delRatio));
-        merge.totalMergeBytes += info.sizeInBytes();
-      }
-    }
+    addEstimatedBytesToMerge(merge);
 
     // Merge is now registered
     merge.registerDone = true;
