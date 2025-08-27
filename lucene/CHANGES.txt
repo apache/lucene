@@ -181,7 +181,7 @@ Changes in Runtime Behavior
 Bug Fixes
 ---------------------
 
-* GITHUB#15120: Add estimatedByteSizes to merges kicked off by 
+* GITHUB#15120: Add estimatedByteSizes to merges kicked off by
   IndexWriter.addIndexes(CodecReader[]) (Craig Perkins)
 
 * GITHUB*15025: flush segments in addIndexes, not in addIndexesReaderMerge;
