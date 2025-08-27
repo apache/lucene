@@ -139,9 +139,8 @@ public abstract class DocValuesSkipper {
       }
       DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper(field);
       if (skipper == null) {
-        return Long
-            .MIN_VALUE; // minimum cannot be computed correctly since skipper is not enabled for
-        // some leaf
+        // minimum cannot be computed correctly since skipper is not enabled for some leaf
+        return Long.MIN_VALUE;
       } else {
         minValue = Math.min(minValue, skipper.minValue());
       }
@@ -164,9 +163,8 @@ public abstract class DocValuesSkipper {
       }
       DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper(field);
       if (skipper == null) {
-        return Long
-            .MAX_VALUE; // maximum cannot be computed correctly since skipper is not enabled for
-        // some leaf
+        // maximum cannot be computed correctly since skipper is not enabled for some leaf
+        return Long.MAX_VALUE;
       } else {
         maxValue = Math.max(maxValue, skipper.maxValue());
       }
