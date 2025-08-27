@@ -137,6 +137,8 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
       Document doc = new Document();
       // Adding indexed point field to verify multi range collector
       doc.add(new LongPoint("f", value));
+      // Doc values need to be enabled for histogram collection
+      doc.add(new NumericDocValuesField("f", value));
       w.addDocument(doc);
     }
 
