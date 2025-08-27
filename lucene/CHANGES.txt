@@ -61,6 +61,8 @@ Bug Fixes
   returns a string which can be parsed back into the original node.
   (Peter Barna, Adam Schwartz)
 
+* GITHUB#15133: Take the FST suffix cache into account when reporting FST ramBytesUsed (Anh Dung Bui)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
