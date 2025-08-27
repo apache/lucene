@@ -79,8 +79,6 @@ Bug Fixes
 * GITHUB#14847: Allow Faiss vector format to index >2GB of vectors per-field per-segment by using MemorySegment APIs
   (instead of ByteBuffer) to copy bytes to native memory. (Kaival Parikh)
 
-* GITHUB#15120: Add estimatedByteSizes to merges kicked off by IndexWriter.addIndexes(CodecReader[]) (Craig Perkins)
-
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -284,6 +282,10 @@ Changes in Runtime Behavior
 
 Bug Fixes
 ---------------------
+
+* GITHUB#15120: Add estimatedByteSizes to merges kicked off by 
+  IndexWriter.addIndexes(CodecReader[]) (Craig Perkins)
+
 * GITHUB*15025: flush segments in addIndexes, not in addIndexesReaderMerge;
   reduces extra needless merge activity
 
