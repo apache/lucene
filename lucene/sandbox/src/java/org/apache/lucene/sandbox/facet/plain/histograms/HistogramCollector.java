@@ -64,6 +64,13 @@ final class HistogramCollector implements Collector {
       throw new CollectionTerminatedException();
     }
 
+    // Doc values should be indexed to enable histogram collection
+    if (fi.getDocValuesType() != DocValuesType.NUMERIC
+            && fi.getDocValuesType() != DocValuesType.SORTED_NUMERIC) {
+      throw new IllegalStateException(
+              "Expected numeric field, but got doc-value type: " + fi.getDocValuesType());
+    }
+
     // We can use multi range traversal logic to collect the histogram on numeric
     // field indexed as point for MATCH_ALL cases. In future, this can be extended
     // for Point Range Query cases as well
@@ -79,12 +86,6 @@ final class HistogramCollector implements Collector {
         // already started that collection, so this collector can finish early!
         throw new CollectionTerminatedException();
       }
-    }
-
-    if (fi.getDocValuesType() != DocValuesType.NUMERIC
-        && fi.getDocValuesType() != DocValuesType.SORTED_NUMERIC) {
-      throw new IllegalStateException(
-          "Expected numeric field, but got doc-value type: " + fi.getDocValuesType());
     }
 
     SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);

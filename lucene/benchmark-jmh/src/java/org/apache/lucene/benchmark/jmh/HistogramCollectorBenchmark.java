@@ -73,6 +73,8 @@ public class HistogramCollectorBenchmark {
       if (params.pointEnabled) {
         // Adding indexed point field to verify multi range collector
         doc.add(new LongPoint("f", value));
+        // Doc values need to be enabled for histogram collection
+        doc.add(NumericDocValuesField.indexedField("f", value));
       } else {
         doc.add(NumericDocValuesField.indexedField("f", value));
       }
