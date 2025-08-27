@@ -294,8 +294,8 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
     if (orderedGroups != null) {
       prevLast = orderedGroups.last();
 
-      // Skip remove/add for first or last group
-      if (group == orderedGroups.first() || group == prevLast) {
+      // Skip remove/add for first group
+      if (group == orderedGroups.first()) {
         skipHeavyOps = true;
       } else {
         orderedGroups.remove(group);
