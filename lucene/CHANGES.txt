@@ -259,7 +259,7 @@ Optimizations
 
 * GITHUB#15083: Use DocValuesSkippers in SortedNumericDocValuesRangeQuery#rewrite(). (Alan Woodward)
 
-* GITHUB#15128: Skip heavy TreeSet opts for the first/last group in FirstPassGroupingCollector (Binlong Gao)
+* GITHUB#15128: Skip heavy TreeSet opts for the first group in FirstPassGroupingCollector (Binlong Gao)
 
 Changes in Runtime Behavior
 ---------------------
