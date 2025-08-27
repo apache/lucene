@@ -264,6 +264,8 @@ Optimizations
 
 * GITHUB#15083: Use DocValuesSkippers in SortedNumericDocValuesRangeQuery#rewrite(). (Alan Woodward)
 
+* GITHUB#15045: Use FixedBitSet#cardinality for counting liveDocs in CheckIndex (Zhang Chao)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
