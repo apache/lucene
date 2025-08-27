@@ -34,6 +34,8 @@ New Features
 * GITHUB#14404: Introducing DocValuesMultiRangeQuery.SortedNumericStabbingBuilder into sandbox.
   (Mikhail Khludnev)
 
+* GITHUB#14413: Adding profiling support for concurrent segment search. (Ankit Jain)
+
 * GITHUB#14776: Add a Rescorer that uses values from provided DoubleValuesSource to re-score
   first pass hits. (Vigya Sharma)
 
