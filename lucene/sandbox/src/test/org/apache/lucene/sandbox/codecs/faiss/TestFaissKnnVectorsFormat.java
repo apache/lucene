@@ -21,9 +21,16 @@ import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.junit.BeforeClass;
@@ -41,21 +48,21 @@ public class TestFaissKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
   private static final VectorSimilarityFunction[] SUPPORTED_FUNCTIONS = {DOT_PRODUCT, EUCLIDEAN};
 
   @BeforeClass
-  public static void maybeSuppress() throws ClassNotFoundException {
+  public static void maybeSuppress() {
     // Explicitly run tests
     if (Boolean.getBoolean(FAISS_RUN_TESTS)) {
       return;
     }
 
     // Otherwise check if dependencies are present
-    boolean faissLibraryPresent;
+    boolean dependenciesPresent;
     try {
-      Class.forName("org.apache.lucene.sandbox.codecs.faiss.LibFaissC");
-      faissLibraryPresent = true;
-    } catch (UnsatisfiedLinkError _) {
-      faissLibraryPresent = false;
+      FaissLibrary _ = FaissLibrary.INSTANCE;
+      dependenciesPresent = true;
+    } catch (LinkageError _) {
+      dependenciesPresent = false;
     }
-    assumeTrue("Native libraries present", faissLibraryPresent);
+    assumeTrue("Dependencies present", dependenciesPresent);
   }
 
   @Override
@@ -108,4 +115,27 @@ public class TestFaissKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   @Ignore // does not support byte vectors
   public void testMergingWithDifferentByteKnnFields() {}
+
+  @Monster("Uses large amount of heap and RAM")
+  public void testLargeVectorData() throws IOException {
+    KnnVectorsFormat format =
+        new FaissKnnVectorsFormat(
+            "IDMap,Flat", // no need for special indexing like HNSW
+            "");
+    IndexWriterConfig config =
+        newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(format));
+
+    float[] largeVector =
+        new float[format.getMaxDimensions("vector")]; // largest vector accepted by the format
+    int numDocs =
+        Math.ceilDivExact(
+            Integer.MAX_VALUE, Float.BYTES * largeVector.length); // find minimum number of docs
+
+    // Check that we can index vectors larger than Integer.MAX_VALUE number of bytes
+    try (Directory directory = newDirectory();
+        IndexWriter writer = new IndexWriter(directory, config)) {
+      writer.addDocuments(
+          Collections.nCopies(numDocs, List.of(new KnnFloatVectorField("vector", largeVector))));
+    }
+  }
 }

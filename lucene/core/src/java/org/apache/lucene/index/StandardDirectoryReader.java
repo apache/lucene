@@ -87,7 +87,6 @@ public final class StandardDirectoryReader extends DirectoryReader {
         SegmentInfos sis =
             SegmentInfos.readCommit(directory, segmentFileName, minSupportedMajorVersion);
         final SegmentReader[] readers = new SegmentReader[sis.size()];
-        boolean success = false;
         try {
           for (int i = sis.size() - 1; i >= 0; i--) {
             readers[i] =
@@ -96,15 +95,11 @@ public final class StandardDirectoryReader extends DirectoryReader {
           }
           // This may throw CorruptIndexException if there are too many docs, so
           // it must be inside try clause so we close readers in that case:
-          DirectoryReader reader =
-              new StandardDirectoryReader(directory, readers, null, sis, leafSorter, false, false);
-          success = true;
-
-          return reader;
-        } finally {
-          if (success == false) {
-            IOUtils.closeWhileHandlingException(readers);
-          }
+          return new StandardDirectoryReader(
+              directory, readers, null, sis, leafSorter, false, false);
+        } catch (Throwable t) {
+          IOUtils.closeWhileSuppressingExceptions(t, readers);
+          throw t;
         }
       }
     }.run(commit);
@@ -222,7 +217,6 @@ public final class StandardDirectoryReader extends DirectoryReader {
                 + " has invalid doc count change; likely you are re-opening a reader after illegally removing index files yourself and building a new index in their place.  Use IndexWriter.deleteAll or open a new IndexWriter using OpenMode.CREATE instead");
       }
 
-      boolean success = false;
       try {
         SegmentReader newReader;
         if (oldReader == null
@@ -295,11 +289,9 @@ public final class StandardDirectoryReader extends DirectoryReader {
             }
           }
         }
-        success = true;
-      } finally {
-        if (!success) {
-          decRefWhileHandlingException(newReaders);
-        }
+      } catch (Throwable t) {
+        decRefWhileSuppressingException(t, newReaders);
+        throw t;
       }
     }
     return new StandardDirectoryReader(
@@ -307,15 +299,13 @@ public final class StandardDirectoryReader extends DirectoryReader {
   }
 
   // TODO: move somewhere shared if it's useful elsewhere
-  private static void decRefWhileHandlingException(SegmentReader[] readers) {
+  private static void decRefWhileSuppressingException(Throwable t, SegmentReader[] readers) {
     for (SegmentReader reader : readers) {
       if (reader != null) {
         try {
           reader.decRef();
-        } catch (
-            @SuppressWarnings("unused")
-            Throwable t) {
-          // Ignore so we keep throwing original exception
+        } catch (Throwable rt) {
+          t.addSuppressed(rt);
         }
       }
     }
@@ -465,9 +455,7 @@ public final class StandardDirectoryReader extends DirectoryReader {
           if (writer != null) {
             try {
               writer.decRefDeleter(segmentInfos);
-            } catch (
-                @SuppressWarnings("unused")
-                AlreadyClosedException ex) {
+            } catch (AlreadyClosedException _) {
               // This is OK, it just means our original writer was
               // closed before we were, and this may leave some
               // un-referenced files in the index, which is

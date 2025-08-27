@@ -104,7 +104,7 @@ public class Optimizer extends Reduce {
 
     int root = remap[orig.root];
     Arrays.fill(remap, -1);
-    rows = removeGaps(root, rows, new ArrayList<Row>(), remap);
+    rows = removeGaps(root, rows, new ArrayList<>(), remap);
 
     return new Trie(orig.forward, remap[root], cmds, rows);
   }

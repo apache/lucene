@@ -24,9 +24,11 @@ import static jdk.incubator.vector.VectorOperators.B2S;
 import static jdk.incubator.vector.VectorOperators.LSHR;
 import static jdk.incubator.vector.VectorOperators.S2I;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2S;
+import static org.apache.lucene.util.VectorUtil.EPSILON;
 
 import java.lang.foreign.MemorySegment;
 import jdk.incubator.vector.ByteVector;
+import jdk.incubator.vector.DoubleVector;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.LongVector;
@@ -46,7 +48,6 @@ import org.apache.lucene.util.SuppressForbidden;
  *
  * <ul>
  *   <li>tests.vectorsize (int)
- *   <li>tests.forceintegervectors (boolean)
  * </ul>
  *
  * Setting these properties will make this code run EXTREMELY slow!
@@ -55,6 +56,11 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   // preferred vector sizes, which can be altered for testing
   private static final VectorSpecies<Float> FLOAT_SPECIES;
+  private static final VectorSpecies<Double> DOUBLE_SPECIES =
+      PanamaVectorConstants.PREFERRED_DOUBLE_SPECIES;
+  // This create a vector species which we make sure have exact half bits of DOUBLE_SPECIES
+  private static final VectorSpecies<Integer> INT_FOR_DOUBLE_SPECIES =
+      VectorSpecies.of(int.class, VectorShape.forBitSize(DOUBLE_SPECIES.vectorBitSize() / 2));
   private static final VectorSpecies<Integer> INT_SPECIES =
       PanamaVectorConstants.PRERERRED_INT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES;
@@ -79,7 +85,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   // the way FMA should work! if available use it, otherwise fall back to mul/add
-  private static FloatVector fma(FloatVector a, FloatVector b, FloatVector c) {
+  @SuppressForbidden(reason = "Uses FMA only where fast and carefully contained")
+  static FloatVector fma(FloatVector a, FloatVector b, FloatVector c) {
     if (Constants.HAS_FAST_VECTOR_FMA) {
       return a.fma(b, c);
     } else {
@@ -88,7 +95,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @SuppressForbidden(reason = "Uses FMA only where fast and carefully contained")
-  private static float fma(float a, float b, float c) {
+  static float fma(float a, float b, float c) {
     if (Constants.HAS_FAST_SCALAR_FMA) {
       return Math.fma(a, b, c);
     } else {
@@ -303,46 +310,99 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   // We also support 128 bit vectors, going 32 bits at a time.
   // This is slower but still faster than not vectorizing at all.
 
+  private interface ByteVectorLoader {
+    int length();
+
+    ByteVector load(VectorSpecies<Byte> species, int index);
+
+    byte tail(int index);
+  }
+
+  private record ArrayLoader(byte[] arr) implements ByteVectorLoader {
+    @Override
+    public int length() {
+      return arr.length;
+    }
+
+    @Override
+    public ByteVector load(VectorSpecies<Byte> species, int index) {
+      assert index + species.length() <= length();
+      return ByteVector.fromArray(species, arr, index);
+    }
+
+    @Override
+    public byte tail(int index) {
+      assert index <= length();
+      return arr[index];
+    }
+  }
+
+  private record MemorySegmentLoader(MemorySegment segment) implements ByteVectorLoader {
+    @Override
+    public int length() {
+      return Math.toIntExact(segment.byteSize());
+    }
+
+    @Override
+    public ByteVector load(VectorSpecies<Byte> species, int index) {
+      assert index + species.length() <= length();
+      return ByteVector.fromMemorySegment(species, segment, index, LITTLE_ENDIAN);
+    }
+
+    @Override
+    public byte tail(int index) {
+      assert index <= length();
+      return segment.get(JAVA_BYTE, index);
+    }
+  }
+
   @Override
   public int dotProduct(byte[] a, byte[] b) {
-    return dotProduct(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
+    return dotProductBody(new ArrayLoader(a), new ArrayLoader(b));
+  }
+
+  public static int dotProduct(byte[] a, MemorySegment b) {
+    return dotProductBody(new ArrayLoader(a), new MemorySegmentLoader(b));
   }
 
   public static int dotProduct(MemorySegment a, MemorySegment b) {
-    assert a.byteSize() == b.byteSize();
+    return dotProductBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
+  }
+
+  private static int dotProductBody(ByteVectorLoader a, ByteVectorLoader b) {
+    assert a.length() == b.length();
     int i = 0;
     int res = 0;
 
-    // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
-    // vectors (256-bit on intel to dodge performance landmines)
-    if (a.byteSize() >= 16 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
+    // only vectorize if we'll at least enter the loop a single time
+    if (a.length() >= 16) {
       // compute vectorized dot product consistent with VPDPBUSD instruction
       if (VECTOR_BITSIZE >= 512) {
-        i += BYTE_SPECIES.loopBound(a.byteSize());
+        i += BYTE_SPECIES.loopBound(a.length());
         res += dotProductBody512(a, b, i);
       } else if (VECTOR_BITSIZE == 256) {
-        i += BYTE_SPECIES.loopBound(a.byteSize());
+        i += BYTE_SPECIES.loopBound(a.length());
         res += dotProductBody256(a, b, i);
       } else {
         // tricky: we don't have SPECIES_32, so we workaround with "overlapping read"
-        i += ByteVector.SPECIES_64.loopBound(a.byteSize() - ByteVector.SPECIES_64.length());
+        i += ByteVector.SPECIES_64.loopBound(a.length() - ByteVector.SPECIES_64.length());
         res += dotProductBody128(a, b, i);
       }
     }
 
     // scalar tail
-    for (; i < a.byteSize(); i++) {
-      res += b.get(JAVA_BYTE, i) * a.get(JAVA_BYTE, i);
+    for (; i < a.length(); i++) {
+      res += a.tail(i) * b.tail(i);
     }
     return res;
   }
 
   /** vectorized dot product body (512 bit vectors) */
-  private static int dotProductBody512(MemorySegment a, MemorySegment b, int limit) {
+  private static int dotProductBody512(ByteVectorLoader a, ByteVectorLoader b, int limit) {
     IntVector acc = IntVector.zero(INT_SPECIES);
     for (int i = 0; i < limit; i += BYTE_SPECIES.length()) {
-      ByteVector va8 = ByteVector.fromMemorySegment(BYTE_SPECIES, a, i, LITTLE_ENDIAN);
-      ByteVector vb8 = ByteVector.fromMemorySegment(BYTE_SPECIES, b, i, LITTLE_ENDIAN);
+      ByteVector va8 = a.load(BYTE_SPECIES, i);
+      ByteVector vb8 = b.load(BYTE_SPECIES, i);
 
       // 16-bit multiply: avoid AVX-512 heavy multiply on zmm
       Vector<Short> va16 = va8.convertShape(B2S, SHORT_SPECIES, 0);
@@ -358,11 +418,11 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized dot product body (256 bit vectors) */
-  private static int dotProductBody256(MemorySegment a, MemorySegment b, int limit) {
+  private static int dotProductBody256(ByteVectorLoader a, ByteVectorLoader b, int limit) {
     IntVector acc = IntVector.zero(IntVector.SPECIES_256);
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length()) {
-      ByteVector va8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, a, i, LITTLE_ENDIAN);
-      ByteVector vb8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, b, i, LITTLE_ENDIAN);
+      ByteVector va8 = a.load(ByteVector.SPECIES_64, i);
+      ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
 
       // 32-bit multiply and add into accumulator
       Vector<Integer> va32 = va8.convertShape(B2I, IntVector.SPECIES_256, 0);
@@ -374,13 +434,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized dot product body (128 bit vectors) */
-  private static int dotProductBody128(MemorySegment a, MemorySegment b, int limit) {
+  private static int dotProductBody128(ByteVectorLoader a, ByteVectorLoader b, int limit) {
     IntVector acc = IntVector.zero(IntVector.SPECIES_128);
     // 4 bytes at a time (re-loading half the vector each time!)
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length() >> 1) {
       // load 8 bytes
-      ByteVector va8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, a, i, LITTLE_ENDIAN);
-      ByteVector vb8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, b, i, LITTLE_ENDIAN);
+      ByteVector va8 = a.load(ByteVector.SPECIES_64, i);
+      ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
 
       // process first "half" only: 16-bit multiply
       Vector<Short> va16 = va8.convert(B2S, 0);
@@ -409,7 +469,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         } else if (VECTOR_BITSIZE == 256) {
           i += ByteVector.SPECIES_128.loopBound(packed.length);
           res += dotProductBody256Int4Packed(unpacked, packed, i);
-        } else if (PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
+        } else {
           i += ByteVector.SPECIES_64.loopBound(packed.length);
           res += dotProductBody128Int4Packed(unpacked, packed, i);
         }
@@ -425,7 +485,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     } else {
       if (VECTOR_BITSIZE >= 512 || VECTOR_BITSIZE == 256) {
         return dotProduct(a, b);
-      } else if (a.length >= 32 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
+      } else if (a.length >= 32) {
         i += ByteVector.SPECIES_128.loopBound(a.length);
         res += int4DotProductBody128(a, b, i);
       }
@@ -572,28 +632,35 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public float cosine(byte[] a, byte[] b) {
-    return cosine(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
+    return cosineBody(new ArrayLoader(a), new ArrayLoader(b));
   }
 
   public static float cosine(MemorySegment a, MemorySegment b) {
+    return cosineBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
+  }
+
+  public static float cosine(byte[] a, MemorySegment b) {
+    return cosineBody(new ArrayLoader(a), new MemorySegmentLoader(b));
+  }
+
+  private static float cosineBody(ByteVectorLoader a, ByteVectorLoader b) {
     int i = 0;
     int sum = 0;
     int norm1 = 0;
     int norm2 = 0;
 
-    // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
-    // vectors (256-bit on intel to dodge performance landmines)
-    if (a.byteSize() >= 16 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
+    // only vectorize if we'll at least enter the loop a single time
+    if (a.length() >= 16) {
       final float[] ret;
       if (VECTOR_BITSIZE >= 512) {
-        i += BYTE_SPECIES.loopBound((int) a.byteSize());
+        i += BYTE_SPECIES.loopBound(a.length());
         ret = cosineBody512(a, b, i);
       } else if (VECTOR_BITSIZE == 256) {
-        i += BYTE_SPECIES.loopBound((int) a.byteSize());
+        i += BYTE_SPECIES.loopBound(a.length());
         ret = cosineBody256(a, b, i);
       } else {
         // tricky: we don't have SPECIES_32, so we workaround with "overlapping read"
-        i += ByteVector.SPECIES_64.loopBound(a.byteSize() - ByteVector.SPECIES_64.length());
+        i += ByteVector.SPECIES_64.loopBound(a.length() - ByteVector.SPECIES_64.length());
         ret = cosineBody128(a, b, i);
       }
       sum += ret[0];
@@ -602,9 +669,9 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
 
     // scalar tail
-    for (; i < a.byteSize(); i++) {
-      byte elem1 = a.get(JAVA_BYTE, i);
-      byte elem2 = b.get(JAVA_BYTE, i);
+    for (; i < a.length(); i++) {
+      byte elem1 = a.tail(i);
+      byte elem2 = b.tail(i);
       sum += elem1 * elem2;
       norm1 += elem1 * elem1;
       norm2 += elem2 * elem2;
@@ -613,13 +680,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized cosine body (512 bit vectors) */
-  private static float[] cosineBody512(MemorySegment a, MemorySegment b, int limit) {
+  private static float[] cosineBody512(ByteVectorLoader a, ByteVectorLoader b, int limit) {
     IntVector accSum = IntVector.zero(INT_SPECIES);
     IntVector accNorm1 = IntVector.zero(INT_SPECIES);
     IntVector accNorm2 = IntVector.zero(INT_SPECIES);
     for (int i = 0; i < limit; i += BYTE_SPECIES.length()) {
-      ByteVector va8 = ByteVector.fromMemorySegment(BYTE_SPECIES, a, i, LITTLE_ENDIAN);
-      ByteVector vb8 = ByteVector.fromMemorySegment(BYTE_SPECIES, b, i, LITTLE_ENDIAN);
+      ByteVector va8 = a.load(BYTE_SPECIES, i);
+      ByteVector vb8 = b.load(BYTE_SPECIES, i);
 
       // 16-bit multiply: avoid AVX-512 heavy multiply on zmm
       Vector<Short> va16 = va8.convertShape(B2S, SHORT_SPECIES, 0);
@@ -643,13 +710,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized cosine body (256 bit vectors) */
-  private static float[] cosineBody256(MemorySegment a, MemorySegment b, int limit) {
+  private static float[] cosineBody256(ByteVectorLoader a, ByteVectorLoader b, int limit) {
     IntVector accSum = IntVector.zero(IntVector.SPECIES_256);
     IntVector accNorm1 = IntVector.zero(IntVector.SPECIES_256);
     IntVector accNorm2 = IntVector.zero(IntVector.SPECIES_256);
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length()) {
-      ByteVector va8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, a, i, LITTLE_ENDIAN);
-      ByteVector vb8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, b, i, LITTLE_ENDIAN);
+      ByteVector va8 = a.load(ByteVector.SPECIES_64, i);
+      ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
 
       // 16-bit multiply, and add into accumulators
       Vector<Integer> va32 = va8.convertShape(B2I, IntVector.SPECIES_256, 0);
@@ -668,13 +735,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized cosine body (128 bit vectors) */
-  private static float[] cosineBody128(MemorySegment a, MemorySegment b, int limit) {
+  private static float[] cosineBody128(ByteVectorLoader a, ByteVectorLoader b, int limit) {
     IntVector accSum = IntVector.zero(IntVector.SPECIES_128);
     IntVector accNorm1 = IntVector.zero(IntVector.SPECIES_128);
     IntVector accNorm2 = IntVector.zero(IntVector.SPECIES_128);
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length() >> 1) {
-      ByteVector va8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, a, i, LITTLE_ENDIAN);
-      ByteVector vb8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, b, i, LITTLE_ENDIAN);
+      ByteVector va8 = a.load(ByteVector.SPECIES_64, i);
+      ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
 
       // process first half only: 16-bit multiply
       Vector<Short> va16 = va8.convert(B2S, 0);
@@ -696,40 +763,47 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int squareDistance(byte[] a, byte[] b) {
-    return squareDistance(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
+    return squareDistanceBody(new ArrayLoader(a), new ArrayLoader(b));
   }
 
   public static int squareDistance(MemorySegment a, MemorySegment b) {
-    assert a.byteSize() == b.byteSize();
+    return squareDistanceBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
+  }
+
+  public static int squareDistance(byte[] a, MemorySegment b) {
+    return squareDistanceBody(new ArrayLoader(a), new MemorySegmentLoader(b));
+  }
+
+  private static int squareDistanceBody(ByteVectorLoader a, ByteVectorLoader b) {
+    assert a.length() == b.length();
     int i = 0;
     int res = 0;
 
-    // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
-    // vectors (256-bit on intel to dodge performance landmines)
-    if (a.byteSize() >= 16 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
+    // only vectorize if we'll at least enter the loop a single time
+    if (a.length() >= 16) {
       if (VECTOR_BITSIZE >= 256) {
-        i += BYTE_SPECIES.loopBound((int) a.byteSize());
+        i += BYTE_SPECIES.loopBound(a.length());
         res += squareDistanceBody256(a, b, i);
       } else {
-        i += ByteVector.SPECIES_64.loopBound((int) a.byteSize());
+        i += ByteVector.SPECIES_64.loopBound(a.length());
         res += squareDistanceBody128(a, b, i);
       }
     }
 
     // scalar tail
-    for (; i < a.byteSize(); i++) {
-      int diff = a.get(JAVA_BYTE, i) - b.get(JAVA_BYTE, i);
+    for (; i < a.length(); i++) {
+      int diff = a.tail(i) - b.tail(i);
       res += diff * diff;
     }
     return res;
   }
 
   /** vectorized square distance body (256+ bit vectors) */
-  private static int squareDistanceBody256(MemorySegment a, MemorySegment b, int limit) {
+  private static int squareDistanceBody256(ByteVectorLoader a, ByteVectorLoader b, int limit) {
     IntVector acc = IntVector.zero(INT_SPECIES);
     for (int i = 0; i < limit; i += BYTE_SPECIES.length()) {
-      ByteVector va8 = ByteVector.fromMemorySegment(BYTE_SPECIES, a, i, LITTLE_ENDIAN);
-      ByteVector vb8 = ByteVector.fromMemorySegment(BYTE_SPECIES, b, i, LITTLE_ENDIAN);
+      ByteVector va8 = a.load(BYTE_SPECIES, i);
+      ByteVector vb8 = b.load(BYTE_SPECIES, i);
 
       // 32-bit sub, multiply, and add into accumulators
       // TODO: uses AVX-512 heavy multiply on zmm, should we just use 256-bit vectors on AVX-512?
@@ -743,14 +817,14 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized square distance body (128 bit vectors) */
-  private static int squareDistanceBody128(MemorySegment a, MemorySegment b, int limit) {
+  private static int squareDistanceBody128(ByteVectorLoader a, ByteVectorLoader b, int limit) {
     // 128-bit implementation, which must "split up" vectors due to widening conversions
     // it doesn't help to do the overlapping read trick, due to 32-bit multiply in the formula
     IntVector acc1 = IntVector.zero(IntVector.SPECIES_128);
     IntVector acc2 = IntVector.zero(IntVector.SPECIES_128);
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length()) {
-      ByteVector va8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, a, i, LITTLE_ENDIAN);
-      ByteVector vb8 = ByteVector.fromMemorySegment(ByteVector.SPECIES_64, b, i, LITTLE_ENDIAN);
+      ByteVector va8 = a.load(ByteVector.SPECIES_64, i);
+      ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
 
       // 16-bit sub
       Vector<Short> va16 = va8.convertShape(B2S, ShortVector.SPECIES_128, 0);
@@ -798,7 +872,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   public long int4BitDotProduct(byte[] q, byte[] d) {
     assert q.length == d.length * 4;
     // 128 / 8 == 16
-    if (d.length >= 16 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
+    if (d.length >= 16) {
       if (VECTOR_BITSIZE >= 256) {
         return int4BitDotProduct256(q, d);
       } else if (VECTOR_BITSIZE == 128) {
@@ -1000,5 +1074,86 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
             .recalculateOffset(vector, i, oldAlpha, oldMinQuantile);
 
     return correction;
+  }
+
+  @SuppressForbidden(reason = "Uses compress and cast only where fast and carefully contained")
+  @Override
+  public int filterByScore(
+      int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
+    int newUpto = 0;
+    int i = 0;
+    if (Constants.HAS_FAST_COMPRESS_MASK_CAST) {
+      for (int bound = DOUBLE_SPECIES.loopBound(upTo); i < bound; i += DOUBLE_SPECIES.length()) {
+        DoubleVector scoreVector = DoubleVector.fromArray(DOUBLE_SPECIES, scoreBuffer, i);
+        IntVector docVector = IntVector.fromArray(INT_FOR_DOUBLE_SPECIES, docBuffer, i);
+        VectorMask<Double> mask = scoreVector.compare(VectorOperators.GE, minScoreInclusive);
+        scoreVector.compress(mask).intoArray(scoreBuffer, newUpto);
+        docVector.compress(mask.cast(INT_FOR_DOUBLE_SPECIES)).intoArray(docBuffer, newUpto);
+        newUpto += mask.trueCount();
+      }
+    }
+
+    for (; i < upTo; ++i) {
+      int doc = docBuffer[i];
+      double score = scoreBuffer[i];
+      docBuffer[newUpto] = doc;
+      scoreBuffer[newUpto] = score;
+      if (score >= minScoreInclusive) {
+        newUpto++;
+      }
+    }
+    return newUpto;
+  }
+
+  @Override
+  public float[] l2normalize(float[] v, boolean throwOnZero) {
+    double l1norm = this.dotProduct(v, v);
+    if (l1norm == 0) {
+      if (throwOnZero) {
+        throw new IllegalArgumentException("Cannot normalize a zero-length vector");
+      } else {
+        return v;
+      }
+    }
+    if (Math.abs(l1norm - 1.0d) <= EPSILON) {
+      return v;
+    }
+
+    float invNorm = 1.0f / (float) Math.sqrt(l1norm);
+    int i = 0;
+
+    // if the array size is large (> 2x platform vector size), it's worth the overhead to vectorize
+    if (v.length > 2 * FLOAT_SPECIES.length()) {
+      i += FLOAT_SPECIES.loopBound(v.length);
+      l2normalizeBody(v, invNorm, i);
+    }
+
+    for (; i < v.length; i++) {
+      v[i] *= invNorm;
+    }
+    return v;
+  }
+
+  private void l2normalizeBody(float[] v, float invNorm, int limit) {
+    FloatVector invNormVector = FloatVector.broadcast(FLOAT_SPECIES, invNorm);
+    int i = 0;
+    int unrolledLimit = limit - 3 * FLOAT_SPECIES.length();
+
+    for (; i < unrolledLimit; i += 4 * FLOAT_SPECIES.length()) {
+      FloatVector.fromArray(FLOAT_SPECIES, v, i).mul(invNormVector).intoArray(v, i);
+      FloatVector.fromArray(FLOAT_SPECIES, v, i + FLOAT_SPECIES.length())
+          .mul(invNormVector)
+          .intoArray(v, i + FLOAT_SPECIES.length());
+      FloatVector.fromArray(FLOAT_SPECIES, v, i + 2 * FLOAT_SPECIES.length())
+          .mul(invNormVector)
+          .intoArray(v, i + 2 * FLOAT_SPECIES.length());
+      FloatVector.fromArray(FLOAT_SPECIES, v, i + 3 * FLOAT_SPECIES.length())
+          .mul(invNormVector)
+          .intoArray(v, i + 3 * FLOAT_SPECIES.length());
+    }
+
+    for (; i < limit; i += FLOAT_SPECIES.length()) {
+      FloatVector.fromArray(FLOAT_SPECIES, v, i).mul(invNormVector).intoArray(v, i);
+    }
   }
 }

@@ -921,9 +921,7 @@ public class TestIndexWriter extends LuceneTestCase {
               // w.rollback();
               try {
                 w.close();
-              } catch (
-                  @SuppressWarnings("unused")
-                  AlreadyClosedException ace) {
+              } catch (AlreadyClosedException _) {
                 // OK
               }
               w = null;
@@ -2269,7 +2267,7 @@ public class TestIndexWriter extends LuceneTestCase {
                   new Iterable<Document>() {
                     @Override
                     public Iterator<Document> iterator() {
-                      return new Iterator<Document>() {
+                      return new Iterator<>() {
 
                         @Override
                         public boolean hasNext() {
@@ -2643,9 +2641,7 @@ public class TestIndexWriter extends LuceneTestCase {
     startCommit.await();
     try {
       iw.close();
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException ise) {
+    } catch (IllegalStateException _) {
       // OK, but not required (depends on thread scheduling)
     }
     finishCommit.await();
@@ -3059,7 +3055,7 @@ public class TestIndexWriter extends LuceneTestCase {
     try {
       dir.openInput(tempName, IOContext.DEFAULT);
       fail("did not hit exception");
-    } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
+    } catch (FileNotFoundException | NoSuchFileException _) {
       // expected
     }
     w.close();
@@ -4141,9 +4137,7 @@ public class TestIndexWriter extends LuceneTestCase {
                   indexedDocs.release(1);
                 } catch (IOException e) {
                   throw new AssertionError(e);
-                } catch (
-                    @SuppressWarnings("unused")
-                    AlreadyClosedException ignored) {
+                } catch (AlreadyClosedException _) {
                   return;
                 }
               }
@@ -4158,9 +4152,7 @@ public class TestIndexWriter extends LuceneTestCase {
                   sm.maybeRefreshBlocking();
                 } catch (IOException e) {
                   throw new AssertionError(e);
-                } catch (
-                    @SuppressWarnings("unused")
-                    AlreadyClosedException ignored) {
+                } catch (AlreadyClosedException _) {
                   return;
                 }
               }
@@ -4234,9 +4226,7 @@ public class TestIndexWriter extends LuceneTestCase {
                   queue.processEvents();
                 } catch (IOException e) {
                   throw new AssertionError(e);
-                } catch (
-                    @SuppressWarnings("unused")
-                    AlreadyClosedException ex) {
+                } catch (AlreadyClosedException _) {
                   // possible
                 }
               });

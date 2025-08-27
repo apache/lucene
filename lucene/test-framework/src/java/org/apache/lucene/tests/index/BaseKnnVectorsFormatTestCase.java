@@ -42,6 +42,7 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsReader;
 import org.apache.lucene.document.Document;
@@ -78,16 +79,18 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
-import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.codecs.asserting.AssertingKnnVectorsFormat;
@@ -830,7 +833,11 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         // assert that knn search doesn't fail on a field with all deleted docs
         TopDocs results =
             leafReader.searchNearestVectors(
-                "v", randomNormalizedVector(4), 1, leafReader.getLiveDocs(), Integer.MAX_VALUE);
+                "v",
+                randomNormalizedVector(4),
+                1,
+                AcceptDocs.fromLiveDocs(leafReader.getLiveDocs(), leafReader.maxDoc()),
+                Integer.MAX_VALUE);
         assertEquals(0, results.scoreDocs.length);
       }
     }
@@ -1489,9 +1496,17 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           TopDocs results =
               ctx.reader()
                   .searchNearestVectors(
-                      fieldName, randomNormalizedVector(dimension), k, liveDocs, visitedLimit);
+                      fieldName,
+                      randomNormalizedVector(dimension),
+                      k,
+                      AcceptDocs.fromLiveDocs(liveDocs, ctx.reader().maxDoc()),
+                      visitedLimit);
           assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, results.totalHits.relation());
-          assertEquals(visitedLimit, results.totalHits.value());
+          int size = Lucene99HnswVectorsReader.EXHAUSTIVE_BULK_SCORE_ORDS;
+          assertTrue(
+              visitedLimit == results.totalHits.value()
+                  || ((visitedLimit + size - 1) / size) * ((long) size)
+                      == results.totalHits.value());
 
           // check the limit is not hit when it clearly exceeds the number of vectors
           k = vectorValues.size();
@@ -1499,7 +1514,11 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           results =
               ctx.reader()
                   .searchNearestVectors(
-                      fieldName, randomNormalizedVector(dimension), k, liveDocs, visitedLimit);
+                      fieldName,
+                      randomNormalizedVector(dimension),
+                      k,
+                      AcceptDocs.fromLiveDocs(liveDocs, ctx.reader().maxDoc()),
+                      visitedLimit);
           assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation());
           assertTrue(results.totalHits.value() <= visitedLimit);
           assertOffHeapByteSize(ctx.reader(), fieldName);
@@ -1581,7 +1600,11 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           TopDocs results =
               ctx.reader()
                   .searchNearestVectors(
-                      fieldName, randomNormalizedVector(dimension), k, liveDocs, Integer.MAX_VALUE);
+                      fieldName,
+                      randomNormalizedVector(dimension),
+                      k,
+                      AcceptDocs.fromLiveDocs(liveDocs, ctx.reader().maxDoc()),
+                      Integer.MAX_VALUE);
           assertEquals(Math.min(k, size), results.scoreDocs.length);
           for (int i = 0; i < k - 1; i++) {
             assertTrue(results.scoreDocs[i].score >= results.scoreDocs[i + 1].score);
@@ -1980,9 +2003,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       for (String queryString : testQueries) {
         computeLineEmbedding(queryString, queryEmbedding);
 
-        // pass match-all "filter" to force full traversal, bypassing graph
-        KnnFloatVectorQuery exactQuery =
-            new KnnFloatVectorQuery("field", queryEmbedding, 1000, new MatchAllDocsQuery());
+        // gather exact results first
+        Query exactQuery = buildExactKnnQuery("field", queryEmbedding, 10000);
         assertEquals(numQueries, searcher.count(exactQuery)); // Same for exact search
 
         KnnFloatVectorQuery query = new KnnFloatVectorQuery("field", queryEmbedding, efSearch);
@@ -2201,5 +2223,19 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     assertEquals(105L, (long) r.get("c"));
     assertEquals(101L, (long) r.get("d"));
     assertEquals(6L, (long) r.get("e"));
+  }
+
+  private static Query buildExactKnnQuery(String fieldName, float[] queryVector, int totalDocs) {
+    return new KnnFloatVectorQuery(fieldName, queryVector, totalDocs) {
+      @Override
+      protected TopDocs approximateSearch(
+          LeafReaderContext context,
+          AcceptDocs acceptDocs,
+          int visitedLimit,
+          KnnCollectorManager knnCollectorManager)
+          throws IOException {
+        return exactSearch(context, DocIdSetIterator.all(totalDocs), null);
+      }
+    };
   }
 }

@@ -70,14 +70,14 @@ configure(project(":lucene:analysis:kuromoji")) {
         }
 
         // Apply patch via local git.
-        project.quietExec {
+        buildGlobals.quietExec(it, {
           workingDir = unpackedDir
           executable "git"
           args += [
             "apply",
             project.file("src/tools/patches/Noun.proper.csv.patch").absolutePath
           ]
-        }
+        })
 
         // Compile the dictionary
         recompileDictionary(project, dictionaryName, {

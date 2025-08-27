@@ -1238,9 +1238,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
       // trigger an eviction
       searcher.search(new MatchAllDocsQuery(), DummyTotalHitCountCollector.createManager());
       fail();
-    } catch (
-        @SuppressWarnings("unused")
-        ConcurrentModificationException e) {
+    } catch (ConcurrentModificationException _) {
       // expected
     } catch (RuntimeException e) {
       // expected: wrapped when executor is in use

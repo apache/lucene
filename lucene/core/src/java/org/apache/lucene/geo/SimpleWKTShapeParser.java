@@ -302,9 +302,7 @@ public class SimpleWKTShapeParser {
       } else {
         try {
           return Double.parseDouble(stream.sval);
-        } catch (
-            @SuppressWarnings("unused")
-            NumberFormatException e) {
+        } catch (NumberFormatException _) {
           throw new ParseException("invalid number found: " + stream.sval, stream.lineno());
         }
       }

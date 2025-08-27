@@ -94,11 +94,22 @@ public final class Constants {
   private static final boolean HAS_SSE4A =
       HotspotVMOptions.get("UseXmmI2F").map(Boolean::valueOf).orElse(false);
 
+  /** true for cpu with AVX support at least AVX2. */
+  private static final boolean HAS_AVX2 =
+      HotspotVMOptions.get("UseAVX").map(Integer::valueOf).orElse(0) >= 2;
+
+  /** true for arm cpu with SVE support. */
+  private static final boolean HAS_SVE =
+      HotspotVMOptions.get("UseSVE").map(Integer::valueOf).orElse(0) >= 1;
+
   /** true iff we know VFMA has faster throughput than separate vmul/vadd. */
   public static final boolean HAS_FAST_VECTOR_FMA = hasFastVectorFMA();
 
   /** true iff we know FMA has faster throughput than separate mul/add. */
   public static final boolean HAS_FAST_SCALAR_FMA = hasFastScalarFMA();
+
+  /** true iff we know Compress and Cast has fast throughput. */
+  public static final boolean HAS_FAST_COMPRESS_MASK_CAST = hasFastCompressMaskCast();
 
   private static boolean hasFastVectorFMA() {
     if (HAS_FMA) {
@@ -152,15 +163,26 @@ public final class Constants {
     return false;
   }
 
+  private static boolean hasFastCompressMaskCast() {
+    if (OS_ARCH.equals("aarch64") && HAS_SVE) {
+      return true;
+    }
+
+    if (OS_ARCH.equals("amd64") && HAS_AVX2) {
+      return true;
+    }
+    return false;
+  }
+
   /**
    * The default {@link ReadAdvice} used for opening index files. It will be {@link
-   * ReadAdvice#RANDOM} by default, unless set by system property {@code
+   * ReadAdvice#NORMAL} by default, unless set by system property {@code
    * org.apache.lucene.store.defaultReadAdvice}.
    */
   public static final ReadAdvice DEFAULT_READADVICE =
       Optional.ofNullable(getSysProp("org.apache.lucene.store.defaultReadAdvice"))
           .map(a -> ReadAdvice.valueOf(a.toUpperCase(Locale.ROOT)))
-          .orElse(ReadAdvice.RANDOM);
+          .orElse(ReadAdvice.NORMAL);
 
   private static String getSysProp(String property) {
     return System.getProperty(property);

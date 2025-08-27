@@ -133,16 +133,46 @@ public class MMapDirectory extends FSDirectory {
           if (IndexFileNames.parseGeneration(filename) > 0) {
             groupKey += "-g";
           }
-        } catch (
-            @SuppressWarnings("unused")
-            NumberFormatException unused) {
+        } catch (NumberFormatException _) {
           // does not confirm to the generation syntax, or trash
         }
         return Optional.of(groupKey);
       };
 
-  private BiFunction<String, IOContext, Optional<ReadAdvice>> readAdviceOverride =
+  /**
+   * Argument for {@link #setReadAdvice(BiFunction)} that configures the read advice based on the
+   * context type and hints.
+   *
+   * <p>Specifically, the advice is determined by evaluating the following conditions in order:
+   *
+   * <ol>
+   *   <li>If the context is either of {@link IOContext.Context#MERGE} or {@link
+   *       IOContext.Context#FLUSH}, then {@link ReadAdvice#SEQUENTIAL},
+   *   <li>If the context {@link IOContext#hints() hints} contains {@link DataAccessHint#RANDOM},
+   *       then {@link ReadAdvice#RANDOM},
+   *   <li>If the context {@link IOContext#hints() hints} contains {@link
+   *       DataAccessHint#SEQUENTIAL}, then {@link ReadAdvice#SEQUENTIAL},
+   *   <li>Otherwise, {@link Constants#DEFAULT_READADVICE} is returned.
+   * </ol>
+   */
+  public static final BiFunction<String, IOContext, Optional<ReadAdvice>> ADVISE_BY_CONTEXT =
+      (String _, IOContext context) -> {
+        if (context.context() == IOContext.Context.MERGE
+            || context.context() == IOContext.Context.FLUSH) {
+          return Optional.of(ReadAdvice.SEQUENTIAL);
+        }
+        if (context.hints().contains(DataAccessHint.RANDOM)) {
+          return Optional.of(ReadAdvice.RANDOM);
+        }
+        if (context.hints().contains(DataAccessHint.SEQUENTIAL)) {
+          return Optional.of(ReadAdvice.SEQUENTIAL);
+        }
+        return Optional.of(Constants.DEFAULT_READADVICE);
+      };
+
+  private BiFunction<String, IOContext, Optional<ReadAdvice>> readAdvice =
       (_, _) -> Optional.empty();
+
   private BiPredicate<String, IOContext> preload = NO_FILES;
 
   /**
@@ -248,17 +278,16 @@ public class MMapDirectory extends FSDirectory {
   }
 
   /**
-   * Configure {@link ReadAdvice} overrides for certain files. If the function returns {@code
-   * Optional.empty()}, a default {@link ReadAdvice} will be used
+   * Configure {@link ReadAdvice} for certain files. The default implementation uses the {@link
+   * Constants#DEFAULT_READADVICE}.
    *
    * @param toReadAdvice a {@link Function} whose first argument is the file name, and second
    *     argument is the {@link IOContext} used to open the file. Returns {@code
    *     Optional.of(ReadAdvice)} to use a specific read advice, or {@code Optional.empty()} if a
    *     default should be used
    */
-  public void setReadAdviceOverride(
-      BiFunction<String, IOContext, Optional<ReadAdvice>> toReadAdvice) {
-    this.readAdviceOverride = toReadAdvice;
+  public void setReadAdvice(BiFunction<String, IOContext, Optional<ReadAdvice>> toReadAdvice) {
+    this.readAdvice = toReadAdvice;
   }
 
   /**
@@ -285,22 +314,6 @@ public class MMapDirectory extends FSDirectory {
     return 1L << chunkSizePower;
   }
 
-  private static ReadAdvice toReadAdvice(IOContext context) {
-    if (context.context() == IOContext.Context.MERGE
-        || context.context() == IOContext.Context.FLUSH) {
-      return ReadAdvice.SEQUENTIAL;
-    }
-
-    if (context.hints().contains(DataAccessHint.RANDOM)) {
-      return ReadAdvice.RANDOM;
-    }
-    if (context.hints().contains(DataAccessHint.SEQUENTIAL)) {
-      return ReadAdvice.SEQUENTIAL;
-    }
-
-    return Constants.DEFAULT_READADVICE;
-  }
-
   /** Creates an IndexInput for the file with the given name. */
   @Override
   public IndexInput openInput(String name, IOContext context) throws IOException {
@@ -312,35 +325,30 @@ public class MMapDirectory extends FSDirectory {
     // Work around for JDK-8259028: we need to unwrap our test-only file system layers
     path = Unwrappable.unwrapAll(path);
 
-    boolean success = false;
     final boolean confined = context.hints().contains(ReadOnceHint.INSTANCE);
     Function<IOContext, ReadAdvice> toReadAdvice =
-        c -> readAdviceOverride.apply(name, c).orElseGet(() -> toReadAdvice(c));
+        c -> readAdvice.apply(name, c).orElse(Constants.DEFAULT_READADVICE);
     final Arena arena = confined ? Arena.ofConfined() : getSharedArena(name, arenas);
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
-      final IndexInput in =
-          MemorySegmentIndexInput.newInstance(
-              resourceDescription,
+      return MemorySegmentIndexInput.newInstance(
+          resourceDescription,
+          arena,
+          map(
               arena,
-              map(
-                  arena,
-                  resourceDescription,
-                  fc,
-                  toReadAdvice.apply(context),
-                  chunkSizePower,
-                  preload.test(name, context),
-                  fileSize),
-              fileSize,
+              resourceDescription,
+              fc,
+              toReadAdvice.apply(context),
               chunkSizePower,
-              confined,
-              toReadAdvice);
-      success = true;
-      return in;
-    } finally {
-      if (success == false) {
-        arena.close();
-      }
+              preload.test(name, context),
+              fileSize),
+          fileSize,
+          chunkSizePower,
+          confined,
+          toReadAdvice);
+    } catch (Throwable t) {
+      arena.close();
+      throw t;
     }
   }
 
@@ -484,7 +492,7 @@ public class MMapDirectory extends FSDirectory {
       if (str != null) {
         ret = Integer.parseInt(str);
       }
-    } catch (@SuppressWarnings("unused") NumberFormatException | SecurityException ignored) {
+    } catch (NumberFormatException | SecurityException _) {
       Logger.getLogger(MMapDirectory.class.getName())
           .warning(
               "Cannot read sysprop "

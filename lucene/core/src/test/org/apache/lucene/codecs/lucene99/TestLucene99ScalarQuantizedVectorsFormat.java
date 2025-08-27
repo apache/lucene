@@ -81,6 +81,12 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
     return TestUtil.alwaysKnnVectorsFormat(format);
   }
 
+  private Codec getCodec(float confidenceInterval) {
+    return TestUtil.alwaysKnnVectorsFormat(
+        new Lucene99ScalarQuantizedVectorsFormat(
+            confidenceInterval, bits, bits == 4 ? random().nextBoolean() : false));
+  }
+
   protected List<float[]> getRandomFloatVector(int numVectors, int dim, boolean normalize) {
     List<float[]> vectors = new ArrayList<>(numVectors);
     for (int i = 0; i < numVectors; i++) {
@@ -237,7 +243,7 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
                     .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
                     .setMergePolicy(NoMergePolicy.INSTANCE)
                     .setUseCompoundFile(false)
-                    .setCodec(getCodec()))) {
+                    .setCodec(getCodec(1f)))) {
       dir.setCheckIndexOnClose(false);
 
       for (int i = 0; i < numVectors; i++) {
@@ -264,7 +270,11 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
               for (int docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {
                 float[] dequantizedVector = floatVectorValues.vectorValue(iter.index());
                 for (int i = 0; i < dim; i++) {
-                  assertEquals(dequantizedVector[i], vectors.get(docId)[i], 0.2f);
+                  assertEquals(
+                      "docId=" + docId + " i=" + i,
+                      dequantizedVector[i],
+                      vectors.get(docId)[i],
+                      0.2f);
                 }
               }
             } else {

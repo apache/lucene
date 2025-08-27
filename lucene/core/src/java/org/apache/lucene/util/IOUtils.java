@@ -224,9 +224,7 @@ public final class IOUtils {
     for (String name : files) {
       try {
         dir.deleteFile(name);
-      } catch (
-          @SuppressWarnings("unused")
-          Throwable ignored) {
+      } catch (Throwable _) {
         // ignore
       }
     }
@@ -323,9 +321,7 @@ public final class IOUtils {
       if (name != null) {
         try {
           Files.delete(name);
-        } catch (
-            @SuppressWarnings("unused")
-            Throwable ignored) {
+        } catch (Throwable _) {
           // ignore
         }
       }
@@ -401,7 +397,7 @@ public final class IOUtils {
    *     directories) cannot be removed.
    */
   public static void rm(Path... locations) throws IOException {
-    LinkedHashMap<Path, Throwable> unremoved = rm(new LinkedHashMap<Path, Throwable>(), locations);
+    LinkedHashMap<Path, Throwable> unremoved = rm(new LinkedHashMap<>(), locations);
     if (!unremoved.isEmpty()) {
       StringBuilder b =
           new StringBuilder("Could not remove the following files (in the order of attempts):\n");

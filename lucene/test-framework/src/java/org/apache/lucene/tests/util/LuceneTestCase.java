@@ -778,22 +778,6 @@ public abstract class LuceneTestCase extends Assert {
    * Some tests expect the directory to contain a single segment, and want to do tests on that
    * segment's reader. This is an utility method to help them.
    */
-  /*
-  public static SegmentReader getOnlySegmentReader(DirectoryReader reader) {
-    List<LeafReaderContext> subReaders = reader.leaves();
-    if (subReaders.size() != 1) {
-      throw new IllegalArgumentException(reader + " has " + subReaders.size() + " segments instead of exactly one");
-    }
-    final LeafReader r = subReaders.get(0).reader();
-    assertTrue("expected a SegmentReader but got " + r, r instanceof SegmentReader);
-    return (SegmentReader) r;
-  }
-    */
-
-  /**
-   * Some tests expect the directory to contain a single segment, and want to do tests on that
-   * segment's reader. This is an utility method to help them.
-   */
   public static LeafReader getOnlyLeafReader(IndexReader reader) {
     List<LeafReaderContext> subReaders = reader.leaves();
     if (subReaders.size() != 1) {
@@ -1371,9 +1355,7 @@ public abstract class LuceneTestCase extends Assert {
     try {
       try {
         clazz = CommandLineUtil.loadFSDirectoryClass(fsdirClass);
-      } catch (
-          @SuppressWarnings("unused")
-          ClassCastException e) {
+      } catch (ClassCastException _) {
         // TEST_DIRECTORY is not a sub-class of FSDirectory, so draw one at random
         fsdirClass = RandomPicks.randomFrom(random(), FS_DIRECTORIES);
         clazz = CommandLineUtil.loadFSDirectoryClass(fsdirClass);
@@ -1653,9 +1635,7 @@ public abstract class LuceneTestCase extends Assert {
             clazz.getConstructor(Path.class, LockFactory.class);
         final Path dir = createTempDir("index");
         return pathCtor.newInstance(dir, lf);
-      } catch (
-          @SuppressWarnings("unused")
-          NoSuchMethodException nsme) {
+      } catch (NoSuchMethodException _) {
         // Ignore
       }
 
@@ -1665,9 +1645,7 @@ public abstract class LuceneTestCase extends Assert {
         // try ctor with only LockFactory
         try {
           return clazz.getConstructor(LockFactory.class).newInstance(lf);
-        } catch (
-            @SuppressWarnings("unused")
-            NoSuchMethodException nsme) {
+        } catch (NoSuchMethodException _) {
           // Ignore
         }
       }
@@ -2616,9 +2594,12 @@ public abstract class LuceneTestCase extends Assert {
             assertEquals(info, left, right);
           }
           // bytes
-          for (int docID = 0; docID < leftReader.maxDoc(); docID++) {
-            assertEquals(docID, leftValues.nextDoc());
+          while (true) {
+            int docID = leftValues.nextDoc();
             assertEquals(docID, rightValues.nextDoc());
+            if (docID == NO_MORE_DOCS) {
+              break;
+            }
             final BytesRef left = BytesRef.deepCopyOf(leftValues.lookupOrd(leftValues.ordValue()));
             final BytesRef right = rightValues.lookupOrd(rightValues.ordValue());
             assertEquals(info, left, right);
@@ -3066,7 +3047,7 @@ public abstract class LuceneTestCase extends Assert {
     try {
       dir.openInput(fileName, IOContext.READONCE).close();
       return true;
-    } catch (@SuppressWarnings("unused") NoSuchFileException | FileNotFoundException e) {
+    } catch (NoSuchFileException | FileNotFoundException _) {
       return false;
     }
   }
@@ -3133,7 +3114,7 @@ public abstract class LuceneTestCase extends Assert {
 
   static {
     boolean enabled = false;
-    assert enabled = true; // Intentional side-effect!!!
+    assert (enabled = true) == true; // Intentional side-effect!!!
     assertsAreEnabled = enabled;
   }
 

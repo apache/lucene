@@ -344,7 +344,7 @@ public final class JavascriptCompiler {
       final Map<String, Integer> externalsMap,
       final Map<String, Integer> constantsMap) {
     // to completely hide the ANTLR visitor we use an anonymous impl:
-    return new JavascriptBaseVisitor<Void>() {
+    return new JavascriptBaseVisitor<>() {
       private final Deque<TypeKind> typeStack = new ArrayDeque<>();
 
       @Override
@@ -851,7 +851,7 @@ public final class JavascriptCompiler {
                   + "#"
                   + cracked.getName()
                   + cracked.getMethodType();
-    } catch (@SuppressWarnings("unused") IllegalArgumentException | SecurityException iae) {
+    } catch (IllegalArgumentException | SecurityException _) {
       // can't check for static, we assume it is static
       // (it does not matter as we call the MethodHandle directly if it is compatible):
       refKind = MethodHandleInfo.REF_invokeStatic;

@@ -74,7 +74,7 @@ public final class VirtualMethod<C> {
   private final String method;
   private final Class<?>[] parameters;
   private final ClassValue<Integer> distanceOfClass =
-      new ClassValue<Integer>() {
+      new ClassValue<>() {
         @Override
         protected Integer computeValue(Class<?> subclazz) {
           return Integer.valueOf(reflectImplementationDistance(subclazz));
@@ -140,9 +140,7 @@ public final class VirtualMethod<C> {
         try {
           clazz.getDeclaredMethod(method, parameters);
           overridden = true;
-        } catch (
-            @SuppressWarnings("unused")
-            NoSuchMethodException nsme) {
+        } catch (NoSuchMethodException _) {
         }
       }
 

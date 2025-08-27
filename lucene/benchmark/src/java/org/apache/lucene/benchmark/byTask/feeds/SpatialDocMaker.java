@@ -74,7 +74,7 @@ public class SpatialDocMaker extends DocMaker {
   protected SpatialStrategy makeSpatialStrategy(final Config config) {
     // A Map view of Config that prefixes keys with "spatial."
     Map<String, String> configMap =
-        new AbstractMap<String, String>() {
+        new AbstractMap<>() {
           @Override
           public Set<Entry<String, String>> entrySet() {
             throw new UnsupportedOperationException();

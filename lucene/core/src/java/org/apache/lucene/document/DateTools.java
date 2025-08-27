@@ -44,7 +44,7 @@ public class DateTools {
   static final TimeZone GMT = TimeZone.getTimeZone("GMT");
 
   private static final ThreadLocal<Calendar> TL_CAL =
-      new ThreadLocal<Calendar>() {
+      new ThreadLocal<>() {
         @Override
         protected Calendar initialValue() {
           return Calendar.getInstance(GMT, Locale.ROOT);
@@ -53,7 +53,7 @@ public class DateTools {
 
   // indexed by format length
   private static final ThreadLocal<SimpleDateFormat[]> TL_FORMATS =
-      new ThreadLocal<SimpleDateFormat[]>() {
+      new ThreadLocal<>() {
         @Override
         protected SimpleDateFormat[] initialValue() {
           SimpleDateFormat[] arr = new SimpleDateFormat[Resolution.MILLISECOND.formatLen + 1];

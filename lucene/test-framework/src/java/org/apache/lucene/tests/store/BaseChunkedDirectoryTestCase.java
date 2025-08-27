@@ -61,7 +61,7 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
   public void testCloneClose() throws Exception {
     Directory dir = getDirectory(createTempDir("testCloneClose"));
     IndexOutput io = dir.createOutput("bytes", newIOContext(random()));
-    final long[] values = new long[] {0, 7, 11, 9};
+    final int[] values = new int[] {0, 7, 11, 9};
     io.writeVInt(5);
     io.writeGroupVInts(values, values.length);
     io.close();
@@ -89,7 +89,7 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
   public void testCloneSliceClose() throws Exception {
     Directory dir = getDirectory(createTempDir("testCloneSliceClose"));
     IndexOutput io = dir.createOutput("bytes", newIOContext(random()));
-    final long[] values = new long[] {0, 7, 11, 9};
+    final int[] values = new int[] {0, 7, 11, 9};
     io.writeInt(1);
     io.writeInt(2);
     io.writeGroupVInts(values, values.length); // will write 5 bytes

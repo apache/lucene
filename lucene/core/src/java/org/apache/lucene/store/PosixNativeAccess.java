@@ -71,9 +71,7 @@ final class PosixNativeAccess extends NativeAccess {
       instance = new PosixNativeAccess();
     } catch (UnsupportedOperationException uoe) {
       LOG.warning(uoe.getMessage());
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalCallerException ice) {
+    } catch (IllegalCallerException _) {
       LOG.warning(
           String.format(
               Locale.ENGLISH,
@@ -107,6 +105,7 @@ final class PosixNativeAccess extends NativeAccess {
     return findFunction(linker, stdlib, "getpagesize", FunctionDescriptor.of(ValueLayout.JAVA_INT));
   }
 
+  @SuppressWarnings("restricted") // unsafe functionality is used
   private static MethodHandle findFunction(
       Linker linker, SymbolLookup lookup, String name, FunctionDescriptor desc) {
     final MemorySegment symbol =

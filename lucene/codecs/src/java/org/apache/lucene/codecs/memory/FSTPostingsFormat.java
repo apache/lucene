@@ -43,30 +43,22 @@ public final class FSTPostingsFormat extends PostingsFormat {
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
     PostingsWriterBase postingsWriter = new Lucene103PostingsWriter(state);
 
-    boolean success = false;
     try {
-      FieldsConsumer ret = new FSTTermsWriter(state, postingsWriter);
-      success = true;
-      return ret;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(postingsWriter);
-      }
+      return new FSTTermsWriter(state, postingsWriter);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, postingsWriter);
+      throw t;
     }
   }
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
     PostingsReaderBase postingsReader = new Lucene103PostingsReader(state);
-    boolean success = false;
     try {
-      FieldsProducer ret = new FSTTermsReader(state, postingsReader);
-      success = true;
-      return ret;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(postingsReader);
-      }
+      return new FSTTermsReader(state, postingsReader);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, postingsReader);
+      throw t;
     }
   }
 }

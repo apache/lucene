@@ -210,7 +210,7 @@ public abstract class PointRangeQuery extends Query {
 
           @Override
           public void visit(IntsRef ref) {
-            for (int i = ref.offset; i < ref.offset + ref.length; i++) {
+            for (int i = ref.offset, to = ref.offset + ref.length; i < to; i++) {
               result.set(ref.ints[i]);
             }
             cost[0] += ref.length;

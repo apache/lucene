@@ -29,7 +29,7 @@ public class ScoringMatch extends QueryMatch {
   public static final MatcherFactory<ScoringMatch> matchWithSimilarity(Similarity similarity) {
     return searcher -> {
       searcher.setSimilarity(similarity);
-      return new CollectingMatcher<ScoringMatch>(searcher, ScoreMode.COMPLETE) {
+      return new CollectingMatcher<>(searcher, ScoreMode.COMPLETE) {
         @Override
         protected ScoringMatch doMatch(String queryId, int doc, Scorable scorer)
             throws IOException {

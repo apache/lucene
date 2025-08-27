@@ -72,7 +72,7 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
    *
    * @see #registerToRemoveAfterSuite(Path)
    */
-  private static final List<Path> cleanupQueue = new ArrayList<Path>();
+  private static final List<Path> cleanupQueue = new ArrayList<>();
 
   public TestRuleTemporaryFilesCleanup(TestRuleMarkFailure failureMarker) {
     this.failureMarker = failureMarker;
@@ -251,9 +251,7 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
         try {
           Files.createDirectory(f);
           success = true;
-        } catch (
-            @SuppressWarnings("unused")
-            IOException ignore) {
+        } catch (IOException _) {
         }
       } while (!success);
 
@@ -282,9 +280,7 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
       try {
         Files.createDirectory(f);
         success = true;
-      } catch (
-          @SuppressWarnings("unused")
-          IOException ignore) {
+      } catch (IOException _) {
       }
     } while (!success);
 
@@ -311,9 +307,7 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
       try {
         Files.createFile(f);
         success = true;
-      } catch (
-          @SuppressWarnings("unused")
-          IOException ignore) {
+      } catch (IOException _) {
       }
     } while (!success);
 

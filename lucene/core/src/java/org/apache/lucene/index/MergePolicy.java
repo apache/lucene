@@ -427,7 +427,7 @@ public abstract class MergePolicy {
         return true;
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
-      } catch (@SuppressWarnings("unused") ExecutionException | TimeoutException e) {
+      } catch (ExecutionException | TimeoutException _) {
         return false;
       }
     }
@@ -494,16 +494,15 @@ public abstract class MergePolicy {
       merges.add(merge);
     }
 
-    // TODO: deprecate me (dir is never used!  and is sometimes difficult to provide!)
-    /** Returns a description of the merges in this specification. */
+    /**
+     * Returns a description of the merges in this specification
+     *
+     * @deprecated Use {@link #toString()} instead. The {@code Directory} parameter is ignored and
+     *     will be removed in a future release.
+     */
+    @Deprecated
     public String segString(Directory dir) {
-      StringBuilder b = new StringBuilder();
-      b.append("MergeSpec:\n");
-      final int count = merges.size();
-      for (int i = 0; i < count; i++) {
-        b.append("  ").append(1 + i).append(": ").append(merges.get(i).segString());
-      }
-      return b.toString();
+      return toString();
     }
 
     @Override
@@ -530,7 +529,7 @@ public abstract class MergePolicy {
         return true;
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
-      } catch (@SuppressWarnings("unused") ExecutionException | CancellationException e) {
+      } catch (ExecutionException | CancellationException _) {
         return false;
       }
     }
@@ -543,7 +542,7 @@ public abstract class MergePolicy {
         return true;
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
-      } catch (@SuppressWarnings("unused") ExecutionException | TimeoutException e) {
+      } catch (ExecutionException | TimeoutException _) {
         return false;
       }
     }
