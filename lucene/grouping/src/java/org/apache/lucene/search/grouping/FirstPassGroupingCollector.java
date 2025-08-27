@@ -313,12 +313,11 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
     group.comparatorSlot = tmp;
 
     // Re-add only if we removed it
-    if (orderedGroups != null && !skipHeavyOps) {
-      orderedGroups.add(group);
-      assert orderedGroups.size() == topNGroups;
-    }
-
     if (orderedGroups != null) {
+      if (!skipHeavyOps) {
+        orderedGroups.add(group);
+      }
+      assert orderedGroups.size() == topNGroups;
       final CollectedSearchGroup<?> newLast = orderedGroups.last();
       // If we changed the value of the last group, or changed which group was last, then update
       // bottom:
