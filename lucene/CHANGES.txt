@@ -48,9 +48,7 @@ Improvements
   This avoids clashes with other ASM versions on classpath because it removes the dependency.
   (Uwe Schindler)
 
-* GITHUB#14226: Use optimistic-with-checking KNN Query execution strategy in place of cross-thread
-  global queue min-score checking. Improves performance and consistency. (Mike Sokolov, Dzung Bui,
-  Ben Trent)
+
 
 * GITHUB#15002: Remove synchronized WeakHashMap from IndexReader. This was added to help prevent
   SIGSEGV with the old unsafe "mmap hack", which has been replaced by MemorySegments.
@@ -171,7 +169,14 @@ Improvements
 
 * GITHUB#14737: Clean up redundant code and comments in query node classes. (Stefan Vodita)
 
-* GITHUB#14816: Expose search strategy in KNN query
+* GITHUB#14816: Expose search strategy in KNN query (Tommaso Teofili)
+
+* GITHUB#14226: Use optimistic-with-checking KNN Query execution strategy in place of cross-thread
+  global queue min-score checking. Improves performance and consistency. (Mike Sokolov, Dzung Bui,
+  Ben Trent)
+
+* GITHUB#15063: Use optimistic-with-checking KNN Query strategy for `DiversifyingChildren*` queries.
+  (Ben Trent)
 
 Optimizations
 ---------------------
@@ -261,6 +266,8 @@ Optimizations
 
 * GITHUB#15128: Skip heavy TreeSet opts for the first group in FirstPassGroupingCollector (Binlong Gao)
 
+* GITHUB#15045: Use FixedBitSet#cardinality for counting liveDocs in CheckIndex (Zhang Chao)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
@@ -279,6 +286,10 @@ Changes in Runtime Behavior
 
 Bug Fixes
 ---------------------
+
+* GITHUB#15120: Add estimatedByteSizes to merges kicked off by
+  IndexWriter.addIndexes(CodecReader[]) (Craig Perkins)
+
 * GITHUB*15025: flush segments in addIndexes, not in addIndexesReaderMerge;
   reduces extra needless merge activity
 
@@ -310,6 +321,9 @@ Bug Fixes
 
 * GITHUB#15106: Fix infinite loop when RefCountedSharedArena's underlying
   Arena#close fails due to concurrent usage of segments.  (Uwe Schindler)
+
+* GITHUB#14974: Lucene tessellator now always fails if it cannot process a hole instead of just ignoring it.
+   (Ignacio Vera)
 
 Build
 ---------------------
