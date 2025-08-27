@@ -73,10 +73,8 @@ final class HistogramCollector implements Collector {
     // for Point Range Query cases as well
     if (weight != null && weight.count(context) == context.reader().maxDoc()) {
       final PointValues pointValues = context.reader().getPointValues(field);
-      // Collect if docValues is not indexed, even if we cannot collect efficiently
-      if (PointTreeBulkCollector.canCollect(pointValues)
-          && (docValuesIndexed == false
-              || PointTreeBulkCollector.canCollectEfficiently(pointValues, bucketWidth))) {
+      if (docValuesIndexed == false
+          || PointTreeBulkCollector.canCollectEfficiently(pointValues, bucketWidth)) {
         // In case of intra segment concurrency, only one collector should collect
         // documents for all the partitions to avoid duplications across collectors
         if (leafBulkCollected.putIfAbsent(context, true) == null) {
