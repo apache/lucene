@@ -129,21 +129,16 @@ final class SortedNumericDocValuesRangeQuery extends Query {
         }
 
         int maxDoc = context.reader().maxDoc();
-        DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
-        if (skipper != null) {
-          if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
-            return null;
-          }
-          if (skipper.docCount() == maxDoc
-              && skipper.minValue() >= lowerValue
-              && skipper.maxValue() <= upperValue) {
-
-            return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, maxDoc);
-          }
+        int count = docCountIgnoringDeletes(context);
+        if (count == 0) {
+          return null;
+        } else if (count == maxDoc) {
+          return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, maxDoc);
         }
 
         SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
         final NumericDocValues singleton = DocValues.unwrapSingleton(values);
+        final DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
         TwoPhaseIterator iterator;
         if (singleton != null) {
           if (skipper != null) {
@@ -199,18 +194,30 @@ final class SortedNumericDocValuesRangeQuery extends Query {
 
       @Override
       public int count(LeafReaderContext context) throws IOException {
-        DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
-        if (skipper == null) {
-          return -1;
-        }
-        if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
-          return 0;
-        }
-        if (skipper.docCount() == context.reader().maxDoc()
-            && skipper.minValue() >= lowerValue
-            && skipper.maxValue() <= upperValue) {
-
+        int maxDoc = context.reader().maxDoc();
+        int cnt = docCountIgnoringDeletes(context);
+        if (cnt == maxDoc) {
+          // Return LeafReader#numDocs that accounts for deleted documents as well
           return context.reader().numDocs();
+        }
+        return cnt;
+      }
+
+      /* Returns
+       * # docs within the query range ignoring any deleted documents
+       * -1 if # docs cannot be determined efficiently
+       */
+      private int docCountIgnoringDeletes(LeafReaderContext context) throws IOException {
+        final DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
+        if (skipper != null) {
+          if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
+            return 0;
+          }
+          if (skipper.docCount() == context.reader().maxDoc()
+              && skipper.minValue() >= lowerValue
+              && skipper.maxValue() <= upperValue) {
+            return context.reader().maxDoc();
+          }
         }
         return -1;
       }
