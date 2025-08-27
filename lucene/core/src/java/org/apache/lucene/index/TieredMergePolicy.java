@@ -287,10 +287,10 @@ public class TieredMergePolicy extends MergePolicy {
     protected MergeScore() {}
 
     /** Returns the score for this merge candidate; lower scores are better. */
-    abstract double getScore();
+    protected abstract double getScore();
 
     /** Human readable explanation of how the merge got this score. */
-    abstract String getExplanation();
+    protected abstract String getExplanation();
   }
 
   // The size can change concurrently while we are running here, because deletes
