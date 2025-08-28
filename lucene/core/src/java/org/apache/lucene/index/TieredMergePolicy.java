@@ -272,7 +272,7 @@ public class TieredMergePolicy extends MergePolicy {
    * @param maxDoc maxDoc in this segment
    * @param name name of the segment
    */
-  protected record SegmentSizeAndDocs(
+  record SegmentSizeAndDocs(
       SegmentCommitInfo segInfo, long sizeInBytes, int delCount, int maxDoc, String name) {
     /** Creates a new SegmentSizeAndDocs from an info, the byte size and deleted doc count */
     public SegmentSizeAndDocs(
