@@ -252,6 +252,10 @@ final class SortedSetDocValuesRangeQuery extends Query {
       return null;
     }
 
+    if (skipper.maxValue() < minOrd || skipper.minValue() > maxOrd) {
+      return DocIdSetIterator.empty();
+    }
+
     final int minDocID;
     final int maxDocID;
     if (indexSort.getSort()[0].getReverse()) {

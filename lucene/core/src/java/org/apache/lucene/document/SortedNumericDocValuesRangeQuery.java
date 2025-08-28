@@ -237,6 +237,9 @@ final class SortedNumericDocValuesRangeQuery extends Query {
       return null;
     }
 
+    if (skipper.maxValue() < lowerValue || skipper.minValue() > upperValue) {
+      return DocIdSetIterator.empty();
+    }
     final int minDocID;
     final int maxDocID;
     if (indexSort.getSort()[0].getReverse()) {
