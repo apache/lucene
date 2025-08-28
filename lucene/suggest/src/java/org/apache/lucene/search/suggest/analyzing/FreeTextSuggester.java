@@ -340,9 +340,9 @@ public class FreeTextSuggester extends Lookup {
         // which we transferred to the FST, so now we
         // rollback:
         writer.rollback();
-      } finally {
-        IOUtils.rm(tempIndexPath);
       }
+    } finally {
+      IOUtils.rm(tempIndexPath);
     }
   }
 
