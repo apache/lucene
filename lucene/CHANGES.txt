@@ -31,7 +31,7 @@ API Changes
 
 * GITHUB#14844: Change IndexInput.updateReadAdvice to take an IOContext instead (Simon Cooper)
 
-* GITHUB#15131: Expose SegmentSizeAndDocs and MergeScore in TieredMergePolicy API (Trevor McCulloch)
+* GITHUB#15131: Restrict visibility of TieredMergePolicy.score() API (Trevor McCulloch)
 
 New Features
 ---------------------
