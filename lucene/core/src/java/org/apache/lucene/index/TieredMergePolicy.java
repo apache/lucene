@@ -282,15 +282,15 @@ public class TieredMergePolicy extends MergePolicy {
   }
 
   /** Holds score and explanation for a single candidate merge. */
-  protected abstract static class MergeScore {
+  abstract static class MergeScore {
     /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
     protected MergeScore() {}
 
     /** Returns the score for this merge candidate; lower scores are better. */
-    protected abstract double getScore();
+    abstract double getScore();
 
     /** Human readable explanation of how the merge got this score. */
-    protected abstract String getExplanation();
+    abstract String getExplanation();
   }
 
   // The size can change concurrently while we are running here, because deletes
@@ -682,8 +682,8 @@ public class TieredMergePolicy extends MergePolicy {
     }
   }
 
-  /** Expert: scores one merge; subclasses can override. */
-  protected MergeScore score(
+  /** Expert: scores one merge */
+  MergeScore score(
       List<SegmentCommitInfo> candidate,
       boolean hitTooLarge,
       Map<SegmentCommitInfo, SegmentSizeAndDocs> segmentsSizes)
