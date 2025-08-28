@@ -154,6 +154,8 @@ New Features
 
 * GITHUB#14729: Support for Re-Ranking Queries using Late Interaction Model Multi-Vectors. (Vigya Sharma, Jim Ferenczi)
 
+* GITHUB#15110: PostingsDecodingUtil: interchange loops to enable better memory access and SIMD vectorisation. (Ramakrishna Chilaka)
+
 Improvements
 ---------------------
 * GITHUB#14458: Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
