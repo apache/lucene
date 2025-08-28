@@ -247,11 +247,13 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     RandomVectorScorer scorer =
         defaultFlatVectorScorer.getRandomVectorScorer(
             fieldEntry.similarityFunction, vectorValues, target);
+    HnswGraph graph = getGraph(fieldEntry);
     HnswGraphSearcher.search(
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
-        getGraph(fieldEntry),
-        vectorValues.getAcceptOrds(acceptDocs.bits()));
+        graph,
+        vectorValues.getAcceptOrds(acceptDocs.bits()),
+        Math.min(graph.size(), acceptDocs.cost()));
   }
 
   @Override

@@ -216,8 +216,9 @@ public class TestNumberRangeFacets extends StrategyTestCase {
   }
 
   private Bits searchForDocBits(Query query) throws IOException {
-    return indexSearcher.search(
-        query, FixedBitSetCollector.createManager(indexSearcher.getIndexReader().maxDoc()));
+    return indexSearcher
+        .search(query, FixedBitSetCollector.createManager(indexSearcher.getIndexReader().maxDoc()))
+        .asReadOnlyBits();
   }
 
   private void preQueryHavoc() {

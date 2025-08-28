@@ -230,6 +230,7 @@ public class MultiPassIndexSplitter {
 
   private static final class FakeDeleteLeafIndexReader extends FilterCodecReader {
     FixedBitSet liveDocs;
+    Bits readOnlyLiveDocs;
 
     public FakeDeleteLeafIndexReader(CodecReader reader) {
       super(reader);
@@ -255,6 +256,7 @@ public class MultiPassIndexSplitter {
         // mark all docs as valid
         liveDocs.set(0, maxDoc);
       }
+      readOnlyLiveDocs = liveDocs.asReadOnlyBits();
     }
 
     public void deleteDocument(int n) {
@@ -263,7 +265,7 @@ public class MultiPassIndexSplitter {
 
     @Override
     public Bits getLiveDocs() {
-      return liveDocs;
+      return readOnlyLiveDocs;
     }
 
     @Override

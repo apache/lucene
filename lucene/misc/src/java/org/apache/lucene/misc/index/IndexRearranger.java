@@ -234,7 +234,7 @@ public class IndexRearranger {
 
   private static void applyDeletesToOneSegment(
       IndexWriter writer, CodecReader segmentReader, DocumentSelector selector) throws IOException {
-    Bits deletedDocs = selector.getFilteredDocs(segmentReader);
+    Bits deletedDocs = selector.getFilteredDocs(segmentReader).asReadOnlyBits();
     for (int docid = 0; docid < segmentReader.maxDoc(); ++docid) {
       if (deletedDocs.get(docid)) {
         if (writer.tryDeleteDocument(segmentReader, docid) == -1) {
@@ -247,13 +247,14 @@ public class IndexRearranger {
 
   private static class DocSelectorFilteredCodecReader extends FilterCodecReader {
 
-    BitSet filteredLiveDocs;
+    Bits filteredLiveDocs;
     int numDocs;
 
     public DocSelectorFilteredCodecReader(CodecReader in, DocumentSelector selector)
         throws IOException {
       super(in);
-      filteredLiveDocs = selector.getFilteredDocs(in);
+      BitSet filteredLiveDocs = selector.getFilteredDocs(in);
+      this.filteredLiveDocs = filteredLiveDocs.asReadOnlyBits();
       numDocs = filteredLiveDocs.cardinality();
     }
 

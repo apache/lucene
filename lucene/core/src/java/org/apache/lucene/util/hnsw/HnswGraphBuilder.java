@@ -32,6 +32,7 @@ import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.HnswUtil.Component;
@@ -464,6 +465,7 @@ public class HnswGraphBuilder implements HnswBuilder {
 
   private boolean connectComponents(int level) throws IOException {
     FixedBitSet notFullyConnected = new FixedBitSet(hnsw.size());
+    Bits notFullyConnectedAsBits = notFullyConnected.asReadOnlyBits();
     int maxConn = M;
     if (level == 0) {
       maxConn *= 2;
@@ -501,7 +503,7 @@ public class HnswGraphBuilder implements HnswBuilder {
           scorer.setScoringOrdinal(c.start());
           // find the closest node in the largest component to the lowest-numbered node in this
           // component that has room to make a connection
-          graphSearcher.searchLevel(beam, scorer, level, eps, hnsw, notFullyConnected);
+          graphSearcher.searchLevel(beam, scorer, level, eps, hnsw, notFullyConnectedAsBits);
           boolean linked = false;
           while (beam.size() > 0) {
             int c0node = beam.popNode();

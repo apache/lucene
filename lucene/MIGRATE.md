@@ -35,6 +35,11 @@ long maxRamBytesUsed = 50 * 1024 * 1024; // 50MB
 IndexSearcher.setDefaultQueryCache(new LRUQueryCache(maxCachedQueries, maxRamBytesUsed));
 ```
 
+### BitSet no longer implements Bits
+
+You should call `BitSet#asReadOnlyBits` if you would like to use a `BitSet` as
+`Bits`.
+
 ## Migration from Lucene 9.x to Lucene 10.0
 
 ### DataInput#readVLong() may now read negative vlongs

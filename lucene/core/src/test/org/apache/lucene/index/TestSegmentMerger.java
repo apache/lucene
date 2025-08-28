@@ -179,7 +179,7 @@ public class TestSegmentMerger extends LuceneTestCase {
       }
     }
 
-    final PackedLongValues docMap = MergeState.removeDeletes(maxDoc, liveDocs);
+    final PackedLongValues docMap = MergeState.removeDeletes(maxDoc, liveDocs.asReadOnlyBits());
 
     // assert the mapping is compact
     for (int i = 0, del = 0; i < maxDoc; ++i) {

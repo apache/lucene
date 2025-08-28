@@ -83,28 +83,6 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   }
 
   /**
-   * See {@link HnswGraphSearcher#search(RandomVectorScorer, KnnCollector, HnswGraph, Bits, int)}
-   *
-   * @param scorer the scorer to compare the query with the nodes
-   * @param knnCollector a hnsw knn collector of top knn results to be returned
-   * @param graph the graph values. May represent the entire graph, or a level in a hierarchical
-   *     graph.
-   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
-   *     {@code null} if they are all allowed to match.
-   */
-  public static void search(
-      RandomVectorScorer scorer, KnnCollector knnCollector, HnswGraph graph, Bits acceptOrds)
-      throws IOException {
-    int filteredDocCount = 0;
-    if (acceptOrds instanceof BitSet bitSet) {
-      // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
-      // size as that is illogical
-      filteredDocCount = Math.min(bitSet.approximateCardinality(), graph.size());
-    }
-    search(scorer, knnCollector, graph, acceptOrds, filteredDocCount);
-  }
-
-  /**
    * Searches the HNSW graph for the nearest neighbors of a query vector. If entry points are
    * directly provided via the knnCollector, then the search will be initialized at those points.
    * Otherwise, the search will discover the best entry point per the normal HNSW search algorithm.

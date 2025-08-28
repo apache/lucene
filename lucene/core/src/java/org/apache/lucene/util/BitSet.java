@@ -24,7 +24,10 @@ import org.apache.lucene.search.DocIdSetIterator;
  *
  * @lucene.internal
  */
-public abstract class BitSet implements Bits, Accountable {
+// NOTE: It doesn't implement `Bits` on purpose to avoid mistakenly increasing polymorphism by
+// passing either a BitSet or the result of BitSet#asReadOnlyBits to functions that take a `Bits`
+// parameter.
+public abstract class BitSet implements Accountable {
 
   /**
    * Build a {@link BitSet} from the content of the provided {@link DocIdSetIterator}. NOTE: this
@@ -52,6 +55,18 @@ public abstract class BitSet implements Bits, Accountable {
     // default implementation for compatibility
     clear(0, length());
   }
+
+  /** Returns the number of bits in this set */
+  public abstract int length();
+
+  /**
+   * Returns the value of the bit with the specified <code>index</code>.
+   *
+   * @param index index, should be non-negative and &lt; {@link #length()}. The result of passing
+   *     negative or out of bounds values is undefined by this interface, <b>just don't do it!</b>
+   * @return <code>true</code> if the bit is set, <code>false</code> otherwise.
+   */
+  public abstract boolean get(int index);
 
   /** Set the bit at <code>i</code>. */
   public abstract void set(int i);
@@ -110,6 +125,14 @@ public abstract class BitSet implements Bits, Accountable {
               + iter.docID());
     }
   }
+
+  /**
+   * Convert this instance to read-only {@link Bits}. This is useful in the case that this {@link
+   * BitSet} is returned as a {@link Bits} instance, to make sure that consumers may not get write
+   * access back by casting to a {@link BitSet}. NOTE: Changes to this {@link BitSet} will be
+   * reflected on the returned {@link Bits}.
+   */
+  public abstract Bits asReadOnlyBits();
 
   /**
    * Does in-place OR of the bits provided by the iterator. The state of the iterator after this

@@ -132,7 +132,11 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
     }
     KnnCollector nn =
         HnswGraphSearcher.search(
-            buildScorer(vectors, getTargetVector()), 10, hnsw, acceptOrds, Integer.MAX_VALUE);
+            buildScorer(vectors, getTargetVector()),
+            10,
+            hnsw,
+            acceptOrds.asReadOnlyBits(),
+            Integer.MAX_VALUE);
 
     TopDocs nodes = nn.topDocs();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.scoreDocs.length);

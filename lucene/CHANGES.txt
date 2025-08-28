@@ -31,6 +31,8 @@ API Changes
 
 * GITHUB#14844: Change IndexInput.updateReadAdvice to take an IOContext instead (Simon Cooper)
 
+* GITHUB#14996: BitSet no longer implements Bits. (Adrien Grand)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
