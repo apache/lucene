@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.GroupVIntUtil;
 
 /**
  * Abstract base class for performing read operations of Lucene's low-level data types.
@@ -104,14 +105,15 @@ public abstract class DataInput implements Cloneable {
    *
    * <p>If you have implemented this method, simply remove it!
    *
-   * @throws UnsupportedOperationException (always)
    * @lucene.experimental
-   * @deprecated This method is no longer called. It is only kept for backwards compatibility
+   * @deprecated This method is no longer called by Lucene. It is only kept for backwards
+   *     compatibility. Code calling this method should migrate to {@link
+   *     GroupVIntUtil#readGroupVInts(DataInput, int[], int)} to decode a full group including tails
+   *     instead.
    */
   @Deprecated
   public void readGroupVInt(int[] dst, int offset) throws IOException {
-    throw new UnsupportedOperationException(
-        "This method is no longer called by Lucene's code and custom code should also not call it.");
+    GroupVIntUtil.readGroupVInt(this, dst, offset);
   }
 
   /**
