@@ -107,11 +107,11 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
       b[i] = (byte) random().nextInt(16);
     }
 
-    assertIntReturningProviders(p -> p.int4DotProduct(a, false, pack(b), true));
-    assertIntReturningProviders(p -> p.int4DotProduct(pack(a), true, b, false));
+    assertIntReturningProviders(p -> p.int4DotProductSinglePacked(a, pack(b)));
+    assertIntReturningProviders(p -> p.int4DotProductSinglePacked(b, pack(a)));
     assertEquals(
         LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
-        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProduct(a, false, pack(b), true));
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductSinglePacked(a, pack(b)));
   }
 
   public void testInt4DotProductBoundaries() {
@@ -122,20 +122,20 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
 
     Arrays.fill(a, MAX_VALUE);
     Arrays.fill(b, MAX_VALUE);
-    assertIntReturningProviders(p -> p.int4DotProduct(a, false, pack(b), true));
-    assertIntReturningProviders(p -> p.int4DotProduct(pack(a), true, b, false));
+    assertIntReturningProviders(p -> p.int4DotProductSinglePacked(a, pack(b)));
+    assertIntReturningProviders(p -> p.int4DotProductSinglePacked(b, pack(a)));
     assertEquals(
         LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
-        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProduct(a, false, pack(b), true));
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductSinglePacked(a, pack(b)));
 
     byte MIN_VALUE = 0;
     Arrays.fill(a, MIN_VALUE);
     Arrays.fill(b, MIN_VALUE);
-    assertIntReturningProviders(p -> p.int4DotProduct(a, false, pack(b), true));
-    assertIntReturningProviders(p -> p.int4DotProduct(pack(a), true, b, false));
+    assertIntReturningProviders(p -> p.int4DotProductSinglePacked(a, pack(b)));
+    assertIntReturningProviders(p -> p.int4DotProductSinglePacked(b, pack(a)));
     assertEquals(
         LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
-        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProduct(a, false, pack(b), true));
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductSinglePacked(a, pack(b)));
   }
 
   public void testInt4BitDotProduct() {

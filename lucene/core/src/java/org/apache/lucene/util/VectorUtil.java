@@ -171,7 +171,7 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return IMPL.int4DotProduct(a, false, b, false);
+    return IMPL.int4DotProduct(a, b);
   }
 
   /**
@@ -189,12 +189,20 @@ public final class VectorUtil {
    * @param packed the packed vector, of length {@code (unpacked.length + 1) / 2}
    * @return the value of the dot product of the two vectors
    */
-  public static int int4DotProductPacked(byte[] unpacked, byte[] packed) {
+  public static int int4DotProductSinglePacked(byte[] unpacked, byte[] packed) {
     if (packed.length != ((unpacked.length + 1) >> 1)) {
       throw new IllegalArgumentException(
           "vector dimensions differ: " + unpacked.length + "!= 2 * " + packed.length);
     }
-    return IMPL.int4DotProduct(unpacked, false, packed, true);
+    return IMPL.int4DotProductSinglePacked(unpacked, packed);
+  }
+
+  public static int int4DotProductBothPacked(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.length + " != " + b.length);
+    }
+    return IMPL.int4DotProductBothPacked(a, b);
   }
 
   /**
