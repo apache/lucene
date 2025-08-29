@@ -27,7 +27,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import org.apache.lucene.util.BitUtil;
-import org.apache.lucene.util.GroupVIntUtil;
 
 /**
  * Abstract base class for performing read operations of Lucene's low-level data types.
@@ -100,13 +99,19 @@ public abstract class DataInput implements Cloneable {
   }
 
   /**
-   * Override if you have an efficient implementation. In general this is when the input supports
-   * random access.
+   * Legacy: This method allowed to implement GroupVInt encoding in a more efficient way when this
+   * implementation supports random access. It is no longer called by Lucene's code.
    *
+   * <p>If you have implemented this method, simply remove it!
+   *
+   * @throws UnsupportedOperationException (always)
    * @lucene.experimental
+   * @deprecated This method is no longer called. It is only kept for backwards compatibility
    */
+  @Deprecated
   public void readGroupVInt(int[] dst, int offset) throws IOException {
-    GroupVIntUtil.readGroupVInt(this, dst, offset);
+    throw new UnsupportedOperationException(
+        "This method is no longer called by Lucene's code and custom code should also not call it.");
   }
 
   /**
