@@ -51,14 +51,18 @@ public final class GroupVIntUtil {
   }
 
   /**
-   * Default implementation of read single group, for optimal performance, you should use {@link
-   * GroupVIntUtil#readGroupVInts(DataInput, int[], int)} instead.
+   * Read single group, for optimal performance, you should use {@link
+   * GroupVIntUtil#readGroupVInts(DataInput, int[], int)} to decode a full group including tails
+   * instead.
    *
    * @param in the input to use to read data.
    * @param dst the array to read ints into.
    * @param offset the offset in the array to start storing ints.
+   * @deprecated Use {@link #readGroupVInts(DataInput, int[], int)} to decode a full group including
+   *     tails instead
    */
-  private static void readGroupVInt(DataInput in, int[] dst, int offset) throws IOException {
+  @Deprecated
+  public static void readGroupVInt(DataInput in, int[] dst, int offset) throws IOException {
     final int flag = in.readByte() & 0xFF;
 
     final int n1Minus1 = flag >> 6;
@@ -137,6 +141,7 @@ public final class GroupVIntUtil {
    * DataInput.
    *
    * @deprecated No longer used.
+   * @see #readGroupVInt(DataInput, long, IntReader, long, int[], int)
    */
   @Deprecated
   @FunctionalInterface
