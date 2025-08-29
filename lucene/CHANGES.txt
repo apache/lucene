@@ -270,6 +270,11 @@ Optimizations
 
 * GITHUB#15045: Use FixedBitSet#cardinality for counting liveDocs in CheckIndex (Zhang Chao)
 
+* GITHUB#15116, GITHUB#15138: Rewrite of the GroupVInt optimization without lambdas, varhandles
+  and no code in subclasses. The optimization now auto-detects if an IndexInput supports random access
+  and uses an optimized branchless approach. Any subclasses that have implemented the optimized method
+  need to remove it as it will disappear in Lucene 11.  (Uwe Schindler)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
