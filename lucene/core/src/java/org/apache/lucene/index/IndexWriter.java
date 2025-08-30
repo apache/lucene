@@ -3747,10 +3747,17 @@ public class IndexWriter
         eventListener.beginMergeOnFullFlush(pointInTimeMerges);
 
         mergeScheduler.merge(mergeSource, MergeTrigger.COMMIT);
-        pointInTimeMerges.await(maxCommitMergeWaitMillis, TimeUnit.MILLISECONDS);
+        boolean finishedInTime =
+            pointInTimeMerges.await(maxCommitMergeWaitMillis, TimeUnit.MILLISECONDS);
 
         if (infoStream.isEnabled("IW")) {
-          infoStream.message("IW", "done waiting for merges during commit");
+          String message;
+          if (finishedInTime) {
+            message = "all merges finished";
+          } else {
+            message = "timeout at maxCommitMergeWaitMillis=" + maxCommitMergeWaitMillis;
+          }
+          infoStream.message("IW", "done waiting for merges during commit [" + message + "]");
         }
         eventListener.endMergeOnFullFlush(pointInTimeMerges);
 
@@ -3826,7 +3833,7 @@ public class IndexWriter
                           throws IOException {
                         assert Thread.holdsLock(IndexWriter.this);
 
-                        // includedInCommit will be set (above, by our caller) to false if the
+                        // committed will be set (above, by our caller) to false if the
                         // allowed max wall clock
                         // time (IWC.getMaxCommitMergeWaitMillis()) has elapsed, which means we did
                         // not make the timeout
@@ -3932,6 +3939,10 @@ public class IndexWriter
             trigger,
             UNBOUNDED_MAX_MERGE_SEGMENTS);
     if (pointInTimeMerges != null) {
+      if (infoStream.isEnabled("IW")) {
+        infoStream.message(
+            "IW", "found " + pointInTimeMerges.merges.size() + " merges to apply during commit");
+      }
       boolean closeReaders = true;
       try {
         for (MergePolicy.OneMerge merge : pointInTimeMerges.merges) {
