@@ -263,26 +263,26 @@ public class TieredMergePolicy extends MergePolicy {
     return targetSearchConcurrency;
   }
 
-  private static class SegmentSizeAndDocs {
-    private final SegmentCommitInfo segInfo;
-    /// Size of the segment in bytes, pro-rated by the number of live documents.
-    private final long sizeInBytes;
-    private final int delCount;
-    private final int maxDoc;
-    private final String name;
-
-    SegmentSizeAndDocs(SegmentCommitInfo info, final long sizeInBytes, final int segDelCount)
-        throws IOException {
-      segInfo = info;
-      this.name = info.info.name;
-      this.sizeInBytes = sizeInBytes;
-      this.delCount = segDelCount;
-      this.maxDoc = info.info.maxDoc();
+  /**
+   * Segment summary -- size and doc count -- for use when selecting merges.
+   *
+   * @param segInfo segment this wraps
+   * @param sizeInBytes size of all segment files in bytes
+   * @param delCount number of deleted documents in this segment
+   * @param maxDoc maxDoc in this segment
+   * @param name name of the segment
+   */
+  record SegmentSizeAndDocs(
+      SegmentCommitInfo segInfo, long sizeInBytes, int delCount, int maxDoc, String name) {
+    /** Creates a new SegmentSizeAndDocs from an info, the byte size and deleted doc count */
+    public SegmentSizeAndDocs(
+        SegmentCommitInfo info, final long sizeInBytes, final int segDelCount) {
+      this(info, sizeInBytes, segDelCount, info.info.maxDoc(), info.info.name);
     }
   }
 
   /** Holds score and explanation for a single candidate merge. */
-  protected abstract static class MergeScore {
+  abstract static class MergeScore {
     /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
     protected MergeScore() {}
 
@@ -682,8 +682,8 @@ public class TieredMergePolicy extends MergePolicy {
     }
   }
 
-  /** Expert: scores one merge; subclasses can override. */
-  protected MergeScore score(
+  /** Expert: scores one merge */
+  MergeScore score(
       List<SegmentCommitInfo> candidate,
       boolean hitTooLarge,
       Map<SegmentCommitInfo, SegmentSizeAndDocs> segmentsSizes)
