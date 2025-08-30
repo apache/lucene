@@ -17,6 +17,7 @@
 package org.apache.lucene.spatial;
 
 import java.io.IOException;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -97,7 +98,7 @@ public class TestSpatialExample extends LuceneTestCase {
   }
 
   private void indexPoints() throws Exception {
-    IndexWriterConfig iwConfig = new IndexWriterConfig(null);
+    IndexWriterConfig iwConfig = new IndexWriterConfig((Analyzer) null);
     IndexWriter indexWriter = new IndexWriter(directory, iwConfig);
 
     // Spatial4j is x-y order for arguments
