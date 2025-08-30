@@ -34,6 +34,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.similarities.BM25Similarity;
+import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 
 /**
@@ -262,9 +263,27 @@ public final class FeatureField extends Field {
     @Override
     SimScorer scorer(float w) {
       return new SimScorer() {
+        private float doScore(float f) {
+          return (w * f);
+        }
+
         @Override
         public float score(float freq, long norm) {
-          return (w * decodeFeatureValue(freq));
+          float f = decodeFeatureValue(freq);
+          return doScore(f);
+        }
+
+        @Override
+        public Similarity.BulkSimScorer asBulkSimScorer() {
+          return new Similarity.BulkSimScorer() {
+            @Override
+            public void score(int size, float[] freqs, long[] norms, float[] scores) {
+              for (int i = 0; i < size; ++i) {
+                float f = decodeFeatureValue(freqs[i]);
+                scores[i] = doScore(f);
+              }
+            }
+          };
         }
       };
     }
@@ -333,9 +352,27 @@ public final class FeatureField extends Field {
     @Override
     SimScorer scorer(float weight) {
       return new SimScorer() {
+        private float doScore(float f) {
+          return (float) (weight * Math.log(scalingFactor + f));
+        }
+
         @Override
         public float score(float freq, long norm) {
-          return (float) (weight * Math.log(scalingFactor + decodeFeatureValue(freq)));
+          float f = decodeFeatureValue(freq);
+          return doScore(f);
+        }
+
+        @Override
+        public Similarity.BulkSimScorer asBulkSimScorer() {
+          return new Similarity.BulkSimScorer() {
+            @Override
+            public void score(int size, float[] freqs, long[] norms, float[] scores) {
+              for (int i = 0; i < size; ++i) {
+                float f = decodeFeatureValue(freqs[i]);
+                scores[i] = doScore(f);
+              }
+            }
+          };
         }
       };
     }
@@ -405,13 +442,31 @@ public final class FeatureField extends Field {
       }
       final float pivot = this.pivot; // unbox
       return new SimScorer() {
-        @Override
-        public float score(float freq, long norm) {
-          float f = decodeFeatureValue(freq);
+
+        private float doScore(float f) {
           // should be f / (f + k) but we rewrite it to
           // 1 - k / (f + k) to make sure it doesn't decrease
           // with f in spite of rounding
           return weight * (1 - pivot / (f + pivot));
+        }
+
+        @Override
+        public float score(float freq, long norm) {
+          float f = decodeFeatureValue(freq);
+          return doScore(f);
+        }
+
+        @Override
+        public Similarity.BulkSimScorer asBulkSimScorer() {
+          return new Similarity.BulkSimScorer() {
+            @Override
+            public void score(int size, float[] freqs, long[] norms, float[] scores) {
+              for (int i = 0; i < size; ++i) {
+                float f = decodeFeatureValue(freqs[i]);
+                scores[i] = doScore(f);
+              }
+            }
+          };
         }
       };
     }
@@ -469,13 +524,30 @@ public final class FeatureField extends Field {
     @Override
     SimScorer scorer(float weight) {
       return new SimScorer() {
-        @Override
-        public float score(float freq, long norm) {
-          float f = decodeFeatureValue(freq);
+        private float doScore(float f) {
           // should be f^a / (f^a + k^a) but we rewrite it to
           // 1 - k^a / (f + k^a) to make sure it doesn't decrease
           // with f in spite of rounding
           return (float) (weight * (1 - pivotPa / (Math.pow(f, a) + pivotPa)));
+        }
+
+        @Override
+        public float score(float freq, long norm) {
+          float f = decodeFeatureValue(freq);
+          return doScore(f);
+        }
+
+        @Override
+        public Similarity.BulkSimScorer asBulkSimScorer() {
+          return new Similarity.BulkSimScorer() {
+            @Override
+            public void score(int size, float[] freqs, long[] norms, float[] scores) {
+              for (int i = 0; i < size; ++i) {
+                float f = decodeFeatureValue(freqs[i]);
+                scores[i] = doScore(f);
+              }
+            }
+          };
         }
       };
     }
