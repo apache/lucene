@@ -7,6 +7,14 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#13797: Relaxed Lucene Index Upgrade Policy to Allow Safe Upgrades Across Multiple Major Versions.
+  The MIN_SUPPORTED_MAJOR constant in Version.java is now manually maintained instead of auto-computed as
+  LATEST.major-1. This enables users to perform their one index upgrade across multiple major version numbers
+  when no format breaks occur (previously limited to exactly one major version). The constant is set to 10 for
+  Lucene 11.0.0 and will only be bumped when actual incompatible format changes are introduced. This changes
+  reindexing frequency from "every major release" to "only when format breaks occur" while maintaining the
+  fundamental "one upgrade per index lifetime" limitation. See MIGRATE.md for upgrade instructions. (Mark Miller)
+
 * GITHUB#11023: Removing deprecated parameters from CheckIndex. (Jakub Slowinski)
 
 * GITHUB#14165: TieredMergePolicy's maxMergeAtOnce parameter was removed. (Adrien Grand)
