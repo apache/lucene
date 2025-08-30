@@ -21,7 +21,7 @@ import java.util.Arrays;
 /**
  * A min heap that stores longs; a primitive priority queue that like all priority queues maintains
  * a partial ordering of its elements such that the least element can always be found in constant
- * time. Put()'s and pop()'s require log(size). This heap provides unbounded growth via {@link
+ * time. Put()'s and pop()'s require log_d(size). This heap provides unbounded growth via {@link
  * #push(long)}, and bounded-size insertion based on its nominal maxSize via {@link
  * #insertWithOverflow(long)}. The heap is a min heap, meaning that the top element is the lowest
  * value of the heap.
@@ -31,6 +31,7 @@ import java.util.Arrays;
 public final class LongHeap {
 
   private final int maxSize;
+  private final int d; // branching factor (arity)
 
   private long[] heap;
   private int size = 0;
@@ -42,7 +43,19 @@ public final class LongHeap {
    * @param initialValue the value to fill the heap with.
    */
   public LongHeap(int size, long initialValue) {
-    this(size);
+    this(size, initialValue, 3);
+  }
+
+  /**
+   * Constructs a heap with specified size, initializes all elements with the given value, and
+   * allows configuring the arity (branching factor).
+   *
+   * @param size the number of elements to initialize in the heap.
+   * @param initialValue the value to fill the heap with.
+   * @param arity branching factor (>=2).
+   */
+  public LongHeap(int size, long initialValue, int arity) {
+    this(size <= 0 ? 1 : size, arity);
     Arrays.fill(heap, 1, size + 1, initialValue);
     this.size = size;
   }
@@ -54,16 +67,34 @@ public final class LongHeap {
    *     heap
    */
   public LongHeap(int maxSize) {
-    final int heapSize;
+    this(maxSize, 3);
+  }
+
+  /**
+   * Create an empty priority queue with configurable arity.
+   *
+   * @param maxSize the maximum size of the heap; must be 0 and MAX_ARRAY_LENGTH
+   * @param arity branching factor (>=2)
+   */
+  public LongHeap(int maxSize, int arity) {
     if (maxSize < 1 || maxSize >= ArrayUtil.MAX_ARRAY_LENGTH) {
       // Throw exception to prevent confusing OOME:
       throw new IllegalArgumentException(
           "maxSize must be > 0 and < " + (ArrayUtil.MAX_ARRAY_LENGTH - 1) + "; got: " + maxSize);
     }
+    if (arity < 2) {
+      throw new IllegalArgumentException("arity must be >= 2; got: " + arity);
+    }
     // NOTE: we add +1 because all access to heap is 1-based not 0-based.  heap[0] is unused.
-    heapSize = maxSize + 1;
+    final int heapSize = maxSize + 1;
     this.maxSize = maxSize;
+    this.d = arity;
     this.heap = new long[heapSize];
+  }
+
+  /** Returns the arity (branching factor). */
+  public int arity() {
+    return d;
   }
 
   /**
@@ -162,33 +193,45 @@ public final class LongHeap {
     size = 0;
   }
 
-  private void upHeap(int origPos) {
-    int i = origPos;
+  private void upHeap(int i) {
     long value = heap[i]; // save bottom value
-    int j = i >>> 1;
-    while (j > 0 && value < heap[j]) {
-      heap[i] = heap[j]; // shift parents down
-      i = j;
-      j = j >>> 1;
+    // correct parent formula for 1-based indexing
+    int parent = ((i - 2) / d) + 1;
+    while (i > 1 && value < heap[parent]) {
+      heap[i] = heap[parent]; // shift parent down
+      i = parent;
+      parent = ((i - 2) / d) + 1;
     }
     heap[i] = value; // install saved value
   }
 
   private void downHeap(int i) {
     long value = heap[i]; // save top value
-    int j = i << 1; // find smaller child
-    int k = j + 1;
-    if (k <= size && heap[k] < heap[j]) {
-      j = k;
-    }
-    while (j <= size && heap[j] < value) {
-      heap[i] = heap[j]; // shift up child
-      i = j;
-      j = i << 1;
-      k = j + 1;
-      if (k <= size && heap[k] < heap[j]) {
-        j = k;
+    while (true) {
+      // correct first child formula for 1-based indexing
+      int firstChild = d * (i - 1) + 2;
+      if (firstChild > size) {
+        break; // i is a leaf
       }
+      int lastChild = Math.min(firstChild + d - 1, size);
+
+      // find the smallest child in [firstChild, lastChild]
+      int best = firstChild;
+      long bestVal = heap[best];
+      for (int c = firstChild + 1; c <= lastChild; c++) {
+        long v = heap[c];
+        if (v < bestVal) {
+          bestVal = v;
+          best = c;
+        }
+      }
+
+      if (bestVal >= value) {
+        break;
+      }
+
+      heap[i] = bestVal;
+      i = best;
     }
     heap[i] = value; // install saved value
   }

@@ -130,6 +130,8 @@ API Changes
   instance instead of a Bits instance to identify document IDs to filter.
   (Shubham Chaudhary, Adrien Grand)
 
+* GITHUB#15140: Update LongHeap from 2-ary to 3-ary. (Ramakrishna Chilaka)
+
 New Features
 ---------------------
 * GITHUB#15015: MultiIndexMergeScheduler: a production multi-tenant merge scheduler (Shawn Yarbrough)
