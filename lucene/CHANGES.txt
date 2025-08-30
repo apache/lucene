@@ -268,6 +268,8 @@ Optimizations
 
 * GITHUB#15083: Use DocValuesSkippers in SortedNumericDocValuesRangeQuery#rewrite(). (Alan Woodward)
 
+* GITHUB#15128: Skip heavy TreeSet opts for the first group in FirstPassGroupingCollector (Binlong Gao)
+
 * GITHUB#15045: Use FixedBitSet#cardinality for counting liveDocs in CheckIndex (Zhang Chao)
 
 * GITHUB#15116, GITHUB#15138: Rewrite of the GroupVInt optimization without lambdas, varhandles
