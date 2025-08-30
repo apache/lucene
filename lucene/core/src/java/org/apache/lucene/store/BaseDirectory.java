@@ -17,6 +17,7 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
+import org.apache.lucene.util.IOUtils;
 
 /**
  * Base implementation for a concrete {@link Directory} that uses a {@link LockFactory} for locking.
@@ -48,6 +49,18 @@ public abstract class BaseDirectory extends Directory {
   protected final void ensureOpen() throws AlreadyClosedException {
     if (!isOpen) {
       throw new AlreadyClosedException("this Directory is closed");
+    }
+  }
+
+  @Override
+  public void copyFrom(Directory from, String src, String dest, IOContext context)
+      throws IOException {
+    try (IndexInput is = from.openInput(src, IOContext.READONCE);
+        IndexOutput os = createOutput(dest, context)) {
+      os.copyBytes(is, is.length());
+    } catch (Throwable t) {
+      IOUtils.deleteFilesSuppressingExceptions(t, this, dest);
+      throw t;
     }
   }
 
