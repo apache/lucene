@@ -372,6 +372,11 @@ public abstract class ValueSource {
       createWeight(context, searcher);
       return new SortField(getField(), new ValueSourceComparatorSource(context), getReverse());
     }
+
+    @Override
+    public SortField inverseSort() {
+      return new ValueSourceSortField(!getReverse());
+    }
   }
 
   class ValueSourceComparatorSource extends FieldComparatorSource {
