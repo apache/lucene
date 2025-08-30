@@ -25,9 +25,14 @@ public class TestLongHeap extends LuceneTestCase {
 
   private static void checkValidity(LongHeap heap) {
     long[] heapArray = heap.getHeapArray();
-    for (int i = 2; i <= heap.size(); i++) {
-      int parent = i >>> 1;
-      assert heapArray[parent] <= heapArray[i];
+    int d = heap.arity();
+    int size = heap.size();
+    for (int parent = 1; parent <= size; parent++) {
+      int firstChild = d * (parent - 1) + 2;
+      int lastChild = Math.min(firstChild + d - 1, size);
+      for (int c = firstChild; c <= lastChild; c++) {
+        assert heapArray[parent] <= heapArray[c];
+      }
     }
   }
 
