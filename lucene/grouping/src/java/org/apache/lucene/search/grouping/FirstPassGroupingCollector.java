@@ -50,9 +50,10 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
   private final LeafFieldComparator[] leafComparators;
   private final int[] reversed;
   private final int topNGroups;
-  private final boolean needsScores;
   private final HashMap<T, CollectedSearchGroup<T>> groupMap;
   private final int compIDXEnd;
+  private final ScoreMode scoreMode;
+  private final boolean canSetMinScore;
 
   // Set once we reach topNGroups unique groups:
   /**
@@ -62,6 +63,9 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
 
   private int docBase;
   private int spareSlot;
+  private Scorable scorer;
+  private int bottomSlot;
+  private float minCompetitiveScore;
 
   /**
    * Create the first pass collector.
@@ -83,7 +87,6 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
     // and specialize it?
 
     this.topNGroups = topNGroups;
-    this.needsScores = groupSort.needsScores();
     final SortField[] sortFields = groupSort.getSort();
     comparators = new FieldComparator<?>[sortFields.length];
     leafComparators = new LeafFieldComparator[sortFields.length];
@@ -105,13 +108,21 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       reversed[i] = sortField.getReverse() ? -1 : 1;
     }
 
+    if (SortField.FIELD_SCORE.equals(sortFields[0]) == true) {
+      scoreMode = ScoreMode.TOP_SCORES;
+      canSetMinScore = true;
+    } else {
+      scoreMode = groupSort.needsScores() ? ScoreMode.TOP_DOCS_WITH_SCORES : ScoreMode.TOP_DOCS;
+      canSetMinScore = false;
+    }
+
     spareSlot = topNGroups;
     groupMap = CollectionUtil.newHashMap(topNGroups);
   }
 
   @Override
   public ScoreMode scoreMode() {
-    return needsScores ? ScoreMode.COMPLETE : ScoreMode.COMPLETE_NO_SCORES;
+    return scoreMode;
   }
 
   /**
@@ -162,10 +173,12 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
 
   @Override
   public void setScorer(Scorable scorer) throws IOException {
+    this.scorer = scorer;
     groupSelector.setScorer(scorer);
     for (LeafFieldComparator comparator : leafComparators) {
       comparator.setScorer(scorer);
     }
+    setMinCompetitiveScore(scorer);
   }
 
   private boolean isCompetitive(int doc) throws IOException {
@@ -273,9 +286,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       assert orderedGroups.size() == topNGroups;
 
       final int lastComparatorSlot = orderedGroups.last().comparatorSlot;
-      for (LeafFieldComparator fc : leafComparators) {
-        fc.setBottom(lastComparatorSlot);
-      }
+      setBottomSlot(lastComparatorSlot);
     }
   }
 
@@ -331,9 +342,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       // If we changed the value of the last group, or changed which group was last, then update
       // bottom:
       if (group == newLast || prevLast != newLast) {
-        for (LeafFieldComparator fc : leafComparators) {
-          fc.setBottom(newLast.comparatorSlot);
-        }
+        setBottomSlot(newLast.comparatorSlot);
       }
     }
   }
@@ -364,13 +373,12 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
     orderedGroups.addAll(groupMap.values());
     assert orderedGroups.size() > 0;
 
-    for (LeafFieldComparator fc : leafComparators) {
-      fc.setBottom(orderedGroups.last().comparatorSlot);
-    }
+    setBottomSlot(orderedGroups.last().comparatorSlot);
   }
 
   @Override
   protected void doSetNextReader(LeafReaderContext readerContext) throws IOException {
+    minCompetitiveScore = 0f;
     docBase = readerContext.docBase;
     for (int i = 0; i < comparators.length; i++) {
       leafComparators[i] = comparators[i].getLeafComparator(readerContext);
@@ -387,5 +395,26 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
 
   private boolean isGroupMapFull() {
     return groupMap.size() >= topNGroups;
+  }
+
+  private void setBottomSlot(final int bottomSlot) throws IOException {
+    for (LeafFieldComparator fc : leafComparators) {
+      fc.setBottom(bottomSlot);
+    }
+
+    this.bottomSlot = bottomSlot;
+    setMinCompetitiveScore(scorer);
+  }
+
+  private void setMinCompetitiveScore(final Scorable scorer) throws IOException {
+    if (canSetMinScore == false || isGroupMapFull() == false) {
+      return;
+    }
+
+    final float minScore = (float) comparators[0].value(bottomSlot);
+    if (minScore > minCompetitiveScore) {
+      scorer.setMinCompetitiveScore(minScore);
+      minCompetitiveScore = minScore;
+    }
   }
 }

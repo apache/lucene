@@ -155,6 +155,17 @@ public abstract class CachingCollector extends FilterCollector {
     }
   }
 
+  private static class NoSkippingScorable extends FilterScorable {
+    public NoSkippingScorable(Scorable in) {
+      super(in);
+    }
+
+    @Override
+    public void setMinCompetitiveScore(float minScore) {
+      // ignore to enforce exhaustive hits
+    }
+  }
+
   private class NoScoreCachingLeafCollector extends FilterLeafCollector {
 
     final int maxDocsToCache;
@@ -183,6 +194,11 @@ public abstract class CachingCollector extends FilterCollector {
 
     protected void buffer(int doc) throws IOException {
       docs[docCount] = doc;
+    }
+
+    @Override
+    public void setScorer(Scorable scorer) throws IOException {
+      super.setScorer(new NoSkippingScorable(scorer));
     }
 
     @Override

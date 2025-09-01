@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.grouping;
 
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1520,14 +1522,14 @@ public class TestGrouping extends LuceneTestCase {
         "expected.groups.length != actual.groups.length",
         expected.groups.length,
         actual.groups.length);
-    assertEquals(
-        "expected.totalHitCount != actual.totalHitCount",
-        expected.totalHitCount,
-        actual.totalHitCount);
-    assertEquals(
-        "expected.totalGroupedHitCount != actual.totalGroupedHitCount",
-        expected.totalGroupedHitCount,
-        actual.totalGroupedHitCount);
+    assertThat(
+        "expected.totalHitCount >= actual.totalHitCount",
+        actual.totalHitCount,
+        lessThanOrEqualTo(expected.totalHitCount));
+    assertThat(
+        "expected.totalGroupedHitCount >= actual.totalGroupedHitCount",
+        actual.totalGroupedHitCount,
+        lessThanOrEqualTo(expected.totalGroupedHitCount));
     if (expected.totalGroupCount != null && verifyTotalGroupCount) {
       assertEquals(
           "expected.totalGroupCount != actual.totalGroupCount",
@@ -1556,7 +1558,10 @@ public class TestGrouping extends LuceneTestCase {
 
       // TODO
       // assertEquals(expectedGroup.maxScore, actualGroup.maxScore);
-      assertEquals(expectedGroup.totalHits().value(), actualGroup.totalHits().value());
+      assertThat(
+          "expectedGroup.totalHits().value() >= actualGroup.totalHits().value()",
+          actualGroup.totalHits().value(),
+          lessThanOrEqualTo(expectedGroup.totalHits().value()));
 
       final ScoreDoc[] expectedFDs = expectedGroup.scoreDocs();
       final ScoreDoc[] actualFDs = actualGroup.scoreDocs();
