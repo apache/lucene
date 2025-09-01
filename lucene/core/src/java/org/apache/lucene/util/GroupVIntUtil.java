@@ -19,6 +19,8 @@ package org.apache.lucene.util;
 import java.io.IOException;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.RandomAccessInput;
 
 /**
  * This class contains utility methods and constants for group varint
@@ -26,8 +28,8 @@ import org.apache.lucene.store.DataOutput;
  * @lucene.internal
  */
 public final class GroupVIntUtil {
-  // the maximum length of a single group-varint is 4 integers + 1 byte flag.
-  public static final int MAX_LENGTH_PER_GROUP = 17;
+  // the maximum length of a single group-varint is 1 byte flag and 4 integers.
+  public static final int MAX_LENGTH_PER_GROUP = Byte.BYTES + 4 * Integer.BYTES;
 
   private static final int[] INT_MASKS = new int[] {0xFF, 0xFFFF, 0xFFFFFF, ~0};
 
@@ -41,7 +43,7 @@ public final class GroupVIntUtil {
   public static void readGroupVInts(DataInput in, int[] dst, int limit) throws IOException {
     int i;
     for (i = 0; i <= limit - 4; i += 4) {
-      in.readGroupVInt(dst, i);
+      readGroupVInt(in, dst, i);
     }
     for (; i < limit; ++i) {
       dst[i] = in.readVInt();
@@ -56,7 +58,54 @@ public final class GroupVIntUtil {
    * @param dst the array to read ints into.
    * @param offset the offset in the array to start storing ints.
    */
-  public static void readGroupVInt(DataInput in, int[] dst, int offset) throws IOException {
+  private static void readGroupVInt(DataInput in, int[] dst, int offset) throws IOException {
+    final int flag = in.readByte() & 0xFF;
+
+    final int n1Minus1 = flag >> 6;
+    final int n2Minus1 = (flag >> 4) & 0x03;
+    final int n3Minus1 = (flag >> 2) & 0x03;
+    final int n4Minus1 = flag & 0x03;
+
+    // if our DataInput implements RandomAccessInput for absolute access and IndexInput for seeking,
+    // we use a branch-less implementation:
+    if (in instanceof RandomAccessInput rin && in instanceof IndexInput iin) {
+      long pos = iin.getFilePointer();
+      if (iin.length() - pos >= 4 * Integer.BYTES) {
+        dst[offset] = rin.readInt(pos) & INT_MASKS[n1Minus1];
+        pos += 1 + n1Minus1;
+        dst[offset + 1] = rin.readInt(pos) & INT_MASKS[n2Minus1];
+        pos += 1 + n2Minus1;
+        dst[offset + 2] = rin.readInt(pos) & INT_MASKS[n3Minus1];
+        pos += 1 + n3Minus1;
+        dst[offset + 3] = rin.readInt(pos) & INT_MASKS[n4Minus1];
+        pos += 1 + n4Minus1;
+
+        iin.seek(pos);
+        return;
+      }
+    }
+
+    // fall-through: default impl
+    dst[offset] = readIntInGroup(in, n1Minus1);
+    dst[offset + 1] = readIntInGroup(in, n2Minus1);
+    dst[offset + 2] = readIntInGroup(in, n3Minus1);
+    dst[offset + 3] = readIntInGroup(in, n4Minus1);
+  }
+
+  /** DO not use! Only visible for benchmarking purposes! */
+  public static void readGroupVInts$Baseline(DataInput in, int[] dst, int limit)
+      throws IOException {
+    int i;
+    for (i = 0; i <= limit - 4; i += 4) {
+      readGroupVInt$Baseline(in, dst, i);
+    }
+    for (; i < limit; ++i) {
+      dst[i] = in.readVInt();
+    }
+  }
+
+  private static void readGroupVInt$Baseline(DataInput in, int[] dst, int offset)
+      throws IOException {
     final int flag = in.readByte() & 0xFF;
 
     final int n1Minus1 = flag >> 6;
@@ -81,55 +130,6 @@ public final class GroupVIntUtil {
       default:
         return in.readInt();
     }
-  }
-
-  /**
-   * Provides an abstraction for read int values, so that decoding logic can be reused in different
-   * DataInput.
-   */
-  @FunctionalInterface
-  public static interface IntReader {
-    int read(long v);
-  }
-
-  /**
-   * Faster implementation of read single group, It read values from the buffer that would not cross
-   * boundaries.
-   *
-   * @param in the input to use to read data.
-   * @param remaining the number of remaining bytes allowed to read for current block/segment.
-   * @param reader the supplier of read int.
-   * @param pos the start pos to read from the reader.
-   * @param dst the array to read ints into.
-   * @param offset the offset in the array to start storing ints.
-   * @return the number of bytes read excluding the flag. this indicates the number of positions
-   *     should to be increased for caller, it is 0 or positive number and less than {@link
-   *     #MAX_LENGTH_PER_GROUP}
-   */
-  public static int readGroupVInt(
-      DataInput in, long remaining, IntReader reader, long pos, int[] dst, int offset)
-      throws IOException {
-    if (remaining < MAX_LENGTH_PER_GROUP) {
-      readGroupVInt(in, dst, offset);
-      return 0;
-    }
-    final int flag = in.readByte() & 0xFF;
-    final long posStart = ++pos; // exclude the flag bytes, the position has updated via readByte().
-    final int n1Minus1 = flag >> 6;
-    final int n2Minus1 = (flag >> 4) & 0x03;
-    final int n3Minus1 = (flag >> 2) & 0x03;
-    final int n4Minus1 = flag & 0x03;
-
-    // This code path has fewer conditionals and tends to be significantly faster in benchmarks
-    dst[offset] = reader.read(pos) & INT_MASKS[n1Minus1];
-    pos += 1 + n1Minus1;
-    dst[offset + 1] = reader.read(pos) & INT_MASKS[n2Minus1];
-    pos += 1 + n2Minus1;
-    dst[offset + 2] = reader.read(pos) & INT_MASKS[n3Minus1];
-    pos += 1 + n3Minus1;
-    dst[offset + 3] = reader.read(pos) & INT_MASKS[n4Minus1];
-    pos += 1 + n4Minus1;
-    return (int) (pos - posStart);
   }
 
   private static int numBytes(int v) {

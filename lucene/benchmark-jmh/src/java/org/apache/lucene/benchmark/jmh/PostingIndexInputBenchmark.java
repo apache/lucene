@@ -105,4 +105,20 @@ public class PostingIndexInputBenchmark {
     postingIn.decodeAndPrefixSum(bpv, 100, values);
     bh.consume(values);
   }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public void decodeVector(Blackhole bh) throws IOException {
+    in.seek(3); // random unaligned offset
+    postingIn.decode(bpv, values);
+    bh.consume(values);
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public void decodeAndPrefixSumVector(Blackhole bh) throws IOException {
+    in.seek(3); // random unaligned offset
+    postingIn.decodeAndPrefixSum(bpv, 100, values);
+    bh.consume(values);
+  }
 }
