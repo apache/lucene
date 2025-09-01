@@ -71,7 +71,6 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
    *     must be non-null, ie, if you want to groupSort by relevance use Sort.RELEVANCE.
    * @param topNGroups How many top groups to keep.
    */
-  @SuppressWarnings({"unchecked", "rawtypes"})
   public FirstPassGroupingCollector(
       GroupSelector<T> groupSelector, Sort groupSort, int topNGroups) {
     this.groupSelector = groupSelector;
@@ -85,7 +84,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
     this.topNGroups = topNGroups;
     this.needsScores = groupSort.needsScores();
     final SortField[] sortFields = groupSort.getSort();
-    comparators = new FieldComparator[sortFields.length];
+    comparators = new FieldComparator<?>[sortFields.length];
     leafComparators = new LeafFieldComparator[sortFields.length];
     compIDXEnd = comparators.length - 1;
     reversed = new int[sortFields.length];
@@ -207,39 +206,44 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
     final CollectedSearchGroup<T> group = groupMap.get(groupValue);
 
     if (group == null) {
+      collectNewGroup(doc);
+    } else {
+      collectExistingGroup(doc, group);
+    }
+  }
 
-      // First time we are seeing this group, or, we've seen
-      // it before but it fell out of the top N and is now
-      // coming back
+  private void collectNewGroup(final int doc) throws IOException {
+    // First time we are seeing this group, or, we've seen
+    // it before but it fell out of the top N and is now
+    // coming back
 
-      if (groupMap.size() < topNGroups) {
+    if (!isGroupMapFull()) {
 
-        // Still in startup transient: we have not
-        // seen enough unique groups to start pruning them;
-        // just keep collecting them
+      // Still in startup transient: we have not
+      // seen enough unique groups to start pruning them;
+      // just keep collecting them
 
-        // Add a new CollectedSearchGroup:
-        CollectedSearchGroup<T> sg = new CollectedSearchGroup<>();
-        sg.groupValue = groupSelector.copyValue();
-        sg.comparatorSlot = groupMap.size();
-        sg.topDoc = docBase + doc;
-        for (LeafFieldComparator fc : leafComparators) {
-          fc.copy(sg.comparatorSlot, doc);
-        }
-        groupMap.put(sg.groupValue, sg);
+      // Add a new CollectedSearchGroup:
+      CollectedSearchGroup<T> sg = new CollectedSearchGroup<>();
+      sg.groupValue = groupSelector.copyValue();
+      sg.comparatorSlot = groupMap.size();
+      sg.topDoc = docBase + doc;
+      for (LeafFieldComparator fc : leafComparators) {
+        fc.copy(sg.comparatorSlot, doc);
+      }
+      groupMap.put(sg.groupValue, sg);
 
-        if (groupMap.size() == topNGroups) {
-          // End of startup transient: we now have max
-          // number of groups; from here on we will drop
-          // bottom group when we insert new one:
-          buildSortedSet();
-        }
-
-        return;
+      if (isGroupMapFull()) {
+        // End of startup transient: we now have max
+        // number of groups; from here on we will drop
+        // bottom group when we insert new one:
+        buildSortedSet();
       }
 
+    } else {
       // We already tested that the document is competitive, so replace
       // the bottom group with this new group.
+
       final CollectedSearchGroup<T> bottomGroup = orderedGroups.pollLast();
       assert orderedGroups.size() == topNGroups - 1;
 
@@ -261,10 +265,11 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       for (LeafFieldComparator fc : leafComparators) {
         fc.setBottom(lastComparatorSlot);
       }
-
-      return;
     }
+  }
 
+  private void collectExistingGroup(final int doc, final CollectedSearchGroup<T> group)
+      throws IOException {
     // Update existing group:
     for (int compIDX = 0; ; compIDX++) {
       leafComparators[compIDX].copy(spareSlot, doc);
@@ -362,5 +367,9 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
    */
   public GroupSelector<T> getGroupSelector() {
     return groupSelector;
+  }
+
+  private boolean isGroupMapFull() {
+    return groupMap.size() >= topNGroups;
   }
 }
