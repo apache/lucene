@@ -25,6 +25,7 @@ import static jdk.incubator.vector.VectorOperators.LSHR;
 import static jdk.incubator.vector.VectorOperators.S2I;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2I;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2S;
+import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_S2I;
 import static org.apache.lucene.util.VectorUtil.EPSILON;
 
 import java.lang.foreign.MemorySegment;
@@ -861,19 +862,20 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     // it doesn't help to do the overlapping read trick, due to 32-bit multiply in the formula
     IntVector acc1 = IntVector.zero(IntVector.SPECIES_128);
     IntVector acc2 = IntVector.zero(IntVector.SPECIES_128);
-    var conversion = signed ? B2S : ZERO_EXTEND_B2S;
+    var conversion_short = signed ? B2S : ZERO_EXTEND_B2S;
+    var conversion_int = signed ? S2I : ZERO_EXTEND_S2I;
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length()) {
       ByteVector va8 = a.load(ByteVector.SPECIES_64, i);
       ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
 
       // 16-bit sub
-      Vector<Short> va16 = va8.convertShape(conversion, ShortVector.SPECIES_128, 0);
-      Vector<Short> vb16 = vb8.convertShape(conversion, ShortVector.SPECIES_128, 0);
+      Vector<Short> va16 = va8.convertShape(conversion_short, ShortVector.SPECIES_128, 0);
+      Vector<Short> vb16 = vb8.convertShape(conversion_short, ShortVector.SPECIES_128, 0);
       Vector<Short> diff16 = va16.sub(vb16);
 
       // 32-bit multiply and add into accumulators
-      Vector<Integer> diff32_1 = diff16.convertShape(S2I, IntVector.SPECIES_128, 0);
-      Vector<Integer> diff32_2 = diff16.convertShape(S2I, IntVector.SPECIES_128, 1);
+      Vector<Integer> diff32_1 = diff16.convertShape(conversion_int, IntVector.SPECIES_128, 0);
+      Vector<Integer> diff32_2 = diff16.convertShape(conversion_int, IntVector.SPECIES_128, 1);
       acc1 = acc1.add(diff32_1.mul(diff32_1));
       acc2 = acc2.add(diff32_2.mul(diff32_2));
     }
