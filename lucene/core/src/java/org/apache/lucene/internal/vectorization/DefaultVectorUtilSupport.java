@@ -155,6 +155,15 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public int uint8DotProduct(byte[] a, byte[] b) {
+    int total = 0;
+    for (int i = 0; i < a.length; i++) {
+      total += Byte.toUnsignedInt(a[i]) * Byte.toUnsignedInt(b[i]);
+    }
+    return total;
+  }
+
+  @Override
   public int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked) {
     assert (apacked && bpacked) == false;
     if (apacked || bpacked) {
@@ -196,6 +205,17 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     int squareSum = 0;
     for (int i = 0; i < a.length; i++) {
       int diff = a[i] - b[i];
+      squareSum += diff * diff;
+    }
+    return squareSum;
+  }
+
+  @Override
+  public int uint8SquareDistance(byte[] a, byte[] b) {
+    // Note: this will not overflow if dim < 2^16, since max(ubyte * ubyte) = 2^16.
+    int squareSum = 0;
+    for (int i = 0; i < a.length; i++) {
+      int diff = Byte.toUnsignedInt(a[i]) - Byte.toUnsignedInt(b[i]);
       squareSum += diff * diff;
     }
     return squareSum;
