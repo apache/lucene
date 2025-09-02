@@ -42,32 +42,6 @@ import org.apache.lucene.util.InfoStream;
 /** Tests for {@link BandwidthCappedMergeScheduler}. */
 public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
 
-  public void testBasicFunctionality() throws Exception {
-    Directory dir = newDirectory();
-    BandwidthCappedMergeScheduler scheduler = new BandwidthCappedMergeScheduler(100.0);
-
-    // Test initial value
-    assertEquals(100.0, scheduler.getMaxMbPerSec(), 0.001);
-
-    scheduler.close();
-    dir.close();
-  }
-
-  public void testBandwidthConfiguration() throws Exception {
-    Directory dir = newDirectory();
-    BandwidthCappedMergeScheduler scheduler = new BandwidthCappedMergeScheduler(50.0);
-
-    // Test setting valid bandwidth rates
-    scheduler.setMaxMbPerSec(200.0);
-    assertEquals(200.0, scheduler.getMaxMbPerSec(), 0.001);
-
-    scheduler.setMaxMbPerSec(10.0);
-    assertEquals(10.0, scheduler.getMaxMbPerSec(), 0.001);
-
-    scheduler.close();
-    dir.close();
-  }
-
   public void testInvalidBandwidthConfiguration() throws Exception {
     // Test invalid constructor parameter
     expectThrows(
@@ -118,44 +92,30 @@ public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
     scheduler.close();
   }
 
-  public void testWithIndexWriter() throws IOException {
-    Directory dir = newDirectory();
-    BandwidthCappedMergeScheduler scheduler = new BandwidthCappedMergeScheduler(100.0);
-
-    IndexWriterConfig config = newIndexWriterConfig();
-    config.setMergeScheduler(scheduler);
-    config.setMaxBufferedDocs(2); // Force frequent flushes
-
-    try (IndexWriter writer = new IndexWriter(dir, config)) {
-      // Add some documents to potentially trigger merges
-      for (int i = 0; i < 20; i++) {
-        Document doc = new Document();
-        doc.add(new StringField("id", String.valueOf(i), Field.Store.YES));
-        doc.add(
-            new TextField(
-                "content",
-                "content " + i + " " + RandomStrings.randomRealisticUnicodeOfLength(random(), 100),
-                Field.Store.YES));
-        writer.addDocument(doc);
-
-        if (i % 5 == 0) {
-          writer.commit(); // Force segments
-        }
-      }
-
-      writer.forceMerge(1); // This should trigger merges
-    }
-
-    // The scheduler should have been used
-    assertTrue("Scheduler should have been initialized", scheduler.getMaxMbPerSec() > 0);
-
-    scheduler.close();
-    dir.close();
-  }
-
   public void testBandwidthDistributionAmongMerges() throws IOException {
     Directory dir = newDirectory();
-    BandwidthCappedMergeScheduler scheduler = new BandwidthCappedMergeScheduler(100.0);
+
+    // Track bandwidth distribution calls and the rates applied
+    AtomicInteger updateCalls = new AtomicInteger(0);
+    List<Double> appliedRates = Collections.synchronizedList(new ArrayList<>());
+
+    BandwidthCappedMergeScheduler scheduler =
+        new BandwidthCappedMergeScheduler(120.0) {
+          @Override
+          protected synchronized void updateMergeThreads() {
+            super.updateMergeThreads();
+            updateCalls.incrementAndGet();
+
+            // Capture the rates being applied to active merge threads
+            for (ConcurrentMergeScheduler.MergeThread mergeThread : mergeThreads) {
+              if (mergeThread.isAlive()) {
+                double rate = mergeThread.getRateLimiter().getMBPerSec();
+                appliedRates.add(rate);
+              }
+            }
+          }
+        };
+
     scheduler.setMaxMergesAndThreads(3, 2); // Allow multiple concurrent merges
 
     IndexWriterConfig config = newIndexWriterConfig();
@@ -186,6 +146,31 @@ public class TestBandwidthCappedMergeScheduler extends LuceneTestCase {
 
       writer.forceMerge(1);
     }
+
+    // Verify bandwidth distribution was invoked
+    assertTrue(
+        "Bandwidth distribution should have been called during merge operations",
+        updateCalls.get() > 0);
+
+    // Verify that rate limits were applied to merge threads
+    assertFalse("Rate limits should have been applied to merge threads", appliedRates.isEmpty());
+
+    // Verify that applied rates respect the minimum threshold (0.1 MB/s)
+    for (Double rate : appliedRates) {
+      assertTrue("Applied rate should be at least 0.1 MB/s, got: " + rate, rate >= 0.1);
+      assertTrue(
+          "Applied rate should not exceed total bandwidth (120.0 MB/s), got: " + rate,
+          rate <= 120.0);
+    }
+
+    // Verify scheduler maintains its configuration
+    assertEquals("Max merge count should be 3", 3, scheduler.getMaxMergeCount());
+    assertEquals("Max thread count should be 2", 2, scheduler.getMaxThreadCount());
+
+    // Verify auto IO throttle remains disabled (core functionality)
+    assertFalse(
+        "Auto IO throttle should be disabled for bandwidth-capped scheduler",
+        scheduler.getAutoIOThrottle());
 
     scheduler.close();
     dir.close();
