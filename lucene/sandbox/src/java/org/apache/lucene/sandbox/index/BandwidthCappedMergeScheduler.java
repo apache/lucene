@@ -148,9 +148,9 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
       try {
         if (verbose()) {
           message(
-              "Starting bandwidth-capped merge: (estimatedMergeMB="
-                  + merge.estimatedMergeBytes / (1024.0 * 1024.0)
-                  + " MB)");
+              String.format(
+                  "Starting bandwidth-capped merge: (estimatedMergeMB=%.2f MB)",
+                  merge.estimatedMergeBytes / (1024.0 * 1024.0)));
         }
         super.run(); // IO throttling is handled by the RateLimiter
       } finally {
