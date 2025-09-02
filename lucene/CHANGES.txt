@@ -122,7 +122,7 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#15140: Optimize TopScoreDocCollector with TernaryLongHeap for improved performance over Binary-LongHeap. (Ramakrishna Chilaka)
 
 Bug Fixes
 ---------------------
