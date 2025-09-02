@@ -149,6 +149,7 @@ public class BandwidthCappedMergeScheduler extends ConcurrentMergeScheduler {
         if (verbose()) {
           message(
               String.format(
+                  java.util.Locale.ROOT,
                   "Starting bandwidth-capped merge: (estimatedMergeMB=%.2f MB)",
                   merge.estimatedMergeBytes / (1024.0 * 1024.0)));
         }
