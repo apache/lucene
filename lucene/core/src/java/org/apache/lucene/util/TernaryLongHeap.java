@@ -19,21 +19,22 @@ package org.apache.lucene.util;
 import java.util.Arrays;
 
 /**
- * A min heap that stores longs; a primitive priority queue that like all priority queues maintains
- * a partial ordering of its elements such that the least element can always be found in constant
- * time. Put()'s and pop()'s require log(size). This heap provides unbounded growth via {@link
- * #push(long)}, and bounded-size insertion based on its initial capacity via {@link
+ * A ternary min heap that stores longs; a primitive priority queue that like all priority queues
+ * maintains a partial ordering of its elements such that the least element can always be found in
+ * constant time. Put()'s and pop()'s require log_3(size). This heap provides unbounded growth via
+ * {@link #push(long)}, and bounded-size insertion based on its nominal initial capacity via {@link
  * #insertWithOverflow(long)}. The heap is a min heap, meaning that the top element is the lowest
- * value of the heap. LongHeap implements 2-ary heap.
+ * value of the heap. TernaryLongHeap implements 3-ary heap.
  *
  * @lucene.internal
  */
-public final class LongHeap {
+public final class TernaryLongHeap {
 
   private final int initialCapacity;
 
   private long[] heap;
   private int size = 0;
+  private static final int ARITY = 3;
 
   /**
    * Constructs a heap with specified size and initializes all elements with the given value.
@@ -41,8 +42,8 @@ public final class LongHeap {
    * @param size the number of elements to initialize in the heap.
    * @param initialValue the value to fill the heap with.
    */
-  public LongHeap(int size, long initialValue) {
-    this(size);
+  public TernaryLongHeap(int size, long initialValue) {
+    this(size <= 0 ? 1 : size);
     Arrays.fill(heap, 1, size + 1, initialValue);
     this.size = size;
   }
@@ -52,8 +53,7 @@ public final class LongHeap {
    *
    * @param initialCapacity the initial capacity of the heap
    */
-  public LongHeap(int initialCapacity) {
-    final int heapSize;
+  public TernaryLongHeap(int initialCapacity) {
     if (initialCapacity < 1 || initialCapacity >= ArrayUtil.MAX_ARRAY_LENGTH) {
       // Throw exception to prevent confusing OOME:
       throw new IllegalArgumentException(
@@ -63,7 +63,7 @@ public final class LongHeap {
               + initialCapacity);
     }
     // NOTE: we add +1 because all access to heap is 1-based not 0-based.  heap[0] is unused.
-    heapSize = initialCapacity + 1;
+    final int heapSize = initialCapacity + 1;
     this.initialCapacity = initialCapacity;
     this.heap = new long[heapSize];
   }
@@ -73,19 +73,19 @@ public final class LongHeap {
    *
    * @return the new 'top' element in the queue.
    */
-  public final long push(long element) {
+  public long push(long element) {
     size++;
     if (size == heap.length) {
       heap = ArrayUtil.grow(heap, (size * 3 + 1) / 2);
     }
     heap[size] = element;
-    upHeap(size);
+    TernaryLongHeap.upHeap(heap, size, ARITY);
     return heap[1];
   }
 
   /**
-   * Adds a value to an LongHeap in log(size) time. If the number of values would exceed the heap's
-   * initialCapacity, the least value is discarded.
+   * Adds a value to an TernaryLongHeap in log(size) time. If the number of values would exceed the
+   * heap's initialCapacity, the least value is discarded.
    *
    * @return whether the value was added (unless the heap is full, or the new value is less than the
    *     top value)
@@ -103,25 +103,25 @@ public final class LongHeap {
   }
 
   /**
-   * Returns the least element of the LongHeap in constant time. It is up to the caller to verify
-   * that the heap is not empty; no checking is done, and if no elements have been added, 0 is
-   * returned.
+   * Returns the least element of the TernaryLongHeap in constant time. It is up to the caller to
+   * verify that the heap is not empty; no checking is done, and if no elements have been added, 0
+   * is returned.
    */
-  public final long top() {
+  public long top() {
     return heap[1];
   }
 
   /**
    * Removes and returns the least element of the PriorityQueue in log(size) time.
    *
-   * @throws IllegalStateException if the LongHeap is empty.
+   * @throws IllegalStateException if the TernaryLongHeap is empty.
    */
-  public final long pop() {
+  public long pop() {
     if (size > 0) {
       long result = heap[1]; // save first value
       heap[1] = heap[size]; // move last to first
       size--;
-      downHeap(1); // adjust heap
+      TernaryLongHeap.downHeap(heap, 1, size, ARITY); // adjust heap
       return result;
     } else {
       throw new IllegalStateException("The heap is empty");
@@ -136,66 +136,35 @@ public final class LongHeap {
    * pq.updateTop(value);
    * </pre>
    *
-   * instead of
+   * <p>instead of
    *
    * <pre class="prettyprint">
    * pq.pop();
    * pq.push(value);
    * </pre>
    *
-   * Calling this method on an empty LongHeap has no visible effect.
+   * <p>Calling this method on an empty TernaryLongHeap has no visible effect.
    *
    * @param value the new element that is less than the current top.
    * @return the new 'top' element after shuffling the heap.
    */
-  public final long updateTop(long value) {
+  public long updateTop(long value) {
     heap[1] = value;
-    downHeap(1);
+    TernaryLongHeap.downHeap(heap, 1, size, ARITY);
     return heap[1];
   }
 
   /** Returns the number of elements currently stored in the PriorityQueue. */
-  public final int size() {
+  public int size() {
     return size;
   }
 
   /** Removes all entries from the PriorityQueue. */
-  public final void clear() {
+  public void clear() {
     size = 0;
   }
 
-  private void upHeap(int origPos) {
-    int i = origPos;
-    long value = heap[i]; // save bottom value
-    int j = i >>> 1;
-    while (j > 0 && value < heap[j]) {
-      heap[i] = heap[j]; // shift parents down
-      i = j;
-      j = j >>> 1;
-    }
-    heap[i] = value; // install saved value
-  }
-
-  private void downHeap(int i) {
-    long value = heap[i]; // save top value
-    int j = i << 1; // find smaller child
-    int k = j + 1;
-    if (k <= size && heap[k] < heap[j]) {
-      j = k;
-    }
-    while (j <= size && heap[j] < value) {
-      heap[i] = heap[j]; // shift up child
-      i = j;
-      j = i << 1;
-      k = j + 1;
-      if (k <= size && heap[k] < heap[j]) {
-        j = k;
-      }
-    }
-    heap[i] = value; // install saved value
-  }
-
-  public void pushAll(LongHeap other) {
+  public void pushAll(TernaryLongHeap other) {
     for (int i = 1; i <= other.size; i++) {
       push(other.heap[i]);
     }
@@ -215,7 +184,66 @@ public final class LongHeap {
    * @lucene.internal
    */
   // pkg-private for testing
-  final long[] getHeapArray() {
+  long[] getHeapArray() {
     return heap;
+  }
+
+  /**
+   * Restores heap order by moving an element up the heap until it finds its proper position. Works
+   * with heaps of any arity (number of children per node).
+   *
+   * @param heap the heap array (1-based indexing)
+   * @param i the index of the element to move up
+   * @param arity the number of children each node can have
+   */
+  static void upHeap(long[] heap, int i, int arity) {
+    final long value = heap[i]; // save bottom value
+    while (i > 1) {
+      // parent formula for 1-based indexing
+      final int parent = ((i - 2) / arity) + 1;
+      final long parentVal = heap[parent];
+      if (value >= parentVal) break;
+      heap[i] = parentVal; // shift parent down
+      i = parent;
+    }
+    heap[i] = value; // install saved value
+  }
+
+  /**
+   * Restores heap order by moving an element down the heap until it finds its proper position.
+   * Works with heaps of any arity (number of children per node).
+   *
+   * @param heap the heap array (1-based indexing)
+   * @param i the index of the element to move down
+   * @param size the current size of the heap
+   * @param arity the number of children each node can have
+   */
+  static void downHeap(long[] heap, int i, int size, int arity) {
+    long value = heap[i]; // save top value
+    for (; ; ) {
+      // first child formula for 1-based indexing
+      int firstChild = arity * (i - 1) + 2;
+      if (firstChild > size) break; // i is a leaf
+
+      int lastChild = Math.min(firstChild + arity - 1, size);
+
+      // find the smallest child in [firstChild, lastChild]
+      int best = firstChild;
+      long bestVal = heap[firstChild];
+
+      for (int c = firstChild + 1; c <= lastChild; c++) {
+        final long v = heap[c];
+        if (v < bestVal) {
+          bestVal = v;
+          best = c;
+        }
+      }
+
+      if (bestVal >= value) break;
+
+      heap[i] = bestVal;
+      i = best;
+    }
+    heap[i] = value; // install saved value
   }
 }
