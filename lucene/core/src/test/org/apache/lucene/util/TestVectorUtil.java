@@ -301,7 +301,8 @@ public class TestVectorUtil extends LuceneTestCase {
   }
 
   public void testBasicSquareDistanceUint8() {
-    assertEquals(64524, VectorUtil.uint8SquareDistance(new byte[] {1, 2, 3}, new byte[] {-1, 0, 5}), 0);
+    assertEquals(
+        64524, VectorUtil.uint8SquareDistance(new byte[] {1, 2, 3}, new byte[] {-1, 0, 5}), 0);
   }
 
   public void testBasicCosineBytes() {

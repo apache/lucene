@@ -42,10 +42,12 @@ public interface ScalarQuantizedVectorSimilarity {
       case EUCLIDEAN -> new Euclidean(constMultiplier);
       case COSINE, DOT_PRODUCT ->
           new DotProduct(
-              constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::uint8DotProduct);
+              constMultiplier,
+              bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::uint8DotProduct);
       case MAXIMUM_INNER_PRODUCT ->
           new MaximumInnerProduct(
-              constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::uint8DotProduct);
+              constMultiplier,
+              bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::uint8DotProduct);
     };
   }
 

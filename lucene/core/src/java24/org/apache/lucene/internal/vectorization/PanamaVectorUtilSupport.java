@@ -838,7 +838,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized square distance body (256+ bit vectors) */
-  private static int squareDistanceBody256(ByteVectorLoader a, ByteVectorLoader b, int limit, boolean signed) {
+  private static int squareDistanceBody256(
+      ByteVectorLoader a, ByteVectorLoader b, int limit, boolean signed) {
     IntVector acc = IntVector.zero(INT_SPECIES);
     var conversion = signed ? B2I : ZERO_EXTEND_B2I;
     for (int i = 0; i < limit; i += BYTE_SPECIES.length()) {
@@ -857,7 +858,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized square distance body (128 bit vectors) */
-  private static int squareDistanceBody128(ByteVectorLoader a, ByteVectorLoader b, int limit, boolean signed) {
+  private static int squareDistanceBody128(
+      ByteVectorLoader a, ByteVectorLoader b, int limit, boolean signed) {
     // 128-bit implementation, which must "split up" vectors due to widening conversions
     // it doesn't help to do the overlapping read trick, due to 32-bit multiply in the formula
     IntVector acc1 = IntVector.zero(IntVector.SPECIES_128);
