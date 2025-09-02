@@ -25,7 +25,6 @@ import static jdk.incubator.vector.VectorOperators.LSHR;
 import static jdk.incubator.vector.VectorOperators.S2I;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2I;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2S;
-import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_S2I;
 import static org.apache.lucene.util.VectorUtil.EPSILON;
 
 import java.lang.foreign.MemorySegment;
