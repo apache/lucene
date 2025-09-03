@@ -1091,7 +1091,10 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
       for (; i < BYTE_SPECIES.loopBound(vector.length); i += BYTE_SPECIES.length()) {
         FloatVector fv =
-            (FloatVector) ByteVector.fromArray(BYTE_SPECIES, vector, i).castShape(FLOAT_SPECIES, 0);
+            (FloatVector)
+                ByteVector.fromArray(BYTE_SPECIES, vector, i)
+                    .convertShape(ZERO_EXTEND_B2S, SHORT_SPECIES, 0)
+                    .castShape(FLOAT_SPECIES, 0);
         // undo the old quantization
         FloatVector v = fma(fv, fv.broadcast(oldAlpha), fv.broadcast(oldMinQuantile));
 

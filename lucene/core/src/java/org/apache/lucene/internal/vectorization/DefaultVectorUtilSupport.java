@@ -301,7 +301,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       float correction = 0;
       for (int i = start; i < vector.length; i++) {
         // undo the old quantization
-        float v = (oldAlpha * vector[i]) + oldMinQuantile;
+        float v = (oldAlpha * Byte.toUnsignedInt(vector[i])) + oldMinQuantile;
         correction += quantizeFloat(v, null, 0);
       }
       return correction;
