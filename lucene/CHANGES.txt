@@ -126,6 +126,9 @@ Optimizations
 ---------------------
 * GITHUB#15140: Optimize TopScoreDocCollector with TernaryLongHeap for improved performance over Binary-LongHeap. (Ramakrishna Chilaka)
 
+* GITHUB#15151: Use `SimScorer#score` bulk API to compute impact scores per
+  block of postings. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 (No changes)
