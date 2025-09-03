@@ -242,6 +242,7 @@ public class TestDoc extends LuceneTestCase {
             new SameThreadExecutorService());
 
     merger.merge();
+    merger.cleanupMerge();
     r1.close();
     r2.close();
     si.setFiles(new HashSet<>(trackingDir.getCreatedFiles()));
