@@ -25,6 +25,7 @@ import static jdk.incubator.vector.VectorOperators.LSHR;
 import static jdk.incubator.vector.VectorOperators.S2I;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2I;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2S;
+import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_S2I;
 import static org.apache.lucene.util.VectorUtil.EPSILON;
 
 import java.lang.foreign.MemorySegment;
@@ -417,18 +418,19 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   private static int dotProductBody512(
       ByteVectorLoader a, ByteVectorLoader b, int limit, boolean signed) {
     IntVector acc = IntVector.zero(INT_SPECIES);
-    var conversion = signed ? B2S : ZERO_EXTEND_B2S;
+    var conversion_short = signed ? B2S : ZERO_EXTEND_B2S;
+    var conversion_int = signed? S2I : ZERO_EXTEND_S2I;
     for (int i = 0; i < limit; i += BYTE_SPECIES.length()) {
       ByteVector va8 = a.load(BYTE_SPECIES, i);
       ByteVector vb8 = b.load(BYTE_SPECIES, i);
 
       // 16-bit multiply: avoid AVX-512 heavy multiply on zmm
-      Vector<Short> va16 = va8.convertShape(conversion, SHORT_SPECIES, 0);
-      Vector<Short> vb16 = vb8.convertShape(conversion, SHORT_SPECIES, 0);
+      Vector<Short> va16 = va8.convertShape(conversion_short, SHORT_SPECIES, 0);
+      Vector<Short> vb16 = vb8.convertShape(conversion_short, SHORT_SPECIES, 0);
       Vector<Short> prod16 = va16.mul(vb16);
 
       // 32-bit add
-      Vector<Integer> prod32 = prod16.convertShape(S2I, INT_SPECIES, 0);
+      Vector<Integer> prod32 = prod16.convertShape(conversion_int, INT_SPECIES, 0);
       acc = acc.add(prod32);
     }
     // reduce
@@ -457,7 +459,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   private static int dotProductBody128(
       ByteVectorLoader a, ByteVectorLoader b, int limit, boolean signed) {
     IntVector acc = IntVector.zero(IntVector.SPECIES_128);
-    var conversion = signed ? B2S : ZERO_EXTEND_B2S;
+    var conversion_short = signed ? B2S : ZERO_EXTEND_B2S;
+    var conversion_int = signed ? S2I : ZERO_EXTEND_S2I;
     // 4 bytes at a time (re-loading half the vector each time!)
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length() >> 1) {
       // load 8 bytes
@@ -465,12 +468,12 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
 
       // process first "half" only: 16-bit multiply
-      Vector<Short> va16 = va8.convert(conversion, 0);
-      Vector<Short> vb16 = vb8.convert(conversion, 0);
+      Vector<Short> va16 = va8.convert(conversion_short, 0);
+      Vector<Short> vb16 = vb8.convert(conversion_short, 0);
       Vector<Short> prod16 = va16.mul(vb16);
 
       // 32-bit add
-      acc = acc.add(prod16.convertShape(S2I, IntVector.SPECIES_128, 0));
+      acc = acc.add(prod16.convertShape(conversion_int, IntVector.SPECIES_128, 0));
     }
     // reduce
     return acc.reduceLanes(ADD);
