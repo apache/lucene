@@ -419,7 +419,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       ByteVectorLoader a, ByteVectorLoader b, int limit, boolean signed) {
     IntVector acc = IntVector.zero(INT_SPECIES);
     var conversion_short = signed ? B2S : ZERO_EXTEND_B2S;
-    var conversion_int = signed? S2I : ZERO_EXTEND_S2I;
+    var conversion_int = signed ? S2I : ZERO_EXTEND_S2I;
     for (int i = 0; i < limit; i += BYTE_SPECIES.length()) {
       ByteVector va8 = a.load(BYTE_SPECIES, i);
       ByteVector vb8 = b.load(BYTE_SPECIES, i);
