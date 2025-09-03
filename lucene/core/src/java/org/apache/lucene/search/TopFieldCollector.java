@@ -70,7 +70,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       }
     }
 
-    void countHit(int doc) throws IOException {
+    void countHit() throws IOException {
       int hitCountSoFar = ++totalHits;
 
       if (minScoreAcc != null && (hitCountSoFar & minScoreAcc.modInterval) == 0) {
@@ -197,7 +197,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
 
             @Override
             public void collect(int doc) throws IOException {
-              countHit(doc);
+              countHit();
               if (queueFull) {
                 if (thresholdCheck(doc)) {
                   return;
@@ -262,7 +262,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
 
             @Override
             public void collect(int doc) throws IOException {
-              countHit(doc);
+              countHit();
               if (queueFull) {
                 if (thresholdCheck(doc)) {
                   return;
