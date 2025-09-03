@@ -4078,10 +4078,7 @@ public final class CheckIndex implements Closeable {
         }
         if (values[j] != expected) {
           throw new CheckIndexException(
-              "#longValues reports different value: "
-                  + values[j]
-                  + " != "
-                  + expected);
+              "#longValues reports different value: " + values[j] + " != " + expected);
         }
       }
     }
