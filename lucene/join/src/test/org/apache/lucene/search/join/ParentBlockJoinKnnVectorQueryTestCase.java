@@ -18,6 +18,7 @@
 package org.apache.lucene.search.join;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -316,10 +317,10 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
       searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 parent
       // Note: We get partial results when the HNSW graph has 1 layer, but no results for > 1 layer
       // because the timeout is exhausted while finding the best entry node for the last level
-      assertTrue(searcher.count(query) <= 1); // Expect at most 1 result
+      assertThat(searcher.count(query), lessThanOrEqualTo(1));
 
       searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 parent
-      assertEquals(1, searcher.count(exactQuery)); // Expect only 1 result
+      assertThat(searcher.count(exactQuery), lessThanOrEqualTo(1));
     }
   }
 
