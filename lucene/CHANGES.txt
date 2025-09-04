@@ -116,7 +116,9 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+* GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
+  along with limiting number of child documents to retrieve per parent. (Jinny Wang)
+
 
 Improvements
 ---------------------
@@ -128,7 +130,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
+  instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
 
 Other
 ---------------------
@@ -166,9 +169,6 @@ New Features
   (Mikhail Khludnev)
 
 * GITHUB#14413: Adding profiling support for concurrent segment search. (Ankit Jain)
-
-* GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
-  along with limiting number of child documents to retrieve per parent. (Jinny Wang)
 
 * GITHUB#14776: Add a Rescorer that uses values from provided DoubleValuesSource to re-score
   first pass hits. (Vigya Sharma)
@@ -338,9 +338,6 @@ Bug Fixes
   used if the DoubleValuesSource needed scores. (David Smiley)
 
 * GITHUB#14682 : Fix for add char and token filters in Luke Analysis tab. (Amir Raza)
-
-* GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
-  instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
 
 * GITHUB#14727: Fix several resource leaks. (Xu Chengxin)
 
