@@ -17,11 +17,8 @@
 package org.apache.lucene.backward_codecs.lucene84;
 
 import java.io.IOException;
-import java.util.AbstractList;
 import java.util.Arrays;
-import java.util.List;
-import java.util.RandomAccess;
-import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.IndexInput;
@@ -34,7 +31,7 @@ final class Lucene84ScoreSkipReader extends Lucene84SkipReader {
   private final ByteArrayDataInput badi = new ByteArrayDataInput();
   private final Impacts impacts;
   private int numLevels = 1;
-  private final MutableImpactList[] perLevelImpacts;
+  private final FreqAndNormBuffer[] perLevelImpacts;
 
   public Lucene84ScoreSkipReader(
       IndexInput skipStream,
@@ -46,9 +43,10 @@ final class Lucene84ScoreSkipReader extends Lucene84SkipReader {
     this.impactData = new byte[maxSkipLevels][];
     Arrays.fill(impactData, new byte[0]);
     this.impactDataLength = new int[maxSkipLevels];
-    this.perLevelImpacts = new MutableImpactList[maxSkipLevels];
+    this.perLevelImpacts = new FreqAndNormBuffer[maxSkipLevels];
     for (int i = 0; i < perLevelImpacts.length; ++i) {
-      perLevelImpacts[i] = new MutableImpactList();
+      perLevelImpacts[i] = new FreqAndNormBuffer();
+      perLevelImpacts[i].add(Integer.MAX_VALUE, 1L);
     }
     impacts =
         new Impacts() {
@@ -64,7 +62,7 @@ final class Lucene84ScoreSkipReader extends Lucene84SkipReader {
           }
 
           @Override
-          public List<Impact> getImpacts(int level) {
+          public FreqAndNormBuffer getImpacts(int level) {
             assert level < numLevels;
             if (impactDataLength[level] > 0) {
               badi.reset(impactData[level], 0, impactDataLength[level]);
@@ -85,9 +83,9 @@ final class Lucene84ScoreSkipReader extends Lucene84SkipReader {
       // End of postings don't have skip data anymore, so we fill with dummy data
       // like SlowImpactsEnum.
       numLevels = 1;
-      perLevelImpacts[0].length = 1;
-      perLevelImpacts[0].impacts[0].freq = Integer.MAX_VALUE;
-      perLevelImpacts[0].impacts[0].norm = 1L;
+      perLevelImpacts[0].size = 1;
+      perLevelImpacts[0].freqs[0] = Integer.MAX_VALUE;
+      perLevelImpacts[0].norms[0] = 1L;
       impactDataLength[0] = 0;
     }
     return result;
@@ -107,19 +105,13 @@ final class Lucene84ScoreSkipReader extends Lucene84SkipReader {
     impactDataLength[level] = length;
   }
 
-  static MutableImpactList readImpacts(ByteArrayDataInput in, MutableImpactList reuse) {
+  static FreqAndNormBuffer readImpacts(ByteArrayDataInput in, FreqAndNormBuffer reuse) {
     int maxNumImpacts = in.length(); // at most one impact per byte
-    if (reuse.impacts.length < maxNumImpacts) {
-      int oldLength = reuse.impacts.length;
-      reuse.impacts = ArrayUtil.grow(reuse.impacts, maxNumImpacts);
-      for (int i = oldLength; i < reuse.impacts.length; ++i) {
-        reuse.impacts[i] = new Impact(Integer.MAX_VALUE, 1L);
-      }
-    }
+    reuse.growNoCopy(maxNumImpacts);
 
     int freq = 0;
     long norm = 0;
-    int length = 0;
+    int size = 0;
     while (in.getPosition() < in.length()) {
       int freqDelta = in.readVInt();
       if ((freqDelta & 0x01) != 0) {
@@ -133,27 +125,11 @@ final class Lucene84ScoreSkipReader extends Lucene84SkipReader {
         freq += 1 + (freqDelta >>> 1);
         norm++;
       }
-      Impact impact = reuse.impacts[length];
-      impact.freq = freq;
-      impact.norm = norm;
-      length++;
+      reuse.freqs[size] = freq;
+      reuse.norms[size] = norm;
+      size++;
     }
-    reuse.length = length;
+    reuse.size = size;
     return reuse;
-  }
-
-  static class MutableImpactList extends AbstractList<Impact> implements RandomAccess {
-    int length = 1;
-    Impact[] impacts = new Impact[] {new Impact(Integer.MAX_VALUE, 1L)};
-
-    @Override
-    public Impact get(int index) {
-      return impacts[index];
-    }
-
-    @Override
-    public int size() {
-      return length;
-    }
   }
 }

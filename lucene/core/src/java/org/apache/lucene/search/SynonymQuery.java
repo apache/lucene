@@ -20,12 +20,10 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
-import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.ImpactsSource;
@@ -414,21 +412,27 @@ public final class SynonymQuery extends Query {
     return new ImpactsSource() {
 
       static class SubIterator {
-        final Iterator<Impact> iterator;
+        final FreqAndNormBuffer buffer;
+        int index;
         int previousFreq;
-        Impact current;
+        int freq;
+        long norm;
+        boolean exhausted;
 
-        SubIterator(Iterator<Impact> iterator) {
-          this.iterator = iterator;
-          this.current = iterator.next();
+        SubIterator(FreqAndNormBuffer buffer) {
+          this.buffer = buffer;
+          this.index = 0;
+          next();
         }
 
         void next() {
-          previousFreq = current.freq;
-          if (iterator.hasNext() == false) {
-            current = null;
+          previousFreq = freq;
+          if (index >= buffer.size) {
+            exhausted = true;
           } else {
-            current = iterator.next();
+            freq = buffer.freqs[index];
+            norm = buffer.norms[index];
+            index++;
           }
         }
       }
@@ -474,10 +478,11 @@ public final class SynonymQuery extends Query {
           }
 
           @Override
-          public List<Impact> getImpacts(int level) {
+          public FreqAndNormBuffer getImpacts(int level) {
             final int docIdUpTo = getDocIdUpTo(level);
 
-            List<List<Impact>> toMerge = new ArrayList<>();
+            List<FreqAndNormBuffer> toMerge = new ArrayList<>();
+            FreqAndNormBuffer mergedImpacts = new FreqAndNormBuffer();
 
             for (int i = 0; i < impactsEnums.length; ++i) {
               if (impactsEnums[i].docID() <= docIdUpTo) {
@@ -485,17 +490,25 @@ public final class SynonymQuery extends Query {
                 if (impactsLevel == -1) {
                   // One instance doesn't have impacts that cover up to docIdUpTo
                   // Return impacts that trigger the maximum score
-                  return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
+                  mergedImpacts.growNoCopy(1);
+                  mergedImpacts.freqs[0] = Integer.MAX_VALUE;
+                  mergedImpacts.norms[0] = 1L;
+                  mergedImpacts.size = 1;
+                  return mergedImpacts;
                 }
-                final List<Impact> impactList;
+                final FreqAndNormBuffer impactList;
                 if (boosts[i] != 1f) {
+                  FreqAndNormBuffer unboostedImpacts = impacts[i].getImpacts(impactsLevel);
+                  FreqAndNormBuffer boostedImpacts = new FreqAndNormBuffer();
+                  boostedImpacts.growNoCopy(unboostedImpacts.size);
+                  boostedImpacts.size = unboostedImpacts.size;
+                  System.arraycopy(
+                      unboostedImpacts.norms, 0, boostedImpacts.norms, 0, unboostedImpacts.size);
                   float boost = boosts[i];
-                  impactList =
-                      impacts[i].getImpacts(impactsLevel).stream()
-                          .map(
-                              impact ->
-                                  new Impact((int) Math.ceil(impact.freq * boost), impact.norm))
-                          .toList();
+                  for (int j = 0; j < unboostedImpacts.size; ++j) {
+                    boostedImpacts.freqs[j] = (int) Math.ceil(unboostedImpacts.freqs[j] * boost);
+                  }
+                  impactList = boostedImpacts;
                 } else {
                   impactList = impacts[i].getImpacts(impactsLevel);
                 }
@@ -513,14 +526,16 @@ public final class SynonymQuery extends Query {
             PriorityQueue<SubIterator> pq =
                 PriorityQueue.usingComparator(
                     impacts.length,
-                    Comparator.comparing(
-                        it -> it.current,
-                        Comparator.nullsLast((a, b) -> Long.compareUnsigned(a.norm, b.norm))));
-            for (List<Impact> impacts : toMerge) {
-              pq.add(new SubIterator(impacts.iterator()));
+                    (a, b) -> {
+                      int cmp = Boolean.compare(a.exhausted, b.exhausted);
+                      if (cmp != 0) {
+                        return cmp;
+                      }
+                      return Long.compareUnsigned(a.norm, b.norm);
+                    });
+            for (FreqAndNormBuffer impacts : toMerge) {
+              pq.add(new SubIterator(impacts));
             }
-
-            List<Impact> mergedImpacts = new ArrayList<>();
 
             // Idea: merge impacts by norm. The tricky thing is that we need to
             // consider norm values that are not in the impacts too. For
@@ -534,24 +549,25 @@ public final class SynonymQuery extends Query {
             long sumTf = 0;
             SubIterator top = pq.top();
             do {
-              final long norm = top.current.norm;
+              final long norm = top.norm;
               do {
-                sumTf += top.current.freq - top.previousFreq;
+                sumTf += top.freq - top.previousFreq;
                 top.next();
                 top = pq.updateTop();
-              } while (top.current != null && top.current.norm == norm);
+              } while (top.exhausted == false && top.norm == norm);
 
               final int freqUpperBound = (int) Math.min(Integer.MAX_VALUE, sumTf);
-              if (mergedImpacts.isEmpty()) {
-                mergedImpacts.add(new Impact(freqUpperBound, norm));
+              if (mergedImpacts.size == 0) {
+                mergedImpacts.add(freqUpperBound, norm);
               } else {
-                Impact prevImpact = mergedImpacts.get(mergedImpacts.size() - 1);
-                assert Long.compareUnsigned(prevImpact.norm, norm) < 0;
-                if (freqUpperBound > prevImpact.freq) {
-                  mergedImpacts.add(new Impact(freqUpperBound, norm));
+                int prevFreq = mergedImpacts.freqs[mergedImpacts.size - 1];
+                long prevNorm = mergedImpacts.norms[mergedImpacts.size - 1];
+                assert Long.compareUnsigned(prevNorm, norm) < 0;
+                if (freqUpperBound > prevFreq) {
+                  mergedImpacts.add(freqUpperBound, norm);
                 } // otherwise the previous impact is already more competitive
               }
-            } while (top.current != null);
+            } while (top.exhausted == false);
 
             return mergedImpacts;
           }

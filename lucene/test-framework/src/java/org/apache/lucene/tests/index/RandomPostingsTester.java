@@ -43,6 +43,7 @@ import java.util.function.IntToLongFunction;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.Impact;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.DocValuesSkipIndexType;
@@ -50,7 +51,7 @@ import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
-import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
@@ -1263,8 +1264,7 @@ public class RandomPostingsTester {
           impactsEnum.advanceShallow(doc);
           Impacts impacts = impactsEnum.getImpacts();
           INDEX_PACKAGE_ACCESS.checkImpacts(impacts, doc);
-          impactsCopy =
-              impacts.getImpacts(0).stream().map(i -> new Impact(i.freq, i.norm)).toList();
+          impactsCopy = copyOf(impacts.getImpacts(0));
         }
         freq = impactsEnum.freq();
         long norm = docToNorm.applyAsLong(doc);
@@ -1310,8 +1310,7 @@ public class RandomPostingsTester {
           impactsCopy = Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
           for (int level = 0; level < impacts.numLevels(); ++level) {
             if (impacts.getDocIdUpTo(level) >= max) {
-              impactsCopy =
-                  impacts.getImpacts(level).stream().map(i -> new Impact(i.freq, i.norm)).toList();
+              impactsCopy = copyOf(impacts.getImpacts(level));
               break;
             }
           }
@@ -1349,8 +1348,7 @@ public class RandomPostingsTester {
           impactsCopy = Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
           for (int level = 0; level < impacts.numLevels(); ++level) {
             if (impacts.getDocIdUpTo(level) >= max) {
-              impactsCopy =
-                  impacts.getImpacts(level).stream().map(i -> new Impact(i.freq, i.norm)).toList();
+              impactsCopy = copyOf(impacts.getImpacts(level));
               break;
             }
           }
@@ -1465,6 +1463,14 @@ public class RandomPostingsTester {
         }
       }
     }
+  }
+
+  private static List<Impact> copyOf(FreqAndNormBuffer buffer) {
+    List<Impact> impacts = new ArrayList<>();
+    for (int i = 0; i < buffer.size; ++i) {
+      impacts.add(new Impact(buffer.freqs[i], buffer.norms[i]));
+    }
+    return impacts;
   }
 
   private static class TestThread extends Thread {

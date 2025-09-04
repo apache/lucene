@@ -33,10 +33,10 @@ import org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.IntBl
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
+import org.apache.lucene.codecs.Impact;
 import org.apache.lucene.codecs.PushPostingsWriterBase;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.NumericDocValues;

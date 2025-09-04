@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import java.util.List;
-
 /** Information about upcoming impacts, ie. (freq, norm) pairs. */
 public abstract class Impacts {
 
@@ -40,10 +38,9 @@ public abstract class Impacts {
   /**
    * Return impacts on the given level. These impacts are sorted by increasing frequency and
    * increasing unsigned norm, and only valid until the doc ID returned by {@link
-   * #getDocIdUpTo(int)} for the same level, included. The returned list is never empty and should
-   * implement {@link java.util.RandomAccess} if it contains more than a single element. NOTE: There
-   * is no guarantee that these impacts actually appear in postings, only that they trigger scores
-   * that are greater than or equal to the impacts that actually appear in postings.
+   * #getDocIdUpTo(int)} for the same level, included. The returned buffer is never empty. NOTE:
+   * There is no guarantee that these impacts actually appear in postings, only that they trigger
+   * scores that are greater than or equal to the impacts that actually appear in postings.
    */
-  public abstract List<Impact> getImpacts(int level);
+  public abstract FreqAndNormBuffer getImpacts(int level);
 }
