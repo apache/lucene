@@ -232,7 +232,7 @@ public class ParentsChildrenBlockJoinQuery extends Query {
         }
 
         @Override
-        public void setTopLevelScoringClause() {
+        public void setTopLevelScoringClause() throws IOException {
           // Propagate to both parent and child scorers
           parentScorerSupplier.setTopLevelScoringClause();
           childScorerSupplier.setTopLevelScoringClause();
