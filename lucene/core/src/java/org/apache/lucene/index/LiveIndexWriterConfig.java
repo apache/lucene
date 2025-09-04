@@ -40,7 +40,6 @@ public class LiveIndexWriterConfig {
   private final Analyzer analyzer;
 
   private volatile int maxBufferedDocs;
-  private volatile double ramBufferSizeMB;
   private volatile IndexReaderWarmer mergedSegmentWarmer;
 
   // modified by IndexWriterConfig
@@ -116,10 +115,15 @@ public class LiveIndexWriterConfig {
   /** The IndexWriter event listener to record key events * */
   protected IndexWriterEventListener eventListener;
 
+  /**
+   * RAM manager associated with this config, can be shared with other configs if sharing buffers
+   */
+  protected final IndexWriterRAMManager indexWriterRAMManager;
+
   // used by IndexWriterConfig
-  LiveIndexWriterConfig(Analyzer analyzer) {
+  LiveIndexWriterConfig(Analyzer analyzer, IndexWriterRAMManager indexWriterRAMManager) {
     this.analyzer = analyzer;
-    ramBufferSizeMB = IndexWriterConfig.DEFAULT_RAM_BUFFER_SIZE_MB;
+    this.indexWriterRAMManager = indexWriterRAMManager;
     maxBufferedDocs = IndexWriterConfig.DEFAULT_MAX_BUFFERED_DOCS;
     mergedSegmentWarmer = null;
     delPolicy = new KeepOnlyLastCommitDeletionPolicy();
@@ -181,21 +185,23 @@ public class LiveIndexWriterConfig {
    *     ramBufferSize when maxBufferedDocs is already disabled
    */
   public synchronized LiveIndexWriterConfig setRAMBufferSizeMB(double ramBufferSizeMB) {
-    if (ramBufferSizeMB != IndexWriterConfig.DISABLE_AUTO_FLUSH && ramBufferSizeMB <= 0.0) {
-      throw new IllegalArgumentException("ramBufferSize should be > 0.0 MB when enabled");
-    }
     if (ramBufferSizeMB == IndexWriterConfig.DISABLE_AUTO_FLUSH
         && maxBufferedDocs == IndexWriterConfig.DISABLE_AUTO_FLUSH) {
       throw new IllegalArgumentException(
           "at least one of ramBufferSize and maxBufferedDocs must be enabled");
     }
-    this.ramBufferSizeMB = ramBufferSizeMB;
+    indexWriterRAMManager.setRamBufferSizeMB(ramBufferSizeMB);
     return this;
   }
 
   /** Returns the value set by {@link #setRAMBufferSizeMB(double)} if enabled. */
   public double getRAMBufferSizeMB() {
-    return ramBufferSizeMB;
+    return indexWriterRAMManager.getRamBufferSizeMB();
+  }
+
+  /** Get the {@link IndexWriterRAMManager} associated with this config */
+  public IndexWriterRAMManager getIndexWriterRAMManager() {
+    return indexWriterRAMManager;
   }
 
   /**
@@ -220,7 +226,7 @@ public class LiveIndexWriterConfig {
       throw new IllegalArgumentException("maxBufferedDocs must at least be 2 when enabled");
     }
     if (maxBufferedDocs == IndexWriterConfig.DISABLE_AUTO_FLUSH
-        && ramBufferSizeMB == IndexWriterConfig.DISABLE_AUTO_FLUSH) {
+        && indexWriterRAMManager.getRamBufferSizeMB() == IndexWriterConfig.DISABLE_AUTO_FLUSH) {
       throw new IllegalArgumentException(
           "at least one of ramBufferSize and maxBufferedDocs must be enabled");
     }
