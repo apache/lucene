@@ -74,80 +74,78 @@ final class SegmentCoreReaders {
   SegmentCoreReaders(Directory dir, SegmentCommitInfo si, IOContext context) throws IOException {
 
     final Codec codec = si.info.getCodec();
-    final Directory
-        cfsDir; // confusing name: if (cfs) it's the cfsdir, otherwise it's the segment's directory.
-    boolean success = false;
+    // confusing name: if (cfs) it's the cfsdir, otherwise it's the segment's directory:
+    final Directory cfsDir;
 
     try {
-      if (si.info.getUseCompoundFile()) {
-        cfsDir = cfsReader = codec.compoundFormat().getCompoundReader(dir, si.info);
-      } else {
-        cfsReader = null;
-        cfsDir = dir;
-      }
+      try {
+        if (si.info.getUseCompoundFile()) {
+          cfsDir = cfsReader = codec.compoundFormat().getCompoundReader(dir, si.info);
+        } else {
+          cfsReader = null;
+          cfsDir = dir;
+        }
 
-      segment = si.info.name;
+        segment = si.info.name;
 
-      coreFieldInfos = codec.fieldInfosFormat().read(cfsDir, si.info, "", context);
+        coreFieldInfos = codec.fieldInfosFormat().read(cfsDir, si.info, "", context);
 
-      final SegmentReadState segmentReadState =
-          new SegmentReadState(cfsDir, si.info, coreFieldInfos, context);
-      if (coreFieldInfos.hasPostings()) {
-        final PostingsFormat format = codec.postingsFormat();
-        // Ask codec for its Fields
-        fields = format.fieldsProducer(segmentReadState);
-        assert fields != null;
-      } else {
-        fields = null;
-      }
-      // ask codec for its Norms:
-      // TODO: since we don't write any norms file if there are no norms,
-      // kinda jaky to assume the codec handles the case of no norms file at all gracefully?!
+        final SegmentReadState segmentReadState =
+            new SegmentReadState(cfsDir, si.info, coreFieldInfos, context);
+        if (coreFieldInfos.hasPostings()) {
+          final PostingsFormat format = codec.postingsFormat();
+          // Ask codec for its Fields
+          fields = format.fieldsProducer(segmentReadState);
+          assert fields != null;
+        } else {
+          fields = null;
+        }
+        // ask codec for its Norms:
+        // TODO: since we don't write any norms file if there are no norms,
+        // kinda jaky to assume the codec handles the case of no norms file at all gracefully?!
 
-      if (coreFieldInfos.hasNorms()) {
-        normsProducer = codec.normsFormat().normsProducer(segmentReadState);
-        assert normsProducer != null;
-      } else {
-        normsProducer = null;
-      }
+        if (coreFieldInfos.hasNorms()) {
+          normsProducer = codec.normsFormat().normsProducer(segmentReadState);
+          assert normsProducer != null;
+        } else {
+          normsProducer = null;
+        }
 
-      fieldsReaderOrig =
-          si.info
-              .getCodec()
-              .storedFieldsFormat()
-              .fieldsReader(cfsDir, si.info, coreFieldInfos, context);
-
-      if (coreFieldInfos.hasTermVectors()) { // open term vector files only as needed
-        termVectorsReaderOrig =
+        fieldsReaderOrig =
             si.info
                 .getCodec()
-                .termVectorsFormat()
-                .vectorsReader(cfsDir, si.info, coreFieldInfos, context);
-      } else {
-        termVectorsReaderOrig = null;
-      }
+                .storedFieldsFormat()
+                .fieldsReader(cfsDir, si.info, coreFieldInfos, context);
 
-      if (coreFieldInfos.hasPointValues()) {
-        pointsReader = codec.pointsFormat().fieldsReader(segmentReadState);
-      } else {
-        pointsReader = null;
-      }
+        if (coreFieldInfos.hasTermVectors()) { // open term vector files only as needed
+          termVectorsReaderOrig =
+              si.info
+                  .getCodec()
+                  .termVectorsFormat()
+                  .vectorsReader(cfsDir, si.info, coreFieldInfos, context);
+        } else {
+          termVectorsReaderOrig = null;
+        }
 
-      if (coreFieldInfos.hasVectorValues()) {
-        knnVectorsReader = codec.knnVectorsFormat().fieldsReader(segmentReadState);
-      } else {
-        knnVectorsReader = null;
-      }
+        if (coreFieldInfos.hasPointValues()) {
+          pointsReader = codec.pointsFormat().fieldsReader(segmentReadState);
+        } else {
+          pointsReader = null;
+        }
 
-      success = true;
-    } catch (EOFException | FileNotFoundException e) {
-      throw new CorruptIndexException("Problem reading index from " + dir, dir.toString(), e);
-    } catch (NoSuchFileException e) {
-      throw new CorruptIndexException("Problem reading index.", e.getFile(), e);
-    } finally {
-      if (!success) {
-        decRef();
+        if (coreFieldInfos.hasVectorValues()) {
+          knnVectorsReader = codec.knnVectorsFormat().fieldsReader(segmentReadState);
+        } else {
+          knnVectorsReader = null;
+        }
+      } catch (EOFException | FileNotFoundException e) {
+        throw new CorruptIndexException("Problem reading index from " + dir, dir.toString(), e);
+      } catch (NoSuchFileException e) {
+        throw new CorruptIndexException("Problem reading index.", e.getFile(), e);
       }
+    } catch (Throwable t) {
+      decRef();
+      throw t;
     }
   }
 
