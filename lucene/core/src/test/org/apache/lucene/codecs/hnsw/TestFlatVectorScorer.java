@@ -260,11 +260,13 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
             : flatVectorsScorer.getRandomVectorScorer(sim, values, randomFloatVector(dims));
     int[] indices = randomIndices(size);
     float[] expectedScores = new float[size];
+    float expectedMaxScore = Float.NEGATIVE_INFINITY;
     for (int i = 0; i < size; i++) {
       expectedScores[i] = scorer.score(indices[i]);
+      expectedMaxScore = Math.max(expectedMaxScore, expectedScores[i]);
     }
     float[] bulkScores = new float[size];
-    scorer.bulkScore(indices, bulkScores, size);
+    assertEquals(expectedMaxScore, scorer.bulkScore(indices, bulkScores, size), 0.001);
     assertArrayEquals(expectedScores, bulkScores, delta);
     assertNoScoreBeyondNumNodes(scorer, size);
   }
@@ -302,8 +304,10 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
         DefaultFlatVectorScorer.INSTANCE.getRandomVectorScorerSupplier(sim, values).scorer();
     defaultScorer.setScoringOrdinal(targetNode);
     float[] expectedScores = new float[size];
+    float expectedMaxScore = Float.NEGATIVE_INFINITY;
     for (int i = 0; i < size; i++) {
       expectedScores[i] = defaultScorer.score(indices[i]);
+      expectedMaxScore = Math.max(expectedMaxScore, expectedScores[i]);
     }
 
     var supplier = flatVectorsScorer.getRandomVectorScorerSupplier(sim, values);
@@ -311,7 +315,7 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
       var updatableScorer = ss.scorer();
       updatableScorer.setScoringOrdinal(targetNode);
       float[] bulkScores = new float[size];
-      updatableScorer.bulkScore(indices, bulkScores, size);
+      assertEquals(expectedMaxScore, updatableScorer.bulkScore(indices, bulkScores, size), 0.001);
       assertArrayEquals(expectedScores, bulkScores, delta);
     }
   }
