@@ -1381,6 +1381,8 @@ public final class CheckIndex implements Closeable {
       for (FieldInfo info : reader.getFieldInfos()) {
         if (info.hasNorms()) {
           checkNumericDocValues(info.name, normsReader.getNorms(info), normsReader.getNorms(info));
+          checkBulkFetchNumericDocValues(
+              info.name, normsReader.getNorms(info), normsReader.getNorms(info), reader.maxDoc());
           ++status.totFields;
         }
       }
@@ -3330,7 +3332,7 @@ public final class CheckIndex implements Closeable {
       for (FieldInfo fieldInfo : reader.getFieldInfos()) {
         if (fieldInfo.getDocValuesType() != DocValuesType.NONE) {
           status.totalValueFields++;
-          checkDocValues(fieldInfo, dvReader, status);
+          checkDocValues(fieldInfo, reader.maxDoc(), dvReader, status);
         }
       }
 
@@ -3824,8 +3826,44 @@ public final class CheckIndex implements Closeable {
     }
   }
 
+  private static void checkBulkFetchNumericDocValues(
+      String fieldName, NumericDocValues ndv, NumericDocValues ndv2, int maxDoc)
+      throws IOException {
+
+    int[] docs = new int[16];
+    long[] values = new long[16];
+
+    for (int doc = -1; doc < maxDoc; ) {
+      int size = 0;
+      for (int j = 0; j < docs.length; ++j) {
+        doc += 1 + (j & 0x03);
+        if (doc >= maxDoc) {
+          break;
+        }
+        docs[size++] = doc;
+      }
+
+      long defaultValue = 42L;
+      ndv.longValues(size, docs, values, defaultValue);
+
+      for (int j = 0; j < size; ++j) {
+        long expected;
+        if (ndv2.advanceExact(docs[j])) {
+          expected = ndv2.longValue();
+        } else {
+          expected = defaultValue;
+        }
+        if (values[j] != expected) {
+          throw new CheckIndexException(
+              "#longValues reports different value: " + values[j] + " != " + expected);
+        }
+      }
+    }
+  }
+
   private static void checkDocValues(
-      FieldInfo fi, DocValuesProducer dvReader, DocValuesStatus status) throws Exception {
+      FieldInfo fi, int maxDoc, DocValuesProducer dvReader, DocValuesStatus status)
+      throws Exception {
     if (fi.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
       status.totalSkippingIndex++;
       checkDocValueSkipper(fi, dvReader.getSkipper(fi));
@@ -3856,6 +3894,8 @@ public final class CheckIndex implements Closeable {
         status.totalNumericFields++;
         checkDVIterator(fi, dvReader::getNumeric);
         checkNumericDocValues(fi.name, dvReader.getNumeric(fi), dvReader.getNumeric(fi));
+        checkBulkFetchNumericDocValues(
+            fi.name, dvReader.getNumeric(fi), dvReader.getNumeric(fi), maxDoc);
         break;
       case NONE:
       default:
