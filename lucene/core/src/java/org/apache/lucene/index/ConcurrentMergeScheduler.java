@@ -177,9 +177,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         if (value != null) {
           coreCount = Integer.parseInt(value);
         }
-      } catch (
-          @SuppressWarnings("unused")
-          Throwable ignored) {
+      } catch (Throwable _) {
       }
 
       // If you are indexing at full throttle, how many merge threads do you need to keep up? It
@@ -498,9 +496,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         if (toSync != null) {
           try {
             toSync.join();
-          } catch (
-              @SuppressWarnings("unused")
-              InterruptedException ie) {
+          } catch (InterruptedException _) {
             // ignore this Exception, we will retry until all threads are dead
             interrupted = true;
           }
@@ -682,9 +678,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     // Let CMS run new merges if necessary:
     try {
       merge(mergeSource, MergeTrigger.MERGE_FINISHED);
-    } catch (
-        @SuppressWarnings("unused")
-        AlreadyClosedException ace) {
+    } catch (AlreadyClosedException _) {
       // OK
     } catch (IOException ioe) {
       throw new UncheckedIOException(ioe);

@@ -49,7 +49,6 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
   private final BytesRefBuilder scratch = new BytesRefBuilder();
 
   SimpleTextKnnVectorsWriter(SegmentWriteState state) throws IOException {
-    boolean success = false;
     // exception handling to pass TestSimpleTextKnnVectorsFormat#testRandomExceptions
     try {
       String metaFileName =
@@ -65,11 +64,9 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
               state.segmentSuffix,
               SimpleTextKnnVectorsFormat.VECTOR_EXTENSION);
       vectorData = state.directory.createOutput(vectorDataFileName, state.context);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 

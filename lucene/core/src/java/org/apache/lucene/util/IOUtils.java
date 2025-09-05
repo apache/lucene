@@ -224,9 +224,7 @@ public final class IOUtils {
     for (String name : files) {
       try {
         dir.deleteFile(name);
-      } catch (
-          @SuppressWarnings("unused")
-          Throwable ignored) {
+      } catch (Throwable _) {
         // ignore
       }
     }
@@ -323,9 +321,7 @@ public final class IOUtils {
       if (name != null) {
         try {
           Files.delete(name);
-        } catch (
-            @SuppressWarnings("unused")
-            Throwable ignored) {
+        } catch (Throwable _) {
           // ignore
         }
       }

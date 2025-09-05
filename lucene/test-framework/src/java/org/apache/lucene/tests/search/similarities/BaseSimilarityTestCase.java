@@ -27,12 +27,14 @@ import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.similarities.IndriDirichletSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
+import org.apache.lucene.search.similarities.Similarity.BulkSimScorer;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.SmallFloat;
@@ -137,9 +139,7 @@ public abstract class BaseSimilarityTestCase extends LuceneTestCase {
     long upperBound;
     try {
       upperBound = Math.min(MAXTOKENS_FORTESTING, Math.multiplyExact(docCount, Integer.MAX_VALUE));
-    } catch (
-        @SuppressWarnings("unused")
-        ArithmeticException overflow) {
+    } catch (ArithmeticException _) {
       upperBound = MAXTOKENS_FORTESTING;
     }
     final long sumDocFreq;
@@ -205,9 +205,7 @@ public abstract class BaseSimilarityTestCase extends LuceneTestCase {
     try {
       upperBound =
           Math.min(corpus.sumTotalTermFreq(), Math.multiplyExact(docFreq, Integer.MAX_VALUE));
-    } catch (
-        @SuppressWarnings("unused")
-        ArithmeticException overflow) {
+    } catch (ArithmeticException _) {
       upperBound = corpus.sumTotalTermFreq();
     }
     if (corpus.sumTotalTermFreq() == corpus.sumDocFreq()) {
@@ -519,6 +517,43 @@ public abstract class BaseSimilarityTestCase extends LuceneTestCase {
         }
         System.out.println("freq=" + freq);
       }
+    }
+  }
+
+  public void testBulkScore() throws IOException {
+    Random random = random();
+    Similarity similarity = getSimilarity(random);
+    CollectionStatistics corpus = newCorpus(random, 1);
+    TermStatistics term = newTerm(random, corpus);
+    SimScorer scorer = similarity.scorer(random().nextFloat(5f), corpus, term);
+    BulkSimScorer bulkScorer = scorer.asBulkSimScorer();
+    int freqUpperBound =
+        Math.toIntExact(Math.min(term.totalTermFreq() - term.docFreq() + 1, Integer.MAX_VALUE));
+
+    float[] freqs = new float[0];
+    long[] norms = new long[0];
+    float[] scores = new float[0];
+
+    int iters = atLeast(3);
+    for (int iter = 0; iter < iters; ++iter) {
+      int size = TestUtil.nextInt(random, 0, 200);
+      if (size > freqs.length) {
+        freqs = new float[ArrayUtil.oversize(size, Float.BYTES)];
+        norms = new long[freqs.length];
+        scores = new float[freqs.length];
+      }
+      for (int i = 0; i < size; ++i) {
+        freqs[i] = TestUtil.nextInt(random, 1, freqUpperBound);
+        norms[i] = TestUtil.nextLong(random, 1, 255);
+      }
+
+      float[] expectedScores = new float[size];
+      for (int i = 0; i < size; ++i) {
+        expectedScores[i] = scorer.score(freqs[i], norms[i]);
+      }
+      bulkScorer.score(size, freqs, norms, scores);
+
+      assertArrayEquals(expectedScores, ArrayUtil.copyOfSubArray(scores, 0, size), 0f);
     }
   }
 }

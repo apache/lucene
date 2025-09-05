@@ -35,6 +35,13 @@ long maxRamBytesUsed = 50 * 1024 * 1024; // 50MB
 IndexSearcher.setDefaultQueryCache(new LRUQueryCache(maxCachedQueries, maxRamBytesUsed));
 ```
 
+### Possibility to optimize `readGroupVInt()` in `DataInput` subclasses removed (GITHUB#15116)
+
+Any subclass of `DataInput` that have implemented `readGroupVInt()` need to remove that implementation.
+
+Instead make sure that subclasses of `IndexInput` implement `RandomAccessInput`.
+Pure `DataInput` subclasses cannot be optimized anymore as they cannot offer random access and seeking.`
+
 ## Migration from Lucene 9.x to Lucene 10.0
 
 ### DataInput#readVLong() may now read negative vlongs

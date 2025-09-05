@@ -20,7 +20,9 @@ import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.FilterLeafReader.FilterTerms;
 import org.apache.lucene.index.FilterLeafReader.FilterTermsEnum;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FilterDocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.Bits;
@@ -331,68 +333,92 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       return new ExitableByteVectorValues(vectorValues);
     }
 
+    private class ExitableAcceptDocs extends AcceptDocs {
+
+      private final AcceptDocs in;
+      private Bits bits;
+
+      ExitableAcceptDocs(AcceptDocs in) {
+        this.in = in;
+      }
+
+      @Override
+      public Bits bits() throws IOException {
+        if (bits == null) {
+          // when acceptDocs is null due to no doc deleted, we will instantiate a new one that would
+          // match all docs to allow timeout checking.
+          final Bits updatedAcceptDocs =
+              in.bits() == null ? new Bits.MatchAllBits(maxDoc()) : in.bits();
+          bits =
+              new Bits() {
+                private static final int MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK = 16;
+                private int calls;
+
+                @Override
+                public boolean get(int index) {
+                  if (calls++ % MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK == 0) {
+                    checkAndThrowForSearchVectors();
+                  }
+
+                  return updatedAcceptDocs.get(index);
+                }
+
+                @Override
+                public int length() {
+                  return updatedAcceptDocs.length();
+                }
+              };
+        }
+        return bits;
+      }
+
+      @Override
+      public DocIdSetIterator iterator() throws IOException {
+        return new FilterDocIdSetIterator(in.iterator()) {
+          private int docToCheck = 0;
+
+          @Override
+          public int advance(int target) throws IOException {
+            final int advance = super.advance(target);
+            if (advance >= docToCheck) {
+              checkAndThrow(in);
+              docToCheck = advance + DOCS_BETWEEN_TIMEOUT_CHECK;
+            }
+            return advance;
+          }
+
+          @Override
+          public int nextDoc() throws IOException {
+            final int nextDoc = super.nextDoc();
+            if (nextDoc >= docToCheck) {
+              checkAndThrow(in);
+              docToCheck = nextDoc + DOCS_BETWEEN_TIMEOUT_CHECK;
+            }
+            return nextDoc;
+          }
+        };
+      }
+
+      @Override
+      public int cost() throws IOException {
+        return in.cost();
+      }
+    }
+
     @Override
     public void searchNearestVectors(
-        String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+        String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
 
-      // when acceptDocs is null due to no doc deleted, we will instantiate a new one that would
-      // match all docs to allow timeout checking.
-      final Bits updatedAcceptDocs =
-          acceptDocs == null ? new Bits.MatchAllBits(maxDoc()) : acceptDocs;
-
-      Bits timeoutCheckingAcceptDocs =
-          new Bits() {
-            private static final int MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK = 16;
-            private int calls;
-
-            @Override
-            public boolean get(int index) {
-              if (calls++ % MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK == 0) {
-                checkAndThrowForSearchVectors();
-              }
-
-              return updatedAcceptDocs.get(index);
-            }
-
-            @Override
-            public int length() {
-              return updatedAcceptDocs.length();
-            }
-          };
-
+      AcceptDocs timeoutCheckingAcceptDocs = new ExitableAcceptDocs(acceptDocs);
       in.searchNearestVectors(field, target, knnCollector, timeoutCheckingAcceptDocs);
     }
 
     @Override
     public void searchNearestVectors(
-        String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+        String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
-      // when acceptDocs is null due to no doc deleted, we will instantiate a new one that would
-      // match all docs to allow timeout checking.
-      final Bits updatedAcceptDocs =
-          acceptDocs == null ? new Bits.MatchAllBits(maxDoc()) : acceptDocs;
-
-      Bits timeoutCheckingAcceptDocs =
-          new Bits() {
-            private static final int MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK = 16;
-            private int calls;
-
-            @Override
-            public boolean get(int index) {
-              if (calls++ % MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK == 0) {
-                checkAndThrowForSearchVectors();
-              }
-
-              return updatedAcceptDocs.get(index);
-            }
-
-            @Override
-            public int length() {
-              return updatedAcceptDocs.length();
-            }
-          };
-
+      AcceptDocs timeoutCheckingAcceptDocs = new ExitableAcceptDocs(acceptDocs);
       in.searchNearestVectors(field, target, knnCollector, timeoutCheckingAcceptDocs);
     }
 

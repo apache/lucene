@@ -48,7 +48,7 @@ import org.apache.lucene.internal.vectorization.VectorizationProvider;
  */
 public final class VectorUtil {
 
-  private static final float EPSILON = 1e-4f;
+  public static final float EPSILON = 1e-4f;
 
   private static final VectorUtilSupport IMPL =
       VectorizationProvider.getInstance().getVectorUtilSupport();
@@ -138,23 +138,7 @@ public final class VectorUtil {
    * @throws IllegalArgumentException when the vector is all zero and throwOnZero is true
    */
   public static float[] l2normalize(float[] v, boolean throwOnZero) {
-    double l1norm = IMPL.dotProduct(v, v);
-    if (l1norm == 0) {
-      if (throwOnZero) {
-        throw new IllegalArgumentException("Cannot normalize a zero-length vector");
-      } else {
-        return v;
-      }
-    }
-    if (Math.abs(l1norm - 1.0d) <= EPSILON) {
-      return v;
-    }
-    int dim = v.length;
-    double l2norm = Math.sqrt(l1norm);
-    for (int i = 0; i < dim; i++) {
-      v[i] /= (float) l2norm;
-    }
-    return v;
+    return IMPL.l2normalize(v, throwOnZero);
   }
 
   /**
@@ -306,6 +290,33 @@ public final class VectorUtil {
       return 1 / (1 + -1 * vectorDotProductSimilarity);
     }
     return vectorDotProductSimilarity + 1;
+  }
+
+  /**
+   * Converts a dot product or cosine similarity value to a normalized score in the [0, 1] range.
+   *
+   * <p>This transformation is necessary when consistent non-negative scores are required. It maps
+   * input values from [-1, 1] to [0, 1] using the formula: (1 + value) / 2. Any result below 0 is
+   * clamped to 0 for numerical safety.
+   *
+   * @param value the similarity value (dot product or cosine), typically in the range [-1, 1]
+   * @return a normalized score between 0 and 1
+   */
+  public static float normalizeToUnitInterval(float value) {
+    return Math.max((1 + value) / 2, 0);
+  }
+
+  /**
+   * Maps a non-negative squared distance to a similarity score in the range (0, 1].
+   *
+   * <p>Uses the transformation: {@code similarity = 1 / (1 + squaredDistance)}. Smaller distances
+   * yield scores closer to 1; larger distances approach 0.
+   *
+   * @param squaredDistance squared Euclidean distance (must be ≥ 0)
+   * @return similarity score in (0, 1]
+   */
+  public static float normalizeDistanceToUnitInterval(float squaredDistance) {
+    return 1.0f / (1.0f + squaredDistance);
   }
 
   /**
