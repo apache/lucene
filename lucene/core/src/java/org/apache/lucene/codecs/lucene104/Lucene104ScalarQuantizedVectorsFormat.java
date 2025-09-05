@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene102;
+package org.apache.lucene.codecs.lucene104;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
@@ -26,10 +26,10 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
 /**
- * The binary quantization format used here is a per-vector optimized scalar quantization. These
- * ideas are evolutions of LVQ proposed in <a href="https://arxiv.org/abs/2304.04759">Similarity
- * search in the blink of an eye with compressed indices</a> by Cecilia Aguerrebere et al., the
- * previous work on globally optimized scalar quantization in Apache Lucene, and <a
+ * The quantization format used here is a per-vector optimized scalar quantization. These ideas are
+ * evolutions of LVQ proposed in <a href="https://arxiv.org/abs/2304.04759">Similarity search in the
+ * blink of an eye with compressed indices</a> by Cecilia Aguerrebere et al., the previous work on
+ * globally optimized scalar quantization in Apache Lucene, and <a
  * href="https://arxiv.org/abs/1908.10396">Accelerating Large-Scale Inference with Anisotropic
  * Vector Quantization </a> by Ruiqi Guo et. al. Also see {@link
  * org.apache.lucene.util.quantization.OptimizedScalarQuantizer}. Some of key features are:
@@ -52,31 +52,32 @@ import org.apache.lucene.index.SegmentWriteState;
  *
  * <p>The format is stored within two files:
  *
- * <h2>.veb (vector data) file</h2>
+ * <h2>.veq (vector data) file</h2>
  *
- * <p>Stores the binary quantized vectors in a flat format. Additionally, it stores each vector's
+ * <p>Stores the quantized vectors in a flat format. Additionally, it stores each vector's
  * corrective factors. At the end of the file, additional information is stored for vector ordinal
  * to centroid ordinal mapping and sparse vector information.
  *
  * <ul>
  *   <li>For each vector:
  *       <ul>
- *         <li><b>[byte]</b> the binary quantized values, each byte holds 8 bits.
+ *         <li><b>[byte]</b> the quantized values. Each dimension may be up to 8 bits, and multiple
+ *             dimensions may be packed into a single byte.
  *         <li><b>[float]</b> the optimized quantiles and an additional similarity dependent
  *             corrective factor.
- *         <li><b>short</b> the sum of the quantized components
+ *         <li><b>[int]</b> the sum of the quantized components
  *       </ul>
  *   <li>After the vectors, sparse vector information keeping track of monotonic blocks.
  * </ul>
  *
- * <h2>.vemb (vector metadata) file</h2>
+ * <h2>.vemq (vector metadata) file</h2>
  *
  * <p>Stores the metadata for the vectors. This includes the number of vectors, the number of
  * dimensions, and file offset information.
  *
  * <ul>
  *   <li><b>int</b> the field number
- *   <li><b>int</b> the vector encoding ordinal
+ *   <li><b>int</b> the vector encoding ordinal XXX wut is this?
  *   <li><b>int</b> the vector similarity ordinal
  *   <li><b>vint</b> the vector dimensions
  *   <li><b>vlong</b> the offset to the vector data in the .veb file
@@ -87,43 +88,40 @@ import org.apache.lucene.index.SegmentWriteState;
  *   <li>The sparse vector information, if required, mapping vector ordinal to doc ID
  * </ul>
  */
-public class Lucene102BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
-
-  public static final byte QUERY_BITS = 4;
-  public static final byte INDEX_BITS = 1;
-
-  public static final String BINARIZED_VECTOR_COMPONENT = "BVEC";
-  public static final String NAME = "Lucene102BinaryQuantizedVectorsFormat";
+public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
+  public static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";
+  public static final String NAME = "Lucene104ScalarQuantizedVectorsFormat";
 
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
-  static final String META_CODEC_NAME = "Lucene102BinaryQuantizedVectorsFormatMeta";
-  static final String VECTOR_DATA_CODEC_NAME = "Lucene102BinaryQuantizedVectorsFormatData";
-  static final String META_EXTENSION = "vemb";
-  static final String VECTOR_DATA_EXTENSION = "veb";
+  static final String META_CODEC_NAME = "Lucene104ScalarQuantizedVectorsFormatMeta";
+  static final String VECTOR_DATA_CODEC_NAME = "Lucene104ScalarQuantizedVectorsFormatData";
+  static final String META_EXTENSION = "vemq";
+  static final String VECTOR_DATA_EXTENSION = "veq";
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
   private static final FlatVectorsFormat rawVectorFormat =
       new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
-  private static final Lucene102BinaryFlatVectorsScorer scorer =
-      new Lucene102BinaryFlatVectorsScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
+  private static final Lucene104ScalarQuantizedVectorScorer scorer =
+      new Lucene104ScalarQuantizedVectorScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   /** Creates a new instance with the default number of vectors per cluster. */
-  public Lucene102BinaryQuantizedVectorsFormat() {
+  public Lucene104ScalarQuantizedVectorsFormat() {
     super(NAME);
   }
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene102BinaryQuantizedVectorsWriter(
+    return new Lucene104ScalarQuantizedVectorsWriter(
         scorer, rawVectorFormat.fieldsWriter(state), state);
   }
 
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene102BinaryQuantizedVectorsReader(
-        state, rawVectorFormat.fieldsReader(state), scorer);
+    throw new UnsupportedOperationException("XXX TODO");
+    // return new Lucene102BinaryQuantizedVectorsReader(
+    //    state, rawVectorFormat.fieldsReader(state), scorer);
   }
 
   @Override
@@ -133,7 +131,7 @@ public class Lucene102BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
 
   @Override
   public String toString() {
-    return "Lucene102BinaryQuantizedVectorsFormat(name="
+    return "Lucene104ScalarQuantizedVectorsFormat(name="
         + NAME
         + ", flatVectorScorer="
         + scorer

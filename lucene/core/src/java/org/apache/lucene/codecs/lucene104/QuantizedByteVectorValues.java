@@ -22,6 +22,7 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 
+// XXX do I want to make this public? this also overlaps heavily with the binarized version.
 /** Scalar quantized byte vector values */
 abstract class QuantizedByteVectorValues extends ByteVectorValues {
 
@@ -70,6 +71,8 @@ abstract class QuantizedByteVectorValues extends ByteVectorValues {
   @Override
   public abstract QuantizedByteVectorValues copy() throws IOException;
 
+  // XXX off heap overrides this. this is probably only used in one other spot so it should be
+  // abstract.
   float getCentroidDP() throws IOException {
     // this only gets executed on-merge
     float[] centroid = getCentroid();
