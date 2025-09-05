@@ -112,7 +112,8 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+* GITHUB#15149: Introduce NumericDocValues#longValues to help speed up the
+  retrieval of many doc values at once. (Adrien Grand)
 
 New Features
 ---------------------
