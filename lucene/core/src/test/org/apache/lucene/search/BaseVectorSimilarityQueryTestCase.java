@@ -17,6 +17,9 @@
 package org.apache.lucene.search;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.hamcrest.Matchers.either;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.lessThan;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -314,7 +317,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
           int id = getId(searcher, scoreDoc.doc);
 
           // Check that returned document is not deleted
-          assertFalse(id >= startIndex && id <= endIndex);
+          assertThat(id, either(lessThan(startIndex)).or(greaterThan(endIndex)));
         }
         // Check that all live docs are returned
         assertEquals(numDocs - endIndex + startIndex - 1, scoreDocs.length);

@@ -16,9 +16,12 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.instanceOf;
+
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.AutomatonTermsEnum;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -136,7 +139,7 @@ public class TestWildcardQuery extends LuceneTestCase {
     wq = new WildcardQuery(new Term("field", "*"));
     assertMatches(searcher, wq, 2);
     Terms terms = MultiTerms.getTerms(searcher.getIndexReader(), "field");
-    assertFalse(wq.getTermsEnum(terms).getClass().getSimpleName().contains("AutomatonTermsEnum"));
+    assertThat(wq.getTermsEnum(terms), instanceOf(AutomatonTermsEnum.class));
     reader.close();
     indexStore.close();
   }

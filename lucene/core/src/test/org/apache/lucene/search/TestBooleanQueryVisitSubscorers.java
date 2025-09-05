@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.contains;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -249,17 +251,16 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
     ScoreSummary scoreSummary =
         searcher.search(query.build(), new ScorerSummarizingCollectorManager());
     assertEquals(1, scoreSummary.numHits.get());
-    assertFalse(scoreSummary.summaries.isEmpty());
-    for (String summary : scoreSummary.summaries) {
-      assertEquals(
-          "ConjunctionScorer\n"
-              + "    MUST ConstantScoreScorer\n"
-              + "    MUST WANDScorer\n"
-              + "            SHOULD TermScorer\n"
-              + "            SHOULD TermScorer\n"
-              + "            SHOULD TermScorer",
-          summary);
-    }
+    assertThat(
+        scoreSummary.summaries,
+        contains(
+            """
+            ConjunctionScorer
+                MUST ConstantScoreScorer
+                MUST WANDScorer
+                        SHOULD TermScorer
+                        SHOULD TermScorer
+                        SHOULD TermScorer"""));
   }
 
   public void testGetChildrenBoosterScorer() throws IOException {
@@ -269,10 +270,7 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
     ScoreSummary scoreSummary =
         scorerSearcher.search(query.build(), new ScorerSummarizingCollectorManager());
     assertEquals(1, scoreSummary.numHits.get());
-    assertFalse(scoreSummary.summaries.isEmpty());
-    for (String summary : scoreSummary.summaries) {
-      assertEquals("TermScorer", summary);
-    }
+    assertThat(scoreSummary.summaries, contains("TermScorer"));
   }
 
   private static class ScoreSummary {
