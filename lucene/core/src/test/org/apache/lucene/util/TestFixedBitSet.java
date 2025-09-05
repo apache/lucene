@@ -38,6 +38,15 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     return set;
   }
 
+  @Override
+  protected FixedBitSet fromJavaUtilBitSet(java.util.BitSet set, int numBits) {
+    FixedBitSet fbs = new FixedBitSet(numBits);
+    for (int i = set.nextSetBit(0); i >= 0; i = set.nextSetBit(i + 1)) {
+      fbs.set(i);
+    }
+    return fbs;
+  }
+
   @SuppressWarnings("NarrowCalculation")
   public void testApproximateCardinality() {
     // The approximate cardinality works in such a way that it should be pretty accurate on a bitset

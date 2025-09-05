@@ -35,6 +35,15 @@ public class TestSparseFixedBitSet extends BaseBitSetTestCase<SparseFixedBitSet>
   }
 
   @Override
+  protected SparseFixedBitSet fromJavaUtilBitSet(java.util.BitSet set, int numBits) {
+    SparseFixedBitSet sfbs = new SparseFixedBitSet(numBits);
+    for (int i = set.nextSetBit(0); i >= 0; i = set.nextSetBit(i + 1)) {
+      sfbs.set(i);
+    }
+    return sfbs;
+  }
+
+  @Override
   protected void assertEquals(BitSet set1, SparseFixedBitSet set2, int maxDoc) {
     super.assertEquals(set1, set2, maxDoc);
     // check invariants of the sparse set
