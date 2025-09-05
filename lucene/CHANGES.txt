@@ -184,6 +184,8 @@ New Features
 
 * GITHUB#15110: PostingsDecodingUtil: interchange loops to enable better memory access and SIMD vectorisation. (Ramakrishna Chilaka)
 
+* GITHUB#15157: Support JDK 25 in Panama Vectorization Provider. (Chris Hegarty)
+
 Improvements
 ---------------------
 * GITHUB#14458: Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
