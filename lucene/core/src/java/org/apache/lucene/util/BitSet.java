@@ -24,7 +24,8 @@ import org.apache.lucene.search.DocIdSetIterator;
  *
  * @lucene.internal
  */
-public abstract class BitSet implements Bits, Accountable {
+public abstract sealed class BitSet implements Bits, Accountable
+    permits FixedBitSet, SparseFixedBitSet {
 
   /**
    * Build a {@link BitSet} from the content of the provided {@link DocIdSetIterator}. NOTE: this
