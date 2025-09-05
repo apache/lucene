@@ -109,6 +109,17 @@ public class VectorUtilBenchmark {
   }
 
   @Benchmark
+  public int binaryDotProductUint8Scalar() {
+    return VectorUtil.uint8DotProduct(bytesA, bytesB);
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int binaryDotProductUint8Vector() {
+    return VectorUtil.uint8DotProduct(bytesA, bytesB);
+  }
+
+  @Benchmark
   public int binarySquareScalar() {
     return VectorUtil.squareDistance(bytesA, bytesB);
   }
@@ -117,6 +128,17 @@ public class VectorUtilBenchmark {
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public int binarySquareVector() {
     return VectorUtil.squareDistance(bytesA, bytesB);
+  }
+
+  @Benchmark
+  public int binarySquareUint8Scalar() {
+    return VectorUtil.uint8SquareDistance(bytesA, bytesB);
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int binarySquareUint8Vector() {
+    return VectorUtil.uint8SquareDistance(bytesA, bytesB);
   }
 
   @Benchmark
