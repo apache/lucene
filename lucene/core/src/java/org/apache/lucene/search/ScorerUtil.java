@@ -22,6 +22,9 @@ import java.util.stream.LongStream;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat;
 import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.search.similarities.BM25Similarity;
+import org.apache.lucene.search.similarities.Similarity;
+import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.MathUtil;
@@ -98,6 +101,19 @@ class ScorerUtil {
     }
   }
 
+  /**
+   * Optimize the given {@link Similarity} for the case when it is a {@link BM25Similarity}. This
+   * helps make calls to {@link SimScorer#score(float, long)} inlinable, which in-turn helps speed
+   * up query evaluation.
+   */
+  static Similarity likelyBM25Similarity(Similarity similarity) {
+    if (similarity instanceof BM25Similarity) {
+      return similarity;
+    } else {
+      return new FilterSimilarity(similarity);
+    }
+  }
+
   private static class FilterBits implements Bits {
 
     private final Bits in;
@@ -115,6 +131,43 @@ class ScorerUtil {
     public int length() {
       return in.length();
     }
+  }
+
+  private static class FilterSimilarity extends Similarity {
+
+    private final Similarity similarity;
+
+    FilterSimilarity(Similarity similarity) {
+      this.similarity = similarity;
+    }
+
+    @Override
+    public SimScorer scorer(
+        float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
+      return new FilterSimScorer(similarity.scorer(boost, collectionStats, termStats)) {
+        @Override
+        public Explanation explain(Explanation freq, long norm) {
+          return in.explain(freq, norm);
+        }
+      };
+    }
+  }
+
+  private static class FilterSimScorer extends SimScorer {
+
+    protected final SimScorer in;
+
+    FilterSimScorer(SimScorer scorer) {
+      this.in = scorer;
+    }
+
+    @Override
+    public float score(float freq, long norm) {
+      return in.score(freq, norm);
+    }
+
+    // Don't override explain() here since it has a default impl, for consistency with other Filter*
+    // classes.
   }
 
   /**

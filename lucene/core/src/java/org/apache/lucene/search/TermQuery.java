@@ -79,7 +79,8 @@ public class TermQuery extends Query {
         // allocations in case default BM25Scorer is used.
         // See: https://github.com/apache/lucene/issues/12297
         if (scoreMode.needsScores()) {
-          this.simScorer = similarity.scorer(boost, collectionStats, termStats);
+          this.simScorer =
+              ScorerUtil.likelyBM25Similarity(similarity).scorer(boost, collectionStats, termStats);
         } else {
           // Assigning a dummy scorer as this is not expected to be called since scores are not
           // needed.
