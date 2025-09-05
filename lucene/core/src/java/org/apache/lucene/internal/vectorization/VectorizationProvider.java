@@ -204,6 +204,10 @@ public abstract class VectorizationProvider {
           "org.apache.lucene.util.VectorUtil",
           "org.apache.lucene.codecs.lucene103.Lucene103PostingsReader",
           "org.apache.lucene.codecs.lucene103.PostingIndexInput",
+          "org.apache.lucene.codecs.lucene104.Lucene104PostingsReader",
+          "org.apache.lucene.codecs.lucene104.PostingIndexInput",
+          "org.apache.lucene.codecs.lucene105.Lucene105PostingsReader",
+          "org.apache.lucene.codecs.lucene105.PostingIndexInput",
           "org.apache.lucene.tests.util.TestSysoutsLimits");
 
   private static void ensureCaller() {

@@ -14,3 +14,5 @@
 #  limitations under the License.
 
 org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat
+org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat
+org.apache.lucene.codecs.lucene105.Lucene105PostingsFormat
