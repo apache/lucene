@@ -511,6 +511,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     }
   }
 
+  /** Create a new scorer for the must match scorer and exclude clauses. */
   private Scorer excl(Scorer main, Collection<ScorerSupplier> prohibited, long leadCost)
       throws IOException {
     if (prohibited.isEmpty()) {
