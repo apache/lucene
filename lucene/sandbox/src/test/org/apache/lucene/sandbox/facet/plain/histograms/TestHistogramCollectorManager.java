@@ -125,23 +125,8 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
 
   public void testMultiRangePointTreeCollector() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
-
-    long[] values = new long[5000];
-
-    for (int i = 0; i < values.length; i++) {
-      values[i] = random().nextInt(0, 5000); // Generates a random integer
-    }
-
-    for (long value : values) {
-      Document doc = new Document();
-      // Adding indexed point field to verify multi range collector
-      doc.add(new LongPoint("f", value));
-      w.addDocument(doc);
-    }
-
-    DirectoryReader reader = DirectoryReader.open(w);
-    w.close();
+    long[] values = generateRandomData(5000);
+    DirectoryReader reader = indexNumericData(dir, values, true);
     IndexSearcher searcher = newSearcher(reader);
 
     // Validate the MATCH_ALL case
@@ -220,6 +205,50 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
 
     reader.close();
     dir.close();
+  }
+
+  public void testHistogramCollectorExceptionWithoutDocValues() throws IOException {
+    Directory dir = newDirectory();
+    long[] values = generateRandomData(5000);
+    DirectoryReader reader = indexNumericData(dir, values, false);
+    IndexSearcher searcher = newSearcher(reader);
+
+    // Validate that exception is thrown when doc values is disabled on numeric field
+    expectThrows(
+        IllegalStateException.class,
+        () -> searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 1000)));
+
+    reader.close();
+    dir.close();
+  }
+
+  private long[] generateRandomData(int bound) {
+    long[] values = new long[bound];
+    for (int i = 0; i < values.length; i++) {
+      values[i] = random().nextInt(0, bound); // Generates a random integer
+    }
+    return values;
+  }
+
+  private DirectoryReader indexNumericData(Directory dir, long[] values, boolean docValueEnabled)
+      throws IOException {
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
+
+    for (long value : values) {
+      Document doc = new Document();
+      // Adding indexed point field to verify multi range collector
+      doc.add(new LongPoint("f", value));
+      if (docValueEnabled) {
+        // Doc values need to be enabled for histogram collection
+        doc.add(new NumericDocValuesField("f", value));
+      }
+      w.addDocument(doc);
+    }
+
+    DirectoryReader reader = DirectoryReader.open(w);
+    w.close();
+
+    return reader;
   }
 
   private void doTestSkipIndex(IndexWriterConfig cfg) throws IOException {
