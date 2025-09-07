@@ -398,15 +398,7 @@ public class TestSynonymQuery extends LuceneTestCase {
         @Override
         public FreqAndNormBuffer getImpacts(int level) {
           FreqAndNormBuffer buffer = new FreqAndNormBuffer();
-          int size = impacts[level].length;
-          buffer.growNoCopy(size);
-          buffer.size = size;
-          int i = 0;
-          for (Impact impact : impacts[level]) {
-            buffer.freqs[i] = impact.freq;
-            buffer.norms[i] = impact.norm;
-            i++;
-          }
+          Arrays.stream(impacts[level]).forEach(impact -> buffer.add(impact.freq, impact.norm));
           return buffer;
         }
       };
