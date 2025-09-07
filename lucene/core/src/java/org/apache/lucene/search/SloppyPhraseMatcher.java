@@ -129,7 +129,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
               private final FreqAndNormBuffer impactBuffer = new FreqAndNormBuffer();
 
               {
-                impactBuffer.add(Integer.MAX_VALUE, 1)
+                impactBuffer.add(Integer.MAX_VALUE, 1);
               }
 
               @Override
