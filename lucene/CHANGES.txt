@@ -134,6 +134,9 @@ Optimizations
 * GITHUB#15151: Use `SimScorer#score` bulk API to compute impact scores per
   block of postings. (Adrien Grand)
 
+* GITHUB#15160: Increased the size used for blocks of postings from 128 to 256.
+  This gives a noticeable speedup to many queries. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
