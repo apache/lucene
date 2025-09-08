@@ -48,7 +48,8 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       }
       target = copy;
       var targetCorrectiveTerms =
-          quantizer.scalarQuantize(target, targetQuantized, qv.getScalarEncoding().getBits(), qv.getCentroid());
+          quantizer.scalarQuantize(
+              target, targetQuantized, qv.getScalarEncoding().getBits(), qv.getCentroid());
       return new RandomVectorScorer.AbstractRandomVectorScorer(qv) {
         @Override
         public float score(int node) throws IOException {
@@ -113,16 +114,17 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     }
   }
 
-  private static final float[] SCALE_LUT = new float[]{
-      1f,
-      1f / ((1 << 2) - 1),
-      1f / ((1 << 3) - 1),
-      1f / ((1 << 4) - 1),
-      1f / ((1 << 5) - 1),
-      1f / ((1 << 6) - 1),
-      1f / ((1 << 7) - 1),
-      1f / ((1 << 8) - 1),
-  };
+  private static final float[] SCALE_LUT =
+      new float[] {
+        1f,
+        1f / ((1 << 2) - 1),
+        1f / ((1 << 3) - 1),
+        1f / ((1 << 4) - 1),
+        1f / ((1 << 5) - 1),
+        1f / ((1 << 6) - 1),
+        1f / ((1 << 7) - 1),
+        1f / ((1 << 8) - 1),
+      };
 
   static float quantizedScore(
       byte[] quantizedQuery,
@@ -133,10 +135,11 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       throws IOException {
     var scalarEncoding = targetVectors.getScalarEncoding();
     byte[] quantizedDoc = targetVectors.vectorValue(targetOrd);
-    float qcDist = switch(scalarEncoding) {
-      case UNSIGNED_BYTE -> VectorUtil.uint8DotProduct(quantizedQuery, quantizedDoc);
-      case PACKED_NIBBLE -> VectorUtil.int4DotProductPacked(quantizedQuery, quantizedDoc);
-    };
+    float qcDist =
+        switch (scalarEncoding) {
+          case UNSIGNED_BYTE -> VectorUtil.uint8DotProduct(quantizedQuery, quantizedDoc);
+          case PACKED_NIBBLE -> VectorUtil.int4DotProductPacked(quantizedQuery, quantizedDoc);
+        };
     OptimizedScalarQuantizer.QuantizationResult indexCorrections =
         targetVectors.getCorrectiveTerms(targetOrd);
     float scale = SCALE_LUT[scalarEncoding.getBits() - 1];

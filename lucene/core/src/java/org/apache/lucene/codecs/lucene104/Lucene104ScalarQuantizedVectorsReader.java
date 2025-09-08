@@ -137,7 +137,9 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader {
     }
 
     long numQuantizedVectorBytes =
-        Math.multiplyExact((dimension + (Float.BYTES * 3) + Integer.BYTES), (long) fieldEntry.size);
+        Math.multiplyExact(
+            (fieldEntry.scalarEncoding.packedLength(dimension) + (Float.BYTES * 3) + Integer.BYTES),
+            (long) fieldEntry.size);
     if (numQuantizedVectorBytes != fieldEntry.vectorDataLength) {
       throw new IllegalStateException(
           "vector data length "
@@ -361,7 +363,12 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader {
       ScalarEncoding scalarEncoding = ScalarEncoding.UNSIGNED_BYTE;
       if (size > 0) {
         int wireNumber = input.readVInt();
-        scalarEncoding = ScalarEncoding.fromWireNumber(wireNumber).orElseThrow(() -> new IllegalStateException("Could not get ScalarEncoding from wire number: " + wireNumber));
+        scalarEncoding =
+            ScalarEncoding.fromWireNumber(wireNumber)
+                .orElseThrow(
+                    () ->
+                        new IllegalStateException(
+                            "Could not get ScalarEncoding from wire number: " + wireNumber));
         centroid = new float[dimension];
         input.readFloats(centroid, 0, dimension);
         centroidDP = Float.intBitsToFloat(input.readInt());

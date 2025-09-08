@@ -72,8 +72,8 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
     this.centroid = centroid;
     this.centroidDp = centroidDp;
     this.correctiveValues = new float[3];
-    this.byteSize = dimension + (Float.BYTES * 3) + Integer.BYTES;
-    this.byteBuffer = ByteBuffer.allocate(dimension);
+    this.byteSize = encoding.packedLength(dimension) + (Float.BYTES * 3) + Integer.BYTES;
+    this.byteBuffer = ByteBuffer.allocate(encoding.packedLength(dimension));
     this.vectorValue = byteBuffer.array();
     this.quantizer = quantizer;
     this.encoding = encoding;
@@ -95,7 +95,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
       return vectorValue;
     }
     slice.seek((long) targetOrd * byteSize);
-    slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), dimension);
+    slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), vectorValue.length);
     slice.readFloats(correctiveValues, 0, 3);
     quantizedComponentSum = slice.readInt();
     lastOrd = targetOrd;
@@ -139,6 +139,17 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
   @Override
   public int getVectorByteLength() {
     return dimension;
+  }
+
+  static void packNibbles(byte[] unpacked, byte[] packed) {
+    int limit = (unpacked.length & 1) == 0 ? packed.length : packed.length - 1;
+    for (int i = 0; i < limit; i++) {
+      int x = unpacked[i] << 4 | unpacked[packed.length + i];
+      packed[i] = (byte) x;
+    }
+    if ((unpacked.length & 1) == 1) {
+      packed[packed.length - 1] = (byte) (unpacked[packed.length] << 4);
+    }
   }
 
   static OffHeapScalarQuantizedVectorValues load(
@@ -363,7 +374,16 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
         int dimension,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer) {
-      super(dimension, 0, null, Float.NaN, null, null, similarityFunction, vectorsScorer, null);
+      super(
+          dimension,
+          0,
+          null,
+          Float.NaN,
+          null,
+          ScalarEncoding.UNSIGNED_BYTE,
+          similarityFunction,
+          vectorsScorer,
+          null);
     }
 
     @Override
