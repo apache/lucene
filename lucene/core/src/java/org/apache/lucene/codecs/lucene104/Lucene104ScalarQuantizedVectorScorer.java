@@ -1,5 +1,6 @@
 package org.apache.lucene.codecs.lucene104;
 
+import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 import static org.apache.lucene.index.VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
 
@@ -7,6 +8,7 @@ import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
@@ -39,6 +41,12 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     if (vectorValues instanceof QuantizedByteVectorValues qv) {
       OptimizedScalarQuantizer quantizer = qv.getQuantizer();
       byte[] targetQuantized = new byte[target.length];
+      // We make a copy as the quantization process mutates the input
+      float[] copy = ArrayUtil.copyOfSubArray(target, 0, target.length);
+      if (similarityFunction == COSINE) {
+        VectorUtil.l2normalize(copy);
+      }
+      target = copy;
       // XXX parameterize the number of bits
       var targetCorrectiveTerms =
           quantizer.scalarQuantize(target, targetQuantized, (byte) 8, qv.getCentroid());
@@ -63,7 +71,7 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
 
   @Override
   public String toString() {
-    return "ScalarQuantizedVectorScorer(nonQuantizedDelegate=" + nonQuantizedDelegate + ")";
+    return "Lucene104ScalarQuantizedVectorScorer(nonQuantizedDelegate=" + nonQuantizedDelegate + ")";
   }
 
   private static final class ScalarQuantizedVectorScorerSupplier

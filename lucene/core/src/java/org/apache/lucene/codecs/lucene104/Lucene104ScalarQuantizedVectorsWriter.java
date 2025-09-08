@@ -21,8 +21,6 @@ import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectors
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
-import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.discretize;
-import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.packAsBinary;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -238,15 +236,12 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       int[] ordMap,
       OptimizedScalarQuantizer scalarQuantizer)
       throws IOException {
-    int discreteDims = discretize(fieldData.fieldInfo.getVectorDimension(), 64);
     // XXX properly parameterize bits
-    byte[] quantizationScratch = new byte[discreteDims];
-    byte[] vector = new byte[discreteDims / 8];
+    byte[] vector = new byte[fieldData.fieldInfo.getVectorDimension()];
     for (int ordinal : ordMap) {
       float[] v = fieldData.getVectors().get(ordinal);
       OptimizedScalarQuantizer.QuantizationResult corrections =
-          scalarQuantizer.scalarQuantize(v, quantizationScratch, (byte) 8, clusterCenter);
-      packAsBinary(quantizationScratch, vector);
+          scalarQuantizer.scalarQuantize(v, vector, (byte) 8, clusterCenter);
       vectorData.writeBytes(vector, vector.length);
       vectorData.writeInt(Float.floatToIntBits(corrections.lowerInterval()));
       vectorData.writeInt(Float.floatToIntBits(corrections.upperInterval()));
