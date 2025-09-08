@@ -14,12 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene103;
+package org.apache.lucene.backward_codecs.lucene103;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -70,8 +69,7 @@ public class TestForUtil extends LuceneTestCase {
     {
       // decode
       IndexInput in = d.openInput("test.bin", IOContext.READONCE);
-      PostingDecodingUtil pdu =
-          Lucene103PostingsReader.VECTORIZATION_PROVIDER.newPostingDecodingUtil(in);
+      PostingDecodingUtil pdu = new PostingDecodingUtil(in);
       ForUtil forUtil = new ForUtil();
       for (int i = 0; i < iterations; ++i) {
         final int bitsPerValue = in.readByte();

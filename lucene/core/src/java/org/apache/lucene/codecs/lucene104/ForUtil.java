@@ -30,7 +30,7 @@ import org.apache.lucene.store.DataOutput;
 public final class ForUtil {
 
   public static final int BLOCK_SIZE = 256;
-  static final int BLOCK_SIZE_LOG2 = 7;
+  static final int BLOCK_SIZE_LOG2 = 8;
 
   static int expandMask16(int mask16) {
     return mask16 | (mask16 << 16);
@@ -160,7 +160,7 @@ public final class ForUtil {
 
   /** Number of bytes required to encode 256 integers of {@code bitsPerValue} bits per value. */
   static int numBytes(int bitsPerValue) {
-    return bitsPerValue << (BLOCK_SIZE_LOG2 - 2);
+    return bitsPerValue << (BLOCK_SIZE_LOG2 - 3);
   }
 
   static void decodeSlow(int bitsPerValue, PostingDecodingUtil pdu, int[] tmp, int[] ints)

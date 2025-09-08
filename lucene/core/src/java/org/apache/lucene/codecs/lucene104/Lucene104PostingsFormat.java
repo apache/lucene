@@ -48,7 +48,7 @@ import org.apache.lucene.util.packed.PackedInts;
  *       <p>In VInt blocks, integers are encoded as {@link DataOutput#writeVInt VInt}: the block
  *       size is variable.
  *   <li><b>Block structure</b>:
- *       <p>When the postings are long enough, Lucene103PostingsFormat will try to encode most
+ *       <p>When the postings are long enough, Lucene104PostingsFormat will try to encode most
  *       integer data as a packed block.
  *       <p>Take a term with 259 documents as an example, the first 256 document ids are encoded as
  *       two packed blocks, while the remaining 3 are encoded as one VInt block.
@@ -376,7 +376,7 @@ public final class Lucene104PostingsFormat extends PostingsFormat {
   private final int minTermBlockSize;
   private final int maxTermBlockSize;
 
-  /** Creates {@code Lucene103PostingsFormat} with default settings. */
+  /** Creates {@code Lucene104PostingsFormat} with default settings. */
   public Lucene104PostingsFormat() {
     this(
         Lucene103BlockTreeTermsWriter.DEFAULT_MIN_BLOCK_SIZE,
@@ -384,7 +384,7 @@ public final class Lucene104PostingsFormat extends PostingsFormat {
   }
 
   /**
-   * Creates {@code Lucene103PostingsFormat} with custom values for {@code minBlockSize} and {@code
+   * Creates {@code Lucene104PostingsFormat} with custom values for {@code minBlockSize} and {@code
    * maxBlockSize} passed to block terms dictionary.
    *
    * @see

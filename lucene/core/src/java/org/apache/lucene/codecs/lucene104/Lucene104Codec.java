@@ -45,11 +45,11 @@ import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 
 /**
- * Implements the Lucene 10.3 index format
+ * Implements the Lucene 10.4 index format
  *
  * <p>If you want to reuse functionality of this codec in another codec, extend {@link FilterCodec}.
  *
- * @see org.apache.lucene.codecs.lucene103 package documentation for file format details.
+ * @see org.apache.lucene.codecs.lucene104 package documentation for file format details.
  * @lucene.experimental
  */
 public class Lucene104Codec extends Codec {
@@ -171,7 +171,7 @@ public class Lucene104Codec extends Codec {
   /**
    * Returns the postings format that should be used for writing new segments of <code>field</code>.
    *
-   * <p>The default implementation always returns "Lucene103".
+   * <p>The default implementation always returns "Lucene104".
    *
    * <p><b>WARNING:</b> if you subclass, you are responsible for index backwards compatibility:
    * future version of Lucene are only guaranteed to be able to read the default implementation,
