@@ -19,9 +19,7 @@ package org.apache.lucene.tests.index;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Objects;
-import java.util.RandomAccess;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipIndexType;
@@ -30,7 +28,7 @@ import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.FilterLeafReader;
-import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.LeafReader;
@@ -735,12 +733,11 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public List<Impact> getImpacts(int level) {
+    public FreqAndNormBuffer getImpacts(int level) {
       assert validFor == Math.max(impactsEnum.docID(), impactsEnum.lastShallowTarget)
           : "Cannot reuse impacts after advancing the iterator";
-      List<Impact> impacts = in.getImpacts(level);
-      assert impacts.size() <= 1 || impacts instanceof RandomAccess
-          : "impact lists longer than 1 should implement RandomAccess but saw impacts = " + impacts;
+      FreqAndNormBuffer impacts = in.getImpacts(level);
+      assert impacts.size > 0;
       return impacts;
     }
   }
@@ -838,6 +835,23 @@ public class AssertingLeafReader extends FilterLeafReader {
       assertThread("Numeric doc values", creationThread);
       assert exists;
       return in.longValue();
+    }
+
+    @Override
+    public void longValues(int size, int[] docs, long[] values, long defaultValue)
+        throws IOException {
+      assertThread("Numeric doc values", creationThread);
+      assert size >= 0;
+      assert size == 0 || docs[0] >= docID();
+      assert size == 0 || docs[0] >= 0;
+      for (int i = 1; i < size; ++i) {
+        assert docs[i] > docs[i - 1];
+      }
+      assert size == 0 || docs[size - 1] < maxDoc;
+      int expectedDocIdOnReturn = size == 0 ? docID() : docs[size - 1];
+      super.longValues(size, docs, values, defaultValue);
+      lastDocID = in.docID();
+      assert lastDocID == expectedDocIdOnReturn;
     }
 
     @Override

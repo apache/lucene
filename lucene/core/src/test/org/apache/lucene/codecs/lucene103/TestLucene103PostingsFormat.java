@@ -17,18 +17,19 @@
 package org.apache.lucene.codecs.lucene103;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
-import org.apache.lucene.codecs.lucene103.Lucene103PostingsReader.MutableImpactList;
+import org.apache.lucene.codecs.Impact;
 import org.apache.lucene.codecs.lucene103.blocktree.FieldReader;
 import org.apache.lucene.codecs.lucene103.blocktree.Stats;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.ByteArrayDataInput;
@@ -146,10 +147,13 @@ public class TestLucene103PostingsFormat extends BasePostingsFormatTestCase {
       try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
         byte[] b = new byte[Math.toIntExact(in.length())];
         in.readBytes(b, 0, b.length);
-        List<Impact> impacts2 =
-            Lucene103PostingsReader.readImpacts(
-                new ByteArrayDataInput(b),
-                new MutableImpactList(impacts.size() + random().nextInt(3)));
+        FreqAndNormBuffer impactBuffer = new FreqAndNormBuffer();
+        impactBuffer.growNoCopy(impacts.size() + random().nextInt(3));
+        impactBuffer = Lucene103PostingsReader.readImpacts(new ByteArrayDataInput(b), impactBuffer);
+        List<Impact> impacts2 = new ArrayList<>();
+        for (int i = 0; i < impactBuffer.size; ++i) {
+          impacts2.add(new Impact(impactBuffer.freqs[i], impactBuffer.norms[i]));
+        }
         assertEquals(impacts, impacts2);
       }
     }

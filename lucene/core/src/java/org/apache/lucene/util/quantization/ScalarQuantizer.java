@@ -165,7 +165,7 @@ public class ScalarQuantizer {
   public void deQuantize(byte[] src, float[] dest) {
     assert src.length == dest.length;
     for (int i = 0; i < src.length; i++) {
-      dest[i] = (alpha * src[i]) + minQuantile;
+      dest[i] = (alpha * Byte.toUnsignedInt(src[i])) + minQuantile;
     }
   }
 

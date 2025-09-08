@@ -36,6 +36,9 @@ public interface VectorUtilSupport {
   /** Returns the dot product computed over signed bytes. */
   int dotProduct(byte[] a, byte[] b);
 
+  /** Returns the dot product computed as though the bytes were unsigned. */
+  int uint8DotProduct(byte[] a, byte[] b);
+
   /** Returns the dot product over the computed bytes, assuming the values are int4 encoded. */
   int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked);
 
@@ -44,6 +47,9 @@ public interface VectorUtilSupport {
 
   /** Returns the sum of squared differences of the two byte vectors. */
   int squareDistance(byte[] a, byte[] b);
+
+  /** Returns the sum of squared differences of the two unsigned byte vectors. */
+  int uint8SquareDistance(byte[] a, byte[] b);
 
   /**
    * Given an array {@code buffer} that is sorted between indexes {@code 0} inclusive and {@code to}

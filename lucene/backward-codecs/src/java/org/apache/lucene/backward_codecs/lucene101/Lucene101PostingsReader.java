@@ -27,17 +27,13 @@ import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsForma
 import static org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.VERSION_START;
 
 import java.io.IOException;
-import java.util.AbstractList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.RandomAccess;
 import org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat.IntBlockTermState;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
@@ -63,17 +59,6 @@ import org.apache.lucene.util.VectorUtil;
  * @lucene.experimental
  */
 public final class Lucene101PostingsReader extends PostingsReaderBase {
-
-  // Dummy impacts, composed of the maximum possible term frequency and the lowest possible
-  // (unsigned) norm value. This is typically used on tail blocks, which don't actually record
-  // impacts as the storage overhead would not be worth any query evaluation speedup, since there's
-  // less than 128 docs left to evaluate anyway.
-  private static final List<Impact> DUMMY_IMPACTS =
-      Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
-
-  // We stopped storing a placeholder impact with freq=1 for fields with DOCS after 9.12.0
-  private static final List<Impact> DUMMY_IMPACTS_NO_FREQS =
-      Collections.singletonList(new Impact(1, 1L));
 
   private final IndexInput docIn;
   private final IndexInput posIn;
@@ -402,7 +387,6 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     private long level0PayEndFP;
     private int level0BlockPayUpto;
     private final BytesRef level0SerializedImpacts;
-    private final MutableImpactList level0Impacts;
 
     // level 1 skip data
     private long level1PosEndFP;
@@ -410,7 +394,8 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     private long level1PayEndFP;
     private int level1BlockPayUpto;
     private final BytesRef level1SerializedImpacts;
-    private final MutableImpactList level1Impacts;
+
+    private final FreqAndNormBuffer impactBuffer;
 
     // true if we shallow-advanced to a new block that we have not decoded yet
     private boolean needsRefilling;
@@ -439,16 +424,24 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         Arrays.fill(freqBuffer, 1);
       }
 
+      if (needsImpacts) {
+        impactBuffer = new FreqAndNormBuffer();
+        int capacity = 1; // for dummy impacts
+        if (needsFreq) {
+          capacity = Math.max(maxNumImpactsAtLevel0, capacity);
+          capacity = Math.max(maxNumImpactsAtLevel1, capacity);
+        }
+        impactBuffer.growNoCopy(capacity);
+      } else {
+        impactBuffer = null;
+      }
+
       if (needsFreq && needsImpacts) {
         level0SerializedImpacts = new BytesRef(maxImpactNumBytesAtLevel0);
         level1SerializedImpacts = new BytesRef(maxImpactNumBytesAtLevel1);
-        level0Impacts = new MutableImpactList(maxNumImpactsAtLevel0);
-        level1Impacts = new MutableImpactList(maxNumImpactsAtLevel1);
       } else {
         level0SerializedImpacts = null;
         level1SerializedImpacts = null;
-        level0Impacts = null;
-        level1Impacts = null;
       }
 
       if (needsPos) {
@@ -1318,24 +1311,32 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
           }
 
           @Override
-          public List<Impact> getImpacts(int level) {
+          public FreqAndNormBuffer getImpacts(int level) {
             if (indexHasFreq == false) {
-              return DUMMY_IMPACTS_NO_FREQS;
+              // Max freq is 1 since freqs are not indexed
+              impactBuffer.size = 1;
+              impactBuffer.freqs[0] = 1;
+              impactBuffer.norms[0] = 1L;
+              return impactBuffer;
             }
             if (level == 0 && level0LastDocID != NO_MORE_DOCS) {
-              return readImpacts(level0SerializedImpacts, level0Impacts);
+              return readImpacts(level0SerializedImpacts, impactBuffer);
             }
             if (level == 1) {
-              return readImpacts(level1SerializedImpacts, level1Impacts);
+              return readImpacts(level1SerializedImpacts, impactBuffer);
             }
-            return DUMMY_IMPACTS;
+            impactBuffer.size = 1;
+            impactBuffer.freqs[0] = Integer.MAX_VALUE;
+            impactBuffer.norms[0] = 1L;
+            return impactBuffer;
           }
 
-          private List<Impact> readImpacts(BytesRef serialized, MutableImpactList impactsList) {
+          private FreqAndNormBuffer readImpacts(
+              BytesRef serialized, FreqAndNormBuffer impactBuffer) {
             var scratch = this.scratch;
             scratch.reset(serialized.bytes, 0, serialized.length);
-            Lucene101PostingsReader.readImpacts(scratch, impactsList);
-            return impactsList;
+            Lucene101PostingsReader.readImpacts(scratch, impactBuffer);
+            return impactBuffer;
           }
         };
 
@@ -1379,32 +1380,10 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     // Note: we don't prefetch positions or offsets, which are less likely to be needed.
   }
 
-  static class MutableImpactList extends AbstractList<Impact> implements RandomAccess {
-    int length;
-    final Impact[] impacts;
-
-    MutableImpactList(int capacity) {
-      impacts = new Impact[capacity];
-      for (int i = 0; i < capacity; ++i) {
-        impacts[i] = new Impact(Integer.MAX_VALUE, 1L);
-      }
-    }
-
-    @Override
-    public Impact get(int index) {
-      return impacts[index];
-    }
-
-    @Override
-    public int size() {
-      return length;
-    }
-  }
-
-  static MutableImpactList readImpacts(ByteArrayDataInput in, MutableImpactList reuse) {
+  static FreqAndNormBuffer readImpacts(ByteArrayDataInput in, FreqAndNormBuffer reuse) {
     int freq = 0;
     long norm = 0;
-    int length = 0;
+    int size = 0;
     while (in.getPosition() < in.length()) {
       int freqDelta = in.readVInt();
       if ((freqDelta & 0x01) != 0) {
@@ -1418,12 +1397,11 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         freq += 1 + (freqDelta >>> 1);
         norm++;
       }
-      Impact impact = reuse.impacts[length];
-      impact.freq = freq;
-      impact.norm = norm;
-      length++;
+      reuse.freqs[size] = freq;
+      reuse.norms[size] = norm;
+      size++;
     }
-    reuse.length = length;
+    reuse.size = size;
     return reuse;
   }
 
