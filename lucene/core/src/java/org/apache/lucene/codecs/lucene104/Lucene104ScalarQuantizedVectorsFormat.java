@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs.lucene104;
 
 import java.io.IOException;
+import java.util.Optional;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -77,11 +78,12 @@ import org.apache.lucene.index.SegmentWriteState;
  *
  * <ul>
  *   <li><b>int</b> the field number
- *   <li><b>int</b> the vector encoding ordinal XXX wut is this?
+ *   <li><b>int</b> the vector encoding ordinal
  *   <li><b>int</b> the vector similarity ordinal
- *   <li><b>vint</b> the vector dimensions
- *   <li><b>vlong</b> the offset to the vector data in the .veb file
- *   <li><b>vlong</b> the length of the vector data in the .veb file
+ *   <li><b>vint</b> the vector dimensions XXX encode a value indicating scalar encoding (8-bit or
+ *       4-bit packed).
+ *   <li><b>vlong</b> the offset to the vector data in the .veq file
+ *   <li><b>vlong</b> the length of the vector data in the .veq file
  *   <li><b>vint</b> the number of vectors
  *   <li><b>[float]</b> the centroid
  *   <li><b>float</b> the centroid square magnitude
@@ -106,9 +108,66 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   private static final Lucene104ScalarQuantizedVectorScorer scorer =
       new Lucene104ScalarQuantizedVectorScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
-  /** Creates a new instance with the default number of vectors per cluster. */
+  private final ScalarEncoding encoding;
+
+  /**
+   * Allowed encodings for scalar quantization.
+   *
+   * <p>This specifies how many bits are used per dimension and also dictates packing of dimensions
+   * into a byte stream.
+   */
+  public enum ScalarEncoding {
+    /** Each dimension is quantized to 8 bits and treated as an unsigned value. */
+    UNSIGNED_BYTE(0, (byte) 8),
+    /** Each dimension is quantized to 4 bits two values are packed into each output byte. */
+    PACKED_NIBBLE(1, (byte) 4);
+
+    /** The number used to identify this encoding on the wire, rather than relying on ordinal. */
+    private int wireNumber;
+
+    private byte bits;
+    private int dimensionsPerByte;
+
+    ScalarEncoding(int wireNumber, byte bits) {
+      this.wireNumber = wireNumber;
+      this.bits = bits;
+      assert 8 % bits == 0;
+      this.dimensionsPerByte = 8 / bits;
+    }
+
+    int getWireNumber() {
+      return wireNumber;
+    }
+
+    int getDimensionsPerByte() {
+      return dimensionsPerByte;
+    }
+
+    /** Return the number of bits used per dimension. */
+    public byte getBits() {
+      return bits;
+    }
+
+    /** Returns the encoding for the given wire number, or empty if unknown. */
+    public static Optional<ScalarEncoding> fromWireNumber(int wireNumber) {
+      for (ScalarEncoding encoding : values()) {
+        if (encoding.wireNumber == wireNumber) {
+          return Optional.of(encoding);
+        }
+      }
+      return Optional.empty();
+    }
+  }
+
+  /** Creates a new instance with UNSIGNED_BYTE encoding. */
   public Lucene104ScalarQuantizedVectorsFormat() {
+    this(ScalarEncoding.UNSIGNED_BYTE);
+  }
+
+  /** Creates a new instance with the chosen encoding. */
+  public Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding encoding) {
     super(NAME);
+    this.encoding = encoding;
   }
 
   @Override
@@ -132,6 +191,8 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   public String toString() {
     return "Lucene104ScalarQuantizedVectorsFormat(name="
         + NAME
+        + ", encoding="
+        + encoding
         + ", flatVectorScorer="
         + scorer
         + ", rawVectorFormat="

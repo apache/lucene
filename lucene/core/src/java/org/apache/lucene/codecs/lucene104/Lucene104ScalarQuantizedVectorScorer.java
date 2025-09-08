@@ -71,7 +71,9 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
 
   @Override
   public String toString() {
-    return "Lucene104ScalarQuantizedVectorScorer(nonQuantizedDelegate=" + nonQuantizedDelegate + ")";
+    return "Lucene104ScalarQuantizedVectorScorer(nonQuantizedDelegate="
+        + nonQuantizedDelegate
+        + ")";
   }
 
   private static final class ScalarQuantizedVectorScorerSupplier

@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.lucene104;
 import static java.lang.String.format;
 import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.discretize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
 
@@ -69,6 +68,7 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
     String expectedPattern =
         "Lucene104HnswScalarQuantizedVectorsFormat(name=Lucene104HnswScalarQuantizedVectorsFormat, maxConn=10, beamWidth=20,"
             + " flatVectorFormat=Lucene104ScalarQuantizedVectorsFormat(name=Lucene104ScalarQuantizedVectorsFormat,"
+            + " encoding=UNSIGNED_BYTE,"
             + " flatVectorScorer=Lucene104ScalarQuantizedVectorScorer(nonQuantizedDelegate=%s()),"
             + " rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s())))";
 

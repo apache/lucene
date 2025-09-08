@@ -97,6 +97,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
     String expectedPattern =
         "Lucene104ScalarQuantizedVectorsFormat("
             + "name=Lucene104ScalarQuantizedVectorsFormat, "
+            + "encoding=UNSIGNED_BYTE, "
             + "flatVectorScorer=Lucene104ScalarQuantizedVectorScorer(nonQuantizedDelegate=%s()), "
             + "rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s()))";
     var defaultScorer =
@@ -166,7 +167,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
                     vectorValues.vectorValue(docIndexIterator.index()),
                     expectedVector,
                     // XXX FIXME
-                    (byte)8,
+                    (byte) 8,
                     centroid);
             assertArrayEquals(expectedVector, qvectorValues.vectorValue(docIndexIterator.index()));
             assertEquals(corrections, qvectorValues.getCorrectiveTerms(docIndexIterator.index()));
