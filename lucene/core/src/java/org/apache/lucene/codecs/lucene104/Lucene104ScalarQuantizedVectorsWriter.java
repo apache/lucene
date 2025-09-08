@@ -473,10 +473,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader candidateReader) {
       vectorsReader = candidateReader.getFieldReader(fieldName);
     }
-    // XXX not fixable yet
-    // if (vectorsReader instanceof Lucene102BinaryQuantizedVectorsReader reader) {
-    //  return reader.getCentroid(fieldName);
-    // }
+    if (vectorsReader instanceof Lucene104ScalarQuantizedVectorsReader reader) {
+      return reader.getCentroid(fieldName);
+    }
     return null;
   }
 

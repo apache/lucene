@@ -119,9 +119,8 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
 
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    throw new UnsupportedOperationException("XXX TODO");
-    // return new Lucene102BinaryQuantizedVectorsReader(
-    //    state, rawVectorFormat.fieldsReader(state), scorer);
+    return new Lucene104ScalarQuantizedVectorsReader(
+        state, rawVectorFormat.fieldsReader(state), scorer);
   }
 
   @Override
