@@ -131,6 +131,9 @@ Optimizations
 
 * GITHUB#14998: Speed up flushing of live docs. (Adrien Grand)
 
+* GITHUB#15151: Use `SimScorer#score` bulk API to compute impact scores per
+  block of postings. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
