@@ -190,10 +190,11 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
     }
   }
 
-  static void prefixSum(int[] buffer, int count, long base) {
-    buffer[0] += base;
-    for (int i = 1; i < count; ++i) {
-      buffer[i] += buffer[i - 1];
+  static void prefixSum(int[] buffer, int count, int base) {
+    int sum = base;
+    for (int i = 0; i < count; ++i) {
+      sum += buffer[i];
+      buffer[i] = sum;
     }
   }
 
@@ -611,9 +612,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
           for (int i = 0; i < numLongs - 1; ++i) {
             docCumulativeWordPopCounts[i] = Long.bitCount(docBitSet.getBits()[i]);
           }
-          for (int i = 1; i < numLongs - 1; ++i) {
-            docCumulativeWordPopCounts[i] += docCumulativeWordPopCounts[i - 1];
-          }
+          prefixSum(docCumulativeWordPopCounts, numLongs - 1, 0);
           docCumulativeWordPopCounts[numLongs - 1] = BLOCK_SIZE;
           assert docCumulativeWordPopCounts[numLongs - 2]
                   + Long.bitCount(docBitSet.getBits()[numLongs - 1])

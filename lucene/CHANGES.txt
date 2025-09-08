@@ -112,26 +112,32 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+* GITHUB#15149: Introduce NumericDocValues#longValues to help speed up the
+  retrieval of many doc values at once. (Adrien Grand)
 
 New Features
 ---------------------
-(No changes)
+* GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
+  along with limiting number of child documents to retrieve per parent. (Jinny Wang)
+
 
 Improvements
 ---------------------
-(No changes)
+# GITHUB#15148: Add support uint8 distance and allow 8 bit scalar quantization (Trevor McCulloch)
 
 Optimizations
 ---------------------
 * GITHUB#15140: Optimize TopScoreDocCollector with TernaryLongHeap for improved performance over Binary-LongHeap. (Ramakrishna Chilaka)
+
+* GITHUB#14998: Speed up flushing of live docs. (Adrien Grand)
 
 * GITHUB#15151: Use `SimScorer#score` bulk API to compute impact scores per
   block of postings. (Adrien Grand)
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
+  instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
 
 Other
 ---------------------
@@ -170,9 +176,6 @@ New Features
 
 * GITHUB#14413: Adding profiling support for concurrent segment search. (Ankit Jain)
 
-* GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
-  along with limiting number of child documents to retrieve per parent. (Jinny Wang)
-
 * GITHUB#14776: Add a Rescorer that uses values from provided DoubleValuesSource to re-score
   first pass hits. (Vigya Sharma)
 
@@ -186,6 +189,8 @@ New Features
 * GITHUB#14729: Support for Re-Ranking Queries using Late Interaction Model Multi-Vectors. (Vigya Sharma, Jim Ferenczi)
 
 * GITHUB#15110: PostingsDecodingUtil: interchange loops to enable better memory access and SIMD vectorisation. (Ramakrishna Chilaka)
+
+* GITHUB#15157: Support JDK 25 in Panama Vectorization Provider. (Chris Hegarty)
 
 Improvements
 ---------------------
@@ -341,9 +346,6 @@ Bug Fixes
   used if the DoubleValuesSource needed scores. (David Smiley)
 
 * GITHUB#14682 : Fix for add char and token filters in Luke Analysis tab. (Amir Raza)
-
-* GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
-  instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
 
 * GITHUB#14727: Fix several resource leaks. (Xu Chengxin)
 
