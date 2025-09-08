@@ -29,7 +29,9 @@ import org.apache.lucene.store.DataOutput;
  */
 public final class ForUtil {
 
+  /** Number of integers per block. */
   public static final int BLOCK_SIZE = 256;
+
   static final int BLOCK_SIZE_LOG2 = 8;
 
   static int expandMask16(int mask16) {

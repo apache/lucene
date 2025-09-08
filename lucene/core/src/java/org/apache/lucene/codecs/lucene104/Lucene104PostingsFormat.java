@@ -342,7 +342,7 @@ public final class Lucene104PostingsFormat extends PostingsFormat {
   /** Size of blocks. */
   public static final int BLOCK_SIZE = ForUtil.BLOCK_SIZE;
 
-  public static final int BLOCK_MASK = BLOCK_SIZE - 1;
+  static final int BLOCK_MASK = BLOCK_SIZE - 1;
 
   /** We insert skip data on every block and every SKIP_FACTOR=32 blocks. */
   public static final int LEVEL1_FACTOR = 32;
@@ -350,7 +350,7 @@ public final class Lucene104PostingsFormat extends PostingsFormat {
   /** Total number of docs covered by level 1 skip data: 32 * 256 = 8,192 */
   public static final int LEVEL1_NUM_DOCS = LEVEL1_FACTOR * BLOCK_SIZE;
 
-  public static final int LEVEL1_MASK = LEVEL1_NUM_DOCS - 1;
+  static final int LEVEL1_MASK = LEVEL1_NUM_DOCS - 1;
 
   /**
    * Return the class that implements {@link ImpactsEnum} in this {@link PostingsFormat}. This is
