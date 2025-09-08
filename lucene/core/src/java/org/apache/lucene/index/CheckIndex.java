@@ -29,7 +29,6 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -2074,8 +2073,8 @@ public final class CheckIndex implements Closeable {
                 Impacts impacts = impactsEnum.getImpacts();
                 checkImpacts(impacts, doc);
                 max = impacts.getDocIdUpTo(0);
-                List<Impact> impacts0 = impacts.getImpacts(0);
-                maxFreq = impacts0.get(impacts0.size() - 1).freq;
+                FreqAndNormBuffer impacts0 = impacts.getImpacts(0);
+                maxFreq = impacts0.freqs[impacts0.size - 1];
               }
               if (impactsEnum.freq() > maxFreq) {
                 throw new CheckIndexException(
@@ -2121,8 +2120,8 @@ public final class CheckIndex implements Closeable {
               maxFreq = Integer.MAX_VALUE;
               for (int impactsLevel = 0; impactsLevel < impacts.numLevels(); ++impactsLevel) {
                 if (impacts.getDocIdUpTo(impactsLevel) >= max) {
-                  List<Impact> perLevelImpacts = impacts.getImpacts(impactsLevel);
-                  maxFreq = perLevelImpacts.get(perLevelImpacts.size() - 1).freq;
+                  FreqAndNormBuffer perLevelImpacts = impacts.getImpacts(impactsLevel);
+                  maxFreq = perLevelImpacts.freqs[perLevelImpacts.size - 1];
                   break;
                 }
               }
@@ -2163,8 +2162,8 @@ public final class CheckIndex implements Closeable {
               maxFreq = Integer.MAX_VALUE;
               for (int impactsLevel = 0; impactsLevel < impacts.numLevels(); ++impactsLevel) {
                 if (impacts.getDocIdUpTo(impactsLevel) >= max) {
-                  List<Impact> perLevelImpacts = impacts.getImpacts(impactsLevel);
-                  maxFreq = perLevelImpacts.get(perLevelImpacts.size() - 1).freq;
+                  FreqAndNormBuffer perLevelImpacts = impacts.getImpacts(impactsLevel);
+                  maxFreq = perLevelImpacts.freqs[perLevelImpacts.size - 1];
                   break;
                 }
               }
@@ -2545,51 +2544,80 @@ public final class CheckIndex implements Closeable {
     }
 
     for (int impactsLevel = 0; impactsLevel < numLevels; ++impactsLevel) {
-      List<Impact> perLevelImpacts = impacts.getImpacts(impactsLevel);
-      if (perLevelImpacts.isEmpty()) {
+      FreqAndNormBuffer perLevelImpacts = impacts.getImpacts(impactsLevel);
+      if (perLevelImpacts.size <= 0) {
         throw new CheckIndexException("Got empty list of impacts on level " + impactsLevel);
       }
-      Impact first = perLevelImpacts.get(0);
-      if (first.freq < 1) {
-        throw new CheckIndexException("First impact had a freq <= 0: " + first);
+      int firstFreq = perLevelImpacts.freqs[0];
+      long firstNorm = perLevelImpacts.norms[0];
+      if (perLevelImpacts.freqs[0] < 1) {
+        throw new CheckIndexException("First impact had a freq <= 0: " + firstFreq);
       }
-      if (first.norm == 0) {
-        throw new CheckIndexException("First impact had a norm == 0: " + first);
+      if (perLevelImpacts.norms[0] == 0) {
+        throw new CheckIndexException("First impact had a norm == 0: " + firstNorm);
       }
       // Impacts must be in increasing order of norm AND freq
-      Impact previous = first;
-      for (int i = 1; i < perLevelImpacts.size(); ++i) {
-        Impact impact = perLevelImpacts.get(i);
-        if (impact.freq <= previous.freq || Long.compareUnsigned(impact.norm, previous.norm) <= 0) {
+      int prevFreq = firstFreq;
+      long prevNorm = firstNorm;
+      for (int i = 1; i < perLevelImpacts.size; ++i) {
+        int freq = perLevelImpacts.freqs[i];
+        long norm = perLevelImpacts.norms[i];
+        if (freq <= prevFreq || Long.compareUnsigned(norm, prevNorm) <= 0) {
           throw new CheckIndexException(
-              "Impacts are not ordered or contain dups, got " + previous + " then " + impact);
+              "Impacts are not ordered or contain dups, got ("
+                  + prevFreq
+                  + ","
+                  + prevNorm
+                  + ") then ("
+                  + freq
+                  + ","
+                  + norm
+                  + ")");
         }
       }
       if (impactsLevel > 0) {
         // Make sure that impacts at level N trigger better scores than an impactsLevel N-1
-        Iterator<Impact> previousIt = impacts.getImpacts(impactsLevel - 1).iterator();
-        previous = previousIt.next();
-        Iterator<Impact> it = perLevelImpacts.iterator();
-        Impact impact = it.next();
-        while (previousIt.hasNext()) {
-          previous = previousIt.next();
-          if (previous.freq <= impact.freq
-              && Long.compareUnsigned(previous.norm, impact.norm) >= 0) {
+        int size = perLevelImpacts.size;
+        int[] freqs = ArrayUtil.copyOfSubArray(perLevelImpacts.freqs, 0, size);
+        long[] norms = ArrayUtil.copyOfSubArray(perLevelImpacts.norms, 0, size);
+
+        perLevelImpacts = impacts.getImpacts(impactsLevel - 1);
+        int prevSize = perLevelImpacts.size;
+        int[] prevFreqs = ArrayUtil.copyOfSubArray(perLevelImpacts.freqs, 0, prevSize);
+        long[] prevNorms = ArrayUtil.copyOfSubArray(perLevelImpacts.norms, 0, prevSize);
+
+        int prevIndex = 0;
+        int freq = freqs[0];
+        long norm = norms[0];
+        int index = 1;
+        while (prevIndex < prevSize) {
+          prevFreq = prevFreqs[prevIndex];
+          prevNorm = prevNorms[prevIndex];
+          prevIndex++;
+
+          if (prevFreq <= freq && Long.compareUnsigned(prevNorm, norm) >= 0) {
             // previous triggers a lower score than the current impact, all good
             continue;
           }
-          if (it.hasNext() == false) {
+          if (index >= size) {
             throw new CheckIndexException(
-                "Found impact "
-                    + previous
+                "Found impact ("
+                    + prevFreq
+                    + ","
+                    + prevNorm
+                    + ")"
                     + " on level "
                     + (impactsLevel - 1)
                     + " but no impact on level "
                     + impactsLevel
-                    + " triggers a better score: "
-                    + perLevelImpacts);
+                    + " triggers a better score: freqs="
+                    + Arrays.toString(freqs)
+                    + " norms="
+                    + Arrays.toString(norms));
           }
-          impact = it.next();
+          freq = freqs[index];
+          norm = norms[index];
+          index++;
         }
       }
     }
