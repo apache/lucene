@@ -29,6 +29,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
@@ -62,7 +63,8 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
         new FilterCodec("foo", Codec.getDefault()) {
           @Override
           public KnnVectorsFormat knnVectorsFormat() {
-            return new Lucene104HnswScalarQuantizedVectorsFormat(10, 20, 1, null);
+            return new Lucene104HnswScalarQuantizedVectorsFormat(
+                ScalarEncoding.UNSIGNED_BYTE, 10, 20, 1, null);
           }
         };
     String expectedPattern =
@@ -140,7 +142,7 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
         IllegalArgumentException.class,
         () ->
             new Lucene104HnswScalarQuantizedVectorsFormat(
-                20, 100, 1, new SameThreadExecutorService()));
+                ScalarEncoding.UNSIGNED_BYTE, 20, 100, 1, new SameThreadExecutorService()));
   }
 
   // Ensures that all expected vector similarity functions are translatable in the format.

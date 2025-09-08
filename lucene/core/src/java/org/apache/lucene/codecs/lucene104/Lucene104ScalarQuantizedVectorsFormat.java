@@ -80,11 +80,11 @@ import org.apache.lucene.index.SegmentWriteState;
  *   <li><b>int</b> the field number
  *   <li><b>int</b> the vector encoding ordinal
  *   <li><b>int</b> the vector similarity ordinal
- *   <li><b>vint</b> the vector dimensions XXX encode a value indicating scalar encoding (8-bit or
- *       4-bit packed).
+ *   <li><b>vint</b> the vector dimensions
  *   <li><b>vlong</b> the offset to the vector data in the .veq file
  *   <li><b>vlong</b> the length of the vector data in the .veq file
  *   <li><b>vint</b> the number of vectors
+ *   <li><b>vint</b> the wire number for ScalarEncoding
  *   <li><b>[float]</b> the centroid
  *   <li><b>float</b> the centroid square magnitude
  *   <li>The sparse vector information, if required, mapping vector ordinal to doc ID
@@ -173,7 +173,7 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene104ScalarQuantizedVectorsWriter(
-        scorer, rawVectorFormat.fieldsWriter(state), state);
+        state, encoding, rawVectorFormat.fieldsWriter(state), scorer);
   }
 
   @Override

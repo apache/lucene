@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.lucene104;
 import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
-import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.discretize;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -28,6 +27,7 @@ import java.util.Objects;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
@@ -165,6 +165,7 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader {
             fi.dimension,
             fi.size,
             new OptimizedScalarQuantizer(fi.similarityFunction),
+            fi.scalarEncoding,
             fi.similarityFunction,
             vectorScorer,
             fi.centroid,
@@ -207,6 +208,7 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader {
             fi.dimension,
             fi.size,
             new OptimizedScalarQuantizer(fi.similarityFunction),
+            fi.scalarEncoding,
             fi.similarityFunction,
             vectorScorer,
             fi.centroid,
@@ -337,10 +339,10 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader {
       VectorSimilarityFunction similarityFunction,
       VectorEncoding vectorEncoding,
       int dimension,
-      int descritizedDimension,
       long vectorDataOffset,
       long vectorDataLength,
       int size,
+      ScalarEncoding scalarEncoding,
       float[] centroid,
       float centroidDP,
       OrdToDocDISIReaderConfiguration ordToDocDISIReaderConfiguration) {
@@ -356,7 +358,10 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader {
       int size = input.readVInt();
       final float[] centroid;
       float centroidDP = 0;
+      ScalarEncoding scalarEncoding = ScalarEncoding.UNSIGNED_BYTE;
       if (size > 0) {
+        int wireNumber = input.readVInt();
+        scalarEncoding = ScalarEncoding.fromWireNumber(wireNumber).orElseThrow(() -> new IllegalStateException("Could not get ScalarEncoding from wire number: " + wireNumber));
         centroid = new float[dimension];
         input.readFloats(centroid, 0, dimension);
         centroidDP = Float.intBitsToFloat(input.readInt());
@@ -369,10 +374,10 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader {
           similarityFunction,
           vectorEncoding,
           dimension,
-          discretize(dimension, 64),
           vectorDataOffset,
           vectorDataLength,
           size,
+          scalarEncoding,
           centroid,
           centroidDP,
           conf);

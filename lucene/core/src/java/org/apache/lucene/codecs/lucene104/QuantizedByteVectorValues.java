@@ -17,12 +17,12 @@
 package org.apache.lucene.codecs.lucene104;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 
-// XXX do I want to make this public? this also overlaps heavily with the binarized version.
 /** Scalar quantized byte vector values */
 abstract class QuantizedByteVectorValues extends ByteVectorValues {
 
@@ -57,6 +57,8 @@ abstract class QuantizedByteVectorValues extends ByteVectorValues {
    * @return the quantizer used to quantize the vectors
    */
   public abstract OptimizedScalarQuantizer getQuantizer();
+
+  public abstract ScalarEncoding getScalarEncoding();
 
   public abstract float[] getCentroid() throws IOException;
 

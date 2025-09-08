@@ -33,6 +33,7 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.DocsWithFieldSet;
@@ -65,6 +66,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private final SegmentWriteState segmentWriteState;
   private final List<FieldWriter> fields = new ArrayList<>();
   private final IndexOutput meta, vectorData;
+  private final ScalarEncoding encoding;
   private final FlatVectorsWriter rawVectorDelegate;
   private final Lucene104ScalarQuantizedVectorScorer vectorsScorer;
   private boolean finished;
@@ -75,11 +77,13 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
    * @param vectorsScorer the scorer to use for scoring vectors
    */
   protected Lucene104ScalarQuantizedVectorsWriter(
-      Lucene104ScalarQuantizedVectorScorer vectorsScorer,
+      SegmentWriteState state,
+      ScalarEncoding encoding,
       FlatVectorsWriter rawVectorDelegate,
-      SegmentWriteState state)
+      Lucene104ScalarQuantizedVectorScorer vectorsScorer)
       throws IOException {
     super(vectorsScorer);
+    this.encoding = encoding;
     this.vectorsScorer = vectorsScorer;
     this.segmentWriteState = state;
     String metaFileName =
@@ -88,7 +92,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
             state.segmentSuffix,
             Lucene104ScalarQuantizedVectorsFormat.META_EXTENSION);
 
-    String binarizedVectorDataFileName =
+    String vectorDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
@@ -96,7 +100,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     this.rawVectorDelegate = rawVectorDelegate;
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
-      vectorData = state.directory.createOutput(binarizedVectorDataFileName, state.context);
+      vectorData = state.directory.createOutput(vectorDataFileName, state.context);
 
       CodecUtil.writeIndexHeader(
           meta,
@@ -173,7 +177,6 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     float centroidDp =
         !fieldData.getVectors().isEmpty() ? VectorUtil.dotProduct(clusterCenter, clusterCenter) : 0;
 
-    // XXX should probably include bits; check existing sq format
     writeMeta(
         fieldData.fieldInfo,
         maxDoc,
@@ -190,9 +193,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     byte[] vector = new byte[fieldData.fieldInfo.getVectorDimension()];
     for (int i = 0; i < fieldData.getVectors().size(); i++) {
       float[] v = fieldData.getVectors().get(i);
-      // XXX properly parameterize bits
+      // XXX must pack PACKED_NIBBLE
       OptimizedScalarQuantizer.QuantizationResult corrections =
-          scalarQuantizer.scalarQuantize(v, vector, (byte) 8, clusterCenter);
+          scalarQuantizer.scalarQuantize(v, vector, encoding.getBits(), clusterCenter);
       vectorData.writeBytes(vector, vector.length);
       vectorData.writeInt(Float.floatToIntBits(corrections.lowerInterval()));
       vectorData.writeInt(Float.floatToIntBits(corrections.upperInterval()));
@@ -236,12 +239,12 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       int[] ordMap,
       OptimizedScalarQuantizer scalarQuantizer)
       throws IOException {
-    // XXX properly parameterize bits
     byte[] vector = new byte[fieldData.fieldInfo.getVectorDimension()];
     for (int ordinal : ordMap) {
       float[] v = fieldData.getVectors().get(ordinal);
+      // XXX must pack PACKED_NIBBLE
       OptimizedScalarQuantizer.QuantizationResult corrections =
-          scalarQuantizer.scalarQuantize(v, vector, (byte) 8, clusterCenter);
+          scalarQuantizer.scalarQuantize(v, vector, encoding.getBits(), clusterCenter);
       vectorData.writeBytes(vector, vector.length);
       vectorData.writeInt(Float.floatToIntBits(corrections.lowerInterval()));
       vectorData.writeInt(Float.floatToIntBits(corrections.upperInterval()));
@@ -268,6 +271,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     int count = docsWithField.cardinality();
     meta.writeVInt(count);
     if (count > 0) {
+      meta.writeVInt(encoding.getWireNumber());
       final ByteBuffer buffer =
           ByteBuffer.allocate(field.getVectorDimension() * Float.BYTES)
               .order(ByteOrder.LITTLE_ENDIAN);
@@ -322,6 +326,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         new QuantizedFloatVectorValues(
             floatVectorValues,
             new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction()),
+            encoding,
             centroid);
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     DocsWithFieldSet docsWithField = writeVectorData(vectorData, quantizedVectorValues);
@@ -393,7 +398,6 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     OptimizedScalarQuantizer quantizer =
         new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
     try {
-      // XXX I guess we write to a temp file so that we can actually read it? that sucks.
       tempQuantizedVectorData =
           segmentWriteState.directory.createTempOutput(
               vectorData.getName(), "temp", segmentWriteState.context);
@@ -406,7 +410,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       DocsWithFieldSet docsWithField =
           writeVectorData(
               tempQuantizedVectorData,
-              new QuantizedFloatVectorValues(floatVectorValues, quantizer, centroid));
+              new QuantizedFloatVectorValues(floatVectorValues, quantizer, encoding, centroid));
       CodecUtil.writeFooter(tempQuantizedVectorData);
       IOUtils.close(tempQuantizedVectorData);
       quantizedDataInput =
@@ -435,6 +439,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
               centroid,
               cDotC,
               quantizer,
+              encoding,
               fieldInfo.getVectorSimilarityFunction(),
               vectorsScorer,
               finalQuantizedDataInput);
@@ -645,13 +650,15 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     private final float[] centroid;
     private final FloatVectorValues values;
     private final OptimizedScalarQuantizer quantizer;
+    private final ScalarEncoding encoding;
 
     private int lastOrd = -1;
 
     QuantizedFloatVectorValues(
-        FloatVectorValues delegate, OptimizedScalarQuantizer quantizer, float[] centroid) {
+        FloatVectorValues delegate, OptimizedScalarQuantizer quantizer, ScalarEncoding encoding, float[] centroid) {
       this.values = delegate;
       this.quantizer = quantizer;
+      this.encoding = encoding;
       this.quantized = new byte[delegate.dimension()];
       this.centroid = centroid;
     }
@@ -688,6 +695,11 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
+    public ScalarEncoding getScalarEncoding() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
     public float[] getCentroid() throws IOException {
       return centroid;
     }
@@ -704,13 +716,13 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
     @Override
     public QuantizedByteVectorValues copy() throws IOException {
-      return new QuantizedFloatVectorValues(values.copy(), quantizer, centroid);
+      return new QuantizedFloatVectorValues(values.copy(), quantizer, encoding, centroid);
     }
 
     private void quantize(int ord) throws IOException {
-      // XXX properly parameterize bits
+      // XXX pack PACKED_NIBBLE, maybe???
       corrections =
-          quantizer.scalarQuantize(values.vectorValue(ord), quantized, (byte) 8, centroid);
+          quantizer.scalarQuantize(values.vectorValue(ord), quantized, encoding.getBits(), centroid);
     }
 
     @Override
