@@ -190,12 +190,18 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private void writeVectors(
       FieldWriter fieldData, float[] clusterCenter, OptimizedScalarQuantizer scalarQuantizer)
       throws IOException {
-    byte[] vector = new byte[fieldData.fieldInfo.getVectorDimension()];
+    byte[] scratch = new byte[fieldData.fieldInfo.getVectorDimension()];
+    byte[] vector = switch(encoding) {
+      case UNSIGNED_BYTE -> scratch;
+      case PACKED_NIBBLE -> new byte[encoding.packedLength(scratch.length)];
+    };
     for (int i = 0; i < fieldData.getVectors().size(); i++) {
       float[] v = fieldData.getVectors().get(i);
-      // XXX must pack PACKED_NIBBLE
       OptimizedScalarQuantizer.QuantizationResult corrections =
-          scalarQuantizer.scalarQuantize(v, vector, encoding.getBits(), clusterCenter);
+          scalarQuantizer.scalarQuantize(v, scratch, encoding.getBits(), clusterCenter);
+      if (encoding == ScalarEncoding.PACKED_NIBBLE) {
+        packNibbles(scratch, vector);
+      }
       vectorData.writeBytes(vector, vector.length);
       vectorData.writeInt(Float.floatToIntBits(corrections.lowerInterval()));
       vectorData.writeInt(Float.floatToIntBits(corrections.upperInterval()));
@@ -239,17 +245,30 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       int[] ordMap,
       OptimizedScalarQuantizer scalarQuantizer)
       throws IOException {
-    byte[] vector = new byte[fieldData.fieldInfo.getVectorDimension()];
+    byte[] scratch = new byte[fieldData.fieldInfo.getVectorDimension()];
+    byte[] vector = switch(encoding) {
+      case UNSIGNED_BYTE -> scratch;
+      case PACKED_NIBBLE -> new byte[encoding.packedLength(scratch.length)];
+    };
     for (int ordinal : ordMap) {
       float[] v = fieldData.getVectors().get(ordinal);
-      // XXX must pack PACKED_NIBBLE
       OptimizedScalarQuantizer.QuantizationResult corrections =
-          scalarQuantizer.scalarQuantize(v, vector, encoding.getBits(), clusterCenter);
+          scalarQuantizer.scalarQuantize(v, scratch, encoding.getBits(), clusterCenter);
+      if (encoding == ScalarEncoding.PACKED_NIBBLE) {
+        packNibbles(scratch, vector);
+      }
       vectorData.writeBytes(vector, vector.length);
       vectorData.writeInt(Float.floatToIntBits(corrections.lowerInterval()));
       vectorData.writeInt(Float.floatToIntBits(corrections.upperInterval()));
       vectorData.writeInt(Float.floatToIntBits(corrections.additionalCorrection()));
       vectorData.writeInt(corrections.quantizedComponentSum());
+    }
+  }
+
+  private static void packNibbles(byte[] unpacked, byte[] packed) {
+    for (int i = 0; i < packed.length; i++) {
+      int x = unpacked[i] << 4 | unpacked[packed.length + i];
+      packed[i] = (byte) x;
     }
   }
 
@@ -647,6 +666,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   static class QuantizedFloatVectorValues extends QuantizedByteVectorValues {
     private OptimizedScalarQuantizer.QuantizationResult corrections;
     private final byte[] quantized;
+    private final byte[] packed;
     private final float[] centroid;
     private final FloatVectorValues values;
     private final OptimizedScalarQuantizer quantizer;
@@ -660,6 +680,10 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       this.quantizer = quantizer;
       this.encoding = encoding;
       this.quantized = new byte[delegate.dimension()];
+      this.packed = switch (encoding) {
+        case UNSIGNED_BYTE -> this.quantized;
+        case PACKED_NIBBLE -> new byte[encoding.packedLength(this.quantized.length)];
+      };
       this.centroid = centroid;
     }
 
@@ -681,7 +705,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         quantize(ord);
         lastOrd = ord;
       }
-      return quantized;
+      return packed;
     }
 
     @Override
@@ -720,9 +744,11 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     private void quantize(int ord) throws IOException {
-      // XXX pack PACKED_NIBBLE, maybe???
       corrections =
           quantizer.scalarQuantize(values.vectorValue(ord), quantized, encoding.getBits(), centroid);
+      if (encoding == ScalarEncoding.PACKED_NIBBLE) {
+        packNibbles(quantized, packed);
+      }
     }
 
     @Override

@@ -126,26 +126,24 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
     private int wireNumber;
 
     private byte bits;
-    private int dimensionsPerByte;
 
     ScalarEncoding(int wireNumber, byte bits) {
+      assert 8 % bits == 0;
       this.wireNumber = wireNumber;
       this.bits = bits;
-      assert 8 % bits == 0;
-      this.dimensionsPerByte = 8 / bits;
     }
 
     int getWireNumber() {
       return wireNumber;
     }
 
-    int getDimensionsPerByte() {
-      return dimensionsPerByte;
-    }
-
     /** Return the number of bits used per dimension. */
     public byte getBits() {
       return bits;
+    }
+
+    public int packedLength(int dimensions) {
+      return (dimensions * bits + 7) / 8;
     }
 
     /** Returns the encoding for the given wire number, or empty if unknown. */

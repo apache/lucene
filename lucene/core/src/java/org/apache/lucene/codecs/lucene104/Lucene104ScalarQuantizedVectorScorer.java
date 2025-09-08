@@ -47,9 +47,8 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
         VectorUtil.l2normalize(copy);
       }
       target = copy;
-      // XXX parameterize the number of bits
       var targetCorrectiveTerms =
-          quantizer.scalarQuantize(target, targetQuantized, (byte) 8, qv.getCentroid());
+          quantizer.scalarQuantize(target, targetQuantized, qv.getScalarEncoding().getBits(), qv.getCentroid());
       return new RandomVectorScorer.AbstractRandomVectorScorer(qv) {
         @Override
         public float score(int node) throws IOException {
@@ -114,10 +113,17 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     }
   }
 
-  public static final float EIGHT_BIT_SCALE = 1f / ((1 << 8) - 1);
+  private static final float[] SCALE_LUT = new float[]{
+      1f,
+      1f / ((1 << 2) - 1),
+      1f / ((1 << 3) - 1),
+      1f / ((1 << 4) - 1),
+      1f / ((1 << 5) - 1),
+      1f / ((1 << 6) - 1),
+      1f / ((1 << 7) - 1),
+      1f / ((1 << 8) - 1),
+  };
 
-  // XXX factor this out to share with Lucene102BinaryFlatVectorsScorer
-  // we need to know how many bits were used for both the query and index vector for scaling.
   static float quantizedScore(
       byte[] quantizedQuery,
       OptimizedScalarQuantizer.QuantizationResult queryCorrections,
@@ -125,16 +131,21 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       int targetOrd,
       VectorSimilarityFunction similarityFunction)
       throws IOException {
-    byte[] binaryCode = targetVectors.vectorValue(targetOrd);
-    float qcDist = VectorUtil.uint8DotProduct(quantizedQuery, binaryCode);
+    var scalarEncoding = targetVectors.getScalarEncoding();
+    byte[] quantizedDoc = targetVectors.vectorValue(targetOrd);
+    float qcDist = switch(scalarEncoding) {
+      case UNSIGNED_BYTE -> VectorUtil.uint8DotProduct(quantizedQuery, quantizedDoc);
+      case PACKED_NIBBLE -> VectorUtil.int4DotProductPacked(quantizedQuery, quantizedDoc);
+    };
     OptimizedScalarQuantizer.QuantizationResult indexCorrections =
         targetVectors.getCorrectiveTerms(targetOrd);
+    float scale = SCALE_LUT[scalarEncoding.getBits() - 1];
     float x1 = indexCorrections.quantizedComponentSum();
     float ax = indexCorrections.lowerInterval();
     // Here we assume `lx` is simply bit vectors, so the scaling isn't necessary
-    float lx = (indexCorrections.upperInterval() - ax) * EIGHT_BIT_SCALE;
+    float lx = (indexCorrections.upperInterval() - ax) * scale;
     float ay = queryCorrections.lowerInterval();
-    float ly = (queryCorrections.upperInterval() - ay) * EIGHT_BIT_SCALE;
+    float ly = (queryCorrections.upperInterval() - ay) * scale;
     float y1 = queryCorrections.quantizedComponentSum();
     float score =
         ax * ay * targetVectors.dimension() + ay * lx * x1 + ax * ly * y1 + lx * ly * qcDist;
