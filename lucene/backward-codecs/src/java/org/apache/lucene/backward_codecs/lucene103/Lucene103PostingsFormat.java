@@ -349,7 +349,7 @@ public class Lucene103PostingsFormat extends PostingsFormat {
   /** Total number of docs covered by level 1 skip data: 32 * 128 = 4,096 */
   public static final int LEVEL1_NUM_DOCS = LEVEL1_FACTOR * BLOCK_SIZE;
 
-  final int LEVEL1_MASK = LEVEL1_NUM_DOCS - 1;
+  static final int LEVEL1_MASK = LEVEL1_NUM_DOCS - 1;
 
   static final String TERMS_CODEC = "Lucene103PostingsWriterTerms";
   static final String META_CODEC = "Lucene103PostingsWriterMeta";
