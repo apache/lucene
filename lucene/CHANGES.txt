@@ -315,6 +315,8 @@ Optimizations
   and uses an optimized branchless approach. Any subclasses that have implemented the optimized method
   need to remove it as it will disappear in Lucene 11.  (Uwe Schindler)
 
+* GITHUB#15167: FirstPassGroupingCollector supports ignoring docs without group field (Binlong Gao)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
