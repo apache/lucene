@@ -136,6 +136,9 @@ Optimizations
 * GITHUB#15151: Use `SimScorer#score` bulk API to compute impact scores per
   block of postings. (Adrien Grand)
 
+* GITHUB#15171: Add `VectorScorer.Bulk` for bulk iteration and scoring of vectors. This new interface is now
+  used in AbstractKnnVectorQuery to make exact matches faster. (Ben Trent)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
