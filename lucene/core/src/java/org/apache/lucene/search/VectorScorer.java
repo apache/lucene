@@ -17,6 +17,8 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.List;
+import org.apache.lucene.util.Bits;
 
 /**
  * Computes the similarity score between a given query vector and different document vectors. This
@@ -38,4 +40,34 @@ public interface VectorScorer {
    * @return a {@link DocIdSetIterator} over the documents.
    */
   DocIdSetIterator iterator();
+
+  /**
+   * An optional bulk scorer implementation that allows bulk scoring over the provided matching docs
+   */
+  default Bulk bulk(DocIdSetIterator matchingDocs) {
+    final DocIdSetIterator iterator =
+        ConjunctionUtils.createConjunction(List.of(matchingDocs, iterator()), List.of());
+    return (nextCount, liveDocs, buffer) -> {
+      buffer.growNoCopy(nextCount);
+      int size = 0;
+      for (int doc = iterator.docID();
+          doc != DocIdSetIterator.NO_MORE_DOCS && size < nextCount;
+          doc = iterator.nextDoc()) {
+        if (liveDocs == null || liveDocs.get(doc)) {
+          buffer.docs[size] = doc;
+          buffer.features[size] = score();
+          ++size;
+        }
+      }
+      buffer.size = size;
+      if (liveDocs != null) {
+        buffer.apply(liveDocs);
+      }
+    };
+  }
+
+  interface Bulk {
+    void nextDocsAndScores(int nextCount, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
+        throws IOException;
+  }
 }
