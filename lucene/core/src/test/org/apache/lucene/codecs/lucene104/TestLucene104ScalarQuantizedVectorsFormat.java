@@ -187,12 +187,15 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
                   OffHeapScalarQuantizedVectorValues.packNibbles(scratch, expectedVector);
             }
             assertArrayEquals(expectedVector, qvectorValues.vectorValue(docIndexIterator.index()));
-            var actualCorrections =
-                qvectorValues.getCorrectiveTerms(docIndexIterator.index());
+            var actualCorrections = qvectorValues.getCorrectiveTerms(docIndexIterator.index());
             assertEquals(corrections.lowerInterval(), actualCorrections.lowerInterval(), 0.00001f);
             assertEquals(corrections.upperInterval(), actualCorrections.upperInterval(), 0.00001f);
-            assertEquals(corrections.additionalCorrection(), actualCorrections.additionalCorrection(), 0.00001f);
-            assertEquals(corrections.quantizedComponentSum(), actualCorrections.quantizedComponentSum());
+            assertEquals(
+                corrections.additionalCorrection(),
+                actualCorrections.additionalCorrection(),
+                0.00001f);
+            assertEquals(
+                corrections.quantizedComponentSum(), actualCorrections.quantizedComponentSum());
           }
         }
       }
