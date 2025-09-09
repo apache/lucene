@@ -22,6 +22,7 @@ import static org.hamcrest.Matchers.equalTo;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Random;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -37,11 +38,14 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.BM25Similarity;
+import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
@@ -527,5 +531,66 @@ public class TestFeatureField extends LuceneTestCase {
     assertThat(postings.nextDoc(), equalTo(DocIdSetIterator.NO_MORE_DOCS));
 
     IOUtils.close(reader, dir);
+  }
+
+  public void testLinearBulkScorer() {
+    FeatureField.LinearFunction func = new FeatureField.LinearFunction();
+    SimScorer scorer = func.scorer(2f); // weight = 2
+    Similarity.BulkSimScorer bulkScorer = scorer.asBulkSimScorer();
+    doTestBulkScorer(scorer, bulkScorer);
+  }
+
+  public void testLogBulkScorer() {
+    FeatureField.LogFunction func = new FeatureField.LogFunction(4.5f);
+    SimScorer scorer = func.scorer(3f); // weight = 3
+    Similarity.BulkSimScorer bulkScorer = scorer.asBulkSimScorer();
+    doTestBulkScorer(scorer, bulkScorer);
+  }
+
+  public void testSaturationBulkScorer() {
+    FeatureField.SaturationFunction func = new FeatureField.SaturationFunction("foo", "bar", 4.5f);
+    SimScorer scorer = func.scorer(3f);
+    Similarity.BulkSimScorer bulkScorer = scorer.asBulkSimScorer();
+    doTestBulkScorer(scorer, bulkScorer);
+  }
+
+  public void testSigmoidBulkScorer() {
+    FeatureField.SigmoidFunction func = new FeatureField.SigmoidFunction(4.5f, 0.6f);
+    SimScorer scorer = func.scorer(3f);
+    Similarity.BulkSimScorer bulkScorer = scorer.asBulkSimScorer();
+    doTestBulkScorer(scorer, bulkScorer);
+  }
+
+  private void doTestBulkScorer(SimScorer scorer, Similarity.BulkSimScorer bulkScorer) {
+    Random random = random();
+    int iters = atLeast(3);
+    float[] freqs = new float[0];
+    long[] norms = new long[0];
+    float[] scores = new float[0];
+
+    for (int iter = 0; iter < iters; ++iter) {
+      int size = TestUtil.nextInt(random, 0, 200);
+      if (size > freqs.length) {
+        freqs = new float[ArrayUtil.oversize(size, Float.BYTES)];
+        norms = new long[freqs.length];
+        scores = new float[freqs.length];
+      }
+      for (int i = 0; i < size; ++i) {
+        freqs[i] = TestUtil.nextInt(random, 1, 1000); // freq values
+        norms[i] = TestUtil.nextLong(random, 1, 255); // norms in byte range
+      }
+
+      float[] expected = new float[size];
+      for (int i = 0; i < size; ++i) {
+        expected[i] = scorer.score(freqs[i], norms[i]);
+      }
+
+      bulkScorer.score(size, freqs, norms, scores);
+
+      assertArrayEquals(
+          ArrayUtil.copyOfSubArray(expected, 0, size),
+          ArrayUtil.copyOfSubArray(scores, 0, size),
+          0f);
+    }
   }
 }

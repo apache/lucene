@@ -31,6 +31,8 @@ API Changes
 
 * GITHUB#14844: Change IndexInput.updateReadAdvice to take an IOContext instead (Simon Cooper)
 
+* GITHUB#15131: Restrict visibility of TieredMergePolicy.score() API (Trevor McCulloch)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -106,6 +108,43 @@ Other
 * GITHUB#14761: Use more Comparators for PriorityQueue implementations. (Simon Cooper)
 * GITHUB#14817: Refactor some complex uses of PriorityQueue to use Comparators. (Simon Cooper)
 
+======================= Lucene 10.4.0 =======================
+
+API Changes
+---------------------
+* GITHUB#15149: Introduce NumericDocValues#longValues to help speed up the
+  retrieval of many doc values at once. (Adrien Grand)
+
+New Features
+---------------------
+* GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
+  along with limiting number of child documents to retrieve per parent. (Jinny Wang)
+
+
+Improvements
+---------------------
+# GITHUB#15148: Add support uint8 distance and allow 8 bit scalar quantization (Trevor McCulloch)
+
+Optimizations
+---------------------
+* GITHUB#15140: Optimize TopScoreDocCollector with TernaryLongHeap for improved performance over Binary-LongHeap. (Ramakrishna Chilaka)
+
+* GITHUB#14998: Speed up flushing of live docs. (Adrien Grand)
+
+* GITHUB#15165: Optimize PForUtil.encode() with histogram-based bit selection. (Ramakrishna Chilaka)
+
+* GITHUB#15151: Use `SimScorer#score` bulk API to compute impact scores per
+  block of postings. (Adrien Grand)
+
+Bug Fixes
+---------------------
+* GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
+  instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
+
+Other
+---------------------
+(No changes)
+
 ======================= Lucene 10.3.0 =======================
 
 API Changes
@@ -137,8 +176,7 @@ New Features
 * GITHUB#14404: Introducing DocValuesMultiRangeQuery.SortedNumericStabbingBuilder into sandbox.
   (Mikhail Khludnev)
 
-* GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
-  along with limiting number of child documents to retrieve per parent. (Jinny Wang)
+* GITHUB#14413: Adding profiling support for concurrent segment search. (Ankit Jain)
 
 * GITHUB#14776: Add a Rescorer that uses values from provided DoubleValuesSource to re-score
   first pass hits. (Vigya Sharma)
@@ -151,6 +189,10 @@ New Features
   and trim the results down to top N (Anh Dung Bui)
 
 * GITHUB#14729: Support for Re-Ranking Queries using Late Interaction Model Multi-Vectors. (Vigya Sharma, Jim Ferenczi)
+
+* GITHUB#15110: PostingsDecodingUtil: interchange loops to enable better memory access and SIMD vectorisation. (Ramakrishna Chilaka)
+
+* GITHUB#15157: Support JDK 25 in Panama Vectorization Provider. (Chris Hegarty)
 
 Improvements
 ---------------------
@@ -268,6 +310,15 @@ Optimizations
 
 * GITHUB#15045: Use FixedBitSet#cardinality for counting liveDocs in CheckIndex (Zhang Chao)
 
+
+* GITHUB#15117: Score computations are now more reliably vectorized in FeatureField Scorer's
+  (Aditya Teltia)
+
+* GITHUB#15116, GITHUB#15138: Rewrite of the GroupVInt optimization without lambdas, varhandles
+  and no code in subclasses. The optimization now auto-detects if an IndexInput supports random access
+  and uses an optimized branchless approach. Any subclasses that have implemented the optimized method
+  need to remove it as it will disappear in Lucene 11.  (Uwe Schindler)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
@@ -299,9 +350,6 @@ Bug Fixes
   used if the DoubleValuesSource needed scores. (David Smiley)
 
 * GITHUB#14682 : Fix for add char and token filters in Luke Analysis tab. (Amir Raza)
-
-* GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
-  instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
 
 * GITHUB#14727: Fix several resource leaks. (Xu Chengxin)
 
