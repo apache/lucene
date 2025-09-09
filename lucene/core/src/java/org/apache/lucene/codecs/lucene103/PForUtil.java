@@ -55,25 +55,18 @@ final class PForUtil {
       maxBitsRequired = Math.max(maxBitsRequired, bits);
     }
 
-    int bestCost = Integer.MAX_VALUE;
-    int patchedBitsRequired = maxBitsRequired;
-    int numExceptions = 0;
-
     // We store patch on a byte, so we can't decrease bits by more than 8
     final int minBits = Math.max(0, maxBitsRequired - 8);
     int cumulativeExceptions = 0;
+    int patchedBitsRequired = maxBitsRequired;
+    int numExceptions = 0;
+
     for (int b = maxBitsRequired; b >= minBits; --b) {
-      // Early termination if too many exceptions
-      if (cumulativeExceptions > MAX_EXCEPTIONS) break;
-
-      // storage cost
-      int cost = (ForUtil.BLOCK_SIZE * b) + (cumulativeExceptions << 4);
-      if (cost < bestCost) {
-        bestCost = cost;
-        patchedBitsRequired = b;
-        numExceptions = cumulativeExceptions;
+      if (cumulativeExceptions > MAX_EXCEPTIONS) {
+        break;
       }
-
+      patchedBitsRequired = b;
+      numExceptions = cumulativeExceptions;
       cumulativeExceptions += histogram[b];
     }
 
