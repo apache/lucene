@@ -134,6 +134,8 @@ Optimizations
 * GITHUB#15151: Use `SimScorer#score` bulk API to compute impact scores per
   block of postings. (Adrien Grand)
 
+* GITHUB#15167: FirstPassGroupingCollector supports ignoring docs without group field (Binlong Gao)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
@@ -314,8 +316,6 @@ Optimizations
   and no code in subclasses. The optimization now auto-detects if an IndexInput supports random access
   and uses an optimized branchless approach. Any subclasses that have implemented the optimized method
   need to remove it as it will disappear in Lucene 11.  (Uwe Schindler)
-
-* GITHUB#15167: FirstPassGroupingCollector supports ignoring docs without group field (Binlong Gao)
 
 Changes in Runtime Behavior
 ---------------------

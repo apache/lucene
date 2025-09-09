@@ -394,8 +394,8 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       return true;
     }
     // For ValueSourceGroupSelector, check if MutableValue exists
-    if (groupValue instanceof MutableValue) {
-      return !((MutableValue) groupValue).exists();
+    if (groupValue instanceof MutableValue mutable) {
+      return mutable.exists() == false;
     }
     return false;
   }
