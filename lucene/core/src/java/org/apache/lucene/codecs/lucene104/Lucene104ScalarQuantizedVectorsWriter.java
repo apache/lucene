@@ -190,11 +190,15 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private void writeVectors(
       FieldWriter fieldData, float[] clusterCenter, OptimizedScalarQuantizer scalarQuantizer)
       throws IOException {
-    byte[] scratch = new byte[fieldData.fieldInfo.getVectorDimension()];
+    byte[] scratch =
+        new byte
+            [OptimizedScalarQuantizer.discretize(
+                fieldData.fieldInfo.getVectorDimension(), encoding.getDimensionsPerByte())];
     byte[] vector =
         switch (encoding) {
           case UNSIGNED_BYTE -> scratch;
-          case PACKED_NIBBLE -> new byte[encoding.packedLength(scratch.length)];
+          case PACKED_NIBBLE ->
+              new byte[encoding.getPackedLength(fieldData.fieldInfo.getVectorDimension())];
         };
     for (int i = 0; i < fieldData.getVectors().size(); i++) {
       float[] v = fieldData.getVectors().get(i);
@@ -246,11 +250,15 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       int[] ordMap,
       OptimizedScalarQuantizer scalarQuantizer)
       throws IOException {
-    byte[] scratch = new byte[fieldData.fieldInfo.getVectorDimension()];
+    byte[] scratch =
+        new byte
+            [OptimizedScalarQuantizer.discretize(
+                fieldData.fieldInfo.getVectorDimension(), encoding.getDimensionsPerByte())];
     byte[] vector =
         switch (encoding) {
           case UNSIGNED_BYTE -> scratch;
-          case PACKED_NIBBLE -> new byte[encoding.packedLength(scratch.length)];
+          case PACKED_NIBBLE ->
+              new byte[encoding.getPackedLength(fieldData.fieldInfo.getVectorDimension())];
         };
     for (int ordinal : ordMap) {
       float[] v = fieldData.getVectors().get(ordinal);
@@ -677,11 +685,14 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       this.values = delegate;
       this.quantizer = quantizer;
       this.encoding = encoding;
-      this.quantized = new byte[delegate.dimension()];
+      this.quantized =
+          new byte
+              [OptimizedScalarQuantizer.discretize(
+                  delegate.dimension(), encoding.getDimensionsPerByte())];
       this.packed =
           switch (encoding) {
             case UNSIGNED_BYTE -> this.quantized;
-            case PACKED_NIBBLE -> new byte[encoding.packedLength(this.quantized.length)];
+            case PACKED_NIBBLE -> new byte[encoding.getPackedLength(delegate.dimension())];
           };
       this.centroid = centroid;
     }

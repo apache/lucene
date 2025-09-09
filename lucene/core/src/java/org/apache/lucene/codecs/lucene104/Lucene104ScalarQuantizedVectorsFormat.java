@@ -142,7 +142,13 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
       return bits;
     }
 
-    public int packedLength(int dimensions) {
+    /** Return the number of dimensions that can be packed into a single byte. */
+    public int getDimensionsPerByte() {
+      return 8 / bits;
+    }
+
+    /** Return the number of bytes required to store a packed vector of the given dimensions. */
+    public int getPackedLength(int dimensions) {
       return (dimensions * bits + 7) / 8;
     }
 

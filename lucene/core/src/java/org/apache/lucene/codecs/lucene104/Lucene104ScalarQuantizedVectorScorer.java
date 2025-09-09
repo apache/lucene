@@ -56,7 +56,10 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       throws IOException {
     if (vectorValues instanceof QuantizedByteVectorValues qv) {
       OptimizedScalarQuantizer quantizer = qv.getQuantizer();
-      byte[] targetQuantized = new byte[target.length];
+      byte[] targetQuantized =
+          new byte
+              [OptimizedScalarQuantizer.discretize(
+                  target.length, qv.getScalarEncoding().getDimensionsPerByte())];
       // We make a copy as the quantization process mutates the input
       float[] copy = ArrayUtil.copyOfSubArray(target, 0, target.length);
       if (similarityFunction == COSINE) {

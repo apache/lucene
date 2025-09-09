@@ -72,8 +72,8 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
     this.centroid = centroid;
     this.centroidDp = centroidDp;
     this.correctiveValues = new float[3];
-    this.byteSize = encoding.packedLength(dimension) + (Float.BYTES * 3) + Integer.BYTES;
-    this.byteBuffer = ByteBuffer.allocate(encoding.packedLength(dimension));
+    this.byteSize = encoding.getPackedLength(dimension) + (Float.BYTES * 3) + Integer.BYTES;
+    this.byteBuffer = ByteBuffer.allocate(encoding.getPackedLength(dimension));
     this.vectorValue = byteBuffer.array();
     this.quantizer = quantizer;
     this.encoding = encoding;
@@ -142,13 +142,10 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
   }
 
   static void packNibbles(byte[] unpacked, byte[] packed) {
-    int limit = (unpacked.length & 1) == 0 ? packed.length : packed.length - 1;
-    for (int i = 0; i < limit; i++) {
+    assert unpacked.length == packed.length * 2;
+    for (int i = 0; i < packed.length; i++) {
       int x = unpacked[i] << 4 | unpacked[packed.length + i];
       packed[i] = (byte) x;
-    }
-    if ((unpacked.length & 1) == 1) {
-      packed[packed.length - 1] = (byte) (unpacked[packed.length] << 4);
     }
   }
 

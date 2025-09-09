@@ -165,8 +165,9 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           assertEquals(centroid.length, dims);
 
           OptimizedScalarQuantizer quantizer = new OptimizedScalarQuantizer(similarityFunction);
-          byte[] scratch = new byte[dims];
-          byte[] expectedVector = new byte[encoding.packedLength(dims)];
+          byte[] scratch =
+              new byte[OptimizedScalarQuantizer.discretize(dims, encoding.getDimensionsPerByte())];
+          byte[] expectedVector = new byte[encoding.getPackedLength(dims)];
           if (similarityFunction == VectorSimilarityFunction.COSINE) {
             vectorValues =
                 new Lucene104ScalarQuantizedVectorsWriter.NormalizedFloatVectorValues(vectorValues);
