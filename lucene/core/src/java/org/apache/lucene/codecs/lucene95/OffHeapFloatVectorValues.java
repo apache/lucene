@@ -183,21 +183,20 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
           final DocIdSetIterator matches =
               ConjunctionUtils.createConjunction(List.of(matchingDocs, iterator), List.of());
           return (nextCount, liveDocs, buffer) -> {
+            if (matches.docID() == -1) {
+              matches.nextDoc();
+            }
             buffer.growNoCopy(nextCount);
             int size = 0;
             for (int doc = matches.docID();
                 doc != DocIdSetIterator.NO_MORE_DOCS && size < nextCount;
                 doc = matches.nextDoc()) {
               if (liveDocs == null || liveDocs.get(doc)) {
-                buffer.docs[size] = doc;
-                ++size;
+                buffer.docs[size++] = doc;
               }
             }
             randomVectorScorer.bulkScore(buffer.docs, buffer.features, size);
             buffer.size = size;
-            if (liveDocs != null) {
-              buffer.apply(liveDocs);
-            }
           };
         }
       };
@@ -301,10 +300,14 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
                 ConjunctionUtils.createConjunction(List.of(matchingDocs, iterator), List.of());
             int[] docIds = new int[0];
 
+            @Override
             public void nextDocsAndScores(
                 int nextCount, Bits liveDocs, DocAndFloatFeatureBuffer buffer) throws IOException {
+              if (matches.docID() == -1) {
+                matches.nextDoc();
+              }
               buffer.growNoCopy(nextCount);
-              docIds = ArrayUtil.grow(docIds, nextCount);
+              docIds = ArrayUtil.growNoCopy(docIds, nextCount);
               int size = 0;
               for (int doc = matches.docID();
                   doc != DocIdSetIterator.NO_MORE_DOCS && size < nextCount;
@@ -319,9 +322,6 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
               // copy back the real doc IDs
               System.arraycopy(docIds, 0, buffer.docs, 0, size);
               buffer.size = size;
-              if (liveDocs != null) {
-                buffer.apply(liveDocs);
-              }
             }
           };
         }
