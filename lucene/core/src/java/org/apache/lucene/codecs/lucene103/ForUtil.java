@@ -153,9 +153,7 @@ public final class ForUtil {
       }
     }
 
-    for (int i = 0; i < numIntsPerShift; ++i) {
-      out.writeInt(tmp[i]);
-    }
+    out.writeInts(tmp, 0, numIntsPerShift);
   }
 
   /** Number of bytes required to encode 128 integers of {@code bitsPerValue} bits per value. */

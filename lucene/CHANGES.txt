@@ -133,6 +133,8 @@ Optimizations
 
 * GITHUB#15165: Optimize PForUtil.encode() with histogram-based bit selection. (Ramakrishna Chilaka)
 
+* GITHUB#15170: Bulk write Ints in ForUtil's encode (Ramakrishna Chilaka)
+
 * GITHUB#15151: Use `SimScorer#score` bulk API to compute impact scores per
   block of postings. (Adrien Grand)
 
