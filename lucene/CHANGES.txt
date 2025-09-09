@@ -131,6 +131,8 @@ Optimizations
 
 * GITHUB#14998: Speed up flushing of live docs. (Adrien Grand)
 
+* GITHUB#15165: Optimize PForUtil.encode() with histogram-based bit selection. (Ramakrishna Chilaka)
+
 * GITHUB#15151: Use `SimScorer#score` bulk API to compute impact scores per
   block of postings. (Adrien Grand)
 
