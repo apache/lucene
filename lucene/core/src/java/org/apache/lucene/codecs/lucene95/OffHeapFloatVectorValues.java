@@ -323,10 +323,11 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
                   ++size;
                 }
               }
+              buffer.size = size;
+              float maxScore = randomVectorScorer.bulkScore(buffer.docs, buffer.features, size);
               // copy back the real doc IDs
               System.arraycopy(docIds, 0, buffer.docs, 0, size);
-              buffer.size = size;
-              return randomVectorScorer.bulkScore(buffer.docs, buffer.features, size);
+              return maxScore;
             }
           };
         }
