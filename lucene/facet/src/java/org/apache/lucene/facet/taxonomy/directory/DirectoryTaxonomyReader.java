@@ -188,7 +188,6 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     }
 
     // check if the taxonomy was recreated
-    boolean success = false;
     try {
       boolean recreated = false;
       if (taxoWriter == null) {
@@ -222,12 +221,10 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
             new DirectoryTaxonomyReader(r2, taxoWriter, ordinalCache, categoryCache, taxoArrays);
       }
 
-      success = true;
       return newTaxoReader;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(r2);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, r2);
+      throw t;
     }
   }
 

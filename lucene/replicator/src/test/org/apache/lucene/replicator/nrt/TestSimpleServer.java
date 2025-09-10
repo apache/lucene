@@ -85,8 +85,7 @@ public class TestSimpleServer extends LuceneTestCase {
 
     @Override
     public void run() {
-      boolean success = false;
-      try {
+      try (socket) {
         // node.message("using stream buffer size=" + bufferSize);
         InputStream is = new BufferedInputStream(socket.getInputStream(), bufferSize);
         DataInput in = new InputStreamDataInput(is);
@@ -104,29 +103,17 @@ public class TestSimpleServer extends LuceneTestCase {
         if (VERBOSE_CONNECTIONS) {
           node.message("bos.flush done");
         }
-
-        success = true;
       } catch (Throwable t) {
         if (t instanceof SocketException == false
             && t instanceof NodeCommunicationException == false) {
           node.message("unexpected exception handling client connection; now failing test:");
           t.printStackTrace(System.out);
-          IOUtils.closeWhileHandlingException(ss);
+          IOUtils.closeWhileSuppressingExceptions(t, ss);
           // Test should fail with this:
           throw new RuntimeException(t);
         } else {
           node.message("exception handling client connection; ignoring:");
           t.printStackTrace(System.out);
-        }
-      } finally {
-        if (success) {
-          try {
-            IOUtils.close(socket);
-          } catch (IOException ioe) {
-            throw new RuntimeException(ioe);
-          }
-        } else {
-          IOUtils.closeWhileHandlingException(socket);
         }
       }
       if (VERBOSE_CONNECTIONS) {
