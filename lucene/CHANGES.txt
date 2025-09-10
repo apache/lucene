@@ -35,6 +35,9 @@ Optimizations
 * GITHUB#15160: Increased the size used for blocks of postings from 128 to 256.
   This gives a noticeable speedup to many queries. (Adrien Grand)
 
+* GITHUB#15171: Add `VectorScorer.Bulk` for bulk iteration and scoring of vectors. This new interface is now
+  used in AbstractKnnVectorQuery to make exact matches faster. (Ben Trent)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
