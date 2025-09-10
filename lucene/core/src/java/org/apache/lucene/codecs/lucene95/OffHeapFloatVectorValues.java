@@ -181,7 +181,9 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
         @Override
         public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
           final DocIdSetIterator matches =
-              ConjunctionUtils.createConjunction(List.of(matchingDocs, iterator), List.of());
+              matchingDocs == null
+                  ? iterator
+                  : ConjunctionUtils.createConjunction(List.of(matchingDocs, iterator), List.of());
           return (nextCount, liveDocs, buffer) -> {
             if (matches.docID() == -1) {
               matches.nextDoc();
@@ -297,7 +299,10 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
         public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
           return new Bulk() {
             final DocIdSetIterator matches =
-                ConjunctionUtils.createConjunction(List.of(matchingDocs, iterator), List.of());
+                matchingDocs == null
+                    ? iterator
+                    : ConjunctionUtils.createConjunction(
+                        List.of(matchingDocs, iterator), List.of());
             int[] docIds = new int[0];
 
             @Override

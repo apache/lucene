@@ -42,11 +42,23 @@ public interface VectorScorer {
   DocIdSetIterator iterator();
 
   /**
-   * An optional bulk scorer implementation that allows bulk scoring over the provided matching docs
+   * An optional bulk scorer implementation that allows bulk scoring over the provided matching
+   * docs. The iterator of this instance of VectorScorer should be used and iterated in conjunction
+   * with the provided matchingDocs iterator to score only the documents that are present in both
+   * iterators. If the provided matchingDocs iterator is null, then all documents should be scored.
+   * Additionally, if the iterators are unpositioned (docID() == -1), this method should position
+   * them to the first document.
+   *
+   * @param matchingDocs the documents to score
+   * @return a {@link Bulk} scorer
+   * @throws IOException if an exception occurs during bulk scorer creation
+   * @lucene.experimental
    */
   default Bulk bulk(DocIdSetIterator matchingDocs) throws IOException {
     final DocIdSetIterator iterator =
-        ConjunctionUtils.createConjunction(List.of(matchingDocs, iterator()), List.of());
+        matchingDocs == null
+            ? iterator()
+            : ConjunctionUtils.createConjunction(List.of(matchingDocs, iterator()), List.of());
     if (iterator.docID() == -1) {
       iterator.nextDoc();
     }
@@ -69,7 +81,21 @@ public interface VectorScorer {
     };
   }
 
+  /**
+   * Bulk scorer interface to score multiple vectors at once
+   *
+   * @lucene.experimental
+   */
   interface Bulk {
+    /**
+     * Score up to nextCount documents, store the results in the provided buffer. Behaves similarly
+     * to {@link Scorer#nextDocsAndScores(int, Bits, DocAndFloatFeatureBuffer)}
+     *
+     * @param nextCount the maximum number of documents to score
+     * @param liveDocs the live docs, or null if all docs are live
+     * @param buffer the buffer to store the results
+     * @throws IOException if an exception occurs during scoring
+     */
     void nextDocsAndScores(int nextCount, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
         throws IOException;
   }
