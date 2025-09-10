@@ -14,12 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene103;
+package org.apache.lucene.backward_codecs.lucene103;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -27,20 +26,19 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.packed.PackedInts;
 
-public class TestForUtil extends LuceneTestCase {
+public class TestForDeltaUtil extends LuceneTestCase {
 
   public void testEncodeDecode() throws IOException {
     final int iterations = RandomNumbers.randomIntBetween(random(), 50, 1000);
     final int[] values = new int[iterations * ForUtil.BLOCK_SIZE];
 
     for (int i = 0; i < iterations; ++i) {
-      final int bpv = TestUtil.nextInt(random(), 1, 31);
+      final int bpv = TestUtil.nextInt(random(), 1, 31 - 7);
       for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
         values[i * ForUtil.BLOCK_SIZE + j] =
-            RandomNumbers.randomIntBetween(random(), 0, (int) PackedInts.maxValue(bpv));
+            RandomNumbers.randomIntBetween(random(), 1, (int) PackedInts.maxValue(bpv));
       }
     }
 
@@ -50,18 +48,16 @@ public class TestForUtil extends LuceneTestCase {
     {
       // encode
       IndexOutput out = d.createOutput("test.bin", IOContext.DEFAULT);
-      final ForUtil forUtil = new ForUtil();
+      final ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
 
       for (int i = 0; i < iterations; ++i) {
         int[] source = new int[ForUtil.BLOCK_SIZE];
-        long or = 0;
         for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
           source[j] = values[i * ForUtil.BLOCK_SIZE + j];
-          or |= source[j];
         }
-        final int bpv = PackedInts.bitsRequired(or);
-        out.writeByte((byte) bpv);
-        forUtil.encode(source, bpv, out);
+        int bitsPerValue = forDeltaUtil.bitsRequired(source);
+        out.writeByte((byte) bitsPerValue);
+        forDeltaUtil.encodeDeltas(bitsPerValue, source, out);
       }
       endPointer = out.getFilePointer();
       out.close();
@@ -70,23 +66,23 @@ public class TestForUtil extends LuceneTestCase {
     {
       // decode
       IndexInput in = d.openInput("test.bin", IOContext.READONCE);
-      PostingDecodingUtil pdu =
-          Lucene103PostingsReader.VECTORIZATION_PROVIDER.newPostingDecodingUtil(in);
-      ForUtil forUtil = new ForUtil();
+      PostingDecodingUtil pdu = new PostingDecodingUtil(in);
+      ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
       for (int i = 0; i < iterations; ++i) {
-        final int bitsPerValue = in.readByte();
-        final long currentFilePointer = in.getFilePointer();
+        int base = 0;
         final int[] restored = new int[ForUtil.BLOCK_SIZE];
-        forUtil.decode(bitsPerValue, pdu, restored);
-        int[] ints = new int[ForUtil.BLOCK_SIZE];
+        int bitsPerValue = pdu.in.readByte();
+        forDeltaUtil.decodeAndPrefixSum(bitsPerValue, pdu, base, restored);
+        final int[] expected = new int[ForUtil.BLOCK_SIZE];
         for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
-          ints[j] = Math.toIntExact(restored[j]);
+          expected[j] = values[i * ForUtil.BLOCK_SIZE + j];
+          if (j > 0) {
+            expected[j] += expected[j - 1];
+          } else {
+            expected[j] += base;
+          }
         }
-        assertArrayEquals(
-            Arrays.toString(ints),
-            ArrayUtil.copyOfSubArray(values, i * ForUtil.BLOCK_SIZE, (i + 1) * ForUtil.BLOCK_SIZE),
-            ints);
-        assertEquals(ForUtil.numBytes(bitsPerValue), in.getFilePointer() - currentFilePointer);
+        assertArrayEquals(Arrays.toString(restored), expected, restored);
       }
       assertEquals(endPointer, in.getFilePointer());
       in.close();

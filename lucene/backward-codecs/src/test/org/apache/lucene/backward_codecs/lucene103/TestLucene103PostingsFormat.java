@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene103;
+package org.apache.lucene.backward_codecs.lucene103;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -46,7 +46,7 @@ public class TestLucene103PostingsFormat extends BasePostingsFormatTestCase {
 
   @Override
   protected Codec getCodec() {
-    return TestUtil.alwaysPostingsFormat(new Lucene103PostingsFormat());
+    return TestUtil.alwaysPostingsFormat(new Lucene103RWPostingsFormat());
   }
 
   public void testVInt15() throws IOException {
