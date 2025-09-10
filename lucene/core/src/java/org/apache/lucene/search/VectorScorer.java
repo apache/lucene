@@ -44,9 +44,12 @@ public interface VectorScorer {
   /**
    * An optional bulk scorer implementation that allows bulk scoring over the provided matching docs
    */
-  default Bulk bulk(DocIdSetIterator matchingDocs) {
+  default Bulk bulk(DocIdSetIterator matchingDocs) throws IOException {
     final DocIdSetIterator iterator =
         ConjunctionUtils.createConjunction(List.of(matchingDocs, iterator()), List.of());
+    if (iterator.docID() == -1) {
+      iterator.nextDoc();
+    }
     return (nextCount, liveDocs, buffer) -> {
       buffer.growNoCopy(nextCount);
       int size = 0;
