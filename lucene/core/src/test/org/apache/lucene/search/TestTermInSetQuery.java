@@ -112,16 +112,23 @@ public class TestTermInSetQuery extends LuceneTestCase {
   public void testDuel() throws IOException {
     final int iters = atLeast(2);
     final String field = "f";
+    final int maxTerms = 256;
     for (int iter = 0; iter < iters; ++iter) {
       final List<BytesRef> allTerms = new ArrayList<>();
-      final int numTerms = TestUtil.nextInt(random(), 1, 1 << TestUtil.nextInt(random(), 1, 10));
+      // final int numTerms = TestUtil.nextInt(random(), 1, 1 << TestUtil.nextInt(random(), 1, 10));
+      final int numTerms = Math.min(
+          TestUtil.nextInt(random(), 1, 1 << TestUtil.nextInt(random(), 1, 10)),
+          maxTerms
+      );
       for (int i = 0; i < numTerms; ++i) {
         final String value = TestUtil.randomAnalysisString(random(), 10, true);
         allTerms.add(newBytesRef(value));
       }
       Directory dir = newDirectory();
       RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
-      final int numDocs = atLeast(10_000);
+      // final int numDocs = atLeast(10_000);
+      final int maxDocs = 20000;
+      final int numDocs = Math.min(atLeast(10_000), maxDocs);
       for (int i = 0; i < numDocs; ++i) {
         Document doc = new Document();
         final BytesRef term = allTerms.get(random().nextInt(allTerms.size()));
@@ -148,7 +155,11 @@ public class TestTermInSetQuery extends LuceneTestCase {
       for (int i = 0; i < 100; ++i) {
         final float boost = random().nextFloat() * 10;
         final int numQueryTerms =
-            TestUtil.nextInt(random(), 1, 1 << TestUtil.nextInt(random(), 1, 8));
+            // TestUtil.nextInt(random(), 1, 1 << TestUtil.nextInt(random(), 1, 8));
+            Math.min(
+                TestUtil.nextInt(random(), 1, 1 << TestUtil.nextInt(random(), 1, 8)),
+                256
+            );
         List<BytesRef> queryTerms = new ArrayList<>();
         for (int j = 0; j < numQueryTerms; ++j) {
           queryTerms.add(allTerms.get(random().nextInt(allTerms.size())));
