@@ -160,7 +160,7 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
   private static Version getLatestPreviousMajorVersion() {
     Version lastPrevMajorVersion = null;
     for (Version v : getAllCurrentVersions()) {
-      if (v.major == Version.LATEST.major - 1
+      if (v.major == Version.MIN_SUPPORTED_MAJOR
           && (lastPrevMajorVersion == null || v.onOrAfter(lastPrevMajorVersion))) {
         lastPrevMajorVersion = v;
       }
