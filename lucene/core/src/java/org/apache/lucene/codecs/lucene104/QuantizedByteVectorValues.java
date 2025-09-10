@@ -58,9 +58,20 @@ abstract class QuantizedByteVectorValues extends ByteVectorValues {
    */
   public abstract OptimizedScalarQuantizer getQuantizer();
 
+  /**
+   * @return the scalar encoding used to pack the vectors.
+   */
   public abstract ScalarEncoding getScalarEncoding();
 
+  /**
+   * @return the centroid used to center the vectors prior to quantization
+   */
   public abstract float[] getCentroid() throws IOException;
+
+  /**
+   * @return the dot product of the centroid.
+   */
+  public abstract float getCentroidDP() throws IOException;
 
   /**
    * Return a {@link VectorScorer} for the given query vector.
@@ -72,12 +83,4 @@ abstract class QuantizedByteVectorValues extends ByteVectorValues {
 
   @Override
   public abstract QuantizedByteVectorValues copy() throws IOException;
-
-  // XXX off heap overrides this. this is probably only used in one other spot so it should be
-  // abstract.
-  float getCentroidDP() throws IOException {
-    // this only gets executed on-merge
-    float[] centroid = getCentroid();
-    return VectorUtil.dotProduct(centroid, centroid);
-  }
 }

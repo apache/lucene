@@ -671,6 +671,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     private final byte[] quantized;
     private final byte[] packed;
     private final float[] centroid;
+    private final float centroidDP;
     private final FloatVectorValues values;
     private final OptimizedScalarQuantizer quantizer;
     private final ScalarEncoding encoding;
@@ -695,6 +696,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
             case PACKED_NIBBLE -> new byte[encoding.getPackedLength(delegate.dimension())];
           };
       this.centroid = centroid;
+      this.centroidDP = VectorUtil.dotProduct(centroid, centroid);
     }
 
     @Override
@@ -736,6 +738,11 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     @Override
     public float[] getCentroid() throws IOException {
       return centroid;
+    }
+
+    @Override
+    public float getCentroidDP() {
+      return centroidDP;
     }
 
     @Override
