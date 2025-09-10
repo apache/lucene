@@ -14,24 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene103;
+package org.apache.lucene.backward_codecs.lucene103;
 
-import static org.apache.lucene.codecs.lucene103.ForUtil.BLOCK_SIZE;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.DOC_CODEC;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.LEVEL1_NUM_DOCS;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.META_CODEC;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.PAY_CODEC;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.POS_CODEC;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.TERMS_CODEC;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.VERSION_CURRENT;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.VERSION_START;
+import static org.apache.lucene.backward_codecs.lucene103.ForUtil.BLOCK_SIZE;
+import static org.apache.lucene.backward_codecs.lucene103.Lucene103PostingsFormat.DOC_CODEC;
+import static org.apache.lucene.backward_codecs.lucene103.Lucene103PostingsFormat.LEVEL1_NUM_DOCS;
+import static org.apache.lucene.backward_codecs.lucene103.Lucene103PostingsFormat.META_CODEC;
+import static org.apache.lucene.backward_codecs.lucene103.Lucene103PostingsFormat.PAY_CODEC;
+import static org.apache.lucene.backward_codecs.lucene103.Lucene103PostingsFormat.POS_CODEC;
+import static org.apache.lucene.backward_codecs.lucene103.Lucene103PostingsFormat.TERMS_CODEC;
+import static org.apache.lucene.backward_codecs.lucene103.Lucene103PostingsFormat.VERSION_CURRENT;
+import static org.apache.lucene.backward_codecs.lucene103.Lucene103PostingsFormat.VERSION_START;
 
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.backward_codecs.lucene103.Lucene103PostingsFormat.IntBlockTermState;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PostingsReaderBase;
-import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.IntBlockTermState;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
@@ -40,8 +40,6 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
-import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -62,8 +60,6 @@ import org.apache.lucene.util.VectorUtil;
  * @lucene.experimental
  */
 public final class Lucene103PostingsReader extends PostingsReaderBase {
-
-  static final VectorizationProvider VECTORIZATION_PROVIDER = VectorizationProvider.getInstance();
 
   private final IndexInput docIn;
   private final IndexInput posIn;
@@ -452,7 +448,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
 
       if (needsPos) {
         this.posIn = Lucene103PostingsReader.this.posIn.clone();
-        posInUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(posIn);
+        posInUtil = new PostingDecodingUtil(posIn);
         posDeltaBuffer = new int[BLOCK_SIZE];
       } else {
         this.posIn = null;
@@ -462,7 +458,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
 
       if (needsOffsets || needsPayloads) {
         this.payIn = Lucene103PostingsReader.this.payIn.clone();
-        payInUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(payIn);
+        payInUtil = new PostingDecodingUtil(payIn);
       } else {
         this.payIn = null;
         payInUtil = null;
@@ -505,7 +501,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
         if (docIn == null) {
           // lazy init
           docIn = Lucene103PostingsReader.this.docIn.clone();
-          docInUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(docIn);
+          docInUtil = new PostingDecodingUtil(docIn);
         }
         prefetchPostings(docIn, termState);
       }
@@ -1395,9 +1391,6 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
     }
   }
 
-  /**
-   * @see Lucene103PostingsWriter#writeVInt15(org.apache.lucene.store.DataOutput, int)
-   */
   static int readVInt15(DataInput in) throws IOException {
     short s = in.readShort();
     if (s >= 0) {
@@ -1407,9 +1400,6 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
     }
   }
 
-  /**
-   * @see Lucene103PostingsWriter#writeVLong15(org.apache.lucene.store.DataOutput, long)
-   */
   static long readVLong15(DataInput in) throws IOException {
     short s = in.readShort();
     if (s >= 0) {

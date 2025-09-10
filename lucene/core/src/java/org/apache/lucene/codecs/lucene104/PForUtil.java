@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene103;
+package org.apache.lucene.codecs.lucene104;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -23,7 +23,7 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.packed.PackedInts;
 
-/** Utility class to encode sequences of 128 small positive integers. */
+/** Utility class to encode sequences of 256 small positive integers. */
 final class PForUtil {
 
   private static final int MAX_EXCEPTIONS = 7;
@@ -37,13 +37,17 @@ final class PForUtil {
     return true;
   }
 
-  private final ForUtil forUtil = new ForUtil();
-
   static {
     assert ForUtil.BLOCK_SIZE <= 256 : "blocksize must fit in one byte. got " + ForUtil.BLOCK_SIZE;
   }
 
-  /** Encode 128 integers from {@code ints} into {@code out}. */
+  private final ForUtil forUtil;
+
+  PForUtil(ForUtil forUtil) {
+    this.forUtil = forUtil;
+  }
+
+  /** Encode 256 integers from {@code ints} into {@code out}. */
   void encode(int[] ints, DataOutput out) throws IOException {
     // histogram of bit widths
     final int[] histogram = new int[32];
@@ -100,7 +104,7 @@ final class PForUtil {
     out.writeBytes(exceptions, exceptions.length);
   }
 
-  /** Decode 128 integers into {@code ints}. */
+  /** Decode 256 integers into {@code ints}. */
   void decode(PostingDecodingUtil pdu, int[] ints) throws IOException {
     var in = pdu.in;
     final int token = Byte.toUnsignedInt(in.readByte());
@@ -116,7 +120,7 @@ final class PForUtil {
     }
   }
 
-  /** Skip 128 integers. */
+  /** Skip 256 integers. */
   static void skip(DataInput in) throws IOException {
     final int token = Byte.toUnsignedInt(in.readByte());
     final int bitsPerValue = token & 0x1f;

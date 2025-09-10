@@ -129,12 +129,20 @@ Optimizations
 ---------------------
 * GITHUB#15140: Optimize TopScoreDocCollector with TernaryLongHeap for improved performance over Binary-LongHeap. (Ramakrishna Chilaka)
 
+* GITHUB#15163: Use TernaryLongHeap in NeighborQueue for faster vector search performance. (Ramakrishna Chilaka)
+
 * GITHUB#14998: Speed up flushing of live docs. (Adrien Grand)
 
 * GITHUB#15165: Optimize PForUtil.encode() with histogram-based bit selection. (Ramakrishna Chilaka)
 
 * GITHUB#15151: Use `SimScorer#score` bulk API to compute impact scores per
   block of postings. (Adrien Grand)
+
+* GITHUB#15160: Increased the size used for blocks of postings from 128 to 256.
+  This gives a noticeable speedup to many queries. (Adrien Grand)
+
+* GITHUB#15171: Add `VectorScorer.Bulk` for bulk iteration and scoring of vectors. This new interface is now
+  used in AbstractKnnVectorQuery to make exact matches faster. (Ben Trent)
 
 * GITHUB#14863: Perform scoring for 4, 7, 8 bit quantized vectors off-heap. (Kaival Parikh)
 
