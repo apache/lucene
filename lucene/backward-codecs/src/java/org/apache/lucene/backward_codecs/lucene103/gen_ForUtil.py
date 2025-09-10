@@ -40,10 +40,9 @@ HEADER = """// This file has been automatically generated, DO NOT EDIT
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene103;
+package org.apache.lucene.backward_codecs.lucene103;
 
 import java.io.IOException;
-import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.store.DataOutput;
 
 /**
@@ -55,6 +54,7 @@ import org.apache.lucene.store.DataOutput;
  */
 public final class ForUtil {
 
+  /** Number of integers per block. */
   public static final int BLOCK_SIZE = 128;
   static final int BLOCK_SIZE_LOG2 = 7;
 

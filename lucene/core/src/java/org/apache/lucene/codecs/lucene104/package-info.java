@@ -16,7 +16,7 @@
  */
 
 /**
- * Lucene 10.3 file format.
+ * Lucene 10.4 file format.
  *
  * <h2>Apache Lucene - Index File Formats</h2>
  *
@@ -151,15 +151,15 @@
  *       field names. These are used to store auxiliary information about the document, such as its
  *       title, url, or an identifier to access a database. The set of stored fields are what is
  *       returned for each hit when searching. This is keyed by document number.
- *   <li>{@link org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat Term dictionary}. A
+ *   <li>{@link org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat Term dictionary}. A
  *       dictionary containing all of the terms used in all of the indexed fields of all of the
  *       documents. The dictionary also contains the number of documents which contain the term, and
  *       pointers to the term's frequency and proximity data.
- *   <li>{@link org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat Term Frequency data}. For
+ *   <li>{@link org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat Term Frequency data}. For
  *       each term in the dictionary, the numbers of all the documents that contain that term, and
  *       the frequency of the term in that document, unless frequencies are omitted ({@link
  *       org.apache.lucene.index.IndexOptions#DOCS IndexOptions.DOCS})
- *   <li>{@link org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat Term Proximity data}. For
+ *   <li>{@link org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat Term Proximity data}. For
  *       each term in the dictionary, the positions that the term occurs in each document. Note that
  *       this will not exist if all fields in all documents omit position data.
  *   <li>{@link org.apache.lucene.codecs.lucene90.Lucene90NormsFormat Normalization factors}. For
@@ -255,27 +255,27 @@
  * <td>The stored fields for documents</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat Term Dictionary}</td>
+ * <td>{@link org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat Term Dictionary}</td>
  * <td>.tim</td>
  * <td>The term dictionary, stores term info</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat Term Index}</td>
+ * <td>{@link org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat Term Index}</td>
  * <td>.tip</td>
  * <td>The index into the Term Dictionary</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat Frequencies}</td>
+ * <td>{@link org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat Frequencies}</td>
  * <td>.doc</td>
  * <td>Contains the list of docs which contain each term along with frequency</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat Positions}</td>
+ * <td>{@link org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat Positions}</td>
  * <td>.pos</td>
  * <td>Stores position information about where a term occurs in the index</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat Payloads}</td>
+ * <td>{@link org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat Payloads}</td>
  * <td>.pay</td>
  * <td>Stores additional per-position metadata information such as character offsets and user payloads</td>
  * </tr>
@@ -414,11 +414,13 @@
  *   <li>In version 9.9, Vector scalar quantization support was added. Allowing the HNSW vector
  *       format to utilize int8 quantized vectors for float32 vector search.
  *   <li>In version 9.12, skip data was refactored to have only two levels: every 128 docs and every
- *       4,06 docs, and to be inlined in postings lists. This resulted in a speedup for queries that
- *       need skipping, especially conjunctions.
+ *       4,096 docs, and to be inlined in postings lists. This resulted in a speedup for queries
+ *       that need skipping, especially conjunctions.
  *   <li>In version 10.1, block encoding changed to be optimized for int[] storage instead of
  *       long[].
  *   <li>In version 10.3, the index of block tree changed to be specialized trie instead of FST.
+ *   <li>In version 10.4, the block size was increased from 128 to 256. There are now 256 and 8,192
+ *       postings between skip pointers instead of 128 and 4,096.
  * </ul>
  *
  * <a id="Limitations"></a>
@@ -433,4 +435,4 @@
  * <code>UInt64</code> values, or better yet, {@link org.apache.lucene.store.DataOutput#writeVInt
  * VInt} values which have no limit. </div>
  */
-package org.apache.lucene.codecs.lucene103;
+package org.apache.lucene.codecs.lucene104;

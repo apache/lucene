@@ -17,23 +17,21 @@
 package org.apache.lucene.search.suggest.document;
 
 import org.apache.lucene.codecs.PostingsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat;
 
 /**
- * {@link CompletionPostingsFormat} for {@code
- * org.apache.lucene.backward_codecs.lucene103.Lucene103PostingsFormat}. This format is only used
- * for backward-compatibility of the index format and cannot be used to write data, use {@link
- * Completion104PostingsFormat} on new indices.
+ * {@link CompletionPostingsFormat} for {@link Lucene104PostingsFormat}.
  *
  * @lucene.experimental
  */
-public class Completion101PostingsFormat extends CompletionPostingsFormat {
-  /** Creates a {@link Completion101PostingsFormat}. */
-  public Completion101PostingsFormat() {
-    super("Completion101");
+public class Completion104PostingsFormat extends CompletionPostingsFormat {
+  /** Creates a {@link Completion104PostingsFormat}. */
+  public Completion104PostingsFormat() {
+    super("Completion104");
   }
 
   @Override
   protected PostingsFormat delegatePostingsFormat() {
-    return PostingsFormat.forName("Lucene103");
+    return PostingsFormat.forName("Lucene104");
   }
 }
