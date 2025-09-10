@@ -197,8 +197,8 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
                 buffer.docs[size++] = doc;
               }
             }
-            randomVectorScorer.bulkScore(buffer.docs, buffer.features, size);
             buffer.size = size;
+            return randomVectorScorer.bulkScore(buffer.docs, buffer.features, size);
           };
         }
       };
@@ -306,7 +306,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
             int[] docIds = new int[0];
 
             @Override
-            public void nextDocsAndScores(
+            public float nextDocsAndScores(
                 int nextCount, Bits liveDocs, DocAndFloatFeatureBuffer buffer) throws IOException {
               if (matches.docID() == -1) {
                 matches.nextDoc();
@@ -323,10 +323,10 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
                   ++size;
                 }
               }
-              randomVectorScorer.bulkScore(buffer.docs, buffer.features, size);
               // copy back the real doc IDs
               System.arraycopy(docIds, 0, buffer.docs, 0, size);
               buffer.size = size;
+              return randomVectorScorer.bulkScore(buffer.docs, buffer.features, size);
             }
           };
         }

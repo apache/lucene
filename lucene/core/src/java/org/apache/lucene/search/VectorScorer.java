@@ -65,19 +65,19 @@ public interface VectorScorer {
     return (nextCount, liveDocs, buffer) -> {
       buffer.growNoCopy(nextCount);
       int size = 0;
+      float maxScore = Float.NEGATIVE_INFINITY;
       for (int doc = iterator.docID();
           doc != DocIdSetIterator.NO_MORE_DOCS && size < nextCount;
           doc = iterator.nextDoc()) {
         if (liveDocs == null || liveDocs.get(doc)) {
           buffer.docs[size] = doc;
           buffer.features[size] = score();
+          maxScore = Math.max(maxScore, buffer.features[size]);
           ++size;
         }
       }
       buffer.size = size;
-      if (liveDocs != null) {
-        buffer.apply(liveDocs);
-      }
+      return maxScore;
     };
   }
 
@@ -94,9 +94,10 @@ public interface VectorScorer {
      * @param nextCount the maximum number of documents to score
      * @param liveDocs the live docs, or null if all docs are live
      * @param buffer the buffer to store the results
+     * @return the max score of the scored documents
      * @throws IOException if an exception occurs during scoring
      */
-    void nextDocsAndScores(int nextCount, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
+    float nextDocsAndScores(int nextCount, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
         throws IOException;
   }
 }

@@ -75,7 +75,7 @@ jobs:
           fi
 
       - name: Checkout PR code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: ${{ env.head_repo_full }}
           ref: ${{ env.head_ref }}

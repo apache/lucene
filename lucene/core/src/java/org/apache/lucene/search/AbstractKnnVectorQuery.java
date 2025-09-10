@@ -318,7 +318,11 @@ abstract class AbstractKnnVectorQuery extends Query {
         break;
       }
       // iterator already takes live docs into account
-      bulkScorer.nextDocsAndScores(64, null, buffer);
+      float maxScore = bulkScorer.nextDocsAndScores(64, null, buffer);
+      if (maxScore < topDoc.score) {
+        // all the scores in this batch are too low, skip
+        continue;
+      }
       for (int i = 0; i < buffer.size; i++) {
         float score = buffer.features[i];
         int doc = buffer.docs[i];

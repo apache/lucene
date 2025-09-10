@@ -362,22 +362,24 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
           }
           ords[numOrds++] = i;
           if (numOrds == ords.length) {
-            scorer.bulkScore(ords, scores, numOrds);
-            for (int j = 0; j < numOrds; j++) {
-              knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
-            }
             knnCollector.incVisitedCount(numOrds);
+            if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCompetitiveSimilarity()) {
+              for (int j = 0; j < numOrds; j++) {
+                knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
+              }
+            }
             numOrds = 0;
           }
         }
       }
 
       if (numOrds > 0) {
-        scorer.bulkScore(ords, scores, numOrds);
-        for (int j = 0; j < numOrds; j++) {
-          knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
-        }
         knnCollector.incVisitedCount(numOrds);
+        if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCompetitiveSimilarity()) {
+          for (int j = 0; j < numOrds; j++) {
+            knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
+          }
+        }
       }
     }
   }
