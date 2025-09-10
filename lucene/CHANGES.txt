@@ -136,7 +136,7 @@ Optimizations
 * GITHUB#15151: Use `SimScorer#score` bulk API to compute impact scores per
   block of postings. (Adrien Grand)
 
-* GITHUB#14863: Perform scoring for 4 and 7 bit quantized vectors off-heap. (Kaival Parikh)
+* GITHUB#14863: Perform scoring for 4, 7, 8 bit quantized vectors off-heap. (Kaival Parikh)
 
 Bug Fixes
 ---------------------

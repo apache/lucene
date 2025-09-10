@@ -75,6 +75,11 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
     return DELEGATE.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
 
+  @Override
+  public String toString() {
+    return "Lucene99MemorySegmentScalarQuantizedVectorScorer()";
+  }
+
   private abstract static class RandomVectorScorerBase
       extends RandomVectorScorer.AbstractRandomVectorScorer {
 
@@ -214,7 +219,7 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
 
     @Override
     int euclidean(MemorySegment doc) {
-      return PanamaVectorUtilSupport.squareDistance(targetBytes, doc);
+      return PanamaVectorUtilSupport.uint8SquareDistance(targetBytes, doc);
     }
 
     @Override
@@ -229,7 +234,7 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
 
     @Override
     int dotProduct(MemorySegment doc) {
-      return PanamaVectorUtilSupport.dotProduct(targetBytes, doc);
+      return PanamaVectorUtilSupport.uint8DotProduct(targetBytes, doc);
     }
 
     @Override
@@ -287,7 +292,7 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
 
     @Override
     int euclidean(MemorySegment doc) {
-      return PanamaVectorUtilSupport.squareDistance(query, doc);
+      return PanamaVectorUtilSupport.uint8SquareDistance(query, doc);
     }
 
     @Override
@@ -302,7 +307,7 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
 
     @Override
     int dotProduct(MemorySegment doc) {
-      return PanamaVectorUtilSupport.dotProduct(query, doc);
+      return PanamaVectorUtilSupport.uint8DotProduct(query, doc);
     }
 
     @Override

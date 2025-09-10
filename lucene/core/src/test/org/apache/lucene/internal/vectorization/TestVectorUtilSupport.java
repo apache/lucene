@@ -107,11 +107,23 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
       b[i] = (byte) random().nextInt(16);
     }
 
+    assertIntReturningProviders(p -> p.int4DotProduct(a, b));
     assertIntReturningProviders(p -> p.int4DotProductSinglePacked(a, pack(b)));
     assertIntReturningProviders(p -> p.int4DotProductSinglePacked(b, pack(a)));
+    assertIntReturningProviders(p -> p.int4DotProductBothPacked(pack(a), pack(b)));
+
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProduct(a, b));
     assertEquals(
         LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductSinglePacked(a, pack(b)));
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductSinglePacked(b, pack(a)));
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductBothPacked(pack(a), pack(b)));
   }
 
   public void testInt4DotProductBoundaries() {
@@ -122,20 +134,106 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
 
     Arrays.fill(a, MAX_VALUE);
     Arrays.fill(b, MAX_VALUE);
+
+    assertIntReturningProviders(p -> p.int4DotProduct(a, b));
     assertIntReturningProviders(p -> p.int4DotProductSinglePacked(a, pack(b)));
     assertIntReturningProviders(p -> p.int4DotProductSinglePacked(b, pack(a)));
+    assertIntReturningProviders(p -> p.int4DotProductBothPacked(pack(a), pack(b)));
+
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProduct(a, b));
     assertEquals(
         LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductSinglePacked(a, pack(b)));
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductSinglePacked(b, pack(a)));
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductBothPacked(pack(a), pack(b)));
 
     byte MIN_VALUE = 0;
     Arrays.fill(a, MIN_VALUE);
     Arrays.fill(b, MIN_VALUE);
+
+    assertIntReturningProviders(p -> p.int4DotProduct(a, b));
     assertIntReturningProviders(p -> p.int4DotProductSinglePacked(a, pack(b)));
     assertIntReturningProviders(p -> p.int4DotProductSinglePacked(b, pack(a)));
+    assertIntReturningProviders(p -> p.int4DotProductBothPacked(pack(a), pack(b)));
+
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProduct(a, b));
     assertEquals(
         LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductSinglePacked(a, pack(b)));
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductSinglePacked(b, pack(a)));
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductBothPacked(pack(a), pack(b)));
+  }
+
+  public void testInt4SquareDistance() {
+    assumeTrue("even sizes only", size % 2 == 0);
+    var a = new byte[size];
+    var b = new byte[size];
+    for (int i = 0; i < size; ++i) {
+      a[i] = (byte) random().nextInt(16);
+      b[i] = (byte) random().nextInt(16);
+    }
+
+    assertIntReturningProviders(p -> p.int4SquareDistance(a, b));
+    assertIntReturningProviders(p -> p.int4SquareDistanceSinglePacked(a, pack(b)));
+    assertIntReturningProviders(p -> p.int4SquareDistanceSinglePacked(b, pack(a)));
+    assertIntReturningProviders(p -> p.int4SquareDistanceBothPacked(pack(a), pack(b)));
+
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().squareDistance(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4SquareDistance(a, b));
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().squareDistance(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4SquareDistanceSinglePacked(a, pack(b)));
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().squareDistance(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4SquareDistanceSinglePacked(b, pack(a)));
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().squareDistance(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4SquareDistanceBothPacked(pack(a), pack(b)));
+  }
+
+  public void testInt4SquareDistanceBoundaries() {
+    assumeTrue("even sizes only", size % 2 == 0);
+
+    // squareDistance is maximized when the points are farther away
+
+    byte MAX_VALUE = 15;
+    var a = new byte[size];
+    Arrays.fill(a, MAX_VALUE);
+
+    byte MIN_VALUE = 0;
+    var b = new byte[size];
+    Arrays.fill(b, MIN_VALUE);
+
+    assertIntReturningProviders(p -> p.int4DotProduct(a, b));
+    assertIntReturningProviders(p -> p.int4DotProductSinglePacked(a, pack(b)));
+    assertIntReturningProviders(p -> p.int4DotProductSinglePacked(b, pack(a)));
+    assertIntReturningProviders(p -> p.int4DotProductBothPacked(pack(a), pack(b)));
+
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProduct(a, b));
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductSinglePacked(a, pack(b)));
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductSinglePacked(b, pack(a)));
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductBothPacked(pack(a), pack(b)));
   }
 
   public void testInt4BitDotProduct() {

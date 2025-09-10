@@ -360,7 +360,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int dotProduct(byte[] a, byte[] b) {
-    return dotProductBody(new ArrayLoader(a), new ArrayLoader(b));
+    return dotProductBody(new ArrayLoader(a), new ArrayLoader(b), true);
   }
 
   @Override
@@ -369,15 +369,19 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   public static int dotProduct(byte[] a, MemorySegment b) {
-    return dotProductBody(new ArrayLoader(a), new MemorySegmentLoader(b));
+    return dotProductBody(new ArrayLoader(a), new MemorySegmentLoader(b), true);
   }
 
   public static int dotProduct(MemorySegment a, MemorySegment b) {
-    return dotProductBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
+    return dotProductBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b), true);
   }
 
-  private static int dotProductBody(ByteVectorLoader a, ByteVectorLoader b) {
-    return dotProductBody(a, b, true);
+  public static int uint8DotProduct(byte[] a, MemorySegment b) {
+    return dotProductBody(new ArrayLoader(a), new MemorySegmentLoader(b), false);
+  }
+
+  public static int uint8DotProduct(MemorySegment a, MemorySegment b) {
+    return dotProductBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b), false);
   }
 
   private static int dotProductBody(ByteVectorLoader a, ByteVectorLoader b, boolean signed) {
@@ -808,7 +812,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int squareDistance(byte[] a, byte[] b) {
-    return squareDistanceBody(new ArrayLoader(a), new ArrayLoader(b));
+    return squareDistanceBody(new ArrayLoader(a), new ArrayLoader(b), true);
   }
 
   @Override
@@ -817,15 +821,19 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   public static int squareDistance(MemorySegment a, MemorySegment b) {
-    return squareDistanceBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
+    return squareDistanceBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b), true);
   }
 
   public static int squareDistance(byte[] a, MemorySegment b) {
-    return squareDistanceBody(new ArrayLoader(a), new MemorySegmentLoader(b));
+    return squareDistanceBody(new ArrayLoader(a), new MemorySegmentLoader(b), true);
   }
 
-  private static int squareDistanceBody(ByteVectorLoader a, ByteVectorLoader b) {
-    return squareDistanceBody(a, b, true);
+  public static int uint8SquareDistance(MemorySegment a, MemorySegment b) {
+    return squareDistanceBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b), false);
+  }
+
+  public static int uint8SquareDistance(byte[] a, MemorySegment b) {
+    return squareDistanceBody(new ArrayLoader(a), new MemorySegmentLoader(b), false);
   }
 
   private static int squareDistanceBody(ByteVectorLoader a, ByteVectorLoader b, boolean signed) {
