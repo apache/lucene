@@ -115,6 +115,10 @@ API Changes
 * GITHUB#15149: Introduce NumericDocValues#longValues to help speed up the
   retrieval of many doc values at once. (Adrien Grand)
 
+* GITHUB#15173: Introduce DocIdStream#intoArray to help collect batches of doc
+  IDs at once, in particular by taking advantage of the new
+  NumericDocValues#longValues API. (Adrien Grand)
+
 New Features
 ---------------------
 * GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
