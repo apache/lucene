@@ -339,7 +339,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     int filteredDocCount = Math.min(acceptDocs.cost(), graph.size());
     Bits accepted = acceptDocs.bits();
     final Bits acceptedOrds = scorer.getAcceptOrds(accepted);
-    boolean doHnsw = knnCollector.k() < scorer.maxOrd();
+    int numVectors = scorer.maxOrd();
+    boolean doHnsw = knnCollector.k() < numVectors;
     // The approximate number of vectors that would be visited if we did not filter
     int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graph.size());
     if (unfilteredVisit >= filteredDocCount) {
@@ -354,7 +355,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       int[] ords = new int[EXHAUSTIVE_BULK_SCORE_ORDS];
       float[] scores = new float[EXHAUSTIVE_BULK_SCORE_ORDS];
       int numOrds = 0;
-      for (int i = 0; i < scorer.maxOrd(); i++) {
+      for (int i = 0; i < numVectors; i++) {
         if (acceptedOrds == null || acceptedOrds.get(i)) {
           if (knnCollector.earlyTerminated()) {
             break;
