@@ -23,7 +23,6 @@ import java.nio.file.NoSuchFileException;
 import java.util.Collection; // for javadocs
 import java.util.Set;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.util.IOUtils;
 
 /**
  * A {@code Directory} provides an abstraction layer for storing a list of files. A directory
@@ -174,16 +173,8 @@ public abstract class Directory implements Closeable {
    * Copies an existing {@code src} file from directory {@code from} to a non-existent file {@code
    * dest} in this directory. The given IOContext is only used for opening the destination file.
    */
-  public void copyFrom(Directory from, String src, String dest, IOContext context)
-      throws IOException {
-    try (IndexInput is = from.openInput(src, IOContext.READONCE);
-        IndexOutput os = createOutput(dest, context)) {
-      os.copyBytes(is, is.length());
-    } catch (Throwable t) {
-      IOUtils.deleteFilesSuppressingExceptions(t, this, dest);
-      throw t;
-    }
-  }
+  public abstract void copyFrom(Directory from, String src, String dest, IOContext context)
+      throws IOException;
 
   @Override
   public String toString() {
