@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene103;
+package org.apache.lucene.codecs.lucene104;
 
 import java.util.Objects;
 import org.apache.lucene.util.FixedBitSet;
