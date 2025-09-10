@@ -149,6 +149,14 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
     }
   }
 
+  static void unpackNibbles(byte[] packed, byte[] unpacked) {
+    assert unpacked.length == packed.length * 2;
+    for (int i = 0; i < packed.length; i++) {
+      unpacked[i] = (byte) ((packed[i] >> 4) & 0x0F);
+      unpacked[packed.length + i] = (byte) (packed[i] & 0x0F);
+    }
+  }
+
   static OffHeapScalarQuantizedVectorValues load(
       OrdToDocDISIReaderConfiguration configuration,
       int dimension,

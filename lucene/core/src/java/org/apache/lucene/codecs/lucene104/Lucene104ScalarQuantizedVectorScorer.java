@@ -121,7 +121,16 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
 
         @Override
         public void setScoringOrdinal(int node) throws IOException {
-          targetVector = targetValues.vectorValue(node);
+          var rawTargetVector = targetValues.vectorValue(node);
+          switch (values.getScalarEncoding()) {
+            case UNSIGNED_BYTE -> targetVector = rawTargetVector;
+            case PACKED_NIBBLE -> {
+              if (targetVector == null) {
+                targetVector = new byte[OptimizedScalarQuantizer.discretize(values.dimension(), 2)];
+              }
+              OffHeapScalarQuantizedVectorValues.unpackNibbles(rawTargetVector, targetVector);
+            }
+          }
           targetCorrectiveTerms = targetValues.getCorrectiveTerms(node);
         }
       };
@@ -145,7 +154,7 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
         1f / ((1 << 8) - 1),
       };
 
-  static float quantizedScore(
+  private static float quantizedScore(
       byte[] quantizedQuery,
       OptimizedScalarQuantizer.QuantizationResult queryCorrections,
       QuantizedByteVectorValues targetVectors,
