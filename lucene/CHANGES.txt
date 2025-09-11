@@ -131,6 +131,8 @@ Optimizations
 
 * GITHUB#15163: Use TernaryLongHeap in NeighborQueue for faster vector search performance. (Ramakrishna Chilaka)
 
+* GITHUB#15179: Optimising findNextGEQ by making it branchless. (Ramakrishna Chilaka)
+
 * GITHUB#14998: Speed up flushing of live docs. (Adrien Grand)
 
 * GITHUB#15165: Optimize PForUtil.encode() with histogram-based bit selection. (Ramakrishna Chilaka)
