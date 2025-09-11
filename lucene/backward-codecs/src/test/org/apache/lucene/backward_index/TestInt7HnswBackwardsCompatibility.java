@@ -25,7 +25,6 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -151,13 +150,14 @@ public class TestInt7HnswBackwardsCompatibility extends BackwardsCompatibilityTe
     try (DirectoryReader reader = DirectoryReader.open(directory)) {
       for (LeafReaderContext leafContext : reader.leaves()) {
         KnnVectorsReader knnVectorsReader = ((CodecReader) leafContext.reader()).getVectorReader();
-        assertTrue(
-            "expected PerFieldKnnVectorsFormat.FieldsReader but got: " + knnVectorsReader,
-            knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader);
 
         KnnVectorsReader forField =
-            ((PerFieldKnnVectorsFormat.FieldsReader) knnVectorsReader)
-                .getFieldReader(KNN_VECTOR_FIELD);
+            knnVectorsReader
+                .unwrapReaderForField(KNN_VECTOR_FIELD)
+                .orElseThrow(
+                    () ->
+                        new AssertionError(
+                            "Expected unwrapped field but got: " + knnVectorsReader));
 
         assertTrue(forField instanceof Lucene99HnswVectorsReader);
 
