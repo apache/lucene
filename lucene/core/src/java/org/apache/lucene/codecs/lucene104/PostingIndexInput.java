@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene103;
+package org.apache.lucene.codecs.lucene104;
 
 import java.io.IOException;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
@@ -32,26 +32,15 @@ public final class PostingIndexInput {
       VectorizationProvider.getInstance();
 
   public final ForUtil forUtil;
-  public final ForDeltaUtil forDeltaUtil;
   private final PostingDecodingUtil postingDecodingUtil;
 
-  public PostingIndexInput(IndexInput in, ForUtil forUtil, ForDeltaUtil forDeltaUtil)
-      throws IOException {
+  public PostingIndexInput(IndexInput in, ForUtil forUtil) throws IOException {
     this.forUtil = forUtil;
-    this.forDeltaUtil = forDeltaUtil;
     this.postingDecodingUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(in);
   }
 
-  /** Decode 128 integers stored on {@code bitsPerValues} bits per value into {@code ints}. */
+  /** Decode 256 integers stored on {@code bitsPerValues} bits per value into {@code ints}. */
   public void decode(int bitsPerValue, int[] ints) throws IOException {
     forUtil.decode(bitsPerValue, postingDecodingUtil, ints);
-  }
-
-  /**
-   * Decode 128 integers stored on {@code bitsPerValues} bits per value, compute their prefix sum,
-   * and store results into {@code ints}.
-   */
-  public void decodeAndPrefixSum(int bitsPerValue, int base, int[] ints) throws IOException {
-    forDeltaUtil.decodeAndPrefixSum(bitsPerValue, postingDecodingUtil, base, ints);
   }
 }
