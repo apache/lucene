@@ -897,10 +897,10 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       // D. Lemire, L. Boytsov, N. Kurz SIMD Compression and the Intersection of Sorted Integers
       // with T = INT_SPECIES.length(), ie. T=8 with AVX2 and T=16 with AVX-512
       // https://arxiv.org/pdf/1401.6399
-      for (; from + INT_SPECIES.length() < to; from += INT_SPECIES.length() + 1) {
-        if (buffer[from + INT_SPECIES.length()] >= target) {
-          IntVector vector = IntVector.fromArray(INT_SPECIES, buffer, from);
-          VectorMask<Integer> mask = vector.compare(VectorOperators.LT, target);
+      for (; from + INT_SPECIES.length() < to; from += INT_SPECIES.length()) {
+        IntVector vector = IntVector.fromArray(INT_SPECIES, buffer, from);
+        VectorMask<Integer> mask = vector.compare(VectorOperators.LT, target);
+        if (mask.anyTrue()) {
           return from + mask.trueCount();
         }
       }
