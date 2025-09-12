@@ -1064,7 +1064,8 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
           break;
         case UNARY:
           buffer.size =
-              docBitSet.intoArray(doc - docBitSetBase, upTo - docBitSetBase, docBitSetBase, buffer.docs);
+              docBitSet.intoArray(
+                  doc - docBitSetBase, upTo - docBitSetBase, docBitSetBase, buffer.docs);
           assert buffer.size < buffer.docs.length; // buffer's capacity is BLOCK_SIZE+1
           break;
       }
