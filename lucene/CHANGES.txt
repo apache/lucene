@@ -148,6 +148,8 @@ Optimizations
 * GITHUB#15171: Add `VectorScorer.Bulk` for bulk iteration and scoring of vectors. This new interface is now
   used in AbstractKnnVectorQuery to make exact matches faster. (Ben Trent)
 
+* GITHUB#14863: Perform scoring for 4, 7, 8 bit quantized vectors off-heap. (Kaival Parikh)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
