@@ -437,6 +437,11 @@ class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
       return quantizedVectorValues.scorer(query);
     }
 
+    @Override
+    public VectorScorer rescorer(float[] query) throws IOException {
+      return rawVectorValues.rescorer(query);
+    }
+
     BinarizedByteVectorValues getQuantizedVectorValues() throws IOException {
       return quantizedVectorValues;
     }
