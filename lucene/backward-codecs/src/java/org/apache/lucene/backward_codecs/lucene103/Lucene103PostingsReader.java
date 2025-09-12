@@ -1050,7 +1050,8 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
       }
 
       // Only return docs from the current block
-      // +1 to make BitSetUtil#denseBitsetToArray work, see its java doc.
+      // +1 to make FixedBitSet#intoArray perform a bit faster, it uses a slower path if it doesn't
+      // have a free slot after the last element
       buffer.growNoCopy(BLOCK_SIZE + 1);
       upTo = (int) Math.min(upTo, level0LastDocID + 1L);
 
@@ -1066,8 +1067,9 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
           break;
         case UNARY:
           buffer.size =
-              BitSetUtil.denseBitsetToArray(
-                  docBitSet, doc - docBitSetBase, upTo - docBitSetBase, docBitSetBase, buffer.docs);
+              docBitSet.intoArray(
+                  doc - docBitSetBase, upTo - docBitSetBase, docBitSetBase, buffer.docs);
+          assert buffer.size < buffer.docs.length; // buffer's capacity is BLOCK_SIZE+1
           break;
       }
 

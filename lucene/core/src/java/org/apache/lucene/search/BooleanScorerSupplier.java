@@ -266,6 +266,11 @@ final class BooleanScorerSupplier extends ScorerSupplier {
               public void collect(int doc) throws IOException {
                 collector.collect(doc);
               }
+
+              @Override
+              public void collect(DocIdStream stream) throws IOException {
+                collector.collect(stream);
+              }
             };
         return scorer.score(noScoreCollector, acceptDocs, min, max);
       }
