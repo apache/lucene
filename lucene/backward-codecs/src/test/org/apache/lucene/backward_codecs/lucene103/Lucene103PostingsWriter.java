@@ -14,26 +14,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene103;
+package org.apache.lucene.backward_codecs.lucene103;
 
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.BLOCK_SIZE;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.DOC_CODEC;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.LEVEL1_MASK;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.META_CODEC;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.PAY_CODEC;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.POS_CODEC;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.TERMS_CODEC;
+import static org.apache.lucene.backward_codecs.lucene103.Lucene103PostingsFormat.BLOCK_SIZE;
+import static org.apache.lucene.backward_codecs.lucene103.Lucene103PostingsFormat.DOC_CODEC;
+import static org.apache.lucene.backward_codecs.lucene103.Lucene103PostingsFormat.LEVEL1_MASK;
+import static org.apache.lucene.backward_codecs.lucene103.Lucene103PostingsFormat.META_CODEC;
+import static org.apache.lucene.backward_codecs.lucene103.Lucene103PostingsFormat.PAY_CODEC;
+import static org.apache.lucene.backward_codecs.lucene103.Lucene103PostingsFormat.POS_CODEC;
+import static org.apache.lucene.backward_codecs.lucene103.Lucene103PostingsFormat.TERMS_CODEC;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import org.apache.lucene.backward_codecs.lucene103.Lucene103PostingsFormat.IntBlockTermState;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
 import org.apache.lucene.codecs.Impact;
 import org.apache.lucene.codecs.PushPostingsWriterBase;
-import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.IntBlockTermState;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;

@@ -289,9 +289,10 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
     }
 
     @Override
-    public void bulkScore(int[] nodes, float[] scores, int numNodes) {
+    public float bulkScore(int[] nodes, float[] scores, int numNodes) {
       int i = 0;
       long queryAddr = (long) queryOrd * vectorByteSize;
+      float maxScore = Float.NEGATIVE_INFINITY;
       final int limit = numNodes & ~3;
       for (; i < limit; i += 4) {
         long offset1 = (long) nodes[i] * vectorByteSize;
@@ -300,9 +301,13 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
         long offset4 = (long) nodes[i + 3] * vectorByteSize;
         vectorOp(seg, scratchScores, queryAddr, offset1, offset2, offset3, offset4, dims);
         scores[i + 0] = normalizeRawScore(scratchScores[0]);
+        maxScore = Math.max(maxScore, scores[i + 0]);
         scores[i + 1] = normalizeRawScore(scratchScores[1]);
+        maxScore = Math.max(maxScore, scores[i + 1]);
         scores[i + 2] = normalizeRawScore(scratchScores[2]);
+        maxScore = Math.max(maxScore, scores[i + 2]);
         scores[i + 3] = normalizeRawScore(scratchScores[3]);
+        maxScore = Math.max(maxScore, scores[i + 3]);
       }
       // Handle remaining 1–3 nodes in bulk (if any)
       int remaining = numNodes - i;
@@ -312,9 +317,17 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
         long addr3 = (remaining > 2) ? (long) nodes[i + 2] * vectorByteSize : addr1;
         vectorOp(seg, scratchScores, queryAddr, addr1, addr2, addr3, addr1, dims);
         scores[i] = normalizeRawScore(scratchScores[0]);
-        if (remaining > 1) scores[i + 1] = normalizeRawScore(scratchScores[1]);
-        if (remaining > 2) scores[i + 2] = normalizeRawScore(scratchScores[2]);
+        maxScore = Math.max(maxScore, scores[i]);
+        if (remaining > 1) {
+          scores[i + 1] = normalizeRawScore(scratchScores[1]);
+          maxScore = Math.max(maxScore, scores[i + 1]);
+        }
+        if (remaining > 2) {
+          scores[i + 2] = normalizeRawScore(scratchScores[2]);
+          maxScore = Math.max(maxScore, scores[i + 2]);
+        }
       }
+      return maxScore;
     }
 
     @Override
