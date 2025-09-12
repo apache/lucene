@@ -124,6 +124,11 @@ New Features
 * GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
   along with limiting number of child documents to retrieve per parent. (Jinny Wang)
 
+* GITHUB#15171: Add `VectorScorer.Bulk` for bulk iteration and scoring of vectors. This new interface is now
+  used in AbstractKnnVectorQuery to make exact matches faster. (Ben Trent)
+
+* GITHUB#15176: Add `[Float|Byte]VectorValues#rescorer(element[])` interface to allow optimized rescoring of vectors.
+  (Ben Trent)
 
 Improvements
 ---------------------
@@ -144,9 +149,6 @@ Optimizations
 
 * GITHUB#15160: Increased the size used for blocks of postings from 128 to 256.
   This gives a noticeable speedup to many queries. (Adrien Grand)
-
-* GITHUB#15171: Add `VectorScorer.Bulk` for bulk iteration and scoring of vectors. This new interface is now
-  used in AbstractKnnVectorQuery to make exact matches faster. (Ben Trent)
 
 Bug Fixes
 ---------------------
