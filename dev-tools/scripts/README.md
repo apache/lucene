@@ -20,9 +20,10 @@
 This folder contains various useful scripts for developers, mostly related to
 releasing new versions of Lucene and testing those.
 
-Python scripts require Python 3.6 or above. To install necessary python modules, please run:
+Python scripts require Python 3.12 or above. To install necessary python modules, please run:
 
-    pip3 install -r requirements.txt
+    make env
+    source .env/bin/activate
 
 ## Scripts description
 
@@ -62,7 +63,7 @@ the full tests.
       --download-only       Only perform download and sha hash check steps
 
     Example usage:
-    python3 -u dev-tools/scripts/smokeTestRelease.py https://dist.apache.org/repos/dist/dev/lucene/lucene-9.0.1-RC2-revc7510a0...
+    make smoke-test URL=https://dist.apache.org/repos/dist/dev/lucene/lucene-9.0.1-RC2-revc7510a0...
 
 ### releaseWizard.py
 
