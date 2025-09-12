@@ -115,7 +115,7 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
       }
       if (remaining > 2) {
         scores[i + 2] = normalizeRawScore(scratchScores[2]);
-        maxScore = Math.max(maxScore, scores[i + 1]);
+        maxScore = Math.max(maxScore, scores[i + 2]);
       }
     }
     return maxScore;
