@@ -56,6 +56,8 @@ Improvements
   SIGSEGV with the old unsafe "mmap hack", which has been replaced by MemorySegments.
   (Uwe Schindler, Robert Muir)
 
+* GITHUB#15038: BitSet is now a sealed abstract class permitting only FixedBitSet and SparseFixedBitSet.
+
 Optimizations
 ---------------------
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
