@@ -136,7 +136,6 @@ public class FSTTermsWriter extends FieldsConsumer {
     this.maxDoc = state.segmentInfo.maxDoc();
 
     IndexOutput metaOut = null, dataOut = null;
-    boolean success = false;
     try {
       metaOut = state.directory.createOutput(termsMetaFileName, state.context);
       dataOut = state.directory.createOutput(termsDataFileName, state.context);
@@ -158,15 +157,9 @@ public class FSTTermsWriter extends FieldsConsumer {
       this.postingsWriter.init(metaOut, state);
       this.metaOut = metaOut;
       this.dataOut = dataOut;
-      success = true;
     } catch (Throwable t) {
-      IOUtils.closeWhileSuppressingExceptions(t, out);
+      IOUtils.closeWhileSuppressingExceptions(t, metaOut, dataOut);
       throw t;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(metaOut, dataOut);
-      }
-      this.postingsWriter.init(out, state);
     }
   }
 
@@ -212,9 +205,9 @@ public class FSTTermsWriter extends FieldsConsumer {
   public void close() throws IOException {
     if (metaOut != null) {
       assert dataOut != null;
-      boolean success = false;
-      try {
-        // write field summary
+      try (IndexOutput _ = metaOut;
+          IndexOutput __ = dataOut;
+          postingsWriter) { // write field summary
         final long dirStart = metaOut.getFilePointer();
 
         metaOut.writeVInt(fields.size());
@@ -226,18 +219,12 @@ public class FSTTermsWriter extends FieldsConsumer {
           }
           metaOut.writeVLong(field.sumDocFreq);
           metaOut.writeVInt(field.docCount);
-          field.dict.saveMetadata(metaOut);
+          field.dict.getMetadata().save(metaOut);
         }
         writeTrailer(metaOut, dirStart);
         CodecUtil.writeFooter(metaOut);
         CodecUtil.writeFooter(dataOut);
-        success = true;
       } finally {
-        if (success) {
-          IOUtils.close(metaOut, dataOut, postingsWriter);
-        } else {
-          IOUtils.closeWhileHandlingException(metaOut, dataOut, postingsWriter);
-        }
         metaOut = null;
         dataOut = null;
       }

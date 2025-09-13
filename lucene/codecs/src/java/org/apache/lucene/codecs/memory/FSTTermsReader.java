@@ -81,15 +81,16 @@ public class FSTTermsReader extends FieldsProducer {
             state.segmentInfo.name, state.segmentSuffix, FSTTermsWriter.TERMS_DATA_EXTENSION);
 
     this.postingsReader = postingsReader;
-    this.fstTermsInput =
-        state.directory.openInput(
-            termsFileName, state.context.withHints(FileTypeHint.DATA, PreloadHint.INSTANCE));
 
     IndexInput metaIn = null, dataIn = null;
 
     try {
-      metaIn = state.directory.openInput(termsMetaFileName, IOContext.LOAD);
-      dataIn = state.directory.openInput(termsDataFileName, IOContext.LOAD);
+      metaIn =
+          state.directory.openInput(
+              termsMetaFileName, state.context.withHints(FileTypeHint.DATA, PreloadHint.INSTANCE));
+      dataIn =
+          state.directory.openInput(
+              termsDataFileName, state.context.withHints(FileTypeHint.DATA, PreloadHint.INSTANCE));
 
       verifyInput(state, metaIn);
       verifyInput(state, dataIn);
@@ -118,14 +119,9 @@ public class FSTTermsReader extends FieldsProducer {
       }
       this.fstMetaInput = metaIn;
       this.fstDataInput = dataIn;
-      success = true;
     } catch (Throwable t) {
-      IOUtils.closeWhileSuppressingExceptions(t, in);
+      IOUtils.closeWhileSuppressingExceptions(t, metaIn, dataIn);
       throw t;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(metaIn, dataIn);
-      }
     }
   }
 
@@ -220,7 +216,10 @@ public class FSTTermsReader extends FieldsProducer {
       this.sumDocFreq = sumDocFreq;
       this.docCount = docCount;
       FSTTermOutputs outputs = new FSTTermOutputs(fieldInfo);
-      this.dict = new FST<>(FST.readMetadata(metaIn, outputs), dataIn, offHeapFSTStore);
+      final var fstMetadata = FST.readMetadata(metaIn, outputs);
+      OffHeapFSTStore offHeapFSTStore =
+          new OffHeapFSTStore(dataIn, dataIn.getFilePointer(), fstMetadata);
+      this.dict = FST.fromFSTReader(fstMetadata, offHeapFSTStore);
       dataIn.skipBytes(offHeapFSTStore.size());
     }
 
