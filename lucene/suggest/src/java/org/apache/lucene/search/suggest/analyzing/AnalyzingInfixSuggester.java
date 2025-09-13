@@ -695,7 +695,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       if (contextQuery != null) {
         boolean allMustNot = true;
         for (BooleanClause clause : contextQuery.clauses()) {
-          if (clause.getOccur() != BooleanClause.Occur.MUST_NOT) {
+          if (clause.occur() != BooleanClause.Occur.MUST_NOT) {
             allMustNot = false;
             break;
           }
@@ -739,8 +739,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       searcherMgrReadLock.unlock();
     }
     try {
-      TopFieldCollectorManager c =
-          new TopFieldCollectorManager(SORT, num, null, 1, searcher.getSlices().length > 1);
+      TopFieldCollectorManager c = new TopFieldCollectorManager(SORT, num, null, 1);
       // System.out.println("got searcher=" + searcher);
       TopFieldDocs hits = searcher.search(finalQuery, c);
 
@@ -808,7 +807,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
           leaves.get(segment).reader().getSortedSetDocValues(CONTEXTS_FIELD_NAME);
       Set<BytesRef> contexts;
       if (contextsDV != null) {
-        contexts = new HashSet<BytesRef>();
+        contexts = new HashSet<>();
         int targetDocID = fd.doc - leaves.get(segment).docBase;
         if (contextsDV.advance(targetDocID) == targetDocID) {
           for (int j = 0; j < contextsDV.docValueCount(); j++) {
@@ -927,7 +926,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       return;
     }
     sb.append("<b>");
-    sb.append(surface.substring(0, prefixToken.length()));
+    sb.append(surface, 0, prefixToken.length());
     sb.append("</b>");
     sb.append(surface.substring(prefixToken.length()));
   }

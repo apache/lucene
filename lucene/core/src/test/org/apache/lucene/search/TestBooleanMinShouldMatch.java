@@ -25,6 +25,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
@@ -320,7 +321,7 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
           public void postCreate(BooleanQuery.Builder q) {
             int opt = 0;
             for (BooleanClause clause : q.build().clauses()) {
-              if (clause.getOccur() == BooleanClause.Occur.SHOULD) opt++;
+              if (clause.occur() == BooleanClause.Occur.SHOULD) opt++;
             }
             q.setMinimumNumberShouldMatch(random().nextInt(opt + 2));
             if (random().nextBoolean()) {
@@ -359,10 +360,10 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
     // System.out.println("Total hits:"+tot);
   }
 
-  private void assertSubsetOfSameScores(Query q, TopDocs top1, TopDocs top2) {
+  private void assertSubsetOfSameScores(BooleanQuery q, TopDocs top1, TopDocs top2) {
     // The constrained query
     // should be a subset to the unconstrained query.
-    if (top2.totalHits.value > top1.totalHits.value) {
+    if (top2.totalHits.value() > top1.totalHits.value()) {
       fail(
           "Constrained results not a subset:\n"
               + CheckHits.topdocsString(top1, 0, 0)
@@ -371,12 +372,14 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
               + q.toString());
     }
 
-    for (int hit = 0; hit < top2.totalHits.value; hit++) {
+    int numScoringClauses = q.getClauses(Occur.SHOULD).size() + q.getClauses(Occur.MUST).size();
+
+    for (int hit = 0; hit < top2.totalHits.value(); hit++) {
       int id = top2.scoreDocs[hit].doc;
       float score = top2.scoreDocs[hit].score;
       boolean found = false;
       // find this doc in other hits
-      for (int other = 0; other < top1.totalHits.value; other++) {
+      for (int other = 0; other < top1.totalHits.value(); other++) {
         if (top1.scoreDocs[other].doc == id) {
           found = true;
           float otherScore = top1.scoreDocs[other].score;
@@ -391,14 +394,14 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
                   + q.toString(),
               score,
               otherScore,
-              // If there is at least one MUST/FILTER clause and if
-              // minShouldMatch is equal to the number of SHOULD clauses,
-              // then a query that was previously executed with
-              // ReqOptSumScorer is now executed with ConjunctionScorer.
-              // We need to introduce some leniency because ReqOptSumScorer
-              // casts intermediate values to floats before summing up again
-              // which hurts accuracy.
-              Math.ulp(score));
+              // While BooleanQuery tries to contain the accuracy loss of scores by summing up into
+              // doubles, there are a few places that do not do this, e.g. when (field:v field:v
+              // field:v) gets rewritten into field:v^3, the multiplication by 3 is performed on the
+              // float score, not on a double. Likewise, ReqOptSumScorer gets used in some cases,
+              // which casts the score of optional and required clauses into floats before summing
+              // them up together. So to avoid false positives, we allow losing one ulp of accuracy
+              // per scoring clause.
+              Math.ulp(score) * numScoringClauses);
         }
       }
 

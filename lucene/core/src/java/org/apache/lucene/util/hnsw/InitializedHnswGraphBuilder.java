@@ -34,7 +34,6 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    * Create a new HnswGraphBuilder that is initialized with the provided HnswGraph.
    *
    * @param scorerSupplier the scorer to use for vectors
-   * @param M the number of connections to keep per node
    * @param beamWidth the number of nodes to explore in the search
    * @param seed the seed for the random number generator
    * @param initializerGraph the graph to initialize the new graph builder
@@ -47,7 +46,6 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    */
   public static InitializedHnswGraphBuilder fromGraph(
       RandomVectorScorerSupplier scorerSupplier,
-      int M,
       int beamWidth,
       long seed,
       HnswGraph initializerGraph,
@@ -57,17 +55,15 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       throws IOException {
     return new InitializedHnswGraphBuilder(
         scorerSupplier,
-        M,
         beamWidth,
         seed,
-        initGraph(M, initializerGraph, newOrdMap, totalNumberOfVectors),
+        initGraph(initializerGraph, newOrdMap, totalNumberOfVectors),
         initializedNodes);
   }
 
   public static OnHeapHnswGraph initGraph(
-      int M, HnswGraph initializerGraph, int[] newOrdMap, int totalNumberOfVectors)
-      throws IOException {
-    OnHeapHnswGraph hnsw = new OnHeapHnswGraph(M, totalNumberOfVectors);
+      HnswGraph initializerGraph, int[] newOrdMap, int totalNumberOfVectors) throws IOException {
+    OnHeapHnswGraph hnsw = new OnHeapHnswGraph(initializerGraph.maxConn(), totalNumberOfVectors);
     for (int level = initializerGraph.numLevels() - 1; level >= 0; level--) {
       HnswGraph.NodesIterator it = initializerGraph.getNodesOnLevel(level);
       while (it.hasNext()) {
@@ -93,14 +89,21 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
 
   public InitializedHnswGraphBuilder(
       RandomVectorScorerSupplier scorerSupplier,
-      int M,
       int beamWidth,
       long seed,
       OnHeapHnswGraph initializedGraph,
       BitSet initializedNodes)
       throws IOException {
-    super(scorerSupplier, M, beamWidth, seed, initializedGraph);
+    super(scorerSupplier, beamWidth, seed, initializedGraph);
     this.initializedNodes = initializedNodes;
+  }
+
+  @Override
+  public void addGraphNode(int node, UpdateableRandomVectorScorer scorer) throws IOException {
+    if (initializedNodes.get(node)) {
+      return;
+    }
+    super.addGraphNode(node, scorer);
   }
 
   @Override

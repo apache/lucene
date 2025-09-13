@@ -69,7 +69,9 @@ public abstract class GroupFacetCollector extends SimpleCollector {
       throws IOException {
     int totalCount = 0;
     int missingCount = 0;
-    SegmentResultPriorityQueue segments = new SegmentResultPriorityQueue(segmentResults.size());
+    PriorityQueue<SegmentResult> segments =
+        PriorityQueue.usingComparator(
+            segmentResults.size(), Comparator.comparing(sr -> sr.mergeTerm));
     for (SegmentResult segmentResult : segmentResults) {
       missingCount += segmentResult.missing;
       if (segmentResult.mergePos >= segmentResult.maxTermPos) {
@@ -126,28 +128,6 @@ public abstract class GroupFacetCollector extends SimpleCollector {
    */
   public static class GroupedFacetResult {
 
-    private static final Comparator<FacetEntry> orderByCountAndValue =
-        new Comparator<FacetEntry>() {
-
-          @Override
-          public int compare(FacetEntry a, FacetEntry b) {
-            int cmp = b.count - a.count; // Highest count first!
-            if (cmp != 0) {
-              return cmp;
-            }
-            return a.value.compareTo(b.value);
-          }
-        };
-
-    private static final Comparator<FacetEntry> orderByValue =
-        new Comparator<FacetEntry>() {
-
-          @Override
-          public int compare(FacetEntry a, FacetEntry b) {
-            return a.value.compareTo(b.value);
-          }
-        };
-
     private final int maxSize;
     private final NavigableSet<FacetEntry> facetEntries;
     private final int totalMissingCount;
@@ -157,7 +137,17 @@ public abstract class GroupFacetCollector extends SimpleCollector {
 
     public GroupedFacetResult(
         int size, int minCount, boolean orderByCount, int totalCount, int totalMissingCount) {
-      this.facetEntries = new TreeSet<>(orderByCount ? orderByCountAndValue : orderByValue);
+      this.facetEntries =
+          new TreeSet<>(
+              orderByCount
+                  ? (a, b) -> {
+                    int cmp = b.count - a.count; // Highest count first!
+                    if (cmp != 0) {
+                      return cmp;
+                    }
+                    return a.value.compareTo(b.value);
+                  }
+                  : (a, b) -> a.value.compareTo(b.value));
       this.totalMissingCount = totalMissingCount;
       this.totalCount = totalCount;
       maxSize = size;
@@ -229,53 +219,11 @@ public abstract class GroupFacetCollector extends SimpleCollector {
   }
 
   /** Represents a facet entry with a value and a count. */
-  public static class FacetEntry {
-
-    private final BytesRef value;
-    private final int count;
-
-    public FacetEntry(BytesRef value, int count) {
-      this.value = value;
-      this.count = count;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-
-      FacetEntry that = (FacetEntry) o;
-
-      if (count != that.count) return false;
-      if (!value.equals(that.value)) return false;
-
-      return true;
-    }
-
-    @Override
-    public int hashCode() {
-      int result = value.hashCode();
-      result = 31 * result + count;
-      return result;
-    }
+  public record FacetEntry(BytesRef value, int count) {
 
     @Override
     public String toString() {
       return "FacetEntry{" + "value=" + value.utf8ToString() + ", count=" + count + '}';
-    }
-
-    /**
-     * @return The value of this facet entry
-     */
-    public BytesRef getValue() {
-      return value;
-    }
-
-    /**
-     * @return The count (number of groups) of this facet entry.
-     */
-    public int getCount() {
-      return count;
     }
   }
 
@@ -307,17 +255,5 @@ public abstract class GroupFacetCollector extends SimpleCollector {
      * @throws IOException If I/O related errors occur
      */
     protected abstract void nextTerm() throws IOException;
-  }
-
-  private static class SegmentResultPriorityQueue extends PriorityQueue<SegmentResult> {
-
-    SegmentResultPriorityQueue(int maxSize) {
-      super(maxSize);
-    }
-
-    @Override
-    protected boolean lessThan(SegmentResult a, SegmentResult b) {
-      return a.mergeTerm.compareTo(b.mergeTerm) < 0;
-    }
   }
 }

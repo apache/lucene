@@ -20,7 +20,6 @@ import static org.apache.lucene.tests.analysis.BaseTokenStreamTestCase.assertTok
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.startsWith;
 
-import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -138,7 +137,7 @@ public class TestSuggestField extends LuceneTestCase {
     PrefixCompletionQuery query =
         new PrefixCompletionQuery(analyzer, new Term("suggest_field", "ab"));
     TopSuggestDocs lookupDocs = suggestIndexSearcher.suggest(query, 3, false);
-    assertEquals(0L, lookupDocs.totalHits.value);
+    assertEquals(0L, lookupDocs.totalHits.value());
     reader.close();
     iw.close();
   }
@@ -510,7 +509,7 @@ public class TestSuggestField extends LuceneTestCase {
     PrefixCompletionQuery query =
         new PrefixCompletionQuery(analyzer, new Term("suggest_field", "abc_"), filter);
     TopSuggestDocs suggest = indexSearcher.suggest(query, num, false);
-    assertEquals(0L, suggest.totalHits.value);
+    assertEquals(0L, suggest.totalHits.value());
     reader.close();
     iw.close();
   }
@@ -539,7 +538,7 @@ public class TestSuggestField extends LuceneTestCase {
     PrefixCompletionQuery query =
         new PrefixCompletionQuery(analyzer, new Term("suggest_field", "abc_"));
     TopSuggestDocs suggest = indexSearcher.suggest(query, num, false);
-    assertEquals(0L, suggest.totalHits.value);
+    assertEquals(0L, suggest.totalHits.value());
 
     reader.close();
     iw.close();
@@ -702,7 +701,7 @@ public class TestSuggestField extends LuceneTestCase {
     PrefixCompletionQuery query =
         new PrefixCompletionQuery(analyzer, new Term("suggest_field", "abc_"));
     TopSuggestDocs suggest = indexSearcher.suggest(query, num, false);
-    assertEquals(num, suggest.totalHits.value);
+    assertEquals(num, suggest.totalHits.value());
     StoredFields storedFields = reader.storedFields();
     for (SuggestScoreDoc suggestScoreDoc : suggest.scoreLookupDocs()) {
       String key = suggestScoreDoc.key.toString();
@@ -745,7 +744,7 @@ public class TestSuggestField extends LuceneTestCase {
       PrefixCompletionQuery query =
           new PrefixCompletionQuery(analyzer, new Term("suggest_field", prefix));
       TopSuggestDocs suggest = indexSearcher.suggest(query, num, false);
-      assertTrue(suggest.totalHits.value > 0);
+      assertTrue(suggest.totalHits.value() > 0);
       float topScore = -1;
       for (SuggestScoreDoc scoreDoc : suggest.scoreLookupDocs()) {
         if (topScore != -1) {
@@ -798,7 +797,7 @@ public class TestSuggestField extends LuceneTestCase {
       PrefixCompletionQuery query =
           new PrefixCompletionQuery(analyzer, new Term("suggest_field", title));
       TopSuggestDocs suggest = indexSearcher.suggest(query, mappings.size(), false);
-      assertTrue(suggest.totalHits.value > 0);
+      assertTrue(suggest.totalHits.value() > 0);
       boolean matched = false;
       for (ScoreDoc scoreDoc : suggest.scoreDocs) {
         matched = Float.compare(scoreDoc.score, (float) entry.getValue()) == 0;
@@ -949,9 +948,7 @@ public class TestSuggestField extends LuceneTestCase {
     iwc.setMergePolicy(newLogMergePolicy());
     Codec filterCodec =
         new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-          final CompletionPostingsFormat.FSTLoadMode fstLoadMode =
-              RandomPicks.randomFrom(random(), CompletionPostingsFormat.FSTLoadMode.values());
-          final PostingsFormat postingsFormat = new Completion99PostingsFormat(fstLoadMode);
+          final PostingsFormat postingsFormat = new Completion101PostingsFormat();
 
           @Override
           public PostingsFormat postingsFormat() {

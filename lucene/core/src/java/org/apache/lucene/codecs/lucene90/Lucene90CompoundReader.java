@@ -56,8 +56,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
   /** Create a new CompoundFileDirectory. */
   // TODO: we should just pre-strip "entries" and append segment name up-front like simpletext?
   // this need not be a "general purpose" directory anymore (it only writes index files)
-  public Lucene90CompoundReader(Directory directory, SegmentInfo si, IOContext context)
-      throws IOException {
+  public Lucene90CompoundReader(Directory directory, SegmentInfo si) throws IOException {
     this.directory = directory;
     this.segmentName = si.name;
     String dataFileName =
@@ -65,7 +64,6 @@ final class Lucene90CompoundReader extends CompoundDirectory {
     String entriesFileName =
         IndexFileNames.segmentFileName(segmentName, "", Lucene90CompoundFormat.ENTRIES_EXTENSION);
     this.entries = readEntries(si.getId(), directory, entriesFileName);
-    boolean success = false;
 
     // find the last FileEntry in the map (largest offset+length) and add length of codec footer:
     final long expectedLength =
@@ -75,7 +73,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
                 .orElseGet(() -> CodecUtil.indexHeaderLength(Lucene90CompoundFormat.DATA_CODEC, ""))
             + CodecUtil.footerLength();
 
-    handle = directory.openInput(dataFileName, context);
+    handle = directory.openInput(dataFileName, IOContext.DEFAULT);
     try {
       CodecUtil.checkIndexHeader(
           handle, Lucene90CompoundFormat.DATA_CODEC, version, version, si.getId(), "");
@@ -93,12 +91,9 @@ final class Lucene90CompoundReader extends CompoundDirectory {
             "length should be " + expectedLength + " bytes, but is " + handle.length() + " instead",
             handle);
       }
-
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(handle);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, handle);
+      throw t;
     }
   }
 
@@ -169,7 +164,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
               + entries.keySet()
               + ")");
     }
-    return handle.slice(name, entry.offset, entry.length);
+    return handle.slice(name, entry.offset, entry.length, context);
   }
 
   /** Returns an array of strings, one for each file in the directory. */

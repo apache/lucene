@@ -56,8 +56,8 @@ import org.apache.lucene.util.IOUtils;
  * </pre>
  *
  * <p>This will cache all newly flushed segments, all merges whose expected segment size is {@code
- * <= 5 MB}, unless the net cached bytes exceeds 60 MB at which point all writes will not be cached
- * (until the net bytes falls below 60 MB).
+ * <= 5 MB}, unless the net cached bytes exceed 60 MB at which point all writes will not be cached
+ * (until the net bytes fall below 60 MB).
  *
  * @lucene.experimental
  */
@@ -73,8 +73,14 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
           new SingleInstanceLockFactory(),
           ByteBuffersDataOutput::new,
           (fileName, content) -> {
+            // Defensive check to handle the case the file has been deleted before this lambda
+            // is called when the IndexOutput is closed. Unsafe in the unlikely case the deletion
+            // happens concurrently on another thread.
+            if (isCachedFile(fileName) == false) {
+              return null;
+            }
             cacheSize.addAndGet(content.size());
-            return ByteBuffersDirectory.OUTPUT_AS_MANY_BUFFERS_LUCENE.apply(fileName, content);
+            return ByteBuffersDirectory.OUTPUT_AS_MANY_BUFFERS.apply(fileName, content);
           });
 
   private final long maxMergeSizeBytes;
@@ -118,7 +124,10 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
       System.out.println("nrtdir.deleteFile name=" + name);
     }
     if (cacheDirectory.fileExists(name)) {
+      long size = cacheDirectory.fileLength(name);
       cacheDirectory.deleteFile(name);
+      long newSize = cacheSize.addAndGet(-size);
+      assert newSize >= 0;
     } else {
       in.deleteFile(name);
     }
@@ -223,10 +232,10 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
     // size=" + (merge==null ? 0 : merge.estimatedMergeBytes));
 
     long bytes = 0;
-    if (context.mergeInfo != null) {
-      bytes = context.mergeInfo.estimatedMergeBytes;
-    } else if (context.flushInfo != null) {
-      bytes = context.flushInfo.estimatedSegmentSize;
+    if (context.mergeInfo() != null) {
+      bytes = context.mergeInfo().estimatedMergeBytes();
+    } else if (context.flushInfo() != null) {
+      bytes = context.flushInfo().estimatedSegmentSize();
     } else {
       return false;
     }
@@ -290,9 +299,13 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
     try {
       dir.fileLength(fileName);
       return true;
-    } catch (@SuppressWarnings("unused") NoSuchFileException | FileNotFoundException e) {
+    } catch (NoSuchFileException | FileNotFoundException _) {
       return false;
     }
+  }
+
+  private synchronized boolean isCachedFile(String fileName) {
+    return cacheDirectory.fileExists(fileName);
   }
 
   private void unCache(String fileName) throws IOException {

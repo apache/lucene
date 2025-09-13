@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.GroupVIntUtil;
 
 /**
  * Abstract base class for performing write operations of Lucene's low-level data types.
@@ -30,7 +30,7 @@ import org.apache.lucene.util.BytesRefBuilder;
  * internal state like file position).
  */
 public abstract class DataOutput {
-  private final BytesRefBuilder groupVIntBytes = new BytesRefBuilder();
+  private byte[] groupVIntBytes;
 
   /**
    * Writes a single byte.
@@ -274,7 +274,7 @@ public abstract class DataOutput {
     writeBytes(utf8Result.bytes, utf8Result.offset, utf8Result.length);
   }
 
-  private static int COPY_BUFFER_SIZE = 16384;
+  private static final int COPY_BUFFER_SIZE = 16384;
   private byte[] copyBuffer;
 
   /** Copy numBytes bytes from input to ourself. */
@@ -333,34 +333,28 @@ public abstract class DataOutput {
    * @param values the values to write
    * @param limit the number of values to write.
    * @lucene.experimental
+   * @deprecated This method is preserved only for backwards codecs
    */
+  @Deprecated
   public void writeGroupVInts(long[] values, int limit) throws IOException {
-    int off = 0;
-
-    // encode each group
-    while ((limit - off) >= 4) {
-      byte flag = 0;
-      groupVIntBytes.setLength(1);
-      flag |= (encodeGroupValue(Math.toIntExact(values[off++])) - 1) << 6;
-      flag |= (encodeGroupValue(Math.toIntExact(values[off++])) - 1) << 4;
-      flag |= (encodeGroupValue(Math.toIntExact(values[off++])) - 1) << 2;
-      flag |= (encodeGroupValue(Math.toIntExact(values[off++])) - 1);
-      groupVIntBytes.setByteAt(0, flag);
-      writeBytes(groupVIntBytes.bytes(), groupVIntBytes.length());
+    if (groupVIntBytes == null) {
+      groupVIntBytes = new byte[GroupVIntUtil.MAX_LENGTH_PER_GROUP];
     }
-
-    // tail vints
-    for (; off < limit; off++) {
-      writeVInt(Math.toIntExact(values[off]));
-    }
+    GroupVIntUtil.writeGroupVInts(this, groupVIntBytes, values, limit);
   }
 
-  private int encodeGroupValue(int v) {
-    int lastOff = groupVIntBytes.length();
-    do {
-      groupVIntBytes.append((byte) (v & 0xFF));
-      v >>>= 8;
-    } while (v != 0);
-    return groupVIntBytes.length() - lastOff;
+  /**
+   * Encode integers using group-varint. It uses {@link DataOutput#writeVInt VInt} to encode tail
+   * values that are not enough for a group.
+   *
+   * @param values the values to write
+   * @param limit the number of values to write.
+   * @lucene.experimental
+   */
+  public void writeGroupVInts(int[] values, int limit) throws IOException {
+    if (groupVIntBytes == null) {
+      groupVIntBytes = new byte[GroupVIntUtil.MAX_LENGTH_PER_GROUP];
+    }
+    GroupVIntUtil.writeGroupVInts(this, groupVIntBytes, values, limit);
   }
 }

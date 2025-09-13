@@ -188,7 +188,6 @@ public class UniformSplitTermsWriter extends FieldsConsumer {
     validateSettings(targetNumBlockLines, deltaNumLines);
     IndexOutput blockOutput = null;
     IndexOutput dictionaryOutput = null;
-    boolean success = false;
     try {
       this.fieldInfos = state.fieldInfos;
       this.postingsWriter = postingsWriter;
@@ -220,11 +219,9 @@ public class UniformSplitTermsWriter extends FieldsConsumer {
 
       this.blockOutput = blockOutput;
       this.dictionaryOutput = dictionaryOutput;
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(blockOutput, dictionaryOutput);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, blockOutput, dictionaryOutput);
+      throw t;
     }
   }
 

@@ -50,6 +50,7 @@ import org.apache.lucene.luke.app.desktop.util.lang.Callable;
 /** Factory of edit parameters dialog */
 public final class EditParamsDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static EditParamsDialogFactory instance;
 
   private final Preferences prefs;
@@ -139,7 +140,7 @@ public final class EditParamsDialogFactory implements DialogOpener.DialogFactory
     footer.setOpaque(false);
     JButton okBtn = new JButton(MessageUtils.getLocalizedMessage("button.ok"));
     okBtn.addActionListener(
-        e -> {
+        _ -> {
           Map<String, String> params = new HashMap<>();
           for (int i = 0; i < paramsTable.getRowCount(); i++) {
             boolean deleted =
@@ -150,9 +151,9 @@ public final class EditParamsDialogFactory implements DialogOpener.DialogFactory
                 (String) paramsTable.getValueAt(i, ParamsTableModel.Column.VALUE.getIndex());
             if (deleted
                 || Objects.isNull(name)
-                || name.equals("")
+                || name.isEmpty()
                 || Objects.isNull(value)
-                || value.equals("")) {
+                || value.isEmpty()) {
               continue;
             }
             params.put(name, value);
@@ -165,7 +166,7 @@ public final class EditParamsDialogFactory implements DialogOpener.DialogFactory
     footer.add(okBtn);
     JButton cancelBtn = new JButton(MessageUtils.getLocalizedMessage("button.cancel"));
     cancelBtn.addActionListener(
-        e -> {
+        _ -> {
           this.params.clear();
           dialog.dispose();
         });

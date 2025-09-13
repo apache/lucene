@@ -29,10 +29,10 @@ public class ExplainingMatch extends QueryMatch {
   /** A MatcherFactory for producing ExplainingMatches */
   public static final MatcherFactory<ExplainingMatch> MATCHER =
       searcher ->
-          new CandidateMatcher<ExplainingMatch>(searcher) {
+          new CandidateMatcher<>(searcher) {
             @Override
-            protected void matchQuery(
-                String queryId, Query matchQuery, Map<String, String> metadata) throws IOException {
+            public void matchQuery(String queryId, Query matchQuery, Map<String, String> metadata)
+                throws IOException {
               int maxDocs = searcher.getIndexReader().maxDoc();
               for (int i = 0; i < maxDocs; i++) {
                 Explanation explanation = searcher.explain(matchQuery, i);

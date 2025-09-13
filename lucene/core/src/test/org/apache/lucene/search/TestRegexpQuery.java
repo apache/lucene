@@ -50,7 +50,7 @@ public class TestRegexpQuery extends LuceneTestCase {
     doc.add(
         newTextField(
             FN,
-            "the quick brown fox jumps over the lazy ??? dog 493432 49344 [foo] 12.3 \\",
+            "the quick brown fox jumps over the lazy ??? dog 493432 49344 [foo] 12.3 \\ ς",
             Field.Store.NO));
     writer.addDocument(doc);
     reader = writer.getReader();
@@ -79,7 +79,7 @@ public class TestRegexpQuery extends LuceneTestCase {
         new RegexpQuery(
             newTerm(regex),
             RegExp.ALL,
-            RegExp.ASCII_CASE_INSENSITIVE,
+            RegExp.ASCII_CASE_INSENSITIVE | RegExp.CASE_INSENSITIVE,
             RegexpQuery.DEFAULT_PROVIDER,
             Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
             MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE,
@@ -143,6 +143,8 @@ public class TestRegexpQuery extends LuceneTestCase {
   public void testCaseInsensitive() throws IOException {
     assertEquals(0, regexQueryNrHits("Quick"));
     assertEquals(1, caseInsensitiveRegexQueryNrHits("Quick"));
+    assertEquals(1, caseInsensitiveRegexQueryNrHits("Σ"));
+    assertEquals(1, caseInsensitiveRegexQueryNrHits("σ"));
   }
 
   public void testRegexNegatedCharacterClass() throws IOException {
@@ -170,7 +172,7 @@ public class TestRegexpQuery extends LuceneTestCase {
     RegexpQuery query =
         new RegexpQuery(
             newTerm("<quickBrown>"), RegExp.ALL, myProvider, DEFAULT_DETERMINIZE_WORK_LIMIT);
-    assertEquals(1, searcher.search(query, 5).totalHits.value);
+    assertEquals(1, searcher.search(query, 5).totalHits.value());
   }
 
   /**

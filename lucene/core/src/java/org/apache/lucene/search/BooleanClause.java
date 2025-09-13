@@ -19,7 +19,7 @@ package org.apache.lucene.search;
 import java.util.Objects;
 
 /** A clause in a BooleanQuery. */
-public final class BooleanClause {
+public record BooleanClause(Query query, Occur occur) {
 
   /** Specifies how clauses are to occur in matching documents. */
   public enum Occur {
@@ -67,23 +67,10 @@ public final class BooleanClause {
     };
   }
 
-  /** The query whose matching documents are combined by the boolean query. */
-  private final Query query;
-
-  private final Occur occur;
-
   /** Constructs a BooleanClause. */
-  public BooleanClause(Query query, Occur occur) {
-    this.query = Objects.requireNonNull(query, "Query must not be null");
-    this.occur = Objects.requireNonNull(occur, "Occur must not be null");
-  }
-
-  public Occur getOccur() {
-    return occur;
-  }
-
-  public Query getQuery() {
-    return query;
+  public BooleanClause {
+    Objects.requireNonNull(query, "Query must not be null");
+    Objects.requireNonNull(occur, "Occur must not be null");
   }
 
   public boolean isProhibited() {
@@ -96,24 +83,5 @@ public final class BooleanClause {
 
   public boolean isScoring() {
     return occur == Occur.MUST || occur == Occur.SHOULD;
-  }
-
-  /** Returns true if <code>o</code> is equal to this. */
-  @Override
-  public boolean equals(Object o) {
-    if (o == null || !(o instanceof BooleanClause)) return false;
-    BooleanClause other = (BooleanClause) o;
-    return this.query.equals(other.query) && this.occur == other.occur;
-  }
-
-  /** Returns a hash code value for this object. */
-  @Override
-  public int hashCode() {
-    return 31 * query.hashCode() + occur.hashCode();
-  }
-
-  @Override
-  public String toString() {
-    return occur.toString() + query.toString();
   }
 }

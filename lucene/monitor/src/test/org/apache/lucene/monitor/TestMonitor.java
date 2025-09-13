@@ -176,9 +176,9 @@ public class TestMonitor extends MonitorTestBase {
 
       MatcherFactory<QueryMatch> testMatcherFactory =
           docs ->
-              new CandidateMatcher<QueryMatch>(docs) {
+              new CandidateMatcher<>(docs) {
                 @Override
-                protected void matchQuery(
+                public void matchQuery(
                     String queryId, Query matchQuery, Map<String, String> metadata) {
                   assertEquals("value", metadata.get("key"));
                 }

@@ -78,7 +78,7 @@ public class DummyCompressingCodec extends CompressingCodec {
 
         @Override
         public void compress(ByteBuffersDataInput buffersInput, DataOutput out) throws IOException {
-          out.copyBytes(buffersInput, buffersInput.size());
+          out.copyBytes(buffersInput, buffersInput.length());
         }
 
         @Override

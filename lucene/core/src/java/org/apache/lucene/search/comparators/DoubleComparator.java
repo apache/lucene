@@ -18,10 +18,10 @@
 package org.apache.lucene.search.comparators;
 
 import java.io.IOException;
-import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Pruning;
+import org.apache.lucene.util.NumericUtils;
 
 /**
  * Comparator based on {@link Double#compare} for {@code numHits}. This comparator provides a
@@ -52,6 +52,16 @@ public class DoubleComparator extends NumericComparator<Double> {
   @Override
   public Double value(int slot) {
     return Double.valueOf(values[slot]);
+  }
+
+  @Override
+  protected long missingValueAsComparableLong() {
+    return NumericUtils.doubleToSortableLong(missingValue);
+  }
+
+  @Override
+  protected long sortableBytesToLong(byte[] bytes) {
+    return NumericUtils.sortableBytesToLong(bytes, 0);
   }
 
   @Override
@@ -97,23 +107,13 @@ public class DoubleComparator extends NumericComparator<Double> {
     }
 
     @Override
-    protected int compareMissingValueWithBottomValue() {
-      return Double.compare(missingValue, bottom);
+    protected long bottomAsComparableLong() {
+      return NumericUtils.doubleToSortableLong(bottom);
     }
 
     @Override
-    protected int compareMissingValueWithTopValue() {
-      return Double.compare(missingValue, topValue);
-    }
-
-    @Override
-    protected void encodeBottom(byte[] packedValue) {
-      DoublePoint.encodeDimension(bottom, packedValue, 0);
-    }
-
-    @Override
-    protected void encodeTop(byte[] packedValue) {
-      DoublePoint.encodeDimension(topValue, packedValue, 0);
+    protected long topAsComparableLong() {
+      return NumericUtils.doubleToSortableLong(topValue);
     }
   }
 }

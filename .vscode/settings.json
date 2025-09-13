@@ -1,0 +1,9 @@
+{
+  "java.import.gradle.enabled": false,
+  "java.import.maven.enabled": false,
+  "java.jdt.ls.lombokSupport.enabled": false,
+  "java.compile.nullAnalysis.mode": "disabled",
+  "java.completion.maxResults": 500,
+  "java.inlayHints.parameterNames.enabled": "all",
+  "astGrep.configPath": "gradle/validation/ast-grep/sgconfig.yml"
+}

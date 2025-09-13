@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * This abstract class defines methods to iterate over a set of non-decreasing doc ids. Note that
@@ -27,73 +28,23 @@ import java.io.IOException;
 public abstract class DocIdSetIterator {
 
   /** An empty {@code DocIdSetIterator} instance */
-  public static final DocIdSetIterator empty() {
-    return new DocIdSetIterator() {
-      boolean exhausted = false;
-
-      @Override
-      public int advance(int target) {
-        assert !exhausted;
-        assert target >= 0;
-        exhausted = true;
-        return NO_MORE_DOCS;
-      }
-
-      @Override
-      public int docID() {
-        return exhausted ? NO_MORE_DOCS : -1;
-      }
-
-      @Override
-      public int nextDoc() {
-        assert !exhausted;
-        exhausted = true;
-        return NO_MORE_DOCS;
-      }
-
-      @Override
-      public long cost() {
-        return 0;
-      }
-    };
+  public static DocIdSetIterator empty() {
+    return new RangeDocIdSetIterator(0, 0);
   }
 
   /** A {@link DocIdSetIterator} that matches all documents up to {@code maxDoc - 1}. */
-  public static final DocIdSetIterator all(int maxDoc) {
-    return new DocIdSetIterator() {
-      int doc = -1;
-
-      @Override
-      public int docID() {
-        return doc;
-      }
-
-      @Override
-      public int nextDoc() throws IOException {
-        return advance(doc + 1);
-      }
-
-      @Override
-      public int advance(int target) throws IOException {
-        doc = target;
-        if (doc >= maxDoc) {
-          doc = NO_MORE_DOCS;
-        }
-        return doc;
-      }
-
-      @Override
-      public long cost() {
-        return maxDoc;
-      }
-    };
+  public static DocIdSetIterator all(int maxDoc) {
+    if (maxDoc < 0) {
+      throw new IllegalArgumentException("maxDoc must be >= 0, but got maxDoc=" + maxDoc);
+    }
+    return new RangeDocIdSetIterator(0, maxDoc);
   }
 
   /**
    * A {@link DocIdSetIterator} that matches a range documents from minDocID (inclusive) to maxDocID
    * (exclusive).
    */
-  public static final DocIdSetIterator range(int minDoc, int maxDoc) {
+  public static DocIdSetIterator range(int minDoc, int maxDoc) {
     if (minDoc >= maxDoc) {
       throw new IllegalArgumentException(
           "minDoc must be < maxDoc but got minDoc=" + minDoc + " maxDoc=" + maxDoc);
@@ -101,36 +52,56 @@ public abstract class DocIdSetIterator {
     if (minDoc < 0) {
       throw new IllegalArgumentException("minDoc must be >= 0 but got minDoc=" + minDoc);
     }
-    return new DocIdSetIterator() {
-      private int doc = -1;
+    return new RangeDocIdSetIterator(minDoc, maxDoc);
+  }
 
-      @Override
-      public int docID() {
-        return doc;
-      }
+  private static class RangeDocIdSetIterator extends AbstractDocIdSetIterator {
 
-      @Override
-      public int nextDoc() throws IOException {
-        return advance(doc + 1);
-      }
+    private final int minDoc, maxDoc;
 
-      @Override
-      public int advance(int target) throws IOException {
-        if (target < minDoc) {
-          doc = minDoc;
-        } else if (target >= maxDoc) {
-          doc = NO_MORE_DOCS;
-        } else {
-          doc = target;
-        }
-        return doc;
-      }
+    RangeDocIdSetIterator(int minDoc, int maxDoc) {
+      // advance relies on minDoc <= maxDoc for correctness
+      assert minDoc <= maxDoc;
+      this.minDoc = minDoc;
+      this.maxDoc = maxDoc;
+    }
 
-      @Override
-      public long cost() {
-        return maxDoc - minDoc;
+    @Override
+    public int nextDoc() {
+      return advance(doc + 1);
+    }
+
+    @Override
+    public int advance(int target) {
+      if (target >= maxDoc) {
+        doc = NO_MORE_DOCS;
+      } else if (target < minDoc) {
+        doc = minDoc;
+      } else {
+        doc = target;
       }
-    };
+      return doc;
+    }
+
+    @Override
+    public long cost() {
+      return maxDoc - minDoc;
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) {
+      assert offset <= doc;
+      upTo = Math.min(upTo, maxDoc);
+      if (upTo > doc) {
+        bitSet.set(doc - offset, upTo - offset);
+        advance(upTo);
+      }
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return maxDoc;
+    }
   }
 
   /**
@@ -211,4 +182,50 @@ public abstract class DocIdSetIterator {
    * may be a rough heuristic, hardcoded value, or otherwise completely inaccurate.
    */
   public abstract long cost();
+
+  /**
+   * Load doc IDs into a {@link FixedBitSet}. This should behave exactly as if implemented as below,
+   * which is the default implementation:
+   *
+   * <pre class="prettyprint">
+   * for (int doc = docID(); doc &lt; upTo; doc = nextDoc()) {
+   *   bitSet.set(doc - offset);
+   * }
+   * </pre>
+   *
+   * <p><b>Note</b>: {@code offset} must be less than or equal to the {@link #docID() current doc
+   * ID}. Behaviour is undefined if this iterator is unpositioned.
+   *
+   * <p><b>Note</b>: It is important not to clear bits from {@code bitSet} that may be already set.
+   *
+   * <p><b>Note</b>: {@code offset} may be negative.
+   *
+   * @lucene.internal
+   */
+  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+    assert offset <= docID() : "offset=" + offset + " docID()=" + docID() + " upTo=" + upTo;
+    for (int doc = docID(); doc < upTo; doc = nextDoc()) {
+      bitSet.set(doc - offset);
+    }
+  }
+
+  /**
+   * Returns the end of the run of consecutive doc IDs that match this {@link DocIdSetIterator} and
+   * that contains the current {@link #docID()}, that is: one plus the last doc ID of the run.
+   *
+   * <ol>
+   *   <li>The returned doc is greater than {@link #docID()}.
+   *   <li>All docs in range {@code [docID(), docIDRunEnd())} match this iterator.
+   *   <li>The current position of this iterator is not affected by calling {@link #docIDRunEnd()}.
+   * </ol>
+   *
+   * <p><b>Note</b>: It is illegal to call this method when the iterator is exhausted or not
+   * positioned.
+   *
+   * <p>The default implementation assumes runs of a single doc ID and returns {@link #docID()}) +
+   * 1.
+   */
+  public int docIDRunEnd() throws IOException {
+    return docID() + 1;
+  }
 }

@@ -61,10 +61,10 @@ public abstract class TaxonomyReader implements Closeable {
   /** An iterator over a category's children. */
   public static class ChildrenIterator {
 
-    private final int[] siblings;
+    private final ParallelTaxonomyArrays.IntArray siblings;
     private int child;
 
-    ChildrenIterator(int child, int[] siblings) {
+    ChildrenIterator(int child, ParallelTaxonomyArrays.IntArray siblings) {
       this.siblings = siblings;
       this.child = child;
     }
@@ -75,7 +75,7 @@ public abstract class TaxonomyReader implements Closeable {
     public int next() {
       int res = child;
       if (child != TaxonomyReader.INVALID_ORDINAL) {
-        child = siblings[child];
+        child = siblings.get(child);
       }
       return res;
     }
@@ -181,7 +181,7 @@ public abstract class TaxonomyReader implements Closeable {
   /** Returns an iterator over the children of the given ordinal. */
   public ChildrenIterator getChildren(final int ordinal) throws IOException {
     ParallelTaxonomyArrays arrays = getParallelTaxonomyArrays();
-    int child = ordinal >= 0 ? arrays.children()[ordinal] : INVALID_ORDINAL;
+    int child = ordinal >= 0 ? arrays.children().get(ordinal) : INVALID_ORDINAL;
     return new ChildrenIterator(child, arrays.siblings());
   }
 

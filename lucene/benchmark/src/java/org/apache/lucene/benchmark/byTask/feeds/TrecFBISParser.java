@@ -60,7 +60,7 @@ public class TrecFBISParser extends TrecDocParser {
     docData.setName(name);
     docData.setDate(date);
     docData.setTitle(title);
-    docData.setBody(stripTags(docBuf, mark).toString());
+    docData.setBody(stripTags(docBuf, mark));
     return docData;
   }
 }

@@ -42,7 +42,7 @@ package org.apache.lucene.analysis.en;
 class KStemData8 {
   private KStemData8() {}
 
-  static String[] data = {
+  static final String[] data = {
     "tenor", "tenpin", "tense", "tensile", "tension",
     "tent", "tentacle", "tentative", "tenterhooks", "tenuity",
     "tenuous", "tenure", "tepee", "tepid", "tequila",

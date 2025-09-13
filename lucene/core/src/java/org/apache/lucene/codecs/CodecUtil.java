@@ -380,7 +380,7 @@ public final class CodecUtil {
     int suffixLength = in.readByte() & 0xFF;
     byte[] suffixBytes = new byte[suffixLength];
     in.readBytes(suffixBytes, 0, suffixBytes.length);
-    String suffix = new String(suffixBytes, 0, suffixBytes.length, StandardCharsets.UTF_8);
+    String suffix = new String(suffixBytes, StandardCharsets.UTF_8);
     if (!suffix.equals(expectedSuffix)) {
       throw new CorruptIndexException(
           "file mismatch, expected suffix=" + expectedSuffix + ", got=" + suffix, in);

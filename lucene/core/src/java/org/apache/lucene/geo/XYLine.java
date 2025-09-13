@@ -126,7 +126,7 @@ public class XYLine extends XYGeometry {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("XYLINE(");
+    sb.append("XYLine(");
     for (int i = 0; i < x.length; i++) {
       sb.append("[").append(x[i]).append(", ").append(y[i]).append("]");
     }

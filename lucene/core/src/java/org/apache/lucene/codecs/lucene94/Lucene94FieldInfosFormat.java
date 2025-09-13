@@ -18,11 +18,13 @@ package org.apache.lucene.codecs.lucene94;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.FieldInfosFormat;
 import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -111,6 +113,8 @@ import org.apache.lucene.store.IndexOutput;
  *         <li>0: EUCLIDEAN distance. ({@link VectorSimilarityFunction#EUCLIDEAN})
  *         <li>1: DOT_PRODUCT similarity. ({@link VectorSimilarityFunction#DOT_PRODUCT})
  *         <li>2: COSINE similarity. ({@link VectorSimilarityFunction#COSINE})
+ *         <li>3: MAXIMUM_INNER_PRODUCT similarity. ({@link
+ *             VectorSimilarityFunction#MAXIMUM_INNER_PRODUCT})
  *       </ul>
  * </ul>
  *
@@ -131,13 +135,14 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
       Throwable priorE = null;
       FieldInfo[] infos = null;
       try {
-        CodecUtil.checkIndexHeader(
-            input,
-            Lucene94FieldInfosFormat.CODEC_NAME,
-            Lucene94FieldInfosFormat.FORMAT_START,
-            Lucene94FieldInfosFormat.FORMAT_CURRENT,
-            segmentInfo.getId(),
-            segmentSuffix);
+        int format =
+            CodecUtil.checkIndexHeader(
+                input,
+                Lucene94FieldInfosFormat.CODEC_NAME,
+                Lucene94FieldInfosFormat.FORMAT_START,
+                Lucene94FieldInfosFormat.FORMAT_CURRENT,
+                segmentInfo.getId(),
+                segmentSuffix);
 
         final int size = input.readVInt(); // read in the size
         infos = new FieldInfo[size];
@@ -157,11 +162,36 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
           boolean omitNorms = (bits & OMIT_NORMS) != 0;
           boolean storePayloads = (bits & STORE_PAYLOADS) != 0;
           boolean isSoftDeletesField = (bits & SOFT_DELETES_FIELD) != 0;
+          boolean isParentField =
+              format >= FORMAT_PARENT_FIELD ? (bits & PARENT_FIELD_FIELD) != 0 : false;
+
+          if ((bits & 0xC0) != 0) {
+            throw new CorruptIndexException(
+                "unused bits are set \"" + Integer.toBinaryString(bits) + "\"", input);
+          }
+          if (format < FORMAT_PARENT_FIELD && (bits & 0xF0) != 0) {
+            throw new CorruptIndexException(
+                "parent field bit is set but shouldn't \"" + Integer.toBinaryString(bits) + "\"",
+                input);
+          }
+          if (format < FORMAT_DOCVALUE_SKIPPER && (bits & DOCVALUES_SKIPPER) != 0) {
+            throw new CorruptIndexException(
+                "doc values skipper bit is set but shouldn't \""
+                    + Integer.toBinaryString(bits)
+                    + "\"",
+                input);
+          }
 
           final IndexOptions indexOptions = getIndexOptions(input, input.readByte());
 
           // DV Types are packed in one byte
           final DocValuesType docValuesType = getDocValuesType(input, input.readByte());
+          final DocValuesSkipIndexType docValuesSkipIndex;
+          if (format >= FORMAT_DOCVALUE_SKIPPER) {
+            docValuesSkipIndex = getDocValuesSkipIndexType(input, input.readByte());
+          } else {
+            docValuesSkipIndex = DocValuesSkipIndexType.NONE;
+          }
           final long dvGen = input.readLong();
           Map<String, String> attributes = input.readMapOfStrings();
           // just use the last field's map if its the same
@@ -192,6 +222,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
                     storePayloads,
                     indexOptions,
                     docValuesType,
+                    docValuesSkipIndex,
                     dvGen,
                     attributes,
                     pointDataDimensionCount,
@@ -200,7 +231,8 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
                     vectorDimension,
                     vectorEncoding,
                     vectorDistFunc,
-                    isSoftDeletesField);
+                    isSoftDeletesField,
+                    isParentField);
             infos[i].checkConsistency();
           } catch (IllegalStateException e) {
             throw new CorruptIndexException(
@@ -243,6 +275,18 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
     }
   }
 
+  private static byte docValuesSkipIndexByte(DocValuesSkipIndexType type) {
+    switch (type) {
+      case NONE:
+        return 0;
+      case RANGE:
+        return 1;
+      default:
+        // BUG
+        throw new AssertionError("unhandled DocValuesSkipIndexType: " + type);
+    }
+  }
+
   private static DocValuesType getDocValuesType(IndexInput input, byte b) throws IOException {
     switch (b) {
       case 0:
@@ -262,6 +306,18 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
     }
   }
 
+  private static DocValuesSkipIndexType getDocValuesSkipIndexType(IndexInput input, byte b)
+      throws IOException {
+    switch (b) {
+      case 0:
+        return DocValuesSkipIndexType.NONE;
+      case 1:
+        return DocValuesSkipIndexType.RANGE;
+      default:
+        throw new CorruptIndexException("invalid docvaluesskipindex byte: " + b, input);
+    }
+  }
+
   private static VectorEncoding getVectorEncoding(IndexInput input, byte b) throws IOException {
     if (b < 0 || b >= VectorEncoding.values().length) {
       throw new CorruptIndexException("invalid vector encoding: " + b, input);
@@ -270,10 +326,38 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
   }
 
   private static VectorSimilarityFunction getDistFunc(IndexInput input, byte b) throws IOException {
-    if (b < 0 || b >= VectorSimilarityFunction.values().length) {
-      throw new CorruptIndexException("invalid distance function: " + b, input);
+    try {
+      return distOrdToFunc(b);
+    } catch (IllegalArgumentException e) {
+      throw new CorruptIndexException("invalid distance function: " + b, input, e);
     }
-    return VectorSimilarityFunction.values()[b];
+  }
+
+  // List of vector similarity functions. This list is defined here, in order
+  // to avoid an undesirable dependency on the declaration and order of values
+  // in VectorSimilarityFunction. The list values and order have been chosen to
+  // match that of VectorSimilarityFunction in, at least, Lucene 9.10. Values
+  static final List<VectorSimilarityFunction> SIMILARITY_FUNCTIONS =
+      List.of(
+          VectorSimilarityFunction.EUCLIDEAN,
+          VectorSimilarityFunction.DOT_PRODUCT,
+          VectorSimilarityFunction.COSINE,
+          VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
+
+  static VectorSimilarityFunction distOrdToFunc(byte i) {
+    if (i < 0 || i >= SIMILARITY_FUNCTIONS.size()) {
+      throw new IllegalArgumentException("invalid distance function: " + i);
+    }
+    return SIMILARITY_FUNCTIONS.get(i);
+  }
+
+  static byte distFuncToOrd(VectorSimilarityFunction func) {
+    for (int i = 0; i < SIMILARITY_FUNCTIONS.size(); i++) {
+      if (SIMILARITY_FUNCTIONS.get(i).equals(func)) {
+        return (byte) i;
+      }
+    }
+    throw new IllegalArgumentException("invalid distance function: " + func);
   }
 
   static {
@@ -344,16 +428,18 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
         output.writeVInt(fi.number);
 
         byte bits = 0x0;
-        if (fi.hasVectors()) bits |= STORE_TERMVECTOR;
+        if (fi.hasTermVectors()) bits |= STORE_TERMVECTOR;
         if (fi.omitsNorms()) bits |= OMIT_NORMS;
         if (fi.hasPayloads()) bits |= STORE_PAYLOADS;
         if (fi.isSoftDeletesField()) bits |= SOFT_DELETES_FIELD;
+        if (fi.isParentField()) bits |= PARENT_FIELD_FIELD;
         output.writeByte(bits);
 
         output.writeByte(indexOptionsByte(fi.getIndexOptions()));
 
         // pack the DV type and hasNorms in one byte
         output.writeByte(docValuesByte(fi.getDocValuesType()));
+        output.writeByte(docValuesSkipIndexByte(fi.docValuesSkipIndexType()));
         output.writeLong(fi.getDocValuesGen());
         output.writeMapOfStrings(fi.attributes());
         output.writeVInt(fi.getPointDimensionCount());
@@ -363,7 +449,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
         }
         output.writeVInt(fi.getVectorDimension());
         output.writeByte((byte) fi.getVectorEncoding().ordinal());
-        output.writeByte((byte) fi.getVectorSimilarityFunction().ordinal());
+        output.writeByte(distFuncToOrd(fi.getVectorSimilarityFunction()));
       }
       CodecUtil.writeFooter(output);
     }
@@ -375,11 +461,16 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
   // Codec header
   static final String CODEC_NAME = "Lucene94FieldInfos";
   static final int FORMAT_START = 0;
-  static final int FORMAT_CURRENT = FORMAT_START;
+  // this doesn't actually change the file format but uses up one more bit an existing bit pattern
+  static final int FORMAT_PARENT_FIELD = 1;
+  static final int FORMAT_DOCVALUE_SKIPPER = 2;
+  static final int FORMAT_CURRENT = FORMAT_DOCVALUE_SKIPPER;
 
   // Field flags
   static final byte STORE_TERMVECTOR = 0x1;
   static final byte OMIT_NORMS = 0x2;
   static final byte STORE_PAYLOADS = 0x4;
   static final byte SOFT_DELETES_FIELD = 0x8;
+  static final byte PARENT_FIELD_FIELD = 0x10;
+  static final byte DOCVALUES_SKIPPER = 0x20;
 }

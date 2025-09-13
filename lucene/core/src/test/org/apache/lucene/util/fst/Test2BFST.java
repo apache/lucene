@@ -39,11 +39,9 @@ import org.junit.Ignore;
 @TimeoutSuite(millis = 100 * TimeUnits.HOUR)
 public class Test2BFST extends LuceneTestCase {
 
-  private static long LIMIT = 3L * 1024 * 1024 * 1024;
+  private static final long LIMIT = 3L * 1024 * 1024 * 1024;
 
   public void test() throws Exception {
-    assumeWorkingMMapOnWindows();
-
     int[] ints = new int[7];
     IntsRef input = new IntsRef(ints, 0, ints.length);
     long seed = random().nextLong();
@@ -90,7 +88,7 @@ public class Test2BFST extends LuceneTestCase {
           nextInput(r, ints2);
         }
 
-        FST<Object> fst = fstCompiler.compile();
+        FST<Object> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
         for (int verify = 0; verify < 2; verify++) {
           System.out.println(
@@ -183,7 +181,7 @@ public class Test2BFST extends LuceneTestCase {
           nextInput(r, ints);
         }
 
-        FST<BytesRef> fst = fstCompiler.compile();
+        FST<BytesRef> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
         for (int verify = 0; verify < 2; verify++) {
 
           System.out.println(
@@ -273,7 +271,7 @@ public class Test2BFST extends LuceneTestCase {
           nextInput(r, ints);
         }
 
-        FST<Long> fst = fstCompiler.compile();
+        FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
         for (int verify = 0; verify < 2; verify++) {
 

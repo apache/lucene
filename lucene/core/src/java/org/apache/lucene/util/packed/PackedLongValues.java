@@ -29,7 +29,7 @@ public class PackedLongValues extends LongValues implements Accountable {
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(PackedLongValues.class);
 
-  static final int DEFAULT_PAGE_SIZE = 256;
+  public static final int DEFAULT_PAGE_SIZE = 256;
   static final int MIN_PAGE_SIZE = 64;
   // More than 1M doesn't really makes sense with these appending buffers
   // since their goal is to try to have small numbers of bits per value
@@ -138,7 +138,7 @@ public class PackedLongValues extends LongValues implements Accountable {
     int currentCount; // number of entries of the current page
 
     Iterator() {
-      currentValues = new long[pageMask + 1];
+      currentValues = new long[(int) Math.min(size, pageMask + 1)];
       vOff = pOff = 0;
       fillBlock();
     }
@@ -276,7 +276,7 @@ public class PackedLongValues extends LongValues implements Accountable {
 
       // build a new packed reader
       if (minValue == 0 && maxValue == 0) {
-        this.values[block] = new PackedInts.NullReader(numValues);
+        this.values[block] = PackedInts.NullReader.forCount(numValues);
       } else {
         final int bitsRequired = minValue < 0 ? 64 : PackedInts.bitsRequired(maxValue);
         final PackedInts.Mutable mutable =

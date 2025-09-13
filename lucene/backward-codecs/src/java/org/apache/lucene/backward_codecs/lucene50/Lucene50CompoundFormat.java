@@ -77,9 +77,8 @@ public final class Lucene50CompoundFormat extends CompoundFormat {
   public Lucene50CompoundFormat() {}
 
   @Override
-  public CompoundDirectory getCompoundReader(Directory dir, SegmentInfo si, IOContext context)
-      throws IOException {
-    return new Lucene50CompoundReader(dir, si, context);
+  public CompoundDirectory getCompoundReader(Directory dir, SegmentInfo si) throws IOException {
+    return new Lucene50CompoundReader(dir, si);
   }
 
   @Override

@@ -116,7 +116,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
   public void testExpectedDistributionModuleNames() {
     Assertions.assertThat(
             allLuceneModules.stream().map(module -> module.descriptor().name()).sorted())
-        .containsExactly(
+        .containsOnly(
             "org.apache.lucene.analysis.common",
             "org.apache.lucene.analysis.icu",
             "org.apache.lucene.analysis.kuromoji",
@@ -207,22 +207,23 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
 
               ClassLoader loader = layer.findLoader(coreModuleId);
 
-              final Set<Integer> jarVersions = Set.of(19, 20, 21);
-              for (var v : jarVersions) {
-                Assertions.assertThat(
-                        loader.getResource(
-                            "META-INF/versions/"
-                                + v
-                                + "/org/apache/lucene/store/MemorySegmentIndexInput.class"))
-                    .isNotNull();
-              }
+              final Set<Integer> mrJarVersions = Set.of(23);
+              final Integer baseVersion = 23;
 
-              final int runtimeVersion = Runtime.version().feature();
-              if (jarVersions.contains(runtimeVersion)) {
-                Assertions.assertThat(
-                        loader.loadClass("org.apache.lucene.store.MemorySegmentIndexInput"))
-                    .isNotNull();
-              }
+              // the Java 23 PanamaVectorizationProvider must always be in main section of JAR file:
+              final String panamaClassName =
+                  "org/apache/lucene/internal/vectorization/PanamaVectorizationProvider.class";
+              Assertions.assertThat(loader.getResource(panamaClassName)).isNotNull();
+
+              // additional versions must be in MR-JAR part
+              mrJarVersions.stream()
+                  .filter(Predicate.not(baseVersion::equals))
+                  .forEach(
+                      v -> {
+                        Assertions.assertThat(
+                                loader.getResource("META-INF/versions/" + v + panamaClassName))
+                            .isNotNull();
+                      });
             });
   }
 
@@ -299,7 +300,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
           throw new AssertionError("Impossible.");
         }
         String service = matcher.group("serviceName");
-        services.computeIfAbsent(service, k -> new TreeSet<>()).addAll(implementations);
+        services.computeIfAbsent(service, _ -> new TreeSet<>()).addAll(implementations);
       }
     }
 
@@ -313,7 +314,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
             Collectors.toMap(
                 ModuleDescriptor.Provides::service,
                 provides -> new TreeSet<>(provides.providers()),
-                (k, v) -> {
+                (_, _) -> {
                   throw new RuntimeException();
                 },
                 TreeMap::new));
@@ -328,7 +329,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
   @Test
   public void testAllExportedPackagesInSync() throws IOException {
     for (var module : allLuceneModules) {
-      Set<String> jarPackages = getJarPackages(module, entry -> true);
+      Set<String> jarPackages = getJarPackages(module, _ -> true);
       Set<ModuleDescriptor.Exports> moduleExports = new HashSet<>(module.descriptor().exports());
 
       if (module.descriptor().name().equals("org.apache.lucene.luke")) {
@@ -347,6 +348,9 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
         moduleExports.removeIf(
             export -> {
               boolean isInternal = export.source().startsWith("org.apache.lucene.internal");
+              if (isInternal && export.source().equals("org.apache.lucene.internal.hppc")) {
+                return true;
+              }
               if (isInternal) {
                 Assertions.assertThat(export.targets())
                     .containsExactlyInAnyOrder("org.apache.lucene.test_framework");

@@ -32,6 +32,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 
 /**
@@ -237,6 +238,17 @@ public class SpanNearQuery extends SpanQuery implements Cloneable {
         if (w.isCacheable(ctx) == false) return false;
       }
       return true;
+    }
+
+    @Override
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      final Spans spans = getSpans(context, Postings.POSITIONS);
+      if (spans == null) {
+        return null;
+      }
+      final var scorer =
+          new SpanScorer(spans, getSimScorer(), context.reader().getNormValues(field));
+      return new DefaultScorerSupplier(scorer);
     }
   }
 

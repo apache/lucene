@@ -41,11 +41,9 @@ import org.junit.Ignore;
 @TimeoutSuite(millis = 100 * TimeUnits.HOUR)
 public class Test2BFSTOffHeap extends LuceneTestCase {
 
-  private static long LIMIT = 3L * 1024 * 1024 * 1024;
+  private static final long LIMIT = 3L * 1024 * 1024 * 1024;
 
   public void test() throws Exception {
-    assumeWorkingMMapOnWindows();
-
     int[] ints = new int[7];
     IntsRef input = new IntsRef(ints, 0, ints.length);
     long seed = random().nextLong();
@@ -92,10 +90,13 @@ public class Test2BFSTOffHeap extends LuceneTestCase {
         nextInput(r, ints2);
       }
 
-      FST<Object> fst = fstCompiler.compile();
+      FST.FSTMetadata<Object> fstMetadata = fstCompiler.compile();
       indexOutput.close();
       try (IndexInput indexInput = dir.openInput("fst", IOContext.DEFAULT)) {
-        fst = new FST<>(fst.getMetadata(), indexInput, new OffHeapFSTStore());
+        FST<Object> fst =
+            FST.fromFSTReader(
+                fstMetadata,
+                new OffHeapFSTStore(indexInput, indexInput.getFilePointer(), fstMetadata));
 
         for (int verify = 0; verify < 2; verify++) {
           System.out.println(
@@ -180,10 +181,13 @@ public class Test2BFSTOffHeap extends LuceneTestCase {
         nextInput(r, ints);
       }
 
-      FST<BytesRef> fst = fstCompiler.compile();
+      FST.FSTMetadata<BytesRef> fstMetadata = fstCompiler.compile();
       indexOutput.close();
       try (IndexInput indexInput = dir.openInput("fst", IOContext.DEFAULT)) {
-        fst = new FST<>(fst.getMetadata(), indexInput, new OffHeapFSTStore());
+        FST<BytesRef> fst =
+            FST.fromFSTReader(
+                fstMetadata,
+                new OffHeapFSTStore(indexInput, indexInput.getFilePointer(), fstMetadata));
         for (int verify = 0; verify < 2; verify++) {
 
           System.out.println(
@@ -265,10 +269,13 @@ public class Test2BFSTOffHeap extends LuceneTestCase {
         nextInput(r, ints);
       }
 
-      FST<Long> fst = fstCompiler.compile();
+      FST.FSTMetadata<Long> fstMetadata = fstCompiler.compile();
       indexOutput.close();
       try (IndexInput indexInput = dir.openInput("fst", IOContext.DEFAULT)) {
-        fst = new FST<>(fst.getMetadata(), indexInput, new OffHeapFSTStore());
+        FST<Long> fst =
+            FST.fromFSTReader(
+                fstMetadata,
+                new OffHeapFSTStore(indexInput, indexInput.getFilePointer(), fstMetadata));
 
         for (int verify = 0; verify < 2; verify++) {
 

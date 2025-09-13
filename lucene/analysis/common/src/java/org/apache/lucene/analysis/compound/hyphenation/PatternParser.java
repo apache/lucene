@@ -142,7 +142,7 @@ public class PatternParser extends DefaultHandler {
         break;
       }
     }
-    token.append(chars.toString().substring(0, i));
+    token.append(chars, 0, i);
     // chars.delete(0,i);
     for (int countr = i; countr < chars.length(); countr++) {
       chars.setCharAt(countr - i, chars.charAt(countr));
@@ -172,8 +172,7 @@ public class PatternParser extends DefaultHandler {
     ArrayList<Object> res = new ArrayList<>();
     for (int i = 0; i < ex.size(); i++) {
       Object item = ex.get(i);
-      if (item instanceof String) {
-        String str = (String) item;
+      if (item instanceof String str) {
         StringBuilder buf = new StringBuilder();
         for (int j = 0; j < str.length(); j++) {
           char c = str.charAt(j);

@@ -16,11 +16,15 @@
  */
 
 /** Lucene JMH benchmarks. */
+
+// jmh.core is not modularized and causes a warning. Suppressing it until it is modularized.
+@SuppressWarnings("requires-automatic")
 module org.apache.lucene.benchmark.jmh {
   requires jmh.core;
   requires jdk.unsupported;
   requires org.apache.lucene.core;
   requires org.apache.lucene.expressions;
+  requires org.apache.lucene.sandbox;
 
   exports org.apache.lucene.benchmark.jmh;
   exports org.apache.lucene.benchmark.jmh.jmh_generated;

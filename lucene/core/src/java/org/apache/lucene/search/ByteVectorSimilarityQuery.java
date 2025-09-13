@@ -21,10 +21,9 @@ import java.util.Arrays;
 import java.util.Locale;
 import java.util.Objects;
 import org.apache.lucene.document.KnnByteVectorField;
-import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.util.Bits;
+import org.apache.lucene.search.knn.KnnCollectorManager;
 
 /**
  * Search for all (approximate) byte vectors above a similarity threshold.
@@ -98,20 +97,22 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
 
   @Override
   VectorScorer createVectorScorer(LeafReaderContext context) throws IOException {
-    @SuppressWarnings("resource")
-    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorEncoding() != VectorEncoding.BYTE) {
+    ByteVectorValues vectorValues = context.reader().getByteVectorValues(field);
+    if (vectorValues == null) {
       return null;
     }
-    return VectorScorer.create(context, fi, target);
+    return vectorValues.scorer(target);
   }
 
   @Override
   @SuppressWarnings("resource")
-  protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitLimit)
+  protected TopDocs approximateSearch(
+      LeafReaderContext context,
+      AcceptDocs acceptDocs,
+      int visitLimit,
+      KnnCollectorManager knnCollectorManager)
       throws IOException {
-    KnnCollector collector =
-        new VectorSimilarityCollector(traversalSimilarity, resultSimilarity, visitLimit);
+    KnnCollector collector = knnCollectorManager.newCollector(visitLimit, null, context);
     context.reader().searchNearestVectors(field, target, collector, acceptDocs);
     return collector.topDocs();
   }

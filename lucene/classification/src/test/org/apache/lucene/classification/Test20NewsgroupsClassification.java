@@ -64,6 +64,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.apache.lucene.util.SuppressForbidden;
 import org.junit.Test;
 
 @LuceneTestCase.SuppressSysoutChecks(bugUrl = "none")
@@ -76,19 +77,18 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
   private static final String SUBJECT_FIELD = "subject";
   // private static final String INDEX_DIR = "/path/to/lucene-solr/lucene/classification/20n";
 
-  private static boolean index = true;
-  private static boolean split = true;
+  private boolean index = true;
+  private boolean split = true;
 
+  @SuppressForbidden(reason = "Thread sleep")
   @Test
   public void test20Newsgroups() throws Exception {
 
     String indexProperty = System.getProperty("index");
     if (indexProperty != null) {
       try {
-        index = Boolean.valueOf(indexProperty);
-      } catch (
-          @SuppressWarnings("unused")
-          Exception e) {
+        index = Boolean.parseBoolean(indexProperty);
+      } catch (Exception _) {
         // ignore
       }
     }
@@ -96,10 +96,8 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
     String splitProperty = System.getProperty("split");
     if (splitProperty != null) {
       try {
-        split = Boolean.valueOf(splitProperty);
-      } catch (
-          @SuppressWarnings("unused")
-          Exception e) {
+        split = Boolean.parseBoolean(splitProperty);
+      } catch (Exception _) {
         // ignore
       }
     }
@@ -432,14 +430,12 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
         }
       }
       return new NewsPost(body.toString(), subject, groupName);
-    } catch (
-        @SuppressWarnings("unused")
-        Throwable e) {
+    } catch (Throwable _) {
       return null;
     }
   }
 
-  private class NewsPost {
+  private static class NewsPost {
     private final String body;
     private final String subject;
     private final String group;

@@ -158,6 +158,7 @@ public class RandomIndexWriter implements Closeable {
     } else {
       softDeletesRatio = 0d;
     }
+
     w = mockIndexWriter(dir, c, r);
     config = w.getConfig();
     flushAt = TestUtil.nextInt(r, 10, 1000);
@@ -194,7 +195,7 @@ public class RandomIndexWriter implements Closeable {
 
                 @Override
                 public Iterator<Iterable<T>> iterator() {
-                  return new Iterator<Iterable<T>>() {
+                  return new Iterator<>() {
 
                     boolean done;
 

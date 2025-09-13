@@ -215,7 +215,7 @@ public class FilterPath implements Path, Unwrappable<Path> {
   @Override
   public Iterator<Path> iterator() {
     final Iterator<Path> iterator = delegate.iterator();
-    return new Iterator<Path>() {
+    return new Iterator<>() {
       @Override
       public boolean hasNext() {
         return iterator.hasNext();
@@ -276,8 +276,7 @@ public class FilterPath implements Path, Unwrappable<Path> {
 
   /** Override this to customize the unboxing of Path from various operations */
   protected Path toDelegate(Path path) {
-    if (path instanceof FilterPath) {
-      FilterPath fp = (FilterPath) path;
+    if (path instanceof FilterPath fp) {
       if (fp.fileSystem != fileSystem) {
         throw new ProviderMismatchException(
             "mismatch, expected: "

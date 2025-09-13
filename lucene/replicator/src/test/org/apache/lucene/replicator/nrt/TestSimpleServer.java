@@ -21,7 +21,6 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -33,8 +32,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
@@ -45,7 +46,6 @@ import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.tests.util.TestRuleIgnoreTestSuites;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.SuppressForbidden;
 import org.junit.Assume;
@@ -58,8 +58,8 @@ import org.junit.BeforeClass;
  */
 @SuppressCodecs({"MockRandom", "Direct", "SimpleText"})
 @SuppressSysoutChecks(bugUrl = "Stuff gets printed, important stuff for debugging a failure")
-@SuppressForbidden(reason = "We need Unsafe to actually crush :-)")
 public class TestSimpleServer extends LuceneTestCase {
+  private static final boolean VERBOSE_CONNECTIONS = true;
 
   static final Set<Thread> clientThreads = Collections.synchronizedSet(new HashSet<>());
   static final AtomicBoolean stop = new AtomicBoolean();
@@ -78,7 +78,7 @@ public class TestSimpleServer extends LuceneTestCase {
       this.node = node;
       this.socket = socket;
       this.bufferSize = TestUtil.nextInt(random(), 128, 65536);
-      if (Node.VERBOSE_CONNECTIONS) {
+      if (VERBOSE_CONNECTIONS) {
         node.message("new connection socket=" + socket);
       }
     }
@@ -101,7 +101,7 @@ public class TestSimpleServer extends LuceneTestCase {
         }
 
         bos.flush();
-        if (Node.VERBOSE_CONNECTIONS) {
+        if (VERBOSE_CONNECTIONS) {
           node.message("bos.flush done");
         }
 
@@ -129,45 +129,10 @@ public class TestSimpleServer extends LuceneTestCase {
           IOUtils.closeWhileHandlingException(socket);
         }
       }
-      if (Node.VERBOSE_CONNECTIONS) {
+      if (VERBOSE_CONNECTIONS) {
         node.message("socket.close done");
       }
     }
-  }
-
-  /** currently, this only works/tested on Sun and IBM. */
-
-  // poached from TestIndexWriterOnJRECrash ... should we factor out to TestUtil?  seems dangerous
-  // to give it such "publicity"?
-  private static void crashJRE() {
-    final String vendor = Constants.JAVA_VENDOR;
-    final boolean supportsUnsafeNpeDereference =
-        vendor.startsWith("Oracle") || vendor.startsWith("Sun") || vendor.startsWith("Apple");
-
-    try {
-      if (supportsUnsafeNpeDereference) {
-        try {
-          Class<?> clazz = Class.forName("sun.misc.Unsafe");
-          java.lang.reflect.Field field = clazz.getDeclaredField("theUnsafe");
-          field.setAccessible(true);
-          Object o = field.get(null);
-          Method m = clazz.getMethod("putAddress", long.class, long.class);
-          m.invoke(o, 0L, 0L);
-        } catch (Throwable e) {
-          System.out.println("Couldn't kill the JVM via Unsafe.");
-          e.printStackTrace(System.out);
-        }
-      }
-
-      // Fallback attempt to Runtime.halt();
-      Runtime.getRuntime().halt(-1);
-    } catch (Exception e) {
-      System.out.println("Couldn't kill the JVM.");
-      e.printStackTrace(System.out);
-    }
-
-    // We couldn't get the JVM to crash for some reason.
-    throw new RuntimeException("JVM refuses to die!");
   }
 
   static void writeFilesMetaData(DataOutput out, Map<String, FileMetaData> files)
@@ -177,12 +142,12 @@ public class TestSimpleServer extends LuceneTestCase {
       out.writeString(ent.getKey());
 
       FileMetaData fmd = ent.getValue();
-      out.writeVLong(fmd.length);
-      out.writeVLong(fmd.checksum);
-      out.writeVInt(fmd.header.length);
-      out.writeBytes(fmd.header, 0, fmd.header.length);
-      out.writeVInt(fmd.footer.length);
-      out.writeBytes(fmd.footer, 0, fmd.footer.length);
+      out.writeVLong(fmd.length());
+      out.writeVLong(fmd.checksum());
+      out.writeVInt(fmd.header().length);
+      out.writeBytes(fmd.header(), 0, fmd.header().length);
+      out.writeVInt(fmd.footer().length);
+      out.writeBytes(fmd.footer(), 0, fmd.footer().length);
     }
   }
 
@@ -323,20 +288,21 @@ public class TestSimpleServer extends LuceneTestCase {
         if (doClose) {
           node.message("top: will close after " + (waitForMS / 1000.0) + " seconds");
         } else {
-          node.message("top: will crash after " + (waitForMS / 1000.0) + " seconds");
+          // This message is pattern-parsed in TestStressNRTReplication, don't change it.
+          node.message(
+              "top: " + TestStressNRTReplication.CRASH_MSG_PREFIX + waitForMS + " milliseconds");
         }
 
         Thread t =
             new Thread() {
+              @SuppressForbidden(reason = "Thread sleep")
               @Override
               public void run() {
                 long endTime = System.nanoTime() + waitForMS * 1000000L;
                 while (System.nanoTime() < endTime) {
                   try {
                     Thread.sleep(10);
-                  } catch (
-                      @SuppressWarnings("unused")
-                      InterruptedException e) {
+                  } catch (InterruptedException _) {
                   }
                   if (stop.get()) {
                     break;
@@ -356,8 +322,19 @@ public class TestSimpleServer extends LuceneTestCase {
                       throw new RuntimeException(ioe);
                     }
                   } else {
-                    node.message("top: now crash JVM after " + (waitForMS / 1000.0) + " seconds");
-                    crashJRE();
+                    node.message(
+                        String.format(
+                            Locale.ROOT,
+                            "Expecting this JVM (PID: %s) to crash about now (after %.2f seconds)",
+                            ProcessHandle.current().pid(),
+                            (waitForMS / 1000.0)));
+                    while (true) {
+                      try {
+                        new CountDownLatch(1).await();
+                      } catch (InterruptedException _) {
+                        // We'll eventually be killed by an outside process, retry.
+                      }
+                    }
                   }
                 }
               }
@@ -382,9 +359,7 @@ public class TestSimpleServer extends LuceneTestCase {
         Socket socket;
         try {
           socket = ss.accept();
-        } catch (
-            @SuppressWarnings("unused")
-            SocketException se) {
+        } catch (SocketException _) {
           // when ClientHandler closes our ss we will hit this
           node.message("top: server socket exc; now exit");
           break;

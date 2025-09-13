@@ -30,6 +30,7 @@ import org.apache.lucene.facet.FacetField;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.AssociationAggregationFunction;
 import org.apache.lucene.facet.taxonomy.TaxonomyFacetFloatAssociations;
@@ -97,12 +98,13 @@ public class ExpressionAggregationFacetsExample {
         DoubleValuesSource.fromLongField("popularity")); // the value of the 'popularity' field
 
     // Aggregates the facet values
-    FacetsCollector fc = new FacetsCollector(true);
+    FacetsCollectorManager fcm = new FacetsCollectorManager(true);
 
     // MatchAllDocsQuery is for "browsing" (counts facets
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query:
-    FacetsCollector.search(searcher, new MatchAllDocsQuery(), 10, fc);
+    FacetsCollector fc =
+        FacetsCollectorManager.search(searcher, new MatchAllDocsQuery(), 10, fcm).facetsCollector();
 
     // Retrieve results
     Facets facets =

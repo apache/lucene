@@ -28,6 +28,7 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
@@ -48,7 +49,6 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
   private final BytesRefBuilder scratch = new BytesRefBuilder();
 
   SimpleTextKnnVectorsWriter(SegmentWriteState state) throws IOException {
-    boolean success = false;
     // exception handling to pass TestSimpleTextKnnVectorsFormat#testRandomExceptions
     try {
       String metaFileName =
@@ -64,11 +64,9 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
               state.segmentSuffix,
               SimpleTextKnnVectorsFormat.VECTOR_EXTENSION);
       vectorData = state.directory.createOutput(vectorDataFileName, state.context);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -77,19 +75,18 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
       throws IOException {
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
-    for (int docV = floatVectorValues.nextDoc();
-        docV != NO_MORE_DOCS;
-        docV = floatVectorValues.nextDoc()) {
-      writeFloatVectorValue(floatVectorValues);
-      docIds.add(docV);
+    KnnVectorValues.DocIndexIterator iter = floatVectorValues.iterator();
+    for (int docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {
+      writeFloatVectorValue(floatVectorValues, iter.index());
+      docIds.add(docId);
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     writeMeta(fieldInfo, vectorDataOffset, vectorDataLength, docIds);
   }
 
-  private void writeFloatVectorValue(FloatVectorValues vectors) throws IOException {
+  private void writeFloatVectorValue(FloatVectorValues vectors, int ord) throws IOException {
     // write vector value
-    float[] value = vectors.vectorValue();
+    float[] value = vectors.vectorValue(ord);
     assert value.length == vectors.dimension();
     write(vectorData, Arrays.toString(value));
     newline(vectorData);
@@ -100,19 +97,18 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
       throws IOException {
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
-    for (int docV = byteVectorValues.nextDoc();
-        docV != NO_MORE_DOCS;
-        docV = byteVectorValues.nextDoc()) {
-      writeByteVectorValue(byteVectorValues);
+    KnnVectorValues.DocIndexIterator it = byteVectorValues.iterator();
+    for (int docV = it.nextDoc(); docV != NO_MORE_DOCS; docV = it.nextDoc()) {
+      writeByteVectorValue(byteVectorValues, it.index());
       docIds.add(docV);
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     writeMeta(fieldInfo, vectorDataOffset, vectorDataLength, docIds);
   }
 
-  private void writeByteVectorValue(ByteVectorValues vectors) throws IOException {
+  private void writeByteVectorValue(ByteVectorValues vectors, int ord) throws IOException {
     // write vector value
-    byte[] value = vectors.vectorValue();
+    byte[] value = vectors.vectorValue(ord);
     assert value.length == vectors.dimension();
     write(vectorData, Arrays.toString(value));
     newline(vectorData);

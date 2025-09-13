@@ -18,6 +18,8 @@ package org.apache.lucene.benchmark.byTask.feeds;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -40,22 +42,28 @@ public abstract class TrecDocParser {
   /** trec parser type used for unknown extensions */
   public static final ParsePathType DEFAULT_PATH_TYPE = ParsePathType.GOV2;
 
-  static final Map<ParsePathType, TrecDocParser> pathType2parser = new HashMap<>();
+  static final Map<ParsePathType, TrecDocParser> pathType2Parser;
 
   static {
-    pathType2parser.put(ParsePathType.GOV2, new TrecGov2Parser());
-    pathType2parser.put(ParsePathType.FBIS, new TrecFBISParser());
-    pathType2parser.put(ParsePathType.FR94, new TrecFR94Parser());
-    pathType2parser.put(ParsePathType.FT, new TrecFTParser());
-    pathType2parser.put(ParsePathType.LATIMES, new TrecLATimesParser());
+    pathType2Parser =
+        Collections.unmodifiableMap(
+            new EnumMap<>(
+                Map.of(
+                    ParsePathType.GOV2, new TrecGov2Parser(),
+                    ParsePathType.FBIS, new TrecFBISParser(),
+                    ParsePathType.FR94, new TrecFR94Parser(),
+                    ParsePathType.FT, new TrecFTParser(),
+                    ParsePathType.LATIMES, new TrecLATimesParser())));
   }
 
-  static final Map<String, ParsePathType> pathName2Type = new HashMap<>();
+  static final Map<String, ParsePathType> pathName2Type;
 
   static {
+    Map<String, ParsePathType> name2Type = new HashMap<>();
     for (ParsePathType ppt : ParsePathType.values()) {
-      pathName2Type.put(ppt.name().toUpperCase(Locale.ROOT), ppt);
+      name2Type.put(ppt.name().toUpperCase(Locale.ROOT), ppt);
     }
+    pathName2Type = Collections.unmodifiableMap(name2Type);
   }
 
   /** max length of walk up from file to its ancestors when looking for a known path type */

@@ -42,7 +42,6 @@ final class Lucene90NormsConsumer extends NormsConsumer {
       String metaCodec,
       String metaExtension)
       throws IOException {
-    boolean success = false;
     try {
       String dataName =
           IndexFileNames.segmentFileName(
@@ -57,32 +56,29 @@ final class Lucene90NormsConsumer extends NormsConsumer {
       CodecUtil.writeIndexHeader(
           meta, metaCodec, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
       maxDoc = state.segmentInfo.maxDoc();
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
   @Override
   public void close() throws IOException {
-    boolean success = false;
     try {
-      if (meta != null) {
-        meta.writeInt(-1); // write EOF marker
-        CodecUtil.writeFooter(meta); // write checksum
+      try {
+        if (meta != null) {
+          meta.writeInt(-1); // write EOF marker
+          CodecUtil.writeFooter(meta); // write checksum
+        }
+        if (data != null) {
+          CodecUtil.writeFooter(data); // write checksum
+        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, data, meta);
+        throw t;
       }
-      if (data != null) {
-        CodecUtil.writeFooter(data); // write checksum
-      }
-      success = true;
+      IOUtils.close(data, meta);
     } finally {
-      if (success) {
-        IOUtils.close(data, meta);
-      } else {
-        IOUtils.closeWhileHandlingException(data, meta);
-      }
       meta = data = null;
     }
   }

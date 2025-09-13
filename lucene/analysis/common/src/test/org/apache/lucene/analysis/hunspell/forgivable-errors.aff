@@ -1,4 +1,4 @@
-REP 1
+REP 0
 REP foo bar goo doo zoo
 
 COMPOUNDWORDMAX 2 y
@@ -13,3 +13,7 @@ MAP a b
 SFX A Y 1
 SFX A   nout        l          [aeiouyáéíóúýůěr][^aeiouyáéíóúýůěrl][^aeiouy
 SFX A b c d
+
+ICONV 2
+ICONV x y
+ICONV x y

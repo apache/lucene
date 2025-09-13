@@ -49,7 +49,7 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
             @Override
             public void compress(ByteBuffersDataInput buffersInput, DataOutput out)
                 throws IOException {
-              out.copyBytes(buffersInput, buffersInput.size());
+              out.copyBytes(buffersInput, buffersInput.length());
             }
           };
         }
@@ -101,11 +101,13 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
     // Don't pull a merge instance, since merge instances optimize for
     // sequential access while we consume stored fields in random order here.
     StoredFieldsWriter sortWriter =
-        codec
-            .storedFieldsFormat()
-            .fieldsWriter(state.directory, state.segmentInfo, IOContext.DEFAULT);
+        codec.storedFieldsFormat().fieldsWriter(state.directory, state.segmentInfo, state.context);
     try {
-      reader.checkIntegrity();
+      // Don't perform a full integrity check via reader.checkIntegrity() here,
+      // in order to avoid reading the tmp stored field files twice.
+      // The light-weight integrity check via Lucene90CompressingStoredFieldsReader should be
+      // sufficient
+      // in the context of flushing.
       CopyVisitor visitor = new CopyVisitor(sortWriter);
       for (int docID = 0; docID < state.segmentInfo.maxDoc(); docID++) {
         sortWriter.startDocument();
@@ -140,8 +142,8 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
     }
 
     @Override
-    public void binaryField(FieldInfo fieldInfo, DataInput value, int length) throws IOException {
-      writer.writeField(fieldInfo, value, length);
+    public void binaryField(FieldInfo fieldInfo, StoredFieldDataInput value) throws IOException {
+      writer.writeField(fieldInfo, value);
     }
 
     @Override

@@ -29,10 +29,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.zip.GZIPInputStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -53,6 +59,35 @@ import org.apache.lucene.util.IOUtils;
  * created by benchmark's WriteLineDoc task
  */
 public class LineFileDocs implements Closeable {
+  /**
+   * Converts date formats for europarl ("2023-02-23") and enwiki ("12-JAN-2010 12:32:45.000") into
+   * {@link LocalDateTime}.
+   */
+  public static final Function<String, LocalDateTime> DATE_FIELD_VALUE_TO_LOCALDATETIME =
+      new Function<>() {
+        final DateTimeFormatter euroParl =
+            new DateTimeFormatterBuilder()
+                .parseStrict()
+                .parseCaseInsensitive()
+                .appendPattern("uuuu-MM-dd")
+                .toFormatter(Locale.ROOT);
+
+        final DateTimeFormatter enwiki =
+            new DateTimeFormatterBuilder()
+                .parseStrict()
+                .parseCaseInsensitive()
+                .appendPattern("dd-MMM-uuuu HH:mm:ss['.'SSS]")
+                .toFormatter(Locale.ROOT);
+
+        @Override
+        public LocalDateTime apply(String s) {
+          if (s.matches("^[0-9]{4}-[0-9]{2}-[0-9]{2}$")) {
+            return euroParl.parse(s, LocalDate::from).atStartOfDay();
+          } else {
+            return enwiki.parse(s, LocalDateTime::from);
+          }
+        }
+      };
 
   private BufferedReader reader;
   private static final int BUFFER_SIZE = 1 << 16; // 64K
@@ -272,7 +307,7 @@ public class LineFileDocs implements Closeable {
       throw new RuntimeException("line: [" + line + "] is in an invalid format !");
     }
 
-    docState.body.setStringValue(line.substring(1 + spot2, line.length()));
+    docState.body.setStringValue(line.substring(1 + spot2));
     final String title = line.substring(0, spot);
     docState.title.setStringValue(title);
     docState.titleTokenized.setStringValue(title);

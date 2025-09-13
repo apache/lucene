@@ -259,7 +259,10 @@ final class Rectangle2D implements Component2D {
     if (this == o) return true;
     if (!(o instanceof Rectangle2D)) return false;
     Rectangle2D that = (Rectangle2D) o;
-    return minX == that.minX && maxX == that.maxX && minY == that.minY && maxY == that.maxY;
+    return Double.compare(minX, that.minX) == 0
+        && Double.compare(maxX, that.maxX) == 0
+        && Double.compare(minY, that.minY) == 0
+        && Double.compare(maxY, that.maxY) == 0;
   }
 
   @Override
@@ -271,7 +274,7 @@ final class Rectangle2D implements Component2D {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("XYRectangle(x=");
+    sb.append("Rectangle2D(x=");
     sb.append(minX);
     sb.append(" TO ");
     sb.append(maxX);
@@ -288,8 +291,8 @@ final class Rectangle2D implements Component2D {
     return new Rectangle2D(rectangle.minX, rectangle.maxX, rectangle.minY, rectangle.maxY);
   }
 
-  private static double MIN_LON_INCL_QUANTIZE = decodeLongitude(MIN_LON_ENCODED);
-  private static double MAX_LON_INCL_QUANTIZE = decodeLongitude(MAX_LON_ENCODED);
+  private static final double MIN_LON_INCL_QUANTIZE = decodeLongitude(MIN_LON_ENCODED);
+  private static final double MAX_LON_INCL_QUANTIZE = decodeLongitude(MAX_LON_ENCODED);
 
   /** create a component2D from the provided LatLon rectangle */
   static Component2D create(Rectangle rectangle) {

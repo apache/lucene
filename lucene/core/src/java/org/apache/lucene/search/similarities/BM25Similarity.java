@@ -18,11 +18,10 @@ package org.apache.lucene.search.similarities;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.index.FieldInvertState;
-import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.SmallFloat;
 
 /**
@@ -33,7 +32,6 @@ import org.apache.lucene.util.SmallFloat;
 public class BM25Similarity extends Similarity {
   private final float k1;
   private final float b;
-  private final boolean discountOverlaps;
 
   /**
    * BM25 with the supplied parameter values.
@@ -46,6 +44,7 @@ public class BM25Similarity extends Similarity {
    *     within the range {@code [0..1]}
    */
   public BM25Similarity(float k1, float b, boolean discountOverlaps) {
+    super(discountOverlaps);
     if (Float.isFinite(k1) == false || k1 < 0) {
       throw new IllegalArgumentException(
           "illegal k1 value: " + k1 + ", must be a non-negative finite value");
@@ -55,7 +54,6 @@ public class BM25Similarity extends Similarity {
     }
     this.k1 = k1;
     this.b = b;
-    this.discountOverlaps = discountOverlaps;
   }
 
   /**
@@ -110,15 +108,6 @@ public class BM25Similarity extends Similarity {
     return (float) (collectionStats.sumTotalTermFreq() / (double) collectionStats.docCount());
   }
 
-  /**
-   * Returns true if overlap tokens are discounted from the document's length.
-   *
-   * @see #BM25Similarity(float, float, boolean)
-   */
-  public boolean getDiscountOverlaps() {
-    return discountOverlaps;
-  }
-
   /** Cache of decoded bytes. */
   private static final float[] LENGTH_TABLE = new float[256];
 
@@ -126,19 +115,6 @@ public class BM25Similarity extends Similarity {
     for (int i = 0; i < 256; i++) {
       LENGTH_TABLE[i] = SmallFloat.byte4ToInt((byte) i);
     }
-  }
-
-  @Override
-  public final long computeNorm(FieldInvertState state) {
-    final int numTerms;
-    if (state.getIndexOptions() == IndexOptions.DOCS && state.getIndexCreatedVersionMajor() >= 8) {
-      numTerms = state.getUniqueTermCount();
-    } else if (discountOverlaps) {
-      numTerms = state.getLength() - state.getNumOverlap();
-    } else {
-      numTerms = state.getLength();
-    }
-    return SmallFloat.intToByte4(numTerms);
   }
 
   /**
@@ -242,8 +218,7 @@ public class BM25Similarity extends Similarity {
       this.weight = boost * idf.getValue().floatValue();
     }
 
-    @Override
-    public float score(float freq, long encodedNorm) {
+    private float doScore(float freq, float normInverse) {
       // In order to guarantee monotonicity with both freq and norm without
       // promoting to doubles, we rewrite freq / (freq + norm) to
       // 1 - 1 / (1 + freq * 1/norm).
@@ -253,8 +228,36 @@ public class BM25Similarity extends Similarity {
       // x -> 1 + x and x -> 1 - 1/x.
       // Finally we expand weight * (1 - 1 / (1 + freq * 1/norm)) to
       // weight - weight / (1 + freq * 1/norm), which runs slightly faster.
-      float normInverse = cache[((byte) encodedNorm) & 0xFF];
       return weight - weight / (1f + freq * normInverse);
+    }
+
+    @Override
+    public float score(float freq, long encodedNorm) {
+      float normInverse = cache[((byte) encodedNorm) & 0xFF];
+      return doScore(freq, normInverse);
+    }
+
+    @Override
+    public BulkSimScorer asBulkSimScorer() {
+      return new BulkSimScorer() {
+
+        private float[] normInverses = new float[0];
+
+        @Override
+        public void score(int size, float[] freqs, long[] norms, float[] scores) {
+          if (normInverses.length < size) {
+            normInverses = new float[ArrayUtil.oversize(size, Float.BYTES)];
+          }
+          for (int i = 0; i < size; ++i) {
+            normInverses[i] = cache[((byte) norms[i]) & 0xFF];
+          }
+
+          // This loop auto-vectorizes.
+          for (int i = 0; i < size; ++i) {
+            scores[i] = doScore(freqs[i], normInverses[i]);
+          }
+        }
+      };
     }
 
     @Override

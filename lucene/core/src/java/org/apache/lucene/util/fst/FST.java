@@ -417,16 +417,7 @@ public final class FST<T> implements Accountable {
    * maxBlockBits set to {@link #DEFAULT_MAX_BLOCK_BITS}
    */
   public FST(FSTMetadata<T> metadata, DataInput in) throws IOException {
-    this(metadata, in, new OnHeapFSTStore(DEFAULT_MAX_BLOCK_BITS));
-  }
-
-  /**
-   * Load a previously saved FST with a metdata object and a FSTStore. If using {@link
-   * OnHeapFSTStore}, setting maxBlockBits allows you to control the size of the byte[] pages used
-   * to hold the FST bytes.
-   */
-  public FST(FSTMetadata<T> metadata, DataInput in, FSTStore fstStore) throws IOException {
-    this(metadata, fstStore.init(in, metadata.numBytes));
+    this(metadata, new OnHeapFSTStore(DEFAULT_MAX_BLOCK_BITS, in, metadata.numBytes));
   }
 
   /** Create the FST with a metadata object and a FSTReader. */
@@ -435,6 +426,21 @@ public final class FST<T> implements Accountable {
     this.metadata = Objects.requireNonNull(metadata, "FSTMetadata cannot be null");
     this.outputs = metadata.outputs;
     this.fstReader = fstReader;
+  }
+
+  /**
+   * Create a FST from a {@link FSTReader}. Return null if the metadata is null.
+   *
+   * @param fstMetadata the metadata
+   * @param fstReader the FSTReader
+   * @return the FST
+   */
+  public static <T> FST<T> fromFSTReader(FSTMetadata<T> fstMetadata, FSTReader fstReader) {
+    // FSTMetadata could be null if there is no node accepted by the FST
+    if (fstMetadata == null) {
+      return null;
+    }
+    return new FST<>(fstMetadata, Objects.requireNonNull(fstReader, "FSTReader cannot be null"));
   }
 
   /**
@@ -475,19 +481,13 @@ public final class FST<T> implements Accountable {
     }
     INPUT_TYPE inputType;
     final byte t = metaIn.readByte();
-    switch (t) {
-      case 0:
-        inputType = INPUT_TYPE.BYTE1;
-        break;
-      case 1:
-        inputType = INPUT_TYPE.BYTE2;
-        break;
-      case 2:
-        inputType = INPUT_TYPE.BYTE4;
-        break;
-      default:
-        throw new CorruptIndexException("invalid input type " + t, metaIn);
-    }
+    inputType =
+        switch (t) {
+          case 0 -> INPUT_TYPE.BYTE1;
+          case 1 -> INPUT_TYPE.BYTE2;
+          case 2 -> INPUT_TYPE.BYTE4;
+          default -> throw new CorruptIndexException("invalid input type " + t, metaIn);
+        };
     long startNode = metaIn.readVLong();
     long numBytes = metaIn.readVLong();
     return new FSTMetadata<>(inputType, outputs, emptyOutput, startNode, version, numBytes);
@@ -516,62 +516,14 @@ public final class FST<T> implements Accountable {
   }
 
   /**
-   * Save the FST to DataOutput. If you use an {@link org.apache.lucene.store.IndexOutput} to build
-   * the FST, then you should not and do not need to call this method, as the FST is already saved.
-   * Doing so will throw an {@link UnsupportedOperationException}.
+   * Save the FST to DataOutput.
    *
    * @param metaOut the DataOutput to write the metadata to
    * @param out the DataOutput to write the FST bytes to
    */
   public void save(DataOutput metaOut, DataOutput out) throws IOException {
-    saveMetadata(metaOut);
+    metadata.save(metaOut);
     fstReader.writeTo(out);
-  }
-
-  /**
-   * Save the metadata to a DataOutput
-   *
-   * @param metaOut the DataOutput to write the metadata to
-   */
-  public void saveMetadata(DataOutput metaOut) throws IOException {
-    CodecUtil.writeHeader(metaOut, FILE_FORMAT_NAME, VERSION_CURRENT);
-    // TODO: really we should encode this as an arc, arriving
-    // to the root node, instead of special casing here:
-    if (metadata.emptyOutput != null) {
-      // Accepts empty string
-      metaOut.writeByte((byte) 1);
-
-      // Serialize empty-string output:
-      ByteBuffersDataOutput ros = new ByteBuffersDataOutput();
-      outputs.writeFinalOutput(metadata.emptyOutput, ros);
-      byte[] emptyOutputBytes = ros.toArrayCopy();
-      int emptyLen = emptyOutputBytes.length;
-
-      // reverse
-      final int stopAt = emptyLen / 2;
-      int upto = 0;
-      while (upto < stopAt) {
-        final byte b = emptyOutputBytes[upto];
-        emptyOutputBytes[upto] = emptyOutputBytes[emptyLen - upto - 1];
-        emptyOutputBytes[emptyLen - upto - 1] = b;
-        upto++;
-      }
-      metaOut.writeVInt(emptyLen);
-      metaOut.writeBytes(emptyOutputBytes, 0, emptyLen);
-    } else {
-      metaOut.writeByte((byte) 0);
-    }
-    final byte t;
-    if (metadata.inputType == INPUT_TYPE.BYTE1) {
-      t = 0;
-    } else if (metadata.inputType == INPUT_TYPE.BYTE2) {
-      t = 1;
-    } else {
-      t = 2;
-    }
-    metaOut.writeByte(t);
-    metaOut.writeVLong(metadata.startNode);
-    metaOut.writeVLong(numBytes());
   }
 
   /** Writes an automaton to a file. */
@@ -672,7 +624,6 @@ public final class FST<T> implements Accountable {
       arc.output = follow.nextFinalOutput();
       arc.flags = BIT_LAST_ARC;
       arc.nodeFlags = arc.flags;
-      return arc;
     } else {
       in.setPosition(follow.target());
       byte flags = arc.nodeFlags = in.readByte();
@@ -725,8 +676,8 @@ public final class FST<T> implements Accountable {
         readNextRealArc(arc, in);
       }
       assert arc.isLast();
-      return arc;
     }
+    return arc;
   }
 
   private long readUnpackedNodeTarget(BytesReader in) throws IOException {
@@ -1244,6 +1195,60 @@ public final class FST<T> implements Accountable {
      */
     public int getVersion() {
       return version;
+    }
+
+    public T getEmptyOutput() {
+      return emptyOutput;
+    }
+
+    public long getNumBytes() {
+      return numBytes;
+    }
+
+    /**
+     * Save the metadata to a DataOutput
+     *
+     * @param metaOut the DataOutput to write the metadata to
+     */
+    public void save(DataOutput metaOut) throws IOException {
+      CodecUtil.writeHeader(metaOut, FILE_FORMAT_NAME, VERSION_CURRENT);
+      // TODO: really we should encode this as an arc, arriving
+      // to the root node, instead of special casing here:
+      if (emptyOutput != null) {
+        // Accepts empty string
+        metaOut.writeByte((byte) 1);
+
+        // Serialize empty-string output:
+        ByteBuffersDataOutput ros = new ByteBuffersDataOutput();
+        outputs.writeFinalOutput(emptyOutput, ros);
+        byte[] emptyOutputBytes = ros.toArrayCopy();
+        int emptyLen = emptyOutputBytes.length;
+
+        // reverse
+        final int stopAt = emptyLen / 2;
+        int upto = 0;
+        while (upto < stopAt) {
+          final byte b = emptyOutputBytes[upto];
+          emptyOutputBytes[upto] = emptyOutputBytes[emptyLen - upto - 1];
+          emptyOutputBytes[emptyLen - upto - 1] = b;
+          upto++;
+        }
+        metaOut.writeVInt(emptyLen);
+        metaOut.writeBytes(emptyOutputBytes, 0, emptyLen);
+      } else {
+        metaOut.writeByte((byte) 0);
+      }
+      final byte t;
+      if (inputType == INPUT_TYPE.BYTE1) {
+        t = 0;
+      } else if (inputType == INPUT_TYPE.BYTE2) {
+        t = 1;
+      } else {
+        t = 2;
+      }
+      metaOut.writeByte(t);
+      metaOut.writeVLong(startNode);
+      metaOut.writeVLong(numBytes);
     }
   }
 }

@@ -478,14 +478,14 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
         // ">"
         =
             TestUtil.randomHtmlishString(random(), maxNumElems)
-                .replaceAll(">", " ")
+                .replace('>', ' ')
                 .replaceFirst("^--", "__");
     String closedAngleBangNonCDATA = "<!" + randomHtmlishString1 + "-[CDATA[&]]>";
 
     // Don't create a comment (disallow "<!--") and don't include a closing ">"
     String randomHtmlishString2 =
         TestUtil.randomHtmlishString(random(), maxNumElems)
-            .replaceAll(">", " ")
+            .replace('>', ' ')
             .replaceFirst("^--", "__");
     String unclosedAngleBangNonCDATA = "<!" + randomHtmlishString2 + "-[CDATA[";
 
@@ -669,7 +669,7 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
         builder.append((char) ch);
       }
     } catch (Exception e) {
-      if (gold.equals(builder.toString())) {
+      if (gold.contentEquals(builder)) {
         throw e;
       }
       throw new Exception(

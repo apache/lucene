@@ -117,6 +117,10 @@ public final class IndexOrDocValuesQuery extends Query {
         || dvRewrite.getClass() == MatchAllDocsQuery.class) {
       return new MatchAllDocsQuery();
     }
+    if (indexRewrite.getClass() == MatchNoDocsQuery.class
+        || dvRewrite.getClass() == MatchNoDocsQuery.class) {
+      return new MatchNoDocsQuery();
+    }
     if (indexQuery != indexRewrite || dvQuery != dvRewrite) {
       return new IndexOrDocValuesQuery(indexRewrite, dvRewrite);
     }
@@ -146,13 +150,6 @@ public final class IndexOrDocValuesQuery extends Query {
       public Explanation explain(LeafReaderContext context, int doc) throws IOException {
         // We need to check a single doc, so the dv query should perform better
         return dvWeight.explain(context, doc);
-      }
-
-      @Override
-      public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-        // Bulk scorers need to consume the entire set of docs, so using an
-        // index structure should perform better
-        return indexWeight.bulkScorer(context);
       }
 
       @Override
@@ -187,19 +184,17 @@ public final class IndexOrDocValuesQuery extends Query {
           }
 
           @Override
+          public BulkScorer bulkScorer() throws IOException {
+            // Bulk scorers need to consume the entire set of docs, so using an
+            // index structure should perform better
+            return indexScorerSupplier.bulkScorer();
+          }
+
+          @Override
           public long cost() {
             return indexScorerSupplier.cost();
           }
         };
-      }
-
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
       }
 
       @Override

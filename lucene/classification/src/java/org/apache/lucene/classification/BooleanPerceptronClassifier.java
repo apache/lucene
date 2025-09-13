@@ -148,7 +148,7 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
       if (textField != null && classField != null) {
         // assign class to the doc
         ClassificationResult<Boolean> classificationResult = assignClass(textField.stringValue());
-        Boolean assignedClass = classificationResult.getAssignedClass();
+        Boolean assignedClass = classificationResult.assignedClass();
 
         Boolean correctClass = Boolean.valueOf(classField.stringValue());
         double modifier = Math.signum(correctClass.compareTo(assignedClass));
@@ -216,7 +216,7 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
       fstCompiler.add(
           Util.toIntsRef(scratchBytes.get(), scratchInts), entry.getValue().longValue());
     }
-    fst = fstCompiler.compile();
+    fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
   }
 
   @Override

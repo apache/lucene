@@ -43,9 +43,7 @@ public class TestDirectory extends LuceneTestCase {
 
     final List<FSDirectory> dirs0 = new ArrayList<>();
     dirs0.add(new NIOFSDirectory(path));
-    if (hasWorkingMMapOnWindows()) {
-      dirs0.add(new MMapDirectory(path));
-    }
+    dirs0.add(new MMapDirectory(path));
     final FSDirectory[] dirs = dirs0.toArray(FSDirectory[]::new);
 
     for (int i = 0; i < dirs.length; i++) {
@@ -62,9 +60,6 @@ public class TestDirectory extends LuceneTestCase {
         d2.ensureOpen();
         assertTrue(slowFileExists(d2, fname));
         assertEquals(1 + largeBuffer.length, d2.fileLength(fname));
-
-        // don't do read tests if unmapping is not supported!
-        if (d2 instanceof MMapDirectory && !MMapDirectory.UNMAP_SUPPORTED) continue;
 
         IndexInput input = d2.openInput(fname, newIOContext(random()));
         assertEquals((byte) i, input.readByte());

@@ -57,6 +57,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.StoredFieldDataInput;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
@@ -66,6 +67,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -177,7 +179,7 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
             System.out.println("TEST: test id=" + testID);
           }
           TopDocs hits = s.search(new TermQuery(new Term("id", testID)), 1);
-          assertEquals(1, hits.totalHits.value);
+          assertEquals(1, hits.totalHits.value());
           Document doc = storedFields.document(hits.scoreDocs[0].doc);
           Document docExp = docs.get(testID);
           for (int i = 0; i < fieldCount; i++) {
@@ -471,9 +473,9 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
                 try {
                   StoredFields storedFields = rd.storedFields();
                   final TopDocs topDocs = searcher.search(query, 1);
-                  if (topDocs.totalHits.value != 1) {
+                  if (topDocs.totalHits.value() != 1) {
                     throw new IllegalStateException(
-                        "Expected 1 hit, got " + topDocs.totalHits.value);
+                        "Expected 1 hit, got " + topDocs.totalHits.value());
                   }
                   final Document sdoc = storedFields.document(topDocs.scoreDocs[0].doc);
                   if (sdoc == null || sdoc.get("fld") == null) {
@@ -682,7 +684,13 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
       doc.add(new StoredField("d", random().nextDouble()));
       doc.add(new StoredField("f", random().nextFloat()));
       doc.add(new StoredField("s", RandomPicks.randomFrom(random(), stringValues)));
-      doc.add(new StoredField("b", new BytesRef(RandomPicks.randomFrom(random(), stringValues))));
+      BytesRef value = new BytesRef(RandomPicks.randomFrom(random(), stringValues));
+      doc.add(new StoredField("b", value));
+      doc.add(
+          new StoredField(
+              "b2",
+              new StoredFieldDataInput(
+                  new ByteArrayDataInput(value.bytes, value.offset, value.length))));
       docs[i] = doc;
       w.addDocument(doc);
     }
@@ -713,6 +721,9 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
       assertEquals(expected.getField("d").numericValue(), doc.getField("d").numericValue());
       assertEquals(expected.getField("f").numericValue(), doc.getField("f").numericValue());
       assertEquals(expected.getField("b").binaryValue(), doc.getField("b").binaryValue());
+      // The value is the same for fields "b" and "b2". Read the expected value from "b" as "b2" was
+      // consumed during indexing
+      assertEquals(expected.getField("b").binaryValue(), doc.getField("b2").binaryValue());
     }
 
     reader.close();
@@ -723,8 +734,6 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
 
   @Nightly
   public void testBigDocuments() throws IOException {
-    assumeWorkingMMapOnWindows();
-
     // "big" as "much bigger than the chunk size"
     // for this test we force an FS dir
     // we can't just use newFSDirectory, because this test doesn't really index anything.
@@ -785,7 +794,7 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
     for (int i = 0; i < numDocs; ++i) {
       final Query query = new TermQuery(new Term("id", "" + i));
       final TopDocs topDocs = searcher.search(query, 1);
-      assertEquals("" + i, 1, topDocs.totalHits.value);
+      assertEquals("" + i, 1, topDocs.totalHits.value());
       final Document doc = storedFields.document(topDocs.scoreDocs[0].doc);
       assertNotNull(doc);
       final IndexableField[] fieldValues = doc.getFields("fld");
@@ -945,7 +954,7 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
                 System.out.println("TEST: test id=" + testID);
               }
               TopDocs hits = searcher.search(new TermQuery(new Term("id", testID)), 1);
-              assertEquals(1, hits.totalHits.value);
+              assertEquals(1, hits.totalHits.value());
               List<IndexableField> expectedFields =
                   docs.get(testID).getFields().stream()
                       .filter(f -> f.fieldType().stored())

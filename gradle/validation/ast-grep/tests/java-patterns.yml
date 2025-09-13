@@ -1,0 +1,135 @@
+---
+id: java-lang-import
+invalid:
+  - import java.lang.Foo;
+valid:
+  - import java.lang.foo.bar;
+  - import static java.lang.Foo.bar;
+  - import java.lang.foo.*;
+  - import static java.lang.Foo.*;
+---
+id: confusing-type-inference
+invalid:
+  - var x = new HashSet<>();
+  - var x = new HashSet<>(foo);
+valid:
+  - HashSet<String> x = new HashSet<>();
+  - var list = new ArrayList<String>();
+---
+id: javadoc-style-license-header
+invalid:
+  - |
+    /** BLAH BLAH Unless required by applicable law BLAH BLAH */
+valid:
+  - |
+    /* BLAH BLAH Unless required by applicable law BLAH BLAH */
+  - |
+    /** something else */
+---
+id: license-after-package
+invalid:
+  - |
+    package foo;
+    /* BLAH BLAH Unless required by applicable law BLAH BLAH */
+  - |
+    package foo;
+    import bar;
+    /* BLAH BLAH Unless required by applicable law BLAH BLAH */
+  - |
+    /* BLAH BLAH Unless required by applicable law BLAH BLAH */
+    package foo;
+    /* BLAH BLAH Unless required by applicable law BLAH BLAH */
+valid:
+  - |
+    /* BLAH BLAH Unless required by applicable law BLAH BLAH */
+    package foo;
+---
+id: javadoc-author-tag
+invalid:
+  - |
+    /** @author foo */
+valid:
+  - |
+    // notjavadoc @author
+  - |
+    /* notjavadoc @author */
+---
+id: nocommit-comment
+invalid:
+  - |
+    // nocommit: fix this
+  - |
+    /* nocommit: fix this */
+valid:
+  - boolean nocommit = false;
+---
+id: tood-comment
+invalid:
+  - |
+    // TOOD: fix this
+  - |
+    /* TOOD: fix this */
+valid:
+  - |
+    var foo = "TOOD: whatever";
+---
+id: missing-spi-block-tag
+invalid:
+  - |
+    public class X extends TokenizerFactory {}
+  - |
+    public class X extends TokenFilterFactory implements A,B,C {}
+  - |
+    public final class X extends CharFilterFactory {}
+  - |
+    @Foo
+    public class X extends CharFilterFactory {}
+  - |
+    /** boo */
+    public class X extends TokenizerFactory {}
+  - |
+    /* not javadoc
+    * @lucene.spi {@value #NAME}
+    */
+    public class X extends TokenizerFactory {}
+valid:
+  - |
+    /** this is javadoc
+    * @lucene.spi {@value #NAME}
+    */
+    public class X extends TokenizerFactory {}
+  - |
+    public abstract class X extends TokenizerFactory {}
+  - |
+    private class X extends TokenizerFactory {}
+---
+id: incubator-module-dependency
+invalid:
+  - |
+    module org.apache.lucene.foo {
+      requires jdk.incubator.something;
+    }
+  - import jdk.incubator.something.SomethingElse;
+valid:
+  - |
+    module org.apache.lucene.foo {
+      requires org.apache.lucene.bar;
+    }
+---
+id: javadoc-only-inheriting-super
+invalid:
+  - /** {@inheritDoc} */
+  - /** {@inheritDoc } */
+  - "/**\n * {@inheritDoc}\n */"
+valid:
+  - |
+    /**
+    * {@inheritDoc}
+    *
+    * And something.
+    */
+  - |
+    /**
+    * Something and...
+    * {@inheritDoc}
+    */

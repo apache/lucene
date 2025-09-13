@@ -139,19 +139,7 @@ public final class JapaneseCompletionFilter extends TokenFilter {
     }
   }
 
-  private static class CompletionToken {
-    final String term;
-    final boolean isFirst;
-    final int startOffset;
-    final int endOffset;
-
-    CompletionToken(String term, boolean isFirst, int startOffset, int endOffset) {
-      this.term = term;
-      this.isFirst = isFirst;
-      this.startOffset = startOffset;
-      this.endOffset = endOffset;
-    }
-  }
+  private record CompletionToken(String term, boolean isFirst, int startOffset, int endOffset) {}
 
   private static class CompletionTokenGenerator implements Iterator<CompletionToken> {
 

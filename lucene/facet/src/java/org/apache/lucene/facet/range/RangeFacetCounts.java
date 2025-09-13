@@ -18,6 +18,7 @@ package org.apache.lucene.facet.range;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.facet.FacetCountsWithFilterQuery;
 import org.apache.lucene.facet.FacetResult;
@@ -80,11 +81,12 @@ abstract class RangeFacetCounts extends FacetCountsWithFilterQuery {
 
     for (int i = 0; i < matchingDocs.size(); i++) {
       FacetsCollector.MatchingDocs hits = matchingDocs.get(i);
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         continue;
       }
 
-      SortedNumericDocValues multiValues = DocValues.getSortedNumeric(hits.context.reader(), field);
+      SortedNumericDocValues multiValues =
+          DocValues.getSortedNumeric(hits.context().reader(), field);
       if (multiValuedDocVals == null) {
         multiValuedDocVals = new SortedNumericDocValues[matchingDocs.size()];
       }
@@ -135,7 +137,7 @@ abstract class RangeFacetCounts extends FacetCountsWithFilterQuery {
         assert singleValuedDocVals != null;
         NumericDocValues singleValues = singleValuedDocVals[i];
 
-        totCount += hits.totalHits;
+        totCount += hits.totalHits();
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
           if (singleValues.advanceExact(doc)) {
             counter.addSingleValued(mapDocValue(singleValues.longValue()));
@@ -222,16 +224,10 @@ abstract class RangeFacetCounts extends FacetCountsWithFilterQuery {
     }
 
     PriorityQueue<Entry> pq =
-        new PriorityQueue<>(Math.min(topN, counts.length)) {
-          @Override
-          protected boolean lessThan(Entry a, Entry b) {
-            int cmp = Integer.compare(a.count, b.count);
-            if (cmp == 0) {
-              cmp = b.label.compareTo(a.label);
-            }
-            return cmp < 0;
-          }
-        };
+        PriorityQueue.usingComparator(
+            Math.min(topN, counts.length),
+            Comparator.<Entry>comparingInt(e -> e.count)
+                .thenComparing(e -> e.label, Comparator.reverseOrder()));
 
     int childCount = 0;
     Entry e = null;

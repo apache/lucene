@@ -18,14 +18,8 @@
 package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
-import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.Weight;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestQueryProfilerScorer extends LuceneTestCase {
@@ -34,9 +28,7 @@ public class TestQueryProfilerScorer extends LuceneTestCase {
 
     public float maxScore, minCompetitiveScore;
 
-    protected FakeScorer(Weight weight) {
-      super(weight);
-    }
+    protected FakeScorer() {}
 
     @Override
     public DocIdSetIterator iterator() {
@@ -65,27 +57,17 @@ public class TestQueryProfilerScorer extends LuceneTestCase {
   }
 
   public void testPropagateMinCompetitiveScore() throws IOException {
-    Query query = new MatchAllDocsQuery();
-    Weight weight =
-        query.createWeight(new IndexSearcher(new MultiReader()), ScoreMode.TOP_SCORES, 1f);
-    FakeScorer fakeScorer = new FakeScorer(weight);
+    FakeScorer fakeScorer = new FakeScorer();
     QueryProfilerBreakdown profile = new QueryProfilerBreakdown();
-    QueryProfilerWeight queryProfilerWeight = new QueryProfilerWeight(weight, profile);
-    QueryProfilerScorer queryProfilerScorer =
-        new QueryProfilerScorer(queryProfilerWeight, fakeScorer, profile);
+    QueryProfilerScorer queryProfilerScorer = new QueryProfilerScorer(fakeScorer, profile);
     queryProfilerScorer.setMinCompetitiveScore(0.42f);
     assertEquals(0.42f, fakeScorer.minCompetitiveScore, 0f);
   }
 
   public void testPropagateMaxScore() throws IOException {
-    Query query = new MatchAllDocsQuery();
-    Weight weight =
-        query.createWeight(new IndexSearcher(new MultiReader()), ScoreMode.TOP_SCORES, 1f);
-    FakeScorer fakeScorer = new FakeScorer(weight);
+    FakeScorer fakeScorer = new FakeScorer();
     QueryProfilerBreakdown profile = new QueryProfilerBreakdown();
-    QueryProfilerWeight queryProfilerWeight = new QueryProfilerWeight(weight, profile);
-    QueryProfilerScorer queryProfilerScorer =
-        new QueryProfilerScorer(queryProfilerWeight, fakeScorer, profile);
+    QueryProfilerScorer queryProfilerScorer = new QueryProfilerScorer(fakeScorer, profile);
     queryProfilerScorer.setMinCompetitiveScore(0.42f);
     fakeScorer.maxScore = 42f;
     assertEquals(42f, queryProfilerScorer.getMaxScore(DocIdSetIterator.NO_MORE_DOCS), 0f);

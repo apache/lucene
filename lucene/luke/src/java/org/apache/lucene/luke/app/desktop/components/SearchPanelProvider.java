@@ -519,7 +519,7 @@ public final class SearchPanelProvider implements SearchTabOperator {
         operatorRegistry
             .get(SimilarityTabOperator.class)
             .map(SimilarityTabOperator::getConfig)
-            .orElse(new SimilarityConfig.Builder().build());
+            .orElseGet(() -> new SimilarityConfig.Builder().build());
     Sort sort =
         operatorRegistry.get(SortTabOperator.class).map(SortTabOperator::getSort).orElse(null);
     Set<String> fieldsToLoad =
@@ -562,12 +562,12 @@ public final class SearchPanelProvider implements SearchTabOperator {
         operatorRegistry
             .get(MLTTabOperator.class)
             .map(MLTTabOperator::getConfig)
-            .orElse(new MLTConfig.Builder().build());
+            .orElseGet(() -> new MLTConfig.Builder().build());
     Analyzer analyzer =
         operatorRegistry
             .get(AnalysisTabOperator.class)
             .map(AnalysisTabOperator::getCurrentAnalyzer)
-            .orElse(new StandardAnalyzer());
+            .orElseGet(StandardAnalyzer::new);
     Query query = searchModel.mltQuery(docNum, mltConfig, analyzer);
     Set<String> fieldsToLoad =
         operatorRegistry
@@ -602,25 +602,25 @@ public final class SearchPanelProvider implements SearchTabOperator {
         operatorRegistry
             .get(QueryParserTabOperator.class)
             .map(QueryParserTabOperator::getConfig)
-            .orElse(new QueryParserConfig.Builder().build());
+            .orElseGet(() -> new QueryParserConfig.Builder().build());
     Analyzer analyzer =
         operatorRegistry
             .get(AnalysisTabOperator.class)
             .map(AnalysisTabOperator::getCurrentAnalyzer)
-            .orElse(new StandardAnalyzer());
+            .orElseGet(StandardAnalyzer::new);
     return searchModel.parseQuery(expr, df, analyzer, config, rewrite);
   }
 
   private void populateResults(SearchResults res) {
     totalHitsLbl.setText(String.valueOf(res.getTotalHits()));
-    if (res.getTotalHits().value > 0) {
+    if (res.getTotalHits().value() > 0) {
       startLbl.setText(String.valueOf(res.getOffset() + 1));
       endLbl.setText(String.valueOf(res.getOffset() + res.size()));
 
       prevBtn.setEnabled(res.getOffset() > 0);
       nextBtn.setEnabled(
-          res.getTotalHits().relation == TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
-              || res.getTotalHits().value > res.getOffset() + res.size());
+          res.getTotalHits().relation() == TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
+              || res.getTotalHits().value() > res.getOffset() + res.size());
 
       if (!indexHandler.getState().readOnly() && indexHandler.getState().hasDirectoryReader()) {
         delBtn.setEnabled(true);
@@ -678,7 +678,7 @@ public final class SearchPanelProvider implements SearchTabOperator {
     JMenuItem item1 =
         new JMenuItem(MessageUtils.getLocalizedMessage("search.results.menu.explain"));
     item1.addActionListener(
-        e -> {
+        _ -> {
           int docid =
               (int)
                   resultsTable
@@ -703,7 +703,7 @@ public final class SearchPanelProvider implements SearchTabOperator {
     JMenuItem item2 =
         new JMenuItem(MessageUtils.getLocalizedMessage("search.results.menu.showdoc"));
     item2.addActionListener(
-        e -> {
+        _ -> {
           int docid =
               (int)
                   resultsTable

@@ -285,7 +285,6 @@ public class AutomatonTermsEnum extends FilteredTermsEnum {
       if (transition.max >= c) {
         int nextChar = Math.max(c, transition.min);
         // append either the next sequential char, or the minimum transition
-        seekBytesRef.grow(seekBytesRef.length() + 1);
         seekBytesRef.append((byte) nextChar);
         state = transition.dest;
         /*
@@ -304,7 +303,6 @@ public class AutomatonTermsEnum extends FilteredTermsEnum {
           state = transition.dest;
 
           // append the minimum transition
-          seekBytesRef.grow(seekBytesRef.length() + 1);
           seekBytesRef.append((byte) transition.min);
 
           // we found a loop, record it for faster enumeration

@@ -115,7 +115,7 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
 
       @Override
       public double doubleValue() throws IOException {
-        return hits.scores[index];
+        return hits.scores()[index];
       }
 
       @Override
@@ -134,17 +134,17 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
       DoubleValuesSource valueSource)
       throws IOException {
     for (MatchingDocs hits : matchingDocs) {
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         continue;
       }
       initializeValueCounters();
 
       SortedNumericDocValues ordinalValues =
-          DocValues.getSortedNumeric(hits.context.reader(), indexFieldName);
+          DocValues.getSortedNumeric(hits.context().reader(), indexFieldName);
       DoubleValues scores = keepScores ? scores(hits) : null;
-      DoubleValues functionValues = valueSource.getValues(hits.context, scores);
+      DoubleValues functionValues = valueSource.getValues(hits.context(), scores);
       DocIdSetIterator it =
-          ConjunctionUtils.intersectIterators(List.of(hits.bits.iterator(), ordinalValues));
+          ConjunctionUtils.intersectIterators(List.of(hits.bits().iterator(), ordinalValues));
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         if (functionValues.advanceExact(doc)) {
@@ -152,8 +152,10 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
           int ordinalCount = ordinalValues.docValueCount();
           for (int i = 0; i < ordinalCount; i++) {
             int ord = (int) ordinalValues.nextValue();
-            float newValue = aggregationFunction.aggregate(values[ord], value);
-            values[ord] = newValue;
+            float currentValue = getValue(ord);
+            float newValue = aggregationFunction.aggregate(currentValue, value);
+            setValue(ord, newValue);
+            setCount(ord, getCount(ord) + 1);
           }
         }
       }
@@ -169,14 +171,14 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
       throws IOException {
 
     for (MatchingDocs hits : matchingDocs) {
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         continue;
       }
       initializeValueCounters();
 
-      BinaryDocValues dv = DocValues.getBinary(hits.context.reader(), indexFieldName);
+      BinaryDocValues dv = DocValues.getBinary(hits.context().reader(), indexFieldName);
       DocIdSetIterator it =
-          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), dv));
+          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits().iterator(), dv));
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         final BytesRef bytesRef = dv.binaryValue();
@@ -188,8 +190,10 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
           offset += 4;
           float value = (float) BitUtil.VH_BE_FLOAT.get(bytes, offset);
           offset += 4;
-          float newValue = aggregationFunction.aggregate(values[ord], value);
-          values[ord] = newValue;
+          float currentValue = getValue(ord);
+          float newValue = aggregationFunction.aggregate(currentValue, value);
+          setValue(ord, newValue);
+          setCount(ord, getCount(ord) + 1);
         }
       }
     }

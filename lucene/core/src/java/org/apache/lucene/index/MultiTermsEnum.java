@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Comparator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -31,14 +30,6 @@ import org.apache.lucene.util.PriorityQueue;
  * @lucene.experimental
  */
 public final class MultiTermsEnum extends BaseTermsEnum {
-
-  private static final Comparator<TermsEnumWithSlice> INDEX_COMPARATOR =
-      new Comparator<TermsEnumWithSlice>() {
-        @Override
-        public int compare(TermsEnumWithSlice o1, TermsEnumWithSlice o2) {
-          return o1.subIndex - o2.subIndex;
-        }
-      };
 
   private final TermMergeQueue queue;
   // all of our subs (one per sub-reader)
@@ -338,7 +329,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
 
     int upto = 0;
 
-    ArrayUtil.timSort(top, 0, numTop, INDEX_COMPARATOR);
+    ArrayUtil.timSort(top, 0, numTop, (o1, o2) -> o1.subIndex - o2.subIndex);
 
     for (int i = 0; i < numTop; i++) {
 
@@ -370,7 +361,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
     public TermsEnumWithSlice(int index, ReaderSlice subSlice) {
       super(null, index);
       this.subSlice = subSlice;
-      assert subSlice.length >= 0 : "length=" + subSlice.length;
+      assert subSlice.length() >= 0 : "length=" + subSlice.length();
     }
 
     @Override
@@ -384,17 +375,12 @@ public final class MultiTermsEnum extends BaseTermsEnum {
     final int[] stack;
 
     TermMergeQueue(int size) {
-      super(size);
+      super(size, (a, b) -> a.compareTermTo(b) < 0);
       this.stack = new int[size];
     }
 
-    @Override
-    protected boolean lessThan(TermsEnumWithSlice termsA, TermsEnumWithSlice termsB) {
-      return termsA.compareTermTo(termsB) < 0;
-    }
-
     /**
-     * Add the {@link #top()} slice as well as all slices that are positionned on the same term to
+     * Add the {@link #top()} slice as well as all slices that are positioned on the same term to
      * {@code tops} and return how many of them there are.
      */
     int fillTop(TermsEnumWithSlice[] tops) {
@@ -411,7 +397,7 @@ public final class MultiTermsEnum extends BaseTermsEnum {
         final int index = stack[--stackLen];
         final int leftChild = index << 1;
         for (int child = leftChild, end = Math.min(size, leftChild + 1); child <= end; ++child) {
-          TermsEnumWithSlice te = get(child);
+          TermsEnumWithSlice te = (TermsEnumWithSlice) getHeapArray()[child];
           if (te.compareTermTo(tops[0]) == 0) {
             tops[numTop++] = te;
             stack[stackLen++] = child;
@@ -419,10 +405,6 @@ public final class MultiTermsEnum extends BaseTermsEnum {
         }
       }
       return numTop;
-    }
-
-    private TermsEnumWithSlice get(int i) {
-      return (TermsEnumWithSlice) getHeapArray()[i];
     }
   }
 

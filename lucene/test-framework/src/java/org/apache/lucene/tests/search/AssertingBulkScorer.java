@@ -19,34 +19,30 @@ package org.apache.lucene.tests.search;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Random;
-import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LeafCollector;
-import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.util.Bits;
 
 /** Wraps a Scorer with additional checks */
-final class AssertingBulkScorer extends BulkScorer {
+public final class AssertingBulkScorer extends BulkScorer {
 
-  public static BulkScorer wrap(Random random, BulkScorer other, int maxDoc, ScoreMode scoreMode) {
+  public static BulkScorer wrap(Random random, BulkScorer other, int maxDoc) {
     if (other == null || other instanceof AssertingBulkScorer) {
       return other;
     }
-    return new AssertingBulkScorer(random, other, maxDoc, scoreMode);
+    return new AssertingBulkScorer(random, other, maxDoc);
   }
 
   final Random random;
   final BulkScorer in;
   final int maxDoc;
-  final ScoreMode scoreMode;
   int max = 0;
 
-  private AssertingBulkScorer(Random random, BulkScorer in, int maxDoc, ScoreMode scoreMode) {
+  private AssertingBulkScorer(Random random, BulkScorer in, int maxDoc) {
     this.random = random;
     this.in = in;
     this.maxDoc = maxDoc;
-    this.scoreMode = scoreMode;
   }
 
   public BulkScorer getIn() {
@@ -56,24 +52,6 @@ final class AssertingBulkScorer extends BulkScorer {
   @Override
   public long cost() {
     return in.cost();
-  }
-
-  @Override
-  public void score(LeafCollector collector, Bits acceptDocs) throws IOException {
-    assert max == 0;
-    collector = new AssertingLeafCollector(collector, 0, PostingsEnum.NO_MORE_DOCS);
-    if (random.nextBoolean()) {
-      try {
-        final int next = score(collector, acceptDocs, 0, PostingsEnum.NO_MORE_DOCS);
-        assert next == DocIdSetIterator.NO_MORE_DOCS;
-      } catch (
-          @SuppressWarnings("unused")
-          UnsupportedOperationException e) {
-        in.score(collector, acceptDocs);
-      }
-    } else {
-      in.score(collector, acceptDocs);
-    }
   }
 
   @Override

@@ -31,10 +31,15 @@ module org.apache.lucene.backward_codecs {
   exports org.apache.lucene.backward_codecs.lucene86;
   exports org.apache.lucene.backward_codecs.lucene87;
   exports org.apache.lucene.backward_codecs.lucene90;
+  exports org.apache.lucene.backward_codecs.lucene90.blocktree;
   exports org.apache.lucene.backward_codecs.lucene91;
   exports org.apache.lucene.backward_codecs.lucene92;
   exports org.apache.lucene.backward_codecs.lucene94;
   exports org.apache.lucene.backward_codecs.lucene95;
+  exports org.apache.lucene.backward_codecs.lucene99;
+  exports org.apache.lucene.backward_codecs.lucene912;
+  exports org.apache.lucene.backward_codecs.lucene100;
+  exports org.apache.lucene.backward_codecs.lucene101;
   exports org.apache.lucene.backward_codecs.packed;
   exports org.apache.lucene.backward_codecs.store;
 
@@ -43,7 +48,10 @@ module org.apache.lucene.backward_codecs {
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.backward_codecs.lucene50.Lucene50PostingsFormat,
       org.apache.lucene.backward_codecs.lucene84.Lucene84PostingsFormat,
-      org.apache.lucene.backward_codecs.lucene90.Lucene90PostingsFormat;
+      org.apache.lucene.backward_codecs.lucene90.Lucene90PostingsFormat,
+      org.apache.lucene.backward_codecs.lucene99.Lucene99PostingsFormat,
+      org.apache.lucene.backward_codecs.lucene912.Lucene912PostingsFormat,
+      org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat;
   provides org.apache.lucene.codecs.KnnVectorsFormat with
       org.apache.lucene.backward_codecs.lucene90.Lucene90HnswVectorsFormat,
       org.apache.lucene.backward_codecs.lucene91.Lucene91HnswVectorsFormat,
@@ -59,5 +67,9 @@ module org.apache.lucene.backward_codecs {
       org.apache.lucene.backward_codecs.lucene91.Lucene91Codec,
       org.apache.lucene.backward_codecs.lucene92.Lucene92Codec,
       org.apache.lucene.backward_codecs.lucene94.Lucene94Codec,
-      org.apache.lucene.backward_codecs.lucene95.Lucene95Codec;
+      org.apache.lucene.backward_codecs.lucene95.Lucene95Codec,
+      org.apache.lucene.backward_codecs.lucene99.Lucene99Codec,
+      org.apache.lucene.backward_codecs.lucene912.Lucene912Codec,
+      org.apache.lucene.backward_codecs.lucene100.Lucene100Codec,
+      org.apache.lucene.backward_codecs.lucene101.Lucene101Codec;
 }

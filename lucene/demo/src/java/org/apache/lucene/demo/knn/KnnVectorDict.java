@@ -59,11 +59,11 @@ public class KnnVectorDict implements Closeable {
    *     '.bin' file.
    */
   public KnnVectorDict(Directory directory, String dictName) throws IOException {
-    try (IndexInput fstIn = directory.openInput(dictName + ".fst", IOContext.READ)) {
+    try (IndexInput fstIn = directory.openInput(dictName + ".fst", IOContext.DEFAULT)) {
       fst = new FST<>(readMetadata(fstIn, PositiveIntOutputs.getSingleton()), fstIn);
     }
 
-    vectors = directory.openInput(dictName + ".bin", IOContext.READ);
+    vectors = directory.openInput(dictName + ".bin", IOContext.DEFAULT);
     long size = vectors.length();
     vectors.seek(size - Integer.BYTES);
     dimension = vectors.readInt();
@@ -155,7 +155,7 @@ public class KnnVectorDict implements Closeable {
         while (addOneLine(in, binOut)) {
           // continue;
         }
-        fstCompiler.compile().save(fstOut, fstOut);
+        FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()).save(fstOut, fstOut);
         binOut.writeInt(numFields - 1);
       }
     }

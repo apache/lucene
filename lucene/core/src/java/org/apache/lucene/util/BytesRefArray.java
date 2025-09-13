@@ -94,7 +94,7 @@ public final class BytesRefArray implements SortableBytesRefArray {
     Objects.checkIndex(index, lastElement);
     int offset = offsets[index];
     int length = index == lastElement - 1 ? currentOffset - offset : offsets[index + 1] - offset;
-    spare.grow(length);
+    spare.growNoCopy(length);
     spare.setLength(length);
     pool.readBytes(offset, spare.bytes(), 0, spare.length());
     return spare.get();

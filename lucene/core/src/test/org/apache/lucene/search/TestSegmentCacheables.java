@@ -42,8 +42,8 @@ public class TestSegmentCacheables extends LuceneTestCase {
 
   public void testMultipleDocValuesDelegates() throws IOException {
 
-    SegmentCacheable seg = (ctx) -> true;
-    SegmentCacheable non = (ctx) -> false;
+    SegmentCacheable seg = (_) -> true;
+    SegmentCacheable non = (_) -> false;
     SegmentCacheable dv1 = (ctx) -> DocValues.isCacheable(ctx, "field1");
     SegmentCacheable dv2 = (ctx) -> DocValues.isCacheable(ctx, "field2");
     SegmentCacheable dv3 = (ctx) -> DocValues.isCacheable(ctx, "field3");

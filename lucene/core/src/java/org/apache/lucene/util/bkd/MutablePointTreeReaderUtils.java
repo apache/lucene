@@ -55,7 +55,7 @@ public final class MutablePointTreeReaderUtils {
     // This should be a common situation as IndexWriter accumulates data in doc ID order when
     // index sorting is not enabled.
     final int bitsPerDocId = sortedByDocID ? 0 : PackedInts.bitsRequired(maxDoc - 1);
-    new StableMSBRadixSorter(config.packedBytesLength + (bitsPerDocId + 7) / 8) {
+    new StableMSBRadixSorter(config.packedBytesLength() + (bitsPerDocId + 7) / 8) {
 
       @Override
       protected void swap(int i, int j) {
@@ -74,10 +74,10 @@ public final class MutablePointTreeReaderUtils {
 
       @Override
       protected int byteAt(int i, int k) {
-        if (k < config.packedBytesLength) {
+        if (k < config.packedBytesLength()) {
           return Byte.toUnsignedInt(reader.getByteAt(i, k));
         } else {
-          final int shift = bitsPerDocId - ((k - config.packedBytesLength + 1) << 3);
+          final int shift = bitsPerDocId - ((k - config.packedBytesLength() + 1) << 3);
           return (reader.getDocID(i) >>> Math.max(0, shift)) & 0xff;
         }
       }
@@ -95,8 +95,8 @@ public final class MutablePointTreeReaderUtils {
       BytesRef scratch1,
       BytesRef scratch2) {
 
-    final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(config.bytesPerDim);
-    final int start = sortedDim * config.bytesPerDim;
+    final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(config.bytesPerDim());
+    final int start = sortedDim * config.bytesPerDim();
     // No need for a fancy radix sort here, this is called on the leaves only so
     // there are not many values to sort
     new IntroSorter() {
@@ -125,11 +125,11 @@ public final class MutablePointTreeReaderUtils {
           cmp =
               Arrays.compareUnsigned(
                   pivot.bytes,
-                  pivot.offset + config.packedIndexBytesLength,
-                  pivot.offset + config.packedBytesLength,
+                  pivot.offset + config.packedIndexBytesLength(),
+                  pivot.offset + config.packedBytesLength(),
                   scratch2.bytes,
-                  scratch2.offset + config.packedIndexBytesLength,
-                  scratch2.offset + config.packedBytesLength);
+                  scratch2.offset + config.packedIndexBytesLength(),
+                  scratch2.offset + config.packedBytesLength());
           if (cmp == 0) {
             cmp = pivotDoc - reader.getDocID(j);
           }
@@ -154,23 +154,23 @@ public final class MutablePointTreeReaderUtils {
       int mid,
       BytesRef scratch1,
       BytesRef scratch2) {
-    final int dimOffset = splitDim * config.bytesPerDim + commonPrefixLen;
-    final int dimCmpBytes = config.bytesPerDim - commonPrefixLen;
+    final int dimOffset = splitDim * config.bytesPerDim() + commonPrefixLen;
+    final int dimCmpBytes = config.bytesPerDim() - commonPrefixLen;
     final int dataCmpBytes =
-        (config.numDims - config.numIndexDims) * config.bytesPerDim + dimCmpBytes;
+        (config.numDims() - config.numIndexDims()) * config.bytesPerDim() + dimCmpBytes;
     final int bitsPerDocId = PackedInts.bitsRequired(maxDoc - 1);
     new RadixSelector(dataCmpBytes + (bitsPerDocId + 7) / 8) {
 
       @Override
       protected Selector getFallbackSelector(int k) {
-        final int dimStart = splitDim * config.bytesPerDim;
+        final int dimStart = splitDim * config.bytesPerDim();
         final int dataStart =
             (k < dimCmpBytes)
-                ? config.packedIndexBytesLength
-                : config.packedIndexBytesLength + k - dimCmpBytes;
-        final int dataEnd = config.numDims * config.bytesPerDim;
+                ? config.packedIndexBytesLength()
+                : config.packedIndexBytesLength() + k - dimCmpBytes;
+        final int dataEnd = config.numDims() * config.bytesPerDim();
         final ByteArrayComparator dimComparator =
-            ArrayUtil.getUnsignedComparator(config.bytesPerDim);
+            ArrayUtil.getUnsignedComparator(config.bytesPerDim());
         return new IntroSelector() {
 
           final BytesRef pivot = scratch1;
@@ -230,7 +230,7 @@ public final class MutablePointTreeReaderUtils {
           return Byte.toUnsignedInt(reader.getByteAt(i, dimOffset + k));
         } else if (k < dataCmpBytes) {
           return Byte.toUnsignedInt(
-              reader.getByteAt(i, config.packedIndexBytesLength + k - dimCmpBytes));
+              reader.getByteAt(i, config.packedIndexBytesLength() + k - dimCmpBytes));
         } else {
           final int shift = bitsPerDocId - ((k - dataCmpBytes + 1) << 3);
           return (reader.getDocID(i) >>> Math.max(0, shift)) & 0xff;

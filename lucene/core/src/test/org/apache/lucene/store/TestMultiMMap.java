@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Locale;
 import org.apache.lucene.tests.store.BaseChunkedDirectoryTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.junit.BeforeClass;
 
 /**
  * Tests MMapDirectory's MultiMMapIndexInput
@@ -36,11 +35,6 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
   @Override
   protected Directory getDirectory(Path path, int maxChunkSize) throws IOException {
     return new MMapDirectory(path, maxChunkSize);
-  }
-
-  @BeforeClass
-  public static void beforeClass() throws Exception {
-    assertTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, MMapDirectory.UNMAP_SUPPORTED);
   }
 
   public void testSeekingExceptions() throws IOException {

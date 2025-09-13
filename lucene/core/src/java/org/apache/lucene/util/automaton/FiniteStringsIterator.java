@@ -86,7 +86,7 @@ public class FiniteStringsIterator {
     this.emitEmptyString = a.isAccept(0);
 
     // Start iteration with node startState.
-    if (a.getNumTransitions(startState) > 0) {
+    if (a.getNumStates() > startState && a.getNumTransitions(startState) > 0) {
       pathStates.set(startState);
       nodes[0].resetState(a, startState);
       string.append(startState);

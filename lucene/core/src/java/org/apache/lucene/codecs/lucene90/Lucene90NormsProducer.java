@@ -20,8 +20,6 @@ import static org.apache.lucene.codecs.lucene90.Lucene90NormsFormat.VERSION_CURR
 import static org.apache.lucene.codecs.lucene90.Lucene90NormsFormat.VERSION_START;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.index.CorruptIndexException;
@@ -31,7 +29,9 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.IOUtils;
@@ -39,13 +39,13 @@ import org.apache.lucene.util.IOUtils;
 /** Reader for {@link Lucene90NormsFormat} */
 final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
   // metadata maps (just file pointers and minimal stuff)
-  private final Map<Integer, NormsEntry> norms = new HashMap<>();
+  private final IntObjectHashMap<NormsEntry> norms = new IntObjectHashMap<>();
   private final int maxDoc;
   private IndexInput data;
   private boolean merging;
-  private Map<Integer, IndexInput> disiInputs;
-  private Map<Integer, RandomAccessInput> disiJumpTables;
-  private Map<Integer, RandomAccessInput> dataInputs;
+  private IntObjectHashMap<IndexInput> disiInputs;
+  private IntObjectHashMap<RandomAccessInput> disiJumpTables;
+  private IntObjectHashMap<RandomAccessInput> dataInputs;
 
   Lucene90NormsProducer(
       SegmentReadState state,
@@ -81,8 +81,8 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
 
     String dataName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, dataExtension);
-    data = state.directory.openInput(dataName, state.context);
-    boolean success = false;
+    // Norms have a forward-only access pattern
+    data = state.directory.openInput(dataName, state.context.withHints(FileTypeHint.DATA));
     try {
       final int version2 =
           CodecUtil.checkIndexHeader(
@@ -102,12 +102,9 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
       // for FOOTER_MAGIC + algorithmID. This is cheap and can detect some forms of corruption
       // such as file truncation.
       CodecUtil.retrieveChecksum(data);
-
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this.data);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this.data);
+      throw t;
     }
   }
 
@@ -121,9 +118,9 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
       throw new RuntimeException(e);
     }
     clone.data = data.clone();
-    clone.disiInputs = new HashMap<>();
-    clone.disiJumpTables = new HashMap<>();
-    clone.dataInputs = new HashMap<>();
+    clone.disiInputs = new IntObjectHashMap<>();
+    clone.disiJumpTables = new IntObjectHashMap<>();
+    clone.dataInputs = new IntObjectHashMap<>();
     clone.merging = true;
     return clone;
   }
@@ -254,6 +251,11 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
       if (merging) {
         dataInputs.put(field.number, slice);
       }
+      // Prefetch the first page of data. Following pages are expected to get prefetched through
+      // read-ahead.
+      if (slice.length() > 0) {
+        slice.prefetch(0, 1);
+      }
     }
     return slice;
   }
@@ -329,7 +331,7 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
 
       @Override
       public long length() {
-        throw new UnsupportedOperationException("Unused by IndexedDISI");
+        return inF.length();
       }
 
       @Override
@@ -340,6 +342,11 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
       @Override
       public void close() throws IOException {
         throw new UnsupportedOperationException("Unused by IndexedDISI");
+      }
+
+      @Override
+      public void prefetch(long offset, long length) throws IOException {
+        // Not delegating to the wrapped instance on purpose. This is only used for merging.
       }
     };
   }

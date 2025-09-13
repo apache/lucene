@@ -184,9 +184,23 @@ public final class XYPolygon extends XYGeometry {
     return true;
   }
 
+  public static String verticesToGeoJSON(final float[] xs, final float[] ys) {
+    StringBuilder sb = new StringBuilder();
+    sb.append('[');
+    for (int i = 0; i < xs.length; i++) {
+      sb.append("[").append(xs[i]).append(", ").append(ys[i]).append("]");
+      if (i != xs.length - 1) {
+        sb.append(", ");
+      }
+    }
+    sb.append(']');
+    return sb.toString();
+  }
+
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
+    sb.append("XYPolygon");
     for (int i = 0; i < x.length; i++) {
       sb.append("[").append(x[i]).append(", ").append(y[i]).append("] ");
     }

@@ -18,12 +18,15 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
+import java.util.Map;
+import java.util.Set;
 import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.NamedSPILoader;
 
 /**
@@ -68,9 +71,27 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
     return name;
   }
 
+  /**
+   * Reloads the KnnVectorsFormat list from the given {@link ClassLoader}.
+   *
+   * <p><b>NOTE:</b> Only new KnnVectorsFormat are added, existing ones are never removed or
+   * replaced.
+   *
+   * <p><em>This method is expensive and should only be called for discovery of new KnnVectorsFormat
+   * on the given classpath/classloader!</em>
+   */
+  public static void reloadKnnVectorsFormat(ClassLoader classloader) {
+    Holder.getLoader().reload(classloader);
+  }
+
   /** looks up a format by name */
   public static KnnVectorsFormat forName(String name) {
     return Holder.getLoader().lookup(name);
+  }
+
+  /** returns a list of all available format names */
+  public static Set<String> availableKnnVectorsFormats() {
+    return Holder.getLoader().availableServices();
   }
 
   /** Returns a {@link KnnVectorsWriter} to write the vectors to the index. */
@@ -119,23 +140,23 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
 
             @Override
             public void search(
-                String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
+                String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
               throw new UnsupportedOperationException();
             }
 
             @Override
             public void search(
-                String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
+                String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
               throw new UnsupportedOperationException();
             }
 
             @Override
-            public void close() {}
+            public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+              return Map.of();
+            }
 
             @Override
-            public long ramBytesUsed() {
-              return 0;
-            }
+            public void close() {}
           };
         }
 

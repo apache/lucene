@@ -76,7 +76,7 @@ public class FSTCompletionLookup extends Lookup {
    *
    * @see #FSTCompletionLookup(Directory, String, FSTCompletion, boolean)
    */
-  private static int INVALID_BUCKETS_COUNT = -1;
+  private static final int INVALID_BUCKETS_COUNT = -1;
 
   /**
    * Shared tail length for conflating in the created automaton. Setting this to larger values
@@ -180,7 +180,7 @@ public class FSTCompletionLookup extends Lookup {
       int inputLineCount = 0;
       while ((spare = iterator.next()) != null) {
         if (spare.length + 4 >= buffer.length) {
-          buffer = ArrayUtil.grow(buffer, spare.length + 4);
+          buffer = ArrayUtil.growNoCopy(buffer, spare.length + 4);
         }
 
         output.reset(buffer);

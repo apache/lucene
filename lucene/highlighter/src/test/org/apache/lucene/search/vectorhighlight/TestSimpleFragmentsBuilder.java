@@ -235,7 +235,7 @@ public class TestSimpleFragmentsBuilder extends AbstractTestCase {
       String randomValue;
       do {
         randomValue = TestUtil.randomSimpleString(random());
-      } while ("".equals(randomValue));
+      } while (randomValue.isEmpty());
       randomValues[i] = randomValue;
     }
 
@@ -328,18 +328,11 @@ public class TestSimpleFragmentsBuilder extends AbstractTestCase {
       String[] randomValues, Map<String, Set<Integer>> valueToDocId, int docId) {
     String value = randomValues[random().nextInt(randomValues.length)];
     if (!valueToDocId.containsKey(value)) {
-      valueToDocId.put(value, new HashSet<Integer>());
+      valueToDocId.put(value, new HashSet<>());
     }
     valueToDocId.get(value).add(docId);
     return value;
   }
 
-  private static class Doc {
-
-    final String[][] fieldValues;
-
-    private Doc(String[][] fieldValues) {
-      this.fieldValues = fieldValues;
-    }
-  }
+  private record Doc(String[][] fieldValues) {}
 }

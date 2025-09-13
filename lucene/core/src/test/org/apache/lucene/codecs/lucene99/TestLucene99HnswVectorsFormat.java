@@ -16,9 +16,26 @@
  */
 package org.apache.lucene.codecs.lucene99;
 
+import static java.lang.String.format;
+import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.oneOf;
+
+import java.io.IOException;
+import java.util.Locale;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.SameThreadExecutorService;
@@ -37,9 +54,12 @@ public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
             return new Lucene99HnswVectorsFormat(10, 20);
           }
         };
-    String expectedString =
-        "Lucene99HnswVectorsFormat(name=Lucene99HnswVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99FlatVectorsFormat())";
-    assertEquals(expectedString, customCodec.knnVectorsFormat().toString());
+    String expectedPattern =
+        "Lucene99HnswVectorsFormat(name=Lucene99HnswVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s()))";
+    var defaultScorer = format(Locale.ROOT, expectedPattern, "DefaultFlatVectorScorer");
+    var memSegScorer =
+        format(Locale.ROOT, expectedPattern, "Lucene99MemorySegmentFlatVectorsScorer");
+    assertThat(customCodec.knnVectorsFormat().toString(), is(oneOf(defaultScorer, memSegScorer)));
   }
 
   public void testLimits() {
@@ -50,9 +70,32 @@ public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
     expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(512 + 1, 20));
     expectThrows(IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 3201));
     expectThrows(
-        IllegalArgumentException.class, () -> new Lucene99HnswVectorsFormat(20, 100, 100, null));
-    expectThrows(
         IllegalArgumentException.class,
         () -> new Lucene99HnswVectorsFormat(20, 100, 1, new SameThreadExecutorService()));
+  }
+
+  public void testSimpleOffHeapSize() throws IOException {
+    float[] vector = randomVector(random().nextInt(12, 500));
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      Document doc = new Document();
+      doc.add(new KnnFloatVectorField("f", vector, DOT_PRODUCT));
+      w.addDocument(doc);
+      w.commit();
+      try (IndexReader reader = DirectoryReader.open(w)) {
+        LeafReader r = getOnlyLeafReader(reader);
+        if (r instanceof CodecReader codecReader) {
+          KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
+          if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
+            knnVectorsReader = fieldsReader.getFieldReader("f");
+          }
+          var fieldInfo = r.getFieldInfos().fieldInfo("f");
+          var offHeap = knnVectorsReader.getOffHeapByteSize(fieldInfo);
+          assertEquals(vector.length * Float.BYTES, (long) offHeap.get("vec"));
+          assertEquals(1L, (long) offHeap.get("vex"));
+          assertEquals(2, offHeap.size());
+        }
+      }
+    }
   }
 }

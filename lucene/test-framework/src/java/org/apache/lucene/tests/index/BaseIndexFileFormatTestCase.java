@@ -101,7 +101,7 @@ import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
 
 /** Common tests to all index formats. */
-abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
+public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
 
   private static final IndexWriterAccess INDEX_WRITER_ACCESS = TestSecrets.getIndexWriterAccess();
 
@@ -275,6 +275,9 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
         new IndexWriterConfig(new MockAnalyzer(random()))
             .setUseCompoundFile(false)
             .setMergePolicy(mp);
+    if (VERBOSE) {
+      cfg.setInfoStream(System.out);
+    }
     IndexWriter w = new IndexWriter(dir, cfg);
     final int numDocs = atLeast(500);
     for (int i = 0; i < numDocs; ++i) {
@@ -352,11 +355,12 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
         new FieldInfo(
             proto.name,
             proto.number,
-            proto.hasVectors(),
+            proto.hasTermVectors(),
             proto.omitsNorms(),
             proto.hasPayloads(),
             proto.getIndexOptions(),
             proto.getDocValuesType(),
+            proto.docValuesSkipIndexType(),
             proto.getDocValuesGen(),
             new HashMap<>(),
             proto.getPointDimensionCount(),
@@ -365,15 +369,17 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             proto.getVectorDimension(),
             proto.getVectorEncoding(),
             proto.getVectorSimilarityFunction(),
-            proto.isSoftDeletesField());
+            proto.isSoftDeletesField(),
+            proto.isParentField());
 
     FieldInfos fieldInfos = new FieldInfos(new FieldInfo[] {field});
 
     SegmentWriteState writeState =
         new SegmentWriteState(
-            null, dir, segmentInfo, fieldInfos, null, new IOContext(new FlushInfo(1, 20)));
+            null, dir, segmentInfo, fieldInfos, null, IOContext.flush(new FlushInfo(1, 20)));
 
-    SegmentReadState readState = new SegmentReadState(dir, segmentInfo, fieldInfos, IOContext.READ);
+    SegmentReadState readState =
+        new SegmentReadState(dir, segmentInfo, fieldInfos, IOContext.DEFAULT);
 
     // PostingsFormat
     NormsProducer fakeNorms =
@@ -589,6 +595,9 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
         case BINARY:
           consumer.writeField(field, value.getBinaryValue());
           break;
+        case DATA_INPUT:
+          consumer.writeField(field, value.getDataInputValue());
+          break;
         case STRING:
           consumer.writeField(field, value.getStringValue());
           break;
@@ -649,9 +658,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
           iw.addDocument(doc);
           // we made it, sometimes delete our doc
           iw.deleteDocuments(new Term("id", Integer.toString(i)));
-        } catch (
-            @SuppressWarnings("unused")
-            AlreadyClosedException ace) {
+        } catch (AlreadyClosedException _) {
           // OK: writer was closed by abort; we just reopen now:
           dir.setRandomIOExceptionRateOnOpen(
               0.0); // disable exceptions on openInput until next iteration
@@ -690,9 +697,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             if (DirectoryReader.indexExists(dir)) {
               TestUtil.checkIndex(dir);
             }
-          } catch (
-              @SuppressWarnings("unused")
-              AlreadyClosedException ace) {
+          } catch (AlreadyClosedException _) {
             // OK: writer was closed by abort; we just reopen now:
             dir.setRandomIOExceptionRateOnOpen(
                 0.0); // disable exceptions on openInput until next iteration
@@ -720,9 +725,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
         handleFakeIOException(e, exceptionStream);
         try {
           iw.rollback();
-        } catch (
-            @SuppressWarnings("unused")
-            Throwable t) {
+        } catch (Throwable _) {
         }
       }
       dir.close();
@@ -860,7 +863,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     public IndexInput openInput(String name, IOContext context) throws IOException {
       IndexInput in = super.openInput(name, context);
       final FixedBitSet set =
-          readBytes.computeIfAbsent(name, n -> new FixedBitSet(Math.toIntExact(in.length())));
+          readBytes.computeIfAbsent(name, _ -> new FixedBitSet(Math.toIntExact(in.length())));
       if (set.length() != in.length()) {
         throw new IllegalStateException();
       }
@@ -871,7 +874,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     public ChecksumIndexInput openChecksumInput(String name) throws IOException {
       ChecksumIndexInput in = super.openChecksumInput(name);
       final FixedBitSet set =
-          readBytes.computeIfAbsent(name, n -> new FixedBitSet(Math.toIntExact(in.length())));
+          readBytes.computeIfAbsent(name, _ -> new FixedBitSet(Math.toIntExact(in.length())));
       if (set.length() != in.length()) {
         throw new IllegalStateException();
       }

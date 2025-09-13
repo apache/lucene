@@ -17,8 +17,7 @@
 package org.apache.lucene.analysis.ko;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
+import java.util.EnumSet;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
@@ -39,7 +38,7 @@ public class TestKoreanAnalyzer extends BaseTokenStreamTestCase {
   }
 
   public void testStopTags() throws IOException {
-    Set<POS.Tag> stopTags = new HashSet<>(Arrays.asList(POS.Tag.NNP, POS.Tag.NNG));
+    Set<POS.Tag> stopTags = EnumSet.of(POS.Tag.NNP, POS.Tag.NNG);
     Analyzer a = new KoreanAnalyzer(null, KoreanTokenizer.DecompoundMode.DISCARD, stopTags, false);
     assertAnalyzesTo(
         a,

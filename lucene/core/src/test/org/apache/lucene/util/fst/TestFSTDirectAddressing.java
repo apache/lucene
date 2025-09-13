@@ -196,7 +196,7 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
       }
       last = entry;
     }
-    return fstCompiler.compile();
+    return FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
   }
 
   public static void main(String... args) throws Exception {
@@ -333,7 +333,7 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
     while ((inputOutput = fstEnum.next()) != null) {
       fstCompiler.add(inputOutput.input, CharsRef.deepCopyOf(inputOutput.output));
     }
-    return fstCompiler.compile();
+    return FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
   }
 
   private static int walk(FST<CharsRef> read) throws IOException {

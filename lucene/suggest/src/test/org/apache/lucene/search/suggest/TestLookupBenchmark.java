@@ -150,7 +150,7 @@ public class TestLookupBenchmark extends LuceneTestCase {
     } else {
       try {
         lookup = cls.getConstructor().newInstance();
-      } catch (@SuppressWarnings("unused") InstantiationException | NoSuchMethodException e) {
+      } catch (InstantiationException | NoSuchMethodException _) {
         Analyzer a = new MockAnalyzer(random, MockTokenizer.KEYWORD, false);
         if (cls == AnalyzingInfixSuggester.class || cls == BlendedInfixSuggester.class) {
           Constructor<? extends Lookup> ctor = cls.getConstructor(Directory.class, Analyzer.class);
@@ -235,7 +235,7 @@ public class TestLookupBenchmark extends LuceneTestCase {
           lookup.getClass().getSimpleName(),
           input.size(),
           result.average,
-          input.size() / result.average.avg);
+          input.size() / result.average.avg());
     }
   }
 
@@ -259,7 +259,7 @@ public class TestLookupBenchmark extends LuceneTestCase {
 
   /** Guard against opts. */
   @SuppressWarnings("unused")
-  private static volatile int guard;
+  private volatile int guard;
 
   private static class BenchmarkResult {
     /** Average time per round (ms). */

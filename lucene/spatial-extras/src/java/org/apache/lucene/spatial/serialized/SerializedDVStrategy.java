@@ -35,7 +35,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.spatial.ShapeValues;
@@ -134,10 +134,11 @@ public class SerializedDVStrategy extends SpatialStrategy {
         throws IOException {
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           DocIdSetIterator approximation = DocIdSetIterator.all(context.reader().maxDoc());
           TwoPhaseIterator it = predicateValueSource.iterator(context, approximation);
-          return new ConstantScoreScorer(this, score(), scoreMode, it);
+          final var scorer = new ConstantScoreScorer(score(), scoreMode, it);
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

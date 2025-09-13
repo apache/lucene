@@ -15,15 +15,13 @@ package org.apache.lucene.queryparser.classic;
 
 
 
-
-
 /** Token Manager. */
 @SuppressWarnings ("unused")
 public class QueryParserTokenManager implements QueryParserConstants {
 
-  /** Debug output. */
+  // Debug output.
   // (debugStream omitted).
-  /** Set debug output. */
+  // Set debug output.
   // (setDebugStream omitted).
 private final int jjStopStringLiteralDfa_2(int pos, long active0){
    switch (pos)

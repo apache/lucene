@@ -270,9 +270,9 @@ public class TestPayloadScoreQuery extends LuceneTestCase {
   private static IndexSearcher searcher;
   private static IndexReader reader;
   private static Directory directory;
-  private static JustScorePayloadSimilarity similarity = new JustScorePayloadSimilarity();
-  private static byte[] payload2 = new byte[] {2};
-  private static byte[] payload4 = new byte[] {4};
+  private static final JustScorePayloadSimilarity similarity = new JustScorePayloadSimilarity();
+  private static final byte[] payload2 = new byte[] {2};
+  private static final byte[] payload4 = new byte[] {4};
 
   private static class PayloadAnalyzer extends Analyzer {
     @Override

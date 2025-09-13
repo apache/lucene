@@ -21,6 +21,8 @@ import java.util.Collections;
 import java.util.Iterator;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -40,6 +42,7 @@ import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
@@ -95,6 +98,7 @@ public class TermVectorLeafReader extends LeafReader {
             terms.hasPayloads(),
             indexOptions,
             DocValuesType.NONE,
+            DocValuesSkipIndexType.NONE,
             -1,
             Collections.emptyMap(),
             0,
@@ -103,6 +107,7 @@ public class TermVectorLeafReader extends LeafReader {
             0,
             VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
+            false,
             false);
     fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});
   }
@@ -141,6 +146,11 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
+  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    return null;
+  }
+
+  @Override
   public NumericDocValues getNormValues(String field) throws IOException {
     return null; // Is this needed?  See MemoryIndex for a way to do it.
   }
@@ -172,11 +182,11 @@ public class TermVectorLeafReader extends LeafReader {
 
   @Override
   public void searchNearestVectors(
-      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+      String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {}
 
   @Override
   public void searchNearestVectors(
-      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+      String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {}
 
   @Override
   public void checkIntegrity() throws IOException {}

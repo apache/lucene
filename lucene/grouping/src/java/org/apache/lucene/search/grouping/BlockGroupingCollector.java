@@ -17,6 +17,7 @@
 package org.apache.lucene.search.grouping;
 
 import java.io.IOException;
+import java.util.Comparator;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -32,8 +33,8 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
-import org.apache.lucene.search.TopFieldCollector;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopFieldCollectorManager;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.ArrayUtil;
@@ -92,7 +93,7 @@ public class BlockGroupingCollector extends SimpleCollector {
   private int groupEndDocID;
   private DocIdSetIterator lastDocPerGroupBits;
   private Scorable scorer;
-  private final GroupQueue groupQueue;
+  private final PriorityQueue<OneGroup> groupQueue;
   private boolean groupCompetes;
 
   private static final class OneGroup {
@@ -105,34 +106,31 @@ public class BlockGroupingCollector extends SimpleCollector {
     int comparatorSlot;
   }
 
-  // Sorts by groupSort.  Not static -- uses comparators, reversed
-  private final class GroupQueue extends PriorityQueue<OneGroup> {
+  private PriorityQueue<OneGroup> createGroupQueue(int size) {
+    // Sorts by groupSort
+    return PriorityQueue.usingComparator(
+        size,
+        ((Comparator<OneGroup>)
+                (group1, group2) -> {
+                  assert group1 != group2;
+                  assert group1.comparatorSlot != group2.comparatorSlot;
 
-    public GroupQueue(int size) {
-      super(size);
-    }
-
-    @Override
-    protected boolean lessThan(final OneGroup group1, final OneGroup group2) {
-
-      // System.out.println("    ltcheck");
-      assert group1 != group2;
-      assert group1.comparatorSlot != group2.comparatorSlot;
-
-      final int numComparators = comparators.length;
-      for (int compIDX = 0; compIDX < numComparators; compIDX++) {
-        final int c =
-            reversed[compIDX]
-                * comparators[compIDX].compare(group1.comparatorSlot, group2.comparatorSlot);
-        if (c != 0) {
-          // Short circuit
-          return c > 0;
-        }
-      }
-
-      // Break ties by docID; lower docID is always sorted first
-      return group1.topGroupDoc > group2.topGroupDoc;
-    }
+                  final int numComparators = comparators.length;
+                  for (int compIDX = 0; compIDX < numComparators; compIDX++) {
+                    final int c =
+                        reversed[compIDX]
+                            * comparators[compIDX].compare(
+                                group1.comparatorSlot, group2.comparatorSlot);
+                    if (c != 0) {
+                      // Short circuit
+                      return c;
+                    }
+                  }
+                  return 0;
+                })
+            .thenComparingInt(
+                g -> g.topGroupDoc) // Break ties by docID; lower docID is always sorted first
+            .reversed());
   }
 
   // Called when we transition to another group; if the
@@ -221,7 +219,7 @@ public class BlockGroupingCollector extends SimpleCollector {
       throw new IllegalArgumentException("topNGroups must be >= 1 (got " + topNGroups + ")");
     }
 
-    groupQueue = new GroupQueue(topNGroups);
+    groupQueue = createGroupQueue(topNGroups);
     pendingSubDocs = new int[10];
     if (needsScores) {
       pendingSubScores = new float[10];
@@ -294,12 +292,14 @@ public class BlockGroupingCollector extends SimpleCollector {
           throw new IllegalArgumentException(
               "cannot sort by relevance within group: needsScores=false");
         }
-        collector = TopScoreDocCollector.create(maxDocsPerGroup, Integer.MAX_VALUE);
+        collector =
+            new TopScoreDocCollectorManager(maxDocsPerGroup, null, Integer.MAX_VALUE)
+                .newCollector();
       } else {
         // Sort by fields
         collector =
-            TopFieldCollector.create(
-                withinGroupSort, maxDocsPerGroup, Integer.MAX_VALUE); // TODO: disable exact counts?
+            new TopFieldCollectorManager(withinGroupSort, maxDocsPerGroup, null, Integer.MAX_VALUE)
+                .newCollector(); // TODO: disable exact counts?
       }
 
       float groupMaxScore = needsScores ? Float.NEGATIVE_INFINITY : Float.NaN;

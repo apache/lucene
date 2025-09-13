@@ -239,7 +239,7 @@ public class TestFieldInfos extends LuceneTestCase {
   }
 
   public void testFieldNumbersAutoIncrement() {
-    FieldInfos.FieldNumbers fieldNumbers = new FieldInfos.FieldNumbers("softDeletes");
+    FieldInfos.FieldNumbers fieldNumbers = new FieldInfos.FieldNumbers("softDeletes", "parentDoc");
     for (int i = 0; i < 10; i++) {
       fieldNumbers.addOrGet(
           new FieldInfo(
@@ -250,6 +250,7 @@ public class TestFieldInfos extends LuceneTestCase {
               false,
               IndexOptions.NONE,
               DocValuesType.NONE,
+              DocValuesSkipIndexType.NONE,
               -1,
               new HashMap<>(),
               0,
@@ -258,6 +259,7 @@ public class TestFieldInfos extends LuceneTestCase {
               0,
               VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
+              false,
               false));
     }
     int idx =
@@ -270,6 +272,7 @@ public class TestFieldInfos extends LuceneTestCase {
                 false,
                 IndexOptions.NONE,
                 DocValuesType.NONE,
+                DocValuesSkipIndexType.NONE,
                 -1,
                 new HashMap<>(),
                 0,
@@ -278,6 +281,7 @@ public class TestFieldInfos extends LuceneTestCase {
                 0,
                 VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.EUCLIDEAN,
+                false,
                 false));
     assertEquals("Field numbers 0 through 9 were allocated", 10, idx);
 
@@ -292,6 +296,7 @@ public class TestFieldInfos extends LuceneTestCase {
                 false,
                 IndexOptions.NONE,
                 DocValuesType.NONE,
+                DocValuesSkipIndexType.NONE,
                 -1,
                 new HashMap<>(),
                 0,
@@ -300,6 +305,7 @@ public class TestFieldInfos extends LuceneTestCase {
                 0,
                 VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.EUCLIDEAN,
+                false,
                 false));
     assertEquals("Field numbers should reset after clear()", 0, idx);
   }

@@ -17,8 +17,8 @@
 
 package org.apache.lucene.analysis.opennlp.tools;
 
-import java.io.IOException;
 import opennlp.tools.postag.POSModel;
+import opennlp.tools.postag.POSTagFormat;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.postag.POSTaggerME;
 
@@ -27,10 +27,10 @@ import opennlp.tools.postag.POSTaggerME;
  * SourceForge.
  */
 public class NLPPOSTaggerOp {
-  private POSTagger tagger = null;
+  private final POSTagger tagger;
 
-  public NLPPOSTaggerOp(POSModel model) throws IOException {
-    tagger = new POSTaggerME(model);
+  public NLPPOSTaggerOp(POSModel model) {
+    tagger = new POSTaggerME(model, POSTagFormat.PENN);
   }
 
   public synchronized String[] getPOSTags(String[] words) {

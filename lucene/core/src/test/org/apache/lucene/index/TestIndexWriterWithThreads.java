@@ -44,6 +44,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /** MultiThreaded IndexWriter tests */
@@ -65,6 +66,7 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
       this.syncStart = syncStart;
     }
 
+    @SuppressForbidden(reason = "Thread sleep")
     @Override
     public void run() {
       try {
@@ -114,9 +116,7 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
             }
             break;
           }
-        } catch (
-            @SuppressWarnings("unused")
-            IllegalStateException ise) {
+        } catch (IllegalStateException _) {
           // OK: abort closes the writer
           break;
         } catch (Throwable t) {
@@ -174,9 +174,7 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
       dir.setMaxSizeInBytes(0);
       try {
         writer.commit();
-      } catch (
-          @SuppressWarnings("unused")
-          AlreadyClosedException ace) {
+      } catch (AlreadyClosedException _) {
         // OK: abort closes the writer
         assertTrue(writer.isDeleterClosed());
       } finally {
@@ -190,6 +188,7 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
   // threads are trying to add documents.  Strictly
   // speaking, this isn't valid us of Lucene's APIs, but we
   // still want to be robust to this case:
+  @SuppressForbidden(reason = "Thread sleep")
   public void testCloseWithThreads() throws Exception {
     int NUM_THREADS = 3;
     int numIterations = TEST_NIGHTLY ? 7 : 3;
@@ -306,16 +305,14 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
         writer.commit();
         writer.close();
         success = true;
-      } catch (
-          @SuppressWarnings("unused")
-          AlreadyClosedException ace) {
+      } catch (AlreadyClosedException _) {
         // OK: abort closes the writer
         assertTrue(writer.isDeleterClosed());
-      } catch (
-          @SuppressWarnings("unused")
-          IOException ioe) {
+      } catch (IOException _) {
         writer.rollback();
         failure.clearDoFail();
+      } finally {
+        writer.close();
       }
       if (VERBOSE) {
         System.out.println("TEST: success=" + success);
@@ -612,9 +609,7 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
                           writerRef.get().prepareCommit();
                         }
                         writerRef.get().commit();
-                      } catch (@SuppressWarnings("unused")
-                          AlreadyClosedException
-                          | NullPointerException ace) {
+                      } catch (AlreadyClosedException | NullPointerException _) {
                         // ok
                       } finally {
                         commitLock.unlock();
@@ -627,10 +622,7 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
                       }
                       try {
                         writerRef.get().addDocument(docs.nextDoc());
-                      } catch (@SuppressWarnings("unused")
-                          AlreadyClosedException
-                          | NullPointerException
-                          | AssertionError ace) {
+                      } catch (AlreadyClosedException | NullPointerException | AssertionError _) {
                         // ok
                       }
                       break;

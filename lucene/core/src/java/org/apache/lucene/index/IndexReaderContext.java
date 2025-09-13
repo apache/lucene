@@ -19,7 +19,7 @@ package org.apache.lucene.index;
 import java.util.List;
 
 /**
- * A struct like class that represents a hierarchical relationship between {@link IndexReader}
+ * A struct-like class that represents a hierarchical relationship between {@link IndexReader}
  * instances.
  */
 public abstract sealed class IndexReaderContext permits CompositeReaderContext, LeafReaderContext {

@@ -17,6 +17,7 @@
 
 package org.apache.lucene.search;
 
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
@@ -25,16 +26,22 @@ import org.apache.lucene.util.hnsw.NeighborQueue;
  *
  * @lucene.experimental
  */
-public final class TopKnnCollector extends AbstractKnnCollector {
+public class TopKnnCollector extends AbstractKnnCollector {
 
-  private final NeighborQueue queue;
+  protected final NeighborQueue queue;
+
+  /** Constructor, with default search strategy */
+  public TopKnnCollector(int k, int visitLimit) {
+    this(k, visitLimit, null);
+  }
 
   /**
    * @param k the number of neighbors to collect
    * @param visitLimit how many vector nodes the results are allowed to visit
+   * @param searchStrategy the search strategy to use
    */
-  public TopKnnCollector(int k, int visitLimit) {
-    super(k, visitLimit);
+  public TopKnnCollector(int k, int visitLimit, KnnSearchStrategy searchStrategy) {
+    super(k, visitLimit, searchStrategy);
     this.queue = new NeighborQueue(k, false);
   }
 
@@ -61,6 +68,11 @@ public final class TopKnnCollector extends AbstractKnnCollector {
             ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
             : TotalHits.Relation.EQUAL_TO;
     return new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs);
+  }
+
+  @Override
+  public int numCollected() {
+    return queue.size();
   }
 
   @Override

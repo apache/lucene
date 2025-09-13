@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.facet.FacetField;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
@@ -31,19 +32,25 @@ import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.SearcherTaxonomyManager.SearcherAndTaxonomy;
+import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.IndexNotFoundException;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.NoDeletionPolicy;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.ReferenceManager;
+import org.apache.lucene.search.RefreshCommitSupplier;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.SuppressForbidden;
 
 @LuceneTestCase.SuppressCodecs("SimpleText")
 public class TestSearcherTaxonomyManager extends FacetTestCase {
@@ -124,6 +131,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
     }
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testNRT() throws Exception {
     Directory dir = newDirectory();
     Directory taxoDir = newDirectory();
@@ -151,6 +159,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
 
     Thread reopener =
         new Thread() {
+          @SuppressForbidden(reason = "Thread sleep")
           @Override
           public void run() {
             while (!stop.get()) {
@@ -186,10 +195,10 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
         try {
           // System.out.println("search maxOrd=" + pair.taxonomyReader.getSize());
           FacetsCollector sfc =
-              pair.searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
-          Facets facets = getTaxonomyFacetCounts(pair.taxonomyReader, config, sfc);
+              pair.searcher().search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+          Facets facets = getTaxonomyFacetCounts(pair.taxonomyReader(), config, sfc);
           FacetResult result = facets.getTopChildren(10, "field");
-          if (pair.searcher.getIndexReader().numDocs() > 0) {
+          if (pair.searcher().getIndexReader().numDocs() > 0) {
             // System.out.println(pair.taxonomyReader.getSize());
             assertTrue(result.childCount > 0);
             assertTrue(result.labelValues.length > 0);
@@ -241,10 +250,10 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
         try {
           // System.out.println("search maxOrd=" + pair.taxonomyReader.getSize());
           FacetsCollector sfc =
-              pair.searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
-          Facets facets = getTaxonomyFacetCounts(pair.taxonomyReader, config, sfc);
+              pair.searcher().search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+          Facets facets = getTaxonomyFacetCounts(pair.taxonomyReader(), config, sfc);
           FacetResult result = facets.getTopChildren(10, "field");
-          if (pair.searcher.getIndexReader().numDocs() > 0) {
+          if (pair.searcher().getIndexReader().numDocs() > 0) {
             // System.out.println(pair.taxonomyReader.getSize());
             assertTrue(result.childCount > 0);
             assertTrue(result.labelValues.length > 0);
@@ -284,11 +293,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
     tw.replaceTaxonomy(taxoDir2);
     taxoDir2.close();
 
-    expectThrows(
-        IllegalStateException.class,
-        () -> {
-          mgr.maybeRefresh();
-        });
+    expectThrows(IllegalStateException.class, mgr::maybeRefresh);
 
     w.close();
     IOUtils.close(mgr, tw, taxoDir, dir);
@@ -310,7 +315,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
     SearcherTaxonomyManager mgr = new SearcherTaxonomyManager(indexDir, taxoDir, null);
     SearcherAndTaxonomy pair = mgr.acquire();
     try {
-      assertEquals(1, pair.taxonomyReader.getSize());
+      assertEquals(1, pair.taxonomyReader().getSize());
     } finally {
       mgr.release(pair);
     }
@@ -324,7 +329,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
     mgr.maybeRefresh();
     pair = mgr.acquire();
     try {
-      assertEquals(3, pair.taxonomyReader.getSize());
+      assertEquals(3, pair.taxonomyReader().getSize());
     } finally {
       mgr.release(pair);
     }
@@ -356,5 +361,81 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
     taxoDir.deleteFile(infos.getSegmentsFileName());
     expectThrows(IndexNotFoundException.class, mgr::maybeRefreshBlocking);
     IOUtils.close(w, tw, mgr, indexDir, taxoDir);
+  }
+
+  /** Returns the first commit with generation higher than current reader commit */
+  public static class NextCommitSelector implements RefreshCommitSupplier {
+    @Override
+    public IndexCommit getSearcherRefreshCommit(DirectoryReader reader) throws IOException {
+      List<IndexCommit> commits = DirectoryReader.listCommits(reader.directory());
+      IndexCommit current = reader.getIndexCommit();
+      for (int i = 0; i < commits.size(); i++) {
+        IndexCommit commit = commits.get(i);
+        if (commit.getGeneration() > current.getGeneration()) {
+          return commit;
+        }
+      }
+      // we're already on latest commit
+      return null;
+    }
+  }
+
+  public void testStepWiseCommitRefresh() throws Exception {
+    Directory dir = newDirectory();
+    Directory taxoDir = newDirectory();
+    IndexWriter w =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE));
+    DirectoryTaxonomyWriter tw = new DirectoryTaxonomyWriter(taxoDir);
+    int docId = 0;
+    // create initial commit
+    for (int i = 0; i < 20; i++) {
+      Document doc = new Document();
+      doc.add(newStringField("docId", "doc-" + docId++, Field.Store.YES));
+      w.addDocument(doc);
+    }
+    w.commit();
+    tw.commit();
+
+    int colorIndex = 0;
+    final String[] colors = new String[] {"red", "green", "blue", "yellow"};
+    FacetsConfig config = new FacetsConfig();
+    DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
+    SearcherTaxonomyManager sat =
+        new SearcherTaxonomyManager(
+            DirectoryReader.open(dir), taxoReader, null, new NextCommitSelector());
+
+    final int numCommits = 5;
+    for (int i = 0; i < numCommits; i++) {
+      for (int j = 0; j < 20; j++) {
+        Document doc = new Document();
+        doc.add(newStringField("docId", "doc-" + docId++, Field.Store.YES));
+        doc.add(new FacetField("Color", colors[colorIndex++ % colors.length]));
+        doc = config.build(tw, doc);
+        w.addDocument(doc);
+      }
+      w.commit();
+      tw.commit();
+    }
+
+    // maybeRefresh only refreshes on the next incremental commit
+    // so it takes us numCommits to get to latest
+    int stepsToCurrent = 0;
+    while (sat.isSearcherCurrent() == false) {
+      long oldGen = sat.getSearcherCommitGeneration();
+      sat.maybeRefreshBlocking();
+      long newGen = sat.getSearcherCommitGeneration();
+      assertEquals(newGen, oldGen + 1);
+      stepsToCurrent++;
+      assertTrue(sat.isTaxonomyCurrent());
+    }
+    assertEquals(numCommits, stepsToCurrent);
+    sat.close();
+    w.close();
+    tw.close();
+    dir.close();
+    taxoDir.close();
   }
 }

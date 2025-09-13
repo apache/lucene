@@ -290,7 +290,7 @@ public class TestConsistentFieldNumbers extends LuceneTestCase {
       for (FieldInfo fi : fis) {
         Field expected = getField(Integer.parseInt(fi.name));
         assertEquals(expected.fieldType().indexOptions(), fi.getIndexOptions());
-        assertEquals(expected.fieldType().storeTermVectors(), fi.hasVectors());
+        assertEquals(expected.fieldType().storeTermVectors(), fi.hasTermVectors());
       }
     }
 

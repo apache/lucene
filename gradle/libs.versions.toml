@@ -1,0 +1,112 @@
+# Run "gradlew writeLocks" and "gradlew updateLicenses" after modifying this file!
+[versions]
+# expressions/ grammars
+antlr = "4.13.2"
+# test assertions
+assertj = "3.27.4"
+# analysis/phonetic/ algorithms, gradle build checksums
+commons-codec = "1.19.0"
+# benchmark/ bzip2 compression
+commons-compress = "1.27.1"
+# See ecj-lint.gradle (used for more linting).
+ecj = "3.42.0"
+# java linting
+errorprone = "2.41.0"
+# markdown documentation generation
+flexmark = "0.64.8"
+# @keep This is GJF version for java source code formatting
+googleJavaFormat = "1.28.0"
+# gradle build support
+groovy = "4.0.28"
+# test assertions
+hamcrest = "3.0"
+# analysis/icu/, gradle regeneration unicode support
+icu4j = "77.1"
+# queryparsers/ grammars
+javacc = "7.0.13"
+# analysis/ tokenizer grammars
+jflex = "1.9.1"
+# build infra only (diff of changes from google java format tasks)
+jgit = "7.3.0.202506031305-r"
+# benchmark-jmh/ microbenchmarks
+jmh = "1.37"
+# spatial-extras/ support
+jts = "1.20.0"
+# unit tests
+junit = "4.13.2"
+# @keep Minimum gradle version to run the build
+minGradle = "8.14"
+# @keep This is the minimum required Java version.
+minJava = "24"
+# analysis/morfologik polish support
+morfologik = "2.1.9"
+# analysis/morfologik ukrainian support
+morfologik-ukrainian = "4.9.1"
+# benchmark/ html parsing
+nekohtml = "1.9.22"
+# analysis/opennlp/ support
+opennlp = "2.5.5"
+# distribution.tests/ process management
+procfork = "1.0.6"
+# unit tests
+randomizedtesting = "2.8.3"
+# license checks
+rat = "0.15"
+# spatial-extras/ support
+s2-geometry = "1.0.0"
+# spatial-extras/ support
+spatial4j = "0.8"
+# benchmark/ XML parsing
+xerces = "2.12.2"
+# external datasets decompression
+zstd = "1.5.7-4"
+
+[libraries]
+antlr-core = { module = "org.antlr:antlr4", version.ref = "antlr" }
+antlr-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr" }
+assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
+commons-codec = { module = "commons-codec:commons-codec", version.ref = "commons-codec" }
+commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
+ecj = { module = "org.eclipse.jdt:ecj", version.ref = "ecj" }
+errorprone = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }
+flexmark-core = { module = "com.vladsch.flexmark:flexmark", version.ref = "flexmark" }
+flexmark-ext-abbreviation = { module = "com.vladsch.flexmark:flexmark-ext-abbreviation", version.ref = "flexmark" }
+flexmark-ext-attributes = { module = "com.vladsch.flexmark:flexmark-ext-attributes", version.ref = "flexmark" }
+flexmark-ext-autolink = { module = "com.vladsch.flexmark:flexmark-ext-autolink", version.ref = "flexmark" }
+flexmark-ext-tables = { module = "com.vladsch.flexmark:flexmark-ext-tables", version.ref = "flexmark" }
+gjf = { module = "com.google.googlejavaformat:google-java-format", version.ref = "googleJavaFormat" }
+groovy = { module = "org.apache.groovy:groovy-all", version.ref = "groovy" }
+hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
+icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
+javacc = { module = "net.java.dev.javacc:javacc", version.ref = "javacc" }
+jflex = { module = "de.jflex:jflex", version.ref = "jflex" }
+jgit = { module = "org.eclipse.jgit:org.eclipse.jgit", version.ref = "jgit" }
+jmh-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.ref = "jmh" }
+jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
+jts = { module = "org.locationtech.jts:jts-core", version.ref = "jts" }
+junit = { module = "junit:junit", version.ref = "junit" }
+morfologik-polish = { module = "org.carrot2:morfologik-polish", version.ref = "morfologik" }
+morfologik-stemming = { module = "org.carrot2:morfologik-stemming", version.ref = "morfologik" }
+morfologik-ukrainian = { module = "ua.net.nlp:morfologik-ukrainian-search", version.ref = "morfologik-ukrainian" }
+nekohtml = { module = "net.sourceforge.nekohtml:nekohtml", version.ref = "nekohtml" }
+opennlp-tools = { module = "org.apache.opennlp:opennlp-tools", version.ref = "opennlp" }
+procfork = { module = "com.carrotsearch:procfork", version.ref = "procfork" }
+randomizedtesting-runner = { module = "com.carrotsearch.randomizedtesting:randomizedtesting-runner", version.ref = "randomizedtesting" }
+rat = { module = "org.apache.rat:apache-rat", version.ref = "rat" }
+s2-geometry = { module = "io.sgr:s2-geometry-library-java", version.ref = "s2-geometry" }
+spatial4j = { module = "org.locationtech.spatial4j:spatial4j", version.ref = "spatial4j" }
+xerces = { module = "xerces:xercesImpl", version.ref = "xerces" }
+zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
+
+[plugins]
+benmanes-versions = "com.github.ben-manes.versions:0.52.0"
+carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.0"
+carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.1.0"
+errorprone = "net.ltgt.errorprone:4.3.0"
+forbiddenapis = "de.thetaphi.forbiddenapis:3.9"
+jacocolog = "org.barfuin.gradle.jacocolog:3.1.0"
+owasp-dependencycheck = "org.owasp.dependencycheck:12.1.3"
+randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
+spotless = "com.diffplug.spotless:7.2.1"
+undercouch-download = "de.undercouch.download:5.6.0"
+versionCatalogUpdate = "nl.littlerobots.version-catalog-update:1.0.0"

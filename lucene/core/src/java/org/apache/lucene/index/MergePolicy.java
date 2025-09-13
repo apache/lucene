@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -136,14 +137,6 @@ public abstract class MergePolicy {
      */
     public void pauseNanos(long pauseNanos, PauseReason reason, BooleanSupplier condition)
         throws InterruptedException {
-      if (Thread.currentThread() != owner) {
-        throw new RuntimeException(
-            "Only the merge owner thread can call pauseNanos(). This thread: "
-                + Thread.currentThread().getName()
-                + ", owner thread: "
-                + owner);
-      }
-
       long start = System.nanoTime();
       AtomicLong timeUpdate = pauseTimesNS.get(reason);
       pauseLock.lock();
@@ -300,7 +293,7 @@ public abstract class MergePolicy {
      * Wrap a reader prior to merging in order to add/remove fields or documents.
      *
      * <p><b>NOTE:</b> It is illegal to reorder doc IDs here, use {@link
-     * #reorder(CodecReader,Directory)} instead.
+     * #reorder(CodecReader,Directory,Executor)} instead.
      */
     public CodecReader wrapForMerge(CodecReader reader) throws IOException {
       return reader;
@@ -316,9 +309,12 @@ public abstract class MergePolicy {
      *
      * @param reader The reader to reorder.
      * @param dir The {@link Directory} of the index, which may be used to create temporary files.
+     * @param executor An executor that can be used to parallelize the reordering logic. May be
+     *     {@code null} if no concurrency is supported.
      * @lucene.experimental
      */
-    public Sorter.DocMap reorder(CodecReader reader, Directory dir) throws IOException {
+    public Sorter.DocMap reorder(CodecReader reader, Directory dir, Executor executor)
+        throws IOException {
       return null;
     }
 
@@ -431,7 +427,7 @@ public abstract class MergePolicy {
         return true;
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
-      } catch (@SuppressWarnings("unused") ExecutionException | TimeoutException e) {
+      } catch (ExecutionException | TimeoutException _) {
         return false;
       }
     }
@@ -498,16 +494,15 @@ public abstract class MergePolicy {
       merges.add(merge);
     }
 
-    // TODO: deprecate me (dir is never used!  and is sometimes difficult to provide!)
-    /** Returns a description of the merges in this specification. */
+    /**
+     * Returns a description of the merges in this specification
+     *
+     * @deprecated Use {@link #toString()} instead. The {@code Directory} parameter is ignored and
+     *     will be removed in a future release.
+     */
+    @Deprecated
     public String segString(Directory dir) {
-      StringBuilder b = new StringBuilder();
-      b.append("MergeSpec:\n");
-      final int count = merges.size();
-      for (int i = 0; i < count; i++) {
-        b.append("  ").append(1 + i).append(": ").append(merges.get(i).segString());
-      }
-      return b.toString();
+      return toString();
     }
 
     @Override
@@ -534,7 +529,7 @@ public abstract class MergePolicy {
         return true;
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
-      } catch (@SuppressWarnings("unused") ExecutionException | CancellationException e) {
+      } catch (ExecutionException | CancellationException _) {
         return false;
       }
     }
@@ -547,7 +542,7 @@ public abstract class MergePolicy {
         return true;
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
-      } catch (@SuppressWarnings("unused") ExecutionException | TimeoutException e) {
+      } catch (ExecutionException | TimeoutException _) {
         return false;
       }
     }
@@ -597,12 +592,12 @@ public abstract class MergePolicy {
    * If the size of the merge segment exceeds this ratio of the total index size then it will remain
    * in non-compound format
    */
-  protected double noCFSRatio = DEFAULT_NO_CFS_RATIO;
+  protected double noCFSRatio;
 
   /**
    * If the size of the merged segment exceeds this value then it will not use compound file format.
    */
-  protected long maxCFSSegmentSize = DEFAULT_MAX_CFS_SEGMENT_SIZE;
+  protected long maxCFSSegmentSize;
 
   /** Creates a new merge policy instance. */
   protected MergePolicy() {
@@ -760,7 +755,7 @@ public abstract class MergePolicy {
 
   /**
    * Return the byte size of the provided {@link SegmentCommitInfo}, prorated by percentage of
-   * non-deleted documents is set.
+   * non-deleted documents.
    */
   protected long size(SegmentCommitInfo info, MergeContext mergeContext) throws IOException {
     long byteSize = info.sizeInBytes();
@@ -842,7 +837,7 @@ public abstract class MergePolicy {
   }
 
   /**
-   * Returns true if the segment represented by the given CodecReader should be keep even if it's
+   * Returns true if the segment represented by the given CodecReader should be kept even if it's
    * fully deleted. This is useful for testing of for instance if the merge policy implements
    * retention policies for soft deletes.
    */

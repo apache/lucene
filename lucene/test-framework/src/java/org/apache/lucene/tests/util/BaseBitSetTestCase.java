@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.tests.util;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
@@ -100,6 +101,23 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
       T set2 = copyOf(set1, numBits);
       for (int i = 0; i < numBits; ++i) {
         assertEquals(set1.nextSetBit(i), set2.nextSetBit(i));
+      }
+    }
+  }
+
+  /** Test {@link BitSet#nextSetBit(int, int)}. */
+  public void testNextSetBitInRange() throws IOException {
+    Random random = random();
+    final int numBits = 1 + random().nextInt(100000);
+    for (float percentSet : new float[] {0, 0.01f, 0.1f, 0.5f, 0.9f, 0.99f, 1f}) {
+      BitSet set1 = new JavaUtilBitSet(randomSet(numBits, percentSet), numBits);
+      T set2 = copyOf(set1, numBits);
+      for (int start = 0; start < numBits; ++start) {
+        int end = RandomNumbers.randomIntBetween(random, start + 1, numBits);
+        assertEquals(
+            "start=" + start + ", end=" + end + ", numBits=" + numBits,
+            set1.nextSetBit(start, end),
+            set2.nextSetBit(start, end));
       }
     }
   }
@@ -323,9 +341,9 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     }
 
     @Override
-    public int nextSetBit(int i) {
-      int next = bitSet.nextSetBit(i);
-      if (next == -1) {
+    public int nextSetBit(int start, int upperBound) {
+      int next = bitSet.nextSetBit(start);
+      if (next == -1 || next >= upperBound) {
         next = DocIdSetIterator.NO_MORE_DOCS;
       }
       return next;

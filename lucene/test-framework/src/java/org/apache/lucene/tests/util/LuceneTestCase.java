@@ -17,10 +17,12 @@
 
 package org.apache.lucene.tests.util;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsInt;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.search.IndexSearcher.LeafSlice;
 
 import com.carrotsearch.randomizedtesting.JUnit4MethodProvider;
 import com.carrotsearch.randomizedtesting.LifecycleScope;
@@ -67,15 +69,6 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.AccessControlContext;
-import java.security.AccessController;
-import java.security.Permission;
-import java.security.PermissionCollection;
-import java.security.Permissions;
-import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
-import java.security.ProtectionDomain;
-import java.security.SecurityPermission;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -92,6 +85,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -100,6 +94,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 import junit.framework.AssertionFailedError;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.bitvectors.HnswBitVectorsFormat;
+import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -150,6 +147,7 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
 import org.apache.lucene.index.TieredMergePolicy;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -166,9 +164,9 @@ import org.apache.lucene.store.FileSwitchDirectory;
 import org.apache.lucene.store.FlushInfo;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.LockFactory;
-import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.MergeInfo;
 import org.apache.lucene.store.NRTCachingDirectory;
+import org.apache.lucene.store.ReadOnceHint;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.AlcoholicMergePolicy;
 import org.apache.lucene.tests.index.AssertingDirectoryReader;
@@ -176,6 +174,7 @@ import org.apache.lucene.tests.index.AssertingLeafReader;
 import org.apache.lucene.tests.index.FieldFilterLeafReader;
 import org.apache.lucene.tests.index.MergingCodecReader;
 import org.apache.lucene.tests.index.MergingDirectoryReaderWrapper;
+import org.apache.lucene.tests.index.MismatchedCodecReader;
 import org.apache.lucene.tests.index.MismatchedDirectoryReader;
 import org.apache.lucene.tests.index.MismatchedLeafReader;
 import org.apache.lucene.tests.index.MockIndexWriterEventListener;
@@ -190,7 +189,6 @@ import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CommandLineUtil;
-import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -199,6 +197,8 @@ import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
+import org.hamcrest.Matcher;
+import org.hamcrest.MatcherAssert;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -498,31 +498,9 @@ public abstract class LuceneTestCase extends Assert {
     LEAVE_TEMPORARY = defaultValue;
   }
 
-  /**
-   * Returns true, if MMapDirectory supports unmapping on this platform (required for Windows), or
-   * if we are not on Windows.
-   */
-  public static boolean hasWorkingMMapOnWindows() {
-    return !Constants.WINDOWS || MMapDirectory.UNMAP_SUPPORTED;
-  }
-
-  /**
-   * Assumes that the current MMapDirectory implementation supports unmapping, so the test will not
-   * fail on Windows.
-   *
-   * @see #hasWorkingMMapOnWindows()
-   */
-  public static void assumeWorkingMMapOnWindows() {
-    assumeTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, hasWorkingMMapOnWindows());
-  }
-
   /** Filesystem-based {@link Directory} implementations. */
   private static final List<String> FS_DIRECTORIES =
-      Arrays.asList(
-          "NIOFSDirectory",
-          // NIOFSDirectory as replacement for MMapDirectory if unmapping is not supported on
-          // Windows (to make randomization stable):
-          hasWorkingMMapOnWindows() ? "MMapDirectory" : "NIOFSDirectory");
+      Arrays.asList("NIOFSDirectory", "MMapDirectory");
 
   /** All {@link Directory} implementations. */
   private static final List<String> CORE_DIRECTORIES;
@@ -560,6 +538,7 @@ public abstract class LuceneTestCase extends Assert {
   static final TestRuleSetupAndRestoreClassEnv classEnvRule;
 
   /** Suite failure marker (any error in the test or suite scope). */
+  @SuppressWarnings("NonFinalStaticField")
   protected static TestRuleMarkFailure suiteFailureMarker;
 
   /** Temporary files cleanup rule. */
@@ -603,7 +582,7 @@ public abstract class LuceneTestCase extends Assert {
     ignoreAfterMaxFailures = TestRuleDelegate.of(ignoreAfterMaxFailuresDelegate);
   }
 
-  /**
+  /*
    * Try to capture streams early so that other classes don't have a chance to steal references to
    * them (as is the case with ju.logging handlers).
    */
@@ -624,7 +603,7 @@ public abstract class LuceneTestCase extends Assert {
    * This controls how suite-level rules are nested. It is important that _all_ rules declared in
    * {@link LuceneTestCase} are executed in proper order if they depend on each other.
    */
-  @ClassRule public static TestRule classRules;
+  @ClassRule public static final TestRule classRules;
 
   static {
     RuleChain r =
@@ -695,6 +674,7 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /** Set by TestRuleSetupAndRestoreClassEnv */
+  @SuppressWarnings("NonFinalStaticField")
   static LiveIWCFlushMode liveIWCFlushMode;
 
   static void setLiveIWCFlushMode(LiveIWCFlushMode flushMode) {
@@ -798,22 +778,6 @@ public abstract class LuceneTestCase extends Assert {
    * Some tests expect the directory to contain a single segment, and want to do tests on that
    * segment's reader. This is an utility method to help them.
    */
-  /*
-  public static SegmentReader getOnlySegmentReader(DirectoryReader reader) {
-    List<LeafReaderContext> subReaders = reader.leaves();
-    if (subReaders.size() != 1) {
-      throw new IllegalArgumentException(reader + " has " + subReaders.size() + " segments instead of exactly one");
-    }
-    final LeafReader r = subReaders.get(0).reader();
-    assertTrue("expected a SegmentReader but got " + r, r instanceof SegmentReader);
-    return (SegmentReader) r;
-  }
-    */
-
-  /**
-   * Some tests expect the directory to contain a single segment, and want to do tests on that
-   * segment's reader. This is an utility method to help them.
-   */
   public static LeafReader getOnlyLeafReader(IndexReader reader) {
     List<LeafReaderContext> subReaders = reader.leaves();
     if (subReaders.size() != 1) {
@@ -882,6 +846,18 @@ public abstract class LuceneTestCase extends Assert {
 
   public static void assumeNoException(String msg, Exception e) {
     RandomizedTest.assumeNoException(msg, e);
+  }
+
+  public static void assertFloatUlpEquals(final float x, final float y, final short maxUlps) {
+    assertTrue(
+        x + " and " + y + " are not within " + maxUlps + " ULPs of each other",
+        TestUtil.floatUlpEquals(x, y, maxUlps));
+  }
+
+  public static void assertDoubleUlpEquals(final double x, final double y, final int maxUlps) {
+    assertTrue(
+        x + " and " + y + " are not within " + maxUlps + " ULPs of each other",
+        TestUtil.doubleUlpEquals(x, y, maxUlps));
   }
 
   /**
@@ -961,10 +937,10 @@ public abstract class LuceneTestCase extends Assert {
     } else if (rarely(r)) {
       ConcurrentMergeScheduler cms;
       if (r.nextBoolean()) {
-        cms = new ConcurrentMergeScheduler();
+        cms = new TestConcurrentMergeScheduler();
       } else {
         cms =
-            new ConcurrentMergeScheduler() {
+            new TestConcurrentMergeScheduler() {
               @Override
               protected synchronized boolean maybeStall(MergeSource mergeSource) {
                 return true;
@@ -983,7 +959,8 @@ public abstract class LuceneTestCase extends Assert {
     } else {
       // Always use consistent settings, else CMS's dynamic (SSD or not)
       // defaults can change, hurting reproducibility:
-      ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
+      ConcurrentMergeScheduler cms =
+          randomBoolean() ? new TestConcurrentMergeScheduler() : new ConcurrentMergeScheduler();
 
       // Only 1 thread can run at once (should maybe help reproducibility),
       // with up to 3 pending merges before segment-producing threads are
@@ -1073,6 +1050,7 @@ public abstract class LuceneTestCase extends Assert {
   public static LogMergePolicy newLogMergePolicy(Random r) {
     LogMergePolicy logmp = r.nextBoolean() ? new LogDocMergePolicy() : new LogByteSizeMergePolicy();
     logmp.setCalibrateSizeByDeletes(r.nextBoolean());
+    logmp.setTargetSearchConcurrency(TestUtil.nextInt(random(), 1, 16));
     if (rarely(r)) {
       logmp.setMergeFactor(TestUtil.nextInt(r, 2, 9));
     } else {
@@ -1099,11 +1077,6 @@ public abstract class LuceneTestCase extends Assert {
   public static TieredMergePolicy newTieredMergePolicy(Random r) {
     TieredMergePolicy tmp = new TieredMergePolicy();
     if (rarely(r)) {
-      tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 2, 9));
-    } else {
-      tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 10, 50));
-    }
-    if (rarely(r)) {
       tmp.setMaxMergedSegmentMB(0.2 + r.nextDouble() * 2.0);
     } else {
       tmp.setMaxMergedSegmentMB(10 + r.nextDouble() * 100);
@@ -1115,6 +1088,12 @@ public abstract class LuceneTestCase extends Assert {
     } else {
       tmp.setSegmentsPerTier(TestUtil.nextInt(r, 10, 50));
     }
+    if (rarely(r)) {
+      tmp.setTargetSearchConcurrency(TestUtil.nextInt(r, 10, 50));
+    } else {
+      tmp.setTargetSearchConcurrency(TestUtil.nextInt(r, 2, 20));
+    }
+
     configureRandom(r, tmp);
     tmp.setDeletesPctAllowed(20 + random().nextDouble() * 30);
     return tmp;
@@ -1126,14 +1105,14 @@ public abstract class LuceneTestCase extends Assert {
     return logmp;
   }
 
-  public static MergePolicy newLogMergePolicy(boolean useCFS, int mergeFactor) {
+  public static LogMergePolicy newLogMergePolicy(boolean useCFS, int mergeFactor) {
     LogMergePolicy logmp = newLogMergePolicy();
     logmp.setNoCFSRatio(useCFS ? 1.0 : 0.0);
     logmp.setMergeFactor(mergeFactor);
     return logmp;
   }
 
-  public static MergePolicy newLogMergePolicy(int mergeFactor) {
+  public static LogMergePolicy newLogMergePolicy(int mergeFactor) {
     LogMergePolicy logmp = newLogMergePolicy();
     logmp.setMergeFactor(mergeFactor);
     return logmp;
@@ -1203,8 +1182,7 @@ public abstract class LuceneTestCase extends Assert {
     if (rarely(r)) {
       // change CMS merge parameters
       MergeScheduler ms = c.getMergeScheduler();
-      if (ms instanceof ConcurrentMergeScheduler) {
-        ConcurrentMergeScheduler cms = (ConcurrentMergeScheduler) ms;
+      if (ms instanceof ConcurrentMergeScheduler cms) {
         int maxThreadCount = TestUtil.nextInt(r, 1, 4);
         int maxMergeCount = TestUtil.nextInt(r, maxThreadCount, maxThreadCount + 4);
         boolean enableAutoIOThrottle = random().nextBoolean();
@@ -1221,21 +1199,14 @@ public abstract class LuceneTestCase extends Assert {
     if (rarely(r)) {
       MergePolicy mp = c.getMergePolicy();
       configureRandom(r, mp);
-      if (mp instanceof LogMergePolicy) {
-        LogMergePolicy logmp = (LogMergePolicy) mp;
+      if (mp instanceof LogMergePolicy logmp) {
         logmp.setCalibrateSizeByDeletes(r.nextBoolean());
         if (rarely(r)) {
           logmp.setMergeFactor(TestUtil.nextInt(r, 2, 9));
         } else {
           logmp.setMergeFactor(TestUtil.nextInt(r, 10, 50));
         }
-      } else if (mp instanceof TieredMergePolicy) {
-        TieredMergePolicy tmp = (TieredMergePolicy) mp;
-        if (rarely(r)) {
-          tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 2, 9));
-        } else {
-          tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 10, 50));
-        }
+      } else if (mp instanceof TieredMergePolicy tmp) {
         if (rarely(r)) {
           tmp.setMaxMergedSegmentMB(0.2 + r.nextDouble() * 2.0);
         } else {
@@ -1384,9 +1355,7 @@ public abstract class LuceneTestCase extends Assert {
     try {
       try {
         clazz = CommandLineUtil.loadFSDirectoryClass(fsdirClass);
-      } catch (
-          @SuppressWarnings("unused")
-          ClassCastException e) {
+      } catch (ClassCastException _) {
         // TEST_DIRECTORY is not a sub-class of FSDirectory, so draw one at random
         fsdirClass = RandomPicks.randomFrom(random(), FS_DIRECTORIES);
         clazz = CommandLineUtil.loadFSDirectoryClass(fsdirClass);
@@ -1587,14 +1556,26 @@ public abstract class LuceneTestCase extends Assert {
         availableLanguageTags[random.nextInt(availableLanguageTags.length)]);
   }
 
+  /** Time zone IDs that cause a deprecation warning in JDK 25. */
+  private static final Set<String> DEPRECATED_TIME_ZONE_IDS_JDK25 =
+      Set.of(
+          "ACT", "AET", "AGT", "ART", "AST", "BET", "BST", "CAT", "CNT", "CST", "CTT", "EAT", "ECT",
+          "EST", "HST", "IET", "IST", "JST", "MIT", "MST", "NET", "NST", "PLT", "PNT", "PRT", "PST",
+          "SST", "VST");
+
   /**
    * Return a random TimeZone from the available timezones on the system
    *
    * @see <a href="http://issues.apache.org/jira/browse/LUCENE-4020">LUCENE-4020</a>
    */
   public static TimeZone randomTimeZone(Random random) {
-    String[] tzIds = TimeZone.getAvailableIDs();
-    return TimeZone.getTimeZone(tzIds[random.nextInt(tzIds.length)]);
+    List<String> tzIds = Arrays.asList(TimeZone.getAvailableIDs());
+    // Remove time zones that cause deprecation warnings as these can break
+    // certain tests that expect exact output.
+    if (Runtime.version().feature() >= 25) {
+      tzIds = tzIds.stream().filter(id -> !DEPRECATED_TIME_ZONE_IDS_JDK25.contains(id)).toList();
+    }
+    return TimeZone.getTimeZone(RandomPicks.randomFrom(random, tzIds));
   }
 
   /** return a Locale object equivalent to its programmatic name */
@@ -1654,9 +1635,7 @@ public abstract class LuceneTestCase extends Assert {
             clazz.getConstructor(Path.class, LockFactory.class);
         final Path dir = createTempDir("index");
         return pathCtor.newInstance(dir, lf);
-      } catch (
-          @SuppressWarnings("unused")
-          NoSuchMethodException nsme) {
+      } catch (NoSuchMethodException _) {
         // Ignore
       }
 
@@ -1666,9 +1645,7 @@ public abstract class LuceneTestCase extends Assert {
         // try ctor with only LockFactory
         try {
           return clazz.getConstructor(LockFactory.class).newInstance(lf);
-        } catch (
-            @SuppressWarnings("unused")
-            NoSuchMethodException nsme) {
+        } catch (NoSuchMethodException _) {
           // Ignore
         }
       }
@@ -1700,8 +1677,7 @@ public abstract class LuceneTestCase extends Assert {
                   : new ParallelCompositeReader((CompositeReader) r);
           break;
         case 1:
-          if (r instanceof LeafReader) {
-            final LeafReader ar = (LeafReader) r;
+          if (r instanceof LeafReader ar) {
             final List<String> allFields = new ArrayList<>();
             for (FieldInfo fi : ar.getFieldInfos()) {
               allFields.add(fi.name);
@@ -1743,12 +1719,14 @@ public abstract class LuceneTestCase extends Assert {
             System.out.println(
                 "NOTE: LuceneTestCase.wrapReader: wrapping previous reader="
                     + r
-                    + " with MismatchedLeaf/DirectoryReader");
+                    + " with MismatchedLeaf/Directory/CodecReader");
           }
           if (r instanceof LeafReader) {
             r = new MismatchedLeafReader((LeafReader) r, random);
           } else if (r instanceof DirectoryReader) {
             r = new MismatchedDirectoryReader((DirectoryReader) r, random);
+          } else if (r instanceof CodecReader) {
+            r = new MismatchedCodecReader((CodecReader) r, random);
           }
           break;
         case 4:
@@ -1800,40 +1778,38 @@ public abstract class LuceneTestCase extends Assert {
 
   /** TODO: javadoc */
   public static IOContext newIOContext(Random random, IOContext oldContext) {
+    if (oldContext.hints().contains(ReadOnceHint.INSTANCE)) {
+      return oldContext; // just return as-is
+    }
     final int randomNumDocs = random.nextInt(4192);
     final int size = random.nextInt(512) * randomNumDocs;
-    if (oldContext.flushInfo != null) {
+    if (oldContext.flushInfo() != null) {
       // Always return at least the estimatedSegmentSize of
       // the incoming IOContext:
-      return new IOContext(
-          new FlushInfo(randomNumDocs, Math.max(oldContext.flushInfo.estimatedSegmentSize, size)));
-    } else if (oldContext.mergeInfo != null) {
+      return IOContext.flush(
+          new FlushInfo(
+              randomNumDocs, Math.max(oldContext.flushInfo().estimatedSegmentSize(), size)));
+    } else if (oldContext.mergeInfo() != null) {
       // Always return at least the estimatedMergeBytes of
       // the incoming IOContext:
-      return new IOContext(
+      return IOContext.merge(
           new MergeInfo(
               randomNumDocs,
-              Math.max(oldContext.mergeInfo.estimatedMergeBytes, size),
+              Math.max(oldContext.mergeInfo().estimatedMergeBytes(), size),
               random.nextBoolean(),
               TestUtil.nextInt(random, 1, 100)));
     } else {
-      // Make a totally random IOContext:
+      // Make a totally random IOContext
       final IOContext context;
-      switch (random.nextInt(5)) {
+      switch (random.nextInt(3)) {
         case 0:
           context = IOContext.DEFAULT;
           break;
         case 1:
-          context = IOContext.READ;
+          context = IOContext.merge(new MergeInfo(randomNumDocs, size, true, -1));
           break;
         case 2:
-          context = IOContext.READONCE;
-          break;
-        case 3:
-          context = new IOContext(new MergeInfo(randomNumDocs, size, true, -1));
-          break;
-        case 4:
-          context = new IOContext(new FlushInfo(randomNumDocs, size));
+          context = IOContext.flush(new FlushInfo(randomNumDocs, size));
           break;
         default:
           context = IOContext.DEFAULT;
@@ -1857,7 +1833,7 @@ public abstract class LuceneTestCase extends Assert {
     // we need to reset the query cache in an @BeforeClass so that tests that
     // instantiate an IndexSearcher in an @BeforeClass method use a fresh new cache
     IndexSearcher.setDefaultQueryCache(
-        new LRUQueryCache(10000, 1 << 25, context -> true, Float.POSITIVE_INFINITY));
+        new LRUQueryCache(10000, 1 << 25, _ -> true, Float.POSITIVE_INFINITY));
     IndexSearcher.setDefaultQueryCachingPolicy(MAYBE_CACHE_POLICY);
   }
 
@@ -1937,8 +1913,32 @@ public abstract class LuceneTestCase extends Assert {
    */
   public static IndexSearcher newSearcher(
       IndexReader r, boolean maybeWrap, boolean wrapWithAssertions, boolean useThreads) {
+    if (useThreads) {
+      return newSearcher(r, maybeWrap, wrapWithAssertions, Concurrency.INTRA_SEGMENT);
+    }
+    return newSearcher(r, maybeWrap, wrapWithAssertions, Concurrency.NONE);
+  }
+
+  /** What level of concurrency is supported by the searcher being created */
+  public enum Concurrency {
+    /** No concurrency, meaning an executor won't be provided to the searcher */
+    NONE,
+    /**
+     * Inter-segment concurrency, meaning an executor will be provided to the searcher and slices
+     * will be randomly created to concurrently search entire segments
+     */
+    INTER_SEGMENT,
+    /**
+     * Intra-segment concurrency, meaning an executor will be provided to the searcher and slices
+     * will be randomly created to concurrently search segment partitions
+     */
+    INTRA_SEGMENT
+  }
+
+  public static IndexSearcher newSearcher(
+      IndexReader r, boolean maybeWrap, boolean wrapWithAssertions, Concurrency concurrency) {
     Random random = random();
-    if (useThreads == false) {
+    if (concurrency == Concurrency.NONE) {
       if (maybeWrap) {
         try {
           r = maybeWrapReader(r);
@@ -1988,7 +1988,8 @@ public abstract class LuceneTestCase extends Assert {
               new AssertingIndexSearcher(random, r, ex) {
                 @Override
                 protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-                  return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
+                  return LuceneTestCase.slices(
+                      leaves, maxDocPerSlice, maxSegmentsPerSlice, concurrency);
                 }
               };
         } else {
@@ -1996,7 +1997,8 @@ public abstract class LuceneTestCase extends Assert {
               new AssertingIndexSearcher(random, r.getContext(), ex) {
                 @Override
                 protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-                  return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
+                  return LuceneTestCase.slices(
+                      leaves, maxDocPerSlice, maxSegmentsPerSlice, concurrency);
                 }
               };
         }
@@ -2005,7 +2007,8 @@ public abstract class LuceneTestCase extends Assert {
             new IndexSearcher(r, ex) {
               @Override
               protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-                return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
+                return LuceneTestCase.slices(
+                    leaves, maxDocPerSlice, maxSegmentsPerSlice, concurrency);
               }
             };
       }
@@ -2016,6 +2019,25 @@ public abstract class LuceneTestCase extends Assert {
       }
       return ret;
     }
+  }
+
+  /**
+   * Creates leaf slices according to the concurrency argument, that optionally leverage
+   * intra-segment concurrency by splitting segments into multiple partitions according to the
+   * maxDocsPerSlice argument.
+   */
+  private static LeafSlice[] slices(
+      List<LeafReaderContext> leaves,
+      int maxDocsPerSlice,
+      int maxSegmentsPerSlice,
+      Concurrency concurrency) {
+    assert concurrency != Concurrency.NONE;
+    // Rarely test slices without partitions even though intra-segment concurrency is supported
+    return IndexSearcher.slices(
+        leaves,
+        maxDocsPerSlice,
+        maxSegmentsPerSlice,
+        concurrency == Concurrency.INTRA_SEGMENT && frequently());
   }
 
   /**
@@ -2034,6 +2056,15 @@ public abstract class LuceneTestCase extends Assert {
   /** Gets a resource from the test's classpath as {@link InputStream}. */
   protected InputStream getDataInputStream(String name) throws IOException {
     return IOUtils.requireResourceNonNull(this.getClass().getResourceAsStream(name), name);
+  }
+
+  // these hide the deprecated Assert.assertThat method
+  public static <T> void assertThat(T actual, Matcher<? super T> matcher) {
+    MatcherAssert.assertThat(actual, matcher);
+  }
+
+  public static <T> void assertThat(String reason, T actual, Matcher<? super T> matcher) {
+    MatcherAssert.assertThat(reason, actual, matcher);
   }
 
   public void assertReaderEquals(String info, IndexReader leftReader, IndexReader rightReader)
@@ -2563,9 +2594,12 @@ public abstract class LuceneTestCase extends Assert {
             assertEquals(info, left, right);
           }
           // bytes
-          for (int docID = 0; docID < leftReader.maxDoc(); docID++) {
-            assertEquals(docID, leftValues.nextDoc());
+          while (true) {
+            int docID = leftValues.nextDoc();
             assertEquals(docID, rightValues.nextDoc());
+            if (docID == NO_MORE_DOCS) {
+              break;
+            }
             final BytesRef left = BytesRef.deepCopyOf(leftValues.lookupOrd(leftValues.ordValue()));
             final BytesRef right = rightValues.lookupOrd(rightValues.ordValue());
             assertEquals(info, left, right);
@@ -3011,9 +3045,9 @@ public abstract class LuceneTestCase extends Assert {
    */
   public static boolean slowFileExists(Directory dir, String fileName) throws IOException {
     try {
-      dir.openInput(fileName, IOContext.DEFAULT).close();
+      dir.openInput(fileName, IOContext.READONCE).close();
       return true;
-    } catch (@SuppressWarnings("unused") NoSuchFileException | FileNotFoundException e) {
+    } catch (NoSuchFileException | FileNotFoundException _) {
       return false;
     }
   }
@@ -3075,41 +3109,12 @@ public abstract class LuceneTestCase extends Assert {
     return Files.readAllLines(forkArgsPath, StandardCharsets.UTF_8);
   }
 
-  /**
-   * Runs a code part with restricted permissions (be sure to add all required permissions, because
-   * it would start with empty permissions). You cannot grant more permissions than our policy file
-   * allows, but you may restrict writing to several dirs...
-   *
-   * <p><em>Note:</em> This assumes a {@link SecurityManager} enabled, otherwise it stops test
-   * execution. If enabled, it needs the following {@link SecurityPermission}: {@code
-   * "createAccessControlContext"}
-   */
-  @SuppressForbidden(reason = "security manager")
-  @SuppressWarnings("removal")
-  public static <T> T runWithRestrictedPermissions(
-      PrivilegedExceptionAction<T> action, Permission... permissions) throws Exception {
-    assumeTrue(
-        "runWithRestrictedPermissions requires a SecurityManager enabled",
-        System.getSecurityManager() != null);
-    // be sure to have required permission, otherwise doPrivileged runs with *no* permissions:
-    AccessController.checkPermission(new SecurityPermission("createAccessControlContext"));
-    final PermissionCollection perms = new Permissions();
-    Arrays.stream(permissions).forEach(perms::add);
-    final AccessControlContext ctx =
-        new AccessControlContext(new ProtectionDomain[] {new ProtectionDomain(null, perms)});
-    try {
-      return AccessController.doPrivileged(action, ctx);
-    } catch (PrivilegedActionException e) {
-      throw e.getException();
-    }
-  }
-
   /** True if assertions (-ea) are enabled (at least for this class). */
   public static final boolean assertsAreEnabled;
 
   static {
     boolean enabled = false;
-    assert enabled = true; // Intentional side-effect!!!
+    assert (enabled = true) == true; // Intentional side-effect!!!
     assertsAreEnabled = enabled;
   }
 
@@ -3235,5 +3240,41 @@ public abstract class LuceneTestCase extends Assert {
     }
 
     return it;
+  }
+
+  private static boolean supportsVectorEncoding(
+      KnnVectorsFormat format, VectorEncoding vectorEncoding) {
+    if (format instanceof HnswBitVectorsFormat) {
+      // special case, this only supports BYTE
+      return vectorEncoding == VectorEncoding.BYTE;
+    }
+    return true;
+  }
+
+  private static boolean supportsVectorSearch(KnnVectorsFormat format) {
+    return (format instanceof FlatVectorsFormat) == false;
+  }
+
+  protected static KnnVectorsFormat randomVectorFormat(VectorEncoding vectorEncoding) {
+    List<KnnVectorsFormat> availableFormats =
+        KnnVectorsFormat.availableKnnVectorsFormats().stream()
+            .map(KnnVectorsFormat::forName)
+            .filter(format -> supportsVectorEncoding(format, vectorEncoding))
+            .filter(format -> supportsVectorSearch(format))
+            .toList();
+    return RandomPicks.randomFrom(random(), availableFormats);
+  }
+
+  /**
+   * This is a test merge scheduler that will always use the intra merge executor to ensure we test
+   * it.
+   */
+  static class TestConcurrentMergeScheduler extends ConcurrentMergeScheduler {
+    @Override
+    public Executor getIntraMergeExecutor(MergePolicy.OneMerge merge) {
+      assert intraMergeExecutor != null : "scaledExecutor is not initialized";
+      // Always do the intra merge executor to ensure we test it
+      return intraMergeExecutor;
+    }
   }
 }

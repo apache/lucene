@@ -34,6 +34,7 @@ import org.apache.lucene.codecs.uniformsplit.FSTDictionary;
 import org.apache.lucene.codecs.uniformsplit.FieldMetadata;
 import org.apache.lucene.codecs.uniformsplit.IndexDictionary;
 import org.apache.lucene.codecs.uniformsplit.TermBytes;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -198,6 +199,7 @@ public class TestSTBlockReader extends LuceneTestCase {
         true,
         IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS,
         DocValuesType.NONE,
+        DocValuesSkipIndexType.NONE,
         -1,
         Collections.emptyMap(),
         0,
@@ -206,6 +208,7 @@ public class TestSTBlockReader extends LuceneTestCase {
         0,
         VectorEncoding.FLOAT32,
         VectorSimilarityFunction.EUCLIDEAN,
+        false,
         false);
   }
 
@@ -223,15 +226,7 @@ public class TestSTBlockReader extends LuceneTestCase {
     return lines;
   }
 
-  private static class BlockLineDefinition {
-    final TermBytes termBytes;
-    final List<String> fields;
-
-    BlockLineDefinition(TermBytes termBytes, List<String> fields) {
-      this.termBytes = termBytes;
-      this.fields = fields;
-    }
-  }
+  private record BlockLineDefinition(TermBytes termBytes, List<String> fields) {}
 
   private static class MockSTBlockLine extends STBlockLine {
 

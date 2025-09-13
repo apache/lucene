@@ -116,6 +116,6 @@ public class TestUtil extends LuceneTestCase {
       fstCompiler.add(
           Util.toIntsRef(new BytesRef(word), new IntsRefBuilder()), outputs.getNoOutput());
     }
-    return fstCompiler.compile();
+    return FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
   }
 }

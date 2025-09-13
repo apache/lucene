@@ -30,6 +30,7 @@ import static org.apache.lucene.util.fst.FST.NON_FINAL_END_NODE;
 import static org.apache.lucene.util.fst.FST.getNumPresenceBytes;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.DataOutput;
@@ -98,7 +99,8 @@ public class FSTCompiler<T> {
   // it will throw exceptions if attempt to call getReverseBytesReader() or writeTo(DataOutput)
   private static final FSTReader NULL_FST_READER = new NullFSTReader();
 
-  private final NodeHash<T> dedupHash;
+  private final FSTSuffixNodeCache<T> suffixDedupCache;
+  // a temporary FST used during building for FSTSuffixNodeCache cache
   final FST<T> fst;
   private final T NO_OUTPUT;
 
@@ -173,15 +175,13 @@ public class FSTCompiler<T> {
     paddingBytePending = true;
     this.dataOutput = dataOutput;
     fst =
-        new FST<>(
-            new FST.FSTMetadata<>(inputType, outputs, null, -1, version, 0),
-            toFSTReader(dataOutput));
+        new FST<>(new FST.FSTMetadata<>(inputType, outputs, null, -1, version, 0), NULL_FST_READER);
     if (suffixRAMLimitMB < 0) {
       throw new IllegalArgumentException("ramLimitMB must be >= 0; got: " + suffixRAMLimitMB);
     } else if (suffixRAMLimitMB > 0) {
-      dedupHash = new NodeHash<>(this, suffixRAMLimitMB);
+      suffixDedupCache = new FSTSuffixNodeCache<>(this, suffixRAMLimitMB);
     } else {
-      dedupHash = null;
+      suffixDedupCache = null;
     }
     NO_OUTPUT = outputs.getNoOutput();
 
@@ -191,16 +191,6 @@ public class FSTCompiler<T> {
     for (int idx = 0; idx < frontier.length; idx++) {
       frontier[idx] = new UnCompiledNode<>(this, idx);
     }
-  }
-
-  // Get the respective FSTReader of the DataOutput. If the DataOutput is also a FSTReader then we
-  // will use it, otherwise we will return a NullFSTReader. Attempting to read from a FST with
-  // NullFSTReader will throw UnsupportedOperationException
-  private FSTReader toFSTReader(DataOutput dataOutput) {
-    if (dataOutput instanceof FSTReader) {
-      return (FSTReader) dataOutput;
-    }
-    return NULL_FST_READER;
   }
 
   /**
@@ -225,6 +215,22 @@ public class FSTCompiler<T> {
       throw new UnsupportedOperationException(
           "FST was not constructed with getOnHeapReaderWriter()");
     }
+  }
+
+  /**
+   * Get the respective {@link FSTReader} of the {@link DataOutput}. To call this method, you need
+   * to use the default DataOutput or {@link #getOnHeapReaderWriter(int)}, otherwise we will throw
+   * an exception.
+   *
+   * @return the DataOutput as FSTReader
+   * @throws IllegalStateException if the DataOutput does not implement FSTReader
+   */
+  public FSTReader getFSTReader() {
+    if (dataOutput instanceof FSTReader) {
+      return (FSTReader) dataOutput;
+    }
+    throw new IllegalStateException(
+        "The DataOutput must implement FSTReader, but got " + dataOutput);
   }
 
   /**
@@ -374,12 +380,12 @@ public class FSTCompiler<T> {
   private CompiledNode compileNode(UnCompiledNode<T> nodeIn) throws IOException {
     final long node;
     long bytesPosStart = numBytesWritten;
-    if (dedupHash != null) {
+    if (suffixDedupCache != null) {
       if (nodeIn.numArcs == 0) {
         node = addNode(nodeIn);
         lastFrozenNode = node;
       } else {
-        node = dedupHash.add(nodeIn);
+        node = suffixDedupCache.add(nodeIn);
       }
     } else {
       node = addNode(nodeIn);
@@ -812,23 +818,22 @@ public class FSTCompiler<T> {
     for (int idx = lastInput.length(); idx >= downTo; idx--) {
 
       final UnCompiledNode<T> node = frontier[idx];
-      final UnCompiledNode<T> parent = frontier[idx - 1];
-
+      final int prevIdx = idx - 1;
+      final UnCompiledNode<T> parent = frontier[prevIdx];
+      // We need use this variable rather than node.output to call replaceLast later, because
+      // compileNode(node) will clear node's state.
       final T nextFinalOutput = node.output;
 
-      // We "fake" the node as being final if it has no
-      // outgoing arcs; in theory we could leave it
-      // as non-final (the FST can represent this), but
-      // FSTEnum, Util, etc., have trouble w/ non-final
-      // dead-end states:
-
-      // TODO: is node.numArcs == 0 always false?  we no longer prune any nodes from FST:
-      final boolean isFinal = node.isFinal || node.numArcs == 0;
+      // If this node has no outgoing arcs, it should be final.
+      assert node.numArcs != 0 || node.isFinal;
+      // We need use this variable rather than node.isFinal to call replaceLast later, because
+      // compileNode(node) will clear node's state.
+      final boolean isFinal = node.isFinal;
 
       // this node makes it and we now compile it.  first,
       // compile any targets that were previously
       // undecided:
-      parent.replaceLast(lastInput.intAt(idx - 1), compileNode(node), nextFinalOutput, isFinal);
+      parent.replaceLast(lastInput.intAt(prevIdx), compileNode(node), nextFinalOutput, isFinal);
     }
   }
 
@@ -863,17 +868,14 @@ public class FSTCompiler<T> {
     }
 
     // compare shared prefix length
-    int pos1 = 0;
-    int pos2 = input.offset;
-    final int pos1Stop = Math.min(lastInput.length(), input.length);
-    while (true) {
-      if (pos1 >= pos1Stop || lastInput.intAt(pos1) != input.ints[pos2]) {
-        break;
-      }
-      pos1++;
-      pos2++;
+    int pos = 0;
+    if (lastInput.length() > 0) {
+      int mismatch =
+          Arrays.mismatch(
+              lastInput.ints(), 0, lastInput.length(), input.ints, input.offset, input.length);
+      pos += mismatch == -1 ? lastInput.length() : mismatch;
     }
-    final int prefixLenPlus1 = pos1 + 1;
+    final int prefixLenPlus1 = pos + 1;
 
     if (frontier.length < input.length + 1) {
       final UnCompiledNode<T>[] next = ArrayUtil.grow(frontier, input.length + 1);
@@ -908,17 +910,16 @@ public class FSTCompiler<T> {
       assert validOutput(lastOutput);
 
       final T commonOutputPrefix;
-      final T wordSuffix;
 
       if (lastOutput != NO_OUTPUT) {
         commonOutputPrefix = fst.outputs.common(output, lastOutput);
         assert validOutput(commonOutputPrefix);
-        wordSuffix = fst.outputs.subtract(lastOutput, commonOutputPrefix);
+        T wordSuffix = fst.outputs.subtract(lastOutput, commonOutputPrefix);
         assert validOutput(wordSuffix);
         parentNode.setLastOutput(input.ints[input.offset + idx - 1], commonOutputPrefix);
         node.prependOutput(wordSuffix);
       } else {
-        commonOutputPrefix = wordSuffix = NO_OUTPUT;
+        commonOutputPrefix = NO_OUTPUT;
       }
 
       output = fst.outputs.subtract(output, commonOutputPrefix);
@@ -968,10 +969,31 @@ public class FSTCompiler<T> {
     return output == NO_OUTPUT || !output.equals(NO_OUTPUT);
   }
 
-  /** Returns final FST. NOTE: this will return null if nothing is accepted by the FST. */
-  // TODO: make this method to only return the FSTMetadata and user needs to construct the FST
-  // themselves
-  public FST<T> compile() throws IOException {
+  /**
+   * Returns the metadata of the final FST. NOTE: this will return null if nothing is accepted by
+   * the FST themselves.
+   *
+   * <p>To create the FST, you need to:
+   *
+   * <p>- If a FSTReader DataOutput was used, such as the one returned by {@link
+   * #getOnHeapReaderWriter(int)}
+   *
+   * <pre class="prettyprint">
+   *     fstMetadata = fstCompiler.compile();
+   *     fst = FST.fromFSTReader(fstMetadata, fstCompiler.getFSTReader());
+   * </pre>
+   *
+   * <p>- If a non-FSTReader DataOutput was used, such as {@link
+   * org.apache.lucene.store.IndexOutput}, you need to first create the corresponding {@link
+   * org.apache.lucene.store.DataInput}, such as {@link org.apache.lucene.store.IndexInput} then
+   * pass it to the FST construct
+   *
+   * <pre class="prettyprint">
+   *     fstMetadata = fstCompiler.compile();
+   *     fst = new FST&lt;&gt;(fstMetadata, dataInput, new OffHeapFSTStore());
+   * </pre>
+   */
+  public FST.FSTMetadata<T> compile() throws IOException {
 
     final UnCompiledNode<T> root = frontier[0];
 
@@ -991,7 +1013,7 @@ public class FSTCompiler<T> {
     // root.output=" + root.output);
     finish(compileNode(root).node);
 
-    return fst;
+    return fst.metadata;
   }
 
   /** Expert: holds a pending (seen but not yet serialized) arc. */
@@ -1111,13 +1133,6 @@ public class FSTCompiler<T> {
       // assert target.node != -2;
       arc.nextFinalOutput = nextFinalOutput;
       arc.isFinal = isFinal;
-    }
-
-    void deleteLast(int label, Node target) {
-      assert numArcs > 0;
-      assert label == arcs[numArcs - 1].label;
-      assert target == arcs[numArcs - 1].target;
-      numArcs--;
     }
 
     void setLastOutput(int labelToMatch, T newOutput) {

@@ -371,7 +371,7 @@ public abstract class QueryParserBase extends QueryBuilder
     if (clauses.size() > 0 && conj == CONJ_AND) {
       BooleanClause c = clauses.get(clauses.size() - 1);
       if (!c.isProhibited())
-        clauses.set(clauses.size() - 1, new BooleanClause(c.getQuery(), Occur.MUST));
+        clauses.set(clauses.size() - 1, new BooleanClause(c.query(), Occur.MUST));
     }
 
     if (clauses.size() > 0 && operator == AND_OPERATOR && conj == CONJ_OR) {
@@ -381,7 +381,7 @@ public abstract class QueryParserBase extends QueryBuilder
       // this modification a OR b would be parsed as +a OR b
       BooleanClause c = clauses.get(clauses.size() - 1);
       if (!c.isProhibited())
-        clauses.set(clauses.size() - 1, new BooleanClause(c.getQuery(), Occur.SHOULD));
+        clauses.set(clauses.size() - 1, new BooleanClause(c.query(), Occur.SHOULD));
     }
 
     // We might have been passed a null query; the term might have been
@@ -428,7 +428,7 @@ public abstract class QueryParserBase extends QueryBuilder
     if (q instanceof BooleanQuery) {
       allNestedTermQueries = true;
       for (BooleanClause clause : ((BooleanQuery) q).clauses()) {
-        if (!(clause.getQuery() instanceof TermQuery)) {
+        if (!(clause.query() instanceof TermQuery)) {
           allNestedTermQueries = false;
           break;
         }
@@ -441,7 +441,7 @@ public abstract class QueryParserBase extends QueryBuilder
           operator == OR_OPERATOR ? BooleanClause.Occur.SHOULD : BooleanClause.Occur.MUST;
       if (q instanceof BooleanQuery) {
         for (BooleanClause clause : ((BooleanQuery) q).clauses()) {
-          clauses.add(newBooleanClause(clause.getQuery(), occur));
+          clauses.add(newBooleanClause(clause.query(), occur));
         }
       } else {
         clauses.add(newBooleanClause(q, occur));
@@ -482,9 +482,7 @@ public abstract class QueryParserBase extends QueryBuilder
 
     if (query instanceof PhraseQuery) {
       query = addSlopToPhrase((PhraseQuery) query, slop);
-    } else if (query instanceof MultiPhraseQuery) {
-      MultiPhraseQuery mpq = (MultiPhraseQuery) query;
-
+    } else if (query instanceof MultiPhraseQuery mpq) {
       if (slop != mpq.getSlop()) {
         query = new MultiPhraseQuery.Builder(mpq).setSlop(slop).build();
       }

@@ -209,13 +209,12 @@ final class DocumentsWriter implements Closeable, Accountable {
    * all currently buffered docs. This resets our state, discarding any docs added since last flush.
    */
   synchronized void abort() throws IOException {
-    boolean success = false;
     try {
       deleteQueue.clear();
       if (infoStream.isEnabled("DW")) {
         infoStream.message("DW", "abort");
       }
-      for (final DocumentsWriterPerThread perThread : perThreadPool.filterAndLock(x -> true)) {
+      for (final DocumentsWriterPerThread perThread : perThreadPool.filterAndLock(_ -> true)) {
         try {
           abortDocumentsWriterPerThread(perThread);
         } finally {
@@ -224,19 +223,22 @@ final class DocumentsWriter implements Closeable, Accountable {
       }
       flushControl.abortPendingFlushes();
       flushControl.waitForFlush();
+
       assert perThreadPool.size() == 0
           : "There are still active DWPT in the pool: " + perThreadPool.size();
-      success = true;
-    } finally {
-      if (success) {
-        assert flushControl.getFlushingBytes() == 0
-            : "flushingBytes has unexpected value 0 != " + flushControl.getFlushingBytes();
-        assert flushControl.netBytes() == 0
-            : "netBytes has unexpected value 0 != " + flushControl.netBytes();
-      }
+      assert flushControl.getFlushingBytes() == 0
+          : "flushingBytes has unexpected value 0 != " + flushControl.getFlushingBytes();
+      assert flushControl.netBytes() == 0
+          : "netBytes has unexpected value 0 != " + flushControl.netBytes();
+
       if (infoStream.isEnabled("DW")) {
-        infoStream.message("DW", "done abort success=" + success);
+        infoStream.message("DW", "done abort success=true");
       }
+    } catch (Throwable t) {
+      if (infoStream.isEnabled("DW")) {
+        infoStream.message("DW", "done abort success=false");
+      }
+      throw t;
     }
   }
 
@@ -291,7 +293,7 @@ final class DocumentsWriter implements Closeable, Accountable {
     try {
       deleteQueue.clear();
       perThreadPool.lockNewWriters();
-      writers.addAll(perThreadPool.filterAndLock(x -> true));
+      writers.addAll(perThreadPool.filterAndLock(_ -> true));
       for (final DocumentsWriterPerThread perThread : writers) {
         assert perThread.isHeldByCurrentThread();
         abortDocumentsWriterPerThread(perThread);
@@ -384,7 +386,7 @@ final class DocumentsWriter implements Closeable, Accountable {
     ensureOpen();
     boolean hasEvents = false;
     while (flushControl.anyStalledThreads()
-        || (flushControl.numQueuedFlushes() > 0 && config.checkPendingFlushOnUpdate)) {
+        || (config.checkPendingFlushOnUpdate && flushControl.numQueuedFlushes() > 0)) {
       // Help out flushing any queued DWPTs so we can un-stall:
       // Try pickup pending threads here if possible
       // no need to loop over the next pending flushes... doFlush will take care of this
@@ -430,10 +432,16 @@ final class DocumentsWriter implements Closeable, Accountable {
       }
       flushingDWPT = flushControl.doAfterDocument(dwpt);
     } finally {
-      if (dwpt.isFlushPending() || dwpt.isAborted()) {
-        dwpt.unlock();
-      } else {
-        perThreadPool.marksAsFreeAndUnlock(dwpt);
+      // If a flush is occurring, we don't want to allow this dwpt to be reused
+      // If it is aborted, we shouldn't allow it to be reused
+      // If the deleteQueue is advanced, this means the maximum seqNo has been set and it cannot be
+      // reused
+      synchronized (flushControl) {
+        if (dwpt.isFlushPending() || dwpt.isAborted() || dwpt.isQueueAdvanced()) {
+          dwpt.unlock();
+        } else {
+          perThreadPool.marksAsFreeAndUnlock(dwpt);
+        }
       }
       assert dwpt.isHeldByCurrentThread() == false : "we didn't release the dwpt even on abort";
     }
@@ -457,7 +465,6 @@ final class DocumentsWriter implements Closeable, Accountable {
     assert flushingDWPT != null : "Flushing DWPT must not be null";
     do {
       assert flushingDWPT.hasFlushed() == false;
-      boolean success = false;
       DocumentsWriterFlushQueue.FlushTicket ticket = null;
       try {
         assert currentFullFlushDelQueue == null
@@ -480,7 +487,7 @@ final class DocumentsWriter implements Closeable, Accountable {
          * flush 'B' starts and freezes all deletes occurred since 'A' has
          * started. if 'B' finishes before 'A' we need to wait until 'A' is done
          * otherwise the deletes frozen by 'B' are not applied to 'A' and we
-         * might miss to deletes documents in 'A'.
+         * might miss to delete documents in 'A'.
          */
         try {
           assert assertTicketQueueModification(flushingDWPT.deleteQueue);
@@ -508,14 +515,14 @@ final class DocumentsWriter implements Closeable, Accountable {
           }
           // flush was successful once we reached this point - new seg. has been assigned to the
           // ticket!
-          success = true;
-        } finally {
-          if (!success && ticket != null) {
+        } catch (Throwable t) {
+          if (ticket != null) {
             // In the case of a failure make sure we are making progress and
             // apply all the deletes since the segment flush failed since the flush
             // ticket could hold global deletes see FlushTicket#canPublish()
             ticketQueue.markTicketFailed(ticket);
           }
+          throw t;
         }
         /*
          * Now we are done and try to flush the ticket queue if the head of the
@@ -540,13 +547,16 @@ final class DocumentsWriter implements Closeable, Accountable {
     return deleteQueue.getNextSequenceNumber();
   }
 
-  synchronized void resetDeleteQueue(DocumentsWriterDeleteQueue newQueue) {
+  synchronized long resetDeleteQueue(int maxNumPendingOps) {
+    final DocumentsWriterDeleteQueue newQueue = deleteQueue.advanceQueue(maxNumPendingOps);
     assert deleteQueue.isAdvanced();
     assert newQueue.isAdvanced() == false;
     assert deleteQueue.getLastSequenceNumber() <= newQueue.getLastSequenceNumber();
     assert deleteQueue.getMaxSeqNo() <= newQueue.getLastSequenceNumber()
         : "maxSeqNo: " + deleteQueue.getMaxSeqNo() + " vs. " + newQueue.getLastSequenceNumber();
+    long oldMaxSeqNo = deleteQueue.getMaxSeqNo();
     deleteQueue = newQueue;
+    return oldMaxSeqNo;
   }
 
   interface FlushNotifications { // TODO maybe we find a better name for this?

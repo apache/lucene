@@ -18,6 +18,8 @@ package org.apache.lucene.store;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Optional;
+import org.apache.lucene.codecs.CompoundFormat;
 
 /**
  * Abstract base class for input from a file in a {@link Directory}. A random-access input stream.
@@ -122,6 +124,21 @@ public abstract class IndexInput extends DataInput implements Closeable {
       throws IOException;
 
   /**
+   * Create a slice with a new {@link IOContext}. This is typically used by {@link CompoundFormat}
+   * implementations to modify the {@link IOContext} for specific files within the compound file.
+   *
+   * <p><b>NOTE</b>: only certain {@link IOContext} may be usable here, depending on how this
+   * instance was opened.
+   *
+   * <p>The default implementation delegates to {@link #slice(String, long, long)} and ignores the
+   * {@link IOContext}.
+   */
+  public IndexInput slice(String sliceDescription, long offset, long length, IOContext context)
+      throws IOException {
+    return slice(sliceDescription, offset, length);
+  }
+
+  /**
    * Subclasses call this to get the String for resourceDescription of a slice of this {@code
    * IndexInput}.
    */
@@ -185,10 +202,50 @@ public abstract class IndexInput extends DataInput implements Closeable {
         }
 
         @Override
+        public void prefetch(long offset, long length) throws IOException {
+          slice.prefetch(offset, length);
+        }
+
+        @Override
         public String toString() {
           return "RandomAccessInput(" + IndexInput.this.toString() + ")";
         }
       };
     }
+  }
+
+  /**
+   * Optional method: Give a hint to this input that some bytes will be read in the near future.
+   * IndexInput implementations may take advantage of this hint to start fetching pages of data
+   * immediately from storage.
+   *
+   * <p>The default implementation is a no-op.
+   *
+   * @param offset start offset
+   * @param length the number of bytes to prefetch
+   */
+  public void prefetch(long offset, long length) throws IOException {}
+
+  /**
+   * Optional method: Updates the {@code IOContext} to specify a new read access pattern. IndexInput
+   * implementations may take advantage of this hint to optimize reads from storage.
+   *
+   * <p>The default implementation is a no-op.
+   */
+  public void updateIOContext(IOContext context) throws IOException {}
+
+  /**
+   * Returns a hint whether all the contents of this input are resident in physical memory. It's a
+   * hint because the operating system may have paged out some of the data by the time this method
+   * returns. If the optional is true, then it's likely that the contents of this input are resident
+   * in physical memory. A value of false does not imply that the contents are not resident in
+   * physical memory. An empty optional is returned if it is not possible to determine.
+   *
+   * <p>This runs in linear time with the {@link #length()} of this input / page size.
+   *
+   * <p>The default implementation returns an empty optional.
+   */
+  public Optional<Boolean> isLoaded() {
+    return Optional.empty();
   }
 }

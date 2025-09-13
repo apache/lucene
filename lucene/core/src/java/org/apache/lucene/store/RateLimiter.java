@@ -17,6 +17,7 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
@@ -93,6 +94,7 @@ public abstract class RateLimiter {
      *
      * @return the pause time in nano seconds
      */
+    @SuppressForbidden(reason = "Thread sleep")
     @Override
     public long pause(long bytes) {
 

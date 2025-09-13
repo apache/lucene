@@ -43,7 +43,7 @@ public class TestSimpleExplanationsWithFillerDocs extends TestSimpleExplanations
    * If non-null then the filler docs are not empty, and need to be filtered out from queries using
    * this as both field name &amp; field value
    */
-  public static String EXTRA = null;
+  private static String EXTRA = null;
 
   private static final Document EMPTY_DOC = new Document();
 
@@ -103,7 +103,7 @@ public class TestSimpleExplanationsWithFillerDocs extends TestSimpleExplanations
   @Override
   public void qtest(Query q, int[] expDocNrs) throws Exception {
 
-    expDocNrs = ArrayUtil.copyOfSubArray(expDocNrs, 0, expDocNrs.length);
+    expDocNrs = ArrayUtil.copyArray(expDocNrs);
     for (int i = 0; i < expDocNrs.length; i++) {
       expDocNrs[i] = PRE_FILLER_DOCS + ((NUM_FILLER_DOCS + 1) * expDocNrs[i]);
     }

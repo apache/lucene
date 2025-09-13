@@ -143,7 +143,7 @@ public abstract class TermVectorsWriter implements Closeable, Accountable {
           if (payload == null) {
             payload = new BytesRefBuilder();
           }
-          payload.grow(payloadLength);
+          payload.growNoCopy(payloadLength);
 
           positions.readBytes(payload.bytes(), 0, payloadLength);
           payload.setLength(payloadLength);

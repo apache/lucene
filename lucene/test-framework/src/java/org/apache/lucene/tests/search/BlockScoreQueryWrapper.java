@@ -27,6 +27,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.ArrayUtil;
 
@@ -95,7 +96,7 @@ public final class BlockScoreQueryWrapper extends Query {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         Scorer inScorer = inWeight.scorer(context);
         if (inScorer == null) {
           return null;
@@ -120,29 +121,10 @@ public final class BlockScoreQueryWrapper extends Query {
         final int[] docs = ArrayUtil.copyOfSubArray(tmpDocs, 0, i);
         final float[] scores = ArrayUtil.copyOfSubArray(tmpScores, 0, i);
 
-        return new Scorer(inWeight) {
+        final var scorer =
+            new Scorer() {
 
-          int i = 0;
-
-          @Override
-          public int docID() {
-            return docs[i];
-          }
-
-          @Override
-          public float score() throws IOException {
-            return scores[i];
-          }
-
-          @Override
-          public DocIdSetIterator iterator() {
-            return new DocIdSetIterator() {
-
-              @Override
-              public int nextDoc() throws IOException {
-                assert docs[i] != NO_MORE_DOCS;
-                return docs[++i];
-              }
+              int i = 0;
 
               @Override
               public int docID() {
@@ -150,60 +132,81 @@ public final class BlockScoreQueryWrapper extends Query {
               }
 
               @Override
-              public long cost() {
-                return docs.length - 2;
+              public float score() throws IOException {
+                return scores[i];
               }
 
               @Override
-              public int advance(int target) throws IOException {
-                i = Arrays.binarySearch(docs, target);
+              public DocIdSetIterator iterator() {
+                return new DocIdSetIterator() {
+
+                  @Override
+                  public int nextDoc() throws IOException {
+                    assert docs[i] != NO_MORE_DOCS;
+                    return docs[++i];
+                  }
+
+                  @Override
+                  public int docID() {
+                    return docs[i];
+                  }
+
+                  @Override
+                  public long cost() {
+                    return docs.length - 2;
+                  }
+
+                  @Override
+                  public int advance(int target) throws IOException {
+                    i = Arrays.binarySearch(docs, target);
+                    if (i < 0) {
+                      i = -1 - i;
+                    }
+                    assert docs[i] >= target;
+                    return docs[i];
+                  }
+                };
+              }
+
+              private int startOfBlock(int target) {
+                int i = Arrays.binarySearch(docs, target);
                 if (i < 0) {
                   i = -1 - i;
                 }
-                assert docs[i] >= target;
-                return docs[i];
+                return i - i % blockLength;
+              }
+
+              private int endOfBlock(int target) {
+                return Math.min(startOfBlock(target) + blockLength, docs.length - 1);
+              }
+
+              int lastShallowTarget = -1;
+
+              @Override
+              public int advanceShallow(int target) throws IOException {
+                lastShallowTarget = target;
+                if (target == DocIdSetIterator.NO_MORE_DOCS) {
+                  return DocIdSetIterator.NO_MORE_DOCS;
+                }
+                return docs[endOfBlock(target)] - 1;
+              }
+
+              @Override
+              public float getMaxScore(int upTo) throws IOException {
+                float max = 0;
+                for (int j = startOfBlock(Math.max(docs[i], lastShallowTarget)); ; ++j) {
+                  if (docs[j] > upTo) {
+                    break;
+                  }
+                  max = Math.max(max, scores[j]);
+                  if (j == docs.length - 1) {
+                    break;
+                  }
+                }
+                return max;
               }
             };
-          }
-
-          private int startOfBlock(int target) {
-            int i = Arrays.binarySearch(docs, target);
-            if (i < 0) {
-              i = -1 - i;
-            }
-            return i - i % blockLength;
-          }
-
-          private int endOfBlock(int target) {
-            return Math.min(startOfBlock(target) + blockLength, docs.length - 1);
-          }
-
-          int lastShallowTarget = -1;
-
-          @Override
-          public int advanceShallow(int target) throws IOException {
-            lastShallowTarget = target;
-            if (target == DocIdSetIterator.NO_MORE_DOCS) {
-              return DocIdSetIterator.NO_MORE_DOCS;
-            }
-            return docs[endOfBlock(target)] - 1;
-          }
-
-          @Override
-          public float getMaxScore(int upTo) throws IOException {
-            float max = 0;
-            for (int j = startOfBlock(Math.max(docs[i], lastShallowTarget)); ; ++j) {
-              if (docs[j] > upTo) {
-                break;
-              }
-              max = Math.max(max, scores[j]);
-              if (j == docs.length - 1) {
-                break;
-              }
-            }
-            return max;
-          }
-        };
+        return new DefaultScorerSupplier(scorer);
       }
 
       @Override

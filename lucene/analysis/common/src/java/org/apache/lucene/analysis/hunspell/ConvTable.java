@@ -51,7 +51,7 @@ class ConvTable {
         fstCompiler.add(scratchInts.get(), new CharsRef(entry.getValue()));
       }
 
-      fst = fstCompiler.compile();
+      fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     } catch (IOException bogus) {
       throw new RuntimeException(bogus);
     }

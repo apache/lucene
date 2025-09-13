@@ -24,6 +24,7 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.StringHelper;
 
 /**
  * A class used to represent a set of many, potentially large, values (e.g. many long strings such
@@ -53,7 +54,6 @@ public class FuzzySet implements Accountable {
     NO
   };
 
-  private HashFunction hashFunction;
   private FixedBitSet filter;
   private int bloomSize;
   private final int hashCount;
@@ -138,7 +138,6 @@ public class FuzzySet implements Accountable {
     super();
     this.filter = filter;
     this.bloomSize = bloomSize;
-    this.hashFunction = MurmurHash64.INSTANCE;
     this.hashCount = hashCount;
   }
 
@@ -150,11 +149,12 @@ public class FuzzySet implements Accountable {
    * @return NO or MAYBE
    */
   public ContainsResult contains(BytesRef value) {
-    long hash = hashFunction.hash(value);
-    int msb = (int) (hash >>> Integer.SIZE);
-    int lsb = (int) hash;
+    long[] hash = StringHelper.murmurhash3_x64_128(value);
+
+    long msb = hash[0];
+    long lsb = hash[1];
     for (int i = 0; i < hashCount; i++) {
-      int bloomPos = (lsb + i * msb);
+      int bloomPos = ((int) (lsb + i * msb)) & bloomSize;
       if (!mayContainValue(bloomPos)) {
         return ContainsResult.NO;
       }
@@ -196,9 +196,7 @@ public class FuzzySet implements Accountable {
     int bloomSize = in.readInt();
     int numLongs = in.readInt();
     long[] longs = new long[numLongs];
-    for (int i = 0; i < numLongs; i++) {
-      longs[i] = in.readLong();
-    }
+    in.readLongs(longs, 0, numLongs);
     FixedBitSet bits = new FixedBitSet(longs, bloomSize + 1);
     return new FuzzySet(bits, bloomSize, hashCount);
   }
@@ -216,15 +214,14 @@ public class FuzzySet implements Accountable {
    * is modulo n'd where n is the chosen size of the internal bitset.
    *
    * @param value the key value to be hashed
-   * @throws IOException If there is a low-level I/O error
    */
-  public void addValue(BytesRef value) throws IOException {
-    long hash = hashFunction.hash(value);
-    int msb = (int) (hash >>> Integer.SIZE);
-    int lsb = (int) hash;
+  public void addValue(BytesRef value) {
+    long[] hash = StringHelper.murmurhash3_x64_128(value);
+    long msb = hash[0];
+    long lsb = hash[1];
     for (int i = 0; i < hashCount; i++) {
       // Bitmasking using bloomSize is effectively a modulo operation.
-      int bloomPos = (lsb + i * msb) & bloomSize;
+      int bloomPos = ((int) (lsb + i * msb)) & bloomSize;
       filter.set(bloomPos);
     }
   }
@@ -271,18 +268,31 @@ public class FuzzySet implements Accountable {
   }
 
   public int getEstimatedUniqueValues() {
-    return getEstimatedNumberUniqueValuesAllowingForCollisions(bloomSize, filter.cardinality());
+    return getEstimatedNumberUniqueValuesAllowingForCollisions(
+        bloomSize, filter.cardinality(), hashCount);
   }
 
-  // Given a set size and a the number of set bits, produces an estimate of the number of unique
-  // values recorded
+  /**
+   * Given a set size and the number of set bits, produces an estimate of the number of unique
+   * values recorded (assuming a single hash function is used)
+   */
   public static int getEstimatedNumberUniqueValuesAllowingForCollisions(
       int setSize, int numRecordedBits) {
+    return getEstimatedNumberUniqueValuesAllowingForCollisions(setSize, numRecordedBits, 1);
+  }
+
+  /**
+   * Given a set size, the number of set bits and hash function count, produces an estimate of the
+   * number of unique values recorded
+   */
+  public static int getEstimatedNumberUniqueValuesAllowingForCollisions(
+      int setSize, int numRecordedBits, int hashCount) {
     double setSizeAsDouble = setSize;
     double numRecordedBitsAsDouble = numRecordedBits;
+    double hashCountAsDouble = hashCount;
     double saturation = numRecordedBitsAsDouble / setSizeAsDouble;
     double logInverseSaturation = Math.log(1 - saturation) * -1;
-    return (int) (setSizeAsDouble * logInverseSaturation);
+    return (int) (setSizeAsDouble * logInverseSaturation / hashCountAsDouble);
   }
 
   public float getTargetMaxSaturation() {
@@ -302,9 +312,7 @@ public class FuzzySet implements Accountable {
   @Override
   public String toString() {
     return getClass().getSimpleName()
-        + "(hash="
-        + hashFunction
-        + ", k="
+        + "(k="
         + hashCount
         + ", bits="
         + filter.cardinality()

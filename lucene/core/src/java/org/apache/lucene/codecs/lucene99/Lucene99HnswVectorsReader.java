@@ -17,16 +17,17 @@
 
 package org.apache.lucene.codecs.lucene99;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.VERSION_GROUPVARINT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.FlatVectorsReader;
-import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -36,21 +37,31 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.PreloadHint;
 import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.GroupVIntUtil;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.QuantizedVectorsReader;
+import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
  * Reads vectors from the index segments along with index data structures supporting KNN search.
@@ -62,16 +73,19 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene99HnswVectorsFormat.class);
+  // Number of ordinals to score at a time when scoring exhaustively rather than using HNSW.
+  public static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
-  private final FieldInfos fieldInfos;
-  private final Map<String, FieldEntry> fields = new HashMap<>();
-  private final IndexInput vectorIndex;
   private final FlatVectorsReader flatVectorsReader;
+  private final FieldInfos fieldInfos;
+  private final IntObjectHashMap<FieldEntry> fields;
+  private final IndexInput vectorIndex;
+  private final int version;
 
-  Lucene99HnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
+  public Lucene99HnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
       throws IOException {
+    this.fields = new IntObjectHashMap<>();
     this.flatVectorsReader = flatVectorsReader;
-    boolean success = false;
     this.fieldInfos = state.fieldInfos;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -88,33 +102,61 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
                 Lucene99HnswVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
-        readFields(meta, state.fieldInfos);
+        readFields(meta);
       } catch (Throwable exception) {
         priorE = exception;
       } finally {
         CodecUtil.checkFooter(meta, priorE);
       }
-      vectorIndex =
+      this.version = versionMeta;
+      this.vectorIndex =
           openDataInput(
               state,
               versionMeta,
               Lucene99HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
-              Lucene99HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+              Lucene99HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
+              state.context.withHints(
+                  // Even though this input is referred to an `indexIn`, it doesn't qualify as
+                  // FileTypeHint#INDEX since it's a large file
+                  FileTypeHint.DATA,
+                  FileDataHint.KNN_VECTORS,
+                  DataAccessHint.RANDOM,
+                  PreloadHint.INSTANCE));
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
+  private Lucene99HnswVectorsReader(
+      Lucene99HnswVectorsReader reader, FlatVectorsReader flatVectorsReader) {
+    this.flatVectorsReader = flatVectorsReader;
+    this.fieldInfos = reader.fieldInfos;
+    this.fields = reader.fields;
+    this.vectorIndex = reader.vectorIndex;
+    this.version = reader.version;
+  }
+
+  @Override
+  public KnnVectorsReader getMergeInstance() throws IOException {
+    return new Lucene99HnswVectorsReader(this, this.flatVectorsReader.getMergeInstance());
+  }
+
+  @Override
+  public void finishMerge() throws IOException {
+    flatVectorsReader.finishMerge();
+  }
+
   private static IndexInput openDataInput(
-      SegmentReadState state, int versionMeta, String fileExtension, String codecName)
+      SegmentReadState state,
+      int versionMeta,
+      String fileExtension,
+      String codecName,
+      IOContext context)
       throws IOException {
     String fileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
-    IndexInput in = state.directory.openInput(fileName, state.context);
-    boolean success = false;
+    IndexInput in = state.directory.openInput(fileName, context);
     try {
       int versionVectorData =
           CodecUtil.checkIndexHeader(
@@ -135,24 +177,22 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
             in);
       }
       CodecUtil.retrieveChecksum(in);
-      success = true;
       return in;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(in);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, in);
+      throw t;
     }
   }
 
-  private void readFields(ChecksumIndexInput meta, FieldInfos infos) throws IOException {
+  private void readFields(ChecksumIndexInput meta) throws IOException {
     for (int fieldNumber = meta.readInt(); fieldNumber != -1; fieldNumber = meta.readInt()) {
-      FieldInfo info = infos.fieldInfo(fieldNumber);
+      FieldInfo info = fieldInfos.fieldInfo(fieldNumber);
       if (info == null) {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
-      FieldEntry fieldEntry = readField(meta);
+      FieldEntry fieldEntry = readField(meta, info);
       validateFieldEntry(info, fieldEntry);
-      fields.put(info.name, fieldEntry);
+      fields.put(info.number, fieldEntry);
     }
   }
 
@@ -169,17 +209,27 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
   }
 
-  private VectorSimilarityFunction readSimilarityFunction(DataInput input) throws IOException {
-    int similarityFunctionId = input.readInt();
-    if (similarityFunctionId < 0
-        || similarityFunctionId >= VectorSimilarityFunction.values().length) {
-      throw new CorruptIndexException(
-          "Invalid similarity function id: " + similarityFunctionId, input);
+  // List of vector similarity functions. This list is defined here, in order
+  // to avoid an undesirable dependency on the declaration and order of values
+  // in VectorSimilarityFunction. The list values and order must be identical
+  // to that of {@link o.a.l.c.l.Lucene94FieldInfosFormat#SIMILARITY_FUNCTIONS}.
+  public static final List<VectorSimilarityFunction> SIMILARITY_FUNCTIONS =
+      List.of(
+          VectorSimilarityFunction.EUCLIDEAN,
+          VectorSimilarityFunction.DOT_PRODUCT,
+          VectorSimilarityFunction.COSINE,
+          VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
+
+  public static VectorSimilarityFunction readSimilarityFunction(DataInput input)
+      throws IOException {
+    int i = input.readInt();
+    if (i < 0 || i >= SIMILARITY_FUNCTIONS.size()) {
+      throw new IllegalArgumentException("invalid distance function: " + i);
     }
-    return VectorSimilarityFunction.values()[similarityFunctionId];
+    return SIMILARITY_FUNCTIONS.get(i);
   }
 
-  private VectorEncoding readVectorEncoding(DataInput input) throws IOException {
+  public static VectorEncoding readVectorEncoding(DataInput input) throws IOException {
     int encodingId = input.readInt();
     if (encodingId < 0 || encodingId >= VectorEncoding.values().length) {
       throw new CorruptIndexException("Invalid vector encoding id: " + encodingId, input);
@@ -187,17 +237,25 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     return VectorEncoding.values()[encodingId];
   }
 
-  private FieldEntry readField(IndexInput input) throws IOException {
+  private FieldEntry readField(IndexInput input, FieldInfo info) throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
     VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
-    return new FieldEntry(input, vectorEncoding, similarityFunction);
+    if (similarityFunction != info.getVectorSimilarityFunction()) {
+      throw new IllegalStateException(
+          "Inconsistent vector similarity function for field=\""
+              + info.name
+              + "\"; "
+              + similarityFunction
+              + " != "
+              + info.getVectorSimilarityFunction());
+    }
+    return FieldEntry.create(input, vectorEncoding, info.getVectorSimilarityFunction());
   }
 
   @Override
   public long ramBytesUsed() {
     return Lucene99HnswVectorsReader.SHALLOW_SIZE
-        + RamUsageEstimator.sizeOfMap(
-            fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class))
+        + fields.ramBytesUsed()
         + flatVectorsReader.ramBytesUsed();
   }
 
@@ -217,57 +275,107 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     return flatVectorsReader.getByteVectorValues(field);
   }
 
-  @Override
-  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
-      throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
+  private FieldEntry getFieldEntryOrThrow(String field) {
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry entry;
+    if (info == null || (entry = fields.get(info.number)) == null) {
+      throw new IllegalArgumentException("field=\"" + field + "\" not found");
+    }
+    return entry;
+  }
 
-    if (fieldEntry.size() == 0
-        || knnCollector.k() == 0
-        || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
-      return;
+  private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
+    final FieldEntry fieldEntry = getFieldEntryOrThrow(field);
+    if (fieldEntry.vectorEncoding != expectedEncoding) {
+      throw new IllegalArgumentException(
+          "field=\""
+              + field
+              + "\" is encoded as: "
+              + fieldEntry.vectorEncoding
+              + " expected: "
+              + expectedEncoding);
     }
-    final RandomVectorScorer scorer = flatVectorsReader.getRandomVectorScorer(field, target);
-    final KnnCollector collector =
-        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
-    final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
-    if (knnCollector.k() < scorer.maxOrd()) {
-      HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
-    } else {
-      // if k is larger than the number of vectors, we can just iterate over all vectors
-      // and collect them
-      for (int i = 0; i < scorer.maxOrd(); i++) {
-        if (acceptedOrds == null || acceptedOrds.get(i)) {
-          knnCollector.incVisitedCount(1);
-          knnCollector.collect(scorer.ordToDoc(i), scorer.score(i));
-        }
-      }
-    }
+    return fieldEntry;
   }
 
   @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
+    search(
+        fieldEntry,
+        knnCollector,
+        acceptDocs,
+        () -> flatVectorsReader.getRandomVectorScorer(field, target));
+  }
 
-    if (fieldEntry.size() == 0
-        || knnCollector.k() == 0
-        || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
+  @Override
+  public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.BYTE);
+    search(
+        fieldEntry,
+        knnCollector,
+        acceptDocs,
+        () -> flatVectorsReader.getRandomVectorScorer(field, target));
+  }
+
+  private void search(
+      FieldEntry fieldEntry,
+      KnnCollector knnCollector,
+      AcceptDocs acceptDocs,
+      IOSupplier<RandomVectorScorer> scorerSupplier)
+      throws IOException {
+    if (fieldEntry.size() == 0 || knnCollector.k() == 0) {
       return;
     }
-    final RandomVectorScorer scorer = flatVectorsReader.getRandomVectorScorer(field, target);
+    final RandomVectorScorer scorer = scorerSupplier.get();
     final KnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
-    final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
-    if (knnCollector.k() < scorer.maxOrd()) {
-      HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
+    HnswGraph graph = getGraph(fieldEntry);
+    // Take into account if quantized? E.g. some scorer cost?
+    // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
+    // size as that is illogical
+    int filteredDocCount = Math.min(acceptDocs.cost(), graph.size());
+    Bits accepted = acceptDocs.bits();
+    final Bits acceptedOrds = scorer.getAcceptOrds(accepted);
+    boolean doHnsw = knnCollector.k() < scorer.maxOrd();
+    // The approximate number of vectors that would be visited if we did not filter
+    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graph.size());
+    if (unfilteredVisit >= filteredDocCount) {
+      doHnsw = false;
+    }
+    if (doHnsw) {
+      HnswGraphSearcher.search(
+          scorer, collector, getGraph(fieldEntry), acceptedOrds, filteredDocCount);
     } else {
-      // if k is larger than the number of vectors, we can just iterate over all vectors
-      // and collect them
+      // if k is larger than the number of vectors we expect to visit in an HNSW search,
+      // we can just iterate over all vectors and collect them.
+      int[] ords = new int[EXHAUSTIVE_BULK_SCORE_ORDS];
+      float[] scores = new float[EXHAUSTIVE_BULK_SCORE_ORDS];
+      int numOrds = 0;
       for (int i = 0; i < scorer.maxOrd(); i++) {
         if (acceptedOrds == null || acceptedOrds.get(i)) {
+          if (knnCollector.earlyTerminated()) {
+            break;
+          }
+          ords[numOrds++] = i;
+          if (numOrds == ords.length) {
+            scorer.bulkScore(ords, scores, numOrds);
+            for (int j = 0; j < numOrds; j++) {
+              knnCollector.incVisitedCount(1);
+              knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
+            }
+            numOrds = 0;
+          }
+        }
+      }
+
+      if (numOrds > 0) {
+        scorer.bulkScore(ords, scores, numOrds);
+        for (int j = 0; j < numOrds; j++) {
           knnCollector.incVisitedCount(1);
-          knnCollector.collect(scorer.ordToDoc(i), scorer.score(i));
+          knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
         }
       }
     }
@@ -275,12 +383,12 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   @Override
   public HnswGraph getGraph(String field) throws IOException {
-    FieldInfo info = fieldInfos.fieldInfo(field);
-    if (info == null) {
-      throw new IllegalArgumentException("No such field '" + field + "'");
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry entry;
+    if (info == null || (entry = fields.get(info.number)) == null) {
+      throw new IllegalArgumentException("field=\"" + field + "\" not found");
     }
-    FieldEntry entry = fields.get(field);
-    if (entry != null && entry.vectorIndexLength > 0) {
+    if (entry.vectorIndexLength > 0) {
       return getGraph(entry);
     } else {
       return HnswGraph.EMPTY;
@@ -289,6 +397,14 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   private HnswGraph getGraph(FieldEntry entry) throws IOException {
     return new OffHeapHnswGraph(entry, vectorIndex);
+  }
+
+  @Override
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    FieldEntry entry = getFieldEntryOrThrow(fieldInfo.name);
+    var flat = flatVectorsReader.getOffHeapByteSize(fieldInfo);
+    var graph = Map.of(Lucene99HnswVectorsFormat.VECTOR_INDEX_EXTENSION, entry.vectorIndexLength);
+    return KnnVectorsReader.mergeOffHeapByteSizeMaps(flat, graph);
   }
 
   @Override
@@ -312,40 +428,40 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     return null;
   }
 
-  static class FieldEntry implements Accountable {
-    private static final long SHALLOW_SIZE =
-        RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class);
-    final VectorSimilarityFunction similarityFunction;
-    final VectorEncoding vectorEncoding;
-    final long vectorIndexOffset;
-    final long vectorIndexLength;
-    final int M;
-    final int numLevels;
-    final int dimension;
-    final int size;
-    final int[][] nodesByLevel;
-    // for each level the start offsets in vectorIndex file from where to read neighbours
-    final DirectMonotonicReader.Meta offsetsMeta;
-    final long offsetsOffset;
-    final int offsetsBlockShift;
-    final long offsetsLength;
+  private record FieldEntry(
+      VectorSimilarityFunction similarityFunction,
+      VectorEncoding vectorEncoding,
+      long vectorIndexOffset,
+      long vectorIndexLength,
+      int M,
+      int numLevels,
+      int dimension,
+      int size,
+      int[][] nodesByLevel,
+      // for each level the start offsets in vectorIndex file from where to read neighbours
+      DirectMonotonicReader.Meta offsetsMeta,
+      long offsetsOffset,
+      int offsetsBlockShift,
+      long offsetsLength) {
 
-    FieldEntry(
+    static FieldEntry create(
         IndexInput input,
         VectorEncoding vectorEncoding,
         VectorSimilarityFunction similarityFunction)
         throws IOException {
-      this.similarityFunction = similarityFunction;
-      this.vectorEncoding = vectorEncoding;
-      vectorIndexOffset = input.readVLong();
-      vectorIndexLength = input.readVLong();
-      dimension = input.readVInt();
-      size = input.readInt();
+      final var vectorIndexOffset = input.readVLong();
+      final var vectorIndexLength = input.readVLong();
+      final var dimension = input.readVInt();
+      final var size = input.readInt();
       // read nodes by level
-      M = input.readVInt();
-      numLevels = input.readVInt();
-      nodesByLevel = new int[numLevels][];
+      final var M = input.readVInt();
+      final var numLevels = input.readVInt();
+      final var nodesByLevel = new int[numLevels][];
       long numberOfOffsets = 0;
+      final long offsetsOffset;
+      final int offsetsBlockShift;
+      final DirectMonotonicReader.Meta offsetsMeta;
+      final long offsetsLength;
       for (int level = 0; level < numLevels; level++) {
         if (level > 0) {
           int numNodesOnLevel = input.readVInt();
@@ -370,22 +486,25 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         offsetsMeta = null;
         offsetsLength = 0;
       }
-    }
-
-    int size() {
-      return size;
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return SHALLOW_SIZE
-          + Arrays.stream(nodesByLevel).mapToLong(nodes -> RamUsageEstimator.sizeOf(nodes)).sum()
-          + RamUsageEstimator.sizeOf(offsetsMeta);
+      return new FieldEntry(
+          similarityFunction,
+          vectorEncoding,
+          vectorIndexOffset,
+          vectorIndexLength,
+          M,
+          numLevels,
+          dimension,
+          size,
+          nodesByLevel,
+          offsetsMeta,
+          offsetsOffset,
+          offsetsBlockShift,
+          offsetsLength);
     }
   }
 
   /** Read the nearest-neighbors graph from the index input */
-  private static final class OffHeapHnswGraph extends HnswGraph {
+  private final class OffHeapHnswGraph extends HnswGraph {
 
     final IndexInput dataIn;
     final int[][] nodesByLevel;
@@ -395,6 +514,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     int arcCount;
     int arcUpTo;
     int arc;
+    private final int maxConn;
     private final DirectMonotonicReader graphLevelNodeOffsets;
     private final long[] graphLevelNodeIndexOffsets;
     // Allocated to be M*2 to track the current neighbors being explored
@@ -412,6 +532,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       this.graphLevelNodeOffsets =
           DirectMonotonicReader.getInstance(entry.offsetsMeta, addressesData);
       this.currentNeighborsBuffer = new int[entry.M * 2];
+      this.maxConn = entry.M;
       graphLevelNodeIndexOffsets = new long[numLevels];
       graphLevelNodeIndexOffsets[0] = 0;
       for (int i = 1; i < numLevels; i++) {
@@ -427,14 +548,23 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
           level == 0
               ? targetOrd
               : Arrays.binarySearch(nodesByLevel[level], 0, nodesByLevel[level].length, targetOrd);
-      assert targetIndex >= 0;
+      assert targetIndex >= 0
+          : "seek level=" + level + " target=" + targetOrd + " not found: " + targetIndex;
       // unsafe; no bounds checking
       dataIn.seek(graphLevelNodeOffsets.get(targetIndex + graphLevelNodeIndexOffsets[level]));
       arcCount = dataIn.readVInt();
+      assert arcCount <= currentNeighborsBuffer.length : "too many neighbors: " + arcCount;
       if (arcCount > 0) {
-        currentNeighborsBuffer[0] = dataIn.readVInt();
-        for (int i = 1; i < arcCount; i++) {
-          currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + dataIn.readVInt();
+        if (version >= VERSION_GROUPVARINT) {
+          GroupVIntUtil.readGroupVInts(dataIn, currentNeighborsBuffer, arcCount);
+          for (int i = 1; i < arcCount; i++) {
+            currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + currentNeighborsBuffer[i];
+          }
+        } else {
+          currentNeighborsBuffer[0] = dataIn.readVInt();
+          for (int i = 1; i < arcCount; i++) {
+            currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + dataIn.readVInt();
+          }
         }
       }
       arc = -1;
@@ -457,8 +587,18 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
 
     @Override
+    public int neighborCount() {
+      return arcCount;
+    }
+
+    @Override
     public int numLevels() throws IOException {
       return numLevels;
+    }
+
+    @Override
+    public int maxConn() {
+      return maxConn;
     }
 
     @Override

@@ -40,7 +40,7 @@ public abstract class AbstractGroupingTestCase extends LuceneTestCase {
       // groups.
       randomValue = TestUtil.randomRealisticUnicodeString(random());
       // randomValue = _TestUtil.randomSimpleString(random());
-    } while ("".equals(randomValue));
+    } while (randomValue.isEmpty());
     return randomValue;
   }
 

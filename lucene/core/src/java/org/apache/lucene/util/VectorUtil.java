@@ -17,6 +17,7 @@
 
 package org.apache.lucene.util;
 
+import java.util.stream.IntStream;
 import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 
@@ -46,6 +47,8 @@ import org.apache.lucene.internal.vectorization.VectorizationProvider;
  * sure that you have the {@code jdk.management} module enabled in modularized applications.
  */
 public final class VectorUtil {
+
+  public static final float EPSILON = 1e-4f;
 
   private static final VectorUtilSupport IMPL =
       VectorizationProvider.getInstance().getVectorUtilSupport();
@@ -121,6 +124,11 @@ public final class VectorUtil {
     return v;
   }
 
+  public static boolean isUnitVector(float[] v) {
+    double l1norm = IMPL.dotProduct(v, v);
+    return Math.abs(l1norm - 1.0d) <= EPSILON;
+  }
+
   /**
    * Modifies the argument to be unit length, dividing by its l2-norm.
    *
@@ -130,23 +138,7 @@ public final class VectorUtil {
    * @throws IllegalArgumentException when the vector is all zero and throwOnZero is true
    */
   public static float[] l2normalize(float[] v, boolean throwOnZero) {
-    double l1norm = IMPL.dotProduct(v, v);
-    if (l1norm == 0) {
-      if (throwOnZero) {
-        throw new IllegalArgumentException("Cannot normalize a zero-length vector");
-      } else {
-        return v;
-      }
-    }
-    if (Math.abs(l1norm - 1.0d) <= 1e-5) {
-      return v;
-    }
-    int dim = v.length;
-    double l2norm = Math.sqrt(l1norm);
-    for (int i = 0; i < dim; i++) {
-      v[i] /= (float) l2norm;
-    }
-    return v;
+    return IMPL.l2normalize(v, throwOnZero);
   }
 
   /**
@@ -175,6 +167,107 @@ public final class VectorUtil {
     return IMPL.dotProduct(a, b);
   }
 
+  public static int int4DotProduct(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.int4DotProduct(a, false, b, false);
+  }
+
+  /**
+   * Dot product computed over int4 (values between [0,15]) bytes. The second vector is considered
+   * "packed" (i.e. every byte representing two values). The following packing is assumed:
+   *
+   * <pre class="prettyprint lang-java">
+   *   packed[0] = (raw[0] * 16) | raw[packed.length];
+   *   packed[1] = (raw[1] * 16) | raw[packed.length + 1];
+   *   ...
+   *   packed[packed.length - 1] = (raw[packed.length - 1] * 16) | raw[2 * packed.length - 1];
+   * </pre>
+   *
+   * @param unpacked the unpacked vector, of even length
+   * @param packed the packed vector, of length {@code (unpacked.length + 1) / 2}
+   * @return the value of the dot product of the two vectors
+   */
+  public static int int4DotProductPacked(byte[] unpacked, byte[] packed) {
+    if (packed.length != ((unpacked.length + 1) >> 1)) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + unpacked.length + "!= 2 * " + packed.length);
+    }
+    return IMPL.int4DotProduct(unpacked, false, packed, true);
+  }
+
+  /**
+   * Dot product computed over int4 (values between [0,15]) bytes and a binary vector.
+   *
+   * @param q the int4 query vector
+   * @param d the binary document vector
+   * @return the dot product
+   */
+  public static long int4BitDotProduct(byte[] q, byte[] d) {
+    if (q.length != d.length * 4) {
+      throw new IllegalArgumentException(
+          "vector dimensions incompatible: " + q.length + "!= " + 4 + " x " + d.length);
+    }
+    return IMPL.int4BitDotProduct(q, d);
+  }
+
+  /**
+   * For xorBitCount we stride over the values as either 64-bits (long) or 32-bits (int) at a time.
+   * On ARM Long::bitCount is not vectorized, and therefore produces less than optimal code, when
+   * compared to Integer::bitCount. While Long::bitCount is optimal on x64. See
+   * https://bugs.openjdk.org/browse/JDK-8336000
+   */
+  static final boolean XOR_BIT_COUNT_STRIDE_AS_INT = Constants.OS_ARCH.equals("aarch64");
+
+  /**
+   * XOR bit count computed over signed bytes.
+   *
+   * @param a bytes containing a vector
+   * @param b bytes containing another vector, of the same dimension
+   * @return the value of the XOR bit count of the two vectors
+   */
+  public static int xorBitCount(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    if (XOR_BIT_COUNT_STRIDE_AS_INT) {
+      return xorBitCountInt(a, b);
+    } else {
+      return xorBitCountLong(a, b);
+    }
+  }
+
+  /** XOR bit count striding over 4 bytes at a time. */
+  static int xorBitCountInt(byte[] a, byte[] b) {
+    int distance = 0, i = 0;
+    for (final int upperBound = a.length & -Integer.BYTES; i < upperBound; i += Integer.BYTES) {
+      distance +=
+          Integer.bitCount(
+              (int) BitUtil.VH_NATIVE_INT.get(a, i) ^ (int) BitUtil.VH_NATIVE_INT.get(b, i));
+    }
+    // tail:
+    for (; i < a.length; i++) {
+      distance += Integer.bitCount((a[i] ^ b[i]) & 0xFF);
+    }
+    return distance;
+  }
+
+  /** XOR bit count striding over 8 bytes at a time. */
+  static int xorBitCountLong(byte[] a, byte[] b) {
+    int distance = 0, i = 0;
+    for (final int upperBound = a.length & -Long.BYTES; i < upperBound; i += Long.BYTES) {
+      distance +=
+          Long.bitCount(
+              (long) BitUtil.VH_NATIVE_LONG.get(a, i) ^ (long) BitUtil.VH_NATIVE_LONG.get(b, i));
+    }
+    // tail:
+    for (; i < a.length; i++) {
+      distance += Integer.bitCount((a[i] ^ b[i]) & 0xFF);
+    }
+    return distance;
+  }
+
   /**
    * Dot product score computed over signed bytes, scaled to be in [0, 1].
    *
@@ -200,6 +293,33 @@ public final class VectorUtil {
   }
 
   /**
+   * Converts a dot product or cosine similarity value to a normalized score in the [0, 1] range.
+   *
+   * <p>This transformation is necessary when consistent non-negative scores are required. It maps
+   * input values from [-1, 1] to [0, 1] using the formula: (1 + value) / 2. Any result below 0 is
+   * clamped to 0 for numerical safety.
+   *
+   * @param value the similarity value (dot product or cosine), typically in the range [-1, 1]
+   * @return a normalized score between 0 and 1
+   */
+  public static float normalizeToUnitInterval(float value) {
+    return Math.max((1 + value) / 2, 0);
+  }
+
+  /**
+   * Maps a non-negative squared distance to a similarity score in the range (0, 1].
+   *
+   * <p>Uses the transformation: {@code similarity = 1 / (1 + squaredDistance)}. Smaller distances
+   * yield scores closer to 1; larger distances approach 0.
+   *
+   * @param squaredDistance squared Euclidean distance (must be ≥ 0)
+   * @return similarity score in (0, 1]
+   */
+  public static float normalizeDistanceToUnitInterval(float squaredDistance) {
+    return 1.0f / (1.0f + squaredDistance);
+  }
+
+  /**
    * Checks if a float vector only has finite components.
    *
    * @param v bytes containing a vector
@@ -213,5 +333,79 @@ public final class VectorUtil {
       }
     }
     return v;
+  }
+
+  /**
+   * Given an array {@code buffer} that is sorted between indexes {@code 0} inclusive and {@code to}
+   * exclusive, find the first array index whose value is greater than or equal to {@code target}.
+   * This index is guaranteed to be at least {@code from}. If there is no such array index, {@code
+   * to} is returned.
+   */
+  public static int findNextGEQ(int[] buffer, int target, int from, int to) {
+    assert IntStream.range(0, to - 1).noneMatch(i -> buffer[i] > buffer[i + 1]);
+    return IMPL.findNextGEQ(buffer, target, from, to);
+  }
+
+  /**
+   * Scalar quantizes {@code vector}, putting the result into {@code dest}.
+   *
+   * @param vector the vector to quantize
+   * @param dest the destination vector
+   * @param scale the scaling factor
+   * @param alpha the alpha value
+   * @param minQuantile the lower quantile of the distribution
+   * @param maxQuantile the upper quantile of the distribution
+   * @return the corrective offset that needs to be applied to the score
+   */
+  public static float minMaxScalarQuantize(
+      float[] vector, byte[] dest, float scale, float alpha, float minQuantile, float maxQuantile) {
+    if (vector.length != dest.length)
+      throw new IllegalArgumentException("source and destination arrays should be the same size");
+    return IMPL.minMaxScalarQuantize(vector, dest, scale, alpha, minQuantile, maxQuantile);
+  }
+
+  /**
+   * Recalculates the offset for {@code vector}.
+   *
+   * @param vector the vector to quantize
+   * @param oldAlpha the previous alpha value
+   * @param oldMinQuantile the previous lower quantile
+   * @param scale the scaling factor
+   * @param alpha the alpha value
+   * @param minQuantile the lower quantile of the distribution
+   * @param maxQuantile the upper quantile of the distribution
+   * @return the new corrective offset
+   */
+  public static float recalculateOffset(
+      byte[] vector,
+      float oldAlpha,
+      float oldMinQuantile,
+      float scale,
+      float alpha,
+      float minQuantile,
+      float maxQuantile) {
+    return IMPL.recalculateScalarQuantizationOffset(
+        vector, oldAlpha, oldMinQuantile, scale, alpha, minQuantile, maxQuantile);
+  }
+
+  /**
+   * filter both {@code docBuffer} and {@code scoreBuffer} with {@code minScoreInclusive}, each
+   * {@code docBuffer} and {@code scoreBuffer} of the same index forms a pair, pairs with score not
+   * greater than or equal to {@code minScoreInclusive} will be filtered out from the array.
+   *
+   * @param docBuffer doc buffer contains docs (or some other value forms a pair with {@code
+   *     scoreBuffer})
+   * @param scoreBuffer score buffer contains scores to be compared with {@code minScoreInclusive}
+   * @param minScoreInclusive minimal required score to not be filtered out
+   * @param upTo where the filter should end
+   * @return how many pairs left after filter
+   */
+  public static int filterByScore(
+      int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
+    if (docBuffer.length != scoreBuffer.length || docBuffer.length < upTo) {
+      throw new IllegalArgumentException(
+          "docBuffer and scoreBuffer should keep same length and at least as long as upTo");
+    }
+    return IMPL.filterByScore(docBuffer, scoreBuffer, minScoreInclusive, upTo);
   }
 }

@@ -73,7 +73,7 @@ public final class DocumentField {
 
     dfield.name = finfo.name;
     dfield.idxOptions = finfo.getIndexOptions();
-    dfield.hasTermVectors = finfo.hasVectors();
+    dfield.hasTermVectors = finfo.hasTermVectors();
     dfield.hasPayloads = finfo.hasPayloads();
     dfield.hasNorms = finfo.hasNorms();
 

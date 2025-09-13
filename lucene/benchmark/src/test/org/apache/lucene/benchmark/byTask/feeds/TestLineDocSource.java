@@ -160,7 +160,7 @@ public class TestLineDocSource extends BenchmarkTestCase {
       reader = DirectoryReader.open(runData.getDirectory());
       searcher = newSearcher(reader);
       TopDocs td = searcher.search(new TermQuery(new Term("body", "body")), 10);
-      assertEquals(numAdds, td.totalHits.value);
+      assertEquals(numAdds, td.totalHits.value());
       assertNotNull(td.scoreDocs[0]);
 
       if (storedField == null) {

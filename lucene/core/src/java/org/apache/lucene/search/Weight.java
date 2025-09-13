@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Objects;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -109,8 +110,11 @@ public abstract class Weight implements SegmentCacheable {
   }
 
   /**
-   * Returns a {@link Scorer} which can iterate in order over all matching documents and assign them
-   * a score.
+   * Optional method that delegates to scorerSupplier.
+   *
+   * <p>Returns a {@link Scorer} which can iterate in order over all matching documents and assign
+   * them a score. A scorer for the same {@link LeafReaderContext} instance may be requested
+   * multiple times as part of a single search call.
    *
    * <p><b>NOTE:</b> null can be returned if no documents will be scored by this query.
    *
@@ -122,48 +126,48 @@ public abstract class Weight implements SegmentCacheable {
    * @return a {@link Scorer} which scores documents in/out-of order.
    * @throws IOException if there is a low-level I/O error
    */
-  public abstract Scorer scorer(LeafReaderContext context) throws IOException;
-
-  /**
-   * Optional method. Get a {@link ScorerSupplier}, which allows to know the cost of the {@link
-   * Scorer} before building it. The default implementation calls {@link #scorer} and builds a
-   * {@link ScorerSupplier} wrapper around it.
-   *
-   * @see #scorer
-   */
-  public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-    final Scorer scorer = scorer(context);
-    if (scorer == null) {
+  public final Scorer scorer(LeafReaderContext context) throws IOException {
+    ScorerSupplier scorerSupplier = scorerSupplier(context);
+    if (scorerSupplier == null) {
       return null;
     }
-    return new ScorerSupplier() {
-      @Override
-      public Scorer get(long leadCost) {
-        return scorer;
-      }
-
-      @Override
-      public long cost() {
-        return scorer.iterator().cost();
-      }
-    };
+    return scorerSupplier.get(Long.MAX_VALUE);
   }
 
   /**
-   * Optional method, to return a {@link BulkScorer} to score the query and send hits to a {@link
-   * Collector}. Only queries that have a different top-level approach need to override this; the
-   * default implementation pulls a normal {@link Scorer} and iterates and collects the resulting
-   * hits which are not marked as deleted.
+   * Get a {@link ScorerSupplier}, which allows knowing the cost of the {@link Scorer} before
+   * building it. A scorer supplier for the same {@link LeafReaderContext} instance may be requested
+   * multiple times as part of a single search call.
    *
-   * @param context the {@link org.apache.lucene.index.LeafReaderContext} for which to return the
-   *     {@link Scorer}.
-   * @return a {@link BulkScorer} which scores documents and passes them to a collector. Like {@link
-   *     #scorer(LeafReaderContext)}, this method can return null if this query matches no
-   *     documents.
-   * @throws IOException if there is a low-level I/O error
+   * <p><strong>Note:</strong> It must return null if the scorer is null.
+   *
+   * @param context the leaf reader context
+   * @return a {@link ScorerSupplier} providing the scorer, or null if scorer is null
+   * @throws IOException if an IOException occurs
+   * @see Scorer
+   * @see DefaultScorerSupplier
    */
-  public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
+  public abstract ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException;
 
+  /**
+   * Helper method that delegates to {@link #scorerSupplier(LeafReaderContext)}. It is implemented
+   * as
+   *
+   * <pre class="prettyprint">
+   * ScorerSupplier scorerSupplier = scorerSupplier(context);
+   * if (scorerSupplier == null) {
+   *   // No docs match
+   *   return null;
+   * }
+   *
+   * scorerSupplier.setTopLevelScoringClause();
+   * return scorerSupplier.bulkScorer();
+   * </pre>
+   *
+   * A bulk scorer for the same {@link LeafReaderContext} instance may be requested multiple times
+   * as part of a single search call.
+   */
+  public final BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
     ScorerSupplier scorerSupplier = scorerSupplier(context);
     if (scorerSupplier == null) {
       // No docs match
@@ -171,8 +175,7 @@ public abstract class Weight implements SegmentCacheable {
     }
 
     scorerSupplier.setTopLevelScoringClause();
-
-    return new DefaultBulkScorer(scorerSupplier.get(Long.MAX_VALUE));
+    return scorerSupplier.bulkScorer();
   }
 
   /**
@@ -197,6 +200,29 @@ public abstract class Weight implements SegmentCacheable {
   }
 
   /**
+   * A wrap for default scorer supplier.
+   *
+   * @lucene.internal
+   */
+  protected static final class DefaultScorerSupplier extends ScorerSupplier {
+    private final Scorer scorer;
+
+    public DefaultScorerSupplier(Scorer scorer) {
+      this.scorer = Objects.requireNonNull(scorer, "Scorer must not be null");
+    }
+
+    @Override
+    public Scorer get(long leadCost) throws IOException {
+      return scorer;
+    }
+
+    @Override
+    public long cost() {
+      return scorer.iterator().cost();
+    }
+  }
+
+  /**
    * Just wraps a Scorer and performs top scoring using it.
    *
    * @lucene.internal
@@ -208,12 +234,13 @@ public abstract class Weight implements SegmentCacheable {
 
     /** Sole constructor. */
     public DefaultBulkScorer(Scorer scorer) {
-      if (scorer == null) {
-        throw new NullPointerException();
-      }
-      this.scorer = scorer;
-      this.iterator = scorer.iterator();
+      this.scorer = Objects.requireNonNull(scorer);
       this.twoPhase = scorer.twoPhaseIterator();
+      if (twoPhase == null) {
+        this.iterator = scorer.iterator();
+      } else {
+        this.iterator = twoPhase.approximation();
+      }
     }
 
     @Override
@@ -225,35 +252,7 @@ public abstract class Weight implements SegmentCacheable {
     public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
         throws IOException {
       collector.setScorer(scorer);
-      DocIdSetIterator scorerIterator = twoPhase == null ? iterator : twoPhase.approximation();
       DocIdSetIterator competitiveIterator = collector.competitiveIterator();
-
-      if (competitiveIterator == null
-          && scorerIterator.docID() == -1
-          && min == 0
-          && max == DocIdSetIterator.NO_MORE_DOCS) {
-        scoreAll(collector, scorerIterator, twoPhase, acceptDocs);
-        return DocIdSetIterator.NO_MORE_DOCS;
-      } else {
-        return scoreRange(
-            collector, scorerIterator, twoPhase, competitiveIterator, acceptDocs, min, max);
-      }
-    }
-
-    /**
-     * Specialized method to bulk-score a range of hits; we separate this from {@link #scoreAll} to
-     * help out hotspot. See <a
-     * href="https://issues.apache.org/jira/browse/LUCENE-5487">LUCENE-5487</a>
-     */
-    static int scoreRange(
-        LeafCollector collector,
-        DocIdSetIterator iterator,
-        TwoPhaseIterator twoPhase,
-        DocIdSetIterator competitiveIterator,
-        Bits acceptDocs,
-        int min,
-        int max)
-        throws IOException {
 
       if (competitiveIterator != null) {
         if (competitiveIterator.docID() > min) {
@@ -263,75 +262,106 @@ public abstract class Weight implements SegmentCacheable {
         }
       }
 
-      int doc = iterator.docID();
-      if (doc < min) {
-        if (doc == min - 1) {
-          doc = iterator.nextDoc();
+      if (iterator.docID() < min) {
+        if (iterator.docID() == min - 1) {
+          iterator.nextDoc();
         } else {
-          doc = iterator.advance(min);
+          iterator.advance(min);
         }
       }
 
+      // These various specializations help save some null checks in a hot loop, but as importantly
+      // if not more importantly, they help reduce the polymorphism of calls sites to nextDoc() and
+      // collect() because only a subset of collectors produce a competitive iterator, and the set
+      // of implementing classes for two-phase approximations is smaller than the set of doc id set
+      // iterator implementations.
       if (twoPhase == null && competitiveIterator == null) {
         // Optimize simple iterators with collectors that can't skip
-        while (doc < max) {
-          if (acceptDocs == null || acceptDocs.get(doc)) {
-            collector.collect(doc);
-          }
-          doc = iterator.nextDoc();
-        }
+        scoreIterator(collector, acceptDocs, iterator, max);
+      } else if (competitiveIterator == null) {
+        scoreTwoPhaseIterator(collector, acceptDocs, iterator, twoPhase, max);
+      } else if (twoPhase == null) {
+        scoreCompetitiveIterator(collector, acceptDocs, iterator, competitiveIterator, max);
       } else {
-        while (doc < max) {
-          if (competitiveIterator != null) {
-            assert competitiveIterator.docID() <= doc;
-            if (competitiveIterator.docID() < doc) {
-              competitiveIterator.advance(doc);
-            }
-            if (competitiveIterator.docID() != doc) {
-              doc = iterator.advance(competitiveIterator.docID());
-              continue;
-            }
-          }
-
-          if ((acceptDocs == null || acceptDocs.get(doc))
-              && (twoPhase == null || twoPhase.matches())) {
-            collector.collect(doc);
-          }
-          doc = iterator.nextDoc();
-        }
+        scoreTwoPhaseOrCompetitiveIterator(
+            collector, acceptDocs, iterator, twoPhase, competitiveIterator, max);
       }
 
-      return doc;
+      return iterator.docID();
     }
 
-    /**
-     * Specialized method to bulk-score all hits; we separate this from {@link #scoreRange} to help
-     * out hotspot. See <a href="https://issues.apache.org/jira/browse/LUCENE-5487">LUCENE-5487</a>
-     */
-    static void scoreAll(
+    private static void scoreIterator(
+        LeafCollector collector, Bits acceptDocs, DocIdSetIterator iterator, int max)
+        throws IOException {
+      for (int doc = iterator.docID(); doc < max; doc = iterator.nextDoc()) {
+        if (acceptDocs == null || acceptDocs.get(doc)) {
+          collector.collect(doc);
+        }
+      }
+    }
+
+    private static void scoreTwoPhaseIterator(
         LeafCollector collector,
+        Bits acceptDocs,
         DocIdSetIterator iterator,
         TwoPhaseIterator twoPhase,
-        Bits acceptDocs)
+        int max)
         throws IOException {
-      if (twoPhase == null) {
-        for (int doc = iterator.nextDoc();
-            doc != DocIdSetIterator.NO_MORE_DOCS;
-            doc = iterator.nextDoc()) {
-          if (acceptDocs == null || acceptDocs.get(doc)) {
-            collector.collect(doc);
+      for (int doc = iterator.docID(); doc < max; doc = iterator.nextDoc()) {
+        if ((acceptDocs == null || acceptDocs.get(doc)) && twoPhase.matches()) {
+          collector.collect(doc);
+        }
+      }
+    }
+
+    private static void scoreCompetitiveIterator(
+        LeafCollector collector,
+        Bits acceptDocs,
+        DocIdSetIterator iterator,
+        DocIdSetIterator competitiveIterator,
+        int max)
+        throws IOException {
+      for (int doc = iterator.docID(); doc < max; ) {
+        assert competitiveIterator.docID() <= doc; // invariant
+        if (competitiveIterator.docID() < doc) {
+          int competitiveNext = competitiveIterator.advance(doc);
+          if (competitiveNext != doc) {
+            doc = iterator.advance(competitiveNext);
+            continue;
           }
         }
-      } else {
-        // The scorer has an approximation, so run the approximation first, then check acceptDocs,
-        // then confirm
-        for (int doc = iterator.nextDoc();
-            doc != DocIdSetIterator.NO_MORE_DOCS;
-            doc = iterator.nextDoc()) {
-          if ((acceptDocs == null || acceptDocs.get(doc)) && twoPhase.matches()) {
-            collector.collect(doc);
+
+        if ((acceptDocs == null || acceptDocs.get(doc))) {
+          collector.collect(doc);
+        }
+
+        doc = iterator.nextDoc();
+      }
+    }
+
+    private static void scoreTwoPhaseOrCompetitiveIterator(
+        LeafCollector collector,
+        Bits acceptDocs,
+        DocIdSetIterator iterator,
+        TwoPhaseIterator twoPhase,
+        DocIdSetIterator competitiveIterator,
+        int max)
+        throws IOException {
+      for (int doc = iterator.docID(); doc < max; ) {
+        assert competitiveIterator.docID() <= doc; // invariant
+        if (competitiveIterator.docID() < doc) {
+          int competitiveNext = competitiveIterator.advance(doc);
+          if (competitiveNext != doc) {
+            doc = iterator.advance(competitiveNext);
+            continue;
           }
         }
+
+        if ((acceptDocs == null || acceptDocs.get(doc)) && twoPhase.matches()) {
+          collector.collect(doc);
+        }
+
+        doc = iterator.nextDoc();
       }
     }
   }

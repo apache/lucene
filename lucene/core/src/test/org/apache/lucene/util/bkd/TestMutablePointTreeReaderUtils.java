@@ -87,10 +87,10 @@ public class TestMutablePointTreeReaderUtils extends LuceneTestCase {
   private void doTestSortByDim() {
     BKDConfig config = createRandomConfig();
     final int maxDoc = TestUtil.nextInt(random(), 1, 1 << random().nextInt(30));
-    int[] commonPrefixLengths = new int[config.numDims];
+    int[] commonPrefixLengths = new int[config.numDims()];
     Point[] points = createRandomPoints(config, maxDoc, commonPrefixLengths, false);
     DummyPointsReader reader = new DummyPointsReader(points);
-    final int sortedDim = random().nextInt(config.numIndexDims);
+    final int sortedDim = random().nextInt(config.numIndexDims());
     MutablePointTreeReaderUtils.sortByDim(
         config,
         sortedDim,
@@ -101,20 +101,20 @@ public class TestMutablePointTreeReaderUtils extends LuceneTestCase {
         new BytesRef(),
         new BytesRef());
     for (int i = 1; i < points.length; ++i) {
-      final int offset = sortedDim * config.bytesPerDim;
+      final int offset = sortedDim * config.bytesPerDim();
       BytesRef previousValue = reader.points[i - 1].packedValue;
       BytesRef currentValue = reader.points[i].packedValue;
       int cmp =
           Arrays.compareUnsigned(
               previousValue.bytes,
               previousValue.offset + offset,
-              previousValue.offset + offset + config.bytesPerDim,
+              previousValue.offset + offset + config.bytesPerDim(),
               currentValue.bytes,
               currentValue.offset + offset,
-              currentValue.offset + offset + config.bytesPerDim);
+              currentValue.offset + offset + config.bytesPerDim());
       if (cmp == 0) {
-        int dataDimOffset = config.packedIndexBytesLength;
-        int dataDimsLength = (config.numDims - config.numIndexDims) * config.bytesPerDim;
+        int dataDimOffset = config.packedIndexBytesLength();
+        int dataDimsLength = (config.numDims() - config.numIndexDims()) * config.bytesPerDim();
         cmp =
             Arrays.compareUnsigned(
                 previousValue.bytes,
@@ -139,10 +139,10 @@ public class TestMutablePointTreeReaderUtils extends LuceneTestCase {
 
   private void doTestPartition() {
     BKDConfig config = createRandomConfig();
-    int[] commonPrefixLengths = new int[config.numDims];
+    int[] commonPrefixLengths = new int[config.numDims()];
     final int maxDoc = TestUtil.nextInt(random(), 1, 1 << random().nextInt(30));
     Point[] points = createRandomPoints(config, maxDoc, commonPrefixLengths, false);
-    final int splitDim = random().nextInt(config.numIndexDims);
+    final int splitDim = random().nextInt(config.numIndexDims());
     DummyPointsReader reader = new DummyPointsReader(points);
     final int pivot = TestUtil.nextInt(random(), 0, points.length - 1);
     MutablePointTreeReaderUtils.partition(
@@ -157,20 +157,20 @@ public class TestMutablePointTreeReaderUtils extends LuceneTestCase {
         new BytesRef(),
         new BytesRef());
     BytesRef pivotValue = reader.points[pivot].packedValue;
-    int offset = splitDim * config.bytesPerDim;
+    int offset = splitDim * config.bytesPerDim();
     for (int i = 0; i < points.length; ++i) {
       BytesRef value = reader.points[i].packedValue;
       int cmp =
           Arrays.compareUnsigned(
               value.bytes,
               value.offset + offset,
-              value.offset + offset + config.bytesPerDim,
+              value.offset + offset + config.bytesPerDim(),
               pivotValue.bytes,
               pivotValue.offset + offset,
-              pivotValue.offset + offset + config.bytesPerDim);
+              pivotValue.offset + offset + config.bytesPerDim());
       if (cmp == 0) {
-        int dataDimOffset = config.packedIndexBytesLength;
-        int dataDimsLength = (config.numDims - config.numIndexDims) * config.bytesPerDim;
+        int dataDimOffset = config.packedIndexBytesLength();
+        int dataDimsLength = (config.numDims() - config.numIndexDims()) * config.bytesPerDim();
         cmp =
             Arrays.compareUnsigned(
                 value.bytes,
@@ -203,24 +203,24 @@ public class TestMutablePointTreeReaderUtils extends LuceneTestCase {
 
   private static Point[] createRandomPoints(
       BKDConfig config, int maxDoc, int[] commonPrefixLengths, boolean isDocIdIncremental) {
-    assertTrue(commonPrefixLengths.length == config.numDims);
+    assertTrue(commonPrefixLengths.length == config.numDims());
     final int numPoints = TestUtil.nextInt(random(), 1, 100000);
     Point[] points = new Point[numPoints];
     if (random().nextInt(10) != 0) {
       for (int i = 0; i < numPoints; ++i) {
-        byte[] value = new byte[config.packedBytesLength];
+        byte[] value = new byte[config.packedBytesLength()];
         random().nextBytes(value);
         points[i] =
             new Point(
                 value, isDocIdIncremental ? Math.min(i, maxDoc - 1) : random().nextInt(maxDoc));
       }
-      for (int i = 0; i < config.numDims; ++i) {
-        commonPrefixLengths[i] = TestUtil.nextInt(random(), 0, config.bytesPerDim);
+      for (int i = 0; i < config.numDims(); ++i) {
+        commonPrefixLengths[i] = TestUtil.nextInt(random(), 0, config.bytesPerDim());
       }
       BytesRef firstValue = points[0].packedValue;
       for (int i = 1; i < points.length; ++i) {
-        for (int dim = 0; dim < config.numDims; ++dim) {
-          int offset = dim * config.bytesPerDim;
+        for (int dim = 0; dim < config.numDims(); ++dim) {
+          int offset = dim * config.bytesPerDim();
           BytesRef packedValue = points[i].packedValue;
           System.arraycopy(
               firstValue.bytes,
@@ -232,30 +232,34 @@ public class TestMutablePointTreeReaderUtils extends LuceneTestCase {
       }
     } else {
       // index dim are equal, data dims different
-      int numDataDims = config.numDims - config.numIndexDims;
-      byte[] indexDims = new byte[config.packedIndexBytesLength];
+      int numDataDims = config.numDims() - config.numIndexDims();
+      byte[] indexDims = new byte[config.packedIndexBytesLength()];
       random().nextBytes(indexDims);
-      byte[] dataDims = new byte[numDataDims * config.bytesPerDim];
+      byte[] dataDims = new byte[numDataDims * config.bytesPerDim()];
       for (int i = 0; i < numPoints; ++i) {
-        byte[] value = new byte[config.packedBytesLength];
-        System.arraycopy(indexDims, 0, value, 0, config.packedIndexBytesLength);
+        byte[] value = new byte[config.packedBytesLength()];
+        System.arraycopy(indexDims, 0, value, 0, config.packedIndexBytesLength());
         random().nextBytes(dataDims);
         System.arraycopy(
-            dataDims, 0, value, config.packedIndexBytesLength, numDataDims * config.bytesPerDim);
+            dataDims,
+            0,
+            value,
+            config.packedIndexBytesLength(),
+            numDataDims * config.bytesPerDim());
         points[i] =
             new Point(
                 value, isDocIdIncremental ? Math.min(i, maxDoc - 1) : random().nextInt(maxDoc));
       }
-      for (int i = 0; i < config.numIndexDims; ++i) {
-        commonPrefixLengths[i] = config.bytesPerDim;
+      for (int i = 0; i < config.numIndexDims(); ++i) {
+        commonPrefixLengths[i] = config.bytesPerDim();
       }
-      for (int i = config.numIndexDims; i < config.numDims; ++i) {
-        commonPrefixLengths[i] = TestUtil.nextInt(random(), 0, config.bytesPerDim);
+      for (int i = config.numIndexDims(); i < config.numDims(); ++i) {
+        commonPrefixLengths[i] = TestUtil.nextInt(random(), 0, config.bytesPerDim());
       }
       BytesRef firstValue = points[0].packedValue;
       for (int i = 1; i < points.length; ++i) {
-        for (int dim = config.numIndexDims; dim < config.numDims; ++dim) {
-          int offset = dim * config.bytesPerDim;
+        for (int dim = config.numIndexDims(); dim < config.numDims(); ++dim) {
+          int offset = dim * config.bytesPerDim();
           BytesRef packedValue = points[i].packedValue;
           System.arraycopy(
               firstValue.bytes,

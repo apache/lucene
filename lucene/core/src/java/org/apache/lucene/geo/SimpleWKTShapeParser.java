@@ -21,6 +21,7 @@ import java.io.StreamTokenizer;
 import java.io.StringReader;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -301,9 +302,7 @@ public class SimpleWKTShapeParser {
       } else {
         try {
           return Double.parseDouble(stream.sval);
-        } catch (
-            @SuppressWarnings("unused")
-            NumberFormatException e) {
+        } catch (NumberFormatException _) {
           throw new ParseException("invalid number found: " + stream.sval, stream.lineno());
         }
       }
@@ -404,21 +403,23 @@ public class SimpleWKTShapeParser {
     ENVELOPE("envelope"); // not part of the actual WKB spec
 
     private final String shapeName;
-    private static final Map<String, ShapeType> shapeTypeMap = new HashMap<>();
+    private static final Map<String, ShapeType> shapeTypeMap;
     private static final String BBOX = "BBOX";
 
     static {
+      Map<String, ShapeType> shapeTypes = new HashMap<>();
       for (ShapeType type : values()) {
-        shapeTypeMap.put(type.shapeName, type);
+        shapeTypes.put(type.shapeName, type);
       }
-      shapeTypeMap.put(ENVELOPE.wktName().toLowerCase(Locale.ROOT), ENVELOPE);
+      shapeTypes.put(ENVELOPE.wktName().toLowerCase(Locale.ROOT), ENVELOPE);
+      shapeTypeMap = Collections.unmodifiableMap(shapeTypes);
     }
 
     ShapeType(String shapeName) {
       this.shapeName = shapeName;
     }
 
-    protected String typename() {
+    String typename() {
       return shapeName;
     }
 

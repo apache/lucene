@@ -17,6 +17,9 @@
 package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.CompoundDirectory;
 import org.apache.lucene.codecs.CompoundFormat;
@@ -27,7 +30,6 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.PriorityQueue;
 
 /**
  * Lucene 9.0 compound file format
@@ -82,9 +84,8 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
   public Lucene90CompoundFormat() {}
 
   @Override
-  public CompoundDirectory getCompoundReader(Directory dir, SegmentInfo si, IOContext context)
-      throws IOException {
-    return new Lucene90CompoundReader(dir, si, context);
+  public CompoundDirectory getCompoundReader(Directory dir, SegmentInfo si) throws IOException {
+    return new Lucene90CompoundReader(dir, si);
   }
 
   @Override
@@ -104,26 +105,7 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
     }
   }
 
-  private static class SizedFile {
-    private final String name;
-    private final long length;
-
-    private SizedFile(String name, long length) {
-      this.name = name;
-      this.length = length;
-    }
-  }
-
-  private static class SizedFileQueue extends PriorityQueue<SizedFile> {
-    SizedFileQueue(int maxSize) {
-      super(maxSize);
-    }
-
-    @Override
-    protected boolean lessThan(SizedFile sf1, SizedFile sf2) {
-      return sf1.length < sf2.length;
-    }
-  }
+  private record SizedFile(String name, long length) {}
 
   private void writeCompoundFile(
       IndexOutput entries, IndexOutput data, Directory dir, SegmentInfo si) throws IOException {
@@ -131,12 +113,12 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
     int numFiles = si.files().size();
     entries.writeVInt(numFiles);
     // first put files in ascending size order so small files fit more likely into one page
-    SizedFileQueue pq = new SizedFileQueue(numFiles);
+    List<SizedFile> files = new ArrayList<>(numFiles);
     for (String filename : si.files()) {
-      pq.add(new SizedFile(filename, dir.fileLength(filename)));
+      files.add(new SizedFile(filename, dir.fileLength(filename)));
     }
-    while (pq.size() > 0) {
-      SizedFile sizedFile = pq.pop();
+    files.sort(Comparator.comparingLong(SizedFile::length));
+    for (SizedFile sizedFile : files) {
       String file = sizedFile.name;
       // align file start offset
       long startOffset = data.alignFilePointer(Long.BYTES);

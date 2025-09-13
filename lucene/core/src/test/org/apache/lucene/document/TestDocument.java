@@ -16,9 +16,21 @@
  */
 package org.apache.lucene.document;
 
+import static org.hamcrest.Matchers.arrayContaining;
+import static org.hamcrest.Matchers.arrayWithSize;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
+
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
@@ -55,39 +67,39 @@ public class TestDocument extends LuceneTestCase {
     doc.add(stringFld);
     doc.add(binaryFld);
 
-    assertEquals(2, doc.getFields().size());
+    assertThat(doc.getFields(), hasSize(2));
 
-    assertTrue(binaryFld.binaryValue() != null);
+    assertThat(binaryFld.binaryValue(), notNullValue());
     assertTrue(binaryFld.fieldType().stored());
     assertEquals(IndexOptions.NONE, binaryFld.fieldType().indexOptions());
 
     String binaryTest = doc.getBinaryValue("binary").utf8ToString();
-    assertTrue(binaryTest.equals(binaryVal));
+    assertThat(binaryTest, equalTo(binaryVal));
 
     String stringTest = doc.get("string");
-    assertTrue(binaryTest.equals(stringTest));
+    assertThat(binaryTest, equalTo(stringTest));
 
     doc.add(binaryFld2);
 
-    assertEquals(3, doc.getFields().size());
+    assertThat(doc.getFields(), hasSize(3));
 
     BytesRef[] binaryTests = doc.getBinaryValues("binary");
 
-    assertEquals(2, binaryTests.length);
+    assertThat(binaryTests, arrayWithSize(2));
 
     binaryTest = binaryTests[0].utf8ToString();
     String binaryTest2 = binaryTests[1].utf8ToString();
 
-    assertFalse(binaryTest.equals(binaryTest2));
+    assertThat(binaryTest, not(equalTo(binaryTest2)));
 
-    assertTrue(binaryTest.equals(binaryVal));
-    assertTrue(binaryTest2.equals(binaryVal2));
+    assertThat(binaryTest, equalTo(binaryVal));
+    assertThat(binaryTest2, equalTo(binaryVal2));
 
     doc.removeField("string");
-    assertEquals(2, doc.getFields().size());
+    assertThat(doc.getFields(), hasSize(2));
 
     doc.removeFields("binary");
-    assertEquals(0, doc.getFields().size());
+    assertThat(doc.getFields(), empty());
   }
 
   /**
@@ -98,32 +110,32 @@ public class TestDocument extends LuceneTestCase {
    */
   public void testRemoveForNewDocument() throws Exception {
     Document doc = makeDocumentWithFields();
-    assertEquals(10, doc.getFields().size());
+    assertThat(doc.getFields(), hasSize(10));
     doc.removeFields("keyword");
-    assertEquals(8, doc.getFields().size());
+    assertThat(doc.getFields(), hasSize(8));
     doc.removeFields("doesnotexists"); // removing non-existing fields is
-    // siltenlty ignored
+    // silently ignored
     doc.removeFields("keyword"); // removing a field more than once
-    assertEquals(8, doc.getFields().size());
+    assertThat(doc.getFields(), hasSize(8));
     doc.removeField("text");
-    assertEquals(7, doc.getFields().size());
+    assertThat(doc.getFields(), hasSize(7));
     doc.removeField("text");
-    assertEquals(6, doc.getFields().size());
+    assertThat(doc.getFields(), hasSize(6));
     doc.removeField("text");
-    assertEquals(6, doc.getFields().size());
+    assertThat(doc.getFields(), hasSize(6));
     doc.removeField("doesnotexists"); // removing non-existing fields is
-    // siltenlty ignored
-    assertEquals(6, doc.getFields().size());
+    // silently ignored
+    assertThat(doc.getFields(), hasSize(6));
     doc.removeFields("unindexed");
-    assertEquals(4, doc.getFields().size());
+    assertThat(doc.getFields(), hasSize(4));
     doc.removeFields("unstored");
-    assertEquals(2, doc.getFields().size());
+    assertThat(doc.getFields(), hasSize(2));
     doc.removeFields("doesnotexists"); // removing non-existing fields is
-    // siltenlty ignored
-    assertEquals(2, doc.getFields().size());
+    // silently ignored
+    assertThat(doc.getFields(), hasSize(2));
 
     doc.removeFields("indexed_not_tokenized");
-    assertEquals(0, doc.getFields().size());
+    assertThat(doc.getFields(), empty());
   }
 
   public void testConstructorExceptions() throws Exception {
@@ -156,15 +168,15 @@ public class TestDocument extends LuceneTestCase {
 
   public void testClearDocument() {
     Document doc = makeDocumentWithFields();
-    assertEquals(10, doc.getFields().size());
+    assertThat(doc.getFields(), hasSize(10));
     doc.clear();
-    assertEquals(0, doc.getFields().size());
+    assertThat(doc.getFields(), empty());
   }
 
   /** test that Document.getFields() actually returns an immutable list */
   public void testGetFieldsImmutable() {
     Document doc = makeDocumentWithFields();
-    assertEquals(10, doc.getFields().size());
+    assertThat(doc.getFields(), hasSize(10));
     List<IndexableField> fields = doc.getFields();
     expectThrows(
         UnsupportedOperationException.class,
@@ -207,7 +219,7 @@ public class TestDocument extends LuceneTestCase {
 
     // ensure that queries return expected results without DateFilter first
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals(1, hits.length);
+    assertThat(hits, arrayWithSize(1));
 
     doAssert(searcher.storedFields().document(hits[0].doc), true);
     writer.close();
@@ -233,7 +245,7 @@ public class TestDocument extends LuceneTestCase {
     PhraseQuery query = new PhraseQuery("indexed_not_tokenized", "test1", "test2");
 
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals(1, hits.length);
+    assertThat(hits, arrayWithSize(1));
 
     doAssert(searcher.storedFields().document(hits[0].doc), true);
     writer.close();
@@ -267,26 +279,26 @@ public class TestDocument extends LuceneTestCase {
     IndexableField[] unindexedFieldValues = doc.getFields("unindexed");
     IndexableField[] unstoredFieldValues = doc.getFields("unstored");
 
-    assertTrue(keywordFieldValues.length == 2);
-    assertTrue(textFieldValues.length == 2);
-    assertTrue(unindexedFieldValues.length == 2);
+    assertThat(keywordFieldValues, arrayWithSize(2));
+    assertThat(textFieldValues, arrayWithSize(2));
+    assertThat(unindexedFieldValues, arrayWithSize(2));
     // this test cannot work for documents retrieved from the index
     // since unstored fields will obviously not be returned
     if (!fromIndex) {
-      assertTrue(unstoredFieldValues.length == 2);
+      assertThat(unstoredFieldValues, arrayWithSize(2));
     }
 
-    assertTrue(keywordFieldValues[0].stringValue().equals("test1"));
-    assertTrue(keywordFieldValues[1].stringValue().equals("test2"));
-    assertTrue(textFieldValues[0].stringValue().equals("test1"));
-    assertTrue(textFieldValues[1].stringValue().equals("test2"));
-    assertTrue(unindexedFieldValues[0].stringValue().equals("test1"));
-    assertTrue(unindexedFieldValues[1].stringValue().equals("test2"));
+    assertThat(keywordFieldValues[0].stringValue(), equalTo("test1"));
+    assertThat(keywordFieldValues[1].stringValue(), equalTo("test2"));
+    assertThat(textFieldValues[0].stringValue(), equalTo("test1"));
+    assertThat(textFieldValues[1].stringValue(), equalTo("test2"));
+    assertThat(unindexedFieldValues[0].stringValue(), equalTo("test1"));
+    assertThat(unindexedFieldValues[1].stringValue(), equalTo("test2"));
     // this test cannot work for documents retrieved from the index
     // since unstored fields will obviously not be returned
     if (!fromIndex) {
-      assertTrue(unstoredFieldValues[0].stringValue().equals("test1"));
-      assertTrue(unstoredFieldValues[1].stringValue().equals("test2"));
+      assertThat(unstoredFieldValues[0].stringValue(), equalTo("test1"));
+      assertThat(unstoredFieldValues[1].stringValue(), equalTo("test2"));
     }
   }
 
@@ -312,21 +324,21 @@ public class TestDocument extends LuceneTestCase {
 
     // ensure that queries return expected results without DateFilter first
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
-    assertEquals(3, hits.length);
-    int result = 0;
+    assertThat(hits, arrayWithSize(3));
+    Set<String> seen = new HashSet<>();
     StoredFields storedFields = searcher.storedFields();
     for (int i = 0; i < 3; i++) {
       Document doc2 = storedFields.document(hits[i].doc);
       Field f = (Field) doc2.getField("id");
-      if (f.stringValue().equals("id1")) result |= 1;
-      else if (f.stringValue().equals("id2")) result |= 2;
-      else if (f.stringValue().equals("id3")) result |= 4;
-      else fail("unexpected id field");
+      switch (f.stringValue()) {
+        case "id1", "id2", "id3" -> seen.add(f.stringValue());
+        default -> fail("unexpected id field");
+      }
     }
     writer.close();
     reader.close();
     dir.close();
-    assertEquals("did not see all IDs", 7, result);
+    assertThat("did not see all IDs", seen, containsInAnyOrder("id1", "id2", "id3"));
   }
 
   // LUCENE-3616
@@ -343,19 +355,19 @@ public class TestDocument extends LuceneTestCase {
   public void testNumericFieldAsString() throws Exception {
     Document doc = new Document();
     doc.add(new StoredField("int", 5));
-    assertEquals("5", doc.get("int"));
-    assertNull(doc.get("somethingElse"));
+    assertThat(doc.get("int"), equalTo("5"));
+    assertThat(doc.get("somethingElse"), nullValue());
     doc.add(new StoredField("int", 4));
-    assertArrayEquals(new String[] {"5", "4"}, doc.getValues("int"));
+    assertThat(doc.getValues("int"), arrayContaining("5", "4"));
 
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
     iw.addDocument(doc);
     DirectoryReader ir = iw.getReader();
     Document sdoc = ir.storedFields().document(0);
-    assertEquals("5", sdoc.get("int"));
-    assertNull(sdoc.get("somethingElse"));
-    assertArrayEquals(new String[] {"5", "4"}, sdoc.getValues("int"));
+    assertThat(sdoc.get("int"), equalTo("5"));
+    assertThat(sdoc.get("somethingElse"), nullValue());
+    assertThat(doc.getValues("int"), arrayContaining("5", "4"));
     ir.close();
     iw.close();
     dir.close();

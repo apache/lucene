@@ -39,8 +39,9 @@ import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
-import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.PreloadHint;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -80,10 +81,12 @@ public class FSTTermsReader extends FieldsProducer {
             state.segmentInfo.name, state.segmentSuffix, FSTTermsWriter.TERMS_DATA_EXTENSION);
 
     this.postingsReader = postingsReader;
+    this.fstTermsInput =
+        state.directory.openInput(
+            termsFileName, state.context.withHints(FileTypeHint.DATA, PreloadHint.INSTANCE));
 
     IndexInput metaIn = null, dataIn = null;
 
-    boolean success = false;
     try {
       metaIn = state.directory.openInput(termsMetaFileName, IOContext.LOAD);
       dataIn = state.directory.openInput(termsDataFileName, IOContext.LOAD);
@@ -116,6 +119,9 @@ public class FSTTermsReader extends FieldsProducer {
       this.fstMetaInput = metaIn;
       this.fstDataInput = dataIn;
       success = true;
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, in);
+      throw t;
     } finally {
       if (success == false) {
         IOUtils.closeWhileHandlingException(metaIn, dataIn);
@@ -213,7 +219,6 @@ public class FSTTermsReader extends FieldsProducer {
       this.sumTotalTermFreq = sumTotalTermFreq;
       this.sumDocFreq = sumDocFreq;
       this.docCount = docCount;
-      OffHeapFSTStore offHeapFSTStore = new OffHeapFSTStore();
       FSTTermOutputs outputs = new FSTTermOutputs(fieldInfo);
       this.dict = new FST<>(FST.readMetadata(metaIn, outputs), dataIn, offHeapFSTStore);
       dataIn.skipBytes(offHeapFSTStore.size());
@@ -775,7 +780,7 @@ public class FSTTermsReader extends FieldsProducer {
     final ArrayList<FST.Arc<T>> queue = new ArrayList<>();
     final BitSet seen = new BitSet();
     final FST.BytesReader reader = fst.getBytesReader();
-    final FST.Arc<T> startArc = fst.getFirstArc(new FST.Arc<T>());
+    final FST.Arc<T> startArc = fst.getFirstArc(new FST.Arc<>());
     queue.add(startArc);
     while (!queue.isEmpty()) {
       final FST.Arc<T> arc = queue.remove(0);
