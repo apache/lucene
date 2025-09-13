@@ -44,7 +44,7 @@ public class TestSparseFixedBitSet extends BaseBitSetTestCase<SparseFixedBitSet>
   }
 
   @Override
-  protected void assertEquals(BitSet set1, SparseFixedBitSet set2, int maxDoc) {
+  protected void assertEquals(java.util.BitSet set1, SparseFixedBitSet set2, int maxDoc) {
     super.assertEquals(set1, set2, maxDoc);
     // check invariants of the sparse set
     int nonZeroLongCount = 0;

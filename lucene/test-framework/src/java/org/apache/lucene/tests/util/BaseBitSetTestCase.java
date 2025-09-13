@@ -63,7 +63,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
 
   protected abstract T fromJavaUtilBitSet(java.util.BitSet set, int numBits);
 
-  protected void assertEquals(BitSet set1, T set2, int maxDoc) {
+  protected void assertEquals(java.util.BitSet set1, T set2, int maxDoc) {
     for (int i = 0; i < maxDoc; ++i) {
       assertEquals("Different at " + i, set1.get(i), set2.get(i));
     }
@@ -73,9 +73,9 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
   public void testCardinality() throws IOException {
     final int numBits = 1 + random().nextInt(100000);
     for (float percentSet : new float[] {0, 0.01f, 0.1f, 0.5f, 0.9f, 0.99f, 1f}) {
-      BitSet set1 = fromJavaUtilBitSet(randomSet(numBits, percentSet), numBits);
-      T set2 = copyOf(set1, numBits);
-      assertEquals(set1.cardinality(), set2.cardinality());
+      java.util.BitSet jdkSet = randomSet(numBits, percentSet);
+      T luceneSet = fromJavaUtilBitSet(jdkSet, numBits);
+      assertEquals(jdkSet.cardinality(), luceneSet.cardinality());
     }
   }
 
@@ -83,10 +83,10 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
   public void testPrevSetBit() throws IOException {
     final int numBits = 1 + random().nextInt(100000);
     for (float percentSet : new float[] {0, 0.01f, 0.1f, 0.5f, 0.9f, 0.99f, 1f}) {
-      BitSet set1 = fromJavaUtilBitSet(randomSet(numBits, percentSet), numBits);
-      T set2 = copyOf(set1, numBits);
+      java.util.BitSet jdkSet = randomSet(numBits, percentSet);
+      T luceneSet = fromJavaUtilBitSet(jdkSet, numBits);
       for (int i = 0; i < numBits; ++i) {
-        assertEquals(Integer.toString(i), set1.prevSetBit(i), set2.prevSetBit(i));
+        assertEquals(Integer.toString(i), jdkSet.previousSetBit(i), luceneSet.prevSetBit(i));
       }
     }
   }
@@ -95,10 +95,10 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
   public void testNextSetBit() throws IOException {
     final int numBits = 1 + random().nextInt(100000);
     for (float percentSet : new float[] {0, 0.01f, 0.1f, 0.5f, 0.9f, 0.99f, 1f}) {
-      BitSet set1 = fromJavaUtilBitSet(randomSet(numBits, percentSet), numBits);
-      T set2 = copyOf(set1, numBits);
+      java.util.BitSet jdkSet = randomSet(numBits, percentSet);
+      T luceneSet = fromJavaUtilBitSet(jdkSet, numBits);
       for (int i = 0; i < numBits; ++i) {
-        assertEquals(set1.nextSetBit(i), set2.nextSetBit(i));
+        assertEquals(normalizeJdkNextSetBit(jdkSet.nextSetBit(i)), luceneSet.nextSetBit(i));
       }
     }
   }
@@ -107,31 +107,32 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
   public void testSet() throws IOException {
     Random random = random();
     final int numBits = 1 + random.nextInt(100000);
-    BitSet set1 = fromJavaUtilBitSet(randomSet(numBits, 0), numBits);
-    T set2 = copyOf(set1, numBits);
+    java.util.BitSet jdkSet = randomSet(numBits, 0);
+    T luceneSet = fromJavaUtilBitSet(jdkSet, numBits);
     final int iters = 10000 + random.nextInt(10000);
     for (int i = 0; i < iters; ++i) {
       final int index = random.nextInt(numBits);
-      set1.set(index);
-      set2.set(index);
+      jdkSet.set(index);
+      luceneSet.set(index);
     }
-    assertEquals(set1, set2, numBits);
+    assertEquals(jdkSet, luceneSet, numBits);
   }
 
   /** Test the {@link BitSet#getAndSet} method. */
   public void testGetAndSet() throws IOException {
     Random random = random();
     final int numBits = 1 + random.nextInt(100000);
-    BitSet set1 = fromJavaUtilBitSet(randomSet(numBits, 0), numBits);
-    T set2 = copyOf(set1, numBits);
+    java.util.BitSet jdkSet = randomSet(numBits, 0);
+    T luceneSet = fromJavaUtilBitSet(jdkSet, numBits);
     final int iters = 10000 + random.nextInt(10000);
     for (int i = 0; i < iters; ++i) {
       final int index = random.nextInt(numBits);
-      boolean v1 = set1.getAndSet(index);
-      boolean v2 = set2.getAndSet(index);
+      boolean v1 = jdkSet.get(index);
+      jdkSet.set(index); // emulate getAndSet
+      boolean v2 = luceneSet.getAndSet(index);
       assertEquals(v1, v2);
     }
-    assertEquals(set1, set2, numBits);
+    assertEquals(jdkSet, luceneSet, numBits);
   }
 
   /** Test the {@link BitSet#clear(int)} method. */
@@ -139,15 +140,15 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     Random random = random();
     final int numBits = 1 + random.nextInt(100000);
     for (float percentSet : new float[] {0, 0.01f, 0.1f, 0.5f, 0.9f, 0.99f, 1f}) {
-      BitSet set1 = fromJavaUtilBitSet(randomSet(numBits, percentSet), numBits);
-      T set2 = copyOf(set1, numBits);
+      java.util.BitSet jdkSet = randomSet(numBits, percentSet);
+      T luceneSet = fromJavaUtilBitSet(jdkSet, numBits);
       final int iters = 1 + random.nextInt(numBits * 2);
       for (int i = 0; i < iters; ++i) {
         final int index = random.nextInt(numBits);
-        set1.clear(index);
-        set2.clear(index);
+        jdkSet.clear(index);
+        luceneSet.clear(index);
       }
-      assertEquals(set1, set2, numBits);
+      assertEquals(jdkSet, luceneSet, numBits);
     }
   }
 
@@ -156,15 +157,19 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     Random random = random();
     final int numBits = 1 + random.nextInt(100000);
     for (float percentSet : new float[] {0, 0.01f, 0.1f, 0.5f, 0.9f, 0.99f, 1f}) {
-      BitSet set1 = fromJavaUtilBitSet(randomSet(numBits, percentSet), numBits);
-      T set2 = copyOf(set1, numBits);
+      java.util.BitSet jdkSet = randomSet(numBits, percentSet);
+      T luceneSet = fromJavaUtilBitSet(jdkSet, numBits);
       final int iters = atLeast(random, 10);
       for (int i = 0; i < iters; ++i) {
         final int from = random.nextInt(numBits);
         final int to = random.nextInt(numBits + 1);
-        set1.clear(from, to);
-        set2.clear(from, to);
-        assertEquals(set1, set2, numBits);
+        if (from > to) {
+          // JDK would throw, Lucene no-ops: so skip
+          continue;
+        }
+        jdkSet.clear(from, to);
+        luceneSet.clear(from, to);
+        assertEquals(jdkSet, luceneSet, numBits);
       }
     }
   }
@@ -174,15 +179,19 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     Random random = random();
     final int numBits = 1 + random.nextInt(100000);
     for (float percentSet : new float[] {0, 0.01f, 0.1f, 0.5f, 0.9f, 0.99f, 1f}) {
-      BitSet set1 = fromJavaUtilBitSet(randomSet(numBits, percentSet), numBits);
-      T set2 = copyOf(set1, numBits);
+      java.util.BitSet jdkSet = randomSet(numBits, percentSet);
+      T luceneSet = fromJavaUtilBitSet(jdkSet, numBits);
       final int iters = atLeast(random, 10);
       for (int i = 0; i < iters; ++i) {
-        set1.clear();
-        set2.clear();
-        assertEquals(set1, set2, numBits);
+        jdkSet.clear();
+        luceneSet.clear();
+        assertEquals(jdkSet, luceneSet, numBits);
       }
     }
+  }
+
+  private static int normalizeJdkNextSetBit(int bit) {
+    return bit == -1 ? DocIdSetIterator.NO_MORE_DOCS : bit;
   }
 
   private DocIdSet randomCopy(BitSet set, int numBits) throws IOException {
@@ -215,8 +224,8 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
 
   private void testOr(float load) throws IOException {
     final int numBits = 1 + random().nextInt(100000);
-    BitSet set1 = fromJavaUtilBitSet(randomSet(numBits, 0), numBits); // empty
-    T set2 = copyOf(set1, numBits);
+    java.util.BitSet jdkSet = randomSet(numBits, 0); // empty
+    T luceneSet = fromJavaUtilBitSet(jdkSet, numBits);
 
     final int iterations = atLeast(10);
     for (int iter = 0; iter < iterations; ++iter) {
@@ -224,11 +233,20 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
           randomCopy(fromJavaUtilBitSet(randomSet(numBits, load), numBits), numBits);
       DocIdSetIterator otherIterator = otherSet.iterator();
       if (otherIterator != null) {
-        set1.or(otherIterator);
-        set2.or(otherSet.iterator());
-        assertEquals(set1, set2, numBits);
+        jdkSet.or(toJavaUtil(otherIterator, numBits));
+        luceneSet.or(otherSet.iterator());
+        assertEquals(jdkSet, luceneSet, numBits);
       }
     }
+  }
+
+  /** Helper: consume a DocIdSetIterator into a java.util.BitSet. */
+  private static java.util.BitSet toJavaUtil(DocIdSetIterator it, int numBits) throws IOException {
+    java.util.BitSet bs = new java.util.BitSet(numBits);
+    for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+      bs.set(doc);
+    }
+    return bs;
   }
 
   /** Test {@link BitSet#or(DocIdSetIterator)} on sparse sets. */
