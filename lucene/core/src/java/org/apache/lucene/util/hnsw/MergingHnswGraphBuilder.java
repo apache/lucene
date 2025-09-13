@@ -172,7 +172,7 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
           }
         }
       }
-      addGraphNodeWithEps(ordMapS[u], eps);
+      addGraphNode(ordMapS[u], eps);
     }
   }
 }
