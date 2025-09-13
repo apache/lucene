@@ -31,6 +31,9 @@ API Changes
 
 * GITHUB#14844: Change IndexInput.updateReadAdvice to take an IOContext instead (Simon Cooper)
 
+* GITHUB#12980: Make FSTPostingsFormat to build FST off-heap. This PostingsFormat will now
+  create 2 FST files (tfp.meta and tfp.data) instead of a single one. (Anh Dung Bui)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -779,9 +782,6 @@ API Changes
   executor to extract hit offsets concurrently. (Dawid Weiss)
 
 * GITHUB#12855: Remove deprecated DrillSideways#createDrillDownFacetsCollector extension method. (Greg Miller)
-
-* GITHUB#12980: Make FSTPostingsFormat to build FST off-heap. This PostingsFormat will now
-  create 2 FST files (tfp.meta and tfp.data) instead of a single one. (Anh Dung Bui)
 
 * GITHUB#12875: Ensure token position is always increased in PathHierarchyTokenizer and ReversePathHierarchyTokenizer
   and resulting tokens do not overlap. (Michael Froh, Lukáš Vlček)

@@ -206,7 +206,7 @@ public class FSTTermsWriter extends FieldsConsumer {
     if (metaOut != null) {
       assert dataOut != null;
       try (IndexOutput _ = metaOut;
-          IndexOutput __ = dataOut;
+          IndexOutput _ = dataOut;
           postingsWriter) { // write field summary
         final long dirStart = metaOut.getFilePointer();
 

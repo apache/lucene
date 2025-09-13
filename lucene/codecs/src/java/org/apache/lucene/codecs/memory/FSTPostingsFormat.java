@@ -31,7 +31,7 @@ import org.apache.lucene.util.IOUtils;
 /** FST term dict + Lucene99PBF */
 public final class FSTPostingsFormat extends PostingsFormat {
   public FSTPostingsFormat() {
-    super("FST99");
+    super("FST110");
   }
 
   @Override
