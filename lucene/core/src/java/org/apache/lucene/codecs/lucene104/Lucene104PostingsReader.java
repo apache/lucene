@@ -190,10 +190,11 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
     }
   }
 
-  static void prefixSum(int[] buffer, int count, long base) {
-    buffer[0] += base;
-    for (int i = 1; i < count; ++i) {
-      buffer[i] += buffer[i - 1];
+  static void prefixSum(int[] buffer, int count, int base) {
+    int sum = base;
+    for (int i = 0; i < count; ++i) {
+      sum += buffer[i];
+      buffer[i] = sum;
     }
   }
 
@@ -593,11 +594,7 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
       if (bitsPerValue > 0) {
         // block is encoded as 256 packed integers that record the delta between doc IDs
         forUtil.decode(bitsPerValue, docInUtil, docBuffer);
-        int sum = prevDocID;
-        for (int i = 0; i < BLOCK_SIZE; ++i) {
-          sum += docBuffer[i];
-          docBuffer[i] = sum;
-        }
+        prefixSum(docBuffer, BLOCK_SIZE, prevDocID);
         encoding = DeltaEncoding.PACKED;
       } else {
         // block is encoded as a bit set
@@ -619,9 +616,7 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
           for (int i = 0; i < numLongs - 1; ++i) {
             docCumulativeWordPopCounts[i] = Long.bitCount(docBitSet.getBits()[i]);
           }
-          for (int i = 1; i < numLongs - 1; ++i) {
-            docCumulativeWordPopCounts[i] += docCumulativeWordPopCounts[i - 1];
-          }
+          prefixSum(docCumulativeWordPopCounts, numLongs - 1, 0);
           docCumulativeWordPopCounts[numLongs - 1] = BLOCK_SIZE;
           assert docCumulativeWordPopCounts[numLongs - 2]
                   + Long.bitCount(docBitSet.getBits()[numLongs - 1])
@@ -1052,7 +1047,8 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
       }
 
       // Only return docs from the current block
-      // +1 to make BitSetUtil#denseBitsetToArray work, see its java doc.
+      // +1 to make FixedBitSet#intoArray perform a bit faster, it uses a slower path if it doesn't
+      // have a free slot after the last element
       buffer.growNoCopy(BLOCK_SIZE + 1);
       upTo = (int) Math.min(upTo, level0LastDocID + 1L);
 
@@ -1068,8 +1064,9 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
           break;
         case UNARY:
           buffer.size =
-              BitSetUtil.denseBitsetToArray(
-                  docBitSet, doc - docBitSetBase, upTo - docBitSetBase, docBitSetBase, buffer.docs);
+              docBitSet.intoArray(
+                  doc - docBitSetBase, upTo - docBitSetBase, docBitSetBase, buffer.docs);
+          assert buffer.size < buffer.docs.length; // buffer's capacity is BLOCK_SIZE+1
           break;
       }
 

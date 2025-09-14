@@ -539,6 +539,8 @@ public class LRUQueryCache implements QueryCache, Accountable {
     scorer.score(
         new LeafCollector() {
 
+          private int[] buffer;
+
           @Override
           public void setScorer(Scorable scorer) throws IOException {}
 
@@ -546,6 +548,19 @@ public class LRUQueryCache implements QueryCache, Accountable {
           public void collect(int doc) throws IOException {
             count[0]++;
             bitSet.set(doc);
+          }
+
+          @Override
+          public void collect(DocIdStream stream) throws IOException {
+            if (buffer == null) {
+              buffer = new int[128];
+            }
+            for (int c = stream.intoArray(buffer); c != 0; c = stream.intoArray(buffer)) {
+              for (int i = 0; i < c; ++i) {
+                bitSet.set(buffer[i]);
+              }
+              count[0] += c;
+            }
           }
         },
         null,
@@ -560,12 +575,26 @@ public class LRUQueryCache implements QueryCache, Accountable {
     scorer.score(
         new LeafCollector() {
 
+          private int[] buffer = null;
+
           @Override
           public void setScorer(Scorable scorer) throws IOException {}
 
           @Override
           public void collect(int doc) throws IOException {
             builder.add(doc);
+          }
+
+          @Override
+          public void collect(DocIdStream stream) throws IOException {
+            if (buffer == null) {
+              buffer = new int[128];
+            }
+            for (int c = stream.intoArray(buffer); c != 0; c = stream.intoArray(buffer)) {
+              for (int i = 0; i < c; ++i) {
+                builder.add(buffer[i]);
+              }
+            }
           }
         },
         null,
