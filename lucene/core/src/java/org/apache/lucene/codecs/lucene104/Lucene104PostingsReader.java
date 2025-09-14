@@ -14,30 +14,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene103;
+package org.apache.lucene.codecs.lucene104;
 
-import static org.apache.lucene.codecs.lucene103.ForUtil.BLOCK_SIZE;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.DOC_CODEC;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.LEVEL1_NUM_DOCS;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.META_CODEC;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.PAY_CODEC;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.POS_CODEC;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.TERMS_CODEC;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.VERSION_CURRENT;
-import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.VERSION_START;
+import static org.apache.lucene.codecs.lucene104.ForUtil.BLOCK_SIZE;
+import static org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat.DOC_CODEC;
+import static org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat.LEVEL1_NUM_DOCS;
+import static org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat.META_CODEC;
+import static org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat.PAY_CODEC;
+import static org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat.POS_CODEC;
+import static org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat.TERMS_CODEC;
+import static org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat.VERSION_CURRENT;
+import static org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat.VERSION_START;
 
 import java.io.IOException;
-import java.util.AbstractList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.RandomAccess;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PostingsReaderBase;
-import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.IntBlockTermState;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat.IntBlockTermState;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
@@ -65,19 +61,9 @@ import org.apache.lucene.util.VectorUtil;
  *
  * @lucene.experimental
  */
-public final class Lucene103PostingsReader extends PostingsReaderBase {
+public final class Lucene104PostingsReader extends PostingsReaderBase {
 
   static final VectorizationProvider VECTORIZATION_PROVIDER = VectorizationProvider.getInstance();
-  // Dummy impacts, composed of the maximum possible term frequency and the lowest possible
-  // (unsigned) norm value. This is typically used on tail blocks, which don't actually record
-  // impacts as the storage overhead would not be worth any query evaluation speedup, since there's
-  // less than 128 docs left to evaluate anyway.
-  private static final List<Impact> DUMMY_IMPACTS =
-      Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
-
-  // We stopped storing a placeholder impact with freq=1 for fields with DOCS after 9.12.0
-  private static final List<Impact> DUMMY_IMPACTS_NO_FREQS =
-      Collections.singletonList(new Impact(1, 1L));
 
   private final IndexInput docIn;
   private final IndexInput posIn;
@@ -89,10 +75,10 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
   private final int maxImpactNumBytesAtLevel1;
 
   /** Sole constructor. */
-  public Lucene103PostingsReader(SegmentReadState state) throws IOException {
+  public Lucene104PostingsReader(SegmentReadState state) throws IOException {
     String metaName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene103PostingsFormat.META_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene104PostingsFormat.META_EXTENSION);
     final long expectedDocFileLength, expectedPosFileLength, expectedPayFileLength;
     int version;
     try (ChecksumIndexInput metaIn = state.directory.openChecksumInput(metaName)) {
@@ -143,7 +129,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
 
     String docName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene103PostingsFormat.DOC_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene104PostingsFormat.DOC_EXTENSION);
     try {
       docIn =
           state.directory.openInput(
@@ -155,7 +141,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
       if (state.fieldInfos.hasProx()) {
         String proxName =
             IndexFileNames.segmentFileName(
-                state.segmentInfo.name, state.segmentSuffix, Lucene103PostingsFormat.POS_EXTENSION);
+                state.segmentInfo.name, state.segmentSuffix, Lucene104PostingsFormat.POS_EXTENSION);
         posIn = state.directory.openInput(proxName, state.context.withHints(FileTypeHint.DATA));
         CodecUtil.checkIndexHeader(
             posIn, POS_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
@@ -166,7 +152,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
               IndexFileNames.segmentFileName(
                   state.segmentInfo.name,
                   state.segmentSuffix,
-                  Lucene103PostingsFormat.PAY_EXTENSION);
+                  Lucene104PostingsFormat.PAY_EXTENSION);
           payIn = state.directory.openInput(payName, state.context.withHints(FileTypeHint.DATA));
           CodecUtil.checkIndexHeader(
               payIn, PAY_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
@@ -204,10 +190,11 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
     }
   }
 
-  static void prefixSum(int[] buffer, int count, long base) {
-    buffer[0] += base;
-    for (int i = 1; i < count; ++i) {
-      buffer[i] += buffer[i - 1];
+  static void prefixSum(int[] buffer, int count, int base) {
+    int sum = base;
+    for (int i = 0; i < count; ++i) {
+      sum += buffer[i];
+      buffer[i] = sum;
     }
   }
 
@@ -303,7 +290,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
       UNARY
     }
 
-    private ForDeltaUtil forDeltaUtil;
+    private ForUtil forUtil;
     private PForUtil pforUtil;
 
     /* Variables that store the content of a block and the current position within this block */
@@ -406,7 +393,6 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
     private long level0PayEndFP;
     private int level0BlockPayUpto;
     private final BytesRef level0SerializedImpacts;
-    private final MutableImpactList level0Impacts;
 
     // level 1 skip data
     private long level1PosEndFP;
@@ -414,7 +400,8 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
     private long level1PayEndFP;
     private int level1BlockPayUpto;
     private final BytesRef level1SerializedImpacts;
-    private final MutableImpactList level1Impacts;
+
+    private final FreqAndNormBuffer impactBuffer;
 
     // true if we shallow-advanced to a new block that we have not decoded yet
     private boolean needsRefilling;
@@ -443,20 +430,28 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
         Arrays.fill(freqBuffer, 1);
       }
 
+      if (needsImpacts) {
+        impactBuffer = new FreqAndNormBuffer();
+        int capacity = 1; // for dummy impacts
+        if (needsFreq) {
+          capacity = Math.max(maxNumImpactsAtLevel0, capacity);
+          capacity = Math.max(maxNumImpactsAtLevel1, capacity);
+        }
+        impactBuffer.growNoCopy(capacity);
+      } else {
+        impactBuffer = null;
+      }
+
       if (needsFreq && needsImpacts) {
         level0SerializedImpacts = new BytesRef(maxImpactNumBytesAtLevel0);
         level1SerializedImpacts = new BytesRef(maxImpactNumBytesAtLevel1);
-        level0Impacts = new MutableImpactList(maxNumImpactsAtLevel0);
-        level1Impacts = new MutableImpactList(maxNumImpactsAtLevel1);
       } else {
         level0SerializedImpacts = null;
         level1SerializedImpacts = null;
-        level0Impacts = null;
-        level1Impacts = null;
       }
 
       if (needsPos) {
-        this.posIn = Lucene103PostingsReader.this.posIn.clone();
+        this.posIn = Lucene104PostingsReader.this.posIn.clone();
         posInUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(posIn);
         posDeltaBuffer = new int[BLOCK_SIZE];
       } else {
@@ -466,7 +461,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
       }
 
       if (needsOffsets || needsPayloads) {
-        this.payIn = Lucene103PostingsReader.this.payIn.clone();
+        this.payIn = Lucene104PostingsReader.this.payIn.clone();
         payInUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(payIn);
       } else {
         this.payIn = null;
@@ -496,7 +491,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
 
     public boolean canReuse(
         IndexInput docIn, FieldInfo fieldInfo, int flags, boolean needsImpacts) {
-      return docIn == Lucene103PostingsReader.this.docIn
+      return docIn == Lucene104PostingsReader.this.docIn
           && options == fieldInfo.getIndexOptions()
           && indexHasPayloads == fieldInfo.hasPayloads()
           && this.flags == flags
@@ -509,18 +504,21 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
       if (docFreq > 1) {
         if (docIn == null) {
           // lazy init
-          docIn = Lucene103PostingsReader.this.docIn.clone();
+          docIn = Lucene104PostingsReader.this.docIn.clone();
           docInUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(docIn);
         }
         prefetchPostings(docIn, termState);
       }
 
-      if (forDeltaUtil == null && docFreq >= BLOCK_SIZE) {
-        forDeltaUtil = new ForDeltaUtil();
+      if (forUtil == null && docFreq >= BLOCK_SIZE) {
+        forUtil = new ForUtil();
       }
       totalTermFreq = indexHasFreq ? termState.totalTermFreq : termState.docFreq;
       if (needsFreq && pforUtil == null && totalTermFreq >= BLOCK_SIZE) {
-        pforUtil = new PForUtil();
+        if (forUtil == null) {
+          forUtil = new ForUtil();
+        }
+        pforUtil = new PForUtil(forUtil);
       }
 
       // Where this term's postings start in the .pos file:
@@ -594,8 +592,9 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
     private void refillFullBlock() throws IOException {
       int bitsPerValue = docIn.readByte();
       if (bitsPerValue > 0) {
-        // block is encoded as 128 packed integers that record the delta between doc IDs
-        forDeltaUtil.decodeAndPrefixSum(bitsPerValue, docInUtil, prevDocID, docBuffer);
+        // block is encoded as 256 packed integers that record the delta between doc IDs
+        forUtil.decode(bitsPerValue, docInUtil, docBuffer);
+        prefixSum(docBuffer, BLOCK_SIZE, prevDocID);
         encoding = DeltaEncoding.PACKED;
       } else {
         // block is encoded as a bit set
@@ -603,7 +602,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
         docBitSetBase = prevDocID + 1;
         int numLongs;
         if (bitsPerValue == 0) {
-          // 0 is used to record that all 128 docs in the block are consecutive
+          // 0 is used to record that all 256 docs in the block are consecutive
           numLongs = BLOCK_SIZE / Long.SIZE; // 2
           docBitSet.set(0, BLOCK_SIZE);
         } else {
@@ -617,9 +616,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
           for (int i = 0; i < numLongs - 1; ++i) {
             docCumulativeWordPopCounts[i] = Long.bitCount(docBitSet.getBits()[i]);
           }
-          for (int i = 1; i < numLongs - 1; ++i) {
-            docCumulativeWordPopCounts[i] += docCumulativeWordPopCounts[i - 1];
-          }
+          prefixSum(docCumulativeWordPopCounts, numLongs - 1, 0);
           docCumulativeWordPopCounts[numLongs - 1] = BLOCK_SIZE;
           assert docCumulativeWordPopCounts[numLongs - 2]
                   + Long.bitCount(docBitSet.getBits()[numLongs - 1])
@@ -707,7 +704,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
           }
           if (indexHasPos) {
             level1PosEndFP += docIn.readVLong();
-            level1BlockPosUpto = docIn.readByte();
+            level1BlockPosUpto = docIn.readByte() & 0xFF;
             if (indexHasOffsetsOrPayloads) {
               level1PayEndFP += docIn.readVLong();
               level1BlockPayUpto = docIn.readVInt();
@@ -757,7 +754,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
 
           if (indexHasPos) {
             level0PosEndFP += docIn.readVLong();
-            level0BlockPosUpto = docIn.readByte();
+            level0BlockPosUpto = docIn.readByte() & 0xFF;
             if (indexHasOffsetsOrPayloads) {
               level0PayEndFP += docIn.readVLong();
               level0BlockPayUpto = docIn.readVInt();
@@ -793,7 +790,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
 
     private void readLevel0PosData() throws IOException {
       level0PosEndFP += docIn.readVLong();
-      level0BlockPosUpto = docIn.readByte();
+      level0BlockPosUpto = docIn.readByte() & 0xFF;
       if (indexHasOffsetsOrPayloads) {
         level0PayEndFP += docIn.readVLong();
         level0BlockPayUpto = docIn.readVInt();
@@ -1050,7 +1047,8 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
       }
 
       // Only return docs from the current block
-      // +1 to make BitSetUtil#denseBitsetToArray work, see its java doc.
+      // +1 to make FixedBitSet#intoArray perform a bit faster, it uses a slower path if it doesn't
+      // have a free slot after the last element
       buffer.growNoCopy(BLOCK_SIZE + 1);
       upTo = (int) Math.min(upTo, level0LastDocID + 1L);
 
@@ -1066,8 +1064,9 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
           break;
         case UNARY:
           buffer.size =
-              BitSetUtil.denseBitsetToArray(
-                  docBitSet, doc - docBitSetBase, upTo - docBitSetBase, docBitSetBase, buffer.docs);
+              docBitSet.intoArray(
+                  doc - docBitSetBase, upTo - docBitSetBase, docBitSetBase, buffer.docs);
+          assert buffer.size < buffer.docs.length; // buffer's capacity is BLOCK_SIZE+1
           break;
       }
 
@@ -1100,25 +1099,31 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
 
     @Override
     public int docIDRunEnd() throws IOException {
-      // Note: this assumes that BLOCK_SIZE == 128, this bit of the code would need to be changed if
-      // the block size was changed.
-      // Hack to avoid compiler warning that both sides of the equal sign are identical.
-      long blockSize = BLOCK_SIZE;
-      assert blockSize == 2 * Long.SIZE;
-      boolean level0IsDense =
-          encoding == DeltaEncoding.UNARY
-              && docBitSet.getBits()[0] == -1L
-              && docBitSet.getBits()[1] == -1L;
-      if (level0IsDense) {
-
-        int level0DocCountUpto = docFreq - docCountLeft;
-        boolean level1IsDense =
-            level1LastDocID - level0LastDocID == level1DocCountUpto - level0DocCountUpto;
-        if (level1IsDense) {
-          return level1LastDocID + 1;
+      if (encoding == DeltaEncoding.UNARY) {
+        // Note: this assumes that BLOCK_SIZE == 256, this bit of the code would need to be changed
+        // if
+        // the block size was changed.
+        // Hack to avoid compiler warning that both sides of the equal sign are identical.
+        long blockSize = BLOCK_SIZE;
+        assert blockSize == 4 * Long.SIZE;
+        boolean level0IsDense = true;
+        for (int i = 0; i < 4; ++i) {
+          if (docBitSet.getBits()[i] != -1L) {
+            level0IsDense = false;
+            break;
+          }
         }
+        if (level0IsDense) {
 
-        return level0LastDocID + 1;
+          int level0DocCountUpto = docFreq - docCountLeft;
+          boolean level1IsDense =
+              level1LastDocID - level0LastDocID == level1DocCountUpto - level0DocCountUpto;
+          if (level1IsDense) {
+            return level1LastDocID + 1;
+          }
+
+          return level0LastDocID + 1;
+        }
       }
 
       return super.docIDRunEnd();
@@ -1366,24 +1371,32 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
           }
 
           @Override
-          public List<Impact> getImpacts(int level) {
+          public FreqAndNormBuffer getImpacts(int level) {
             if (indexHasFreq == false) {
-              return DUMMY_IMPACTS_NO_FREQS;
+              // Max freq is 1 since freqs are not indexed
+              impactBuffer.size = 1;
+              impactBuffer.freqs[0] = 1;
+              impactBuffer.norms[0] = 1L;
+              return impactBuffer;
             }
             if (level == 0 && level0LastDocID != NO_MORE_DOCS) {
-              return readImpacts(level0SerializedImpacts, level0Impacts);
+              return readImpacts(level0SerializedImpacts, impactBuffer);
             }
             if (level == 1) {
-              return readImpacts(level1SerializedImpacts, level1Impacts);
+              return readImpacts(level1SerializedImpacts, impactBuffer);
             }
-            return DUMMY_IMPACTS;
+            impactBuffer.size = 1;
+            impactBuffer.freqs[0] = Integer.MAX_VALUE;
+            impactBuffer.norms[0] = 1L;
+            return impactBuffer;
           }
 
-          private List<Impact> readImpacts(BytesRef serialized, MutableImpactList impactsList) {
+          private FreqAndNormBuffer readImpacts(
+              BytesRef serialized, FreqAndNormBuffer impactBuffer) {
             var scratch = this.scratch;
             scratch.reset(serialized.bytes, 0, serialized.length);
-            Lucene103PostingsReader.readImpacts(scratch, impactsList);
-            return impactsList;
+            Lucene104PostingsReader.readImpacts(scratch, impactBuffer);
+            return impactBuffer;
           }
         };
 
@@ -1395,7 +1408,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
   }
 
   /**
-   * @see Lucene103PostingsWriter#writeVInt15(org.apache.lucene.store.DataOutput, int)
+   * @see Lucene104PostingsWriter#writeVInt15(org.apache.lucene.store.DataOutput, int)
    */
   static int readVInt15(DataInput in) throws IOException {
     short s = in.readShort();
@@ -1407,7 +1420,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
   }
 
   /**
-   * @see Lucene103PostingsWriter#writeVLong15(org.apache.lucene.store.DataOutput, long)
+   * @see Lucene104PostingsWriter#writeVLong15(org.apache.lucene.store.DataOutput, long)
    */
   static long readVLong15(DataInput in) throws IOException {
     short s = in.readShort();
@@ -1425,39 +1438,17 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
       // Don't prefetch if the input is already positioned at the right offset, which suggests that
       // the caller is streaming the entire inverted index (e.g. for merging), let the read-ahead
       // logic do its work instead. Note that this heuristic doesn't work for terms that have skip
-      // data, since skip data is stored after the last term, but handling all terms that have <128
+      // data, since skip data is stored after the last term, but handling all terms that have <256
       // docs is a good start already.
       docIn.prefetch(state.docStartFP, 1);
     }
     // Note: we don't prefetch positions or offsets, which are less likely to be needed.
   }
 
-  static class MutableImpactList extends AbstractList<Impact> implements RandomAccess {
-    int length;
-    final Impact[] impacts;
-
-    MutableImpactList(int capacity) {
-      impacts = new Impact[capacity];
-      for (int i = 0; i < capacity; ++i) {
-        impacts[i] = new Impact(Integer.MAX_VALUE, 1L);
-      }
-    }
-
-    @Override
-    public Impact get(int index) {
-      return impacts[index];
-    }
-
-    @Override
-    public int size() {
-      return length;
-    }
-  }
-
-  static MutableImpactList readImpacts(ByteArrayDataInput in, MutableImpactList reuse) {
+  static FreqAndNormBuffer readImpacts(ByteArrayDataInput in, FreqAndNormBuffer reuse) {
     int freq = 0;
     long norm = 0;
-    int length = 0;
+    int size = 0;
     while (in.getPosition() < in.length()) {
       int freqDelta = in.readVInt();
       if ((freqDelta & 0x01) != 0) {
@@ -1471,12 +1462,11 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
         freq += 1 + (freqDelta >>> 1);
         norm++;
       }
-      Impact impact = reuse.impacts[length];
-      impact.freq = freq;
-      impact.norm = norm;
-      length++;
+      reuse.freqs[size] = freq;
+      reuse.norms[size] = norm;
+      size++;
     }
-    reuse.length = length;
+    reuse.size = size;
     return reuse;
   }
 

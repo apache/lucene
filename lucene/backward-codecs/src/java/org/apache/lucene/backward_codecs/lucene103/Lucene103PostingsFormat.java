@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene103;
+package org.apache.lucene.backward_codecs.lucene103;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.BlockTermState;
@@ -26,7 +26,6 @@ import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
 import org.apache.lucene.codecs.lucene103.blocktree.Lucene103BlockTreeTermsReader;
 import org.apache.lucene.codecs.lucene103.blocktree.Lucene103BlockTreeTermsWriter;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -319,7 +318,7 @@ import org.apache.lucene.util.packed.PackedInts;
  *
  * @lucene.experimental
  */
-public final class Lucene103PostingsFormat extends PostingsFormat {
+public class Lucene103PostingsFormat extends PostingsFormat {
 
   /** Filename extension for some small metadata about how postings are encoded. */
   public static final String META_EXTENSION = "psm";
@@ -342,7 +341,7 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
   /** Size of blocks. */
   public static final int BLOCK_SIZE = ForUtil.BLOCK_SIZE;
 
-  public static final int BLOCK_MASK = BLOCK_SIZE - 1;
+  static final int BLOCK_MASK = BLOCK_SIZE - 1;
 
   /** We insert skip data on every block and every SKIP_FACTOR=32 blocks. */
   public static final int LEVEL1_FACTOR = 32;
@@ -350,17 +349,7 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
   /** Total number of docs covered by level 1 skip data: 32 * 128 = 4,096 */
   public static final int LEVEL1_NUM_DOCS = LEVEL1_FACTOR * BLOCK_SIZE;
 
-  public static final int LEVEL1_MASK = LEVEL1_NUM_DOCS - 1;
-
-  /**
-   * Return the class that implements {@link ImpactsEnum} in this {@link PostingsFormat}. This is
-   * internally used to help the JVM make good inlining decisions.
-   *
-   * @lucene.internal
-   */
-  public static Class<? extends ImpactsEnum> getImpactsEnumImpl() {
-    return Lucene103PostingsReader.BlockPostingsEnum.class;
-  }
+  static final int LEVEL1_MASK = LEVEL1_NUM_DOCS - 1;
 
   static final String TERMS_CODEC = "Lucene103PostingsWriterTerms";
   static final String META_CODEC = "Lucene103PostingsWriterMeta";
@@ -371,10 +360,6 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
   static final int VERSION_START = 0;
 
   static final int VERSION_CURRENT = VERSION_START;
-
-  private final int version;
-  private final int minTermBlockSize;
-  private final int maxTermBlockSize;
 
   /** Creates {@code Lucene103PostingsFormat} with default settings. */
   public Lucene103PostingsFormat() {
@@ -391,31 +376,13 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
    *     Lucene103BlockTreeTermsWriter#Lucene103BlockTreeTermsWriter(SegmentWriteState,PostingsWriterBase,int,int)
    */
   public Lucene103PostingsFormat(int minTermBlockSize, int maxTermBlockSize) {
-    this(minTermBlockSize, maxTermBlockSize, VERSION_CURRENT);
-  }
-
-  /** Expert constructor that allows setting the version. */
-  public Lucene103PostingsFormat(int minTermBlockSize, int maxTermBlockSize, int version) {
     super("Lucene103");
-    if (version < VERSION_START || version > VERSION_CURRENT) {
-      throw new IllegalArgumentException("Version out of range: " + version);
-    }
-    this.version = version;
-    Lucene103BlockTreeTermsWriter.validateSettings(minTermBlockSize, maxTermBlockSize);
-    this.minTermBlockSize = minTermBlockSize;
-    this.maxTermBlockSize = maxTermBlockSize;
   }
 
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    PostingsWriterBase postingsWriter = new Lucene103PostingsWriter(state, version);
-    try {
-      return new Lucene103BlockTreeTermsWriter(
-          state, postingsWriter, minTermBlockSize, maxTermBlockSize);
-    } catch (Throwable t) {
-      IOUtils.closeWhileSuppressingExceptions(t, postingsWriter);
-      throw t;
-    }
+    throw new UnsupportedOperationException(
+        "This postings format may not be used for writing, use the current postings format");
   }
 
   @Override

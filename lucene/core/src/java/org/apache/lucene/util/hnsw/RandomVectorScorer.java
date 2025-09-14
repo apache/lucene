@@ -42,11 +42,15 @@ public interface RandomVectorScorer {
    * @param nodes array of nodes to score.
    * @param scores output array of scores corresponding to each node.
    * @param numNodes number of nodes to score. Must not exceed length of nodes or scores arrays.
+   * @return the maximum scored value of any node, or Float.NEGATIVE_INFINITY if numNodes == 0.
    */
-  default void bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
+  default float bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
+    float max = Float.NEGATIVE_INFINITY;
     for (int i = 0; i < numNodes; i++) {
       scores[i] = score(nodes[i]);
+      max = Math.max(max, scores[i]);
     }
+    return max;
   }
 
   /**

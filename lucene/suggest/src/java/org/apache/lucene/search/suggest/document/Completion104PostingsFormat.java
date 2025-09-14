@@ -14,39 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.index;
+package org.apache.lucene.search.suggest.document;
 
-/** Per-document scoring factors. */
-public final class Impact {
+import org.apache.lucene.codecs.PostingsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat;
 
-  /** Term frequency of the term in the document. */
-  public int freq;
-
-  /** Norm factor of the document. */
-  public long norm;
-
-  /** Constructor. */
-  public Impact(int freq, long norm) {
-    this.freq = freq;
-    this.norm = norm;
+/**
+ * {@link CompletionPostingsFormat} for {@link Lucene104PostingsFormat}.
+ *
+ * @lucene.experimental
+ */
+public class Completion104PostingsFormat extends CompletionPostingsFormat {
+  /** Creates a {@link Completion104PostingsFormat}. */
+  public Completion104PostingsFormat() {
+    super("Completion104");
   }
 
   @Override
-  public String toString() {
-    return "{freq=" + freq + ",norm=" + norm + "}";
-  }
-
-  @Override
-  public int hashCode() {
-    int h = freq;
-    h = 31 * h + Long.hashCode(norm);
-    return h;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (obj == null || getClass() != obj.getClass()) return false;
-    Impact other = (Impact) obj;
-    return freq == other.freq && norm == other.norm;
+  protected PostingsFormat delegatePostingsFormat() {
+    return PostingsFormat.forName("Lucene104");
   }
 }

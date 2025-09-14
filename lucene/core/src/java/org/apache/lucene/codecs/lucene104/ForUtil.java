@@ -16,7 +16,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene103;
+package org.apache.lucene.codecs.lucene104;
 
 import java.io.IOException;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
@@ -29,8 +29,10 @@ import org.apache.lucene.store.DataOutput;
  */
 public final class ForUtil {
 
-  public static final int BLOCK_SIZE = 128;
-  static final int BLOCK_SIZE_LOG2 = 7;
+  /** Number of integers per block. */
+  public static final int BLOCK_SIZE = 256;
+
+  static final int BLOCK_SIZE_LOG2 = 8;
 
   static int expandMask16(int mask16) {
     return mask16 | (mask16 << 16);
@@ -53,38 +55,38 @@ public final class ForUtil {
   }
 
   static void expand8(int[] arr) {
-    for (int i = 0; i < 32; ++i) {
+    for (int i = 0; i < 64; ++i) {
       int l = arr[i];
       arr[i] = (l >>> 24) & 0xFF;
-      arr[32 + i] = (l >>> 16) & 0xFF;
-      arr[64 + i] = (l >>> 8) & 0xFF;
-      arr[96 + i] = l & 0xFF;
+      arr[64 + i] = (l >>> 16) & 0xFF;
+      arr[128 + i] = (l >>> 8) & 0xFF;
+      arr[192 + i] = l & 0xFF;
     }
   }
 
   static void collapse8(int[] arr) {
-    for (int i = 0; i < 32; ++i) {
-      arr[i] = (arr[i] << 24) | (arr[32 + i] << 16) | (arr[64 + i] << 8) | arr[96 + i];
+    for (int i = 0; i < 64; ++i) {
+      arr[i] = (arr[i] << 24) | (arr[64 + i] << 16) | (arr[128 + i] << 8) | arr[192 + i];
     }
   }
 
   static void expand16(int[] arr) {
-    for (int i = 0; i < 64; ++i) {
+    for (int i = 0; i < 128; ++i) {
       int l = arr[i];
       arr[i] = (l >>> 16) & 0xFFFF;
-      arr[64 + i] = l & 0xFFFF;
+      arr[128 + i] = l & 0xFFFF;
     }
   }
 
   static void collapse16(int[] arr) {
-    for (int i = 0; i < 64; ++i) {
-      arr[i] = (arr[i] << 16) | arr[64 + i];
+    for (int i = 0; i < 128; ++i) {
+      arr[i] = (arr[i] << 16) | arr[128 + i];
     }
   }
 
   private final int[] tmp = new int[BLOCK_SIZE];
 
-  /** Encode 128 integers from {@code ints} into {@code out}. */
+  /** Encode 256 integers from {@code ints} into {@code out}. */
   void encode(int[] ints, int bitsPerValue, DataOutput out) throws IOException {
     final int nextPrimitive;
     if (bitsPerValue <= 8) {
@@ -103,7 +105,7 @@ public final class ForUtil {
       throws IOException {
     final int numInts = BLOCK_SIZE * primitiveSize / Integer.SIZE;
 
-    final int numIntsPerShift = bitsPerValue * 4;
+    final int numIntsPerShift = bitsPerValue * 8;
     int idx = 0;
     int shift = primitiveSize - bitsPerValue;
     for (int i = 0; i < numIntsPerShift; ++i) {
@@ -158,14 +160,14 @@ public final class ForUtil {
     }
   }
 
-  /** Number of bytes required to encode 128 integers of {@code bitsPerValue} bits per value. */
+  /** Number of bytes required to encode 256 integers of {@code bitsPerValue} bits per value. */
   static int numBytes(int bitsPerValue) {
     return bitsPerValue << (BLOCK_SIZE_LOG2 - 3);
   }
 
   static void decodeSlow(int bitsPerValue, PostingDecodingUtil pdu, int[] tmp, int[] ints)
       throws IOException {
-    final int numInts = bitsPerValue << 2;
+    final int numInts = bitsPerValue << 3;
     final int mask = MASKS32[bitsPerValue];
     pdu.splitInts(numInts, ints, 32 - bitsPerValue, 32, mask, tmp, 0, -1);
     final int remainingBitsPerInt = 32 - bitsPerValue;
@@ -246,7 +248,7 @@ public final class ForUtil {
   static final int MASK32_15 = MASKS32[15];
   static final int MASK32_16 = MASKS32[16];
 
-  /** Decode 128 integers into {@code ints}. */
+  /** Decode 256 integers into {@code ints}. */
   void decode(int bitsPerValue, PostingDecodingUtil pdu, int[] ints) throws IOException {
     switch (bitsPerValue) {
       case 1:
@@ -320,16 +322,16 @@ public final class ForUtil {
   }
 
   static void decode1(PostingDecodingUtil pdu, int[] ints) throws IOException {
-    pdu.splitInts(4, ints, 7, 1, MASK8_1, ints, 28, MASK8_1);
+    pdu.splitInts(8, ints, 7, 1, MASK8_1, ints, 56, MASK8_1);
   }
 
   static void decode2(PostingDecodingUtil pdu, int[] ints) throws IOException {
-    pdu.splitInts(8, ints, 6, 2, MASK8_2, ints, 24, MASK8_2);
+    pdu.splitInts(16, ints, 6, 2, MASK8_2, ints, 48, MASK8_2);
   }
 
   static void decode3(PostingDecodingUtil pdu, int[] tmp, int[] ints) throws IOException {
-    pdu.splitInts(12, ints, 5, 3, MASK8_3, tmp, 0, MASK8_2);
-    for (int iter = 0, tmpIdx = 0, intsIdx = 24; iter < 4; ++iter, tmpIdx += 3, intsIdx += 2) {
+    pdu.splitInts(24, ints, 5, 3, MASK8_3, tmp, 0, MASK8_2);
+    for (int iter = 0, tmpIdx = 0, intsIdx = 48; iter < 8; ++iter, tmpIdx += 3, intsIdx += 2) {
       int l0 = tmp[tmpIdx + 0] << 1;
       l0 |= (tmp[tmpIdx + 1] >>> 1) & MASK8_1;
       ints[intsIdx + 0] = l0;
@@ -340,12 +342,12 @@ public final class ForUtil {
   }
 
   static void decode4(PostingDecodingUtil pdu, int[] ints) throws IOException {
-    pdu.splitInts(16, ints, 4, 4, MASK8_4, ints, 16, MASK8_4);
+    pdu.splitInts(32, ints, 4, 4, MASK8_4, ints, 32, MASK8_4);
   }
 
   static void decode5(PostingDecodingUtil pdu, int[] tmp, int[] ints) throws IOException {
-    pdu.splitInts(20, ints, 3, 5, MASK8_5, tmp, 0, MASK8_3);
-    for (int iter = 0, tmpIdx = 0, intsIdx = 20; iter < 4; ++iter, tmpIdx += 5, intsIdx += 3) {
+    pdu.splitInts(40, ints, 3, 5, MASK8_5, tmp, 0, MASK8_3);
+    for (int iter = 0, tmpIdx = 0, intsIdx = 40; iter < 8; ++iter, tmpIdx += 5, intsIdx += 3) {
       int l0 = tmp[tmpIdx + 0] << 2;
       l0 |= (tmp[tmpIdx + 1] >>> 1) & MASK8_2;
       ints[intsIdx + 0] = l0;
@@ -360,8 +362,8 @@ public final class ForUtil {
   }
 
   static void decode6(PostingDecodingUtil pdu, int[] tmp, int[] ints) throws IOException {
-    pdu.splitInts(24, ints, 2, 6, MASK8_6, tmp, 0, MASK8_2);
-    for (int iter = 0, tmpIdx = 0, intsIdx = 24; iter < 8; ++iter, tmpIdx += 3, intsIdx += 1) {
+    pdu.splitInts(48, ints, 2, 6, MASK8_6, tmp, 0, MASK8_2);
+    for (int iter = 0, tmpIdx = 0, intsIdx = 48; iter < 16; ++iter, tmpIdx += 3, intsIdx += 1) {
       int l0 = tmp[tmpIdx + 0] << 4;
       l0 |= tmp[tmpIdx + 1] << 2;
       l0 |= tmp[tmpIdx + 2] << 0;
@@ -370,8 +372,8 @@ public final class ForUtil {
   }
 
   static void decode7(PostingDecodingUtil pdu, int[] tmp, int[] ints) throws IOException {
-    pdu.splitInts(28, ints, 1, 7, MASK8_7, tmp, 0, MASK8_1);
-    for (int iter = 0, tmpIdx = 0, intsIdx = 28; iter < 4; ++iter, tmpIdx += 7, intsIdx += 1) {
+    pdu.splitInts(56, ints, 1, 7, MASK8_7, tmp, 0, MASK8_1);
+    for (int iter = 0, tmpIdx = 0, intsIdx = 56; iter < 8; ++iter, tmpIdx += 7, intsIdx += 1) {
       int l0 = tmp[tmpIdx + 0] << 6;
       l0 |= tmp[tmpIdx + 1] << 5;
       l0 |= tmp[tmpIdx + 2] << 4;
@@ -384,12 +386,12 @@ public final class ForUtil {
   }
 
   static void decode8(PostingDecodingUtil pdu, int[] ints) throws IOException {
-    pdu.in.readInts(ints, 0, 32);
+    pdu.in.readInts(ints, 0, 64);
   }
 
   static void decode9(PostingDecodingUtil pdu, int[] tmp, int[] ints) throws IOException {
-    pdu.splitInts(36, ints, 7, 9, MASK16_9, tmp, 0, MASK16_7);
-    for (int iter = 0, tmpIdx = 0, intsIdx = 36; iter < 4; ++iter, tmpIdx += 9, intsIdx += 7) {
+    pdu.splitInts(72, ints, 7, 9, MASK16_9, tmp, 0, MASK16_7);
+    for (int iter = 0, tmpIdx = 0, intsIdx = 72; iter < 8; ++iter, tmpIdx += 9, intsIdx += 7) {
       int l0 = tmp[tmpIdx + 0] << 2;
       l0 |= (tmp[tmpIdx + 1] >>> 5) & MASK16_2;
       ints[intsIdx + 0] = l0;
@@ -416,8 +418,8 @@ public final class ForUtil {
   }
 
   static void decode10(PostingDecodingUtil pdu, int[] tmp, int[] ints) throws IOException {
-    pdu.splitInts(40, ints, 6, 10, MASK16_10, tmp, 0, MASK16_6);
-    for (int iter = 0, tmpIdx = 0, intsIdx = 40; iter < 8; ++iter, tmpIdx += 5, intsIdx += 3) {
+    pdu.splitInts(80, ints, 6, 10, MASK16_10, tmp, 0, MASK16_6);
+    for (int iter = 0, tmpIdx = 0, intsIdx = 80; iter < 16; ++iter, tmpIdx += 5, intsIdx += 3) {
       int l0 = tmp[tmpIdx + 0] << 4;
       l0 |= (tmp[tmpIdx + 1] >>> 2) & MASK16_4;
       ints[intsIdx + 0] = l0;
@@ -432,8 +434,8 @@ public final class ForUtil {
   }
 
   static void decode11(PostingDecodingUtil pdu, int[] tmp, int[] ints) throws IOException {
-    pdu.splitInts(44, ints, 5, 11, MASK16_11, tmp, 0, MASK16_5);
-    for (int iter = 0, tmpIdx = 0, intsIdx = 44; iter < 4; ++iter, tmpIdx += 11, intsIdx += 5) {
+    pdu.splitInts(88, ints, 5, 11, MASK16_11, tmp, 0, MASK16_5);
+    for (int iter = 0, tmpIdx = 0, intsIdx = 88; iter < 8; ++iter, tmpIdx += 11, intsIdx += 5) {
       int l0 = tmp[tmpIdx + 0] << 6;
       l0 |= tmp[tmpIdx + 1] << 1;
       l0 |= (tmp[tmpIdx + 2] >>> 4) & MASK16_1;
@@ -458,8 +460,8 @@ public final class ForUtil {
   }
 
   static void decode12(PostingDecodingUtil pdu, int[] tmp, int[] ints) throws IOException {
-    pdu.splitInts(48, ints, 4, 12, MASK16_12, tmp, 0, MASK16_4);
-    for (int iter = 0, tmpIdx = 0, intsIdx = 48; iter < 16; ++iter, tmpIdx += 3, intsIdx += 1) {
+    pdu.splitInts(96, ints, 4, 12, MASK16_12, tmp, 0, MASK16_4);
+    for (int iter = 0, tmpIdx = 0, intsIdx = 96; iter < 32; ++iter, tmpIdx += 3, intsIdx += 1) {
       int l0 = tmp[tmpIdx + 0] << 8;
       l0 |= tmp[tmpIdx + 1] << 4;
       l0 |= tmp[tmpIdx + 2] << 0;
@@ -468,8 +470,8 @@ public final class ForUtil {
   }
 
   static void decode13(PostingDecodingUtil pdu, int[] tmp, int[] ints) throws IOException {
-    pdu.splitInts(52, ints, 3, 13, MASK16_13, tmp, 0, MASK16_3);
-    for (int iter = 0, tmpIdx = 0, intsIdx = 52; iter < 4; ++iter, tmpIdx += 13, intsIdx += 3) {
+    pdu.splitInts(104, ints, 3, 13, MASK16_13, tmp, 0, MASK16_3);
+    for (int iter = 0, tmpIdx = 0, intsIdx = 104; iter < 8; ++iter, tmpIdx += 13, intsIdx += 3) {
       int l0 = tmp[tmpIdx + 0] << 10;
       l0 |= tmp[tmpIdx + 1] << 7;
       l0 |= tmp[tmpIdx + 2] << 4;
@@ -492,8 +494,8 @@ public final class ForUtil {
   }
 
   static void decode14(PostingDecodingUtil pdu, int[] tmp, int[] ints) throws IOException {
-    pdu.splitInts(56, ints, 2, 14, MASK16_14, tmp, 0, MASK16_2);
-    for (int iter = 0, tmpIdx = 0, intsIdx = 56; iter < 8; ++iter, tmpIdx += 7, intsIdx += 1) {
+    pdu.splitInts(112, ints, 2, 14, MASK16_14, tmp, 0, MASK16_2);
+    for (int iter = 0, tmpIdx = 0, intsIdx = 112; iter < 16; ++iter, tmpIdx += 7, intsIdx += 1) {
       int l0 = tmp[tmpIdx + 0] << 12;
       l0 |= tmp[tmpIdx + 1] << 10;
       l0 |= tmp[tmpIdx + 2] << 8;
@@ -506,8 +508,8 @@ public final class ForUtil {
   }
 
   static void decode15(PostingDecodingUtil pdu, int[] tmp, int[] ints) throws IOException {
-    pdu.splitInts(60, ints, 1, 15, MASK16_15, tmp, 0, MASK16_1);
-    for (int iter = 0, tmpIdx = 0, intsIdx = 60; iter < 4; ++iter, tmpIdx += 15, intsIdx += 1) {
+    pdu.splitInts(120, ints, 1, 15, MASK16_15, tmp, 0, MASK16_1);
+    for (int iter = 0, tmpIdx = 0, intsIdx = 120; iter < 8; ++iter, tmpIdx += 15, intsIdx += 1) {
       int l0 = tmp[tmpIdx + 0] << 14;
       l0 |= tmp[tmpIdx + 1] << 13;
       l0 |= tmp[tmpIdx + 2] << 12;
@@ -528,6 +530,6 @@ public final class ForUtil {
   }
 
   static void decode16(PostingDecodingUtil pdu, int[] ints) throws IOException {
-    pdu.in.readInts(ints, 0, 64);
+    pdu.in.readInts(ints, 0, 128);
   }
 }

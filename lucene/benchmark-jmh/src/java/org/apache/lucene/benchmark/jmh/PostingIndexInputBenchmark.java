@@ -21,9 +21,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
-import org.apache.lucene.codecs.lucene103.ForDeltaUtil;
-import org.apache.lucene.codecs.lucene103.ForUtil;
-import org.apache.lucene.codecs.lucene103.PostingIndexInput;
+import org.apache.lucene.codecs.lucene104.ForUtil;
+import org.apache.lucene.codecs.lucene104.PostingIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -60,7 +59,6 @@ public class PostingIndexInputBenchmark {
   private IndexInput in;
   private PostingIndexInput postingIn;
   private final ForUtil forUtil = new ForUtil();
-  private final ForDeltaUtil forDeltaUtil = new ForDeltaUtil();
   private final int[] values = new int[ForUtil.BLOCK_SIZE];
 
   @Param({"2", "3", "4", "5", "6", "7", "8", "9", "10"})
@@ -78,7 +76,7 @@ public class PostingIndexInputBenchmark {
       }
     }
     in = dir.openInput("docs", IOContext.DEFAULT);
-    postingIn = new PostingIndexInput(in, forUtil, forDeltaUtil);
+    postingIn = new PostingIndexInput(in, forUtil);
   }
 
   @TearDown(Level.Trial)
@@ -100,9 +98,10 @@ public class PostingIndexInputBenchmark {
   }
 
   @Benchmark
-  public void decodeAndPrefixSum(Blackhole bh) throws IOException {
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public void decodeVector(Blackhole bh) throws IOException {
     in.seek(3); // random unaligned offset
-    postingIn.decodeAndPrefixSum(bpv, 100, values);
+    postingIn.decode(bpv, values);
     bh.consume(values);
   }
 }

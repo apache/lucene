@@ -160,13 +160,7 @@ public final class TermScorer extends Scorer {
       }
     }
     if (norms != null) {
-      for (int i = 0; i < size; ++i) {
-        if (norms.advanceExact(buffer.docs[i])) {
-          normValues[i] = norms.longValue();
-        } else {
-          normValues[i] = 1L;
-        }
-      }
+      norms.longValues(size, buffer.docs, normValues, 1L);
     }
 
     bulkScorer.score(buffer.size, buffer.features, normValues, buffer.features);

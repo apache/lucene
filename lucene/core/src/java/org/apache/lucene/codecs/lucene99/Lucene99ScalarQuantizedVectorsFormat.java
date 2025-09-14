@@ -34,10 +34,8 @@ import org.apache.lucene.index.SegmentWriteState;
 public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
 
   // The bits that are allowed for scalar quantization
-  // We only allow signed byte (7), and half-byte (4)
-  // NOTE: we used to allow 8 bits as well, but it was broken so we removed it
-  // (https://github.com/apache/lucene/issues/13519)
-  private static final int ALLOWED_BITS = (1 << 7) | (1 << 4);
+  // We only allow unsigned byte (8), signed byte (7), and half-byte (4)
+  private static final int ALLOWED_BITS = (1 << 8) | (1 << 7) | (1 << 4);
   public static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";
 
   public static final String NAME = "Lucene99ScalarQuantizedVectorsFormat";
