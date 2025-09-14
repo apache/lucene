@@ -219,7 +219,7 @@ public class FSTTermsWriter extends FieldsConsumer {
           }
           metaOut.writeVLong(field.sumDocFreq);
           metaOut.writeVInt(field.docCount);
-          field.dict.getMetadata().save(metaOut);
+          field.fstMetadata.save(metaOut);
         }
         writeTrailer(metaOut, dirStart);
         CodecUtil.writeFooter(metaOut);
@@ -237,7 +237,7 @@ public class FSTTermsWriter extends FieldsConsumer {
     public final long sumTotalTermFreq;
     public final long sumDocFreq;
     public final int docCount;
-    public final FST<FSTTermOutputs.TermData> dict;
+    public final FST.FSTMetadata<FSTTermOutputs.TermData> fstMetadata;
 
     public FieldMetaData(
         FieldInfo fieldInfo,
@@ -245,13 +245,13 @@ public class FSTTermsWriter extends FieldsConsumer {
         long sumTotalTermFreq,
         long sumDocFreq,
         int docCount,
-        FST<FSTTermOutputs.TermData> fst) {
+        FST.FSTMetadata<FSTTermOutputs.TermData> fstMetadata) {
       this.fieldInfo = fieldInfo;
       this.numTerms = numTerms;
       this.sumTotalTermFreq = sumTotalTermFreq;
       this.sumDocFreq = sumDocFreq;
       this.docCount = docCount;
-      this.dict = fst;
+      this.fstMetadata = fstMetadata;
     }
   }
 
@@ -291,10 +291,9 @@ public class FSTTermsWriter extends FieldsConsumer {
     public void finish(long sumTotalTermFreq, long sumDocFreq, int docCount) throws IOException {
       // save FST dict
       if (numTerms > 0) {
-        final FST<FSTTermOutputs.TermData> fst =
-            FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
         fields.add(
-            new FieldMetaData(fieldInfo, numTerms, sumTotalTermFreq, sumDocFreq, docCount, fst));
+            new FieldMetaData(
+                fieldInfo, numTerms, sumTotalTermFreq, sumDocFreq, docCount, fstCompiler.compile()));
       }
     }
   }
