@@ -293,7 +293,12 @@ public class FSTTermsWriter extends FieldsConsumer {
       if (numTerms > 0) {
         fields.add(
             new FieldMetaData(
-                fieldInfo, numTerms, sumTotalTermFreq, sumDocFreq, docCount, fstCompiler.compile()));
+                fieldInfo,
+                numTerms,
+                sumTotalTermFreq,
+                sumDocFreq,
+                docCount,
+                fstCompiler.compile()));
       }
     }
   }
