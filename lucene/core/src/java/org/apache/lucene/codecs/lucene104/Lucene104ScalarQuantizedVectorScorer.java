@@ -166,6 +166,7 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     float qcDist =
         switch (scalarEncoding) {
           case UNSIGNED_BYTE -> VectorUtil.uint8DotProduct(quantizedQuery, quantizedDoc);
+          case SEVEN_BIT -> VectorUtil.dotProduct(quantizedQuery, quantizedDoc);
           case PACKED_NIBBLE -> VectorUtil.int4DotProductPacked(quantizedQuery, quantizedDoc);
         };
     OptimizedScalarQuantizer.QuantizationResult indexCorrections =

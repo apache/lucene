@@ -56,7 +56,8 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
   @Before
   @Override
   public void setUp() throws Exception {
-    encoding = random().nextBoolean() ? ScalarEncoding.UNSIGNED_BYTE : ScalarEncoding.PACKED_NIBBLE;
+    var encodingValues = ScalarEncoding.values();
+    encoding = encodingValues[random().nextInt(encodingValues.length)];
     format = new Lucene104ScalarQuantizedVectorsFormat(encoding);
     super.setUp();
   }

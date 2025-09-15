@@ -197,6 +197,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     byte[] vector =
         switch (encoding) {
           case UNSIGNED_BYTE -> scratch;
+          case SEVEN_BIT -> scratch;
           case PACKED_NIBBLE ->
               new byte[encoding.getPackedLength(fieldData.fieldInfo.getVectorDimension())];
         };
@@ -257,6 +258,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     byte[] vector =
         switch (encoding) {
           case UNSIGNED_BYTE -> scratch;
+          case SEVEN_BIT -> scratch;
           case PACKED_NIBBLE ->
               new byte[encoding.getPackedLength(fieldData.fieldInfo.getVectorDimension())];
         };
@@ -693,6 +695,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       this.packed =
           switch (encoding) {
             case UNSIGNED_BYTE -> this.quantized;
+            case SEVEN_BIT -> this.quantized;
             case PACKED_NIBBLE -> new byte[encoding.getPackedLength(delegate.dimension())];
           };
       this.centroid = centroid;

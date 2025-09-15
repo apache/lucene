@@ -118,19 +118,28 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
    */
   public enum ScalarEncoding {
     /** Each dimension is quantized to 8 bits and treated as an unsigned value. */
-    UNSIGNED_BYTE(0, (byte) 8),
+    UNSIGNED_BYTE(0, (byte) 8, 1),
     /** Each dimension is quantized to 4 bits two values are packed into each output byte. */
-    PACKED_NIBBLE(1, (byte) 4);
+    PACKED_NIBBLE(1, (byte) 4, 2),
+    /**
+     * Each dimension is quantized to 7 bits and treated as a signed value.
+     *
+     * <p>This is intended for backwards compatibility with older iterations of scalar quantization.
+     * This setting will produce an index the same size as {@link #UNSIGNED_BYTE} but will produce
+     * less accurate vector comparisons.
+     */
+    SEVEN_BIT(2, (byte) 7, 1);
 
     /** The number used to identify this encoding on the wire, rather than relying on ordinal. */
-    private int wireNumber;
+    private final int wireNumber;
 
-    private byte bits;
+    private final byte bits;
+    private final int dimsPerByte;
 
-    ScalarEncoding(int wireNumber, byte bits) {
-      assert 8 % bits == 0;
+    ScalarEncoding(int wireNumber, byte bits, int dimsPerByte) {
       this.wireNumber = wireNumber;
       this.bits = bits;
+      this.dimsPerByte = dimsPerByte;
     }
 
     int getWireNumber() {
@@ -144,12 +153,12 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
 
     /** Return the number of dimensions that can be packed into a single byte. */
     public int getDimensionsPerByte() {
-      return 8 / bits;
+      return this.dimsPerByte;
     }
 
     /** Return the number of bytes required to store a packed vector of the given dimensions. */
     public int getPackedLength(int dimensions) {
-      return (dimensions * bits + 7) / 8;
+      return (dimensions + this.dimsPerByte - 1) / this.dimsPerByte;
     }
 
     /** Returns the encoding for the given wire number, or empty if unknown. */
