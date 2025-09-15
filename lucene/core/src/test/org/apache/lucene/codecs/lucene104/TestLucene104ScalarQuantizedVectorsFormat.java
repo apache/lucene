@@ -184,6 +184,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
                     centroid);
             switch (encoding) {
               case UNSIGNED_BYTE -> System.arraycopy(scratch, 0, expectedVector, 0, dims);
+              case SEVEN_BIT -> System.arraycopy(scratch, 0, expectedVector, 0, dims);
               case PACKED_NIBBLE ->
                   OffHeapScalarQuantizedVectorValues.packNibbles(scratch, expectedVector);
             }

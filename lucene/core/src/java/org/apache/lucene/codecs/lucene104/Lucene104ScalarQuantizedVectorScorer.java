@@ -124,6 +124,7 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
           var rawTargetVector = targetValues.vectorValue(node);
           switch (values.getScalarEncoding()) {
             case UNSIGNED_BYTE -> targetVector = rawTargetVector;
+            case SEVEN_BIT -> targetVector = rawTargetVector;
             case PACKED_NIBBLE -> {
               if (targetVector == null) {
                 targetVector = new byte[OptimizedScalarQuantizer.discretize(values.dimension(), 2)];
