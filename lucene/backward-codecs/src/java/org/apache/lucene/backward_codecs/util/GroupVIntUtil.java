@@ -22,9 +22,9 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.BitUtil;
 
 /**
- * This class contains utility methods for group varint encoding/decoding of long[] arrays.
- * These methods are only used by backward codecs and have been moved here from the main
- * GroupVIntUtil class.
+ * This class contains utility methods for group varint encoding/decoding of long[] arrays. These
+ * methods are only used by backward codecs and have been moved here from the main GroupVIntUtil
+ * class.
  *
  * @lucene.internal
  */

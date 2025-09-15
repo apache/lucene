@@ -325,7 +325,6 @@ public abstract class DataOutput {
     }
   }
 
-
   /**
    * Encode integers using group-varint. It uses {@link DataOutput#writeVInt VInt} to encode tail
    * values that are not enough for a group.

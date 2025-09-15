@@ -18,8 +18,8 @@ package org.apache.lucene.backward_codecs.util;
 
 import java.io.IOException;
 import org.apache.lucene.backward_codecs.store.DataOutputUtil;
-import org.apache.lucene.store.ByteArrayDataInput;
-import org.apache.lucene.store.ByteArrayDataOutput;
+import org.apache.lucene.store.ByteBuffersDataInput;
+import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestGroupVIntUtil extends LuceneTestCase {
@@ -28,11 +28,11 @@ public class TestGroupVIntUtil extends LuceneTestCase {
     long[] original = {1L, 127L, 128L, 16383L, 16384L, 2097151L, 2097152L, 268435455L};
     
     // Write using the backward-codecs utility
-    ByteArrayDataOutput out = new ByteArrayDataOutput();
+    ByteBuffersDataOutput out = new ByteBuffersDataOutput();
     DataOutputUtil.writeGroupVInts(out, original, original.length);
     
     // Read back using the backward-codecs utility
-    ByteArrayDataInput in = new ByteArrayDataInput(out.toArrayCopy());
+    ByteBuffersDataInput in = out.toDataInput();
     long[] result = new long[original.length];
     GroupVIntUtil.readGroupVInts(in, result, original.length);
     
@@ -42,11 +42,11 @@ public class TestGroupVIntUtil extends LuceneTestCase {
   public void testSingleGroupVInt() throws IOException {
     long[] original = {1L, 2L, 3L, 4L};
     
-    ByteArrayDataOutput out = new ByteArrayDataOutput();
+    ByteBuffersDataOutput out = new ByteBuffersDataOutput();
     byte[] scratch = new byte[GroupVIntUtil.MAX_LENGTH_PER_GROUP];
     GroupVIntUtil.writeGroupVInts(out, scratch, original, original.length);
     
-    ByteArrayDataInput in = new ByteArrayDataInput(out.toArrayCopy());
+    ByteBuffersDataInput in = out.toDataInput();
     long[] result = new long[original.length];
     GroupVIntUtil.readGroupVInt(in, result, 0);
     
