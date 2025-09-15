@@ -51,6 +51,8 @@ dependencies {
   moduleRuntimeOnly project(':lucene:analysis:icu')
 
   moduleTestImplementation project(':lucene:test-framework')
+
+  moduleImplementation "org.apache.rat:apache-rat-core:0.16.1"
 }
 
 // We add 'conf' to resources because we validate *.alg script correctness in one of the tests.
