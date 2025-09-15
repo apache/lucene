@@ -173,7 +173,7 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     float scale = SCALE_LUT[scalarEncoding.getBits() - 1];
     float x1 = indexCorrections.quantizedComponentSum();
     float ax = indexCorrections.lowerInterval();
-    // Here we assume `lx` is simply bit vectors, so the scaling isn't necessary
+    // Here we must scale according to the bits
     float lx = (indexCorrections.upperInterval() - ax) * scale;
     float ay = queryCorrections.lowerInterval();
     float ly = (queryCorrections.upperInterval() - ay) * scale;
