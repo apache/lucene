@@ -84,7 +84,8 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
    * @param ordMaps the ordinal maps for the graphs
    * @param totalNumberOfVectors the total number of vectors in the new graph, this should include
    *     all vectors expected to be added to the graph in the future
-   * @param initializedNodes the nodes will be initialized through the merging
+   * @param initializedNodes the nodes will be initialized through the merging, if null, all nodes
+   *     should be already initialized after {@link #updateGraph(HnswGraph, int[])} being called
    * @return a new HnswGraphBuilder that is initialized with the provided HnswGraph
    * @throws IOException when reading the graph fails
    */

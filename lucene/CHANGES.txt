@@ -132,7 +132,9 @@ New Features
 
 Improvements
 ---------------------
-# GITHUB#15148: Add support uint8 distance and allow 8 bit scalar quantization (Trevor McCulloch)
+* GITHUB#15148: Add support uint8 distance and allow 8 bit scalar quantization (Trevor McCulloch)
+
+* GITHUB#15184: Refactoring internal HNSWGraphBuilder's APIs and avoid creating new scorer for each call (Patrick Zhai)
 
 Optimizations
 ---------------------
