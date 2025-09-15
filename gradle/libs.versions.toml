@@ -92,7 +92,6 @@ nekohtml = { module = "net.sourceforge.nekohtml:nekohtml", version.ref = "nekoht
 opennlp-tools = { module = "org.apache.opennlp:opennlp-tools", version.ref = "opennlp" }
 procfork = { module = "com.carrotsearch:procfork", version.ref = "procfork" }
 randomizedtesting-runner = { module = "com.carrotsearch.randomizedtesting:randomizedtesting-runner", version.ref = "randomizedtesting" }
-rat = { module = "org.apache.rat:apache-rat", version.ref = "rat" }
 s2-geometry = { module = "io.sgr:s2-geometry-library-java", version.ref = "s2-geometry" }
 spatial4j = { module = "org.locationtech.spatial4j:spatial4j", version.ref = "spatial4j" }
 xerces = { module = "xerces:xercesImpl", version.ref = "xerces" }

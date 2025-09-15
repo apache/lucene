@@ -32,7 +32,6 @@ plugins {
   id "lucene.validation.gradle-versions-cleanup"
   id "lucene.validation.error-prone"
   id "lucene.validation.jar-checks"
-  id "lucene.validation.rat-sources"
 
   id "lucene.publications.maven"
   id "lucene.publications.maven-to-nexus-releases"

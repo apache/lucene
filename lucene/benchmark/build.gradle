@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 
-import org.apache.lucene.gradle.plugins.licenses.LicenceCheckTask
-
 plugins {
   id "java"
 }
@@ -51,8 +49,6 @@ dependencies {
   moduleRuntimeOnly project(':lucene:analysis:icu')
 
   moduleTestImplementation project(':lucene:test-framework')
-
-  moduleImplementation "org.apache.rat:apache-rat-core:0.16.1"
 }
 
 // We add 'conf' to resources because we validate *.alg script correctness in one of the tests.
@@ -93,10 +89,4 @@ tasks.register("run", JavaExec, {
     port = 5005
     suspend = true
   }
-})
-
-tasks.register("foo", LicenceCheckTask.class, {task ->
-  task.getInputFileTrees().from(project.fileTree("src", {
-    include "**/*.java"
-  }))
 })

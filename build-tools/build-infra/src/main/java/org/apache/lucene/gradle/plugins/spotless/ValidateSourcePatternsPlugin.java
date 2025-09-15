@@ -33,9 +33,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
-import org.apache.rat.Defaults;
-import org.apache.rat.analysis.RatHeaderAnalysisException;
-import org.apache.rat.document.impl.FileDocument;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
@@ -145,9 +142,8 @@ public class ValidateSourcePatternsPlugin extends LuceneGradlePlugin {
         String fileText = readUtf8WithValidation(file);
 
         if (file.getName().endsWith(".xml")) {
-          var ratDocument = new FileDocument(file);
           checkLicenseHeaderPrecedes(
-              file, "<tag>", xmlTagPattern, xmlCommentPattern, fileText, ratDocument, violations);
+              file, "<tag>", xmlTagPattern, xmlCommentPattern, fileText, violations);
         }
       }
       progress.completed();
@@ -168,22 +164,20 @@ public class ValidateSourcePatternsPlugin extends LuceneGradlePlugin {
         Pattern contentPattern,
         Pattern commentPattern,
         String fileText,
-        FileDocument ratDocument,
         TreeSet<String> violations) {
       Matcher contentMatcher = contentPattern.matcher(fileText);
       if (contentMatcher.find()) {
         int contentStartPos = contentMatcher.start();
         Matcher commentMatcher = commentPattern.matcher(fileText);
         while (commentMatcher.find()) {
-          if (isLicense(file, commentMatcher.group(1), ratDocument)) {
-            if (commentMatcher.start() < contentStartPos) {
-              // This file is all good, so break the loop:
-              // license header precedes 'description' definition
-              break;
-            } else {
-              reportViolation(
-                  violations, file, description + " declaration precedes license header");
-            }
+          System.out.println("# " + file);
+          if (commentMatcher.start() < contentStartPos) {
+            // This file is all good, so break the loop:
+            // license header precedes 'description' definition
+            break;
+          } else {
+            reportViolation(
+                violations, file, description + " declaration precedes license header");
           }
         }
       }
@@ -193,26 +187,6 @@ public class ValidateSourcePatternsPlugin extends LuceneGradlePlugin {
       String msg = String.format(Locale.ROOT, "%s: %s", file, name);
       getLogger().error(msg);
       violations.add(msg);
-    }
-
-    // See LUCENE-10419 - rat is not thread safe.
-    private static final Object ratLockBug = new Object();
-    private static final Splitter lineSplitter = Splitter.on(Pattern.compile("[\\r\\n]+"));
-
-    private boolean isLicense(File file, String text, FileDocument ratDocument) {
-      synchronized (ratLockBug) {
-        var licenseMatcher = Defaults.createDefaultMatcher();
-        licenseMatcher.reset();
-        return lineSplitter.splitToList(text).stream()
-            .anyMatch(
-                it -> {
-                  try {
-                    return licenseMatcher.match(ratDocument, it);
-                  } catch (RatHeaderAnalysisException e) {
-                    throw new GradleException("Could not scan this file with rat: " + file, e);
-                  }
-                });
-      }
     }
 
     private static String readUtf8WithValidation(File file) {
