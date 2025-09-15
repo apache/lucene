@@ -31,6 +31,8 @@ API Changes
 
 * GITHUB#14844: Change IndexInput.updateReadAdvice to take an IOContext instead (Simon Cooper)
 
+* GITHUB#15131: Restrict visibility of TieredMergePolicy.score() API (Trevor McCulloch)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -106,6 +108,57 @@ Other
 * GITHUB#14761: Use more Comparators for PriorityQueue implementations. (Simon Cooper)
 * GITHUB#14817: Refactor some complex uses of PriorityQueue to use Comparators. (Simon Cooper)
 
+======================= Lucene 10.4.0 =======================
+
+API Changes
+---------------------
+* GITHUB#15149: Introduce NumericDocValues#longValues to help speed up the
+  retrieval of many doc values at once. (Adrien Grand)
+
+* GITHUB#15173: Introduce DocIdStream#intoArray to help collect batches of doc
+  IDs at once, in particular by taking advantage of the new
+  NumericDocValues#longValues API. (Adrien Grand)
+
+New Features
+---------------------
+* GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
+  along with limiting number of child documents to retrieve per parent. (Jinny Wang)
+
+* GITHUB#15171: Add `VectorScorer.Bulk` for bulk iteration and scoring of vectors. This new interface is now
+  used in AbstractKnnVectorQuery to make exact matches faster. (Ben Trent)
+
+* GITHUB#15176: Add `[Float|Byte]VectorValues#rescorer(element[])` interface to allow optimized rescoring of vectors.
+  (Ben Trent)
+
+Improvements
+---------------------
+# GITHUB#15148: Add support uint8 distance and allow 8 bit scalar quantization (Trevor McCulloch)
+
+Optimizations
+---------------------
+* GITHUB#15140: Optimize TopScoreDocCollector with TernaryLongHeap for improved performance over Binary-LongHeap. (Ramakrishna Chilaka)
+
+* GITHUB#15163: Use TernaryLongHeap in NeighborQueue for faster vector search performance. (Ramakrishna Chilaka)
+
+* GITHUB#14998: Speed up flushing of live docs. (Adrien Grand)
+
+* GITHUB#15165: Optimize PForUtil.encode() with histogram-based bit selection. (Ramakrishna Chilaka)
+
+* GITHUB#15151: Use `SimScorer#score` bulk API to compute impact scores per
+  block of postings. (Adrien Grand)
+
+* GITHUB#15160: Increased the size used for blocks of postings from 128 to 256.
+  This gives a noticeable speedup to many queries. (Adrien Grand)
+
+Bug Fixes
+---------------------
+* GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
+  instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
+
+Other
+---------------------
+(No changes)
+
 ======================= Lucene 10.3.0 =======================
 
 API Changes
@@ -139,9 +192,6 @@ New Features
 
 * GITHUB#14413: Adding profiling support for concurrent segment search. (Ankit Jain)
 
-* GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
-  along with limiting number of child documents to retrieve per parent. (Jinny Wang)
-
 * GITHUB#14776: Add a Rescorer that uses values from provided DoubleValuesSource to re-score
   first pass hits. (Vigya Sharma)
 
@@ -155,6 +205,8 @@ New Features
 * GITHUB#14729: Support for Re-Ranking Queries using Late Interaction Model Multi-Vectors. (Vigya Sharma, Jim Ferenczi)
 
 * GITHUB#15110: PostingsDecodingUtil: interchange loops to enable better memory access and SIMD vectorisation. (Ramakrishna Chilaka)
+
+* GITHUB#15157: Support JDK 25 in Panama Vectorization Provider. (Chris Hegarty)
 
 Improvements
 ---------------------
@@ -310,9 +362,6 @@ Bug Fixes
   used if the DoubleValuesSource needed scores. (David Smiley)
 
 * GITHUB#14682 : Fix for add char and token filters in Luke Analysis tab. (Amir Raza)
-
-* GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
-  instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
 
 * GITHUB#14727: Fix several resource leaks. (Xu Chengxin)
 

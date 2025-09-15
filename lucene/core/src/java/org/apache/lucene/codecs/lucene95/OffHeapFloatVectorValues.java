@@ -18,15 +18,19 @@
 package org.apache.lucene.codecs.lucene95;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.ConjunctionUtils;
+import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
@@ -173,6 +177,30 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
         public DocIdSetIterator iterator() {
           return iterator;
         }
+
+        @Override
+        public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
+          final DocIdSetIterator matches =
+              matchingDocs == null
+                  ? iterator
+                  : ConjunctionUtils.createConjunction(List.of(matchingDocs, iterator), List.of());
+          return (nextCount, liveDocs, buffer) -> {
+            if (matches.docID() == -1) {
+              matches.nextDoc();
+            }
+            buffer.growNoCopy(nextCount);
+            int size = 0;
+            for (int doc = matches.docID();
+                doc != DocIdSetIterator.NO_MORE_DOCS && size < nextCount;
+                doc = matches.nextDoc()) {
+              if (liveDocs == null || liveDocs.get(doc)) {
+                buffer.docs[size++] = doc;
+              }
+            }
+            buffer.size = size;
+            return randomVectorScorer.bulkScore(buffer.docs, buffer.features, size);
+          };
+        }
       };
     }
   }
@@ -265,6 +293,43 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
         @Override
         public DocIdSetIterator iterator() {
           return iterator;
+        }
+
+        @Override
+        public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
+          return new Bulk() {
+            final DocIdSetIterator matches =
+                matchingDocs == null
+                    ? iterator
+                    : ConjunctionUtils.createConjunction(
+                        List.of(matchingDocs, iterator), List.of());
+            int[] docIds = new int[0];
+
+            @Override
+            public float nextDocsAndScores(
+                int nextCount, Bits liveDocs, DocAndFloatFeatureBuffer buffer) throws IOException {
+              if (matches.docID() == -1) {
+                matches.nextDoc();
+              }
+              buffer.growNoCopy(nextCount);
+              docIds = ArrayUtil.growNoCopy(docIds, nextCount);
+              int size = 0;
+              for (int doc = matches.docID();
+                  doc != DocIdSetIterator.NO_MORE_DOCS && size < nextCount;
+                  doc = matches.nextDoc()) {
+                if (liveDocs == null || liveDocs.get(doc)) {
+                  buffer.docs[size] = iterator.index();
+                  docIds[size] = doc;
+                  ++size;
+                }
+              }
+              buffer.size = size;
+              float maxScore = randomVectorScorer.bulkScore(buffer.docs, buffer.features, size);
+              // copy back the real doc IDs
+              System.arraycopy(docIds, 0, buffer.docs, 0, size);
+              return maxScore;
+            }
+          };
         }
       };
     }

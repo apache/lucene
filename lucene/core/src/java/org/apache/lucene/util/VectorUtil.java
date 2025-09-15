@@ -113,6 +113,14 @@ public final class VectorUtil {
     return IMPL.squareDistance(a, b);
   }
 
+  /** Returns the sum of squared differences of the two vectors where each byte is unsigned */
+  public static int uint8SquareDistance(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.uint8SquareDistance(a, b);
+  }
+
   /**
    * Modifies the argument to be unit length, dividing by its l2-norm. IllegalArgumentException is
    * thrown for zero vectors.
@@ -165,6 +173,20 @@ public final class VectorUtil {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
     return IMPL.dotProduct(a, b);
+  }
+
+  /**
+   * Dot product over bytes assuming that the values are actually unsigned.
+   *
+   * @param a uint8 byte vector
+   * @param b another uint8 byte vector of the same dimension
+   * @return the value of the dot product of the two vectors
+   */
+  public static int uint8DotProduct(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.uint8DotProduct(a, b);
   }
 
   public static int int4DotProduct(byte[] a, byte[] b) {

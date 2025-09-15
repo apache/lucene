@@ -22,14 +22,14 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
-import org.apache.lucene.codecs.lucene103.Lucene103PostingsReader;
-import org.apache.lucene.codecs.lucene103.Lucene103PostingsWriter;
 import org.apache.lucene.codecs.lucene103.blocktree.Lucene103BlockTreeTermsWriter;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsReader;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.util.IOUtils;
 
-/** Uses {@link OrdsBlockTreeTermsWriter} with {@link Lucene103PostingsWriter}. */
+/** Uses {@link OrdsBlockTreeTermsWriter} with {@link Lucene104PostingsWriter}. */
 public class BlockTreeOrdsPostingsFormat extends PostingsFormat {
 
   private final int minTermBlockSize;
@@ -67,7 +67,7 @@ public class BlockTreeOrdsPostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    PostingsWriterBase postingsWriter = new Lucene103PostingsWriter(state);
+    PostingsWriterBase postingsWriter = new Lucene104PostingsWriter(state);
 
     try {
       return new OrdsBlockTreeTermsWriter(
@@ -80,7 +80,7 @@ public class BlockTreeOrdsPostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
-    PostingsReaderBase postingsReader = new Lucene103PostingsReader(state);
+    PostingsReaderBase postingsReader = new Lucene104PostingsReader(state);
     try {
       return new OrdsBlockTreeTermsReader(postingsReader, state);
     } catch (Throwable t) {

@@ -86,7 +86,23 @@ public class FullPrecisionFloatVectorSimilarityValuesSource extends DoubleValues
     }
 
     if (vectorSimilarityFunction == null) {
-      this.vectorSimilarityFunction = fi.getVectorSimilarityFunction();
+      VectorScorer scorer = vectorValues.rescorer(queryVector);
+      if (scorer == null) {
+        return DoubleValues.EMPTY;
+      }
+      DocIdSetIterator iterator = scorer.iterator();
+      return new DoubleValues() {
+        @Override
+        public double doubleValue() throws IOException {
+          return scorer.score();
+        }
+
+        @Override
+        public boolean advanceExact(int doc) throws IOException {
+          return doc >= iterator.docID()
+              && (iterator.docID() == doc || iterator.advance(doc) == doc);
+        }
+      };
     }
     final KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
     return new DoubleValues() {
