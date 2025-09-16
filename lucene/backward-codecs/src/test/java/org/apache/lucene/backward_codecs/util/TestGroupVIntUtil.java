@@ -26,30 +26,30 @@ public class TestGroupVIntUtil extends LuceneTestCase {
 
   public void testLongArrayRoundTrip() throws IOException {
     long[] original = {1L, 127L, 128L, 16383L, 16384L, 2097151L, 2097152L, 268435455L};
-    
+
     // Write using the backward-codecs utility
     ByteBuffersDataOutput out = new ByteBuffersDataOutput();
     DataOutputUtil.writeGroupVInts(out, original, original.length);
-    
+
     // Read back using the backward-codecs utility
     ByteBuffersDataInput in = out.toDataInput();
     long[] result = new long[original.length];
     GroupVIntUtil.readGroupVInts(in, result, original.length);
-    
+
     assertArrayEquals(original, result);
   }
 
   public void testSingleGroupVInt() throws IOException {
     long[] original = {1L, 2L, 3L, 4L};
-    
+
     ByteBuffersDataOutput out = new ByteBuffersDataOutput();
     byte[] scratch = new byte[GroupVIntUtil.MAX_LENGTH_PER_GROUP];
     GroupVIntUtil.writeGroupVInts(out, scratch, original, original.length);
-    
+
     ByteBuffersDataInput in = out.toDataInput();
     long[] result = new long[original.length];
     GroupVIntUtil.readGroupVInt(in, result, 0);
-    
+
     assertArrayEquals(original, result);
   }
 }
