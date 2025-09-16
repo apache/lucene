@@ -29,7 +29,7 @@ import org.apache.lucene.util.BitUtil;
  * @lucene.internal
  */
 public final class GroupVIntUtil {
-  // the maximum length of a single group-varint is 1 byte flag and 4 integers.
+  /** The maximum length of a single group-varint is 1 byte flag and 4 integers. */
   public static final int MAX_LENGTH_PER_GROUP = Byte.BYTES + 4 * Integer.BYTES;
 
   private GroupVIntUtil() {} // no instance
