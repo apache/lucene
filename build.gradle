@@ -1,5 +1,4 @@
-import org.apache.lucene.gradle.plugins.misc.CheckEnvironmentPlugin
-import org.apache.lucene.gradle.plugins.spotless.GoogleJavaFormatPlugin
+import org.apache.lucene.gradle.plugins.licenses.CheckLicensesTask
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -60,3 +59,12 @@ plugins {
 }
 
 description = 'Grandparent project for Apache Lucene Core'
+
+tasks.register("checkLicenses", CheckLicensesTask, {
+  reportFile = project.layout.buildDirectory.file("licenses-report.txt");
+
+  files.from(fileTree(".", {
+    include "**/*.java"
+    exclude "**/build/**"
+  }))
+})
