@@ -360,7 +360,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int dotProduct(byte[] a, byte[] b) {
-    return dotProductBody(new ArrayLoader(a), new ArrayLoader(b));
+    return dotProductBody(new ArrayLoader(a), new ArrayLoader(b), true);
   }
 
   @Override
@@ -369,15 +369,19 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   public static int dotProduct(byte[] a, MemorySegment b) {
-    return dotProductBody(new ArrayLoader(a), new MemorySegmentLoader(b));
+    return dotProductBody(new ArrayLoader(a), new MemorySegmentLoader(b), true);
   }
 
   public static int dotProduct(MemorySegment a, MemorySegment b) {
-    return dotProductBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
+    return dotProductBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b), true);
   }
 
-  private static int dotProductBody(ByteVectorLoader a, ByteVectorLoader b) {
-    return dotProductBody(a, b, true);
+  public static int uint8DotProduct(byte[] a, MemorySegment b) {
+    return dotProductBody(new ArrayLoader(a), new MemorySegmentLoader(b), false);
+  }
+
+  public static int uint8DotProduct(MemorySegment a, MemorySegment b) {
+    return dotProductBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b), false);
   }
 
   private static int dotProductBody(ByteVectorLoader a, ByteVectorLoader b, boolean signed) {
@@ -480,178 +484,198 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return acc.reduceLanes(ADD);
   }
 
-  @Override
-  public int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked) {
-    assert (apacked && bpacked) == false;
-    int i = 0;
-    int res = 0;
-    if (apacked || bpacked) {
-      byte[] packed = apacked ? a : b;
-      byte[] unpacked = apacked ? b : a;
-      if (packed.length >= 32) {
-        if (VECTOR_BITSIZE >= 512) {
-          i += ByteVector.SPECIES_256.loopBound(packed.length);
-          res += dotProductBody512Int4Packed(unpacked, packed, i);
-        } else if (VECTOR_BITSIZE == 256) {
-          i += ByteVector.SPECIES_128.loopBound(packed.length);
-          res += dotProductBody256Int4Packed(unpacked, packed, i);
-        } else if (PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
-          i += ByteVector.SPECIES_64.loopBound(packed.length);
-          res += dotProductBody128Int4Packed(unpacked, packed, i);
-        }
-      }
-      // scalar tail
-      for (; i < packed.length; i++) {
-        byte packedByte = packed[i];
-        byte unpacked1 = unpacked[i];
-        byte unpacked2 = unpacked[i + packed.length];
-        res += (packedByte & 0x0F) * unpacked2;
-        res += ((packedByte & 0xFF) >> 4) * unpacked1;
-      }
-    } else {
-      if (VECTOR_BITSIZE >= 512 || VECTOR_BITSIZE == 256) {
-        return dotProduct(a, b);
-      } else if (a.length >= 32 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
-        i += ByteVector.SPECIES_128.loopBound(a.length);
-        res += int4DotProductBody128(a, b, i);
-      }
-      // scalar tail
-      for (; i < a.length; i++) {
-        res += b[i] * a[i];
+  private static class Int4Constants {
+    static final VectorSpecies<Byte> BYTE_SPECIES;
+    static final VectorSpecies<Short> SHORT_SPECIES;
+    static final int CHUNK;
+
+    static {
+      if (VECTOR_BITSIZE >= 512) {
+        BYTE_SPECIES = ByteVector.SPECIES_256;
+        SHORT_SPECIES = ShortVector.SPECIES_512;
+        CHUNK = 4096;
+      } else if (VECTOR_BITSIZE == 256) {
+        BYTE_SPECIES = ByteVector.SPECIES_128;
+        SHORT_SPECIES = ShortVector.SPECIES_256;
+        CHUNK = 2048;
+      } else {
+        BYTE_SPECIES = ByteVector.SPECIES_64;
+        SHORT_SPECIES = ShortVector.SPECIES_128;
+        CHUNK = 1024;
       }
     }
+  }
 
+  @Override
+  public int int4DotProduct(byte[] a, byte[] b) {
+    return int4DotProductBody(new ArrayLoader(a), new ArrayLoader(b));
+  }
+
+  public static int int4DotProduct(byte[] a, MemorySegment b) {
+    return int4DotProductBody(new ArrayLoader(a), new MemorySegmentLoader(b));
+  }
+
+  public static int int4DotProduct(MemorySegment a, MemorySegment b) {
+    return int4DotProductBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
+  }
+
+  private static int int4DotProductBody(ByteVectorLoader a, ByteVectorLoader b) {
+    int i = 0;
+    int res = 0;
+    if (a.length() >= 32) {
+      i += Int4Constants.BYTE_SPECIES.loopBound(a.length());
+      res += int4DotProductBody(a, b, i);
+    }
+    // scalar tail
+    for (; i < a.length(); i++) {
+      res += a.tail(i) * b.tail(i);
+    }
     return res;
   }
 
-  private int dotProductBody512Int4Packed(byte[] unpacked, byte[] packed, int limit) {
+  private static int int4DotProductBody(ByteVectorLoader a, ByteVectorLoader b, int limit) {
     int sum = 0;
-    // iterate in chunks of 1024 items to ensure we don't overflow the short accumulator
-    for (int i = 0; i < limit; i += 4096) {
-      ShortVector acc0 = ShortVector.zero(ShortVector.SPECIES_512);
-      ShortVector acc1 = ShortVector.zero(ShortVector.SPECIES_512);
-      int innerLimit = Math.min(limit - i, 4096);
-      for (int j = 0; j < innerLimit; j += ByteVector.SPECIES_256.length()) {
-        // packed
-        var vb8 = ByteVector.fromArray(ByteVector.SPECIES_256, packed, i + j);
+    // iterate in chunks to ensure we don't overflow the short accumulator
+    for (int i = 0; i < limit; i += Int4Constants.CHUNK) {
+      ShortVector acc = ShortVector.zero(Int4Constants.SHORT_SPECIES);
+      int innerLimit = Math.min(limit - i, Int4Constants.CHUNK);
+      for (int j = 0; j < innerLimit; j += Int4Constants.BYTE_SPECIES.length()) {
         // unpacked
-        var va8 = ByteVector.fromArray(ByteVector.SPECIES_256, unpacked, i + j + packed.length);
+        ByteVector vb8 = b.load(Int4Constants.BYTE_SPECIES, i + j);
+        Vector<Short> vb16 = vb8.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
+
+        // unpacked
+        ByteVector va8 = a.load(Int4Constants.BYTE_SPECIES, i + j);
+        Vector<Short> va16 = va8.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
+
+        acc = acc.add(vb16.mul(va16));
+      }
+      Vector<Integer> intAcc0 = acc.convert(S2I, 0);
+      Vector<Integer> intAcc1 = acc.convert(S2I, 1);
+      sum += intAcc0.add(intAcc1).reinterpretAsInts().reduceLanes(ADD);
+    }
+    return sum;
+  }
+
+  @Override
+  public int int4DotProductSinglePacked(byte[] unpacked, byte[] packed) {
+    return int4DotProductSinglePackedBody(new ArrayLoader(unpacked), new ArrayLoader(packed));
+  }
+
+  public static int int4DotProductSinglePacked(byte[] unpacked, MemorySegment packed) {
+    return int4DotProductSinglePackedBody(
+        new ArrayLoader(unpacked), new MemorySegmentLoader(packed));
+  }
+
+  private static int int4DotProductSinglePackedBody(
+      ByteVectorLoader unpacked, ByteVectorLoader packed) {
+    int i = 0;
+    int res = 0;
+    if (packed.length() >= 32) {
+      i += Int4Constants.BYTE_SPECIES.loopBound(packed.length());
+      res += int4DotProductSinglePackedBody(unpacked, packed, i);
+    }
+    // scalar tail
+    for (; i < packed.length(); i++) {
+      byte packedByte = packed.tail(i);
+      byte unpacked1 = unpacked.tail(i);
+      byte unpacked2 = unpacked.tail(i + packed.length());
+      res += (packedByte & 0x0F) * unpacked2;
+      res += ((packedByte & 0xFF) >> 4) * unpacked1;
+    }
+    return res;
+  }
+
+  private static int int4DotProductSinglePackedBody(
+      ByteVectorLoader unpacked, ByteVectorLoader packed, int limit) {
+    int sum = 0;
+    // iterate in chunks to ensure we don't overflow the short accumulator
+    for (int i = 0; i < limit; i += Int4Constants.CHUNK) {
+      ShortVector acc0 = ShortVector.zero(Int4Constants.SHORT_SPECIES);
+      ShortVector acc1 = ShortVector.zero(Int4Constants.SHORT_SPECIES);
+      int innerLimit = Math.min(limit - i, Int4Constants.CHUNK);
+      for (int j = 0; j < innerLimit; j += Int4Constants.BYTE_SPECIES.length()) {
+        // packed
+        ByteVector vb8 = packed.load(Int4Constants.BYTE_SPECIES, i + j);
 
         // upper
+        ByteVector va8 = unpacked.load(Int4Constants.BYTE_SPECIES, i + j + packed.length());
         ByteVector prod8 = vb8.and((byte) 0x0F).mul(va8);
-        Vector<Short> prod16 = prod8.convertShape(ZERO_EXTEND_B2S, ShortVector.SPECIES_512, 0);
+        Vector<Short> prod16 = prod8.convertShape(ZERO_EXTEND_B2S, Int4Constants.SHORT_SPECIES, 0);
         acc0 = acc0.add(prod16);
 
         // lower
-        ByteVector vc8 = ByteVector.fromArray(ByteVector.SPECIES_256, unpacked, i + j);
+        ByteVector vc8 = unpacked.load(Int4Constants.BYTE_SPECIES, i + j);
         ByteVector prod8a = vb8.lanewise(LSHR, 4).mul(vc8);
-        Vector<Short> prod16a = prod8a.convertShape(ZERO_EXTEND_B2S, ShortVector.SPECIES_512, 0);
+        Vector<Short> prod16a =
+            prod8a.convertShape(ZERO_EXTEND_B2S, Int4Constants.SHORT_SPECIES, 0);
         acc1 = acc1.add(prod16a);
       }
-      IntVector intAcc0 = acc0.convertShape(S2I, IntVector.SPECIES_512, 0).reinterpretAsInts();
-      IntVector intAcc1 = acc0.convertShape(S2I, IntVector.SPECIES_512, 1).reinterpretAsInts();
-      IntVector intAcc2 = acc1.convertShape(S2I, IntVector.SPECIES_512, 0).reinterpretAsInts();
-      IntVector intAcc3 = acc1.convertShape(S2I, IntVector.SPECIES_512, 1).reinterpretAsInts();
-      sum += intAcc0.add(intAcc1).add(intAcc2).add(intAcc3).reduceLanes(ADD);
+      Vector<Integer> intAcc0 = acc0.convert(S2I, 0);
+      Vector<Integer> intAcc1 = acc0.convert(S2I, 1);
+      Vector<Integer> intAcc2 = acc1.convert(S2I, 0);
+      Vector<Integer> intAcc3 = acc1.convert(S2I, 1);
+      sum += intAcc0.add(intAcc1).add(intAcc2).add(intAcc3).reinterpretAsInts().reduceLanes(ADD);
     }
     return sum;
   }
 
-  private int dotProductBody256Int4Packed(byte[] unpacked, byte[] packed, int limit) {
+  @Override
+  public int int4DotProductBothPacked(byte[] a, byte[] b) {
+    return int4DotProductBothPackedBody(new ArrayLoader(a), new ArrayLoader(b));
+  }
+
+  public static int int4DotProductBothPacked(MemorySegment a, MemorySegment b) {
+    return int4DotProductBothPackedBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
+  }
+
+  private static int int4DotProductBothPackedBody(ByteVectorLoader a, ByteVectorLoader b) {
+    int i = 0;
+    int res = 0;
+    if (a.length() >= 32) {
+      i += Int4Constants.BYTE_SPECIES.loopBound(a.length());
+      res += int4DotProductBothPackedBody(a, b, i);
+    }
+    // scalar tail
+    for (; i < a.length(); i++) {
+      byte aByte = a.tail(i);
+      byte bByte = b.tail(i);
+      res += (aByte & 0x0F) * (bByte & 0x0F);
+      res += ((aByte & 0xFF) >> 4) * ((bByte & 0xFF) >> 4);
+    }
+    return res;
+  }
+
+  private static int int4DotProductBothPackedBody(
+      ByteVectorLoader a, ByteVectorLoader b, int limit) {
     int sum = 0;
-    // iterate in chunks of 1024 items to ensure we don't overflow the short accumulator
-    for (int i = 0; i < limit; i += 2048) {
-      ShortVector acc0 = ShortVector.zero(ShortVector.SPECIES_256);
-      ShortVector acc1 = ShortVector.zero(ShortVector.SPECIES_256);
-      int innerLimit = Math.min(limit - i, 2048);
-      for (int j = 0; j < innerLimit; j += ByteVector.SPECIES_128.length()) {
+    // iterate in chunks to ensure we don't overflow the short accumulator
+    for (int i = 0; i < limit; i += Int4Constants.CHUNK) {
+      ShortVector acc0 = ShortVector.zero(Int4Constants.SHORT_SPECIES);
+      ShortVector acc1 = ShortVector.zero(Int4Constants.SHORT_SPECIES);
+      int innerLimit = Math.min(limit - i, Int4Constants.CHUNK);
+      for (int j = 0; j < innerLimit; j += Int4Constants.BYTE_SPECIES.length()) {
         // packed
-        var vb8 = ByteVector.fromArray(ByteVector.SPECIES_128, packed, i + j);
-        // unpacked
-        var va8 = ByteVector.fromArray(ByteVector.SPECIES_128, unpacked, i + j + packed.length);
+        var vb8 = b.load(Int4Constants.BYTE_SPECIES, i + j);
+        // packed
+        var va8 = a.load(Int4Constants.BYTE_SPECIES, i + j);
 
         // upper
-        ByteVector prod8 = vb8.and((byte) 0x0F).mul(va8);
-        Vector<Short> prod16 = prod8.convertShape(ZERO_EXTEND_B2S, ShortVector.SPECIES_256, 0);
+        ByteVector prod8 = vb8.and((byte) 0x0F).mul(va8.and((byte) 0x0F));
+        Vector<Short> prod16 = prod8.convertShape(ZERO_EXTEND_B2S, Int4Constants.SHORT_SPECIES, 0);
         acc0 = acc0.add(prod16);
 
         // lower
-        ByteVector vc8 = ByteVector.fromArray(ByteVector.SPECIES_128, unpacked, i + j);
-        ByteVector prod8a = vb8.lanewise(LSHR, 4).mul(vc8);
-        Vector<Short> prod16a = prod8a.convertShape(ZERO_EXTEND_B2S, ShortVector.SPECIES_256, 0);
+        ByteVector prod8a = vb8.lanewise(LSHR, 4).mul(va8.lanewise(LSHR, 4));
+        Vector<Short> prod16a =
+            prod8a.convertShape(ZERO_EXTEND_B2S, Int4Constants.SHORT_SPECIES, 0);
         acc1 = acc1.add(prod16a);
       }
-      IntVector intAcc0 = acc0.convertShape(S2I, IntVector.SPECIES_256, 0).reinterpretAsInts();
-      IntVector intAcc1 = acc0.convertShape(S2I, IntVector.SPECIES_256, 1).reinterpretAsInts();
-      IntVector intAcc2 = acc1.convertShape(S2I, IntVector.SPECIES_256, 0).reinterpretAsInts();
-      IntVector intAcc3 = acc1.convertShape(S2I, IntVector.SPECIES_256, 1).reinterpretAsInts();
-      sum += intAcc0.add(intAcc1).add(intAcc2).add(intAcc3).reduceLanes(ADD);
-    }
-    return sum;
-  }
-
-  /** vectorized dot product body (128 bit vectors) */
-  private int dotProductBody128Int4Packed(byte[] unpacked, byte[] packed, int limit) {
-    int sum = 0;
-    // iterate in chunks of 1024 items to ensure we don't overflow the short accumulator
-    for (int i = 0; i < limit; i += 1024) {
-      ShortVector acc0 = ShortVector.zero(ShortVector.SPECIES_128);
-      ShortVector acc1 = ShortVector.zero(ShortVector.SPECIES_128);
-      int innerLimit = Math.min(limit - i, 1024);
-      for (int j = 0; j < innerLimit; j += ByteVector.SPECIES_64.length()) {
-        // packed
-        ByteVector vb8 = ByteVector.fromArray(ByteVector.SPECIES_64, packed, i + j);
-        // unpacked
-        ByteVector va8 =
-            ByteVector.fromArray(ByteVector.SPECIES_64, unpacked, i + j + packed.length);
-
-        // upper
-        ByteVector prod8 = vb8.and((byte) 0x0F).mul(va8);
-        ShortVector prod16 =
-            prod8.convertShape(B2S, ShortVector.SPECIES_128, 0).reinterpretAsShorts();
-        acc0 = acc0.add(prod16.and((short) 0xFF));
-
-        // lower
-        va8 = ByteVector.fromArray(ByteVector.SPECIES_64, unpacked, i + j);
-        prod8 = vb8.lanewise(LSHR, 4).mul(va8);
-        prod16 = prod8.convertShape(B2S, ShortVector.SPECIES_128, 0).reinterpretAsShorts();
-        acc1 = acc1.add(prod16.and((short) 0xFF));
-      }
-      IntVector intAcc0 = acc0.convertShape(S2I, IntVector.SPECIES_128, 0).reinterpretAsInts();
-      IntVector intAcc1 = acc0.convertShape(S2I, IntVector.SPECIES_128, 1).reinterpretAsInts();
-      IntVector intAcc2 = acc1.convertShape(S2I, IntVector.SPECIES_128, 0).reinterpretAsInts();
-      IntVector intAcc3 = acc1.convertShape(S2I, IntVector.SPECIES_128, 1).reinterpretAsInts();
-      sum += intAcc0.add(intAcc1).add(intAcc2).add(intAcc3).reduceLanes(ADD);
-    }
-    return sum;
-  }
-
-  private int int4DotProductBody128(byte[] a, byte[] b, int limit) {
-    int sum = 0;
-    // iterate in chunks of 1024 items to ensure we don't overflow the short accumulator
-    for (int i = 0; i < limit; i += 1024) {
-      ShortVector acc0 = ShortVector.zero(ShortVector.SPECIES_128);
-      ShortVector acc1 = ShortVector.zero(ShortVector.SPECIES_128);
-      int innerLimit = Math.min(limit - i, 1024);
-      for (int j = 0; j < innerLimit; j += ByteVector.SPECIES_128.length()) {
-        ByteVector va8 = ByteVector.fromArray(ByteVector.SPECIES_64, a, i + j);
-        ByteVector vb8 = ByteVector.fromArray(ByteVector.SPECIES_64, b, i + j);
-        ByteVector prod8 = va8.mul(vb8);
-        ShortVector prod16 =
-            prod8.convertShape(B2S, ShortVector.SPECIES_128, 0).reinterpretAsShorts();
-        acc0 = acc0.add(prod16.and((short) 0xFF));
-
-        va8 = ByteVector.fromArray(ByteVector.SPECIES_64, a, i + j + 8);
-        vb8 = ByteVector.fromArray(ByteVector.SPECIES_64, b, i + j + 8);
-        prod8 = va8.mul(vb8);
-        prod16 = prod8.convertShape(B2S, ShortVector.SPECIES_128, 0).reinterpretAsShorts();
-        acc1 = acc1.add(prod16.and((short) 0xFF));
-      }
-      IntVector intAcc0 = acc0.convertShape(S2I, IntVector.SPECIES_128, 0).reinterpretAsInts();
-      IntVector intAcc1 = acc0.convertShape(S2I, IntVector.SPECIES_128, 1).reinterpretAsInts();
-      IntVector intAcc2 = acc1.convertShape(S2I, IntVector.SPECIES_128, 0).reinterpretAsInts();
-      IntVector intAcc3 = acc1.convertShape(S2I, IntVector.SPECIES_128, 1).reinterpretAsInts();
-      sum += intAcc0.add(intAcc1).add(intAcc2).add(intAcc3).reduceLanes(ADD);
+      Vector<Integer> intAcc0 = acc0.convert(S2I, 0);
+      Vector<Integer> intAcc1 = acc0.convert(S2I, 1);
+      Vector<Integer> intAcc2 = acc1.convert(S2I, 0);
+      Vector<Integer> intAcc3 = acc1.convert(S2I, 1);
+      sum += intAcc0.add(intAcc1).add(intAcc2).add(intAcc3).reinterpretAsInts().reduceLanes(ADD);
     }
     return sum;
   }
@@ -790,7 +814,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int squareDistance(byte[] a, byte[] b) {
-    return squareDistanceBody(new ArrayLoader(a), new ArrayLoader(b));
+    return squareDistanceBody(new ArrayLoader(a), new ArrayLoader(b), true);
   }
 
   @Override
@@ -799,15 +823,19 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   public static int squareDistance(MemorySegment a, MemorySegment b) {
-    return squareDistanceBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
+    return squareDistanceBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b), true);
   }
 
   public static int squareDistance(byte[] a, MemorySegment b) {
-    return squareDistanceBody(new ArrayLoader(a), new MemorySegmentLoader(b));
+    return squareDistanceBody(new ArrayLoader(a), new MemorySegmentLoader(b), true);
   }
 
-  private static int squareDistanceBody(ByteVectorLoader a, ByteVectorLoader b) {
-    return squareDistanceBody(a, b, true);
+  public static int uint8SquareDistance(MemorySegment a, MemorySegment b) {
+    return squareDistanceBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b), false);
+  }
+
+  public static int uint8SquareDistance(byte[] a, MemorySegment b) {
+    return squareDistanceBody(new ArrayLoader(a), new MemorySegmentLoader(b), false);
   }
 
   private static int squareDistanceBody(ByteVectorLoader a, ByteVectorLoader b, boolean signed) {
@@ -887,6 +915,183 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
     // reduce
     return acc1.add(acc2).reduceLanes(ADD);
+  }
+
+  @Override
+  public int int4SquareDistance(byte[] a, byte[] b) {
+    return int4SquareDistanceBody(new ArrayLoader(a), new ArrayLoader(b));
+  }
+
+  public static int int4SquareDistance(byte[] a, MemorySegment b) {
+    return int4SquareDistanceBody(new ArrayLoader(a), new MemorySegmentLoader(b));
+  }
+
+  public static int int4SquareDistance(MemorySegment a, MemorySegment b) {
+    return int4SquareDistanceBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
+  }
+
+  private static int int4SquareDistanceBody(ByteVectorLoader a, ByteVectorLoader b) {
+    int i = 0;
+    int res = 0;
+    if (a.length() >= 32) {
+      i += Int4Constants.BYTE_SPECIES.loopBound(a.length());
+      res += int4SquareDistanceBody(a, b, i);
+    }
+    // scalar tail
+    for (; i < a.length(); i++) {
+      int diff = a.tail(i) - b.tail(i);
+      res += diff * diff;
+    }
+    return res;
+  }
+
+  private static int int4SquareDistanceBody(ByteVectorLoader a, ByteVectorLoader b, int limit) {
+    int sum = 0;
+    // iterate in chunks to ensure we don't overflow the short accumulator
+    for (int i = 0; i < limit; i += Int4Constants.CHUNK) {
+      ShortVector acc = ShortVector.zero(Int4Constants.SHORT_SPECIES);
+      int innerLimit = Math.min(limit - i, Int4Constants.CHUNK);
+      for (int j = 0; j < innerLimit; j += Int4Constants.BYTE_SPECIES.length()) {
+        // unpacked
+        var vb8 = b.load(Int4Constants.BYTE_SPECIES, i + j);
+        // unpacked
+        var va8 = a.load(Int4Constants.BYTE_SPECIES, i + j);
+
+        ByteVector diff8 = vb8.sub(va8);
+        Vector<Short> diff16 = diff8.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
+        acc = acc.add(diff16.mul(diff16));
+      }
+      Vector<Integer> intAcc0 = acc.convert(S2I, 0);
+      Vector<Integer> intAcc1 = acc.convert(S2I, 1);
+      sum += intAcc0.add(intAcc1).reinterpretAsInts().reduceLanes(ADD);
+    }
+    return sum;
+  }
+
+  @Override
+  public int int4SquareDistanceSinglePacked(byte[] a, byte[] b) {
+    return int4SquareDistanceSinglePackedBody(new ArrayLoader(a), new ArrayLoader(b));
+  }
+
+  public static int int4SquareDistanceSinglePacked(byte[] a, MemorySegment b) {
+    return int4SquareDistanceSinglePackedBody(new ArrayLoader(a), new MemorySegmentLoader(b));
+  }
+
+  private static int int4SquareDistanceSinglePackedBody(
+      ByteVectorLoader unpacked, ByteVectorLoader packed) {
+    int i = 0;
+    int res = 0;
+    if (packed.length() >= 32) {
+      i += Int4Constants.BYTE_SPECIES.loopBound(packed.length());
+      res += int4SquareDistanceSinglePackedBody(unpacked, packed, i);
+    }
+    // scalar tail
+    for (; i < packed.length(); i++) {
+      byte packedByte = packed.tail(i);
+      byte unpacked1 = unpacked.tail(i);
+      byte unpacked2 = unpacked.tail(i + packed.length());
+
+      int diff1 = (packedByte & 0x0F) - unpacked2;
+      int diff2 = ((packedByte & 0xFF) >> 4) - unpacked1;
+
+      res += diff1 * diff1 + diff2 * diff2;
+    }
+    return res;
+  }
+
+  private static int int4SquareDistanceSinglePackedBody(
+      ByteVectorLoader unpacked, ByteVectorLoader packed, int limit) {
+    int sum = 0;
+    // iterate in chunks to ensure we don't overflow the short accumulator
+    for (int i = 0; i < limit; i += Int4Constants.CHUNK) {
+      ShortVector acc0 = ShortVector.zero(Int4Constants.SHORT_SPECIES);
+      ShortVector acc1 = ShortVector.zero(Int4Constants.SHORT_SPECIES);
+      int innerLimit = Math.min(limit - i, Int4Constants.CHUNK);
+      for (int j = 0; j < innerLimit; j += Int4Constants.BYTE_SPECIES.length()) {
+        // packed
+        ByteVector vb8 = packed.load(Int4Constants.BYTE_SPECIES, i + j);
+
+        // upper
+        ByteVector va8 = unpacked.load(Int4Constants.BYTE_SPECIES, i + j + packed.length());
+        ByteVector diff8 = vb8.and((byte) 0x0F).sub(va8);
+        Vector<Short> diff16 = diff8.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
+        acc0 = acc0.add(diff16.mul(diff16));
+
+        // lower
+        ByteVector vc8 = unpacked.load(Int4Constants.BYTE_SPECIES, i + j);
+        ByteVector diff8a = vb8.lanewise(LSHR, 4).sub(vc8);
+        Vector<Short> diff16a = diff8a.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
+        acc1 = acc1.add(diff16a.mul(diff16a));
+      }
+      Vector<Integer> intAcc0 = acc0.convert(S2I, 0);
+      Vector<Integer> intAcc1 = acc0.convert(S2I, 1);
+      Vector<Integer> intAcc2 = acc1.convert(S2I, 0);
+      Vector<Integer> intAcc3 = acc1.convert(S2I, 1);
+      sum += intAcc0.add(intAcc1).add(intAcc2).add(intAcc3).reinterpretAsInts().reduceLanes(ADD);
+    }
+    return sum;
+  }
+
+  @Override
+  public int int4SquareDistanceBothPacked(byte[] a, byte[] b) {
+    return int4SquareDistanceBothPackedBody(new ArrayLoader(a), new ArrayLoader(b));
+  }
+
+  public static int int4SquareDistanceBothPacked(MemorySegment a, MemorySegment b) {
+    return int4SquareDistanceBothPackedBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
+  }
+
+  private static int int4SquareDistanceBothPackedBody(ByteVectorLoader a, ByteVectorLoader b) {
+    int i = 0;
+    int res = 0;
+    if (a.length() >= 32) {
+      i += Int4Constants.BYTE_SPECIES.loopBound(a.length());
+      res += int4SquareDistanceBothPackedBody(a, b, i);
+    }
+    // scalar tail
+    for (; i < a.length(); i++) {
+      byte aByte = a.tail(i);
+      byte bByte = b.tail(i);
+
+      int diff1 = (aByte & 0x0F) - (bByte & 0x0F);
+      int diff2 = ((aByte & 0xFF) >> 4) - ((bByte & 0xFF) >> 4);
+
+      res += diff1 * diff1 + diff2 * diff2;
+    }
+    return res;
+  }
+
+  private static int int4SquareDistanceBothPackedBody(
+      ByteVectorLoader a, ByteVectorLoader b, int limit) {
+    int sum = 0;
+    // iterate in chunks to ensure we don't overflow the short accumulator
+    for (int i = 0; i < limit; i += Int4Constants.CHUNK) {
+      ShortVector acc0 = ShortVector.zero(Int4Constants.SHORT_SPECIES);
+      ShortVector acc1 = ShortVector.zero(Int4Constants.SHORT_SPECIES);
+      int innerLimit = Math.min(limit - i, Int4Constants.CHUNK);
+      for (int j = 0; j < innerLimit; j += Int4Constants.BYTE_SPECIES.length()) {
+        // packed
+        var vb8 = b.load(Int4Constants.BYTE_SPECIES, i + j);
+        // packed
+        var va8 = a.load(Int4Constants.BYTE_SPECIES, i + j);
+
+        // upper
+        ByteVector diff8 = vb8.and((byte) 0x0F).sub(va8.and((byte) 0x0F));
+        Vector<Short> diff16 = diff8.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
+        acc0 = acc0.add(diff16.mul(diff16));
+
+        // lower
+        ByteVector diff8a = vb8.lanewise(LSHR, 4).sub(va8.lanewise(LSHR, 4));
+        Vector<Short> diff16a = diff8a.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
+        acc1 = acc1.add(diff16a.mul(diff16a));
+      }
+      Vector<Integer> intAcc0 = acc0.convert(S2I, 0);
+      Vector<Integer> intAcc1 = acc0.convert(S2I, 1);
+      Vector<Integer> intAcc2 = acc1.convert(S2I, 0);
+      Vector<Integer> intAcc3 = acc1.convert(S2I, 1);
+      sum += intAcc0.add(intAcc1).add(intAcc2).add(intAcc3).reinterpretAsInts().reduceLanes(ADD);
+    }
+    return sum;
   }
 
   // Experiments suggest that we need at least 8 lanes so that the overhead of going with the vector

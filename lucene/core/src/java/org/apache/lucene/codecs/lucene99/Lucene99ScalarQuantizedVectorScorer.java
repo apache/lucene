@@ -23,6 +23,7 @@ import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.FloatToFloatFunction;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
@@ -237,7 +238,7 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       values.getSlice().seek((long) vectorOrdinal * (values.getVectorByteLength() + Float.BYTES));
       values.getSlice().readBytes(compressedVector, 0, compressedVector.length);
       float vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
-      int dotProduct = VectorUtil.int4DotProductPacked(targetBytes, compressedVector);
+      int dotProduct = VectorUtil.int4DotProductSinglePacked(targetBytes, compressedVector);
       // For the current implementation of scalar quantization, all dotproducts should
       // be >= 0;
       assert dotProduct >= 0;
@@ -291,11 +292,6 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       System.arraycopy(values.vectorValue(node), 0, targetBytes, 0, targetBytes.length);
       offsetCorrection = values.getScoreCorrectionConstant(node);
     }
-  }
-
-  @FunctionalInterface
-  private interface FloatToFloatFunction {
-    float apply(float f);
   }
 
   private static final class ScalarQuantizedRandomVectorScorerSupplier
