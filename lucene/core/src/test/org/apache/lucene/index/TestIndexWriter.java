@@ -2044,7 +2044,7 @@ public class TestIndexWriter extends LuceneTestCase {
 
   public void testGetCommitDataFromOldSnapshot() throws Exception {
     Directory dir = newDirectory();
-    IndexWriter writer = new IndexWriter(dir, newSnapshotIndexWriterConfig(null));
+    IndexWriter writer = new IndexWriter(dir, newSnapshotIndexWriterConfig((Analyzer) null));
     writer.setLiveCommitData(
         new HashMap<String, String>() {
           {
@@ -2059,7 +2059,7 @@ public class TestIndexWriter extends LuceneTestCase {
     writer.close();
 
     // Modify the commit data and commit on close so the most recent commit data is different
-    writer = new IndexWriter(dir, newSnapshotIndexWriterConfig(null));
+    writer = new IndexWriter(dir, newSnapshotIndexWriterConfig((Analyzer) null));
     writer.setLiveCommitData(
         new HashMap<String, String>() {
           {
@@ -2074,7 +2074,7 @@ public class TestIndexWriter extends LuceneTestCase {
     writer =
         new IndexWriter(
             dir,
-            newSnapshotIndexWriterConfig(null)
+            newSnapshotIndexWriterConfig((Analyzer) null)
                 .setOpenMode(OpenMode.APPEND)
                 .setIndexCommit(indexCommit));
     assertEquals("value", getLiveCommitData(writer).get("key"));
@@ -2610,7 +2610,7 @@ public class TestIndexWriter extends LuceneTestCase {
     final CountDownLatch finishCommit = new CountDownLatch(1);
 
     Directory dir = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig(null);
+    IndexWriterConfig iwc = new IndexWriterConfig((Analyzer) null);
     // use an InfoStream that "takes a long time" to commit
     final IndexWriter iw =
         RandomIndexWriter.mockIndexWriter(
@@ -3193,6 +3193,9 @@ public class TestIndexWriter extends LuceneTestCase {
                 control.setApplyAllDeletes();
               }
             }
+
+            @Override
+            public void flushRamManager(IndexWriter writer) throws IOException {}
           });
       try (IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
         assertEquals(0, w.docWriter.flushControl.getDeleteBytesUsed());
