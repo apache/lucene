@@ -876,6 +876,31 @@ public class TestValueSources extends LuceneTestCase {
         new FunctionQuery(ValueSource.fromDoubleValuesSource(dvs)), new float[] {3.63f, 5.65f});
   }
 
+  public void testFromDoubleValuesSortWithScore() throws Exception {
+    // Create a query that matches all documents
+    var query = new TermQuery(new Term("text", "test"));
+
+    // Get the original scores
+    TopDocs originalDocs = searcher.search(query, documents.size());
+    ScoreDoc[] originalScoreDocs = originalDocs.scoreDocs;
+
+    // Use a DoubleValuesSource that references the score and convert it to a ValueSource
+    ValueSource scoreSource = ValueSource.fromDoubleValuesSource(DoubleValuesSource.SCORES);
+    SortField sortField = scoreSource.getSortField(true); // true for reverse (descending)
+    Sort sort = new Sort(sortField);
+
+    // Search with the sort.
+    //   note: used to fail with an assertion before fromDoubleValuesSource's impl was improved
+    TopDocs sortedDocs = searcher.search(query, documents.size(), sort);
+    ScoreDoc[] sortedScoreDocs = sortedDocs.scoreDocs;
+
+    // Verify we got the same docs in-order but don't check the scores
+    assertEquals(originalScoreDocs.length, sortedScoreDocs.length);
+    for (int i = 0; i < originalScoreDocs.length; i++) {
+      assertEquals(originalScoreDocs[i].doc, sortedScoreDocs[i].doc);
+    }
+  }
+
   /**
    * Asserts that for every doc, the {@link FunctionValues#exists} value from the {@link
    * ValueSource} is <b>true</b>.

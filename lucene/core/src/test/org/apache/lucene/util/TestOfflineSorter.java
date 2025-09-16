@@ -85,7 +85,7 @@ public class TestOfflineSorter extends LuceneTestCase {
           maxThreads,
           Long.MAX_VALUE,
           TimeUnit.MILLISECONDS,
-          new LinkedBlockingQueue<Runnable>(),
+          new LinkedBlockingQueue<>(),
           new NamedThreadFactory("TestOfflineSorter"));
     }
   }
@@ -197,7 +197,7 @@ public class TestOfflineSorter extends LuceneTestCase {
   }
 
   static final Comparator<byte[]> unsignedByteOrderComparator =
-      new Comparator<byte[]>() {
+      new Comparator<>() {
         @Override
         public int compare(byte[] left, byte[] right) {
           final int max = Math.min(left.length, right.length);

@@ -17,6 +17,10 @@
 package org.apache.lucene.tests.store;
 
 import static com.carrotsearch.randomizedtesting.generators.RandomPicks.randomFrom;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasItemInArray;
+import static org.hamcrest.Matchers.not;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.generators.RandomBytes;
@@ -57,7 +61,6 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.tests.mockfile.ExtrasFS;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -67,7 +70,6 @@ import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.packed.PackedInts;
-import org.junit.Assert;
 
 /** Base class for {@link Directory} implementations. */
 public abstract class BaseDirectoryTestCase extends LuceneTestCase {
@@ -132,13 +134,13 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   public void testDeleteFile() throws Exception {
     try (Directory dir = getDirectory(createTempDir("testDeleteFile"))) {
       String file = "foo.txt";
-      Assert.assertFalse(Arrays.asList(dir.listAll()).contains(file));
+      assertThat(dir.listAll(), not(hasItemInArray(file)));
 
       dir.createOutput("foo.txt", IOContext.DEFAULT).close();
-      Assert.assertTrue(Arrays.asList(dir.listAll()).contains(file));
+      assertThat(dir.listAll(), hasItemInArray(file));
 
       dir.deleteFile("foo.txt");
-      Assert.assertFalse(Arrays.asList(dir.listAll()).contains(file));
+      assertThat(dir.listAll(), not(hasItemInArray(file)));
 
       expectThrowsAnyOf(
           Arrays.asList(NoSuchFileException.class, FileNotFoundException.class),
@@ -648,9 +650,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
                         try (IndexInput input = dir.openInput(file, newIOContext(random()))) {
                           // Just open, nothing else.
                           assert input != null;
-                        } catch (
-                            @SuppressWarnings("unused")
-                            AccessDeniedException e) {
+                        } catch (AccessDeniedException _) {
                           // Access denied is allowed for files for which the output is still open
                           // (MockDirectoryWriter enforces
                           // this, for example). Since we don't synchronize with the writer thread,
@@ -681,7 +681,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       String name = "file";
       dir.createOutput(name, newIOContext(random())).close();
       assertTrue(slowFileExists(dir, name));
-      assertTrue(Arrays.asList(dir.listAll()).contains(name));
+      assertThat(dir.listAll(), hasItemInArray(name));
     }
   }
 
@@ -1258,7 +1258,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   public void testIndexOutputToString() throws Throwable {
     try (Directory dir = getDirectory(createTempDir())) {
       IndexOutput out = dir.createOutput("camelCase.txt", newIOContext(random()));
-      assertTrue(out.toString(), out.toString().contains("camelCase.txt"));
+      assertThat(out.toString(), containsString("camelCase.txt"));
       out.close();
     }
   }
@@ -1305,7 +1305,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
               .filter(file -> !ExtrasFS.isExtra(file)) // remove any ExtrasFS stuff.
               .collect(Collectors.toSet());
 
-      assertEquals(new HashSet<String>(names), files);
+      assertThat(files, containsInAnyOrder(names.toArray()));
     }
   }
 
@@ -1396,7 +1396,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       }
 
       // Make sure listAll does NOT include the file:
-      assertFalse(Arrays.asList(fsDir.listAll()).contains(fileName));
+      assertThat(fsDir.listAll(), not(hasItemInArray(fileName)));
 
       // Make sure fileLength claims it's deleted:
       expectThrows(
@@ -1458,7 +1458,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   }
 
   public void testDataTypes() throws IOException {
-    final long[] values = new long[] {43, 12345, 123456, 1234567890};
+    final int[] values = new int[] {43, 12345, 123456, 1234567890};
     try (Directory dir = getDirectory(createTempDir("testDataTypes"))) {
       IndexOutput out = dir.createOutput("test", IOContext.DEFAULT);
       out.writeByte((byte) 43);
@@ -1468,7 +1468,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       out.writeLong(1234567890123456789L);
       out.close();
 
-      long[] restored = new long[4];
+      int[] restored = new int[4];
       IndexInput in = dir.openInput("test", IOContext.DEFAULT);
       assertEquals(43, in.readByte());
       assertEquals(12345, in.readShort());
@@ -1480,6 +1480,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     }
   }
 
+  @Deprecated
   public void testGroupVIntOverflow() throws IOException {
     try (Directory dir = getDirectory(createTempDir("testGroupVIntOverflow"))) {
       final int size = 32;
@@ -1526,7 +1527,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
 
   protected void doTestGroupVInt(
       Directory dir, int iterations, int minBpv, int maxBpv, int maxNumValues) throws IOException {
-    long[] values = new long[maxNumValues];
+    int[] values = new int[maxNumValues];
     int[] numValuesArray = new int[iterations];
     IndexOutput groupVIntOut = dir.createOutput("group-varint", IOContext.DEFAULT);
     IndexOutput vIntOut = dir.createOutput("vint", IOContext.DEFAULT);
@@ -1537,7 +1538,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       numValuesArray[iter] = TestUtil.nextInt(random(), 1, maxNumValues);
       for (int j = 0; j < numValuesArray[iter]; j++) {
         values[j] = RandomNumbers.randomIntBetween(random(), 0, (int) PackedInts.maxValue(bpv));
-        vIntOut.writeVInt((int) values[j]);
+        vIntOut.writeVInt(values[j]);
       }
       groupVIntOut.writeGroupVInts(values, numValuesArray[iter]);
     }
@@ -1566,38 +1567,6 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
 
   public void testPrefetchOnSlice() throws IOException {
     doTestPrefetch(TestUtil.nextInt(random(), 1, 1024));
-  }
-
-  public void testUpdateReadAdvice() throws IOException {
-    try (Directory dir = getDirectory(createTempDir("testUpdateReadAdvice"))) {
-      final int totalLength = TestUtil.nextInt(random(), 16384, 65536);
-      byte[] arr = new byte[totalLength];
-      random().nextBytes(arr);
-      try (IndexOutput out = dir.createOutput("temp.bin", IOContext.DEFAULT)) {
-        out.writeBytes(arr, arr.length);
-      }
-
-      try (IndexInput orig = dir.openInput("temp.bin", IOContext.DEFAULT)) {
-        IndexInput in = random().nextBoolean() ? orig.clone() : orig;
-        // Read advice updated at start
-        in.updateReadAdvice(randomFrom(random(), ReadAdvice.values()));
-        for (int i = 0; i < totalLength; i++) {
-          int offset = TestUtil.nextInt(random(), 0, (int) in.length() - 1);
-          in.seek(offset);
-          assertEquals(arr[offset], in.readByte());
-        }
-
-        // Updating readAdvice in the middle
-        for (int i = 0; i < 10_000; ++i) {
-          int offset = TestUtil.nextInt(random(), 0, (int) in.length() - 1);
-          in.seek(offset);
-          assertEquals(arr[offset], in.readByte());
-          if (random().nextBoolean()) {
-            in.updateReadAdvice(randomFrom(random(), ReadAdvice.values()));
-          }
-        }
-      }
-    }
   }
 
   private void doTestPrefetch(int startOffset) throws IOException {

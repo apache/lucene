@@ -531,9 +531,7 @@ public class TestSpellChecker extends LuceneTestCase {
         while (true) {
           try {
             checkCommonSuggestions(reader);
-          } catch (
-              @SuppressWarnings("unused")
-              AlreadyClosedException e) {
+          } catch (AlreadyClosedException _) {
 
             return;
           } catch (Throwable e) {

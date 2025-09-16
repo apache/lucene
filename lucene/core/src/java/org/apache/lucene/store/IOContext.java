@@ -16,9 +16,9 @@
  */
 package org.apache.lucene.store;
 
-import java.util.Arrays;
 import java.util.Objects;
-import org.apache.lucene.util.Constants;
+import java.util.Set;
+import java.util.stream.Stream;
 
 /**
  * IOContext holds additional details on the merge/search context. An IOContext object can never be
@@ -26,16 +26,12 @@ import org.apache.lucene.util.Constants;
  * org.apache.lucene.store.Directory#openInput(String, IOContext)} or {@link
  * org.apache.lucene.store.Directory#createOutput(String, IOContext)}
  *
- * @param context An object of a enumerator Context type
- * @param mergeInfo must be given when {@code context == MERGE}
- * @param flushInfo must be given when {@code context == FLUSH}
- * @param readAdvice Advice regarding the read access pattern
+ * <p>Implementations of IOContext are immutable and thread-safe.
  */
-public record IOContext(
-    Context context, MergeInfo mergeInfo, FlushInfo flushInfo, ReadAdvice readAdvice) {
+public interface IOContext {
 
   /** Context is an enumerator which specifies the context in which the Directory is being used. */
-  public enum Context {
+  enum Context {
     /** Context for reads and writes that are associated with a merge. */
     MERGE,
     /** Context for writes that are associated with a segment flush. */
@@ -44,14 +40,17 @@ public record IOContext(
     DEFAULT
   };
 
+  /** Implemented by classes that can specify hints on how the file will be used */
+  interface FileOpenHint {}
+
   /**
-   * A default context for normal reads/writes. Use {@link #withReadAdvice(ReadAdvice)} to specify
-   * another {@link ReadAdvice}.
+   * A default context for normal reads/writes. Use {@link #withHints} to specify additional
+   * information on how the file is to be used.
    *
    * <p>It will use {@link ReadAdvice#RANDOM} by default, unless set by system property {@code
    * org.apache.lucene.store.defaultReadAdvice}.
    */
-  public static final IOContext DEFAULT = new IOContext(Constants.DEFAULT_READADVICE);
+  IOContext DEFAULT = new DefaultIOContext();
 
   /**
    * A default context for reads with {@link ReadAdvice#SEQUENTIAL}.
@@ -59,56 +58,95 @@ public record IOContext(
    * <p>This context should only be used when the read operations will be performed in the same
    * thread as the thread that opens the underlying storage.
    */
-  public static final IOContext READONCE = new IOContext(ReadAdvice.SEQUENTIAL);
+  IOContext READONCE = new DefaultIOContext(DataAccessHint.SEQUENTIAL, ReadOnceHint.INSTANCE);
 
-  @SuppressWarnings("incomplete-switch")
-  public IOContext {
-    Objects.requireNonNull(context, "context must not be null");
-    Objects.requireNonNull(readAdvice, "readAdvice must not be null");
-    switch (context) {
-      case MERGE ->
-          Objects.requireNonNull(mergeInfo, "mergeInfo must not be null if context is MERGE");
-      case FLUSH ->
-          Objects.requireNonNull(flushInfo, "flushInfo must not be null if context is FLUSH");
-    }
-    if ((context == Context.FLUSH || context == Context.MERGE)
-        && readAdvice != ReadAdvice.SEQUENTIAL) {
-      throw new IllegalArgumentException(
-          "The FLUSH and MERGE contexts must use the SEQUENTIAL read access advice");
-    }
+  /** Returns an {@link IOContext} for merging with the specified {@link MergeInfo} */
+  static IOContext merge(MergeInfo mergeInfo) {
+    Objects.requireNonNull(mergeInfo);
+    return new IOContext() {
+      @Override
+      public Context context() {
+        return Context.MERGE;
+      }
+
+      @Override
+      public MergeInfo mergeInfo() {
+        return mergeInfo;
+      }
+
+      @Override
+      public FlushInfo flushInfo() {
+        return null;
+      }
+
+      @Override
+      public Set<FileOpenHint> hints() {
+        return Set.of();
+      }
+
+      @Override
+      public IOContext withHints(FileOpenHint... hints) {
+        return this;
+      }
+    };
   }
 
-  /** Creates a default {@link IOContext} for reading/writing with the given {@link ReadAdvice} */
-  private IOContext(ReadAdvice accessAdvice) {
-    this(Context.DEFAULT, null, null, accessAdvice);
+  /** Returns an {@link IOContext} for flushing with the specified {@link FlushInfo} */
+  static IOContext flush(FlushInfo flushInfo) {
+    Objects.requireNonNull(flushInfo);
+    return new IOContext() {
+      @Override
+      public Context context() {
+        return Context.FLUSH;
+      }
+
+      @Override
+      public MergeInfo mergeInfo() {
+        return null;
+      }
+
+      @Override
+      public FlushInfo flushInfo() {
+        return flushInfo;
+      }
+
+      @Override
+      public Set<FileOpenHint> hints() {
+        return Set.of();
+      }
+
+      @Override
+      public IOContext withHints(FileOpenHint... hints) {
+        return this;
+      }
+    };
   }
 
-  /** Creates an {@link IOContext} for flushing. */
-  public IOContext(FlushInfo flushInfo) {
-    this(Context.FLUSH, null, flushInfo, ReadAdvice.SEQUENTIAL);
-  }
+  /** The {@link Context} this context is for */
+  Context context();
 
-  /** Creates an {@link IOContext} for merging. */
-  public IOContext(MergeInfo mergeInfo) {
-    // Merges read input segments sequentially.
-    this(Context.MERGE, mergeInfo, null, ReadAdvice.SEQUENTIAL);
-  }
+  /** Merge info, if {@link #context()} is {@link Context#MERGE} */
+  MergeInfo mergeInfo();
 
-  private static final IOContext[] READADVICE_TO_IOCONTEXT =
-      Arrays.stream(ReadAdvice.values()).map(IOContext::new).toArray(IOContext[]::new);
+  /** Flush info, if {@link #context()} is {@link Context#FLUSH} */
+  FlushInfo flushInfo();
+
+  /** Any hints on how the file will be opened */
+  Set<FileOpenHint> hints();
+
+  /** Finds all hints of type {@code cls} */
+  default <T extends FileOpenHint> Stream<T> hints(Class<T> cls) {
+    return hints().stream().filter(cls::isInstance).map(cls::cast);
+  }
 
   /**
-   * Return an updated {@link IOContext} that has the provided {@link ReadAdvice} if the {@link
-   * Context} is a {@link Context#DEFAULT} context, otherwise return this existing instance. This
-   * helps preserve a {@link ReadAdvice#SEQUENTIAL} advice for merging, which is always the right
-   * choice, while allowing {@link IndexInput}s open for searching to use arbitrary {@link
-   * ReadAdvice}s.
+   * Returns an IOContext with the given hints, if it makes sense to do so for this specific
+   * context. Otherwise, returns this context.
+   *
+   * <p>The returned context has the same {@link #context()}, {@link #mergeInfo()}, and {@link
+   * #flushInfo()} as this context.
+   *
+   * <p>This instance is immutable and unaffected by this method call.
    */
-  public IOContext withReadAdvice(ReadAdvice advice) {
-    if (context == Context.DEFAULT) {
-      return READADVICE_TO_IOCONTEXT[advice.ordinal()];
-    } else {
-      return this;
-    }
-  }
+  IOContext withHints(FileOpenHint... hints);
 }

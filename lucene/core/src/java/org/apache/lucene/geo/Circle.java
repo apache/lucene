@@ -17,27 +17,43 @@
 package org.apache.lucene.geo;
 
 /**
- * Represents a circle on the earth's surface.
+ * Represents a circle on the Earth's surface defined by a center point and radius.
  *
- * <p>NOTES:
+ * <p>The circle is defined using:
  *
- * <ol>
- *   <li>Latitude/longitude values must be in decimal degrees.
- *   <li>Radius must be in meters.
- *   <li>For more advanced GeoSpatial indexing and query operations see the {@code spatial-extras}
- *       module
- * </ol>
+ * <ul>
+ *   <li>Center point (latitude/longitude in degrees)
+ *   <li>Radius in meters
+ * </ul>
+ *
+ * <p>Important Notes:
+ *
+ * <ul>
+ *   <li>The circle is approximated on the spherical Earth model
+ *   <li>For very large circles or circles near poles, consider using polygons instead
+ *   <li>Dateline crossing is handled automatically
+ * </ul>
+ *
+ * <p>Example usage:
+ *
+ * <pre>{@code
+ * // Create a circle with 1km radius around the Eiffel Tower
+ * Circle circle = new Circle(48.8584, 2.2945, 1000);
+ *
+ * // Create a query using this circle
+ * Query query = LatLonShape.newDistanceQuery("location", circle);
+ * }</pre>
  *
  * @lucene.experimental
  */
 public final class Circle extends LatLonGeometry {
-  /** Center latitude */
+  /** Center latitude of the circle in degrees (-90 to 90) */
   private final double lat;
 
-  /** Center longitude */
+  /** Center longitude of the circle in degrees (-180 to 180) */
   private final double lon;
 
-  /** radius in meters */
+  /** radius of the circle in meters */
   private final double radiusMeters;
 
   /** Creates a new circle from the supplied latitude/longitude center and a radius in meters.. */

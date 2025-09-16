@@ -17,6 +17,8 @@
 
 package org.apache.lucene.internal.vectorization;
 
+import static org.apache.lucene.util.VectorUtil.EPSILON;
+
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
@@ -153,6 +155,15 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public int uint8DotProduct(byte[] a, byte[] b) {
+    int total = 0;
+    for (int i = 0; i < a.length; i++) {
+      total += Byte.toUnsignedInt(a[i]) * Byte.toUnsignedInt(b[i]);
+    }
+    return total;
+  }
+
+  @Override
   public int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked) {
     assert (apacked && bpacked) == false;
     if (apacked || bpacked) {
@@ -194,6 +205,17 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     int squareSum = 0;
     for (int i = 0; i < a.length; i++) {
       int diff = a[i] - b[i];
+      squareSum += diff * diff;
+    }
+    return squareSum;
+  }
+
+  @Override
+  public int uint8SquareDistance(byte[] a, byte[] b) {
+    // Note: this will not overflow if dim < 2^16, since max(ubyte * ubyte) = 2^16.
+    int squareSum = 0;
+    for (int i = 0; i < a.length; i++) {
+      int diff = Byte.toUnsignedInt(a[i]) - Byte.toUnsignedInt(b[i]);
       squareSum += diff * diff;
     }
     return squareSum;
@@ -279,7 +301,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       float correction = 0;
       for (int i = start; i < vector.length; i++) {
         // undo the old quantization
-        float v = (oldAlpha * vector[i]) + oldMinQuantile;
+        float v = (oldAlpha * Byte.toUnsignedInt(vector[i])) + oldMinQuantile;
         correction += quantizeFloat(v, null, 0);
       }
       return correction;
@@ -308,5 +330,42 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       // Additionally, we account for the global correction of `minQuantile^2` in the equation
       return minQuantile * (v - minQuantile / 2.0F) + (dx - dxq) * dxq;
     }
+  }
+
+  @Override
+  public int filterByScore(
+      int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
+    int newSize = 0;
+    for (int i = 0; i < upTo; ++i) {
+      int doc = docBuffer[i];
+      double score = scoreBuffer[i];
+      docBuffer[newSize] = doc;
+      scoreBuffer[newSize] = score;
+      if (score >= minScoreInclusive) {
+        newSize++;
+      }
+    }
+    return newSize;
+  }
+
+  @Override
+  public float[] l2normalize(float[] v, boolean throwOnZero) {
+    double l1norm = this.dotProduct(v, v);
+    if (l1norm == 0) {
+      if (throwOnZero) {
+        throw new IllegalArgumentException("Cannot normalize a zero-length vector");
+      } else {
+        return v;
+      }
+    }
+    if (Math.abs(l1norm - 1.0d) <= EPSILON) {
+      return v;
+    }
+    int dim = v.length;
+    double l2norm = Math.sqrt(l1norm);
+    for (int i = 0; i < dim; i++) {
+      v[i] /= (float) l2norm;
+    }
+    return v;
   }
 }

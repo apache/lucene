@@ -21,7 +21,7 @@
 configure(project(":lucene:distribution")) {
   def packageBaseName = "${buildDir}/packages/lucene-${version}"
 
-   // Prepare site documentation dependency for inclusion.
+  // Prepare site documentation dependency for inclusion.
   configurations {
     docs
 
@@ -67,7 +67,7 @@ configure(project(":lucene:distribution")) {
   }
 
   task assembleBinaryTgz(type: Tar) {
-    description "Assemble binary Lucene artifact as a .tgz file."
+    description = "Assemble binary Lucene artifact as a .tgz file."
 
     archiveFileName = packageBaseName + ".tgz"
     destinationDirectory = file(archiveFileName).parentFile
@@ -80,9 +80,8 @@ configure(project(":lucene:distribution")) {
   }
 
   task assembleBinaryDirForTests(type: Sync) {
-    description "Assemble a subset of the binary Lucene distribution as an expanded directory for tests."
-
-    destinationDir file("${packageBaseName}-itests")
+    description = "Assemble a subset of the binary Lucene distribution as an expanded directory for tests."
+    destinationDir = file("${packageBaseName}-itests")
   }
 
   artifacts {
@@ -97,7 +96,9 @@ configure(project(":lucene:distribution")) {
   Closure<Void> distributionBinaryContent = { AbstractCopyTask task ->
     // Manually correct posix permissions (matters when assembling archives on Windows).
     filesMatching(["**/*.sh", "**/*.bat"]) { copy ->
-      copy.setMode(0755)
+      copy.permissions {
+        unix("755")
+      }
     }
 
     // Attach binary release - only files.

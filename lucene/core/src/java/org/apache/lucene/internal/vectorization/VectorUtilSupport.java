@@ -36,6 +36,9 @@ public interface VectorUtilSupport {
   /** Returns the dot product computed over signed bytes. */
   int dotProduct(byte[] a, byte[] b);
 
+  /** Returns the dot product computed as though the bytes were unsigned. */
+  int uint8DotProduct(byte[] a, byte[] b);
+
   /** Returns the dot product over the computed bytes, assuming the values are int4 encoded. */
   int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked);
 
@@ -44,6 +47,9 @@ public interface VectorUtilSupport {
 
   /** Returns the sum of squared differences of the two byte vectors. */
   int squareDistance(byte[] a, byte[] b);
+
+  /** Returns the sum of squared differences of the two unsigned byte vectors. */
+  int uint8SquareDistance(byte[] a, byte[] b);
 
   /**
    * Given an array {@code buffer} that is sorted between indexes {@code 0} inclusive and {@code to}
@@ -100,4 +106,20 @@ public interface VectorUtilSupport {
       float alpha,
       float minQuantile,
       float maxQuantile);
+
+  /**
+   * filter both {@code docBuffer} and {@code scoreBuffer} with {@code minScoreInclusive}, each
+   * {@code docBuffer} and {@code scoreBuffer} of the same index forms a pair, pairs with score not
+   * greater than or equal to {@code minScoreInclusive} will be filtered out from the array.
+   *
+   * @param docBuffer doc buffer contains docs (or some other value forms a pair with {@code
+   *     scoreBuffer})
+   * @param scoreBuffer score buffer contains scores to be compared with {@code minScoreInclusive}
+   * @param minScoreInclusive minimal required score to not be filtered out
+   * @param upTo where the filter should end
+   * @return how many pairs left after filter
+   */
+  int filterByScore(int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo);
+
+  float[] l2normalize(float[] v, boolean throwOnZero);
 }

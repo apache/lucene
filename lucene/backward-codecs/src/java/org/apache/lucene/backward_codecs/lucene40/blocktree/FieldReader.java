@@ -100,14 +100,14 @@ public final class FieldReader extends Terms {
     }
     index = FST.fromFSTReader(fstMetadata, new OffHeapFSTStore(indexIn, indexStartFP, fstMetadata));
     /*
-     if (false) {
-     final String dotFileName = segment + "_" + fieldInfo.name + ".dot";
-     Writer w = new OutputStreamWriter(new FileOutputStream(dotFileName));
-     Util.toDot(index, w, false, false);
-     System.out.println("FST INDEX: SAVED to " + dotFileName);
-     w.close();
-     }
-    */
+     * if (false) {
+     *   final String dotFileName = segment + "_" + fieldInfo.name + ".dot";
+     *   Writer w = new OutputStreamWriter(new FileOutputStream(dotFileName));
+     *   Util.toDot(index, w, false, false);
+     *   System.out.println("FST INDEX: SAVED to " + dotFileName);
+     *   w.close();
+     * }
+     */
   }
 
   @Override

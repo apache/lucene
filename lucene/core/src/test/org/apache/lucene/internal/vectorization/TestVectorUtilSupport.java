@@ -172,7 +172,7 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     Random r = random();
     float min = r.nextFloat(-1, 1);
     float max = r.nextFloat(min, 1);
-    float divisor = (float) ((1 << 7) - 1); // 7 bits quantization here
+    float divisor = (float) ((1 << 8) - 1); // 8 bit quantization here
 
     float scale = divisor / (max - min);
     float alpha = (max - min) / divisor;

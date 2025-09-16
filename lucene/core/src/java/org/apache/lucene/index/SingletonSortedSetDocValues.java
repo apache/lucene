@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Exposes multi-valued iterator view over a single-valued iterator.
@@ -85,6 +86,16 @@ final class SingletonSortedSetDocValues extends SortedSetDocValues {
       return true;
     }
     return false;
+  }
+
+  @Override
+  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+    in.intoBitSet(upTo, bitSet, offset);
+  }
+
+  @Override
+  public int docIDRunEnd() throws IOException {
+    return in.docIDRunEnd();
   }
 
   @Override

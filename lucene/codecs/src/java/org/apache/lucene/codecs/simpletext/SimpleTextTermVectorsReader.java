@@ -16,7 +16,22 @@
  */
 package org.apache.lucene.codecs.simpletext;
 
-import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.*;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.DOC;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.END;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.ENDOFFSET;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELD;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDNAME;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDOFFSETS;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDPAYLOADS;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDPOSITIONS;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDTERMCOUNT;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.NUMFIELDS;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.PAYLOAD;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.POSITION;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.STARTOFFSET;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.TERMFREQ;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.TERMTEXT;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.VECTORS_EXTENSION;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -63,21 +78,13 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
 
   public SimpleTextTermVectorsReader(Directory directory, SegmentInfo si, IOContext context)
       throws IOException {
-    boolean success = false;
     try {
       in =
           directory.openInput(
               IndexFileNames.segmentFileName(si.name, "", VECTORS_EXTENSION), context);
-      success = true;
-    } finally {
-      if (!success) {
-        try {
-          close();
-        } catch (
-            @SuppressWarnings("unused")
-            Throwable t) {
-        } // ensure we throw our original exception
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
     readIndex(si.maxDoc());
   }

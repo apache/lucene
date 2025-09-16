@@ -19,7 +19,18 @@ package org.apache.lucene.benchmark.jmh;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.util.VectorUtil;
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Param;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.Warmup;
 
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -109,6 +120,17 @@ public class VectorUtilBenchmark {
   }
 
   @Benchmark
+  public int binaryDotProductUint8Scalar() {
+    return VectorUtil.uint8DotProduct(bytesA, bytesB);
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int binaryDotProductUint8Vector() {
+    return VectorUtil.uint8DotProduct(bytesA, bytesB);
+  }
+
+  @Benchmark
   public int binarySquareScalar() {
     return VectorUtil.squareDistance(bytesA, bytesB);
   }
@@ -117,6 +139,17 @@ public class VectorUtilBenchmark {
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public int binarySquareVector() {
     return VectorUtil.squareDistance(bytesA, bytesB);
+  }
+
+  @Benchmark
+  public int binarySquareUint8Scalar() {
+    return VectorUtil.uint8SquareDistance(bytesA, bytesB);
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int binarySquareUint8Vector() {
+    return VectorUtil.uint8SquareDistance(bytesA, bytesB);
   }
 
   @Benchmark
@@ -161,11 +194,24 @@ public class VectorUtilBenchmark {
   }
 
   @Benchmark
+  public float[] l2Normalize() {
+    return VectorUtil.l2normalize(floatsA, false);
+  }
+
+  @Benchmark
   @Fork(
       value = 15,
       jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public float floatCosineVector() {
     return VectorUtil.cosine(floatsA, floatsB);
+  }
+
+  @Benchmark
+  @Fork(
+      value = 15,
+      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public float[] l2NormalizeVector() {
+    return VectorUtil.l2normalize(floatsA, false);
   }
 
   @Benchmark

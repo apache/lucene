@@ -38,12 +38,15 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -76,7 +79,6 @@ class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
             state.segmentInfo.name,
             state.segmentSuffix,
             Lucene102BinaryQuantizedVectorsFormat.META_EXTENSION);
-    boolean success = false;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
       try {
@@ -102,12 +104,11 @@ class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
               Lucene102BinaryQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
               // Quantized vectors are accessed randomly from their node ID stored in the HNSW
               // graph.
-              state.context.withReadAdvice(ReadAdvice.RANDOM));
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+              state.context.withHints(
+                  FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -223,20 +224,20 @@ class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
   }
 
   @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     rawVectorsReader.search(field, target, knnCollector, acceptDocs);
   }
 
   @Override
-  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     if (knnCollector.k() == 0) return;
     final RandomVectorScorer scorer = getRandomVectorScorer(field, target);
     if (scorer == null) return;
     OrdinalTranslatedKnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
-    Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
+    Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs.bits());
     for (int i = 0; i < scorer.maxOrd(); i++) {
       if (acceptedOrds == null || acceptedOrds.get(i)) {
         collector.collect(i, scorer.score(i));
@@ -291,7 +292,6 @@ class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
     String fileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
     IndexInput in = state.directory.openInput(fileName, context);
-    boolean success = false;
     try {
       int versionVectorData =
           CodecUtil.checkIndexHeader(
@@ -312,12 +312,10 @@ class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
             in);
       }
       CodecUtil.retrieveChecksum(in);
-      success = true;
       return in;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(in);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, in);
+      throw t;
     }
   }
 
@@ -431,6 +429,11 @@ class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
       return quantizedVectorValues.scorer(query);
+    }
+
+    @Override
+    public VectorScorer rescorer(float[] query) throws IOException {
+      return rawVectorValues.rescorer(query);
     }
 
     BinarizedByteVectorValues getQuantizedVectorValues() throws IOException {

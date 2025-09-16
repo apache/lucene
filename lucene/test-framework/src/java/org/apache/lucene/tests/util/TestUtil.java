@@ -17,6 +17,13 @@
 package org.apache.lucene.tests.util;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.arrayWithSize;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.not;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
@@ -55,8 +62,8 @@ import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat;
-import org.apache.lucene.codecs.lucene103.Lucene103Codec;
-import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104Codec;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
@@ -190,9 +197,7 @@ public final class TestUtil {
         try {
           iterator.remove();
           throw new AssertionError("broken iterator (supports remove): " + iterator);
-        } catch (
-            @SuppressWarnings("unused")
-            UnsupportedOperationException expected) {
+        } catch (UnsupportedOperationException _) {
           // ok
         }
       }
@@ -201,9 +206,7 @@ public final class TestUtil {
     try {
       iterator.next();
       throw new AssertionError("broken iterator (allows next() when hasNext==false) " + iterator);
-    } catch (
-        @SuppressWarnings("unused")
-        NoSuchElementException expected) {
+    } catch (NoSuchElementException _) {
       // ok
     }
   }
@@ -225,18 +228,14 @@ public final class TestUtil {
       try {
         iterator.remove();
         throw new AssertionError("broken iterator (supports remove): " + iterator);
-      } catch (
-          @SuppressWarnings("unused")
-          UnsupportedOperationException expected) {
+      } catch (UnsupportedOperationException _) {
         // ok
       }
     }
     try {
       iterator.next();
       throw new AssertionError("broken iterator (allows next() when hasNext==false) " + iterator);
-    } catch (
-        @SuppressWarnings("unused")
-        NoSuchElementException expected) {
+    } catch (NoSuchElementException _) {
       // ok
     }
   }
@@ -248,7 +247,7 @@ public final class TestUtil {
    */
   public static <T> void checkReadOnly(Collection<T> coll) {
     int size = 0;
-    for (@SuppressWarnings("unused") T t : coll) {
+    for (T _ : coll) {
       size += 1;
     }
     if (size != coll.size()) {
@@ -265,9 +264,7 @@ public final class TestUtil {
       try {
         coll.remove(coll.iterator().next());
         throw new AssertionError("broken collection (supports remove): " + coll);
-      } catch (
-          @SuppressWarnings("unused")
-          UnsupportedOperationException e) {
+      } catch (UnsupportedOperationException _) {
         // ok
       }
     }
@@ -275,18 +272,14 @@ public final class TestUtil {
     try {
       coll.add(null);
       throw new AssertionError("broken collection (supports add): " + coll);
-    } catch (
-        @SuppressWarnings("unused")
-        UnsupportedOperationException e) {
+    } catch (UnsupportedOperationException _) {
       // ok
     }
 
     try {
       coll.addAll(Collections.singleton(null));
       throw new AssertionError("broken collection (supports addAll): " + coll);
-    } catch (
-        @SuppressWarnings("unused")
-        UnsupportedOperationException e) {
+    } catch (UnsupportedOperationException _) {
       // ok
     }
 
@@ -1334,7 +1327,7 @@ public final class TestUtil {
    * different from {@link Codec#getDefault()} because that is randomized.
    */
   public static Codec getDefaultCodec() {
-    return new Lucene103Codec();
+    return new Lucene104Codec();
   }
 
   /**
@@ -1342,7 +1335,7 @@ public final class TestUtil {
    * Lucene.
    */
   public static PostingsFormat getDefaultPostingsFormat() {
-    return new Lucene103PostingsFormat();
+    return new Lucene104PostingsFormat();
   }
 
   /**
@@ -1353,7 +1346,7 @@ public final class TestUtil {
    */
   public static PostingsFormat getDefaultPostingsFormat(
       int minItemsPerBlock, int maxItemsPerBlock) {
-    return new Lucene103PostingsFormat(minItemsPerBlock, maxItemsPerBlock);
+    return new Lucene104PostingsFormat(minItemsPerBlock, maxItemsPerBlock);
   }
 
   /** Returns a random postings format that supports term ordinals */
@@ -1478,29 +1471,34 @@ public final class TestUtil {
         "wrong total hits", expected.totalHits.value() == 0, actual.totalHits.value() == 0);
     if (expected.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
       if (actual.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
-        Assert.assertEquals(
-            "wrong total hits", expected.totalHits.value(), actual.totalHits.value());
+        assertThat(
+            "wrong total hits", actual.totalHits.value(), equalTo(expected.totalHits.value()));
       } else {
-        Assert.assertTrue(
-            "wrong total hits", expected.totalHits.value() >= actual.totalHits.value());
+        assertThat(
+            "wrong total hits",
+            actual.totalHits.value(),
+            lessThanOrEqualTo(expected.totalHits.value()));
       }
     } else if (actual.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
-      Assert.assertTrue("wrong total hits", expected.totalHits.value() <= actual.totalHits.value());
+      assertThat(
+          "wrong total hits",
+          actual.totalHits.value(),
+          greaterThanOrEqualTo(expected.totalHits.value()));
     }
-    Assert.assertEquals("wrong hit count", expected.scoreDocs.length, actual.scoreDocs.length);
+    assertThat("wrong hit count", actual.scoreDocs, arrayWithSize(expected.scoreDocs.length));
     for (int hitIDX = 0; hitIDX < expected.scoreDocs.length; hitIDX++) {
       final ScoreDoc expectedSD = expected.scoreDocs[hitIDX];
       final ScoreDoc actualSD = actual.scoreDocs[hitIDX];
-      Assert.assertEquals("wrong hit docID", expectedSD.doc, actualSD.doc);
+      assertThat("wrong hit docID", actualSD.doc, equalTo(expectedSD.doc));
       Assert.assertEquals("wrong hit score", expectedSD.score, actualSD.score, 0.0);
       if (expectedSD instanceof FieldDoc) {
-        Assert.assertTrue(actualSD instanceof FieldDoc);
+        assertThat(actualSD, instanceOf(FieldDoc.class));
         Assert.assertArrayEquals(
             "wrong sort field values",
             ((FieldDoc) expectedSD).fields,
             ((FieldDoc) actualSD).fields);
       } else {
-        Assert.assertFalse(actualSD instanceof FieldDoc);
+        assertThat(actualSD, not(instanceOf(FieldDoc.class)));
       }
     }
   }
@@ -1651,9 +1649,7 @@ public final class TestUtil {
         // ignore bugs in Sun's regex impl
         try {
           replacement = p.matcher(nonBmpString).replaceAll("_");
-        } catch (
-            @SuppressWarnings("unused")
-            StringIndexOutOfBoundsException jdkBug) {
+        } catch (StringIndexOutOfBoundsException _) {
           System.out.println("WARNING: your jdk is buggy!");
           System.out.println(
               "Pattern.compile(\""
@@ -1665,9 +1661,7 @@ public final class TestUtil {
         if (replacement != null && UnicodeUtil.validUTF16String(replacement)) {
           return p;
         }
-      } catch (
-          @SuppressWarnings("unused")
-          PatternSyntaxException ignored) {
+      } catch (PatternSyntaxException _) {
         // Loop trying until we hit something that compiles.
       }
     }
@@ -1757,7 +1751,7 @@ public final class TestUtil {
     } else {
       try {
         return br.utf8ToString() + " " + br;
-      } catch (@SuppressWarnings("unused") AssertionError | IllegalArgumentException t) {
+      } catch (AssertionError | IllegalArgumentException _) {
         // If BytesRef isn't actually UTF8, or it's e.g. a
         // prefix of UTF8 that ends mid-unicode-char, we
         // fall back to hex:

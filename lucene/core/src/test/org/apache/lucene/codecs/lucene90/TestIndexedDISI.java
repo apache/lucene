@@ -388,6 +388,36 @@ public class TestIndexedDISI extends LuceneTestCase {
     }
   }
 
+  public void testDenseBitSizeLessThanBlockSize() throws IOException {
+    final byte denseRankPower = (byte) (random().nextInt(7) + 7);
+    try (Directory dir = newDirectory()) {
+      // initialize a maxDoc that is less than IndexedDISI.BLOCK_SIZE
+      int maxDoc = random().nextInt(4096 * 2, 65536);
+      FixedBitSet set = new FixedBitSet(maxDoc);
+      for (int i = 0; i < maxDoc; i += 2) { // Set every other to ensure dense
+        set.set(i);
+      }
+      int jumpTableEntryCount; // this should always be 0 given that maxDoc < BLOCK_SIZE
+      long length;
+      try (IndexOutput out = dir.createOutput("foo", IOContext.DEFAULT)) {
+        jumpTableEntryCount =
+            IndexedDISI.writeBitSet(
+                new BitSetIterator(set, set.cardinality()), out, denseRankPower);
+        length = out.getFilePointer();
+        assertTrue(
+            "jumpTableEntryCount should be 0 for dense bitsets with size < BLOCK_SIZE",
+            0 == jumpTableEntryCount);
+      }
+      try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
+        IndexedDISI disi =
+            new IndexedDISI(in, 0L, length, jumpTableEntryCount, denseRankPower, set.cardinality());
+        FixedBitSet disiSet = new FixedBitSet(maxDoc);
+        // This would throw IOOB if bitset size is not handled correctly as per #14882
+        disiSet.or(disi);
+      }
+    }
+  }
+
   public void testIllegalDenseRankPower() throws IOException {
 
     // Legal values
@@ -526,6 +556,26 @@ public class TestIndexedDISI extends LuceneTestCase {
       }
     }
 
+    for (int step : new int[] {100, 1000, 10000, 100000}) {
+      try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
+        IndexedDISI disi =
+            new IndexedDISI(in, 0L, length, jumpTableentryCount, denseRankPower, cardinality);
+        BitSetIterator disi2 = new BitSetIterator(set, cardinality);
+        int disi2length = set.length();
+        assertIntoBitsetRandomized(disi, disi2, disi2length, step);
+      }
+    }
+
+    for (int step : new int[] {100, 1000, 10000, 100000}) {
+      try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
+        IndexedDISI disi =
+            new IndexedDISI(in, 0L, length, jumpTableentryCount, denseRankPower, cardinality);
+        BitSetIterator disi2 = new BitSetIterator(set, cardinality);
+        int disi2length = set.length();
+        assertDocIDRunEndRandomized(disi, disi2, disi2length, step);
+      }
+    }
+
     dir.deleteFile("foo");
   }
 
@@ -551,6 +601,73 @@ public class TestIndexedDISI extends LuceneTestCase {
         // while-loop
         assertEquals(index, disi.index());
         target = doc;
+      }
+    }
+  }
+
+  private void assertIntoBitsetRandomized(
+      IndexedDISI disi, BitSetIterator disi2, int disi2length, int step) throws IOException {
+    int index = -1;
+    FixedBitSet set1 = new FixedBitSet(step);
+    FixedBitSet set2 = new FixedBitSet(step);
+
+    for (int upTo = 0; upTo < disi2length; ) {
+      int lastUpTo = upTo;
+      upTo += TestUtil.nextInt(random(), 0, step);
+      int offset = TestUtil.nextInt(random(), lastUpTo, upTo);
+
+      if (disi.docID() < offset) {
+        disi.advance(offset);
+      }
+      int doc = disi2.docID();
+      while (doc < offset) {
+        index++;
+        doc = disi2.nextDoc();
+      }
+      while (doc < upTo) {
+        set2.set(doc - offset);
+        index++;
+        doc = disi2.nextDoc();
+      }
+
+      disi.intoBitSet(upTo, set1, offset);
+      assertEquals(index, disi.index());
+      assertEquals(disi2.docID(), disi.docID());
+
+      BitSetIterator expected = new BitSetIterator(set2, set2.cardinality());
+      BitSetIterator actual = new BitSetIterator(set1, set1.cardinality());
+      for (int expectedDoc = expected.nextDoc();
+          expectedDoc != DocIdSetIterator.NO_MORE_DOCS;
+          expectedDoc = expected.nextDoc()) {
+        int actualDoc = actual.nextDoc();
+        assertEquals(expectedDoc + offset, actualDoc + offset); // plus offset for better message.
+      }
+      assertEquals(DocIdSetIterator.NO_MORE_DOCS, actual.nextDoc());
+
+      if (disi2.docID() != DocIdSetIterator.NO_MORE_DOCS) {
+        assertEquals(disi2.nextDoc(), disi.nextDoc());
+        assertEquals(++index, disi.index());
+      }
+
+      set1.clear();
+      set2.clear();
+    }
+  }
+
+  private void assertDocIDRunEndRandomized(
+      IndexedDISI disi, BitSetIterator disi2, int disi2length, int step) throws IOException {
+    for (int target = 0; target < disi2length; ) {
+      target += TestUtil.nextInt(random(), 0, step);
+      if (disi.docID() < target) {
+        disi.advance(target);
+        disi2.advance(target);
+        assertEquals(disi2.docID(), disi.docID());
+        int end = disi.docIDRunEnd();
+        assertNotEquals(0, end);
+        for (int it = disi.docID(); it != DocIdSetIterator.NO_MORE_DOCS && it + 1 < end; it++) {
+          assertEquals(it + 1, disi.nextDoc());
+          assertEquals(it + 1, disi2.nextDoc());
+        }
       }
     }
   }

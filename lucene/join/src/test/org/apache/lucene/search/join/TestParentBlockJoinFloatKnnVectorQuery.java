@@ -22,6 +22,7 @@ import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -139,5 +140,15 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
   Field getKnnVectorField(
       String name, float[] vector, VectorSimilarityFunction vectorSimilarityFunction) {
     return new KnnFloatVectorField(name, vector, vectorSimilarityFunction);
+  }
+
+  @Override
+  float[] randomVector(int dim) {
+    float[] v = new float[dim];
+    Random random = random();
+    for (int i = 0; i < dim; i++) {
+      v[i] = random.nextFloat();
+    }
+    return v;
   }
 }

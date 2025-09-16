@@ -18,6 +18,7 @@ package org.apache.lucene.search.grouping;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.NavigableSet;
@@ -68,7 +69,9 @@ public abstract class GroupFacetCollector extends SimpleCollector {
       throws IOException {
     int totalCount = 0;
     int missingCount = 0;
-    SegmentResultPriorityQueue segments = new SegmentResultPriorityQueue(segmentResults.size());
+    PriorityQueue<SegmentResult> segments =
+        PriorityQueue.usingComparator(
+            segmentResults.size(), Comparator.comparing(sr -> sr.mergeTerm));
     for (SegmentResult segmentResult : segmentResults) {
       missingCount += segmentResult.missing;
       if (segmentResult.mergePos >= segmentResult.maxTermPos) {
@@ -252,17 +255,5 @@ public abstract class GroupFacetCollector extends SimpleCollector {
      * @throws IOException If I/O related errors occur
      */
     protected abstract void nextTerm() throws IOException;
-  }
-
-  private static class SegmentResultPriorityQueue extends PriorityQueue<SegmentResult> {
-
-    SegmentResultPriorityQueue(int maxSize) {
-      super(maxSize);
-    }
-
-    @Override
-    protected boolean lessThan(SegmentResult a, SegmentResult b) {
-      return a.mergeTerm.compareTo(b.mergeTerm) < 0;
-    }
   }
 }

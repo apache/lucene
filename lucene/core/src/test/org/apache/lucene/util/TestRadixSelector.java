@@ -16,6 +16,11 @@
  */
 package org.apache.lucene.util;
 
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.sameInstance;
+
 import java.util.Arrays;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -98,14 +103,14 @@ public class TestRadixSelector extends LuceneTestCase {
         };
     selector.select(from, to, k);
 
-    assertEquals(expected[k], actual[k]);
+    assertThat(actual[k], equalTo(expected[k]));
     for (int i = 0; i < actual.length; ++i) {
       if (i < from || i >= to) {
-        assertSame(arr[i], actual[i]);
+        assertThat(actual[i], sameInstance(arr[i]));
       } else if (i <= k) {
-        assertTrue(actual[i].compareTo(actual[k]) <= 0);
+        assertThat(actual[i], lessThanOrEqualTo(actual[k]));
       } else {
-        assertTrue(actual[i].compareTo(actual[k]) >= 0);
+        assertThat(actual[i], greaterThanOrEqualTo(actual[k]));
       }
     }
   }

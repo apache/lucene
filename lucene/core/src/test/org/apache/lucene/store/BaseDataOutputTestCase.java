@@ -38,8 +38,8 @@ public abstract class BaseDataOutputTestCase<T extends DataOutput> extends Lucen
   protected abstract byte[] toBytes(T instance);
 
   @FunctionalInterface
-  private interface ThrowingBiFunction<T, U, R> {
-    R apply(T t, U u) throws Exception;
+  private interface IOBiFunction<T, U, R> {
+    R apply(T t, U u) throws IOException;
   }
 
   @Test
@@ -68,8 +68,7 @@ public abstract class BaseDataOutputTestCase<T extends DataOutput> extends Lucen
     }
   }
 
-  private static final List<ThrowingBiFunction<DataOutput, Random, IOConsumer<DataInput>>>
-      GENERATORS;
+  private static final List<IOBiFunction<DataOutput, Random, IOConsumer<DataInput>>> GENERATORS;
 
   static {
     GENERATORS = new ArrayList<>();

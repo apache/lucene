@@ -156,10 +156,10 @@ class SimpleGeoJSONPolygonParser {
         o = parseString();
       } else if (ch == 't') {
         scan("true");
-        o = Boolean.TRUE;
+        o = true;
       } else if (ch == 'f') {
         scan("false");
-        o = Boolean.FALSE;
+        o = false;
       } else if (ch == 'n') {
         scan("null");
         o = null;
@@ -342,9 +342,7 @@ class SimpleGeoJSONPolygonParser {
     // we only handle doubles
     try {
       return Double.parseDouble(b.toString());
-    } catch (
-        @SuppressWarnings("unused")
-        NumberFormatException nfe) {
+    } catch (NumberFormatException _) {
       upto = uptoStart;
       throw newParseException("could not parse number as double");
     }

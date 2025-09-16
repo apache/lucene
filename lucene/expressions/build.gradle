@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-apply plugin: 'java-library'
+
 
 description = 'Dynamically computed values to sort/facet/search on based on a pluggable grammar'
 
@@ -23,11 +23,6 @@ dependencies {
   moduleApi project(':lucene:core')
 
   moduleImplementation project(':lucene:codecs')
-
   moduleImplementation deps.antlr.runtime
-
-  moduleImplementation deps.asm.core
-  moduleImplementation deps.asm.commons
-
   moduleTestImplementation project(':lucene:test-framework')
 }

@@ -35,7 +35,6 @@ import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.TestVectorUtil;
 
 public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
@@ -238,7 +237,7 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
     public AssertingSeededKnnVectorQuery(
         AbstractKnnVectorQuery query, Query seed, Weight seedWeight, AtomicInteger seedCalls) {
-      super(query, seed, seedWeight);
+      super(query, seed, seedWeight, query.field, query.k, query.filter, query.searchStrategy);
       this.seedCalls = seedCalls;
     }
 
@@ -256,7 +255,7 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     @Override
     protected TopDocs approximateSearch(
         LeafReaderContext context,
-        Bits acceptDocs,
+        AcceptDocs acceptDocs,
         int visitedLimit,
         KnnCollectorManager knnCollectorManager)
         throws IOException {
@@ -275,10 +274,10 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
       @Override
       public KnnCollector newCollector(
-          int numVisisted, KnnSearchStrategy searchStrategy, LeafReaderContext context)
+          int numVisited, KnnSearchStrategy searchStrategy, LeafReaderContext context)
           throws IOException {
         KnnCollector knnCollector =
-            knnCollectorManager.newCollector(numVisisted, searchStrategy, context);
+            knnCollectorManager.newCollector(numVisited, searchStrategy, context);
         if (knnCollector.getSearchStrategy() instanceof KnnSearchStrategy.Seeded seeded) {
           if (seedCalls == null && seeded.numberOfEntryPoints() > 0) {
             fail("Expected non-seeded collector but received: " + knnCollector);

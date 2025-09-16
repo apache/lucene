@@ -131,6 +131,9 @@ public class LRUQueryCache implements QueryCache, Accountable {
     }
     this.skipCacheFactor = skipCacheFactor;
 
+    // Note that reads on this LinkedHashMap trigger modifications on the linked list under the
+    // hood, so reading from multiple threads is not thread-safe. This is why it is wrapped in a
+    // Collections#synchronizedMap.
     uniqueQueries = Collections.synchronizedMap(new LinkedHashMap<>(16, 0.75f, true));
     mostRecentlyUsedQueries = uniqueQueries.keySet();
     cache = new IdentityHashMap<>();
@@ -536,6 +539,8 @@ public class LRUQueryCache implements QueryCache, Accountable {
     scorer.score(
         new LeafCollector() {
 
+          private int[] buffer;
+
           @Override
           public void setScorer(Scorable scorer) throws IOException {}
 
@@ -543,6 +548,19 @@ public class LRUQueryCache implements QueryCache, Accountable {
           public void collect(int doc) throws IOException {
             count[0]++;
             bitSet.set(doc);
+          }
+
+          @Override
+          public void collect(DocIdStream stream) throws IOException {
+            if (buffer == null) {
+              buffer = new int[128];
+            }
+            for (int c = stream.intoArray(buffer); c != 0; c = stream.intoArray(buffer)) {
+              for (int i = 0; i < c; ++i) {
+                bitSet.set(buffer[i]);
+              }
+              count[0] += c;
+            }
           }
         },
         null,
@@ -557,12 +575,26 @@ public class LRUQueryCache implements QueryCache, Accountable {
     scorer.score(
         new LeafCollector() {
 
+          private int[] buffer = null;
+
           @Override
           public void setScorer(Scorable scorer) throws IOException {}
 
           @Override
           public void collect(int doc) throws IOException {
             builder.add(doc);
+          }
+
+          @Override
+          public void collect(DocIdStream stream) throws IOException {
+            if (buffer == null) {
+              buffer = new int[128];
+            }
+            for (int c = stream.intoArray(buffer); c != 0; c = stream.intoArray(buffer)) {
+              for (int i = 0; i < c; ++i) {
+                builder.add(buffer[i]);
+              }
+            }
           }
         },
         null,

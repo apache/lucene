@@ -32,7 +32,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -63,6 +62,8 @@ import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.internal.hppc.IntIntHashMap;
+import org.apache.lucene.search.AcceptDocs;
+import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.KnnCollector;
@@ -86,6 +87,7 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.CommandLineUtil;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOBooleanSupplier;
+import org.apache.lucene.util.IOFunction;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongBitSet;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -1295,12 +1297,7 @@ public final class CheckIndex implements Closeable {
         if (liveDocs == null) {
           throw new CheckIndexException("segment should have deletions, but liveDocs is null");
         } else {
-          int numLive = 0;
-          for (int j = 0; j < liveDocs.length(); j++) {
-            if (liveDocs.get(j)) {
-              numLive++;
-            }
-          }
+          int numLive = bitsCardinality(liveDocs);
           if (numLive != numDocs) {
             throw new CheckIndexException(
                 "liveDocs count mismatch: info=" + numDocs + ", vs bits=" + numLive);
@@ -1344,6 +1341,28 @@ public final class CheckIndex implements Closeable {
     }
 
     return status;
+  }
+
+  /**
+   * Returns the cardinality of the given {@code Bits}.
+   *
+   * <p>This method processes bits in batches of 1024 using {@link Bits#applyMask} and {@link
+   * FixedBitSet#cardinality}, which is faster than checking bits one by one.
+   */
+  static int bitsCardinality(Bits bits) {
+    int cardinality = 0;
+    FixedBitSet copy = new FixedBitSet(1024);
+    for (int offset = 0; offset < bits.length(); offset += copy.length()) {
+      int numBitsToCopy = Math.min(bits.length() - offset, copy.length());
+      copy.set(0, copy.length());
+      if (numBitsToCopy < copy.length()) {
+        // Clear ghost bits
+        copy.clear(numBitsToCopy, copy.length());
+      }
+      bits.applyMask(copy, offset);
+      cardinality += copy.cardinality();
+    }
+    return cardinality;
   }
 
   /** Test field infos. */
@@ -1401,6 +1420,8 @@ public final class CheckIndex implements Closeable {
       for (FieldInfo info : reader.getFieldInfos()) {
         if (info.hasNorms()) {
           checkNumericDocValues(info.name, normsReader.getNorms(info), normsReader.getNorms(info));
+          checkBulkFetchNumericDocValues(
+              info.name, normsReader.getNorms(info), normsReader.getNorms(info), reader.maxDoc());
           ++status.totFields;
         }
       }
@@ -1454,6 +1475,7 @@ public final class CheckIndex implements Closeable {
     int computedFieldCount = 0;
 
     PostingsEnum postings = null;
+    PostingsEnum bulkPostings = null;
 
     String lastField = null;
     for (String field : fields) {
@@ -1649,6 +1671,10 @@ public final class CheckIndex implements Closeable {
         sumDocFreq += docFreq;
 
         postings = termsEnum.postings(postings, PostingsEnum.ALL);
+        bulkPostings = termsEnum.postings(bulkPostings, PostingsEnum.ALL);
+        bulkPostings.nextDoc();
+        DocAndFloatFeatureBuffer buffer = new DocAndFloatFeatureBuffer();
+        int bufferIndex = 0;
 
         if (hasFreqs == false) {
           if (termsEnum.totalTermFreq() != termsEnum.docFreq()) {
@@ -1667,9 +1693,7 @@ public final class CheckIndex implements Closeable {
           long ord = -1;
           try {
             ord = termsEnum.ord();
-          } catch (
-              @SuppressWarnings("unused")
-              UnsupportedOperationException uoe) {
+          } catch (UnsupportedOperationException _) {
             hasOrd = false;
           }
 
@@ -1697,6 +1721,31 @@ public final class CheckIndex implements Closeable {
             throw new CheckIndexException(
                 "term " + term + ": doc " + doc + ": freq " + freq + " is out of bounds");
           }
+
+          if (bufferIndex == buffer.size) {
+            bulkPostings.nextPostings(
+                (int) Math.min(Integer.MAX_VALUE, bulkPostings.docID() + 64L), buffer);
+            bufferIndex = 0;
+          }
+          if (bufferIndex >= buffer.size) {
+            throw new CheckIndexException("Doc " + doc + " not found by PostingsEnum#nextPostings");
+          }
+          if (doc != buffer.docs[bufferIndex]) {
+            throw new CheckIndexException(
+                "PostingsEnum#nextPostings returns "
+                    + buffer.docs[bufferIndex]
+                    + " as next doc while PostingsEnum#nextDoc returns "
+                    + doc);
+          }
+          if (freq != buffer.features[bufferIndex]) {
+            throw new CheckIndexException(
+                "PostingsEnum#nextPostings returns "
+                    + buffer.features[bufferIndex]
+                    + " as term freq while PostingsEnum#freq returns "
+                    + freq);
+          }
+          bufferIndex++;
+
           if (hasFreqs == false) {
             // When a field didn't index freq, it must
             // consistently "lie" and pretend that freq was
@@ -2062,8 +2111,8 @@ public final class CheckIndex implements Closeable {
                 Impacts impacts = impactsEnum.getImpacts();
                 checkImpacts(impacts, doc);
                 max = impacts.getDocIdUpTo(0);
-                List<Impact> impacts0 = impacts.getImpacts(0);
-                maxFreq = impacts0.get(impacts0.size() - 1).freq;
+                FreqAndNormBuffer impacts0 = impacts.getImpacts(0);
+                maxFreq = impacts0.freqs[impacts0.size - 1];
               }
               if (impactsEnum.freq() > maxFreq) {
                 throw new CheckIndexException(
@@ -2109,8 +2158,8 @@ public final class CheckIndex implements Closeable {
               maxFreq = Integer.MAX_VALUE;
               for (int impactsLevel = 0; impactsLevel < impacts.numLevels(); ++impactsLevel) {
                 if (impacts.getDocIdUpTo(impactsLevel) >= max) {
-                  List<Impact> perLevelImpacts = impacts.getImpacts(impactsLevel);
-                  maxFreq = perLevelImpacts.get(perLevelImpacts.size() - 1).freq;
+                  FreqAndNormBuffer perLevelImpacts = impacts.getImpacts(impactsLevel);
+                  maxFreq = perLevelImpacts.freqs[perLevelImpacts.size - 1];
                   break;
                 }
               }
@@ -2151,8 +2200,8 @@ public final class CheckIndex implements Closeable {
               maxFreq = Integer.MAX_VALUE;
               for (int impactsLevel = 0; impactsLevel < impacts.numLevels(); ++impactsLevel) {
                 if (impacts.getDocIdUpTo(impactsLevel) >= max) {
-                  List<Impact> perLevelImpacts = impacts.getImpacts(impactsLevel);
-                  maxFreq = perLevelImpacts.get(perLevelImpacts.size() - 1).freq;
+                  FreqAndNormBuffer perLevelImpacts = impacts.getImpacts(impactsLevel);
+                  maxFreq = perLevelImpacts.freqs[perLevelImpacts.size - 1];
                   break;
                 }
               }
@@ -2533,51 +2582,80 @@ public final class CheckIndex implements Closeable {
     }
 
     for (int impactsLevel = 0; impactsLevel < numLevels; ++impactsLevel) {
-      List<Impact> perLevelImpacts = impacts.getImpacts(impactsLevel);
-      if (perLevelImpacts.isEmpty()) {
+      FreqAndNormBuffer perLevelImpacts = impacts.getImpacts(impactsLevel);
+      if (perLevelImpacts.size <= 0) {
         throw new CheckIndexException("Got empty list of impacts on level " + impactsLevel);
       }
-      Impact first = perLevelImpacts.get(0);
-      if (first.freq < 1) {
-        throw new CheckIndexException("First impact had a freq <= 0: " + first);
+      int firstFreq = perLevelImpacts.freqs[0];
+      long firstNorm = perLevelImpacts.norms[0];
+      if (perLevelImpacts.freqs[0] < 1) {
+        throw new CheckIndexException("First impact had a freq <= 0: " + firstFreq);
       }
-      if (first.norm == 0) {
-        throw new CheckIndexException("First impact had a norm == 0: " + first);
+      if (perLevelImpacts.norms[0] == 0) {
+        throw new CheckIndexException("First impact had a norm == 0: " + firstNorm);
       }
       // Impacts must be in increasing order of norm AND freq
-      Impact previous = first;
-      for (int i = 1; i < perLevelImpacts.size(); ++i) {
-        Impact impact = perLevelImpacts.get(i);
-        if (impact.freq <= previous.freq || Long.compareUnsigned(impact.norm, previous.norm) <= 0) {
+      int prevFreq = firstFreq;
+      long prevNorm = firstNorm;
+      for (int i = 1; i < perLevelImpacts.size; ++i) {
+        int freq = perLevelImpacts.freqs[i];
+        long norm = perLevelImpacts.norms[i];
+        if (freq <= prevFreq || Long.compareUnsigned(norm, prevNorm) <= 0) {
           throw new CheckIndexException(
-              "Impacts are not ordered or contain dups, got " + previous + " then " + impact);
+              "Impacts are not ordered or contain dups, got ("
+                  + prevFreq
+                  + ","
+                  + prevNorm
+                  + ") then ("
+                  + freq
+                  + ","
+                  + norm
+                  + ")");
         }
       }
       if (impactsLevel > 0) {
         // Make sure that impacts at level N trigger better scores than an impactsLevel N-1
-        Iterator<Impact> previousIt = impacts.getImpacts(impactsLevel - 1).iterator();
-        previous = previousIt.next();
-        Iterator<Impact> it = perLevelImpacts.iterator();
-        Impact impact = it.next();
-        while (previousIt.hasNext()) {
-          previous = previousIt.next();
-          if (previous.freq <= impact.freq
-              && Long.compareUnsigned(previous.norm, impact.norm) >= 0) {
+        int size = perLevelImpacts.size;
+        int[] freqs = ArrayUtil.copyOfSubArray(perLevelImpacts.freqs, 0, size);
+        long[] norms = ArrayUtil.copyOfSubArray(perLevelImpacts.norms, 0, size);
+
+        perLevelImpacts = impacts.getImpacts(impactsLevel - 1);
+        int prevSize = perLevelImpacts.size;
+        int[] prevFreqs = ArrayUtil.copyOfSubArray(perLevelImpacts.freqs, 0, prevSize);
+        long[] prevNorms = ArrayUtil.copyOfSubArray(perLevelImpacts.norms, 0, prevSize);
+
+        int prevIndex = 0;
+        int freq = freqs[0];
+        long norm = norms[0];
+        int index = 1;
+        while (prevIndex < prevSize) {
+          prevFreq = prevFreqs[prevIndex];
+          prevNorm = prevNorms[prevIndex];
+          prevIndex++;
+
+          if (prevFreq <= freq && Long.compareUnsigned(prevNorm, norm) >= 0) {
             // previous triggers a lower score than the current impact, all good
             continue;
           }
-          if (it.hasNext() == false) {
+          if (index >= size) {
             throw new CheckIndexException(
-                "Found impact "
-                    + previous
+                "Found impact ("
+                    + prevFreq
+                    + ","
+                    + prevNorm
+                    + ")"
                     + " on level "
                     + (impactsLevel - 1)
                     + " but no impact on level "
                     + impactsLevel
-                    + " triggers a better score: "
-                    + perLevelImpacts);
+                    + " triggers a better score: freqs="
+                    + Arrays.toString(freqs)
+                    + " norms="
+                    + Arrays.toString(norms));
           }
-          impact = it.next();
+          freq = freqs[index];
+          norm = norms[index];
+          index++;
         }
       }
     }
@@ -3034,7 +3112,11 @@ public final class CheckIndex implements Closeable {
         if (vectorsReaderSupportsSearch(codecReader, fieldInfo.name)) {
           codecReader
               .getVectorReader()
-              .search(fieldInfo.name, values.vectorValue(count), collector, null);
+              .search(
+                  fieldInfo.name,
+                  values.vectorValue(count),
+                  collector,
+                  AcceptDocs.fromLiveDocs(null, codecReader.maxDoc()));
           TopDocs docs = collector.topDocs();
           if (docs.scoreDocs.length == 0) {
             throw new CheckIndexException(
@@ -3082,7 +3164,11 @@ public final class CheckIndex implements Closeable {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
         codecReader
             .getVectorReader()
-            .search(fieldInfo.name, values.vectorValue(count), collector, null);
+            .search(
+                fieldInfo.name,
+                values.vectorValue(count),
+                collector,
+                AcceptDocs.fromLiveDocs(null, codecReader.maxDoc()));
         TopDocs docs = collector.topDocs();
         if (docs.scoreDocs.length == 0) {
           throw new CheckIndexException(
@@ -3502,7 +3588,7 @@ public final class CheckIndex implements Closeable {
       for (FieldInfo fieldInfo : reader.getFieldInfos()) {
         if (fieldInfo.getDocValuesType() != DocValuesType.NONE) {
           status.totalValueFields++;
-          checkDocValues(fieldInfo, dvReader, status);
+          checkDocValues(fieldInfo, reader.maxDoc(), dvReader, status);
         }
       }
 
@@ -3530,11 +3616,6 @@ public final class CheckIndex implements Closeable {
       }
     }
     return status;
-  }
-
-  @FunctionalInterface
-  private interface DocValuesIteratorSupplier {
-    DocValuesIterator get(FieldInfo fi) throws IOException;
   }
 
   private static void checkDocValueSkipper(FieldInfo fi, DocValuesSkipper skipper)
@@ -3625,13 +3706,13 @@ public final class CheckIndex implements Closeable {
     }
   }
 
-  private static void checkDVIterator(FieldInfo fi, DocValuesIteratorSupplier producer)
-      throws IOException {
+  private static void checkDVIterator(
+      FieldInfo fi, IOFunction<FieldInfo, DocValuesIterator> producer) throws IOException {
     String field = fi.name;
 
     // Check advance
-    DocValuesIterator it1 = producer.get(fi);
-    DocValuesIterator it2 = producer.get(fi);
+    DocValuesIterator it1 = producer.apply(fi);
+    DocValuesIterator it2 = producer.apply(fi);
     int i = 0;
     for (int doc = it1.nextDoc(); ; doc = it1.nextDoc()) {
 
@@ -3678,8 +3759,8 @@ public final class CheckIndex implements Closeable {
     }
 
     // Check advanceExact
-    it1 = producer.get(fi);
-    it2 = producer.get(fi);
+    it1 = producer.apply(fi);
+    it2 = producer.apply(fi);
     i = 0;
     int lastDoc = -1;
     for (int doc = it1.nextDoc(); doc != NO_MORE_DOCS; doc = it1.nextDoc()) {
@@ -3996,8 +4077,44 @@ public final class CheckIndex implements Closeable {
     }
   }
 
+  private static void checkBulkFetchNumericDocValues(
+      String fieldName, NumericDocValues ndv, NumericDocValues ndv2, int maxDoc)
+      throws IOException {
+
+    int[] docs = new int[16];
+    long[] values = new long[16];
+
+    for (int doc = -1; doc < maxDoc; ) {
+      int size = 0;
+      for (int j = 0; j < docs.length; ++j) {
+        doc += 1 + (j & 0x03);
+        if (doc >= maxDoc) {
+          break;
+        }
+        docs[size++] = doc;
+      }
+
+      long defaultValue = 42L;
+      ndv.longValues(size, docs, values, defaultValue);
+
+      for (int j = 0; j < size; ++j) {
+        long expected;
+        if (ndv2.advanceExact(docs[j])) {
+          expected = ndv2.longValue();
+        } else {
+          expected = defaultValue;
+        }
+        if (values[j] != expected) {
+          throw new CheckIndexException(
+              "#longValues reports different value: " + values[j] + " != " + expected);
+        }
+      }
+    }
+  }
+
   private static void checkDocValues(
-      FieldInfo fi, DocValuesProducer dvReader, DocValuesStatus status) throws Exception {
+      FieldInfo fi, int maxDoc, DocValuesProducer dvReader, DocValuesStatus status)
+      throws Exception {
     if (fi.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
       status.totalSkippingIndex++;
       checkDocValueSkipper(fi, dvReader.getSkipper(fi));
@@ -4028,6 +4145,8 @@ public final class CheckIndex implements Closeable {
         status.totalNumericFields++;
         checkDVIterator(fi, dvReader::getNumeric);
         checkNumericDocValues(fi.name, dvReader.getNumeric(fi), dvReader.getNumeric(fi));
+        checkBulkFetchNumericDocValues(
+            fi.name, dvReader.getNumeric(fi), dvReader.getNumeric(fi), maxDoc);
         break;
       case NONE:
       default:
