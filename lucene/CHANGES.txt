@@ -7,10 +7,10 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-* GITHUB#15113: Move long[] group varint methods to backward-codecs. Deprecated long[] group varint 
-  methods have been removed from core GroupVIntUtil and DataOutput classes and moved to backward-codecs 
-  module to prevent accidental usage in benchmarks while maintaining compatibility for legacy codecs. 
-  (Assistant)
+* GITHUB#15113: Move long[] group varint methods to backward-codecs. Deprecated long[] group varint
+  methods have been removed from core GroupVIntUtil and DataOutput classes and moved to backward-codecs
+  module to prevent accidental usage in benchmarks while maintaining compatibility for legacy codecs.
+  (Sakshi Chourasia)
 
 * GITHUB#11023: Removing deprecated parameters from CheckIndex. (Jakub Slowinski)
 
