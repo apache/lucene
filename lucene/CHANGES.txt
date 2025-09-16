@@ -33,6 +33,8 @@ API Changes
 
 * GITHUB#15131: Restrict visibility of TieredMergePolicy.score() API (Trevor McCulloch)
 
+* GITHUB#15187: Restrict visibility of PerFieldKnnVectorsFormat.FieldsReader (Simon Cooper)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
