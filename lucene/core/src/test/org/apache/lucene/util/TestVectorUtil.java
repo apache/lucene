@@ -179,6 +179,14 @@ public class TestVectorUtil extends LuceneTestCase {
     return l2;
   }
 
+  private static float uint8L2(byte[] v) {
+    float l2 = 0;
+    for (int i = 0; i < v.length; i++) {
+      l2 += Byte.toUnsignedInt(v[i]) * Byte.toUnsignedInt(v[i]);
+    }
+    return l2;
+  }
+
   private static float[] randomVector() {
     return randomVector(random().nextInt(100) + 1);
   }
@@ -268,6 +276,33 @@ public class TestVectorUtil extends LuceneTestCase {
     byte[] v = randomVectorBytes();
     byte[] u = negative(v);
     assertEquals(4 * l2(v), VectorUtil.squareDistance(u, v), DELTA);
+  }
+
+  public void testBasicDotProductUint8() {
+    byte[] a = new byte[] {1, 2, 3};
+    byte[] b = new byte[] {-10, 0, 5};
+    assertEquals(261, VectorUtil.uint8DotProduct(a, b), 0);
+
+    byte[] min = new byte[] {-128, -128};
+    byte[] max = new byte[] {127, 127};
+    assertEquals(32512, VectorUtil.uint8DotProduct(min, max), DELTA);
+  }
+
+  public void testSelfDotProductUint8() {
+    // the dot product of a vector with itself is equal to the sum of the squares of its components
+    byte[] v = randomVectorBytes();
+    assertEquals(uint8L2(v), VectorUtil.uint8DotProduct(v, v), DELTA);
+  }
+
+  public void testSelfSquareDistanceUint8() {
+    // the l2 distance of a vector with itself is zero
+    byte[] v = randomVectorBytes();
+    assertEquals(0, VectorUtil.uint8SquareDistance(v, v), DELTA);
+  }
+
+  public void testBasicSquareDistanceUint8() {
+    assertEquals(
+        64524, VectorUtil.uint8SquareDistance(new byte[] {1, 2, 3}, new byte[] {-1, 0, 5}), 0);
   }
 
   public void testBasicCosineBytes() {

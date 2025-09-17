@@ -19,11 +19,9 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
-import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.ImpactsSource;
@@ -203,21 +201,25 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
     return new ImpactsSource() {
 
       static class SubIterator {
-        final Iterator<Impact> iterator;
-        Impact current;
+        final FreqAndNormBuffer buffer;
+        int index;
+        int freq;
+        long norm;
+        boolean exhausted;
 
-        SubIterator(List<Impact> impacts) {
-          this.iterator = impacts.iterator();
-          this.current = iterator.next();
+        SubIterator(FreqAndNormBuffer buffer) {
+          this.buffer = buffer;
+          this.index = 0;
+          next();
         }
 
-        boolean next() {
-          if (iterator.hasNext() == false) {
-            current = null;
-            return false;
+        void next() {
+          if (index >= buffer.size) {
+            exhausted = true;
           } else {
-            current = iterator.next();
-            return true;
+            freq = buffer.freqs[index];
+            norm = buffer.norms[index];
+            index++;
           }
         }
       }
@@ -230,6 +232,12 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
         }
         final Impacts lead = impacts[leadIndex];
         return new Impacts() {
+
+          private final FreqAndNormBuffer mergedImpacts = new FreqAndNormBuffer();
+
+          {
+            mergedImpacts.growNoCopy(1);
+          }
 
           @Override
           public int numLevels() {
@@ -257,15 +265,15 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
           }
 
           @Override
-          public List<Impact> getImpacts(int level) {
+          public FreqAndNormBuffer getImpacts(int level) {
             final int docIdUpTo = getDocIdUpTo(level);
 
             PriorityQueue<SubIterator> pq =
                 PriorityQueue.usingComparator(
-                    impacts.length, Comparator.comparingInt(si -> si.current.freq));
+                    impacts.length, Comparator.comparingInt(si -> si.freq));
 
             boolean hasImpacts = false;
-            List<Impact> onlyImpactList = null;
+            FreqAndNormBuffer onlyImpactList = null;
             List<SubIterator> subIterators = new ArrayList<>(impacts.length);
             for (int i = 0; i < impacts.length; ++i) {
               int impactsLevel = getLevel(impacts[i], docIdUpTo);
@@ -274,9 +282,8 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
                 continue;
               }
 
-              List<Impact> impactList = impacts[i].getImpacts(impactsLevel);
-              Impact firstImpact = impactList.get(0);
-              if (firstImpact.freq == Integer.MAX_VALUE && firstImpact.norm == 1L) {
+              FreqAndNormBuffer impactList = impacts[i].getImpacts(impactsLevel);
+              if (impactList.freqs[0] == Integer.MAX_VALUE && impactList.norms[0] == 1L) {
                 // Dummy impacts, ignore it too.
                 continue;
               }
@@ -292,7 +299,10 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
             }
 
             if (hasImpacts == false) {
-              return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
+              mergedImpacts.freqs[0] = Integer.MAX_VALUE;
+              mergedImpacts.norms[0] = 1L;
+              mergedImpacts.size = 1;
+              return mergedImpacts;
             } else if (onlyImpactList != null) {
               return onlyImpactList;
             }
@@ -307,39 +317,41 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
             // the competitive impact consists of the lowest freq among all entries of
             // the PQ (the top) and the highest norm (tracked separately).
             pq.addAll(subIterators);
-            List<Impact> mergedImpacts = new ArrayList<>();
+            mergedImpacts.size = 0;
             SubIterator top = pq.top();
-            int currentFreq = top.current.freq;
+            int currentFreq = top.freq;
             long currentNorm = 0;
             for (SubIterator it : pq) {
-              if (Long.compareUnsigned(it.current.norm, currentNorm) > 0) {
-                currentNorm = it.current.norm;
+              if (Long.compareUnsigned(it.norm, currentNorm) > 0) {
+                currentNorm = it.norm;
               }
             }
 
             outer:
             while (true) {
-              if (mergedImpacts.size() > 0
-                  && mergedImpacts.get(mergedImpacts.size() - 1).norm == currentNorm) {
-                mergedImpacts.get(mergedImpacts.size() - 1).freq = currentFreq;
+
+              if (mergedImpacts.size > 0
+                  && mergedImpacts.norms[mergedImpacts.size - 1] == currentNorm) {
+                mergedImpacts.freqs[mergedImpacts.size - 1] = currentFreq;
               } else {
-                mergedImpacts.add(new Impact(currentFreq, currentNorm));
+                mergedImpacts.add(currentFreq, currentNorm);
               }
 
               do {
-                if (top.next() == false) {
+                top.next();
+                if (top.exhausted) {
                   // At least one clause doesn't have any more documents below the current norm,
                   // so we can safely ignore further clauses. The only reason why they have more
                   // impacts is because they cover more documents that we are not interested in.
                   break outer;
                 }
-                if (Long.compareUnsigned(top.current.norm, currentNorm) > 0) {
-                  currentNorm = top.current.norm;
+                if (Long.compareUnsigned(top.norm, currentNorm) > 0) {
+                  currentNorm = top.norm;
                 }
                 top = pq.updateTop();
-              } while (top.current.freq == currentFreq);
+              } while (top.freq == currentFreq);
 
-              currentFreq = top.current.freq;
+              currentFreq = top.freq;
             }
 
             return mergedImpacts;

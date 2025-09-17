@@ -723,9 +723,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
                       while (System.nanoTime() < deadline && p.isAlive()) {
                         try {
                           pause(250);
-                        } catch (
-                            @SuppressWarnings("unused")
-                            InterruptedException e) {
+                        } catch (InterruptedException _) {
                           // If we do get interrupted, it's likely we're being cleaned up. Do
                           // proceed immediately then.
                           break;
@@ -1133,9 +1131,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
                     "version=" + version + " oldHitCount=" + oldHitCount + " hitCount=" + hitCount);
               }
             }
-          } catch (
-              @SuppressWarnings("unused")
-              IOException ioe) {
+          } catch (IOException _) {
             // message("top: searcher: ignore exc talking to node " + node + ": " + ioe);
             // ioe.printStackTrace(System.out);
             IOUtils.closeWhileHandlingException(c);
@@ -1199,9 +1195,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
                 stop.set(true);
                 fail(failMessage);
               }
-            } catch (
-                @SuppressWarnings("unused")
-                IOException ioe) {
+            } catch (IOException _) {
               // message("top: searcher: ignore exc talking to node " + node + ": " + ioe);
               // throw new RuntimeException(ioe);
               // ioe.printStackTrace(System.out);
@@ -1302,18 +1296,14 @@ public class TestStressNRTReplication extends LuceneTestCase {
               curPrimary.addOrUpdateDocument(c, doc, false);
               transLog.addDocument(idString, doc);
             }
-          } catch (
-              @SuppressWarnings("unused")
-              IOException se) {
+          } catch (IOException _) {
             // Assume primary crashed
             if (c != null) {
               message("top: indexer lost connection to primary");
             }
             try {
               c.close();
-            } catch (
-                @SuppressWarnings("unused")
-                Throwable t) {
+            } catch (Throwable _) {
             }
             curPrimary = null;
             c = null;
@@ -1335,16 +1325,12 @@ public class TestStressNRTReplication extends LuceneTestCase {
             c.out.writeByte(SimplePrimaryNode.CMD_INDEXING_DONE);
             c.flush();
             c.in.readByte();
-          } catch (
-              @SuppressWarnings("unused")
-              IOException se) {
+          } catch (IOException _) {
             // Assume primary crashed
             message("top: indexer lost connection to primary");
             try {
               c.close();
-            } catch (
-                @SuppressWarnings("unused")
-                Throwable t) {
+            } catch (Throwable _) {
             }
             curPrimary = null;
             c = null;

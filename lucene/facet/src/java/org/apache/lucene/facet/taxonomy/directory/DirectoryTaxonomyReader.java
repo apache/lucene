@@ -683,9 +683,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
           continue;
         }
         sb.append(i).append(": ").append(category).append("\n");
-      } catch (
-          @SuppressWarnings("unused")
-          IOException e) {
+      } catch (IOException _) {
         sb.append(i).append(": EXCEPTION!! \n");
       }
     }

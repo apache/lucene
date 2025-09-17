@@ -140,9 +140,7 @@ public final class VirtualMethod<C> {
         try {
           clazz.getDeclaredMethod(method, parameters);
           overridden = true;
-        } catch (
-            @SuppressWarnings("unused")
-            NoSuchMethodException nsme) {
+        } catch (NoSuchMethodException _) {
         }
       }
 

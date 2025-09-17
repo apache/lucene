@@ -181,6 +181,9 @@ final class HistogramCollector implements Collector {
     private final int maxBuckets;
     private final LongIntHashMap counts;
 
+    private final int[] docBuffer = new int[64];
+    private final long[] valueBuffer = new long[docBuffer.length];
+
     HistogramNaiveSingleValuedLeafCollector(
         NumericDocValues values, long bucketWidth, int maxBuckets, LongIntHashMap counts) {
       this.values = values;
@@ -193,13 +196,40 @@ final class HistogramCollector implements Collector {
     public void setScorer(Scorable scorer) throws IOException {}
 
     @Override
+    public void collect(DocIdStream stream) throws IOException {
+      // Optimize bulk retrieval of doc values
+      for (int count = stream.intoArray(docBuffer);
+          count != 0;
+          count = stream.intoArray(docBuffer)) {
+        int firstDoc = docBuffer[0];
+        int lastDoc = docBuffer[count - 1];
+
+        if (values.advanceExact(firstDoc) && values.docIDRunEnd() > lastDoc) {
+          // This guarantees that all docs in docBuffer have a value.
+          values.longValues(count, docBuffer, valueBuffer, 0L);
+          for (int i = 0; i < count; ++i) {
+            collectValue(valueBuffer[i]);
+          }
+        } else {
+          // Delegate to #collect to handle docs with missing values
+          for (int i = 0; i < count; ++i) {
+            collect(docBuffer[i]);
+          }
+        }
+      }
+    }
+
+    @Override
     public void collect(int doc) throws IOException {
       if (values.advanceExact(doc)) {
-        final long value = values.longValue();
-        final long bucket = Math.floorDiv(value, bucketWidth);
-        counts.addTo(bucket, 1);
-        checkMaxBuckets(counts.size(), maxBuckets);
+        collectValue(values.longValue());
       }
+    }
+
+    private void collectValue(long value) {
+      final long bucket = Math.floorDiv(value, bucketWidth);
+      counts.addTo(bucket, 1);
+      checkMaxBuckets(counts.size(), maxBuckets);
     }
   }
 

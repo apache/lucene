@@ -133,9 +133,7 @@ public class MMapDirectory extends FSDirectory {
           if (IndexFileNames.parseGeneration(filename) > 0) {
             groupKey += "-g";
           }
-        } catch (
-            @SuppressWarnings("unused")
-            NumberFormatException unused) {
+        } catch (NumberFormatException _) {
           // does not confirm to the generation syntax, or trash
         }
         return Optional.of(groupKey);
@@ -494,7 +492,7 @@ public class MMapDirectory extends FSDirectory {
       if (str != null) {
         ret = Integer.parseInt(str);
       }
-    } catch (@SuppressWarnings("unused") NumberFormatException | SecurityException ignored) {
+    } catch (NumberFormatException | SecurityException _) {
       Logger.getLogger(MMapDirectory.class.getName())
           .warning(
               "Cannot read sysprop "

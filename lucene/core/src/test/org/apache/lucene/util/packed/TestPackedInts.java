@@ -75,8 +75,17 @@ public class TestPackedInts extends LuceneTestCase {
     assertEquals(61, PackedInts.bitsRequired(0x1FFFFFFFFFFFFFFFL));
     assertEquals(62, PackedInts.bitsRequired(0x3FFFFFFFFFFFFFFFL));
     assertEquals(63, PackedInts.bitsRequired(0x7FFFFFFFFFFFFFFFL));
-    assertEquals(64, PackedInts.unsignedBitsRequired(-1));
+    assertEquals(64, PackedInts.unsignedBitsRequired(-1L));
     assertEquals(64, PackedInts.unsignedBitsRequired(Long.MIN_VALUE));
+    assertEquals(1, PackedInts.bitsRequired(0L));
+  }
+
+  public void testBitsRequiredInt() {
+    assertEquals(29, PackedInts.bitsRequired((int) Math.pow(2, 29) - 1));
+    assertEquals(30, PackedInts.bitsRequired(0x3FFFFFFF));
+    assertEquals(31, PackedInts.bitsRequired(0x7FFFFFFF));
+    assertEquals(32, PackedInts.unsignedBitsRequired(-1));
+    assertEquals(32, PackedInts.unsignedBitsRequired(Integer.MIN_VALUE));
     assertEquals(1, PackedInts.bitsRequired(0));
   }
 
@@ -433,9 +442,7 @@ public class TestPackedInts extends LuceneTestCase {
     Packed64 p64 = null;
     try {
       p64 = new Packed64(INDEX, BITS);
-    } catch (
-        @SuppressWarnings("unused")
-        OutOfMemoryError oome) {
+    } catch (OutOfMemoryError _) {
       // This can easily happen: we're allocating a
       // long[] that needs 256-273 MB.  Heap is 512 MB,
       // but not all of that is available for large
@@ -454,9 +461,7 @@ public class TestPackedInts extends LuceneTestCase {
     Packed64SingleBlock p64sb = null;
     try {
       p64sb = Packed64SingleBlock.create(INDEX, BITS);
-    } catch (
-        @SuppressWarnings("unused")
-        OutOfMemoryError oome) {
+    } catch (OutOfMemoryError _) {
       // Ignore: see comment above
     }
     if (p64sb != null) {

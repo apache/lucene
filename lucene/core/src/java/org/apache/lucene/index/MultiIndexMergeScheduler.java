@@ -188,9 +188,7 @@ class MultiIndexMergeScheduler extends MergeScheduler {
           if (toSync != null) {
             try {
               toSync.join();
-            } catch (
-                @SuppressWarnings("unused")
-                InterruptedException ie) {
+            } catch (InterruptedException _) {
               // ignore this Exception, we will retry until all threads are dead
               interrupted = true;
             }

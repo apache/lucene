@@ -37,7 +37,7 @@ import org.apache.lucene.util.StringHelper;
 
 public class TestMonitorPersistence extends MonitorTestBase {
 
-  private Path indexDirectory = createTempDir();
+  private final Path indexDirectory = createTempDir();
 
   protected Monitor newMonitorWithPersistence() throws IOException {
     return newMonitorWithPersistence(MonitorTestBase::parse);
@@ -117,7 +117,7 @@ public class TestMonitorPersistence extends MonitorTestBase {
     Function<String, Query> parser =
         queryStr -> {
           var query = (BooleanQuery) MonitorTestBase.parse(queryStr);
-          return incompatibleBooleanQuery(query);
+          return incompatibleBooleanQuery(query, 1);
         };
     try (Monitor monitor = newMonitorWithPersistence(parser)) {
       StringBuilder queryStr = new StringBuilder();
@@ -128,7 +128,7 @@ public class TestMonitorPersistence extends MonitorTestBase {
       var mq =
           new MonitorQuery(
               "1",
-              incompatibleBooleanQuery((BooleanQuery) parse(queryStr.toString())),
+              incompatibleBooleanQuery((BooleanQuery) parse(queryStr.toString()), 1),
               queryStr.toString(),
               Collections.emptyMap());
       monitor.register(mq);
@@ -136,7 +136,11 @@ public class TestMonitorPersistence extends MonitorTestBase {
       assertEquals(1, monitor.match(doc, QueryMatch.SIMPLE_MATCHER).getMatchCount());
     }
 
-    SimulateUpgradeQuery.HASHCODE_FACTOR = ~StringHelper.GOOD_FAST_HASH_SEED;
+    parser =
+        queryStr -> {
+          var query = (BooleanQuery) MonitorTestBase.parse(queryStr);
+          return incompatibleBooleanQuery(query, ~StringHelper.GOOD_FAST_HASH_SEED);
+        };
 
     try (Monitor monitor2 = newMonitorWithPersistence(parser)) {
       assertEquals(1, monitor2.getQueryCount());
@@ -147,14 +151,15 @@ public class TestMonitorPersistence extends MonitorTestBase {
   public void testReadingDismaxAfterHashOrderChange() throws IOException {
     Document doc = new Document();
     doc.add(newTextField(FIELD, "test", Field.Store.NO));
+    float tieBreakerMultiplier = 0.8f;
     Function<String, Query> parser =
         queryStr -> {
           var query =
               new DisjunctionMaxQuery(
                   ((BooleanQuery) MonitorTestBase.parse(queryStr))
                       .getClauses(BooleanClause.Occur.SHOULD),
-                  0.8f);
-          return incompatibleDisMaxQuery(query);
+                  tieBreakerMultiplier);
+          return incompatibleDisMaxQuery(query, 1);
         };
     try (Monitor monitor = newMonitorWithPersistence(parser)) {
       StringBuilder queryStr = new StringBuilder("(");
@@ -165,16 +170,24 @@ public class TestMonitorPersistence extends MonitorTestBase {
       var query =
           new DisjunctionMaxQuery(
               ((BooleanQuery) parse(queryStr.toString())).getClauses(BooleanClause.Occur.SHOULD),
-              0.8f);
+              tieBreakerMultiplier);
       var mq =
           new MonitorQuery(
-              "1", incompatibleDisMaxQuery(query), queryStr.toString(), Collections.emptyMap());
+              "1", incompatibleDisMaxQuery(query, 1), queryStr.toString(), Collections.emptyMap());
       monitor.register(mq);
       assertEquals(1, monitor.getQueryCount());
       assertEquals(1, monitor.match(doc, QueryMatch.SIMPLE_MATCHER).getMatchCount());
     }
 
-    SimulateUpgradeQuery.HASHCODE_FACTOR = ~StringHelper.GOOD_FAST_HASH_SEED;
+    parser =
+        queryStr -> {
+          var query =
+              new DisjunctionMaxQuery(
+                  ((BooleanQuery) MonitorTestBase.parse(queryStr))
+                      .getClauses(BooleanClause.Occur.SHOULD),
+                  tieBreakerMultiplier);
+          return incompatibleDisMaxQuery(query, ~StringHelper.GOOD_FAST_HASH_SEED);
+        };
 
     try (Monitor monitor2 = newMonitorWithPersistence(parser)) {
       assertEquals(1, monitor2.getQueryCount());
@@ -182,28 +195,32 @@ public class TestMonitorPersistence extends MonitorTestBase {
     }
   }
 
-  private static BooleanQuery incompatibleBooleanQuery(BooleanQuery query) {
+  private static BooleanQuery incompatibleBooleanQuery(BooleanQuery query, int hashcodeFactor) {
     var booleanBuilder = new BooleanQuery.Builder();
     for (var clause : query) {
-      booleanBuilder.add(new SimulateUpgradeQuery(clause.query()), BooleanClause.Occur.SHOULD);
+      booleanBuilder.add(
+          new SimulateUpgradeQuery(clause.query(), hashcodeFactor), BooleanClause.Occur.SHOULD);
     }
     return booleanBuilder.build();
   }
 
-  private static DisjunctionMaxQuery incompatibleDisMaxQuery(DisjunctionMaxQuery query) {
+  private static DisjunctionMaxQuery incompatibleDisMaxQuery(
+      DisjunctionMaxQuery query, int hashcodeFactor) {
     return new DisjunctionMaxQuery(
-        query.getDisjuncts().stream().map(SimulateUpgradeQuery::new).toList(),
+        query.getDisjuncts().stream()
+            .map(q -> new SimulateUpgradeQuery(q, hashcodeFactor))
+            .toList(),
         query.getTieBreakerMultiplier());
   }
 
   private static final class SimulateUpgradeQuery extends Query {
 
-    private static volatile int HASHCODE_FACTOR = 1;
-
     private final Query innerQuery;
+    private final int hashcodeFactor;
 
-    private SimulateUpgradeQuery(Query innerQuery) {
+    private SimulateUpgradeQuery(Query innerQuery, int hashcodeFactor) {
       this.innerQuery = innerQuery;
+      this.hashcodeFactor = hashcodeFactor;
     }
 
     @Override
@@ -235,7 +252,7 @@ public class TestMonitorPersistence extends MonitorTestBase {
 
     @Override
     public int hashCode() {
-      return innerQuery.hashCode() * HASHCODE_FACTOR;
+      return innerQuery.hashCode() * hashcodeFactor;
     }
   }
 }

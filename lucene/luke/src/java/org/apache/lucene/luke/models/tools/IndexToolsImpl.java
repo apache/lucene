@@ -191,9 +191,7 @@ public final class IndexToolsImpl extends LukeModel implements IndexTools {
       if (writer != null) {
         try {
           writer.close();
-        } catch (
-            @SuppressWarnings("unused")
-            IOException e) {
+        } catch (IOException _) {
         }
       }
     }

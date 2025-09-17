@@ -775,4 +775,48 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
 
     assertEquals(expected, actual);
   }
+
+  public void testIntoArray() throws Exception {
+    for (int outerIter = 0; outerIter < 100; outerIter++) {
+      int numBits = TestUtil.nextInt(random(), 10, 1_000);
+      int numSetBits = TestUtil.nextInt(random(), 0, numBits);
+
+      FixedBitSet bitSet = new FixedBitSet(numBits);
+      while (bitSet.cardinality() < numSetBits) {
+        bitSet.set(random().nextInt(bitSet.length()));
+      }
+
+      for (int innerIter = 0; innerIter < 100; ++innerIter) {}
+
+      int[] array = new int[TestUtil.nextInt(random(), 0, numSetBits + 10)];
+      int from, to;
+      if (random().nextBoolean()) {
+        from = 0;
+        to = bitSet.length();
+      } else {
+        from = random().nextInt(bitSet.length());
+        to = from + random().nextInt(bitSet.length() - from);
+      }
+
+      int base = random().nextInt(1000);
+      int size = bitSet.intoArray(from, to, base, array);
+
+      if (size < array.length) {
+        // All set bits should have been copied
+        assertEquals(bitSet.cardinality(from, to), size);
+      }
+
+      int[] index = new int[] {0};
+      bitSet.forEach(
+          from,
+          to,
+          base,
+          bit -> {
+            if (index[0] < array.length) {
+              assertEquals(bit, array[index[0]++]);
+            }
+          });
+      assertEquals(size, index[0]);
+    }
+  }
 }

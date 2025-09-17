@@ -130,18 +130,25 @@ public class TieredMergePolicy extends MergePolicy {
   /**
    * Sets the maximum percentage of doc id space taken by deleted docs. The denominator includes
    * both active and deleted documents. Lower values make the index more space efficient at the
-   * expense of increased CPU and I/O activity. Values must be between 5 and 50. Default value is
+   * expense of increased CPU and I/O activity. Values must be between 0 and 50. Default value is
    * 20.
    *
    * <p>When the maximum delete percentage is lowered, the indexing thread will call for merges more
    * often, meaning that write amplification factor will be increased. Write amplification factor
    * measures the number of times each document in the index is written. A higher write
    * amplification factor will lead to higher CPU and I/O activity as indicated above.
+   *
+   * <p>Values below 5% can lead to exceptionally high merge cost where indexing will continuously
+   * merge nearly all segments, and select newly merged segments immediately for merging again,
+   * often forcing degenerate merge selection like singleton merges. If you venture into this dark
+   * forest, consider limiting the maximum number of concurrent merges and threads (see {@link
+   * ConcurrentMergeScheduler#setMaxMergesAndThreads}) as a coarse attempt to bound the otherwise
+   * pathological indexing behavior.
    */
   public TieredMergePolicy setDeletesPctAllowed(double v) {
-    if (v < 5 || v > 50) {
+    if (v <= 0 || v > 50) {
       throw new IllegalArgumentException(
-          "indexPctDeletedTarget must be >= 5.0 and <= 50 (got " + v + ")");
+          "indexPctDeletedTarget must be > 0 and <= 50 (got " + v + ")");
     }
     deletesPctAllowed = v;
     return this;
@@ -256,26 +263,26 @@ public class TieredMergePolicy extends MergePolicy {
     return targetSearchConcurrency;
   }
 
-  private static class SegmentSizeAndDocs {
-    private final SegmentCommitInfo segInfo;
-    /// Size of the segment in bytes, pro-rated by the number of live documents.
-    private final long sizeInBytes;
-    private final int delCount;
-    private final int maxDoc;
-    private final String name;
-
-    SegmentSizeAndDocs(SegmentCommitInfo info, final long sizeInBytes, final int segDelCount)
-        throws IOException {
-      segInfo = info;
-      this.name = info.info.name;
-      this.sizeInBytes = sizeInBytes;
-      this.delCount = segDelCount;
-      this.maxDoc = info.info.maxDoc();
+  /**
+   * Segment summary -- size and doc count -- for use when selecting merges.
+   *
+   * @param segInfo segment this wraps
+   * @param sizeInBytes size of all segment files in bytes
+   * @param delCount number of deleted documents in this segment
+   * @param maxDoc maxDoc in this segment
+   * @param name name of the segment
+   */
+  record SegmentSizeAndDocs(
+      SegmentCommitInfo segInfo, long sizeInBytes, int delCount, int maxDoc, String name) {
+    /** Creates a new SegmentSizeAndDocs from an info, the byte size and deleted doc count */
+    public SegmentSizeAndDocs(
+        SegmentCommitInfo info, final long sizeInBytes, final int segDelCount) {
+      this(info, sizeInBytes, segDelCount, info.info.maxDoc(), info.info.name);
     }
   }
 
   /** Holds score and explanation for a single candidate merge. */
-  protected abstract static class MergeScore {
+  abstract static class MergeScore {
     /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
     protected MergeScore() {}
 
@@ -675,8 +682,8 @@ public class TieredMergePolicy extends MergePolicy {
     }
   }
 
-  /** Expert: scores one merge; subclasses can override. */
-  protected MergeScore score(
+  /** Expert: scores one merge */
+  MergeScore score(
       List<SegmentCommitInfo> candidate,
       boolean hitTooLarge,
       Map<SegmentCommitInfo, SegmentSizeAndDocs> segmentsSizes)
