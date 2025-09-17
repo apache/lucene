@@ -168,7 +168,7 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
         switch (scalarEncoding) {
           case UNSIGNED_BYTE -> VectorUtil.uint8DotProduct(quantizedQuery, quantizedDoc);
           case SEVEN_BIT -> VectorUtil.dotProduct(quantizedQuery, quantizedDoc);
-          case PACKED_NIBBLE -> VectorUtil.int4DotProductPacked(quantizedQuery, quantizedDoc);
+          case PACKED_NIBBLE -> VectorUtil.int4DotProductSinglePacked(quantizedQuery, quantizedDoc);
         };
     OptimizedScalarQuantizer.QuantizationResult indexCorrections =
         targetVectors.getCorrectiveTerms(targetOrd);
