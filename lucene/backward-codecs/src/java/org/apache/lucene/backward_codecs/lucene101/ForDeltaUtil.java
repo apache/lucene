@@ -104,9 +104,10 @@ public final class ForDeltaUtil {
   }
 
   private static void prefixSum32(int[] arr, int base) {
-    arr[0] += base;
-    for (int i = 1; i < BLOCK_SIZE; ++i) {
-      arr[i] += arr[i - 1];
+    int sum = base;
+    for (int i = 0; i < BLOCK_SIZE; ++i) {
+      sum += arr[i];
+      arr[i] = sum;
     }
   }
 

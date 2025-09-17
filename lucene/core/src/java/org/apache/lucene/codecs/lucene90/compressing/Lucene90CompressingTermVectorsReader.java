@@ -98,9 +98,12 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
   private final long numDirtyDocs; // cumulative number of docs in incomplete chunks
   private final long maxPointer; // end of the data section
   private BlockState blockState = new BlockState(-1, -1, 0);
-  // Cache of recently prefetched block IDs. This helps reduce chances of prefetching the same block
-  // multiple times, which is otherwise likely due to index sorting or recursive graph bisection
-  // clustering similar documents together. NOTE: this cache must be small since it's fully scanned.
+  // Cache of recently prefetched block IDs. This helps reduce chances of
+  // prefetching the same block
+  // multiple times, which is otherwise likely due to index sorting or recursive
+  // graph bisection
+  // clustering similar documents together. NOTE: this cache must be small since
+  // it's fully scanned.
   private final long[] prefetchedBlockIDCache;
   private int prefetchedBlockIDCacheIndex;
 
@@ -114,8 +117,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     this.decompressor = reader.decompressor.clone();
     this.chunkSize = reader.chunkSize;
     this.numDocs = reader.numDocs;
-    this.reader =
-        new BlockPackedReaderIterator(vectorsStream, packedIntsVersion, PACKED_BLOCK_SIZE, 0);
+    this.reader = new BlockPackedReaderIterator(vectorsStream, packedIntsVersion, PACKED_BLOCK_SIZE, 0);
     this.version = reader.version;
     this.numChunks = reader.numChunks;
     this.numDirtyChunks = reader.numDirtyChunks;
@@ -144,18 +146,13 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     ChecksumIndexInput metaIn = null;
     try {
       // Open the data file
-      final String vectorsStreamFN =
-          IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_EXTENSION);
-      vectorsStream =
-          d.openInput(vectorsStreamFN, context.withHints(FileTypeHint.DATA, DataAccessHint.RANDOM));
-      version =
-          CodecUtil.checkIndexHeader(
-              vectorsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);
-      assert CodecUtil.indexHeaderLength(formatName, segmentSuffix)
-          == vectorsStream.getFilePointer();
+      final String vectorsStreamFN = IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_EXTENSION);
+      vectorsStream = d.openInput(vectorsStreamFN, context.withHints(FileTypeHint.DATA, DataAccessHint.RANDOM));
+      version = CodecUtil.checkIndexHeader(
+          vectorsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);
+      assert CodecUtil.indexHeaderLength(formatName, segmentSuffix) == vectorsStream.getFilePointer();
 
-      final String metaStreamFN =
-          IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_META_EXTENSION);
+      final String metaStreamFN = IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_META_EXTENSION);
       metaIn = d.openChecksumInput(metaStreamFN);
       CodecUtil.checkIndexHeader(
           metaIn,
@@ -169,21 +166,22 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       chunkSize = metaIn.readVInt();
 
       // NOTE: data file is too costly to verify checksum against all the bytes on open,
-      // but for now we at least verify proper structure of the checksum footer: which looks
-      // for FOOTER_MAGIC + algorithmID. This is cheap and can detect some forms of corruption
+      // but for now we at least verify proper structure of the checksum footer: which
+      // looks
+      // for FOOTER_MAGIC + algorithmID. This is cheap and can detect some forms of
+      // corruption
       // such as file truncation.
       CodecUtil.retrieveChecksum(vectorsStream);
 
-      FieldsIndexReader fieldsIndexReader =
-          new FieldsIndexReader(
-              d,
-              si.name,
-              segmentSuffix,
-              VECTORS_INDEX_EXTENSION,
-              VECTORS_INDEX_CODEC_NAME,
-              si.getId(),
-              metaIn,
-              context);
+      FieldsIndexReader fieldsIndexReader = new FieldsIndexReader(
+          d,
+          si.name,
+          segmentSuffix,
+          VECTORS_INDEX_EXTENSION,
+          VECTORS_INDEX_CODEC_NAME,
+          si.getId(),
+          metaIn,
+          context);
 
       this.indexReader = fieldsIndexReader;
       this.maxPointer = fieldsIndexReader.getMaxPointer();
@@ -218,8 +216,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       }
 
       decompressor = compressionMode.newDecompressor();
-      this.reader =
-          new BlockPackedReaderIterator(vectorsStream, packedIntsVersion, PACKED_BLOCK_SIZE, 0);
+      this.reader = new BlockPackedReaderIterator(vectorsStream, packedIntsVersion, PACKED_BLOCK_SIZE, 0);
 
       CodecUtil.checkFooter(metaIn, null);
       metaIn.close();
@@ -338,7 +335,8 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     return blockState.docBase <= docID && docID < blockState.docBase + blockState.chunkDocs;
   }
 
-  private record BlockState(long startPointer, int docBase, int chunkDocs) {}
+  private record BlockState(long startPointer, int docBase, int chunkDocs) {
+  }
 
   @Override
   public void prefetch(int docID) throws IOException {
@@ -418,14 +416,13 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
         totalDistinctFields += vectorsStream.readVInt();
       }
       ++totalDistinctFields;
-      final PackedInts.ReaderIterator it =
-          PackedInts.getReaderIteratorNoHeader(
-              vectorsStream,
-              PackedInts.Format.PACKED,
-              packedIntsVersion,
-              totalDistinctFields,
-              bitsPerFieldNum,
-              1);
+      final PackedInts.ReaderIterator it = PackedInts.getReaderIteratorNoHeader(
+          vectorsStream,
+          PackedInts.Format.PACKED,
+          packedIntsVersion,
+          totalDistinctFields,
+          bitsPerFieldNum,
+          1);
       fieldNums = new int[totalDistinctFields];
       for (int i = 0; i < totalDistinctFields; ++i) {
         fieldNums[i] = (int) it.next();
@@ -493,7 +490,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
         final int termCount = (int) numTerms.get(skip + i);
         final int[] fieldPrefixLengths = new int[termCount];
         prefixLengths[i] = fieldPrefixLengths;
-        for (int j = 0; j < termCount; ) {
+        for (int j = 0; j < termCount;) {
           final LongsRef next = reader.next(termCount - j);
           for (int k = 0; k < next.length; ++k) {
             fieldPrefixLengths[j++] = (int) next.longs[next.offset + k];
@@ -514,7 +511,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
         final int termCount = (int) numTerms.get(skip + i);
         final int[] fieldSuffixLengths = new int[termCount];
         suffixLengths[i] = fieldSuffixLengths;
-        for (int j = 0; j < termCount; ) {
+        for (int j = 0; j < termCount;) {
           final LongsRef next = reader.next(termCount - j);
           for (int k = 0; k < next.length; ++k) {
             fieldSuffixLengths[j++] = (int) next.longs[next.offset + k];
@@ -535,7 +532,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     final int[] termFreqs = new int[totalTerms];
     {
       reader.reset(vectorsStream, totalTerms);
-      for (int i = 0; i < totalTerms; ) {
+      for (int i = 0; i < totalTerms;) {
         final LongsRef next = reader.next(totalTerms - i);
         for (int k = 0; k < next.length; ++k) {
           termFreqs[i++] = 1 + (int) next.longs[next.offset + k];
@@ -566,16 +563,15 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     final int[][] positionIndex = positionIndex(skip, numFields, numTerms, termFreqs);
     final int[][] positions, startOffsets, lengths;
     if (totalPositions > 0) {
-      positions =
-          readPositions(
-              skip,
-              numFields,
-              flags,
-              numTerms,
-              termFreqs,
-              POSITIONS,
-              totalPositions,
-              positionIndex);
+      positions = readPositions(
+          skip,
+          numFields,
+          flags,
+          numTerms,
+          termFreqs,
+          POSITIONS,
+          totalPositions,
+          positionIndex);
     } else {
       positions = new int[numFields][];
     }
@@ -586,12 +582,10 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       for (int i = 0; i < charsPerTerm.length; ++i) {
         charsPerTerm[i] = Float.intBitsToFloat(vectorsStream.readInt());
       }
-      startOffsets =
-          readPositions(
-              skip, numFields, flags, numTerms, termFreqs, OFFSETS, totalOffsets, positionIndex);
-      lengths =
-          readPositions(
-              skip, numFields, flags, numTerms, termFreqs, OFFSETS, totalOffsets, positionIndex);
+      startOffsets = readPositions(
+          skip, numFields, flags, numTerms, termFreqs, OFFSETS, totalOffsets, positionIndex);
+      lengths = readPositions(
+          skip, numFields, flags, numTerms, termFreqs, OFFSETS, totalOffsets, positionIndex);
 
       for (int i = 0; i < numFields; ++i) {
         final int[] fStartOffsets = startOffsets[i];
@@ -608,11 +602,13 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
           final int[] fSuffixLengths = suffixLengths[i];
           final int[] fLengths = lengths[i];
           for (int j = 0, end = (int) numTerms.get(skip + i); j < end; ++j) {
-            // delta-decode start offsets and  patch lengths using term lengths
+            // delta-decode start offsets and patch lengths using term lengths
             final int termLength = fPrefixLengths[j] + fSuffixLengths[j];
             lengths[i][positionIndex[i][j]] += termLength;
+            int sum = fStartOffsets[positionIndex[i][j]];
             for (int k = positionIndex[i][j] + 1; k < positionIndex[i][j + 1]; ++k) {
-              fStartOffsets[k] += fStartOffsets[k - 1];
+              sum += fStartOffsets[k];
+              fStartOffsets[k] = sum;
               fLengths[k] += termLength;
             }
           }
@@ -629,8 +625,10 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
         if (fPositions != null) {
           for (int j = 0, end = (int) numTerms.get(skip + i); j < end; ++j) {
             // delta-decode start offsets
+            int sum = fPositions[fpositionIndex[j]];
             for (int k = fpositionIndex[j] + 1; k < fpositionIndex[j + 1]; ++k) {
-              fPositions[k] += fPositions[k - 1];
+              sum += fPositions[k];
+              fPositions[k] = sum;
             }
           }
         }
@@ -709,8 +707,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
         docLen + payloadLen,
         suffixBytes);
     suffixBytes.length = docLen;
-    final BytesRef payloadBytes =
-        new BytesRef(suffixBytes.bytes, suffixBytes.offset + docLen, payloadLen);
+    final BytesRef payloadBytes = new BytesRef(suffixBytes.bytes, suffixBytes.offset + docLen, payloadLen);
 
     final int[] fieldFlags = new int[numFields];
     for (int i = 0; i < numFields; ++i) {
@@ -812,7 +809,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
         final int totalFreq = positionIndex[i][termCount];
         final int[] fieldPositions = new int[totalFreq];
         positions[i] = fieldPositions;
-        for (int j = 0; j < totalFreq; ) {
+        for (int j = 0; j < totalFreq;) {
           final LongsRef nextPositions = reader.next(totalFreq - j);
           for (int k = 0; k < nextPositions.length; ++k) {
             fieldPositions[j++] = (int) nextPositions.longs[nextPositions.offset + k];
