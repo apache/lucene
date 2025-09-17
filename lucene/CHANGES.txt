@@ -25,6 +25,8 @@ New Features
 * GITHUB#15176: Add `[Float|Byte]VectorValues#rescorer(element[])` interface to allow optimized rescoring of vectors.
   (Ben Trent)
 
+* GITHUB#15169: Add codecs for 4 and 8 bit Optimized Scalar Quantization vectors (Trevor McCulloch)
+
 Improvements
 ---------------------
 # GITHUB#15148: Add support uint8 distance and allow 8 bit scalar quantization (Trevor McCulloch)
