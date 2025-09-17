@@ -98,12 +98,9 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
   private final long numDirtyDocs; // cumulative number of docs in incomplete chunks
   private final long maxPointer; // end of the data section
   private BlockState blockState = new BlockState(-1, -1, 0);
-  // Cache of recently prefetched block IDs. This helps reduce chances of
-  // prefetching the same block
-  // multiple times, which is otherwise likely due to index sorting or recursive
-  // graph bisection
-  // clustering similar documents together. NOTE: this cache must be small since
-  // it's fully scanned.
+  // Cache of recently prefetched block IDs. This helps reduce chances of prefetching the same block
+  // multiple times, which is otherwise likely due to index sorting or recursive graph bisection
+  // clustering similar documents together. NOTE: this cache must be small since it's fully scanned.
   private final long[] prefetchedBlockIDCache;
   private int prefetchedBlockIDCacheIndex;
 
@@ -172,10 +169,8 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       chunkSize = metaIn.readVInt();
 
       // NOTE: data file is too costly to verify checksum against all the bytes on open,
-      // but for now we at least verify proper structure of the checksum footer: which
-      // looks
-      // for FOOTER_MAGIC + algorithmID. This is cheap and can detect some forms of
-      // corruption
+      // but for now we at least verify proper structure of the checksum footer: which looks
+      // for FOOTER_MAGIC + algorithmID. This is cheap and can detect some forms of corruption
       // such as file truncation.
       CodecUtil.retrieveChecksum(vectorsStream);
 
