@@ -53,9 +53,6 @@ public class BuildOptionGroupsPlugin implements Plugin<Project> {
                             "hunspell.corpora",
                             "hunspell.dictionaries",
                             "hunspell.repo.path",
-                            "validation.owasp",
-                            "validation.owasp.apikey",
-                            "validation.owasp.threshold",
                             "tests.linedocsfile",
                             "tests.LUCENE_VERSION",
                             "tests.bwcdir"));

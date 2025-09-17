@@ -1,5 +1,4 @@
-import org.apache.lucene.gradle.plugins.misc.CheckEnvironmentPlugin
-import org.apache.lucene.gradle.plugins.spotless.GoogleJavaFormatPlugin
+import org.apache.lucene.gradle.plugins.licenses.CheckLicensesTask
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -27,15 +26,11 @@ plugins {
   id "lucene.root-project.setup"
   id "lucene.java-projects.conventions"
 
-  id "lucene.java.slowest-tests-at-end"
-  id "lucene.java.show-failed-tests-at-end"
   id "lucene.java.modules"
 
   id "lucene.validation.gradle-versions-cleanup"
   id "lucene.validation.error-prone"
   id "lucene.validation.jar-checks"
-  id "lucene.validation.rat-sources"
-  id "lucene.validation.owasp"
 
   id "lucene.publications.maven"
   id "lucene.publications.maven-to-nexus-releases"

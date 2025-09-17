@@ -50,8 +50,6 @@ opennlp = "2.5.5"
 procfork = "1.0.6"
 # unit tests
 randomizedtesting = "2.8.3"
-# license checks
-rat = "0.15"
 # spatial-extras/ support
 s2-geometry = "1.0.0"
 # spatial-extras/ support
@@ -92,7 +90,6 @@ nekohtml = { module = "net.sourceforge.nekohtml:nekohtml", version.ref = "nekoht
 opennlp-tools = { module = "org.apache.opennlp:opennlp-tools", version.ref = "opennlp" }
 procfork = { module = "com.carrotsearch:procfork", version.ref = "procfork" }
 randomizedtesting-runner = { module = "com.carrotsearch.randomizedtesting:randomizedtesting-runner", version.ref = "randomizedtesting" }
-rat = { module = "org.apache.rat:apache-rat", version.ref = "rat" }
 s2-geometry = { module = "io.sgr:s2-geometry-library-java", version.ref = "s2-geometry" }
 spatial4j = { module = "org.locationtech.spatial4j:spatial4j", version.ref = "spatial4j" }
 xerces = { module = "xerces:xercesImpl", version.ref = "xerces" }
@@ -105,7 +102,6 @@ carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.1.0"
 errorprone = "net.ltgt.errorprone:4.3.0"
 forbiddenapis = "de.thetaphi.forbiddenapis:3.9"
 jacocolog = "org.barfuin.gradle.jacocolog:3.1.0"
-owasp-dependencycheck = "org.owasp.dependencycheck:12.1.3"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
 spotless = "com.diffplug.spotless:7.2.1"
 undercouch-download = "de.undercouch.download:5.6.0"

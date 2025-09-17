@@ -36,7 +36,6 @@ import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.invocation.Gradle;
-import org.gradle.api.plugins.ExtraPropertiesExtension;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.InputFile;
@@ -365,8 +364,9 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                       .getAsFile();
 
               task.getExtensions()
-                  .getByType(ExtraPropertiesExtension.class)
-                  .set("testOutputsDir", testOutputsDir);
+                  .create("testOutputsExtension", TestOutputsExtension.class)
+                  .getTestOutputsDir()
+                  .set(testOutputsDir);
 
               // LUCENE-9660: Make it possible to always rerun tests, even if they're incrementally
               // up-to-date.
@@ -511,6 +511,10 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                             testsTmpDir);
                   });
             });
+  }
+
+  public abstract static class TestOutputsExtension {
+    abstract DirectoryProperty getTestOutputsDir();
   }
 
   public abstract static class LoggingFileArgumentProvider implements CommandLineArgumentProvider {
