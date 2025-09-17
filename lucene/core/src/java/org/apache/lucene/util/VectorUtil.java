@@ -252,7 +252,7 @@ public final class VectorUtil {
   public static int int4DotProductSinglePacked(byte[] unpacked, byte[] packed) {
     if (packed.length != ((unpacked.length + 1) >> 1)) {
       throw new IllegalArgumentException(
-          "vector dimensions differ: " + unpacked.length + "!= 2 * " + packed.length);
+          "vector dimensions differ: " + unpacked.length + " != 2 * " + packed.length);
     }
     return IMPL.int4DotProductSinglePacked(unpacked, packed);
   }

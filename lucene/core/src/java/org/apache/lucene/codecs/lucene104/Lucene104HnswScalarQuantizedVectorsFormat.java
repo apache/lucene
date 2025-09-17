@@ -14,8 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.codecs.lucene104;
 
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
@@ -28,24 +27,22 @@ import java.util.concurrent.ExecutorService;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
-import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
- * Lucene 9.9 vector format, which encodes numeric vector values into an associated graph connecting
- * the documents having values. The graph is used to power HNSW search. The format consists of two
- * files, and uses {@link Lucene99ScalarQuantizedVectorsFormat} to store the actual vectors: For
- * details on graph storage and file extensions, see {@link Lucene99HnswVectorsFormat}.
- *
- * @lucene.experimental
+ * A vectors format that uses HNSW graph to store and search for vectors. But vectors are binary
+ * quantized using {@link Lucene104ScalarQuantizedVectorsFormat} before being stored in the graph.
  */
-@Deprecated
-public class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
+public class Lucene104HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
 
-  public static final String NAME = "Lucene99HnswScalarQuantizedVectorsFormat";
+  public static final String NAME = "Lucene104HnswBinaryQuantizedVectorsFormat";
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
@@ -61,24 +58,29 @@ public class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
   private final int beamWidth;
 
   /** The format for storing, reading, merging vectors on disk */
-  private final FlatVectorsFormat flatVectorsFormat;
+  private final Lucene104ScalarQuantizedVectorsFormat flatVectorsFormat;
 
   private final int numMergeWorkers;
   private final TaskExecutor mergeExec;
 
-  /** Constructs a format using default graph construction parameters with 7 bit quantization */
-  public Lucene99HnswScalarQuantizedVectorsFormat() {
-    this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, 7, false, null, null);
+  /** Constructs a format using default graph construction parameters */
+  public Lucene104HnswScalarQuantizedVectorsFormat() {
+    this(
+        ScalarEncoding.UNSIGNED_BYTE,
+        DEFAULT_MAX_CONN,
+        DEFAULT_BEAM_WIDTH,
+        DEFAULT_NUM_MERGE_WORKER,
+        null);
   }
 
   /**
-   * Constructs a format using the given graph construction parameters with 7 bit quantization
+   * Constructs a format using the given graph construction parameters.
    *
    * @param maxConn the maximum number of connections to a node in the HNSW graph
    * @param beamWidth the size of the queue maintained during graph construction.
    */
-  public Lucene99HnswScalarQuantizedVectorsFormat(int maxConn, int beamWidth) {
-    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, 7, false, null, null);
+  public Lucene104HnswScalarQuantizedVectorsFormat(int maxConn, int beamWidth) {
+    this(ScalarEncoding.UNSIGNED_BYTE, maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null);
   }
 
   /**
@@ -88,27 +90,17 @@ public class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
    * @param beamWidth the size of the queue maintained during graph construction.
    * @param numMergeWorkers number of workers (threads) that will be used when doing merge. If
    *     larger than 1, a non-null {@link ExecutorService} must be passed as mergeExec
-   * @param bits the number of bits to use for scalar quantization (must be 4 or 7)
-   * @param compress whether to compress the quantized vectors by another 50% when bits=4. If
-   *     `true`, pairs of (4 bit quantized) dimensions are packed into a single byte. This must be
-   *     `false` when bits=7. This provides a trade-off of 50% reduction in hot vector memory usage
-   *     during searching, at some decode speed penalty.
-   * @param confidenceInterval the confidenceInterval for scalar quantizing the vectors, when `null`
-   *     it is calculated based on the vector field dimensions. When `0`, the quantiles are
-   *     dynamically determined by sampling many confidence intervals and determining the most
-   *     accurate pair.
    * @param mergeExec the {@link ExecutorService} that will be used by ALL vector writers that are
    *     generated by this format to do the merge
    */
-  public Lucene99HnswScalarQuantizedVectorsFormat(
+  public Lucene104HnswScalarQuantizedVectorsFormat(
+      ScalarEncoding encoding,
       int maxConn,
       int beamWidth,
       int numMergeWorkers,
-      int bits,
-      boolean compress,
-      Float confidenceInterval,
       ExecutorService mergeExec) {
     super(NAME);
+    flatVectorsFormat = new Lucene104ScalarQuantizedVectorsFormat(encoding);
     if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
           "maxConn must be positive and less than or equal to "
@@ -135,8 +127,6 @@ public class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
     } else {
       this.mergeExec = null;
     }
-    this.flatVectorsFormat =
-        new Lucene99ScalarQuantizedVectorsFormat(confidenceInterval, bits, compress);
   }
 
   @Override
@@ -162,7 +152,7 @@ public class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public String toString() {
-    return "Lucene99HnswScalarQuantizedVectorsFormat(name=Lucene99HnswScalarQuantizedVectorsFormat, maxConn="
+    return "Lucene104HnswScalarQuantizedVectorsFormat(name=Lucene104HnswScalarQuantizedVectorsFormat, maxConn="
         + maxConn
         + ", beamWidth="
         + beamWidth
