@@ -51,7 +51,9 @@ public abstract class CheckLicensesTask extends DefaultTask {
           new LicenseFamily(
               "ASL",
               "Apache Software License 2.0",
-              fixedSubstring("http://www.apache.org/licenses/LICENSE-2.0")),
+              fixedSubstrings(
+                  "http://www.apache.org/licenses/LICENSE-2.0",
+                  "https://www.apache.org/licenses/LICENSE-2.0")),
           new LicenseFamily(
               "MIT",
               "The MIT License",
@@ -108,6 +110,9 @@ public abstract class CheckLicensesTask extends DefaultTask {
 
   @TaskAction
   public void run(InputChanges changes) throws IOException {
+    getLogger()
+        .info("Checking licenses {}", changes.isIncremental() ? "(incremental run)" : "(full run)");
+
     // load the current report (if any) into a sorted map
     File reportFile = getReportFile().getAsFile().get();
     TreeMap<String, String> report = readExistingReport(reportFile);
@@ -116,25 +121,31 @@ public abstract class CheckLicensesTask extends DefaultTask {
     List<File> missingLicense = new ArrayList<>();
     char[] scratch = new char[1024];
     StringBuilder buffer = new StringBuilder();
+    int count = 0;
     for (FileChange fc : changes.getFileChanges(getFiles())) {
+      count++;
       File file = fc.getFile();
       if (file.isDirectory()) {
         continue;
       }
 
-      LicenseFamily licenseFamily = detectLicense(file, buffer, scratch);
-      if (licenseFamily == null) {
-        missingLicense.add(file);
-      } else {
-        String key = toRootRelative(file);
+      String key = toRootRelative(file);
 
-        switch (fc.getChangeType()) {
-          case REMOVED -> report.remove(key);
-          case ADDED, MODIFIED -> report.put(key, licenseFamily.code);
-          default -> throw new IOException("Unexpected change type: " + fc.getChangeType());
+      switch (fc.getChangeType()) {
+        case REMOVED -> report.remove(key);
+        case ADDED, MODIFIED -> {
+          LicenseFamily licenseFamily = detectLicense(file, buffer, scratch);
+          if (licenseFamily == null) {
+            missingLicense.add(file);
+          } else {
+            report.put(key, licenseFamily.code);
+          }
         }
+        default -> throw new IOException("Unexpected change type: " + fc.getChangeType());
       }
     }
+
+    getLogger().info("Checked {} {}", count, count == 1 ? "file" : "files");
 
     if (!missingLicense.isEmpty()) {
       throw new GradleException(
@@ -156,6 +167,26 @@ public abstract class CheckLicensesTask extends DefaultTask {
       }
     }
     report.keySet().removeIf(k -> !current.contains(k));
+
+    var logger = getLogger();
+    if (logger.isInfoEnabled()) {
+      var counts =
+          report.entrySet().stream()
+              .collect(Collectors.groupingBy(Map.Entry::getValue, Collectors.counting()));
+      logger.info(
+          "License type counts:\n{}",
+          counts.entrySet().stream()
+              .sorted((a, b) -> Long.compare(b.getValue().longValue(), a.getValue().longValue()))
+              .map(
+                  e ->
+                      String.format(
+                          Locale.ROOT,
+                          "  - %s: %,d %s",
+                          e.getKey(),
+                          e.getValue(),
+                          e.getValue() == 1 ? "file" : "files"))
+              .collect(Collectors.joining("\n")));
+    }
 
     writeReport(report, reportFile);
   }
@@ -243,10 +274,6 @@ public abstract class CheckLicensesTask extends DefaultTask {
   /** Any of the provided substrings. */
   private static Predicate<String> fixedSubstrings(String... otherSubstrings) {
     return anyOf(Stream.of(otherSubstrings).map(CheckLicensesTask::fixedSubstring).toList());
-  }
-
-  private static Predicate<String> anyOf(Predicate<String>... list) {
-    return anyOf(List.of(list));
   }
 
   private static Predicate<String> anyOf(List<Predicate<String>> list) {

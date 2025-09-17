@@ -59,12 +59,3 @@ plugins {
 }
 
 description = 'Grandparent project for Apache Lucene Core'
-
-tasks.register("checkLicenses", CheckLicensesTask, {
-  reportFile = project.layout.buildDirectory.file("licenses-report.txt");
-
-  files.from(fileTree(".", {
-    include "**/*.java"
-    exclude "**/build/**"
-  }))
-})
