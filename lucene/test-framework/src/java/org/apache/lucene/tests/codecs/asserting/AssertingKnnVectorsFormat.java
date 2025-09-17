@@ -238,7 +238,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     public void close() throws IOException {
       delegate.close();
       delegate.close(); // impls should be able to handle multiple closes
-      assert finishMergeCount.get() <= 0 || mergeInstanceCount.get() == finishMergeCount.get();
+      assert mergeInstanceCount.get() == finishMergeCount.get();
     }
 
     @Override
