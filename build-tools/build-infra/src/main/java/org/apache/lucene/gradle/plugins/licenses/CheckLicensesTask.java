@@ -17,11 +17,20 @@
 
 package org.apache.lucene.gradle.plugins.licenses;
 
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -30,7 +39,13 @@ import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
-import org.gradle.api.tasks.*;
+import org.gradle.api.tasks.CacheableTask;
+import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.OutputFile;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
+import org.gradle.api.tasks.TaskAction;
 import org.gradle.work.FileChange;
 import org.gradle.work.Incremental;
 import org.gradle.work.InputChanges;
@@ -46,7 +61,7 @@ public abstract class CheckLicensesTask extends DefaultTask {
 
   private record LicenseFamily(String code, String name, Predicate<String> matcherPredicate) {}
 
-  private static List<LicenseFamily> luceneAcceptedLicenses =
+  static final List<LicenseFamily> LUCENE_ACCEPTED_LICENSES =
       List.of(
           new LicenseFamily(
               "ASL",
@@ -256,7 +271,7 @@ public abstract class CheckLicensesTask extends DefaultTask {
 
       String header = buffer.toString();
 
-      for (var licenseFamily : luceneAcceptedLicenses) {
+      for (var licenseFamily : LUCENE_ACCEPTED_LICENSES) {
         if (licenseFamily.matcherPredicate.test(header)) {
           return licenseFamily;
         }
@@ -277,6 +292,6 @@ public abstract class CheckLicensesTask extends DefaultTask {
   }
 
   private static Predicate<String> anyOf(List<Predicate<String>> list) {
-    return list.stream().reduce(v -> false, Predicate::or);
+    return list.stream().reduce(_ -> false, Predicate::or);
   }
 }
