@@ -117,7 +117,8 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     this.decompressor = reader.decompressor.clone();
     this.chunkSize = reader.chunkSize;
     this.numDocs = reader.numDocs;
-    this.reader = new BlockPackedReaderIterator(vectorsStream, packedIntsVersion, PACKED_BLOCK_SIZE, 0);
+    this.reader =
+        new BlockPackedReaderIterator(vectorsStream, packedIntsVersion, PACKED_BLOCK_SIZE, 0);
     this.version = reader.version;
     this.numChunks = reader.numChunks;
     this.numDirtyChunks = reader.numDirtyChunks;
@@ -146,13 +147,18 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     ChecksumIndexInput metaIn = null;
     try {
       // Open the data file
-      final String vectorsStreamFN = IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_EXTENSION);
-      vectorsStream = d.openInput(vectorsStreamFN, context.withHints(FileTypeHint.DATA, DataAccessHint.RANDOM));
-      version = CodecUtil.checkIndexHeader(
-          vectorsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);
-      assert CodecUtil.indexHeaderLength(formatName, segmentSuffix) == vectorsStream.getFilePointer();
+      final String vectorsStreamFN =
+          IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_EXTENSION);
+      vectorsStream =
+          d.openInput(vectorsStreamFN, context.withHints(FileTypeHint.DATA, DataAccessHint.RANDOM));
+      version =
+          CodecUtil.checkIndexHeader(
+              vectorsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);
+      assert CodecUtil.indexHeaderLength(formatName, segmentSuffix)
+          == vectorsStream.getFilePointer();
 
-      final String metaStreamFN = IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_META_EXTENSION);
+      final String metaStreamFN =
+          IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_META_EXTENSION);
       metaIn = d.openChecksumInput(metaStreamFN);
       CodecUtil.checkIndexHeader(
           metaIn,
@@ -173,15 +179,16 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       // such as file truncation.
       CodecUtil.retrieveChecksum(vectorsStream);
 
-      FieldsIndexReader fieldsIndexReader = new FieldsIndexReader(
-          d,
-          si.name,
-          segmentSuffix,
-          VECTORS_INDEX_EXTENSION,
-          VECTORS_INDEX_CODEC_NAME,
-          si.getId(),
-          metaIn,
-          context);
+      FieldsIndexReader fieldsIndexReader =
+          new FieldsIndexReader(
+              d,
+              si.name,
+              segmentSuffix,
+              VECTORS_INDEX_EXTENSION,
+              VECTORS_INDEX_CODEC_NAME,
+              si.getId(),
+              metaIn,
+              context);
 
       this.indexReader = fieldsIndexReader;
       this.maxPointer = fieldsIndexReader.getMaxPointer();
@@ -216,7 +223,8 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       }
 
       decompressor = compressionMode.newDecompressor();
-      this.reader = new BlockPackedReaderIterator(vectorsStream, packedIntsVersion, PACKED_BLOCK_SIZE, 0);
+      this.reader =
+          new BlockPackedReaderIterator(vectorsStream, packedIntsVersion, PACKED_BLOCK_SIZE, 0);
 
       CodecUtil.checkFooter(metaIn, null);
       metaIn.close();
@@ -335,8 +343,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     return blockState.docBase <= docID && docID < blockState.docBase + blockState.chunkDocs;
   }
 
-  private record BlockState(long startPointer, int docBase, int chunkDocs) {
-  }
+  private record BlockState(long startPointer, int docBase, int chunkDocs) {}
 
   @Override
   public void prefetch(int docID) throws IOException {
@@ -416,13 +423,14 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
         totalDistinctFields += vectorsStream.readVInt();
       }
       ++totalDistinctFields;
-      final PackedInts.ReaderIterator it = PackedInts.getReaderIteratorNoHeader(
-          vectorsStream,
-          PackedInts.Format.PACKED,
-          packedIntsVersion,
-          totalDistinctFields,
-          bitsPerFieldNum,
-          1);
+      final PackedInts.ReaderIterator it =
+          PackedInts.getReaderIteratorNoHeader(
+              vectorsStream,
+              PackedInts.Format.PACKED,
+              packedIntsVersion,
+              totalDistinctFields,
+              bitsPerFieldNum,
+              1);
       fieldNums = new int[totalDistinctFields];
       for (int i = 0; i < totalDistinctFields; ++i) {
         fieldNums[i] = (int) it.next();
@@ -490,7 +498,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
         final int termCount = (int) numTerms.get(skip + i);
         final int[] fieldPrefixLengths = new int[termCount];
         prefixLengths[i] = fieldPrefixLengths;
-        for (int j = 0; j < termCount;) {
+        for (int j = 0; j < termCount; ) {
           final LongsRef next = reader.next(termCount - j);
           for (int k = 0; k < next.length; ++k) {
             fieldPrefixLengths[j++] = (int) next.longs[next.offset + k];
@@ -511,7 +519,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
         final int termCount = (int) numTerms.get(skip + i);
         final int[] fieldSuffixLengths = new int[termCount];
         suffixLengths[i] = fieldSuffixLengths;
-        for (int j = 0; j < termCount;) {
+        for (int j = 0; j < termCount; ) {
           final LongsRef next = reader.next(termCount - j);
           for (int k = 0; k < next.length; ++k) {
             fieldSuffixLengths[j++] = (int) next.longs[next.offset + k];
@@ -532,7 +540,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     final int[] termFreqs = new int[totalTerms];
     {
       reader.reset(vectorsStream, totalTerms);
-      for (int i = 0; i < totalTerms;) {
+      for (int i = 0; i < totalTerms; ) {
         final LongsRef next = reader.next(totalTerms - i);
         for (int k = 0; k < next.length; ++k) {
           termFreqs[i++] = 1 + (int) next.longs[next.offset + k];
@@ -563,15 +571,16 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     final int[][] positionIndex = positionIndex(skip, numFields, numTerms, termFreqs);
     final int[][] positions, startOffsets, lengths;
     if (totalPositions > 0) {
-      positions = readPositions(
-          skip,
-          numFields,
-          flags,
-          numTerms,
-          termFreqs,
-          POSITIONS,
-          totalPositions,
-          positionIndex);
+      positions =
+          readPositions(
+              skip,
+              numFields,
+              flags,
+              numTerms,
+              termFreqs,
+              POSITIONS,
+              totalPositions,
+              positionIndex);
     } else {
       positions = new int[numFields][];
     }
@@ -582,10 +591,12 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       for (int i = 0; i < charsPerTerm.length; ++i) {
         charsPerTerm[i] = Float.intBitsToFloat(vectorsStream.readInt());
       }
-      startOffsets = readPositions(
-          skip, numFields, flags, numTerms, termFreqs, OFFSETS, totalOffsets, positionIndex);
-      lengths = readPositions(
-          skip, numFields, flags, numTerms, termFreqs, OFFSETS, totalOffsets, positionIndex);
+      startOffsets =
+          readPositions(
+              skip, numFields, flags, numTerms, termFreqs, OFFSETS, totalOffsets, positionIndex);
+      lengths =
+          readPositions(
+              skip, numFields, flags, numTerms, termFreqs, OFFSETS, totalOffsets, positionIndex);
 
       for (int i = 0; i < numFields; ++i) {
         final int[] fStartOffsets = startOffsets[i];
@@ -707,7 +718,8 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
         docLen + payloadLen,
         suffixBytes);
     suffixBytes.length = docLen;
-    final BytesRef payloadBytes = new BytesRef(suffixBytes.bytes, suffixBytes.offset + docLen, payloadLen);
+    final BytesRef payloadBytes =
+        new BytesRef(suffixBytes.bytes, suffixBytes.offset + docLen, payloadLen);
 
     final int[] fieldFlags = new int[numFields];
     for (int i = 0; i < numFields; ++i) {
@@ -809,7 +821,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
         final int totalFreq = positionIndex[i][termCount];
         final int[] fieldPositions = new int[totalFreq];
         positions[i] = fieldPositions;
-        for (int j = 0; j < totalFreq;) {
+        for (int j = 0; j < totalFreq; ) {
           final LongsRef nextPositions = reader.next(totalFreq - j);
           for (int k = 0; k < nextPositions.length; ++k) {
             fieldPositions[j++] = (int) nextPositions.longs[nextPositions.offset + k];
