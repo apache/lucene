@@ -28,7 +28,6 @@ module org.apache.lucene.benchmark {
   requires org.apache.commons.compress;
   requires nekohtml;
   requires com.ibm.icu;
-  requires org.apache.commons.io;
 
   exports org.apache.lucene.benchmark;
   exports org.apache.lucene.benchmark.byTask;
