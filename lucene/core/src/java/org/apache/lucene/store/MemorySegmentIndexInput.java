@@ -31,7 +31,6 @@ import java.util.function.Function;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
-import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOConsumer;
 
 /**
@@ -146,9 +145,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       final byte v = curSegment.get(LAYOUT_BYTE, curPosition);
       curPosition++;
       return v;
-    } catch (
-        @SuppressWarnings("unused")
-        IndexOutOfBoundsException e) {
+    } catch (IndexOutOfBoundsException _) {
       do {
         curSegmentIndex++;
         if (curSegmentIndex >= segments.length) {
@@ -170,9 +167,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     try {
       MemorySegment.copy(curSegment, LAYOUT_BYTE, curPosition, b, offset, len);
       curPosition += len;
-    } catch (
-        @SuppressWarnings("unused")
-        IndexOutOfBoundsException e) {
+    } catch (IndexOutOfBoundsException _) {
       readBytesBoundary(b, offset, len);
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
@@ -206,9 +201,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     try {
       MemorySegment.copy(curSegment, LAYOUT_LE_INT, curPosition, dst, offset, length);
       curPosition += Integer.BYTES * (long) length;
-    } catch (
-        @SuppressWarnings("unused")
-        IndexOutOfBoundsException iobe) {
+    } catch (IndexOutOfBoundsException _) {
       super.readInts(dst, offset, length);
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
@@ -220,9 +213,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     try {
       MemorySegment.copy(curSegment, LAYOUT_LE_LONG, curPosition, dst, offset, length);
       curPosition += Long.BYTES * (long) length;
-    } catch (
-        @SuppressWarnings("unused")
-        IndexOutOfBoundsException iobe) {
+    } catch (IndexOutOfBoundsException _) {
       super.readLongs(dst, offset, length);
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
@@ -234,9 +225,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     try {
       MemorySegment.copy(curSegment, LAYOUT_LE_FLOAT, curPosition, dst, offset, length);
       curPosition += Float.BYTES * (long) length;
-    } catch (
-        @SuppressWarnings("unused")
-        IndexOutOfBoundsException iobe) {
+    } catch (IndexOutOfBoundsException _) {
       super.readFloats(dst, offset, length);
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
@@ -249,9 +238,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       final short v = curSegment.get(LAYOUT_LE_SHORT, curPosition);
       curPosition += Short.BYTES;
       return v;
-    } catch (
-        @SuppressWarnings("unused")
-        IndexOutOfBoundsException e) {
+    } catch (IndexOutOfBoundsException _) {
       return super.readShort();
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
@@ -264,9 +251,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       final int v = curSegment.get(LAYOUT_LE_INT, curPosition);
       curPosition += Integer.BYTES;
       return v;
-    } catch (
-        @SuppressWarnings("unused")
-        IndexOutOfBoundsException e) {
+    } catch (IndexOutOfBoundsException _) {
       return super.readInt();
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
@@ -291,9 +276,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       final long v = curSegment.get(LAYOUT_LE_LONG, curPosition);
       curPosition += Long.BYTES;
       return v;
-    } catch (
-        @SuppressWarnings("unused")
-        IndexOutOfBoundsException e) {
+    } catch (IndexOutOfBoundsException _) {
       return super.readLong();
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
@@ -408,9 +391,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
 
       final MemorySegment advisedSlice = segment.asSlice(offset, length);
       advice.accept(advisedSlice);
-    } catch (
-        @SuppressWarnings("unused")
-        IndexOutOfBoundsException e) {
+    } catch (IndexOutOfBoundsException _) {
       throw new EOFException("Read past EOF: " + this);
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
@@ -442,23 +423,6 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       return segments[si].get(LAYOUT_BYTE, pos & chunkSizeMask);
     } catch (IndexOutOfBoundsException _) {
       throw handlePositionalIOOBE("read", pos);
-    } catch (NullPointerException | IllegalStateException e) {
-      throw alreadyClosed(e);
-    }
-  }
-
-  @Override
-  public void readGroupVInt(int[] dst, int offset) throws IOException {
-    try {
-      final int len =
-          GroupVIntUtil.readGroupVInt(
-              this,
-              curSegment.byteSize() - curPosition,
-              p -> curSegment.get(LAYOUT_LE_INT, p),
-              curPosition,
-              dst,
-              offset);
-      curPosition += len;
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
     }
@@ -509,9 +473,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     final int si = (int) (pos >> chunkSizePower);
     try {
       return segments[si].get(LAYOUT_LE_SHORT, pos & chunkSizeMask);
-    } catch (
-        @SuppressWarnings("unused")
-        IndexOutOfBoundsException ioobe) {
+    } catch (IndexOutOfBoundsException _) {
       // either it's a boundary, or read past EOF, fall back:
       setPos(pos, si);
       return readShort();
@@ -525,9 +487,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     final int si = (int) (pos >> chunkSizePower);
     try {
       return segments[si].get(LAYOUT_LE_INT, pos & chunkSizeMask);
-    } catch (
-        @SuppressWarnings("unused")
-        IndexOutOfBoundsException ioobe) {
+    } catch (IndexOutOfBoundsException _) {
       // either it's a boundary, or read past EOF, fall back:
       setPos(pos, si);
       return readInt();
@@ -541,9 +501,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     final int si = (int) (pos >> chunkSizePower);
     try {
       return segments[si].get(LAYOUT_LE_LONG, pos & chunkSizeMask);
-    } catch (
-        @SuppressWarnings("unused")
-        IndexOutOfBoundsException ioobe) {
+    } catch (IndexOutOfBoundsException _) {
       // either it's a boundary, or read past EOF, fall back:
       setPos(pos, si);
       return readLong();
@@ -706,9 +664,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         try {
           arena.close();
           break;
-        } catch (
-            @SuppressWarnings("unused")
-            IllegalStateException e) {
+        } catch (IllegalStateException _) {
           Thread.onSpinWait();
         }
       }

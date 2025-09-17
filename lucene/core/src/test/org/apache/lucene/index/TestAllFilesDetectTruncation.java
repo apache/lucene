@@ -144,9 +144,7 @@ public class TestAllFilesDetectTruncation extends LuceneTestCase {
               // In some rare cases, the codec footer would still appear as correct even though the
               // file has been truncated. We just skip the test is this rare case.
               return;
-            } catch (
-                @SuppressWarnings("unused")
-                CorruptIndexException e) {
+            } catch (CorruptIndexException _) {
               // expected
             }
           }

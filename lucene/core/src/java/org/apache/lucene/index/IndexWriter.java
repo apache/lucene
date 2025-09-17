@@ -21,6 +21,7 @@ import static org.apache.lucene.util.ByteBlockPool.BYTE_BLOCK_SIZE;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -872,7 +873,7 @@ public class IndexWriter
                       count,
                       readerPool.ramBytesUsed() / 1024. / 1024.,
                       ramBufferSizeMB,
-                      ((System.nanoTime() - startNS) / (double) TimeUnit.SECONDS.toNanos(1))));
+                      (System.nanoTime() - startNS) / (double) TimeUnit.SECONDS.toNanos(1)));
             }
           }
         }
@@ -2639,8 +2640,7 @@ public class IndexWriter
      */
     try {
       synchronized (fullFlushLock) {
-        try (@SuppressWarnings("unused")
-            Closeable finalizer = docWriter.lockAndAbortAll()) {
+        try (Closeable _ = docWriter.lockAndAbortAll()) {
           processEvents(false);
           synchronized (this) {
             try {
@@ -2697,6 +2697,7 @@ public class IndexWriter
    * you lose a lot of work that must later be redone.
    */
   private synchronized void abortMerges() throws IOException {
+    long startNS = System.nanoTime();
     merges.disable();
     // Abort all pending & running merges:
     IOUtils.applyToAll(
@@ -2739,7 +2740,10 @@ public class IndexWriter
 
     notifyAll();
     if (infoStream.isEnabled("IW")) {
-      infoStream.message("IW", "all running merges have aborted");
+      double elapsedSec = (System.nanoTime() - startNS) / (double) TimeUnit.SECONDS.toNanos(1);
+      infoStream.message(
+          "IW",
+          String.format(Locale.ROOT, "all running merges have aborted [%.3f seconds]", elapsedSec));
     }
   }
 
@@ -3282,6 +3286,11 @@ public class IndexWriter
     }
 
     public void registerMerge(MergePolicy.OneMerge merge) {
+      try {
+        addEstimatedBytesToMerge(merge);
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
       synchronized (IndexWriter.this) {
         pendingAddIndexesMerges.add(merge);
       }
@@ -3733,7 +3742,7 @@ public class IndexWriter
         maybeCloseOnTragicEvent();
       }
 
-      if (pointInTimeMerges != null) {
+      if (pointInTimeMerges != null && pointInTimeMerges.merges.size() != 0) {
         if (infoStream.isEnabled("IW")) {
           infoStream.message(
               "IW", "now run merges during commit: " + pointInTimeMerges.segString(directory));
@@ -4777,6 +4786,21 @@ public class IndexWriter
     closeMergeReaders(merge, true, false);
   }
 
+  /** Compute {@code estimatedMergeBytes} and {@code totalMergeBytes} for a merge. */
+  void addEstimatedBytesToMerge(MergePolicy.OneMerge merge) throws IOException {
+    assert merge.estimatedMergeBytes == 0;
+    assert merge.totalMergeBytes == 0;
+    for (SegmentCommitInfo info : merge.segments) {
+      if (info.info.maxDoc() > 0) {
+        final int delCount = numDeletedDocs(info);
+        assert delCount <= info.info.maxDoc();
+        final double delRatio = ((double) delCount) / info.info.maxDoc();
+        merge.estimatedMergeBytes += (long) (info.sizeInBytes() * (1.0 - delRatio));
+        merge.totalMergeBytes += info.sizeInBytes();
+      }
+    }
+  }
+
   /**
    * Checks whether this merge involves any segments already participating in a merge. If not, this
    * merge is "registered", meaning we record that its segments are now participating in a merge,
@@ -4868,17 +4892,7 @@ public class IndexWriter
       mergingSegments.add(info);
     }
 
-    assert merge.estimatedMergeBytes == 0;
-    assert merge.totalMergeBytes == 0;
-    for (SegmentCommitInfo info : merge.segments) {
-      if (info.info.maxDoc() > 0) {
-        final int delCount = numDeletedDocs(info);
-        assert delCount <= info.info.maxDoc();
-        final double delRatio = ((double) delCount) / info.info.maxDoc();
-        merge.estimatedMergeBytes += (long) (info.sizeInBytes() * (1.0 - delRatio));
-        merge.totalMergeBytes += info.sizeInBytes();
-      }
-    }
+    addEstimatedBytesToMerge(merge);
 
     // Merge is now registered
     merge.registerDone = true;
@@ -5878,9 +5892,7 @@ public class IndexWriter
     Collection<String> files;
     try {
       files = info.files();
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException ise) {
+    } catch (IllegalStateException _) {
       // OK
       files = null;
     }

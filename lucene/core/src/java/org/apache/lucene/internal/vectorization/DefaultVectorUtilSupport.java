@@ -17,6 +17,8 @@
 
 package org.apache.lucene.internal.vectorization;
 
+import static org.apache.lucene.util.VectorUtil.EPSILON;
+
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
@@ -153,22 +155,42 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked) {
-    assert (apacked && bpacked) == false;
-    if (apacked || bpacked) {
-      byte[] packed = apacked ? a : b;
-      byte[] unpacked = apacked ? b : a;
-      int total = 0;
-      for (int i = 0; i < packed.length; i++) {
-        byte packedByte = packed[i];
-        byte unpacked1 = unpacked[i];
-        byte unpacked2 = unpacked[i + packed.length];
-        total += (packedByte & 0x0F) * unpacked2;
-        total += ((packedByte & 0xFF) >> 4) * unpacked1;
-      }
-      return total;
+  public int uint8DotProduct(byte[] a, byte[] b) {
+    int total = 0;
+    for (int i = 0; i < a.length; i++) {
+      total += Byte.toUnsignedInt(a[i]) * Byte.toUnsignedInt(b[i]);
     }
+    return total;
+  }
+
+  @Override
+  public int int4DotProduct(byte[] a, byte[] b) {
     return dotProduct(a, b);
+  }
+
+  @Override
+  public int int4DotProductSinglePacked(byte[] unpacked, byte[] packed) {
+    int total = 0;
+    for (int i = 0; i < packed.length; i++) {
+      byte packedByte = packed[i];
+      byte unpacked1 = unpacked[i];
+      byte unpacked2 = unpacked[i + packed.length];
+      total += (packedByte & 0x0F) * unpacked2;
+      total += ((packedByte & 0xFF) >> 4) * unpacked1;
+    }
+    return total;
+  }
+
+  @Override
+  public int int4DotProductBothPacked(byte[] a, byte[] b) {
+    int total = 0;
+    for (int i = 0; i < a.length; i++) {
+      byte aByte = a[i];
+      byte bByte = b[i];
+      total += (aByte & 0x0F) * (bByte & 0x0F);
+      total += ((aByte & 0xFF) >> 4) * ((bByte & 0xFF) >> 4);
+    }
+    return total;
   }
 
   @Override
@@ -194,6 +216,53 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     int squareSum = 0;
     for (int i = 0; i < a.length; i++) {
       int diff = a[i] - b[i];
+      squareSum += diff * diff;
+    }
+    return squareSum;
+  }
+
+  @Override
+  public int int4SquareDistance(byte[] a, byte[] b) {
+    return squareDistance(a, b);
+  }
+
+  @Override
+  public int int4SquareDistanceSinglePacked(byte[] unpacked, byte[] packed) {
+    int total = 0;
+    for (int i = 0; i < packed.length; i++) {
+      byte packedByte = packed[i];
+      byte unpacked1 = unpacked[i];
+      byte unpacked2 = unpacked[i + packed.length];
+
+      int diff1 = (packedByte & 0x0F) - unpacked2;
+      int diff2 = ((packedByte & 0xFF) >> 4) - unpacked1;
+
+      total += diff1 * diff1 + diff2 * diff2;
+    }
+    return total;
+  }
+
+  @Override
+  public int int4SquareDistanceBothPacked(byte[] a, byte[] b) {
+    int total = 0;
+    for (int i = 0; i < a.length; i++) {
+      byte aByte = a[i];
+      byte bByte = b[i];
+
+      int diff1 = (aByte & 0x0F) - (bByte & 0x0F);
+      int diff2 = ((aByte & 0xFF) >> 4) - ((bByte & 0xFF) >> 4);
+
+      total += diff1 * diff1 + diff2 * diff2;
+    }
+    return total;
+  }
+
+  @Override
+  public int uint8SquareDistance(byte[] a, byte[] b) {
+    // Note: this will not overflow if dim < 2^16, since max(ubyte * ubyte) = 2^16.
+    int squareSum = 0;
+    for (int i = 0; i < a.length; i++) {
+      int diff = Byte.toUnsignedInt(a[i]) - Byte.toUnsignedInt(b[i]);
       squareSum += diff * diff;
     }
     return squareSum;
@@ -279,7 +348,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       float correction = 0;
       for (int i = start; i < vector.length; i++) {
         // undo the old quantization
-        float v = (oldAlpha * vector[i]) + oldMinQuantile;
+        float v = (oldAlpha * Byte.toUnsignedInt(vector[i])) + oldMinQuantile;
         correction += quantizeFloat(v, null, 0);
       }
       return correction;
@@ -324,5 +393,26 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       }
     }
     return newSize;
+  }
+
+  @Override
+  public float[] l2normalize(float[] v, boolean throwOnZero) {
+    double l1norm = this.dotProduct(v, v);
+    if (l1norm == 0) {
+      if (throwOnZero) {
+        throw new IllegalArgumentException("Cannot normalize a zero-length vector");
+      } else {
+        return v;
+      }
+    }
+    if (Math.abs(l1norm - 1.0d) <= EPSILON) {
+      return v;
+    }
+    int dim = v.length;
+    double l2norm = Math.sqrt(l1norm);
+    for (int i = 0; i < dim; i++) {
+      v[i] /= (float) l2norm;
+    }
+    return v;
   }
 }

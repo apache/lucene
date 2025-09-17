@@ -40,6 +40,7 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.ScoreDoc;
@@ -197,7 +198,11 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
       try (IndexReader reader = DirectoryReader.open(w)) {
         LeafReader r = getOnlyLeafReader(reader);
         TopKnnCollector topKnnCollector = new TopKnnCollector(5, Integer.MAX_VALUE);
-        r.searchNearestVectors("f", new float[] {0.6f, 0.8f}, topKnnCollector, null);
+        r.searchNearestVectors(
+            "f",
+            new float[] {0.6f, 0.8f},
+            topKnnCollector,
+            AcceptDocs.fromLiveDocs(null, r.maxDoc()));
         TopDocs topDocs = topKnnCollector.topDocs();
         assertEquals(3, topDocs.totalHits.value());
         for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
@@ -303,10 +308,19 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
           }
         };
     String expectedPattern =
-        "Lucene99HnswScalarQuantizedVectorsFormat(name=Lucene99HnswScalarQuantizedVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99ScalarQuantizedVectorsFormat(name=Lucene99ScalarQuantizedVectorsFormat, confidenceInterval=0.9, bits=4, compress=false, flatVectorScorer=ScalarQuantizedVectorScorer(nonQuantizedDelegate=DefaultFlatVectorScorer()), rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s())))";
-    var defaultScorer = format(Locale.ROOT, expectedPattern, "DefaultFlatVectorScorer");
+        "Lucene99HnswScalarQuantizedVectorsFormat(name=Lucene99HnswScalarQuantizedVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99ScalarQuantizedVectorsFormat(name=Lucene99ScalarQuantizedVectorsFormat, confidenceInterval=0.9, bits=4, compress=false, flatVectorScorer=%s, rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s)))";
+    var defaultScorer =
+        format(
+            Locale.ROOT,
+            expectedPattern,
+            "ScalarQuantizedVectorScorer(nonQuantizedDelegate=DefaultFlatVectorScorer())",
+            "DefaultFlatVectorScorer()");
     var memSegScorer =
-        format(Locale.ROOT, expectedPattern, "Lucene99MemorySegmentFlatVectorsScorer");
+        format(
+            Locale.ROOT,
+            expectedPattern,
+            "Lucene99MemorySegmentScalarQuantizedVectorScorer()",
+            "Lucene99MemorySegmentFlatVectorsScorer()");
     assertThat(customCodec.knnVectorsFormat().toString(), is(oneOf(defaultScorer, memSegScorer)));
   }
 

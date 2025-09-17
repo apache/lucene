@@ -22,15 +22,15 @@ import java.util.Arrays;
  * A min heap that stores longs; a primitive priority queue that like all priority queues maintains
  * a partial ordering of its elements such that the least element can always be found in constant
  * time. Put()'s and pop()'s require log(size). This heap provides unbounded growth via {@link
- * #push(long)}, and bounded-size insertion based on its nominal maxSize via {@link
+ * #push(long)}, and bounded-size insertion based on its initial capacity via {@link
  * #insertWithOverflow(long)}. The heap is a min heap, meaning that the top element is the lowest
- * value of the heap.
+ * value of the heap. LongHeap implements 2-ary heap.
  *
  * @lucene.internal
  */
 public final class LongHeap {
 
-  private final int maxSize;
+  private final int initialCapacity;
 
   private long[] heap;
   private int size = 0;
@@ -50,19 +50,21 @@ public final class LongHeap {
   /**
    * Create an empty priority queue of the configured initial size.
    *
-   * @param maxSize the maximum size of the heap, or if negative, the initial size of an unbounded
-   *     heap
+   * @param initialCapacity the initial capacity of the heap
    */
-  public LongHeap(int maxSize) {
+  public LongHeap(int initialCapacity) {
     final int heapSize;
-    if (maxSize < 1 || maxSize >= ArrayUtil.MAX_ARRAY_LENGTH) {
+    if (initialCapacity < 1 || initialCapacity >= ArrayUtil.MAX_ARRAY_LENGTH) {
       // Throw exception to prevent confusing OOME:
       throw new IllegalArgumentException(
-          "maxSize must be > 0 and < " + (ArrayUtil.MAX_ARRAY_LENGTH - 1) + "; got: " + maxSize);
+          "initialCapacity must be > 0 and < "
+              + (ArrayUtil.MAX_ARRAY_LENGTH - 1)
+              + "; got: "
+              + initialCapacity);
     }
     // NOTE: we add +1 because all access to heap is 1-based not 0-based.  heap[0] is unused.
-    heapSize = maxSize + 1;
-    this.maxSize = maxSize;
+    heapSize = initialCapacity + 1;
+    this.initialCapacity = initialCapacity;
     this.heap = new long[heapSize];
   }
 
@@ -83,13 +85,13 @@ public final class LongHeap {
 
   /**
    * Adds a value to an LongHeap in log(size) time. If the number of values would exceed the heap's
-   * maxSize, the least value is discarded.
+   * initialCapacity, the least value is discarded.
    *
    * @return whether the value was added (unless the heap is full, or the new value is less than the
    *     top value)
    */
   public boolean insertWithOverflow(long value) {
-    if (size >= maxSize) {
+    if (size >= initialCapacity) {
       if (value < heap[1]) {
         return false;
       }
