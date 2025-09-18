@@ -25,12 +25,19 @@ import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
+import org.apache.tools.ant.taskdefs.condition.Os;
 import org.gradle.api.GradleException;
+import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.ValueSource;
+import org.gradle.api.provider.ValueSourceParameters;
+import org.gradle.api.services.BuildServiceParameters;
 import org.gradle.process.ExecOperations;
 
 public abstract class GitInfoValueSource
-    implements ValueSource<Map<String, String>, GitValueSourceParameters> {
+    implements ValueSource<Map<String, String>, GitInfoValueSource.Parameters> {
+  public abstract static class Parameters implements BuildServiceParameters, ValueSourceParameters {
+    public abstract DirectoryProperty getRootProjectDir();
+  }
 
   @Inject
   public abstract ExecOperations getExecOps();
@@ -47,9 +54,9 @@ public abstract class GitInfoValueSource
                     spec.setErrorOutput(out);
                     spec.setIgnoreExitValue(true);
 
-                    getParameters().configure(spec);
-
-                    spec.setExecutable(getParameters().getGitExec().get());
+                    spec.setWorkingDir(
+                        getParameters().getRootProjectDir().getAsFile().get().getAbsolutePath());
+                    spec.setExecutable(Os.isFamily(Os.FAMILY_WINDOWS) ? "git.exe" : "git");
                     spec.args("status", "--porcelain=v2", "--branch");
                   });
       out.flush();
