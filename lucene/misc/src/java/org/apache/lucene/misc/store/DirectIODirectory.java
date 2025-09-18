@@ -21,6 +21,7 @@ import static java.nio.ByteOrder.LITTLE_ENDIAN;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.lang.foreign.Arena;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -115,7 +116,8 @@ public class DirectIODirectory extends FilterDirectory {
    * Create a new DirectIODirectory for the named location.
    *
    * @param delegate Directory for non-merges, also used as reference to file system path.
-   * @param mergeBufferSize Size of buffer to use for merging.
+   * @param mergeBufferSize Size of buffer to use for merging. The buffer size will be rounded up to
+   *     next multiple of filesystem's block size
    * @param minBytesDirect Merges, or files to be opened for reading, smaller than this will not use
    *     direct IO. See {@link #DEFAULT_MIN_BYTES_DIRECT} and {@link #useDirectIO}.
    * @throws IOException If there is a low-level I/O error
@@ -124,7 +126,9 @@ public class DirectIODirectory extends FilterDirectory {
       throws IOException {
     super(delegate);
     this.blockSize = Math.toIntExact(Files.getFileStore(delegate.getDirectory()).getBlockSize());
-    this.mergeBufferSize = mergeBufferSize;
+    // ensure that the size of mergeBuffer is a multiple of the blockSize:
+    this.mergeBufferSize =
+        ((mergeBufferSize + this.blockSize - 1) / this.blockSize) * this.blockSize;
     this.minBytesDirect = minBytesDirect;
   }
 
@@ -207,6 +211,7 @@ public class DirectIODirectory extends FilterDirectory {
   }
 
   private static final class DirectIOIndexOutput extends IndexOutput {
+    private final Arena arena;
     private final ByteBuffer buffer;
     private final FileChannel channel;
     private final Checksum digest;
@@ -229,7 +234,8 @@ public class DirectIODirectory extends FilterDirectory {
       channel =
           FileChannel.open(
               path, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW, getDirectOpenOption());
-      buffer = ByteBuffer.allocateDirect(bufferSize + blockSize - 1).alignedSlice(blockSize);
+      arena = Arena.ofConfined();
+      buffer = arena.allocate(bufferSize, blockSize).asByteBuffer();
       digest = new BufferedChecksum(new CRC32());
 
       isOpen = true;
@@ -292,7 +298,8 @@ public class DirectIODirectory extends FilterDirectory {
         try {
           dump();
         } finally {
-          try (FileChannel ch = channel) {
+          try (FileChannel ch = channel;
+              Arena _ = arena) {
             ch.truncate(getFilePointer());
           }
         }
@@ -301,6 +308,7 @@ public class DirectIODirectory extends FilterDirectory {
   }
 
   private static final class DirectIOIndexInput extends IndexInput {
+    private final Arena arena;
     private final ByteBuffer buffer;
     private final FileChannel channel;
     private final int blockSize;
@@ -322,7 +330,8 @@ public class DirectIODirectory extends FilterDirectory {
       super("DirectIOIndexInput(path=\"" + path + "\")");
       this.channel = FileChannel.open(path, StandardOpenOption.READ, getDirectOpenOption());
       this.blockSize = blockSize;
-      this.buffer = allocateBuffer(bufferSize, blockSize);
+      this.arena = Arena.ofAuto(); // fix this to be confined
+      this.buffer = allocateBuffer(arena, bufferSize, blockSize);
       this.isOpen = true;
       this.isClosable = true;
       this.length = channel.size();
@@ -337,7 +346,8 @@ public class DirectIODirectory extends FilterDirectory {
       super(description);
       Objects.checkFromIndexSize(offset, length, other.channel.size());
       final int bufferSize = other.buffer.capacity();
-      this.buffer = allocateBuffer(bufferSize, other.blockSize);
+      this.arena = Arena.ofAuto(); // fix this to be confined
+      this.buffer = allocateBuffer(arena, bufferSize, other.blockSize);
       this.blockSize = other.blockSize;
       this.channel = other.channel;
       this.isOpen = true;
@@ -348,16 +358,14 @@ public class DirectIODirectory extends FilterDirectory {
       buffer.limit(0);
     }
 
-    private static ByteBuffer allocateBuffer(int bufferSize, int blockSize) {
-      return ByteBuffer.allocateDirect(bufferSize + blockSize - 1)
-          .alignedSlice(blockSize)
-          .order(LITTLE_ENDIAN);
+    private static ByteBuffer allocateBuffer(Arena arena, int bufferSize, int blockSize) {
+      return arena.allocate(bufferSize, blockSize).asByteBuffer().order(LITTLE_ENDIAN);
     }
 
     @Override
     public void close() throws IOException {
       if (isOpen && isClosable) {
-        channel.close();
+        try (FileChannel _ = channel; /* NOT YET: Arena _ = arena */ ) {}
         isOpen = false;
       }
     }
