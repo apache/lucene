@@ -135,7 +135,7 @@ public class CheckLicensesPlugin extends LuceneGradlePlugin {
 
     // I thought it'd be possible to somehow precompile those glob filters but apparently not.
     // I guess it's fine if the list of patterns and files is of reasonable size.
-    Spec<File> maybeExclude =
+    Spec<File> maybeExcludeKnownExceptions =
         file -> {
           // relativize from root project directory. No need to replace path separators as ant is
           // os-agnostic here.
@@ -143,6 +143,6 @@ public class CheckLicensesPlugin extends LuceneGradlePlugin {
           return excludedPaths.stream()
               .noneMatch(pattern -> SelectorUtils.match(pattern, filePath));
         };
-    task.getFiles().from(project.files(allNonIgnoredFiles).filter(maybeExclude));
+    task.getFiles().from(project.files(allNonIgnoredFiles).filter(maybeExcludeKnownExceptions));
   }
 }
