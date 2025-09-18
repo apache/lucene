@@ -126,10 +126,18 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   private final List<BooleanClause> clauses; // used for toString() and getClauses()
   // WARNING: Do not let clauseSets escape from this class as it breaks immutability:
   private final Map<Occur, Collection<Query>> clauseSets; // used for equals/hashCode
+  private final List<Query> mustClauseQueries;
+  private final List<Query> mustNotClauseQueries;
+  private final List<Query> filterClauseQueries;
+  private final List<Query> shouldClauseQueries;
 
   private BooleanQuery(int minimumNumberShouldMatch, BooleanClause[] clauses) {
     this.minimumNumberShouldMatch = minimumNumberShouldMatch;
     this.clauses = Collections.unmodifiableList(Arrays.asList(clauses));
+    this.mustClauseQueries = new ArrayList<>();
+    this.mustNotClauseQueries = new ArrayList<>();
+    this.filterClauseQueries = new ArrayList<>();
+    this.shouldClauseQueries = new ArrayList<>();
     clauseSets = new EnumMap<>(Occur.class);
     // duplicates matter for SHOULD and MUST
     clauseSets.put(Occur.SHOULD, new Multiset<>());
@@ -137,7 +145,25 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     // but not for FILTER and MUST_NOT
     clauseSets.put(Occur.FILTER, new HashSet<>());
     clauseSets.put(Occur.MUST_NOT, new HashSet<>());
+    // We store the queries per clauses in a list beforehand. As otherwise during repeated visit()
+    // calls(like in QueryCache), we need to iterate over clauseSets.keySet() which allocates
+    // HashMap$HashSetIterator.<init>
+    // for every call causing some performance impact
     for (BooleanClause clause : clauses) {
+      switch (clause.occur()) {
+        case MUST:
+          mustClauseQueries.add(clause.query());
+          break;
+        case FILTER:
+          filterClauseQueries.add(clause.query());
+          break;
+        case SHOULD:
+          shouldClauseQueries.add(clause.query());
+          break;
+        case MUST_NOT:
+          mustNotClauseQueries.add(clause.query());
+          break;
+      }
       clauseSets.get(clause.occur()).add(clause.query());
     }
   }
@@ -649,15 +675,23 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   @Override
   public void visit(QueryVisitor visitor) {
     QueryVisitor sub = visitor.getSubVisitor(Occur.MUST, this);
-    for (BooleanClause.Occur occur : clauseSets.keySet()) {
+    for (Occur occur : Occur.cachedValues()) {
       if (clauseSets.get(occur).size() > 0) {
         if (occur == Occur.MUST) {
-          for (Query q : clauseSets.get(occur)) {
+          for (Query q : mustClauseQueries) {
             q.visit(sub);
           }
         } else {
           QueryVisitor v = sub.getSubVisitor(occur, this);
-          for (Query q : clauseSets.get(occur)) {
+          List<Query> queryList;
+          queryList =
+              switch (occur) {
+                case FILTER -> filterClauseQueries;
+                case SHOULD -> shouldClauseQueries;
+                case MUST_NOT -> mustNotClauseQueries;
+                case MUST -> mustClauseQueries;
+              };
+          for (Query q : queryList) {
             q.visit(v);
           }
         }
