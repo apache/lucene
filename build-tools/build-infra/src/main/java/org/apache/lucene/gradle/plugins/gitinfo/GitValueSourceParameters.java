@@ -16,27 +16,24 @@
  */
 package org.apache.lucene.gradle.plugins.gitinfo;
 
+import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.FileSystemLocation;
-import org.gradle.api.provider.ListProperty;
-import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.provider.ValueSourceParameters;
+import org.gradle.api.services.BuildServiceParameters;
+import org.gradle.process.ExecSpec;
 
-public abstract class GitInfoExtension {
-  public static final String NAME = "gitinfo";
+public abstract class GitValueSourceParameters
+    implements BuildServiceParameters, ValueSourceParameters {
+  public abstract DirectoryProperty getRootProjectDir();
 
-  /**
-   * @return Return a map of key-value pairs extracted from the current git status.
-   */
-  public abstract MapProperty<String, String> getGitInfo();
+  public abstract Property<String> getGitExec();
 
-  /**
-   * @return Return the location of {@code .git} directory (or file, if worktrees are used).
-   */
-  public abstract Property<FileSystemLocation> getDotGitDir();
+  public abstract Property<FileSystemLocation> getDotDir();
 
-  /**
-   * @return Return a set of all versioned and non-versioned files (that are not ignored by {@code
-   *     .gitignore}).
-   */
-  public abstract ListProperty<String> getAllNonIgnoredProjectFiles();
+  void configure(ExecSpec spec) {
+    String workDir = getRootProjectDir().getAsFile().get().getAbsolutePath();
+    spec.setWorkingDir(workDir);
+    spec.environment("GIT_DIR", getDotDir().get().getAsFile().getAbsolutePath());
+  }
 }

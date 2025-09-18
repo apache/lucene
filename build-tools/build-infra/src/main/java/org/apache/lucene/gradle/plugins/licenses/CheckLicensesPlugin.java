@@ -16,8 +16,13 @@
  */
 package org.apache.lucene.gradle.plugins.licenses;
 
+import java.io.File;
+import java.util.List;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
+import org.apache.lucene.gradle.plugins.gitinfo.GitInfoExtension;
+import org.apache.tools.ant.types.selectors.SelectorUtils;
 import org.gradle.api.Project;
+import org.gradle.api.specs.Spec;
 
 /** This configures ASL and other license checks. */
 public class CheckLicensesPlugin extends LuceneGradlePlugin {
@@ -48,79 +53,96 @@ public class CheckLicensesPlugin extends LuceneGradlePlugin {
   private void configureCheckLicenses(CheckLicensesTask task) {
     Project project = task.getProject();
 
+    assert project.getRootProject() == project;
+    var allNonIgnoredFiles =
+        project.getExtensions().getByType(GitInfoExtension.class).getAllNonIgnoredProjectFiles();
+
     task.getReportFile().set(project.getLayout().getBuildDirectory().file("licenses-report.txt"));
-    task.getFiles()
-        .from(
-            project.fileTree(
-                ".",
-                tree -> {
-                  // Exclude build outputs, ide files, .git.
-                  tree.exclude(".git");
-                  tree.exclude(".idea");
-                  tree.exclude(".muse");
-                  tree.exclude("**/build/**");
-                  tree.exclude("**/.gradle");
 
-                  // Exclude generated stuff.
-                  tree.exclude("**/src/generated/**");
+    // Build a list of files excluded from the license check. Just reuse ant's glob patterns.
+    var rootDir = getProjectRootPath(project);
+    var excludedPaths =
+        List.of(
+            // Ignore binary files. Previously we used apache rat, which had a 'binary guesser'
+            // but it's faster to just exclude by name (rather than scan the file).
+            "**/*.adoc",
+            "**/*.bin",
+            "**/*.brk",
+            "**/*.bz2",
+            "**/*.dat",
+            "**/*.gif",
+            "**/*.gz",
+            "**/*.png",
+            "**/*.svg",
+            "**/*.xls",
+            "**/*.zip",
 
-                  // Exclude github stuff (templates, workflows).
-                  tree.exclude(".github");
+            // Ignore build infrastructure and misc utility files.
+            ".asf.yaml",
+            ".dir-locals.el",
+            ".editorconfig",
+            ".git-blame-ignore-revs",
+            ".gitattributes",
+            ".github/**",
+            ".gitignore",
+            ".lift.toml",
+            ".vscode/**",
+            "LICENSE.txt",
+            "NOTICE.txt",
+            "build-options.properties",
+            "dev-tools/**",
+            "gradle/**",
+            "help/*.txt",
+            "lucene/licenses/*",
+            "versions.lock",
 
-                  // do not let RAT attempt to scan a python venv, it gets lost and confused...
-                  tree.exclude("**/.venv/**");
+            // Ignore resources in source folders, also generated resources.
+            "**/src/**/*.txt",
+            "**/src/**/*.properties",
+            "**/src/**/*.utf8",
+            "**/src/generated/**",
 
-                  // apache rat has a 'binary guesser'... I don't think this needs to be done at all
-                  // -
-                  // just exclude binaries here.
-                  tree.exclude("**/*.dat");
-                  tree.exclude("**/*.brk");
-                  tree.exclude("**/*.gz");
-                  tree.exclude("**/*.bin");
-                  tree.exclude("**/*.bz2");
-                  tree.exclude("**/*.gif");
-                  tree.exclude("**/*.svg");
-                  tree.exclude("lucene/analysis/smartcn/src/**/*.mem");
+            // Ignore other binary resources within sources. Try to be
+            // specific here.
+            "build-tools/build-infra-shadow/src/java/keep.me",
+            "lucene/CHANGES.txt",
+            "lucene/analysis.tests/src/**/*.aff",
+            "lucene/analysis.tests/src/**/*.dic",
+            "lucene/analysis/common/src/**/*.aff",
+            "lucene/analysis/common/src/**/*.dic",
+            "lucene/analysis/common/src/**/*.good",
+            "lucene/analysis/common/src/**/*.htm*",
+            "lucene/analysis/common/src/**/*.rslp",
+            "lucene/analysis/common/src/**/*.sug",
+            "lucene/analysis/common/src/**/*.wrong",
+            "lucene/analysis/icu/src/**/utr30.nrm",
+            "lucene/analysis/kuromoji/src/**/bocchan.utf-8",
+            "lucene/analysis/morfologik/src/**/*.dict",
+            "lucene/analysis/morfologik/src/**/*.info",
+            "lucene/analysis/morfologik/src/**/*.input",
+            "lucene/analysis/opennlp/src/**/en-test-lemmas.dict",
+            "lucene/analysis/smartcn/src/**/*.mem",
+            "lucene/analysis/stempel/src/**/*.tbl",
+            "lucene/benchmark/.gitignore",
+            "lucene/demo/src/**/knn-token-vectors",
+            "lucene/luke/src/**/ElegantIcons.ttf",
+            "lucene/test-framework/src/**/europarl.lines.txt.seek",
 
-                  // Only check these selected file patterns as folks have various .gitignore-d
-                  // resources generated by IDEs, etc.
-                  tree.include("**/*.gradle");
-                  tree.include("**/*.xml");
-                  tree.include("**/*.md");
-                  tree.include("**/*.py");
-                  tree.include("**/*.sh");
-                  tree.include("**/*.bat");
+            // these may require a review, actually?
+            "lucene/queryparser/docs/**",
+            "lucene/benchmark/conf/*",
+            "lucene/benchmark/README.enwiki");
 
-                  // Include selected patterns from any source folders.
-                  tree.include("**/src/**");
-                  tree.exclude("**/src/**/*.png");
-                  tree.exclude("**/src/**/*.txt");
-                  tree.exclude("**/src/**/*.zip");
-                  tree.exclude("**/src/**/*.properties");
-                  tree.exclude("**/src/**/*.utf8");
-
-                  // project-specific exclusions.
-                  tree.exclude("build-tools/build-infra-shadow/src/java/keep.me");
-                  tree.exclude("lucene/analysis/icu/src/**/utr30.nrm");
-                  tree.exclude("lucene/analysis/kuromoji/src/**/bocchan.utf-8");
-                  tree.exclude("lucene/analysis/morfologik/src/**/*.info");
-                  tree.exclude("lucene/analysis/morfologik/src/**/*.input");
-                  tree.exclude("lucene/analysis/morfologik/src/**/*.dict");
-                  tree.exclude("lucene/analysis/stempel/src/**/*.tbl");
-                  tree.exclude("lucene/analysis/opennlp/src/**/en-test-lemmas.dict");
-                  tree.exclude("lucene/demo/src/**/knn-token-vectors");
-                  tree.exclude("lucene/test-framework/src/**/europarl.lines.txt.seek");
-                  tree.exclude("lucene/analysis/common/src/**/*.aff");
-                  tree.exclude("lucene/analysis/common/src/**/*.dic");
-                  tree.exclude("lucene/analysis/common/src/**/*.good");
-                  tree.exclude("lucene/analysis/common/src/**/*.sug");
-                  tree.exclude("lucene/analysis/common/src/**/*.wrong");
-                  tree.exclude("lucene/analysis/common/src/**/*.rslp");
-                  tree.exclude("lucene/analysis/common/src/**/*.htm*");
-                  tree.exclude("lucene/analysis.tests/src/**/*.aff");
-                  tree.exclude("lucene/analysis.tests/src/**/*.dic");
-                  // Luke has an embedded ElegantIcons font (MIT licensed).
-                  tree.exclude("lucene/luke/src/**/ElegantIcons.ttf");
-                }));
+    // I thought it'd be possible to somehow precompile those glob filters but apparently not.
+    // I guess it's fine if the list of patterns and files is of reasonable size.
+    Spec<File> maybeExcludeKnownExceptions =
+        file -> {
+          // relativize from root project directory. No need to replace path separators as ant is
+          // os-agnostic here.
+          var filePath = rootDir.relativize(file.toPath()).toString();
+          return excludedPaths.stream()
+              .noneMatch(pattern -> SelectorUtils.match(pattern, filePath));
+        };
+    task.getFiles().from(project.files(allNonIgnoredFiles).filter(maybeExcludeKnownExceptions));
   }
 }

@@ -1,3 +1,4 @@
+import org.apache.lucene.gradle.plugins.gitinfo.GitInfoExtension
 import org.apache.lucene.gradle.plugins.licenses.CheckLicensesTask
 
 /*
