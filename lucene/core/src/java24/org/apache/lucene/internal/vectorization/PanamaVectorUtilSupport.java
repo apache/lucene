@@ -1409,4 +1409,28 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       FloatVector.fromArray(FLOAT_SPECIES, v, i).mul(invNormVector).intoArray(v, i);
     }
   }
+
+  private static final boolean EXPAND_8_VECTOR_OPTIMIZATION = INT_SPECIES.length() >= 4;
+
+  @Override
+  public void expand8(int[] arr) {
+    if (EXPAND_8_VECTOR_OPTIMIZATION) {
+      for (int i = 0; i < 64; i += INT_SPECIES.length()) {
+        IntVector v = IntVector.fromArray(INT_SPECIES, arr, i);
+
+        v.lanewise(LSHR, 24).intoArray(arr, i);
+        v.lanewise(LSHR, 16).and(0xFF).intoArray(arr, 64 + i);
+        v.lanewise(LSHR, 8).and(0xFF).intoArray(arr, 128 + i);
+        v.and(0xFF).intoArray(arr, 192 + i);
+      }
+    } else {
+      for (int i = 0; i < 64; ++i) {
+        int l = arr[i];
+        arr[i] = (l >>> 24) & 0xFF;
+        arr[64 + i] = (l >>> 16) & 0xFF;
+        arr[128 + i] = (l >>> 8) & 0xFF;
+        arr[192 + i] = l & 0xFF;
+      }
+    }
+  }
 }

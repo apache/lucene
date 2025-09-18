@@ -144,4 +144,6 @@ public interface VectorUtilSupport {
   int filterByScore(int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo);
 
   float[] l2normalize(float[] v, boolean throwOnZero);
+
+  void expand8(int[] arr);
 }
