@@ -176,6 +176,11 @@ public class LRUQueryCache implements QueryCache, Accountable {
   }
 
   // pkg-private for testing
+  Map<Query, QueryMetadata> getUniqueQueries() {
+    return uniqueQueries;
+  }
+
+  // pkg-private for testing
   static class MinSegmentSizePredicate implements Predicate<LeafReaderContext> {
     private final int minSize;
 
@@ -705,9 +710,10 @@ public class LRUQueryCache implements QueryCache, Accountable {
     }
   }
 
-  private class QueryMetadata {
-    Query query;
-    long queryRamBytesUsed;
+  // pkg-private for testing
+  static class QueryMetadata {
+    final Query query;
+    final long queryRamBytesUsed;
 
     QueryMetadata(Query query, long queryRamBytesUsed) {
       this.query = query;

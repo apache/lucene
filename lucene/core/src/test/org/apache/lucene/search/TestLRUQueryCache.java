@@ -1063,6 +1063,35 @@ public class TestLRUQueryCache extends LuceneTestCase {
     dir.close();
   }
 
+  public void testQuerySizeBytesAreCached() throws IOException {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+      Document doc = new Document();
+      doc.add(new StringField("foo", "bar", Store.YES));
+      doc.add(new StringField("foo", "quux", Store.YES));
+      w.addDocument(doc);
+      w.commit();
+      final IndexReader reader = w.getReader();
+      final IndexSearcher searcher = newSearcher(reader);
+      final LRUQueryCache queryCache =
+          new LRUQueryCache(1000000, 10000000, _ -> true, Float.POSITIVE_INFINITY);
+      searcher.setQueryCache(queryCache);
+      searcher.setQueryCachingPolicy(ALWAYS_CACHE);
+      StringBuilder sb = new StringBuilder();
+      sb.append("a".repeat(100));
+      String term = sb.toString();
+      TermQuery termQuery = new TermQuery(new Term("foo", term));
+      long expectedQueryInBytes =
+          LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY + RamUsageEstimator.sizeOf(termQuery, 32);
+      searcher.search(new ConstantScoreQuery(termQuery), 1);
+
+      assertEquals(1, queryCache.getUniqueQueries().size());
+      assertEquals(
+          expectedQueryInBytes, queryCache.getUniqueQueries().get(termQuery).queryRamBytesUsed);
+      reader.close();
+    }
+  }
+
   public void testCacheRamBytesWithALargeTermQuery() throws IOException {
     try (Directory dir = newDirectory();
         RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
@@ -1083,7 +1112,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
       sb.append("a".repeat(1200));
       String longTerm = sb.toString();
       TermQuery must = new TermQuery(new Term("foo", longTerm));
-      long queryInBytes = RamUsageEstimator.sizeOf(must, 0);
+      long queryInBytes = RamUsageEstimator.sizeOf(must, 32);
       assertTrue(queryInBytes > QUERY_DEFAULT_RAM_BYTES_USED);
       searcher.search(new ConstantScoreQuery(must), 1);
 
