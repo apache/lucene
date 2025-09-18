@@ -37,6 +37,8 @@ public class GitInfoPlugin extends LuceneGradlePlugin {
                   spec.getParameters().getRootProjectDir().set(project.getProjectDir());
                 });
 
+    var providers = project.getProviders();
+
     var gitInfoExtension =
         project.getExtensions().create(GitInfoExtension.NAME, GitInfoExtension.class);
 
@@ -45,29 +47,36 @@ public class GitInfoPlugin extends LuceneGradlePlugin {
     gitInfoExtension
         .getDotGitDir()
         .convention(
-            project
-                .getProviders()
-                .provider(
-                    () -> {
-                      Directory projectDirectory =
-                          project.getRootProject().getLayout().getProjectDirectory();
-                      Path gitLocation = projectDirectory.getAsFile().toPath().resolve(".git");
-                      if (!Files.exists(gitLocation)) {
-                        // don't return anything from the provider if we can't locate the .git
-                        // folder. This will result in the property returning false from isPresent.
-                        return null;
-                      }
+            providers.provider(
+                () -> {
+                  Directory projectDirectory =
+                      project.getRootProject().getLayout().getProjectDirectory();
+                  Path gitLocation = projectDirectory.getAsFile().toPath().resolve(".git");
+                  if (!Files.exists(gitLocation)) {
+                    // don't return anything from the provider if we can't locate the .git
+                    // folder. This will result in the property returning false from isPresent.
+                    return null;
+                  }
 
-                      if (Files.isDirectory(gitLocation)) {
-                        return projectDirectory.dir(".git");
-                      } else if (Files.isRegularFile(gitLocation)) {
-                        return projectDirectory.file(".git");
-                      } else {
-                        throw new GradleException(
-                            "Panic, .git location not a directory or file: "
-                                + gitLocation.toAbsolutePath());
-                      }
-                    }))
+                  if (Files.isDirectory(gitLocation)) {
+                    return projectDirectory.dir(".git");
+                  } else if (Files.isRegularFile(gitLocation)) {
+                    return projectDirectory.file(".git");
+                  } else {
+                    throw new GradleException(
+                        "Panic, .git location not a directory or file: "
+                            + gitLocation.toAbsolutePath());
+                  }
+                }))
         .finalizeValueOnRead();
+
+    gitInfoExtension
+        .getAllNonIgnoredProjectFiles()
+        .value(
+            providers.of(
+                GitFileListValueSource.class,
+                spec -> {
+                  spec.getParameters().getRootProjectDir().set(project.getProjectDir());
+                }));
   }
 }
