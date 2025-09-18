@@ -17,10 +17,11 @@
 package org.apache.lucene.gradle.plugins.licenses;
 
 import java.io.File;
-import java.util.List;
+import java.util.stream.Stream;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.apache.lucene.gradle.plugins.gitinfo.GitInfoExtension;
-import org.apache.tools.ant.types.selectors.SelectorUtils;
+import org.apache.tools.ant.types.selectors.TokenizedPath;
+import org.apache.tools.ant.types.selectors.TokenizedPattern;
 import org.gradle.api.Project;
 import org.gradle.api.specs.Spec;
 
@@ -62,87 +63,96 @@ public class CheckLicensesPlugin extends LuceneGradlePlugin {
     // Build a list of files excluded from the license check. Just reuse ant's glob patterns.
     var rootDir = getProjectRootPath(project);
     var excludedPaths =
-        List.of(
-            // Ignore binary files. Previously we used apache rat, which had a 'binary guesser'
-            // but it's faster to just exclude by name (rather than scan the file).
-            "**/*.adoc",
-            "**/*.bin",
-            "**/*.brk",
-            "**/*.bz2",
-            "**/*.dat",
-            "**/*.gif",
-            "**/*.gz",
-            "**/*.png",
-            "**/*.svg",
-            "**/*.xls",
-            "**/*.zip",
+        Stream.of(
+                // Ignore binary files. Previously we used apache rat, which had a 'binary guesser'
+                // but it's faster to just exclude by name (rather than scan the file).
+                "**/*.adoc",
+                "**/*.bin",
+                "**/*.brk",
+                "**/*.bz2",
+                "**/*.dat",
+                "**/*.gif",
+                "**/*.gz",
+                "**/*.png",
+                "**/*.svg",
+                "**/*.xls",
+                "**/*.zip",
 
-            // Ignore build infrastructure and misc utility files.
-            ".asf.yaml",
-            ".dir-locals.el",
-            ".editorconfig",
-            ".git-blame-ignore-revs",
-            ".gitattributes",
-            ".github/**",
-            ".gitignore",
-            ".lift.toml",
-            ".vscode/**",
-            "LICENSE.txt",
-            "NOTICE.txt",
-            "build-options.properties",
-            "dev-tools/**",
-            "gradle/**",
-            "help/*.txt",
-            "lucene/licenses/*",
-            "versions.lock",
+                // Ignore build infrastructure and misc utility files.
+                ".asf.yaml",
+                ".dir-locals.el",
+                ".editorconfig",
+                ".git-blame-ignore-revs",
+                ".gitattributes",
+                ".github/**",
+                ".gitignore",
+                ".lift.toml",
+                ".vscode/**",
+                "LICENSE.txt",
+                "NOTICE.txt",
+                "build-options.properties",
+                "dev-tools/**",
+                "gradle/**",
+                "help/*.txt",
+                "lucene/licenses/*",
+                "versions.lock",
 
-            // Ignore resources in source folders, also generated resources.
-            "**/src/**/*.txt",
-            "**/src/**/*.properties",
-            "**/src/**/*.utf8",
-            "**/src/generated/**",
+                // Ignore resources in source folders, also generated resources.
+                "**/src/**/*.txt",
+                "**/src/**/*.properties",
+                "**/src/**/*.utf8",
+                "**/src/generated/**",
 
-            // Ignore other binary resources within sources. Try to be
-            // specific here.
-            "build-tools/build-infra-shadow/src/java/keep.me",
-            "lucene/CHANGES.txt",
-            "lucene/analysis.tests/src/**/*.aff",
-            "lucene/analysis.tests/src/**/*.dic",
-            "lucene/analysis/common/src/**/*.aff",
-            "lucene/analysis/common/src/**/*.dic",
-            "lucene/analysis/common/src/**/*.good",
-            "lucene/analysis/common/src/**/*.htm*",
-            "lucene/analysis/common/src/**/*.rslp",
-            "lucene/analysis/common/src/**/*.sug",
-            "lucene/analysis/common/src/**/*.wrong",
-            "lucene/analysis/icu/src/**/utr30.nrm",
-            "lucene/analysis/kuromoji/src/**/bocchan.utf-8",
-            "lucene/analysis/morfologik/src/**/*.dict",
-            "lucene/analysis/morfologik/src/**/*.info",
-            "lucene/analysis/morfologik/src/**/*.input",
-            "lucene/analysis/opennlp/src/**/en-test-lemmas.dict",
-            "lucene/analysis/smartcn/src/**/*.mem",
-            "lucene/analysis/stempel/src/**/*.tbl",
-            "lucene/benchmark/.gitignore",
-            "lucene/demo/src/**/knn-token-vectors",
-            "lucene/luke/src/**/ElegantIcons.ttf",
-            "lucene/test-framework/src/**/europarl.lines.txt.seek",
+                // Ignore other binary resources within sources. Try to be
+                // specific here.
+                "build-tools/build-infra-shadow/src/java/keep.me",
+                "lucene/CHANGES.txt",
+                "lucene/analysis.tests/src/**/*.aff",
+                "lucene/analysis.tests/src/**/*.dic",
+                "lucene/analysis/common/src/**/*.aff",
+                "lucene/analysis/common/src/**/*.dic",
+                "lucene/analysis/common/src/**/*.good",
+                "lucene/analysis/common/src/**/*.htm*",
+                "lucene/analysis/common/src/**/*.rslp",
+                "lucene/analysis/common/src/**/*.sug",
+                "lucene/analysis/common/src/**/*.wrong",
+                "lucene/analysis/icu/src/**/utr30.nrm",
+                "lucene/analysis/kuromoji/src/**/bocchan.utf-8",
+                "lucene/analysis/morfologik/src/**/*.dict",
+                "lucene/analysis/morfologik/src/**/*.info",
+                "lucene/analysis/morfologik/src/**/*.input",
+                "lucene/analysis/opennlp/src/**/en-test-lemmas.dict",
+                "lucene/analysis/smartcn/src/**/*.mem",
+                "lucene/analysis/stempel/src/**/*.tbl",
+                "lucene/benchmark/.gitignore",
+                "lucene/demo/src/**/knn-token-vectors",
+                "lucene/luke/src/**/ElegantIcons.ttf",
+                "lucene/test-framework/src/**/europarl.lines.txt.seek",
 
-            // these may require a review, actually?
-            "lucene/queryparser/docs/**",
-            "lucene/benchmark/conf/*",
-            "lucene/benchmark/README.enwiki");
+                // these may require a review, actually?
+                "lucene/queryparser/docs/**",
+                "lucene/benchmark/conf/*",
+                "lucene/benchmark/README.enwiki")
+            .map(TokenizedPattern::new)
+            .toList();
 
     // I thought it'd be possible to somehow precompile those glob filters but apparently not.
     // I guess it's fine if the list of patterns and files is of reasonable size.
     Spec<File> maybeExcludeKnownExceptions =
         file -> {
-          // relativize from root project directory. No need to replace path separators as ant is
-          // os-agnostic here.
-          var filePath = rootDir.relativize(file.toPath()).toString();
+          // relativize from root project directory and normalize path separators.
+          var filePath = normalizePathSeparators(rootDir.relativize(file.toPath()).toString());
           return excludedPaths.stream()
-              .noneMatch(pattern -> SelectorUtils.match(pattern, filePath));
+              .noneMatch(pattern -> pattern.matchPath(new TokenizedPath(filePath), true));
         };
     task.getFiles().from(project.files(allNonIgnoredFiles).filter(maybeExcludeKnownExceptions));
+  }
+
+  private String normalizePathSeparators(String path) {
+    if (File.separatorChar == '\\') {
+      return path.replace(File.separatorChar, '/');
+    } else {
+      return path;
+    }
   }
 }
