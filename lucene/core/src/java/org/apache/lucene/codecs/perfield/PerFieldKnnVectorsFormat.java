@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ServiceLoader;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -191,7 +192,7 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
   }
 
   /** VectorReader that can wrap multiple delegate readers, selected by field. */
-  public static class FieldsReader extends KnnVectorsReader implements HnswGraphProvider {
+  private static class FieldsReader extends KnnVectorsReader implements HnswGraphProvider {
 
     private final IntObjectHashMap<KnnVectorsReader> fields = new IntObjectHashMap<>();
     private final FieldInfos fieldInfos;
@@ -259,17 +260,9 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
       }
     }
 
-    /**
-     * Return the underlying VectorReader for the given field
-     *
-     * @param field the name of a numeric vector field
-     */
-    public KnnVectorsReader getFieldReader(String field) {
-      final FieldInfo info = fieldInfos.fieldInfo(field);
-      if (info == null) {
-        return null;
-      }
-      return fields.get(info.number);
+    @Override
+    public Optional<KnnVectorsReader> unwrapReaderForField(String field) {
+      return Optional.ofNullable(fieldInfos.fieldInfo(field)).map(i -> fields.get(i.number));
     }
 
     @Override
