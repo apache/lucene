@@ -134,10 +134,6 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   private BooleanQuery(int minimumNumberShouldMatch, BooleanClause[] clauses) {
     this.minimumNumberShouldMatch = minimumNumberShouldMatch;
     this.clauses = Collections.unmodifiableList(Arrays.asList(clauses));
-    this.mustClauseQueries = new ArrayList<>();
-    this.mustNotClauseQueries = new ArrayList<>();
-    this.filterClauseQueries = new ArrayList<>();
-    this.shouldClauseQueries = new ArrayList<>();
     clauseSets = new EnumMap<>(Occur.class);
     // duplicates matter for SHOULD and MUST
     clauseSets.put(Occur.SHOULD, new Multiset<>());
@@ -149,6 +145,11 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     // calls(like in QueryCache), we need to iterate over clauseSets.keySet() which allocates
     // HashMap$HashSetIterator.<init>
     // for every call causing some performance impact
+
+    List<Query> mustClauseQueries = new ArrayList<>();
+    List<Query> mustNotClauseQueries = new ArrayList<>();
+    List<Query> filterClauseQueries = new ArrayList<>();
+    List<Query> shouldClauseQueries = new ArrayList<>();
     for (BooleanClause clause : clauses) {
       switch (clause.occur()) {
         case MUST:
@@ -166,6 +167,10 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
       clauseSets.get(clause.occur()).add(clause.query());
     }
+    this.mustClauseQueries = List.copyOf(mustClauseQueries);
+    this.mustNotClauseQueries = List.copyOf(mustNotClauseQueries);
+    this.filterClauseQueries = List.copyOf(filterClauseQueries);
+    this.shouldClauseQueries = List.copyOf(shouldClauseQueries);
   }
 
   /** Gets the minimum number of the optional BooleanClauses which must be satisfied. */
