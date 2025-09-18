@@ -107,7 +107,7 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader {
               state.context.withHints(
                   FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
     } catch (Throwable t) {
-      IOUtils.closeWhileSuppressingExceptions(t, this);
+      IOUtils.closeWhileHandlingException(this);
       throw t;
     }
   }
@@ -319,7 +319,7 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader {
       CodecUtil.retrieveChecksum(in);
       return in;
     } catch (Throwable t) {
-      IOUtils.closeWhileSuppressingExceptions(t, in);
+      IOUtils.closeWhileHandlingException(in);
       throw t;
     }
   }

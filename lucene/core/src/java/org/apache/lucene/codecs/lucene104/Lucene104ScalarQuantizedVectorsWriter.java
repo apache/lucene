@@ -115,7 +115,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
           state.segmentInfo.getId(),
           state.segmentSuffix);
     } catch (Throwable t) {
-      IOUtils.closeWhileSuppressingExceptions(t, this);
+      IOUtils.closeWhileHandlingException(this);
       throw t;
     }
   }
@@ -137,7 +137,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
     rawVectorDelegate.flush(maxDoc, sortMap);
     for (FieldWriter field : fields) {
-      // after raw vectors are written, normalize vectors for clustering and quantization
+      // after raw vectors are written, normalize vectors for clustering and
+      // quantization
       if (VectorSimilarityFunction.COSINE == field.fieldInfo.getVectorSimilarityFunction()) {
         field.normalizeVectors();
       }
@@ -479,10 +480,10 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
                 segmentWriteState.directory, tempQuantizedVectorName);
           });
     } catch (Throwable t) {
-      IOUtils.closeWhileSuppressingExceptions(t, tempQuantizedVectorData, quantizedDataInput);
+      IOUtils.closeWhileHandlingException(tempQuantizedVectorData, quantizedDataInput);
       if (tempQuantizedVectorData != null) {
-        IOUtils.deleteFilesSuppressingExceptions(
-            t, segmentWriteState.directory, tempQuantizedVectorData.getName());
+        IOUtils.deleteFilesIgnoringExceptions(
+            segmentWriteState.directory, tempQuantizedVectorData.getName());
       }
       throw t;
     }
