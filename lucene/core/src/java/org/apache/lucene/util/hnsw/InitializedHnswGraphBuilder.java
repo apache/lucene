@@ -104,14 +104,6 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
   }
 
   @Override
-  public void addGraphNode(int node, UpdateableRandomVectorScorer scorer) throws IOException {
-    if (initializedNodes.get(node)) {
-      return;
-    }
-    super.addGraphNode(node, scorer);
-  }
-
-  @Override
   public void addGraphNode(int node) throws IOException {
     if (initializedNodes.get(node)) {
       return;
