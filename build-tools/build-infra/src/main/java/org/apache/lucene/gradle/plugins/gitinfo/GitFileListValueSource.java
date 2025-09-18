@@ -22,21 +22,14 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import javax.inject.Inject;
-import org.apache.tools.ant.taskdefs.condition.Os;
 import org.gradle.api.GradleException;
-import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.ValueSource;
-import org.gradle.api.provider.ValueSourceParameters;
-import org.gradle.api.services.BuildServiceParameters;
 import org.gradle.process.ExecOperations;
 import org.slf4j.LoggerFactory;
 
 /** Returns a list of versioned and non-versioned (but not ignored) git files. */
 public abstract class GitFileListValueSource
-    implements ValueSource<List<String>, GitFileListValueSource.Parameters> {
-  public abstract static class Parameters implements BuildServiceParameters, ValueSourceParameters {
-    public abstract DirectoryProperty getRootProjectDir();
-  }
+    implements ValueSource<List<String>, GitValueSourceParameters> {
 
   @Inject
   public abstract ExecOperations getExecOps();
@@ -53,9 +46,9 @@ public abstract class GitFileListValueSource
                     spec.setErrorOutput(out);
                     spec.setIgnoreExitValue(true);
 
-                    spec.setWorkingDir(
-                        getParameters().getRootProjectDir().getAsFile().get().getAbsolutePath());
-                    spec.setExecutable(Os.isFamily(Os.FAMILY_WINDOWS) ? "git.exe" : "git");
+                    getParameters().configure(spec);
+
+                    spec.setExecutable(getParameters().getGitExec().get());
                     spec.args(
                         "ls-files",
                         // show cached

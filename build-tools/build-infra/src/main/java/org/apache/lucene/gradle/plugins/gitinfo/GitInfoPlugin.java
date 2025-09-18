@@ -19,33 +19,26 @@ package org.apache.lucene.gradle.plugins.gitinfo;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
+import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension;
+import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.file.Directory;
+import org.gradle.api.file.FileSystemLocation;
+import org.gradle.api.provider.Property;
+import org.gradle.api.provider.ValueSourceSpec;
 
 public class GitInfoPlugin extends LuceneGradlePlugin {
   @Override
   public void apply(Project project) {
     applicableToRootProjectOnly(project);
 
-    var gitInfoProvider =
-        project
-            .getProviders()
-            .of(
-                GitInfoValueSource.class,
-                spec -> {
-                  spec.getParameters().getRootProjectDir().set(project.getProjectDir());
-                });
-
-    var providers = project.getProviders();
-
     var gitInfoExtension =
         project.getExtensions().create(GitInfoExtension.NAME, GitInfoExtension.class);
+    var providers = project.getProviders();
 
-    gitInfoExtension.getGitInfo().value(gitInfoProvider).finalizeValueOnRead();
-
-    gitInfoExtension
-        .getDotGitDir()
+    Property<FileSystemLocation> dotGitDir = gitInfoExtension.getDotGitDir();
+    dotGitDir
         .convention(
             providers.provider(
                 () -> {
@@ -70,13 +63,24 @@ public class GitInfoPlugin extends LuceneGradlePlugin {
                 }))
         .finalizeValueOnRead();
 
+    var gitExec =
+        project.getExtensions().getByType(LuceneBuildGlobalsExtension.class).externalTool("git");
+
+    Action<ValueSourceSpec<GitValueSourceParameters>> configureGitParams =
+        spec -> {
+          var params = spec.getParameters();
+          params.getRootProjectDir().set(project.getProjectDir());
+          params.getGitExec().set(gitExec);
+          params.getDotDir().set(dotGitDir);
+        };
+
+    gitInfoExtension
+        .getGitInfo()
+        .value(providers.of(GitInfoValueSource.class, configureGitParams))
+        .finalizeValueOnRead();
+
     gitInfoExtension
         .getAllNonIgnoredProjectFiles()
-        .value(
-            providers.of(
-                GitFileListValueSource.class,
-                spec -> {
-                  spec.getParameters().getRootProjectDir().set(project.getProjectDir());
-                }));
+        .value(providers.of(GitFileListValueSource.class, configureGitParams));
   }
 }
