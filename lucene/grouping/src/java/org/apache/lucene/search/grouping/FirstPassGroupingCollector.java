@@ -32,7 +32,6 @@ import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.util.CollectionUtil;
-import org.apache.lucene.util.mutable.MutableValue;
 
 /**
  * FirstPassGroupingCollector is the first of two passes necessary to collect grouped hits. This
@@ -221,11 +220,11 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       return;
     }
 
-    groupSelector.advanceTo(doc);
+    GroupSelector.State state = groupSelector.advanceTo(doc);
     T groupValue = groupSelector.currentValue();
 
     // Skip documents without group field if option is enabled
-    if (ignoreDocsWithoutGroupField && isNullGroupValue(groupValue)) {
+    if (ignoreDocsWithoutGroupField && state == GroupSelector.State.SKIP) {
       return;
     }
 
@@ -387,16 +386,5 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
    */
   public GroupSelector<T> getGroupSelector() {
     return groupSelector;
-  }
-
-  private boolean isNullGroupValue(T groupValue) {
-    if (groupValue == null) {
-      return true;
-    }
-    // For ValueSourceGroupSelector, check if MutableValue exists
-    if (groupValue instanceof MutableValue mutable) {
-      return mutable.exists() == false;
-    }
-    return false;
   }
 }
