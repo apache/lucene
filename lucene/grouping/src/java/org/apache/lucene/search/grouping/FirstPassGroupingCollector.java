@@ -217,7 +217,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
     // it before but it fell out of the top N and is now
     // coming back
 
-    if (!isGroupMapFull()) {
+    if (isGroupMapFull() == false) {
 
       // Still in startup transient: we have not
       // seen enough unique groups to start pruning them;
