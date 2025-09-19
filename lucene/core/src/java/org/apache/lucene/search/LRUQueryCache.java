@@ -90,7 +90,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
   private final Predicate<LeafReaderContext> leavesToCache;
   // maps queries that are contained in the cache to a singleton so that this
   // cache does not store several copies of the same query
-  private final Map<Query, QueryMetadata> uniqueQueries;
+  private final Map<Query, Record> uniqueQueries;
   // The contract between this set and the per-leaf caches is that per-leaf caches
   // are only allowed to store sub-sets of the queries that are contained in
   // mostRecentlyUsedQueries. This is why write operations are performed under a lock
@@ -176,7 +176,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
   }
 
   // pkg-private for testing
-  Map<Query, QueryMetadata> getUniqueQueries() {
+  Map<Query, Record> getUniqueQueries() {
     return uniqueQueries;
   }
 
@@ -304,16 +304,16 @@ public class LRUQueryCache implements QueryCache, Accountable {
       return null;
     }
     // this get call moves the query to the most-recently-used position
-    final QueryMetadata queryMetadata = uniqueQueries.get(key);
-    if (queryMetadata == null || queryMetadata.query == null) {
+    final Record record = uniqueQueries.get(key);
+    if (record == null || record.query == null) {
       onMiss(readerKey, key);
       return null;
     }
-    final CacheAndCount cached = leafCache.get(queryMetadata.query);
+    final CacheAndCount cached = leafCache.get(record.query);
     if (cached == null) {
-      onMiss(readerKey, queryMetadata.query);
+      onMiss(readerKey, record.query);
     } else {
-      onHit(readerKey, queryMetadata.query);
+      onHit(readerKey, record.query);
     }
     return cached;
   }
@@ -324,15 +324,15 @@ public class LRUQueryCache implements QueryCache, Accountable {
     // under a lock to make sure that mostRecentlyUsedQueries and cache remain sync'ed
     writeLock.lock();
     try {
-      QueryMetadata queryMetadata =
+      Record record =
           uniqueQueries.computeIfAbsent(
               query,
               q -> {
                 long queryRamBytesUsed = getRamBytesUsed(q);
                 onQueryCache(q, queryRamBytesUsed);
-                return new QueryMetadata(q, queryRamBytesUsed);
+                return new Record(q, queryRamBytesUsed);
               });
-      query = queryMetadata.query;
+      query = record.query;
       final IndexReader.CacheKey key = cacheHelper.getKey();
       LeafCache leafCache = cache.get(key);
       if (leafCache == null) {
@@ -354,9 +354,9 @@ public class LRUQueryCache implements QueryCache, Accountable {
     assert writeLock.isHeldByCurrentThread();
     // under a lock to make sure that mostRecentlyUsedQueries and cache keep sync'ed
     if (requiresEviction()) {
-      Iterator<Map.Entry<Query, QueryMetadata>> iterator = uniqueQueries.entrySet().iterator();
+      Iterator<Map.Entry<Query, Record>> iterator = uniqueQueries.entrySet().iterator();
       do {
-        final Map.Entry<Query, QueryMetadata> entry = iterator.next();
+        final Map.Entry<Query, Record> entry = iterator.next();
         final int size = uniqueQueries.size();
         iterator.remove();
         if (size == uniqueQueries.size()) {
@@ -400,9 +400,9 @@ public class LRUQueryCache implements QueryCache, Accountable {
   public void clearQuery(Query query) {
     writeLock.lock();
     try {
-      final QueryMetadata queryMetadata = uniqueQueries.remove(query);
-      if (queryMetadata != null && queryMetadata.query != null) {
-        onEviction(queryMetadata.query, queryMetadata.queryRamBytesUsed);
+      final Record record = uniqueQueries.remove(query);
+      if (record != null && record.query != null) {
+        onEviction(record.query, record.queryRamBytesUsed);
       }
     } finally {
       writeLock.unlock();
@@ -711,11 +711,11 @@ public class LRUQueryCache implements QueryCache, Accountable {
   }
 
   // pkg-private for testing
-  static class QueryMetadata {
+  static class Record {
     final Query query;
     final long queryRamBytesUsed;
 
-    QueryMetadata(Query query, long queryRamBytesUsed) {
+    Record(Query query, long queryRamBytesUsed) {
       this.query = query;
       this.queryRamBytesUsed = queryRamBytesUsed;
     }
