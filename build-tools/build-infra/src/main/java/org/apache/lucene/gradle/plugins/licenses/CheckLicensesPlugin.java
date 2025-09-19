@@ -55,8 +55,11 @@ public class CheckLicensesPlugin extends LuceneGradlePlugin {
     Project project = task.getProject();
 
     assert project.getRootProject() == project;
-    var allNonIgnoredFiles =
-        project.getExtensions().getByType(GitInfoExtension.class).getAllNonIgnoredProjectFiles();
+    GitInfoExtension gitInfoExt = project.getExtensions().getByType(GitInfoExtension.class);
+
+    task.setEnabled(gitInfoExt.getDotGitDir().isPresent());
+
+    var allNonIgnoredFiles = gitInfoExt.getAllNonIgnoredProjectFiles();
 
     task.getReportFile().set(project.getLayout().getBuildDirectory().file("licenses-report.txt"));
 
