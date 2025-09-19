@@ -15,6 +15,10 @@
  * limitations under the License.
  */
 
+import de.undercouch.gradle.tasks.download.Download
+import org.apache.lucene.gradle.datasets.ExtractReuters
+import org.apache.lucene.gradle.datasets.ExtractZstd
+
 plugins {
   id "java"
 }
@@ -42,7 +46,7 @@ dependencies {
   })
 
   // LUCENE-10337: Include xercesImpl on regular classpath where it won't cause conflicts.
-  implementation (deps.xerces, {
+  implementation(deps.xerces, {
     exclude module: "xml-apis"
   })
 
@@ -90,3 +94,127 @@ tasks.register("run", JavaExec, {
     suspend = true
   }
 })
+
+def dataDir = project.layout.projectDirectory.dir("work")
+
+/**
+ * Registers a download-and-unpack dataset task with a given strategy.
+ */
+def registerDataset = { String taskName, Map<String, Object> cfg ->
+  return tasks.register(taskName, Download, {
+    String name = cfg.name
+    String src = cfg.src
+    File dst = cfg.dst
+
+    def archiveName = src.substring(src.lastIndexOf('/') + 1)
+    File intermediate = dataDir.file(archiveName).asFile
+
+    group = "Data set download"
+    description = "Download the ${name} data set."
+
+    if (cfg.outType == "dir") {
+      outputs.dir(dst)
+    } else {
+      outputs.file(dst)
+    }
+
+    it.src(src)
+    it.dest(intermediate)
+    it.overwrite(false)
+    it.compress(false)
+
+    doFirst {
+      logger.lifecycle("Downloading data set $name} from ${src} to ${dst}...")
+    }
+
+    doLast {
+      logger.lifecycle("Decompressing ${name}...")
+      switch (cfg.strategy) {
+        case 'zstd':
+          ExtractZstd.unzstd(intermediate.toPath(), dst.toPath())
+          break
+
+        case 'bunzip2':
+          ant.bunzip2(src: intermediate, dest: dst)
+          break
+
+        case 'tar':
+          project.sync {
+            from tarTree(intermediate)
+            into dst
+          }
+          break
+
+        case 'reuters':
+          File untarPath = file("${temporaryDir}/reuters-untar")
+          project.sync {
+            from(tarTree(intermediate)) {
+              exclude '*.txt'
+            }
+            into untarPath
+          }
+          logger.lifecycle("Extracting ${name} into ${dst}...")
+          dst.deleteDir()
+          ExtractReuters.main(untarPath.toString(), dst.toString())
+          break
+
+        default:
+          throw new GradleException("Unknown strategy: ${cfg.strategy}")
+      }
+    }
+  })
+}
+
+def datasets = [
+  getEnWiki: [
+    name: "enwiki-20070527-pages-articles.xml",
+    src: "https://s3.amazonaws.com/lucene-testdata/wikipedia/enwiki-20070527-pages-articles.xml.zst",
+    dst: dataDir.file("enwiki-20070527-pages-articles.xml").asFile,
+    outType: "file",
+    strategy: "zstd"
+  ],
+
+  getEnWikiRandomLines: [
+    name: "enwiki.random.lines.txt",
+    src: "https://s3.amazonaws.com/lucene-testdata/wikipedia/enwiki.random.lines.txt.zst",
+    dst: file("${dataDir}/enwiki.random.lines.txt"),
+    outType: "file",
+    strategy: "zstd"
+  ],
+
+  getGeoNames: [
+    name: "geonames_20130921_randomOrder_allCountries.txt",
+    src: "https://s3.amazonaws.com/lucene-testdata/geonames/geonames_20130921_randomOrder_allCountries.txt.bz2",
+    dst: file("${dataDir}/geonames_20130921_randomOrder_allCountries.txt"),
+    outType: "file",
+    strategy: "bunzip2"
+  ],
+
+  getTop100kWikiWordFiles: [
+    name: "top.100k.words.de.en.fr.uk.wikipedia.2009-11",
+    src: "https://s3.amazonaws.com/lucene-testdata/wikipedia/top.100k.words.de.en.fr.uk.wikipedia.2009-11.tar.bz2",
+    dst: file("${dataDir}/top.100k.words.de.en.fr.uk.wikipedia.2009-11"),
+    outType: "dir",
+    strategy: "tar"
+  ],
+
+  getReuters: [
+    name: "reuters21578",
+    src: "https://kdd.ics.uci.edu/databases/reuters21578/reuters21578.tar.gz",
+    dst: file("${dataDir}/reuters-out"),
+    outType: "dir",
+    strategy: "reuters"
+  ],
+]
+
+// Register all dataset downloading tasks
+def downloadTasks = datasets.collectEntries {taskName, cfg ->
+  [(taskName): registerDataset(taskName as String, cfg)]
+}.values()
+
+// An aggregate task to fetch them all.
+tasks.register("downloadDatasets") {
+  group = "Data set download"
+  description = "Download all data sets."
+  dependsOn downloadTasks
+}
