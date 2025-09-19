@@ -31,6 +31,7 @@ import org.apache.lucene.index.SegmentWriteState;
  *
  * @lucene.experimental
  */
+@Deprecated
 public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
 
   // The bits that are allowed for scalar quantization
