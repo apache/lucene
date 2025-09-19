@@ -233,7 +233,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       }
       groupMap.put(sg.groupValue, sg);
 
-      if (isGroupMapFull()) {
+      if (isGroupMapFull() == true) {
         // End of startup transient: we now have max
         // number of groups; from here on we will drop
         // bottom group when we insert new one:
