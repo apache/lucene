@@ -547,8 +547,10 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
             // delta-decode start offsets and  patch lengths using term lengths
             final int termLength = fPrefixLengths[j] + fSuffixLengths[j];
             lengths[i][positionIndex[i][j]] += termLength;
+            int sum = fStartOffsets[positionIndex[i][j]];
             for (int k = positionIndex[i][j] + 1; k < positionIndex[i][j + 1]; ++k) {
-              fStartOffsets[k] += fStartOffsets[k - 1];
+              sum += fStartOffsets[k];
+              fStartOffsets[k] = sum;
               fLengths[k] += termLength;
             }
           }
@@ -565,8 +567,10 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
         if (fPositions != null) {
           for (int j = 0, end = (int) numTerms.get(skip + i); j < end; ++j) {
             // delta-decode start offsets
+            int sum = fPositions[fpositionIndex[j]];
             for (int k = fpositionIndex[j] + 1; k < fpositionIndex[j + 1]; ++k) {
-              fPositions[k] += fPositions[k - 1];
+              sum += fPositions[k];
+              fPositions[k] = sum;
             }
           }
         }

@@ -162,9 +162,10 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
   }
 
   static void prefixSum(long[] buffer, int count, long base) {
-    buffer[0] += base;
-    for (int i = 1; i < count; ++i) {
-      buffer[i] += buffer[i - 1];
+    long sum = base;
+    for (int i = 0; i < count; ++i) {
+      sum += buffer[i];
+      buffer[i] = sum;
     }
   }
 
