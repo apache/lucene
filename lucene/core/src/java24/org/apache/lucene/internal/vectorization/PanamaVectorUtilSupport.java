@@ -1414,6 +1414,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public void expand8(int[] arr) {
+    // BLOCK_SIZE is 256
     if (EXPAND_8_VECTOR_OPTIMIZATION) {
       for (int i = 0; i < 64; i += INT_SPECIES.length()) {
         IntVector v = IntVector.fromArray(INT_SPECIES, arr, i);
