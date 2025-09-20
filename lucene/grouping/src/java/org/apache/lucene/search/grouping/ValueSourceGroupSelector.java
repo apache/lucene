@@ -88,7 +88,7 @@ public class ValueSourceGroupSelector extends GroupSelector<MutableValue> {
   public void setGroups(Collection<SearchGroup<MutableValue>> searchGroups) {
     secondPassGroups = new HashSet<>();
     for (SearchGroup<MutableValue> group : searchGroups) {
-      if (!group.groupValue.exists()) {
+      if (group.groupValue.exists() == false) {
         includeEmpty = true;
       } else {
         secondPassGroups.add(group.groupValue);
