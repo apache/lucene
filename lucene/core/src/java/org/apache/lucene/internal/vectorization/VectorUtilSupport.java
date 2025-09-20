@@ -147,9 +147,9 @@ public interface VectorUtilSupport {
 
   /**
    * Expands a 64-element integer array into a 256-element array by extracting individual bytes.
-   * Each 32-bit integer is split into 4 bytes, expanding the array from 64 to 256 elements.
-   * Only works on arrays with exactly 256 items (64 integers expanded to 256 bytes).
-   * Vectorization is beneficial here because the block size is 256.
+   * Each 32-bit integer is split into 4 bytes, expanding the array from 64 to 256 elements. Only
+   * works on arrays with exactly 256 items (64 integers expanded to 256 bytes). Vectorization is
+   * beneficial here because the block size is 256.
    */
   void expand8(int[] arr);
 }
