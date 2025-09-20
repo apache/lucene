@@ -484,4 +484,8 @@ public final class VectorUtil {
     }
     return IMPL.filterByScore(docBuffer, scoreBuffer, minScoreInclusive, upTo);
   }
+
+  public static void expand8(int[] arr) {
+    IMPL.expand8(arr);
+  }
 }
