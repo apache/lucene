@@ -37,6 +37,14 @@ public abstract class GitInfoValueSource
 
   @Override
   public Map<String, String> obtain() {
+    if (!getParameters().getDotDir().isPresent()) {
+      return Map.ofEntries(
+          Map.entry("git.commit", "unknown"),
+          Map.entry("git.commit-short", "unknown"),
+          Map.entry("git.clean", "false"),
+          Map.entry("git.changed-files", "not a git checkout"));
+    }
+
     try (var baos = new ByteArrayOutputStream();
         var out = new BufferedOutputStream(baos)) {
       var result =

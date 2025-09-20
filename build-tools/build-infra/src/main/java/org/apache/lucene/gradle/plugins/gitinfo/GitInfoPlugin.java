@@ -46,6 +46,13 @@ public class GitInfoPlugin extends LuceneGradlePlugin {
                       project.getRootProject().getLayout().getProjectDirectory();
                   Path gitLocation = projectDirectory.getAsFile().toPath().resolve(".git");
                   if (!Files.exists(gitLocation)) {
+                    project
+                        .getLogger()
+                        .warn(
+                            "This seems to be a source bundle of Lucene (not a git clone). Some tasks may be "
+                                + "skipped as they rely on .git to be present (you can run 'git init' if you "
+                                + "like or use a full git clone).");
+
                     // don't return anything from the provider if we can't locate the .git
                     // folder. This will result in the property returning false from isPresent.
                     return null;
@@ -61,7 +68,7 @@ public class GitInfoPlugin extends LuceneGradlePlugin {
                             + gitLocation.toAbsolutePath());
                   }
                 }))
-        .finalizeValueOnRead();
+        .finalizeValue();
 
     var gitExec =
         project.getExtensions().getByType(LuceneBuildGlobalsExtension.class).externalTool("git");
