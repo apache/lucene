@@ -140,8 +140,12 @@ public class UpdateGraphsUtils {
      *
      * <p>We expect the size of join set `j` to be small, around 1/5 to 1/2 of the size of gS. For the
      * rest of the nodes in gS, we expect savings by performing lighter searches in gL.
+     *
+     * Thread-safety: the thread safety is provided by the {@code graphSearcher} and {@code graphBuilder}, if both
+     * are thread-safe. Then the whole operation is thread-safe, providing no other thread is working on the same
+     * segment
      */
-    public static void joinSetGraphMerge(HnswGraph sourceGraph, HnswGraph destGraph, int[] oldToNewOrd, HnswBuilder graphBuilder) throws IOException {
+    public static void joinSetGraphMerge(HnswGraph sourceGraph, HnswGraph destGraph, HnswGraphSearcher graphSearcher ,int[] oldToNewOrd, HnswBuilder graphBuilder) throws IOException {
       int size = sourceGraph.size();
       IntHashSet j = computeJoinSet(sourceGraph);
 
@@ -166,10 +170,9 @@ public class UpdateGraphsUtils {
           if (v < u || j.contains(v)) {
             int newv = oldToNewOrd[v];
             eps.add(newv);
-
-            destGraph.seek(0, newv);
+            graphSearcher.graphSeek(destGraph, 0, newv);
             int friendOrd;
-            while ((friendOrd = destGraph.nextNeighbor()) != NO_MORE_DOCS) {
+            while ((friendOrd = graphSearcher.graphNextNeighbor(destGraph)) != NO_MORE_DOCS) {
               eps.add(friendOrd);
             }
           }

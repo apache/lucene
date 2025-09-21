@@ -22,7 +22,7 @@ import org.apache.lucene.util.BitSet;
 
 /**
  * A graph builder that is used during segments' merging. It enables efficient merging of graphs
- * using {@link UpdateGraphsUtils#joinSetGraphMerge(HnswGraph, HnswGraph, int[], HnswBuilder)}.} method.
+ * using {@link UpdateGraphsUtils#joinSetGraphMerge(HnswGraph, HnswGraph, HnswGraphSearcher, int[], HnswBuilder)}.} method.
  *
  * @lucene.experimental
  */
@@ -57,7 +57,7 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
    * @param totalNumberOfVectors the total number of vectors in the new graph, this should include
    *     all vectors expected to be added to the graph in the future
    * @param initializedNodes the nodes will be initialized through the merging, if null, all nodes
-   *     should be already initialized after {@link UpdateGraphsUtils#joinSetGraphMerge(HnswGraph, HnswGraph, int[], HnswBuilder)} being called
+   *     should be already initialized after {@link UpdateGraphsUtils#joinSetGraphMerge(HnswGraph, HnswGraph, HnswGraphSearcher, int[], HnswBuilder)} being called
    * @return a new HnswGraphBuilder that is initialized with the provided HnswGraph
    * @throws IOException when reading the graph fails
    */
@@ -95,8 +95,10 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
               + " vectors, graph sizes:"
               + graphSizes);
     }
+    // this searcher is created just to satisfy the call signature, shouldn't be used for any actual search functionality
+    HnswGraphSearcher graphSearcher = new HnswGraphSearcher(null, null);
     for (int i = 1; i < graphs.length; i++) {
-      UpdateGraphsUtils.joinSetGraphMerge(graphs[i], hnsw, ordMaps[i], this);
+      UpdateGraphsUtils.joinSetGraphMerge(graphs[i], hnsw, graphSearcher, ordMaps[i], this);
     }
 
     // TODO: optimize to iterate only over unset bits in initializedNodes

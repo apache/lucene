@@ -51,11 +51,13 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       int numWorker,
       RandomVectorScorerSupplier scorerSupplier,
       int beamWidth,
-      OnHeapHnswGraph hnsw,
-      BitSet initializedNodes)
+      int M,
+      GraphMergeContext graphMergeContext)
       throws IOException {
+    OnHeapHnswGraph hnsw = initGraph(M, graphMergeContext);
     this.taskExecutor = taskExecutor;
     AtomicInteger workProgress = new AtomicInteger(0);
+    AtomicInteger nextGraphToMerge = new AtomicInteger(1);
     workers = new ConcurrentMergeWorker[numWorker];
     hnswLock = new HnswLock();
     for (int i = 0; i < numWorker; i++) {
@@ -66,9 +68,18 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               HnswGraphBuilder.randSeed,
               hnsw,
               hnswLock,
-              initializedNodes,
-              workProgress);
+              workProgress,
+              nextGraphToMerge,
+              graphMergeContext
+          );
     }
+  }
+
+  private static OnHeapHnswGraph initGraph(int M, GraphMergeContext graphMergeContext) throws IOException {
+    if (graphMergeContext.initGraphs() == null || graphMergeContext.initGraphs().length == 0) {
+      return new OnHeapHnswGraph(M, graphMergeContext.maxOrd());
+    }
+    return InitializedHnswGraphBuilder.initGraph(graphMergeContext.initGraphs()[0], graphMergeContext.oldToNewOrdinalMaps()[0], graphMergeContext.maxOrd());
   }
 
   @Override
@@ -146,6 +157,14 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
      */
     private final AtomicInteger workProgress;
 
+    /**
+     * A common AtomicInteger shared among all workers, tracking which graph to merge next, if initGraphs is null, then
+     * this field will be ignored
+     */
+    private final AtomicInteger nextGraphToMerge;
+
+    private final GraphMergeContext graphMergeContext;
+
     private final BitSet initializedNodes;
     private int batchSize = DEFAULT_BATCH_SIZE;
 
@@ -155,8 +174,10 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
         long seed,
         OnHeapHnswGraph hnsw,
         HnswLock hnswLock,
-        BitSet initializedNodes,
-        AtomicInteger workProgress)
+        AtomicInteger workProgress,
+        AtomicInteger nextGraphToMerge,
+        GraphMergeContext graphMergeContext
+        )
         throws IOException {
       super(
           scorerSupplier,
@@ -167,7 +188,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           new MergeSearcher(
               new NeighborQueue(beamWidth, true), hnswLock, new FixedBitSet(hnsw.maxNodeId() + 1)));
       this.workProgress = workProgress;
-      this.initializedNodes = initializedNodes;
+      this.nextGraphToMerge = nextGraphToMerge;
+      this.graphMergeContext = graphMergeContext;
+      this.initializedNodes = graphMergeContext.initializedNodes();
     }
 
     /**
@@ -177,6 +200,18 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
      * finishing around the same time.
      */
     private void run(int maxOrd) throws IOException {
+      while (graphMergeContext.initGraphs() != null && nextGraphToMerge.get() < graphMergeContext.initGraphs().length) {
+        int graphToWork = nextGraphToMerge.getAndIncrement();
+        if (graphToWork >= graphMergeContext.initGraphs().length) {
+          break;
+        }
+        UpdateGraphsUtils.joinSetGraphMerge(
+            graphMergeContext.initGraphs()[graphToWork], hnsw, getGraphSearcher(), graphMergeContext.oldToNewOrdinalMaps()[graphToWork], this);
+      }
+      if (graphMergeContext.allInitialized()) {
+        // all the work has been done above since all the graphs are in the initGraphs set
+        return;
+      }
       int start = getStartPos(maxOrd);
       int end;
       while (start != -1) {
