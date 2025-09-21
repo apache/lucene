@@ -57,11 +57,11 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
     OnHeapHnswGraph graph;
     BitSet initializedNodes = null;
 
-    if (graphReaders.size() == 0) {
+    if (initGraphReaders.size() == 0) {
       graph = new OnHeapHnswGraph(M, maxOrd);
     } else {
-      graphReaders.sort(Comparator.comparingInt(GraphReader::graphSize).reversed());
-      GraphReader initGraphReader = graphReaders.get(0);
+      initGraphReaders.sort(Comparator.comparingInt(GraphReader::graphSize).reversed());
+      GraphReader initGraphReader = initGraphReaders.get(0);
       KnnVectorsReader initReader = initGraphReader.reader();
       MergeState.DocMap initDocMap = initGraphReader.initDocMap();
       int initGraphSize = initGraphReader.graphSize();
