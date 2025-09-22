@@ -61,6 +61,8 @@ Bug Fixes
   removing co-planar points to do it once after all holes are removed instead of doing it for each
   removed hole.
 
+* GITHUB#15213: Don't normalize centroids with zero samples, which caused divide-by-zero. (Mike Sokolov)
+
 Other
 ---------------------
 (No changes)
