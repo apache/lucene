@@ -73,7 +73,8 @@ public class Sample {
     p.setProperty("task.max.depth.log", "3");
     p.setProperty("max.buffered", "buf:10:10:100:100:10:10:100:100");
     p.setProperty("doc.maker", "org.apache.lucene.benchmark.byTask.feeds.DocMaker");
-    p.setProperty("content.source", "org.apache.lucene.benchmark.byTask.feeds.ReutersContentSource");
+    p.setProperty(
+        "content.source", "org.apache.lucene.benchmark.byTask.feeds.ReutersContentSource");
     p.setProperty("log.step", "2000");
     p.setProperty("doc.delete.step", "8");
     p.setProperty("analyzer", "org.apache.lucene.analysis.standard.StandardAnalyzer");
