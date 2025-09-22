@@ -529,7 +529,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         mergedCentroid[j] += centroid[j] * vectorCount;
       }
     }
-    if (recalculate) {
+    if (totalVectorCount == 0) {
+      return 0;
+    } else if (recalculate) {
       return calculateCentroid(mergeState, fieldInfo, mergedCentroid);
     } else {
       for (int j = 0; j < mergedCentroid.length; j++) {
