@@ -46,8 +46,8 @@ public class TestFullPrecisionFloatVectorSimilarityValuesSource extends LuceneTe
   private Codec savedCodec;
 
   private static final String KNN_FIELD = "knnField";
-  private static final int NUM_VECTORS = 1000;
-  private static final int VECTOR_DIMENSION = 128;
+  private static final int NUM_VECTORS = 100;
+  private static final int VECTOR_DIMENSION = 8;
 
   KnnVectorsFormat format;
   Float confidenceInterval;

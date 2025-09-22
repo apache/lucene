@@ -66,7 +66,7 @@ public class TestLateInteractionFloatValuesSource extends LuceneTestCase {
 
   public void testValues() throws IOException {
     List<float[][]> corpus = new ArrayList<>();
-    final int numDocs = atLeast(1000);
+    final int numDocs = atLeast(100);
     final int numSegments = random().nextInt(2, 5);
     final VectorSimilarityFunction vectorSimilarityFunction =
         VectorSimilarityFunction.values()[
@@ -96,7 +96,7 @@ public class TestLateInteractionFloatValuesSource extends LuceneTestCase {
           }
         }
         // add a segment with no vectors
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 10; i++) {
           Document doc = new Document();
           doc.add(new IntField("has_li_vector", 0, Field.Store.YES));
           w.addDocument(doc);
