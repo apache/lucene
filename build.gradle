@@ -40,7 +40,6 @@ plugins {
   id "lucene.misc.pylucene"
 
   id "lucene.documentation"
-  id "lucene.documentation.changes-to-html"
   id "lucene.documentation.markdown"
   id "lucene.documentation.render-javadoc"
 
