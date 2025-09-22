@@ -65,12 +65,6 @@ public record BooleanClause(Query query, Occur occur) {
         return "-";
       }
     };
-
-    private static final Occur[] VALUES = values();
-
-    public static Occur[] cachedValues() {
-      return VALUES;
-    }
   }
 
   /** Constructs a BooleanClause. */

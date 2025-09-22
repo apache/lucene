@@ -90,7 +90,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
   private final Predicate<LeafReaderContext> leavesToCache;
   // maps queries that are contained in the cache to a singleton so that this
   // cache does not store several copies of the same query
-  private final Map<Query, Record> uniqueQueries;
+  private final Map<Query, QueryMetadata> uniqueQueries;
   // The contract between this set and the per-leaf caches is that per-leaf caches
   // are only allowed to store sub-sets of the queries that are contained in
   // mostRecentlyUsedQueries. This is why write operations are performed under a lock
@@ -176,7 +176,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
   }
 
   // pkg-private for testing
-  Map<Query, Record> getUniqueQueries() {
+  Map<Query, QueryMetadata> getUniqueQueries() {
     return uniqueQueries;
   }
 
@@ -304,7 +304,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
       return null;
     }
     // this get call moves the query to the most-recently-used position
-    final Record record = uniqueQueries.get(key);
+    final QueryMetadata record = uniqueQueries.get(key);
     if (record == null || record.query == null) {
       onMiss(readerKey, key);
       return null;
@@ -324,13 +324,13 @@ public class LRUQueryCache implements QueryCache, Accountable {
     // under a lock to make sure that mostRecentlyUsedQueries and cache remain sync'ed
     writeLock.lock();
     try {
-      Record record =
+      QueryMetadata record =
           uniqueQueries.computeIfAbsent(
               query,
               q -> {
                 long queryRamBytesUsed = getRamBytesUsed(q);
                 onQueryCache(q, queryRamBytesUsed);
-                return new Record(q, queryRamBytesUsed);
+                return new QueryMetadata(q, queryRamBytesUsed);
               });
       query = record.query;
       final IndexReader.CacheKey key = cacheHelper.getKey();
@@ -354,9 +354,9 @@ public class LRUQueryCache implements QueryCache, Accountable {
     assert writeLock.isHeldByCurrentThread();
     // under a lock to make sure that mostRecentlyUsedQueries and cache keep sync'ed
     if (requiresEviction()) {
-      Iterator<Map.Entry<Query, Record>> iterator = uniqueQueries.entrySet().iterator();
+      Iterator<Map.Entry<Query, QueryMetadata>> iterator = uniqueQueries.entrySet().iterator();
       do {
-        final Map.Entry<Query, Record> entry = iterator.next();
+        final Map.Entry<Query, QueryMetadata> entry = iterator.next();
         final int size = uniqueQueries.size();
         iterator.remove();
         if (size == uniqueQueries.size()) {
@@ -400,7 +400,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
   public void clearQuery(Query query) {
     writeLock.lock();
     try {
-      final Record record = uniqueQueries.remove(query);
+      final QueryMetadata record = uniqueQueries.remove(query);
       if (record != null && record.query != null) {
         onEviction(record.query, record.queryRamBytesUsed);
       }
@@ -711,15 +711,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
   }
 
   // pkg-private for testing
-  static class Record {
-    final Query query;
-    final long queryRamBytesUsed;
-
-    Record(Query query, long queryRamBytesUsed) {
-      this.query = query;
-      this.queryRamBytesUsed = queryRamBytesUsed;
-    }
-  }
+  record QueryMetadata(Query query, long queryRamBytesUsed) {}
 
   private class CachingWrapperWeight extends ConstantScoreWeight {
 

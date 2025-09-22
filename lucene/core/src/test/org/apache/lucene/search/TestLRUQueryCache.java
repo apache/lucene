@@ -1087,7 +1087,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
       assertEquals(1, queryCache.getUniqueQueries().size());
       assertEquals(
-          expectedQueryInBytes, queryCache.getUniqueQueries().get(termQuery).queryRamBytesUsed);
+          expectedQueryInBytes, queryCache.getUniqueQueries().get(termQuery).queryRamBytesUsed());
       reader.close();
     }
   }
