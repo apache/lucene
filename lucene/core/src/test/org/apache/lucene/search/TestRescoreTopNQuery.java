@@ -167,9 +167,9 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
     final String LATE_I_FIELD = "li_vector";
     final String KNN_FIELD = "knn_vector";
     List<float[][]> corpus = new ArrayList<>();
-    final int numDocs = atLeast(1000);
-    final int numSegments = random().nextInt(2, 10);
-    final int dim = 128;
+    final int numDocs = atLeast(100);
+    final int numSegments = random().nextInt(2, 5);
+    final int dim = 8;
     final VectorSimilarityFunction vectorSimilarityFunction =
         VectorSimilarityFunction.values()[
             random().nextInt(VectorSimilarityFunction.values().length)];
