@@ -79,8 +79,11 @@ public class DirectIODirectory extends FilterDirectory {
   /** Default min expected merge size before direct IO is used (10 MB): */
   public static final long DEFAULT_MIN_BYTES_DIRECT = 10 * 1024 * 1024;
 
+  public static final int DEFAULT_MAX_PREFETCH_BUFFERS = 16;
+
   private final int blockSize, mergeBufferSize;
   private final long minBytesDirect;
+  private final int maxPrefetches;
 
   volatile boolean isOpen = true;
 
@@ -126,14 +129,31 @@ public class DirectIODirectory extends FilterDirectory {
    * @param mergeBufferSize Size of buffer to use for merging.
    * @param minBytesDirect Merges, or files to be opened for reading, smaller than this will not use
    *     direct IO. See {@link #DEFAULT_MIN_BYTES_DIRECT} and {@link #useDirectIO}.
+   * @param maxPrefetches The maximum number of prefetch buffers to use when reading with direct IO.
    * @throws IOException If there is a low-level I/O error
    */
-  public DirectIODirectory(FSDirectory delegate, int mergeBufferSize, long minBytesDirect)
+  public DirectIODirectory(
+      FSDirectory delegate, int mergeBufferSize, long minBytesDirect, int maxPrefetches)
       throws IOException {
     super(delegate);
     this.blockSize = Math.toIntExact(Files.getFileStore(delegate.getDirectory()).getBlockSize());
     this.mergeBufferSize = mergeBufferSize;
     this.minBytesDirect = minBytesDirect;
+    this.maxPrefetches = maxPrefetches;
+  }
+
+  /**
+   * Create a new DirectIODirectory for the named location.
+   *
+   * @param delegate Directory for non-merges, also used as reference to file system path.
+   * @param mergeBufferSize Size of buffer to use for merging.
+   * @param minBytesDirect Merges, or files to be opened for reading, smaller than this will not use
+   *     direct IO. See {@link #DEFAULT_MIN_BYTES_DIRECT} and {@link #useDirectIO}.
+   * @throws IOException If there is a low-level I/O error
+   */
+  public DirectIODirectory(FSDirectory delegate, int mergeBufferSize, long minBytesDirect)
+      throws IOException {
+    this(delegate, mergeBufferSize, minBytesDirect, DEFAULT_MAX_PREFETCH_BUFFERS);
   }
 
   /**
@@ -143,7 +163,11 @@ public class DirectIODirectory extends FilterDirectory {
    * @throws IOException If there is a low-level I/O error
    */
   public DirectIODirectory(FSDirectory delegate) throws IOException {
-    this(delegate, DEFAULT_MERGE_BUFFER_SIZE, DEFAULT_MIN_BYTES_DIRECT);
+    this(
+        delegate,
+        DEFAULT_MERGE_BUFFER_SIZE,
+        DEFAULT_MIN_BYTES_DIRECT,
+        DEFAULT_MAX_PREFETCH_BUFFERS);
   }
 
   /**
@@ -183,7 +207,8 @@ public class DirectIODirectory extends FilterDirectory {
   public IndexInput openInput(String name, IOContext context) throws IOException {
     ensureOpen();
     if (useDirectIO(name, context, OptionalLong.of(fileLength(name)))) {
-      return new DirectIOIndexInput(getDirectory().resolve(name), blockSize, mergeBufferSize, 16);
+      return new DirectIOIndexInput(
+          getDirectory().resolve(name), blockSize, mergeBufferSize, maxPrefetches);
     } else {
       return in.openInput(name, context);
     }
