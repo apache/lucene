@@ -1375,13 +1375,6 @@ public class TestGrouping extends LuceneTestCase {
               + canUseIDV);
     }
     // Run 1st pass collector to get top groups per shard
-    final Weight w =
-        topSearcher.createWeight(
-            topSearcher.rewrite(query),
-            groupSort.needsScores() || docSort.needsScores() || getMaxScores
-                ? ScoreMode.COMPLETE
-                : ScoreMode.COMPLETE_NO_SCORES,
-            1);
     final List<Collection<SearchGroup<BytesRef>>> shardGroups = new ArrayList<>();
     List<FirstPassGroupingCollector<?>> firstPassGroupingCollectors = new ArrayList<>();
     FirstPassGroupingCollector<?> firstPassCollector = null;
@@ -1405,6 +1398,10 @@ public class TestGrouping extends LuceneTestCase {
         System.out.println("    1st pass collector=" + firstPassCollector);
       }
       firstPassGroupingCollectors.add(firstPassCollector);
+
+      final Weight w =
+          topSearcher.createWeight(topSearcher.rewrite(query), firstPassCollector.scoreMode(), 1);
+
       subSearchers[shardIDX].search(w, firstPassCollector);
       final Collection<SearchGroup<BytesRef>> topGroups = getSearchGroups(firstPassCollector, 0);
       if (topGroups != null) {
@@ -1462,6 +1459,11 @@ public class TestGrouping extends LuceneTestCase {
                 docSort,
                 docOffset + topNDocs,
                 getMaxScores);
+
+        final Weight w =
+            topSearcher.createWeight(
+                topSearcher.rewrite(query), secondPassCollector.scoreMode(), 1);
+
         subSearchers[shardIDX].search(w, secondPassCollector);
         shardTopGroups[shardIDX] = getTopGroups(secondPassCollector, 0);
         if (VERBOSE) {
