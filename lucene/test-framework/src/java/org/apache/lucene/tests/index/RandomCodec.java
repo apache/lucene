@@ -309,18 +309,6 @@ public class RandomCodec extends AssertingCodec {
     }
   }
 
-  private final Float randomConfidenceInterval(Random random) {
-    switch (random.nextInt(3)) {
-      default:
-      case 0:
-        return null;
-      case 1:
-        return 0f;
-      case 2:
-        return random.nextFloat(0.9f, 1f);
-    }
-  }
-
   public RandomCodec(Random random) {
     this(random, Collections.<String>emptySet());
   }

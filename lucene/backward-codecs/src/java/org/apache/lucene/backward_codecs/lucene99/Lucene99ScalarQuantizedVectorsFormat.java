@@ -37,10 +37,10 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   // The bits that are allowed for scalar quantization
   // We only allow unsigned byte (8), signed byte (7), and half-byte (4)
   private static final int ALLOWED_BITS = (1 << 8) | (1 << 7) | (1 << 4);
-  public static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";
+  static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
-  public static final String NAME = "Lucene99ScalarQuantizedVectorsFormat";
+  static final String NAME = "Lucene99ScalarQuantizedVectorsFormat";
 
   static final int VERSION_START = 0;
   static final int VERSION_ADD_BITS = 1;
@@ -120,7 +120,7 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
     this.flatVectorScorer = FlatVectorScorerUtil.getLucene99ScalarQuantizedVectorsScorer();
   }
 
-  public static float calculateDefaultConfidenceInterval(int vectorDimension) {
+  static float calculateDefaultConfidenceInterval(int vectorDimension) {
     return Math.max(MINIMUM_CONFIDENCE_INTERVAL, 1f - (1f / (vectorDimension + 1)));
   }
 

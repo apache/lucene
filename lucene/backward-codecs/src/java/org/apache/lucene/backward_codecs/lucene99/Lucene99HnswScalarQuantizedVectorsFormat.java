@@ -45,7 +45,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  */
 public class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
 
-  public static final String NAME = "Lucene99HnswScalarQuantizedVectorsFormat";
+  static final String NAME = "Lucene99HnswScalarQuantizedVectorsFormat";
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
