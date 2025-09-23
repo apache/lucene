@@ -19,7 +19,8 @@
 @SuppressWarnings("module") // the test framework is compiled after the core...
 module org.apache.lucene.core {
   requires java.logging;
-  requires static jdk.management; // this is optional but explicit declaration is recommended
+  requires static jdk.management;
+  requires org.apache.lucene.core; // this is optional but explicit declaration is recommended
 
   exports org.apache.lucene.analysis.standard;
   exports org.apache.lucene.analysis.tokenattributes;
@@ -84,8 +85,6 @@ module org.apache.lucene.core {
       org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
   provides org.apache.lucene.codecs.KnnVectorsFormat with
       org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat,
-      org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat,
-      org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat,
       org.apache.lucene.codecs.lucene102.Lucene102HnswBinaryQuantizedVectorsFormat,
       org.apache.lucene.codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat,
       org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat,

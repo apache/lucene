@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.backward_codecs.lucene99;
 
+import static org.apache.lucene.backward_codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
-import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION;
 
 import java.io.IOException;
 import java.util.Map;

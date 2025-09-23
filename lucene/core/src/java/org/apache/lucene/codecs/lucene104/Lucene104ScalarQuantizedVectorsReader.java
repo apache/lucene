@@ -53,9 +53,12 @@ import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
+import org.apache.lucene.util.quantization.QuantizedVectorsReader;
+import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /** Reader for scalar quantized vectors in the Lucene 10.4 format. */
-class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader {
+class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
+    implements QuantizedVectorsReader {
 
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene104ScalarQuantizedVectorsReader.class);
@@ -337,6 +340,64 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader {
               + info.getVectorSimilarityFunction());
     }
     return FieldEntry.create(input, vectorEncoding, info.getVectorSimilarityFunction());
+  }
+
+  @Override
+  public org.apache.lucene.util.quantization.QuantizedByteVectorValues getQuantizedVectorValues(
+      String field) throws IOException {
+    FieldEntry fi = fields.get(field);
+    if (fi == null) {
+      return null;
+    }
+    if (fi.vectorEncoding != VectorEncoding.FLOAT32) {
+      throw new IllegalArgumentException(
+          "field=\""
+              + field
+              + "\" is encoded as: "
+              + fi.vectorEncoding
+              + " expected: "
+              + VectorEncoding.FLOAT32);
+    }
+    var qv =
+        OffHeapScalarQuantizedVectorValues.load(
+            fi.ordToDocDISIReaderConfiguration,
+            fi.dimension,
+            fi.size,
+            new OptimizedScalarQuantizer(fi.similarityFunction),
+            fi.scalarEncoding,
+            fi.similarityFunction,
+            vectorScorer,
+            fi.centroid,
+            fi.centroidDP,
+            fi.vectorDataOffset,
+            fi.vectorDataLength,
+            quantizedVectorData);
+    return new org.apache.lucene.util.quantization.QuantizedByteVectorValues() {
+      @Override
+      public float getScoreCorrectionConstant(int ord) throws IOException {
+        return 0;
+      }
+
+      @Override
+      public byte[] vectorValue(int ord) throws IOException {
+        return qv.vectorValue(ord);
+      }
+
+      @Override
+      public int dimension() {
+        return qv.dimension();
+      }
+
+      @Override
+      public int size() {
+        return qv.size();
+      }
+    };
+  }
+
+  @Override
+  public ScalarQuantizer getQuantizationState(String fieldName) {
+    return null;
   }
 
   private record FieldEntry(

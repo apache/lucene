@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.backward_codecs.lucene99;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
@@ -23,6 +23,7 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
+import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
@@ -31,13 +32,13 @@ import org.apache.lucene.index.SegmentWriteState;
  *
  * @lucene.experimental
  */
-@Deprecated
 public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
 
   // The bits that are allowed for scalar quantization
   // We only allow unsigned byte (8), signed byte (7), and half-byte (4)
   private static final int ALLOWED_BITS = (1 << 8) | (1 << 7) | (1 << 4);
   public static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";
+  static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
   public static final String NAME = "Lucene99ScalarQuantizedVectorsFormat";
 
@@ -49,7 +50,7 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   static final String META_EXTENSION = "vemq";
   static final String VECTOR_DATA_EXTENSION = "veq";
 
-  private static final FlatVectorsFormat rawVectorFormat =
+  static final FlatVectorsFormat rawVectorFormat =
       new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   /** The minimum confidence interval */
@@ -143,13 +144,7 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene99ScalarQuantizedVectorsWriter(
-        state,
-        confidenceInterval,
-        bits,
-        compress,
-        rawVectorFormat.fieldsWriter(state),
-        flatVectorScorer);
+    throw new UnsupportedOperationException("Old codecs may only be used for reading");
   }
 
   @Override
