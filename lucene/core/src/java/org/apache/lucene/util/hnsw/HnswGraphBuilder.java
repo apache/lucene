@@ -191,6 +191,10 @@ public class HnswGraphBuilder implements HnswBuilder {
     return hnsw;
   }
 
+  public HnswGraphSearcher getGraphSearcher() {
+    return graphSearcher;
+  }
+
   /** add vectors in range [minOrd, maxOrd) */
   protected void addVectors(int minOrd, int maxOrd) throws IOException {
     if (frozen) {
@@ -646,5 +650,6 @@ public class HnswGraphBuilder implements HnswBuilder {
     public KnnSearchStrategy getSearchStrategy() {
       return null;
     }
+
   }
 }
