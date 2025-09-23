@@ -28,11 +28,12 @@ import org.apache.lucene.index.SegmentWriteState;
 class Lucene99RWV1HnswScalarQuantizationVectorsFormat
     extends Lucene99HnswScalarQuantizedVectorsFormat {
 
-  private final FlatVectorsFormat flatVectorsFormat = new Lucene99RWScalarQuantizedVectorsFormat();
+  private final FlatVectorsFormat flatVectorsFormat;
 
   /** Sole constructor */
   protected Lucene99RWV1HnswScalarQuantizationVectorsFormat() {
     super();
+    this.flatVectorsFormat = new Lucene99RWScalarQuantizedVectorsFormat();
   }
 
   public Lucene99RWV1HnswScalarQuantizationVectorsFormat(
@@ -44,6 +45,8 @@ class Lucene99RWV1HnswScalarQuantizationVectorsFormat
       Float confidenceInterval,
       ExecutorService mergeExec) {
     super(maxConn, beamWidth, numMergeWorkers, bits, compress, confidenceInterval, mergeExec);
+    this.flatVectorsFormat =
+        new Lucene99RWScalarQuantizedVectorsFormat(confidenceInterval, bits, compress);
   }
 
   @Override
