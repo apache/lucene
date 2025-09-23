@@ -51,7 +51,6 @@ public class TestFullPrecisionFloatVectorSimilarityValuesSource extends LuceneTe
   private static final int VECTOR_DIMENSION = 8;
 
   KnnVectorsFormat format;
-  Float confidenceInterval;
   int bits;
 
   @Before
@@ -59,10 +58,6 @@ public class TestFullPrecisionFloatVectorSimilarityValuesSource extends LuceneTe
   public void setUp() throws Exception {
     super.setUp();
     bits = random().nextBoolean() ? 4 : 8;
-    confidenceInterval = random().nextBoolean() ? random().nextFloat(0.90f, 1.0f) : null;
-    if (random().nextBoolean()) {
-      confidenceInterval = 0f;
-    }
     format = getKnnFormat(bits);
     savedCodec = Codec.getDefault();
     Codec.setDefault(getCodec());
@@ -78,7 +73,7 @@ public class TestFullPrecisionFloatVectorSimilarityValuesSource extends LuceneTe
     return TestUtil.alwaysKnnVectorsFormat(format);
   }
 
-  private final KnnVectorsFormat getKnnFormat(int bits) {
+  private KnnVectorsFormat getKnnFormat(int bits) {
     return new Lucene104HnswScalarQuantizedVectorsFormat(
         Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.fromNumBits(bits),
         Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,

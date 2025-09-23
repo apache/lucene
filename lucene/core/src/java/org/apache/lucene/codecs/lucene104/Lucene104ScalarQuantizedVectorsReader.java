@@ -505,6 +505,11 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       return quantizedVectorValues.scorer(query);
     }
 
+    @Override
+    public VectorScorer rescorer(float[] target) throws IOException {
+      return rawVectorValues.rescorer(target);
+    }
+
     QuantizedByteVectorValues getQuantizedVectorValues() throws IOException {
       return quantizedVectorValues;
     }
