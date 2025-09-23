@@ -982,7 +982,6 @@ public class TestDrillSideways extends FacetTestCase {
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
   }
 
-
   public void testEarlyTermination() throws Exception {
     Directory dir = newDirectory();
     Directory taxoDir = newDirectory();
@@ -1000,7 +999,7 @@ public class TestDrillSideways extends FacetTestCase {
     doc.add(new FacetField("Author", "Bob"));
     writer.addDocument(config.build(taxoWriter, doc));
 
-    for (int i = 0 ; i < 5 ; i++) {
+    for (int i = 0; i < 5; i++) {
       doc = new Document();
       doc.add(new FacetField("Author", "Lisa"));
       writer.addDocument(config.build(taxoWriter, doc));
@@ -1019,44 +1018,52 @@ public class TestDrillSideways extends FacetTestCase {
     AtomicInteger docsCollected = new AtomicInteger(0);
     AtomicBoolean earlyTerminated = new AtomicBoolean(false);
     int maxDocsForEarlyTermination = 3;
-    DrillSidewaysResult result = ds.search(ddq, new SimpleCollectorManager(2, Comparator.comparing(cr -> cr.docAndScore.doc)) {
-      @Override
-      public SimpleCollector newCollector() {
-        return new SimpleCollector(ScoreMode.COMPLETE_NO_SCORES) {
-          @Override
-          public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
-            return new SimpleLeafCollector() {
-              int numCollects = 0;
+    DrillSidewaysResult result =
+        ds.search(
+            ddq,
+            new SimpleCollectorManager(2, Comparator.comparing(cr -> cr.docAndScore.doc)) {
               @Override
-              public void setScorer(Scorable scorer) {
-                super.scorer = scorer;
-              }
+              public SimpleCollector newCollector() {
+                return new SimpleCollector(ScoreMode.COMPLETE_NO_SCORES) {
+                  @Override
+                  public LeafCollector getLeafCollector(LeafReaderContext context)
+                      throws IOException {
+                    return new SimpleLeafCollector() {
+                      int numCollects = 0;
 
-              @Override
-              public void collect(int doc) throws IOException {
-                numCollects++;
-                docsCollected.incrementAndGet();
-                if (numCollects >= maxDocsForEarlyTermination) {
-                  earlyTerminated.set(true);
-                  throw new CollectionTerminatedException();
-                }
+                      @Override
+                      public void setScorer(Scorable scorer) {
+                        super.scorer = scorer;
+                      }
+
+                      @Override
+                      public void collect(int doc) throws IOException {
+                        numCollects++;
+                        docsCollected.incrementAndGet();
+                        if (numCollects >= maxDocsForEarlyTermination) {
+                          earlyTerminated.set(true);
+                          throw new CollectionTerminatedException();
+                        }
+                      }
+                    };
+                  }
+                };
               }
-            };
-          }
-        };
-      }
-    });
+            });
     // sanity check that the hits collector early terminated at 3
     assertTrue("Expecting early termination", earlyTerminated.get());
-    assertEquals("Expecting num docs collected to be 3", maxDocsForEarlyTermination, docsCollected.get());
+    assertEquals(
+        "Expecting num docs collected to be 3", maxDocsForEarlyTermination, docsCollected.get());
 
     // Facets should have early terminated
     System.out.println(result.facets.getTopChildren(10, "Author").value);
-    assertEquals("Early termination didn't stop facet collection", maxDocsForEarlyTermination, result.facets.getTopChildren(10, "Author").value);
+    assertEquals(
+        "Early termination didn't stop facet collection",
+        maxDocsForEarlyTermination,
+        result.facets.getTopChildren(10, "Author").value);
 
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
-
   }
 
   private static class Doc implements Comparable<Doc> {
