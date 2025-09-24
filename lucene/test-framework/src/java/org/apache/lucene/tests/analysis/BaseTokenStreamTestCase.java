@@ -913,9 +913,7 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
         // System.out.println(ts.reflectAsString(false));
         fail("didn't get expected exception when reset() not called");
       }
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException expected) {
+    } catch (IllegalStateException _) {
       // ok
     } catch (Exception unexpected) {
       unexpected.printStackTrace(System.err);
@@ -936,9 +934,7 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
     try {
       ts = a.tokenStream("bogus", input);
       fail("didn't get expected exception when close() not called");
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException expected) {
+    } catch (IllegalStateException _) {
       // ok
     } finally {
       ts.close();

@@ -46,6 +46,8 @@ import org.gradle.process.CommandLineArgumentProvider;
  *     "https://help.eclipse.org/latest/index.jsp?topic=%2Forg.eclipse.jdt.doc.user%2Ftasks%2Ftask-using_batch_compiler.htm"
  */
 public class EcjLintPlugin extends LuceneGradlePlugin {
+  public static final String TASK_PREFIX = "ecjLint";
+  public static final String ECJ_LINT_PREFS_PATH = "validation/ecj-lint/ecj.javadocs.prefs";
 
   /*
    * Using an explicit dependency means we can't be as flexible in using interim "drops" of ecj,
@@ -57,7 +59,7 @@ public class EcjLintPlugin extends LuceneGradlePlugin {
   public void apply(Project project) {
     requiresAppliedPlugin(project, JavaPlugin.class);
 
-    Path javadocPrefsPath = gradlePluginResource(project, "validation/ecj-lint/ecj.javadocs.prefs");
+    Path javadocPrefsPath = gradlePluginResource(project, ECJ_LINT_PREFS_PATH);
 
     // Create a [sourceSetName]EcjLint task for each source set
     // with a non-empty java.srcDirs. These tasks are then
@@ -72,13 +74,13 @@ public class EcjLintPlugin extends LuceneGradlePlugin {
             .map(
                 sourceSet ->
                     tasks.register(
-                        sourceSet.getTaskName("ecjLint", null),
+                        sourceSet.getTaskName(TASK_PREFIX, null),
                         task -> configureEcjTask(sourceSet, javaExt, javadocPrefsPath, task)))
             .toList();
 
     var ecjLintTask =
         tasks.register(
-            "ecjLint",
+            TASK_PREFIX,
             task -> {
               task.setGroup("Verification");
               task.setDescription("Lint Java sources using ECJ.");

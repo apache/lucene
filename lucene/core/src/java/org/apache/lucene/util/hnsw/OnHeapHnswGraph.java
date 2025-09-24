@@ -53,10 +53,6 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   // levelToNodes
   private final AtomicInteger size =
       new AtomicInteger(0); // graph size, which is number of nodes in level 0
-  private final AtomicInteger nonZeroLevelSize =
-      new AtomicInteger(
-          0); // total number of NeighborArrays created that is not on level 0, for now it
-  // is only used to account memory usage
   private final AtomicInteger maxNodeId = new AtomicInteger(-1);
   private final int nsize; // neighbour array size at non-zero level
   private final int nsize0; // neighbour array size at zero level
@@ -182,7 +178,6 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
                 long bytesUsed = graphRamBytesUsed;
                 graphRamBytesUsed = bytesUsed + l;
               });
-      nonZeroLevelSize.incrementAndGet();
     }
     maxNodeId.accumulateAndGet(node, Math::max);
   }

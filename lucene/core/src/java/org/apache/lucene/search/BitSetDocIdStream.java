@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IOIntConsumer;
 import org.apache.lucene.util.MathUtil;
 
 final class BitSetDocIdStream extends DocIdStream {
@@ -39,7 +40,7 @@ final class BitSetDocIdStream extends DocIdStream {
   }
 
   @Override
-  public void forEach(int upTo, CheckedIntConsumer<IOException> consumer) throws IOException {
+  public void forEach(int upTo, IOIntConsumer consumer) throws IOException {
     if (upTo > this.upTo) {
       upTo = Math.min(upTo, max);
       bitSet.forEach(this.upTo - offset, upTo - offset, offset, consumer);
@@ -57,5 +58,19 @@ final class BitSetDocIdStream extends DocIdStream {
     } else {
       return 0;
     }
+  }
+
+  @Override
+  public int intoArray(int upTo, int[] array) {
+    if (upTo > this.upTo) {
+      upTo = Math.min(upTo, max);
+      int count = bitSet.intoArray(this.upTo - offset, upTo - offset, offset, array);
+      if (count == array.length) { // The whole range of doc IDs may not have been copied
+        upTo = array[array.length - 1] + 1;
+      }
+      this.upTo = upTo;
+      return count;
+    }
+    return 0;
   }
 }

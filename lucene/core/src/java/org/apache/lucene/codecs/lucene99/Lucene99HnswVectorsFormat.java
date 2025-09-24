@@ -87,7 +87,8 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
   static final String VECTOR_INDEX_EXTENSION = "vex";
 
   public static final int VERSION_START = 0;
-  public static final int VERSION_CURRENT = VERSION_START;
+  public static final int VERSION_GROUPVARINT = 1;
+  public static final int VERSION_CURRENT = VERSION_GROUPVARINT;
 
   /**
    * A maximum configurable maximum max conn.
@@ -156,10 +157,17 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    */
   private final int tinySegmentsThreshold;
 
+  private final int writeVersion;
+
   /** Constructs a format using default graph construction parameters */
   public Lucene99HnswVectorsFormat() {
     this(
-        DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, null, HNSW_GRAPH_THRESHOLD);
+        DEFAULT_MAX_CONN,
+        DEFAULT_BEAM_WIDTH,
+        DEFAULT_NUM_MERGE_WORKER,
+        null,
+        HNSW_GRAPH_THRESHOLD,
+        VERSION_CURRENT);
   }
 
   /**
@@ -169,7 +177,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    * @param beamWidth the size of the queue maintained during graph construction.
    */
   public Lucene99HnswVectorsFormat(int maxConn, int beamWidth) {
-    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, HNSW_GRAPH_THRESHOLD);
+    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, HNSW_GRAPH_THRESHOLD, VERSION_CURRENT);
   }
 
   /**
@@ -181,7 +189,8 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    *     determine the minimum required graph nodes
    */
   public Lucene99HnswVectorsFormat(int maxConn, int beamWidth, int tinySegmentsThreshold) {
-    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, tinySegmentsThreshold);
+    this(
+        maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, tinySegmentsThreshold, VERSION_CURRENT);
   }
 
   /**
@@ -197,7 +206,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    */
   public Lucene99HnswVectorsFormat(
       int maxConn, int beamWidth, int numMergeWorkers, ExecutorService mergeExec) {
-    this(maxConn, beamWidth, numMergeWorkers, mergeExec, HNSW_GRAPH_THRESHOLD);
+    this(maxConn, beamWidth, numMergeWorkers, mergeExec, HNSW_GRAPH_THRESHOLD, VERSION_CURRENT);
   }
 
   /**
@@ -212,13 +221,15 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    *     MergeScheduler#getIntraMergeExecutor(MergePolicy.OneMerge)} is used.
    * @param tinySegmentsThreshold the value of k for the expectedVisitedNodes heuristic, used to
    *     determine the minimum required graph nodes
+   * @param writeVersion the version used for the writer to encode docID's (VarInt=0, GroupVarInt=1)
    */
-  public Lucene99HnswVectorsFormat(
+  Lucene99HnswVectorsFormat(
       int maxConn,
       int beamWidth,
       int numMergeWorkers,
       ExecutorService mergeExec,
-      int tinySegmentsThreshold) {
+      int tinySegmentsThreshold,
+      int writeVersion) {
     super("Lucene99HnswVectorsFormat");
     if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
@@ -237,6 +248,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
     this.tinySegmentsThreshold = tinySegmentsThreshold;
+    this.writeVersion = writeVersion;
     if (numMergeWorkers == 1 && mergeExec != null) {
       throw new IllegalArgumentException(
           "No executor service is needed as we'll use single thread to merge");
@@ -258,7 +270,8 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
         flatVectorsFormat.fieldsWriter(state),
         numMergeWorkers,
         mergeExec,
-        tinySegmentsThreshold);
+        tinySegmentsThreshold,
+        writeVersion);
   }
 
   @Override

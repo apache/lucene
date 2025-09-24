@@ -128,9 +128,7 @@ public class MultiCollector implements Collector {
       final LeafCollector leafCollector;
       try {
         leafCollector = collector.getLeafCollector(context);
-      } catch (
-          @SuppressWarnings("unused")
-          CollectionTerminatedException e) {
+      } catch (CollectionTerminatedException _) {
         // this leaf collector does not need this segment
         continue;
       }
@@ -219,9 +217,7 @@ public class MultiCollector implements Collector {
         if (collector != null) {
           try {
             collector.collect(doc);
-          } catch (
-              @SuppressWarnings("unused")
-              CollectionTerminatedException e) {
+          } catch (CollectionTerminatedException _) {
             collectors[i].finish();
             collectors[i] = null;
             if (allCollectorsTerminated()) {

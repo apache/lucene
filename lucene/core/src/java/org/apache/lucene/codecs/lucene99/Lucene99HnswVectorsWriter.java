@@ -20,6 +20,8 @@ package org.apache.lucene.codecs.lucene99;
 import static org.apache.lucene.codecs.KnnVectorsWriter.MergedVectorValues.hasVectorValues;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.VERSION_CURRENT;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.VERSION_GROUPVARINT;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.SIMILARITY_FUNCTIONS;
 
 import java.io.IOException;
@@ -59,7 +61,6 @@ import org.apache.lucene.util.hnsw.IncrementalHnswGraphMerger;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
-import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
 /**
@@ -79,6 +80,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   private final int numMergeWorkers;
   private final TaskExecutor mergeExec;
   private final int tinySegmentsThreshold;
+  private final int version;
 
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
@@ -91,7 +93,15 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       int numMergeWorkers,
       TaskExecutor mergeExec)
       throws IOException {
-    this(state, M, beamWidth, flatVectorWriter, numMergeWorkers, mergeExec, HNSW_GRAPH_THRESHOLD);
+    this(
+        state,
+        M,
+        beamWidth,
+        flatVectorWriter,
+        numMergeWorkers,
+        mergeExec,
+        HNSW_GRAPH_THRESHOLD,
+        VERSION_CURRENT);
   }
 
   public Lucene99HnswVectorsWriter(
@@ -103,12 +113,34 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       TaskExecutor mergeExec,
       int tinySegmentsThreshold)
       throws IOException {
+    this(
+        state,
+        M,
+        beamWidth,
+        flatVectorWriter,
+        numMergeWorkers,
+        mergeExec,
+        tinySegmentsThreshold,
+        VERSION_CURRENT);
+  }
+
+  Lucene99HnswVectorsWriter(
+      SegmentWriteState state,
+      int M,
+      int beamWidth,
+      FlatVectorsWriter flatVectorWriter,
+      int numMergeWorkers,
+      TaskExecutor mergeExec,
+      int tinySegmentsThreshold,
+      int version)
+      throws IOException {
     this.M = M;
     this.flatVectorWriter = flatVectorWriter;
     this.beamWidth = beamWidth;
     this.numMergeWorkers = numMergeWorkers;
     this.mergeExec = mergeExec;
     this.tinySegmentsThreshold = tinySegmentsThreshold;
+    this.version = version;
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -127,13 +159,13 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       CodecUtil.writeIndexHeader(
           meta,
           Lucene99HnswVectorsFormat.META_CODEC_NAME,
-          Lucene99HnswVectorsFormat.VERSION_CURRENT,
+          version,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorIndex,
           Lucene99HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
-          Lucene99HnswVectorsFormat.VERSION_CURRENT,
+          version,
           state.segmentInfo.getId(),
           state.segmentSuffix);
     } catch (Throwable t) {
@@ -359,8 +391,12 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     }
     // Write the size after duplicates are removed
     vectorIndex.writeVInt(actualSize);
-    for (int i = 0; i < actualSize; i++) {
-      vectorIndex.writeVInt(scratch[i]);
+    if (version >= VERSION_GROUPVARINT) {
+      vectorIndex.writeGroupVInts(scratch, actualSize);
+    } else {
+      for (int i = 0; i < actualSize; i++) {
+        vectorIndex.writeVInt(scratch[i]);
+      }
     }
   }
 
@@ -467,9 +503,14 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         }
         // Write the size after duplicates are removed
         vectorIndex.writeVInt(actualSize);
-        for (int i = 0; i < actualSize; i++) {
-          vectorIndex.writeVInt(scratch[i]);
+        if (version >= VERSION_GROUPVARINT) {
+          vectorIndex.writeGroupVInts(scratch, actualSize);
+        } else {
+          for (int i = 0; i < actualSize; i++) {
+            vectorIndex.writeVInt(scratch[i]);
+          }
         }
+
         offsets[level][nodeOffsetId++] =
             Math.toIntExact(vectorIndex.getFilePointer() - offsetStart);
       }
@@ -588,7 +629,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     private int lastDocID = -1;
     private int node = 0;
     private final FlatFieldVectorsWriter<T> flatFieldVectorsWriter;
-    private UpdateableRandomVectorScorer scorer;
     private final int graphThreshold;
     private final List<T> bufferedVectors;
     private final int M;
@@ -677,7 +717,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       if (hnswGraphBuilder != null) {
         return;
       }
-      this.scorer = scorerSupplier.scorer();
       this.hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
       this.hnswGraphBuilder.setInfoStream(infoStream);
@@ -688,8 +727,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         return;
       }
       for (int i = 0; i < bufferedVectors.size(); i++) {
-        scorer.setScoringOrdinal(i);
-        hnswGraphBuilder.addGraphNode(i, scorer);
+        hnswGraphBuilder.addGraphNode(i);
       }
     }
 
@@ -711,8 +749,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       }
       if (hnswGraphBuilder != null) {
         // Graph builder is active, add to graph
-        scorer.setScoringOrdinal(node);
-        hnswGraphBuilder.addGraphNode(node, scorer);
+        hnswGraphBuilder.addGraphNode(node);
       } else {
         // Store for later replay
         bufferedVectors.add(vectorValue);

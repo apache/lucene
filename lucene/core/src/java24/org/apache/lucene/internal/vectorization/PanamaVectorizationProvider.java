@@ -79,6 +79,11 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   }
 
   @Override
+  public FlatVectorsScorer getLucene99ScalarQuantizedVectorsScorer() {
+    return Lucene99MemorySegmentScalarQuantizedVectorScorer.INSTANCE;
+  }
+
+  @Override
   public PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException {
     if (input instanceof MemorySegmentAccessInput msai) {
       MemorySegment ms = msai.segmentSliceOrNull(0, input.length());

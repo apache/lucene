@@ -37,6 +37,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
@@ -44,7 +45,6 @@ import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
@@ -79,7 +79,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
             readState.segmentSuffix,
             SimpleTextKnnVectorsFormat.VECTOR_EXTENSION);
 
-    boolean success = false;
     try (ChecksumIndexInput in = readState.directory.openChecksumInput(metaFileName)) {
       int fieldNumber = readInt(in, FIELD_NUMBER);
       while (fieldNumber != -1) {
@@ -106,11 +105,9 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       SimpleTextUtil.checkFooter(in);
 
       dataIn = readState.directory.openInput(vectorFileName, IOContext.DEFAULT);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -181,7 +178,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     FloatVectorValues values = getFloatVectorValues(field);
     if (target.length != values.dimension()) {
@@ -195,7 +192,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
     for (int ord = 0; ord < values.size(); ord++) {
       int doc = values.ordToDoc(ord);
-      if (acceptDocs != null && acceptDocs.get(doc) == false) {
+      if (acceptDocs.bits() != null && acceptDocs.bits().get(doc) == false) {
         continue;
       }
 
@@ -211,7 +208,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     ByteVectorValues values = getByteVectorValues(field);
     if (target.length != values.dimension()) {
@@ -226,7 +223,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
 
     for (int ord = 0; ord < values.size(); ord++) {
       int doc = values.ordToDoc(ord);
-      if (acceptDocs != null && acceptDocs.get(doc) == false) {
+      if (acceptDocs.bits() != null && acceptDocs.bits().get(doc) == false) {
         continue;
       }
 

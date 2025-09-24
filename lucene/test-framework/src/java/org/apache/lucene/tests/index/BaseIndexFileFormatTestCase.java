@@ -658,9 +658,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
           iw.addDocument(doc);
           // we made it, sometimes delete our doc
           iw.deleteDocuments(new Term("id", Integer.toString(i)));
-        } catch (
-            @SuppressWarnings("unused")
-            AlreadyClosedException ace) {
+        } catch (AlreadyClosedException _) {
           // OK: writer was closed by abort; we just reopen now:
           dir.setRandomIOExceptionRateOnOpen(
               0.0); // disable exceptions on openInput until next iteration
@@ -699,9 +697,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             if (DirectoryReader.indexExists(dir)) {
               TestUtil.checkIndex(dir);
             }
-          } catch (
-              @SuppressWarnings("unused")
-              AlreadyClosedException ace) {
+          } catch (AlreadyClosedException _) {
             // OK: writer was closed by abort; we just reopen now:
             dir.setRandomIOExceptionRateOnOpen(
                 0.0); // disable exceptions on openInput until next iteration
@@ -729,9 +725,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
         handleFakeIOException(e, exceptionStream);
         try {
           iw.rollback();
-        } catch (
-            @SuppressWarnings("unused")
-            Throwable t) {
+        } catch (Throwable _) {
         }
       }
       dir.close();
