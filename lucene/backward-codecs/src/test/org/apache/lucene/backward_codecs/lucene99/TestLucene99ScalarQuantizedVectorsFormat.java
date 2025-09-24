@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.backward_codecs.lucene99;
 
 import static java.lang.String.format;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
@@ -63,8 +63,8 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
       confidenceInterval = 0f;
     }
     format =
-        new Lucene99ScalarQuantizedVectorsFormat(
-            confidenceInterval, bits, bits == 4 ? random().nextBoolean() : false);
+        new Lucene99RWScalarQuantizedVectorsFormat(
+            confidenceInterval, bits, bits == 4 && random().nextBoolean());
     super.setUp();
   }
 
