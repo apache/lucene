@@ -27,13 +27,14 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -374,17 +375,15 @@ public class TestKnnGraph extends LuceneTestCase {
     try (DirectoryReader dr = DirectoryReader.open(iw)) {
       for (LeafReaderContext ctx : dr.leaves()) {
         LeafReader reader = ctx.reader();
-        PerFieldKnnVectorsFormat.FieldsReader perFieldReader =
-            (PerFieldKnnVectorsFormat.FieldsReader) ((CodecReader) reader).getVectorReader();
-        if (perFieldReader == null) {
+        KnnVectorsReader knnFieldReader = ((CodecReader) reader).getVectorReader();
+        if (knnFieldReader == null) {
           continue;
         }
-        Lucene99HnswVectorsReader vectorReader =
-            (Lucene99HnswVectorsReader) perFieldReader.getFieldReader(vectorField);
-        if (vectorReader == null) {
+        Optional<KnnVectorsReader> vectorReader = knnFieldReader.unwrapReaderForField(vectorField);
+        if (vectorReader.isEmpty()) {
           continue;
         }
-        HnswGraph graphValues = vectorReader.getGraph(vectorField);
+        HnswGraph graphValues = ((HnswGraphProvider) vectorReader.get()).getGraph(vectorField);
         FloatVectorValues vectorValues = reader.getFloatVectorValues(vectorField);
         if (vectorValues == null) {
           assert graphValues == null;
