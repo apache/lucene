@@ -200,7 +200,7 @@ public class TestWindowsFS extends MockFileSystemTestCase {
       // We need at least 2 chars before the special character, because resolving a drive
       // letter (C:) or a path starting with "/" will not fail on real Windows.
       fileName =
-          RandomStrings.randomAsciiLettersOfLength(r, r.nextInt(2, 10))
+          RandomStrings.randomAsciiLettersOfLength(r, r.nextInt(8) + 2)
               + reservedCharacters[r.nextInt(reservedCharacters.length)]
               + RandomStrings.randomAsciiLettersOfLength(r, 1 + r.nextInt(9));
     } else {
