@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StoredField;
@@ -63,7 +63,7 @@ public class TestBpVectorReorderer extends LuceneTestCase {
   private void createQuantizedIndex(Directory dir, List<float[]> vectors) throws IOException {
     IndexWriterConfig cfg = new IndexWriterConfig();
     cfg.setCodec(
-        TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswScalarQuantizedVectorsFormat(8, 32)));
+        TestUtil.alwaysKnnVectorsFormat(new Lucene104HnswScalarQuantizedVectorsFormat(8, 32)));
     try (IndexWriter writer = new IndexWriter(dir, cfg)) {
       int i = 0;
       for (float[] vector : vectors) {

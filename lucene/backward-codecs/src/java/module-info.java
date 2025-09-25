@@ -59,7 +59,9 @@ module org.apache.lucene.backward_codecs {
       org.apache.lucene.backward_codecs.lucene91.Lucene91HnswVectorsFormat,
       org.apache.lucene.backward_codecs.lucene92.Lucene92HnswVectorsFormat,
       org.apache.lucene.backward_codecs.lucene94.Lucene94HnswVectorsFormat,
-      org.apache.lucene.backward_codecs.lucene95.Lucene95HnswVectorsFormat;
+      org.apache.lucene.backward_codecs.lucene95.Lucene95HnswVectorsFormat,
+      org.apache.lucene.backward_codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat,
+      org.apache.lucene.backward_codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
   provides org.apache.lucene.codecs.Codec with
       org.apache.lucene.backward_codecs.lucene80.Lucene80Codec,
       org.apache.lucene.backward_codecs.lucene84.Lucene84Codec,
