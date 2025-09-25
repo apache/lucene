@@ -23,6 +23,7 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.HNSW_G
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.VERSION_CURRENT;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.VERSION_GROUPVARINT;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.SIMILARITY_FUNCTIONS;
+import static org.apache.lucene.util.hnsw.HnswGraphSearcher.expectedVisitedNodes;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -56,7 +57,6 @@ import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.HnswGraphMerger;
-import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.IncrementalHnswGraphMerger;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
@@ -415,9 +415,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       // Check if we should bypass graph building for tiny segments
       boolean makeHnswGraph =
           scorerSupplier.totalVectorCount() > 0
-              && (scorerSupplier.totalVectorCount()
-                  >= graphCreationThreshold(
-                      tinySegmentsThreshold, scorerSupplier.totalVectorCount()));
+              && (shouldCreateGraph(tinySegmentsThreshold, scorerSupplier.totalVectorCount()));
       if (makeHnswGraph) {
         // build graph
         HnswGraphMerger merger =
@@ -614,9 +612,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     throw new IllegalArgumentException("invalid distance function: " + func);
   }
 
-  private static int graphCreationThreshold(int k, int numNodes) {
-    return (int)
-        Math.pow(10, String.valueOf(HnswGraphSearcher.expectedVisitedNodes(k, numNodes)).length());
+  private static boolean shouldCreateGraph(int k, int numNodes) {
+    int expectedVisitedNodes =
+        expectedVisitedNodes(k, numNodes); // k is typically small, so this is cheap
+    return numNodes > expectedVisitedNodes;
   }
 
   private static class FieldWriter<T> extends KnnFieldVectorsWriter<T> {
@@ -630,7 +629,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     private int node = 0;
     private final FlatFieldVectorsWriter<T> flatFieldVectorsWriter;
     private final int graphThreshold;
-    private final List<T> bufferedVectors;
     private final int M;
     private final int beamWidth;
     private final InfoStream infoStream;
@@ -683,14 +681,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       this.beamWidth = beamWidth;
       this.infoStream = infoStream;
       this.flatFieldVectorsWriter = Objects.requireNonNull(flatFieldVectorsWriter);
-      this.graphThreshold =
-          graphCreationThreshold(
-              tinySegmentsThreshold, flatFieldVectorsWriter.getDocsWithFieldSet().cardinality());
-      if (graphThreshold > 0) {
-        this.bufferedVectors = new ArrayList<>();
-      } else {
-        this.bufferedVectors = null;
-      }
+      this.graphThreshold = tinySegmentsThreshold;
       this.scorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE ->
@@ -723,10 +714,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     }
 
     private void replayBufferedVectors() throws IOException {
-      if (bufferedVectors == null || bufferedVectors.isEmpty()) {
-        return;
-      }
-      for (int i = 0; i < bufferedVectors.size(); i++) {
+      for (int i = 0; i < flatFieldVectorsWriter.getVectors().size(); i++) {
         hnswGraphBuilder.addGraphNode(i);
       }
     }
@@ -741,18 +729,13 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       }
       flatFieldVectorsWriter.addValue(docID, vectorValue);
       // Check if we need to initialize graph builder for tiny segment optimization
-      if (hnswGraphBuilder == null && node >= graphThreshold) {
+      if (hnswGraphBuilder == null && shouldCreateGraph(graphThreshold, node + 1)) {
         initializeGraphBuilder();
-        // Replay buffered vectors
         replayBufferedVectors();
-        bufferedVectors.clear();
       }
       if (hnswGraphBuilder != null) {
         // Graph builder is active, add to graph
         hnswGraphBuilder.addGraphNode(node);
-      } else {
-        // Store for later replay
-        bufferedVectors.add(vectorValue);
       }
       node++;
       lastDocID = docID;
@@ -782,9 +765,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       long total = SHALLOW_SIZE + flatFieldVectorsWriter.ramBytesUsed();
       if (hnswGraphBuilder != null) {
         total += hnswGraphBuilder.getGraph().ramBytesUsed();
-      }
-      if (bufferedVectors != null) {
-        total += RamUsageEstimator.sizeOfCollection(bufferedVectors);
       }
       return total;
     }

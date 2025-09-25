@@ -126,7 +126,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    * i.e. k is at least 1 order less than size / log(size) where size if the number of nodes in the
    * graph
    */
-  public static final int HNSW_GRAPH_THRESHOLD = 10;
+  public static final int HNSW_GRAPH_THRESHOLD = 100;
 
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
@@ -276,8 +276,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene99HnswVectorsReader(
-        state, flatVectorsFormat.fieldsReader(state), tinySegmentsThreshold);
+    return new Lucene99HnswVectorsReader(state, flatVectorsFormat.fieldsReader(state));
   }
 
   @Override

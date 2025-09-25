@@ -80,15 +80,12 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   private final FieldInfos fieldInfos;
   private final IntObjectHashMap<FieldEntry> fields;
   private final IndexInput vectorIndex;
-  private final int tinySegmentsThreshold;
   private final int version;
 
-  public Lucene99HnswVectorsReader(
-      SegmentReadState state, FlatVectorsReader flatVectorsReader, int tinySegmentsThreshold)
+  public Lucene99HnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
       throws IOException {
     this.fields = new IntObjectHashMap<>();
     this.flatVectorsReader = flatVectorsReader;
-    this.tinySegmentsThreshold = tinySegmentsThreshold;
     this.fieldInfos = state.fieldInfos;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -131,18 +128,12 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
   }
 
-  public Lucene99HnswVectorsReader(SegmentReadState state, FlatVectorsReader flatVectorsReader)
-      throws IOException {
-    this(state, flatVectorsReader, 10);
-  }
-
   private Lucene99HnswVectorsReader(
       Lucene99HnswVectorsReader reader, FlatVectorsReader flatVectorsReader) {
     this.flatVectorsReader = flatVectorsReader;
     this.fieldInfos = reader.fieldInfos;
     this.fields = reader.fields;
     this.vectorIndex = reader.vectorIndex;
-    this.tinySegmentsThreshold = reader.tinySegmentsThreshold;
     this.version = reader.version;
   }
 

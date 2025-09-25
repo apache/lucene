@@ -178,8 +178,7 @@ public class Lucene102HnswBinaryQuantizedVectorsFormat extends KnnVectorsFormat 
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene99HnswVectorsReader(
-        state, flatVectorsFormat.fieldsReader(state), tinySegmentsThreshold);
+    return new Lucene99HnswVectorsReader(state, flatVectorsFormat.fieldsReader(state));
   }
 
   @Override
