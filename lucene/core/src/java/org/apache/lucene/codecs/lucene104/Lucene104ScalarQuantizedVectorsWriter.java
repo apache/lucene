@@ -32,6 +32,7 @@ import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
@@ -67,7 +68,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private final IndexOutput meta, vectorData;
   private final ScalarEncoding encoding;
   private final FlatVectorsWriter rawVectorDelegate;
-  private final Lucene104ScalarQuantizedVectorScorer vectorsScorer;
+  private final FlatVectorsScorer vectorsScorer;
   private boolean finished;
 
   /**
@@ -79,7 +80,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       SegmentWriteState state,
       ScalarEncoding encoding,
       FlatVectorsWriter rawVectorDelegate,
-      Lucene104ScalarQuantizedVectorScorer vectorsScorer)
+      FlatVectorsScorer vectorsScorer)
       throws IOException {
     super(vectorsScorer);
     this.encoding = encoding;

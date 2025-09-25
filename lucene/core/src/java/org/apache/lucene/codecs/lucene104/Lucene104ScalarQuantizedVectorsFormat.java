@@ -21,6 +21,7 @@ import java.util.Optional;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
@@ -105,8 +106,7 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   private static final FlatVectorsFormat rawVectorFormat =
       new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
-  private static final Lucene104ScalarQuantizedVectorScorer scorer =
-      new Lucene104ScalarQuantizedVectorScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
+  private static final FlatVectorsScorer scorer = FlatVectorScorerUtil.getLucene104ScalarQuantizedFlatVectorsScorer();
 
   private final ScalarEncoding encoding;
 

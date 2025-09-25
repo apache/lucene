@@ -27,6 +27,7 @@ import java.util.Objects;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
@@ -66,12 +67,12 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
-  private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
+  private final FlatVectorsScorer vectorScorer;
 
   Lucene104ScalarQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,
-      Lucene104ScalarQuantizedVectorScorer vectorsScorer)
+      FlatVectorsScorer vectorsScorer)
       throws IOException {
     super(vectorsScorer);
     this.vectorScorer = vectorsScorer;
