@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.backward_codecs.lucene99;
 
-import static org.apache.lucene.codecs.lucene99.OffHeapQuantizedByteVectorValues.compressBytes;
+import static org.apache.lucene.backward_codecs.lucene99.OffHeapQuantizedByteVectorValues.compressBytes;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -26,6 +26,9 @@ import java.nio.ByteOrder;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
+import org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorScorer;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -53,7 +56,7 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
 
   private static Codec getCodec(int bits, boolean compress) {
     return TestUtil.alwaysKnnVectorsFormat(
-        new Lucene99HnswScalarQuantizedVectorsFormat(
+        new Lucene99RWV1HnswScalarQuantizationVectorsFormat(
             Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
             Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
             1,

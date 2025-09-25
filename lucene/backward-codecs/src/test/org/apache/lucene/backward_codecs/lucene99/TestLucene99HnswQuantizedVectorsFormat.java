@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.backward_codecs.lucene99;
 
 import static java.lang.String.format;
 import static org.hamcrest.Matchers.is;
@@ -28,6 +28,8 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -79,7 +81,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
   }
 
   private final KnnVectorsFormat getKnnFormat(int bits) {
-    return new Lucene99HnswScalarQuantizedVectorsFormat(
+    return new Lucene99RWV1HnswScalarQuantizationVectorsFormat(
         Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
         Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
         1,
@@ -186,7 +188,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
                 newIndexWriterConfig()
                     .setCodec(
                         TestUtil.alwaysKnnVectorsFormat(
-                            new Lucene99HnswScalarQuantizedVectorsFormat(
+                            new Lucene99RWV1HnswScalarQuantizationVectorsFormat(
                                 16, 100, 1, (byte) 7, false, 0.9f, null))))) {
       for (float[] vector : vectors) {
         Document doc = new Document();

@@ -14,13 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene102;
+package org.apache.lucene.codecs.lucene104;
 
 import static java.lang.String.format;
-import static org.apache.lucene.codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.INDEX_BITS;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.discretize;
-import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.packAsBinary;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
 
@@ -29,6 +26,7 @@ import java.util.Locale;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DirectoryReader;
@@ -48,14 +46,25 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
+import org.junit.Before;
 
-public class TestLucene102BinaryQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
+public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
-  private static final KnnVectorsFormat FORMAT = new Lucene102BinaryQuantizedVectorsFormat();
+  private ScalarEncoding encoding;
+  private KnnVectorsFormat format;
+
+  @Before
+  @Override
+  public void setUp() throws Exception {
+    var encodingValues = ScalarEncoding.values();
+    encoding = encodingValues[random().nextInt(encodingValues.length)];
+    format = new Lucene104ScalarQuantizedVectorsFormat(encoding);
+    super.setUp();
+  }
 
   @Override
   protected Codec getCodec() {
-    return TestUtil.alwaysKnnVectorsFormat(FORMAT);
+    return TestUtil.alwaysKnnVectorsFormat(format);
   }
 
   public void testSearch() throws Exception {
@@ -94,13 +103,14 @@ public class TestLucene102BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
         new FilterCodec("foo", Codec.getDefault()) {
           @Override
           public KnnVectorsFormat knnVectorsFormat() {
-            return new Lucene102BinaryQuantizedVectorsFormat();
+            return new Lucene104ScalarQuantizedVectorsFormat();
           }
         };
     String expectedPattern =
-        "Lucene102BinaryQuantizedVectorsFormat("
-            + "name=Lucene102BinaryQuantizedVectorsFormat, "
-            + "flatVectorScorer=Lucene102BinaryFlatVectorsScorer(nonQuantizedDelegate=%s()), "
+        "Lucene104ScalarQuantizedVectorsFormat("
+            + "name=Lucene104ScalarQuantizedVectorsFormat, "
+            + "encoding=UNSIGNED_BYTE, "
+            + "flatVectorScorer=Lucene104ScalarQuantizedVectorScorer(nonQuantizedDelegate=%s()), "
             + "rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s()))";
     var defaultScorer =
         format(Locale.ROOT, expectedPattern, "DefaultFlatVectorScorer", "DefaultFlatVectorScorer");
@@ -149,18 +159,19 @@ public class TestLucene102BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
           LeafReader r = getOnlyLeafReader(reader);
           FloatVectorValues vectorValues = r.getFloatVectorValues(fieldName);
           assertEquals(vectorValues.size(), numVectors);
-          BinarizedByteVectorValues qvectorValues =
-              ((Lucene102BinaryQuantizedVectorsReader.BinarizedVectorValues) vectorValues)
+          QuantizedByteVectorValues qvectorValues =
+              ((Lucene104ScalarQuantizedVectorsReader.ScalarQuantizedVectorValues) vectorValues)
                   .getQuantizedVectorValues();
           float[] centroid = qvectorValues.getCentroid();
           assertEquals(centroid.length, dims);
 
           OptimizedScalarQuantizer quantizer = new OptimizedScalarQuantizer(similarityFunction);
-          byte[] quantizedVector = new byte[dims];
-          byte[] expectedVector = new byte[discretize(dims, 64) / 8];
+          byte[] scratch =
+              new byte[OptimizedScalarQuantizer.discretize(dims, encoding.getDimensionsPerByte())];
+          byte[] expectedVector = new byte[encoding.getPackedLength(dims)];
           if (similarityFunction == VectorSimilarityFunction.COSINE) {
             vectorValues =
-                new Lucene102BinaryQuantizedVectorsWriter.NormalizedFloatVectorValues(vectorValues);
+                new Lucene104ScalarQuantizedVectorsWriter.NormalizedFloatVectorValues(vectorValues);
           }
           KnnVectorValues.DocIndexIterator docIndexIterator = vectorValues.iterator();
 
@@ -168,17 +179,23 @@ public class TestLucene102BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
             OptimizedScalarQuantizer.QuantizationResult corrections =
                 quantizer.scalarQuantize(
                     vectorValues.vectorValue(docIndexIterator.index()),
-                    quantizedVector,
-                    INDEX_BITS,
+                    scratch,
+                    encoding.getBits(),
                     centroid);
-            packAsBinary(quantizedVector, expectedVector);
+            switch (encoding) {
+              case UNSIGNED_BYTE -> System.arraycopy(scratch, 0, expectedVector, 0, dims);
+              case SEVEN_BIT -> System.arraycopy(scratch, 0, expectedVector, 0, dims);
+              case PACKED_NIBBLE ->
+                  OffHeapScalarQuantizedVectorValues.packNibbles(scratch, expectedVector);
+            }
             assertArrayEquals(expectedVector, qvectorValues.vectorValue(docIndexIterator.index()));
-
             var actualCorrections = qvectorValues.getCorrectiveTerms(docIndexIterator.index());
-            assertEquals(corrections.lowerInterval(), actualCorrections.lowerInterval(), 1e-5);
-            assertEquals(corrections.upperInterval(), actualCorrections.upperInterval(), 1e-5);
+            assertEquals(corrections.lowerInterval(), actualCorrections.lowerInterval(), 0.00001f);
+            assertEquals(corrections.upperInterval(), actualCorrections.upperInterval(), 0.00001f);
             assertEquals(
-                corrections.additionalCorrection(), actualCorrections.additionalCorrection(), 1e-5);
+                corrections.additionalCorrection(),
+                actualCorrections.additionalCorrection(),
+                0.00001f);
             assertEquals(
                 corrections.quantizedComponentSum(), actualCorrections.quantizedComponentSum());
           }

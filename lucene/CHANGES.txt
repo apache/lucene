@@ -7,6 +7,14 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#13797: Relaxed Lucene Index Upgrade Policy to Allow Safe Upgrades Across Multiple Major Versions.
+  The MIN_SUPPORTED_MAJOR constant in Version.java is now manually maintained instead of auto-computed as
+  LATEST.major-1. This enables users to perform their one index upgrade across multiple major version numbers
+  when no format breaks occur (previously limited to exactly one major version). The constant is set to 10 for
+  Lucene 11.0.0 and will only be bumped when actual incompatible format changes are introduced. This changes
+  reindexing frequency from "every major release" to "only when format breaks occur" while maintaining the
+  fundamental "one upgrade per index lifetime" limitation. See MIGRATE.md for upgrade instructions. (Mark Miller)
+
 * GITHUB#11023: Removing deprecated parameters from CheckIndex. (Jakub Slowinski)
 
 * GITHUB#14165: TieredMergePolicy's maxMergeAtOnce parameter was removed. (Adrien Grand)
@@ -56,6 +64,8 @@ Improvements
   SIGSEGV with the old unsafe "mmap hack", which has been replaced by MemorySegments.
   (Uwe Schindler, Robert Muir)
 
+* GITHUB#15124: Use RamUsageEstimator to calculate size for non-accountable queries. (Sagar Upadhyaya)
+
 Optimizations
 ---------------------
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
@@ -80,6 +90,8 @@ Bug Fixes
 
 * GITHUB#14847: Allow Faiss vector format to index >2GB of vectors per-field per-segment by using MemorySegment APIs
   (instead of ByteBuffer) to copy bytes to native memory. (Kaival Parikh)
+
+* GITHUB#15213: Don't normalize centroids with zero samples, which caused divide-by-zero. (Mike Sokolov)
 
 Changes in Runtime Behavior
 ---------------------
@@ -130,9 +142,15 @@ New Features
 * GITHUB#15176: Add `[Float|Byte]VectorValues#rescorer(element[])` interface to allow optimized rescoring of vectors.
   (Ben Trent)
 
+* GITHUB#15169, GITHUB#15223: Add codecs for 4 and 8 bit Optimized Scalar Quantization vectors. The new format
+  `Lucene104HnswScalarQuantizedVectorsFormat` replaces the now legacy `Lucene99HnswScalarQuantizedVectorsFormat`
+   (Trevor McCulloch)
+
 Improvements
 ---------------------
-# GITHUB#15148: Add support uint8 distance and allow 8 bit scalar quantization (Trevor McCulloch)
+* GITHUB#15148: Add support uint8 distance and allow 8 bit scalar quantization (Trevor McCulloch)
+
+* GITHUB#15184: Refactoring internal HNSWGraphBuilder's APIs and avoid creating new scorer for each call (Patrick Zhai)
 
 Optimizations
 ---------------------
@@ -150,12 +168,19 @@ Optimizations
 * GITHUB#15160: Increased the size used for blocks of postings from 128 to 256.
   This gives a noticeable speedup to many queries. (Adrien Grand)
 
+* GITHUB#15198: Optimize ForUtil.expand8 using the JDK Vector API. (Ramakrishna Chilaka)
+
 * GITHUB#14863: Perform scoring for 4, 7, 8 bit quantized vectors off-heap. (Kaival Parikh)
 
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
   instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
+
+* GITHUB#15205: Fixes regression introduced in GITHUB#13980 where polygons might fail to tessellate
+  because the hole bridge is coplanar with the polygon vertex. The fix changes the strategy for
+  removing co-planar points to do it once after all holes are removed instead of doing it for each
+  removed hole.
 
 Other
 ---------------------
