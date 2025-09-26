@@ -26,6 +26,8 @@ import org.w3c.dom.Node;
  */
 public class DOMUtils {
 
+  private DOMUtils() {}
+
   public static Element getChildByTagOrFail(Element e, String name) throws ParserException {
     Element kid = getChildByTagName(e, name);
     if (null == kid) {
