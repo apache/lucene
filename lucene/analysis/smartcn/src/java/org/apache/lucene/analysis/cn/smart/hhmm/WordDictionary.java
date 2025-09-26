@@ -90,38 +90,29 @@ class WordDictionary extends AbstractDictionary {
   }
 
   /**
-   * Attempt to load dictionary from provided directory, first trying coredict.mem, failing back on
-   * coredict.dct
+   * Attempt to load dictionary from provided path to coredict.dct
    *
    * @param dctFileRoot path to dictionary directory
    */
   public void load(String dctFileRoot) {
     String dctFilePath = dctFileRoot + "/coredict.dct";
-    Path serialObj = Paths.get(dctFileRoot + "/coredict.mem");
-
-    if (Files.exists(serialObj) && loadFromObj(serialObj)) {
-
-    } else {
-      try {
-        wordIndexTable = new short[PRIME_INDEX_LENGTH];
-        charIndexTable = new char[PRIME_INDEX_LENGTH];
-        for (int i = 0; i < PRIME_INDEX_LENGTH; i++) {
-          charIndexTable[i] = 0;
-          wordIndexTable[i] = -1;
-        }
-        wordItem_charArrayTable = new char[GB2312_CHAR_NUM][][];
-        wordItem_frequencyTable = new int[GB2312_CHAR_NUM][];
-        // int total =
-        loadMainDataFromFile(dctFilePath);
-        expandDelimiterData();
-        mergeSameWords();
-        sortEachItems();
-        // log.info("load dictionary: " + dctFilePath + " total:" + total);
-      } catch (IOException e) {
-        throw new RuntimeException(e.getMessage());
+    try {
+      wordIndexTable = new short[PRIME_INDEX_LENGTH];
+      charIndexTable = new char[PRIME_INDEX_LENGTH];
+      for (int i = 0; i < PRIME_INDEX_LENGTH; i++) {
+        charIndexTable[i] = 0;
+        wordIndexTable[i] = -1;
       }
-
-      saveToObj(serialObj);
+      wordItem_charArrayTable = new char[GB2312_CHAR_NUM][][];
+      wordItem_frequencyTable = new int[GB2312_CHAR_NUM][];
+      // int total =
+      loadMainDataFromFile(dctFilePath);
+      expandDelimiterData();
+      mergeSameWords();
+      sortEachItems();
+      // log.info("load dictionary: " + dctFilePath + " total:" + total);
+    } catch (IOException e) {
+      throw new RuntimeException(e.getMessage());
     }
   }
 
@@ -135,20 +126,12 @@ class WordDictionary extends AbstractDictionary {
     loadFromObjectInputStream(input);
   }
 
-  private boolean loadFromObj(Path serialObj) {
-    try {
-      loadFromObjectInputStream(Files.newInputStream(serialObj));
-      return true;
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   @SuppressForbidden(
       reason = "TODO: fix code to serialize its own dictionary vs. a binary blob in the codebase")
   private void loadFromObjectInputStream(InputStream serialObjectInputStream)
       throws IOException, ClassNotFoundException {
     try (ObjectInputStream input = new ObjectInputStream(serialObjectInputStream)) {
+      input.setObjectInputFilter(this::filterObjectInputStream);
       wordIndexTable = (short[]) input.readObject();
       charIndexTable = (char[]) input.readObject();
       wordItem_charArrayTable = (char[][][]) input.readObject();
