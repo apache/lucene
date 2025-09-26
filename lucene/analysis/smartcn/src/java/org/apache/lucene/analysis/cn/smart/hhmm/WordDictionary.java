@@ -150,15 +150,13 @@ class WordDictionary extends AbstractDictionary {
 
   @SuppressForbidden(
       reason = "TODO: fix code to serialize its own dictionary vs. a binary blob in the codebase")
-  private void saveToObj(Path serialObj) {
+  private void saveToObj(Path serialObj) throws IOException {
     try (ObjectOutputStream output = new ObjectOutputStream(Files.newOutputStream(serialObj))) {
       output.writeObject(wordIndexTable);
       output.writeObject(charIndexTable);
       output.writeObject(wordItem_charArrayTable);
       output.writeObject(wordItem_frequencyTable);
       // log.info("serialize core dict.");
-    } catch (Exception _) {
-      // log.warn(e.getMessage());
     }
   }
 
