@@ -65,7 +65,14 @@ public final class VectorUtil {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
     float r = IMPL.dotProduct(a, b);
-    assert Float.isFinite(r);
+    assert Float.isFinite(r)
+        : "not finite: "
+            + r
+            + " from <"
+            + java.util.Arrays.toString(a)
+            + ","
+            + java.util.Arrays.toString(b)
+            + ">";
     return r;
   }
 
@@ -483,5 +490,15 @@ public final class VectorUtil {
           "docBuffer and scoreBuffer should keep same length and at least as long as upTo");
     }
     return IMPL.filterByScore(docBuffer, scoreBuffer, minScoreInclusive, upTo);
+  }
+
+  /**
+   * Expands 64 integers in-place into a 256-element array by extracting individual bytes. Each
+   * 32-bit integer is split into 4 bytes. Only works on arrays with 256 length.
+   *
+   * @param arr the array to expand in-place
+   */
+  public static void expand8(int[] arr) {
+    IMPL.expand8(arr);
   }
 }

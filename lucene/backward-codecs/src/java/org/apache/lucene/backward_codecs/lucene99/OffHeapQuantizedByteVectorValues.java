@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.backward_codecs.lucene99;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -38,20 +38,20 @@ import org.apache.lucene.util.quantization.ScalarQuantizer;
  */
 public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValues {
 
-  protected final int dimension;
-  protected final int size;
-  protected final int numBytes;
-  protected final ScalarQuantizer scalarQuantizer;
-  protected final VectorSimilarityFunction similarityFunction;
-  protected final FlatVectorsScorer vectorsScorer;
-  protected final boolean compress;
+  final int dimension;
+  final int size;
+  final int numBytes;
+  final ScalarQuantizer scalarQuantizer;
+  final VectorSimilarityFunction similarityFunction;
+  final FlatVectorsScorer vectorsScorer;
+  final boolean compress;
 
-  protected final IndexInput slice;
-  protected final byte[] binaryValue;
-  protected final ByteBuffer byteBuffer;
-  protected final int byteSize;
-  protected int lastOrd = -1;
-  protected final float[] scoreCorrectionConstant = new float[1];
+  final IndexInput slice;
+  final byte[] binaryValue;
+  final ByteBuffer byteBuffer;
+  final int byteSize;
+  int lastOrd = -1;
+  final float[] scoreCorrectionConstant = new float[1];
 
   static void decompressBytes(byte[] compressed, int numBytes) {
     if (numBytes == compressed.length) {
@@ -159,7 +159,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     return numBytes;
   }
 
-  public static OffHeapQuantizedByteVectorValues load(
+  static OffHeapQuantizedByteVectorValues load(
       OrdToDocDISIReaderConfiguration configuration,
       int dimension,
       int size,
@@ -206,6 +206,17 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
    */
   public static class DenseOffHeapVectorValues extends OffHeapQuantizedByteVectorValues {
 
+    /**
+     * Create dense off-heap vector values
+     *
+     * @param dimension vector dimension
+     * @param size number of vectors
+     * @param scalarQuantizer the scalar quantizer
+     * @param compress whether the vectors are compressed
+     * @param similarityFunction the similarity function
+     * @param vectorsScorer the vectors scorer
+     * @param slice the index input slice containing the vector data
+     */
     public DenseOffHeapVectorValues(
         int dimension,
         int size,
@@ -266,7 +277,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     private final IndexInput dataIn;
     private final OrdToDocDISIReaderConfiguration configuration;
 
-    public SparseOffHeapVectorValues(
+    SparseOffHeapVectorValues(
         OrdToDocDISIReaderConfiguration configuration,
         int dimension,
         int size,

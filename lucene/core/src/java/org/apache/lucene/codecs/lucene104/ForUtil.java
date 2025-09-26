@@ -21,6 +21,7 @@ package org.apache.lucene.codecs.lucene104;
 import java.io.IOException;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.util.VectorUtil;
 
 /**
  * Inspired from https://fulmicoton.com/posts/bitpacking/ Encodes multiple integers in one to get
@@ -55,13 +56,7 @@ public final class ForUtil {
   }
 
   static void expand8(int[] arr) {
-    for (int i = 0; i < 64; ++i) {
-      int l = arr[i];
-      arr[i] = (l >>> 24) & 0xFF;
-      arr[64 + i] = (l >>> 16) & 0xFF;
-      arr[128 + i] = (l >>> 8) & 0xFF;
-      arr[192 + i] = l & 0xFF;
-    }
+    VectorUtil.expand8(arr);
   }
 
   static void collapse8(int[] arr) {

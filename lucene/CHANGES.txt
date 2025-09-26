@@ -64,6 +64,8 @@ Improvements
   SIGSEGV with the old unsafe "mmap hack", which has been replaced by MemorySegments.
   (Uwe Schindler, Robert Muir)
 
+* GITHUB#15124: Use RamUsageEstimator to calculate size for non-accountable queries. (Sagar Upadhyaya)
+
 Optimizations
 ---------------------
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
@@ -88,6 +90,8 @@ Bug Fixes
 
 * GITHUB#14847: Allow Faiss vector format to index >2GB of vectors per-field per-segment by using MemorySegment APIs
   (instead of ByteBuffer) to copy bytes to native memory. (Kaival Parikh)
+
+* GITHUB#15213: Don't normalize centroids with zero samples, which caused divide-by-zero. (Mike Sokolov)
 
 Changes in Runtime Behavior
 ---------------------
@@ -138,7 +142,9 @@ New Features
 * GITHUB#15176: Add `[Float|Byte]VectorValues#rescorer(element[])` interface to allow optimized rescoring of vectors.
   (Ben Trent)
 
-* GITHUB#15169: Add codecs for 4 and 8 bit Optimized Scalar Quantization vectors (Trevor McCulloch)
+* GITHUB#15169, GITHUB#15223: Add codecs for 4 and 8 bit Optimized Scalar Quantization vectors. The new format
+  `Lucene104HnswScalarQuantizedVectorsFormat` replaces the now legacy `Lucene99HnswScalarQuantizedVectorsFormat`
+   (Trevor McCulloch)
 
 Improvements
 ---------------------
@@ -162,12 +168,19 @@ Optimizations
 * GITHUB#15160: Increased the size used for blocks of postings from 128 to 256.
   This gives a noticeable speedup to many queries. (Adrien Grand)
 
+* GITHUB#15198: Optimize ForUtil.expand8 using the JDK Vector API. (Ramakrishna Chilaka)
+
 * GITHUB#14863: Perform scoring for 4, 7, 8 bit quantized vectors off-heap. (Kaival Parikh)
 
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
   instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
+
+* GITHUB#15205: Fixes regression introduced in GITHUB#13980 where polygons might fail to tessellate
+  because the hole bridge is coplanar with the polygon vertex. The fix changes the strategy for
+  removing co-planar points to do it once after all holes are removed instead of doing it for each
+  removed hole.
 
 Other
 ---------------------
