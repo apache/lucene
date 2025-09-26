@@ -131,6 +131,9 @@ API Changes
   IDs at once, in particular by taking advantage of the new
   NumericDocValues#longValues API. (Adrien Grand)
 
+* GITHUB#15234: Remove unused method which does unsafe XML parsing.
+  (Uwe Schindler, Isaac David)
+
 New Features
 ---------------------
 * GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
