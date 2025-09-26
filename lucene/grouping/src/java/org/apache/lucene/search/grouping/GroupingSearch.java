@@ -56,6 +56,7 @@ public class GroupingSearch {
   private boolean cacheScores;
   private boolean allGroups;
   private boolean allGroupHeads;
+  private boolean ignoreDocsWithoutGroupField;
 
   private Collection<?> matchingGroups;
   private Bits matchingGroupHeads;
@@ -138,7 +139,7 @@ public class GroupingSearch {
     int topN = groupOffset + groupLimit;
 
     final FirstPassGroupingCollector firstPassCollector =
-        new FirstPassGroupingCollector(grouper, groupSort, topN);
+        new FirstPassGroupingCollector(grouper, groupSort, topN, ignoreDocsWithoutGroupField);
     final AllGroupsCollector allGroupsCollector =
         allGroups ? new AllGroupsCollector(grouper) : null;
     final AllGroupHeadsCollector allGroupHeadsCollector =
@@ -357,5 +358,17 @@ public class GroupingSearch {
    */
   public Bits getAllGroupHeads() {
     return matchingGroupHeads;
+  }
+
+  /**
+   * Whether to ignore documents that don't have the group field instead of putting them in a null
+   * group.
+   *
+   * @param ignoreDocsWithoutGroupField Whether to ignore documents without group field
+   * @return <code>this</code>
+   */
+  public GroupingSearch setIgnoreDocsWithoutGroupField(boolean ignoreDocsWithoutGroupField) {
+    this.ignoreDocsWithoutGroupField = ignoreDocsWithoutGroupField;
+    return this;
   }
 }
