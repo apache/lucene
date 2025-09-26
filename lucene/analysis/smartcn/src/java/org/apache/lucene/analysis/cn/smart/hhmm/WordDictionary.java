@@ -80,8 +80,20 @@ class WordDictionary extends AbstractDictionary {
       try {
         singleInstance.load();
       } catch (IOException _) {
-        String wordDictRoot = AnalyzerProfile.ANALYSIS_DATA_DIR;
-        singleInstance.load(wordDictRoot);
+        try {
+          singleInstance.load();
+        } catch (IOException e) {
+          String dictRoot = AnalyzerProfile.ANALYSIS_DATA_DIR;
+          try {
+            singleInstance.load(dictRoot);
+          } catch (IOException ioe) {
+            RuntimeException ex = new RuntimeException(ioe);
+            ex.addSuppressed(e);
+            throw ex;
+          }
+        } catch (ClassNotFoundException e) {
+          throw new RuntimeException(e);
+        }
       } catch (ClassNotFoundException e) {
         throw new RuntimeException(e);
       }
@@ -94,26 +106,22 @@ class WordDictionary extends AbstractDictionary {
    *
    * @param dctFileRoot path to dictionary directory
    */
-  public void load(String dctFileRoot) {
+  public void load(String dctFileRoot) throws IOException {
     String dctFilePath = dctFileRoot + "/coredict.dct";
-    try {
-      wordIndexTable = new short[PRIME_INDEX_LENGTH];
-      charIndexTable = new char[PRIME_INDEX_LENGTH];
-      for (int i = 0; i < PRIME_INDEX_LENGTH; i++) {
-        charIndexTable[i] = 0;
-        wordIndexTable[i] = -1;
-      }
-      wordItem_charArrayTable = new char[GB2312_CHAR_NUM][][];
-      wordItem_frequencyTable = new int[GB2312_CHAR_NUM][];
-      // int total =
-      loadMainDataFromFile(dctFilePath);
-      expandDelimiterData();
-      mergeSameWords();
-      sortEachItems();
-      // log.info("load dictionary: " + dctFilePath + " total:" + total);
-    } catch (IOException e) {
-      throw new RuntimeException(e.getMessage());
+    wordIndexTable = new short[PRIME_INDEX_LENGTH];
+    charIndexTable = new char[PRIME_INDEX_LENGTH];
+    for (int i = 0; i < PRIME_INDEX_LENGTH; i++) {
+      charIndexTable[i] = 0;
+      wordIndexTable[i] = -1;
     }
+    wordItem_charArrayTable = new char[GB2312_CHAR_NUM][][];
+    wordItem_frequencyTable = new int[GB2312_CHAR_NUM][];
+    // int total =
+    loadMainDataFromFile(dctFilePath);
+    expandDelimiterData();
+    mergeSameWords();
+    sortEachItems();
+    // log.info("load dictionary: " + dctFilePath + " total:" + total);
   }
 
   /**
