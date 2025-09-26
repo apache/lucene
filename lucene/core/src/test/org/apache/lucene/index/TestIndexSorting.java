@@ -54,6 +54,8 @@ import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.FloatDocValuesField;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.KeywordField;
+import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
@@ -3444,6 +3446,67 @@ public class TestIndexSorting extends LuceneTestCase {
             }
           }
         }
+      }
+    }
+  }
+
+  public void testFlushAfterInconsistentSchema() throws IOException {
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    if (random().nextBoolean()) {
+      Sort indexSort = new Sort(new SortField("host.name", SortField.Type.STRING));
+      iwc.setIndexSort(indexSort);
+    }
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, iwc)) {
+      Consumer<Document> addExtraFields =
+          doc -> {
+            int extraFields = random().nextInt(100);
+            for (int i = 0; i < extraFields; i++) {
+              if (random().nextBoolean()) {
+                doc.add(new NumericDocValuesField("extra-dv-" + i, i));
+              }
+              if (random().nextBoolean()) {
+                doc.add(new LongField("extra-point-" + i, i, Store.NO));
+              }
+              if (random().nextBoolean()) {
+                doc.add(
+                    new KeywordField(
+                        "extra-posting-" + i, new BytesRef(Integer.toString(i)), Store.NO));
+              }
+            }
+          };
+      // first segment
+      {
+        Document doc = new Document();
+        doc.add(new SortedDocValuesField("host.name", newBytesRef("h2")));
+        doc.add(new LongField("@timestamp", 1, Store.NO));
+        addExtraFields.accept(doc);
+        w.addDocument(doc);
+        w.commit();
+      }
+      // second segment
+      {
+        var doc = new Document();
+        doc.add(new NumericDocValuesField("@timestamp", 2));
+        addExtraFields.accept(doc);
+        doc.add(new SortedDocValuesField("host.name", newBytesRef("h1")));
+        expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
+        w.commit();
+      }
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        assertEquals(1, reader.numDocs());
+      }
+      // third segment
+      {
+        var doc = new Document();
+        addExtraFields.accept(doc);
+        doc.add(new LongField("@timestamp", 3, Store.NO));
+        doc.add(new SortedDocValuesField("host.name", newBytesRef("h1")));
+        w.addDocument(doc);
+        w.commit();
+      }
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        assertEquals(2, reader.numDocs());
       }
     }
   }
