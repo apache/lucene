@@ -7,6 +7,14 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#13797: Relaxed Lucene Index Upgrade Policy to Allow Safe Upgrades Across Multiple Major Versions.
+  The MIN_SUPPORTED_MAJOR constant in Version.java is now manually maintained instead of auto-computed as
+  LATEST.major-1. This enables users to perform their one index upgrade across multiple major version numbers
+  when no format breaks occur (previously limited to exactly one major version). The constant is set to 10 for
+  Lucene 11.0.0 and will only be bumped when actual incompatible format changes are introduced. This changes
+  reindexing frequency from "every major release" to "only when format breaks occur" while maintaining the
+  fundamental "one upgrade per index lifetime" limitation. See MIGRATE.md for upgrade instructions. (Mark Miller)
+
 * GITHUB#11023: Removing deprecated parameters from CheckIndex. (Jakub Slowinski)
 
 * GITHUB#14165: TieredMergePolicy's maxMergeAtOnce parameter was removed. (Adrien Grand)
@@ -31,6 +39,8 @@ API Changes
 
 * GITHUB#14844: Change IndexInput.updateReadAdvice to take an IOContext instead (Simon Cooper)
 
+* GITHUB#15131: Restrict visibility of TieredMergePolicy.score() API (Trevor McCulloch)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -53,6 +63,8 @@ Improvements
 * GITHUB#15002: Remove synchronized WeakHashMap from IndexReader. This was added to help prevent
   SIGSEGV with the old unsafe "mmap hack", which has been replaced by MemorySegments.
   (Uwe Schindler, Robert Muir)
+
+* GITHUB#15124: Use RamUsageEstimator to calculate size for non-accountable queries. (Sagar Upadhyaya)
 
 Optimizations
 ---------------------
@@ -78,6 +90,8 @@ Bug Fixes
 
 * GITHUB#14847: Allow Faiss vector format to index >2GB of vectors per-field per-segment by using MemorySegment APIs
   (instead of ByteBuffer) to copy bytes to native memory. (Kaival Parikh)
+
+* GITHUB#15213: Don't normalize centroids with zero samples, which caused divide-by-zero. (Mike Sokolov)
 
 * GITHUB#15125: Handle inconsistent schema on flush with index sorts (Nhat Nguyen)
 
@@ -107,6 +121,75 @@ Other
 * GITHUB#14705: Use Comparators for some PriorityQueue implementations. (Simon Cooper)
 * GITHUB#14761: Use more Comparators for PriorityQueue implementations. (Simon Cooper)
 * GITHUB#14817: Refactor some complex uses of PriorityQueue to use Comparators. (Simon Cooper)
+
+======================= Lucene 10.4.0 =======================
+
+API Changes
+---------------------
+* GITHUB#15149: Introduce NumericDocValues#longValues to help speed up the
+  retrieval of many doc values at once. (Adrien Grand)
+
+* GITHUB#15173: Introduce DocIdStream#intoArray to help collect batches of doc
+  IDs at once, in particular by taking advantage of the new
+  NumericDocValues#longValues API. (Adrien Grand)
+
+* GITHUB#15234: Remove unused method which does unsafe XML parsing.
+  (Uwe Schindler, Isaac David)
+
+New Features
+---------------------
+* GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
+  along with limiting number of child documents to retrieve per parent. (Jinny Wang)
+
+* GITHUB#15171: Add `VectorScorer.Bulk` for bulk iteration and scoring of vectors. This new interface is now
+  used in AbstractKnnVectorQuery to make exact matches faster. (Ben Trent)
+
+* GITHUB#15176: Add `[Float|Byte]VectorValues#rescorer(element[])` interface to allow optimized rescoring of vectors.
+  (Ben Trent)
+
+* GITHUB#15169, GITHUB#15223: Add codecs for 4 and 8 bit Optimized Scalar Quantization vectors. The new format
+  `Lucene104HnswScalarQuantizedVectorsFormat` replaces the now legacy `Lucene99HnswScalarQuantizedVectorsFormat`
+   (Trevor McCulloch)
+
+Improvements
+---------------------
+* GITHUB#15148: Add support uint8 distance and allow 8 bit scalar quantization (Trevor McCulloch)
+
+* GITHUB#15184: Refactoring internal HNSWGraphBuilder's APIs and avoid creating new scorer for each call (Patrick Zhai)
+
+Optimizations
+---------------------
+* GITHUB#15140: Optimize TopScoreDocCollector with TernaryLongHeap for improved performance over Binary-LongHeap. (Ramakrishna Chilaka)
+
+* GITHUB#15163: Use TernaryLongHeap in NeighborQueue for faster vector search performance. (Ramakrishna Chilaka)
+
+* GITHUB#14998: Speed up flushing of live docs. (Adrien Grand)
+
+* GITHUB#15165: Optimize PForUtil.encode() with histogram-based bit selection. (Ramakrishna Chilaka)
+
+* GITHUB#15151: Use `SimScorer#score` bulk API to compute impact scores per
+  block of postings. (Adrien Grand)
+
+* GITHUB#15160: Increased the size used for blocks of postings from 128 to 256.
+  This gives a noticeable speedup to many queries. (Adrien Grand)
+
+* GITHUB#15198: Optimize ForUtil.expand8 using the JDK Vector API. (Ramakrishna Chilaka)
+
+* GITHUB#14863: Perform scoring for 4, 7, 8 bit quantized vectors off-heap. (Kaival Parikh)
+
+Bug Fixes
+---------------------
+* GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
+  instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
+
+* GITHUB#15205: Fixes regression introduced in GITHUB#13980 where polygons might fail to tessellate
+  because the hole bridge is coplanar with the polygon vertex. The fix changes the strategy for
+  removing co-planar points to do it once after all holes are removed instead of doing it for each
+  removed hole.
+
+Other
+---------------------
+(No changes)
 
 ======================= Lucene 10.3.0 =======================
 
@@ -139,8 +222,7 @@ New Features
 * GITHUB#14404: Introducing DocValuesMultiRangeQuery.SortedNumericStabbingBuilder into sandbox.
   (Mikhail Khludnev)
 
-* GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
-  along with limiting number of child documents to retrieve per parent. (Jinny Wang)
+* GITHUB#14413: Adding profiling support for concurrent segment search. (Ankit Jain)
 
 * GITHUB#14776: Add a Rescorer that uses values from provided DoubleValuesSource to re-score
   first pass hits. (Vigya Sharma)
@@ -153,6 +235,10 @@ New Features
   and trim the results down to top N (Anh Dung Bui)
 
 * GITHUB#14729: Support for Re-Ranking Queries using Late Interaction Model Multi-Vectors. (Vigya Sharma, Jim Ferenczi)
+
+* GITHUB#15110: PostingsDecodingUtil: interchange loops to enable better memory access and SIMD vectorisation. (Ramakrishna Chilaka)
+
+* GITHUB#15157: Support JDK 25 in Panama Vectorization Provider. (Chris Hegarty)
 
 Improvements
 ---------------------
@@ -266,6 +352,17 @@ Optimizations
 
 * GITHUB#15083: Use DocValuesSkippers in SortedNumericDocValuesRangeQuery#rewrite(). (Alan Woodward)
 
+* GITHUB#15045: Use FixedBitSet#cardinality for counting liveDocs in CheckIndex (Zhang Chao)
+
+
+* GITHUB#15117: Score computations are now more reliably vectorized in FeatureField Scorer's
+  (Aditya Teltia)
+
+* GITHUB#15116, GITHUB#15138: Rewrite of the GroupVInt optimization without lambdas, varhandles
+  and no code in subclasses. The optimization now auto-detects if an IndexInput supports random access
+  and uses an optimized branchless approach. Any subclasses that have implemented the optimized method
+  need to remove it as it will disappear in Lucene 11.  (Uwe Schindler)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14823: Decrease TieredMergePolicy's default number of segments per
@@ -284,6 +381,10 @@ Changes in Runtime Behavior
 
 Bug Fixes
 ---------------------
+
+* GITHUB#15120: Add estimatedByteSizes to merges kicked off by
+  IndexWriter.addIndexes(CodecReader[]) (Craig Perkins)
+
 * GITHUB*15025: flush segments in addIndexes, not in addIndexesReaderMerge;
   reduces extra needless merge activity
 
@@ -293,9 +394,6 @@ Bug Fixes
   used if the DoubleValuesSource needed scores. (David Smiley)
 
 * GITHUB#14682 : Fix for add char and token filters in Luke Analysis tab. (Amir Raza)
-
-* GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
-  instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
 
 * GITHUB#14727: Fix several resource leaks. (Xu Chengxin)
 
@@ -315,6 +413,9 @@ Bug Fixes
 
 * GITHUB#15106: Fix infinite loop when RefCountedSharedArena's underlying
   Arena#close fails due to concurrent usage of segments.  (Uwe Schindler)
+
+* GITHUB#14974: Lucene tessellator now always fails if it cannot process a hole instead of just ignoring it.
+   (Ignacio Vera)
 
 Build
 ---------------------

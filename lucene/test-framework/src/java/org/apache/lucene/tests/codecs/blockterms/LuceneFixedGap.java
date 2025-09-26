@@ -28,9 +28,9 @@ import org.apache.lucene.codecs.blockterms.FixedGapTermsIndexReader;
 import org.apache.lucene.codecs.blockterms.FixedGapTermsIndexWriter;
 import org.apache.lucene.codecs.blockterms.TermsIndexReaderBase;
 import org.apache.lucene.codecs.blockterms.TermsIndexWriterBase;
-import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat;
-import org.apache.lucene.codecs.lucene103.Lucene103PostingsReader;
-import org.apache.lucene.codecs.lucene103.Lucene103PostingsWriter;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsReader;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
@@ -38,7 +38,7 @@ import org.apache.lucene.index.SegmentWriteState;
 // any PostingsFormat and make it ord-able...
 
 /**
- * Customized version of {@link Lucene103PostingsFormat} that uses {@link FixedGapTermsIndexWriter}.
+ * Customized version of {@link Lucene104PostingsFormat} that uses {@link FixedGapTermsIndexWriter}.
  */
 public final class LuceneFixedGap extends PostingsFormat {
   final int termIndexInterval;
@@ -54,7 +54,7 @@ public final class LuceneFixedGap extends PostingsFormat {
 
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    PostingsWriterBase docs = new Lucene103PostingsWriter(state);
+    PostingsWriterBase docs = new Lucene104PostingsWriter(state);
 
     // TODO: should we make the terms index more easily
     // pluggable?  Ie so that this codec would record which
@@ -91,7 +91,7 @@ public final class LuceneFixedGap extends PostingsFormat {
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
-    PostingsReaderBase postings = new Lucene103PostingsReader(state);
+    PostingsReaderBase postings = new Lucene104PostingsReader(state);
     TermsIndexReaderBase indexReader;
 
     boolean success = false;

@@ -21,6 +21,7 @@ import static org.apache.lucene.util.ByteBlockPool.BYTE_BLOCK_SIZE;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -3285,6 +3286,11 @@ public class IndexWriter
     }
 
     public void registerMerge(MergePolicy.OneMerge merge) {
+      try {
+        addEstimatedBytesToMerge(merge);
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
       synchronized (IndexWriter.this) {
         pendingAddIndexesMerges.add(merge);
       }
@@ -3441,23 +3447,26 @@ public class IndexWriter
             globalFieldNumberMap,
             context,
             intraMergeExecutor);
-
-    if (!merger.shouldMerge()) {
-      return;
-    }
-
-    merge.checkAborted();
-    synchronized (this) {
-      runningAddIndexesMerges.add(merger);
-    }
-    merge.mergeStartNS = System.nanoTime();
     try {
-      merger.merge(); // merge 'em
-    } finally {
-      synchronized (this) {
-        runningAddIndexesMerges.remove(merger);
-        notifyAll();
+      if (!merger.shouldMerge()) {
+        return;
       }
+
+      merge.checkAborted();
+      synchronized (this) {
+        runningAddIndexesMerges.add(merger);
+      }
+      merge.mergeStartNS = System.nanoTime();
+      try {
+        merger.merge(); // merge 'em
+      } finally {
+        synchronized (this) {
+          runningAddIndexesMerges.remove(merger);
+          notifyAll();
+        }
+      }
+    } finally {
+      merger.cleanupMerge();
     }
 
     merge.setMergeInfo(
@@ -4777,6 +4786,21 @@ public class IndexWriter
     closeMergeReaders(merge, true, false);
   }
 
+  /** Compute {@code estimatedMergeBytes} and {@code totalMergeBytes} for a merge. */
+  void addEstimatedBytesToMerge(MergePolicy.OneMerge merge) throws IOException {
+    assert merge.estimatedMergeBytes == 0;
+    assert merge.totalMergeBytes == 0;
+    for (SegmentCommitInfo info : merge.segments) {
+      if (info.info.maxDoc() > 0) {
+        final int delCount = numDeletedDocs(info);
+        assert delCount <= info.info.maxDoc();
+        final double delRatio = ((double) delCount) / info.info.maxDoc();
+        merge.estimatedMergeBytes += (long) (info.sizeInBytes() * (1.0 - delRatio));
+        merge.totalMergeBytes += info.sizeInBytes();
+      }
+    }
+  }
+
   /**
    * Checks whether this merge involves any segments already participating in a merge. If not, this
    * merge is "registered", meaning we record that its segments are now participating in a merge,
@@ -4868,17 +4892,7 @@ public class IndexWriter
       mergingSegments.add(info);
     }
 
-    assert merge.estimatedMergeBytes == 0;
-    assert merge.totalMergeBytes == 0;
-    for (SegmentCommitInfo info : merge.segments) {
-      if (info.info.maxDoc() > 0) {
-        final int delCount = numDeletedDocs(info);
-        assert delCount <= info.info.maxDoc();
-        final double delRatio = ((double) delCount) / info.info.maxDoc();
-        merge.estimatedMergeBytes += (long) (info.sizeInBytes() * (1.0 - delRatio));
-        merge.totalMergeBytes += info.sizeInBytes();
-      }
-    }
+    addEstimatedBytesToMerge(merge);
 
     // Merge is now registered
     merge.registerDone = true;
@@ -5227,32 +5241,36 @@ public class IndexWriter
               globalFieldNumberMap,
               context,
               intraMergeExecutor);
-      merge.info.setSoftDelCount(Math.toIntExact(softDeleteCount.get()));
-      merge.checkAborted();
-
       MergeState mergeState = merger.mergeState;
       MergeState.DocMap[] docMaps;
-      if (reorderDocMaps == null) {
-        docMaps = mergeState.docMaps;
-      } else {
-        // Since the reader was reordered, we passed a merged view to MergeState and from its
-        // perspective there is a single input segment to the merge and the
-        // SlowCompositeCodecReaderWrapper is effectively doing the merge.
-        assert mergeState.docMaps.length == 1
-            : "Got " + mergeState.docMaps.length + " docMaps, but expected 1";
-        MergeState.DocMap compactionDocMap = mergeState.docMaps[0];
-        docMaps = new MergeState.DocMap[reorderDocMaps.length];
-        for (int i = 0; i < docMaps.length; ++i) {
-          MergeState.DocMap reorderDocMap = reorderDocMaps[i];
-          docMaps[i] = docID -> compactionDocMap.get(reorderDocMap.get(docID));
+      try {
+        merge.info.setSoftDelCount(Math.toIntExact(softDeleteCount.get()));
+        merge.checkAborted();
+
+        if (reorderDocMaps == null) {
+          docMaps = mergeState.docMaps;
+        } else {
+          // Since the reader was reordered, we passed a merged view to MergeState and from its
+          // perspective there is a single input segment to the merge and the
+          // SlowCompositeCodecReaderWrapper is effectively doing the merge.
+          assert mergeState.docMaps.length == 1
+              : "Got " + mergeState.docMaps.length + " docMaps, but expected 1";
+          MergeState.DocMap compactionDocMap = mergeState.docMaps[0];
+          docMaps = new MergeState.DocMap[reorderDocMaps.length];
+          for (int i = 0; i < docMaps.length; ++i) {
+            MergeState.DocMap reorderDocMap = reorderDocMaps[i];
+            docMaps[i] = docID -> compactionDocMap.get(reorderDocMap.get(docID));
+          }
         }
-      }
 
-      merge.mergeStartNS = System.nanoTime();
+        merge.mergeStartNS = System.nanoTime();
 
-      // This is where all the work happens:
-      if (merger.shouldMerge()) {
-        merger.merge();
+        // This is where all the work happens:
+        if (merger.shouldMerge()) {
+          merger.merge();
+        }
+      } finally {
+        merger.cleanupMerge();
       }
 
       assert mergeState.segmentInfo == merge.info.info;

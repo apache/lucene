@@ -130,7 +130,7 @@ public class TestLateInteractionRescorer extends LuceneTestCase {
   }
 
   private void indexMultiVectors(Directory dir, List<float[][]> corpus) throws IOException {
-    final int numDocs = atLeast(1000);
+    final int numDocs = atLeast(100);
     final int numSegments = random().nextInt(2, 5);
     int id = 0;
     try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
