@@ -106,6 +106,11 @@ public class TestDrillSideways extends FacetTestCase {
     return new DrillSideways(searcher, config, taxoReader);
   }
 
+  protected DrillSideways getNewDrillSidewaysWithEarlyTermination(
+      IndexSearcher searcher, FacetsConfig config, TaxonomyReader taxoReader) {
+    return new DrillSideways(searcher, config, taxoReader, null, null, true);
+  }
+
   protected DrillSideways getNewDrillSidewaysScoreSubdocsAtOnce(
       IndexSearcher searcher, FacetsConfig config, TaxonomyReader taxoReader) {
     return new DrillSideways(searcher, config, taxoReader) {
@@ -997,11 +1002,13 @@ public class TestDrillSideways extends FacetTestCase {
 
     Document doc = new Document();
     doc.add(new FacetField("Author", "Bob"));
+    doc.add(new FacetField("Publisher", "foo"));
     writer.addDocument(config.build(taxoWriter, doc));
 
     for (int i = 0; i < 5; i++) {
       doc = new Document();
       doc.add(new FacetField("Author", "Lisa"));
+      doc.add(new FacetField("Publisher", "foo"));
       writer.addDocument(config.build(taxoWriter, doc));
     }
 
@@ -1012,12 +1019,13 @@ public class TestDrillSideways extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
     // Run all the basic test cases with a standard DrillSideways implementation:
-    DrillSideways ds = getNewDrillSideways(searcher, config, taxoReader);
+    DrillSideways ds = getNewDrillSidewaysWithEarlyTermination(searcher, config, taxoReader);
     DrillDownQuery ddq = new DrillDownQuery(config);
-    ddq.add("Author", "Lisa");
+    ddq.add("Publisher", "foo");
     AtomicInteger docsCollected = new AtomicInteger(0);
     AtomicBoolean earlyTerminated = new AtomicBoolean(false);
     int maxDocsForEarlyTermination = 3;
+    AtomicInteger canCollectDocs = new AtomicInteger(maxDocsForEarlyTermination);
     DrillSidewaysResult result =
         ds.search(
             ddq,
@@ -1029,8 +1037,6 @@ public class TestDrillSideways extends FacetTestCase {
                   public LeafCollector getLeafCollector(LeafReaderContext context)
                       throws IOException {
                     return new SimpleLeafCollector() {
-                      int numCollects = 0;
-
                       @Override
                       public void setScorer(Scorable scorer) {
                         super.scorer = scorer;
@@ -1038,12 +1044,11 @@ public class TestDrillSideways extends FacetTestCase {
 
                       @Override
                       public void collect(int doc) throws IOException {
-                        numCollects++;
-                        docsCollected.incrementAndGet();
-                        if (numCollects >= maxDocsForEarlyTermination) {
+                        if (canCollectDocs.decrementAndGet() < 0) {
                           earlyTerminated.set(true);
                           throw new CollectionTerminatedException();
                         }
+                        docsCollected.incrementAndGet();
                       }
                     };
                   }
@@ -1056,11 +1061,10 @@ public class TestDrillSideways extends FacetTestCase {
         "Expecting num docs collected to be 3", maxDocsForEarlyTermination, docsCollected.get());
 
     // Facets should have early terminated
-    System.out.println(result.facets.getTopChildren(10, "Author").value);
     assertEquals(
         "Early termination didn't stop facet collection",
         maxDocsForEarlyTermination,
-        result.facets.getTopChildren(10, "Author").value);
+        result.facets.getTopChildren(10, "Publisher").value);
 
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);

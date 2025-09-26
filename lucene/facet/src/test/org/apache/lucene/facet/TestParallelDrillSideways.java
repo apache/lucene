@@ -55,6 +55,11 @@ public class TestParallelDrillSideways extends TestDrillSideways {
     return new DrillSideways(searcher, config, taxoReader, null, executor);
   }
 
+  protected DrillSideways getNewDrillSidewaysWithEarlyTermination(
+      IndexSearcher searcher, FacetsConfig config, TaxonomyReader taxoReader) {
+    return new DrillSideways(searcher, config, taxoReader, null, executor, true);
+  }
+
   @Override
   protected DrillSideways getNewDrillSidewaysScoreSubdocsAtOnce(
       IndexSearcher searcher, FacetsConfig config, TaxonomyReader taxoReader) {
