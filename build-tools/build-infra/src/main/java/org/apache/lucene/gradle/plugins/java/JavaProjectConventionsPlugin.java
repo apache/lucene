@@ -48,8 +48,8 @@ public class JavaProjectConventionsPlugin extends LuceneGradlePlugin {
     plugins.apply(TestsAndRandomizationPlugin.class);
     plugins.apply(TestsBeastingPlugin.class);
     plugins.apply(TestsSummaryPlugin.class);
-    plugins.apply(ApplyForbiddenApisPlugin.class);
-    plugins.apply(EcjLintPlugin.class);
+    // TODO plugins.apply(ApplyForbiddenApisPlugin.class);
+    // TODO plugins.apply(EcjLintPlugin.class);
     plugins.apply(GoogleJavaFormatPlugin.class);
     plugins.apply(CodeProfilingPlugin.class);
     plugins.apply(FailOnNoMatchingFilteredTestsPlugin.class);

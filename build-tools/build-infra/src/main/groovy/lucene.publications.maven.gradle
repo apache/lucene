@@ -50,7 +50,7 @@ def mavenProjects = project(":lucene").subprojects.findAll {subproject ->
   // Exclude all subprojects that are modular test projects and those explicitly
   // excluded above.
   return !(subproject.path.endsWith(".tests")
-      || subproject.path.startsWith(":lucene:build-tools:")
+      || subproject.path.startsWith(":build-tools:")
       || subproject.path in excluded)
 }
 

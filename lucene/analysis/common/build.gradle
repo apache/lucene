@@ -17,9 +17,8 @@
 
 
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOption
-
 import java.nio.file.Files;
-
+import org.apache.lucene.gradle.plugins.help.ExecOperationsProvider
 
 
 description = 'Analyzers for indexing content in different languages and domains'
@@ -54,13 +53,6 @@ def dictionaryProjects = [
     "ref": "8cfea406b505e4d7df52d5a19bce525df98c54ab" // head: main
   ]
 ]
-
-// We need this for the new gradle configuration cache. I personally think it's
-// awful.
-interface ExecOperationsProvider {
-  @javax.inject.Inject
-  ExecOperations getExecOperations()
-}
 
 // Generate a set of tasks cloning the git repository of each project
 // and setting it to the given reference (hash or named).

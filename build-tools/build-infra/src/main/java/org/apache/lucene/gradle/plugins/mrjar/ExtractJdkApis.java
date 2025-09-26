@@ -71,7 +71,7 @@ public final class ExtractJdkApis {
       "java.base/jdk/internal/vm/vector/VectorSupport{,$Vector,$VectorMask,$VectorPayload,$VectorShuffle}";
 
   static final Map<Integer, List<String>> CLASSFILE_PATTERNS =
-      Map.of(24, List.of(PATTERN_VECTOR_VM_INTERNALS, PATTERN_VECTOR_INCUBATOR));
+      Map.of(25, List.of(PATTERN_VECTOR_VM_INTERNALS, PATTERN_VECTOR_INCUBATOR));
 
   private static final ClassDesc CD_PreviewFeature =
       ClassDesc.ofInternalName("jdk/internal/javac/PreviewFeature");
