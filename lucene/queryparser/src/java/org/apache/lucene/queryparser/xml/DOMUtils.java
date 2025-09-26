@@ -19,7 +19,11 @@ package org.apache.lucene.queryparser.xml;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
-/** Helper methods for parsing XML */
+/**
+ * Helper methods for parsing XML.
+ *
+ * @lucene.internal
+ */
 public class DOMUtils {
 
   public static Element getChildByTagOrFail(Element e, String name) throws ParserException {
