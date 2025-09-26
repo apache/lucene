@@ -35,7 +35,7 @@ jts = "1.20.0"
 # unit tests
 junit = "4.13.2"
 # @keep Minimum gradle version to run the build
-minGradle = "8.14"
+minGradle = "9.1.0"
 # @keep This is the minimum required Java version.
 minJava = "24"
 # analysis/morfologik polish support
