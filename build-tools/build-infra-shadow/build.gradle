@@ -42,6 +42,11 @@ static Provider<String> plugin(Provider<PluginDependency> plugin) {
 dependencies {
   implementation gradleApi()
   implementation localGroovy()
+
+  // seems to be required by gradle apis, otherwise compilation fails even though
+  // we don't use it.
+  compileOnly ("com.google.code.findbugs:findbugs-annotations:3.0.1")
+
   implementation deps.commons.codec
   implementation deps.randomizedtesting.runner
   implementation deps.zstd
