@@ -187,7 +187,8 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+* GITHUB#15237: Fix SmartChinese to only serialize data from classpath with a native array filter
+  applied and never cache dictionaries from custom locations. (Uwe Schindler, Isaac David)
 
 ======================= Lucene 10.3.0 =======================
 
