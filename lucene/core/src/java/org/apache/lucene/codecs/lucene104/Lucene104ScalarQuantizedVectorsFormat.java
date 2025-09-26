@@ -106,7 +106,8 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   private static final FlatVectorsFormat rawVectorFormat =
       new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
-  private static final FlatVectorsScorer scorer = FlatVectorScorerUtil.getLucene104ScalarQuantizedFlatVectorsScorer();
+  private static final FlatVectorsScorer scorer =
+      FlatVectorScorerUtil.getLucene104ScalarQuantizedFlatVectorsScorer();
 
   private final ScalarEncoding encoding;
 

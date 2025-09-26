@@ -70,9 +70,7 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private final FlatVectorsScorer vectorScorer;
 
   Lucene104ScalarQuantizedVectorsReader(
-      SegmentReadState state,
-      FlatVectorsReader rawVectorsReader,
-      FlatVectorsScorer vectorsScorer)
+      SegmentReadState state, FlatVectorsReader rawVectorsReader, FlatVectorsScorer vectorsScorer)
       throws IOException {
     super(vectorsScorer);
     this.vectorScorer = vectorsScorer;

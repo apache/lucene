@@ -17,8 +17,6 @@
 package org.apache.lucene.codecs.lucene104;
 
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
-import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
-import static org.apache.lucene.index.VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -29,6 +27,7 @@ import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
+import org.apache.lucene.util.quantization.OptimizedScalarQuantizedVectorSimilarity;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 
 /** Vector scorer over OptimizedScalarQuantized vectors */
@@ -78,10 +77,19 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
           quantizer.scalarQuantize(
               target, targetQuantized, qv.getScalarEncoding().getBits(), qv.getCentroid());
       return new RandomVectorScorer.AbstractRandomVectorScorer(qv) {
+        private final OptimizedScalarQuantizedVectorSimilarity similarity =
+            new OptimizedScalarQuantizedVectorSimilarity(
+                similarityFunction,
+                qv.dimension(),
+                qv.getCentroidDP(),
+                qv.getScalarEncoding().getBits());
+
         @Override
         public float score(int node) throws IOException {
-          return quantizedScore(
-              targetQuantized, targetCorrectiveTerms, qv, node, similarityFunction);
+          return similarity.score(
+              dotProduct(targetQuantized, qv, node),
+              targetCorrectiveTerms,
+              qv.getCorrectiveTerms(node));
         }
       };
     }
@@ -107,10 +115,23 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       implements RandomVectorScorerSupplier {
     private final QuantizedByteVectorValues targetValues;
     private final QuantizedByteVectorValues values;
-    private final VectorSimilarityFunction similarity;
+    private final OptimizedScalarQuantizedVectorSimilarity similarity;
 
     public ScalarQuantizedVectorScorerSupplier(
         QuantizedByteVectorValues values, VectorSimilarityFunction similarity) throws IOException {
+      this.targetValues = values.copy();
+      this.values = values;
+      this.similarity =
+          new OptimizedScalarQuantizedVectorSimilarity(
+              similarity,
+              values.dimension(),
+              values.getCentroidDP(),
+              values.getScalarEncoding().getBits());
+    }
+
+    private ScalarQuantizedVectorScorerSupplier(
+        QuantizedByteVectorValues values, OptimizedScalarQuantizedVectorSimilarity similarity)
+        throws IOException {
       this.targetValues = values.copy();
       this.values = values;
       this.similarity = similarity;
@@ -124,7 +145,10 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
 
         @Override
         public float score(int node) throws IOException {
-          return quantizedScore(targetVector, targetCorrectiveTerms, values, node, similarity);
+          return similarity.score(
+              dotProduct(targetVector, values, node),
+              targetCorrectiveTerms,
+              values.getCorrectiveTerms(node));
         }
 
         @Override
@@ -151,64 +175,14 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     }
   }
 
-  private static final float[] SCALE_LUT =
-      new float[] {
-        1f,
-        1f / ((1 << 2) - 1),
-        1f / ((1 << 3) - 1),
-        1f / ((1 << 4) - 1),
-        1f / ((1 << 5) - 1),
-        1f / ((1 << 6) - 1),
-        1f / ((1 << 7) - 1),
-        1f / ((1 << 8) - 1),
-      };
-
-  private static float quantizedScore(
-      byte[] quantizedQuery,
-      OptimizedScalarQuantizer.QuantizationResult queryCorrections,
-      QuantizedByteVectorValues targetVectors,
-      int targetOrd,
-      VectorSimilarityFunction similarityFunction)
-      throws IOException {
+  private static float dotProduct(
+      byte[] query, QuantizedByteVectorValues targetVectors, int targetOrd) throws IOException {
     var scalarEncoding = targetVectors.getScalarEncoding();
-    byte[] quantizedDoc = targetVectors.vectorValue(targetOrd);
-    float qcDist =
-        switch (scalarEncoding) {
-          case UNSIGNED_BYTE -> VectorUtil.uint8DotProduct(quantizedQuery, quantizedDoc);
-          case SEVEN_BIT -> VectorUtil.dotProduct(quantizedQuery, quantizedDoc);
-          case PACKED_NIBBLE -> VectorUtil.int4DotProductSinglePacked(quantizedQuery, quantizedDoc);
-        };
-    OptimizedScalarQuantizer.QuantizationResult indexCorrections =
-        targetVectors.getCorrectiveTerms(targetOrd);
-    float scale = SCALE_LUT[scalarEncoding.getBits() - 1];
-    float x1 = indexCorrections.quantizedComponentSum();
-    float ax = indexCorrections.lowerInterval();
-    // Here we must scale according to the bits
-    float lx = (indexCorrections.upperInterval() - ax) * scale;
-    float ay = queryCorrections.lowerInterval();
-    float ly = (queryCorrections.upperInterval() - ay) * scale;
-    float y1 = queryCorrections.quantizedComponentSum();
-    float score =
-        ax * ay * targetVectors.dimension() + ay * lx * x1 + ax * ly * y1 + lx * ly * qcDist;
-    // For euclidean, we need to invert the score and apply the additional correction, which is
-    // assumed to be the squared l2norm of the centroid centered vectors.
-    if (similarityFunction == EUCLIDEAN) {
-      score =
-          queryCorrections.additionalCorrection()
-              + indexCorrections.additionalCorrection()
-              - 2 * score;
-      return Math.max(1 / (1f + score), 0);
-    } else {
-      // For cosine and max inner product, we need to apply the additional correction, which is
-      // assumed to be the non-centered dot-product between the vector and the centroid
-      score +=
-          queryCorrections.additionalCorrection()
-              + indexCorrections.additionalCorrection()
-              - targetVectors.getCentroidDP();
-      if (similarityFunction == MAXIMUM_INNER_PRODUCT) {
-        return VectorUtil.scaleMaxInnerProductScore(score);
-      }
-      return Math.max((1f + score) / 2f, 0);
-    }
+    byte[] doc = targetVectors.vectorValue(targetOrd);
+    return switch (scalarEncoding) {
+      case UNSIGNED_BYTE -> VectorUtil.uint8DotProduct(query, doc);
+      case SEVEN_BIT -> VectorUtil.dotProduct(query, doc);
+      case PACKED_NIBBLE -> VectorUtil.int4DotProductSinglePacked(query, doc);
+    };
   }
 }
