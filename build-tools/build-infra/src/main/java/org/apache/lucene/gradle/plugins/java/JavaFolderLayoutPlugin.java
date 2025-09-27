@@ -42,7 +42,7 @@ public class JavaFolderLayoutPlugin extends LuceneGradlePlugin {
 
     // point build-infra-shadow's main sources at build-infra sources so that we can
     // reapply the build to ourselves.
-    if (project.getPath().equals(":lucene:build-tools:build-infra-shadow")
+    if (project.getPath().equals(":build-tools:build-infra-shadow")
         && !getLuceneBuildGlobals(project).getIntellijIdea().get().isIdea()) {
       mainSrcSet.java(
           srcSetDir -> {
