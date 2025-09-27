@@ -29,28 +29,27 @@ import java.util.function.BinaryOperator;
  */
 public final class TestObjectInputFilterFactory implements BinaryOperator<ObjectInputFilter> {
 
+  /** An {@link ObjectInputFilter} that rejects any deserialization. */
+  public static final ObjectInputFilter DENY_ALL_FILTER = _ -> Status.REJECTED;
+
   @Override
   public ObjectInputFilter apply(ObjectInputFilter curr, ObjectInputFilter next) {
-    // if no filter was configured return our filter that rejects all deserialization and only
-    // allows Gradle deserializing test runner information:
-    if (curr == null && next == null) {
-      return DENY_ALL_EXCEPT_GRADLE_FILTER;
-    }
-    // if code installs a new filter, but ours is active return only the new filter:
-    if (curr == DENY_ALL_EXCEPT_GRADLE_FILTER) {
+    // if Gradle's deserializer is on the stack, return next filter:
+    if (StackWalker.getInstance()
+        .walk(s -> s.anyMatch(TestObjectInputFilterFactory::isGradleSerializerStackFrame))) {
       return next;
     }
-    // merge filters:
+    // if no filter was configured, return our filter that rejects all deserialization:
+    if (curr == null && next == null) {
+      return DENY_ALL_FILTER;
+    }
+    // if code installs a new filter, but ours is active return only the new filter:
+    if (curr == DENY_ALL_FILTER) {
+      return next;
+    }
+    // otherwise merge filters:
     return ObjectInputFilter.merge(next, curr);
   }
-
-  private static final ObjectInputFilter DENY_ALL_EXCEPT_GRADLE_FILTER =
-      _ -> {
-        return (StackWalker.getInstance()
-                .walk(s -> s.anyMatch(TestObjectInputFilterFactory::isGradleSerializerStackFrame)))
-            ? Status.ALLOWED
-            : Status.REJECTED;
-      };
 
   private static boolean isGradleSerializerStackFrame(StackFrame f) {
     final String methodName = f.getMethodName(), className = f.getClassName();
