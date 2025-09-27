@@ -21,14 +21,6 @@ import org.apache.lucene.gradle.plugins.help.ExecOperationsProvider
 // This adds javacc generation support.
 
 configure(rootProject) {
-  configurations {
-    javacc
-  }
-
-  dependencies {
-    javacc deps.javacc
-  }
-
   tasks.register("javacc", {
     description = "Regenerate sources for corresponding javacc grammar files."
     group = "generation"
@@ -94,6 +86,12 @@ def commonCleanups = { FileTree generatedFiles ->
 }
 
 configure(project(":lucene:queryparser")) {
+  configurations.create("javacc")
+
+  dependencies {
+    add("javacc", deps.javacc)
+  }
+
   task javaccParserClassicInternal(type: JavaCCTask) {
     description = "Regenerate classic query parser from lucene/queryparser/classic/QueryParser.jj"
     group = "generation"
@@ -285,7 +283,7 @@ class JavaCCTask extends DefaultTask {
   }
 
   JavaCCTask() {
-    dependsOn(project.rootProject.configurations.javacc)
+    dependsOn(project.configurations.javacc)
   }
 
   @TaskAction
@@ -305,9 +303,9 @@ class JavaCCTask extends DefaultTask {
 
     def output = new ByteArrayOutputStream()
     def execOps = project.objects.newInstance(ExecOperationsProvider).execOperations
-    execOps.javaexec {
+    def result = execOps.javaexec({
       classpath {
-        project.rootProject.configurations.javacc
+        project.configurations.javacc
       }
 
       ignoreExitValue = true
@@ -319,7 +317,7 @@ class JavaCCTask extends DefaultTask {
         "-OUTPUT_DIRECTORY=${tempDir}",
         javaccFile
       ]
-    }
+    })
 
     // Unless we request verbose logging, don't emit javacc output.
     if (result.exitValue != 0) {

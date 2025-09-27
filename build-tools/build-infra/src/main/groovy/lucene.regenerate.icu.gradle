@@ -272,18 +272,18 @@ configure(project(":lucene:analysis:common")) {
     outputs.file outputFile
 
     doFirst {
-      def execOps = objects.newInstance(ExecOperationsProvider).execOperations
-      execOps.javaexec {
-        mainClass "groovy.lang.GroovyShell"
-        classpath icuConfig, groovyConfig
+      ExecOperations execOps = objects.newInstance(ExecOperationsProvider).execOperations
+      execOps.javaexec({ JavaExecSpec spec ->
+        spec.mainClass = "groovy.lang.GroovyShell"
+        spec.classpath(icuConfig, groovyConfig)
 
-        args = [
+        spec.args([
           "--encoding",
           "UTF-8",
-          file("${resources}/GenerateUnicodeProps.groovy"),
-          outputFile
-        ]
-      }
+          file("${resources}/GenerateUnicodeProps.groovy").toString(),
+          outputFile.toString()
+        ])
+      })
     }
   }
 
@@ -313,8 +313,8 @@ configure(project(":lucene:core")) {
 
     doFirst {
       def execOps = objects.newInstance(ExecOperationsProvider).execOperations
-      execOps.javaexec {
-        mainClass "groovy.lang.GroovyShell"
+      execOps.javaexec({
+        mainClass = "groovy.lang.GroovyShell"
         classpath icuConfig, groovyConfig
 
         args = [
@@ -323,7 +323,7 @@ configure(project(":lucene:core")) {
           file("${resources}/GenerateCaseFolding.groovy"),
           outputFile
         ]
-      }
+      })
     }
   }
 
