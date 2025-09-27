@@ -44,7 +44,7 @@ public final class TestObjectInputFilterFactory implements BinaryOperator<Object
     return ObjectInputFilter.merge(next, curr);
   }
 
-  private static ObjectInputFilter DENY_ALL_EXCEPT_GRADLE_FILTER =
+  private static final ObjectInputFilter DENY_ALL_EXCEPT_GRADLE_FILTER =
       _ -> {
         return (StackWalker.getInstance()
                 .walk(s -> s.anyMatch(TestObjectInputFilterFactory::isGradleSerializerStackFrame)))
