@@ -40,7 +40,7 @@ jobs:
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # v6.7.0
       - name: Run zizmor
-        run: uvx zizmor --format=sarif . > results.sarif
+        run: uvx zizmor --pedantic --format=sarif . > results.sarif
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # TODO: offline checks only to avoid any rate-limiting issues, maybe enable nightly?
