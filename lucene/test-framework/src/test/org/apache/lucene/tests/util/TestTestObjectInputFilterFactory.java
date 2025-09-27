@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.tests.util;
 
+import static java.io.ObjectInputFilter.Config.createFilter;
 import static java.io.ObjectInputFilter.Config.getSerialFilterFactory;
 
 import java.io.ByteArrayInputStream;
@@ -23,7 +24,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InvalidClassException;
-import java.io.ObjectInputFilter;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.HashMap;
@@ -58,16 +58,22 @@ public final class TestTestObjectInputFilterFactory extends LuceneTestCase {
 
   public void testDeserializationWithAllowFilter() throws Exception {
     try (var oin = new ObjectInputStream(openStream())) {
-      oin.setObjectInputFilter(ObjectInputFilter.Config.createFilter("java.util.HashMap;!*"));
+      oin.setObjectInputFilter(createFilter("java.util.HashMap;!*"));
       oin.readObject();
     }
   }
 
   public void testDeserializationWithDenyFilter() throws Exception {
     try (var oin = new ObjectInputStream(openStream())) {
-      oin.setObjectInputFilter(ObjectInputFilter.Config.createFilter("!*"));
+      oin.setObjectInputFilter(createFilter("!*"));
       var ex = assertThrows(InvalidClassException.class, () -> oin.readObject());
       assertTrue(ex.getMessage().contains("REJECTED"));
+    }
+  }
+
+  public void testBadCodeJustSettingNullFilter() throws Exception {
+    try (var oin = new ObjectInputStream(openStream())) {
+      assertThrows(IllegalStateException.class, () -> oin.setObjectInputFilter(null));
     }
   }
 }
