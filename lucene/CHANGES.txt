@@ -73,7 +73,8 @@ Other
 * GITHUB#15237: Fix SmartChinese to only deserialize dictionary data from classpath with a native array
   filter applied and never cache dictionaries from custom locations. Also install a global deserialization
   filter factory that disallows any unprotected deserialization while running tests.
-  (Uwe Schindler, Isaac David)
+  Applications using SecurityManager now need to grant SerializablePermission("serialFilter")
+  to the analysis-smartcn module. (Uwe Schindler, Isaac David)
 
 ======================= Lucene 10.3.0 =======================
 
