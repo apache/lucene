@@ -218,6 +218,14 @@ allprojects {
           securityArgumentProvider.otherProperties.put("lucene.test.framework", project(":lucene:test-framework").layout.buildDirectory.get().asFile.absolutePath)
         }
 
+        // disallow any Java serialization without a filter
+        if (project.path.endsWith(".tests")) {
+          // LUCENE-10301: for now, do not use the serialization filter for modular tests
+          // (test framework is not available).
+        } else if (project.path.startsWith(":lucene")) {
+          systemProperty 'jdk.serialFilterFactory', 'org.apache.lucene.tests.util.TestObjectInputFilterFactory'
+        }
+
         doFirst {
           logger.debug("Will use test opts:\n" + testOptionsResolved.collect {k,v -> "${k}: ${v}"}.sort().join("\n"))
         }

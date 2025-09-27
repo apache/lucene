@@ -26,6 +26,8 @@ import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import org.apache.lucene.analysis.cn.smart.AnalyzerProfile;
 import org.apache.lucene.analysis.cn.smart.Utility;
 import org.apache.lucene.util.SuppressForbidden;
@@ -81,9 +83,21 @@ class WordDictionary extends AbstractDictionary {
         singleInstance.load();
       } catch (
           @SuppressWarnings("unused")
-          IOException e) {
-        String wordDictRoot = AnalyzerProfile.ANALYSIS_DATA_DIR;
-        singleInstance.load(wordDictRoot);
+          IOException e0) {
+        try {
+          singleInstance.load();
+        } catch (IOException e) {
+          String dictRoot = AnalyzerProfile.ANALYSIS_DATA_DIR;
+          try {
+            singleInstance.load(dictRoot);
+          } catch (IOException ioe) {
+            RuntimeException ex = new RuntimeException(ioe);
+            ex.addSuppressed(e);
+            throw ex;
+          }
+        } catch (ClassNotFoundException e) {
+          throw new RuntimeException(e);
+        }
       } catch (ClassNotFoundException e) {
         throw new RuntimeException(e);
       }
@@ -92,39 +106,29 @@ class WordDictionary extends AbstractDictionary {
   }
 
   /**
-   * Attempt to load dictionary from provided directory, first trying coredict.mem, failing back on
-   * coredict.dct
+   * Attempt to load dictionary from provided path to coredict.dct
    *
    * @param dctFileRoot path to dictionary directory
    */
-  public void load(String dctFileRoot) {
+  public void load(String dctFileRoot) throws IOException {
     String dctFilePath = dctFileRoot + "/coredict.dct";
-    Path serialObj = Paths.get(dctFileRoot + "/coredict.mem");
-
-    if (Files.exists(serialObj) && loadFromObj(serialObj)) {
-
-    } else {
-      try {
-        wordIndexTable = new short[PRIME_INDEX_LENGTH];
-        charIndexTable = new char[PRIME_INDEX_LENGTH];
-        for (int i = 0; i < PRIME_INDEX_LENGTH; i++) {
-          charIndexTable[i] = 0;
-          wordIndexTable[i] = -1;
-        }
-        wordItem_charArrayTable = new char[GB2312_CHAR_NUM][][];
-        wordItem_frequencyTable = new int[GB2312_CHAR_NUM][];
-        // int total =
-        loadMainDataFromFile(dctFilePath);
-        expandDelimiterData();
-        mergeSameWords();
-        sortEachItems();
-        // log.info("load dictionary: " + dctFilePath + " total:" + total);
-      } catch (IOException e) {
-        throw new RuntimeException(e.getMessage());
-      }
-
-      saveToObj(serialObj);
+    wordIndexTable = new short[PRIME_INDEX_LENGTH];
+    charIndexTable = new char[PRIME_INDEX_LENGTH];
+    for (int i = 0; i < PRIME_INDEX_LENGTH; i++) {
+      charIndexTable[i] = 0;
+      wordIndexTable[i] = -1;
     }
+    wordItem_charArrayTable = new char[GB2312_CHAR_NUM][][];
+    wordItem_frequencyTable = new int[GB2312_CHAR_NUM][];
+    // int total =
+    loadMainDataFromFile(dctFilePath);
+    expandDelimiterData();
+    mergeSameWords();
+    sortEachItems();
+    // log.info("load dictionary: " + dctFilePath + " total:" + total);
+
+    /* Enable the following line to regenerate the serialized file: */
+    // saveToObj(Paths.get(dctFileRoot + "/coredict.mem"));
   }
 
   /**
@@ -137,20 +141,18 @@ class WordDictionary extends AbstractDictionary {
     loadFromObjectInputStream(input);
   }
 
-  private boolean loadFromObj(Path serialObj) {
-    try {
-      loadFromObjectInputStream(Files.newInputStream(serialObj));
-      return true;
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   @SuppressForbidden(
       reason = "TODO: fix code to serialize its own dictionary vs. a binary blob in the codebase")
+  @SuppressWarnings("removal")
   private void loadFromObjectInputStream(InputStream serialObjectInputStream)
       throws IOException, ClassNotFoundException {
     try (ObjectInputStream input = new ObjectInputStream(serialObjectInputStream)) {
+      AccessController.doPrivileged(
+          (PrivilegedAction<Void>)
+              () -> {
+                input.setObjectInputFilter(this::filterObjectInputStream);
+                return null;
+              });
       wordIndexTable = (short[]) input.readObject();
       charIndexTable = (char[]) input.readObject();
       wordItem_charArrayTable = (char[][][]) input.readObject();
@@ -161,17 +163,13 @@ class WordDictionary extends AbstractDictionary {
 
   @SuppressForbidden(
       reason = "TODO: fix code to serialize its own dictionary vs. a binary blob in the codebase")
-  private void saveToObj(Path serialObj) {
+  private void saveToObj(Path serialObj) throws IOException {
     try (ObjectOutputStream output = new ObjectOutputStream(Files.newOutputStream(serialObj))) {
       output.writeObject(wordIndexTable);
       output.writeObject(charIndexTable);
       output.writeObject(wordItem_charArrayTable);
       output.writeObject(wordItem_frequencyTable);
       // log.info("serialize core dict.");
-    } catch (
-        @SuppressWarnings("unused")
-        Exception e) {
-      // log.warn(e.getMessage());
     }
   }
 
