@@ -1,0 +1,52 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Validate Actions
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/**'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/**'
+
+permissions: {}
+
+jobs:
+  actionlint:
+    name: Run actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # v6.7.0
+      - name: Check workflows with actionlint
+        run: uvx --from actionlint-py actionlint -color
+  zizmor:
+    name: Run zizmor
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write # integration with github advanced security
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # v6.7.0
+      - name: Run zizmor
+        run: uvx zizmor --pedantic --format=sarif . > results.sarif
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # TODO: offline checks only to avoid any rate-limiting issues, maybe enable nightly?
+          ZIZMOR_OFFLINE: true
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@192325c86100d080feab897ff886c34abd4c83a3 # v3.30.3
+        with:
+          sarif_file: results.sarif
+          category: zizmor
