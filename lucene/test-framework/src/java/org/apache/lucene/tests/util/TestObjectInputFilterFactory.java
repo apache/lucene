@@ -34,7 +34,7 @@ public final class TestObjectInputFilterFactory implements BinaryOperator<Object
 
   @Override
   public ObjectInputFilter apply(ObjectInputFilter curr, ObjectInputFilter next) {
-    // if Gradle's deserializer is on the stack, return next filter:
+    // if Gradle's deserializer is on the stack, return next filter (which is obviously null):
     if (StackWalker.getInstance()
         .walk(s -> s.anyMatch(TestObjectInputFilterFactory::isGradleSerializerStackFrame))) {
       return next;
@@ -43,12 +43,8 @@ public final class TestObjectInputFilterFactory implements BinaryOperator<Object
     if (curr == null && next == null) {
       return DENY_ALL_FILTER;
     }
-    // if code installs a new filter, but ours is active return only the new filter:
-    if (curr == DENY_ALL_FILTER) {
-      return next;
-    }
-    // otherwise merge filters:
-    return ObjectInputFilter.merge(next, curr);
+    // if code installs its own filter return it:
+    return next;
   }
 
   private static boolean isGradleSerializerStackFrame(StackFrame f) {
