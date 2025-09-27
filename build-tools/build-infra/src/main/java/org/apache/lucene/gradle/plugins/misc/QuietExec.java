@@ -23,13 +23,16 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.Locale;
+import javax.inject.Inject;
 import org.apache.lucene.gradle.SuppressForbidden;
 import org.gradle.api.GradleException;
 import org.gradle.api.logging.LogLevel;
 import org.gradle.api.logging.Logger;
+import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.tasks.Exec;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.process.ExecResult;
+import org.gradle.process.internal.ExecActionFactory;
 
 /**
  * An {@link org.gradle.api.tasks.Exec} task that does not emit any output unless the executed
@@ -92,6 +95,18 @@ public class QuietExec extends Exec {
     return new String(Files.readAllBytes(outputFile.toPath()));
   }
 
+  @Inject
+  @Override
+  protected ObjectFactory getObjectFactory() {
+    throw getUnsupported("objectFactory");
+  }
+
+  @Inject
+  @Override
+  protected ExecActionFactory getExecActionFactory() {
+    throw getUnsupported("execActionFactory");
+  }
+
   @Override
   public Exec setStandardInput(InputStream inputStream) {
     throw propertyUnsupported("standardInput");
@@ -110,6 +125,10 @@ public class QuietExec extends Exec {
   @Override
   public Exec setErrorOutput(OutputStream outputStream) {
     throw propertyUnsupported("errorOutput");
+  }
+
+  private GradleException getUnsupported(String propName) {
+    throw new GradleException("Quiet exec does not support getting this property: " + propName);
   }
 
   private GradleException propertyUnsupported(String propName) {

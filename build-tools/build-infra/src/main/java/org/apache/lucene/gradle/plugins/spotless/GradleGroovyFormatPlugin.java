@@ -66,13 +66,13 @@ public class GradleGroovyFormatPlugin extends LuceneGradlePlugin {
         task -> {
           task.mustRunAfter(
               List.of(
-                  ":lucene:build-tools:build-infra-shadow:applyGoogleJavaFormat",
-                  ":lucene:build-tools:build-infra-shadow:compileJava",
-                  ":lucene:build-tools:build-infra-shadow:pluginDescriptors",
-                  ":lucene:build-tools:build-infra-shadow:pluginUnderTestMetadata",
-                  ":lucene:build-tools:missing-doclet:applyGoogleJavaFormat",
-                  ":lucene:build-tools:missing-doclet:compileJava",
-                  ":lucene:build-tools:missing-doclet:renderJavadoc"));
+                  ":build-tools:build-infra-shadow:applyGoogleJavaFormat",
+                  ":build-tools:build-infra-shadow:compileJava",
+                  ":build-tools:build-infra-shadow:pluginDescriptors",
+                  ":build-tools:build-infra-shadow:pluginUnderTestMetadata",
+                  ":build-tools:missing-doclet:applyGoogleJavaFormat",
+                  ":build-tools:missing-doclet:compileJava",
+                  ":build-tools:missing-doclet:renderJavadoc"));
         });
 
     tasks.named("tidy").configure(task -> task.dependsOn(":spotlessGradleScriptsApply"));

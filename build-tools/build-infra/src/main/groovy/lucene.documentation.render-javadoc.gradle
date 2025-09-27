@@ -31,7 +31,7 @@ allprojects {
     }
 
     dependencies {
-      missingdoclet project(":lucene:build-tools:missing-doclet")
+      missingdoclet project(":build-tools:missing-doclet")
     }
 
     project.ext {

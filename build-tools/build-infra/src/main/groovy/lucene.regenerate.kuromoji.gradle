@@ -15,12 +15,14 @@
  * limitations under the License.
  */
 import de.undercouch.gradle.tasks.download.Download
+import org.apache.lucene.gradle.plugins.help.ExecOperationsProvider
 
 // This downloads and compiles Kuromoji dictionaries.
 
 def recompileDictionary(project, dictionaryName, Closure closure) {
-  project.javaexec {
-    main = "org.apache.lucene.analysis.ja.dict.DictionaryBuilder"
+  def execOps = objects.newInstance(ExecOperationsProvider).execOperations
+  execOps.javaexec {
+    mainClass = "org.apache.lucene.analysis.ja.dict.DictionaryBuilder"
     classpath = project.sourceSets.main.runtimeClasspath
 
     jvmArgs '-Xmx1G'

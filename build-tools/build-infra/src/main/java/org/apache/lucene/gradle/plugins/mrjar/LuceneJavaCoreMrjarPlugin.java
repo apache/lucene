@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.gradle.plugins.mrjar;
 
-import de.thetaphi.forbiddenapis.gradle.CheckForbiddenApis;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
@@ -77,14 +76,15 @@ public class LuceneJavaCoreMrjarPlugin extends LuceneGradlePlugin {
       RegularFile apijar = apijars.file("jdk" + jdkVersion + "-api.jar");
 
       // include api jar in forbidden APIs.
-      project
-          .getTasks()
-          .withType(CheckForbiddenApis.class)
-          .named("forbiddenApisMain" + jdkVersion)
-          .configure(
-              spec -> {
-                spec.setClasspath(spec.getClasspath().plus(project.files(apijar)));
-              });
+      // TODO uncomment after fixing ForbiddenApis
+      // project
+      //     .getTasks()
+      //     .withType(CheckForbiddenApis.class)
+      //     .named("forbiddenApisMain" + jdkVersion)
+      //     .configure(
+      //         spec -> {
+      //           spec.setClasspath(spec.getClasspath().plus(project.files(apijar)));
+      //         });
 
       // configure javac.
       project

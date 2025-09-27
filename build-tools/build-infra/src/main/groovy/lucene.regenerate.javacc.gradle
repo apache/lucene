@@ -16,7 +16,7 @@
  */
 
 import java.nio.charset.Charset
-import java.util.function.Function
+import org.apache.lucene.gradle.plugins.help.ExecOperationsProvider
 
 // This adds javacc generation support.
 
@@ -304,7 +304,8 @@ class JavaCCTask extends DefaultTask {
     logger.lifecycle("Recompiling JavaCC: ${project.rootDir.relativePath(javaccFile)}")
 
     def output = new ByteArrayOutputStream()
-    def result = project.javaexec {
+    def execOps = project.objects.newInstance(ExecOperationsProvider).execOperations
+    execOps.javaexec {
       classpath {
         project.rootProject.configurations.javacc
       }
@@ -313,7 +314,7 @@ class JavaCCTask extends DefaultTask {
       standardOutput = output
       errorOutput = output
 
-      main = "org.javacc.parser.Main"
+      mainClass = "org.javacc.parser.Main"
       args += [
         "-OUTPUT_DIRECTORY=${tempDir}",
         javaccFile

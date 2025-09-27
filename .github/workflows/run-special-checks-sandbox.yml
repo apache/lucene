@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest ]
-        java: [ '24' ]
+        java: [ '25' ]
         faiss-version: [ '1.11.0' ]
 
     runs-on: ${{ matrix.os }}

@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-import java.nio.file.Files
 import org.apache.lucene.gradle.plugins.misc.QuietExec
+import org.apache.lucene.gradle.plugins.help.ExecOperationsProvider
 
 // Add a top-level pseudo-task to which we will attach individual regenerate tasks.
 
@@ -80,8 +80,9 @@ configure(project(":lucene:analysis:common")) {
       File tmpJflexMacro = File.createTempFile(jflexMacro.getName(), ".tmp", getTemporaryDir())
       File tmpTldList = File.createTempFile(tldList.getName(), ".tmp", getTemporaryDir())
 
-      project.javaexec {
-        main = "org.apache.lucene.analysis.standard.GenerateJflexTLDMacros"
+      def execOps = objects.newInstance(ExecOperationsProvider).execOperations
+      execOps.javaexec {
+        mainClass = "org.apache.lucene.analysis.standard.GenerateJflexTLDMacros"
         classpath = sourceSets.tools.runtimeClasspath
 
         ignoreExitValue = false
@@ -261,12 +262,13 @@ class JFlexTask extends DefaultTask {
 
     logger.lifecycle("Recompiling JFlex: ${project.rootDir.relativePath(jflexFile)}")
 
-    project.javaexec {
+    def execOps = project.objects.newInstance(ExecOperationsProvider).execOperations
+    execOps.javaexec {
       classpath {
         project.rootProject.configurations.jflex
       }
 
-      main = "jflex.Main"
+      mainClass = "jflex.Main"
       args += [
         "-nobak",
         "--quiet",

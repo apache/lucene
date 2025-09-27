@@ -110,7 +110,7 @@ public class JavacConfigurationPlugin extends LuceneGradlePlugin {
 
               // we can't use this linter option
               // because of https://github.com/apache/lucene/issues/14941
-              if (project.getPath().equals(":lucene:build-tools:build-infra-shadow")) {
+              if (project.getPath().equals(":build-tools:build-infra-shadow")) {
                 compilerArgs.remove("-Xlint:path");
               }
 

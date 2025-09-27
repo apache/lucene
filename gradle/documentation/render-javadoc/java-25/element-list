@@ -95,6 +95,7 @@ javax.print
 javax.print.attribute
 javax.print.attribute.standard
 javax.print.event
+javax.sound
 javax.sound.midi
 javax.sound.midi.spi
 javax.sound.sampled
