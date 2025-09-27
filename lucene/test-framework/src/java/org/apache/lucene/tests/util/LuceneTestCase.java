@@ -53,7 +53,6 @@ import java.io.Closeable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputFilter;
 import java.io.PrintStream;
 import java.lang.StackWalker.StackFrame;
 import java.lang.annotation.Documented;
@@ -497,14 +496,6 @@ public abstract class LuceneTestCase extends Assert {
       defaultValue |= systemPropertyAsBoolean(property, false);
     }
     LEAVE_TEMPORARY = defaultValue;
-  }
-
-  /* Make sure we do not allow Java serialization without custom filters anywhere while running tests.
-   * We could have activated that already in the test runner Gradle plugin, but Gradle itsself uses
-   * unfiltered serialization on startup.
-   */
-  static {
-    ObjectInputFilter.Config.setSerialFilter(_ -> ObjectInputFilter.Status.REJECTED);
   }
 
   /** Filesystem-based {@link Directory} implementations. */
