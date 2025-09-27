@@ -114,6 +114,9 @@ class BigramDictionary extends AbstractDictionary {
       frequencyTable[i] = 0;
     }
     loadFromFile(bigramDictPath);
+
+    /* Enable the following line to regenerate the serialized file: */
+    // saveToObj(Paths.get(dictRoot + "/bigramdict.mem"));
   }
 
   /**

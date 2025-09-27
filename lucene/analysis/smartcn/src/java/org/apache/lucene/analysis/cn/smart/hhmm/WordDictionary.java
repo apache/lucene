@@ -122,6 +122,9 @@ class WordDictionary extends AbstractDictionary {
     mergeSameWords();
     sortEachItems();
     // log.info("load dictionary: " + dctFilePath + " total:" + total);
+
+    /* Enable the following line to regenerate the serialized file: */
+    // saveToObj(Paths.get(dctFileRoot + "/coredict.mem"));
   }
 
   /**
