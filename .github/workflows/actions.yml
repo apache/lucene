@@ -23,10 +23,11 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@b75a909f75acd358c2196fb9a5f1299a9a8868a4 # v6.7.0
+      # TODO: setup shellcheck-py, too
       - name: Check workflows with actionlint
-        uses: docker://rhysd/actionlint:1.7.7@sha256:887a259a5a534f3c4f36cb02dca341673c6089431057242cdc931e9f133147e9
-        with:
-          args: -color
+        run: uvx --from actionlint-py actionlint -color
   zizmor:
     name: Run zizmor
     runs-on: ubuntu-latest
