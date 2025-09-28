@@ -37,7 +37,7 @@ junit = "4.13.2"
 # @keep Minimum gradle version to run the build
 minGradle = "9.1.0"
 # @keep This is the minimum required Java version.
-minJava = "24"
+minJava = "25"
 # analysis/morfologik polish support
 morfologik = "2.1.9"
 # analysis/morfologik ukrainian support
