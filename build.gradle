@@ -1,3 +1,5 @@
+import de.thetaphi.forbiddenapis.gradle.CheckForbiddenApis
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -54,3 +56,11 @@ plugins {
 }
 
 description = 'Grandparent project for Apache Lucene Core'
+
+// Turn off all forbidden-apis tasks until it supports JDK 25;
+// https://github.com/policeman-tools/forbidden-apis/pull/272
+allprojects {
+  tasks.withType(CheckForbiddenApis.class).configureEach {
+    enabled = false
+  }
+}
