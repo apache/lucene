@@ -9,7 +9,7 @@ commons-codec = "1.19.0"
 # benchmark/ bzip2 compression
 commons-compress = "1.27.1"
 # See ecj-lint.gradle (used for more linting).
-ecj = "3.43.0"
+ecj = "I20250926-1800"
 # java linting
 errorprone = "2.41.0"
 # markdown documentation generation
