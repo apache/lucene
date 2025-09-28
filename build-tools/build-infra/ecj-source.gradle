@@ -21,7 +21,7 @@
 // we redirect dependency resolution to our own s3-based "maven repository" just for
 // the ecj jar.
 
-boolean useDropMirrorForEcj = deps.versions.ecj.get() in ["4.36M1", "I20250926-1800"]
+boolean useDropMirrorForEcj = true
 if (useDropMirrorForEcj) {
   repositories {
     exclusiveContent {

@@ -19,28 +19,12 @@ pluginManagement {
     repositories {
         mavenCentral()
         gradlePluginPortal()
-
-        // the classpath of the included composite project is resolved independently.
-        // so custom ecj versions are not found. We have to repeat the same code
-        // as in ecj-source.gradle; there doesn't seem to be any other way around it
-        exclusiveContent {
-          forRepository {
-            ivy {
-              url = 'https://s3.amazonaws.com/lucene-testdata/temp-repo/ecj/'
-              patternLayout {
-                artifact "[artifact]-[revision](.[ext])"
-                m2compatible = true
-              }
-              metadataSources {
-                it.artifact()
-              }
-            }
-          }
-          filter {
-            includeGroup "org.eclipse.jdt"
-          }
-        }
     }
+
+    // the classpath of the included composite project is resolved independently.
+    // so custom ecj versions are not found unless we repeat the same code
+    // as in ecj-source.gradle
+    apply from: file("build-tools/build-infra/ecj-source.gradle"), to: delegate
 
     includeBuild("build-tools/build-infra")
 }
