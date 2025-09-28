@@ -1098,6 +1098,24 @@ Build
 
 * GITHUB#13698: Upgrade to gradle 8.10 (Dawid Weiss)
 
+======================== Lucene 9.12.3 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#14858, GITHUB#12146: Simplify max score for kNN vector queries, ensuring vector queries handle advanceShallow correctly (Julie Tibshirani)
+
+* GITHUB#15074: Fix to use READONCE when reading segment infos (Chris Hegarty)
+
+* GITHUB#15078: Reduce the default RefCountedSharedArena.DEFAULT_MAX_PERMITS to 64. To restore previous behavior set `-Dorg.apache.lucene.store.MMapDirectory.sharedArenaMaxPermits=1024`. (Chris Hegarty)
+
+* GITHUB#15106: Fix infinite loop when RefCountedSharedArena's underlying Arena#close fails due to concurrent usage of segments. (Uwe Schindler)
+
+* GITHUB#15205: Fixes regression introduced in GITHUB#13980 where polygons might fail to tessellate because the hole bridge is coplanar with the polygon vertex. The fix changes the strategy for removing co-planar points to do it once after all holes are removed instead of doing it for each removed hole
+
+* GITHUB#14627, GITHUB#11920, GITHUB#14706: Fix mock filesystem WindowsFS to also work on Windows. This is required to make tests pass on Windows 11 which no longer has all limitations of previous Windows versions. (Uwe Schindler)
+
+
 ======================== Lucene 9.12.2 =======================
 
 Bug Fixes
