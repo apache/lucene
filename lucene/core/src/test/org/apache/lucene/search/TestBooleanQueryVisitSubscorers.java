@@ -17,6 +17,8 @@
 package org.apache.lucene.search;
 
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.everyItem;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -253,14 +255,15 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
     assertEquals(1, scoreSummary.numHits.get());
     assertThat(
         scoreSummary.summaries,
-        contains(
-            """
-            ConjunctionScorer
-                MUST ConstantScoreScorer
-                MUST WANDScorer
-                        SHOULD TermScorer
-                        SHOULD TermScorer
-                        SHOULD TermScorer"""));
+        everyItem(
+            equalTo(
+                """
+                ConjunctionScorer
+                    MUST ConstantScoreScorer
+                    MUST WANDScorer
+                            SHOULD TermScorer
+                            SHOULD TermScorer
+                            SHOULD TermScorer""")));
   }
 
   public void testGetChildrenBoosterScorer() throws IOException {

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.instanceOf;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -531,9 +533,9 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
       mgr.maybeRefresh();
       IndexSearcher s = mgr.acquire();
       try {
-        assertTrue(s.getIndexReader() instanceof MyFilterDirectoryReader);
+        assertThat(s.getIndexReader(), instanceOf(MyFilterDirectoryReader.class));
         for (LeafReaderContext ctx : s.getIndexReader().leaves()) {
-          assertTrue(ctx.reader() instanceof MyFilterLeafReader);
+          assertThat(ctx.reader(), instanceOf(MyFilterLeafReader.class));
         }
       } finally {
         mgr.release(s);
