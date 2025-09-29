@@ -168,7 +168,7 @@ public class Lucene102BinaryFlatVectorsScorer implements FlatVectorsScorer {
           var indexVector = targetVectors.vectorValue(node);
           var indexCorrections = targetVectors.getCorrectiveTerms(node);
           return similarity.score(
-              VectorUtil.int4BitDotProduct(vector, indexVector),
+              (float) VectorUtil.int4BitDotProduct(vector, indexVector),
               queryCorrections,
               indexCorrections);
         }
