@@ -138,7 +138,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
 
   @Override
   public int getVectorByteLength() {
-    return dimension;
+    return this.encoding.getPackedLength(dimension);
   }
 
   @Override
