@@ -7,6 +7,9 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#15215: Switch to Java 25 as the minimum required platform. Upgrade to gradle 9.1.0.
+  (Robert Muir, Kaival Parikh, Dawid Weiss)
+
 * GITHUB#13797: Relaxed Lucene Index Upgrade Policy to Allow Safe Upgrades Across Multiple Major Versions.
   The MIN_SUPPORTED_MAJOR constant in Version.java is now manually maintained instead of auto-computed as
   LATEST.major-1. This enables users to perform their one index upgrade across multiple major version numbers
@@ -187,7 +190,11 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+* GITHUB#15237: Fix SmartChinese to only deserialize dictionary data from classpath with a native array
+  filter applied and never cache dictionaries from custom locations. Also install a global deserialization
+  filter factory that disallows any unprotected deserialization while running tests.
+  Applications using SecurityManager now need to grant SerializablePermission("serialFilter")
+  to the analysis-smartcn module. (Uwe Schindler, Isaac David)
 
 ======================= Lucene 10.3.0 =======================
 
@@ -1093,6 +1100,24 @@ Build
 * GITHUB#13649: Fix eclipse ide settings generation #13649 (Uwe Schindler, Dawid Weiss)
 
 * GITHUB#13698: Upgrade to gradle 8.10 (Dawid Weiss)
+
+======================== Lucene 9.12.3 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#14858, GITHUB#12146: Simplify max score for kNN vector queries, ensuring vector queries handle advanceShallow correctly (Julie Tibshirani)
+
+* GITHUB#15074: Fix to use READONCE when reading segment infos (Chris Hegarty)
+
+* GITHUB#15078: Reduce the default RefCountedSharedArena.DEFAULT_MAX_PERMITS to 64. To restore previous behavior set `-Dorg.apache.lucene.store.MMapDirectory.sharedArenaMaxPermits=1024`. (Chris Hegarty)
+
+* GITHUB#15106: Fix infinite loop when RefCountedSharedArena's underlying Arena#close fails due to concurrent usage of segments. (Uwe Schindler)
+
+* GITHUB#15205: Fixes regression introduced in GITHUB#13980 where polygons might fail to tessellate because the hole bridge is coplanar with the polygon vertex. The fix changes the strategy for removing co-planar points to do it once after all holes are removed instead of doing it for each removed hole
+
+* GITHUB#14627, GITHUB#11920, GITHUB#14706: Fix mock filesystem WindowsFS to also work on Windows. This is required to make tests pass on Windows 11 which no longer has all limitations of previous Windows versions. (Uwe Schindler)
+
 
 ======================== Lucene 9.12.2 =======================
 

@@ -111,6 +111,13 @@
     </release>
     <release>
       <Version>
+        <name>lucene-9.12.3</name>
+        <created>2025-09-27</created>
+        <revision>9.12.3</revision>
+      </Version>
+    </release>
+    <release>
+      <Version>
         <name>lucene-9.12.2</name>
         <created>2025-06-20</created>
         <revision>9.12.2</revision>

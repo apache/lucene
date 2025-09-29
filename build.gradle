@@ -1,5 +1,4 @@
-import org.apache.lucene.gradle.plugins.gitinfo.GitInfoExtension
-import org.apache.lucene.gradle.plugins.licenses.CheckLicensesTask
+import de.thetaphi.forbiddenapis.gradle.CheckForbiddenApis
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -57,3 +56,11 @@ plugins {
 }
 
 description = 'Grandparent project for Apache Lucene Core'
+
+// Force forbidden-apis tasks to use JDK 24 signatures until it supports JDK 25;
+// https://github.com/policeman-tools/forbidden-apis/pull/272
+allprojects {
+  tasks.withType(CheckForbiddenApis.class).configureEach {
+    targetCompatibility = "24"
+  }
+}

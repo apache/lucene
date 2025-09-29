@@ -14,17 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import org.apache.lucene.gradle.plugins.mrjar.LuceneJavaCoreMrjarPlugin
-import org.apache.lucene.gradle.plugins.mrjar.MrJarsExtension
 
-plugins.apply(LuceneJavaCoreMrjarPlugin)
+package org.apache.lucene.gradle.plugins.help;
 
-description = 'Lucene core library'
+import javax.inject.Inject;
+import org.gradle.process.ExecOperations;
 
-dependencies {
-  moduleTestImplementation project(':lucene:codecs')
-  moduleTestImplementation project(':lucene:test-framework')
+// We need this for the new gradle configuration cache. I personally think it's awful.
+interface ExecOperationsProvider {
+  @Inject
+  ExecOperations getExecOperations();
 }
-
-// Setup api stub generation and multi-release jar support for the following JDKs.
-project.getExtensions().getByType(MrJarsExtension).setupFor(Integer.parseInt(deps.versions.minJava.get()))
