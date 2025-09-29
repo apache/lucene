@@ -181,7 +181,7 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
     Node getNode(int ord) throws IOException {
       checkOrdinal(ord);
       long byteOffset = (long) ord * nodeSize;
-      MemorySegment vector = input.segmentSliceOrNull(byteOffset, vectorByteSize);
+      MemorySegment vector = input.segmentSliceOrNull(byteOffset, nodeSize);
       if (vector == null) {
         if (scratch == null) {
           scratch = new byte[nodeSize];
