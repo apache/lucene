@@ -22,7 +22,7 @@ import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.document.Document;
@@ -67,7 +67,7 @@ public class TestInt7HnswBackwardsCompatibility extends BackwardsCompatibilityTe
 
   protected Codec getCodec() {
     return TestUtil.alwaysKnnVectorsFormat(
-        new Lucene99HnswScalarQuantizedVectorsFormat(
+        new Lucene104HnswScalarQuantizedVectorsFormat(
             Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
             Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH));
   }

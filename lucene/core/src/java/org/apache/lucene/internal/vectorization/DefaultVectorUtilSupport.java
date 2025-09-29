@@ -164,22 +164,33 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked) {
-    assert (apacked && bpacked) == false;
-    if (apacked || bpacked) {
-      byte[] packed = apacked ? a : b;
-      byte[] unpacked = apacked ? b : a;
-      int total = 0;
-      for (int i = 0; i < packed.length; i++) {
-        byte packedByte = packed[i];
-        byte unpacked1 = unpacked[i];
-        byte unpacked2 = unpacked[i + packed.length];
-        total += (packedByte & 0x0F) * unpacked2;
-        total += ((packedByte & 0xFF) >> 4) * unpacked1;
-      }
-      return total;
-    }
+  public int int4DotProduct(byte[] a, byte[] b) {
     return dotProduct(a, b);
+  }
+
+  @Override
+  public int int4DotProductSinglePacked(byte[] unpacked, byte[] packed) {
+    int total = 0;
+    for (int i = 0; i < packed.length; i++) {
+      byte packedByte = packed[i];
+      byte unpacked1 = unpacked[i];
+      byte unpacked2 = unpacked[i + packed.length];
+      total += (packedByte & 0x0F) * unpacked2;
+      total += ((packedByte & 0xFF) >> 4) * unpacked1;
+    }
+    return total;
+  }
+
+  @Override
+  public int int4DotProductBothPacked(byte[] a, byte[] b) {
+    int total = 0;
+    for (int i = 0; i < a.length; i++) {
+      byte aByte = a[i];
+      byte bByte = b[i];
+      total += (aByte & 0x0F) * (bByte & 0x0F);
+      total += ((aByte & 0xFF) >> 4) * ((bByte & 0xFF) >> 4);
+    }
+    return total;
   }
 
   @Override
@@ -208,6 +219,42 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       squareSum += diff * diff;
     }
     return squareSum;
+  }
+
+  @Override
+  public int int4SquareDistance(byte[] a, byte[] b) {
+    return squareDistance(a, b);
+  }
+
+  @Override
+  public int int4SquareDistanceSinglePacked(byte[] unpacked, byte[] packed) {
+    int total = 0;
+    for (int i = 0; i < packed.length; i++) {
+      byte packedByte = packed[i];
+      byte unpacked1 = unpacked[i];
+      byte unpacked2 = unpacked[i + packed.length];
+
+      int diff1 = (packedByte & 0x0F) - unpacked2;
+      int diff2 = ((packedByte & 0xFF) >> 4) - unpacked1;
+
+      total += diff1 * diff1 + diff2 * diff2;
+    }
+    return total;
+  }
+
+  @Override
+  public int int4SquareDistanceBothPacked(byte[] a, byte[] b) {
+    int total = 0;
+    for (int i = 0; i < a.length; i++) {
+      byte aByte = a[i];
+      byte bByte = b[i];
+
+      int diff1 = (aByte & 0x0F) - (bByte & 0x0F);
+      int diff2 = ((aByte & 0xFF) >> 4) - ((bByte & 0xFF) >> 4);
+
+      total += diff1 * diff1 + diff2 * diff2;
+    }
+    return total;
   }
 
   @Override
@@ -367,5 +414,17 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       v[i] /= (float) l2norm;
     }
     return v;
+  }
+
+  @Override
+  public void expand8(int[] arr) {
+    // BLOCK_SIZE is 256
+    for (int i = 0; i < 64; ++i) {
+      int l = arr[i];
+      arr[i] = (l >>> 24) & 0xFF;
+      arr[64 + i] = (l >>> 16) & 0xFF;
+      arr[128 + i] = (l >>> 8) & 0xFF;
+      arr[192 + i] = l & 0xFF;
+    }
   }
 }

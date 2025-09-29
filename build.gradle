@@ -1,5 +1,4 @@
-import org.apache.lucene.gradle.plugins.misc.CheckEnvironmentPlugin
-import org.apache.lucene.gradle.plugins.spotless.GoogleJavaFormatPlugin
+import de.thetaphi.forbiddenapis.gradle.CheckForbiddenApis
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -27,15 +26,11 @@ plugins {
   id "lucene.root-project.setup"
   id "lucene.java-projects.conventions"
 
-  id "lucene.java.slowest-tests-at-end"
-  id "lucene.java.show-failed-tests-at-end"
   id "lucene.java.modules"
 
   id "lucene.validation.gradle-versions-cleanup"
   id "lucene.validation.error-prone"
   id "lucene.validation.jar-checks"
-  id "lucene.validation.rat-sources"
-  id "lucene.validation.owasp"
 
   id "lucene.publications.maven"
   id "lucene.publications.maven-to-nexus-releases"
@@ -43,10 +38,7 @@ plugins {
 
   id "lucene.misc.pylucene"
 
-  id "lucene.datasets.external-datasets"
-
   id "lucene.documentation"
-  id "lucene.documentation.changes-to-html"
   id "lucene.documentation.markdown"
   id "lucene.documentation.render-javadoc"
 
@@ -64,3 +56,11 @@ plugins {
 }
 
 description = 'Grandparent project for Apache Lucene Core'
+
+// Force forbidden-apis tasks to use JDK 24 signatures until it supports JDK 25;
+// https://github.com/policeman-tools/forbidden-apis/pull/272
+allprojects {
+  tasks.withType(CheckForbiddenApis.class).configureEach {
+    targetCompatibility = "24"
+  }
+}

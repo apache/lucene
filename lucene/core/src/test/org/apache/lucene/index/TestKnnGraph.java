@@ -33,7 +33,7 @@ import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -86,7 +86,7 @@ public class TestKnnGraph extends LuceneTestCase {
     codec =
         TestUtil.alwaysKnnVectorsFormat(
             quantized
-                ? new Lucene99HnswScalarQuantizedVectorsFormat(
+                ? new Lucene104HnswScalarQuantizedVectorsFormat(
                     M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH)
                 : new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH));
 

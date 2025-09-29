@@ -85,7 +85,8 @@ public class ProfileResults {
    * Driver method, for testing standalone.
    *
    * <pre>
-   * java -Dtests.profile.count=5 buildSrc/src/main/java/org/apache/lucene/gradle/ProfileResults.java \
+   * java -Dtests.profile.count=5 \
+   *   build-tools/build-infra/src/main/java/org/apache/lucene/gradle/plugins/java/ProfileResults.java \
    *   ./lucene/core/build/tmp/tests-cwd/somefile.jfr ...
    * </pre>
    */

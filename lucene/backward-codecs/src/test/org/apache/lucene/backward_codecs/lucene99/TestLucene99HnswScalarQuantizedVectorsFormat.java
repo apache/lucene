@@ -36,7 +36,7 @@ import org.apache.lucene.tests.util.TestUtil;
 public class TestLucene99HnswScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
-    return TestUtil.alwaysKnnVectorsFormat(new Lucene99RWHnswScalarQuantizationVectorsFormat());
+    return TestUtil.alwaysKnnVectorsFormat(new Lucene99RWV0HnswScalarQuantizationVectorsFormat());
   }
 
   public void testSimpleOffHeapSize() throws IOException {
