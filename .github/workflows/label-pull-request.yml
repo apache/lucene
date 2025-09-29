@@ -9,6 +9,8 @@
 name: "Pull Request Labeler"
 run-name: Labelling pull request with module tags based on changed files in the PR
 on:
+  # see labeler docs for explanation
+  # zizmor: ignore[dangerous-triggers]
   - pull_request_target
 
 jobs:
