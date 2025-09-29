@@ -98,6 +98,8 @@ Bug Fixes
 
 * GITHUB#15213: Don't normalize centroids with zero samples, which caused divide-by-zero. (Mike Sokolov)
 
+* GITHUB#15125: Handle inconsistent schema on flush with index sorts (Nhat Nguyen)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
