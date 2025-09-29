@@ -24,6 +24,8 @@ repositories {
   gradlePluginPortal()
 }
 
+apply from: rootProject.file("build-tools/build-infra/ecj-source.gradle")
+
 // Convert a plugin dependency to a regular dependency so that we can
 // use [plugins] section in the top-level toml but declare regular
 // project dependencies here.

@@ -58,8 +58,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 /**
- * Extract API stubs from future JDK versions. This class must not have any dependencies outside of
- * the standard library.
+ * Extract API stubs from future JDK versions. This class must not have any dependencies outside the
+ * standard library.
  */
 public final class ExtractJdkApis {
   private static final FileTime FIXED_FILEDATE =
@@ -71,7 +71,7 @@ public final class ExtractJdkApis {
       "java.base/jdk/internal/vm/vector/VectorSupport{,$Vector,$VectorMask,$VectorPayload,$VectorShuffle}";
 
   static final Map<Integer, List<String>> CLASSFILE_PATTERNS =
-      Map.of(24, List.of(PATTERN_VECTOR_VM_INTERNALS, PATTERN_VECTOR_INCUBATOR));
+      Map.of(25, List.of(PATTERN_VECTOR_VM_INTERNALS, PATTERN_VECTOR_INCUBATOR));
 
   private static final ClassDesc CD_PreviewFeature =
       ClassDesc.ofInternalName("jdk/internal/javac/PreviewFeature");

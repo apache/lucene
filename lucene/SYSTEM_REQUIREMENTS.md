@@ -17,7 +17,7 @@
 
 # System Requirements
 
-Apache Lucene runs on Java 23 or greater.
+Apache Lucene runs on Java 25 or greater.
 
 It is also recommended to always use the latest update version of your
 Java VM, because bugs may affect Lucene. An overview of known JVM bugs

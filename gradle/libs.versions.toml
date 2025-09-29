@@ -9,7 +9,7 @@ commons-codec = "1.19.0"
 # benchmark/ bzip2 compression
 commons-compress = "1.27.1"
 # See ecj-lint.gradle (used for more linting).
-ecj = "3.43.0"
+ecj = "I20250926-1800"
 # java linting
 errorprone = "2.41.0"
 # markdown documentation generation
@@ -35,9 +35,9 @@ jts = "1.20.0"
 # unit tests
 junit = "4.13.2"
 # @keep Minimum gradle version to run the build
-minGradle = "8.14"
+minGradle = "9.1.0"
 # @keep This is the minimum required Java version.
-minJava = "24"
+minJava = "25"
 # analysis/morfologik polish support
 morfologik = "2.1.9"
 # analysis/morfologik ukrainian support

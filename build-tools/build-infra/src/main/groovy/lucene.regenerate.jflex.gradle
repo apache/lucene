@@ -20,7 +20,11 @@ import org.apache.lucene.gradle.plugins.help.ExecOperationsProvider
 
 // Add a top-level pseudo-task to which we will attach individual regenerate tasks.
 
-configure(rootProject) {
+def resources = rootProject.file("gradle/regenerate/jflex")
+def skeletonDefault = file("${resources}/skeleton.default.txt")
+def skeletonNoBufferExpansion = file("${resources}/skeleton.disable.buffer.expansion.txt")
+
+configure(project(":lucene:core")) {
   configurations {
     jflex
   }
@@ -28,13 +32,7 @@ configure(rootProject) {
   dependencies {
     jflex deps.jflex
   }
-}
 
-def resources = rootProject.file("gradle/regenerate/jflex")
-def skeletonDefault = file("${resources}/skeleton.default.txt")
-def skeletonNoBufferExpansion = file("${resources}/skeleton.disable.buffer.expansion.txt")
-
-configure(project(":lucene:core")) {
   task generateStandardTokenizerInternal(type: JFlexTask) {
     description = "Regenerate StandardTokenizerImpl.java"
     group = "generation"
@@ -63,6 +61,14 @@ configure(project(":lucene:core")) {
 }
 
 configure(project(":lucene:analysis:common")) {
+  configurations {
+    jflex
+  }
+
+  dependencies {
+    jflex deps.jflex
+  }
+
   task generateTldsInternal() {
     def tldZones = "https://data.iana.org/TLD/tlds-alpha-by-domain.txt"
     def jflexMacro = file("src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex")
@@ -249,7 +255,7 @@ class JFlexTask extends DefaultTask {
   }
 
   JFlexTask() {
-    dependsOn(project.rootProject.configurations.jflex)
+    dependsOn(project.configurations.jflex)
   }
 
   @TaskAction
@@ -265,7 +271,7 @@ class JFlexTask extends DefaultTask {
     def execOps = project.objects.newInstance(ExecOperationsProvider).execOperations
     execOps.javaexec {
       classpath {
-        project.rootProject.configurations.jflex
+        project.configurations.jflex
       }
 
       mainClass = "jflex.Main"

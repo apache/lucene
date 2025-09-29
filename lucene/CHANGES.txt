@@ -7,6 +7,9 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#15215: Switch to Java 25 as the minimum required platform. Upgrade to gradle 9.1.0.
+  (Robert Muir, Kaival Parikh, Dawid Weiss)
+
 * GITHUB#13797: Relaxed Lucene Index Upgrade Policy to Allow Safe Upgrades Across Multiple Major Versions.
   The MIN_SUPPORTED_MAJOR constant in Version.java is now manually maintained instead of auto-computed as
   LATEST.major-1. This enables users to perform their one index upgrade across multiple major version numbers

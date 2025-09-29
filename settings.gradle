@@ -21,6 +21,11 @@ pluginManagement {
         gradlePluginPortal()
     }
 
+    // the classpath of the included composite project is resolved independently.
+    // so custom ecj versions are not found unless we repeat the same code
+    // as in ecj-source.gradle
+    apply from: file("build-tools/build-infra/ecj-source.gradle"), to: delegate
+
     includeBuild("build-tools/build-infra")
 }
 
