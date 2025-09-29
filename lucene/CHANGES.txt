@@ -87,6 +87,8 @@ Bug Fixes
   been aborted, so IndexWriter#rollback and abortMerges no longer block until the entire graph is
   built. (Jeho Jeong)
 
+* GITHUB#15125: Handle inconsistent schema on flush with index sorts (Nhat Nguyen)
+
 Other
 ---------------------
 * GITHUB#16266: Remove deprecated search(Query, Collector) calls in QueryUtils by replacing
