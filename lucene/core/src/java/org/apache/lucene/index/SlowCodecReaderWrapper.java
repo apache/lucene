@@ -29,7 +29,6 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
@@ -198,9 +197,7 @@ public final class SlowCodecReaderWrapper {
       public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
         SegmentReader segmentReader = segmentReader(reader);
         var vectorsReader = segmentReader.getVectorReader();
-        if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
-          vectorsReader = fieldsReader.getFieldReader(fieldInfo.name);
-        }
+        vectorsReader = vectorsReader.unwrapReaderForField(fieldInfo.name);
         return vectorsReader.getOffHeapByteSize(fieldInfo);
       }
 

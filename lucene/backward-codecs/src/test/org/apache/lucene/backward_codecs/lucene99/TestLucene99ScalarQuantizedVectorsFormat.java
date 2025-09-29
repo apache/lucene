@@ -31,7 +31,6 @@ import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.CodecReader;
@@ -195,9 +194,7 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
         LeafReader r = getOnlyLeafReader(reader);
         if (r instanceof CodecReader codecReader) {
           KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-          if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
-            knnVectorsReader = fieldsReader.getFieldReader("f");
-          }
+          knnVectorsReader = knnVectorsReader.unwrapReaderForField("f");
           if (knnVectorsReader instanceof Lucene99ScalarQuantizedVectorsReader quantizedReader) {
             assertNotNull(quantizedReader.getQuantizationState("f"));
             QuantizedByteVectorValues quantizedByteVectorValues =
@@ -259,9 +256,7 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
         LeafReader r = getOnlyLeafReader(reader);
         if (r instanceof CodecReader codecReader) {
           KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-          if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
-            knnVectorsReader = fieldsReader.getFieldReader(vectorFieldName);
-          }
+          knnVectorsReader = knnVectorsReader.unwrapReaderForField(vectorFieldName);
           if (knnVectorsReader instanceof Lucene99ScalarQuantizedVectorsReader quantizedReader) {
             FloatVectorValues floatVectorValues =
                 quantizedReader.getFloatVectorValues(vectorFieldName);

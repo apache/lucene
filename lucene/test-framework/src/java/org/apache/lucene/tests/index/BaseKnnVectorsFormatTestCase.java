@@ -2142,9 +2142,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
     if (r instanceof CodecReader codecReader) {
       KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-      if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
-        knnVectorsReader = fieldsReader.getFieldReader(fieldName);
-      }
+      knnVectorsReader = knnVectorsReader.unwrapReaderForField(fieldName);
       var offHeap = knnVectorsReader.getOffHeapByteSize(fieldInfo);
       long totalByteSize = offHeap.values().stream().mapToLong(Long::longValue).sum();
       if (knnVectorsReader instanceof SimpleTextKnnVectorsReader) {
