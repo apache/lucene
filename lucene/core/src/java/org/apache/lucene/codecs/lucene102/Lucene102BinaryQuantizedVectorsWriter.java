@@ -551,7 +551,7 @@ public class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   static float[] getCentroid(KnnVectorsReader vectorsReader, String fieldName) {
-    vectorsReader = vectorsReader.unwrapReaderForField(fieldName).orElse(vectorsReader);
+    vectorsReader = vectorsReader.unwrapReaderForField(fieldName);
     if (vectorsReader instanceof Lucene102BinaryQuantizedVectorsReader reader) {
       return reader.getCentroid(fieldName);
     }

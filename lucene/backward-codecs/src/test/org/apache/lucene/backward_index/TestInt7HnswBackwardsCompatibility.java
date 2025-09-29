@@ -151,13 +151,9 @@ public class TestInt7HnswBackwardsCompatibility extends BackwardsCompatibilityTe
       for (LeafReaderContext leafContext : reader.leaves()) {
         KnnVectorsReader knnVectorsReader = ((CodecReader) leafContext.reader()).getVectorReader();
 
-        KnnVectorsReader forField =
-            knnVectorsReader
-                .unwrapReaderForField(KNN_VECTOR_FIELD)
-                .orElseThrow(
-                    () ->
-                        new AssertionError(
-                            "Expected unwrapped field but got: " + knnVectorsReader));
+        KnnVectorsReader forField = knnVectorsReader.unwrapReaderForField(KNN_VECTOR_FIELD);
+        assertNotSame(
+            "Expected unwrapped field but got: " + knnVectorsReader, knnVectorsReader, forField);
 
         assertTrue(forField instanceof Lucene99HnswVectorsReader);
 

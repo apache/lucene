@@ -27,7 +27,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
@@ -379,11 +378,11 @@ public class TestKnnGraph extends LuceneTestCase {
         if (knnFieldReader == null) {
           continue;
         }
-        Optional<KnnVectorsReader> vectorReader = knnFieldReader.unwrapReaderForField(vectorField);
-        if (vectorReader.isEmpty()) {
+        KnnVectorsReader vectorReader = knnFieldReader.unwrapReaderForField(vectorField);
+        if (!(vectorReader instanceof HnswGraphProvider graphProvider)) {
           continue;
         }
-        HnswGraph graphValues = ((HnswGraphProvider) vectorReader.get()).getGraph(vectorField);
+        HnswGraph graphValues = graphProvider.getGraph(vectorField);
         FloatVectorValues vectorValues = reader.getFloatVectorValues(vectorField);
         if (vectorValues == null) {
           assert graphValues == null;

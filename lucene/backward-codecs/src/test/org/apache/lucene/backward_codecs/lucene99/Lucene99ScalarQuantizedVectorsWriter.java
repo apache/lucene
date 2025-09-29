@@ -591,7 +591,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
   private static QuantizedVectorsReader getQuantizedKnnVectorsReader(
       KnnVectorsReader vectorsReader, String fieldName) {
-    vectorsReader = vectorsReader.unwrapReaderForField(fieldName).orElse(vectorsReader);
+    vectorsReader = vectorsReader.unwrapReaderForField(fieldName);
     if (vectorsReader instanceof QuantizedVectorsReader reader) {
       return reader;
     }

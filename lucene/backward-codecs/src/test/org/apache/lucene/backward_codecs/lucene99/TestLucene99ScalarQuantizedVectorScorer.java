@@ -216,7 +216,7 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
       VectorSimilarityFunction function, LeafReader leafReader, float[] vector) throws IOException {
     if (leafReader instanceof CodecReader codecReader) {
       KnnVectorsReader format = codecReader.getVectorReader();
-      format = format.unwrapReaderForField("field").orElse(format);
+      format = format.unwrapReaderForField("field");
       if (format instanceof Lucene99HnswVectorsReader hnswFormat) {
         OffHeapQuantizedByteVectorValues quantizedByteVectorReader =
             (OffHeapQuantizedByteVectorValues) hnswFormat.getQuantizedVectorValues("field");

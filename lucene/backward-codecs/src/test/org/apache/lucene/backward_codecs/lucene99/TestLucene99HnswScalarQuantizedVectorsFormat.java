@@ -51,7 +51,7 @@ public class TestLucene99HnswScalarQuantizedVectorsFormat extends BaseKnnVectors
         LeafReader r = getOnlyLeafReader(reader);
         if (r instanceof CodecReader codecReader) {
           KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-          knnVectorsReader = knnVectorsReader.unwrapReaderForField("f").orElse(knnVectorsReader);
+          knnVectorsReader = knnVectorsReader.unwrapReaderForField("f");
           var fieldInfo = r.getFieldInfos().fieldInfo("f");
           var offHeap = knnVectorsReader.getOffHeapByteSize(fieldInfo);
           assertEquals(vector.length * Float.BYTES, (long) offHeap.get("vec"));

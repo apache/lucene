@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.ServiceLoader;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -261,8 +260,9 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public Optional<KnnVectorsReader> unwrapReaderForField(String field) {
-      return Optional.ofNullable(fieldInfos.fieldInfo(field)).map(i -> fields.get(i.number));
+    public KnnVectorsReader unwrapReaderForField(String field) {
+      FieldInfo fi = fieldInfos.fieldInfo(field);
+      return fi != null ? fields.get(fi.number) : this;
     }
 
     @Override

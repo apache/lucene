@@ -269,10 +269,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
           assertVectorsEqual(v3, values);
           HnswGraph graphValues =
               ((Lucene99HnswVectorsReader)
-                      ((CodecReader) ctx.reader())
-                          .getVectorReader()
-                          .unwrapReaderForField("field")
-                          .get())
+                      ((CodecReader) ctx.reader()).getVectorReader().unwrapReaderForField("field"))
                   .getGraph("field");
           assertGraphEqual(hnsw, graphValues);
         }

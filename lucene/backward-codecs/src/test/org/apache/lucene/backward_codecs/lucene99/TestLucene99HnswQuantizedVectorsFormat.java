@@ -274,7 +274,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
         LeafReader r = getOnlyLeafReader(reader);
         if (r instanceof CodecReader codecReader) {
           KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-          knnVectorsReader = knnVectorsReader.unwrapReaderForField("f").orElse(knnVectorsReader);
+          knnVectorsReader = knnVectorsReader.unwrapReaderForField("f");
           if (knnVectorsReader instanceof Lucene99HnswVectorsReader hnswReader) {
             assertNotNull(hnswReader.getQuantizationState("f"));
             QuantizedByteVectorValues quantizedByteVectorValues =

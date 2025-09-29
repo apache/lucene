@@ -197,7 +197,7 @@ public final class SlowCodecReaderWrapper {
       public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
         SegmentReader segmentReader = segmentReader(reader);
         var vectorsReader = segmentReader.getVectorReader();
-        vectorsReader = vectorsReader.unwrapReaderForField(fieldInfo.name).orElse(vectorsReader);
+        vectorsReader = vectorsReader.unwrapReaderForField(fieldInfo.name);
         return vectorsReader.getOffHeapByteSize(fieldInfo);
       }
 

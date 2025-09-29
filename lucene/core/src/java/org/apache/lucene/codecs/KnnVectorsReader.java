@@ -20,7 +20,6 @@ package org.apache.lucene.codecs;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.index.ByteVectorValues;
@@ -52,10 +51,10 @@ public abstract class KnnVectorsReader implements Closeable {
 
   /**
    * If this reader wraps another for {@code field}, return the underlying reader, else return
-   * {@link Optional#empty}
+   * {@code this}
    */
-  public Optional<KnnVectorsReader> unwrapReaderForField(String field) {
-    return Optional.empty();
+  public KnnVectorsReader unwrapReaderForField(String field) {
+    return this;
   }
 
   /**
