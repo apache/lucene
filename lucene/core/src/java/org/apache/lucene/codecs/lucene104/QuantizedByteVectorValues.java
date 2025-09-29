@@ -23,7 +23,7 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 
 /** Scalar quantized byte vector values */
-abstract class QuantizedByteVectorValues extends ByteVectorValues {
+public abstract class QuantizedByteVectorValues extends ByteVectorValues {
 
   /**
    * Retrieve the corrective terms for the given vector ordinal. For the dot-product family of
