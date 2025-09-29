@@ -171,7 +171,7 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
           var fieldInfo = r.getFieldInfos().fieldInfo("f");
           var offHeap = knnVectorsReader.getOffHeapByteSize(fieldInfo);
           assertEquals(vector.length * Float.BYTES, (long) offHeap.get("vec"));
-          assertEquals(1L, (long) offHeap.get("vex"));
+          assertEquals(0L, (long) offHeap.get("vex"));
           long corrections = Float.BYTES + Float.BYTES + Float.BYTES + Integer.BYTES;
           long expected = fieldInfo.getVectorDimension() + corrections;
           assertEquals(expected, (long) offHeap.get("veq"));

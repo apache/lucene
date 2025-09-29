@@ -20,6 +20,7 @@ import static org.apache.lucene.search.TestKnnByteVectorQuery.floatToBytes;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
@@ -177,7 +178,11 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
           AssertingSeededKnnVectorQuery query =
               new AssertingSeededKnnVectorQuery(byteVectorQuery, seed1, null, seedCalls);
           TopDocs results = searcher.search(query, n);
-          assertEquals(seedCalls.get(), 1);
+          if (hasGraphPresent(Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD, numDocsWithVector)) {
+            assertEquals(seedCalls.get(), 1);
+          } else {
+            assertEquals(seedCalls.get(), 0);
+          }
           int expected = Math.min(Math.min(n, k), numDocsWithVector);
 
           assertEquals(expected, results.scoreDocs.length);
@@ -203,7 +208,11 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
               new AssertingSeededKnnVectorQuery(
                   byteVectorQuery, seed2, null, seedCount > 0 ? seedCalls : null);
           results = searcher.search(query, n);
-          assertEquals(seedCalls.get(), seedCount > 0 ? 2 : 1);
+          if (hasGraphPresent(Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD, numDocsWithVector)) {
+            assertEquals(seedCalls.get(), seedCount > 0 ? 2 : 1);
+          } else {
+            assertEquals(seedCalls.get(), 0);
+          }
           expected = Math.min(Math.min(n, k), reader.numDocs());
           assertEquals(expected, results.scoreDocs.length);
           assertTrue(results.totalHits.value() >= results.scoreDocs.length);

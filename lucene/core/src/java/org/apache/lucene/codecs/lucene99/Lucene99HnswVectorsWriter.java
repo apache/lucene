@@ -731,8 +731,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       if (hnswGraphBuilder == null && shouldCreateGraph(graphThreshold, node + 1)) {
         initializeGraphBuilder();
         replayBufferedVectors();
-      }
-      if (hnswGraphBuilder != null) {
+      } else if (hnswGraphBuilder != null) {
         // Graph builder is active, add to graph
         hnswGraphBuilder.addGraphNode(node);
       }

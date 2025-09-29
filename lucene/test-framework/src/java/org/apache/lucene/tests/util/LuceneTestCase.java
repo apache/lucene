@@ -23,6 +23,7 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAs
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsInt;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.search.IndexSearcher.LeafSlice;
+import static org.apache.lucene.util.hnsw.HnswGraphSearcher.expectedVisitedNodes;
 
 import com.carrotsearch.randomizedtesting.JUnit4MethodProvider;
 import com.carrotsearch.randomizedtesting.LifecycleScope;
@@ -3276,5 +3277,10 @@ public abstract class LuceneTestCase extends Assert {
       // Always do the intra merge executor to ensure we test it
       return intraMergeExecutor;
     }
+  }
+
+  public static boolean hasGraphPresent(int k, int size) {
+    int expectedVisitedNodes = expectedVisitedNodes(k, size);
+    return size > expectedVisitedNodes && expectedVisitedNodes > 0;
   }
 }
