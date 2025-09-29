@@ -7,7 +7,7 @@ http://s.apache.org/luceneversions
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#15125: Handle inconsistent schema on flush with index sorts (Nhat Nguyen)
 
 ======================= Lucene 10.5.0 =======================
 
