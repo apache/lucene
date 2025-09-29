@@ -40,7 +40,11 @@ comprehensive documentation, visit:
 
 ### Basic steps:
 
-1. Install [OpenJDK 25](https://jdk.java.net/archive/).
+1. Install JDK 25 using your package manager or download manually from
+[OpenJDK](https://jdk.java.net/),
+[Oracle](https://jdk.java.net/),
+[Adoptium](https://adoptium.net/temurin/releases),
+[Azul](https://www.azul.com/downloads/) or any other JDK provider.
 2. Clone Lucene's git repository (or download the source distribution).
 3. Run gradle launcher script (`gradlew`).
 
