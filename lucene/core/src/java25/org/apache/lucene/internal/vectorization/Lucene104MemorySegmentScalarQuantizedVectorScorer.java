@@ -129,6 +129,10 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
     private static final ValueLayout.OfInt INT_UNALIGNED_LE =
         JAVA_INT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
 
+    // XXX I need to return something wraps the MemorySegment and can produce the
+    // corrective terms
+    // on demand. rep is probably (MemorySegment, MemorySegment) with a slice for
+    // the corrective terms.
     @SuppressWarnings("restricted")
     MemorySegment getVector(int ord) throws IOException {
       checkOrdinal(ord);
@@ -161,6 +165,32 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
           Float.intBitsToFloat(node.get(INT_UNALIGNED_LE, Integer.BYTES)),
           Float.intBitsToFloat(node.get(INT_UNALIGNED_LE, Integer.BYTES * 2)),
           node.get(INT_UNALIGNED_LE, Integer.BYTES * 3));
+    }
+
+    record Node(MemorySegment vector, MemorySegment correctiveTerms) {
+      OptimizedScalarQuantizer.QuantizationResult getQuantizationResult() {
+        return new OptimizedScalarQuantizer.QuantizationResult(
+            Float.intBitsToFloat(correctiveTerms.get(INT_UNALIGNED_LE, 0)),
+            Float.intBitsToFloat(correctiveTerms.get(INT_UNALIGNED_LE, Integer.BYTES)),
+            Float.intBitsToFloat(correctiveTerms.get(INT_UNALIGNED_LE, Integer.BYTES * 2)),
+            correctiveTerms.get(INT_UNALIGNED_LE, Integer.BYTES * 3));
+      }
+    }
+
+    @SuppressWarnings("restricted")
+    Node getNode(int ord) throws IOException {
+      checkOrdinal(ord);
+      long byteOffset = (long) ord * nodeSize;
+      MemorySegment vector = input.segmentSliceOrNull(byteOffset, vectorByteSize);
+      if (vector == null) {
+        if (scratch == null) {
+          scratch = new byte[nodeSize];
+        }
+        input.readBytes(byteOffset, scratch, 0, nodeSize);
+        vector = MemorySegment.ofArray(scratch);
+      }
+      MemorySegment correctiveTerms = vector.asSlice(vectorByteSize, CORRECTIVE_TERMS_SIZE);
+      return new Node(vector.reinterpret(vectorByteSize), correctiveTerms);
     }
 
     OptimizedScalarQuantizedVectorSimilarity getSimilarity() {
@@ -202,17 +232,18 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
 
     @Override
     public float score(int node) throws IOException {
-      MemorySegment doc = getVector(node);
+      Node doc = getNode(node);
       float dotProduct =
           switch (getScalarEncoding()) {
-            case UNSIGNED_BYTE -> PanamaVectorUtilSupport.uint8DotProduct(query, doc);
-            case SEVEN_BIT -> PanamaVectorUtilSupport.uint8DotProduct(query, doc);
-            case PACKED_NIBBLE -> PanamaVectorUtilSupport.int4DotProductSinglePacked(query, doc);
+            case UNSIGNED_BYTE -> PanamaVectorUtilSupport.uint8DotProduct(query, doc.vector);
+            case SEVEN_BIT -> PanamaVectorUtilSupport.uint8DotProduct(query, doc.vector);
+            case PACKED_NIBBLE ->
+                PanamaVectorUtilSupport.int4DotProductSinglePacked(query, doc.vector);
           };
       // Call getCorrectiveTerms() after computing dot product since corrective terms
-      // bytes appear
-      // after the vector bytes, so this sequence of calls is more cache friendly.
-      return getSimilarity().score(dotProduct, queryCorrectiveTerms, getCorrectiveTerms(node));
+      // bytes appear after the vector bytes, so this sequence of calls is more cache
+      // friendly.
+      return getSimilarity().score(dotProduct, queryCorrectiveTerms, doc.getQuantizationResult());
     }
   }
 
