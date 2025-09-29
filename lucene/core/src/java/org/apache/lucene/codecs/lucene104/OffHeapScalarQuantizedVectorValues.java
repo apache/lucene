@@ -141,6 +141,11 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
     return dimension;
   }
 
+  @Override
+  public IndexInput getSlice() {
+    return slice;
+  }
+
   static void packNibbles(byte[] unpacked, byte[] packed) {
     assert unpacked.length == packed.length * 2;
     for (int i = 0; i < packed.length; i++) {

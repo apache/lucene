@@ -32,8 +32,10 @@ import org.apache.lucene.util.SuppressForbidden;
 /** A vectorization provider that leverages the Panama Vector API. */
 final class PanamaVectorizationProvider extends VectorizationProvider {
 
-  // NOTE: Avoid static fields or initializers which rely on the vector API, as these initializers
-  // would get called before we have a chance to perform sanity checks around the vector API in the
+  // NOTE: Avoid static fields or initializers which rely on the vector API, as
+  // these initializers
+  // would get called before we have a chance to perform sanity checks around the
+  // vector API in the
   // constructor of this class. Put them in PanamaVectorConstants instead.
 
   private final VectorUtilSupport vectorUtilSupport;
@@ -87,8 +89,7 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
 
   @Override
   public FlatVectorsScorer getLucene104ScalarQuantizedVectorsScorer() {
-    // XXX DO NOT MERGE
-    return new Lucene104ScalarQuantizedVectorScorer(DefaultFlatVectorScorer.INSTANCE);
+    return Lucene104MemorySegmentScalarQuantizedVectorScorer.INSTANCE;
   }
 
   @Override
