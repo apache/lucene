@@ -33,7 +33,7 @@ jobs:
             queries: security-extended
           - language: java
             build-mode: none
-            queries: default # security-extended is very noisy for the java language
+            queries: codeql/java-queries # security-extended is very noisy for the java language
     steps:
       - name: Checkout repository
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
