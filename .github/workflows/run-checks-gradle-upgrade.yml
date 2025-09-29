@@ -98,6 +98,7 @@ jobs:
       - run: ./gradlew licenses updateLicenses
       - run: ./gradlew check -x test
       - run: ./gradlew assembleRelease mavenToLocal
+      - run: ./gradlew eclipse
 
       # Conserve resources: only run these in non-alt-java mode.
       - run: ./gradlew getGeoNames
