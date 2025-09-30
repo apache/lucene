@@ -130,6 +130,15 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
      */
     SEVEN_BIT(2, (byte) 7, 1);
 
+    public static ScalarEncoding fromNumBits(int bits) {
+      for (ScalarEncoding encoding : values()) {
+        if (encoding.bits == bits) {
+          return encoding;
+        }
+      }
+      throw new IllegalArgumentException("No encoding for " + bits + " bits");
+    }
+
     /** The number used to identify this encoding on the wire, rather than relying on ordinal. */
     private final int wireNumber;
 

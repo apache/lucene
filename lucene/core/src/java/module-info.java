@@ -84,8 +84,6 @@ module org.apache.lucene.core {
       org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
   provides org.apache.lucene.codecs.KnnVectorsFormat with
       org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat,
-      org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat,
-      org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat,
       org.apache.lucene.codecs.lucene102.Lucene102HnswBinaryQuantizedVectorsFormat,
       org.apache.lucene.codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat,
       org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat,

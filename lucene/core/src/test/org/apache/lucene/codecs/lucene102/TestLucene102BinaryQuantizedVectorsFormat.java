@@ -173,7 +173,14 @@ public class TestLucene102BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
                     centroid);
             packAsBinary(quantizedVector, expectedVector);
             assertArrayEquals(expectedVector, qvectorValues.vectorValue(docIndexIterator.index()));
-            assertEquals(corrections, qvectorValues.getCorrectiveTerms(docIndexIterator.index()));
+
+            var actualCorrections = qvectorValues.getCorrectiveTerms(docIndexIterator.index());
+            assertEquals(corrections.lowerInterval(), actualCorrections.lowerInterval(), 1e-5);
+            assertEquals(corrections.upperInterval(), actualCorrections.upperInterval(), 1e-5);
+            assertEquals(
+                corrections.additionalCorrection(), actualCorrections.additionalCorrection(), 1e-5);
+            assertEquals(
+                corrections.quantizedComponentSum(), actualCorrections.quantizedComponentSum());
           }
         }
       }

@@ -17,6 +17,7 @@
 
 import org.apache.tools.ant.taskdefs.condition.Os
 import java.nio.file.Files
+import org.apache.lucene.gradle.plugins.help.ExecOperationsProvider
 
 def resources = rootProject.file("gradle/regenerate/icu")
 
@@ -94,8 +95,9 @@ configure(project(":lucene:analysis:icu")) {
 
     doFirst {
       // all these steps must be done sequentially: it's a pipeline resulting in utr30.nrm
-      project.javaexec {
-        main = "org.apache.lucene.analysis.icu.GenerateUTR30DataFiles"
+      def execOps = objects.newInstance(ExecOperationsProvider).execOperations
+      execOps.javaexec {
+        mainClass = "org.apache.lucene.analysis.icu.GenerateUTR30DataFiles"
         classpath = sourceSets.tools.runtimeClasspath
 
         ignoreExitValue = false
@@ -144,8 +146,9 @@ configure(project(":lucene:analysis:icu")) {
     outputs.files fileTree(dir: targetDir, include: "*.brk")
 
     doFirst {
-      project.javaexec {
-        main = "org.apache.lucene.analysis.icu.RBBIRuleCompiler"
+      def execOps = objects.newInstance(ExecOperationsProvider).execOperations
+      execOps.javaexec {
+        mainClass = "org.apache.lucene.analysis.icu.RBBIRuleCompiler"
         classpath = sourceSets.tools.runtimeClasspath
 
         ignoreExitValue = false
@@ -269,17 +272,18 @@ configure(project(":lucene:analysis:common")) {
     outputs.file outputFile
 
     doFirst {
-      project.javaexec {
-        main "groovy.lang.GroovyShell"
-        classpath icuConfig, groovyConfig
+      ExecOperations execOps = objects.newInstance(ExecOperationsProvider).execOperations
+      execOps.javaexec({ JavaExecSpec spec ->
+        spec.mainClass = "groovy.lang.GroovyShell"
+        spec.classpath(icuConfig, groovyConfig)
 
-        args = [
+        spec.args([
           "--encoding",
           "UTF-8",
-          file("${resources}/GenerateUnicodeProps.groovy"),
-          outputFile
-        ]
-      }
+          file("${resources}/GenerateUnicodeProps.groovy").toString(),
+          outputFile.toString()
+        ])
+      })
     }
   }
 
@@ -308,8 +312,9 @@ configure(project(":lucene:core")) {
     outputs.file outputFile
 
     doFirst {
-      project.javaexec {
-        main "groovy.lang.GroovyShell"
+      def execOps = objects.newInstance(ExecOperationsProvider).execOperations
+      execOps.javaexec({
+        mainClass = "groovy.lang.GroovyShell"
         classpath icuConfig, groovyConfig
 
         args = [
@@ -318,7 +323,7 @@ configure(project(":lucene:core")) {
           file("${resources}/GenerateCaseFolding.groovy"),
           outputFile
         ]
-      }
+      })
     }
   }
 

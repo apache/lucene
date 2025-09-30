@@ -35,7 +35,6 @@ import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
@@ -494,9 +493,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   static float[] getCentroid(KnnVectorsReader vectorsReader, String fieldName) {
-    if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader candidateReader) {
-      vectorsReader = candidateReader.getFieldReader(fieldName);
-    }
+    vectorsReader = vectorsReader.unwrapReaderForField(fieldName);
     if (vectorsReader instanceof Lucene104ScalarQuantizedVectorsReader reader) {
       return reader.getCentroid(fieldName);
     }
@@ -529,7 +526,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         mergedCentroid[j] += centroid[j] * vectorCount;
       }
     }
-    if (recalculate) {
+    if (totalVectorCount == 0) {
+      return 0;
+    } else if (recalculate) {
       return calculateCentroid(mergeState, fieldInfo, mergedCentroid);
     } else {
       for (int j = 0; j < mergedCentroid.length; j++) {

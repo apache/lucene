@@ -49,12 +49,6 @@ public class EcjLintPlugin extends LuceneGradlePlugin {
   public static final String TASK_PREFIX = "ecjLint";
   public static final String ECJ_LINT_PREFS_PATH = "validation/ecj-lint/ecj.javadocs.prefs";
 
-  /*
-   * Using an explicit dependency means we can't be as flexible in using interim "drops" of ecj,
-   * as previously implemented in lucene.validation.ecj-lint.gradle. Defer the solution
-   * until it really becomes a problem.
-   */
-
   @Override
   public void apply(Project project) {
     requiresAppliedPlugin(project, JavaPlugin.class);

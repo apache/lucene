@@ -7,6 +7,9 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#15215: Switch to Java 25 as the minimum required platform. Upgrade to gradle 9.1.0.
+  (Robert Muir, Kaival Parikh, Dawid Weiss)
+
 * GITHUB#13797: Relaxed Lucene Index Upgrade Policy to Allow Safe Upgrades Across Multiple Major Versions.
   The MIN_SUPPORTED_MAJOR constant in Version.java is now manually maintained instead of auto-computed as
   LATEST.major-1. This enables users to perform their one index upgrade across multiple major version numbers
@@ -41,6 +44,8 @@ API Changes
 
 * GITHUB#15131: Restrict visibility of TieredMergePolicy.score() API (Trevor McCulloch)
 
+* GITHUB#15187: Restrict visibility of PerFieldKnnVectorsFormat.FieldsReader (Simon Cooper)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -63,6 +68,8 @@ Improvements
 * GITHUB#15002: Remove synchronized WeakHashMap from IndexReader. This was added to help prevent
   SIGSEGV with the old unsafe "mmap hack", which has been replaced by MemorySegments.
   (Uwe Schindler, Robert Muir)
+
+* GITHUB#15124: Use RamUsageEstimator to calculate size for non-accountable queries. (Sagar Upadhyaya)
 
 Optimizations
 ---------------------
@@ -88,6 +95,10 @@ Bug Fixes
 
 * GITHUB#14847: Allow Faiss vector format to index >2GB of vectors per-field per-segment by using MemorySegment APIs
   (instead of ByteBuffer) to copy bytes to native memory. (Kaival Parikh)
+
+* GITHUB#15213: Don't normalize centroids with zero samples, which caused divide-by-zero. (Mike Sokolov)
+
+* GITHUB#15125: Handle inconsistent schema on flush with index sorts (Nhat Nguyen)
 
 Changes in Runtime Behavior
 ---------------------
@@ -127,6 +138,9 @@ API Changes
   IDs at once, in particular by taking advantage of the new
   NumericDocValues#longValues API. (Adrien Grand)
 
+* GITHUB#15234: Remove unused method which does unsafe XML parsing.
+  (Uwe Schindler, Isaac David)
+
 New Features
 ---------------------
 * GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
@@ -138,7 +152,9 @@ New Features
 * GITHUB#15176: Add `[Float|Byte]VectorValues#rescorer(element[])` interface to allow optimized rescoring of vectors.
   (Ben Trent)
 
-* GITHUB#15169: Add codecs for 4 and 8 bit Optimized Scalar Quantization vectors (Trevor McCulloch)
+* GITHUB#15169, GITHUB#15223: Add codecs for 4 and 8 bit Optimized Scalar Quantization vectors. The new format
+  `Lucene104HnswScalarQuantizedVectorsFormat` replaces the now legacy `Lucene99HnswScalarQuantizedVectorsFormat`
+   (Trevor McCulloch)
 
 Improvements
 ---------------------
@@ -171,9 +187,18 @@ Bug Fixes
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
   instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
 
+* GITHUB#15205: Fixes regression introduced in GITHUB#13980 where polygons might fail to tessellate
+  because the hole bridge is coplanar with the polygon vertex. The fix changes the strategy for
+  removing co-planar points to do it once after all holes are removed instead of doing it for each
+  removed hole.
+
 Other
 ---------------------
-(No changes)
+* GITHUB#15237: Fix SmartChinese to only deserialize dictionary data from classpath with a native array
+  filter applied and never cache dictionaries from custom locations. Also install a global deserialization
+  filter factory that disallows any unprotected deserialization while running tests.
+  Applications using SecurityManager now need to grant SerializablePermission("serialFilter")
+  to the analysis-smartcn module. (Uwe Schindler, Isaac David)
 
 ======================= Lucene 10.3.0 =======================
 
@@ -1079,6 +1104,24 @@ Build
 * GITHUB#13649: Fix eclipse ide settings generation #13649 (Uwe Schindler, Dawid Weiss)
 
 * GITHUB#13698: Upgrade to gradle 8.10 (Dawid Weiss)
+
+======================== Lucene 9.12.3 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#14858, GITHUB#12146: Simplify max score for kNN vector queries, ensuring vector queries handle advanceShallow correctly (Julie Tibshirani)
+
+* GITHUB#15074: Fix to use READONCE when reading segment infos (Chris Hegarty)
+
+* GITHUB#15078: Reduce the default RefCountedSharedArena.DEFAULT_MAX_PERMITS to 64. To restore previous behavior set `-Dorg.apache.lucene.store.MMapDirectory.sharedArenaMaxPermits=1024`. (Chris Hegarty)
+
+* GITHUB#15106: Fix infinite loop when RefCountedSharedArena's underlying Arena#close fails due to concurrent usage of segments. (Uwe Schindler)
+
+* GITHUB#15205: Fixes regression introduced in GITHUB#13980 where polygons might fail to tessellate because the hole bridge is coplanar with the polygon vertex. The fix changes the strategy for removing co-planar points to do it once after all holes are removed instead of doing it for each removed hole
+
+* GITHUB#14627, GITHUB#11920, GITHUB#14706: Fix mock filesystem WindowsFS to also work on Windows. This is required to make tests pass on Windows 11 which no longer has all limitations of previous Windows versions. (Uwe Schindler)
+
 
 ======================== Lucene 9.12.2 =======================
 

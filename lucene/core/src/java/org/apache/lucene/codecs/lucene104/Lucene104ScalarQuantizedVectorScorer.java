@@ -39,6 +39,13 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     this.nonQuantizedDelegate = nonQuantizedDelegate;
   }
 
+  static void checkDimensions(int queryLen, int fieldLen) {
+    if (queryLen != fieldLen) {
+      throw new IllegalArgumentException(
+          "vector query dimension: " + queryLen + " differs from field dimension: " + fieldLen);
+    }
+  }
+
   @Override
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
@@ -55,6 +62,7 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, float[] target)
       throws IOException {
     if (vectorValues instanceof QuantizedByteVectorValues qv) {
+      checkDimensions(target.length, qv.dimension());
       OptimizedScalarQuantizer quantizer = qv.getQuantizer();
       byte[] targetQuantized =
           new byte
