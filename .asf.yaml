@@ -22,6 +22,18 @@ github:
     issues: true
     projects: false
 
+  protected_branches:
+    main: {}
+    branch_10x: {}
+    branch_9x: {}
+    "branch_*": {}
+    "test_*": {}
+
+  protected_tags:
+    - "releases/*"
+    - "history/*"
+    - "grafts/*"
+
 notifications:
   commits:      commits@lucene.apache.org
   issues:       issues@lucene.apache.org
