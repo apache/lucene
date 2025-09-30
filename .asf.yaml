@@ -26,6 +26,8 @@ github:
     main: {}
     branch_10x: {}
     branch_9x: {}
+    "branch_*": {}
+    "test_*": {}
 
   protected_tags:
     - "releases/*"
