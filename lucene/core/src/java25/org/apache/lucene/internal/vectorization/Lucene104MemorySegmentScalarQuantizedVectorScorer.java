@@ -160,6 +160,43 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
           vector.get(INT_UNALIGNED_LE, vectorByteSize + Integer.BYTES * 3));
     }
 
+    MemorySegment getRawVector(int ord) throws IOException {
+      checkOrdinal(ord);
+      long byteOffset = (long) ord * nodeSize;
+      MemorySegment vector = input.segmentSliceOrNull(byteOffset, nodeSize);
+      if (vector != null) {
+        return vector;
+      }
+
+      if (scratch == null) {
+        scratch = new byte[nodeSize];
+      }
+      input.readBytes(byteOffset, scratch, 0, nodeSize);
+      return MemorySegment.ofArray(scratch);
+    }
+
+    @SuppressWarnings("restricted")
+    MemorySegment getVector(MemorySegment rawVector) {
+      return rawVector.reinterpret(vectorByteSize);
+    }
+
+    float getLowerInterval(MemorySegment rawVector) {
+      return Float.intBitsToFloat(rawVector.get(INT_UNALIGNED_LE, vectorByteSize));
+    }
+
+    float getUpperInterval(MemorySegment rawVector) {
+      return Float.intBitsToFloat(rawVector.get(INT_UNALIGNED_LE, vectorByteSize + Integer.BYTES));
+    }
+
+    float getAdditionalCorrection(MemorySegment rawVector) {
+      return Float.intBitsToFloat(
+          rawVector.get(INT_UNALIGNED_LE, vectorByteSize + Integer.BYTES * 2));
+    }
+
+    int getComponentSum(MemorySegment rawVector) {
+      return rawVector.get(INT_UNALIGNED_LE, vectorByteSize + Integer.BYTES * 3);
+    }
+
     OptimizedScalarQuantizedVectorSimilarity getSimilarity() {
       return similarity;
     }
@@ -199,13 +236,14 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
 
     @Override
     public float score(int node) throws IOException {
-      Node doc = getNode(node);
+      MemorySegment rawDoc = getRawVector(node);
+      MemorySegment docVector = getVector(rawDoc);
       float dotProduct =
           switch (getScalarEncoding()) {
-            case UNSIGNED_BYTE -> PanamaVectorUtilSupport.uint8DotProduct(query, doc.vector);
-            case SEVEN_BIT -> PanamaVectorUtilSupport.uint8DotProduct(query, doc.vector);
+            case UNSIGNED_BYTE -> PanamaVectorUtilSupport.uint8DotProduct(query, docVector);
+            case SEVEN_BIT -> PanamaVectorUtilSupport.uint8DotProduct(query, docVector);
             case PACKED_NIBBLE ->
-                PanamaVectorUtilSupport.int4DotProductSinglePacked(query, doc.vector);
+                PanamaVectorUtilSupport.int4DotProductSinglePacked(query, docVector);
           };
       // Call getCorrectiveTerms() after computing dot product since corrective terms
       // bytes appear after the vector bytes, so this sequence of calls is more cache
@@ -214,10 +252,10 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
           .score(
               dotProduct,
               queryCorrectiveTerms,
-              doc.lowerInterval,
-              doc.upperInterval,
-              doc.additionalCorrection,
-              doc.componentSum);
+              getLowerInterval(rawDoc),
+              getUpperInterval(rawDoc),
+              getAdditionalCorrection(rawDoc),
+              getComponentSum(rawDoc));
     }
   }
 
