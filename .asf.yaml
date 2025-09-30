@@ -28,6 +28,7 @@ github:
     branch_9x: {}
     "branch_*": {}
     "test_*": {}
+    test_15265: {}
 
   protected_tags:
     - "releases/*"
