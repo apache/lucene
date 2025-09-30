@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.Set;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.internal.hppc.FloatArrayList;
 import org.apache.lucene.search.CombinedFieldQuery.FieldAndWeight;
 import org.apache.lucene.search.similarities.Similarity.BulkSimScorer;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
@@ -148,7 +149,7 @@ final class MultiNormsLeafSimScorer {
 
   private static class MultiFieldNormValues extends NumericDocValues {
     private final NumericDocValues[] normsArr;
-    private float[] accBuf = new float[0];
+    private float[] accBuf = FloatArrayList.EMPTY_ARRAY;
     private final float[] weightArr;
     private long current;
     private int docID = -1;
