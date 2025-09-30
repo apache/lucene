@@ -394,7 +394,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
 
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
-      return null;
+      return new Bits.MatchNoBits(0);
     }
 
     @Override
