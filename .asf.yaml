@@ -22,7 +22,7 @@ github:
     issues: true
     projects: false
 
-protected_branches:
+  protected_branches:
     main: {}
     branch_10x: {}
     branch_9x: {}
