@@ -167,15 +167,8 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
           node.get(INT_UNALIGNED_LE, Integer.BYTES * 3));
     }
 
-    record Node(MemorySegment vector, MemorySegment correctiveTerms) {
-      OptimizedScalarQuantizer.QuantizationResult getQuantizationResult() {
-        return new OptimizedScalarQuantizer.QuantizationResult(
-            Float.intBitsToFloat(correctiveTerms.get(INT_UNALIGNED_LE, 0)),
-            Float.intBitsToFloat(correctiveTerms.get(INT_UNALIGNED_LE, Integer.BYTES)),
-            Float.intBitsToFloat(correctiveTerms.get(INT_UNALIGNED_LE, Integer.BYTES * 2)),
-            correctiveTerms.get(INT_UNALIGNED_LE, Integer.BYTES * 3));
-      }
-    }
+    record Node(
+        MemorySegment vector, OptimizedScalarQuantizer.QuantizationResult correctiveTerms) {}
 
     @SuppressWarnings("restricted")
     Node getNode(int ord) throws IOException {
@@ -189,7 +182,13 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
         input.readBytes(byteOffset, scratch, 0, nodeSize);
         vector = MemorySegment.ofArray(scratch);
       }
-      MemorySegment correctiveTerms = vector.asSlice(vectorByteSize, CORRECTIVE_TERMS_SIZE);
+      var correctiveTerms =
+          new OptimizedScalarQuantizer.QuantizationResult(
+              Float.intBitsToFloat(vector.get(INT_UNALIGNED_LE, vectorByteSize)),
+              Float.intBitsToFloat(vector.get(INT_UNALIGNED_LE, vectorByteSize + Integer.BYTES)),
+              Float.intBitsToFloat(
+                  vector.get(INT_UNALIGNED_LE, vectorByteSize + Integer.BYTES * 2)),
+              vector.get(INT_UNALIGNED_LE, vectorByteSize + Integer.BYTES * 3));
       return new Node(vector.reinterpret(vectorByteSize), correctiveTerms);
     }
 
@@ -243,7 +242,7 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
       // Call getCorrectiveTerms() after computing dot product since corrective terms
       // bytes appear after the vector bytes, so this sequence of calls is more cache
       // friendly.
-      return getSimilarity().score(dotProduct, queryCorrectiveTerms, doc.getQuantizationResult());
+      return getSimilarity().score(dotProduct, queryCorrectiveTerms, doc.correctiveTerms);
     }
   }
 
