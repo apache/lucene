@@ -97,40 +97,15 @@ public class OptimizedScalarQuantizedVectorSimilarity {
       float dotProduct,
       OptimizedScalarQuantizer.QuantizationResult queryCorrections,
       OptimizedScalarQuantizer.QuantizationResult indexCorrections) {
-    float x1 = indexCorrections.quantizedComponentSum();
-    float ax = indexCorrections.lowerInterval();
-    // Here we must scale according to the bits
-    float lx = (indexCorrections.upperInterval() - ax) * indexScale;
-    float ay = queryCorrections.lowerInterval();
-    float ly = (queryCorrections.upperInterval() - ay) * queryScale;
-    float y1 = queryCorrections.quantizedComponentSum();
-    float score = ax * ay * dimensions + ay * lx * x1 + ax * ly * y1 + lx * ly * dotProduct;
-    // For euclidean, we need to invert the score and apply the additional
-    // correction, which is
-    // assumed to be the squared l2norm of the centroid centered vectors.
-    if (similarityFunction == EUCLIDEAN) {
-      score =
-          queryCorrections.additionalCorrection()
-              + indexCorrections.additionalCorrection()
-              - 2 * score;
-      return Math.max(1 / (1f + score), 0);
-    } else {
-      // For cosine and max inner product, we need to apply the additional correction,
-      // which is
-      // assumed to be the non-centered dot-product between the vector and the
-      // centroid
-      score +=
-          queryCorrections.additionalCorrection()
-              + indexCorrections.additionalCorrection()
-              - centroidDotProduct;
-      if (similarityFunction == MAXIMUM_INNER_PRODUCT) {
-        return VectorUtil.scaleMaxInnerProductScore(score);
-      }
-      return Math.max((1f + score) / 2f, 0);
-    }
+    return score(
+        dotProduct,
+        queryCorrections,
+        indexCorrections.lowerInterval(),
+        indexCorrections.upperInterval(),
+        indexCorrections.additionalCorrection(),
+        indexCorrections.quantizedComponentSum());
   }
 
-  // XXX DO NOT MERGE duplication with above.
   /**
    * Computes the similarity score between a 'query' and an 'index' quantized vector, given the dot
    * product of the two vectors and their corrective factors.
