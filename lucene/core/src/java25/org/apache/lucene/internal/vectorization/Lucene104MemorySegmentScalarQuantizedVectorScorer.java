@@ -168,7 +168,11 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
     }
 
     record Node(
-        MemorySegment vector, OptimizedScalarQuantizer.QuantizationResult correctiveTerms) {}
+        MemorySegment vector,
+        float lowerInterval,
+        float upperInterval,
+        float additionalCorrection,
+        int componentSum) {}
 
     @SuppressWarnings("restricted")
     Node getNode(int ord) throws IOException {
@@ -182,14 +186,17 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
         input.readBytes(byteOffset, scratch, 0, nodeSize);
         vector = MemorySegment.ofArray(scratch);
       }
-      var correctiveTerms =
-          new OptimizedScalarQuantizer.QuantizationResult(
-              Float.intBitsToFloat(vector.get(INT_UNALIGNED_LE, vectorByteSize)),
-              Float.intBitsToFloat(vector.get(INT_UNALIGNED_LE, vectorByteSize + Integer.BYTES)),
-              Float.intBitsToFloat(
-                  vector.get(INT_UNALIGNED_LE, vectorByteSize + Integer.BYTES * 2)),
-              vector.get(INT_UNALIGNED_LE, vectorByteSize + Integer.BYTES * 3));
-      return new Node(vector.reinterpret(vectorByteSize), correctiveTerms);
+      // XXX investigate reordering the vector so that corrective terms appear first.
+      // we're forced to read them immediately to avoid creating a second memory
+      // segment which is
+      // not cheap, so they might as well be read first to avoid additional memory
+      // latency.
+      return new Node(
+          vector.reinterpret(vectorByteSize),
+          Float.intBitsToFloat(vector.get(INT_UNALIGNED_LE, vectorByteSize)),
+          Float.intBitsToFloat(vector.get(INT_UNALIGNED_LE, vectorByteSize + Integer.BYTES)),
+          Float.intBitsToFloat(vector.get(INT_UNALIGNED_LE, vectorByteSize + Integer.BYTES * 2)),
+          vector.get(INT_UNALIGNED_LE, vectorByteSize + Integer.BYTES * 3));
     }
 
     OptimizedScalarQuantizedVectorSimilarity getSimilarity() {
@@ -242,7 +249,14 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
       // Call getCorrectiveTerms() after computing dot product since corrective terms
       // bytes appear after the vector bytes, so this sequence of calls is more cache
       // friendly.
-      return getSimilarity().score(dotProduct, queryCorrectiveTerms, doc.correctiveTerms);
+      return getSimilarity()
+          .score(
+              dotProduct,
+              queryCorrectiveTerms,
+              doc.lowerInterval,
+              doc.upperInterval,
+              doc.additionalCorrection,
+              doc.componentSum);
     }
   }
 
