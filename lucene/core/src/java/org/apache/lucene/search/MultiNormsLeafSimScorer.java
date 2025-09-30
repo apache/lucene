@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -127,8 +128,10 @@ final class MultiNormsLeafSimScorer {
    */
   public void scoreRange(DocAndFloatFeatureBuffer buffer) throws IOException {
     normValues = ArrayUtil.growNoCopy(normValues, buffer.size);
-    for (int i = 0; i < buffer.size; i++) {
-      normValues[i] = getNormValue(buffer.docs[i]);
+    if (norms != null) {
+      norms.longValues(buffer.size, buffer.docs, normValues, 1L);
+    } else {
+      Arrays.fill(normValues, 0, buffer.size, 1L);
     }
     bulkScorer.score(buffer.size, buffer.features, normValues, buffer.features);
   }
@@ -145,6 +148,7 @@ final class MultiNormsLeafSimScorer {
 
   private static class MultiFieldNormValues extends NumericDocValues {
     private final NumericDocValues[] normsArr;
+    private float[] accBuf = new float[0];
     private final float[] weightArr;
     private long current;
     private int docID = -1;
@@ -192,6 +196,32 @@ final class MultiNormsLeafSimScorer {
     @Override
     public long cost() {
       throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void longValues(int size, int[] docs, long[] values, long defaultValue)
+        throws IOException {
+      if (accBuf.length < size) {
+        accBuf = new float[ArrayUtil.oversize(size, Float.BYTES)];
+      } else {
+        Arrays.fill(accBuf, 0f);
+      }
+
+      for (int i = 0; i < normsArr.length; i++) {
+        normsArr[i].longValues(size, docs, values, 0L);
+        float weight = weightArr[i];
+        for (int j = 0; j < size; j++) {
+          accBuf[j] += weight * LENGTH_TABLE[Byte.toUnsignedInt((byte) values[j])];
+        }
+      }
+
+      for (int i = 0; i < size; i++) {
+        if (accBuf[i] == 0f) {
+          values[i] = defaultValue;
+        } else {
+          values[i] = SmallFloat.intToByte4(Math.round(accBuf[i]));
+        }
+      }
     }
   }
 }
