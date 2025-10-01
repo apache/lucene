@@ -1544,14 +1544,14 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       int id = random().nextInt(numDocs);
       writer.deleteDocuments(new Term("id", Integer.toString(id)));
     }
-    try (DirectoryReader reader = maybeWrapWithMergingReader(DirectoryReader.open(dir))) {
+    try (DirectoryReader reader = maybeWrapWithMergingReader(writer.getReader())) {
       TestUtil.checkReader(reader);
       compareStoredFieldWithSortedNumericsDV(reader, "stored", "dv");
     }
     // merge some segments and ensure that at least one of them has more than
     // 256 values
     writer.forceMerge(numDocs / 256);
-    try (DirectoryReader reader = maybeWrapWithMergingReader(DirectoryReader.open(dir))) {
+    try (DirectoryReader reader = maybeWrapWithMergingReader(writer.getReader())) {
       TestUtil.checkReader(reader);
       compareStoredFieldWithSortedNumericsDV(reader, "stored", "dv");
     }
