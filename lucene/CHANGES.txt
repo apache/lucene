@@ -7,7 +7,9 @@ http://s.apache.org/luceneversions
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#15263: Fix the returned Impact returned from Lucene103PostingsReader when frequencies
+  are not indexed. It was returning a wrong frequency in that case affecting scoring which
+  might led to performance issues. (Ignacio Vera)
 
 ======================= Lucene 10.3.0 =======================
 
