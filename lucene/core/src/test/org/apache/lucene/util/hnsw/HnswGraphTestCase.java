@@ -222,7 +222,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   // test writing out and reading in a graph gives the expected graph
   public void testReadWrite() throws IOException {
     int dim = random().nextInt(100) + 1;
-    int nDoc = 1000 + random().nextInt(100) + 1;
+    int nDoc = random().nextInt(100) + 1;
     int M = random().nextInt(4) + 2;
     int beamWidth = random().nextInt(10) + 5;
     long seed = random().nextLong();

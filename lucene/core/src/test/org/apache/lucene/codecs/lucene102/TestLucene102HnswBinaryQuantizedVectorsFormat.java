@@ -66,7 +66,7 @@ public class TestLucene102HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
           }
         };
     String expectedPattern =
-        "Lucene102HnswBinaryQuantizedVectorsFormat(name=Lucene102HnswBinaryQuantizedVectorsFormat, maxConn=10, beamWidth=20, tinySegmentsThreshold=100,"
+        "Lucene102HnswBinaryQuantizedVectorsFormat(name=Lucene102HnswBinaryQuantizedVectorsFormat, maxConn=10, beamWidth=20, tinySegmentsThreshold=10,"
             + " flatVectorFormat=Lucene102BinaryQuantizedVectorsFormat(name=Lucene102BinaryQuantizedVectorsFormat,"
             + " flatVectorScorer=Lucene102BinaryFlatVectorsScorer(nonQuantizedDelegate=%s()),"
             + " rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s())))";
@@ -166,7 +166,7 @@ public class TestLucene102HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
           var fieldInfo = r.getFieldInfos().fieldInfo("f");
           var offHeap = knnVectorsReader.getOffHeapByteSize(fieldInfo);
           assertEquals(vector.length * Float.BYTES, (long) offHeap.get("vec"));
-          assertEquals(0L, (long) offHeap.get("vex"));
+          assertEquals(1L, (long) offHeap.get("vex"));
           long corrections = Float.BYTES + Float.BYTES + Float.BYTES + Short.BYTES;
           long expected = discretize(fieldInfo.getVectorDimension(), 64) / Byte.SIZE + corrections;
           assertEquals(expected, (long) offHeap.get("veb"));

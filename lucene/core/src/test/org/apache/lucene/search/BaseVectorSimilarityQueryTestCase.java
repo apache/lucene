@@ -28,7 +28,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.IntStream;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntField;
@@ -479,10 +478,8 @@ abstract class BaseVectorSimilarityQueryTestCase<
             getThrowingVectorQuery(
                 vectorField, queryVector, resultSimilarity, resultSimilarity, filter);
 
-        if (hasGraphPresent(Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD, vectors.length)) {
-          // Does not fall back to exact search
-          assertTrue(searcher.count(query) <= numFiltered);
-        }
+        // Does not fall back to exact search
+        assertTrue(searcher.count(query) <= numFiltered);
       }
     }
   }

@@ -42,7 +42,6 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsReader;
@@ -469,7 +468,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           assertEquals(0, iterator.nextDoc());
           assertEquals(0, vectorValues.vectorValue(0)[0], 0);
           assertEquals(NO_MORE_DOCS, iterator.nextDoc());
-          assertOffHeapByteSize(r, fieldName, Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD, 1);
+          assertOffHeapByteSize(r, fieldName);
         }
       }
     }
@@ -1090,8 +1089,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         assertNotNull(values);
         assertEquals(0, values.size());
         assertNull(values.scorer(new float[] {2, 3, 5, 6}));
-        assertOffHeapByteSize(
-            r, "v", Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD, values.size());
+        assertOffHeapByteSize(r, "v");
       }
     }
   }
@@ -1118,8 +1116,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         assertNotNull(values);
         assertEquals(0, values.size());
         assertNull(values.scorer(new byte[] {2, 3, 5, 6}));
-        assertOffHeapByteSize(
-            r, "v", Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD, values.size());
+        assertOffHeapByteSize(r, "v");
       }
     }
   }
@@ -1524,11 +1521,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                       visitedLimit);
           assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation());
           assertTrue(results.totalHits.value() <= visitedLimit);
-          assertOffHeapByteSize(
-              ctx.reader(),
-              fieldName,
-              Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD,
-              vectorValues.size());
+          assertOffHeapByteSize(ctx.reader(), fieldName);
         }
       }
     }
@@ -1616,8 +1609,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           for (int i = 0; i < k - 1; i++) {
             assertTrue(results.scoreDocs[i].score >= results.scoreDocs[i + 1].score);
           }
-          assertOffHeapByteSize(
-              ctx.reader(), fieldName, Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD, numDoc);
+          assertOffHeapByteSize(ctx.reader(), fieldName);
         }
       }
     }
@@ -1811,8 +1803,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               i = iter.docID();
             }
           }
-          assertOffHeapByteSize(
-              r, fieldName, Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD, numdocs);
+          assertOffHeapByteSize(r, fieldName);
         }
       }
     }
@@ -1881,11 +1872,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                       storedFields.document(byteVectorValues.ordToDoc(ord), Set.of("id"));
                   sumOrdToDocIds += Integer.parseInt(doc.get("id"));
                 }
-                assertOffHeapByteSize(
-                    ctx.reader(),
-                    "knn_vector",
-                    Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD,
-                    byteVectorValues.size());
+                assertOffHeapByteSize(ctx.reader(), "knn_vector");
               }
             }
           }
@@ -1906,11 +1893,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                   Document doc = storedFields.document(vectorValues.ordToDoc(ord), Set.of("id"));
                   sumOrdToDocIds += Integer.parseInt(doc.get("id"));
                 }
-                assertOffHeapByteSize(
-                    ctx.reader(),
-                    "knn_vector",
-                    Lucene99HnswVectorsFormat.HNSW_GRAPH_THRESHOLD,
-                    vectorValues.size());
+                assertOffHeapByteSize(ctx.reader(), "knn_vector");
               }
             }
           }
@@ -2154,8 +2137,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
-  protected void assertOffHeapByteSize(LeafReader r, String fieldName, int k, int size)
-      throws IOException {
+  protected void assertOffHeapByteSize(LeafReader r, String fieldName) throws IOException {
     var fieldInfo = r.getFieldInfos().fieldInfo(fieldName);
 
     if (r instanceof CodecReader codecReader) {
@@ -2173,15 +2155,15 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           assertTrue(totalByteSize > 0);
           assertTrue(offHeap.get("vec") > 0L);
 
-          if (hasHNSW(knnVectorsReader, fieldInfo, k, size)) {
+          if (hasHNSW(knnVectorsReader, fieldInfo)) {
             assertTrue(offHeap.get("vex") > 0L);
             var quant = offHeap.getOrDefault("veq", offHeap.get("veb"));
             assertTrue(quant == null || quant > 0L);
-          } else if (hasGraphPresent(k, size)) {
-            assertTrue(offHeap.get("vex") == null || offHeap.get("vex") == 0);
+          } else {
+            assertTrue(offHeap.get("vex") == null);
           }
 
-          if (hasQuantized(knnVectorsReader, fieldInfo, k, size)) {
+          if (hasQuantized(knnVectorsReader, fieldInfo)) {
             assertTrue(offHeap.getOrDefault("veq", offHeap.get("veb")) > 0L);
           }
         }
@@ -2198,8 +2180,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     };
   }
 
-  static boolean hasQuantized(
-      KnnVectorsReader knnVectorsReader, FieldInfo fieldInfo, int k, int size) throws IOException {
+  static boolean hasQuantized(KnnVectorsReader knnVectorsReader, FieldInfo fieldInfo)
+      throws IOException {
     if (fieldInfo.getVectorEncoding() == VectorEncoding.BYTE) {
       return false; // byte vectors are never auto-quantized
     }
@@ -2213,21 +2195,20 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
 
     String name = knnVectorsReader.getClass().getSimpleName().toLowerCase(Locale.ROOT);
-    return name.contains("quantized") && hasGraphPresent(k, size);
+    return name.contains("quantized");
   }
 
-  static boolean hasHNSW(KnnVectorsReader knnVectorsReader, FieldInfo fieldInfo, int k, int size)
+  static boolean hasHNSW(KnnVectorsReader knnVectorsReader, FieldInfo fieldInfo)
       throws IOException {
     if (knnVectorsReader
         instanceof AssertingKnnVectorsFormat.AssertingKnnVectorsReader assertingReader) {
       knnVectorsReader = assertingReader.delegate;
     }
     if (knnVectorsReader instanceof HnswGraphProvider graphProvider) {
-      return graphProvider.getGraph(fieldInfo.name) != null
-          && graphProvider.getGraph(fieldInfo.name).size() > 0;
+      return graphProvider.getGraph(fieldInfo.name) != null;
     }
     String name = knnVectorsReader.getClass().getSimpleName().toLowerCase(Locale.ROOT);
-    return name.contains("hnsw") && hasGraphPresent(k, size);
+    return name.contains("hnsw");
   }
 
   public void testMergeOffHeapByteSizeMaps() {
