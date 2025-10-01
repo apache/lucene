@@ -48,7 +48,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.junit.Before;
 
-@com.carrotsearch.randomizedtesting.annotations.Repeat(iterations = 100)
 public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
   private ScalarEncoding encoding;
