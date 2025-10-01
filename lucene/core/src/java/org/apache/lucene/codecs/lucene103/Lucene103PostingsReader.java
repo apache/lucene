@@ -74,6 +74,8 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
   // less than 128 docs left to evaluate anyway.
   private static final List<Impact> DUMMY_IMPACTS =
       Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
+  // impacts when there is no frequency, max frequency is 1.
+  private static final List<Impact> IMPACTS_NO_FREQ = Collections.singletonList(new Impact(1, 1L));
 
   private final IndexInput docIn;
   private final IndexInput posIn;
@@ -1381,8 +1383,9 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
               if (level == 1) {
                 return readImpacts(level1SerializedImpacts, level1Impacts);
               }
+              return DUMMY_IMPACTS;
             }
-            return DUMMY_IMPACTS;
+            return IMPACTS_NO_FREQ;
           }
 
           private List<Impact> readImpacts(BytesRef serialized, MutableImpactList impactsList) {
