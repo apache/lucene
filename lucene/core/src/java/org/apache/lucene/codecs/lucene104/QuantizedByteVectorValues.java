@@ -25,19 +25,6 @@ import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 /** Scalar quantized byte vector values */
 abstract class QuantizedByteVectorValues extends ByteVectorValues {
 
-  public static int calculateDiscretizedDimension(
-      int dims, ScalarEncoding storageEncoding, ScalarEncoding queryEncoding) {
-    if (storageEncoding == queryEncoding) {
-      return storageEncoding.getDiscreteDimensions(dims);
-    }
-    int queryDiscretized = queryEncoding.getDiscreteDimensions(dims);
-    int docDiscretized = storageEncoding.getDiscreteDimensions(dims);
-    int maxDiscretized = Math.max(queryDiscretized, docDiscretized);
-    assert maxDiscretized % (8 / queryEncoding.getBitsPerDim()) == 0;
-    assert maxDiscretized % (8 / storageEncoding.getBitsPerDim()) == 0;
-    return maxDiscretized;
-  }
-
   /**
    * Retrieve the corrective terms for the given vector ordinal. For the dot-product family of
    * distances, the corrective terms are, in order
@@ -74,20 +61,6 @@ abstract class QuantizedByteVectorValues extends ByteVectorValues {
    * @return the scalar encoding used to pack the stored vectors.
    */
   public abstract ScalarEncoding getScalarEncoding();
-
-  /**
-   * @return The encoding used to encode the query vectors. This may be different from the encoding
-   *     used to encode the indexed vectors.
-   */
-  public abstract ScalarEncoding getQueryScalarEncoding();
-
-  /**
-   * @return The correctly discretized dimension given the configured encodings
-   */
-  public int discretizedDimension() {
-    return calculateDiscretizedDimension(
-        dimension(), getScalarEncoding(), getQueryScalarEncoding());
-  }
 
   /**
    * @return the centroid used to center the vectors prior to quantization

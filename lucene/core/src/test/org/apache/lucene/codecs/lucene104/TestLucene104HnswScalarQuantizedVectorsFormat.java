@@ -53,21 +53,17 @@ import org.junit.Before;
 public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
   private KnnVectorsFormat format;
+  private ScalarEncoding encoding;
 
   @Before
   @Override
   public void setUp() throws Exception {
     var encodingValues = ScalarEncoding.values();
-    var encoding = encodingValues[random().nextInt(encodingValues.length)];
-    var queryEncoding = encoding;
+    encoding = encodingValues[random().nextInt(encodingValues.length)];
     // always assume asymmetric for now. Eventually make this more general
-    if (encoding == ScalarEncoding.SINGLE_BIT) {
-      queryEncoding = ScalarEncoding.PACKED_NIBBLE;
-    }
     format =
         new Lucene104HnswScalarQuantizedVectorsFormat(
             encoding,
-            queryEncoding,
             Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
             Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
             1,
@@ -93,7 +89,6 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
         "Lucene104HnswScalarQuantizedVectorsFormat(name=Lucene104HnswScalarQuantizedVectorsFormat, maxConn=10, beamWidth=20,"
             + " flatVectorFormat=Lucene104ScalarQuantizedVectorsFormat(name=Lucene104ScalarQuantizedVectorsFormat,"
             + " encoding=UNSIGNED_BYTE,"
-            + " queryEncoding=UNSIGNED_BYTE,"
             + " flatVectorScorer=Lucene104ScalarQuantizedVectorScorer(nonQuantizedDelegate=%s()),"
             + " rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s())))";
 
@@ -194,7 +189,7 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
           assertEquals(vector.length * Float.BYTES, (long) offHeap.get("vec"));
           assertEquals(1L, (long) offHeap.get("vex"));
           long corrections = Float.BYTES + Float.BYTES + Float.BYTES + Integer.BYTES;
-          long expected = fieldInfo.getVectorDimension() + corrections;
+          long expected = encoding.getDocPackedLength(fieldInfo.getVectorDimension()) + corrections;
           assertEquals(expected, (long) offHeap.get("veq"));
           assertEquals(3, offHeap.size());
         }
