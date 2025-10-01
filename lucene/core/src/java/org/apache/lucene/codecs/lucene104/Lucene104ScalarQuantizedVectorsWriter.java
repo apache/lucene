@@ -203,10 +203,10 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       float[] v = fieldData.getVectors().get(i);
       OptimizedScalarQuantizer.QuantizationResult corrections =
           scalarQuantizer.scalarQuantize(v, scratch, encoding.getBits(), clusterCenter);
-      if (encoding == ScalarEncoding.PACKED_NIBBLE) {
-        OffHeapScalarQuantizedVectorValues.packNibbles(scratch, vector);
-      } else if (encoding == ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE) {
-        OptimizedScalarQuantizer.packAsBinary(scratch, vector);
+      switch (encoding) {
+        case PACKED_NIBBLE -> OffHeapScalarQuantizedVectorValues.packNibbles(scratch, vector);
+        case SINGLE_BIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.packAsBinary(scratch, vector);
+        case UNSIGNED_BYTE, SEVEN_BIT -> {}
       }
       vectorData.writeBytes(vector, vector.length);
       vectorData.writeInt(Float.floatToIntBits(corrections.lowerInterval()));
@@ -263,10 +263,10 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       float[] v = fieldData.getVectors().get(ordinal);
       OptimizedScalarQuantizer.QuantizationResult corrections =
           scalarQuantizer.scalarQuantize(v, scratch, encoding.getBits(), clusterCenter);
-      if (encoding == ScalarEncoding.PACKED_NIBBLE) {
-        OffHeapScalarQuantizedVectorValues.packNibbles(scratch, vector);
-      } else if (encoding == ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE) {
-        OptimizedScalarQuantizer.packAsBinary(scratch, vector);
+      switch (encoding) {
+        case PACKED_NIBBLE -> OffHeapScalarQuantizedVectorValues.packNibbles(scratch, vector);
+        case SINGLE_BIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.packAsBinary(scratch, vector);
+        case UNSIGNED_BYTE, SEVEN_BIT -> {}
       }
       vectorData.writeBytes(vector, vector.length);
       vectorData.writeInt(Float.floatToIntBits(corrections.lowerInterval()));
@@ -870,10 +870,10 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       corrections =
           quantizer.scalarQuantize(
               values.vectorValue(ord), quantized, encoding.getBits(), centroid);
-      if (encoding == ScalarEncoding.PACKED_NIBBLE) {
-        OffHeapScalarQuantizedVectorValues.packNibbles(quantized, packed);
-      } else if (encoding == ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE) {
-        OptimizedScalarQuantizer.packAsBinary(quantized, packed);
+      switch (encoding) {
+        case PACKED_NIBBLE -> OffHeapScalarQuantizedVectorValues.packNibbles(quantized, packed);
+        case SINGLE_BIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.packAsBinary(quantized, packed);
+        case UNSIGNED_BYTE, SEVEN_BIT -> {}
       }
     }
 
