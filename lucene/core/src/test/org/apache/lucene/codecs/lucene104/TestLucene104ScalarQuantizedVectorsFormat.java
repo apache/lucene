@@ -51,6 +51,7 @@ import org.junit.Before;
 public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
   private ScalarEncoding encoding;
+  private ScalarEncoding queryEncoding;
   private KnnVectorsFormat format;
 
   @Before
@@ -58,7 +59,12 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
   public void setUp() throws Exception {
     var encodingValues = ScalarEncoding.values();
     encoding = encodingValues[random().nextInt(encodingValues.length)];
-    format = new Lucene104ScalarQuantizedVectorsFormat(encoding);
+    queryEncoding = encoding;
+    // always assume asymmetric for now. Eventually make this more general
+    if (encoding == ScalarEncoding.SINGLE_BIT) {
+      queryEncoding = ScalarEncoding.PACKED_NIBBLE;
+    }
+    format = new Lucene104ScalarQuantizedVectorsFormat(encoding, queryEncoding);
     super.setUp();
   }
 
@@ -110,6 +116,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
         "Lucene104ScalarQuantizedVectorsFormat("
             + "name=Lucene104ScalarQuantizedVectorsFormat, "
             + "encoding=UNSIGNED_BYTE, "
+            + "queryEncoding=UNSIGNED_BYTE, "
             + "flatVectorScorer=Lucene104ScalarQuantizedVectorScorer(nonQuantizedDelegate=%s()), "
             + "rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s()))";
     var defaultScorer =
@@ -166,8 +173,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           assertEquals(centroid.length, dims);
 
           OptimizedScalarQuantizer quantizer = new OptimizedScalarQuantizer(similarityFunction);
-          byte[] scratch =
-              new byte[OptimizedScalarQuantizer.discretize(dims, encoding.getDimensionsPerByte())];
+          byte[] scratch = new byte[encoding.getDiscreteDimensions(dims)];
           byte[] expectedVector = new byte[encoding.getPackedLength(dims)];
           if (similarityFunction == VectorSimilarityFunction.COSINE) {
             vectorValues =
@@ -183,10 +189,11 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
                     encoding.getBits(),
                     centroid);
             switch (encoding) {
-              case UNSIGNED_BYTE -> System.arraycopy(scratch, 0, expectedVector, 0, dims);
-              case SEVEN_BIT -> System.arraycopy(scratch, 0, expectedVector, 0, dims);
+              case UNSIGNED_BYTE, SEVEN_BIT -> System.arraycopy(scratch, 0, expectedVector, 0, dims);
               case PACKED_NIBBLE ->
                   OffHeapScalarQuantizedVectorValues.packNibbles(scratch, expectedVector);
+              case SINGLE_BIT ->
+                  OptimizedScalarQuantizer.packAsBinary(scratch, expectedVector);
             }
             assertArrayEquals(expectedVector, qvectorValues.vectorValue(docIndexIterator.index()));
             var actualCorrections = qvectorValues.getCorrectiveTerms(docIndexIterator.index());

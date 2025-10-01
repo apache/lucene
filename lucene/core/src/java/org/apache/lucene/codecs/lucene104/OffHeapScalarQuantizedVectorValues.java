@@ -50,7 +50,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
   final float[] correctiveValues;
   int quantizedComponentSum;
   final OptimizedScalarQuantizer quantizer;
-  final ScalarEncoding encoding;
+  final ScalarEncoding encoding, queryEncoding;
   final float[] centroid;
   final float centroidDp;
 
@@ -61,6 +61,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
       float centroidDp,
       OptimizedScalarQuantizer quantizer,
       ScalarEncoding encoding,
+      ScalarEncoding queryEncoding,
       VectorSimilarityFunction similarityFunction,
       FlatVectorsScorer vectorsScorer,
       IndexInput slice) {
@@ -77,6 +78,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
     this.vectorValue = byteBuffer.array();
     this.quantizer = quantizer;
     this.encoding = encoding;
+    this.queryEncoding = queryEncoding;
   }
 
   @Override
@@ -132,6 +134,11 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
   }
 
   @Override
+  public ScalarEncoding getQueryScalarEncoding() {
+    return queryEncoding;
+  }
+
+  @Override
   public float[] getCentroid() {
     return centroid;
   }
@@ -163,6 +170,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
       int size,
       OptimizedScalarQuantizer quantizer,
       ScalarEncoding encoding,
+      ScalarEncoding queryEncoding,
       VectorSimilarityFunction similarityFunction,
       FlatVectorsScorer vectorsScorer,
       float[] centroid,
@@ -186,6 +194,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
           centroidDp,
           quantizer,
           encoding,
+          queryEncoding,
           similarityFunction,
           vectorsScorer,
           bytesSlice);
@@ -198,6 +207,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
           centroidDp,
           quantizer,
           encoding,
+          queryEncoding,
           vectorData,
           similarityFunction,
           vectorsScorer,
@@ -214,6 +224,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
         float centroidDp,
         OptimizedScalarQuantizer quantizer,
         ScalarEncoding encoding,
+        ScalarEncoding queryEncoding,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer,
         IndexInput slice) {
@@ -224,6 +235,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
           centroidDp,
           quantizer,
           encoding,
+          queryEncoding,
           similarityFunction,
           vectorsScorer,
           slice);
@@ -238,6 +250,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
           centroidDp,
           quantizer,
           encoding,
+          queryEncoding,
           similarityFunction,
           vectorsScorer,
           slice.clone());
@@ -289,6 +302,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
         float centroidDp,
         OptimizedScalarQuantizer quantizer,
         ScalarEncoding encoding,
+        ScalarEncoding queryEncoding,
         IndexInput dataIn,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer,
@@ -301,6 +315,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
           centroidDp,
           quantizer,
           encoding,
+          queryEncoding,
           similarityFunction,
           vectorsScorer,
           slice);
@@ -320,6 +335,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
           centroidDp,
           quantizer,
           encoding,
+          queryEncoding,
           dataIn,
           similarityFunction,
           vectorsScorer,
@@ -385,6 +401,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
           null,
           Float.NaN,
           null,
+          ScalarEncoding.UNSIGNED_BYTE,
           ScalarEncoding.UNSIGNED_BYTE,
           similarityFunction,
           vectorsScorer,

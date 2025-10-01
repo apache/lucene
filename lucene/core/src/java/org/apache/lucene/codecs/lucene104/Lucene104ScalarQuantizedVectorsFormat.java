@@ -79,6 +79,7 @@ import org.apache.lucene.index.SegmentWriteState;
  * <ul>
  *   <li><b>int</b> the field number
  *   <li><b>int</b> the vector encoding ordinal
+ *   <li><b>int</b> the query encoding ordinal
  *   <li><b>int</b> the vector similarity ordinal
  *   <li><b>vint</b> the vector dimensions
  *   <li><b>vlong</b> the offset to the vector data in the .veq file
@@ -109,6 +110,7 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
       new Lucene104ScalarQuantizedVectorScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   private final ScalarEncoding encoding;
+  private final ScalarEncoding queryEncoding;
 
   /**
    * Allowed encodings for scalar quantization.
@@ -118,9 +120,9 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
    */
   public enum ScalarEncoding {
     /** Each dimension is quantized to 8 bits and treated as an unsigned value. */
-    UNSIGNED_BYTE(0, (byte) 8, 1),
+    UNSIGNED_BYTE(0, (byte) 8, 8),
     /** Each dimension is quantized to 4 bits two values are packed into each output byte. */
-    PACKED_NIBBLE(1, (byte) 4, 2),
+    PACKED_NIBBLE(1, (byte) 4, 4),
     /**
      * Each dimension is quantized to 7 bits and treated as a signed value.
      *
@@ -128,7 +130,16 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
      * This setting will produce an index the same size as {@link #UNSIGNED_BYTE} but will produce
      * less accurate vector comparisons.
      */
-    SEVEN_BIT(2, (byte) 7, 1);
+    SEVEN_BIT(2, (byte) 7, 8),
+    /**
+     * Each dimension is quantized to a single bit and packed into bytes.
+     *
+     * <p>This is the most space efficient encoding, and will produce an index 8x smaller than
+     * {@link #UNSIGNED_BYTE}. However, this comes at the cost of accuracy. This encoding is
+     * recommended for use when the number of dimensions is high (e.g. &gt; 128) and with an
+     * asymmetric quantization scheme where query vectors are quantized to 4 bits.
+     */
+    SINGLE_BIT(3, (byte) 1, 1);
 
     public static ScalarEncoding fromNumBits(int bits) {
       for (ScalarEncoding encoding : values()) {
@@ -143,12 +154,12 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
     private final int wireNumber;
 
     private final byte bits;
-    private final int dimsPerByte;
+    private final int bitsPerDim;
 
-    ScalarEncoding(int wireNumber, byte bits, int dimsPerByte) {
+    ScalarEncoding(int wireNumber, byte bits, int bitsPerDim) {
       this.wireNumber = wireNumber;
       this.bits = bits;
-      this.dimsPerByte = dimsPerByte;
+      this.bitsPerDim = bitsPerDim;
     }
 
     int getWireNumber() {
@@ -160,14 +171,20 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
       return bits;
     }
 
+    /** Return the number of dimensions rounded up to fit into whole bytes. */
+    public int getDiscreteDimensions(int dimensions) {
+      int totalBits = dimensions * bitsPerDim;
+      return (totalBits + 7) / 8 * 8 / bitsPerDim;
+    }
+
     /** Return the number of dimensions that can be packed into a single byte. */
-    public int getDimensionsPerByte() {
-      return this.dimsPerByte;
+    public int getBitsPerDim() {
+      return this.bitsPerDim;
     }
 
     /** Return the number of bytes required to store a packed vector of the given dimensions. */
     public int getPackedLength(int dimensions) {
-      return (dimensions + this.dimsPerByte - 1) / this.dimsPerByte;
+      return (dimensions * bitsPerDim + 7) / 8;
     }
 
     /** Returns the encoding for the given wire number, or empty if unknown. */
@@ -186,16 +203,35 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
     this(ScalarEncoding.UNSIGNED_BYTE);
   }
 
-  /** Creates a new instance with the chosen encoding. */
+  /** Creates a new instance with the chosen symmetric quantization encoding. */
   public Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding encoding) {
+    this(encoding, encoding);
+  }
+
+  /** Creates a new instance with the chosen asymmetric quantization encoding. */
+  public Lucene104ScalarQuantizedVectorsFormat(
+      ScalarEncoding encoding, ScalarEncoding queryEncoding) {
     super(NAME);
     this.encoding = encoding;
+    this.queryEncoding = queryEncoding;
+    // until we have optimized scorers for various other asymmetric encodings, maybe we only allow 1
+    // bit -> 4 bit
+    // Technically, we should be able to do 2 bit -> 4 bit, and 1, 2 -> 8, and 4 -> 8. But these
+    // will take time to
+    // have optimized scorers, and we don't want users to accidentally use poorly optimized
+    // combinations.
+    if (encoding != queryEncoding) {
+      if (encoding != ScalarEncoding.SINGLE_BIT || queryEncoding != ScalarEncoding.PACKED_NIBBLE) {
+        throw new IllegalArgumentException(
+            "Only SINGLE_BIT -> PACKED_NIBBLE asymmetric encoding is supported");
+      }
+    }
   }
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene104ScalarQuantizedVectorsWriter(
-        state, encoding, rawVectorFormat.fieldsWriter(state), scorer);
+        state, encoding, queryEncoding, rawVectorFormat.fieldsWriter(state), scorer);
   }
 
   @Override
@@ -215,6 +251,8 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
         + NAME
         + ", encoding="
         + encoding
+        + ", queryEncoding="
+        + queryEncoding
         + ", flatVectorScorer="
         + scorer
         + ", rawVectorFormat="
