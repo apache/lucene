@@ -440,6 +440,16 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
               task.systemProperty("java.awt.headless", "true");
               task.systemProperty("jdk.map.althashing.threshold", "0");
 
+              // disallow any Java serialization without a filter
+              if (project.getPath().endsWith(".tests")) {
+                // LUCENE-10301: for now, do not use the serialization filter for modular tests
+                // (test framework is not available).
+              } else if (project.getPath().startsWith(":lucene")) {
+                task.systemProperty(
+                    "jdk.serialFilterFactory",
+                    "org.apache.lucene.tests.util.TestObjectInputFilterFactory");
+              }
+
               if (!Os.isFamily(Os.FAMILY_WINDOWS)) {
                 task.systemProperty("java.security.egd", "file:/dev/./urandom");
               }

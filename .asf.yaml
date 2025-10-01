@@ -22,6 +22,33 @@ github:
     issues: true
     projects: false
 
+  protected_branches:
+    main: {}
+    branch_10_0: {}
+    branch_10_1: {}
+    branch_10_2: {}
+    branch_10_3: {}
+    branch_10x: {}
+    branch_9_0: {}
+    branch_9_1: {}
+    branch_9_2: {}
+    branch_9_3: {}
+    branch_9_4: {}
+    branch_9_5: {}
+    branch_9_6: {}
+    branch_9_7: {}
+    branch_9_8: {}
+    branch_9_9: {}
+    branch_9_10: {}
+    branch_9_11: {}
+    branch_9_12: {}
+    branch_9x: {}
+
+  protected_tags:
+    - "releases/*"
+    - "history/*"
+    - "grafts/*"
+
 notifications:
   commits:      commits@lucene.apache.org
   issues:       issues@lucene.apache.org

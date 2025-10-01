@@ -27,6 +27,8 @@ repositories {
   gradlePluginPortal()
 }
 
+apply from: file("ecj-source.gradle")
+
 group = "org.apache"
 
 java {

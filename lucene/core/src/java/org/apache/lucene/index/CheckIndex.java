@@ -55,7 +55,6 @@ import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
@@ -2914,7 +2913,7 @@ public final class CheckIndex implements Closeable {
       if (fieldInfos.hasVectorValues()) {
         for (FieldInfo fieldInfo : fieldInfos) {
           if (fieldInfo.hasVectorValues()) {
-            KnnVectorsReader fieldReader = getFieldReaderForName(vectorsReader, fieldInfo.name);
+            KnnVectorsReader fieldReader = vectorsReader.unwrapReaderForField(fieldInfo.name);
             if (fieldReader instanceof HnswGraphProvider graphProvider) {
               HnswGraph hnswGraph = graphProvider.getGraph(fieldInfo.name);
               testHnswGraph(hnswGraph, fieldInfo.name, status);
@@ -2942,15 +2941,6 @@ public final class CheckIndex implements Closeable {
     }
 
     return status;
-  }
-
-  private static KnnVectorsReader getFieldReaderForName(
-      KnnVectorsReader vectorsReader, String fieldName) {
-    if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
-      return fieldsReader.getFieldReader(fieldName);
-    } else {
-      return vectorsReader;
-    }
   }
 
   private static void printHnswInfo(
@@ -3091,9 +3081,7 @@ public final class CheckIndex implements Closeable {
 
   private static boolean vectorsReaderSupportsSearch(CodecReader codecReader, String fieldName) {
     KnnVectorsReader vectorsReader = codecReader.getVectorReader();
-    if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader perFieldReader) {
-      vectorsReader = perFieldReader.getFieldReader(fieldName);
-    }
+    vectorsReader = vectorsReader.unwrapReaderForField(fieldName);
     return (vectorsReader instanceof FlatVectorsReader) == false;
   }
 

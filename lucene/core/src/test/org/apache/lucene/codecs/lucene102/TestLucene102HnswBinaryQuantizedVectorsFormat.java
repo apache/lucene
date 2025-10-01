@@ -31,7 +31,6 @@ import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.CodecReader;
@@ -163,9 +162,7 @@ public class TestLucene102HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
         LeafReader r = getOnlyLeafReader(reader);
         if (r instanceof CodecReader codecReader) {
           KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-          if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
-            knnVectorsReader = fieldsReader.getFieldReader("f");
-          }
+          knnVectorsReader = knnVectorsReader.unwrapReaderForField("f");
           var fieldInfo = r.getFieldInfos().fieldInfo("f");
           var offHeap = knnVectorsReader.getOffHeapByteSize(fieldInfo);
           assertEquals(vector.length * Float.BYTES, (long) offHeap.get("vec"));

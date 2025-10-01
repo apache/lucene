@@ -30,7 +30,6 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.CodecReader;
@@ -275,9 +274,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
         LeafReader r = getOnlyLeafReader(reader);
         if (r instanceof CodecReader codecReader) {
           KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-          if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
-            knnVectorsReader = fieldsReader.getFieldReader("f");
-          }
+          knnVectorsReader = knnVectorsReader.unwrapReaderForField("f");
           if (knnVectorsReader instanceof Lucene99HnswVectorsReader hnswReader) {
             assertNotNull(hnswReader.getQuantizationState("f"));
             QuantizedByteVectorValues quantizedByteVectorValues =

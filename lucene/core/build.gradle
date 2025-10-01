@@ -27,4 +27,4 @@ dependencies {
 }
 
 // Setup api stub generation and multi-release jar support for the following JDKs.
-project.getExtensions().getByType(MrJarsExtension).setupFor(24)
+project.getExtensions().getByType(MrJarsExtension).setupFor(Integer.parseInt(deps.versions.minJava.get()))
