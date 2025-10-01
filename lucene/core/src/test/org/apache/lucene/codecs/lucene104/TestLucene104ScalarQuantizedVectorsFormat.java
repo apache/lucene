@@ -48,6 +48,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.junit.Before;
 
+@com.carrotsearch.randomizedtesting.annotations.Repeat(iterations = 100)
 public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
   private ScalarEncoding encoding;
@@ -174,7 +175,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
 
           OptimizedScalarQuantizer quantizer = new OptimizedScalarQuantizer(similarityFunction);
           byte[] scratch = new byte[encoding.getDiscreteDimensions(dims)];
-          byte[] expectedVector = new byte[encoding.getPackedLength(dims)];
+          byte[] expectedVector = new byte[encoding.getPackedLength(scratch.length)];
           if (similarityFunction == VectorSimilarityFunction.COSINE) {
             vectorValues =
                 new Lucene104ScalarQuantizedVectorsWriter.NormalizedFloatVectorValues(vectorValues);
@@ -189,11 +190,11 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
                     encoding.getBits(),
                     centroid);
             switch (encoding) {
-              case UNSIGNED_BYTE, SEVEN_BIT -> System.arraycopy(scratch, 0, expectedVector, 0, dims);
+              case UNSIGNED_BYTE, SEVEN_BIT ->
+                  System.arraycopy(scratch, 0, expectedVector, 0, dims);
               case PACKED_NIBBLE ->
                   OffHeapScalarQuantizedVectorValues.packNibbles(scratch, expectedVector);
-              case SINGLE_BIT ->
-                  OptimizedScalarQuantizer.packAsBinary(scratch, expectedVector);
+              case SINGLE_BIT -> OptimizedScalarQuantizer.packAsBinary(scratch, expectedVector);
             }
             assertArrayEquals(expectedVector, qvectorValues.vectorValue(docIndexIterator.index()));
             var actualCorrections = qvectorValues.getCorrectiveTerms(docIndexIterator.index());

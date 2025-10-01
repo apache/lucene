@@ -69,6 +69,22 @@ abstract class QuantizedByteVectorValues extends ByteVectorValues {
   public abstract ScalarEncoding getQueryScalarEncoding();
 
   /**
+   * @return The correctly discretized dimension given the configured encodings
+   */
+  public int discretizedDimension() {
+    int dims = dimension();
+    if (getScalarEncoding() == getQueryScalarEncoding()) {
+      return getScalarEncoding().getDiscreteDimensions(dims);
+    }
+    int queryDiscretized = getQueryScalarEncoding().getDiscreteDimensions(dims);
+    int docDiscretized = getScalarEncoding().getDiscreteDimensions(dims);
+    int maxDiscretized = Math.max(queryDiscretized, docDiscretized);
+    assert maxDiscretized % getQueryScalarEncoding().getBits() == 0;
+    assert maxDiscretized % getScalarEncoding().getBits() == 0;
+    return maxDiscretized;
+  }
+
+  /**
    * @return the centroid used to center the vectors prior to quantization
    */
   public abstract float[] getCentroid() throws IOException;

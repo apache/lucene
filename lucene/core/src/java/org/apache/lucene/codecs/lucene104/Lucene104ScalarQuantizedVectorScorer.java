@@ -64,7 +64,7 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     if (vectorValues instanceof QuantizedByteVectorValues qv) {
       checkDimensions(target.length, qv.dimension());
       OptimizedScalarQuantizer quantizer = qv.getQuantizer();
-      byte[] scratch = new byte[qv.getQueryScalarEncoding().getDiscreteDimensions(qv.dimension())];
+      byte[] scratch = new byte[qv.discretizedDimension()];
       final byte[] targetQuantized;
       if (qv.getScalarEncoding() == qv.getQueryScalarEncoding()) {
         assert qv.getScalarEncoding()
@@ -76,7 +76,7 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
             == Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.SINGLE_BIT;
         assert qv.getQueryScalarEncoding()
             == Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.PACKED_NIBBLE;
-        targetQuantized = new byte[qv.getQueryScalarEncoding().getPackedLength(qv.dimension())];
+        targetQuantized = new byte[qv.getQueryScalarEncoding().getPackedLength(scratch.length)];
       }
       // We make a copy as the quantization process mutates the input
       float[] copy = ArrayUtil.copyOfSubArray(target, 0, target.length);
