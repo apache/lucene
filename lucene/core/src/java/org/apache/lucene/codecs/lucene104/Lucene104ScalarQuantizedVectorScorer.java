@@ -212,6 +212,10 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
               }
               OffHeapScalarQuantizedVectorValues.unpackNibbles(rawTargetVector, targetVector);
             }
+            case SINGLE_BIT -> {
+              throw new IllegalStateException(
+                  "SINGLE_BIT encoding is not supported for symmetric quantization");
+            }
           }
           targetCorrectiveTerms = targetValues.getCorrectiveTerms(node);
         }
