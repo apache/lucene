@@ -25,6 +25,19 @@ import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 /** Scalar quantized byte vector values */
 abstract class QuantizedByteVectorValues extends ByteVectorValues {
 
+  public static int calculateDiscretizedDimension(
+      int dims, ScalarEncoding storageEncoding, ScalarEncoding queryEncoding) {
+    if (storageEncoding == queryEncoding) {
+      return storageEncoding.getDiscreteDimensions(dims);
+    }
+    int queryDiscretized = queryEncoding.getDiscreteDimensions(dims);
+    int docDiscretized = storageEncoding.getDiscreteDimensions(dims);
+    int maxDiscretized = Math.max(queryDiscretized, docDiscretized);
+    assert maxDiscretized % (8 / queryEncoding.getBitsPerDim()) == 0;
+    assert maxDiscretized % (8 / storageEncoding.getBitsPerDim()) == 0;
+    return maxDiscretized;
+  }
+
   /**
    * Retrieve the corrective terms for the given vector ordinal. For the dot-product family of
    * distances, the corrective terms are, in order
@@ -72,16 +85,8 @@ abstract class QuantizedByteVectorValues extends ByteVectorValues {
    * @return The correctly discretized dimension given the configured encodings
    */
   public int discretizedDimension() {
-    int dims = dimension();
-    if (getScalarEncoding() == getQueryScalarEncoding()) {
-      return getScalarEncoding().getDiscreteDimensions(dims);
-    }
-    int queryDiscretized = getQueryScalarEncoding().getDiscreteDimensions(dims);
-    int docDiscretized = getScalarEncoding().getDiscreteDimensions(dims);
-    int maxDiscretized = Math.max(queryDiscretized, docDiscretized);
-    assert maxDiscretized % getQueryScalarEncoding().getBits() == 0;
-    assert maxDiscretized % getScalarEncoding().getBits() == 0;
-    return maxDiscretized;
+    return calculateDiscretizedDimension(
+        dimension(), getScalarEncoding(), getQueryScalarEncoding());
   }
 
   /**

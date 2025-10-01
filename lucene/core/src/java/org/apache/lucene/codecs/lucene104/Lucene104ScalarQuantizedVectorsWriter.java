@@ -410,8 +410,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         Math.max(
             encoding.getDiscreteDimensions(floatVectorValues.dimension()),
             queryEncoding.getDiscreteDimensions(floatVectorValues.dimension()));
-    assert discretizedDims % encoding.getBits() == 0;
-    assert discretizedDims % queryEncoding.getBits() == 0;
+    assert discretizedDims % (8 / encoding.getBitsPerDim()) == 0;
+    assert discretizedDims % (8 / queryEncoding.getBitsPerDim()) == 0;
     byte[][] quantizationScratch = new byte[2][];
     quantizationScratch[0] = new byte[discretizedDims];
     quantizationScratch[1] = new byte[discretizedDims];
@@ -563,7 +563,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       if (finalQuantizedScoreDataInput != null) {
         scoreVectorValues =
             new OffHeapScalarQuantizedVectorValues.DenseOffHeapVectorValues(
-                fieldInfo.getVectorDimension(),
+                // pass the commonly discretized dimension to ensure both vectorValues and
+                // scoreVectorValues have the same discretized dimension
+                vectorValues.discretizedDimension(),
                 docsWithField.cardinality(),
                 centroid,
                 cDotC,
@@ -579,7 +581,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
               ? vectorsScorer.getRandomVectorScorerSupplier(
                   fieldInfo.getVectorSimilarityFunction(), vectorValues)
               : vectorsScorer.getRandomVectorScorerSupplier(
-                  fieldInfo.getVectorSimilarityFunction(), vectorValues, scoreVectorValues);
+                  fieldInfo.getVectorSimilarityFunction(), scoreVectorValues, vectorValues);
       return new QuantizedCloseableRandomVectorScorerSupplier(
           scorerSupplier,
           vectorValues,

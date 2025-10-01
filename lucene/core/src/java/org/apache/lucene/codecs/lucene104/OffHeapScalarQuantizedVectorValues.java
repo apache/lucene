@@ -46,6 +46,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
   final byte[] vectorValue;
   final ByteBuffer byteBuffer;
   final int byteSize;
+  final int discretizedDimension;
   private int lastOrd = -1;
   final float[] correctiveValues;
   int quantizedComponentSum;
@@ -73,12 +74,14 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
     this.centroid = centroid;
     this.centroidDp = centroidDp;
     this.correctiveValues = new float[3];
-    this.byteSize = encoding.getPackedLength(dimension) + (Float.BYTES * 3) + Integer.BYTES;
-    this.byteBuffer = ByteBuffer.allocate(encoding.getPackedLength(dimension));
-    this.vectorValue = byteBuffer.array();
-    this.quantizer = quantizer;
     this.encoding = encoding;
     this.queryEncoding = queryEncoding;
+    this.discretizedDimension = calculateDiscretizedDimension(dimension, encoding, queryEncoding);
+    this.byteSize =
+        encoding.getPackedLength(discretizedDimension) + (Float.BYTES * 3) + Integer.BYTES;
+    this.byteBuffer = ByteBuffer.allocate(encoding.getPackedLength(discretizedDimension));
+    this.vectorValue = byteBuffer.array();
+    this.quantizer = quantizer;
   }
 
   @Override
