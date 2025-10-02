@@ -16,13 +16,10 @@
  */
 package org.apache.lucene.internal.vectorization;
 
-import static java.lang.foreign.ValueLayout.JAVA_INT_UNALIGNED;
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
-import java.nio.ByteOrder;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorScorer;
@@ -126,75 +123,30 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
       }
     }
 
-    private static final ValueLayout.OfInt INT_UNALIGNED_LE =
-        JAVA_INT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
-
-    record Node(
-        MemorySegment vector,
-        float lowerInterval,
-        float upperInterval,
-        float additionalCorrection,
-        int componentSum) {}
-
     @SuppressWarnings("restricted")
-    Node getNode(int ord) throws IOException {
+    MemorySegment getVector(int ord) throws IOException {
       checkOrdinal(ord);
       long byteOffset = (long) ord * nodeSize;
-      MemorySegment vector = input.segmentSliceOrNull(byteOffset, nodeSize);
-      if (vector == null) {
-        if (scratch == null) {
-          scratch = new byte[nodeSize];
-        }
-        input.readBytes(byteOffset, scratch, 0, nodeSize);
-        vector = MemorySegment.ofArray(scratch);
-      }
-      // XXX investigate reordering the vector so that corrective terms appear first.
-      // we're forced to read them immediately to avoid creating a second memory
-      // segment which is not cheap, so they might as well be read first to avoid
-      // additional memory latency.
-      return new Node(
-          vector.reinterpret(vectorByteSize),
-          Float.intBitsToFloat(vector.get(INT_UNALIGNED_LE, vectorByteSize)),
-          Float.intBitsToFloat(vector.get(INT_UNALIGNED_LE, vectorByteSize + Integer.BYTES)),
-          Float.intBitsToFloat(vector.get(INT_UNALIGNED_LE, vectorByteSize + Integer.BYTES * 2)),
-          vector.get(INT_UNALIGNED_LE, vectorByteSize + Integer.BYTES * 3));
-    }
-
-    MemorySegment getRawVector(int ord) throws IOException {
-      checkOrdinal(ord);
-      long byteOffset = (long) ord * nodeSize;
-      MemorySegment vector = input.segmentSliceOrNull(byteOffset, nodeSize);
+      MemorySegment vector = input.segmentSliceOrNull(byteOffset, vectorByteSize);
       if (vector != null) {
         return vector;
       }
 
       if (scratch == null) {
-        scratch = new byte[nodeSize];
+        scratch = new byte[vectorByteSize];
       }
-      input.readBytes(byteOffset, scratch, 0, nodeSize);
+      input.readBytes(byteOffset, scratch, 0, vectorByteSize);
       return MemorySegment.ofArray(scratch);
     }
 
-    @SuppressWarnings("restricted")
-    MemorySegment getVector(MemorySegment rawVector) {
-      return rawVector.reinterpret(vectorByteSize);
-    }
-
-    float getLowerInterval(MemorySegment rawVector) {
-      return Float.intBitsToFloat(rawVector.get(INT_UNALIGNED_LE, vectorByteSize));
-    }
-
-    float getUpperInterval(MemorySegment rawVector) {
-      return Float.intBitsToFloat(rawVector.get(INT_UNALIGNED_LE, vectorByteSize + Integer.BYTES));
-    }
-
-    float getAdditionalCorrection(MemorySegment rawVector) {
-      return Float.intBitsToFloat(
-          rawVector.get(INT_UNALIGNED_LE, vectorByteSize + Integer.BYTES * 2));
-    }
-
-    int getComponentSum(MemorySegment rawVector) {
-      return rawVector.get(INT_UNALIGNED_LE, vectorByteSize + Integer.BYTES * 3);
+    OptimizedScalarQuantizer.QuantizationResult getCorrectiveTerms(int ord) throws IOException {
+      checkOrdinal(ord);
+      long byteOffset = (long) ord * nodeSize + vectorByteSize;
+      return new OptimizedScalarQuantizer.QuantizationResult(
+          Float.intBitsToFloat(input.readInt(byteOffset)),
+          Float.intBitsToFloat(input.readInt(byteOffset + Integer.BYTES)),
+          Float.intBitsToFloat(input.readInt(byteOffset + Integer.BYTES * 2)),
+          input.readInt(byteOffset + Integer.BYTES * 3));
     }
 
     OptimizedScalarQuantizedVectorSimilarity getSimilarity() {
@@ -209,6 +161,7 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
   private static class RandomVectorScorerImpl extends RandomVectorScorerBase {
     private final byte[] query;
     private final OptimizedScalarQuantizer.QuantizationResult queryCorrectiveTerms;
+    private final byte[] scratch;
 
     RandomVectorScorerImpl(
         VectorSimilarityFunction similarityFunction,
@@ -220,6 +173,7 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
       Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding scalarEncoding =
           values.getScalarEncoding();
       OptimizedScalarQuantizer quantizer = values.getQuantizer();
+      scratch = new byte[values.getVectorByteLength()];
       query =
           new byte
               [OptimizedScalarQuantizer.discretize(
@@ -236,8 +190,7 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
 
     @Override
     public float score(int node) throws IOException {
-      MemorySegment rawDoc = getRawVector(node);
-      MemorySegment docVector = getVector(rawDoc);
+      MemorySegment docVector = getVector(node);
       float dotProduct =
           switch (getScalarEncoding()) {
             case UNSIGNED_BYTE -> PanamaVectorUtilSupport.uint8DotProduct(query, docVector);
@@ -248,14 +201,7 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
       // Call getCorrectiveTerms() after computing dot product since corrective terms
       // bytes appear after the vector bytes, so this sequence of calls is more cache
       // friendly.
-      return getSimilarity()
-          .score(
-              dotProduct,
-              queryCorrectiveTerms,
-              getLowerInterval(rawDoc),
-              getUpperInterval(rawDoc),
-              getAdditionalCorrection(rawDoc),
-              getComponentSum(rawDoc));
+      return getSimilarity().score(dotProduct, queryCorrectiveTerms, getCorrectiveTerms(node));
     }
   }
 
@@ -292,37 +238,23 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
     @Override
     public void setScoringOrdinal(int ord) throws IOException {
       checkOrdinal(ord);
-      Node node = getNode(ord);
-      query = node.vector();
-      queryCorrectiveTerms =
-          new OptimizedScalarQuantizer.QuantizationResult(
-              node.lowerInterval(),
-              node.upperInterval(),
-              node.additionalCorrection(),
-              node.componentSum());
+      query = getVector(ord);
+      queryCorrectiveTerms = getCorrectiveTerms(ord);
     }
 
     @Override
     public float score(int node) throws IOException {
-      Node doc = getNode(node);
+      MemorySegment doc = getVector(node);
       float dotProduct =
           switch (getScalarEncoding()) {
-            case UNSIGNED_BYTE -> PanamaVectorUtilSupport.uint8DotProduct(query, doc.vector());
-            case SEVEN_BIT -> PanamaVectorUtilSupport.uint8DotProduct(query, doc.vector());
-            case PACKED_NIBBLE ->
-                PanamaVectorUtilSupport.int4DotProductBothPacked(query, doc.vector());
+            case UNSIGNED_BYTE -> PanamaVectorUtilSupport.uint8DotProduct(query, doc);
+            case SEVEN_BIT -> PanamaVectorUtilSupport.uint8DotProduct(query, doc);
+            case PACKED_NIBBLE -> PanamaVectorUtilSupport.int4DotProductBothPacked(query, doc);
           };
       // Call getCorrectiveTerms() after computing dot product since corrective terms
       // bytes appear after the vector bytes, so this sequence of calls is more cache
       // friendly.
-      return getSimilarity()
-          .score(
-              dotProduct,
-              queryCorrectiveTerms,
-              doc.lowerInterval(),
-              doc.upperInterval(),
-              doc.additionalCorrection(),
-              doc.componentSum());
+      return getSimilarity().score(dotProduct, queryCorrectiveTerms, getCorrectiveTerms(node));
     }
   }
 }

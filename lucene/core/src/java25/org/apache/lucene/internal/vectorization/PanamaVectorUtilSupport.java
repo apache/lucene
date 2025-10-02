@@ -60,7 +60,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   private static final VectorSpecies<Float> FLOAT_SPECIES;
   private static final VectorSpecies<Double> DOUBLE_SPECIES =
       PanamaVectorConstants.PREFERRED_DOUBLE_SPECIES;
-  // This create a vector species which we make sure have exact half bits of DOUBLE_SPECIES
+  // This create a vector species which we make sure have exact half bits of
+  // DOUBLE_SPECIES
   private static final VectorSpecies<Integer> INT_FOR_DOUBLE_SPECIES =
       VectorSpecies.of(int.class, VectorShape.forBitSize(DOUBLE_SPECIES.vectorBitSize() / 2));
   private static final VectorSpecies<Integer> INT_SPECIES =
@@ -110,7 +111,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     int i = 0;
     float res = 0;
 
-    // if the array size is large (> 2x platform vector size), it's worth the overhead to vectorize
+    // if the array size is large (> 2x platform vector size), it's worth the
+    // overhead to vectorize
     if (a.length > 2 * FLOAT_SPECIES.length()) {
       i += FLOAT_SPECIES.loopBound(a.length);
       res += dotProductBody(a, b, i);
@@ -154,7 +156,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       FloatVector vh = FloatVector.fromArray(FLOAT_SPECIES, b, i + 3 * FLOAT_SPECIES.length());
       acc4 = fma(vg, vh, acc4);
     }
-    // vector tail: less scalar computations for unaligned sizes, esp with big vector sizes
+    // vector tail: less scalar computations for unaligned sizes, esp with big
+    // vector sizes
     for (; i < limit; i += FLOAT_SPECIES.length()) {
       FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, i);
       FloatVector vb = FloatVector.fromArray(FLOAT_SPECIES, b, i);
@@ -173,7 +176,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     float norm1 = 0;
     float norm2 = 0;
 
-    // if the array size is large (> 2x platform vector size), it's worth the overhead to vectorize
+    // if the array size is large (> 2x platform vector size), it's worth the
+    // overhead to vectorize
     if (a.length > 2 * FLOAT_SPECIES.length()) {
       i += FLOAT_SPECIES.loopBound(a.length);
       float[] ret = cosineBody(a, b, i);
@@ -218,7 +222,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       norm1_2 = fma(vc, vc, norm1_2);
       norm2_2 = fma(vd, vd, norm2_2);
     }
-    // vector tail: less scalar computations for unaligned sizes, esp with big vector sizes
+    // vector tail: less scalar computations for unaligned sizes, esp with big
+    // vector sizes
     for (; i < limit; i += FLOAT_SPECIES.length()) {
       FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, i);
       FloatVector vb = FloatVector.fromArray(FLOAT_SPECIES, b, i);
@@ -238,7 +243,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     int i = 0;
     float res = 0;
 
-    // if the array size is large (> 2x platform vector size), it's worth the overhead to vectorize
+    // if the array size is large (> 2x platform vector size), it's worth the
+    // overhead to vectorize
     if (a.length > 2 * FLOAT_SPECIES.length()) {
       i += FLOAT_SPECIES.loopBound(a.length);
       res += squareDistanceBody(a, b, i);
@@ -287,7 +293,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       FloatVector diff4 = vg.sub(vh);
       acc4 = fma(diff4, diff4, acc4);
     }
-    // vector tail: less scalar computations for unaligned sizes, esp with big vector sizes
+    // vector tail: less scalar computations for unaligned sizes, esp with big
+    // vector sizes
     for (; i < limit; i += FLOAT_SPECIES.length()) {
       FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, i);
       FloatVector vb = FloatVector.fromArray(FLOAT_SPECIES, b, i);
@@ -302,8 +309,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   // Binary functions, these all follow a general pattern like this:
   //
-  //   short intermediate = a * b;
-  //   int accumulator = (int)accumulator + (int)intermediate;
+  // short intermediate = a * b;
+  // int accumulator = (int)accumulator + (int)intermediate;
   //
   // 256 or 512 bit vectors can process 64 or 128 bits at a time, respectively
   // intermediate results use 128 or 256 bit vectors, respectively
@@ -877,7 +884,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       ByteVector vb8 = b.load(BYTE_SPECIES, i);
 
       // 32-bit sub, multiply, and add into accumulators
-      // TODO: uses AVX-512 heavy multiply on zmm, should we just use 256-bit vectors on AVX-512?
+      // TODO: uses AVX-512 heavy multiply on zmm, should we just use 256-bit vectors
+      // on AVX-512?
       Vector<Integer> va32 = va8.convertShape(conversion, INT_SPECIES, 0);
       Vector<Integer> vb32 = vb8.convertShape(conversion, INT_SPECIES, 0);
       Vector<Integer> diff32 = va32.sub(vb32);
@@ -890,8 +898,10 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   /** vectorized square distance body (128 bit vectors) */
   private static int squareDistanceBody128(
       ByteVectorLoader a, ByteVectorLoader b, int limit, boolean signed) {
-    // 128-bit implementation, which must "split up" vectors due to widening conversions
-    // it doesn't help to do the overlapping read trick, due to 32-bit multiply in the formula
+    // 128-bit implementation, which must "split up" vectors due to widening
+    // conversions
+    // it doesn't help to do the overlapping read trick, due to 32-bit multiply in
+    // the formula
     IntVector acc1 = IntVector.zero(IntVector.SPECIES_128);
     IntVector acc2 = IntVector.zero(IntVector.SPECIES_128);
     var conversion_short = signed ? B2S : ZERO_EXTEND_B2S;
@@ -1091,7 +1101,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return sum;
   }
 
-  // Experiments suggest that we need at least 8 lanes so that the overhead of going with the vector
+  // Experiments suggest that we need at least 8 lanes so that the overhead of
+  // going with the vector
   // approach and counting trues on vector masks pays off.
   private static final boolean ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO = INT_SPECIES.length() >= 8;
 
@@ -1099,7 +1110,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   public int findNextGEQ(int[] buffer, int target, int from, int to) {
     if (ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO) {
       // This effectively implements the V1 intersection algorithm from
-      // D. Lemire, L. Boytsov, N. Kurz SIMD Compression and the Intersection of Sorted Integers
+      // D. Lemire, L. Boytsov, N. Kurz SIMD Compression and the Intersection of
+      // Sorted Integers
       // with T = INT_SPECIES.length(), ie. T=8 with AVX2 and T=16 with AVX-512
       // https://arxiv.org/pdf/1401.6399
       for (; from + INT_SPECIES.length() < to; from += INT_SPECIES.length() + 1) {
@@ -1246,24 +1258,29 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         FloatVector v = FloatVector.fromArray(FLOAT_SPECIES, vector, i);
 
         // Make sure the value is within the quantile range, cutting off the tails
-        // see first parenthesis in equation: byte = (float - minQuantile) * 127/(maxQuantile -
+        // see first parenthesis in equation: byte = (float - minQuantile) *
+        // 127/(maxQuantile -
         // minQuantile)
         FloatVector dxc = v.min(maxQuantile).max(minQuantile).sub(minQuantile);
         // Scale the value to the range [0, 127], this is our quantized value
         // scale = 127/(maxQuantile - minQuantile)
-        // Math.round rounds to positive infinity, so do the same by +0.5 then truncating to int
+        // Math.round rounds to positive infinity, so do the same by +0.5 then
+        // truncating to int
         Vector<Integer> roundedDxs =
             fma(dxc, dxc.broadcast(scale), dxc.broadcast(0.5f)).convert(VectorOperators.F2I, 0);
         // output this to the array
         ((ByteVector) roundedDxs.castShape(BYTE_SPECIES, 0)).intoArray(dest, i);
-        // We multiply by `alpha` here to get the quantized value back into the original range
+        // We multiply by `alpha` here to get the quantized value back into the original
+        // range
         // to aid in calculating the corrective offset
         FloatVector dxq = ((FloatVector) roundedDxs.castShape(FLOAT_SPECIES, 0)).mul(alpha);
         // Calculate the corrective offset that needs to be applied to the score
         // in addition to the `byte * minQuantile * alpha` term in the equation
-        // we add the `(dx - dxq) * dxq` term to account for the fact that the quantized value
+        // we add the `(dx - dxq) * dxq` term to account for the fact that the quantized
+        // value
         // will be rounded to the nearest whole number and lose some accuracy
-        // Additionally, we account for the global correction of `minQuantile^2` in the equation
+        // Additionally, we account for the global correction of `minQuantile^2` in the
+        // equation
         sum =
             fma(
                 v.sub(minQuantile / 2f),
@@ -1375,7 +1392,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     float invNorm = 1.0f / (float) Math.sqrt(l1norm);
     int i = 0;
 
-    // if the array size is large (> 2x platform vector size), it's worth the overhead to vectorize
+    // if the array size is large (> 2x platform vector size), it's worth the
+    // overhead to vectorize
     if (v.length > 2 * FLOAT_SPECIES.length()) {
       i += FLOAT_SPECIES.loopBound(v.length);
       l2normalizeBody(v, invNorm, i);
