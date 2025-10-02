@@ -1,0 +1,9 @@
+[
+  {
+    "match": [ "org.apache.lucene.internal.vectorization.PanamaVectorUtilSupport::*" ],
+    "inline": [
+      "-org.apache.lucene.internal.vectorization.PanamaVectorUtilSupport$ArrayLoader::*",
+      "-org.apache.lucene.internal.vectorization.PanamaVectorUtilSupport$MemorySegmentLoader::*"
+    ]
+  }
+]
