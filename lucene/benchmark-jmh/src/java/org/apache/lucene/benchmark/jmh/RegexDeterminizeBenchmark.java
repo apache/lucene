@@ -42,16 +42,17 @@ import org.openjdk.jmh.annotations.Warmup;
 public class RegexDeterminizeBenchmark {
 
   @Param({
-    // Simple patterns
-    "a+",
-    ".*",
-    "[0-9]+",
-    // Medium complexity
-    "a(b+|c+)d",
-    "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}",
-    // Complex patterns
+    "^(a)?a",
+    "((a|b)?b)+",
+    "(aaa)?aaa",
+    "^(a(b(c)?)?)?abc",
     "(a+)+",
-    "(cat|dog|bird|fish|mouse)"
+    "(a*)+",
+    "(b+)+",
+    "(|f)?+",
+    "(y+)*",
+    "(foo|foobar)*",
+    "(aa+|bb+)+"
   })
   public String regexPattern;
 
