@@ -17,61 +17,238 @@
 
 package org.apache.lucene.internal.vectorization;
 
+import java.lang.foreign.MemorySegment;
+
 /**
  * Interface for implementations of VectorUtil support.
  *
  * @lucene.internal
  */
-public interface VectorUtilSupport {
+public interface VectorUtilSupport<IByteVector, IFloatVector> {
+  IByteVector bytesFromArray(byte[] array);
+
+  IByteVector bytesFromMemorySegment(MemorySegment segment);
+
+  IFloatVector floatsFromArray(float[] array);
+
+  IFloatVector floatsFromMemorySegment(MemorySegment segment);
+
+  default float dotProductFloats(float[] a, float[] b) {
+    return dotProductFloats(floatsFromArray(a), floatsFromArray(b));
+  }
+
+  default float dotProductFloats(float[] a, MemorySegment b) {
+    return dotProductFloats(floatsFromArray(a), floatsFromMemorySegment(b));
+  }
+
+  default float dotProductFloats(MemorySegment a, MemorySegment b) {
+    return dotProductFloats(floatsFromMemorySegment(a), floatsFromMemorySegment(b));
+  }
 
   /** Calculates the dot product of the given float arrays. */
-  float dotProduct(float[] a, float[] b);
+  float dotProductFloats(IFloatVector a, IFloatVector b);
+
+  default float cosineFloats(float[] a, float[] b) {
+    return cosineFloats(floatsFromArray(a), floatsFromArray(b));
+  }
+
+  default float cosineFloats(float[] a, MemorySegment b) {
+    return cosineFloats(floatsFromArray(a), floatsFromMemorySegment(b));
+  }
+
+  default float cosineFloats(MemorySegment a, MemorySegment b) {
+    return cosineFloats(floatsFromMemorySegment(a), floatsFromMemorySegment(b));
+  }
 
   /** Returns the cosine similarity between the two vectors. */
-  float cosine(float[] v1, float[] v2);
+  float cosineFloats(IFloatVector v1, IFloatVector v2);
+
+  default float squareDistanceFloats(float[] a, float[] b) {
+    return squareDistanceFloats(floatsFromArray(a), floatsFromArray(b));
+  }
+
+  default float squareDistanceFloats(float[] a, MemorySegment b) {
+    return squareDistanceFloats(floatsFromArray(a), floatsFromMemorySegment(b));
+  }
+
+  default float squareDistanceFloats(MemorySegment a, MemorySegment b) {
+    return squareDistanceFloats(floatsFromMemorySegment(a), floatsFromMemorySegment(b));
+  }
 
   /** Returns the sum of squared differences of the two vectors. */
-  float squareDistance(float[] a, float[] b);
+  float squareDistanceFloats(IFloatVector a, IFloatVector b);
+
+  default int dotProductBytes(byte[] a, byte[] b) {
+    return dotProductBytes(bytesFromArray(a), bytesFromArray(b));
+  }
+
+  default int dotProductBytes(byte[] a, MemorySegment b) {
+    return dotProductBytes(bytesFromArray(a), bytesFromMemorySegment(b));
+  }
+
+  default int dotProductBytes(MemorySegment a, MemorySegment b) {
+    return dotProductBytes(bytesFromMemorySegment(a), bytesFromMemorySegment(b));
+  }
 
   /** Returns the dot product computed over signed bytes. */
-  int dotProduct(byte[] a, byte[] b);
+  int dotProductBytes(IByteVector a, IByteVector b);
+
+  default int int4DotProduct(byte[] a, byte[] b) {
+    return int4DotProduct(bytesFromArray(a), bytesFromArray(b));
+  }
+
+  default int int4DotProduct(byte[] a, MemorySegment b) {
+    return int4DotProduct(bytesFromArray(a), bytesFromMemorySegment(b));
+  }
+
+  default int int4DotProduct(MemorySegment a, MemorySegment b) {
+    return int4DotProduct(bytesFromMemorySegment(a), bytesFromMemorySegment(b));
+  }
 
   /** Returns the dot product computed over unsigned half-bytes, both uncompressed. */
-  int int4DotProduct(byte[] a, byte[] b);
+  int int4DotProduct(IByteVector a, IByteVector b);
+
+  default int int4DotProductSinglePacked(byte[] a, byte[] b) {
+    return int4DotProductSinglePacked(bytesFromArray(a), bytesFromArray(b));
+  }
+
+  default int int4DotProductSinglePacked(byte[] a, MemorySegment b) {
+    return int4DotProductSinglePacked(bytesFromArray(a), bytesFromMemorySegment(b));
+  }
+
+  default int int4DotProductSinglePacked(MemorySegment a, MemorySegment b) {
+    return int4DotProductSinglePacked(bytesFromMemorySegment(a), bytesFromMemorySegment(b));
+  }
 
   /** Returns the dot product computed over unsigned half-bytes, one compressed. */
-  int int4DotProductSinglePacked(byte[] unpacked, byte[] packed);
+  int int4DotProductSinglePacked(IByteVector unpacked, IByteVector packed);
+
+  default int int4DotProductBothPacked(byte[] a, byte[] b) {
+    return int4DotProductBothPacked(bytesFromArray(a), bytesFromArray(b));
+  }
+
+  default int int4DotProductBothPacked(byte[] a, MemorySegment b) {
+    return int4DotProductBothPacked(bytesFromArray(a), bytesFromMemorySegment(b));
+  }
+
+  default int int4DotProductBothPacked(MemorySegment a, MemorySegment b) {
+    return int4DotProductBothPacked(bytesFromMemorySegment(a), bytesFromMemorySegment(b));
+  }
 
   /** Returns the dot product computed over unsigned half-bytes, both compressed. */
-  int int4DotProductBothPacked(byte[] a, byte[] b);
+  int int4DotProductBothPacked(IByteVector a, IByteVector b);
+
+  default int uint8DotProduct(byte[] a, byte[] b) {
+    return uint8DotProduct(bytesFromArray(a), bytesFromArray(b));
+  }
+
+  default int uint8DotProduct(byte[] a, MemorySegment b) {
+    return uint8DotProduct(bytesFromArray(a), bytesFromMemorySegment(b));
+  }
+
+  default int uint8DotProduct(MemorySegment a, MemorySegment b) {
+    return uint8DotProduct(bytesFromMemorySegment(a), bytesFromMemorySegment(b));
+  }
 
   /** Returns the dot product computed as though the bytes were unsigned. */
-  int uint8DotProduct(byte[] a, byte[] b);
+  int uint8DotProduct(IByteVector a, IByteVector b);
+
+  default float cosineBytes(byte[] a, byte[] b) {
+    return cosineBytes(bytesFromArray(a), bytesFromArray(b));
+  }
+
+  default float cosineBytes(byte[] a, MemorySegment b) {
+    return cosineBytes(bytesFromArray(a), bytesFromMemorySegment(b));
+  }
+
+  default float cosineBytes(MemorySegment a, MemorySegment b) {
+    return cosineBytes(bytesFromMemorySegment(a), bytesFromMemorySegment(b));
+  }
 
   /** Returns the cosine similarity between the two byte vectors. */
-  float cosine(byte[] a, byte[] b);
+  float cosineBytes(IByteVector a, IByteVector b);
+
+  default int squareDistanceBytes(byte[] a, byte[] b) {
+    return squareDistanceBytes(bytesFromArray(a), bytesFromArray(b));
+  }
+
+  default int squareDistanceBytes(byte[] a, MemorySegment b) {
+    return squareDistanceBytes(bytesFromArray(a), bytesFromMemorySegment(b));
+  }
+
+  default int squareDistanceBytes(MemorySegment a, MemorySegment b) {
+    return squareDistanceBytes(bytesFromMemorySegment(a), bytesFromMemorySegment(b));
+  }
 
   /** Returns the sum of squared differences of the two byte vectors. */
-  int squareDistance(byte[] a, byte[] b);
+  int squareDistanceBytes(IByteVector a, IByteVector b);
+
+  default int int4SquareDistance(byte[] a, byte[] b) {
+    return int4SquareDistance(bytesFromArray(a), bytesFromArray(b));
+  }
+
+  default int int4SquareDistance(byte[] a, MemorySegment b) {
+    return int4SquareDistance(bytesFromArray(a), bytesFromMemorySegment(b));
+  }
+
+  default int int4SquareDistance(MemorySegment a, MemorySegment b) {
+    return int4SquareDistance(bytesFromMemorySegment(a), bytesFromMemorySegment(b));
+  }
 
   /**
    * Returns the sum of squared differences between two unsigned half-byte vectors, both
    * uncompressed.
    */
-  int int4SquareDistance(byte[] a, byte[] b);
+  int int4SquareDistance(IByteVector a, IByteVector b);
+
+  default int int4SquareDistanceSinglePacked(byte[] a, byte[] b) {
+    return int4SquareDistanceSinglePacked(bytesFromArray(a), bytesFromArray(b));
+  }
+
+  default int int4SquareDistanceSinglePacked(byte[] a, MemorySegment b) {
+    return int4SquareDistanceSinglePacked(bytesFromArray(a), bytesFromMemorySegment(b));
+  }
+
+  default int int4SquareDistanceSinglePacked(MemorySegment a, MemorySegment b) {
+    return int4SquareDistanceSinglePacked(bytesFromMemorySegment(a), bytesFromMemorySegment(b));
+  }
 
   /**
    * Returns the sum of squared differences between two unsigned half-byte vectors, one compressed.
    */
-  int int4SquareDistanceSinglePacked(byte[] unpacked, byte[] packed);
+  int int4SquareDistanceSinglePacked(IByteVector unpacked, IByteVector packed);
+
+  default int int4SquareDistanceBothPacked(byte[] a, byte[] b) {
+    return int4SquareDistanceBothPacked(bytesFromArray(a), bytesFromArray(b));
+  }
+
+  default int int4SquareDistanceBothPacked(byte[] a, MemorySegment b) {
+    return int4SquareDistanceBothPacked(bytesFromArray(a), bytesFromMemorySegment(b));
+  }
+
+  default int int4SquareDistanceBothPacked(MemorySegment a, MemorySegment b) {
+    return int4SquareDistanceBothPacked(bytesFromMemorySegment(a), bytesFromMemorySegment(b));
+  }
 
   /**
    * Returns the sum of squared differences between two unsigned half-byte vectors, both compressed.
    */
-  int int4SquareDistanceBothPacked(byte[] a, byte[] b);
+  int int4SquareDistanceBothPacked(IByteVector a, IByteVector b);
+
+  default int uint8SquareDistance(byte[] a, byte[] b) {
+    return uint8SquareDistance(bytesFromArray(a), bytesFromArray(b));
+  }
+
+  default int uint8SquareDistance(byte[] a, MemorySegment b) {
+    return uint8SquareDistance(bytesFromArray(a), bytesFromMemorySegment(b));
+  }
+
+  default int uint8SquareDistance(MemorySegment a, MemorySegment b) {
+    return uint8SquareDistance(bytesFromMemorySegment(a), bytesFromMemorySegment(b));
+  }
 
   /** Returns the sum of squared differences of the two unsigned byte vectors. */
-  int uint8SquareDistance(byte[] a, byte[] b);
+  int uint8SquareDistance(IByteVector a, IByteVector b);
 
   /**
    * Given an array {@code buffer} that is sorted between indexes {@code 0} inclusive and {@code to}
@@ -80,6 +257,18 @@ public interface VectorUtilSupport {
    * to} is returned.
    */
   int findNextGEQ(int[] buffer, int target, int from, int to);
+
+  default long int4BitDotProduct(byte[] a, byte[] b) {
+    return int4BitDotProduct(bytesFromArray(a), bytesFromArray(b));
+  }
+
+  default long int4BitDotProduct(byte[] a, MemorySegment b) {
+    return int4BitDotProduct(bytesFromArray(a), bytesFromMemorySegment(b));
+  }
+
+  default long int4BitDotProduct(MemorySegment a, MemorySegment b) {
+    return int4BitDotProduct(bytesFromMemorySegment(a), bytesFromMemorySegment(b));
+  }
 
   /**
    * Compute the dot product between a quantized int4 vector and a binary quantized vector. It is
@@ -92,7 +281,7 @@ public interface VectorUtilSupport {
    * @param binaryQuantized byte packed binary quantized vector
    * @return the dot product
    */
-  long int4BitDotProduct(byte[] int4Quantized, byte[] binaryQuantized);
+  long int4BitDotProduct(IByteVector int4Quantized, IByteVector binaryQuantized);
 
   /**
    * Quantizes {@code vector}, putting the result into {@code dest}.

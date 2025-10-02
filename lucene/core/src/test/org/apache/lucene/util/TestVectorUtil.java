@@ -32,13 +32,13 @@ public class TestVectorUtil extends LuceneTestCase {
   public static final double DELTA = 1e-4;
 
   public void testBasicDotProduct() {
-    assertEquals(5, VectorUtil.dotProduct(new float[] {1, 2, 3}, new float[] {-10, 0, 5}), 0);
+    assertEquals(5, VectorUtil.dotProductFloats(new float[] {1, 2, 3}, new float[] {-10, 0, 5}), 0);
   }
 
   public void testSelfDotProduct() {
     // the dot product of a vector with itself is equal to the sum of the squares of its components
     float[] v = randomVector();
-    assertEquals(l2(v), VectorUtil.dotProduct(v, v), DELTA);
+    assertEquals(l2(v), VectorUtil.dotProductFloats(v, v), DELTA);
   }
 
   public void testOrthogonalDotProduct() {
@@ -49,27 +49,28 @@ public class TestVectorUtil extends LuceneTestCase {
     float[] u = new float[2];
     u[0] = v[1];
     u[1] = -v[0];
-    assertEquals(0, VectorUtil.dotProduct(u, v), DELTA);
+    assertEquals(0, VectorUtil.dotProductFloats(u, v), DELTA);
   }
 
   public void testDotProductThrowsForDimensionMismatch() {
     float[] v = {1, 0, 0}, u = {0, 1};
-    expectThrows(IllegalArgumentException.class, () -> VectorUtil.dotProduct(u, v));
+    expectThrows(IllegalArgumentException.class, () -> VectorUtil.dotProductFloats(u, v));
   }
 
   public void testSelfSquareDistance() {
     // the l2 distance of a vector with itself is zero
     float[] v = randomVector();
-    assertEquals(0, VectorUtil.squareDistance(v, v), DELTA);
+    assertEquals(0, VectorUtil.squareDistanceFloats(v, v), DELTA);
   }
 
   public void testBasicSquareDistance() {
-    assertEquals(12, VectorUtil.squareDistance(new float[] {1, 2, 3}, new float[] {-1, 0, 5}), 0);
+    assertEquals(
+        12, VectorUtil.squareDistanceFloats(new float[] {1, 2, 3}, new float[] {-1, 0, 5}), 0);
   }
 
   public void testSquareDistanceThrowsForDimensionMismatch() {
     float[] v = {1, 0, 0}, u = {0, 1};
-    expectThrows(IllegalArgumentException.class, () -> VectorUtil.squareDistance(u, v));
+    expectThrows(IllegalArgumentException.class, () -> VectorUtil.squareDistanceFloats(u, v));
   }
 
   public void testRandomSquareDistance() {
@@ -77,12 +78,12 @@ public class TestVectorUtil extends LuceneTestCase {
     // its components
     float[] v = randomVector();
     float[] u = negative(v);
-    assertEquals(4 * l2(v), VectorUtil.squareDistance(u, v), DELTA);
+    assertEquals(4 * l2(v), VectorUtil.squareDistanceFloats(u, v), DELTA);
   }
 
   public void testBasicCosine() {
     assertEquals(
-        0.11952f, VectorUtil.cosine(new float[] {1, 2, 3}, new float[] {-10, 0, 5}), DELTA);
+        0.11952f, VectorUtil.cosineFloats(new float[] {1, 2, 3}, new float[] {-10, 0, 5}), DELTA);
   }
 
   public void testSelfCosine() {
@@ -90,7 +91,7 @@ public class TestVectorUtil extends LuceneTestCase {
     float[] v = randomVector();
     // ensure the vector is non-zero so that cosine is defined
     v[0] = random().nextFloat() + 0.01f;
-    assertEquals(1.0f, VectorUtil.cosine(v, v), DELTA);
+    assertEquals(1.0f, VectorUtil.cosineFloats(v, v), DELTA);
   }
 
   public void testOrthogonalCosine() {
@@ -102,12 +103,12 @@ public class TestVectorUtil extends LuceneTestCase {
     float[] u = new float[2];
     u[0] = v[1];
     u[1] = -v[0];
-    assertEquals(0, VectorUtil.cosine(u, v), DELTA);
+    assertEquals(0, VectorUtil.cosineFloats(u, v), DELTA);
   }
 
   public void testCosineThrowsForDimensionMismatch() {
     float[] v = {1, 0, 0}, u = {0, 1};
-    expectThrows(IllegalArgumentException.class, () -> VectorUtil.cosine(u, v));
+    expectThrows(IllegalArgumentException.class, () -> VectorUtil.cosineFloats(u, v));
   }
 
   public void testNormalize() {
@@ -226,7 +227,7 @@ public class TestVectorUtil extends LuceneTestCase {
   public void testBasicDotProductBytes() {
     byte[] a = new byte[] {1, 2, 3};
     byte[] b = new byte[] {-10, 0, 5};
-    assertEquals(5, VectorUtil.dotProduct(a, b), 0);
+    assertEquals(5, VectorUtil.dotProductBytes(a, b), 0);
     float denom = a.length * (1 << 15);
     assertEquals(0.5 + 5 / denom, VectorUtil.dotProductScore(a, b), DELTA);
 
@@ -246,7 +247,7 @@ public class TestVectorUtil extends LuceneTestCase {
   public void testSelfDotProductBytes() {
     // the dot product of a vector with itself is equal to the sum of the squares of its components
     byte[] v = randomVectorBytes();
-    assertEquals(l2(v), VectorUtil.dotProduct(v, v), DELTA);
+    assertEquals(l2(v), VectorUtil.dotProductBytes(v, v), DELTA);
   }
 
   public void testOrthogonalDotProductBytes() {
@@ -257,17 +258,18 @@ public class TestVectorUtil extends LuceneTestCase {
     byte[] b = new byte[2];
     b[0] = a[1];
     b[1] = (byte) -a[0];
-    assertEquals(0, VectorUtil.dotProduct(a, b), DELTA);
+    assertEquals(0, VectorUtil.dotProductBytes(a, b), DELTA);
   }
 
   public void testSelfSquareDistanceBytes() {
     // the l2 distance of a vector with itself is zero
     byte[] v = randomVectorBytes();
-    assertEquals(0, VectorUtil.squareDistance(v, v), DELTA);
+    assertEquals(0, VectorUtil.squareDistanceBytes(v, v), DELTA);
   }
 
   public void testBasicSquareDistanceBytes() {
-    assertEquals(12, VectorUtil.squareDistance(new byte[] {1, 2, 3}, new byte[] {-1, 0, 5}), 0);
+    assertEquals(
+        12, VectorUtil.squareDistanceBytes(new byte[] {1, 2, 3}, new byte[] {-1, 0, 5}), 0);
   }
 
   public void testRandomSquareDistanceBytes() {
@@ -275,7 +277,7 @@ public class TestVectorUtil extends LuceneTestCase {
     // its components
     byte[] v = randomVectorBytes();
     byte[] u = negative(v);
-    assertEquals(4 * l2(v), VectorUtil.squareDistance(u, v), DELTA);
+    assertEquals(4 * l2(v), VectorUtil.squareDistanceBytes(u, v), DELTA);
   }
 
   public void testBasicDotProductUint8() {
@@ -306,7 +308,8 @@ public class TestVectorUtil extends LuceneTestCase {
   }
 
   public void testBasicCosineBytes() {
-    assertEquals(0.11952f, VectorUtil.cosine(new byte[] {1, 2, 3}, new byte[] {-10, 0, 5}), DELTA);
+    assertEquals(
+        0.11952f, VectorUtil.cosineBytes(new byte[] {1, 2, 3}, new byte[] {-10, 0, 5}), DELTA);
   }
 
   public void testSelfCosineBytes() {
@@ -314,7 +317,7 @@ public class TestVectorUtil extends LuceneTestCase {
     byte[] v = randomVectorBytes();
     // ensure the vector is non-zero so that cosine is defined
     v[0] = (byte) (random().nextInt(126) + 1);
-    assertEquals(1.0f, VectorUtil.cosine(v, v), DELTA);
+    assertEquals(1.0f, VectorUtil.cosineBytes(v, v), DELTA);
   }
 
   public void testOrthogonalCosineBytes() {
@@ -326,7 +329,7 @@ public class TestVectorUtil extends LuceneTestCase {
     float[] u = new float[2];
     u[0] = v[1];
     u[1] = -v[0];
-    assertEquals(0, VectorUtil.cosine(u, v), DELTA);
+    assertEquals(0, VectorUtil.cosineFloats(u, v), DELTA);
   }
 
   interface ToIntBiFunction {

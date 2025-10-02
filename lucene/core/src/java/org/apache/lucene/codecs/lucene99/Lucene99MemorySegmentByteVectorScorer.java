@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.internal.vectorization;
+package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
@@ -25,9 +25,10 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MemorySegmentAccessInput;
+import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
-abstract sealed class Lucene99MemorySegmentByteVectorScorer
+public abstract sealed class Lucene99MemorySegmentByteVectorScorer
     extends RandomVectorScorer.AbstractRandomVectorScorer {
 
   final int vectorByteSize;
@@ -98,7 +99,7 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
     @Override
     public float score(int node) throws IOException {
       checkOrdinal(node);
-      float raw = PanamaVectorUtilSupport.cosine(query, getSegment(node));
+      float raw = VectorUtil.cosineBytes(query, getSegment(node));
       return (1 + raw) / 2;
     }
   }
@@ -112,7 +113,7 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
     public float score(int node) throws IOException {
       checkOrdinal(node);
       // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
-      float raw = PanamaVectorUtilSupport.dotProduct(query, getSegment(node));
+      float raw = VectorUtil.dotProductBytes(query, getSegment(node));
       return 0.5f + raw / (float) (query.length * (1 << 15));
     }
   }
@@ -125,7 +126,7 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
     @Override
     public float score(int node) throws IOException {
       checkOrdinal(node);
-      float raw = PanamaVectorUtilSupport.squareDistance(query, getSegment(node));
+      float raw = VectorUtil.squareDistanceBytes(query, getSegment(node));
       return 1 / (1f + raw);
     }
   }
@@ -138,7 +139,7 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
     @Override
     public float score(int node) throws IOException {
       checkOrdinal(node);
-      float raw = PanamaVectorUtilSupport.dotProduct(query, getSegment(node));
+      float raw = VectorUtil.dotProductBytes(query, getSegment(node));
       if (raw < 0) {
         return 1 / (1 + -1 * raw);
       }

@@ -17,13 +17,95 @@
 
 package org.apache.lucene.internal.vectorization;
 
+import static java.lang.foreign.ValueLayout.JAVA_BYTE;
+import static java.lang.foreign.ValueLayout.JAVA_FLOAT;
+import static java.lang.foreign.ValueLayout.JAVA_INT_UNALIGNED;
+import static java.nio.ByteOrder.LITTLE_ENDIAN;
 import static org.apache.lucene.util.VectorUtil.EPSILON;
 
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
-final class DefaultVectorUtilSupport implements VectorUtilSupport {
+final class DefaultVectorUtilSupport
+    implements VectorUtilSupport<
+        DefaultVectorUtilSupport.IByteVector, DefaultVectorUtilSupport.IFloatVector> {
+  interface IByteVector {
+    int length();
+
+    byte get(int index);
+
+    int getInt(int index);
+  }
+
+  record ArrayByteVector(byte[] array) implements IByteVector {
+    @Override
+    public int length() {
+      return array.length;
+    }
+
+    @Override
+    public byte get(int index) {
+      return array[index];
+    }
+
+    @Override
+    public int getInt(int index) {
+      return (int) BitUtil.VH_NATIVE_INT.get(array, index);
+    }
+  }
+
+  record MemorySegmentByteVector(MemorySegment segment) implements IByteVector {
+    private static final ValueLayout.OfInt JAVA_INT_LE =
+        JAVA_INT_UNALIGNED.withOrder(LITTLE_ENDIAN);
+
+    @Override
+    public int length() {
+      return Math.toIntExact(segment.byteSize());
+    }
+
+    @Override
+    public byte get(int index) {
+      return segment.getAtIndex(JAVA_BYTE, index);
+    }
+
+    @Override
+    public int getInt(int index) {
+      return segment.get(JAVA_INT_LE, index);
+    }
+  }
+
+  interface IFloatVector {
+    int length();
+
+    float get(int index);
+  }
+
+  record ArrayFloatVector(float[] array) implements IFloatVector {
+    @Override
+    public int length() {
+      return array.length;
+    }
+
+    @Override
+    public float get(int index) {
+      return array[index];
+    }
+  }
+
+  record MemorySegmentFloatVector(MemorySegment segment) implements IFloatVector {
+    @Override
+    public int length() {
+      return Math.toIntExact(segment.byteSize());
+    }
+
+    @Override
+    public float get(int index) {
+      return segment.getAtIndex(JAVA_FLOAT, index);
+    }
+  }
 
   DefaultVectorUtilSupport() {}
 
@@ -38,41 +120,63 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public float dotProduct(float[] a, float[] b) {
+  public IByteVector bytesFromArray(byte[] array) {
+    return new ArrayByteVector(array);
+  }
+
+  @Override
+  public IByteVector bytesFromMemorySegment(MemorySegment segment) {
+    return new MemorySegmentByteVector(segment);
+  }
+
+  @Override
+  public IFloatVector floatsFromArray(float[] array) {
+    return new ArrayFloatVector(array);
+  }
+
+  @Override
+  public IFloatVector floatsFromMemorySegment(MemorySegment segment) {
+    return new MemorySegmentFloatVector(segment);
+  }
+
+  @Override
+  public float dotProductFloats(IFloatVector a, IFloatVector b) {
     float res = 0f;
     int i = 0;
+    int length = a.length();
 
     // if the array is big, unroll it
-    if (a.length > 32) {
+    if (length > 32) {
       float acc1 = 0;
       float acc2 = 0;
       float acc3 = 0;
       float acc4 = 0;
-      int upperBound = a.length & ~(4 - 1);
+      int upperBound = length & ~(4 - 1);
       for (; i < upperBound; i += 4) {
-        acc1 = fma(a[i], b[i], acc1);
-        acc2 = fma(a[i + 1], b[i + 1], acc2);
-        acc3 = fma(a[i + 2], b[i + 2], acc3);
-        acc4 = fma(a[i + 3], b[i + 3], acc4);
+        acc1 = fma(a.get(i), b.get(i), acc1);
+        acc2 = fma(a.get(i + 1), b.get(i + 1), acc2);
+        acc3 = fma(a.get(i + 2), b.get(i + 2), acc3);
+        acc4 = fma(a.get(i + 3), b.get(i + 3), acc4);
       }
       res += acc1 + acc2 + acc3 + acc4;
     }
 
-    for (; i < a.length; i++) {
-      res = fma(a[i], b[i], res);
+    for (; i < length; i++) {
+      res = fma(a.get(i), b.get(i), res);
     }
     return res;
   }
 
   @Override
-  public float cosine(float[] a, float[] b) {
+  public float cosineFloats(IFloatVector a, IFloatVector b) {
     float sum = 0.0f;
     float norm1 = 0.0f;
     float norm2 = 0.0f;
     int i = 0;
+    int length = a.length();
 
     // if the array is big, unroll it
-    if (a.length > 32) {
+    if (length > 32) {
       float sum1 = 0;
       float sum2 = 0;
       float norm1_1 = 0;
@@ -80,101 +184,102 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       float norm2_1 = 0;
       float norm2_2 = 0;
 
-      int upperBound = a.length & ~(2 - 1);
+      int upperBound = length & ~(2 - 1);
       for (; i < upperBound; i += 2) {
         // one
-        sum1 = fma(a[i], b[i], sum1);
-        norm1_1 = fma(a[i], a[i], norm1_1);
-        norm2_1 = fma(b[i], b[i], norm2_1);
+        sum1 = fma(a.get(i), b.get(i), sum1);
+        norm1_1 = fma(a.get(i), a.get(i), norm1_1);
+        norm2_1 = fma(b.get(i), b.get(i), norm2_1);
 
         // two
-        sum2 = fma(a[i + 1], b[i + 1], sum2);
-        norm1_2 = fma(a[i + 1], a[i + 1], norm1_2);
-        norm2_2 = fma(b[i + 1], b[i + 1], norm2_2);
+        sum2 = fma(a.get(i + 1), b.get(i + 1), sum2);
+        norm1_2 = fma(a.get(i + 1), a.get(i + 1), norm1_2);
+        norm2_2 = fma(b.get(i + 1), b.get(i + 1), norm2_2);
       }
       sum += sum1 + sum2;
       norm1 += norm1_1 + norm1_2;
       norm2 += norm2_1 + norm2_2;
     }
 
-    for (; i < a.length; i++) {
-      sum = fma(a[i], b[i], sum);
-      norm1 = fma(a[i], a[i], norm1);
-      norm2 = fma(b[i], b[i], norm2);
+    for (; i < length; i++) {
+      sum = fma(a.get(i), b.get(i), sum);
+      norm1 = fma(a.get(i), a.get(i), norm1);
+      norm2 = fma(b.get(i), b.get(i), norm2);
     }
     return (float) (sum / Math.sqrt((double) norm1 * (double) norm2));
   }
 
   @Override
-  public float squareDistance(float[] a, float[] b) {
+  public float squareDistanceFloats(IFloatVector a, IFloatVector b) {
     float res = 0;
     int i = 0;
+    int length = a.length();
 
     // if the array is big, unroll it
-    if (a.length > 32) {
+    if (length > 32) {
       float acc1 = 0;
       float acc2 = 0;
       float acc3 = 0;
       float acc4 = 0;
 
-      int upperBound = a.length & ~(4 - 1);
+      int upperBound = length & ~(4 - 1);
       for (; i < upperBound; i += 4) {
         // one
-        float diff1 = a[i] - b[i];
+        float diff1 = a.get(i) - b.get(i);
         acc1 = fma(diff1, diff1, acc1);
 
         // two
-        float diff2 = a[i + 1] - b[i + 1];
+        float diff2 = a.get(i + 1) - b.get(i + 1);
         acc2 = fma(diff2, diff2, acc2);
 
         // three
-        float diff3 = a[i + 2] - b[i + 2];
+        float diff3 = a.get(i + 2) - b.get(i + 2);
         acc3 = fma(diff3, diff3, acc3);
 
         // four
-        float diff4 = a[i + 3] - b[i + 3];
+        float diff4 = a.get(i + 3) - b.get(i + 3);
         acc4 = fma(diff4, diff4, acc4);
       }
       res += acc1 + acc2 + acc3 + acc4;
     }
 
-    for (; i < a.length; i++) {
-      float diff = a[i] - b[i];
+    for (; i < length; i++) {
+      float diff = a.get(i) - b.get(i);
       res = fma(diff, diff, res);
     }
     return res;
   }
 
   @Override
-  public int dotProduct(byte[] a, byte[] b) {
+  public int dotProductBytes(IByteVector a, IByteVector b) {
     int total = 0;
-    for (int i = 0; i < a.length; i++) {
-      total += a[i] * b[i];
+    for (int i = 0, length = a.length(); i < length; i++) {
+      total += a.get(i) * b.get(i);
     }
     return total;
   }
 
   @Override
-  public int uint8DotProduct(byte[] a, byte[] b) {
+  public int uint8DotProduct(IByteVector a, IByteVector b) {
     int total = 0;
-    for (int i = 0; i < a.length; i++) {
-      total += Byte.toUnsignedInt(a[i]) * Byte.toUnsignedInt(b[i]);
+    for (int i = 0, length = a.length(); i < length; i++) {
+      total += Byte.toUnsignedInt(a.get(i)) * Byte.toUnsignedInt(b.get(i));
     }
     return total;
   }
 
   @Override
-  public int int4DotProduct(byte[] a, byte[] b) {
-    return dotProduct(a, b);
+  public int int4DotProduct(IByteVector a, IByteVector b) {
+    return dotProductBytes(a, b);
   }
 
   @Override
-  public int int4DotProductSinglePacked(byte[] unpacked, byte[] packed) {
+  public int int4DotProductSinglePacked(IByteVector unpacked, IByteVector packed) {
     int total = 0;
-    for (int i = 0; i < packed.length; i++) {
-      byte packedByte = packed[i];
-      byte unpacked1 = unpacked[i];
-      byte unpacked2 = unpacked[i + packed.length];
+    for (int i = 0, length = packed.length(); i < length; i++) {
+      byte packedByte = packed.get(i);
+      byte unpacked1 = unpacked.get(i);
+      byte unpacked2 = unpacked.get(i + length);
       total += (packedByte & 0x0F) * unpacked2;
       total += ((packedByte & 0xFF) >> 4) * unpacked1;
     }
@@ -182,11 +287,11 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public int int4DotProductBothPacked(byte[] a, byte[] b) {
+  public int int4DotProductBothPacked(IByteVector a, IByteVector b) {
     int total = 0;
-    for (int i = 0; i < a.length; i++) {
-      byte aByte = a[i];
-      byte bByte = b[i];
+    for (int i = 0, length = a.length(); i < length; i++) {
+      byte aByte = a.get(i);
+      byte bByte = b.get(i);
       total += (aByte & 0x0F) * (bByte & 0x0F);
       total += ((aByte & 0xFF) >> 4) * ((bByte & 0xFF) >> 4);
     }
@@ -194,15 +299,15 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public float cosine(byte[] a, byte[] b) {
+  public float cosineBytes(IByteVector a, IByteVector b) {
     // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
     int sum = 0;
     int norm1 = 0;
     int norm2 = 0;
 
-    for (int i = 0; i < a.length; i++) {
-      byte elem1 = a[i];
-      byte elem2 = b[i];
+    for (int i = 0, length = a.length(); i < length; i++) {
+      byte elem1 = a.get(i);
+      byte elem2 = b.get(i);
       sum += elem1 * elem2;
       norm1 += elem1 * elem1;
       norm2 += elem2 * elem2;
@@ -211,28 +316,28 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public int squareDistance(byte[] a, byte[] b) {
+  public int squareDistanceBytes(IByteVector a, IByteVector b) {
     // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
     int squareSum = 0;
-    for (int i = 0; i < a.length; i++) {
-      int diff = a[i] - b[i];
+    for (int i = 0, length = a.length(); i < length; i++) {
+      int diff = a.get(i) - b.get(i);
       squareSum += diff * diff;
     }
     return squareSum;
   }
 
   @Override
-  public int int4SquareDistance(byte[] a, byte[] b) {
-    return squareDistance(a, b);
+  public int int4SquareDistance(IByteVector a, IByteVector b) {
+    return squareDistanceBytes(a, b);
   }
 
   @Override
-  public int int4SquareDistanceSinglePacked(byte[] unpacked, byte[] packed) {
+  public int int4SquareDistanceSinglePacked(IByteVector unpacked, IByteVector packed) {
     int total = 0;
-    for (int i = 0; i < packed.length; i++) {
-      byte packedByte = packed[i];
-      byte unpacked1 = unpacked[i];
-      byte unpacked2 = unpacked[i + packed.length];
+    for (int i = 0, length = packed.length(); i < length; i++) {
+      byte packedByte = packed.get(i);
+      byte unpacked1 = unpacked.get(i);
+      byte unpacked2 = unpacked.get(i + length);
 
       int diff1 = (packedByte & 0x0F) - unpacked2;
       int diff2 = ((packedByte & 0xFF) >> 4) - unpacked1;
@@ -243,11 +348,11 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public int int4SquareDistanceBothPacked(byte[] a, byte[] b) {
+  public int int4SquareDistanceBothPacked(IByteVector a, IByteVector b) {
     int total = 0;
-    for (int i = 0; i < a.length; i++) {
-      byte aByte = a[i];
-      byte bByte = b[i];
+    for (int i = 0, length = a.length(); i < length; i++) {
+      byte aByte = a.get(i);
+      byte bByte = b.get(i);
 
       int diff1 = (aByte & 0x0F) - (bByte & 0x0F);
       int diff2 = ((aByte & 0xFF) >> 4) - ((bByte & 0xFF) >> 4);
@@ -258,11 +363,11 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public int uint8SquareDistance(byte[] a, byte[] b) {
+  public int uint8SquareDistance(IByteVector a, IByteVector b) {
     // Note: this will not overflow if dim < 2^16, since max(ubyte * ubyte) = 2^16.
     int squareSum = 0;
-    for (int i = 0; i < a.length; i++) {
-      int diff = Byte.toUnsignedInt(a[i]) - Byte.toUnsignedInt(b[i]);
+    for (int i = 0, length = a.length(); i < length; i++) {
+      int diff = Byte.toUnsignedInt(a.get(i)) - Byte.toUnsignedInt(b.get(i));
       squareSum += diff * diff;
     }
     return squareSum;
@@ -279,25 +384,22 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public long int4BitDotProduct(byte[] int4Quantized, byte[] binaryQuantized) {
+  public long int4BitDotProduct(IByteVector int4Quantized, IByteVector binaryQuantized) {
     return int4BitDotProductImpl(int4Quantized, binaryQuantized);
   }
 
-  public static long int4BitDotProductImpl(byte[] q, byte[] d) {
-    assert q.length == d.length * 4;
+  public static long int4BitDotProductImpl(IByteVector q, IByteVector d) {
+    assert q.length() == d.length() * 4;
     long ret = 0;
-    int size = d.length;
+    int size = d.length();
     for (int i = 0; i < 4; i++) {
       int r = 0;
       long subRet = 0;
-      for (final int upperBound = d.length & -Integer.BYTES; r < upperBound; r += Integer.BYTES) {
-        subRet +=
-            Integer.bitCount(
-                (int) BitUtil.VH_NATIVE_INT.get(q, i * size + r)
-                    & (int) BitUtil.VH_NATIVE_INT.get(d, r));
+      for (final int upperBound = size & -Integer.BYTES; r < upperBound; r += Integer.BYTES) {
+        subRet += Integer.bitCount(q.getInt(i * size + r) & d.getInt(r));
       }
-      for (; r < d.length; r++) {
-        subRet += Integer.bitCount((q[i * size + r] & d[r]) & 0xFF);
+      for (; r < size; r++) {
+        subRet += Integer.bitCount((q.get(i * size + r) & d.get(r)) & 0xFF);
       }
       ret += subRet << i;
     }
@@ -397,7 +499,8 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public float[] l2normalize(float[] v, boolean throwOnZero) {
-    double l1norm = this.dotProduct(v, v);
+    IFloatVector vector = new ArrayFloatVector(v);
+    double l1norm = this.dotProductFloats(vector, vector);
     if (l1norm == 0) {
       if (throwOnZero) {
         throw new IllegalArgumentException("Cannot normalize a zero-length vector");

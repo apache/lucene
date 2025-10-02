@@ -219,32 +219,32 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
 
     @Override
     int euclidean(MemorySegment doc) {
-      return PanamaVectorUtilSupport.uint8SquareDistance(targetBytes, doc);
+      return VectorUtil.uint8SquareDistance(targetBytes, doc);
     }
 
     @Override
     int int4Euclidean(MemorySegment doc) {
-      return PanamaVectorUtilSupport.int4SquareDistance(targetBytes, doc);
+      return VectorUtil.int4SquareDistance(targetBytes, doc);
     }
 
     @Override
     int compressedInt4Euclidean(MemorySegment doc) {
-      return PanamaVectorUtilSupport.int4SquareDistanceSinglePacked(targetBytes, doc);
+      return VectorUtil.int4SquareDistanceSinglePacked(targetBytes, doc);
     }
 
     @Override
     int dotProduct(MemorySegment doc) {
-      return PanamaVectorUtilSupport.uint8DotProduct(targetBytes, doc);
+      return VectorUtil.uint8DotProduct(targetBytes, doc);
     }
 
     @Override
     int int4DotProduct(MemorySegment doc) {
-      return PanamaVectorUtilSupport.int4DotProduct(targetBytes, doc);
+      return VectorUtil.int4DotProduct(targetBytes, doc);
     }
 
     @Override
     int compressedInt4DotProduct(MemorySegment doc) {
-      return PanamaVectorUtilSupport.int4DotProductSinglePacked(targetBytes, doc);
+      return VectorUtil.int4DotProductSinglePacked(targetBytes, doc);
     }
   }
 
@@ -292,32 +292,32 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
 
     @Override
     int euclidean(MemorySegment doc) {
-      return PanamaVectorUtilSupport.uint8SquareDistance(query, doc);
+      return VectorUtil.uint8SquareDistance(query, doc);
     }
 
     @Override
     int int4Euclidean(MemorySegment doc) {
-      return PanamaVectorUtilSupport.int4SquareDistance(query, doc);
+      return VectorUtil.int4SquareDistance(query, doc);
     }
 
     @Override
     int compressedInt4Euclidean(MemorySegment doc) {
-      return PanamaVectorUtilSupport.int4SquareDistanceBothPacked(query, doc);
+      return VectorUtil.int4SquareDistanceBothPacked(query, doc);
     }
 
     @Override
     int dotProduct(MemorySegment doc) {
-      return PanamaVectorUtilSupport.uint8DotProduct(query, doc);
+      return VectorUtil.uint8DotProduct(query, doc);
     }
 
     @Override
     int int4DotProduct(MemorySegment doc) {
-      return PanamaVectorUtilSupport.int4DotProduct(query, doc);
+      return VectorUtil.int4DotProduct(query, doc);
     }
 
     @Override
     int compressedInt4DotProduct(MemorySegment doc) {
-      return PanamaVectorUtilSupport.int4DotProductBothPacked(query, doc);
+      return VectorUtil.int4DotProductBothPacked(query, doc);
     }
   }
 }

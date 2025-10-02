@@ -176,7 +176,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     writeVectors(fieldData, clusterCenter, quantizer);
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     float centroidDp =
-        !fieldData.getVectors().isEmpty() ? VectorUtil.dotProduct(clusterCenter, clusterCenter) : 0;
+        !fieldData.getVectors().isEmpty()
+            ? VectorUtil.dotProductFloats(clusterCenter, clusterCenter)
+            : 0;
 
     writeMeta(
         fieldData.fieldInfo,
@@ -234,7 +236,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     writeSortedVectors(fieldData, clusterCenter, ordMap, scalarQuantizer);
     long quantizedVectorLength = vectorData.getFilePointer() - vectorDataOffset;
 
-    float centroidDp = VectorUtil.dotProduct(clusterCenter, clusterCenter);
+    float centroidDp = VectorUtil.dotProductFloats(clusterCenter, clusterCenter);
     writeMeta(
         fieldData.fieldInfo,
         maxDoc,
@@ -355,7 +357,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     DocsWithFieldSet docsWithField = writeVectorData(vectorData, quantizedVectorValues);
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     float centroidDp =
-        docsWithField.cardinality() > 0 ? VectorUtil.dotProduct(centroid, centroid) : 0;
+        docsWithField.cardinality() > 0 ? VectorUtil.dotProductFloats(centroid, centroid) : 0;
     writeMeta(
         fieldInfo,
         segmentWriteState.segmentInfo.maxDoc(),
@@ -447,7 +449,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     // Don't need access to the random vectors, we can just use the merged
     rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
     centroid = mergedCentroid;
-    cDotC = vectorCount > 0 ? VectorUtil.dotProduct(centroid, centroid) : 0;
+    cDotC = vectorCount > 0 ? VectorUtil.dotProductFloats(centroid, centroid) : 0;
     if (segmentWriteState.infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
       segmentWriteState.infoStream.message(
           QUANTIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
@@ -747,7 +749,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     public void addValue(int docID, float[] vectorValue) throws IOException {
       flatFieldVectorsWriter.addValue(docID, vectorValue);
       if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-        float dp = VectorUtil.dotProduct(vectorValue, vectorValue);
+        float dp = VectorUtil.dotProductFloats(vectorValue, vectorValue);
         float divisor = (float) Math.sqrt(dp);
         magnitudes.add(divisor);
         for (int i = 0; i < vectorValue.length; i++) {
@@ -802,7 +804,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
                 new byte[encoding.getDocPackedLength(quantized.length)];
           };
       this.centroid = centroid;
-      this.centroidDP = VectorUtil.dotProduct(centroid, centroid);
+      this.centroidDP = VectorUtil.dotProductFloats(centroid, centroid);
     }
 
     @Override
