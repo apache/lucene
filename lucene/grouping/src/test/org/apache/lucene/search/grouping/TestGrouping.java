@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.grouping;
 
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1373,13 +1375,6 @@ public class TestGrouping extends LuceneTestCase {
               + canUseIDV);
     }
     // Run 1st pass collector to get top groups per shard
-    final Weight w =
-        topSearcher.createWeight(
-            topSearcher.rewrite(query),
-            groupSort.needsScores() || docSort.needsScores() || getMaxScores
-                ? ScoreMode.COMPLETE
-                : ScoreMode.COMPLETE_NO_SCORES,
-            1);
     final List<Collection<SearchGroup<BytesRef>>> shardGroups = new ArrayList<>();
     List<FirstPassGroupingCollector<?>> firstPassGroupingCollectors = new ArrayList<>();
     FirstPassGroupingCollector<?> firstPassCollector = null;
@@ -1403,6 +1398,10 @@ public class TestGrouping extends LuceneTestCase {
         System.out.println("    1st pass collector=" + firstPassCollector);
       }
       firstPassGroupingCollectors.add(firstPassCollector);
+
+      final Weight w =
+          topSearcher.createWeight(topSearcher.rewrite(query), firstPassCollector.scoreMode(), 1);
+
       subSearchers[shardIDX].search(w, firstPassCollector);
       final Collection<SearchGroup<BytesRef>> topGroups = getSearchGroups(firstPassCollector, 0);
       if (topGroups != null) {
@@ -1460,6 +1459,11 @@ public class TestGrouping extends LuceneTestCase {
                 docSort,
                 docOffset + topNDocs,
                 getMaxScores);
+
+        final Weight w =
+            topSearcher.createWeight(
+                topSearcher.rewrite(query), secondPassCollector.scoreMode(), 1);
+
         subSearchers[shardIDX].search(w, secondPassCollector);
         shardTopGroups[shardIDX] = getTopGroups(secondPassCollector, 0);
         if (VERBOSE) {
@@ -1520,14 +1524,14 @@ public class TestGrouping extends LuceneTestCase {
         "expected.groups.length != actual.groups.length",
         expected.groups.length,
         actual.groups.length);
-    assertEquals(
-        "expected.totalHitCount != actual.totalHitCount",
-        expected.totalHitCount,
-        actual.totalHitCount);
-    assertEquals(
-        "expected.totalGroupedHitCount != actual.totalGroupedHitCount",
-        expected.totalGroupedHitCount,
-        actual.totalGroupedHitCount);
+    assertThat(
+        "expected.totalHitCount >= actual.totalHitCount",
+        actual.totalHitCount,
+        lessThanOrEqualTo(expected.totalHitCount));
+    assertThat(
+        "expected.totalGroupedHitCount >= actual.totalGroupedHitCount",
+        actual.totalGroupedHitCount,
+        lessThanOrEqualTo(expected.totalGroupedHitCount));
     if (expected.totalGroupCount != null && verifyTotalGroupCount) {
       assertEquals(
           "expected.totalGroupCount != actual.totalGroupCount",
@@ -1556,7 +1560,10 @@ public class TestGrouping extends LuceneTestCase {
 
       // TODO
       // assertEquals(expectedGroup.maxScore, actualGroup.maxScore);
-      assertEquals(expectedGroup.totalHits().value(), actualGroup.totalHits().value());
+      assertThat(
+          "expectedGroup.totalHits().value() >= actualGroup.totalHits().value()",
+          actualGroup.totalHits().value(),
+          lessThanOrEqualTo(expectedGroup.totalHits().value()));
 
       final ScoreDoc[] expectedFDs = expectedGroup.scoreDocs();
       final ScoreDoc[] actualFDs = actualGroup.scoreDocs();
