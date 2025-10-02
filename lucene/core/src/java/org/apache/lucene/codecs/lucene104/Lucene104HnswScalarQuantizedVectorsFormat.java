@@ -120,6 +120,7 @@ public class Lucene104HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat 
   /**
    * Constructs a format using the given graph construction parameters and scalar quantization.
    *
+   * @param encoding the quantization encoding used to encode the vectors
    * @param maxConn the maximum number of connections to a node in the HNSW graph
    * @param beamWidth the size of the queue maintained during graph construction.
    * @param numMergeWorkers number of workers (threads) that will be used when doing merge. If

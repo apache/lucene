@@ -58,7 +58,7 @@ abstract class QuantizedByteVectorValues extends ByteVectorValues {
   public abstract OptimizedScalarQuantizer getQuantizer();
 
   /**
-   * @return the scalar encoding used to pack the vectors.
+   * @return the scalar encoding used to pack the stored vectors.
    */
   public abstract ScalarEncoding getScalarEncoding();
 
