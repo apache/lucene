@@ -14,10 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.backward_codecs.lucene99;
 
 import static java.lang.String.format;
-import static org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.backward_codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
@@ -31,7 +31,6 @@ import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.CodecReader;
@@ -71,8 +70,8 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
       confidenceInterval = 0f;
     }
     format =
-        new Lucene99ScalarQuantizedVectorsFormat(
-            confidenceInterval, bits, bits == 4 ? random().nextBoolean() : false);
+        new Lucene99RWScalarQuantizedVectorsFormat(
+            confidenceInterval, bits, bits == 4 && random().nextBoolean());
     super.setUp();
   }
 
@@ -83,7 +82,7 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
 
   private Codec getCodec(float confidenceInterval) {
     return TestUtil.alwaysKnnVectorsFormat(
-        new Lucene99ScalarQuantizedVectorsFormat(
+        new Lucene99RWScalarQuantizedVectorsFormat(
             confidenceInterval, bits, bits == 4 ? random().nextBoolean() : false));
   }
 
@@ -195,9 +194,7 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
         LeafReader r = getOnlyLeafReader(reader);
         if (r instanceof CodecReader codecReader) {
           KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-          if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
-            knnVectorsReader = fieldsReader.getFieldReader("f");
-          }
+          knnVectorsReader = knnVectorsReader.unwrapReaderForField("f");
           if (knnVectorsReader instanceof Lucene99ScalarQuantizedVectorsReader quantizedReader) {
             assertNotNull(quantizedReader.getQuantizationState("f"));
             QuantizedByteVectorValues quantizedByteVectorValues =
@@ -259,9 +256,7 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
         LeafReader r = getOnlyLeafReader(reader);
         if (r instanceof CodecReader codecReader) {
           KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-          if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
-            knnVectorsReader = fieldsReader.getFieldReader(vectorFieldName);
-          }
+          knnVectorsReader = knnVectorsReader.unwrapReaderForField(vectorFieldName);
           if (knnVectorsReader instanceof Lucene99ScalarQuantizedVectorsReader quantizedReader) {
             FloatVectorValues floatVectorValues =
                 quantizedReader.getFloatVectorValues(vectorFieldName);

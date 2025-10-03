@@ -492,6 +492,12 @@ public final class VectorUtil {
     return IMPL.filterByScore(docBuffer, scoreBuffer, minScoreInclusive, upTo);
   }
 
+  /**
+   * Expands 64 integers in-place into a 256-element array by extracting individual bytes. Each
+   * 32-bit integer is split into 4 bytes. Only works on arrays with 256 length.
+   *
+   * @param arr the array to expand in-place
+   */
   public static void expand8(int[] arr) {
     IMPL.expand8(arr);
   }
