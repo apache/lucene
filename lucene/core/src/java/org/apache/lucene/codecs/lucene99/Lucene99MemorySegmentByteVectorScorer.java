@@ -28,6 +28,7 @@ import org.apache.lucene.store.MemorySegmentAccessInput;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
+/** A scorer of vectors whose element size is byte. */
 public abstract sealed class Lucene99MemorySegmentByteVectorScorer
     extends RandomVectorScorer.AbstractRandomVectorScorer {
 

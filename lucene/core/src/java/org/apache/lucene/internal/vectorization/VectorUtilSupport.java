@@ -52,14 +52,6 @@ public interface VectorUtilSupport<IByteVector, IFloatVector> {
     return cosineFloats(floatsFromArray(a), floatsFromArray(b));
   }
 
-  default float cosineFloats(float[] a, MemorySegment b) {
-    return cosineFloats(floatsFromArray(a), floatsFromMemorySegment(b));
-  }
-
-  default float cosineFloats(MemorySegment a, MemorySegment b) {
-    return cosineFloats(floatsFromMemorySegment(a), floatsFromMemorySegment(b));
-  }
-
   /** Returns the cosine similarity between the two vectors. */
   float cosineFloats(IFloatVector v1, IFloatVector v2);
 
@@ -116,19 +108,11 @@ public interface VectorUtilSupport<IByteVector, IFloatVector> {
     return int4DotProductSinglePacked(bytesFromArray(a), bytesFromMemorySegment(b));
   }
 
-  default int int4DotProductSinglePacked(MemorySegment a, MemorySegment b) {
-    return int4DotProductSinglePacked(bytesFromMemorySegment(a), bytesFromMemorySegment(b));
-  }
-
   /** Returns the dot product computed over unsigned half-bytes, one compressed. */
   int int4DotProductSinglePacked(IByteVector unpacked, IByteVector packed);
 
   default int int4DotProductBothPacked(byte[] a, byte[] b) {
     return int4DotProductBothPacked(bytesFromArray(a), bytesFromArray(b));
-  }
-
-  default int int4DotProductBothPacked(byte[] a, MemorySegment b) {
-    return int4DotProductBothPacked(bytesFromArray(a), bytesFromMemorySegment(b));
   }
 
   default int int4DotProductBothPacked(MemorySegment a, MemorySegment b) {
@@ -209,10 +193,6 @@ public interface VectorUtilSupport<IByteVector, IFloatVector> {
     return int4SquareDistanceSinglePacked(bytesFromArray(a), bytesFromMemorySegment(b));
   }
 
-  default int int4SquareDistanceSinglePacked(MemorySegment a, MemorySegment b) {
-    return int4SquareDistanceSinglePacked(bytesFromMemorySegment(a), bytesFromMemorySegment(b));
-  }
-
   /**
    * Returns the sum of squared differences between two unsigned half-byte vectors, one compressed.
    */
@@ -220,10 +200,6 @@ public interface VectorUtilSupport<IByteVector, IFloatVector> {
 
   default int int4SquareDistanceBothPacked(byte[] a, byte[] b) {
     return int4SquareDistanceBothPacked(bytesFromArray(a), bytesFromArray(b));
-  }
-
-  default int int4SquareDistanceBothPacked(byte[] a, MemorySegment b) {
-    return int4SquareDistanceBothPacked(bytesFromArray(a), bytesFromMemorySegment(b));
   }
 
   default int int4SquareDistanceBothPacked(MemorySegment a, MemorySegment b) {
@@ -260,14 +236,6 @@ public interface VectorUtilSupport<IByteVector, IFloatVector> {
 
   default long int4BitDotProduct(byte[] a, byte[] b) {
     return int4BitDotProduct(bytesFromArray(a), bytesFromArray(b));
-  }
-
-  default long int4BitDotProduct(byte[] a, MemorySegment b) {
-    return int4BitDotProduct(bytesFromArray(a), bytesFromMemorySegment(b));
-  }
-
-  default long int4BitDotProduct(MemorySegment a, MemorySegment b) {
-    return int4BitDotProduct(bytesFromMemorySegment(a), bytesFromMemorySegment(b));
   }
 
   /**

@@ -18,7 +18,7 @@
 package org.apache.lucene.internal.vectorization;
 
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
-import static java.lang.foreign.ValueLayout.JAVA_FLOAT;
+import static java.lang.foreign.ValueLayout.JAVA_FLOAT_UNALIGNED;
 import static java.lang.foreign.ValueLayout.JAVA_INT_UNALIGNED;
 import static java.nio.ByteOrder.LITTLE_ENDIAN;
 import static org.apache.lucene.util.VectorUtil.EPSILON;
@@ -40,40 +40,51 @@ final class DefaultVectorUtilSupport
     int getInt(int index);
   }
 
-  record ArrayByteVector(byte[] array) implements IByteVector {
+  static class ArrayByteVector implements IByteVector {
+    protected final byte[] array;
+
+    ArrayByteVector(byte[] array) {
+      this.array = array;
+    }
+
     @Override
-    public int length() {
+    public final int length() {
       return array.length;
     }
 
     @Override
-    public byte get(int index) {
+    public final byte get(int index) {
       return array[index];
     }
 
     @Override
-    public int getInt(int index) {
+    public final int getInt(int index) {
       return (int) BitUtil.VH_NATIVE_INT.get(array, index);
     }
   }
 
-  record MemorySegmentByteVector(MemorySegment segment) implements IByteVector {
-    private static final ValueLayout.OfInt JAVA_INT_LE =
-        JAVA_INT_UNALIGNED.withOrder(LITTLE_ENDIAN);
+  static class MemorySegmentByteVector implements IByteVector {
+    private static final ValueLayout.OfInt INT_LE = JAVA_INT_UNALIGNED.withOrder(LITTLE_ENDIAN);
+
+    protected final MemorySegment segment;
+
+    MemorySegmentByteVector(MemorySegment segment) {
+      this.segment = segment;
+    }
 
     @Override
-    public int length() {
+    public final int length() {
       return Math.toIntExact(segment.byteSize());
     }
 
     @Override
-    public byte get(int index) {
+    public final byte get(int index) {
       return segment.getAtIndex(JAVA_BYTE, index);
     }
 
     @Override
-    public int getInt(int index) {
-      return segment.get(JAVA_INT_LE, index);
+    public final int getInt(int index) {
+      return segment.get(INT_LE, index);
     }
   }
 
@@ -83,27 +94,42 @@ final class DefaultVectorUtilSupport
     float get(int index);
   }
 
-  record ArrayFloatVector(float[] array) implements IFloatVector {
+  static class ArrayFloatVector implements IFloatVector {
+    protected final float[] array;
+
+    ArrayFloatVector(float[] array) {
+      this.array = array;
+    }
+
     @Override
-    public int length() {
+    public final int length() {
       return array.length;
     }
 
     @Override
-    public float get(int index) {
+    public final float get(int index) {
       return array[index];
     }
   }
 
-  record MemorySegmentFloatVector(MemorySegment segment) implements IFloatVector {
+  static class MemorySegmentFloatVector implements IFloatVector {
+    private static final ValueLayout.OfFloat FLOAT_LE =
+        JAVA_FLOAT_UNALIGNED.withOrder(LITTLE_ENDIAN);
+
+    protected final MemorySegment segment;
+
+    MemorySegmentFloatVector(MemorySegment segment) {
+      this.segment = segment;
+    }
+
     @Override
-    public int length() {
+    public final int length() {
       return Math.toIntExact(segment.byteSize());
     }
 
     @Override
-    public float get(int index) {
-      return segment.getAtIndex(JAVA_FLOAT, index);
+    public final float get(int index) {
+      return segment.getAtIndex(FLOAT_LE, index);
     }
   }
 

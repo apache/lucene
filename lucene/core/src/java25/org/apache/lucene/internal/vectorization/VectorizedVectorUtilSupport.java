@@ -16,9 +16,6 @@
  */
 package org.apache.lucene.internal.vectorization;
 
-import static java.lang.foreign.ValueLayout.JAVA_BYTE;
-import static java.lang.foreign.ValueLayout.JAVA_FLOAT;
-import static java.lang.foreign.ValueLayout.JAVA_INT_UNALIGNED;
 import static java.nio.ByteOrder.LITTLE_ENDIAN;
 import static jdk.incubator.vector.VectorOperators.ADD;
 import static jdk.incubator.vector.VectorOperators.B2I;
@@ -31,7 +28,6 @@ import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_S2I;
 import static org.apache.lucene.util.VectorUtil.EPSILON;
 
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.DoubleVector;
 import jdk.incubator.vector.FloatVector;
@@ -43,7 +39,6 @@ import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
-import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
@@ -93,95 +88,58 @@ final class VectorizedVectorUtilSupport
   }
 
   interface IByteVector extends DefaultVectorUtilSupport.IByteVector {
-    ByteVector get(VectorSpecies<Byte> species, int index);
+    ByteVector get(VectorSpecies<Byte> species, int index); // additional vectorized impl
   }
 
-  record ArrayByteVector(byte[] array) implements IByteVector {
-    @Override
-    public int length() {
-      return array.length;
+  static class ArrayByteVector extends DefaultVectorUtilSupport.ArrayByteVector
+      implements IByteVector {
+    ArrayByteVector(byte[] array) {
+      super(array);
     }
 
     @Override
-    public ByteVector get(VectorSpecies<Byte> species, int index) {
+    public final ByteVector get(VectorSpecies<Byte> species, int index) {
       return ByteVector.fromArray(species, array, index);
     }
-
-    @Override
-    public byte get(int index) {
-      return array[index];
-    }
-
-    @Override
-    public int getInt(int index) {
-      return (int) BitUtil.VH_NATIVE_INT.get(array, index);
-    }
   }
 
-  record MemorySegmentByteVector(MemorySegment segment) implements IByteVector {
-    private static final ValueLayout.OfInt JAVA_INT_LE =
-        JAVA_INT_UNALIGNED.withOrder(LITTLE_ENDIAN);
-
-    @Override
-    public int length() {
-      return Math.toIntExact(segment.byteSize());
+  static class MemorySegmentByteVector extends DefaultVectorUtilSupport.MemorySegmentByteVector
+      implements IByteVector {
+    MemorySegmentByteVector(MemorySegment segment) {
+      super(segment);
     }
 
     @Override
-    public ByteVector get(VectorSpecies<Byte> species, int index) {
+    public final ByteVector get(VectorSpecies<Byte> species, int index) {
       return ByteVector.fromMemorySegment(species, segment, index, LITTLE_ENDIAN);
     }
-
-    @Override
-    public byte get(int index) {
-      return segment.getAtIndex(JAVA_BYTE, index);
-    }
-
-    @Override
-    public int getInt(int index) {
-      return segment.get(JAVA_INT_LE, index);
-    }
   }
 
-  interface IFloatVector {
-    int length();
-
-    FloatVector get(VectorSpecies<Float> species, int index);
-
-    float get(int index);
+  interface IFloatVector extends DefaultVectorUtilSupport.IFloatVector {
+    FloatVector get(VectorSpecies<Float> species, int index); // additional vectorized impl
   }
 
-  record ArrayFloatVector(float[] array) implements IFloatVector {
-    @Override
-    public int length() {
-      return array.length;
+  static class ArrayFloatVector extends DefaultVectorUtilSupport.ArrayFloatVector
+      implements IFloatVector {
+    ArrayFloatVector(float[] array) {
+      super(array);
     }
 
     @Override
-    public FloatVector get(VectorSpecies<Float> species, int index) {
+    public final FloatVector get(VectorSpecies<Float> species, int index) {
       return FloatVector.fromArray(species, array, index);
     }
-
-    @Override
-    public float get(int index) {
-      return array[index];
-    }
   }
 
-  record MemorySegmentFloatVector(MemorySegment segment) implements IFloatVector {
-    @Override
-    public int length() {
-      return Math.toIntExact(segment.byteSize());
+  static class MemorySegmentFloatVector extends DefaultVectorUtilSupport.MemorySegmentFloatVector
+      implements IFloatVector {
+    MemorySegmentFloatVector(MemorySegment segment) {
+      super(segment);
     }
 
     @Override
-    public FloatVector get(VectorSpecies<Float> species, int index) {
+    public final FloatVector get(VectorSpecies<Float> species, int index) {
       return FloatVector.fromMemorySegment(species, segment, index, LITTLE_ENDIAN);
-    }
-
-    @Override
-    public float get(int index) {
-      return segment.getAtIndex(JAVA_FLOAT, index);
     }
   }
 
