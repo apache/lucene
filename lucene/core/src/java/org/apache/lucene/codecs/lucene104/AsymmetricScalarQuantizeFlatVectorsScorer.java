@@ -22,6 +22,10 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
+/**
+ * Extension of {@link FlatVectorsScorer} that allows using two different vector codings for the
+ * "scoring" or "query" vectors and the "target" or "doc" vectors.
+ */
 public interface AsymmetricScalarQuantizeFlatVectorsScorer extends FlatVectorsScorer {
   /**
    * Returns a {@link RandomVectorScorerSupplier} that can be used to score asymmetric vector
