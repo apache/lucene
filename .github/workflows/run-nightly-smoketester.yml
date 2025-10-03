@@ -45,7 +45,7 @@ jobs:
           # This intentionally lists two versions, the last one is used as the system default (for running gradle).
           java-version: |
             ${{ matrix.java-version }}
-            24
+            25
 
       - name: Echo diagnostic paths and locations
         run: |
