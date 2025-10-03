@@ -22,8 +22,10 @@ import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.codecs.lucene104.AsymmetricScalarQuantizeFlatVectorsScorer;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorScorer;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
 import org.apache.lucene.codecs.lucene104.QuantizedByteVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -33,10 +35,10 @@ import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
-import org.apache.lucene.util.quantization.OptimizedScalarQuantizedVectorSimilarity;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 
-class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsScorer {
+class Lucene104MemorySegmentScalarQuantizedVectorScorer
+    implements AsymmetricScalarQuantizeFlatVectorsScorer {
   static final Lucene104MemorySegmentScalarQuantizedVectorScorer INSTANCE =
       new Lucene104MemorySegmentScalarQuantizedVectorScorer();
 
@@ -52,10 +54,20 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
       throws IOException {
     if (vectorValues instanceof QuantizedByteVectorValues quantized
-        && quantized.getSlice() instanceof MemorySegmentAccessInput input) {
+        && quantized.getSlice() instanceof MemorySegmentAccessInput input
+        && quantized.getScalarEncoding() != ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE) {
       return new RandomVectorScorerSupplierImpl(similarityFunction, quantized, input);
     }
     return DELEGATE.getRandomVectorScorerSupplier(similarityFunction, vectorValues);
+  }
+
+  @Override
+  public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
+      VectorSimilarityFunction similarityFunction,
+      QuantizedByteVectorValues scoringVectors,
+      QuantizedByteVectorValues targetVectors)
+      throws IOException {
+    throw new UnsupportedOperationException("no asymmetric encodings are supported yet");
   }
 
   @Override
@@ -63,7 +75,8 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, float[] target)
       throws IOException {
     if (vectorValues instanceof QuantizedByteVectorValues quantized
-        && quantized.getSlice() instanceof MemorySegmentAccessInput input) {
+        && quantized.getSlice() instanceof MemorySegmentAccessInput input
+        && quantized.getScalarEncoding() != ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE) {
       return new RandomVectorScorerImpl(similarityFunction, quantized, input, target);
     }
     return DELEGATE.getRandomVectorScorer(similarityFunction, vectorValues, target);
@@ -88,7 +101,7 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
     private final MemorySegmentAccessInput input;
     private final int vectorByteSize;
     private final int nodeSize;
-    private final OptimizedScalarQuantizedVectorSimilarity similarity;
+    private final VectorSimilarityFunction similarity;
     private byte[] scratch = null;
 
     RandomVectorScorerBase(
@@ -102,12 +115,7 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
       this.input = input;
       this.vectorByteSize = values.getVectorByteLength();
       this.nodeSize = this.vectorByteSize + CORRECTIVE_TERMS_SIZE;
-      this.similarity =
-          new OptimizedScalarQuantizedVectorSimilarity(
-              similarityFunction,
-              values.dimension(),
-              values.getCentroidDP(),
-              values.getScalarEncoding().getBits());
+      this.similarity = similarityFunction;
       checkInvariants();
     }
 
@@ -149,12 +157,12 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
           input.readInt(byteOffset + Integer.BYTES * 3));
     }
 
-    OptimizedScalarQuantizedVectorSimilarity getSimilarity() {
+    VectorSimilarityFunction getSimilarity() {
       return similarity;
     }
 
-    Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding getScalarEncoding() {
-      return values.getScalarEncoding();
+    QuantizedByteVectorValues getValues() {
+      return values;
     }
   }
 
@@ -174,10 +182,7 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
           values.getScalarEncoding();
       OptimizedScalarQuantizer quantizer = values.getQuantizer();
       scratch = new byte[values.getVectorByteLength()];
-      query =
-          new byte
-              [OptimizedScalarQuantizer.discretize(
-                  target.length, scalarEncoding.getDimensionsPerByte())];
+      query = new byte[scalarEncoding.getDiscreteDimensions(target.length)];
       // We make a copy as the quantization process mutates the input
       float[] copy = ArrayUtil.copyOfSubArray(target, 0, target.length);
       if (similarityFunction == COSINE) {
@@ -192,16 +197,20 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
     public float score(int node) throws IOException {
       MemorySegment docVector = getVector(node);
       float dotProduct =
-          switch (getScalarEncoding()) {
+          switch (getValues().getScalarEncoding()) {
             case UNSIGNED_BYTE -> PanamaVectorUtilSupport.uint8DotProduct(query, docVector);
-            case SEVEN_BIT -> PanamaVectorUtilSupport.uint8DotProduct(query, docVector);
+            case SEVEN_BIT -> PanamaVectorUtilSupport.dotProduct(query, docVector);
             case PACKED_NIBBLE ->
                 PanamaVectorUtilSupport.int4DotProductSinglePacked(query, docVector);
+            case SINGLE_BIT_QUERY_NIBBLE ->
+                throw new IllegalStateException(
+                    "this should be handled by the default implementation");
           };
       // Call getCorrectiveTerms() after computing dot product since corrective terms
       // bytes appear after the vector bytes, so this sequence of calls is more cache
       // friendly.
-      return getSimilarity().score(dotProduct, queryCorrectiveTerms, getCorrectiveTerms(node));
+      return Lucene104ScalarQuantizedVectorScorer.quantizedScore(
+          getSimilarity(), getValues(), dotProduct, queryCorrectiveTerms, getCorrectiveTerms(node));
     }
   }
 
@@ -246,15 +255,19 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSc
     public float score(int node) throws IOException {
       MemorySegment doc = getVector(node);
       float dotProduct =
-          switch (getScalarEncoding()) {
+          switch (getValues().getScalarEncoding()) {
             case UNSIGNED_BYTE -> PanamaVectorUtilSupport.uint8DotProduct(query, doc);
-            case SEVEN_BIT -> PanamaVectorUtilSupport.uint8DotProduct(query, doc);
+            case SEVEN_BIT -> PanamaVectorUtilSupport.dotProduct(query, doc);
             case PACKED_NIBBLE -> PanamaVectorUtilSupport.int4DotProductBothPacked(query, doc);
+            case SINGLE_BIT_QUERY_NIBBLE ->
+                throw new IllegalStateException(
+                    "this should be handled by the default implementation");
           };
       // Call getCorrectiveTerms() after computing dot product since corrective terms
       // bytes appear after the vector bytes, so this sequence of calls is more cache
       // friendly.
-      return getSimilarity().score(dotProduct, queryCorrectiveTerms, getCorrectiveTerms(node));
+      return Lucene104ScalarQuantizedVectorScorer.quantizedScore(
+          getSimilarity(), getValues(), dotProduct, queryCorrectiveTerms, getCorrectiveTerms(node));
     }
   }
 }

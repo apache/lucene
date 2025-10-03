@@ -170,9 +170,8 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           assertEquals(centroid.length, dims);
 
           OptimizedScalarQuantizer quantizer = new OptimizedScalarQuantizer(similarityFunction);
-          byte[] scratch =
-              new byte[OptimizedScalarQuantizer.discretize(dims, encoding.getDimensionsPerByte())];
-          byte[] expectedVector = new byte[encoding.getPackedLength(dims)];
+          byte[] scratch = new byte[encoding.getDiscreteDimensions(dims)];
+          byte[] expectedVector = new byte[encoding.getDocPackedLength(scratch.length)];
           if (similarityFunction == VectorSimilarityFunction.COSINE) {
             vectorValues =
                 new Lucene104ScalarQuantizedVectorsWriter.NormalizedFloatVectorValues(vectorValues);
@@ -187,10 +186,12 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
                     encoding.getBits(),
                     centroid);
             switch (encoding) {
-              case UNSIGNED_BYTE -> System.arraycopy(scratch, 0, expectedVector, 0, dims);
-              case SEVEN_BIT -> System.arraycopy(scratch, 0, expectedVector, 0, dims);
+              case UNSIGNED_BYTE, SEVEN_BIT ->
+                  System.arraycopy(scratch, 0, expectedVector, 0, dims);
               case PACKED_NIBBLE ->
                   OffHeapScalarQuantizedVectorValues.packNibbles(scratch, expectedVector);
+              case SINGLE_BIT_QUERY_NIBBLE ->
+                  OptimizedScalarQuantizer.packAsBinary(scratch, expectedVector);
             }
             assertArrayEquals(expectedVector, qvectorValues.vectorValue(docIndexIterator.index()));
             var actualCorrections = qvectorValues.getCorrectiveTerms(docIndexIterator.index());

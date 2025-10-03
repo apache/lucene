@@ -29,6 +29,7 @@ import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.codecs.lucene104.AsymmetricScalarQuantizeFlatVectorsScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.VectorUtil;
@@ -113,7 +114,8 @@ public abstract class VectorizationProvider {
   public abstract FlatVectorsScorer getLucene99ScalarQuantizedVectorsScorer();
 
   /** Returns a FlatVectorsScorer that supports the Lucene104 quantized format. */
-  public abstract FlatVectorsScorer getLucene104ScalarQuantizedVectorsScorer();
+  public abstract AsymmetricScalarQuantizeFlatVectorsScorer
+      getLucene104ScalarQuantizedVectorsScorer();
 
   /** Create a new {@link PostingDecodingUtil} for the given {@link IndexInput}. */
   public abstract PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException;
@@ -139,7 +141,8 @@ public abstract class VectorizationProvider {
             "Java runtime is using JVMCI Compiler; Java vector incubator API can't be enabled.");
         return new DefaultVectorizationProvider();
       }
-      // is the incubator module present and readable (JVM providers may to exclude them or it is
+      // is the incubator module present and readable (JVM providers may to exclude
+      // them or it is
       // build with jlink)
       final var vectorMod = lookupVectorModule();
       if (vectorMod.isEmpty()) {
@@ -161,7 +164,8 @@ public abstract class VectorizationProvider {
         }
       }
       try {
-        // we use method handles with lookup, so we do not need to deal with setAccessible as we
+        // we use method handles with lookup, so we do not need to deal with
+        // setAccessible as we
         // have private access through the lookup:
         final var lookup = MethodHandles.lookup();
         final var cls =

@@ -156,6 +156,11 @@ New Features
   `Lucene104HnswScalarQuantizedVectorsFormat` replaces the now legacy `Lucene99HnswScalarQuantizedVectorsFormat`
    (Trevor McCulloch)
 
+ * GITHUB#15271: Extend `Lucene104ScalarQuantizedVectorsFormat` and `Lucene104HnswScalarQuantizedVectorsFormat` to
+   allow asymmetric quantization. The initially supported bits are single bit with 4 bit queries. This is a replacement
+   for the now legacy `Lucene102HnswBinaryQuantizedVectorsFormat` and `Lucene102BinaryQuantizedVectorsFormat`.
+    (Ben Trent)
+
 Improvements
 ---------------------
 * GITHUB#15148: Add support uint8 distance and allow 8 bit scalar quantization (Trevor McCulloch)

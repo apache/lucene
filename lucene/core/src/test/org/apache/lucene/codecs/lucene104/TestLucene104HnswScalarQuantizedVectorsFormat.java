@@ -30,6 +30,7 @@ import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -47,14 +48,31 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.SameThreadExecutorService;
+import org.junit.Before;
 
 public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
-  private static final KnnVectorsFormat FORMAT = new Lucene104HnswScalarQuantizedVectorsFormat();
+  private KnnVectorsFormat format;
+  private ScalarEncoding encoding;
+
+  @Before
+  @Override
+  public void setUp() throws Exception {
+    var encodingValues = ScalarEncoding.values();
+    encoding = encodingValues[random().nextInt(encodingValues.length)];
+    format =
+        new Lucene104HnswScalarQuantizedVectorsFormat(
+            encoding,
+            Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
+            Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
+            1,
+            null);
+    super.setUp();
+  }
 
   @Override
   protected Codec getCodec() {
-    return TestUtil.alwaysKnnVectorsFormat(FORMAT);
+    return TestUtil.alwaysKnnVectorsFormat(format);
   }
 
   public void testToString() {
@@ -176,7 +194,7 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
           assertEquals(vector.length * Float.BYTES, (long) offHeap.get("vec"));
           assertEquals(1L, (long) offHeap.get("vex"));
           long corrections = Float.BYTES + Float.BYTES + Float.BYTES + Integer.BYTES;
-          long expected = fieldInfo.getVectorDimension() + corrections;
+          long expected = encoding.getDocPackedLength(fieldInfo.getVectorDimension()) + corrections;
           assertEquals(expected, (long) offHeap.get("veq"));
           assertEquals(3, offHeap.size());
         }

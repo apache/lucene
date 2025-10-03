@@ -19,6 +19,7 @@ package org.apache.lucene.internal.vectorization;
 
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.codecs.lucene104.AsymmetricScalarQuantizeFlatVectorsScorer;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorScorer;
 import org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorScorer;
 import org.apache.lucene.store.IndexInput;
@@ -48,7 +49,7 @@ final class DefaultVectorizationProvider extends VectorizationProvider {
   }
 
   @Override
-  public FlatVectorsScorer getLucene104ScalarQuantizedVectorsScorer() {
+  public AsymmetricScalarQuantizeFlatVectorsScorer getLucene104ScalarQuantizedVectorsScorer() {
     return new Lucene104ScalarQuantizedVectorScorer(DefaultFlatVectorScorer.INSTANCE);
   }
 
