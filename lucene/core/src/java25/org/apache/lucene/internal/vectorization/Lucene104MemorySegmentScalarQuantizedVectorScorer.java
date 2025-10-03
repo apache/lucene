@@ -21,7 +21,6 @@ import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
-import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene104.AsymmetricScalarQuantizeFlatVectorsScorer;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorScorer;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat;
@@ -42,7 +41,7 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer
   static final Lucene104MemorySegmentScalarQuantizedVectorScorer INSTANCE =
       new Lucene104MemorySegmentScalarQuantizedVectorScorer();
 
-  private static final FlatVectorsScorer DELEGATE =
+  private static final Lucene104ScalarQuantizedVectorScorer DELEGATE =
       new Lucene104ScalarQuantizedVectorScorer(DefaultFlatVectorScorer.INSTANCE);
 
   private static final int CORRECTIVE_TERMS_SIZE = Float.BYTES * 3 + Integer.BYTES;
@@ -67,7 +66,9 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer
       QuantizedByteVectorValues scoringVectors,
       QuantizedByteVectorValues targetVectors)
       throws IOException {
-    throw new UnsupportedOperationException("no asymmetric encodings are supported yet");
+    // We do not yet support acceleration for any asymmetric formats.
+    return DELEGATE.getRandomVectorScorerSupplier(
+        similarityFunction, scoringVectors, targetVectors);
   }
 
   @Override
