@@ -22,6 +22,7 @@ import static org.apache.lucene.index.VectorSimilarityFunction.MAXIMUM_INNER_PRO
 
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.ArrayUtil;
@@ -32,7 +33,8 @@ import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 
 /** Vector scorer over OptimizedScalarQuantized vectors */
-public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
+public class Lucene104ScalarQuantizedVectorScorer
+    implements AsymmetricScalarQuantizeFlatVectorsScorer {
   private final FlatVectorsScorer nonQuantizedDelegate;
 
   public Lucene104ScalarQuantizedVectorScorer(FlatVectorsScorer nonQuantizedDelegate) {
@@ -106,7 +108,8 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
 
-  RandomVectorScorerSupplier getRandomVectorScorerSupplier(
+  @Override
+  public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction,
       QuantizedByteVectorValues scoringVectors,
       QuantizedByteVectorValues targetVectors) {
@@ -239,7 +242,7 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       int targetOrd,
       VectorSimilarityFunction similarityFunction)
       throws IOException {
-    var scalarEncoding = targetVectors.getScalarEncoding();
+    ScalarEncoding scalarEncoding = targetVectors.getScalarEncoding();
     byte[] quantizedDoc = targetVectors.vectorValue(targetOrd);
     float qcDist =
         switch (scalarEncoding) {
@@ -249,8 +252,32 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
           case SINGLE_BIT_QUERY_NIBBLE ->
               VectorUtil.int4BitDotProduct(quantizedQuery, quantizedDoc);
         };
-    OptimizedScalarQuantizer.QuantizationResult indexCorrections =
-        targetVectors.getCorrectiveTerms(targetOrd);
+    return quantizedScore(
+        similarityFunction,
+        targetVectors,
+        qcDist,
+        queryCorrections,
+        targetVectors.getCorrectiveTerms(targetOrd));
+  }
+
+  /**
+   * Transforms the dotProduct of a query and index vector into a score.
+   *
+   * @param similarityFunction similarity function used to compute the score
+   * @param targetVectors target vector set; used for metadata
+   * @param dotProduct dot product of query and index vectors.
+   * @param queryCorrections corrective terms for the query vector
+   * @param indexCorrections corrective terms for the index vector
+   * @return a score value greater than or equal to 0
+   */
+  public static float quantizedScore(
+      VectorSimilarityFunction similarityFunction,
+      QuantizedByteVectorValues targetVectors,
+      float dotProduct,
+      OptimizedScalarQuantizer.QuantizationResult queryCorrections,
+      OptimizedScalarQuantizer.QuantizationResult indexCorrections)
+      throws IOException {
+    ScalarEncoding scalarEncoding = targetVectors.getScalarEncoding();
     float queryScale = SCALE_LUT[scalarEncoding.getQueryBits() - 1];
     float scale = SCALE_LUT[scalarEncoding.getBits() - 1];
     float x1 = indexCorrections.quantizedComponentSum();
@@ -261,7 +288,7 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     float ly = (queryCorrections.upperInterval() - ay) * queryScale;
     float y1 = queryCorrections.quantizedComponentSum();
     float score =
-        ax * ay * targetVectors.dimension() + ay * lx * x1 + ax * ly * y1 + lx * ly * qcDist;
+        ax * ay * targetVectors.dimension() + ay * lx * x1 + ax * ly * y1 + lx * ly * dotProduct;
     // For euclidean, we need to invert the score and apply the additional correction, which is
     // assumed to be the squared l2norm of the centroid centered vectors.
     if (similarityFunction == EUCLIDEAN) {
