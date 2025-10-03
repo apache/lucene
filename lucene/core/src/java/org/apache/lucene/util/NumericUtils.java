@@ -96,13 +96,10 @@ public final class NumericUtils {
     int end = start + bytesPerDim;
     int borrow = 0;
     for (int i = end - 1; i >= start; i--) {
+      // diff is always in the range [-256, 255]
       int diff = (a[i] & 0xff) - (b[i] & 0xff) - borrow;
-      if (diff < 0) {
-        diff += 256;
-        borrow = 1;
-      } else {
-        borrow = 0;
-      }
+      borrow = (diff >>> 31); // Extract sign bit as borrow
+      diff += (borrow << 8);
       result[i - start] = (byte) diff;
     }
     if (borrow != 0) {
@@ -120,12 +117,9 @@ public final class NumericUtils {
     int carry = 0;
     for (int i = end - 1; i >= start; i--) {
       int digitSum = (a[i] & 0xff) + (b[i] & 0xff) + carry;
-      if (digitSum > 255) {
-        digitSum -= 256;
-        carry = 1;
-      } else {
-        carry = 0;
-      }
+      // Below is safe as digitSum can be at most 511(255 * 2 + 1), so never exceeds 9 bits
+      carry = digitSum >>> 8;
+      digitSum &= 0xFF;
       result[i - start] = (byte) digitSum;
     }
     if (carry != 0) {
