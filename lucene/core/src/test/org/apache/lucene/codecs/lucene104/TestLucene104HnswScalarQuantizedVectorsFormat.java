@@ -60,7 +60,6 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
   public void setUp() throws Exception {
     var encodingValues = ScalarEncoding.values();
     encoding = encodingValues[random().nextInt(encodingValues.length)];
-    System.out.println("ENCODING: " + encoding);
     format =
         new Lucene104HnswScalarQuantizedVectorsFormat(
             encoding,

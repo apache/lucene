@@ -1247,8 +1247,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         FloatVector v = FloatVector.fromArray(FLOAT_SPECIES, vector, i);
 
         // Make sure the value is within the quantile range, cutting off the tails
-        // see first parenthesis in equation: byte = (float - minQuantile) *
-        // 127/(maxQuantile - minQuantile)
+        // see first parenthesis in equation: byte = (float - minQuantile) * 127/(maxQuantile -
+        // minQuantile)
         FloatVector dxc = v.min(maxQuantile).max(minQuantile).sub(minQuantile);
         // Scale the value to the range [0, 127], this is our quantized value
         // scale = 127/(maxQuantile - minQuantile)
