@@ -236,7 +236,8 @@ public class KMeans {
       double totalSum = 0;
       for (int j = 0; j < numVectors; j++) {
         // TODO: replace with RandomVectorScorer::score possible on quantized vectors
-        float dist = VectorUtil.squareDistance(vectors.vectorValue(j), initialCentroids[i - 1]);
+        float dist =
+            VectorUtil.squareDistanceFloats(vectors.vectorValue(j), initialCentroids[i - 1]);
         if (dist < minDistances[j]) {
           minDistances[j] = dist;
         }
@@ -297,7 +298,7 @@ public class KMeans {
         float minSquaredDist = Float.MAX_VALUE;
         for (short c = 0; c < numCentroids; c++) {
           // TODO: replace with RandomVectorScorer::score possible on quantized vectors
-          float squareDist = VectorUtil.squareDistance(centroids[c], vector);
+          float squareDist = VectorUtil.squareDistanceFloats(centroids[c], vector);
           if (squareDist < minSquaredDist) {
             bestCentroid = c;
             minSquaredDist = squareDist;
@@ -359,7 +360,8 @@ public class KMeans {
     for (int i = 0; i < vectors.size(); i++) {
       float[] vector = vectors.vectorValue(i);
       for (short j = 0; j < assignedCentroidsIdxs.length; j++) {
-        float squareDist = VectorUtil.squareDistance(centroids[assignedCentroidsIdxs[j]], vector);
+        float squareDist =
+            VectorUtil.squareDistanceFloats(centroids[assignedCentroidsIdxs[j]], vector);
         queue.insertWithOverflow(i, squareDist);
       }
     }
