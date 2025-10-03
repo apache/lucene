@@ -72,7 +72,6 @@ final class CompletionFieldsProducer extends FieldsProducer implements Accountab
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, INDEX_EXTENSION);
     delegateFieldsProducer = null;
-    boolean success = false;
 
     try (ChecksumIndexInput index = state.directory.openChecksumInput(indexFile)) {
       // open up dict file containing all fsts
@@ -119,26 +118,15 @@ final class CompletionFieldsProducer extends FieldsProducer implements Accountab
             fieldInfo.name, new CompletionsTermsReader(dictIn, offset, minWeight, maxWeight, type));
       }
       CodecUtil.checkFooter(index);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(delegateFieldsProducer, dictIn);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, delegateFieldsProducer, dictIn);
+      throw t;
     }
   }
 
   @Override
   public void close() throws IOException {
-    boolean success = false;
-    try {
-      delegateFieldsProducer.close();
-      IOUtils.close(dictIn);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(delegateFieldsProducer, dictIn);
-      }
-    }
+    IOUtils.close(delegateFieldsProducer, dictIn);
   }
 
   @Override
