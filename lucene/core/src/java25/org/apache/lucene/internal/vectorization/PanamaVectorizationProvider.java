@@ -21,8 +21,10 @@ import java.lang.foreign.MemorySegment;
 import java.util.Locale;
 import java.util.logging.Logger;
 import jdk.incubator.vector.FloatVector;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene104.AsymmetricScalarQuantizeFlatVectorsScorer;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MemorySegmentAccessInput;
 import org.apache.lucene.util.Constants;
@@ -31,10 +33,8 @@ import org.apache.lucene.util.SuppressForbidden;
 /** A vectorization provider that leverages the Panama Vector API. */
 final class PanamaVectorizationProvider extends VectorizationProvider {
 
-  // NOTE: Avoid static fields or initializers which rely on the vector API, as
-  // these initializers
-  // would get called before we have a chance to perform sanity checks around the
-  // vector API in the
+  // NOTE: Avoid static fields or initializers which rely on the vector API, as these initializers
+  // would get called before we have a chance to perform sanity checks around the vector API in the
   // constructor of this class. Put them in PanamaVectorConstants instead.
 
   private final VectorUtilSupport vectorUtilSupport;
@@ -88,7 +88,8 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
 
   @Override
   public AsymmetricScalarQuantizeFlatVectorsScorer getLucene104ScalarQuantizedVectorsScorer() {
-    return Lucene104MemorySegmentScalarQuantizedVectorScorer.INSTANCE;
+    // return Lucene104MemorySegmentScalarQuantizedVectorScorer.INSTANCE;
+    return new Lucene104ScalarQuantizedVectorScorer(DefaultFlatVectorScorer.INSTANCE);
   }
 
   @Override

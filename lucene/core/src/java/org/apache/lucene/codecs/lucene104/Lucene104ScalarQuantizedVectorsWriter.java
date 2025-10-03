@@ -138,8 +138,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
     rawVectorDelegate.flush(maxDoc, sortMap);
     for (FieldWriter field : fields) {
-      // after raw vectors are written, normalize vectors for clustering and
-      // quantization
+      // after raw vectors are written, normalize vectors for clustering and quantization
       if (VectorSimilarityFunction.COSINE == field.fieldInfo.getVectorSimilarityFunction()) {
         field.normalizeVectors();
       }

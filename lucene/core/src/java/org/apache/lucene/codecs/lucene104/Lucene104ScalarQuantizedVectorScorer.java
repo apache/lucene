@@ -84,8 +84,7 @@ public class Lucene104ScalarQuantizedVectorScorer
       var targetCorrectiveTerms =
           quantizer.scalarQuantize(
               target, scratch, scalarEncoding.getQueryBits(), qv.getCentroid());
-      // for single bit query nibble, we need to transpose the nibbles for fast
-      // scoring comparisons
+      // for single bit query nibble, we need to transpose the nibbles for fast scoring comparisons
       if (scalarEncoding
           == Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE) {
         OptimizedScalarQuantizer.transposeHalfByte(scratch, targetQuantized);
@@ -194,8 +193,7 @@ public class Lucene104ScalarQuantizedVectorScorer
 
         @Override
         public float score(int node) throws IOException {
-          return quantizedScore(
-              targetVector, targetCorrectiveTerms, targetValues, node, similarity);
+          return quantizedScore(targetVector, targetCorrectiveTerms, values, node, similarity);
         }
 
         @Override
@@ -291,8 +289,7 @@ public class Lucene104ScalarQuantizedVectorScorer
     float y1 = queryCorrections.quantizedComponentSum();
     float score =
         ax * ay * targetVectors.dimension() + ay * lx * x1 + ax * ly * y1 + lx * ly * dotProduct;
-    // For euclidean, we need to invert the score and apply the additional
-    // correction, which is
+    // For euclidean, we need to invert the score and apply the additional correction, which is
     // assumed to be the squared l2norm of the centroid centered vectors.
     if (similarityFunction == EUCLIDEAN) {
       score =
@@ -301,10 +298,8 @@ public class Lucene104ScalarQuantizedVectorScorer
               - 2 * score;
       return Math.max(1 / (1f + score), 0);
     } else {
-      // For cosine and max inner product, we need to apply the additional correction,
-      // which is
-      // assumed to be the non-centered dot-product between the vector and the
-      // centroid
+      // For cosine and max inner product, we need to apply the additional correction, which is
+      // assumed to be the non-centered dot-product between the vector and the centroid
       score +=
           queryCorrections.additionalCorrection()
               + indexCorrections.additionalCorrection()

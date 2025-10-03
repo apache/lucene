@@ -60,6 +60,7 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
   public void setUp() throws Exception {
     var encodingValues = ScalarEncoding.values();
     encoding = encodingValues[random().nextInt(encodingValues.length)];
+    System.out.println("ENCODING: " + encoding);
     format =
         new Lucene104HnswScalarQuantizedVectorsFormat(
             encoding,
@@ -134,8 +135,7 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
                   Integer.MAX_VALUE);
           assertEquals(1, td.totalHits.value());
           assertTrue(td.scoreDocs[0].score >= 0);
-          // When it's the only vector in a segment, the score should be very close to the
-          // true
+          // When it's the only vector in a segment, the score should be very close to the true
           // score
           assertEquals(trueScore, td.scoreDocs[0].score, 0.01f);
         }
@@ -167,8 +167,7 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
                 ScalarEncoding.UNSIGNED_BYTE, 20, 100, 1, new SameThreadExecutorService()));
   }
 
-  // Ensures that all expected vector similarity functions are translatable in the
-  // format.
+  // Ensures that all expected vector similarity functions are translatable in the format.
   public void testVectorSimilarityFuncs() {
     // This does not necessarily have to be all similarity functions, but
     // differences should be considered carefully.
