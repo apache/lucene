@@ -21,6 +21,7 @@ import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_IND
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SHIFT;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BaseTermsEnum;
@@ -432,6 +433,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
     final int maxDoc;
     int doc = -1;
+    LongValues bulkValues;
 
     DenseNumericDocValues(int maxDoc) {
       this.maxDoc = maxDoc;
@@ -469,6 +471,33 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     @Override
     public int docIDRunEnd() throws IOException {
       return maxDoc;
+    }
+
+    final boolean isDense(int size, int[] docs, int bpv) {
+      if (size < 2) {
+        return false;
+      }
+      // number of longs in the range of docs
+      final long longsInRange = (long) (docs[size - 1] - docs[0]) * bpv / 64;
+
+      // if every long value will be read, then it is dense (assuming uniform distribution)
+      if (size < longsInRange) {
+        return false;
+      }
+      return true;
+    }
+
+    /** only call this method when {@link #isDense(int, int[], int)} returned {@code true}. */
+    void readLongValuesFromBulkInstance(
+        int size, int[] docs, long[] longValues, RandomAccessInput slice, NumericEntry entry) {
+      if (bulkValues == null) {
+        bulkValues = DirectReader.getMergeInstance(slice, entry.bitsPerValue, 0, entry.numValues);
+      }
+
+      for (int i = 0; i < size; ++i) {
+        longValues[i] = bulkValues.get(docs[i]);
+      }
+      advanceExact(docs[size - 1]);
     }
   }
 
@@ -537,6 +566,15 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           public long longValue() throws IOException {
             return entry.minValue;
           }
+
+          @Override
+          public void longValues(int size, int[] docs, long[] values, long defaultValue) {
+            if (size == 0) {
+              return;
+            }
+            Arrays.fill(values, 0, size, entry.minValue);
+            advanceExact(docs[size - 1]);
+          }
         };
       } else {
         final RandomAccessInput slice =
@@ -555,6 +593,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             public long longValue() throws IOException {
               return vBPVReader.getLongValue(doc);
             }
+
+            // todo: override longValues method to use merge instance for vBPVReader?
           };
         } else {
           final LongValues values =
@@ -566,6 +606,19 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               public long longValue() throws IOException {
                 return table[(int) values.get(doc)];
               }
+
+              @Override
+              public void longValues(int size, int[] docs, long[] longValues, long defaultValue)
+                  throws IOException {
+                if (isDense(size, docs, entry.bitsPerValue)) {
+                  readLongValuesFromBulkInstance(size, docs, longValues, slice, entry);
+                  for (int i = 0; i < size; ++i) {
+                    longValues[i] = table[(int) longValues[i]];
+                  }
+                } else {
+                  super.longValues(size, docs, longValues, defaultValue);
+                }
+              }
             };
           } else if (entry.gcd == 1 && entry.minValue == 0) {
             // Common case for ordinals, which are encoded as numerics
@@ -573,6 +626,16 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               @Override
               public long longValue() throws IOException {
                 return values.get(doc);
+              }
+
+              @Override
+              public void longValues(int size, int[] docs, long[] longValues, long defaultValue)
+                  throws IOException {
+                if (isDense(size, docs, entry.bitsPerValue)) {
+                  readLongValuesFromBulkInstance(size, docs, longValues, slice, entry);
+                } else {
+                  super.longValues(size, docs, longValues, defaultValue);
+                }
               }
             };
           } else {
@@ -582,6 +645,19 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               @Override
               public long longValue() throws IOException {
                 return mul * values.get(doc) + delta;
+              }
+
+              @Override
+              public void longValues(int size, int[] docs, long[] longValues, long defaultValue)
+                  throws IOException {
+                if (isDense(size, docs, entry.bitsPerValue)) {
+                  readLongValuesFromBulkInstance(size, docs, longValues, slice, entry);
+                  for (int i = 0; i < size; ++i) {
+                    longValues[i] = mul * longValues[i] + delta;
+                  }
+                } else {
+                  super.longValues(size, docs, longValues, defaultValue);
+                }
               }
             };
           }
