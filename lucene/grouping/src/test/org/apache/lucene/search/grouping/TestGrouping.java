@@ -68,11 +68,8 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.mutable.MutableValue;
 import org.apache.lucene.util.mutable.MutableValueStr;
 
-// TODO
-//   - should test relevance sort too
-//   - test null
-//   - test ties
-//   - test compound sort
+// Basic functionality is covered by testBasic() (relevance sort, null groups)
+// Random testing covers various scenarios in testRandom()
 
 public class TestGrouping extends LuceneTestCase {
 
@@ -502,7 +499,15 @@ public class TestGrouping extends LuceneTestCase {
 
     final Comparator<GroupDoc> groupSortComp = getComparator(groupSort);
 
-    Arrays.sort(groupDocs, groupSortComp);
+    // Filter by searchTerm first to avoid sorting unnecessary documents
+    List<GroupDoc> filteredDocs = new ArrayList<>();
+    for (GroupDoc d : groupDocs) {
+      if (d.content.startsWith(searchTerm)) {
+        filteredDocs.add(d);
+      }
+    }
+    filteredDocs.sort(groupSortComp);
+
     final HashMap<BytesRef, List<GroupDoc>> groups = new HashMap<>();
     final List<BytesRef> sortedGroups = new ArrayList<>();
     final List<Comparable<?>[]> sortedGroupFields = new ArrayList<>();
@@ -511,11 +516,7 @@ public class TestGrouping extends LuceneTestCase {
     Set<BytesRef> knownGroups = new HashSet<>();
 
     // System.out.println("TEST: slowGrouping");
-    for (GroupDoc d : groupDocs) {
-      // TODO: would be better to filter by searchTerm before sorting!
-      if (!d.content.startsWith(searchTerm)) {
-        continue;
-      }
+    for (GroupDoc d : filteredDocs) {
       totalHitCount++;
       // System.out.println("  match id=" + d.id + " score=" + d.score);
 
