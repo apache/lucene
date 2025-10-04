@@ -17,6 +17,9 @@
 package org.apache.lucene.search;
 
 import static org.apache.lucene.search.SortField.FIELD_SCORE;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.sameInstance;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -560,7 +563,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
         new TopFieldCollectorManager(sort, 2, 0);
     TopFieldCollector collector = manager.newCollector();
     TopFieldCollector collector2 = manager.newCollector();
-    assertTrue(collector.minScoreAcc == collector2.minScoreAcc);
+    assertThat(collector2.minScoreAcc, sameInstance(collector.minScoreAcc));
     MaxScoreAccumulator minValueChecker = collector.minScoreAcc;
     // force the check of the global minimum score on every round
     minValueChecker.modInterval = 0;
@@ -691,8 +694,8 @@ public class TestTopFieldCollector extends LuceneTestCase {
       TopDocs tdc = doConcurrentSearchWithThreshold(5, 0, query, sort, indexReader);
       TopDocs tdc2 = doSearchWithThreshold(5, 0, query, sort, indexReader);
 
-      assertTrue(tdc.totalHits.value() > 0);
-      assertTrue(tdc2.totalHits.value() > 0);
+      assertThat(tdc.totalHits.value(), greaterThan(0L));
+      assertThat(tdc2.totalHits.value(), greaterThan(0L));
       CheckHits.checkEqual(query, tdc.scoreDocs, tdc2.scoreDocs);
     }
 
@@ -721,7 +724,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
 
         collectorManager = new TopFieldCollectorManager(sort, 2, null, 2);
         topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
-        assertTrue(10 >= topDocs.totalHits.value());
+        assertThat(topDocs.totalHits.value(), lessThanOrEqualTo(10L));
         assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
 
         collectorManager = new TopFieldCollectorManager(sort, 10, null, 2);

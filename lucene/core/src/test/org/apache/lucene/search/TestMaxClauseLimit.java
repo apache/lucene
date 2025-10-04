@@ -17,6 +17,9 @@
 
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.not;
+
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.index.MultiReader;
@@ -57,9 +60,10 @@ public class TestMaxClauseLimit extends LuceneTestCase {
             () -> {
               searcher.rewrite(query);
             });
-    assertFalse(
+    assertThat(
         "Should have been caught during flattening and not required full nested walk",
-        e instanceof IndexSearcher.TooManyNestedClauses);
+        e,
+        not(instanceOf(IndexSearcher.TooManyNestedClauses.class)));
   }
 
   public void testLargeTermsNestedFirst() throws IOException {

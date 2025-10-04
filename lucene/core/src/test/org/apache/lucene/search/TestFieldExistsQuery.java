@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.not;
+
 import java.io.IOException;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
@@ -127,8 +130,10 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     iw.close();
     final IndexSearcher searcher = newSearcher(reader);
 
-    assertFalse((new FieldExistsQuery("dim")).rewrite(searcher) instanceof MatchAllDocsQuery);
-    assertFalse((new FieldExistsQuery("f")).rewrite(searcher) instanceof MatchAllDocsQuery);
+    assertThat(
+        (new FieldExistsQuery("dim")).rewrite(searcher), not(instanceOf(MatchAllDocsQuery.class)));
+    assertThat(
+        (new FieldExistsQuery("f")).rewrite(searcher), not(instanceOf(MatchAllDocsQuery.class)));
     reader.close();
     dir.close();
   }
@@ -149,9 +154,12 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     iw.close();
     final IndexSearcher searcher = newSearcher(reader);
 
-    assertFalse((new FieldExistsQuery("dv1")).rewrite(searcher) instanceof MatchAllDocsQuery);
-    assertFalse((new FieldExistsQuery("dv2")).rewrite(searcher) instanceof MatchAllDocsQuery);
-    assertFalse((new FieldExistsQuery("dv3")).rewrite(searcher) instanceof MatchAllDocsQuery);
+    assertThat(
+        (new FieldExistsQuery("dv1")).rewrite(searcher), not(instanceOf(MatchAllDocsQuery.class)));
+    assertThat(
+        (new FieldExistsQuery("dv2")).rewrite(searcher), not(instanceOf(MatchAllDocsQuery.class)));
+    assertThat(
+        (new FieldExistsQuery("dv3")).rewrite(searcher), not(instanceOf(MatchAllDocsQuery.class)));
     reader.close();
     dir.close();
   }
