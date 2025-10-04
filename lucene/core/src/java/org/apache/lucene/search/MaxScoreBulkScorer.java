@@ -342,7 +342,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
           buffer, maxScoreSums[i], scorable.minCompetitiveScore, allScorers.length);
 
       if (i >= firstRequiredScorer) {
-        ScorerUtil.applyRequiredClause(buffer, scorer.iterator, scorer.scorable);
+        scorer.scorer.applyAsRequiredClause(buffer);
       } else {
         ScorerUtil.applyOptionalClause(buffer, scorer.iterator, scorer.scorable);
       }
