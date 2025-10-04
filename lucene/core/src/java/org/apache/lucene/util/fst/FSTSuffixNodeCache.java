@@ -17,7 +17,9 @@
 package org.apache.lucene.util.fst;
 
 import java.io.IOException;
+import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ByteBlockPool;
+import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PagedGrowableWriter;
 
@@ -48,7 +50,10 @@ import org.apache.lucene.util.packed.PagedGrowableWriter;
  * PagedGrowableWriter} to store the mapping, which allows efficient packing the hash & address long
  * values, and uses {@link ByteBlockPool} to store the actual node content (arcs & outputs).
  */
-final class FSTSuffixNodeCache<T> {
+final class FSTSuffixNodeCache<T> implements Accountable {
+
+  private static final long BASE_RAM_BYTES =
+      RamUsageEstimator.shallowSizeOfInstance(FSTSuffixNodeCache.class);
 
   // primary table -- we add nodes into this until it reaches the requested tableSizeLimit/2, then
   // we move it to fallback
@@ -234,8 +239,18 @@ final class FSTSuffixNodeCache<T> {
     return h;
   }
 
+  @Override
+  public long ramBytesUsed() {
+    long ramBytesUsed = BASE_RAM_BYTES + primaryTable.ramBytesUsed();
+    if (fallbackTable != null) {
+      ramBytesUsed += fallbackTable.ramBytesUsed();
+    }
+    return ramBytesUsed;
+  }
+
   /** Inner class because it needs access to hash function and FST bytes. */
-  class PagedGrowableHash {
+  class PagedGrowableHash implements Accountable {
+
     // storing the FST node address where the position is the masked hash of the node arcs
     private PagedGrowableWriter fstNodeAddress;
     // storing the local copiedNodes address in the same position as fstNodeAddress
@@ -484,6 +499,13 @@ final class FSTSuffixNodeCache<T> {
       long localAddress = copiedNodeAddress.get(hashSlot);
       bytesReader.setPosDelta(nodeAddress - localAddress);
       return bytesReader;
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return copiedNodes.ramBytesUsed()
+          + fstNodeAddress.ramBytesUsed()
+          + copiedNodeAddress.ramBytesUsed();
     }
   }
 }
