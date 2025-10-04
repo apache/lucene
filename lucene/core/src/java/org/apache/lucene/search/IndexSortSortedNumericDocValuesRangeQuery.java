@@ -113,7 +113,6 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
   public void visit(QueryVisitor visitor) {
     if (visitor.acceptField(field)) {
       visitor.visitLeaf(this);
-      fallbackQuery.visit(visitor);
     }
   }
 
