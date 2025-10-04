@@ -52,6 +52,7 @@ module org.apache.lucene.core {
   exports org.apache.lucene.util.mutable;
   exports org.apache.lucene.util.packed;
   exports org.apache.lucene.util;
+  exports org.apache.lucene.util.search;
 
   // Temporarily export HPPC to all modules (eventually, this
   // should be restricted to only Lucene modules)
