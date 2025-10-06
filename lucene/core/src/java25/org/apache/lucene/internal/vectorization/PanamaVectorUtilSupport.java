@@ -700,7 +700,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     // only vectorize if we'll at least enter the loop a single time
     if (a.length() >= 16) {
-      final float[] ret;
+      final int[] ret;
       if (VECTOR_BITSIZE >= 512) {
         i += BYTE_SPECIES.loopBound(a.length());
         ret = cosineBody512(a, b, i);
@@ -729,7 +729,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized cosine body (512 bit vectors) */
-  private static float[] cosineBody512(ByteVectorLoader a, ByteVectorLoader b, int limit) {
+  private static int[] cosineBody512(ByteVectorLoader a, ByteVectorLoader b, int limit) {
     IntVector accSum = IntVector.zero(INT_SPECIES);
     IntVector accNorm1 = IntVector.zero(INT_SPECIES);
     IntVector accNorm2 = IntVector.zero(INT_SPECIES);
@@ -753,13 +753,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       accSum = accSum.add(prod32);
     }
     // reduce
-    return new float[] {
+    return new int[] {
       accSum.reduceLanes(ADD), accNorm1.reduceLanes(ADD), accNorm2.reduceLanes(ADD)
     };
   }
 
   /** vectorized cosine body (256 bit vectors) */
-  private static float[] cosineBody256(ByteVectorLoader a, ByteVectorLoader b, int limit) {
+  private static int[] cosineBody256(ByteVectorLoader a, ByteVectorLoader b, int limit) {
     IntVector accSum = IntVector.zero(IntVector.SPECIES_256);
     IntVector accNorm1 = IntVector.zero(IntVector.SPECIES_256);
     IntVector accNorm2 = IntVector.zero(IntVector.SPECIES_256);
@@ -778,13 +778,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       accSum = accSum.add(prod32);
     }
     // reduce
-    return new float[] {
+    return new int[] {
       accSum.reduceLanes(ADD), accNorm1.reduceLanes(ADD), accNorm2.reduceLanes(ADD)
     };
   }
 
   /** vectorized cosine body (128 bit vectors) */
-  private static float[] cosineBody128(ByteVectorLoader a, ByteVectorLoader b, int limit) {
+  private static int[] cosineBody128(ByteVectorLoader a, ByteVectorLoader b, int limit) {
     IntVector accSum = IntVector.zero(IntVector.SPECIES_128);
     IntVector accNorm1 = IntVector.zero(IntVector.SPECIES_128);
     IntVector accNorm2 = IntVector.zero(IntVector.SPECIES_128);
@@ -805,7 +805,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       accSum = accSum.add(prod16.convertShape(S2I, IntVector.SPECIES_128, 0));
     }
     // reduce
-    return new float[] {
+    return new int[] {
       accSum.reduceLanes(ADD), accNorm1.reduceLanes(ADD), accNorm2.reduceLanes(ADD)
     };
   }
