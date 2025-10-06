@@ -67,7 +67,8 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
         new RandomIndexWriter(
             random(),
             dir,
-            newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+            newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    w.w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     LatLonPoint point = new LatLonPoint("foo", 0.0, 0.0);
     doc.add(point);
@@ -163,7 +164,8 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
         new RandomIndexWriter(
             random(),
             dir,
-            newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+            newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    w.w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     LatLonPoint point = new LatLonPoint("foo", 0.0, 0.0);
     doc.add(point);
@@ -241,7 +243,8 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
         new RandomIndexWriter(
             random(),
             dir,
-            newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+            newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    w.w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     LatLonPoint point = new LatLonPoint("foo", 0, 0);
     doc.add(point);
@@ -300,8 +303,8 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
         new RandomIndexWriter(
             random(),
             dir,
-            newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
-
+            newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    w.w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     for (double[] point : new double[][] {{0, 0}, {30, 30}, {60, 60}}) {
       doc.add(new LatLonPoint("foo", point[0], point[1]));
@@ -402,7 +405,8 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
     Directory dir = newDirectory();
     IndexWriter w =
         new IndexWriter(
-            dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+            dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     LatLonPoint point = new LatLonPoint("foo", 0., 0.);
     doc.add(point);
@@ -447,8 +451,8 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
         new RandomIndexWriter(
             random(),
             dir,
-            newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
-
+            newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    w.w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     LatLonPoint point = new LatLonPoint("foo", 0., 0.);
     doc.add(point);

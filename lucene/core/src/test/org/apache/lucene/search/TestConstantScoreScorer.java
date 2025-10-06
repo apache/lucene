@@ -180,8 +180,8 @@ public class TestConstantScoreScorer extends LuceneTestCase {
           new RandomIndexWriter(
               random(),
               directory,
-              newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
-
+              newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+      writer.w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
       for (String VALUE : VALUES) {
         Document doc = new Document();
         doc.add(newTextField(FIELD, VALUE, Field.Store.YES));

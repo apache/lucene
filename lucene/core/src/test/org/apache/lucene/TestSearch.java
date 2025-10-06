@@ -81,7 +81,7 @@ public class TestSearch extends LuceneTestCase {
     Analyzer analyzer = new MockAnalyzer(random);
     IndexWriterConfig conf = newIndexWriterConfig(analyzer);
     MergePolicy mp = conf.getMergePolicy();
-    mp.setNoCFSRatio(useCompoundFile ? 1.0 : 0.0);
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(useCompoundFile);
     IndexWriter writer = new IndexWriter(directory, conf);
 
     String[] docs = {

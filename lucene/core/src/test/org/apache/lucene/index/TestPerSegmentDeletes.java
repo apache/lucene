@@ -271,11 +271,5 @@ public class TestPerSegmentDeletes extends LuceneTestCase {
         SegmentInfos segmentInfos, MergeContext mergeContext) throws IOException {
       return null;
     }
-
-    @Override
-    public boolean useCompoundFile(
-        SegmentInfos segments, SegmentCommitInfo newSegment, MergeContext mergeContext) {
-      return useCompoundFile;
-    }
   }
 }
