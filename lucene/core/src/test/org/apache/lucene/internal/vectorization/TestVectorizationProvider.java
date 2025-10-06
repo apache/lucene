@@ -24,6 +24,10 @@ public class TestVectorizationProvider extends LuceneTestCase {
     expectThrows(UnsupportedOperationException.class, TestVectorizationProvider::illegalCaller);
   }
 
+  public void testGetProviderName() {
+    assertEquals("DefaultVectorizationProvider", VectorizationProvider.getImplementationName());
+  }
+
   private static void illegalCaller() {
     VectorizationProvider.getInstance();
   }
