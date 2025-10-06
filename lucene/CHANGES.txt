@@ -211,6 +211,14 @@ Build
 ---------------------
 * Upgrade forbiddenapis to version 3.10.  (Uwe Schindler)
 
+======================= Lucene 10.3.1 =======================
+
+Bug Fixes
+---------------------
+* GITHUB#15263: Fix the Impact returned from Lucene103PostingsReader when frequencies
+  are not indexed. It was returning a sub-optimal frequency in that case affecting
+  scoring which might led to performance issues. (Ignacio Vera)
+
 ======================= Lucene 10.3.0 =======================
 
 API Changes
