@@ -110,6 +110,43 @@ public final class NumericUtils {
     }
   }
 
+  public static void subtractNew(int bytesPerDim, int dim, byte[] a, byte[] b, byte[] result) {
+    int start = dim * bytesPerDim;
+    int end = start + bytesPerDim;
+
+    int borrow = 0;
+    int i;
+
+    int limit = end & ~3;
+    for (i = end - 1; i >= limit; i--) {
+      int diff = Byte.toUnsignedInt(a[i]) - Byte.toUnsignedInt(b[i]) - borrow;
+      if (diff < 0) {
+        borrow = 1;
+      } else {
+        borrow = 0;
+      }
+      result[i - start] = (byte) diff;
+    }
+
+    for (i -= 3; i >= start; i -= 4) {
+      int aInt = (int) BitUtil.VH_BE_INT.get(a, i);
+      int bInt = (int) BitUtil.VH_BE_INT.get(b, i);
+
+      long diff = Integer.toUnsignedLong(aInt) - Integer.toUnsignedLong(bInt) - borrow;
+      if (diff < 0) {
+        borrow = 1;
+      } else {
+        borrow = 0;
+      }
+
+      BitUtil.VH_BE_INT.set(result, i - start, (int) diff);
+    }
+
+    if (borrow != 0) {
+      throw new IllegalArgumentException("a < b");
+    }
+  }
+
   /**
    * Result = a + b, where a and b are unsigned. If there is an overflow, {@code
    * IllegalArgumentException} is thrown.
@@ -128,6 +165,43 @@ public final class NumericUtils {
       }
       result[i - start] = (byte) digitSum;
     }
+    if (carry != 0) {
+      throw new IllegalArgumentException("a + b overflows bytesPerDim=" + bytesPerDim);
+    }
+  }
+
+  public static void addNew(int bytesPerDim, int dim, byte[] a, byte[] b, byte[] result) {
+    int start = dim * bytesPerDim;
+    int end = start + bytesPerDim;
+
+    int carry = 0;
+    int i;
+
+    int limit = end & ~3;
+    for (i = end - 1; i >= limit; i--) {
+      int digitSum = Byte.toUnsignedInt(a[i]) + Byte.toUnsignedInt(b[i]) + carry;
+      if (digitSum > 255) {
+        carry = 1;
+      } else {
+        carry = 0;
+      }
+      result[i - start] = (byte) digitSum;
+    }
+
+    for (i -= 3; i >= start; i -= 4) {
+      int aInt = (int) BitUtil.VH_BE_INT.get(a, i);
+      int bInt = (int) BitUtil.VH_BE_INT.get(b, i);
+
+      long digitSum = Integer.toUnsignedLong(aInt) + Integer.toUnsignedLong(bInt) + carry;
+      if (digitSum > 0x100000000L) {
+        carry = 1;
+      } else {
+        carry = 0;
+      }
+
+      BitUtil.VH_BE_INT.set(result, i - start, (int) digitSum);
+    }
+
     if (carry != 0) {
       throw new IllegalArgumentException("a + b overflows bytesPerDim=" + bytesPerDim);
     }
