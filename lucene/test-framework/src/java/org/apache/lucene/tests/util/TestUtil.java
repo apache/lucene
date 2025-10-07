@@ -1333,6 +1333,7 @@ public final class TestUtil {
   /**
    * Returns the actual default codec (e.g. LuceneMNCodec) for this version of Lucene. This may be
    * different from {@link Codec#getDefault()} because that is randomized.
+   *
    * @param shouldUseCfs
    * @return
    */

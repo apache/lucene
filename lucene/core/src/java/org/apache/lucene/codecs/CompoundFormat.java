@@ -58,8 +58,8 @@ public abstract class CompoundFormat {
   private long maxCFSSegmentSize = DEFAULT_MAX_CFS_SEGMENT_SIZE;
 
   /**
-   * Sets the document count threshold for using compound files with LogDocMergePolicy.
-   * Segments with document count less than or equal to this threshold will use compound files.
+   * Sets the document count threshold for using compound files with LogDocMergePolicy. Segments
+   * with document count less than or equal to this threshold will use compound files.
    *
    * @param threshold the document count threshold
    */
@@ -68,8 +68,9 @@ public abstract class CompoundFormat {
   }
 
   /**
-   * Sets the byte size threshold for using compound files with merge policies other than LogDocMergePolicy.
-   * Segments with size less than or equal to this threshold will use compound files.
+   * Sets the byte size threshold for using compound files with merge policies other than
+   * LogDocMergePolicy. Segments with size less than or equal to this threshold will use compound
+   * files.
    *
    * @param thresholdBytes the byte size threshold in bytes
    */
@@ -96,8 +97,8 @@ public abstract class CompoundFormat {
   }
 
   /**
-   * Enables or disables the use of compound files entirely.
-   * When disabled, no segments will use compound files regardless of other settings.
+   * Enables or disables the use of compound files entirely. When disabled, no segments will use
+   * compound files regardless of other settings.
    *
    * @param useCompoundFile true to enable compound files, false to disable
    */
@@ -115,8 +116,8 @@ public abstract class CompoundFormat {
   }
 
   /**
-   * Returns the largest size allowed for a compound file segment in megabytes.
-   * Segments larger than this size will not use compound files even if otherwise eligible.
+   * Returns the largest size allowed for a compound file segment in megabytes. Segments larger than
+   * this size will not use compound files even if otherwise eligible.
    *
    * @return the maximum compound file segment size in MB
    */
@@ -125,10 +126,10 @@ public abstract class CompoundFormat {
   }
 
   /**
-   * Sets the maximum size limit for compound file segments in megabytes.
-   * If a merged segment will be larger than this value, it will be left as a non-compound file
-   * even if compound files are enabled. Set this to Double.POSITIVE_INFINITY (default) to always use CFS
-   * when other conditions are met.
+   * Sets the maximum size limit for compound file segments in megabytes. If a merged segment will
+   * be larger than this value, it will be left as a non-compound file even if compound files are
+   * enabled. Set this to Double.POSITIVE_INFINITY (default) to always use CFS when other conditions
+   * are met.
    *
    * @param v the maximum segment size in MB (must be >= 0)
    * @throws IllegalArgumentException if v is negative
@@ -142,17 +143,20 @@ public abstract class CompoundFormat {
   }
 
   /**
-   * Determines whether a segment should use the compound file format based on its size and merge policy.
+   * Determines whether a segment should use the compound file format based on its size and merge
+   * policy.
    *
    * <p>The decision logic is as follows:
+   *
    * <ol>
-   *   <li>If compound files are disabled globally, return false</li>
-   *   <li>If segment size exceeds the maximum CFS segment size, return false</li>
-   *   <li>For LogDocMergePolicy: use CFS if document count ≤ document threshold</li>
-   *   <li>For other merge policies: use CFS if byte size ≤ byte threshold</li>
+   *   <li>If compound files are disabled globally, return false
+   *   <li>If segment size exceeds the maximum CFS segment size, return false
+   *   <li>For LogDocMergePolicy: use CFS if document count ≤ document threshold
+   *   <li>For other merge policies: use CFS if byte size ≤ byte threshold
    * </ol>
    *
-   * @param mergedInfoSize the size of the segment (document count for LogDocMergePolicy, bytes for others)
+   * @param mergedInfoSize the size of the segment (document count for LogDocMergePolicy, bytes for
+   *     others)
    * @param mergePolicy the merge policy being used
    * @return true if the segment should use compound file format, false otherwise
    * @throws IOException if an I/O error occurs

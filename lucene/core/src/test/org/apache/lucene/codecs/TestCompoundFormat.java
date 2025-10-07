@@ -16,26 +16,26 @@
  */
 package org.apache.lucene.codecs;
 
+import java.io.IOException;
 import org.apache.lucene.index.LogDocMergePolicy;
 import org.apache.lucene.index.MergePolicy;
-import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Before;
 
-import java.io.IOException;
-
 /**
  * Unit tests for {@link CompoundFormat} functionality.
- * 
+ *
  * <p>This test class verifies the compound file decision logic, including:
+ *
  * <ul>
- *   <li>Default threshold behavior for different merge policies</li>
- *   <li>Global enable/disable functionality</li>
- *   <li>Maximum segment size limits</li>
- *   <li>Custom threshold configurations</li>
+ *   <li>Default threshold behavior for different merge policies
+ *   <li>Global enable/disable functionality
+ *   <li>Maximum segment size limits
+ *   <li>Custom threshold configurations
  * </ul>
  */
 public class TestCompoundFormat extends LuceneTestCase {
@@ -44,34 +44,37 @@ public class TestCompoundFormat extends LuceneTestCase {
   private CompoundFormat format;
 
   /**
-   * Sets up a test CompoundFormat instance with minimal abstract method implementations.
-   * The test format focuses on testing the threshold logic rather than actual I/O operations.
+   * Sets up a test CompoundFormat instance with minimal abstract method implementations. The test
+   * format focuses on testing the threshold logic rather than actual I/O operations.
    */
   @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
     // Create a minimal CompoundFormat implementation for testing threshold logic
-    format = new CompoundFormat() {
-      @Override
-      public CompoundDirectory getCompoundReader(Directory dir, SegmentInfo segmentInfo) {
-        return null; // Not needed for threshold testing
-      }
-      @Override
-      public void write(Directory dir, SegmentInfo segmentInfo, IOContext context) {
-        // No-op implementation for testing
-      }
-    };
+    format =
+        new CompoundFormat() {
+          @Override
+          public CompoundDirectory getCompoundReader(Directory dir, SegmentInfo segmentInfo) {
+            return null; // Not needed for threshold testing
+          }
+
+          @Override
+          public void write(Directory dir, SegmentInfo segmentInfo, IOContext context) {
+            // No-op implementation for testing
+          }
+        };
   }
 
   /**
    * Tests that the default thresholds work correctly for different merge policies.
-   * 
+   *
    * <p>Verifies:
+   *
    * <ul>
-   *   <li>Default document threshold (65536) for LogDocMergePolicy</li>
-   *   <li>Default byte threshold (64MB) for other merge policies</li>
-   *   <li>Boundary conditions at threshold limits</li>
+   *   <li>Default document threshold (65536) for LogDocMergePolicy
+   *   <li>Default byte threshold (64MB) for other merge policies
+   *   <li>Boundary conditions at threshold limits
    * </ul>
    */
   public void testDefaultThresholds() throws IOException {
@@ -91,15 +94,18 @@ public class TestCompoundFormat extends LuceneTestCase {
     assertFalse("Should not use CFS above doc threshold", format.useCompoundFile(65537, docPolicy));
 
     // Test other merge policies use byte size threshold (64MB)
-    assertTrue("Should use CFS at byte threshold", format.useCompoundFile(64L * 1024 * 1024, bytePolicy));
-    assertFalse("Should not use CFS above byte threshold", format.useCompoundFile((64L * 1024 * 1024) + 1, bytePolicy));
+    assertTrue(
+        "Should use CFS at byte threshold", format.useCompoundFile(64L * 1024 * 1024, bytePolicy));
+    assertFalse(
+        "Should not use CFS above byte threshold",
+        format.useCompoundFile((64L * 1024 * 1024) + 1, bytePolicy));
   }
 
   /**
    * Tests that compound files can be globally disabled.
-   * 
-   * <p>When compound files are disabled, no segments should use compound files
-   * regardless of their size or the configured thresholds.
+   *
+   * <p>When compound files are disabled, no segments should use compound files regardless of their
+   * size or the configured thresholds.
    */
   public void testDisabledCompoundFile() throws IOException {
     // Globally disable compound files
@@ -107,15 +113,18 @@ public class TestCompoundFormat extends LuceneTestCase {
     MergePolicy docPolicy = new LogDocMergePolicy();
 
     // Verify that CFS is never used when globally disabled
-    assertFalse("Should not use CFS when disabled (small segment)", format.useCompoundFile(1, docPolicy));
-    assertFalse("Should not use CFS when disabled (at threshold)", format.useCompoundFile(65536, docPolicy));
+    assertFalse(
+        "Should not use CFS when disabled (small segment)", format.useCompoundFile(1, docPolicy));
+    assertFalse(
+        "Should not use CFS when disabled (at threshold)",
+        format.useCompoundFile(65536, docPolicy));
   }
 
   /**
    * Tests the maximum compound file segment size limit.
-   * 
-   * <p>Segments larger than the configured maximum size should not use compound files,
-   * even if they would otherwise be eligible based on the threshold settings.
+   *
+   * <p>Segments larger than the configured maximum size should not use compound files, even if they
+   * would otherwise be eligible based on the threshold settings.
    */
   public void testMaxCFSSegmentSize() throws IOException {
     format.setShouldUseCompoundFile(true);
@@ -123,21 +132,25 @@ public class TestCompoundFormat extends LuceneTestCase {
     MergePolicy bytePolicy = new TieredMergePolicy();
 
     // Test segments below the maximum size limit
-    assertTrue("Should use CFS below max size limit", format.useCompoundFile(9L * 1024 * 1024, bytePolicy));
-    
+    assertTrue(
+        "Should use CFS below max size limit",
+        format.useCompoundFile(9L * 1024 * 1024, bytePolicy));
+
     // Test segments above the maximum size limit
-    assertFalse("Should not use CFS above max size limit", format.useCompoundFile(11L * 1024 * 1024, bytePolicy));
+    assertFalse(
+        "Should not use CFS above max size limit",
+        format.useCompoundFile(11L * 1024 * 1024, bytePolicy));
   }
 
   /**
    * Tests that custom threshold values can be configured and work correctly.
-   * 
-   * <p>Verifies that both document count and byte size thresholds can be customized
-   * and that the boundary conditions work properly with the new values.
+   *
+   * <p>Verifies that both document count and byte size thresholds can be customized and that the
+   * boundary conditions work properly with the new values.
    */
   public void testCustomThresholds() throws IOException {
     // Configure custom thresholds
-    format.setCfsThresholdDocSize(1000);           // Custom doc count threshold
+    format.setCfsThresholdDocSize(1000); // Custom doc count threshold
     format.setCfsThresholdByteSize(10 * 1024 * 1024); // Custom 10MB byte threshold
 
     MergePolicy docPolicy = new LogDocMergePolicy();
@@ -145,10 +158,15 @@ public class TestCompoundFormat extends LuceneTestCase {
 
     // Test custom document count threshold
     assertTrue("Should use CFS at custom doc threshold", format.useCompoundFile(1000, docPolicy));
-    assertFalse("Should not use CFS above custom doc threshold", format.useCompoundFile(1001, docPolicy));
+    assertFalse(
+        "Should not use CFS above custom doc threshold", format.useCompoundFile(1001, docPolicy));
 
     // Test custom byte size threshold
-    assertTrue("Should use CFS at custom byte threshold", format.useCompoundFile(10 * 1024 * 1024, bytePolicy));
-    assertFalse("Should not use CFS above custom byte threshold", format.useCompoundFile((10 * 1024 * 1024) + 1, bytePolicy));
+    assertTrue(
+        "Should use CFS at custom byte threshold",
+        format.useCompoundFile(10 * 1024 * 1024, bytePolicy));
+    assertFalse(
+        "Should not use CFS above custom byte threshold",
+        format.useCompoundFile((10 * 1024 * 1024) + 1, bytePolicy));
   }
 }

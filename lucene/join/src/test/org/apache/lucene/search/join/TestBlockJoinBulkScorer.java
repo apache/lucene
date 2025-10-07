@@ -327,7 +327,11 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
                     .setMergePolicy(
                         // retain doc id order
                         newLogMergePolicy()))) {
-          w.w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
+          w.w
+              .getConfig()
+              .getCodec()
+              .compoundFormat()
+              .setShouldUseCompoundFile(random().nextBoolean());
 
           expectedMatches =
               populateRandomIndex(
@@ -373,7 +377,11 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
                   .setMergePolicy(
                       // retain doc id order
                       newLogMergePolicy()))) {
-        w.w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
+        w.w
+            .getConfig()
+            .getCodec()
+            .compoundFormat()
+            .setShouldUseCompoundFile(random().nextBoolean());
         populateStaticIndex(w);
         w.forceMerge(1);
       }
@@ -443,7 +451,11 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
                   .setMergePolicy(
                       // retain doc id order
                       newLogMergePolicy()))) {
-        w.w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
+        w.w
+            .getConfig()
+            .getCodec()
+            .compoundFormat()
+            .setShouldUseCompoundFile(random().nextBoolean());
         populateStaticIndex(w);
         w.forceMerge(1);
       }

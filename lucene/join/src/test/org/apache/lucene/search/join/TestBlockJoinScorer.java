@@ -137,7 +137,11 @@ public class TestBlockJoinScorer extends LuceneTestCase {
                       // retain doc id order
                       newLogMergePolicy()))) {
 
-        w.w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
+        w.w
+            .getConfig()
+            .getCodec()
+            .compoundFormat()
+            .setShouldUseCompoundFile(random().nextBoolean());
         for (String[][] values :
             Arrays.asList(
                 new String[][] {{"A", "B"}, {"A", "B", "C"}},
