@@ -74,6 +74,10 @@ public abstract class CompoundFormat {
     this.shouldUseCompoundFile = useCompoundFile;
   }
 
+  public boolean getShouldUseCompoundFile() {
+    return this.shouldUseCompoundFile;
+  }
+
   /** Returns the largest size allowed for a compound file segment */
   public double getMaxCFSSegmentSizeMB() {
     return maxCFSSegmentSize / 1024. / 1024.;

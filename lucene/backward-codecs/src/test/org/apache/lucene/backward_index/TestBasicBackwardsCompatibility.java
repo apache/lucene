@@ -125,15 +125,14 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
   }
 
   static void createIndex(Directory dir, boolean doCFS, boolean fullyMerged) throws IOException {
-    LogByteSizeMergePolicy mp = new LogByteSizeMergePolicy();
-    mp.setNoCFSRatio(doCFS ? 1.0 : 0.0);
-    mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     // TODO: remove randomness
     IndexWriterConfig conf =
         new IndexWriterConfig(new MockAnalyzer(random()))
             .setMaxBufferedDocs(10)
             .setCodec(TestUtil.getDefaultCodec())
             .setMergePolicy(NoMergePolicy.INSTANCE);
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(doCFS);
+    conf.getCodec().compoundFormat().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     IndexWriter writer = new IndexWriter(dir, conf);
 
     for (int i = 0; i < DOCS_COUNT; i++) {
@@ -147,14 +146,13 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
 
     if (!fullyMerged) {
       // open fresh writer so we get no prx file in the added segment
-      mp = new LogByteSizeMergePolicy();
-      mp.setNoCFSRatio(doCFS ? 1.0 : 0.0);
       // TODO: remove randomness
       conf =
           new IndexWriterConfig(new MockAnalyzer(random()))
               .setMaxBufferedDocs(10)
               .setCodec(TestUtil.getDefaultCodec())
               .setMergePolicy(NoMergePolicy.INSTANCE);
+      conf.getCodec().compoundFormat().setShouldUseCompoundFile(doCFS);
       writer = new IndexWriter(dir, conf);
       addNoProxDoc(writer);
       writer.close();

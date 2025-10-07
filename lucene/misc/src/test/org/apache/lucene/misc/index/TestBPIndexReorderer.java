@@ -70,7 +70,8 @@ public class TestBPIndexReorderer extends LuceneTestCase {
     Directory dir = newDirectory();
     IndexWriter w =
         new IndexWriter(
-            dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+            dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     StoredField idField = new StoredField("id", "");
     doc.add(idField);
@@ -161,7 +162,8 @@ public class TestBPIndexReorderer extends LuceneTestCase {
             dir,
             newIndexWriterConfig()
                 .setParentField("parent")
-                .setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+                .setMergePolicy(newLogMergePolicy()));
+    w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
 
     w.addDocuments(createBlock("1", "lucene", "search", "lucene")); // 0-2
     w.addDocuments(createBlock("2", "lucene")); // 3
@@ -256,7 +258,8 @@ public class TestBPIndexReorderer extends LuceneTestCase {
     Directory dir = newDirectory();
     IndexWriter w =
         new IndexWriter(
-            dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+            dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     StoredField idField = new StoredField("id", "");
     doc.add(idField);
