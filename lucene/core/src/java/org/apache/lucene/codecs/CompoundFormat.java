@@ -36,38 +36,32 @@ public abstract class CompoundFormat {
   // TODO: this is very minimal. If we need more methods,
   // we can add 'producer' classes.
 
+  // Default thresholds
+  static final int DEFAULT_CFS_THRESHOLD_DOC_SIZE = 65536; // docs
+  static final long DEFAULT_CFS_THRESHOLD_BYTE_SIZE = 64L * 1024 * 1024; // 64MB
 
-  static final long CFS_THRESHOLD_DOC_SIZE = 65536;
-  static final long CFS_THRESHOLD_BYTE_SIZE = 65;
-
-  /**
-   * Default max segment size in order to use compound file system. Set to {@link Long#MAX_VALUE}.
-   */
+  /** Default max segment size allowed for CFS (bytes) */
   static final long DEFAULT_MAX_CFS_SEGMENT_SIZE = Long.MAX_VALUE;
 
-  private long CfsThresholdDocSize = CFS_THRESHOLD_DOC_SIZE;
-  private long CfsThresholdByteSize = CFS_THRESHOLD_BYTE_SIZE;
+  private int cfsThresholdDocSize = DEFAULT_CFS_THRESHOLD_DOC_SIZE;
+  private long cfsThresholdByteSize = DEFAULT_CFS_THRESHOLD_BYTE_SIZE;
   private boolean shouldUseCompoundFile = true;
-
-  /**
-   * If the size of the merged segment exceeds this value then it will not use compound file format.
-   */
   private long maxCFSSegmentSize = DEFAULT_MAX_CFS_SEGMENT_SIZE;
 
-  public void setCfsThresholdDocSize(long cfsThresholdDocSize) {
-    this.CfsThresholdDocSize = cfsThresholdDocSize;
+  public void setCfsThresholdDocSize(int threshold) {
+    this.cfsThresholdDocSize = threshold;
   }
 
-  public void setCfsThresholdByteSize(long cfsThresholdByteSize) {
-    this.CfsThresholdByteSize = cfsThresholdByteSize;
+  public void setCfsThresholdByteSize(long thresholdBytes) {
+    this.cfsThresholdByteSize = thresholdBytes;
+  }
+
+  public int getCfsThresholdDocSize() {
+    return this.cfsThresholdDocSize;
   }
 
   public long getCfsThresholdByteSize() {
-    return this.CfsThresholdByteSize;
-  }
-
-  public long getCfsThresholdDocSize() {
-    return this.CfsThresholdDocSize;
+    return this.cfsThresholdByteSize;
   }
 
   public void setShouldUseCompoundFile(boolean useCompoundFile) {
@@ -78,15 +72,14 @@ public abstract class CompoundFormat {
     return this.shouldUseCompoundFile;
   }
 
-  /** Returns the largest size allowed for a compound file segment */
+  /** Returns the largest size allowed for a compound file segment (in MB) */
   public double getMaxCFSSegmentSizeMB() {
     return maxCFSSegmentSize / 1024. / 1024.;
   }
 
   /**
    * If a merged segment will be more than this value, leave the segment as non-compound file even
-   * if compound file is enabled. Set this to Double.POSITIVE_INFINITY (default) and noCFSRatio to
-   * 1.0 to always use CFS regardless of merge size.
+   * if compound file is enabled. Set this to Double.POSITIVE_INFINITY (default) to always use CFS.
    */
   public void setMaxCFSSegmentSizeMB(double v) {
     if (v < 0.0) {
@@ -98,8 +91,10 @@ public abstract class CompoundFormat {
 
   /**
    * Returns true if a new segment (regardless of its origin) should use the compound file format.
-   * The default implementation returns <code>true</code> iff the size of the given mergedInfo is
-   * less or equal to {@link #getMaxCFSSegmentSizeMB()} and the size is less or equal to the
+   * The default implementation uses fixed thresholds:
+   * - for LogDocMergePolicy, all segments with less than equals to {@link #getCfsThresholdDocSize()} docs;
+   * - for byte-size-based merge policies, all segments with less than equals to {@link #getCfsThresholdByteSize()} bytes.
+   * Additionally, segments larger than {@link #maxCFSSegmentSize} will not use CFS.
    */
   public boolean useCompoundFile(long mergedInfoSize, MergePolicy mergePolicy) throws IOException {
     if (this.shouldUseCompoundFile == false) {
@@ -108,12 +103,11 @@ public abstract class CompoundFormat {
     if (mergedInfoSize > maxCFSSegmentSize) {
       return false;
     }
-
     if (mergePolicy instanceof LogDocMergePolicy) {
-      return mergedInfoSize <= this.CfsThresholdDocSize;
+      return mergedInfoSize <= this.cfsThresholdDocSize;
+    } else {
+      return mergedInfoSize <= this.cfsThresholdByteSize;
     }
-
-    return mergedInfoSize <= this.CfsThresholdByteSize;
   }
 
   /** Returns a Directory view (read-only) for the compound files in this segment */
