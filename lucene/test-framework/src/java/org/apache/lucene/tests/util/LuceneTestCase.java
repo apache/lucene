@@ -921,7 +921,7 @@ public abstract class LuceneTestCase extends Assert {
   /** create a new index writer config with random defaults using the specified random */
   public static IndexWriterConfig newIndexWriterConfig(Random r, Analyzer a) {
     IndexWriterConfig c = new IndexWriterConfig(a);
-    configureRandom(r, c);
+    configureRandom(r, c.getCodec().compoundFormat());
     c.setSimilarity(classEnvRule.similarity);
     if (VERBOSE) {
       // Even though TestRuleSetupAndRestoreClassEnv calls
@@ -1061,8 +1061,7 @@ public abstract class LuceneTestCase extends Assert {
     return logmp;
   }
 
-  private static void configureRandom(Random r, IndexWriterConfig iwc) {
-    CompoundFormat compoundFormat = iwc.getCodec().compoundFormat();
+  private static void configureRandom(Random r, CompoundFormat compoundFormat) {
     compoundFormat.setShouldUseCompoundFile(random().nextBoolean());
 
     if (rarely(r)) {
@@ -1182,6 +1181,7 @@ public abstract class LuceneTestCase extends Assert {
 
     if (rarely(r)) {
       MergePolicy mp = c.getMergePolicy();
+      configureRandom(r, c.getCodec().compoundFormat());
       if (mp instanceof LogMergePolicy logmp) {
         logmp.setCalibrateSizeByDeletes(r.nextBoolean());
         if (rarely(r)) {
@@ -1202,6 +1202,7 @@ public abstract class LuceneTestCase extends Assert {
         } else {
           tmp.setSegmentsPerTier(TestUtil.nextInt(r, 10, 50));
         }
+        configureRandom(r, c.getCodec().compoundFormat());
         tmp.setDeletesPctAllowed(20 + random().nextDouble() * 30);
       }
       didChange = true;

@@ -371,8 +371,6 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
     }
   }
 
-  private static final double EPSILON = 1E-14;
-
   // Test basic semantics of merge on commit
   public void testMergeOnCommit() throws IOException {
     Directory dir = newDirectory();

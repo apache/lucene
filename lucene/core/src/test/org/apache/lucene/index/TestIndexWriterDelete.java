@@ -862,8 +862,6 @@ public class TestIndexWriterDelete extends LuceneTestCase {
                 .setReaderPooling(false)
                 .setMergePolicy(newLogMergePolicy()));
 
-    MergePolicy lmp = modifier.getConfig().getMergePolicy();
-
     dir.failOn(failure.reset());
 
     FieldType custom1 = new FieldType();

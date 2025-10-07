@@ -29,7 +29,6 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
@@ -84,7 +83,6 @@ public class TestSearchForDuplicates extends LuceneTestCase {
     Directory directory = newDirectory();
     Analyzer analyzer = new MockAnalyzer(random);
     IndexWriterConfig conf = newIndexWriterConfig(analyzer);
-    final MergePolicy mp = conf.getMergePolicy();
     conf.getCodec().compoundFormat().setShouldUseCompoundFile(useCompoundFiles);
     IndexWriter writer = new IndexWriter(directory, conf);
     if (VERBOSE) {
