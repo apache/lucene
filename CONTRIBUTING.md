@@ -71,7 +71,7 @@ if you think that your change may have measurably changed the performance of a t
 
 This is the same suite that is run in the [nightly benchmarks](https://benchmarks.mikemccandless.com/).
 
-The instructions for running the benchmarks can be found in the luceneutil [README](https://github.com/mikemccand/luceneutil/blob/master/README.md).
+The instructions for running the benchmarks can be found in the luceneutil [README](https://github.com/mikemccand/luceneutil/blob/main/README.md).
 
 The Lucene community is also interested in other implementations of these benchmark tasks.
 Feel free to share your findings (especially if your implementation performs better!) through the [Lucene mailing lists](https://lucene.apache.org/core/discussion.html) or open [PRs](https://github.com/mikemccand/luceneutil/pulls), [issues](https://github.com/mikemccand/luceneutil/issues) on the luceneutil project directly.
