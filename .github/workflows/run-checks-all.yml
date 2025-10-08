@@ -12,6 +12,8 @@ on:
       - 'main'
       - 'branch_10x'
 
+permissions: {}
+
 env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
@@ -29,7 +31,7 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest ]
-        java: [ '24' ]
+        java: [ '25' ]
 
     runs-on: ${{ matrix.os }}
 
@@ -37,8 +39,13 @@ jobs:
       - name: Correct git autocrlf
         run: git config --global core.autocrlf false
 
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: ./.github/actions/prepare-for-build
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Configure tools
+        uses: ./.github/actions/prepare-for-build
 
       - name: Install eclint
         if: ${{ ! startsWith(matrix.os, 'windows') }}
@@ -63,7 +70,7 @@ jobs:
       matrix:
         # Operating systems to run on.
         os: [ ubuntu-latest, windows-latest, macos-latest ]
-        java: [ '24' ]
+        java: [ '25' ]
 
     runs-on: ${{ matrix.os }}
 
@@ -72,8 +79,13 @@ jobs:
         if: startsWith(matrix.os, 'windows')
         run: git config --global core.autocrlf false
 
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: ./.github/actions/prepare-for-build
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Configure tools
+        uses: ./.github/actions/prepare-for-build
 
       - name: Run gradle tests
         run: ./gradlew test "-Ptask.times=true" --max-workers 2

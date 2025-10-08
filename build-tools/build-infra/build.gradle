@@ -27,6 +27,8 @@ repositories {
   gradlePluginPortal()
 }
 
+apply from: file("ecj-source.gradle")
+
 group = "org.apache"
 
 java {
@@ -75,7 +77,6 @@ dependencies {
   implementation localGroovy()
   implementation deps.commons.codec
   implementation deps.randomizedtesting.runner
-  implementation deps.rat
   implementation deps.zstd
 
   implementation deps.flexmark.core
@@ -91,7 +92,6 @@ dependencies {
   implementation plugin(deps.plugins.carrotsearch.dependencychecks)
   implementation plugin(deps.plugins.forbiddenapis)
   implementation plugin(deps.plugins.spotless)
-  implementation plugin(deps.plugins.owasp.dependencycheck)
   implementation plugin(deps.plugins.undercouch.download)
   implementation plugin(deps.plugins.errorprone)
   implementation plugin(deps.plugins.jacocolog)

@@ -39,7 +39,6 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
@@ -552,9 +551,7 @@ public class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   static float[] getCentroid(KnnVectorsReader vectorsReader, String fieldName) {
-    if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader candidateReader) {
-      vectorsReader = candidateReader.getFieldReader(fieldName);
-    }
+    vectorsReader = vectorsReader.unwrapReaderForField(fieldName);
     if (vectorsReader instanceof Lucene102BinaryQuantizedVectorsReader reader) {
       return reader.getCentroid(fieldName);
     }

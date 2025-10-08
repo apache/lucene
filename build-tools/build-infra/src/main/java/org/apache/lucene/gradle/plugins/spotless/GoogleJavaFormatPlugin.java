@@ -81,7 +81,7 @@ public class GoogleJavaFormatPlugin extends LuceneGradlePlugin {
       t.configure(
           task -> {
             var srcTree =
-                project.getPath().equals(":lucene:build-tools:build-infra-shadow")
+                project.getPath().equals(":build-tools:build-infra-shadow")
                     ? project.getRootProject().fileTree("build-tools/build-infra/src")
                     : project.fileTree("src");
 

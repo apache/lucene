@@ -24,6 +24,8 @@ repositories {
   gradlePluginPortal()
 }
 
+apply from: rootProject.file("build-tools/build-infra/ecj-source.gradle")
+
 // Convert a plugin dependency to a regular dependency so that we can
 // use [plugins] section in the top-level toml but declare regular
 // project dependencies here.
@@ -42,8 +44,15 @@ static Provider<String> plugin(Provider<PluginDependency> plugin) {
 dependencies {
   implementation gradleApi()
   implementation localGroovy()
+
+  // seems to be required by gradle apis, otherwise compilation fails even though
+  // we don't use it.
+  compileOnly ("com.google.code.findbugs:findbugs-annotations:3.0.1")
+
   implementation deps.commons.codec
   implementation deps.randomizedtesting.runner
+  implementation deps.zstd
+
   implementation deps.gjf
   implementation deps.jgit
   implementation deps.ecj
@@ -51,7 +60,9 @@ dependencies {
   implementation plugin(deps.plugins.carrotsearch.buildopts)
   implementation plugin(deps.plugins.carrotsearch.dependencychecks)
   implementation plugin(deps.plugins.forbiddenapis)
+  implementation plugin(deps.plugins.spotless)
   implementation plugin(deps.plugins.undercouch.download)
+  implementation plugin(deps.plugins.jacocolog)
 }
 
 tasks.matching {
