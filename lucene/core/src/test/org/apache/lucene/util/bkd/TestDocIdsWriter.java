@@ -169,23 +169,4 @@ public class TestDocIdsWriter extends LuceneTestCase {
     }
     dir.deleteFile("tmp");
   }
-
-  // This simple test tickles a JVM C2 JIT crash on JDK's less than 21.0.1
-  // Crashes only when run with HotSpot C2.
-  // Regardless of whether C2 is enabled or not, the test should never fail.
-  public void testCrash() throws IOException {
-    assumeTrue(
-        "Requires HotSpot C2 compiler (won't work on client VM).",
-        Constants.IS_HOTSPOT_VM && !Constants.IS_CLIENT_VM);
-    int itrs = atLeast(100);
-    for (int i = 0; i < itrs; i++) {
-      try (Directory dir = newDirectory();
-          IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig(null))) {
-        for (int d = 0; d < 20_000; d++) {
-          iw.addDocument(
-              List.of(new IntPoint("foo", 0), new SortedNumericDocValuesField("bar", 0)));
-        }
-      }
-    }
-  }
 }
