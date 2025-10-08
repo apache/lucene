@@ -1109,6 +1109,8 @@ public class TestTaxonomyCombined extends FacetTestCase {
     return result;
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testThousandsOfCategories() throws IOException {
     int roundSize = random().nextInt(2, 4);
     int size = random().nextInt(16384, 32768);

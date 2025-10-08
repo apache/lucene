@@ -95,6 +95,8 @@ public class TestCoveringQuery extends LuceneTestCase {
         "CoveringQuery(queries=[bar, quux], minimumNumberMatch=long(field))", q.toString("foo"));
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandom() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
