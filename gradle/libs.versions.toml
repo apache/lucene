@@ -15,7 +15,7 @@ errorprone = "2.42.0"
 # markdown documentation generation
 flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
-googleJavaFormat = "1.28.0"
+googleJavaFormat = "1.29.0"
 # gradle build support
 groovy = "5.0.1"
 # test assertions
