@@ -130,20 +130,8 @@ public class NumericUtilsBenchmark {
   }
 
   @Benchmark
-  public void subtractNew() {
-    NumericUtils.subtractNew(size, 0, subA, subB, subResult);
-    assert Arrays.equals(subExpected, subResult);
-  }
-
-  @Benchmark
   public void add() {
     NumericUtils.add(size, 0, addA, addB, addResult);
-    assert Arrays.equals(addExpected, addResult);
-  }
-
-  @Benchmark
-  public void addNew() {
-    NumericUtils.addNew(size, 0, addA, addB, addResult);
     assert Arrays.equals(addExpected, addResult);
   }
 }

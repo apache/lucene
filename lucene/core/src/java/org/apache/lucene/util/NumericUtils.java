@@ -94,25 +94,6 @@ public final class NumericUtils {
   public static void subtract(int bytesPerDim, int dim, byte[] a, byte[] b, byte[] result) {
     int start = dim * bytesPerDim;
     int end = start + bytesPerDim;
-    int borrow = 0;
-    for (int i = end - 1; i >= start; i--) {
-      int diff = (a[i] & 0xff) - (b[i] & 0xff) - borrow;
-      if (diff < 0) {
-        diff += 256;
-        borrow = 1;
-      } else {
-        borrow = 0;
-      }
-      result[i - start] = (byte) diff;
-    }
-    if (borrow != 0) {
-      throw new IllegalArgumentException("a < b");
-    }
-  }
-
-  public static void subtractNew(int bytesPerDim, int dim, byte[] a, byte[] b, byte[] result) {
-    int start = dim * bytesPerDim;
-    int end = start + bytesPerDim;
 
     int borrow = 0;
     int i;
@@ -152,25 +133,6 @@ public final class NumericUtils {
    * IllegalArgumentException} is thrown.
    */
   public static void add(int bytesPerDim, int dim, byte[] a, byte[] b, byte[] result) {
-    int start = dim * bytesPerDim;
-    int end = start + bytesPerDim;
-    int carry = 0;
-    for (int i = end - 1; i >= start; i--) {
-      int digitSum = (a[i] & 0xff) + (b[i] & 0xff) + carry;
-      if (digitSum > 255) {
-        digitSum -= 256;
-        carry = 1;
-      } else {
-        carry = 0;
-      }
-      result[i - start] = (byte) digitSum;
-    }
-    if (carry != 0) {
-      throw new IllegalArgumentException("a + b overflows bytesPerDim=" + bytesPerDim);
-    }
-  }
-
-  public static void addNew(int bytesPerDim, int dim, byte[] a, byte[] b, byte[] result) {
     int start = dim * bytesPerDim;
     int end = start + bytesPerDim;
 
