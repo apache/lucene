@@ -210,6 +210,8 @@ public class TestPayloadScoreQuery extends LuceneTestCase {
     }
   }
 
+  // TODO: incredibly slow
+  @Nightly
   @Test
   public void testSpanContainingQuery() throws Exception {
 

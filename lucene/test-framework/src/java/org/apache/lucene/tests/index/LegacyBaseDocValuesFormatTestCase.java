@@ -2520,6 +2520,8 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     }
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testSortedNumericsMultipleValuesVsStoredFields() throws Exception {
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {

@@ -131,6 +131,8 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
     }
   }
 
+  // TODO: incredibly slow (maybe due to sleeping?)
+  @Nightly
   @SuppressForbidden(reason = "Thread sleep")
   public void testNRT() throws Exception {
     Directory dir = newDirectory();
