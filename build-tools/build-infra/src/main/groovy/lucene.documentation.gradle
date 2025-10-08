@@ -36,10 +36,6 @@ configure(rootProject) {
         }
       })
 
-  ext {
-    luceneDocUrl = luceneJavadocUrl.getOrElse(null)
-  }
-
   def documentationTask = tasks.register("documentation", {
     group = 'documentation'
     description = 'Generate all documentation'
