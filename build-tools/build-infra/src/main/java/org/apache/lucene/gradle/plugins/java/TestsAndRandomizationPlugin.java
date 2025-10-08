@@ -165,6 +165,8 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
             "tests.verbose",
             "Enables verbose test output mode (emits full test outputs immediately).",
             false);
+    optionsInheritedAsProperties.add("tests.verbose");
+
     Provider<Boolean> haltOnFailureOption =
         buildOptions.addBooleanOption(
             "tests.haltonfailure", "Stop processing on test failures.", true);
