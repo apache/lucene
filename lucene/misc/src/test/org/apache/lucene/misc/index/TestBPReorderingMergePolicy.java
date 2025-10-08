@@ -57,6 +57,8 @@ public class TestBPReorderingMergePolicy extends LuceneTestCase {
     reorderer.setMinPartitionSize(2);
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testReorderOnMerge() throws IOException {
     Directory dir1 = newDirectory();
     Directory dir2 = newDirectory();
@@ -141,6 +143,8 @@ public class TestBPReorderingMergePolicy extends LuceneTestCase {
     IOUtils.close(reader1, reader2, w1, w2, dir1, dir2);
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testReorderOnAddIndexes() throws IOException {
     Directory dir1 = newDirectory();
     IndexWriter w1 =

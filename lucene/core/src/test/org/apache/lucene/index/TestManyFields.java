@@ -115,6 +115,8 @@ public class TestManyFields extends LuceneTestCase {
   }
 
   // LUCENE-4398
+  // TODO: incredibly slow
+  @Nightly
   public void testRotatingFieldNames() throws Exception {
     Directory dir = newFSDirectory(createTempDir("TestIndexWriter.testChangingFields"));
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));

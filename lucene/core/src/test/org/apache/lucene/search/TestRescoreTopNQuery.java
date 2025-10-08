@@ -78,7 +78,9 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
                 new TermQuery(new Term("test")), DoubleValuesSource.constant(0), 0));
   }
 
+  // TODO: incredibly slow
   @Test
+  @Nightly
   public void testRescoreField() throws Exception {
     Map<Integer, float[]> vectors = new HashMap<>();
 
