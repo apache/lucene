@@ -597,6 +597,8 @@ public class TestGeo3DPoint extends LuceneTestCase {
     doTestRandom(10);
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandomMedium() throws Exception {
     doTestRandom(1000);
   }

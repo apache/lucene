@@ -176,8 +176,11 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
   /**
    * Tests time out check sampling of TermsEnum iterations
    *
+   * <p>TODO: incredibly slow
+   *
    * @throws Exception on error
    */
+  @Nightly
   public void testExitableTermsEnumSampleTimeoutCheck() throws Exception {
     try (Directory directory = newDirectory()) {
       try (IndexWriter writer =
