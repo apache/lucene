@@ -1063,6 +1063,30 @@ final class IndexingChain implements Accountable {
         vectorValuesConsumer.getAccountable());
   }
 
+  /**
+   * Returns true if any of the ByteBlockPools used by this indexing chain are approaching their
+   * buffer limit.
+   *
+   * @param threshold the threshold below ByteBlockPool.MAX_BUFFER_COUNT to trigger the warning
+   * @return true if any ByteBlockPool buffer count >= threshold
+   */
+  boolean isApproachingBufferLimit(int threshold) {
+    // Check the main byte pool used by terms hash
+    if (termsHash.bytePool.isApproachingBufferLimit(threshold)) {
+      return true;
+    }
+    // Check the doc values byte pool
+    if (docValuesBytePool.isApproachingBufferLimit(threshold)) {
+      return true;
+    }
+    // Check term vectors byte pool if it exists and is different from the main pool
+    if (termsHash.termBytePool != null && termsHash.termBytePool != termsHash.bytePool
+        && termsHash.termBytePool.isApproachingBufferLimit(threshold)) {
+      return true;
+    }
+    return false;
+  }
+
   /** NOTE: not static: accesses at least docState, termsHash. */
   private final class PerField implements Comparable<PerField> {
     final String fieldName;

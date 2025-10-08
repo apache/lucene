@@ -169,4 +169,21 @@ public class TestByteBlockPool extends LuceneTestCase {
     assertTrue(throwsException);
     assertTrue(pool.byteOffset + ByteBlockPool.BYTE_BLOCK_SIZE < pool.byteOffset);
   }
+
+  public void testBufferLimitDetection() {
+    // Test the new buffer limit detection functionality
+    ByteBlockPool pool = new ByteBlockPool(new ByteBlockPool.DirectAllocator());
+    pool.nextBuffer();
+
+    // Initially should not be approaching limit
+    assertFalse(pool.isApproachingBufferLimit(65000));
+    assertEquals(1, pool.getBufferCount());
+
+    // Test with a lower threshold
+    assertTrue(pool.isApproachingBufferLimit(1));
+    assertTrue(pool.isApproachingBufferLimit(0));
+
+    // Verify MAX_BUFFER_COUNT constant
+    assertEquals(65535, ByteBlockPool.MAX_BUFFER_COUNT);
+  }
 }

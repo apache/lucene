@@ -125,6 +125,13 @@ public final class ByteBlockPool implements Accountable {
    */
   public int byteOffset = -BYTE_BLOCK_SIZE;
 
+  /**
+   * Maximum number of buffers before integer overflow occurs in byteOffset calculation.
+   * Since byteOffset = bufferUpto * BYTE_BLOCK_SIZE, and BYTE_BLOCK_SIZE = 32768,
+   * the maximum safe value is Integer.MAX_VALUE / BYTE_BLOCK_SIZE = 65535.
+   */
+  public static final int MAX_BUFFER_COUNT = Integer.MAX_VALUE / BYTE_BLOCK_SIZE;
+
   private final Allocator allocator;
 
   public ByteBlockPool(Allocator allocator) {
@@ -351,6 +358,24 @@ public final class ByteBlockPool implements Accountable {
   /** the current position (in absolute value) of this byte pool */
   public long getPosition() {
     return bufferUpto * allocator.blockSize + byteUpto;
+  }
+
+  /**
+   * Returns the current number of allocated buffers.
+   */
+  public int getBufferCount() {
+    return bufferUpto + 1;
+  }
+
+  /**
+   * Returns true if the buffer count is approaching the limit that would cause integer overflow.
+   * This should be used to trigger a flush before the overflow occurs.
+   *
+   * @param threshold the threshold below MAX_BUFFER_COUNT to trigger the warning
+   * @return true if buffer count >= threshold
+   */
+  public boolean isApproachingBufferLimit(int threshold) {
+    return getBufferCount() >= threshold;
   }
 
   /** Retrieve the buffer at the specified index from the buffer pool. */
