@@ -56,5 +56,6 @@ public class JavaProjectConventionsPlugin extends LuceneGradlePlugin {
     plugins.apply(CodeCoveragePlugin.class);
     plugins.apply(ShowSlowestTestsAtEndPlugin.class);
     plugins.apply(ShowFailedTestsAtEndPlugin.class);
+    plugins.apply(ErrorPronePlugin.class);
   }
 }
