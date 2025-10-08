@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.gradle.plugins.hacks.DumpGradleStateOnStalledBuildsPlugin;
 import org.apache.lucene.gradle.plugins.ide.EclipseSupportPlugin;
+import org.apache.lucene.gradle.plugins.java.ErrorPronePlugin;
 import org.apache.lucene.gradle.plugins.misc.MeasureTaskTimesPlugin;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -49,7 +50,7 @@ public class BuildOptionGroupsPlugin implements Plugin<Project> {
                         "Optional testing and test resources",
                         explicitList(
                             "tests.hunspell.regressions",
-                            "validation.errorprone",
+                            ErrorPronePlugin.OPT_VALIDATION_ERRORPRONE,
                             "hunspell.corpora",
                             "hunspell.dictionaries",
                             "hunspell.repo.path",
