@@ -98,7 +98,7 @@ public final class NumericUtils {
     int borrow = 0;
     int i;
 
-    int limit = end & ~3;
+    int limit = start + (bytesPerDim & ~3);
     for (i = end - 1; i >= limit; i--) {
       int diff = Byte.toUnsignedInt(a[i]) - Byte.toUnsignedInt(b[i]) - borrow;
       if (diff < 0) {
@@ -139,10 +139,10 @@ public final class NumericUtils {
     int carry = 0;
     int i;
 
-    int limit = end & ~3;
+    int limit = start + (bytesPerDim & ~3);
     for (i = end - 1; i >= limit; i--) {
       int digitSum = Byte.toUnsignedInt(a[i]) + Byte.toUnsignedInt(b[i]) + carry;
-      if (digitSum > 255) {
+      if (digitSum >= 256) {
         carry = 1;
       } else {
         carry = 0;
@@ -155,7 +155,7 @@ public final class NumericUtils {
       int bInt = (int) BitUtil.VH_BE_INT.get(b, i);
 
       long digitSum = Integer.toUnsignedLong(aInt) + Integer.toUnsignedLong(bInt) + carry;
-      if (digitSum > 0x100000000L) {
+      if (digitSum >= 0x100000000L) {
         carry = 1;
       } else {
         carry = 0;
