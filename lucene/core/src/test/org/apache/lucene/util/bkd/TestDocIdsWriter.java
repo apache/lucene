@@ -18,11 +18,7 @@ package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Set;
-import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.SortedNumericDocValuesField;
-import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.Directory;
@@ -32,7 +28,6 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.CollectionUtil;
-import org.apache.lucene.util.Constants;
 
 public class TestDocIdsWriter extends LuceneTestCase {
 
