@@ -1964,7 +1964,10 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   /**
    * Test that the query is a viable approximation to exact search. This test is designed to uncover
    * gross failures only, not to represent the true expected recall.
+   *
+   * <p>TODO: this test is incredibly slow
    */
+  @Nightly
   public void testRecall() throws IOException {
     VectorSimilarityFunction[] functions = {
       VectorSimilarityFunction.EUCLIDEAN,
