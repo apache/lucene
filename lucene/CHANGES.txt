@@ -180,6 +180,8 @@ Optimizations
 * GITHUB#15151: Use `SimScorer#score` bulk API to compute impact scores per
   block of postings. (Adrien Grand)
 
+* GITHUB#15167: FirstPassGroupingCollector supports ignoring docs without group field (Binlong Gao)
+
 * GITHUB#15160: Increased the size used for blocks of postings from 128 to 256.
   This gives a noticeable speedup to many queries. (Adrien Grand)
 
@@ -204,6 +206,18 @@ Other
   filter factory that disallows any unprotected deserialization while running tests.
   Applications using SecurityManager now need to grant SerializablePermission("serialFilter")
   to the analysis-smartcn module. (Uwe Schindler, Isaac David)
+
+Build
+---------------------
+* Upgrade forbiddenapis to version 3.10.  (Uwe Schindler)
+
+======================= Lucene 10.3.1 =======================
+
+Bug Fixes
+---------------------
+* GITHUB#15263: Fix the Impact returned from Lucene103PostingsReader when frequencies
+  are not indexed. It was returning a sub-optimal frequency in that case affecting
+  scoring which might led to performance issues. (Ignacio Vera)
 
 ======================= Lucene 10.3.0 =======================
 
