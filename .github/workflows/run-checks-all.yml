@@ -58,7 +58,7 @@ jobs:
           echo "lucene.tool.ast-grep=ast-grep" >> build-options.local.properties
 
       - name: Run gradle check (without tests)
-        run: ./gradlew check -x test "-Ptask.times=true" --max-workers 2
+        run: ./gradlew check -x test "-Ptask.times=true"
 
 
   # This runs all tests without any other validation checks.
@@ -88,7 +88,7 @@ jobs:
         uses: ./.github/actions/prepare-for-build
 
       - name: Run gradle tests
-        run: ./gradlew test "-Ptask.times=true" --max-workers 2
+        run: ./gradlew test "-Ptask.times=true"
 
       - name: List automatically-initialized gradle.properties
         run: cat gradle.properties
