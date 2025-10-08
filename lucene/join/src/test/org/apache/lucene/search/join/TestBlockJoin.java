@@ -1660,6 +1660,8 @@ public class TestBlockJoin extends LuceneTestCase {
     dir.close();
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testMultiChildQueriesOfDiffParentLevels() throws Exception {
 
     final Directory dir = newDirectory();

@@ -439,6 +439,8 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
     doTestSortedNumericDocValuesWithSkipper(random().nextInt(1, 1000));
   }
 
+  // TODO: incredibly slow (at least with simpletext)
+  @Nightly
   public void testSortedNumericDocValuesWithSkipperMedium() throws Exception {
     doTestSortedNumericDocValuesWithSkipper(random().nextInt(1000, 20000));
   }
