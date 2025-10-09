@@ -58,15 +58,16 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene99FlatVectorsFormat.class);
 
+  private final FlatVectorsScorer vectorScorer;
   private final IntObjectHashMap<FieldEntry> fields = new IntObjectHashMap<>();
   private final IndexInput vectorData;
   private final FieldInfos fieldInfos;
   private final IOContext dataContext;
 
-  public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer)
+  public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer vectorScorer)
       throws IOException {
-    super(scorer);
     int versionMeta = readMetadata(state);
+    this.vectorScorer = vectorScorer;
     this.fieldInfos = state.fieldInfos;
     // Flat formats are used to randomly access vectors from their node ID that is stored
     // in the HNSW graph.

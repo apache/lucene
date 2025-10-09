@@ -40,21 +40,6 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
  */
 public abstract class FlatVectorsReader extends KnnVectorsReader implements Accountable {
 
-  /** Scorer for flat vectors */
-  protected final FlatVectorsScorer vectorScorer;
-
-  /** Sole constructor */
-  protected FlatVectorsReader(FlatVectorsScorer vectorsScorer) {
-    this.vectorScorer = vectorsScorer;
-  }
-
-  /**
-   * @return the {@link FlatVectorsScorer} for this reader.
-   */
-  public FlatVectorsScorer getFlatVectorScorer() {
-    return vectorScorer;
-  }
-
   @Override
   public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
