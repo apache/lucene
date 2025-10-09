@@ -96,7 +96,7 @@ jobs:
           echo "tests.workDir=/tmp/tmpfs/lucene" >> build-options.local.properties
 
       - name: Run gradle tests
-        run: ./gradlew test "-Ptask.times=true"
+        run: ./gradlew test "-Ptask.times=true" "-Pvalidation.errorprone=false"
         env:
           # Set to the defaults to override the "CI"-based logic that would enable C2
           # we can't afford C2 on github runners.
