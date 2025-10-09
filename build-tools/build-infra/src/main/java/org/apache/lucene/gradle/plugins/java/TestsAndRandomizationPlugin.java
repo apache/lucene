@@ -36,7 +36,6 @@ import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.invocation.Gradle;
-import org.gradle.api.plugins.ExtraPropertiesExtension;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.InputFile;
@@ -187,9 +186,7 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                 .getProviders()
                 .provider(
                     () -> {
-                      return ((int)
-                          Math.max(
-                              1, Math.min(Runtime.getRuntime().availableProcessors() / 2.0, 4.0)));
+                      return Math.min(12, Runtime.getRuntime().availableProcessors());
                     }));
 
     // GITHUB#13986: Allow easier configuration of the Panama Vectorization provider with newer Java
@@ -365,8 +362,9 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                       .getAsFile();
 
               task.getExtensions()
-                  .getByType(ExtraPropertiesExtension.class)
-                  .set("testOutputsDir", testOutputsDir);
+                  .create("testOutputsExtension", TestOutputsExtension.class)
+                  .getTestOutputsDir()
+                  .set(testOutputsDir);
 
               // LUCENE-9660: Make it possible to always rerun tests, even if they're incrementally
               // up-to-date.
@@ -440,6 +438,16 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
               task.systemProperty("java.awt.headless", "true");
               task.systemProperty("jdk.map.althashing.threshold", "0");
 
+              // disallow any Java serialization without a filter
+              if (project.getPath().endsWith(".tests")) {
+                // LUCENE-10301: for now, do not use the serialization filter for modular tests
+                // (test framework is not available).
+              } else if (project.getPath().startsWith(":lucene")) {
+                task.systemProperty(
+                    "jdk.serialFilterFactory",
+                    "org.apache.lucene.tests.util.TestObjectInputFilterFactory");
+              }
+
               if (!Os.isFamily(Os.FAMILY_WINDOWS)) {
                 task.systemProperty("java.security.egd", "file:/dev/./urandom");
               }
@@ -511,6 +519,10 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                             testsTmpDir);
                   });
             });
+  }
+
+  public abstract static class TestOutputsExtension {
+    abstract DirectoryProperty getTestOutputsDir();
   }
 
   public abstract static class LoggingFileArgumentProvider implements CommandLineArgumentProvider {

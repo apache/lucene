@@ -68,13 +68,9 @@ public class TestReaderClosed extends LuceneTestCase {
     reader.close();
     try {
       searcher.search(query, 5);
-    } catch (
-        @SuppressWarnings("unused")
-        AlreadyClosedException ace) {
+    } catch (AlreadyClosedException _) {
       // expected
-    } catch (
-        @SuppressWarnings("unused")
-        RejectedExecutionException ree) {
+    } catch (RejectedExecutionException _) {
       // expected if the searcher has been created with threads since LuceneTestCase
       // closes the thread-pool in a reader close listener
     }

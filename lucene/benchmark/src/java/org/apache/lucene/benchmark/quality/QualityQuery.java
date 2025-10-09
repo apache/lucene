@@ -74,9 +74,7 @@ public class QualityQuery implements Comparable<QualityQuery> {
       int n = Integer.parseInt(queryID);
       int nOther = Integer.parseInt(other.queryID);
       return n - nOther;
-    } catch (
-        @SuppressWarnings("unused")
-        NumberFormatException e) {
+    } catch (NumberFormatException _) {
       // fall back to string comparison
       return queryID.compareTo(other.queryID);
     }

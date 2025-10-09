@@ -822,12 +822,22 @@ public class TestWANDScorer extends LuceneTestCase {
     dir.close();
   }
 
-  /** Test the case when some clauses produce infinite max scores. */
+  /**
+   * Test the case when some clauses produce infinite max scores.
+   *
+   * <p>TODO: incredibly slow
+   */
+  @Nightly
   public void testRandomWithInfiniteMaxScore() throws IOException {
     doTestRandomSpecialMaxScore(Float.POSITIVE_INFINITY);
   }
 
-  /** Test the case when some clauses produce finite max scores, but their sum overflows. */
+  /**
+   * Test the case when some clauses produce finite max scores, but their sum overflows.
+   *
+   * <p>TODO: incredibly slow
+   */
+  @Nightly
   public void testRandomWithMaxScoreOverflow() throws IOException {
     doTestRandomSpecialMaxScore(Float.MAX_VALUE);
   }

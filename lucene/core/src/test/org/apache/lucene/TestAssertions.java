@@ -51,9 +51,7 @@ public class TestAssertions extends LuceneTestCase {
       if (assertsAreEnabled) {
         fail("TestTokenStream3 should fail assertion");
       }
-    } catch (
-        @SuppressWarnings("unused")
-        AssertionError e) {
+    } catch (AssertionError _) {
       // expected
     }
   }

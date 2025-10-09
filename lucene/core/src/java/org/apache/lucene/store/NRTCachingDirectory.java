@@ -293,7 +293,7 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
     try {
       dir.fileLength(fileName);
       return true;
-    } catch (@SuppressWarnings("unused") NoSuchFileException | FileNotFoundException e) {
+    } catch (NoSuchFileException | FileNotFoundException _) {
       return false;
     }
   }

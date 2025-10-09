@@ -31,7 +31,6 @@ import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.CodecReader;
@@ -42,6 +41,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
@@ -101,7 +101,13 @@ public class TestLucene102HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
           }
           float[] randomVector = randomVector(vector.length);
           float trueScore = similarityFunction.compare(vector, randomVector);
-          TopDocs td = r.searchNearestVectors("f", randomVector, 1, null, Integer.MAX_VALUE);
+          TopDocs td =
+              r.searchNearestVectors(
+                  "f",
+                  randomVector,
+                  1,
+                  AcceptDocs.fromLiveDocs(null, r.maxDoc()),
+                  Integer.MAX_VALUE);
           assertEquals(1, td.totalHits.value());
           assertTrue(td.scoreDocs[0].score >= 0);
           // When it's the only vector in a segment, the score should be very close to the true
@@ -156,9 +162,7 @@ public class TestLucene102HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
         LeafReader r = getOnlyLeafReader(reader);
         if (r instanceof CodecReader codecReader) {
           KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-          if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
-            knnVectorsReader = fieldsReader.getFieldReader("f");
-          }
+          knnVectorsReader = knnVectorsReader.unwrapReaderForField("f");
           var fieldInfo = r.getFieldInfos().fieldInfo("f");
           var offHeap = knnVectorsReader.getOffHeapByteSize(fieldInfo);
           assertEquals(vector.length * Float.BYTES, (long) offHeap.get("vec"));

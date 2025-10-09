@@ -823,9 +823,7 @@ public class IndexSearcher {
     final LeafCollector leafCollector;
     try {
       leafCollector = collector.getLeafCollector(ctx);
-    } catch (
-        @SuppressWarnings("unused")
-        CollectionTerminatedException e) {
+    } catch (CollectionTerminatedException _) {
       // there is no doc of interest in this reader context
       // continue with the following leaf
       return;
@@ -841,14 +839,10 @@ public class IndexSearcher {
         // Optimize for the case when live docs are stored in a FixedBitSet.
         Bits acceptDocs = ScorerUtil.likelyLiveDocs(ctx.reader().getLiveDocs());
         scorer.score(leafCollector, acceptDocs, minDocId, maxDocId);
-      } catch (
-          @SuppressWarnings("unused")
-          CollectionTerminatedException e) {
+      } catch (CollectionTerminatedException _) {
         // collection was terminated prematurely
         // continue with the following leaf
-      } catch (
-          @SuppressWarnings("unused")
-          TimeLimitingBulkScorer.TimeExceededException e) {
+      } catch (TimeLimitingBulkScorer.TimeExceededException _) {
         partialResult = true;
       }
     }

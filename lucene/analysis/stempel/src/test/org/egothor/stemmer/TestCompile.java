@@ -150,9 +150,7 @@ public class TestCompile extends LuceneTestCase {
           Diff.apply(stm, cmd);
           assertEquals(stem.toLowerCase(Locale.ROOT), stm.toString().toLowerCase(Locale.ROOT));
         }
-      } catch (
-          @SuppressWarnings("unused")
-          java.util.NoSuchElementException x) {
+      } catch (java.util.NoSuchElementException _) {
         // no base token (stem) on a line
       }
     }

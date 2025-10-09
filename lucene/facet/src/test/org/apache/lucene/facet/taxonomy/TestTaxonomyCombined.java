@@ -905,9 +905,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
       assertEquals(
           TaxonomyReader.ROOT_ORDINAL, tr.getParallelTaxonomyArrays().parents().get(author));
       // ok
-    } catch (
-        @SuppressWarnings("unused")
-        ArrayIndexOutOfBoundsException e) {
+    } catch (ArrayIndexOutOfBoundsException _) {
       fail(
           "After category addition, commit() and refresh(), getParent for "
               + author
@@ -1111,6 +1109,8 @@ public class TestTaxonomyCombined extends FacetTestCase {
     return result;
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testThousandsOfCategories() throws IOException {
     int roundSize = random().nextInt(2, 4);
     int size = random().nextInt(16384, 32768);

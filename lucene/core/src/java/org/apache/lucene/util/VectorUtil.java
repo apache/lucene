@@ -65,7 +65,14 @@ public final class VectorUtil {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
     float r = IMPL.dotProduct(a, b);
-    assert Float.isFinite(r);
+    assert Float.isFinite(r)
+        : "not finite: "
+            + r
+            + " from <"
+            + java.util.Arrays.toString(a)
+            + ","
+            + java.util.Arrays.toString(b)
+            + ">";
     return r;
   }
 
@@ -111,6 +118,45 @@ public final class VectorUtil {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
     return IMPL.squareDistance(a, b);
+  }
+
+  /** Returns the sum of squared differences between two uint4 (values between [0,15]) vectors. */
+  public static int int4SquareDistance(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.int4SquareDistance(a, b);
+  }
+
+  /**
+   * Returns the sum of squared differences between two uint4 (values between [0,15]) vectors. The
+   * second vector is considered "packed" (i.e. every byte representing two values).
+   */
+  public static int int4SquareDistanceSinglePacked(byte[] unpacked, byte[] packed) {
+    if (packed.length != ((unpacked.length + 1) >> 1)) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + unpacked.length + "!= 2 * " + packed.length);
+    }
+    return IMPL.int4SquareDistanceSinglePacked(unpacked, packed);
+  }
+
+  /**
+   * Returns the sum of squared differences between two uint4 (values between [0,15]) vectors. Both
+   * vectors are considered "packed" (i.e. every byte representing two values).
+   */
+  public static int int4SquareDistanceBothPacked(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.int4SquareDistanceBothPacked(a, b);
+  }
+
+  /** Returns the sum of squared differences of the two vectors where each byte is unsigned */
+  public static int uint8SquareDistance(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.uint8SquareDistance(a, b);
   }
 
   /**
@@ -167,15 +213,36 @@ public final class VectorUtil {
     return IMPL.dotProduct(a, b);
   }
 
+  /**
+   * Dot product over bytes assuming that the values are actually unsigned.
+   *
+   * @param a uint8 byte vector
+   * @param b another uint8 byte vector of the same dimension
+   * @return the value of the dot product of the two vectors
+   */
+  public static int uint8DotProduct(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.uint8DotProduct(a, b);
+  }
+
+  /**
+   * Dot product computed over uint4 (values between [0,15]) bytes.
+   *
+   * @param a bytes containing a vector
+   * @param b bytes containing another vector, of the same dimension
+   * @return the value of the dot product of the two vectors
+   */
   public static int int4DotProduct(byte[] a, byte[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return IMPL.int4DotProduct(a, false, b, false);
+    return IMPL.int4DotProduct(a, b);
   }
 
   /**
-   * Dot product computed over int4 (values between [0,15]) bytes. The second vector is considered
+   * Dot product computed over uint4 (values between [0,15]) bytes. The second vector is considered
    * "packed" (i.e. every byte representing two values). The following packing is assumed:
    *
    * <pre class="prettyprint lang-java">
@@ -189,12 +256,28 @@ public final class VectorUtil {
    * @param packed the packed vector, of length {@code (unpacked.length + 1) / 2}
    * @return the value of the dot product of the two vectors
    */
-  public static int int4DotProductPacked(byte[] unpacked, byte[] packed) {
+  public static int int4DotProductSinglePacked(byte[] unpacked, byte[] packed) {
     if (packed.length != ((unpacked.length + 1) >> 1)) {
       throw new IllegalArgumentException(
-          "vector dimensions differ: " + unpacked.length + "!= 2 * " + packed.length);
+          "vector dimensions differ: " + unpacked.length + " != 2 * " + packed.length);
     }
-    return IMPL.int4DotProduct(unpacked, false, packed, true);
+    return IMPL.int4DotProductSinglePacked(unpacked, packed);
+  }
+
+  /**
+   * Dot product computed over uint4 (values between [0,15]) bytes. Both vectors are considered
+   * "packed" (i.e. every byte representing two values).
+   *
+   * @param a bytes containing a packed vector
+   * @param b bytes containing another packed vector, of the same dimension
+   * @return the value of the dot product of the two vectors
+   */
+  public static int int4DotProductBothPacked(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.length + " != " + b.length);
+    }
+    return IMPL.int4DotProductBothPacked(a, b);
   }
 
   /**
@@ -407,5 +490,15 @@ public final class VectorUtil {
           "docBuffer and scoreBuffer should keep same length and at least as long as upTo");
     }
     return IMPL.filterByScore(docBuffer, scoreBuffer, minScoreInclusive, upTo);
+  }
+
+  /**
+   * Expands 64 integers in-place into a 256-element array by extracting individual bytes. Each
+   * 32-bit integer is split into 4 bytes. Only works on arrays with 256 length.
+   *
+   * @param arr the array to expand in-place
+   */
+  public static void expand8(int[] arr) {
+    IMPL.expand8(arr);
   }
 }

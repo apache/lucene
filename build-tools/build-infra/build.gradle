@@ -27,6 +27,8 @@ repositories {
   gradlePluginPortal()
 }
 
+apply from: file("ecj-source.gradle")
+
 group = "org.apache"
 
 java {
@@ -55,48 +57,7 @@ gradlePlugin {
   }
 }
 
-// Convert a plugin dependency to a regular dependency so that we can
-// use [plugins] section in the top-level toml but declare regular
-// project dependencies here.
-static Provider<String> plugin(Provider<PluginDependency> plugin) {
-  return plugin.map {
-    if (it.pluginId == "de.thetaphi.forbiddenapis") {
-      // Uwe's forbiddenapis is on Maven Central, directly.
-      return "de.thetaphi:forbiddenapis:${it.version}".toString()
-    } else {
-      // maven artifact pattern for gradle's plugin repositories.
-      return "${it.pluginId}:${it.pluginId}.gradle.plugin:${it.version}".toString()
-    }
-  }
-}
-
-dependencies {
-  implementation gradleApi()
-  implementation localGroovy()
-  implementation deps.commons.codec
-  implementation deps.randomizedtesting.runner
-  implementation deps.rat
-  implementation deps.zstd
-
-  implementation deps.flexmark.core
-  implementation deps.flexmark.ext.abbreviation
-  implementation deps.flexmark.ext.attributes
-  implementation deps.flexmark.ext.autolink
-  implementation deps.flexmark.ext.tables
-  implementation deps.gjf
-  implementation deps.jgit
-  implementation deps.ecj
-
-  implementation plugin(deps.plugins.carrotsearch.buildopts)
-  implementation plugin(deps.plugins.carrotsearch.dependencychecks)
-  implementation plugin(deps.plugins.forbiddenapis)
-  implementation plugin(deps.plugins.spotless)
-  implementation plugin(deps.plugins.owasp.dependencycheck)
-  implementation plugin(deps.plugins.undercouch.download)
-  implementation plugin(deps.plugins.errorprone)
-  implementation plugin(deps.plugins.jacocolog)
-  implementation plugin(deps.plugins.versionCatalogUpdate)
-}
+apply from: file("declare-dependencies.gradle")
 
 def hasJavaFlightRecorder = ModuleLayer.boot().findModule('jdk.jfr').map {otherModule ->
   this.getClass().module.canRead(otherModule)

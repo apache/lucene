@@ -144,9 +144,7 @@ public class TestDataSplitter extends LuceneTestCase {
   private static void closeQuietly(IndexReader reader) throws IOException {
     try {
       IOUtils.close(reader);
-    } catch (
-        @SuppressWarnings("unused")
-        Exception e) {
+    } catch (Exception _) {
       // do nothing
     }
   }

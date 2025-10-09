@@ -1014,7 +1014,12 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
     IOUtils.close(iw, dir);
   }
 
-  /** Test realistic data, which typically compresses better than random data. */
+  /**
+   * Test realistic data, which typically compresses better than random data.
+   *
+   * <p>TODO: incredibly slow
+   */
+  @Nightly
   public void testLineFileDocs() throws IOException {
     // Use an FS dir and a non-randomized IWC to not slow down indexing
     try (Directory dir = newFSDirectory(createTempDir())) {

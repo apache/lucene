@@ -43,6 +43,7 @@ import org.apache.lucene.util.BitUtil;
  *   <li>Requires valid polygons:
  *       <ul>
  *         <li>No self intersections
+ *         <li>Holes must be inside the polygon
  *         <li>Holes may only touch at one vertex
  *         <li>Polygon must have an area (e.g., no "line" boxes)
  *         <li>sensitive to overflow (e.g, subatomic values such as E-200 can cause unexpected
@@ -339,16 +340,31 @@ public final class Tessellator {
         holeMinY = holePoly.minY;
         holeMaxY = holePoly.maxY;
       }
-      eliminateHole(holeNode, outerNode, holeMinX, holeMaxX, holeMinY, holeMaxY);
-      // Filter the new polygon.
-      outerNode = filterPoints(outerNode, outerNode.next);
+      if (eliminateHole(holeNode, outerNode, holeMinX, holeMaxX, holeMinY, holeMaxY)) {
+        // Filter the new polygon.
+        outerNode = filterPoints(outerNode, outerNode.next);
+      } else {
+        // we couldn't find a point to the left of the hole's leftmost point, the point
+        // is not inside the polygon.
+        String polygon;
+        if (h instanceof Polygon holePoly) {
+          polygon = Polygon.verticesToGeoJSON(holePoly.getPolyLats(), holePoly.getPolyLons());
+        } else {
+          XYPolygon holePoly = (XYPolygon) h;
+          polygon = XYPolygon.verticesToGeoJSON(holePoly.getPolyX(), holePoly.getPolyY());
+        }
+        if (polygon.length() > 100) {
+          polygon = polygon.substring(0, 100) + "...";
+        }
+        throw new IllegalArgumentException("Illegal hole detected: " + polygon);
+      }
     }
-    // Return a pointer to the list.
-    return outerNode;
+    // Filter co-planar nodes and return a pointer to the list.
+    return filterPoints(outerNode, null);
   }
 
   /** Finds a bridge between vertices that connects a hole with an outer ring, and links it */
-  private static void eliminateHole(
+  private static boolean eliminateHole(
       final Node holeNode,
       Node outerNode,
       double holeMinX,
@@ -359,7 +375,7 @@ public final class Tessellator {
     // Attempt to merge the hole using a common point between if it exists.
     if (maybeMergeHoleWithSharedVertices(
         holeNode, outerNode, holeMinX, holeMaxX, holeMinY, holeMaxY)) {
-      return;
+      return true;
     }
     // Attempt to find a logical bridge between the HoleNode and OuterNode.
     outerNode = fetchHoleBridge(holeNode, outerNode);
@@ -371,9 +387,10 @@ public final class Tessellator {
           isPointInLine(outerNode, outerNode.next, holeNode)
               || isPointInLine(holeNode, holeNode.next, outerNode);
       // Split the resulting polygon.
-      Node node = splitPolygon(outerNode, holeNode, fromPolygon);
-      // Filter the split nodes.
-      filterPoints(node, node.next);
+      splitPolygon(outerNode, holeNode, fromPolygon);
+      return true;
+    } else {
+      return false;
     }
   }
 
@@ -412,9 +429,7 @@ public final class Tessellator {
     } while (next != outerNode);
     if (sharedVertex != null) {
       // Split the resulting polygon.
-      Node node = splitPolygon(sharedVertexConnection, sharedVertex, true);
-      // Filter the split nodes.
-      filterPoints(node, node.next);
+      splitPolygon(sharedVertexConnection, sharedVertex, true);
       return true;
     }
     return false;

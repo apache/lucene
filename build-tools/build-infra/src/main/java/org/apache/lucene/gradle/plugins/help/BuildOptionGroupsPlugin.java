@@ -20,7 +20,10 @@ import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsTask;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.lucene.gradle.plugins.hacks.DumpGradleStateOnStalledBuildsPlugin;
 import org.apache.lucene.gradle.plugins.ide.EclipseSupportPlugin;
+import org.apache.lucene.gradle.plugins.java.ErrorPronePlugin;
+import org.apache.lucene.gradle.plugins.misc.MeasureTaskTimesPlugin;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 
@@ -47,13 +50,10 @@ public class BuildOptionGroupsPlugin implements Plugin<Project> {
                         "Optional testing and test resources",
                         explicitList(
                             "tests.hunspell.regressions",
-                            "validation.errorprone",
+                            ErrorPronePlugin.OPT_VALIDATION_ERRORPRONE,
                             "hunspell.corpora",
                             "hunspell.dictionaries",
                             "hunspell.repo.path",
-                            "validation.owasp",
-                            "validation.owasp.apikey",
-                            "validation.owasp.threshold",
                             "tests.linedocsfile",
                             "tests.LUCENE_VERSION",
                             "tests.bwcdir"));
@@ -84,7 +84,10 @@ public class BuildOptionGroupsPlugin implements Plugin<Project> {
                         explicitList(
                             "lucene.spotlessGradleScripts",
                             "lucene.gjf.batchSize",
-                            "task.times",
+                            MeasureTaskTimesPlugin.OPT_TASK_TIMES,
+                            MeasureTaskTimesPlugin.OPT_TASK_TIMES_LIMIT,
+                            MeasureTaskTimesPlugin.OPT_TASK_TIMES_AGGREGATE,
+                            DumpGradleStateOnStalledBuildsPlugin.OPT_TRACK_GRADLE_STATE,
                             "javac.failOnWarnings",
                             "tests.slowestSuites",
                             "tests.slowestSuites.minTime",

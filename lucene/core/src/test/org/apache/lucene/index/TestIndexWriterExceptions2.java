@@ -150,9 +150,7 @@ public class TestIndexWriterExceptions2 extends LuceneTestCase {
                   "dv2",
                   new BytesRef(Integer.toString(i + 1)));
             }
-          } catch (
-              @SuppressWarnings("unused")
-              AlreadyClosedException ace) {
+          } catch (AlreadyClosedException _) {
             // OK: writer was closed by abort; we just reopen now:
             assertTrue(iw.isDeleterClosed());
             assertTrue(allowAlreadyClosed);
@@ -189,9 +187,7 @@ public class TestIndexWriterExceptions2 extends LuceneTestCase {
               iw.deleteDocuments(
                   new Term("id", Integer.toString(i)), new Term("id", Integer.toString(-i)));
             }
-          } catch (
-              @SuppressWarnings("unused")
-              AlreadyClosedException ace) {
+          } catch (AlreadyClosedException _) {
             // OK: writer was closed by abort; we just reopen now:
             assertTrue(iw.isDeleterClosed());
             assertTrue(allowAlreadyClosed);
@@ -229,9 +225,7 @@ public class TestIndexWriterExceptions2 extends LuceneTestCase {
             if (DirectoryReader.indexExists(dir)) {
               TestUtil.checkIndex(dir);
             }
-          } catch (
-              @SuppressWarnings("unused")
-              AlreadyClosedException ace) {
+          } catch (AlreadyClosedException _) {
             // OK: writer was closed by abort; we just reopen now:
             assertTrue(iw.isDeleterClosed());
             assertTrue(allowAlreadyClosed);
@@ -261,9 +255,7 @@ public class TestIndexWriterExceptions2 extends LuceneTestCase {
           e.printStackTrace(exceptionStream);
           try {
             iw.rollback();
-          } catch (
-              @SuppressWarnings("unused")
-              Throwable t) {
+          } catch (Throwable _) {
           }
         } else {
           Rethrow.rethrow(e);
