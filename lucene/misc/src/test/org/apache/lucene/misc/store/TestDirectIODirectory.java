@@ -17,6 +17,8 @@
 package org.apache.lucene.misc.store;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
+import static org.apache.lucene.misc.store.DirectIODirectory.DEFAULT_MERGE_BUFFER_SIZE;
+import static org.apache.lucene.misc.store.DirectIODirectory.DEFAULT_MIN_BYTES_DIRECT;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -59,7 +61,11 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
   }
 
   private static DirectIODirectory open(Path path) throws IOException {
-    return new DirectIODirectory(FSDirectory.open(path)) {
+    return new DirectIODirectory(
+        FSDirectory.open(path),
+        DEFAULT_MERGE_BUFFER_SIZE,
+        DEFAULT_MIN_BYTES_DIRECT,
+        randomIntBetween(0, 32)) {
       @Override
       protected boolean useDirectIO(String name, IOContext context, OptionalLong fileLength) {
         return true;
@@ -163,9 +169,8 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
   public void testUseDirectIODefaults() throws Exception {
     Path path = createTempDir("testUseDirectIODefaults");
     try (DirectIODirectory dir = new DirectIODirectory(FSDirectory.open(path))) {
-      long largeSize = DirectIODirectory.DEFAULT_MIN_BYTES_DIRECT + random().nextInt(10_000);
-      long smallSize =
-          random().nextInt(Math.toIntExact(DirectIODirectory.DEFAULT_MIN_BYTES_DIRECT));
+      long largeSize = DEFAULT_MIN_BYTES_DIRECT + random().nextInt(10_000);
+      long smallSize = random().nextInt(Math.toIntExact(DEFAULT_MIN_BYTES_DIRECT));
       int numDocs = random().nextInt(1000);
 
       assertFalse(dir.useDirectIO("dummy", IOContext.DEFAULT, OptionalLong.empty()));

@@ -408,6 +408,9 @@ public class DirectIODirectory extends FilterDirectory {
      */
     @Override
     public void prefetch(long pos, long length) throws IOException {
+      if (prefetcher.maxConcurrentPrefetches == 0) {
+        return;
+      }
       if (pos < 0 || length < 0 || pos + length > this.length) {
         throw new IllegalArgumentException(
             "Invalid prefetch range: pos="
@@ -775,7 +778,8 @@ public class DirectIODirectory extends FilterDirectory {
       return true;
     }
 
-    void clearSlotAndMaybeStartPending(int slot) {
+    private void clearSlotAndMaybeStartPending(int slot) {
+      assert prefetchThreads[slot] != null && prefetchThreads[slot].isDone();
       prefetchExceptions[slot] = null;
       prefetchThreads[slot] = null;
       posToSlot.remove(prefetchPos[slot]);
@@ -785,10 +789,35 @@ public class DirectIODirectory extends FilterDirectory {
       }
       final long req = pendingPrefetches.removeFirst();
       posToSlot.put(req, slot);
+      prefetchPos[slot] = req;
       startPrefetch(req, slot);
     }
 
-    void startPrefetch(long pos, int slot) {
+    private boolean assertSlotsConsistent() {
+      posToSlot.forEach(
+          (k, v) -> {
+            if (prefetchThreads[v] == null) {
+              throw new AssertionError(
+                  "posToSlot inconsistent: slot "
+                      + v
+                      + " for pos "
+                      + k
+                      + " has no prefetch thread");
+            }
+            if (prefetchPos[v] != k) {
+              throw new AssertionError(
+                  "posToSlot inconsistent: slot "
+                      + v
+                      + " for pos "
+                      + k
+                      + " has prefetchPos "
+                      + prefetchPos[v]);
+            }
+          });
+      return true;
+    }
+
+    private void startPrefetch(long pos, int slot) {
       prefetchExceptions[slot] = null;
       Future<?> future =
           executor.submit(
@@ -809,6 +838,7 @@ public class DirectIODirectory extends FilterDirectory {
                 }
               });
       prefetchThreads[slot] = future;
+      assert assertSlotsConsistent();
     }
 
     @Override
