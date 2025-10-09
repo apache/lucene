@@ -12,6 +12,9 @@ on:
       - 'main'
       - 'branch_10x'
 
+  schedule:
+    - cron: '44 1 * * *'
+
 permissions: {}
 
 env:
@@ -69,8 +72,15 @@ jobs:
     strategy:
       matrix:
         # Operating systems to run on.
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        os: [ ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-latest ]
         java: [ '25' ]
+        trigger:
+          - ${{ github.event_name }}
+        exclude:
+          - os: macos-latest
+            trigger: push
+          - os: macos-latest
+            trigger: pull_request
 
     runs-on: ${{ matrix.os }}
 
