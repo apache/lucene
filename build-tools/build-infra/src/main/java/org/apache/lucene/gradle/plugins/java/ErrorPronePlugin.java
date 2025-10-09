@@ -379,7 +379,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "DurationGetTemporalUnit:OFF", // we don't use Duration.get()
     "DurationTemporalUnit:OFF", // we don't use Duration.of() etc
     "DurationToLongTimeUnit:OFF", // we don't use TimeUnit.convert Duration, etc
-    "EffectivelyPrivate:ERROR", // TODO: many violations of this.
+    "EffectivelyPrivate:OFF", // TODO: many violations of this.
     "EmptyBlockTag:OFF", // ECJ takes care
     "EmptyCatch:OFF", // ECJ takes care
     "EmptyIf:OFF", // TODO: new, not checked if applicable to Lucene
@@ -881,7 +881,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
   /** Filter out all checks which are disabled. */
   private static final Map<String, CheckSeverity> ENABLED_CHECKS =
       ALL_CHECKS_PARSED.entrySet().stream()
-          .filter(e -> e.getValue() == CheckSeverity.OFF)
+          .filter(e -> e.getValue() != CheckSeverity.OFF)
           .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
   private void configureErrorProne(Project project) {
@@ -911,6 +911,10 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
               // Turn off everything by default, then re-enable what's needed.
               epOptions.getDisableAllChecks().set(true);
               epOptions.getChecks().putAll(ENABLED_CHECKS);
+              t.getLogger()
+                  .info(
+                      "Compiling with error prone, enabled checks: "
+                          + String.join(", ", ENABLED_CHECKS.keySet()));
 
               // Exclude certain files (generated ones, mostly).
               List<String> excludedPaths =
