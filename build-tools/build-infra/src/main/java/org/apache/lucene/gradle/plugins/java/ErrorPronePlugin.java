@@ -895,7 +895,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
         .withType(JavaCompile.class)
         .configureEach(
             t -> {
-              t.dependsOn(":" + CheckEnvironmentPlugin.CHECK_JDK_INTERNALS_EXPOSED_TO_GRADLE_TASK);
+              t.dependsOn(":" + CheckEnvironmentPlugin.TASK_CHECK_JDK_INTERNALS_EXPOSED_TO_GRADLE);
 
               var epOptions =
                   ((ExtensionAware) t.getOptions())
