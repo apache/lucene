@@ -261,8 +261,8 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "AnnotationMirrorToString:OFF", // TODO: new, not checked if applicable to Lucene
     "AnnotationPosition:OFF", // TODO: new, not checked if applicable to Lucene
     "AnnotationValueToString:OFF", // TODO: new, not checked if applicable to Lucene
-    "ArgumentSelectionDefectChecker:OFF", // noisy
-    "ArrayAsKeyOfSetOrMap:OFF", // TODO: there are problems
+    "ArgumentSelectionDefectChecker:ERROR", // noisy
+    "ArrayAsKeyOfSetOrMap:ERROR", // TODO: there are problems
     "ArrayEquals:ERROR",
     "ArrayFillIncompatibleType:ERROR",
     "ArrayHashCode:ERROR",
@@ -323,7 +323,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "CheckReturnValue:OFF", // we don't use these annotations
     "CheckedExceptionNotThrown:OFF", // TODO: new, not checked if applicable to Lucene
     "ClassCanBeStatic:OFF", // noisy
-    "ClassInitializationDeadlock:OFF", // TODO: there are problems
+    "ClassInitializationDeadlock:ERROR",
     "ClassName:OFF", // TODO: new, not checked if applicable to Lucene
     "ClassNamedLikeTypeParameter:OFF", // TODO: new, not checked if applicable to Lucene
     "ClassNewInstance:WARN",
@@ -729,7 +729,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "SelfEquals:ERROR",
     "SelfSet:ERROR",
     "SetUnrecognized:OFF", // we don't use protobuf
-    "ShortCircuitBoolean:OFF", // TODO: there are problems
+    "ShortCircuitBoolean:ERROR", // TODO: there are problems
     "ShouldHaveEvenArgs:OFF", // we don't use truth
     "SizeGreaterThanOrEqualsZero:ERROR",
     "StatementSwitchToExpressionSwitch:OFF", // TODO: there are problems
