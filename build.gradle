@@ -25,9 +25,6 @@ plugins {
   id "lucene.java-projects.conventions"
 
   id "lucene.java.modules"
-
-  id "lucene.validation.gradle-versions-cleanup"
-  id "lucene.validation.error-prone"
   id "lucene.validation.jar-checks"
 
   id "lucene.publications.maven"
