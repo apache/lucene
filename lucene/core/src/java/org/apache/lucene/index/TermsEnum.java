@@ -197,7 +197,27 @@ public abstract class TermsEnum implements BytesRefIterator {
    * of unused Attributes does not matter.
    */
   public static final TermsEnum EMPTY =
-      new BaseTermsEnum() {
+      new TermsEnum() {
+
+        private AttributeSource atts;
+
+        @Override
+        public AttributeSource attributes() {
+          if (atts == null) {
+            atts = new AttributeSource();
+          }
+          return atts;
+        }
+
+        @Override
+        public boolean seekExact(BytesRef text) {
+          return seekCeil(text) == SeekStatus.FOUND;
+        }
+
+        @Override
+        public IOBooleanSupplier prepareSeekExact(BytesRef text) {
+          return () -> seekExact(text);
+        }
 
         @Override
         public SeekStatus seekCeil(BytesRef term) {
