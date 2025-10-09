@@ -196,6 +196,8 @@ public abstract class TermsEnum implements BytesRefIterator {
    * Attributes to it. This should not be a problem, as the enum is always empty and the existence
    * of unused Attributes does not matter.
    */
+  // Avoid refactoring that results in a dependency on a subclass, like BaseTermsEnum.
+  // See: https://github.com/apache/lucene/issues/15317
   public static final TermsEnum EMPTY =
       new TermsEnum() {
 
