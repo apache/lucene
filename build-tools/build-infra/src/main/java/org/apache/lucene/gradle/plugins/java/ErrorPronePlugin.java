@@ -100,8 +100,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
           skipReason = null;
         } else {
           if (buildGlobals.isCIBuild) {
-            throw new GradleException(
-                "Odd, errorprone linting should always be enabled on CI builds?");
+            skipReason = "skipped explicitly on a CI build it seems";
           } else {
             skipReason =
                 "skipped on builds not running inside CI environments, pass -P"
