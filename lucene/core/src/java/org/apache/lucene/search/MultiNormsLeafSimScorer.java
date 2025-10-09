@@ -209,6 +209,8 @@ final class MultiNormsLeafSimScorer {
       }
 
       for (int i = 0; i < normsArr.length; i++) {
+        // this code relies on the assumption that document length can never be equal to 0,
+        // so we can use 0L to indicate whether we have a norm value or not
         normsArr[i].longValues(size, docs, values, 0L);
         float weight = weightArr[i];
         for (int j = 0; j < size; j++) {
