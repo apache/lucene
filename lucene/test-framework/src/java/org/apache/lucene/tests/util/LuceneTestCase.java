@@ -89,8 +89,10 @@ import java.util.TreeSet;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -290,9 +292,19 @@ public abstract class LuceneTestCase extends Assert {
   public static final String SYSPROP_FAILFAST = "tests.failfast";
 
   /**
+   * If specified, limits the number of method calls to each individual instance returned by {@link
+   * #random()}.
+   *
    * @see #randomSupplier
    */
   public static final String SYSPROP_RANDOM_MAXCALLS = "tests.random.maxcalls";
+
+  /**
+   * If specified, limits the number of calls {@link #random()} itself.
+   *
+   * @see #randomSupplier
+   */
+  public static final String SYSPROP_RANDOM_MAXACQUIRES = "tests.random.maxacquires";
 
   /** Annotation for tests that should only be run during nightly builds. */
   @Documented
@@ -695,6 +707,10 @@ public abstract class LuceneTestCase extends Assert {
 
   private static final Supplier<Random> randomSupplier;
 
+  /** A counter of calls to {@link #random()} if {@link #SYSPROP_RANDOM_MAXACQUIRES} is defined. */
+  @SuppressWarnings("NonFinalStaticField")
+  private static AtomicLong randomCalls = new AtomicLong();
+
   static {
     int maxCalls = Integer.parseInt(System.getProperty(SYSPROP_RANDOM_MAXCALLS, "0"));
     Supplier<Random> supplier = () -> RandomizedContext.current().getRandom();
@@ -702,6 +718,21 @@ public abstract class LuceneTestCase extends Assert {
       var finalizedSupplier = supplier;
       supplier = () -> new MaxCallCountRandom(finalizedSupplier.get(), maxCalls);
     }
+
+    int maxAquires = Integer.parseInt(System.getProperty(SYSPROP_RANDOM_MAXACQUIRES, "0"));
+    if (maxAquires > 0) {
+      var finalizedSupplier = supplier;
+      supplier =
+          () -> {
+            if (randomCalls.incrementAndGet() > maxAquires) {
+              throw new RuntimeException(
+                  "Too many random() calls. Consider using LuceneTestCase.nonAssertingRandom for"
+                      + " large loops or data generation.");
+            }
+            return finalizedSupplier.get();
+          };
+    }
+
     randomSupplier = supplier;
   }
 
@@ -712,6 +743,7 @@ public abstract class LuceneTestCase extends Assert {
   /** For subclasses to override. Overrides must call {@code super.setUp()}. */
   @Before
   public void setUp() throws Exception {
+    randomCalls.set(0);
     parentChainCallRule.setupCalled = true;
   }
 
@@ -761,7 +793,7 @@ public abstract class LuceneTestCase extends Assert {
    * multiple invocations are present. See {@link #nonAssertingRandom(Random)}.
    */
   public static Random random() {
-    return randomSupplier.get();
+    return ThreadLocalRandom.current();
   }
 
   /**
