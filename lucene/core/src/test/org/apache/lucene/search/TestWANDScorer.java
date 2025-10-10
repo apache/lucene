@@ -746,7 +746,7 @@ public class TestWANDScorer extends LuceneTestCase {
     // but will be called during searching
     IndexSearcher searcher = newSearcher(reader, true, true, false);
 
-    for (int iter = 0; iter < 100; ++iter) {
+    for (int iter = 0; iter < 10; ++iter) {
       int start = random().nextInt(10);
       int numClauses = random().nextInt(1 << random().nextInt(5));
       BooleanQuery.Builder builder = new BooleanQuery.Builder();

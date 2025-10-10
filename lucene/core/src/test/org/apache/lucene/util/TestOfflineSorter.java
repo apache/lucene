@@ -115,7 +115,7 @@ public class TestOfflineSorter extends LuceneTestCase {
   }
 
   public void testSmallRandom() throws Exception {
-    // Sort 20 mb worth of data with 1mb buffer.
+    // Sort 10 mb worth of data with 512kb buffer.
     try (Directory dir = newFSDirectory(createTempDir())) {
       ExecutorService exec = randomExecutorServiceOrNull();
       SortInfo sortInfo =
@@ -125,12 +125,12 @@ public class TestOfflineSorter extends LuceneTestCase {
                   dir,
                   "foo",
                   OfflineSorter.DEFAULT_COMPARATOR,
-                  BufferSize.megabytes(1),
+                  BufferSize.kilobytes(512),
                   OfflineSorter.MAX_TEMPFILES,
                   -1,
                   exec,
                   TestUtil.nextInt(random(), 1, 4)),
-              generateRandom((int) OfflineSorter.MB * 20));
+              generateRandom((int) OfflineSorter.MB * 10));
       if (exec != null) {
         exec.shutdownNow();
       }

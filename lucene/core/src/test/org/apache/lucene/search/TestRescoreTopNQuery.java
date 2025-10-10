@@ -170,7 +170,7 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
     final String KNN_FIELD = "knn_vector";
     List<float[][]> corpus = new ArrayList<>();
     final int numDocs = atLeast(100);
-    final int numSegments = random().nextInt(2, 5);
+    final int numSegments = atLeast(2);
     final int dim = 8;
     final VectorSimilarityFunction vectorSimilarityFunction =
         VectorSimilarityFunction.values()[

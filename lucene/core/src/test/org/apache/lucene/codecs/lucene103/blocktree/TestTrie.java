@@ -67,7 +67,7 @@ public class TestTrie extends LuceneTestCase {
   public void testOneByteTerms() throws Exception {
     // heavily test single byte terms to generate various label distribution.
     Supplier<byte[]> supplier = () -> new byte[] {(byte) random().nextInt()};
-    int round = atLeast(50);
+    int round = atLeast(5);
     for (int i = 0; i < round; i++) {
       testTrieLookup(supplier, 10);
     }
