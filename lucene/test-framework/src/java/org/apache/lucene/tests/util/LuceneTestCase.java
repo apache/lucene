@@ -30,6 +30,7 @@ import com.carrotsearch.randomizedtesting.MixWithSuiteName;
 import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.RandomizedRunner;
 import com.carrotsearch.randomizedtesting.RandomizedTest;
+import com.carrotsearch.randomizedtesting.Xoroshiro128PlusRandom;
 import com.carrotsearch.randomizedtesting.annotations.Listeners;
 import com.carrotsearch.randomizedtesting.annotations.SeedDecorators;
 import com.carrotsearch.randomizedtesting.annotations.TestGroup;
@@ -91,6 +92,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import junit.framework.AssertionFailedError;
 import org.apache.lucene.analysis.Analyzer;
@@ -286,6 +288,11 @@ public abstract class LuceneTestCase extends Assert {
    * @see #ignoreAfterMaxFailures
    */
   public static final String SYSPROP_FAILFAST = "tests.failfast";
+
+  /**
+   * @see #randomSupplier
+   */
+  public static final String SYSPROP_RANDOM_MAXCALLS = "tests.random.maxcalls";
 
   /** Annotation for tests that should only be run during nightly builds. */
   @Documented
@@ -686,6 +693,18 @@ public abstract class LuceneTestCase extends Assert {
     liveIWCFlushMode = flushMode;
   }
 
+  private static final Supplier<Random> randomSupplier;
+
+  static {
+    int maxCalls = Integer.parseInt(System.getProperty(SYSPROP_RANDOM_MAXCALLS, "0"));
+    Supplier<Random> supplier = () -> RandomizedContext.current().getRandom();
+    if (maxCalls > 0) {
+      var finalizedSupplier = supplier;
+      supplier = () -> new MaxCallCountRandom(finalizedSupplier.get(), maxCalls);
+    }
+    randomSupplier = supplier;
+  }
+
   // -----------------------------------------------------------------
   // Suite and test case setup/ cleanup.
   // -----------------------------------------------------------------
@@ -738,17 +757,22 @@ public abstract class LuceneTestCase extends Assert {
    * another test case.
    *
    * <p>There is an overhead connected with getting the {@link Random} for a particular context and
-   * thread. It is better to cache the {@link Random} locally if tight loops with multiple
-   * invocations are present or create a derivative local {@link Random} for millions of calls like
-   * this:
-   *
-   * <pre>
-   * Random random = new Random(random().nextLong());
-   * // tight loop with many invocations.
-   * </pre>
+   * thread. It is better to use a non-asserting {@link Random} instance locally if tight loops with
+   * multiple invocations are present. See {@link #nonAssertingRandom(Random)}.
    */
   public static Random random() {
-    return RandomizedContext.current().getRandom();
+    return randomSupplier.get();
+  }
+
+  /**
+   * Returns a Random instance based on the current state of another Random. The returned instance
+   * should be faster for thousands of consecutive calls because it doesn't assert that it isn't
+   * shared between threads or used within the correct {@link RandomizedContext}.
+   *
+   * <p>Use this method for local tight loops that generate a lot of random data.
+   */
+  public static Random nonAssertingRandom(Random rnd) {
+    return new Xoroshiro128PlusRandom(rnd.nextLong());
   }
 
   /**

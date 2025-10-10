@@ -19,7 +19,6 @@ package org.apache.lucene.util;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
-import com.carrotsearch.randomizedtesting.Xoroshiro128PlusRandom;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -217,7 +216,7 @@ public class TestPriorityQueue extends LuceneTestCase {
     var reference = new java.util.PriorityQueue<Integer>();
     var pq = new IntegerQueue(size);
 
-    Random localRandom = new Xoroshiro128PlusRandom(random().nextLong());
+    Random localRandom = nonAssertingRandom(random());
 
     // Lucene's PriorityQueue.remove uses reference equality, not .equals to determine which
     // elements

@@ -97,7 +97,7 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
 
   public void testRandomStoredFields() throws IOException {
     Directory dir = newDirectory();
-    Random rand = random();
+    Random rand = nonAssertingRandom(random());
     RandomIndexWriter w =
         new RandomIndexWriter(
             rand,

@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.backward_codecs.compressing;
 
+import com.carrotsearch.randomizedtesting.Xoroshiro128PlusRandom;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Arrays;
@@ -39,6 +40,7 @@ public abstract class AbstractTestCompressionMode extends LuceneTestCase {
   }
 
   static byte[] randomArray(Random random, int length, int max) {
+    random = new Xoroshiro128PlusRandom(random.nextLong());
     final byte[] arr = new byte[length];
     for (int i = 0; i < arr.length; ++i) {
       arr[i] = (byte) RandomNumbers.randomIntBetween(random, 0, max);
@@ -83,7 +85,7 @@ public abstract class AbstractTestCompressionMode extends LuceneTestCase {
   }
 
   public void testDecompress() throws IOException {
-    Random random = random();
+    Random random = nonAssertingRandom(random());
     final int iterations = atLeast(random, 3);
     for (int i = 0; i < iterations; ++i) {
       final byte[] decompressed = randomArray(random);
@@ -99,7 +101,7 @@ public abstract class AbstractTestCompressionMode extends LuceneTestCase {
   }
 
   public void testPartialDecompress() throws IOException {
-    Random random = random();
+    Random random = nonAssertingRandom(random());
     final int iterations = atLeast(random, 3);
     for (int i = 0; i < iterations; ++i) {
       final byte[] decompressed = randomArray(random);
