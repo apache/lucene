@@ -28,6 +28,7 @@ import java.util.Map;
  * Parser for trec doc content, invoked on doc text excluding &lt;DOC&gt; and &lt;DOCNO&gt; which
  * are handled in TrecContentSource. Required to be stateless and hence thread safe.
  */
+@SuppressWarnings("ClassInitializationDeadlock") // FIXME: may cause hangs!
 public abstract class TrecDocParser {
 
   /** Types of trec parse paths, */

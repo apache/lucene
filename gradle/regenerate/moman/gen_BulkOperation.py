@@ -285,6 +285,7 @@ if __name__ == '__main__':
  */\n''')
 
   f.write('abstract class BulkOperation implements PackedInts.Decoder, PackedInts.Encoder {\n')
+  f.write('  @SuppressWarnings("ClassInitializationDeadlock") // FIXME: may cause hangs!\n')
   f.write('  private static final BulkOperation[] packedBulkOps = new BulkOperation[] {\n')
 
   for bpv in range(1, 65):
@@ -310,6 +311,7 @@ if __name__ == '__main__':
   f.write('\n')
 
   f.write('  // NOTE: this is sparse (some entries are null):\n')
+  f.write('  @SuppressWarnings("ClassInitializationDeadlock") // FIXME: may cause hangs!\n')
   f.write('  private static final BulkOperation[] packedSingleBlockBulkOps = new BulkOperation[] {\n')
   for bpv in range(1, max(PACKED_64_SINGLE_BLOCK_BPV) + 1):
     if bpv in PACKED_64_SINGLE_BLOCK_BPV:

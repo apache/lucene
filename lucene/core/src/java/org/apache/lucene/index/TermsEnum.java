@@ -196,6 +196,7 @@ public abstract class TermsEnum implements BytesRefIterator {
    * Attributes to it. This should not be a problem, as the enum is always empty and the existence
    * of unused Attributes does not matter.
    */
+  @SuppressWarnings("ClassInitializationDeadlock") // FIXME: may cause hangs!
   public static final TermsEnum EMPTY =
       new BaseTermsEnum() {
 
