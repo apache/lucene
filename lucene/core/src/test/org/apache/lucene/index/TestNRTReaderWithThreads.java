@@ -39,7 +39,8 @@ public class TestNRTReaderWithThreads extends LuceneTestCase {
             ensureSaneIWCOnNightly(
                 newIndexWriterConfig(new MockAnalyzer(random()))
                     .setMaxBufferedDocs(10)
-                    .setMergePolicy(newLogMergePolicy(false, 2))));
+                    .setMergePolicy(newLogMergePolicy(2))));
+    writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
     IndexReader reader = DirectoryReader.open(writer); // start pooling readers
     reader.close();
     int numThreads = TEST_NIGHTLY ? 4 : 2;

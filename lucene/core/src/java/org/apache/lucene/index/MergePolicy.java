@@ -577,41 +577,8 @@ public abstract class MergePolicy {
     }
   }
 
-  /**
-   * Default ratio for compound file system usage. Set to <code>1.0</code>, always use compound file
-   * system.
-   */
-  protected static final double DEFAULT_NO_CFS_RATIO = 1.0;
-
-  /**
-   * Default max segment size in order to use compound file system. Set to {@link Long#MAX_VALUE}.
-   */
-  protected static final long DEFAULT_MAX_CFS_SEGMENT_SIZE = Long.MAX_VALUE;
-
-  /**
-   * If the size of the merge segment exceeds this ratio of the total index size then it will remain
-   * in non-compound format
-   */
-  protected double noCFSRatio;
-
-  /**
-   * If the size of the merged segment exceeds this value then it will not use compound file format.
-   */
-  protected long maxCFSSegmentSize;
-
   /** Creates a new merge policy instance. */
-  protected MergePolicy() {
-    this(DEFAULT_NO_CFS_RATIO, DEFAULT_MAX_CFS_SEGMENT_SIZE);
-  }
-
-  /**
-   * Creates a new merge policy instance with default settings for noCFSRatio and maxCFSSegmentSize.
-   * This ctor should be used by subclasses using different defaults than the {@link MergePolicy}
-   */
-  protected MergePolicy(double defaultNoCFSRatio, long defaultMaxCFSSegmentSize) {
-    this.noCFSRatio = defaultNoCFSRatio;
-    this.maxCFSSegmentSize = defaultMaxCFSSegmentSize;
-  }
+  protected MergePolicy() {}
 
   /**
    * Determine what set of merge operations are now necessary on the index. {@link IndexWriter}
@@ -728,32 +695,6 @@ public abstract class MergePolicy {
   }
 
   /**
-   * Returns true if a new segment (regardless of its origin) should use the compound file format.
-   * The default implementation returns <code>true</code> iff the size of the given mergedInfo is
-   * less or equal to {@link #getMaxCFSSegmentSizeMB()} and the size is less or equal to the
-   * TotalIndexSize * {@link #getNoCFSRatio()} otherwise <code>false</code>.
-   */
-  public boolean useCompoundFile(
-      SegmentInfos infos, SegmentCommitInfo mergedInfo, MergeContext mergeContext)
-      throws IOException {
-    if (getNoCFSRatio() == 0.0) {
-      return false;
-    }
-    long mergedInfoSize = size(mergedInfo, mergeContext);
-    if (mergedInfoSize > maxCFSSegmentSize) {
-      return false;
-    }
-    if (getNoCFSRatio() >= 1.0) {
-      return true;
-    }
-    long totalSize = 0;
-    for (SegmentCommitInfo info : infos) {
-      totalSize += size(info, mergeContext);
-    }
-    return mergedInfoSize <= getNoCFSRatio() * totalSize;
-  }
-
-  /**
    * Return the byte size of the provided {@link SegmentCommitInfo}, prorated by percentage of
    * non-deleted documents.
    */
@@ -793,47 +734,8 @@ public abstract class MergePolicy {
     int delCount = mergeContext.numDeletesToMerge(info);
     assert assertDelCount(delCount, info);
     return delCount == 0
-        && useCompoundFile(infos, info, mergeContext) == info.info.getUseCompoundFile();
-  }
-
-  /**
-   * Returns current {@code noCFSRatio}.
-   *
-   * @see #setNoCFSRatio
-   */
-  public double getNoCFSRatio() {
-    return noCFSRatio;
-  }
-
-  /**
-   * If a merged segment will be more than this percentage of the total size of the index, leave the
-   * segment as non-compound file even if compound file is enabled. Set to 1.0 to always use CFS
-   * regardless of merge size.
-   */
-  public void setNoCFSRatio(double noCFSRatio) {
-    if (noCFSRatio < 0.0 || noCFSRatio > 1.0) {
-      throw new IllegalArgumentException(
-          "noCFSRatio must be 0.0 to 1.0 inclusive; got " + noCFSRatio);
-    }
-    this.noCFSRatio = noCFSRatio;
-  }
-
-  /** Returns the largest size allowed for a compound file segment */
-  public double getMaxCFSSegmentSizeMB() {
-    return maxCFSSegmentSize / 1024. / 1024.;
-  }
-
-  /**
-   * If a merged segment will be more than this value, leave the segment as non-compound file even
-   * if compound file is enabled. Set this to Double.POSITIVE_INFINITY (default) and noCFSRatio to
-   * 1.0 to always use CFS regardless of merge size.
-   */
-  public void setMaxCFSSegmentSizeMB(double v) {
-    if (v < 0.0) {
-      throw new IllegalArgumentException("maxCFSSegmentSizeMB must be >=0 (got " + v + ")");
-    }
-    v *= 1024 * 1024;
-    this.maxCFSSegmentSize = v > Long.MAX_VALUE ? Long.MAX_VALUE : (long) v;
+        && info.info.getCodec().compoundFormat().useCompoundFile(size(info, mergeContext), this)
+            == info.info.getUseCompoundFile();
   }
 
   /**
