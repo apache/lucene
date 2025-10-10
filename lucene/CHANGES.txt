@@ -46,6 +46,8 @@ API Changes
 
 * GITHUB#15187: Restrict visibility of PerFieldKnnVectorsFormat.FieldsReader (Simon Cooper)
 
+* GITHUB#15316: Remove FlatVectorsReader#getFlatVectorScorer and constructor parameter (Simon Cooper)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)

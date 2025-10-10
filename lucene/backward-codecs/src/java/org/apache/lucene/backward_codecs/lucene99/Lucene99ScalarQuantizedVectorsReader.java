@@ -66,13 +66,14 @@ final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReader
   private final IntObjectHashMap<FieldEntry> fields = new IntObjectHashMap<>();
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
+  private final FlatVectorsScorer vectorScorer;
   private final FieldInfos fieldInfos;
 
   Lucene99ScalarQuantizedVectorsReader(
       SegmentReadState state, FlatVectorsReader rawVectorsReader, FlatVectorsScorer scorer)
       throws IOException {
-    super(scorer);
     this.rawVectorsReader = rawVectorsReader;
+    this.vectorScorer = scorer;
     this.fieldInfos = state.fieldInfos;
     int versionMeta = -1;
     String metaFileName =
