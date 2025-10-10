@@ -199,6 +199,8 @@ Bug Fixes
   removing co-planar points to do it once after all holes are removed instead of doing it for each
   removed hole.
 
+* GITHUB#15319: Fix potential hang in initialisation of TermsEnum and BaseTermsEnum (Chris Hegarty)
+
 Other
 ---------------------
 * GITHUB#15237: Fix SmartChinese to only deserialize dictionary data from classpath with a native array
