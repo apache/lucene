@@ -402,13 +402,15 @@ public class TestMultiCollector extends LuceneTestCase {
 
     final LeafReaderContext ctx = reader.leaves().get(0);
 
-    expectThrows(
-        AssertionError.class,
-        () -> {
-          collector(ScoreMode.COMPLETE_NO_SCORES, ScoreCachingWrappingScorer.class)
-              .getLeafCollector(ctx)
-              .setScorer(new SimpleScorable());
-        });
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(
+          AssertionError.class,
+          () -> {
+            collector(ScoreMode.COMPLETE_NO_SCORES, ScoreCachingWrappingScorer.class)
+                .getLeafCollector(ctx)
+                .setScorer(new SimpleScorable());
+          });
+    }
 
     // no collector needs scores => no caching
     Collector c1 = collector(ScoreMode.COMPLETE_NO_SCORES, SimpleScorable.class);
