@@ -89,7 +89,6 @@ import java.util.TreeSet;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -793,7 +792,7 @@ public abstract class LuceneTestCase extends Assert {
    * multiple invocations are present. See {@link #nonAssertingRandom(Random)}.
    */
   public static Random random() {
-    return ThreadLocalRandom.current();
+    return randomSupplier.get();
   }
 
   /**

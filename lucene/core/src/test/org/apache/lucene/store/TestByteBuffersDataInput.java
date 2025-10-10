@@ -19,10 +19,8 @@ package org.apache.lucene.store;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBytesOfLength;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
-import static com.carrotsearch.randomizedtesting.RandomizedTest.randomLong;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomLongBetween;
 
-import com.carrotsearch.randomizedtesting.Xoroshiro128PlusRandom;
 import com.carrotsearch.randomizedtesting.annotations.Timeout;
 import java.io.EOFException;
 import java.io.IOException;
@@ -71,7 +69,6 @@ public final class TestByteBuffersDataInput extends LuceneTestCase {
   public void testRandomReads() throws Exception {
     ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
 
-    long seed = randomLong();
     int max = LuceneTestCase.TEST_NIGHTLY ? 1_000_000 : 100_000;
     List<IOConsumer<DataInput>> reply =
         TestByteBuffersDataOutput.addRandomData(dst, nonAssertingRandom(random()), max);
@@ -151,10 +148,9 @@ public final class TestByteBuffersDataInput extends LuceneTestCase {
         dst.writeBytes(prefix);
       }
 
-      long seed = randomLong();
       int max = 1000;
       List<IOConsumer<DataInput>> reply =
-          TestByteBuffersDataOutput.addRandomData(dst, new Xoroshiro128PlusRandom(seed), max);
+          TestByteBuffersDataOutput.addRandomData(dst, random(), max);
 
       ByteBuffersDataInput in = dst.toDataInput().slice(prefix.length, dst.size() - prefix.length);
 
