@@ -414,7 +414,12 @@ public abstract class LuceneTestCase extends Assert {
   /** Enables or disables dumping of {@link InfoStream} messages. */
   public static final boolean INFOSTREAM = systemPropertyAsBoolean("tests.infostream", VERBOSE);
 
-  public static final boolean TEST_ASSERTS_ENABLED = systemPropertyAsBoolean("tests.asserts", true);
+  /**
+   * True if {@code tests.asserts} is enabled (either explicitly via the build option or, if not
+   * present, by the default assertion status on this class).
+   */
+  public static final boolean TEST_ASSERTS_ENABLED =
+      systemPropertyAsBoolean("tests.asserts", LuceneTestCase.class.desiredAssertionStatus());
 
   /**
    * The default (embedded resource) lines file.
@@ -3107,15 +3112,6 @@ public abstract class LuceneTestCase extends Assert {
     }
 
     return Files.readAllLines(forkArgsPath, StandardCharsets.UTF_8);
-  }
-
-  /** True if assertions (-ea) are enabled (at least for this class). */
-  public static final boolean assertsAreEnabled;
-
-  static {
-    boolean enabled = false;
-    assert (enabled = true) == true; // Intentional side-effect!!!
-    assertsAreEnabled = enabled;
   }
 
   /**
