@@ -323,7 +323,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "CheckReturnValue:OFF", // we don't use these annotations
     "CheckedExceptionNotThrown:OFF", // TODO: new, not checked if applicable to Lucene
     "ClassCanBeStatic:OFF", // noisy
-    "ClassInitializationDeadlock:OFF", // TODO: there are problems
+    "ClassInitializationDeadlock:ERROR",
     "ClassName:OFF", // TODO: new, not checked if applicable to Lucene
     "ClassNamedLikeTypeParameter:OFF", // TODO: new, not checked if applicable to Lucene
     "ClassNewInstance:WARN",
