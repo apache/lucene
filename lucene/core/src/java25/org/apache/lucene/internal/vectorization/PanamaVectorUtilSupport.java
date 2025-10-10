@@ -154,7 +154,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       FloatVector vh = FloatVector.fromArray(FLOAT_SPECIES, b, i + 3 * FLOAT_SPECIES.length());
       acc4 = fma(vg, vh, acc4);
     }
-    // vector tail: less scalar computations for unaligned sizes, esp with big vector sizes
+    // vector tail: less scalar computations for unaligned sizes, esp with big
+    // vector sizes
     for (; i < limit; i += FLOAT_SPECIES.length()) {
       FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, i);
       FloatVector vb = FloatVector.fromArray(FLOAT_SPECIES, b, i);

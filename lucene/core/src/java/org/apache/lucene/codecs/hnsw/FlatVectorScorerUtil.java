@@ -17,6 +17,7 @@
 
 package org.apache.lucene.codecs.hnsw;
 
+import org.apache.lucene.codecs.lucene104.AsymmetricScalarQuantizeFlatVectorsScorer;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 
 /**
@@ -40,5 +41,15 @@ public final class FlatVectorScorerUtil {
 
   public static FlatVectorsScorer getLucene99ScalarQuantizedVectorsScorer() {
     return IMPL.getLucene99ScalarQuantizedVectorsScorer();
+  }
+
+  /**
+   * Returns a FlatVectorsScorer that supports the Lucene104 scalar quantized format. Scorers
+   * retrieved through this method may be optimized on certain platforms. Otherwise, a
+   * DefaultFlatVectorScorer is returned.
+   */
+  public static AsymmetricScalarQuantizeFlatVectorsScorer
+      getLucene104ScalarQuantizedFlatVectorsScorer() {
+    return IMPL.getLucene104ScalarQuantizedVectorsScorer();
   }
 }

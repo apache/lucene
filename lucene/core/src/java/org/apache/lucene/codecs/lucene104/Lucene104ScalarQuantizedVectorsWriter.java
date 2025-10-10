@@ -69,7 +69,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private final IndexOutput meta, vectorData;
   private final ScalarEncoding encoding;
   private final FlatVectorsWriter rawVectorDelegate;
-  private final Lucene104ScalarQuantizedVectorScorer vectorsScorer;
+  private final AsymmetricScalarQuantizeFlatVectorsScorer vectorsScorer;
   private boolean finished;
 
   /**
@@ -81,7 +81,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       SegmentWriteState state,
       ScalarEncoding encoding,
       FlatVectorsWriter rawVectorDelegate,
-      Lucene104ScalarQuantizedVectorScorer vectorsScorer)
+      AsymmetricScalarQuantizeFlatVectorsScorer vectorsScorer)
       throws IOException {
     super(vectorsScorer);
     this.encoding = encoding;
@@ -829,6 +829,11 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     @Override
     public int dimension() {
       return values.dimension();
+    }
+
+    @Override
+    public IndexInput getSlice() {
+      return null;
     }
 
     @Override
