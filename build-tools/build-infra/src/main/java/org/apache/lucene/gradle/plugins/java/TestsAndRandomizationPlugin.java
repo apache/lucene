@@ -223,7 +223,13 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
 
     Provider<Boolean> assertsOption =
         buildOptions.addBooleanOption(
-            "tests.asserts", "Enables or disables assertions mode.", true);
+            "tests.asserts",
+            "Enables or disables assertions mode.",
+            project.provider(
+                () -> {
+                  // Run with assertions for ~75% of all seeds.
+                  return new Random(buildGlobals.getProjectSeedAsLong().get()).nextInt(100) > 25;
+                }));
     optionsInheritedAsProperties.add("tests.asserts");
 
     buildOptions.addBooleanOption(
