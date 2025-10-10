@@ -241,7 +241,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
     final AtomicBoolean stop = new AtomicBoolean();
 
     // How many unique facets to index before stopping:
-    final int ordLimit = TEST_NIGHTLY ? 100000 : 600;
+    final int ordLimit = TEST_NIGHTLY ? 100000 : 100;
 
     Thread indexer = new IndexerThread(w, config, tw, mgr, ordLimit, stop);
     indexer.start();

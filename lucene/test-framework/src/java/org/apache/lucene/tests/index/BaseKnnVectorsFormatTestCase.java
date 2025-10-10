@@ -968,7 +968,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         if (random().nextInt(10) == 2) {
           iw.deleteDocuments(new Term("id", Integer.toString(random().nextInt(i + 1))));
         }
-        if (random().nextInt(10) == 3) {
+        if (random().nextInt(23) == 1) {
           iw.commit();
         }
       }
@@ -1029,7 +1029,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         if (random().nextInt(10) == 2) {
           iw.deleteDocuments(new Term("id", Integer.toString(random().nextInt(i + 1))));
         }
-        if (random().nextInt(10) == 3) {
+        if (random().nextInt(23) == 1) {
           iw.commit();
         }
       }

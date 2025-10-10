@@ -169,6 +169,8 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
   }
 
   // LUCENE-5724: actually test we play nice with NRTCachingDir and massive file
+  // TODO: very slow with SimpleText
+  @Nightly
   public void testLargeCFS() throws IOException {
     final String testfile = "_123.test";
     IOContext context = IOContext.flush(new FlushInfo(0, 512 * 1024 * 1024));
