@@ -27,6 +27,8 @@ import java.util.Comparator;
  */
 public final class ArrayUtil {
 
+  private static final String PARSING_EXCEPTION_MESSAGE = "Unable to parse";
+
   /** Maximum length for an array (Integer.MAX_VALUE - RamUsageEstimator.NUM_BYTES_ARRAY_HEADER). */
   public static final int MAX_ARRAY_LENGTH =
       Integer.MAX_VALUE - RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
@@ -90,24 +92,21 @@ public final class ArrayUtil {
     for (int i = 0; i < len; i++) {
       int digit = Character.digit(chars[i + offset], radix);
       if (digit == -1) {
-        throw new NumberFormatException("Unable to parse");
+        throw new NumberFormatException(PARSING_EXCEPTION_MESSAGE);
       }
       if (max > result) {
-        throw new NumberFormatException("Unable to parse");
+        throw new NumberFormatException(PARSING_EXCEPTION_MESSAGE);
       }
       int next = result * radix - digit;
       if (next > result) {
-        throw new NumberFormatException("Unable to parse");
+        throw new NumberFormatException(PARSING_EXCEPTION_MESSAGE);
       }
       result = next;
     }
-    /*while (offset < len) {
-
-    }*/
     if (!negative) {
       result = -result;
       if (result < 0) {
-        throw new NumberFormatException("Unable to parse");
+        throw new NumberFormatException(PARSING_EXCEPTION_MESSAGE);
       }
     }
     return result;
