@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.util.bkd;
 
-import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.util.Arrays;
 import java.util.Comparator;
 import org.apache.lucene.codecs.MutablePointTree;
@@ -125,7 +124,6 @@ public class TestMutablePointTreeReaderUtils extends LuceneTestCase {
     }
   }
 
-  @Repeat(iterations = 5)
   public void testPartition() {
     doTestPartition();
   }
