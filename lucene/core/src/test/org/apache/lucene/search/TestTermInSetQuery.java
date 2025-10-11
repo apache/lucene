@@ -319,12 +319,12 @@ public class TestTermInSetQuery extends LuceneTestCase {
 
     TermInSetQuery tq1 = new TermInSetQuery("thing", List.of(newBytesRef("apple")));
     TermInSetQuery tq2 = new TermInSetQuery("thing", List.of(newBytesRef("orange")));
-    assertFalse(tq1.hashCode() == tq2.hashCode());
+    assertNotEquals(tq1.hashCode(), tq2.hashCode());
 
     // different fields with the same term should have differing hashcodes
     tq1 = new TermInSetQuery("thing", List.of(newBytesRef("apple")));
     tq2 = new TermInSetQuery("thing2", List.of(newBytesRef("apple")));
-    assertFalse(tq1.hashCode() == tq2.hashCode());
+    assertNotEquals(tq1.hashCode(), tq2.hashCode());
   }
 
   public void testSimpleEquals() {
