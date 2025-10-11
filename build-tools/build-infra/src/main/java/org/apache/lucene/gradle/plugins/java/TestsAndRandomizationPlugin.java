@@ -221,6 +221,15 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
     buildOptions.addIntOption("tests.timeoutSuite", "Timeout (in millis) for an entire suite.");
     optionsInheritedAsProperties.add("tests.timeoutSuite");
 
+    buildOptions.addIntOption(
+        "tests.random.maxcalls",
+        "Max number of calls to Randoms returned by LuceneTestCase.random()");
+    optionsInheritedAsProperties.add("tests.random.maxcalls");
+
+    buildOptions.addIntOption(
+        "tests.random.maxacquires", "Max number of per-test calls to LuceneTestCase.random()");
+    optionsInheritedAsProperties.add("tests.random.maxacquires");
+
     Provider<Boolean> assertsOption =
         buildOptions.addBooleanOption(
             "tests.asserts",

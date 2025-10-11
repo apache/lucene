@@ -194,9 +194,10 @@ public class TestTrie extends LuceneTestCase {
   }
 
   private static byte[] randomBytes() {
-    byte[] bytes = new byte[random().nextInt(256) + 1];
+    var random = nonAssertingRandom(random());
+    byte[] bytes = new byte[random.nextInt(256) + 1];
     for (int i = 1; i < bytes.length; i++) {
-      bytes[i] = (byte) random().nextInt(1 << (i % 9));
+      bytes[i] = (byte) random.nextInt(1 << (i % 9));
     }
     return bytes;
   }

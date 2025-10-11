@@ -63,7 +63,7 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
 
   /** Compare the content of the set against a {@link BitSet}. */
   public void testAgainstBitSet() throws IOException {
-    Random random = random();
+    Random random = nonAssertingRandom(random());
     final int numBits = TestUtil.nextInt(random, 100, 1 << 20);
     // test various random sets with various load factors
     for (float percentSet : new float[] {0f, 0.0001f, random.nextFloat(), 0.9f, 1f}) {
@@ -181,7 +181,7 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
   }
 
   public void testIntoBitSet() throws IOException {
-    Random random = random();
+    Random random = nonAssertingRandom(random());
     final int numBits = TestUtil.nextInt(random, 100, 1 << 20);
     // test various random sets with various load factors
     for (float percentSet : new float[] {0f, 0.0001f, random.nextFloat(), 0.9f, 1f}) {

@@ -204,7 +204,7 @@ public class TestDirectMonotonic extends LuceneTestCase {
   }
 
   private void doTestRandom(boolean merging) throws IOException {
-    Random random = random();
+    Random random = nonAssertingRandom(random());
     final int iters = atLeast(random, 3);
     for (int iter = 0; iter < iters; ++iter) {
       Directory dir = newDirectory();

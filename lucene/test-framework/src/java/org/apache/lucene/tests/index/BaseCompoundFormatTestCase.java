@@ -682,8 +682,8 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
   /** Creates a file of the specified size with random data. */
   protected static void createRandomFile(Directory dir, String name, int size, byte[] segId)
       throws IOException {
-    Random rnd = random();
-    try (IndexOutput os = dir.createOutput(name, newIOContext(random()))) {
+    Random rnd = nonAssertingRandom(random());
+    try (IndexOutput os = dir.createOutput(name, newIOContext(rnd))) {
       CodecUtil.writeIndexHeader(os, "Foo", 0, segId, "suffix");
       for (int i = 0; i < size; i++) {
         byte b = (byte) rnd.nextInt(256);

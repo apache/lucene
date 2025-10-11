@@ -160,21 +160,21 @@ public class TestConjunctionDISI extends LuceneTestCase {
   }
 
   private static FixedBitSet randomSet(int maxDoc) {
-    final int step = TestUtil.nextInt(random(), 1, 10);
+    var random = nonAssertingRandom(random());
+    final int step = TestUtil.nextInt(random, 1, 10);
     FixedBitSet set = new FixedBitSet(maxDoc);
-    for (int doc = random().nextInt(step);
-        doc < maxDoc;
-        doc += TestUtil.nextInt(random(), 1, step)) {
+    for (int doc = random.nextInt(step); doc < maxDoc; doc += TestUtil.nextInt(random, 1, step)) {
       set.set(doc);
     }
     return set;
   }
 
   private static FixedBitSet clearRandomBits(FixedBitSet other) {
+    var random = nonAssertingRandom(random());
     final FixedBitSet set = new FixedBitSet(other.length());
     set.or(other);
     for (int i = 0; i < set.length(); ++i) {
-      if (random().nextBoolean()) {
+      if (random.nextBoolean()) {
         set.clear(i);
       }
     }

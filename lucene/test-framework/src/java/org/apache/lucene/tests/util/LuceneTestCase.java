@@ -30,6 +30,7 @@ import com.carrotsearch.randomizedtesting.MixWithSuiteName;
 import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.RandomizedRunner;
 import com.carrotsearch.randomizedtesting.RandomizedTest;
+import com.carrotsearch.randomizedtesting.Xoroshiro128PlusRandom;
 import com.carrotsearch.randomizedtesting.annotations.Listeners;
 import com.carrotsearch.randomizedtesting.annotations.SeedDecorators;
 import com.carrotsearch.randomizedtesting.annotations.TestGroup;
@@ -90,7 +91,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import junit.framework.AssertionFailedError;
 import org.apache.lucene.analysis.Analyzer;
@@ -286,6 +289,21 @@ public abstract class LuceneTestCase extends Assert {
    * @see #ignoreAfterMaxFailures
    */
   public static final String SYSPROP_FAILFAST = "tests.failfast";
+
+  /**
+   * If specified, limits the number of method calls to each individual instance returned by {@link
+   * #random()}.
+   *
+   * @see #randomSupplier
+   */
+  public static final String SYSPROP_RANDOM_MAXCALLS = "tests.random.maxcalls";
+
+  /**
+   * If specified, limits the number of calls {@link #random()} itself.
+   *
+   * @see #randomSupplier
+   */
+  public static final String SYSPROP_RANDOM_MAXACQUIRES = "tests.random.maxacquires";
 
   /** Annotation for tests that should only be run during nightly builds. */
   @Documented
@@ -686,6 +704,37 @@ public abstract class LuceneTestCase extends Assert {
     liveIWCFlushMode = flushMode;
   }
 
+  private static final Supplier<Random> randomSupplier;
+
+  /** A counter of calls to {@link #random()} if {@link #SYSPROP_RANDOM_MAXACQUIRES} is defined. */
+  @SuppressWarnings("NonFinalStaticField")
+  private static AtomicLong randomCalls = new AtomicLong();
+
+  static {
+    int maxCalls = Integer.parseInt(System.getProperty(SYSPROP_RANDOM_MAXCALLS, "0"));
+    Supplier<Random> supplier = () -> RandomizedContext.current().getRandom();
+    if (maxCalls > 0) {
+      var finalizedSupplier = supplier;
+      supplier = () -> new MaxCallCountRandom(finalizedSupplier.get(), maxCalls);
+    }
+
+    int maxAquires = Integer.parseInt(System.getProperty(SYSPROP_RANDOM_MAXACQUIRES, "0"));
+    if (maxAquires > 0) {
+      var finalizedSupplier = supplier;
+      supplier =
+          () -> {
+            if (randomCalls.incrementAndGet() > maxAquires) {
+              throw new RuntimeException(
+                  "Too many random() calls. Consider using LuceneTestCase.nonAssertingRandom for"
+                      + " large loops or data generation.");
+            }
+            return finalizedSupplier.get();
+          };
+    }
+
+    randomSupplier = supplier;
+  }
+
   // -----------------------------------------------------------------
   // Suite and test case setup/ cleanup.
   // -----------------------------------------------------------------
@@ -693,6 +742,7 @@ public abstract class LuceneTestCase extends Assert {
   /** For subclasses to override. Overrides must call {@code super.setUp()}. */
   @Before
   public void setUp() throws Exception {
+    randomCalls.set(0);
     parentChainCallRule.setupCalled = true;
   }
 
@@ -738,17 +788,22 @@ public abstract class LuceneTestCase extends Assert {
    * another test case.
    *
    * <p>There is an overhead connected with getting the {@link Random} for a particular context and
-   * thread. It is better to cache the {@link Random} locally if tight loops with multiple
-   * invocations are present or create a derivative local {@link Random} for millions of calls like
-   * this:
-   *
-   * <pre>
-   * Random random = new Random(random().nextLong());
-   * // tight loop with many invocations.
-   * </pre>
+   * thread. It is better to use a non-asserting {@link Random} instance locally if tight loops with
+   * multiple invocations are present. See {@link #nonAssertingRandom(Random)}.
    */
   public static Random random() {
-    return RandomizedContext.current().getRandom();
+    return randomSupplier.get();
+  }
+
+  /**
+   * Returns a Random instance based on the current state of another Random. The returned instance
+   * should be faster for thousands of consecutive calls because it doesn't assert that it isn't
+   * shared between threads or used within the correct {@link RandomizedContext}.
+   *
+   * <p>Use this method for local tight loops that generate a lot of random data.
+   */
+  public static Random nonAssertingRandom(Random rnd) {
+    return new Xoroshiro128PlusRandom(rnd.nextLong());
   }
 
   /**
