@@ -165,7 +165,6 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
         new float[] {0.5f, 0.5f});
   }
 
-  // nocommit: duplicate this patterin in all tests
   @Test
   public void vectorSimilarity_missingFloatVectorField_shouldReturnZero() throws Exception {
     var v1 = new ConstKnnFloatValueSource(new float[] {2.f, 1.f, 1.f});
