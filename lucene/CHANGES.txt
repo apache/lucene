@@ -105,9 +105,10 @@ Changes in Runtime Behavior
 Build
 ---------------------
 * GITHUB#15327: New low-level build options to detect abuse of LuceneTestCase.random():
-  tests.random.maxacquires and tests.random.maxcalls (Dawid Weiss)
+  tests.random.maxacquires and tests.random.maxcalls (Robert Muir, Dawid Weiss)
 
-* GITHUB#15325: Run the tests with assertions disabled ~25% of the time #15325 (Dawid Weiss)
+* GITHUB#15325: Run the tests with assertions disabled ~25% of the time #15325
+  (Robert Muir, Dawid Weiss)
 
 * GITHUB#14804: Detect and ban wildcard imports in Java (Robert Muir, Dawid Weiss)
 
