@@ -238,12 +238,16 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
     it2.advance(from);
     // This call is not legal, since there is one bit that is set beyond the end of the target bit
     // set
-    expectThrows(Throwable.class, () -> it2.intoBitSet(to, dest2, offset));
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(Throwable.class, () -> it2.intoBitSet(to, dest2, offset));
+    }
 
     FixedBitSet dest3 = new FixedBitSet(42 - offset + 1);
     DocIdSetIterator it3 = copy.iterator();
     it3.advance(from);
     // This call is not legal, since offset is greater than the current doc
-    expectThrows(Throwable.class, () -> it3.intoBitSet(to, dest3, 21));
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(Throwable.class, () -> it3.intoBitSet(to, dest3, 21));
+    }
   }
 }

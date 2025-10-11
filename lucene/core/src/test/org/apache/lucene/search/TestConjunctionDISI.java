@@ -401,7 +401,8 @@ public class TestConjunctionDISI extends LuceneTestCase {
   }
 
   public void testIllegalAdvancementOfSubIteratorsTripsAssertion() throws IOException {
-    assumeTrue("Assertions must be enabled for this test!", LuceneTestCase.assertsAreEnabled);
+    assumeTrue("Assertions must be enabled for this test!", TEST_ASSERTS_ENABLED);
+
     int maxDoc = 100;
     final int numIterators = TestUtil.nextInt(random(), 2, 5);
     FixedBitSet set = randomSet(maxDoc);
