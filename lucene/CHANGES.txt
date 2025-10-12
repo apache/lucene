@@ -35,6 +35,11 @@ New Features
   `Lucene104HnswScalarQuantizedVectorsFormat` replaces the now legacy `Lucene99HnswScalarQuantizedVectorsFormat`
    (Trevor McCulloch)
 
+ * GITHUB#15271: Extend `Lucene104ScalarQuantizedVectorsFormat` and `Lucene104HnswScalarQuantizedVectorsFormat` to
+   allow asymmetric quantization. The initially supported bits are single bit with 4 bit queries. This is a replacement
+   for the now legacy `Lucene102HnswBinaryQuantizedVectorsFormat` and `Lucene102BinaryQuantizedVectorsFormat`.
+    (Ben Trent)
+
 Improvements
 ---------------------
 * GITHUB#15148: Add support uint8 distance and allow 8 bit scalar quantization (Trevor McCulloch)
@@ -58,6 +63,8 @@ Optimizations
 
 * GITHUB#15160: Increased the size used for blocks of postings from 128 to 256.
   This gives a noticeable speedup to many queries. (Adrien Grand)
+
+* GITHUB#15198: Optimize ForUtil.expand8 using the JDK Vector API. (Ramakrishna Chilaka)
 
 * GITHUB#14863: Perform scoring for 4, 7, 8 bit quantized vectors off-heap. (Kaival Parikh)
 
@@ -567,6 +574,8 @@ Other
 
 * GITHUB#14116 Use CDL to block threads to avoid flaky tests. (Ao Li)
 
+* GITHUB#14091: Cover all DataType. (Lu Xugang)
+
 * GITHUB#14130: Upgrade OpenNLP from 2.3.2 to 2.5.3, which transitively upgrades Slf4j
   from 1.7.36 to 2.0.16. (Michael Froh)
 
@@ -577,8 +586,6 @@ Other
 * GITHUB#14386: Bump analysis/icu's icu4j dependency to 77.1 (Robert Muir)
 
 * GITHUB#14388: Bump expression's antlr dependency to 4.13.2 (Dawid Weiss, Robert Muir)
-
-* GITHUB#14091: Cover all DataType. (Lu Xugang)
 
 ======================= Lucene 10.1.0 =======================
 
