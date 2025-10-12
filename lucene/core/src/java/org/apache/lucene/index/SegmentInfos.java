@@ -349,14 +349,19 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       if (indexCreatedVersion < minSupportedMajorVersion) {
         throw new IndexFormatTooOldException(
             input,
-            "This index was initially created with Lucene "
+            "Index created with Lucene "
                 + indexCreatedVersion
-                + ".x while the current version is "
+                + ".x is not supported by Lucene "
                 + Version.LATEST
-                + " and Lucene only supports reading"
-                + (minSupportedMajorVersion == Version.MIN_SUPPORTED_MAJOR
-                    ? " the current and previous major versions"
-                    : " from version " + minSupportedMajorVersion + " upwards"));
+                + ". This Lucene version only supports indexes created with major version "
+                + minSupportedMajorVersion
+                + " or later (found: "
+                + indexCreatedVersion
+                + ", minimum: "
+                + minSupportedMajorVersion
+                + "). To resolve this issue: (1) Re-index your data using Lucene "
+                + Version.LATEST.major
+                + ".x, or (2) Use an older Lucene version that supports your index format.");
       }
 
       SegmentInfos infos = new SegmentInfos(indexCreatedVersion);
@@ -403,7 +408,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       input.readBytes(segmentID, 0, segmentID.length);
       Codec codec = readCodec(input);
       SegmentInfo info =
-          codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.DEFAULT);
+          codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READONCE);
       info.setCodec(codec);
       totalDocs += info.maxDoc();
       long delGen = CodecUtil.readBELong(input);

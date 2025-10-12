@@ -26,6 +26,7 @@ import java.util.Set;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.CombinedFieldQuery.FieldAndWeight;
+import org.apache.lucene.search.similarities.Similarity.BulkSimScorer;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.LongsRef;
@@ -49,6 +50,7 @@ final class MultiNormsLeafSimScorer {
   }
 
   private final SimScorer scorer;
+  private final BulkSimScorer bulkScorer;
   private final NumericDocValues norms;
   private long[] normValues = LongsRef.EMPTY_LONGS;
 
@@ -60,6 +62,7 @@ final class MultiNormsLeafSimScorer {
       boolean needsScores)
       throws IOException {
     this.scorer = Objects.requireNonNull(scorer);
+    this.bulkScorer = scorer.asBulkSimScorer();
     if (needsScores) {
       final List<NumericDocValues> normsList = new ArrayList<>();
       final List<Float> weightList = new ArrayList<>();
@@ -123,15 +126,11 @@ final class MultiNormsLeafSimScorer {
    * @see SimScorer#score(float, long)
    */
   public void scoreRange(DocAndFloatFeatureBuffer buffer) throws IOException {
-    if (normValues.length < buffer.size) {
-      normValues = ArrayUtil.growNoCopy(normValues, buffer.size);
-    }
+    normValues = ArrayUtil.growNoCopy(normValues, buffer.size);
     for (int i = 0; i < buffer.size; i++) {
       normValues[i] = getNormValue(buffer.docs[i]);
     }
-    for (int i = 0; i < buffer.size; i++) {
-      buffer.features[i] = scorer.score(buffer.features[i], normValues[i]);
-    }
+    bulkScorer.score(buffer.size, buffer.features, normValues, buffer.features);
   }
 
   /**

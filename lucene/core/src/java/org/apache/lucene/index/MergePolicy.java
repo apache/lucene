@@ -427,7 +427,7 @@ public abstract class MergePolicy {
         return true;
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
-      } catch (@SuppressWarnings("unused") ExecutionException | TimeoutException e) {
+      } catch (ExecutionException | TimeoutException _) {
         return false;
       }
     }
@@ -529,7 +529,7 @@ public abstract class MergePolicy {
         return true;
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
-      } catch (@SuppressWarnings("unused") ExecutionException | CancellationException e) {
+      } catch (ExecutionException | CancellationException _) {
         return false;
       }
     }
@@ -542,7 +542,7 @@ public abstract class MergePolicy {
         return true;
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
-      } catch (@SuppressWarnings("unused") ExecutionException | TimeoutException e) {
+      } catch (ExecutionException | TimeoutException _) {
         return false;
       }
     }

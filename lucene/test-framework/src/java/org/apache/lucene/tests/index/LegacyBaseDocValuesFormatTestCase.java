@@ -2520,6 +2520,8 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     }
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testSortedNumericsMultipleValuesVsStoredFields() throws Exception {
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {
@@ -3124,6 +3126,8 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
   }
 
   // LUCENE-5218
+  // TODO: incredibly slow
+  @Nightly
   public void testEmptyBinaryValueOnPageSizes() throws Exception {
     // Test larger and larger power-of-two sized values,
     // followed by empty string value:

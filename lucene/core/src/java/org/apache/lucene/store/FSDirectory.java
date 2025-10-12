@@ -227,9 +227,7 @@ public abstract class FSDirectory extends BaseDirectory {
           continue;
         }
         return new FSIndexOutput(name, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
-      } catch (
-          @SuppressWarnings("unused")
-          FileAlreadyExistsException faee) {
+      } catch (FileAlreadyExistsException _) {
         // Retry with next incremented name
       }
     }
@@ -354,9 +352,7 @@ public abstract class FSDirectory extends BaseDirectory {
       } else {
         throw e;
       }
-    } catch (
-        @SuppressWarnings("unused")
-        IOException ioe) {
+    } catch (IOException _) {
       // On windows, a file delete can fail because there's still an open
       // file handle against it.  We record this in pendingDeletes and
       // try again later.

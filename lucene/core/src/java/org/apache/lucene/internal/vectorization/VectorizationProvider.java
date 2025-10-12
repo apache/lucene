@@ -56,9 +56,7 @@ public abstract class VectorizationProvider {
               .filter(Predicate.not(Set.of("", "default")::contains))
               .mapToInt(Integer::parseInt)
               .findAny();
-    } catch (
-        @SuppressWarnings("unused")
-        SecurityException se) {
+    } catch (SecurityException _) {
       // ignored
     }
     TESTS_VECTOR_SIZE = vs;
@@ -66,7 +64,7 @@ public abstract class VectorizationProvider {
 
   private static final String UPPER_JAVA_FEATURE_VERSION_SYSPROP =
       "org.apache.lucene.vectorization.upperJavaFeatureVersion";
-  private static final int DEFAULT_UPPER_JAVA_FEATURE_VERSION = 24;
+  private static final int DEFAULT_UPPER_JAVA_FEATURE_VERSION = 25;
 
   private static int getUpperJavaFeatureVersion() {
     int runtimeVersion = DEFAULT_UPPER_JAVA_FEATURE_VERSION;
@@ -75,7 +73,7 @@ public abstract class VectorizationProvider {
       if (str != null) {
         runtimeVersion = Math.max(Integer.parseInt(str), runtimeVersion);
       }
-    } catch (@SuppressWarnings("unused") NumberFormatException | SecurityException ignored) {
+    } catch (NumberFormatException | SecurityException _) {
       Logger.getLogger(VectorizationProvider.class.getName())
           .warning(
               "Cannot read sysprop "
@@ -110,6 +108,9 @@ public abstract class VectorizationProvider {
 
   /** Returns a FlatVectorsScorer that supports the Lucene99 format. */
   public abstract FlatVectorsScorer getLucene99FlatVectorsScorer();
+
+  /** Returns a FlatVectorsScorer that supports the Lucene99 format. */
+  public abstract FlatVectorsScorer getLucene99ScalarQuantizedVectorsScorer();
 
   /** Create a new {@link PostingDecodingUtil} for the given {@link IndexInput}. */
   public abstract PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException;
@@ -204,8 +205,8 @@ public abstract class VectorizationProvider {
       Set.of(
           "org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil",
           "org.apache.lucene.util.VectorUtil",
-          "org.apache.lucene.codecs.lucene103.Lucene103PostingsReader",
-          "org.apache.lucene.codecs.lucene103.PostingIndexInput",
+          "org.apache.lucene.codecs.lucene104.Lucene104PostingsReader",
+          "org.apache.lucene.codecs.lucene104.PostingIndexInput",
           "org.apache.lucene.tests.util.TestSysoutsLimits");
 
   private static void ensureCaller() {

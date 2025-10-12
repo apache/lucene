@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.stream.LongStream;
 import java.util.stream.StreamSupport;
-import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
@@ -32,7 +32,7 @@ import org.apache.lucene.util.VectorUtil;
 class ScorerUtil {
 
   private static final Class<?> DEFAULT_IMPACTS_ENUM_CLASS =
-      Lucene103PostingsFormat.getImpactsEnumImpl();
+      Lucene104PostingsFormat.getImpactsEnumImpl();
   private static final Class<?> DEFAULT_ACCEPT_DOCS_CLASS =
       new FixedBitSet(1).asReadOnlyBits().getClass();
 
@@ -136,34 +136,6 @@ class ScorerUtil {
       minRequiredScore -= subtraction;
     }
     return minRequiredScore;
-  }
-
-  /**
-   * Filters competitive hits from the provided {@link DocAndFloatFeatureBuffer}.
-   *
-   * <p>This method removes documents from the buffer that cannot possibly have a score competitive
-   * enough to exceed the minimum competitive score, given the maximum remaining score and the
-   * number of scorers.
-   */
-  static void filterCompetitiveHits(
-      DocAndFloatFeatureBuffer buffer,
-      double maxRemainingScore,
-      float minCompetitiveScore,
-      int numScorers) {
-    double minRequiredScoreDouble =
-        minRequiredScore(maxRemainingScore, minCompetitiveScore, numScorers);
-    float minRequiredScoreFloat = (float) minRequiredScoreDouble;
-    if ((double) minRequiredScoreFloat > minRequiredScoreDouble) { // the cast rounded up
-      minRequiredScoreFloat = Math.nextDown(minRequiredScoreFloat);
-    }
-    assert (double) minRequiredScoreFloat <= minRequiredScoreDouble;
-
-    if (minRequiredScoreFloat <= 0) {
-      return;
-    }
-
-    buffer.size =
-        VectorUtil.filterByScore(buffer.docs, buffer.features, minRequiredScoreFloat, buffer.size);
   }
 
   /**

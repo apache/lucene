@@ -208,6 +208,8 @@ public class TestPriorityQueue extends LuceneTestCase {
         () -> pq.addAll(list));
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRemovalsAndInsertions() {
     Random random = random();
     int numDocsInPQ = TestUtil.nextInt(random, 1, 100);

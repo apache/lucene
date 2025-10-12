@@ -31,7 +31,7 @@ allprojects {
     }
 
     dependencies {
-      missingdoclet project(":lucene:build-tools:missing-doclet")
+      missingdoclet project(":build-tools:missing-doclet")
     }
 
     project.ext {
@@ -116,7 +116,7 @@ allprojects {
       ("https://junit.org/junit4/javadoc/${junitVersion}/".toString()): junitJavadocPackages
     ]
 
-    luceneDocUrl = provider({ rootProject.luceneDocUrl })
+    luceneDocUrl = project.rootProject.buildOptions.getOption('lucene.javadoc.url').asStringProvider()
 
     // Set up custom doclet.
     dependsOn configurations.missingdoclet
@@ -323,10 +323,6 @@ abstract class RenderJavadocTask extends RenderJavadocTaskBase {
   // default is not to ignore any elements, should only be used to workaround split packages
   @Input
   List<String> javadocMissingIgnore = []
-
-  @Input
-  @Optional
-  ListProperty<String> extraOpts = project.objects.listProperty(String)
 
   @InputDirectory
   @PathSensitive(PathSensitivity.RELATIVE)

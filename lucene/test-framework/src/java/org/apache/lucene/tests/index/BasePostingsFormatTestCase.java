@@ -726,9 +726,7 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
         long ord;
         try {
           ord = termsEnum.ord();
-        } catch (
-            @SuppressWarnings("unused")
-            UnsupportedOperationException uoe) {
+        } catch (UnsupportedOperationException _) {
           supportsOrds = false;
           ord = -1;
         }
@@ -1770,6 +1768,8 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
     IOUtils.close(reader, w2, dir1, dir2);
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testDocIDRunEnd() throws Exception {
     Directory dir = newDirectory();
     for (int iter = 0; iter < 100; ++iter) {

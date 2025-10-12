@@ -19,6 +19,8 @@ package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.codecs.KnnVectorsWriter.MergedVectorValues.hasVectorValues;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.VERSION_CURRENT;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.VERSION_GROUPVARINT;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.SIMILARITY_FUNCTIONS;
 
 import java.io.IOException;
@@ -57,7 +59,6 @@ import org.apache.lucene.util.hnsw.IncrementalHnswGraphMerger;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
-import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
 /**
@@ -76,6 +77,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   private final FlatVectorsWriter flatVectorWriter;
   private final int numMergeWorkers;
   private final TaskExecutor mergeExec;
+  private final int version;
 
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
@@ -88,11 +90,25 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       int numMergeWorkers,
       TaskExecutor mergeExec)
       throws IOException {
+    this(state, M, beamWidth, flatVectorWriter, numMergeWorkers, mergeExec, VERSION_CURRENT);
+  }
+
+  // Test-only constructor, should not be called directly outside of tests.
+  Lucene99HnswVectorsWriter(
+      SegmentWriteState state,
+      int M,
+      int beamWidth,
+      FlatVectorsWriter flatVectorWriter,
+      int numMergeWorkers,
+      TaskExecutor mergeExec,
+      int version)
+      throws IOException {
     this.M = M;
     this.flatVectorWriter = flatVectorWriter;
     this.beamWidth = beamWidth;
     this.numMergeWorkers = numMergeWorkers;
     this.mergeExec = mergeExec;
+    this.version = version;
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -111,13 +127,13 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       CodecUtil.writeIndexHeader(
           meta,
           Lucene99HnswVectorsFormat.META_CODEC_NAME,
-          Lucene99HnswVectorsFormat.VERSION_CURRENT,
+          version,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorIndex,
           Lucene99HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
-          Lucene99HnswVectorsFormat.VERSION_CURRENT,
+          version,
           state.segmentInfo.getId(),
           state.segmentSuffix);
     } catch (Throwable t) {
@@ -342,8 +358,12 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     }
     // Write the size after duplicates are removed
     vectorIndex.writeVInt(actualSize);
-    for (int i = 0; i < actualSize; i++) {
-      vectorIndex.writeVInt(scratch[i]);
+    if (version >= VERSION_GROUPVARINT) {
+      vectorIndex.writeGroupVInts(scratch, actualSize);
+    } else {
+      for (int i = 0; i < actualSize; i++) {
+        vectorIndex.writeVInt(scratch[i]);
+      }
     }
   }
 
@@ -444,9 +464,14 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         }
         // Write the size after duplicates are removed
         vectorIndex.writeVInt(actualSize);
-        for (int i = 0; i < actualSize; i++) {
-          vectorIndex.writeVInt(scratch[i]);
+        if (version >= VERSION_GROUPVARINT) {
+          vectorIndex.writeGroupVInts(scratch, actualSize);
+        } else {
+          for (int i = 0; i < actualSize; i++) {
+            vectorIndex.writeVInt(scratch[i]);
+          }
         }
+
         offsets[level][nodeOffsetId++] =
             Math.toIntExact(vectorIndex.getFilePointer() - offsetStart);
       }
@@ -560,7 +585,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     private int lastDocID = -1;
     private int node = 0;
     private final FlatFieldVectorsWriter<T> flatFieldVectorsWriter;
-    private UpdateableRandomVectorScorer scorer;
 
     @SuppressWarnings("unchecked")
     static FieldWriter<?> create(
@@ -616,7 +640,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                         (List<float[]>) flatFieldVectorsWriter.getVectors(),
                         fieldInfo.getVectorDimension()));
           };
-      this.scorer = scorerSupplier.scorer();
       hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
       hnswGraphBuilder.setInfoStream(infoStream);
@@ -632,8 +655,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 + "\" appears more than once in this document (only one value is allowed per field)");
       }
       flatFieldVectorsWriter.addValue(docID, vectorValue);
-      scorer.setScoringOrdinal(node);
-      hnswGraphBuilder.addGraphNode(node, scorer);
+      hnswGraphBuilder.addGraphNode(node);
       node++;
       lastDocID = docID;
     }

@@ -47,9 +47,7 @@ void addGenerateFromPythonTask(Project project, File genDir, String taskName, St
 
 configure(project(":lucene:core")) {
   addGenerateFromPythonTask(project,
-      file("src/java/org/apache/lucene/codecs/lucene103"), "ForUtil", "gen_ForUtil.py", "ForUtil.java")
-  addGenerateFromPythonTask(project,
-      file("src/java/org/apache/lucene/codecs/lucene103"), "ForDeltaUtil", "gen_ForDeltaUtil.py", "ForDeltaUtil.java")
+      file("src/java/org/apache/lucene/codecs/lucene104"), "ForUtil", "gen_ForUtil.py", "ForUtil.java")
 }
 
 configure(project(":lucene:backward-codecs")) {
@@ -71,4 +69,9 @@ configure(project(":lucene:backward-codecs")) {
       file("src/java/org/apache/lucene/backward_codecs/lucene101"), "ForUtil101", "gen_ForUtil.py", "ForUtil.java")
   addGenerateFromPythonTask(project,
       file("src/java/org/apache/lucene/backward_codecs/lucene101"), "ForDeltaUtil101", "gen_ForDeltaUtil.py", "ForDeltaUtil.java")
+
+  addGenerateFromPythonTask(project,
+      file("src/java/org/apache/lucene/backward_codecs/lucene103"), "ForUtil103", "gen_ForUtil.py", "ForUtil.java")
+  addGenerateFromPythonTask(project,
+      file("src/java/org/apache/lucene/backward_codecs/lucene103"), "ForDeltaUtil103", "gen_ForDeltaUtil.py", "ForDeltaUtil.java")
 }
