@@ -1080,7 +1080,8 @@ final class IndexingChain implements Accountable {
       return true;
     }
     // Check term vectors byte pool if it exists and is different from the main pool
-    if (termsHash.termBytePool != null && termsHash.termBytePool != termsHash.bytePool
+    if (termsHash.termBytePool != null
+        && termsHash.termBytePool != termsHash.bytePool
         && termsHash.termBytePool.isApproachingBufferLimit(threshold)) {
       return true;
     }

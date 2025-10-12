@@ -418,7 +418,5 @@ public class TestFlushByRamOrCountsPolicy extends LuceneTestCase {
       // With normal document sizes, we shouldn't be approaching the limit
       assertFalse("Should not be approaching buffer limit with normal documents", approaching);
     }
-
-
   }
 }

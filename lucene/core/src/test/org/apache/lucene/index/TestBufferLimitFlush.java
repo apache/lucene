@@ -18,16 +18,14 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Iterator;
-import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.ByteBlockPool;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.ByteBlockPool;
 
-/**
- * Test for the buffer limit flush functionality that prevents ByteBlockPool integer overflow.
- */
+/** Test for the buffer limit flush functionality that prevents ByteBlockPool integer overflow. */
 public class TestBufferLimitFlush extends LuceneTestCase {
 
   public void testBufferLimitConstants() {
@@ -57,14 +55,13 @@ public class TestBufferLimitFlush extends LuceneTestCase {
     assertEquals(1, pool.getBufferCount());
 
     // Test approaching limit detection with various thresholds
-    assertFalse("Should not be approaching limit with threshold 65000",
-                pool.isApproachingBufferLimit(65000));
-    assertFalse("Should not be approaching limit with threshold 2",
-                pool.isApproachingBufferLimit(2));
-    assertTrue("Should be approaching limit with threshold 1",
-               pool.isApproachingBufferLimit(1));
-    assertTrue("Should be approaching limit with threshold 0",
-               pool.isApproachingBufferLimit(0));
+    assertFalse(
+        "Should not be approaching limit with threshold 65000",
+        pool.isApproachingBufferLimit(65000));
+    assertFalse(
+        "Should not be approaching limit with threshold 2", pool.isApproachingBufferLimit(2));
+    assertTrue("Should be approaching limit with threshold 1", pool.isApproachingBufferLimit(1));
+    assertTrue("Should be approaching limit with threshold 0", pool.isApproachingBufferLimit(0));
   }
 
   public void testDWPTBufferLimitCheck() throws IOException {

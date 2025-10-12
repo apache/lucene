@@ -126,9 +126,9 @@ public final class ByteBlockPool implements Accountable {
   public int byteOffset = -BYTE_BLOCK_SIZE;
 
   /**
-   * Maximum number of buffers before integer overflow occurs in byteOffset calculation.
-   * Since byteOffset = bufferUpto * BYTE_BLOCK_SIZE, and BYTE_BLOCK_SIZE = 32768,
-   * the maximum safe value is Integer.MAX_VALUE / BYTE_BLOCK_SIZE = 65535.
+   * Maximum number of buffers before integer overflow occurs in byteOffset calculation. Since
+   * byteOffset = bufferUpto * BYTE_BLOCK_SIZE, and BYTE_BLOCK_SIZE = 32768, the maximum safe value
+   * is Integer.MAX_VALUE / BYTE_BLOCK_SIZE = 65535.
    */
   public static final int MAX_BUFFER_COUNT = Integer.MAX_VALUE / BYTE_BLOCK_SIZE;
 
@@ -360,9 +360,7 @@ public final class ByteBlockPool implements Accountable {
     return bufferUpto * allocator.blockSize + byteUpto;
   }
 
-  /**
-   * Returns the current number of allocated buffers.
-   */
+  /** Returns the current number of allocated buffers. */
   public int getBufferCount() {
     return bufferUpto + 1;
   }

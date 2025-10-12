@@ -243,10 +243,13 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
           // Buffer count limit check
           if (!perThread.isFlushPending() && perThread.isApproachingBufferLimit()) {
             if (infoStream.isEnabled("DWFC")) {
-              infoStream.message("DWFC",
-                  "force flush due to buffer count limit approaching in DWPT " +
-                      perThread.getSegmentInfo().name + ": " +
-                      ", limit: " + 65000);
+              infoStream.message(
+                  "DWFC",
+                  "force flush due to buffer count limit approaching in DWPT "
+                      + perThread.getSegmentInfo().name
+                      + ": "
+                      + ", limit: "
+                      + 65000);
             }
             setFlushPending(perThread);
           }
