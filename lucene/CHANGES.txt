@@ -208,6 +208,8 @@ Bug Fixes
   removing co-planar points to do it once after all holes are removed instead of doing it for each
   removed hole.
 
+* GITHUB#15213: Don't normalize centroids with zero samples, which caused divide-by-zero. (Mike Sokolov)
+
 * GITHUB#15319: Fix potential hang in initialisation of TermsEnum and BaseTermsEnum (Chris Hegarty)
 
 Other
@@ -378,6 +380,8 @@ Optimizations
 
 * GITHUB#14991: Refactor for loop at PointRangeQuery hot path. (Ge Song)
 
+* GITHUB#15010: Improve off-heap KNN byte vector query performance in cases where indexing and search are performed by the same process. (Kaival Parikh)
+
 * GITHUB#15001: Remove full integrity check from SortingStoredFieldsConsumer (Martijn van Groningen)
 
 * GITHUB#14980, GITHUB#15037: Add bulk off-heap scoring for float32 vectors (Chris Hegarty)
@@ -391,6 +395,8 @@ Optimizations
 
 * GITHUB#15083: Use DocValuesSkippers in SortedNumericDocValuesRangeQuery#rewrite(). (Alan Woodward)
 
+* GITHUB#15085, GITHUB#15092: Hunspell suggestions: Ensure candidate roots are not worse before updating. (Ilia Permiashkin)
+
 * GITHUB#15045: Use FixedBitSet#cardinality for counting liveDocs in CheckIndex (Zhang Chao)
 
 
@@ -401,6 +407,8 @@ Optimizations
   and no code in subclasses. The optimization now auto-detects if an IndexInput supports random access
   and uses an optimized branchless approach. Any subclasses that have implemented the optimized method
   need to remove it as it will disappear in Lucene 11.  (Uwe Schindler)
+
+* GITHUB#14991: Refactor for loop at PointRangeQuery hot path. (Ge Song)
 
 Changes in Runtime Behavior
 ---------------------
@@ -415,7 +423,7 @@ Changes in Runtime Behavior
   `-Dorg.apache.lucene.store.defaultReadAdvice=RANDOM`. (Chris Hegarty)
 
 * GITHUB#15078: Reduce the default RefCountedSharedArena.DEFAULT_MAX_PERMITS to 64. To restore
-  previous behavior set the `-Dorg.apache.lucene.store.MMapDirectory.sharedArenaMaxPermits=1024`.
+  previous behavior set `-Dorg.apache.lucene.store.MMapDirectory.sharedArenaMaxPermits=1024`.
   (Chris Hegarty)
 
 Bug Fixes
@@ -807,8 +815,13 @@ Optimizations
 * GITHUB#14032: Speed up PostingsEnum when positions are requested.
   (Adrien Grand)
 
+* GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
+
 * GITHUB#14040: Specialized top-level DisjunctionMaxQuery evaluation when the
   tie break multiplier is 0. (Adrien Grand)
+
+* GITHUB#14022: Optimize DFS marking of connected components in HNSW by reducing stack depth, improving performance
+  and reducing allocations. (Viswanath Kuchibhotla)
 
 Bug Fixes
 ---------------------
