@@ -379,7 +379,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
   }
 
   public void testNumericDocValuesWithSkipperMedium() throws Exception {
-    doTestNumericDocValuesWithSkipper(random().nextInt(1000, 20000));
+    doTestNumericDocValuesWithSkipper(random().nextInt(1000, 1500));
   }
 
   @Nightly
@@ -440,7 +440,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
   }
 
   public void testSortedNumericDocValuesWithSkipperMedium() throws Exception {
-    doTestSortedNumericDocValuesWithSkipper(random().nextInt(1000, 20000));
+    doTestSortedNumericDocValuesWithSkipper(random().nextInt(1000, 1500));
   }
 
   @Nightly
@@ -454,7 +454,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
         new TestDocValueSkipper() {
           @Override
           public void populateDoc(Document doc) {
-            for (int j = 0; j < random().nextInt(1, 5); j++) {
+            for (int j = 0; j < random().nextInt(1, 3); j++) {
               doc.add(SortedNumericDocValuesField.indexedField("test", random().nextLong()));
             }
           }
@@ -524,7 +524,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
   }
 
   public void testSortedDocValuesWithSkipperMedium() throws Exception {
-    doTestSortedDocValuesWithSkipper(random().nextInt(1000, 20000));
+    doTestSortedDocValuesWithSkipper(random().nextInt(1000, 1500));
   }
 
   @Nightly
@@ -585,7 +585,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
   }
 
   public void testSortedSetDocValuesWithSkipperMedium() throws Exception {
-    doTestSortedSetDocValuesWithSkipper(random().nextInt(10000, 20000));
+    doTestSortedSetDocValuesWithSkipper(random().nextInt(1000, 1500));
   }
 
   @Nightly
@@ -599,7 +599,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
         new TestDocValueSkipper() {
           @Override
           public void populateDoc(Document doc) {
-            for (int j = 0; j < random().nextInt(1, 5); j++) {
+            for (int j = 0; j < random().nextInt(1, 3); j++) {
               doc.add(
                   SortedSetDocValuesField.indexedField(
                       "test", TestUtil.randomBinaryTerm(random())));

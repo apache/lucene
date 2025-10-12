@@ -63,8 +63,6 @@ Improvements
   This avoids clashes with other ASM versions on classpath because it removes the dependency.
   (Uwe Schindler)
 
-
-
 * GITHUB#15002: Remove synchronized WeakHashMap from IndexReader. This was added to help prevent
   SIGSEGV with the old unsafe "mmap hack", which has been replaced by MemorySegments.
   (Uwe Schindler, Robert Muir)
@@ -106,6 +104,12 @@ Changes in Runtime Behavior
 
 Build
 ---------------------
+* GITHUB#15327: New low-level build options to detect abuse of LuceneTestCase.random():
+  tests.random.maxacquires and tests.random.maxcalls (Robert Muir, Dawid Weiss)
+
+* GITHUB#15325: Run the tests with assertions disabled ~25% of the time #15325
+  (Robert Muir, Dawid Weiss)
+
 * GITHUB#14804: Detect and ban wildcard imports in Java (Robert Muir, Dawid Weiss)
 
 * GITHUB#14808: Add support for validating sources using ast-grep tool rules #14808
@@ -189,6 +193,8 @@ Optimizations
 
 * GITHUB#14863: Perform scoring for 4, 7, 8 bit quantized vectors off-heap. (Kaival Parikh)
 
+* GITHUB#15261: Implement longValues for MultiFieldNormValues to speedup CombinedQuery (Ge Song)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
@@ -198,6 +204,8 @@ Bug Fixes
   because the hole bridge is coplanar with the polygon vertex. The fix changes the strategy for
   removing co-planar points to do it once after all holes are removed instead of doing it for each
   removed hole.
+
+* GITHUB#15319: Fix potential hang in initialisation of TermsEnum and BaseTermsEnum (Chris Hegarty)
 
 Other
 ---------------------

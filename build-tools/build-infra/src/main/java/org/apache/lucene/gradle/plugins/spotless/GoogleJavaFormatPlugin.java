@@ -71,7 +71,7 @@ public class GoogleJavaFormatPlugin extends LuceneGradlePlugin {
       t.configure(
           task -> {
             task.getBatchSize().set(batchSizeOption);
-            task.dependsOn(":" + CheckEnvironmentPlugin.CHECK_JDK_INTERNALS_EXPOSED_TO_GRADLE_TASK);
+            task.dependsOn(":" + CheckEnvironmentPlugin.TASK_CHECK_JDK_INTERNALS_EXPOSED_TO_GRADLE);
           });
     }
 

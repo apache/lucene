@@ -3333,7 +3333,7 @@ public class TestIndexSorting extends LuceneTestCase {
       iwc.setIndexSort(indexSort);
       iwc.setParentField(parentField);
       RandomIndexWriter randomIndexWriter = new RandomIndexWriter(random(), dir, iwc);
-      int numDocs = random().nextInt(100, 1000);
+      int numDocs = random().nextInt(100, 300);
       for (int i = 0; i < numDocs; i++) {
         if (rarely()) {
           randomIndexWriter.deleteDocuments(new Term("id", "" + random().nextInt(0, i + 1)));

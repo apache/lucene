@@ -28,6 +28,8 @@ import org.apache.lucene.util.IOUtils;
 
 public class TestIndexManyDocuments extends LuceneTestCase {
 
+  // TODO: incredibly slow
+  @Nightly
   public void test() throws Exception {
     Directory dir = newFSDirectory(createTempDir());
     IndexWriterConfig iwc = new IndexWriterConfig();

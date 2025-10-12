@@ -18,7 +18,10 @@ package org.apache.lucene.gradle.plugins.misc;
 
 import java.util.Locale;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
+import org.gradle.StartParameter;
 import org.gradle.api.GradleException;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
@@ -31,8 +34,10 @@ import org.gradle.util.GradleVersion;
  * JVM is supported, etc.
  */
 public class CheckEnvironmentPlugin extends LuceneGradlePlugin {
-  public static final String CHECK_JDK_INTERNALS_EXPOSED_TO_GRADLE_TASK =
+  public static final String TASK_CHECK_JDK_INTERNALS_EXPOSED_TO_GRADLE =
       "checkJdkInternalsExportedToGradle";
+
+  public static final String TASK_DISPLAY_GRADLE_DIAGNOSTICS = "displayGradleDiagnostics";
 
   @Override
   public void apply(Project rootProject) {
@@ -106,7 +111,7 @@ public class CheckEnvironmentPlugin extends LuceneGradlePlugin {
     rootProject
         .getTasks()
         .register(
-            CHECK_JDK_INTERNALS_EXPOSED_TO_GRADLE_TASK,
+            TASK_CHECK_JDK_INTERNALS_EXPOSED_TO_GRADLE,
             task -> {
               task.doFirst(
                   _ -> {
@@ -129,6 +134,32 @@ public class CheckEnvironmentPlugin extends LuceneGradlePlugin {
                               + " internals, your gradle.properties might have just been generated or could be"
                               + " out of sync (see gradle/template.gradle.properties)");
                     }
+                  });
+            });
+
+    rootProject
+        .getTasks()
+        .register(
+            TASK_DISPLAY_GRADLE_DIAGNOSTICS,
+            task -> {
+              task.doFirst(
+                  t -> {
+                    StartParameter startParameter = t.getProject().getGradle().getStartParameter();
+
+                    var logger = t.getLogger();
+                    logger.lifecycle(
+                        Stream.of(
+                                "max workers: " + startParameter.getMaxWorkerCount(),
+                                "tests.jvms: "
+                                    + getBuildOptions(t.getProject().project(":lucene:core"))
+                                        .getOption("tests.jvms")
+                                        .asStringProvider()
+                                        .get(),
+                                "cache dir: " + startParameter.getProjectCacheDir(),
+                                "current dir: " + startParameter.getCurrentDir(),
+                                "user home dir: " + startParameter.getGradleUserHomeDir())
+                            .map(v -> "  - " + v)
+                            .collect(Collectors.joining("\n")));
                   });
             });
   }

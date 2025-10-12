@@ -192,6 +192,8 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
 
   @Test
   public void vectorSimilarity_twoVectorsWithDifferentDimensions_shouldRaiseException() {
+    assumeTrue("Test designed to work only with assertions enabled.", TEST_ASSERTS_ENABLED);
+
     ValueSource v1 = new ConstKnnByteVectorValueSource(new byte[] {1, 2, 3, 4});
     ValueSource v2 = new ByteKnnVectorFieldSource("knnByteField1");
     ByteVectorSimilarityFunction byteDenseVectorSimilarityFunction =

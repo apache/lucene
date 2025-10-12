@@ -165,6 +165,8 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
             "tests.verbose",
             "Enables verbose test output mode (emits full test outputs immediately).",
             false);
+    optionsInheritedAsProperties.add("tests.verbose");
+
     Provider<Boolean> haltOnFailureOption =
         buildOptions.addBooleanOption(
             "tests.haltonfailure", "Stop processing on test failures.", true);
@@ -186,9 +188,7 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                 .getProviders()
                 .provider(
                     () -> {
-                      return ((int)
-                          Math.max(
-                              1, Math.min(Runtime.getRuntime().availableProcessors() / 2.0, 4.0)));
+                      return Math.min(12, Runtime.getRuntime().availableProcessors());
                     }));
 
     // GITHUB#13986: Allow easier configuration of the Panama Vectorization provider with newer Java
@@ -221,9 +221,24 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
     buildOptions.addIntOption("tests.timeoutSuite", "Timeout (in millis) for an entire suite.");
     optionsInheritedAsProperties.add("tests.timeoutSuite");
 
+    buildOptions.addIntOption(
+        "tests.random.maxcalls",
+        "Max number of calls to Randoms returned by LuceneTestCase.random()");
+    optionsInheritedAsProperties.add("tests.random.maxcalls");
+
+    buildOptions.addIntOption(
+        "tests.random.maxacquires", "Max number of per-test calls to LuceneTestCase.random()");
+    optionsInheritedAsProperties.add("tests.random.maxacquires");
+
     Provider<Boolean> assertsOption =
         buildOptions.addBooleanOption(
-            "tests.asserts", "Enables or disables assertions mode.", true);
+            "tests.asserts",
+            "Enables or disables assertions mode.",
+            project.provider(
+                () -> {
+                  // Run with assertions for ~75% of all seeds.
+                  return new Random(buildGlobals.getProjectSeedAsLong().get()).nextInt(100) > 25;
+                }));
     optionsInheritedAsProperties.add("tests.asserts");
 
     buildOptions.addBooleanOption(

@@ -79,6 +79,7 @@ public class RootProjectSetupPlugin extends LuceneGradlePlugin {
     plugins.apply(CheckLicensesPlugin.class);
     plugins.apply(ConfigureLockFilePlugin.class);
     plugins.apply(CheckGradlewScriptsTweakedPlugin.class);
+    plugins.apply(CleanupVersionsFilePlugin.class);
 
     plugins.apply(EclipseSupportPlugin.class);
     plugins.apply(IdeaSupportPlugin.class);

@@ -38,7 +38,9 @@ public class TestOnHeapHnswGraph extends LuceneTestCase {
   public void testAddLevelOutOfOrder() {
     OnHeapHnswGraph graph = new OnHeapHnswGraph(10, -1);
     graph.addNode(0, 0);
-    expectThrows(AssertionError.class, () -> graph.addNode(1, 0));
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(AssertionError.class, () -> graph.addNode(1, 0));
+    }
   }
 
   /* assert exception will be thrown when we call getNodeOnLevel for an incomplete graph */
