@@ -16,8 +16,8 @@
  */
 package org.apache.lucene.internal.vectorization;
 
-import static org.apache.lucene.internal.vectorization.VectorizationConstants.PREFERRED_VECTOR_BITSIZE;
-import static org.apache.lucene.internal.vectorization.VectorizedVectorUtilSupport.fma;
+import static org.apache.lucene.internal.vectorization.PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE;
+import static org.apache.lucene.internal.vectorization.PanamaVectorUtilSupport.fma;
 
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;

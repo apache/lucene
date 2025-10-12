@@ -27,7 +27,7 @@ import org.apache.lucene.store.IndexInput;
 final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
 
   private static final VectorSpecies<Integer> INT_SPECIES =
-      VectorizationConstants.PRERERRED_INT_SPECIES;
+      PanamaVectorConstants.PRERERRED_INT_SPECIES;
 
   private final MemorySegment memorySegment;
 

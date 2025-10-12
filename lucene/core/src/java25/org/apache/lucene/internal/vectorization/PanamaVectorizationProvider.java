@@ -28,7 +28,7 @@ import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
 /** A vectorization provider that leverages the Panama Vector API. */
-final class VectorizedVectorizationProvider extends VectorizationProvider {
+final class PanamaVectorizationProvider extends VectorizationProvider {
 
   // NOTE: Avoid static fields or initializers which rely on the vector API, as these initializers
   // would get called before we have a chance to perform sanity checks around the vector API in the
@@ -36,22 +36,22 @@ final class VectorizedVectorizationProvider extends VectorizationProvider {
 
   private final VectorUtilSupport<?, ?> vectorUtilSupport;
 
-  VectorizedVectorizationProvider() {
+  PanamaVectorizationProvider() {
     // hack to work around for JDK-8309727:
     FloatVector.fromArray(
         FloatVector.SPECIES_PREFERRED, new float[FloatVector.SPECIES_PREFERRED.length()], 0);
 
-    if (VectorizationConstants.PREFERRED_VECTOR_BITSIZE < 128) {
+    if (PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE < 128) {
       throw new UnsupportedOperationException(
-          "Vector bit size is less than 128: " + VectorizationConstants.PREFERRED_VECTOR_BITSIZE);
+          "Vector bit size is less than 128: " + PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE);
     }
 
-    if (VectorizationConstants.ENABLE_INTEGER_VECTORS == false) {
+    if (PanamaVectorConstants.ENABLE_INTEGER_VECTORS == false) {
       throw new UnsupportedOperationException(
           "CPU type or flags do not guarantee support for fast integer vectorization");
     }
 
-    this.vectorUtilSupport = new VectorizedVectorUtilSupport();
+    this.vectorUtilSupport = new PanamaVectorUtilSupport();
 
     logIncubatorSetup();
   }
@@ -63,7 +63,7 @@ final class VectorizedVectorizationProvider extends VectorizationProvider {
         String.format(
             Locale.ENGLISH,
             "Java vector incubator API enabled; uses preferredBitSize=%d%s%s",
-            VectorizationConstants.PREFERRED_VECTOR_BITSIZE,
+            PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE,
             Constants.HAS_FAST_VECTOR_FMA ? "; FMA enabled" : "",
             VectorizationProvider.TESTS_VECTOR_SIZE.isPresent() ? "; testMode enabled" : ""));
   }

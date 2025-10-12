@@ -212,7 +212,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
 
               // the Java 23 PanamaVectorizationProvider must always be in main section of JAR file:
               final String panamaClassName =
-                  "org/apache/lucene/internal/vectorization/VectorizedVectorizationProvider.class";
+                  "org/apache/lucene/internal/vectorization/PanamaVectorizationProvider.class";
               Assertions.assertThat(loader.getResource(panamaClassName)).isNotNull();
 
               // additional versions must be in MR-JAR part

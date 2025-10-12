@@ -163,7 +163,7 @@ public abstract class VectorizationProvider {
         final var lookup = MethodHandles.lookup();
         final var cls =
             lookup.findClass(
-                "org.apache.lucene.internal.vectorization.VectorizedVectorizationProvider");
+                "org.apache.lucene.internal.vectorization.PanamaVectorizationProvider");
         final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
         try {
           return (VectorizationProvider) constr.invoke();
@@ -178,10 +178,9 @@ public abstract class VectorizationProvider {
         }
       } catch (NoSuchMethodException | IllegalAccessException e) {
         throw new LinkageError(
-            "VectorizedVectorizationProvider is missing correctly typed constructor", e);
+            "PanamaVectorizationProvider is missing correctly typed constructor", e);
       } catch (ClassNotFoundException cnfe) {
-        throw new LinkageError(
-            "VectorizedVectorizationProvider is missing in Lucene JAR file", cnfe);
+        throw new LinkageError("PanamaVectorizationProvider is missing in Lucene JAR file", cnfe);
       }
     } else {
       LOG.warning(

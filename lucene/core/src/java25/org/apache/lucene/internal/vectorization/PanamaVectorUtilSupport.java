@@ -53,19 +53,19 @@ import org.apache.lucene.util.SuppressForbidden;
  *
  * Setting these properties will make this code run EXTREMELY slow!
  */
-final class VectorizedVectorUtilSupport
+final class PanamaVectorUtilSupport
     implements VectorUtilSupport<
-        VectorizedVectorUtilSupport.IByteVector, VectorizedVectorUtilSupport.IFloatVector> {
+        PanamaVectorUtilSupport.IByteVector, PanamaVectorUtilSupport.IFloatVector> {
 
   // preferred vector sizes, which can be altered for testing
   private static final VectorSpecies<Float> FLOAT_SPECIES;
   private static final VectorSpecies<Double> DOUBLE_SPECIES =
-      VectorizationConstants.PREFERRED_DOUBLE_SPECIES;
+      PanamaVectorConstants.PREFERRED_DOUBLE_SPECIES;
   // This create a vector species which we make sure have exact half bits of DOUBLE_SPECIES
   private static final VectorSpecies<Integer> INT_FOR_DOUBLE_SPECIES =
       VectorSpecies.of(int.class, VectorShape.forBitSize(DOUBLE_SPECIES.vectorBitSize() / 2));
   private static final VectorSpecies<Integer> INT_SPECIES =
-      VectorizationConstants.PRERERRED_INT_SPECIES;
+      PanamaVectorConstants.PRERERRED_INT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES;
   private static final VectorSpecies<Short> SHORT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES_128 = ByteVector.SPECIES_128;
@@ -74,7 +74,7 @@ final class VectorizedVectorUtilSupport
   static final int VECTOR_BITSIZE;
 
   static {
-    VECTOR_BITSIZE = VectorizationConstants.PREFERRED_VECTOR_BITSIZE;
+    VECTOR_BITSIZE = PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE;
     FLOAT_SPECIES = INT_SPECIES.withLanes(float.class);
     // compute BYTE/SHORT sizes relative to preferred integer vector size
     if (VECTOR_BITSIZE >= 256) {

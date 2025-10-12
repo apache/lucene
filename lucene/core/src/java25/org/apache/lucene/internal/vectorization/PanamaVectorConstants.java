@@ -20,8 +20,8 @@ import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.util.Constants;
 
-/** Shared constants for implementations that take advantage of the Vector API. */
-final class VectorizationConstants {
+/** Shared constants for implementations that take advantage of the Panama Vector API. */
+final class PanamaVectorConstants {
 
   /** Preferred width in bits for vectors. */
   static final int PREFERRED_VECTOR_BITSIZE;
@@ -51,5 +51,5 @@ final class VectorizationConstants {
         VectorSpecies.of(double.class, VectorShape.forBitSize(PREFERRED_VECTOR_BITSIZE));
   }
 
-  private VectorizationConstants() {}
+  private PanamaVectorConstants() {}
 }
