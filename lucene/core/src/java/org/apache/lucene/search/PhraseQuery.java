@@ -138,7 +138,7 @@ public class PhraseQuery extends Query {
       }
       if (termThreshold > 0 && terms.size() >= termThreshold) {
         throw new IllegalArgumentException(
-            "The current value of terms is "
+            "The current number of terms is "
                 + terms.size()
                 + ", which exceeds the limit of "
                 + termThreshold);

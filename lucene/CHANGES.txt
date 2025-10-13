@@ -174,6 +174,8 @@ Improvements
 
 * GITHUB#15184: Refactoring internal HNSWGraphBuilder's APIs and avoid creating new scorer for each call (Patrick Zhai)
 
+* GITHUB#15332: Solve the problem of excessive memory usage in ultra-long text search case (linyunanit)
+
 Optimizations
 ---------------------
 * GITHUB#15140: Optimize TopScoreDocCollector with TernaryLongHeap for improved performance over Binary-LongHeap. (Ramakrishna Chilaka)

@@ -745,15 +745,15 @@ public class TestPhraseQuery extends LuceneTestCase {
 
   public void testPhraseQueryTermLimit() throws Exception {
     PhraseQuery.Builder builder = new PhraseQuery.Builder();
-    int termLimit = 1000;
-    builder.setTermThreshold(termLimit);
-    for (int i = 0; i < termLimit; i++) {
-      builder.add(new Term("field", "one" + i), i + 1);
+    int termThreshold = 5;
+    builder.setTermThreshold(termThreshold);
+    for (int i = 0; i < termThreshold; i++) {
+      builder.add(new Term("field", "one" + i), i);
     }
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          builder.add(new Term("field", "three"), termLimit + 1);
+          builder.add(new Term("field", "three"), termThreshold);
         });
   }
 
