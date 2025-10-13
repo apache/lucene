@@ -743,6 +743,20 @@ public class TestPhraseQuery extends LuceneTestCase {
         });
   }
 
+  public void testPhraseQueryTermLimit() throws Exception {
+    PhraseQuery.Builder builder = new PhraseQuery.Builder();
+    int termLimit = 1000;
+    builder.setTermLimit(termLimit);
+    for (int i = 0; i < termLimit; i++) {
+      builder.add(new Term("field", "one" + i), i + 1);
+    }
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          builder.add(new Term("field", "three"), termLimit + 1);
+        });
+  }
+
   private static final String[] DOCS =
       new String[] {
         "a b c d e f g h",

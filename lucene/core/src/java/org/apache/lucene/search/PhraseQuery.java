@@ -74,12 +74,14 @@ public class PhraseQuery extends Query {
   public static class Builder {
 
     private int slop;
+    private int termLimit;
     private final List<Term> terms;
     private final IntArrayList positions;
 
     /** Sole constructor. */
     public Builder() {
       slop = 0;
+      termLimit = -1;
       terms = new ArrayList<>();
       positions = new IntArrayList();
     }
@@ -91,6 +93,14 @@ public class PhraseQuery extends Query {
      */
     public Builder setSlop(int slop) {
       this.slop = slop;
+      return this;
+    }
+
+    /**
+     * Set the term limit.
+     */
+    public Builder setTermLimit(int value) {
+      this.termLimit = value;
       return this;
     }
 
@@ -127,6 +137,10 @@ public class PhraseQuery extends Query {
                 + term.field()
                 + " and "
                 + terms.get(0).field());
+      }
+      if (termLimit > 0 && terms.size() >= termLimit) {
+        throw new IllegalArgumentException("The current value of terms is " +
+            terms.size() + ", which exceeds the limit of " + termLimit);
       }
       terms.add(term);
       positions.add(position);
