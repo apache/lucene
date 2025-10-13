@@ -870,14 +870,6 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.nextDoc());
   }
 
-  private static void doKnnSearch(MemoryIndex mi, String fieldName, float[] queryVector)
-      throws IOException {
-    IndexSearcher searcher = mi.createSearcher();
-    Query knnQuery = new KnnFloatVectorQuery(fieldName, queryVector, 1);
-    TopDocs topDocs = searcher.search(knnQuery, 10);
-    assertEquals(0, topDocs.scoreDocs[0].doc);
-  }
-
   private static void assertFloatVectorScore(
       MemoryIndex mi, String fieldName, float[] queryVector, float expectedScore)
       throws IOException {
