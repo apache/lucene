@@ -96,9 +96,7 @@ public class PhraseQuery extends Query {
       return this;
     }
 
-    /**
-     * Set the term threshold.
-     */
+    /** Set the term threshold. */
     public Builder setTermThreshold(int value) {
       this.termThreshold = value;
       return this;
@@ -139,8 +137,11 @@ public class PhraseQuery extends Query {
                 + terms.get(0).field());
       }
       if (termThreshold > 0 && terms.size() >= termThreshold) {
-        throw new IllegalArgumentException("The current value of terms is " +
-            terms.size() + ", which exceeds the limit of " + termThreshold);
+        throw new IllegalArgumentException(
+            "The current value of terms is "
+                + terms.size()
+                + ", which exceeds the limit of "
+                + termThreshold);
       }
       terms.add(term);
       positions.add(position);
