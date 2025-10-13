@@ -74,12 +74,14 @@ public class PhraseQuery extends Query {
   public static class Builder {
 
     private int slop;
+    private int maxTerms;
     private final List<Term> terms;
     private final IntArrayList positions;
 
     /** Sole constructor. */
     public Builder() {
       slop = 0;
+      maxTerms = -1;
       terms = new ArrayList<>();
       positions = new IntArrayList();
     }
@@ -91,6 +93,18 @@ public class PhraseQuery extends Query {
      */
     public Builder setSlop(int slop) {
       this.slop = slop;
+      return this;
+    }
+
+    /**
+     * Set the maximum number of terms allowed in the phrase query. This helps prevent excessive
+     * memory usage for very long phrases.
+     *
+     * <p>If the number of terms added via {@link #add(Term)} or {@link #add(Term, int)} exceeds
+     * this threshold, an {@link IllegalArgumentException} will be thrown.
+     */
+    public Builder setMaxTerms(int maxTerms) {
+      this.maxTerms = maxTerms;
       return this;
     }
 
@@ -127,6 +141,13 @@ public class PhraseQuery extends Query {
                 + term.field()
                 + " and "
                 + terms.get(0).field());
+      }
+      if (maxTerms > 0 && terms.size() >= maxTerms) {
+        throw new IllegalArgumentException(
+            "The current number of terms is "
+                + terms.size()
+                + ", which exceeds the limit of "
+                + maxTerms);
       }
       terms.add(term);
       positions.add(position);
