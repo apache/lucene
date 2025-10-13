@@ -743,10 +743,10 @@ public class TestPhraseQuery extends LuceneTestCase {
         });
   }
 
-  public void testPhraseQueryTermLimit() throws Exception {
+  public void testPhraseQueryMaxTerms() throws Exception {
     PhraseQuery.Builder builder = new PhraseQuery.Builder();
     int termThreshold = 5;
-    builder.setTermThreshold(termThreshold);
+    builder.setMaxTerms(termThreshold);
     for (int i = 0; i < termThreshold; i++) {
       builder.add(new Term("field", "one" + i), i);
     }

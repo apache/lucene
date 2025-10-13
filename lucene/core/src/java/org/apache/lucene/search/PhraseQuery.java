@@ -97,11 +97,11 @@ public class PhraseQuery extends Query {
     }
 
     /**
-     * Set the maximum number of terms allowed in the phrase query.
-     * This helps prevent excessive memory usage for very long phrases.
+     * Set the maximum number of terms allowed in the phrase query. This helps prevent excessive
+     * memory usage for very long phrases.
      *
-     * <p>If the number of terms added via {@link #add(Term)} or {@link #add(Term, int)}
-     * exceeds this threshold, an {@link IllegalArgumentException} will be thrown.
+     * <p>If the number of terms added via {@link #add(Term)} or {@link #add(Term, int)} exceeds
+     * this threshold, an {@link IllegalArgumentException} will be thrown.
      */
     public Builder setMaxTerms(int maxTerms) {
       this.maxTerms = maxTerms;
