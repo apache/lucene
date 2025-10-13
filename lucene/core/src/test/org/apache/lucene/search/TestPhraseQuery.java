@@ -746,7 +746,7 @@ public class TestPhraseQuery extends LuceneTestCase {
   public void testPhraseQueryTermLimit() throws Exception {
     PhraseQuery.Builder builder = new PhraseQuery.Builder();
     int termLimit = 1000;
-    builder.setTermLimit(termLimit);
+    builder.setTermThreshold(termLimit);
     for (int i = 0; i < termLimit; i++) {
       builder.add(new Term("field", "one" + i), i + 1);
     }
