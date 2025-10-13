@@ -77,11 +77,14 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnByteVectorQuery;
+import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
@@ -793,6 +796,11 @@ public class TestMemoryIndex extends LuceneTestCase {
             .get(0)
             .reader()
             .getByteVectorValues("knnByteVectorValue"));
+    TopDocs docs =
+        mi.createSearcher()
+            .search(new KnnFloatVectorQuery("knnFloatA", new float[] {1.0f, 1.0f}, 1), 10);
+    // we don't really do knn search right now for MemoryIndex
+    assertEquals(0, docs.totalHits.value());
   }
 
   public void testKnnByteVectorOnlyOneVectorAllowed() throws IOException {
@@ -840,6 +848,10 @@ public class TestMemoryIndex extends LuceneTestCase {
             .get(0)
             .reader()
             .getFloatVectorValues("knnFloatVectorValue"));
+    TopDocs docs =
+        mi.createSearcher().search(new KnnByteVectorQuery("knnByteA", new byte[] {1, 1}, 1), 10);
+    // we don't really do knn search right now for MemoryIndex
+    assertEquals(0, docs.totalHits.value());
   }
 
   private static void assertFloatVectorValue(MemoryIndex mi, String fieldName, float[] expected)
@@ -856,6 +868,14 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertEquals(0, iterator.nextDoc());
     assertArrayEquals(expected, fvv.vectorValue(0), 1e-6f);
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.nextDoc());
+  }
+
+  private static void doKnnSearch(MemoryIndex mi, String fieldName, float[] queryVector)
+      throws IOException {
+    IndexSearcher searcher = mi.createSearcher();
+    Query knnQuery = new KnnFloatVectorQuery(fieldName, queryVector, 1);
+    TopDocs topDocs = searcher.search(knnQuery, 10);
+    assertEquals(0, topDocs.scoreDocs[0].doc);
   }
 
   private static void assertFloatVectorScore(

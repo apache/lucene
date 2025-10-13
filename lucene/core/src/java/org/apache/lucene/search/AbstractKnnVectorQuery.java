@@ -262,6 +262,7 @@ abstract class AbstractKnnVectorQuery extends Query {
         int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context)
         throws IOException {
       // The delegate supports optimistic collection
+      // ctx.parent could be null if this is a MemoryIndex
       if (delegate.isOptimistic() && context.parent != null) {
         @SuppressWarnings("resource")
         float leafProportion = context.reader().maxDoc() / (float) context.parent.reader().maxDoc();
