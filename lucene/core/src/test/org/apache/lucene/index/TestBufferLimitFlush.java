@@ -39,12 +39,15 @@ public class TestBufferLimitFlush extends LuceneTestCase {
     assertTrue("Max safe offset should be positive", maxSafeOffset > 0);
 
     // The overflow happens when we try to add another BYTE_BLOCK_SIZE beyond the limit
-    try {
-      Math.addExact(maxSafeOffset, ByteBlockPool.BYTE_BLOCK_SIZE);
-      fail("Should have thrown ArithmeticException due to overflow");
-    } catch (ArithmeticException expected) {
-      // This is expected - confirms our limit calculation is correct
-    }
+    ArithmeticException exception =
+        expectThrows(
+            ArithmeticException.class,
+            () -> {
+              Math.addExact(maxSafeOffset, ByteBlockPool.BYTE_BLOCK_SIZE);
+            });
+
+    // Verify we got the expected overflow exception
+    assertNotNull("Should have thrown ArithmeticException due to overflow", exception);
   }
 
   public void testByteBlockPoolBufferLimitDetection() {
