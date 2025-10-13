@@ -346,30 +346,12 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
             input);
       }
 
-      if (indexCreatedVersion < minSupportedMajorVersion) {
-        throw new IndexFormatTooOldException(
-            input,
-            "Index created with Lucene "
-                + indexCreatedVersion
-                + ".x is not supported by Lucene "
-                + Version.LATEST
-                + ". This Lucene version only supports indexes created with major version "
-                + minSupportedMajorVersion
-                + " or later (found: "
-                + indexCreatedVersion
-                + ", minimum: "
-                + minSupportedMajorVersion
-                + "). To resolve this issue: (1) Re-index your data using Lucene "
-                + Version.LATEST.major
-                + ".x, or (2) Use an older Lucene version that supports your index format.");
-      }
-
       SegmentInfos infos = new SegmentInfos(indexCreatedVersion);
       infos.id = id;
       infos.generation = generation;
       infos.lastGeneration = generation;
       infos.luceneVersion = luceneVersion;
-      parseSegmentInfos(directory, input, infos, format);
+      parseSegmentInfos(directory, input, infos, format, minSupportedMajorVersion);
       return infos;
 
     } catch (Throwable t) {
@@ -385,7 +367,12 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   }
 
   private static void parseSegmentInfos(
-      Directory directory, DataInput input, SegmentInfos infos, int format) throws IOException {
+      Directory directory,
+      DataInput input,
+      SegmentInfos infos,
+      int format,
+      int minSupportedMajorVersion)
+      throws IOException {
     infos.version = CodecUtil.readBELong(input);
     // System.out.println("READ sis version=" + infos.version);
     infos.counter = input.readVLong();
@@ -402,6 +389,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     }
 
     long totalDocs = 0;
+
     for (int seg = 0; seg < numSegments; seg++) {
       String segName = input.readString();
       byte[] segmentID = new byte[StringHelper.ID_LENGTH];
@@ -410,6 +398,84 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       SegmentInfo info =
           codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READONCE);
       info.setCodec(codec);
+      Version segMinVersion = info.getMinVersion();
+      Version segmentVersion = info.getVersion();
+
+      if (!segmentVersion.onOrAfter(infos.minSegmentLuceneVersion)) {
+        throw new CorruptIndexException(
+            "segments file recorded minSegmentLuceneVersion="
+                + infos.minSegmentLuceneVersion
+                + " but segment="
+                + info
+                + " has older version="
+                + segmentVersion,
+            input);
+      }
+
+      if (infos.indexCreatedVersionMajor >= 7
+          && segmentVersion.major < infos.indexCreatedVersionMajor) {
+        throw new CorruptIndexException(
+            "segments file recorded indexCreatedVersionMajor="
+                + infos.indexCreatedVersionMajor
+                + " but segment="
+                + info
+                + " has older version="
+                + segmentVersion,
+            input);
+      }
+
+      if (infos.indexCreatedVersionMajor >= 7 && segMinVersion == null) {
+        throw new CorruptIndexException(
+            "segments infos must record minVersion with indexCreatedVersionMajor="
+                + infos.indexCreatedVersionMajor,
+            input);
+      }
+
+      if (segMinVersion == null) {
+        if (infos.indexCreatedVersionMajor < minSupportedMajorVersion) {
+          throw new IndexFormatTooOldException(
+              input,
+              "Index created with Lucene "
+                  + infos.indexCreatedVersionMajor
+                  + ".x is not supported by Lucene "
+                  + Version.LATEST
+                  + ". This Lucene version only supports indexes created with major version "
+                  + minSupportedMajorVersion
+                  + " or later (found: "
+                  + infos.indexCreatedVersionMajor
+                  + ", minimum: "
+                  + minSupportedMajorVersion
+                  + "). To resolve this issue: (1) Re-index your data using Lucene "
+                  + Version.LATEST.major
+                  + ".x, or (2) Use an older Lucene version that supports your index format.");
+        } else {
+          throw new CorruptIndexException(
+              "segments infos must record minVersion with indexCreatedVersionMajor="
+                  + infos.indexCreatedVersionMajor,
+              input);
+        }
+      }
+
+      if (segMinVersion.major < minSupportedMajorVersion) {
+        throw new IndexFormatTooOldException(
+            input,
+            "Index has segment traces from Lucene version "
+                + segMinVersion.major
+                + ".x and is not supported by Lucene "
+                + Version.LATEST
+                + ". This Lucene version only supports indexes with major version "
+                + minSupportedMajorVersion
+                + " or later (found: "
+                + segMinVersion.major
+                + ", minimum supported: "
+                + minSupportedMajorVersion
+                + "). To resolve this issue: (1) Re-index your data using Lucene "
+                + minSupportedMajorVersion
+                + ".x or later (preferably "
+                + Version.LATEST.major
+                + ".x), or (2) Use an older Lucene version that supports your index format.");
+      }
+
       totalDocs += info.maxDoc();
       long delGen = CodecUtil.readBELong(input);
       int delCount = CodecUtil.readBEInt(input);
@@ -463,38 +529,6 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       }
       siPerCommit.setDocValuesUpdatesFiles(dvUpdateFiles);
       infos.add(siPerCommit);
-
-      Version segmentVersion = info.getVersion();
-
-      if (segmentVersion.onOrAfter(infos.minSegmentLuceneVersion) == false) {
-        throw new CorruptIndexException(
-            "segments file recorded minSegmentLuceneVersion="
-                + infos.minSegmentLuceneVersion
-                + " but segment="
-                + info
-                + " has older version="
-                + segmentVersion,
-            input);
-      }
-
-      if (infos.indexCreatedVersionMajor >= 7
-          && segmentVersion.major < infos.indexCreatedVersionMajor) {
-        throw new CorruptIndexException(
-            "segments file recorded indexCreatedVersionMajor="
-                + infos.indexCreatedVersionMajor
-                + " but segment="
-                + info
-                + " has older version="
-                + segmentVersion,
-            input);
-      }
-
-      if (infos.indexCreatedVersionMajor >= 7 && info.getMinVersion() == null) {
-        throw new CorruptIndexException(
-            "segments infos must record minVersion with indexCreatedVersionMajor="
-                + infos.indexCreatedVersionMajor,
-            input);
-      }
     }
 
     infos.userData = input.readMapOfStrings();
