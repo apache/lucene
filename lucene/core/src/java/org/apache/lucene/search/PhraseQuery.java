@@ -97,7 +97,7 @@ public class PhraseQuery extends Query {
     }
 
     /**
-     * Set the term limit.
+     * Set the term threshold.
      */
     public Builder setTermThreshold(int value) {
       this.termThreshold = value;
