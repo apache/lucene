@@ -19,8 +19,12 @@ package org.apache.lucene.util;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
@@ -72,6 +76,7 @@ public class PriorityQueue<T> implements Iterable<T> {
   private final int maxSize;
   private final T[] heap;
   private final LessThan<? super T> lessThan;
+  private final Map<T, Set<Integer>> indexMap = new HashMap<>();
 
   /** Create an empty priority queue of the configured size using the specified {@link LessThan}. */
   public PriorityQueue(int maxSize, LessThan<? super T> lessThan) {
@@ -182,9 +187,9 @@ public class PriorityQueue<T> implements Iterable<T> {
    * @return the new 'top' element in the queue.
    */
   public final T add(T element) {
-    // don't modify size until we know heap access didn't throw AIOOB.
     int index = size + 1;
     heap[index] = element;
+    addIndex(element, index);
     size = index;
     upHeap(index);
     return heap[1];
@@ -272,6 +277,7 @@ public class PriorityQueue<T> implements Iterable<T> {
   public final void clear() {
     Arrays.fill(heap, 0, size + 1, null);
     size = 0;
+    indexMap.clear();
   }
 
   /**
@@ -280,20 +286,25 @@ public class PriorityQueue<T> implements Iterable<T> {
    * constant remove time but the trade-off would be extra cost to all additions/insertions)
    */
   public final boolean remove(T element) {
-    for (int i = 1; i <= size; i++) {
-      if (heap[i] == element) {
-        heap[i] = heap[size];
-        heap[size] = null; // permit GC of objects
-        size--;
-        if (i <= size) {
-          if (!upHeap(i)) {
-            downHeap(i);
-          }
-        }
-        return true;
-      }
+    Set<Integer> indices = indexMap.get(element);
+    if (indices == null || indices.isEmpty()) return false;
+    Integer idx = indices.iterator().next();
+    removeIndex(element, idx);
+    T last = heap[size];
+    if (idx == size) {
+      heap[size] = null;
+      size--;
+      return true;
     }
-    return false;
+    removeIndex(last, size);
+    heap[idx] = last;
+    addIndex(last, idx);
+    heap[size] = null;
+    size--;
+    if (!upHeap(idx)) {
+      downHeap(idx);
+    }
+    return true;
   }
 
   /**
@@ -320,36 +331,54 @@ public class PriorityQueue<T> implements Iterable<T> {
     return array;
   }
 
-  private boolean upHeap(int origPos) {
-    int i = origPos;
-    T node = heap[i]; // save bottom node
-    int j = i >>> 1;
-    while (j > 0 && lessThan.lessThan(node, heap[j])) {
-      heap[i] = heap[j]; // shift parents down
-      i = j;
-      j = j >>> 1;
-    }
-    heap[i] = node; // install saved node
-    return i != origPos;
+  private void addIndex(T element, int idx) {
+    indexMap.computeIfAbsent(element, k -> new HashSet<>()).add(idx);
   }
 
-  private void downHeap(int i) {
-    T node = heap[i]; // save top node
-    int j = i << 1; // find smaller child
-    int k = j + 1;
-    if (k <= size && lessThan.lessThan(heap[k], heap[j])) {
-      j = k;
+  private void removeIndex(T element, int idx) {
+    Set<Integer> indices = indexMap.get(element);
+    if (indices != null) {
+      indices.remove(idx);
+      if (indices.isEmpty()) indexMap.remove(element);
     }
-    while (j <= size && lessThan.lessThan(heap[j], node)) {
-      heap[i] = heap[j]; // shift up child
-      i = j;
-      j = i << 1;
-      k = j + 1;
-      if (k <= size && lessThan.lessThan(heap[k], heap[j])) {
+  }
+
+  protected boolean upHeap(int i) {
+    T node = heap[i];
+    int j = i;
+    while (j > 1 && lessThan.lessThan(node, heap[j >> 1])) {
+      heap[j] = heap[j >> 1];
+      removeIndex(heap[j], j >> 1);
+      addIndex(heap[j], j);
+      j >>= 1;
+    }
+    heap[j] = node;
+    removeIndex(node, i);
+    addIndex(node, j);
+    return j < i;
+  }
+
+  protected boolean downHeap(int i) {
+    T node = heap[i];
+    int j = i;
+    int k;
+    while ((k = j << 1) <= size) {
+      if (k < size && lessThan.lessThan(heap[k + 1], heap[k])) {
+        k++;
+      }
+      if (lessThan.lessThan(heap[k], node)) {
+        heap[j] = heap[k];
+        removeIndex(heap[j], k);
+        addIndex(heap[j], j);
         j = k;
+      } else {
+        break;
       }
     }
-    heap[i] = node; // install saved node
+    heap[j] = node;
+    removeIndex(node, i);
+    addIndex(node, j);
+    return j > i;
   }
 
   /**
