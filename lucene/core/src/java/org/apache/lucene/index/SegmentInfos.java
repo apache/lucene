@@ -161,7 +161,6 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   /** The Lucene version major that was used to create the index. */
   private final int indexCreatedVersionMajor;
 
-  private int maxIndexSupportedVersionMajor;
   /**
    * Sole constructor.
    *
@@ -178,7 +177,6 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
           "indexCreatedVersionMajor must be >= 6, got: " + indexCreatedVersionMajor);
     }
     this.indexCreatedVersionMajor = indexCreatedVersionMajor;
-    this.maxIndexSupportedVersionMajor = this.indexCreatedVersionMajor+1;
   }
 
   /** Returns {@link SegmentCommitInfo} at the provided index. */
@@ -1231,39 +1229,5 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
    */
   public int getIndexCreatedVersionMajor() {
     return indexCreatedVersionMajor;
-  }
-
-  // Package private access to allow being called only by IndexWriter for greater control
-  void setIndexCreatedVersionMajorToLatest() {
-    if (!allSegmentsAreLatestVersion()) {
-      throw new IllegalStateException(
-          String.format(
-              "Cannot explicitly set the index created major version to %d since some of the segments were written in an older Lucene version.",
-              Version.LATEST.major));
-    }
-    this.indexCreatedVersionMajor = Version.LATEST.major;
-  }
-
-  private boolean allSegmentsAreLatestVersion() {
-    for (SegmentCommitInfo info : this) {
-      if (info.info.minVersion == null
-          || info.info.minVersion.major != Version.LATEST.major
-          || info.info.getVersion().major != Version.LATEST.major) {
-        if (infoStream != null) {
-          message(
-              "At least one segment was not written by the current Lucene version ("
-                  + Version.LATEST.major
-                  + ".x). Offending segment: [name:"
-                  + info.info.name
-                  + ", version:"
-                  + info.info.getVersion()
-                  + ", minVersion:"
-                  + info.info.minVersion
-                  + "]");
-        }
-        return false;
-      }
-    }
-    return true;
   }
 }

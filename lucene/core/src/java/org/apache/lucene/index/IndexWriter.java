@@ -214,13 +214,6 @@ public class IndexWriter
   @SuppressWarnings("NonFinalStaticField")
   private static int actualMaxDocs = MAX_DOCS;
 
-  /**
-   * Sets signal to force set indexCreatedVersionMajor in SegmentInfos at commit. This also helps
-   * avoid slowdown in other commit threads since prepareCommitInternal doesn't need to iterate over
-   * the segments if this flag has not been set
-   */
-  private volatile boolean updateIndexSupportedVersion = false;
-
   /** Used only for testing. */
   static void setMaxDocs(int maxDocs) {
     if (maxDocs > MAX_DOCS) {
@@ -3714,16 +3707,6 @@ public class IndexWriter
               // corresponding add from an updateDocument) can
               // sneak into the commit point:
               toCommit = segmentInfos.clone();
-
-              if (this.updateIndexSupportedVersion
-                  && toCommit.getIndexCreatedVersionMajor() < Version.LATEST.major) {
-                try {
-                  toCommit.setIndexCreatedVersionMajorToLatest();
-                } finally {
-                  this.updateIndexSupportedVersion = false;
-                }
-              }
-
               pendingCommitChangeCount = changeCount.get();
               // This protects the segmentInfos we are now going
               // to commit.  This is important in case, eg, while
@@ -4092,29 +4075,6 @@ public class IndexWriter
   public final long commit() throws IOException {
     ensureOpen();
     return commitInternal(config.getMergePolicy());
-  }
-
-  /**
-   * Essentially does what {@link #commit} does. Additionally, if all segments belong to the latest
-   * version and if the index created major version in the existing {@link SegmentInfos} is older
-   * than the latest major version, resets the index created version to the latest major version in
-   * the newly synced {@link SegmentInfos}
-   *
-   * <p>If this method is called on an index where some of the segments belong to an older major
-   * version, it will throw an exception, and any partial changes done as part of the commit will be
-   * rolled back.
-   *
-   * @return The <a href="#sequence_number">sequence number</a> of the last operation in the commit.
-   *     All sequence numbers &lt;= this value will be reflected in the commit, and all others will
-   *     not.
-   * @throws IOException
-   */
-  public final long commitAndUpdateVersionCreatedMajor() throws IOException {
-    ensureOpen();
-    synchronized (commitLock) {
-      updateIndexSupportedVersion = true;
-      return commitInternal(config.getMergePolicy());
-    }
   }
 
   /**
