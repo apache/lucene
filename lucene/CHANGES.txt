@@ -214,6 +214,9 @@ Bug Fixes
 
 * GITHUB#15319: Fix potential hang in initialisation of TermsEnum and BaseTermsEnum (Chris Hegarty)
 
+* GITHUB#15334: Fix NPE for MemoryIndex when using nearest neighbor search. MemoryIndex does not support
+  nearest neighbor search, but it should not throw an NPE (Ben Trent)
+
 Other
 ---------------------
 * GITHUB#15237: Fix SmartChinese to only deserialize dictionary data from classpath with a native array

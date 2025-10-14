@@ -211,8 +211,15 @@ abstract class AbstractKnnVectorQuery extends Query {
     final int cost = acceptDocs.cost();
     QueryTimeout queryTimeout = timeLimitingKnnCollectorManager.getQueryTimeout();
 
-    float leafProportion = ctx.reader().maxDoc() / (float) ctx.parent.reader().maxDoc();
-    int perLeafTopK = perLeafTopKCalculation(k, leafProportion);
+    final int perLeafTopK;
+    // ctx.parent could be null if this is a MemoryIndex
+    if (ctx.parent != null) {
+      float leafProportion = ctx.reader().maxDoc() / (float) ctx.parent.reader().maxDoc();
+      perLeafTopK = perLeafTopKCalculation(k, leafProportion);
+      // We don't have a good way to estimate perLeafTopK here, so just do approximate search
+    } else {
+      perLeafTopK = k;
+    }
 
     if (cost <= perLeafTopK) {
       // If there are <= perLeafTopK possible matches, short-circuit and perform exact search, since
@@ -255,7 +262,8 @@ abstract class AbstractKnnVectorQuery extends Query {
         int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context)
         throws IOException {
       // The delegate supports optimistic collection
-      if (delegate.isOptimistic()) {
+      // ctx.parent could be null if this is a MemoryIndex
+      if (delegate.isOptimistic() && context.parent != null) {
         @SuppressWarnings("resource")
         float leafProportion = context.reader().maxDoc() / (float) context.parent.reader().maxDoc();
         int perLeafTopK = perLeafTopKCalculation(k, leafProportion);
