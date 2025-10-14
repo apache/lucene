@@ -16,7 +16,8 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
-import static org.apache.lucene.analysis.miscellaneous.CapitalizationFilter.*;
+import static org.apache.lucene.analysis.miscellaneous.CapitalizationFilter.DEFAULT_MAX_TOKEN_LENGTH;
+import static org.apache.lucene.analysis.miscellaneous.CapitalizationFilter.DEFAULT_MAX_WORD_COUNT;
 
 import java.io.IOException;
 import java.io.StringReader;

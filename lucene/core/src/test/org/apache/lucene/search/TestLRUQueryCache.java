@@ -74,6 +74,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.SuppressForbidden;
 
 public class TestLRUQueryCache extends LuceneTestCase {
@@ -126,7 +127,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     final SearcherManager mgr = new SearcherManager(w.w, applyDeletes, false, searcherFactory);
     final AtomicBoolean indexing = new AtomicBoolean(true);
     final AtomicReference<Throwable> error = new AtomicReference<>();
-    final int numDocs = atLeast(1000);
+    final int numDocs = atLeast(257);
     Thread[] threads = new Thread[3];
     threads[0] =
         new Thread() {
@@ -1062,6 +1063,65 @@ public class TestLRUQueryCache extends LuceneTestCase {
     dir.close();
   }
 
+  public void testQuerySizeBytesAreCached() throws IOException {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+      Document doc = new Document();
+      doc.add(new StringField("foo", "bar", Store.YES));
+      doc.add(new StringField("foo", "quux", Store.YES));
+      w.addDocument(doc);
+      w.commit();
+      final IndexReader reader = w.getReader();
+      final IndexSearcher searcher = newSearcher(reader);
+      final LRUQueryCache queryCache =
+          new LRUQueryCache(1000000, 10000000, _ -> true, Float.POSITIVE_INFINITY);
+      searcher.setQueryCache(queryCache);
+      searcher.setQueryCachingPolicy(ALWAYS_CACHE);
+      StringBuilder sb = new StringBuilder();
+      sb.append("a".repeat(100));
+      String term = sb.toString();
+      TermQuery termQuery = new TermQuery(new Term("foo", term));
+      long expectedQueryInBytes =
+          LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY + RamUsageEstimator.sizeOf(termQuery, 32);
+      searcher.search(new ConstantScoreQuery(termQuery), 1);
+
+      assertEquals(1, queryCache.getUniqueQueries().size());
+      assertEquals(
+          expectedQueryInBytes, queryCache.getUniqueQueries().get(termQuery).queryRamBytesUsed());
+      reader.close();
+    }
+  }
+
+  public void testCacheRamBytesWithALargeTermQuery() throws IOException {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+      Document doc = new Document();
+      doc.add(new StringField("foo", "bar", Store.YES));
+      doc.add(new StringField("foo", "quux", Store.YES));
+      w.addDocument(doc);
+      w.commit();
+      final IndexReader reader = w.getReader();
+      final IndexSearcher searcher = newSearcher(reader);
+      final LRUQueryCache queryCache =
+          new LRUQueryCache(1000000, 10000000, _ -> true, Float.POSITIVE_INFINITY);
+      searcher.setQueryCache(queryCache);
+      searcher.setQueryCachingPolicy(ALWAYS_CACHE);
+      StringBuilder sb = new StringBuilder();
+      // Create a large string for the field value so it certainly exceeds the default query size we
+      // use ie 1024 bytes.
+      sb.append("a".repeat(1200));
+      String longTerm = sb.toString();
+      TermQuery must = new TermQuery(new Term("foo", longTerm));
+      long queryInBytes = RamUsageEstimator.sizeOf(must, 32);
+      assertTrue(queryInBytes > QUERY_DEFAULT_RAM_BYTES_USED);
+      searcher.search(new ConstantScoreQuery(must), 1);
+
+      assertEquals(1, queryCache.cachedQueries().size());
+      assertTrue(queryCache.ramBytesUsed() >= queryInBytes);
+      reader.close();
+    }
+  }
+
   private static Term randomTerm() {
     final String term = RandomPicks.randomFrom(random(), Arrays.asList("foo", "bar", "baz"));
     return new Term("foo", term);
@@ -1238,9 +1298,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
       // trigger an eviction
       searcher.search(new MatchAllDocsQuery(), DummyTotalHitCountCollector.createManager());
       fail();
-    } catch (
-        @SuppressWarnings("unused")
-        ConcurrentModificationException e) {
+    } catch (ConcurrentModificationException _) {
       // expected
     } catch (RuntimeException e) {
       // expected: wrapped when executor is in use
@@ -1953,7 +2011,11 @@ public class TestLRUQueryCache extends LuceneTestCase {
     doc2.add(new StringField("name", "alice", Store.YES));
     doc2.add(new LongPoint("age", 20));
     doc2.add(new SortedNumericDocValuesField("age", 20));
-    w.addDocuments(Arrays.asList(doc1, doc2));
+    Document doc3 = new Document();
+    doc3.add(new StringField("name", "steve", Store.YES));
+    doc3.add(new LongPoint("age", 25));
+    doc3.add(new SortedNumericDocValuesField("age", 25));
+    w.addDocuments(Arrays.asList(doc1, doc2, doc3));
     final IndexReader reader = w.getReader();
     final IndexSearcher searcher = newSearcher(reader);
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
@@ -1964,8 +2026,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
     TermQuery subQuery1 = new TermQuery(new Term("name", "tom"));
     IndexOrDocValuesQuery subQuery2 =
         new IndexOrDocValuesQuery(
-            LongPoint.newRangeQuery("age", 10, 30),
-            SortedNumericDocValuesField.newSlowRangeQuery("age", 10, 30));
+            LongPoint.newRangeQuery("age", 10, 20),
+            SortedNumericDocValuesField.newSlowRangeQuery("age", 10, 20));
     BooleanQuery query = bq.add(subQuery1, Occur.FILTER).add(subQuery2, Occur.FILTER).build();
     Set<Query> cacheSet = new HashSet<>();
 

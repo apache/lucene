@@ -61,7 +61,6 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.tests.mockfile.ExtrasFS;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -616,7 +615,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
           new Thread(
               () -> {
                 try {
-                  for (int i = 0, max = RandomizedTest.randomIntBetween(500, 1000); i < max; i++) {
+                  for (int i = 0, max = RandomizedTest.randomIntBetween(100, 200); i < max; i++) {
                     String fileName = "file-" + i;
                     try (IndexOutput output = dir.createOutput(fileName, newIOContext(random()))) {
                       assert output != null;
@@ -651,9 +650,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
                         try (IndexInput input = dir.openInput(file, newIOContext(random()))) {
                           // Just open, nothing else.
                           assert input != null;
-                        } catch (
-                            @SuppressWarnings("unused")
-                            AccessDeniedException e) {
+                        } catch (AccessDeniedException _) {
                           // Access denied is allowed for files for which the output is still open
                           // (MockDirectoryWriter enforces
                           // this, for example). Since we don't synchronize with the writer thread,
@@ -963,7 +960,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   public void testRandomLong() throws Exception {
     try (Directory dir = getDirectory(createTempDir("testLongs"))) {
       IndexOutput output = dir.createOutput("longs", newIOContext(random()));
-      int num = TestUtil.nextInt(random(), 50, 3000);
+      int num = TestUtil.nextInt(random(), 50, 700);
       long[] longs = new long[num];
       for (int i = 0; i < longs.length; i++) {
         longs[i] = TestUtil.nextLong(random(), Long.MIN_VALUE, Long.MAX_VALUE);
@@ -1461,7 +1458,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   }
 
   public void testDataTypes() throws IOException {
-    final long[] values = new long[] {43, 12345, 123456, 1234567890};
+    final int[] values = new int[] {43, 12345, 123456, 1234567890};
     try (Directory dir = getDirectory(createTempDir("testDataTypes"))) {
       IndexOutput out = dir.createOutput("test", IOContext.DEFAULT);
       out.writeByte((byte) 43);
@@ -1471,7 +1468,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       out.writeLong(1234567890123456789L);
       out.close();
 
-      long[] restored = new long[4];
+      int[] restored = new int[4];
       IndexInput in = dir.openInput("test", IOContext.DEFAULT);
       assertEquals(43, in.readByte());
       assertEquals(12345, in.readShort());
@@ -1483,6 +1480,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     }
   }
 
+  @Deprecated
   public void testGroupVIntOverflow() throws IOException {
     try (Directory dir = getDirectory(createTempDir("testGroupVIntOverflow"))) {
       final int size = 32;
@@ -1529,7 +1527,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
 
   protected void doTestGroupVInt(
       Directory dir, int iterations, int minBpv, int maxBpv, int maxNumValues) throws IOException {
-    long[] values = new long[maxNumValues];
+    int[] values = new int[maxNumValues];
     int[] numValuesArray = new int[iterations];
     IndexOutput groupVIntOut = dir.createOutput("group-varint", IOContext.DEFAULT);
     IndexOutput vIntOut = dir.createOutput("vint", IOContext.DEFAULT);
@@ -1540,7 +1538,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       numValuesArray[iter] = TestUtil.nextInt(random(), 1, maxNumValues);
       for (int j = 0; j < numValuesArray[iter]; j++) {
         values[j] = RandomNumbers.randomIntBetween(random(), 0, (int) PackedInts.maxValue(bpv));
-        vIntOut.writeVInt((int) values[j]);
+        vIntOut.writeVInt(values[j]);
       }
       groupVIntOut.writeGroupVInts(values, numValuesArray[iter]);
     }
@@ -1569,38 +1567,6 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
 
   public void testPrefetchOnSlice() throws IOException {
     doTestPrefetch(TestUtil.nextInt(random(), 1, 1024));
-  }
-
-  public void testUpdateReadAdvice() throws IOException {
-    try (Directory dir = getDirectory(createTempDir("testUpdateReadAdvice"))) {
-      final int totalLength = TestUtil.nextInt(random(), 16384, 65536);
-      byte[] arr = new byte[totalLength];
-      random().nextBytes(arr);
-      try (IndexOutput out = dir.createOutput("temp.bin", IOContext.DEFAULT)) {
-        out.writeBytes(arr, arr.length);
-      }
-
-      try (IndexInput orig = dir.openInput("temp.bin", IOContext.DEFAULT)) {
-        IndexInput in = random().nextBoolean() ? orig.clone() : orig;
-        // Read advice updated at start
-        in.updateReadAdvice(randomFrom(random(), ReadAdvice.values()));
-        for (int i = 0; i < totalLength; i++) {
-          int offset = TestUtil.nextInt(random(), 0, (int) in.length() - 1);
-          in.seek(offset);
-          assertEquals(arr[offset], in.readByte());
-        }
-
-        // Updating readAdvice in the middle
-        for (int i = 0; i < 10_000; ++i) {
-          int offset = TestUtil.nextInt(random(), 0, (int) in.length() - 1);
-          in.seek(offset);
-          assertEquals(arr[offset], in.readByte());
-          if (random().nextBoolean()) {
-            in.updateReadAdvice(randomFrom(random(), ReadAdvice.values()));
-          }
-        }
-      }
-    }
   }
 
   private void doTestPrefetch(int startOffset) throws IOException {

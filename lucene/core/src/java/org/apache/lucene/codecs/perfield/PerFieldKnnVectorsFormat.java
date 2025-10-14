@@ -39,8 +39,8 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.internal.hppc.ObjectCursor;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
@@ -191,7 +191,7 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
   }
 
   /** VectorReader that can wrap multiple delegate readers, selected by field. */
-  public static class FieldsReader extends KnnVectorsReader implements HnswGraphProvider {
+  private static class FieldsReader extends KnnVectorsReader implements HnswGraphProvider {
 
     private final IntObjectHashMap<KnnVectorsReader> fields = new IntObjectHashMap<>();
     private final FieldInfos fieldInfos;
@@ -206,7 +206,6 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     public FieldsReader(final SegmentReadState readState) throws IOException {
       this.fieldInfos = readState.fieldInfos;
       // Init each unique format:
-      boolean success = false;
       Map<String, KnnVectorsReader> formats = new HashMap<>();
       try {
         // Read field name -> format name
@@ -233,15 +232,13 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
             }
           }
         }
-        success = true;
-      } finally {
-        if (!success) {
-          IOUtils.closeWhileHandlingException(formats.values());
-        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, formats.values());
+        throw t;
       }
     }
 
-    private FieldsReader(final FieldsReader fieldsReader) {
+    private FieldsReader(final FieldsReader fieldsReader) throws IOException {
       this.fieldInfos = fieldsReader.fieldInfos;
       for (FieldInfo fi : this.fieldInfos) {
         if (fi.hasVectorValues() && fieldsReader.fields.containsKey(fi.number)) {
@@ -251,7 +248,7 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public KnnVectorsReader getMergeInstance() {
+    public KnnVectorsReader getMergeInstance() throws IOException {
       return new FieldsReader(this);
     }
 
@@ -262,17 +259,10 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
       }
     }
 
-    /**
-     * Return the underlying VectorReader for the given field
-     *
-     * @param field the name of a numeric vector field
-     */
-    public KnnVectorsReader getFieldReader(String field) {
-      final FieldInfo info = fieldInfos.fieldInfo(field);
-      if (info == null) {
-        return null;
-      }
-      return fields.get(info.number);
+    @Override
+    public KnnVectorsReader unwrapReaderForField(String field) {
+      FieldInfo fi = fieldInfos.fieldInfo(field);
+      return fi != null ? fields.get(fi.number) : this;
     }
 
     @Override
@@ -303,7 +293,8 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+    public void search(
+        String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
       final FieldInfo info = fieldInfos.fieldInfo(field);
       final KnnVectorsReader reader;
@@ -314,7 +305,8 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+    public void search(
+        String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
       final FieldInfo info = fieldInfos.fieldInfo(field);
       final KnnVectorsReader reader;
@@ -327,9 +319,13 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public HnswGraph getGraph(String field) throws IOException {
       final FieldInfo info = fieldInfos.fieldInfo(field);
+      if (info == null) {
+        return null;
+      }
+
       KnnVectorsReader knnVectorsReader = fields.get(info.number);
-      if (knnVectorsReader instanceof HnswGraphProvider) {
-        return ((HnswGraphProvider) knnVectorsReader).getGraph(field);
+      if (knnVectorsReader instanceof HnswGraphProvider hnswGraphProvider) {
+        return hnswGraphProvider.getGraph(field);
       } else {
         return null;
       }

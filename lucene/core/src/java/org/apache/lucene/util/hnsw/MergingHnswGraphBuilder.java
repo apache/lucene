@@ -20,7 +20,7 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.Set;
+import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.util.BitSet;
 
@@ -84,7 +84,8 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
    * @param ordMaps the ordinal maps for the graphs
    * @param totalNumberOfVectors the total number of vectors in the new graph, this should include
    *     all vectors expected to be added to the graph in the future
-   * @param initializedNodes the nodes will be initialized through the merging
+   * @param initializedNodes the nodes will be initialized through the merging, if null, all nodes
+   *     should be already initialized after {@link #updateGraph(HnswGraph, int[])} being called
    * @return a new HnswGraphBuilder that is initialized with the provided HnswGraph
    * @throws IOException when reading the graph fails
    */
@@ -141,11 +142,11 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
   /** Merge the smaller graph into the current larger graph. */
   private void updateGraph(HnswGraph gS, int[] ordMapS) throws IOException {
     int size = gS.size();
-    Set<Integer> j = UpdateGraphsUtils.computeJoinSet(gS);
+    IntHashSet j = UpdateGraphsUtils.computeJoinSet(gS);
 
     // for nodes that in the join set, add them directly to the graph
-    for (int node : j) {
-      addGraphNode(ordMapS[node]);
+    for (IntCursor node : j) {
+      addGraphNode(ordMapS[node.value]);
     }
 
     // for each node outside of j set:
@@ -172,7 +173,7 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
           }
         }
       }
-      addGraphNodeWithEps(ordMapS[u], eps);
+      addGraphNode(ordMapS[u], eps);
     }
   }
 }

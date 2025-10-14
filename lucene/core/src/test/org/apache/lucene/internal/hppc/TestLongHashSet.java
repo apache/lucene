@@ -17,7 +17,12 @@
 
 package org.apache.lucene.internal.hppc;
 
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.lessThan;
+import static org.hamcrest.Matchers.not;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.util.Arrays;
@@ -85,11 +90,13 @@ public class TestLongHashSet extends LuceneTestCase {
     MatcherAssert.assertThat(set.indexGet(set.indexOf(keyE)), is(equalTo(keyE)));
     MatcherAssert.assertThat(set.indexGet(set.indexOf(key1)), is(equalTo(key1)));
 
-    expectThrows(
-        AssertionError.class,
-        () -> {
-          set.indexGet(set.indexOf(key2));
-        });
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(
+          AssertionError.class,
+          () -> {
+            set.indexGet(set.indexOf(key2));
+          });
+    }
 
     MatcherAssert.assertThat(set.indexReplace(set.indexOf(keyE), keyE), is(equalTo(keyE)));
     MatcherAssert.assertThat(set.indexReplace(set.indexOf(key1), key1), is(equalTo(key1)));

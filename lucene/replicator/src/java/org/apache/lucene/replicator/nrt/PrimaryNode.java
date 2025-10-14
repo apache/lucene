@@ -304,7 +304,7 @@ public abstract class PrimaryNode extends Node {
     }
     byte[] infosBytes = buffer.toArrayCopy();
 
-    Map<String, FileMetaData> filesMetaData = new HashMap<String, FileMetaData>();
+    Map<String, FileMetaData> filesMetaData = new HashMap<>();
     for (SegmentCommitInfo info : infos) {
       for (String fileName : info.files()) {
         FileMetaData metaData = readLocalFileMetaData(fileName);

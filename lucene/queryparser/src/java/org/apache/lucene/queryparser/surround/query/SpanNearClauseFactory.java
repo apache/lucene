@@ -17,40 +17,42 @@
 package org.apache.lucene.queryparser.surround.query;
 
 /*
-SpanNearClauseFactory:
+ * SpanNearClauseFactory:
+ *
+ * Operations:
+ *
+ * - create for a field name and an indexreader.
+ *
+ * - add a weighted Term
+ *   this should add a corresponding SpanTermQuery, or
+ *   increase the weight of an existing one.
+ *
+ * - add a weighted subquery SpanNearQuery
+ *
+ * - create a clause for SpanNearQuery from the things added above.
+ *   For this, create an array of SpanQuery's from the added ones.
+ *   The clause normally is a SpanOrQuery over the added subquery SpanNearQuery
+ *   the SpanTermQuery's for the added Term's
+ */
 
-Operations:
+/*
+ * When  it is necessary to suppress double subqueries as much as possible:
+ * hashCode() and equals() on unweighted SpanQuery are needed (possibly via getTerms(),
+ * the terms are individually hashable).
+ * Idem SpanNearQuery: hash on the subqueries and the slop.
+ * Evt. merge SpanNearQuery's by adding the weights of the corresponding subqueries.
+ */
 
-- create for a field name and an indexreader.
-
-- add a weighted Term
-  this should add a corresponding SpanTermQuery, or
-  increase the weight of an existing one.
-
-- add a weighted subquery SpanNearQuery
-
-- create a clause for SpanNearQuery from the things added above.
-  For this, create an array of SpanQuery's from the added ones.
-  The clause normally is a SpanOrQuery over the added subquery SpanNearQuery
-  the SpanTermQuery's for the added Term's
-*/
-
-/* When  it is necessary to suppress double subqueries as much as possible:
-  hashCode() and equals() on unweighted SpanQuery are needed (possibly via getTerms(),
-  the terms are individually hashable).
-  Idem SpanNearQuery: hash on the subqueries and the slop.
-  Evt. merge SpanNearQuery's by adding the weights of the corresponding subqueries.
-*/
-
-/* To be determined:
-  Are SpanQuery weights handled correctly during search by Lucene?
-  Should the resulting SpanOrQuery be sorted?
-  Could other SpanQueries be added for use in this factory:
-  - SpanOrQuery: in principle yes, but it only has access to its terms
-                 via getTerms(); are the corresponding weights available?
-  - SpanFirstQuery: treat similar to subquery SpanNearQuery. (ok?)
-  - SpanNotQuery: treat similar to subquery SpanNearQuery. (ok?)
-*/
+/*
+ * To be determined:
+ * Are SpanQuery weights handled correctly during search by Lucene?
+ * Should the resulting SpanOrQuery be sorted?
+ * Could other SpanQueries be added for use in this factory:
+ * - SpanOrQuery: in principle yes, but it only has access to its terms
+ *                via getTerms(); are the corresponding weights available?
+ * - SpanFirstQuery: treat similar to subquery SpanNearQuery. (ok?)
+ * - SpanNotQuery: treat similar to subquery SpanNearQuery. (ok?)
+ */
 
 import java.io.IOException;
 import java.util.HashMap;

@@ -400,7 +400,11 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
     return newInfos;
   }
 
-  /** Simulate an append-only use-case, ie. there are no deletes. */
+  /**
+   * Simulate an append-only use-case, ie. there are no deletes. TODO: incredibly slow (at least
+   * with TestUpgradeIndexMergePolicy)
+   */
+  @Nightly
   public void testSimulateAppendOnly() throws IOException {
     doTestSimulateAppendOnly(mergePolicy(), 100_000_000, 10_000);
   }

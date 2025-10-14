@@ -43,6 +43,7 @@ import java.util.function.IntToLongFunction;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.Impact;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.DocValuesSkipIndexType;
@@ -50,7 +51,7 @@ import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
-import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
@@ -66,6 +67,7 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
+import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FlushInfo;
@@ -113,6 +115,9 @@ public class RandomPostingsTester {
 
     // Check DocIdSetIterator#intoBitSet
     INTO_BIT_SET,
+
+    // Check PostingsEnum#nextDocsAndFreqs
+    NEXT_DOCS_AND_FREQS,
 
     // Sometimes check payloads
     PAYLOADS,
@@ -1259,8 +1264,7 @@ public class RandomPostingsTester {
           impactsEnum.advanceShallow(doc);
           Impacts impacts = impactsEnum.getImpacts();
           INDEX_PACKAGE_ACCESS.checkImpacts(impacts, doc);
-          impactsCopy =
-              impacts.getImpacts(0).stream().map(i -> new Impact(i.freq, i.norm)).toList();
+          impactsCopy = copyOf(impacts.getImpacts(0));
         }
         freq = impactsEnum.freq();
         long norm = docToNorm.applyAsLong(doc);
@@ -1306,8 +1310,7 @@ public class RandomPostingsTester {
           impactsCopy = Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
           for (int level = 0; level < impacts.numLevels(); ++level) {
             if (impacts.getDocIdUpTo(level) >= max) {
-              impactsCopy =
-                  impacts.getImpacts(level).stream().map(i -> new Impact(i.freq, i.norm)).toList();
+              impactsCopy = copyOf(impacts.getImpacts(level));
               break;
             }
           }
@@ -1345,8 +1348,7 @@ public class RandomPostingsTester {
           impactsCopy = Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
           for (int level = 0; level < impacts.numLevels(); ++level) {
             if (impacts.getDocIdUpTo(level) >= max) {
-              impactsCopy =
-                  impacts.getImpacts(level).stream().map(i -> new Impact(i.freq, i.norm)).toList();
+              impactsCopy = copyOf(impacts.getImpacts(level));
               break;
             }
           }
@@ -1410,6 +1412,65 @@ public class RandomPostingsTester {
         set2.clear();
       }
     }
+
+    if (options.contains(Option.NEXT_DOCS_AND_FREQS)) {
+      int flags = PostingsEnum.FREQS;
+      if (doCheckPositions) {
+        flags |= PostingsEnum.POSITIONS;
+        if (doCheckOffsets) {
+          flags |= PostingsEnum.OFFSETS;
+        }
+        if (doCheckPayloads) {
+          flags |= PostingsEnum.PAYLOADS;
+        }
+      }
+
+      for (boolean impacts : new boolean[] {false, true}) {
+        PostingsEnum pe1;
+        if (impacts) {
+          pe1 = termsEnum.impacts(flags);
+        } else {
+          pe1 = termsEnum.postings(null, flags);
+          if (random.nextBoolean()) {
+            // test reuse
+            pe1.advance(maxDoc / 2);
+            pe1 = termsEnum.postings(pe1, flags);
+          }
+        }
+        PostingsEnum pe2 = termsEnum.postings(null, flags);
+
+        pe1.nextDoc();
+        pe2.nextDoc();
+        DocAndFloatFeatureBuffer buffer = new DocAndFloatFeatureBuffer();
+        while (true) {
+          int curDoc = pe1.docID();
+          int upTo =
+              TestUtil.nextInt(random, curDoc, (int) Math.min(Integer.MAX_VALUE, curDoc + 512L));
+          pe1.nextPostings(upTo, buffer);
+          assertEquals(buffer.size == 0, curDoc >= upTo);
+
+          for (int i = 0; i < buffer.size; ++i) {
+            assertTrue(buffer.docs[i] < upTo);
+            assertEquals(pe2.docID(), buffer.docs[i]);
+            assertEquals(0f, pe2.freq(), buffer.features[i]);
+            pe2.nextDoc();
+          }
+
+          assertEquals(pe1.docID(), pe2.docID());
+          if (pe1.docID() == DocIdSetIterator.NO_MORE_DOCS) {
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  private static List<Impact> copyOf(FreqAndNormBuffer buffer) {
+    List<Impact> impacts = new ArrayList<>();
+    for (int i = 0; i < buffer.size; ++i) {
+      impacts.add(new Impact(buffer.freqs[i], buffer.norms[i]));
+    }
+    return impacts;
   }
 
   private static class TestThread extends Thread {
@@ -1558,9 +1619,7 @@ public class RandomPostingsTester {
           // Try seek by ord sometimes:
           try {
             termsEnum.seekExact(fieldAndTerm.ord);
-          } catch (
-              @SuppressWarnings("unused")
-              UnsupportedOperationException uoe) {
+          } catch (UnsupportedOperationException _) {
             supportsOrds = false;
             assertTrue(termsEnum.seekExact(fieldAndTerm.term));
           }
@@ -1578,9 +1637,7 @@ public class RandomPostingsTester {
       if (supportsOrds) {
         try {
           termOrd = termsEnum.ord();
-        } catch (
-            @SuppressWarnings("unused")
-            UnsupportedOperationException uoe) {
+        } catch (UnsupportedOperationException _) {
           supportsOrds = false;
           termOrd = -1;
         }
@@ -1721,9 +1778,7 @@ public class RandomPostingsTester {
       try {
         iterator.remove();
         throw new AssertionError("Fields.iterator() allows for removal");
-      } catch (
-          @SuppressWarnings("unused")
-          UnsupportedOperationException expected) {
+      } catch (UnsupportedOperationException _) {
         // expected;
       }
     }

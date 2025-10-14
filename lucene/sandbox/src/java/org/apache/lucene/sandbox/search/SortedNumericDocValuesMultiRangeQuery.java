@@ -17,6 +17,7 @@
 package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -38,7 +39,6 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.util.PriorityQueue;
 
 /**
  * A union multiple ranges over SortedNumericDocValuesField
@@ -91,32 +91,32 @@ public class SortedNumericDocValuesMultiRangeQuery extends Query {
             Comparator.comparing(r -> r.lower)
             // .thenComparing(r -> r.upper)// have to ignore upper boundary for .floor() lookups
             );
-    PriorityQueue<Edge> heap =
-        new PriorityQueue<>(clauses.size() * 2) {
-          @Override
-          protected boolean lessThan(Edge a, Edge b) {
-            return a.getValue() - b.getValue() < 0;
-          }
-        };
+    List<Edge> clauseEdges = new ArrayList<>(clauses.size() * 2);
+
     for (DocValuesMultiRangeQuery.LongRange r : clauses) {
       long cmp = r.lower - r.upper;
       if (cmp == 0) {
-        heap.add(Edge.createPoint(r));
+        clauseEdges.add(Edge.createPoint(r));
       } else {
         if (cmp < 0) {
-          heap.add(new Edge(r, false));
-          heap.add(new Edge(r, true));
+          clauseEdges.add(new Edge(r, false));
+          clauseEdges.add(new Edge(r, true));
         } // else drop reverse ranges
       }
     }
-    int totalEdges = heap.size();
+
+    // sort by edge value, then points first
+    clauseEdges.sort(
+        Comparator.comparingLong(Edge::getValue)
+            .thenComparing(e -> e.point, Comparator.reverseOrder()));
+
     int depth = 0;
     Edge started = null;
-    for (int i = 0; i < totalEdges; i++) {
-      Edge smallest = heap.pop();
+    for (int i = 0; i < clauseEdges.size(); i++) {
+      Edge smallest = clauseEdges.get(i);
       if (depth == 0 && smallest.point) {
-        if (i < totalEdges - 1 && heap.top().point) { // repeating same points
-          if (smallest.getValue() == heap.top().getValue()) {
+        if (i < clauseEdges.size() - 1) { // the point sits on the edge of the range
+          if (smallest.getValue() == clauseEdges.get(i + 1).getValue()) {
             continue;
           }
         }
@@ -131,11 +131,13 @@ public class SortedNumericDocValuesMultiRangeQuery extends Query {
         } else {
           depth--;
           if (depth == 0) {
-            sortedClauses.add(
+            DocValuesMultiRangeQuery.LongRange range =
                 started.range == smallest.range // no overlap case, the most often
                     ? smallest.range
                     : new DocValuesMultiRangeQuery.LongRange(
-                        started.getValue(), smallest.getValue()));
+                        started.getValue(), smallest.getValue());
+            boolean strictlyIncreasing = sortedClauses.add(range);
+            assert strictlyIncreasing;
             started = null;
           }
         }

@@ -32,8 +32,7 @@ public class TestJapanesePartOfSpeechStopFilterFactory extends BaseTokenStreamTe
   public void testBasics() throws IOException {
     String tags = "#  verb-main:\n" + "動詞-自立\n";
 
-    JapaneseTokenizerFactory tokenizerFactory =
-        new JapaneseTokenizerFactory(new HashMap<String, String>());
+    JapaneseTokenizerFactory tokenizerFactory = new JapaneseTokenizerFactory(new HashMap<>());
     tokenizerFactory.inform(new StringMockResourceLoader(""));
     TokenStream ts = tokenizerFactory.create();
     ((Tokenizer) ts).setReader(new StringReader("私は制限スピードを超える。"));
@@ -48,8 +47,7 @@ public class TestJapanesePartOfSpeechStopFilterFactory extends BaseTokenStreamTe
 
   /** If we don't specify "tags", then load the default stop tags. */
   public void testNoTagsSpecified() throws IOException {
-    JapaneseTokenizerFactory tokenizerFactory =
-        new JapaneseTokenizerFactory(new HashMap<String, String>());
+    JapaneseTokenizerFactory tokenizerFactory = new JapaneseTokenizerFactory(new HashMap<>());
     tokenizerFactory.inform(new StringMockResourceLoader(""));
     TokenStream ts = tokenizerFactory.create();
     ((Tokenizer) ts).setReader(new StringReader("私は制限スピードを超える。"));

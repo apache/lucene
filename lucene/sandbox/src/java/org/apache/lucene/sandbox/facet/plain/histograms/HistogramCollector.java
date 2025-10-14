@@ -17,7 +17,10 @@
 package org.apache.lucene.sandbox.facet.plain.histograms;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
@@ -27,10 +30,16 @@ import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
+import org.apache.lucene.queries.function.FunctionScoreQuery;
+import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.DocIdStream;
+import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.LeafCollector;
+import org.apache.lucene.search.PointRangeQuery;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Weight;
@@ -64,27 +73,30 @@ final class HistogramCollector implements Collector {
       throw new CollectionTerminatedException();
     }
 
+    // Doc values should be indexed to enable histogram collection
+    if (fi.getDocValuesType() != DocValuesType.NUMERIC
+        && fi.getDocValuesType() != DocValuesType.SORTED_NUMERIC) {
+      throw new IllegalStateException(
+          "Expected numeric field, but got doc-value type: " + fi.getDocValuesType());
+    }
+
     // We can use multi range traversal logic to collect the histogram on numeric
     // field indexed as point for MATCH_ALL cases. In future, this can be extended
     // for Point Range Query cases as well
-    if (weight != null && weight.count(context) == context.reader().maxDoc()) {
+    final PointRangeQuery pointRangeQuery = getPointRangeQuery(field);
+    if (isMatchAll(context) || pointRangeQuery != null) {
       final PointValues pointValues = context.reader().getPointValues(field);
       if (PointTreeBulkCollector.canCollectEfficiently(pointValues, bucketWidth)) {
         // In case of intra segment concurrency, only one collector should collect
         // documents for all the partitions to avoid duplications across collectors
         if (leafBulkCollected.putIfAbsent(context, true) == null) {
-          PointTreeBulkCollector.collect(pointValues, bucketWidth, counts, maxBuckets);
+          PointTreeBulkCollector.collect(
+              pointValues, pointRangeQuery, bucketWidth, counts, maxBuckets);
         }
         // Either the collection is finished on this collector, or some other collector
         // already started that collection, so this collector can finish early!
         throw new CollectionTerminatedException();
       }
-    }
-
-    if (fi.getDocValuesType() != DocValuesType.NUMERIC
-        && fi.getDocValuesType() != DocValuesType.SORTED_NUMERIC) {
-      throw new IllegalStateException(
-          "Expected numeric field, but got doc-value type: " + fi.getDocValuesType());
     }
 
     SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
@@ -170,6 +182,9 @@ final class HistogramCollector implements Collector {
     private final int maxBuckets;
     private final LongIntHashMap counts;
 
+    private final int[] docBuffer = new int[64];
+    private final long[] valueBuffer = new long[docBuffer.length];
+
     HistogramNaiveSingleValuedLeafCollector(
         NumericDocValues values, long bucketWidth, int maxBuckets, LongIntHashMap counts) {
       this.values = values;
@@ -182,13 +197,40 @@ final class HistogramCollector implements Collector {
     public void setScorer(Scorable scorer) throws IOException {}
 
     @Override
+    public void collect(DocIdStream stream) throws IOException {
+      // Optimize bulk retrieval of doc values
+      for (int count = stream.intoArray(docBuffer);
+          count != 0;
+          count = stream.intoArray(docBuffer)) {
+        int firstDoc = docBuffer[0];
+        int lastDoc = docBuffer[count - 1];
+
+        if (values.advanceExact(firstDoc) && values.docIDRunEnd() > lastDoc) {
+          // This guarantees that all docs in docBuffer have a value.
+          values.longValues(count, docBuffer, valueBuffer, 0L);
+          for (int i = 0; i < count; ++i) {
+            collectValue(valueBuffer[i]);
+          }
+        } else {
+          // Delegate to #collect to handle docs with missing values
+          for (int i = 0; i < count; ++i) {
+            collect(docBuffer[i]);
+          }
+        }
+      }
+    }
+
+    @Override
     public void collect(int doc) throws IOException {
       if (values.advanceExact(doc)) {
-        final long value = values.longValue();
-        final long bucket = Math.floorDiv(value, bucketWidth);
-        counts.addTo(bucket, 1);
-        checkMaxBuckets(counts.size(), maxBuckets);
+        collectValue(values.longValue());
       }
+    }
+
+    private void collectValue(long value) {
+      final long bucket = Math.floorDiv(value, bucketWidth);
+      counts.addTo(bucket, 1);
+      checkMaxBuckets(counts.size(), maxBuckets);
     }
   }
 
@@ -329,5 +371,46 @@ final class HistogramCollector implements Collector {
   @Override
   public void setWeight(Weight weight) {
     this.weight = weight;
+  }
+
+  private boolean isMatchAll(LeafReaderContext context) throws IOException {
+    return weight != null && weight.count(context) == context.reader().maxDoc();
+  }
+
+  private static final Map<Class<?>, Function<Query, Query>> queryWrappers;
+
+  // Initialize the wrapper map for unwrapping the query
+  static {
+    queryWrappers = new HashMap<>();
+    queryWrappers.put(BoostQuery.class, q -> ((BoostQuery) q).getQuery());
+    queryWrappers.put(ConstantScoreQuery.class, q -> ((ConstantScoreQuery) q).getQuery());
+    queryWrappers.put(FunctionScoreQuery.class, q -> ((FunctionScoreQuery) q).getWrappedQuery());
+    queryWrappers.put(
+        IndexOrDocValuesQuery.class, q -> ((IndexOrDocValuesQuery) q).getIndexQuery());
+  }
+
+  /** Recursively unwraps query into the concrete form for applying the optimization */
+  private static Query unwrapIntoConcreteQuery(Query query) {
+    while (queryWrappers.containsKey(query.getClass())) {
+      query = queryWrappers.get(query.getClass()).apply(query);
+    }
+
+    return query;
+  }
+
+  private PointRangeQuery getPointRangeQuery(final String field) {
+    if (weight == null || weight.getQuery() == null) {
+      return null;
+    }
+
+    final Query concreteQuery = unwrapIntoConcreteQuery(weight.getQuery());
+
+    if (concreteQuery instanceof PointRangeQuery prq) {
+      if (prq.getField().equals(field)) {
+        return prq;
+      }
+    }
+
+    return null;
   }
 }

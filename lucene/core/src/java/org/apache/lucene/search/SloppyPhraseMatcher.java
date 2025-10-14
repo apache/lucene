@@ -19,19 +19,18 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
-import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsSource;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.PriorityQueue;
 
 /**
  * Find all slop-valid position-combinations (matches) encountered while traversing/hopping the
@@ -56,7 +55,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
 
   private final int slop;
   private final int numPostings;
-  private final PhraseQueue pq; // for advancing min position
+  private final PriorityQueue<PhrasePositions> pq; // for advancing min position
   private final boolean captureLeadMatch;
 
   private final DocIdSetIterator approximation;
@@ -92,7 +91,22 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     this.slop = slop;
     this.numPostings = postings.length;
     this.captureLeadMatch = captureLeadMatch;
-    pq = new PhraseQueue(postings.length);
+    pq =
+        PriorityQueue.usingLessThan(
+            postings.length,
+            (pp1, pp2) -> {
+              if (pp1.position == pp2.position)
+                // same doc and pp.position, so decide by actual term positions.
+                // rely on: pp.position == tp.position - offset.
+                if (pp1.offset == pp2.offset) {
+                  return pp1.ord < pp2.ord;
+                } else {
+                  return pp1.offset < pp2.offset;
+                }
+              else {
+                return pp1.position < pp2.position;
+              }
+            });
     phrasePositions = new PhrasePositions[postings.length];
     for (int i = 0; i < postings.length; ++i) {
       phrasePositions[i] =
@@ -112,14 +126,20 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
           public Impacts getImpacts() throws IOException {
             return new Impacts() {
 
+              private final FreqAndNormBuffer impactBuffer = new FreqAndNormBuffer();
+
+              {
+                impactBuffer.add(Integer.MAX_VALUE, 1);
+              }
+
               @Override
               public int numLevels() {
                 return 1;
               }
 
               @Override
-              public List<Impact> getImpacts(int level) {
-                return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
+              public FreqAndNormBuffer getImpacts(int level) {
+                return impactBuffer;
               }
 
               @Override

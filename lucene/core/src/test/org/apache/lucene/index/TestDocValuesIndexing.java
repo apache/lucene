@@ -568,9 +568,7 @@ public class TestDocValuesIndexing extends LuceneTestCase {
               try {
                 startingGun.await();
                 w.addDocument(doc);
-              } catch (
-                  @SuppressWarnings("unused")
-                  IllegalArgumentException iae) {
+              } catch (IllegalArgumentException _) {
                 // expected
                 hitExc.set(true);
               } catch (Exception e) {

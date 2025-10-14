@@ -84,7 +84,7 @@ set GRADLE_WRAPPER_JAR=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
 set GRADLE_WRAPPER_CHECKSUM=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar.sha256
 
 @rem Read the expected hash from .sha256 file
-for /f "tokens=1" %%A in ("%GRADLE_WRAPPER_CHECKSUM%") do (
+for /f "tokens=1 usebackq" %%A in ("%GRADLE_WRAPPER_CHECKSUM%") do (
     set "EXPECTED=%%A"
 )
 @rem Get actual SHA-256 hash using certutil
@@ -106,9 +106,6 @@ IF NOT EXIST "%APP_HOME%\gradle.properties" (
   IF %ERRORLEVEL% NEQ 0 goto fail
   endlocal
 )
-
-@rem Prevent jgit from forking/searching git.exe
-SET GIT_CONFIG_NOSYSTEM=1
 
 @rem END OF LUCENE CUSTOMIZATION
 

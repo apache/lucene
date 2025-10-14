@@ -16,19 +16,23 @@
  */
 package org.apache.lucene.search;
 
+import java.io.IOException;
+import java.util.Comparator;
 import java.util.stream.LongStream;
 import java.util.stream.StreamSupport;
-import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.PriorityQueue;
+import org.apache.lucene.util.VectorUtil;
 
 /** Util class for Scorer related methods */
 class ScorerUtil {
 
   private static final Class<?> DEFAULT_IMPACTS_ENUM_CLASS =
-      Lucene103PostingsFormat.getImpactsEnumImpl();
+      Lucene104PostingsFormat.getImpactsEnumImpl();
   private static final Class<?> DEFAULT_ACCEPT_DOCS_CLASS =
       new FixedBitSet(1).asReadOnlyBits().getClass();
 
@@ -47,12 +51,7 @@ class ScorerUtil {
     // If we recurse infinitely, we find out that the cost of a msm query is the sum of the
     // costs of the num_scorers - minShouldMatch + 1 least costly scorers
     final PriorityQueue<Long> pq =
-        new PriorityQueue<Long>(numScorers - minShouldMatch + 1) {
-          @Override
-          protected boolean lessThan(Long a, Long b) {
-            return a > b;
-          }
-        };
+        PriorityQueue.usingComparator(numScorers - minShouldMatch + 1, Comparator.reverseOrder());
     costs.forEach(pq::insertWithOverflow);
     return StreamSupport.stream(pq.spliterator(), false).mapToLong(Number::longValue).sum();
   }
@@ -115,6 +114,96 @@ class ScorerUtil {
     @Override
     public int length() {
       return in.length();
+    }
+  }
+
+  /**
+   * Compute a minimum required score, so that (float) MathUtil.sumUpperBound(minRequiredScore +
+   * maxRemainingScore, numScorers) <= minCompetitiveScore. The computed value may not be the
+   * greatest value that meets this condition, which means that we may fail to filter out some docs.
+   * However, this doesn't hurt correctness, it just means that these docs will be filtered out
+   * later, and the extra work required to compute an optimal value would unlikely result in a
+   * speedup.
+   */
+  static double minRequiredScore(
+      double maxRemainingScore, float minCompetitiveScore, int numScorers) {
+    double minRequiredScore = minCompetitiveScore - maxRemainingScore;
+    // note: we want the float ulp in order to converge faster, not the double ulp
+    double subtraction = Math.ulp(minCompetitiveScore);
+    while (minRequiredScore > 0
+        && (float) MathUtil.sumUpperBound(minRequiredScore + maxRemainingScore, numScorers)
+            >= minCompetitiveScore) {
+      minRequiredScore -= subtraction;
+    }
+    return minRequiredScore;
+  }
+
+  /**
+   * Filters competitive hits from the provided {@link DocAndScoreAccBuffer}.
+   *
+   * <p>This method removes documents from the buffer that cannot possibly have a score competitive
+   * enough to exceed the minimum competitive score, given the maximum remaining score and the
+   * number of scorers.
+   */
+  static void filterCompetitiveHits(
+      DocAndScoreAccBuffer buffer,
+      double maxRemainingScore,
+      float minCompetitiveScore,
+      int numScorers) {
+    double minRequiredScore = minRequiredScore(maxRemainingScore, minCompetitiveScore, numScorers);
+
+    if (minRequiredScore <= 0) {
+      return;
+    }
+
+    buffer.size =
+        VectorUtil.filterByScore(buffer.docs, buffer.scores, minRequiredScore, buffer.size);
+  }
+
+  /**
+   * Apply the provided {@link Scorable} as a required clause on the given {@link
+   * DocAndScoreAccBuffer}. This filters out documents from the buffer that do not match, and adds
+   * the scores of this {@link Scorable} to the scores.
+   *
+   * <p><b>NOTE</b>: The provided buffer must contain doc IDs in sorted order, with no duplicates.
+   */
+  static void applyRequiredClause(
+      DocAndScoreAccBuffer buffer, DocIdSetIterator iterator, Scorable scorable)
+      throws IOException {
+    int intersectionSize = 0;
+    int curDoc = iterator.docID();
+    for (int i = 0; i < buffer.size; ++i) {
+      int targetDoc = buffer.docs[i];
+      if (curDoc < targetDoc) {
+        curDoc = iterator.advance(targetDoc);
+      }
+      if (curDoc == targetDoc) {
+        buffer.docs[intersectionSize] = targetDoc;
+        buffer.scores[intersectionSize] = buffer.scores[i] + scorable.score();
+        intersectionSize++;
+      }
+    }
+    buffer.size = intersectionSize;
+  }
+
+  /**
+   * Apply the provided {@link Scorable} as an optional clause on the given {@link
+   * DocAndScoreAccBuffer}. This adds the scores of this {@link Scorer} to the existing scores.
+   *
+   * <p><b>NOTE</b>: The provided buffer must contain doc IDs in sorted order, with no duplicates.
+   */
+  static void applyOptionalClause(
+      DocAndScoreAccBuffer buffer, DocIdSetIterator iterator, Scorable scorable)
+      throws IOException {
+    int curDoc = iterator.docID();
+    for (int i = 0; i < buffer.size; ++i) {
+      int targetDoc = buffer.docs[i];
+      if (curDoc < targetDoc) {
+        curDoc = iterator.advance(targetDoc);
+      }
+      if (curDoc == targetDoc) {
+        buffer.scores[i] += scorable.score();
+      }
     }
   }
 }

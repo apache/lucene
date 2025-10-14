@@ -53,6 +53,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.Lock;
+import org.apache.lucene.store.ReadOnceHint;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.ThrottledIndexOutput;
@@ -519,9 +520,7 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
     for (Closeable f : m.keySet()) {
       try {
         f.close();
-      } catch (
-          @SuppressWarnings("unused")
-          Exception ignored) {
+      } catch (Exception _) {
       }
     }
     corruptFiles(unSyncedFiles);
@@ -813,7 +812,7 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
     }
 
     context = LuceneTestCase.newIOContext(randomState, context);
-    final boolean confined = context == IOContext.READONCE;
+    final boolean confined = context.hints().contains(ReadOnceHint.INSTANCE);
     if (name.startsWith(IndexFileNames.SEGMENTS) && confined == false) {
       throw new RuntimeException(
           "MockDirectoryWrapper: opening segments file ["

@@ -255,7 +255,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
           throws IOException {
         final LeafCollector noScoreCollector =
             new LeafCollector() {
-              Score fake = new Score();
+              SimpleScorable fake = new SimpleScorable();
 
               @Override
               public void setScorer(Scorable scorer) throws IOException {
@@ -265,6 +265,11 @@ final class BooleanScorerSupplier extends ScorerSupplier {
               @Override
               public void collect(int doc) throws IOException {
                 collector.collect(doc);
+              }
+
+              @Override
+              public void collect(DocIdStream stream) throws IOException {
+                collector.collect(stream);
               }
             };
         return scorer.score(noScoreCollector, acceptDocs, min, max);
@@ -297,7 +302,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     }
 
     long shouldCost = computeShouldCost();
-    List<Scorer> optional = new ArrayList<Scorer>();
+    List<Scorer> optional = new ArrayList<>();
     for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
       optional.add(ss.get(shouldCost));
     }
@@ -439,6 +444,13 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       required.addAll(requiredScoring);
       required.addAll(requiredNoScoring);
       conjunctionScorer = new ConjunctionScorer(required, requiredScoring);
+      if (this.scoreMode == ScoreMode.TOP_SCORES && requiredScoring.size() == 0) {
+        conjunctionScorer =
+            conjunctionScorer.twoPhaseIterator() != null
+                ? new ConstantScoreScorer(
+                    0.0F, this.scoreMode, conjunctionScorer.twoPhaseIterator())
+                : new ConstantScoreScorer(0.0F, this.scoreMode, conjunctionScorer.iterator());
+      }
     }
     return new DefaultBulkScorer(conjunctionScorer);
   }
@@ -504,6 +516,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     }
   }
 
+  /** Create a new scorer for the must match scorer and exclude clauses. */
   private Scorer excl(Scorer main, Collection<ScorerSupplier> prohibited, long leadCost)
       throws IOException {
     if (prohibited.isEmpty()) {
@@ -514,6 +527,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     }
   }
 
+  /** Create a new score for the given optional clauses. */
   private Scorer opt(
       Collection<ScorerSupplier> optional,
       int minShouldMatch,

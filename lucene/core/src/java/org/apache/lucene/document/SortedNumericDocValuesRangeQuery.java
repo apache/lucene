@@ -31,6 +31,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocValuesRangeIterator;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
@@ -97,6 +98,17 @@ final class SortedNumericDocValuesRangeQuery extends Query {
     if (lowerValue > upperValue) {
       return new MatchNoDocsQuery();
     }
+    long globalMin = DocValuesSkipper.globalMinValue(indexSearcher, field);
+    long globalMax = DocValuesSkipper.globalMaxValue(indexSearcher, field);
+    if (lowerValue > globalMax || upperValue < globalMin) {
+      return new MatchNoDocsQuery();
+    }
+    if (lowerValue <= globalMin
+        && upperValue >= globalMax
+        && DocValuesSkipper.globalDocCount(indexSearcher, field)
+            == indexSearcher.getIndexReader().maxDoc()) {
+      return new MatchAllDocsQuery();
+    }
     return super.rewrite(indexSearcher);
   }
 
@@ -117,21 +129,16 @@ final class SortedNumericDocValuesRangeQuery extends Query {
         }
 
         int maxDoc = context.reader().maxDoc();
-        DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
-        if (skipper != null) {
-          if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
-            return null;
-          }
-          if (skipper.docCount() == maxDoc
-              && skipper.minValue() >= lowerValue
-              && skipper.maxValue() <= upperValue) {
-
-            return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, maxDoc);
-          }
+        int count = docCountIgnoringDeletes(context);
+        if (count == 0) {
+          return null;
+        } else if (count == maxDoc) {
+          return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, maxDoc);
         }
 
         SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
         final NumericDocValues singleton = DocValues.unwrapSingleton(values);
+        final DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
         TwoPhaseIterator iterator;
         if (singleton != null) {
           if (skipper != null) {
@@ -183,6 +190,36 @@ final class SortedNumericDocValuesRangeQuery extends Query {
         }
         return ConstantScoreScorerSupplier.fromIterator(
             TwoPhaseIterator.asDocIdSetIterator(iterator), score(), scoreMode, maxDoc);
+      }
+
+      @Override
+      public int count(LeafReaderContext context) throws IOException {
+        int maxDoc = context.reader().maxDoc();
+        int cnt = docCountIgnoringDeletes(context);
+        if (cnt == maxDoc) {
+          // Return LeafReader#numDocs that accounts for deleted documents as well
+          return context.reader().numDocs();
+        }
+        return cnt;
+      }
+
+      /* Returns
+       * # docs within the query range ignoring any deleted documents
+       * -1 if # docs cannot be determined efficiently
+       */
+      private int docCountIgnoringDeletes(LeafReaderContext context) throws IOException {
+        final DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
+        if (skipper != null) {
+          if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
+            return 0;
+          }
+          if (skipper.docCount() == context.reader().maxDoc()
+              && skipper.minValue() >= lowerValue
+              && skipper.maxValue() <= upperValue) {
+            return context.reader().maxDoc();
+          }
+        }
+        return -1;
       }
     };
   }

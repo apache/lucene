@@ -41,7 +41,6 @@ import java.util.stream.Collectors;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -61,6 +60,7 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.AbstractKnnCollector;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -90,7 +90,7 @@ import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   VectorSimilarityFunction similarityFunction;
-  DefaultFlatVectorScorer flatVectorScorer = new DefaultFlatVectorScorer();
+  DefaultFlatVectorScorer flatVectorScorer = DefaultFlatVectorScorer.INSTANCE;
 
   abstract VectorEncoding getVectorEncoding();
 
@@ -269,9 +269,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
           assertVectorsEqual(v3, values);
           HnswGraph graphValues =
               ((Lucene99HnswVectorsReader)
-                      ((PerFieldKnnVectorsFormat.FieldsReader)
-                              ((CodecReader) ctx.reader()).getVectorReader())
-                          .getFieldReader("field"))
+                      ((CodecReader) ctx.reader()).getVectorReader().unwrapReaderForField("field"))
                   .getGraph("field");
           assertGraphEqual(hnsw, graphValues);
         }
@@ -537,7 +535,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, M, beamWidth, seed);
     HnswGraph graph = builder.build(vectors.size());
 
-    Set<Integer> j = UpdateGraphsUtils.computeJoinSet(graph);
+    IntHashSet j = UpdateGraphsUtils.computeJoinSet(graph);
     assertTrue(
         "Join set size [" + j.size() + "] is not less than graph size [" + graph.size() + "]",
         j.size() < graph.size());
@@ -786,6 +784,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         IllegalArgumentException.class, () -> HnswGraphBuilder.create(scorerSupplier, 10, 0, 0));
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRamUsageEstimate() throws IOException {
     int size = atLeast(2000);
     int dim = randomIntBetween(100, 1024);

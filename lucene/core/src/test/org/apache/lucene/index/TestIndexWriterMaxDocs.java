@@ -409,9 +409,7 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
     try {
       w.addIndexes(dirs);
       fail("didn't get expected exception");
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalArgumentException expected) {
+    } catch (IllegalArgumentException _) {
       // pass
     } catch (IOException fakeDiskFull) {
       final Exception e;
@@ -461,9 +459,7 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
     try {
       w.addIndexes(readers);
       fail("didn't get expected exception");
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalArgumentException expected) {
+    } catch (IllegalArgumentException _) {
       // pass
     } catch (IOException fakeDiskFull) {
       final Exception e;

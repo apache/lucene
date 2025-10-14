@@ -17,8 +17,13 @@
 
 package org.apache.lucene.sandbox.search;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.util.CollectionUtil;
 
 /**
@@ -26,37 +31,75 @@ import org.apache.lucene.util.CollectionUtil;
  * time may be composed of several internal attributes (rewriting, weighting, scoring, etc).
  */
 class QueryProfilerBreakdown {
+  private static final Collection<QueryProfilerTimingType> QUERY_LEVEL_TIMING_TYPE =
+      Arrays.stream(QueryProfilerTimingType.values()).filter(t -> !t.isLeafLevel()).toList();
+  private final Map<QueryProfilerTimingType, QueryProfilerTimer> queryProfilerTimers;
 
-  /** The accumulated timings for this query node */
-  private final QueryProfilerTimer[] timers;
+  private final QueryLeafProfilerThreadAggregator queryLeafProfilerAggregator;
 
   /** Sole constructor. */
   public QueryProfilerBreakdown() {
-    timers = new QueryProfilerTimer[QueryProfilerTimingType.values().length];
-    for (int i = 0; i < timers.length; ++i) {
-      timers[i] = new QueryProfilerTimer();
+    queryProfilerTimers = new HashMap<>();
+    this.queryLeafProfilerAggregator = new QueryLeafProfilerThreadAggregator();
+
+    for (QueryProfilerTimingType timingType : QUERY_LEVEL_TIMING_TYPE) {
+      queryProfilerTimers.put(timingType, new QueryProfilerTimer());
     }
   }
 
-  public QueryProfilerTimer getTimer(QueryProfilerTimingType type) {
-    return timers[type.ordinal()];
+  public final QueryProfilerTimer getTimer(QueryProfilerTimingType timingType) {
+    if (timingType.isLeafLevel()) {
+      return queryLeafProfilerAggregator.getTimer(timingType);
+    }
+
+    // Return the query level profiler timer if not
+    // slice level
+    return queryProfilerTimers.get(timingType);
   }
 
   /** Build a timing count breakdown. */
-  public final Map<String, Long> toBreakdownMap() {
-    Map<String, Long> map = CollectionUtil.newHashMap(timers.length * 2);
-    for (QueryProfilerTimingType type : QueryProfilerTimingType.values()) {
-      map.put(type.toString(), timers[type.ordinal()].getApproximateTiming());
-      map.put(type.toString() + "_count", timers[type.ordinal()].getCount());
+  public final QueryProfilerResult getQueryProfilerResult(
+      Query query, List<QueryProfilerResult> childrenProfileResults) {
+    long queryStartTime = Long.MAX_VALUE;
+    long queryTotalTime = 0;
+    final Map<String, Long> breakdownMap =
+        CollectionUtil.newHashMap(QUERY_LEVEL_TIMING_TYPE.size() * 2);
+    for (QueryProfilerTimingType type : QUERY_LEVEL_TIMING_TYPE) {
+      final QueryProfilerTimer timer = queryProfilerTimers.get(type);
+      if (timer.getCount() > 0) {
+        queryStartTime = Math.min(queryStartTime, timer.getEarliestTimerStartTime());
+        queryTotalTime += timer.getApproximateTiming();
+      }
+      // TODO: Should we put only non-zero timer values in the final output?
+      breakdownMap.put(type.toString(), queryProfilerTimers.get(type).getApproximateTiming());
+      breakdownMap.put(type.toString() + "_count", queryProfilerTimers.get(type).getCount());
     }
-    return Collections.unmodifiableMap(map);
+
+    final List<AggregatedQueryLeafProfilerResult> threadProfilerResults =
+        queryLeafProfilerAggregator.getAggregatedQueryLeafProfilerResults();
+    queryStartTime = Math.min(queryStartTime, queryLeafProfilerAggregator.getQueryStartTime());
+    queryTotalTime += queryLeafProfilerAggregator.getQueryTotalTime();
+
+    return new QueryProfilerResult(
+        getTypeFromQuery(query),
+        getDescriptionFromQuery(query),
+        Collections.unmodifiableMap(breakdownMap),
+        threadProfilerResults,
+        childrenProfileResults,
+        queryStartTime,
+        queryTotalTime);
   }
 
-  public final long toTotalTime() {
-    long total = 0;
-    for (QueryProfilerTimer timer : timers) {
-      total += timer.getApproximateTiming();
+  private String getTypeFromQuery(Query query) {
+    // Anonymous classes won't have a name,
+    // we need to get the super class
+    if (query.getClass().getSimpleName().isEmpty()) {
+      return query.getClass().getSuperclass().getSimpleName();
     }
-    return total;
+    return query.getClass().getSimpleName();
+  }
+
+  private String getDescriptionFromQuery(Query query) {
+    return query.toString();
   }
 }

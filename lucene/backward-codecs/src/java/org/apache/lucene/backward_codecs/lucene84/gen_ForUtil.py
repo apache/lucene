@@ -401,7 +401,7 @@ def writeRemainderWithSIMDOptimize(bpv, next_primitive, remaining_bits_per_long,
     tmp_idx += 1
   f.write('      longs[longsIdx + 0] = l0;\n')
   f.write('    }\n')
-  
+
 
 def writeRemainder(bpv, next_primitive, remaining_bits_per_long, o, num_values, f):
   iteration = 1
@@ -432,8 +432,8 @@ def writeRemainder(bpv, next_primitive, remaining_bits_per_long, o, num_values, 
       remaining_bits = remaining_bits_per_long-b
     f.write('      longs[longsIdx + %d] = l%d;\n' %(i, i))
   f.write('    }\n')
-  
-  
+
+
 
 def writeDecode(bpv, f):
   next_primitive = 32
@@ -509,9 +509,9 @@ if __name__ == '__main__':
     switch (bitsPerValue) {
 """)
   for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
-    next_primitive = 32 
+    next_primitive = 32
     if bpv <= 8:
-      next_primitive = 8 
+      next_primitive = 8
     elif bpv <= 16:
       next_primitive = 16
     f.write('      case %d:\n' %bpv)

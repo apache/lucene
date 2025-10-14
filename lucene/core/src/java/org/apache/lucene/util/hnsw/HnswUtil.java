@@ -25,7 +25,6 @@ import java.util.Deque;
 import java.util.List;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
@@ -40,13 +39,13 @@ public class HnswUtil {
   private HnswUtil() {}
 
   /*
-   For each level, check rooted components from previous level nodes, which are entry
-   points with the goal that each node should be reachable from *some* entry point.  For each entry
-   point, compute a spanning tree, recording the nodes in a single shared bitset.
-
-   Also record a bitset marking nodes that are not full to be used when reconnecting in order to
-   limit the search to include non-full nodes only.
-  */
+   * For each level, check rooted components from previous level nodes, which are entry
+   * points with the goal that each node should be reachable from *some* entry point.  For each entry
+   * point, compute a spanning tree, recording the nodes in a single shared bitset.
+   *
+   * Also record a bitset marking nodes that are not full to be used when reconnecting in order to
+   * limit the search to include non-full nodes only.
+   */
 
   /** Returns true if every node on every level is reachable from node 0. */
   static boolean isRooted(HnswGraph knnValues) throws IOException {
@@ -236,8 +235,7 @@ public class HnswUtil {
     for (LeafReaderContext ctx : reader.leaves()) {
       CodecReader codecReader = (CodecReader) FilterLeafReader.unwrap(ctx.reader());
       KnnVectorsReader vectorsReader =
-          ((PerFieldKnnVectorsFormat.FieldsReader) codecReader.getVectorReader())
-              .getFieldReader(vectorField);
+          codecReader.getVectorReader().unwrapReaderForField(vectorField);
       if (vectorsReader instanceof HnswGraphProvider) {
         HnswGraph graph = ((HnswGraphProvider) vectorsReader).getGraph(vectorField);
         if (isRooted(graph) == false) {

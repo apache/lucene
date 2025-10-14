@@ -27,7 +27,6 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
-import org.apache.lucene.util.Bits;
 
 /**
  * This is a version of knn vector query that provides a query seed to initiate the vector search.
@@ -69,11 +68,40 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
     return new SeededKnnVectorQuery(knnQuery, seed, null);
   }
 
-  SeededKnnVectorQuery(AbstractKnnVectorQuery knnQuery, Query seed, Weight seedWeight) {
-    super(knnQuery.field, knnQuery.k, knnQuery.filter, knnQuery.searchStrategy);
+  SeededKnnVectorQuery(
+      AbstractKnnVectorQuery knnQuery,
+      Query seed,
+      Weight seedWeight,
+      String field,
+      int k,
+      Query filter,
+      KnnSearchStrategy searchStrategy) {
+    super(field, k, filter, searchStrategy);
     this.delegate = knnQuery;
     this.seed = Objects.requireNonNull(seed);
     this.seedWeight = seedWeight;
+  }
+
+  public SeededKnnVectorQuery(KnnFloatVectorQuery knnQuery, Query seed, Weight seedWeight) {
+    this(
+        knnQuery,
+        seed,
+        seedWeight,
+        knnQuery.field,
+        knnQuery.k,
+        knnQuery.filter,
+        knnQuery.searchStrategy);
+  }
+
+  public SeededKnnVectorQuery(KnnByteVectorQuery knnQuery, Query seed, Weight seedWeight) {
+    this(
+        knnQuery,
+        seed,
+        seedWeight,
+        knnQuery.field,
+        knnQuery.k,
+        knnQuery.filter,
+        knnQuery.searchStrategy);
   }
 
   @Override
@@ -94,7 +122,14 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
       return super.rewrite(indexSearcher);
     }
     SeededKnnVectorQuery rewritten =
-        new SeededKnnVectorQuery(delegate, seed, createSeedWeight(indexSearcher));
+        new SeededKnnVectorQuery(
+            delegate,
+            seed,
+            createSeedWeight(indexSearcher),
+            delegate.field,
+            delegate.k,
+            delegate.filter,
+            delegate.searchStrategy);
     return rewritten.rewrite(indexSearcher);
   }
 
@@ -113,7 +148,7 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
   @Override
   protected TopDocs approximateSearch(
       LeafReaderContext context,
-      Bits acceptDocs,
+      AcceptDocs acceptDocs,
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
@@ -291,9 +326,7 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
                 0 /* min */,
                 DocIdSetIterator.NO_MORE_DOCS /* max */);
           }
-        } catch (
-            @SuppressWarnings("unused")
-            CollectionTerminatedException e) {
+        } catch (CollectionTerminatedException _) {
         }
         leafCollector.finish();
       }

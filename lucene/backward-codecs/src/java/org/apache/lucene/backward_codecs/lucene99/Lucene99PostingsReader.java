@@ -40,8 +40,9 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
@@ -65,7 +66,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
   /** Sole constructor. */
   public Lucene99PostingsReader(SegmentReadState state) throws IOException {
-    boolean success = false;
     IndexInput docIn = null;
     IndexInput posIn = null;
     IndexInput payIn = null;
@@ -79,9 +79,9 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene99PostingsFormat.DOC_EXTENSION);
     try {
-      // Postings have a forward-only access pattern, so pass ReadAdvice.NORMAL to perform
-      // readahead.
-      docIn = state.directory.openInput(docName, state.context.withReadAdvice(ReadAdvice.NORMAL));
+      docIn =
+          state.directory.openInput(
+              docName, state.context.withHints(FileTypeHint.DATA, FileDataHint.POSTINGS));
       version =
           CodecUtil.checkIndexHeader(
               docIn,
@@ -117,11 +117,9 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       this.docIn = docIn;
       this.posIn = posIn;
       this.payIn = payIn;
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(docIn, posIn, payIn);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, docIn, posIn, payIn);
+      throw t;
     }
   }
 

@@ -13,7 +13,7 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
- -->
+-->
 
 # Apache Lucene
 
@@ -39,8 +39,12 @@ comprehensive documentation, visit:
 ## Building
 
 ### Basic steps:
-  
-1. Install [OpenJDK 24](https://jdk.java.net/archive/).
+
+1. Install JDK 25 using your package manager or download manually from
+[OpenJDK](https://jdk.java.net/),
+[Adoptium](https://adoptium.net/temurin/releases),
+[Azul](https://www.azul.com/downloads/),
+[Oracle](https://www.oracle.com/java/technologies/downloads/) or any other JDK provider.
 2. Clone Lucene's git repository (or download the source distribution).
 3. Run gradle launcher script (`gradlew`).
 

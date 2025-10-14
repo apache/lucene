@@ -33,6 +33,7 @@ import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.ExitableDirectoryReader.ExitingReaderException;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PrefixQuery;
@@ -41,6 +42,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOFunction;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.TestVectorUtil;
 
@@ -74,9 +76,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
         try {
           // Sleep for 100ms before each .next() call.
           Thread.sleep(100);
-        } catch (
-            @SuppressWarnings("unused")
-            InterruptedException e) {
+        } catch (InterruptedException _) {
         }
         return in.next();
       }
@@ -174,8 +174,11 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
   /**
    * Tests time out check sampling of TermsEnum iterations
    *
+   * <p>TODO: incredibly slow
+   *
    * @throws Exception on error
    */
+  @Nightly
   public void testExitableTermsEnumSampleTimeoutCheck() throws Exception {
     try (Directory directory = newDirectory()) {
       try (IndexWriter writer =
@@ -334,11 +337,6 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
     return () -> true;
   }
 
-  @FunctionalInterface
-  interface DvFactory {
-    DocValuesIterator create(LeafReader leaf) throws IOException;
-  }
-
   public void testDocValues() throws IOException {
     Directory directory = newDirectory();
     IndexWriter writer =
@@ -363,8 +361,8 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
     DirectoryReader directoryReader;
     DirectoryReader exitableDirectoryReader;
 
-    for (DvFactory dvFactory :
-        Arrays.<DvFactory>asList(
+    for (IOFunction<LeafReader, DocValuesIterator> dvFactory :
+        Arrays.<IOFunction<LeafReader, DocValuesIterator>>asList(
             (r) -> r.getSortedDocValues("sorted"),
             (r) -> r.getSortedSetDocValues("sortedset"),
             (r) -> r.getSortedNumericDocValues("sortednumeric"),
@@ -381,7 +379,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
             ExitingReaderException.class,
             () -> {
               LeafReader leaf = reader.leaves().get(0).reader();
-              DocValuesIterator iter = dvFactory.create(leaf);
+              DocValuesIterator iter = dvFactory.apply(leaf);
               scan(leaf, iter);
             });
         reader.close();
@@ -393,7 +391,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
       {
         IndexReader reader = new TestReader(getOnlyLeafReader(exitableDirectoryReader));
         final LeafReader leaf = reader.leaves().get(0).reader();
-        scan(leaf, dvFactory.create(leaf));
+        scan(leaf, dvFactory.apply(leaf));
         assertNull(leaf.getNumericDocValues("absent"));
         assertNull(leaf.getBinaryDocValues("absent"));
         assertNull(leaf.getSortedDocValues("absent"));
@@ -470,7 +468,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
                   "vector",
                   TestVectorUtil.randomVector(dimension),
                   5,
-                  leaf.getLiveDocs(),
+                  AcceptDocs.fromLiveDocs(leaf.getLiveDocs(), leaf.maxDoc()),
                   Integer.MAX_VALUE));
     } else {
       KnnVectorValues values = leaf.getFloatVectorValues("vector");
@@ -480,7 +478,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
           "vector",
           TestVectorUtil.randomVector(dimension),
           5,
-          leaf.getLiveDocs(),
+          AcceptDocs.fromLiveDocs(leaf.getLiveDocs(), leaf.maxDoc()),
           Integer.MAX_VALUE);
     }
 
@@ -545,7 +543,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
                   "vector",
                   TestVectorUtil.randomVectorBytes(dimension),
                   5,
-                  leaf.getLiveDocs(),
+                  AcceptDocs.fromLiveDocs(leaf.getLiveDocs(), leaf.maxDoc()),
                   Integer.MAX_VALUE));
 
     } else {
@@ -556,7 +554,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
           "vector",
           TestVectorUtil.randomVectorBytes(dimension),
           5,
-          leaf.getLiveDocs(),
+          AcceptDocs.fromLiveDocs(leaf.getLiveDocs(), leaf.maxDoc()),
           Integer.MAX_VALUE);
     }
 

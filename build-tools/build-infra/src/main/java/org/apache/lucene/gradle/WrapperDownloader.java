@@ -21,10 +21,6 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
@@ -40,9 +36,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
- * Standalone class that can be used to download a gradle-wrapper.jar
+ * Standalone class used to download the {@code gradle-wrapper.jar}.
  *
- * <p>Has no dependencies outside of standard java libraries
+ * <p>Ensure this class has no dependencies outside of standard java libraries as it's used direct
  */
 public class WrapperDownloader {
   public static void main(String[] args) {
@@ -62,8 +58,8 @@ public class WrapperDownloader {
 
   public static void checkVersion() {
     int major = Runtime.version().feature();
-    if (major != 24) {
-      throw new IllegalStateException("java version must be 24, your version: " + major);
+    if (major != 25) {
+      throw new IllegalStateException("java version must be 25, your version: " + major);
     }
   }
 
@@ -159,6 +155,9 @@ public class WrapperDownloader {
         }
 
         switch (connection.getResponseCode()) {
+          case /* TOO_MANY_REQUESTS */ 429:
+          // it may not be possible to recover from this using a short delay
+          // but try anyway.
           case HttpURLConnection.HTTP_INTERNAL_ERROR:
           case HttpURLConnection.HTTP_UNAVAILABLE:
           case HttpURLConnection.HTTP_BAD_GATEWAY:
@@ -210,7 +209,7 @@ public class WrapperDownloader {
     }
   }
 
-  @SuppressForbidden(reason = "Correct use of thread.sleep.")
+  @SuppressForbidden(reason = "Valid use of thread.sleep.")
   private static void sleep(long millis) throws InterruptedException {
     Thread.sleep(millis);
   }
@@ -228,12 +227,5 @@ public class WrapperDownloader {
       throw new IOException(
           "Could not compute digest of file: " + path + " (" + e.getMessage() + ")");
     }
-  }
-
-  @Retention(RetentionPolicy.CLASS)
-  @Target({ElementType.CONSTRUCTOR, ElementType.FIELD, ElementType.METHOD, ElementType.TYPE})
-  public @interface SuppressForbidden {
-    /** A reason for suppressing should always be given. */
-    String reason();
   }
 }

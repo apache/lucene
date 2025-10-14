@@ -22,9 +22,6 @@ reportUnnecessaryComparison = "hint"         # Requires cleaning up some dead co
 reportUntypedNamedTuple = "hint"             # Requires moving to different type of named tuple
 reportUnusedCallResult = "none"              # Forces you to assign unused retvals to '_', very noisy.
 
-# Intentionally disabled because it slows pyright by 2x
-reportShadowedImports = "none"       # Extremely slow check
-
 [tool.ruff]
 target-version = "py312"
 line-length = 200
@@ -46,8 +43,6 @@ ignore = [
   "ANN204",  # missing return annotation for special method
   "ANN206",  # missing return annotation for classmethod
   "ANN401",  # use of Any as function parameter
-  "ARG001",  # unused function argument
-  "ARG002",  # unused method argument
   "ARG005",  # unused lambda argument
   "B006",    # do not use mutable datastructures for arg defaults
   "B904",    # within except clause, raise exceptions with .. from
@@ -95,10 +90,8 @@ ignore = [
   "PLW0602", # using global for variable but no assignment is done
   "PLW0603", # using global statement to update variable is discouraged
   "PLW2901", # loop variable overwritten by assignment target
-  "PTH100",  # os.path.abspath should be replaced by Path.resolve
-  "PTH103",  # os.mkdirs should be replaced by Path.mkdir(parents=True)
   "PTH104",  # os.rename should be replaced by Path.rename
-  "PTH107",  # os.remove shoudl be replaced by Path.unlink
+  "PTH107",  # os.remove should be replaced by Path.unlink
   "PTH109",  # os.getcwd should be replaced by Path.cwd
   "PTH110",  # os.path.exists should be replaced by Path.exists
   "PTH111",  # os.path.expanduser should be replaced by Path.expanduser
@@ -130,7 +123,7 @@ ignore = [
   "S506",    # probable use of unsafe yaml loader, consider yaml.safe_load
   "S602",    # subprocess call with shell=True identified, security issue
   "S603",    # subprocess call: check for execution of untrusted input
-  "S605",    # starting a process wtih a shell, seems safe, but may be changed in future
+  "S605",    # starting a process with a shell, seems safe, but may be changed in future
   "S607",    # starting a process with a partial executable path
   "S701",    # consider using jinja autoescape=True to mitigate XSS
   "SIM102",  # use single if statement instead of nested if statement

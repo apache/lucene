@@ -1,8 +1,8 @@
 {
     "lucene/expressions/src/java/org/apache/lucene/expressions/js/Javascript.g4": "818e89aae0b6c7601051802013898c128fe7c1ba",
-    "lucene/expressions/src/java/org/apache/lucene/expressions/js/JavascriptBaseVisitor.java": "6965abdb8b069aaceac1ce4f32ed965b194f3a25",
-    "lucene/expressions/src/java/org/apache/lucene/expressions/js/JavascriptLexer.java": "6508dc5008e96a1ad28c967a3401407ba83f140b",
-    "lucene/expressions/src/java/org/apache/lucene/expressions/js/JavascriptParser.java": "ba6d0c00af113f115fc7a1f165da7726afb2e8c5",
-    "lucene/expressions/src/java/org/apache/lucene/expressions/js/JavascriptVisitor.java": "ec24bb2b9004bc38ee808970870deed12351039e",
+    "lucene/expressions/src/java/org/apache/lucene/expressions/js/JavascriptBaseVisitor.java": "d0ffa1d452a12e3c69aca79ba1a4922d5d6d0e7b",
+    "lucene/expressions/src/java/org/apache/lucene/expressions/js/JavascriptLexer.java": "38096b5359f221118bbb6b9707adf78b4d494a2f",
+    "lucene/expressions/src/java/org/apache/lucene/expressions/js/JavascriptParser.java": "d337c8306c9c92d98d73cccac7fd9fada395cb53",
+    "lucene/expressions/src/java/org/apache/lucene/expressions/js/JavascriptVisitor.java": "522d962d302478459d3d0b6b11e2b8a4fe024247",
     "property:antlr-version": "4.13.2"
 }

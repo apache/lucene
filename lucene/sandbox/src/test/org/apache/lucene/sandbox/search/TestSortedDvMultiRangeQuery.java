@@ -226,6 +226,17 @@ public class TestSortedDvMultiRangeQuery extends LuceneTestCase {
       int lower = ends[pos];
       int upper = ends[pos + 1];
       b.add(lower, upper);
+      for (int repeat = 0; repeat < random().nextInt(3); repeat++) {
+        if (rarely()) {
+          b.add(lower, upper); // plain repeat
+        } else {
+          if (random().nextBoolean()) {
+            b.add(lower, lower); // lower point repeat
+          } else {
+            b.add(upper, upper); // upper point repeat
+          }
+        }
+      }
     }
     return b;
   }

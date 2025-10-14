@@ -42,7 +42,6 @@ import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.TestVectorUtil;
 import org.apache.lucene.util.VectorUtil;
 
@@ -232,10 +231,10 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
           maxScore = Math.max(maxScore, scores[i]);
         }
         IndexReader indexReader = searcher.getIndexReader();
-        int[] segments = AbstractKnnVectorQuery.findSegmentStarts(indexReader.leaves(), docs);
+        int[] segments = DocAndScoreQuery.findSegmentStarts(indexReader.leaves(), docs);
 
-        AbstractKnnVectorQuery.DocAndScoreQuery query =
-            new AbstractKnnVectorQuery.DocAndScoreQuery(
+        DocAndScoreQuery query =
+            new DocAndScoreQuery(
                 docs,
                 scores,
                 maxScore,
@@ -307,7 +306,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
     @Override
     protected TopDocs approximateSearch(
         LeafReaderContext context,
-        Bits acceptDocs,
+        AcceptDocs acceptDocs,
         int visitedLimit,
         KnnCollectorManager knnCollectorManager)
         throws IOException {

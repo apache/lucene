@@ -106,7 +106,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
 
     // Special pushFrame since it's the first one:
     final IntersectTermsEnumFrame f = stack[0];
-    f.fp = f.fpOrig = fr.rootBlockFP;
+    f.fp = f.fpOrig = trieReader.root.outputFp;
     f.prefix = 0;
     f.setState(0);
     f.node = node;
@@ -364,9 +364,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
   public BytesRef next() throws IOException {
     try {
       return _next();
-    } catch (
-        @SuppressWarnings("unused")
-        NoMoreTermsException eoi) {
+    } catch (NoMoreTermsException _) {
       // Provoke NPE if we are (illegally!) called again:
       currentFrame = null;
       return null;

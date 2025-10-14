@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -25,8 +26,12 @@ import java.util.Objects;
 import java.util.Set;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.internal.hppc.FloatArrayList;
 import org.apache.lucene.search.CombinedFieldQuery.FieldAndWeight;
+import org.apache.lucene.search.similarities.Similarity.BulkSimScorer;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.LongsRef;
 import org.apache.lucene.util.SmallFloat;
 
 /**
@@ -47,7 +52,9 @@ final class MultiNormsLeafSimScorer {
   }
 
   private final SimScorer scorer;
+  private final BulkSimScorer bulkScorer;
   private final NumericDocValues norms;
+  private long[] normValues = LongsRef.EMPTY_LONGS;
 
   /** Sole constructor: Score documents of {@code reader} with {@code scorer}. */
   MultiNormsLeafSimScorer(
@@ -57,6 +64,7 @@ final class MultiNormsLeafSimScorer {
       boolean needsScores)
       throws IOException {
     this.scorer = Objects.requireNonNull(scorer);
+    this.bulkScorer = scorer.asBulkSimScorer();
     if (needsScores) {
       final List<NumericDocValues> normsList = new ArrayList<>();
       final List<Float> weightList = new ArrayList<>();
@@ -114,6 +122,22 @@ final class MultiNormsLeafSimScorer {
   }
 
   /**
+   * score the provided documents contained in buffer. This method assumes the float feature store
+   * is {@code freq}
+   *
+   * @see SimScorer#score(float, long)
+   */
+  public void scoreRange(DocAndFloatFeatureBuffer buffer) throws IOException {
+    normValues = ArrayUtil.growNoCopy(normValues, buffer.size);
+    if (norms != null) {
+      norms.longValues(buffer.size, buffer.docs, normValues, 1L);
+    } else {
+      Arrays.fill(normValues, 0, buffer.size, 1L);
+    }
+    bulkScorer.score(buffer.size, buffer.features, normValues, buffer.features);
+  }
+
+  /**
    * Explain the score for the provided document assuming the given term document frequency. This
    * method must be called on non-decreasing sequences of doc ids.
    *
@@ -125,6 +149,7 @@ final class MultiNormsLeafSimScorer {
 
   private static class MultiFieldNormValues extends NumericDocValues {
     private final NumericDocValues[] normsArr;
+    private float[] accBuf = FloatArrayList.EMPTY_ARRAY;
     private final float[] weightArr;
     private long current;
     private int docID = -1;
@@ -172,6 +197,34 @@ final class MultiNormsLeafSimScorer {
     @Override
     public long cost() {
       throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void longValues(int size, int[] docs, long[] values, long defaultValue)
+        throws IOException {
+      if (accBuf.length < size) {
+        accBuf = new float[ArrayUtil.oversize(size, Float.BYTES)];
+      } else {
+        Arrays.fill(accBuf, 0f);
+      }
+
+      for (int i = 0; i < normsArr.length; i++) {
+        // this code relies on the assumption that document length can never be equal to 0,
+        // so we can use 0L to indicate whether we have a norm value or not
+        normsArr[i].longValues(size, docs, values, 0L);
+        float weight = weightArr[i];
+        for (int j = 0; j < size; j++) {
+          accBuf[j] += weight * LENGTH_TABLE[Byte.toUnsignedInt((byte) values[j])];
+        }
+      }
+
+      for (int i = 0; i < size; i++) {
+        if (accBuf[i] == 0f) {
+          values[i] = defaultValue;
+        } else {
+          values[i] = SmallFloat.intToByte4(Math.round(accBuf[i]));
+        }
+      }
     }
   }
 }

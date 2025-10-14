@@ -26,16 +26,23 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
+import org.apache.lucene.queries.function.FunctionScoreQuery;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.ConstantScoreQuery;
+import org.apache.lucene.search.DoubleValuesSource;
+import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.PointRangeQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.NumericUtils;
 
 public class TestHistogramCollectorManager extends LuceneTestCase {
 
@@ -118,24 +125,11 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
 
   public void testMultiRangePointTreeCollector() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
-
-    long[] values = new long[5000];
-
-    for (int i = 0; i < values.length; i++) {
-      values[i] = random().nextInt(0, 5000); // Generates a random integer
-    }
-
-    for (long value : values) {
-      Document doc = new Document();
-      // Adding indexed point field to verify multi range collector
-      doc.add(new LongPoint("f", value));
-      w.addDocument(doc);
-    }
-
-    DirectoryReader reader = DirectoryReader.open(w);
-    w.close();
+    long[] values = generateRandomData(5000);
+    DirectoryReader reader = indexNumericData(dir, values, true);
     IndexSearcher searcher = newSearcher(reader);
+
+    // Validate the MATCH_ALL case
     LongIntHashMap actualCounts =
         searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 1000));
     LongIntHashMap expectedCounts = new LongIntHashMap();
@@ -144,8 +138,117 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
     }
     assertEquals(expectedCounts, actualCounts);
 
+    // Validate the Point Range Query case
+    int lowerBound = random().nextInt(0, 1500);
+    int upperBound = random().nextInt(3500, 5000);
+
+    byte[] lowerPoint = new byte[Long.BYTES];
+    byte[] upperPoint = new byte[Long.BYTES];
+    NumericUtils.longToSortableBytes(lowerBound, lowerPoint, 0);
+    NumericUtils.longToSortableBytes(upperBound, upperPoint, 0);
+    final PointRangeQuery prq =
+        new PointRangeQuery("f", lowerPoint, upperPoint, 1) {
+          @Override
+          protected String toString(int dimension, byte[] value) {
+            return Long.toString(NumericUtils.sortableBytesToLong(value, 0));
+          }
+        };
+
+    actualCounts = searcher.search(prq, new HistogramCollectorManager("f", 1000));
+    expectedCounts = new LongIntHashMap();
+    for (long value : values) {
+      if (value >= lowerBound && value <= upperBound) {
+        expectedCounts.addTo(Math.floorDiv(value, 1000), 1);
+      }
+    }
+    assertEquals(expectedCounts, actualCounts);
+
+    // Validate the BoostQuery case
+    actualCounts =
+        searcher.search(new BoostQuery(prq, 1.5f), new HistogramCollectorManager("f", 1000));
+    // Don't need to compute expectedCounts again as underlying point range
+    // query is not changing
+    assertEquals(expectedCounts, actualCounts);
+
+    // Validate the ConstantScoreQuery case
+    actualCounts =
+        searcher.search(new ConstantScoreQuery(prq), new HistogramCollectorManager("f", 1000));
+    // Don't need to compute expectedCounts again as underlying point range query is not changing
+    assertEquals(expectedCounts, actualCounts);
+
+    // Validate the FunctionScoreQuery case
+    actualCounts =
+        searcher.search(
+            new FunctionScoreQuery(prq, DoubleValuesSource.SCORES),
+            new HistogramCollectorManager("f", 1000));
+    // Don't need to compute expectedCounts again as underlying point range query is not changing
+    assertEquals(expectedCounts, actualCounts);
+
+    // Validate the IndexOrDocValuesQuery case
+    actualCounts =
+        searcher.search(
+            new IndexOrDocValuesQuery(prq, prq), new HistogramCollectorManager("f", 1000));
+    // Don't need to compute expectedCounts again as underlying point range query is not changing
+    assertEquals(expectedCounts, actualCounts);
+
+    // Validate the recursive wrapping case
+    actualCounts =
+        searcher.search(
+            new ConstantScoreQuery(
+                new BoostQuery(
+                    new FunctionScoreQuery(
+                        new IndexOrDocValuesQuery(prq, prq), DoubleValuesSource.SCORES),
+                    1.5f)),
+            new HistogramCollectorManager("f", 1000));
+    // Don't need to compute expectedCounts again as underlying point range query is not changing
+    assertEquals(expectedCounts, actualCounts);
+
     reader.close();
     dir.close();
+  }
+
+  public void testHistogramCollectorExceptionWithoutDocValues() throws IOException {
+    Directory dir = newDirectory();
+    long[] values = generateRandomData(5000);
+    DirectoryReader reader = indexNumericData(dir, values, false);
+    IndexSearcher searcher = newSearcher(reader);
+
+    // Validate that exception is thrown when doc values is disabled on numeric field
+    expectThrows(
+        IllegalStateException.class,
+        () -> searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 1000)));
+
+    reader.close();
+    dir.close();
+  }
+
+  private long[] generateRandomData(int bound) {
+    long[] values = new long[bound];
+    for (int i = 0; i < values.length; i++) {
+      values[i] = random().nextInt(0, bound); // Generates a random integer
+    }
+    return values;
+  }
+
+  private DirectoryReader indexNumericData(Directory dir, long[] values, boolean docValueEnabled)
+      throws IOException {
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
+
+    for (long value : values) {
+      Document doc = new Document();
+      // Adding indexed point field to verify multi range collector
+      doc.add(new LongPoint("f", value));
+      if (docValueEnabled) {
+        // Doc values need to be enabled for histogram collection
+        doc.add(new NumericDocValuesField("f", value));
+      }
+      w.addDocument(doc);
+    }
+
+    DirectoryReader reader = DirectoryReader.open(w);
+    w.close();
+
+    return reader;
   }
 
   private void doTestSkipIndex(IndexWriterConfig cfg) throws IOException {

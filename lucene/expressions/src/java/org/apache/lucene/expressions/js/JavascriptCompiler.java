@@ -66,6 +66,7 @@ import org.apache.lucene.expressions.Expression;
 import org.apache.lucene.expressions.js.JavascriptParser.ExpressionContext;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * An expression compiler for javascript expressions.
@@ -161,29 +162,6 @@ public final class JavascriptCompiler {
   }
 
   /**
-   * Converts a legacy map with reflective {@link java.lang.reflect.Method} functions to {@code
-   * Map<String,MethodHandle} for use with {@link #compile(String, Map)}.
-   *
-   * @param functions a map with only public and accessible reflective methods
-   * @return a new (modifiable) map with the same function declarations, but converted to {@link
-   *     MethodHandle}
-   * @throws IllegalAccessException if any of the methods in {@code functions} are not accessible by
-   *     the public {@link Lookup}.
-   * @deprecated Only use this to convert Lucene 9.x or earlier legacy code. For new code use {@link
-   *     MethodHandle}.
-   */
-  @Deprecated
-  public static Map<String, MethodHandle> convertLegacyFunctions(
-      Map<String, java.lang.reflect.Method> functions) throws IllegalAccessException {
-    final var lookup = MethodHandles.publicLookup();
-    final Map<String, MethodHandle> newMap = new HashMap<>();
-    for (var e : functions.entrySet()) {
-      newMap.put(e.getKey(), lookup.unreflect(e.getValue()));
-    }
-    return newMap;
-  }
-
-  /**
    * Compiles the given expression with the supplied custom functions.
    *
    * <p>Functions must be {@code public static}, return {@code double} and can take from zero to 256
@@ -222,6 +200,7 @@ public final class JavascriptCompiler {
    * @return A new compiled expression
    * @throws ParseException on failure to compile
    */
+  @SuppressForbidden(reason = "defines new bytecode on purpose, carefully")
   private Expression compileExpression() throws ParseException {
     final Map<String, Integer> externalsMap = new LinkedHashMap<>(),
         constantsMap = new LinkedHashMap<>();
@@ -365,7 +344,7 @@ public final class JavascriptCompiler {
       final Map<String, Integer> externalsMap,
       final Map<String, Integer> constantsMap) {
     // to completely hide the ANTLR visitor we use an anonymous impl:
-    return new JavascriptBaseVisitor<Void>() {
+    return new JavascriptBaseVisitor<>() {
       private final Deque<TypeKind> typeStack = new ArrayDeque<>();
 
       @Override
@@ -872,7 +851,7 @@ public final class JavascriptCompiler {
                   + "#"
                   + cracked.getName()
                   + cracked.getMethodType();
-    } catch (@SuppressWarnings("unused") IllegalArgumentException | SecurityException iae) {
+    } catch (IllegalArgumentException | SecurityException _) {
       // can't check for static, we assume it is static
       // (it does not matter as we call the MethodHandle directly if it is compatible):
       refKind = MethodHandleInfo.REF_invokeStatic;

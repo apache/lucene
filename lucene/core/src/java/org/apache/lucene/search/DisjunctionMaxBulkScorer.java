@@ -18,10 +18,12 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.PriorityQueue;
 
 /** Bulk scorer for {@link DisjunctionMaxQuery} when the tie-break multiplier is zero. */
@@ -50,12 +52,7 @@ final class DisjunctionMaxBulkScorer extends BulkScorer {
       throw new IllegalArgumentException();
     }
     this.scorers =
-        new PriorityQueue<>(scorers.size()) {
-          @Override
-          protected boolean lessThan(BulkScorerAndNext a, BulkScorerAndNext b) {
-            return a.next < b.next;
-          }
-        };
+        PriorityQueue.usingComparator(scorers.size(), Comparator.comparingInt(b -> b.next));
     for (BulkScorer scorer : scorers) {
       this.scorers.add(new BulkScorerAndNext(scorer));
     }
@@ -67,7 +64,7 @@ final class DisjunctionMaxBulkScorer extends BulkScorer {
 
     while (top.next < max) {
       final int windowMin = Math.max(top.next, min);
-      final int windowMax = (int) Math.min(max, (long) windowMin + WINDOW_SIZE);
+      final int windowMax = MathUtil.unsignedMin(max, windowMin + WINDOW_SIZE);
 
       // First compute matches / scores in the window
       do {

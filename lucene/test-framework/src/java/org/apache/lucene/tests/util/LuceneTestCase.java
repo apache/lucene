@@ -30,6 +30,7 @@ import com.carrotsearch.randomizedtesting.MixWithSuiteName;
 import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.RandomizedRunner;
 import com.carrotsearch.randomizedtesting.RandomizedTest;
+import com.carrotsearch.randomizedtesting.Xoroshiro128PlusRandom;
 import com.carrotsearch.randomizedtesting.annotations.Listeners;
 import com.carrotsearch.randomizedtesting.annotations.SeedDecorators;
 import com.carrotsearch.randomizedtesting.annotations.TestGroup;
@@ -69,15 +70,6 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.AccessControlContext;
-import java.security.AccessController;
-import java.security.Permission;
-import java.security.PermissionCollection;
-import java.security.Permissions;
-import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
-import java.security.ProtectionDomain;
-import java.security.SecurityPermission;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -99,7 +91,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import junit.framework.AssertionFailedError;
 import org.apache.lucene.analysis.Analyzer;
@@ -175,6 +169,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.LockFactory;
 import org.apache.lucene.store.MergeInfo;
 import org.apache.lucene.store.NRTCachingDirectory;
+import org.apache.lucene.store.ReadOnceHint;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.AlcoholicMergePolicy;
 import org.apache.lucene.tests.index.AssertingDirectoryReader;
@@ -294,6 +289,21 @@ public abstract class LuceneTestCase extends Assert {
    * @see #ignoreAfterMaxFailures
    */
   public static final String SYSPROP_FAILFAST = "tests.failfast";
+
+  /**
+   * If specified, limits the number of method calls to each individual instance returned by {@link
+   * #random()}.
+   *
+   * @see #randomSupplier
+   */
+  public static final String SYSPROP_RANDOM_MAXCALLS = "tests.random.maxcalls";
+
+  /**
+   * If specified, limits the number of calls {@link #random()} itself.
+   *
+   * @see #randomSupplier
+   */
+  public static final String SYSPROP_RANDOM_MAXACQUIRES = "tests.random.maxacquires";
 
   /** Annotation for tests that should only be run during nightly builds. */
   @Documented
@@ -422,7 +432,12 @@ public abstract class LuceneTestCase extends Assert {
   /** Enables or disables dumping of {@link InfoStream} messages. */
   public static final boolean INFOSTREAM = systemPropertyAsBoolean("tests.infostream", VERBOSE);
 
-  public static final boolean TEST_ASSERTS_ENABLED = systemPropertyAsBoolean("tests.asserts", true);
+  /**
+   * True if {@code tests.asserts} is enabled (either explicitly via the build option or, if not
+   * present, by the default assertion status on this class).
+   */
+  public static final boolean TEST_ASSERTS_ENABLED =
+      systemPropertyAsBoolean("tests.asserts", LuceneTestCase.class.desiredAssertionStatus());
 
   /**
    * The default (embedded resource) lines file.
@@ -689,6 +704,37 @@ public abstract class LuceneTestCase extends Assert {
     liveIWCFlushMode = flushMode;
   }
 
+  private static final Supplier<Random> randomSupplier;
+
+  /** A counter of calls to {@link #random()} if {@link #SYSPROP_RANDOM_MAXACQUIRES} is defined. */
+  @SuppressWarnings("NonFinalStaticField")
+  private static AtomicLong randomCalls = new AtomicLong();
+
+  static {
+    int maxCalls = Integer.parseInt(System.getProperty(SYSPROP_RANDOM_MAXCALLS, "0"));
+    Supplier<Random> supplier = () -> RandomizedContext.current().getRandom();
+    if (maxCalls > 0) {
+      var finalizedSupplier = supplier;
+      supplier = () -> new MaxCallCountRandom(finalizedSupplier.get(), maxCalls);
+    }
+
+    int maxAquires = Integer.parseInt(System.getProperty(SYSPROP_RANDOM_MAXACQUIRES, "0"));
+    if (maxAquires > 0) {
+      var finalizedSupplier = supplier;
+      supplier =
+          () -> {
+            if (randomCalls.incrementAndGet() > maxAquires) {
+              throw new RuntimeException(
+                  "Too many random() calls. Consider using LuceneTestCase.nonAssertingRandom for"
+                      + " large loops or data generation.");
+            }
+            return finalizedSupplier.get();
+          };
+    }
+
+    randomSupplier = supplier;
+  }
+
   // -----------------------------------------------------------------
   // Suite and test case setup/ cleanup.
   // -----------------------------------------------------------------
@@ -696,6 +742,7 @@ public abstract class LuceneTestCase extends Assert {
   /** For subclasses to override. Overrides must call {@code super.setUp()}. */
   @Before
   public void setUp() throws Exception {
+    randomCalls.set(0);
     parentChainCallRule.setupCalled = true;
   }
 
@@ -741,17 +788,22 @@ public abstract class LuceneTestCase extends Assert {
    * another test case.
    *
    * <p>There is an overhead connected with getting the {@link Random} for a particular context and
-   * thread. It is better to cache the {@link Random} locally if tight loops with multiple
-   * invocations are present or create a derivative local {@link Random} for millions of calls like
-   * this:
-   *
-   * <pre>
-   * Random random = new Random(random().nextLong());
-   * // tight loop with many invocations.
-   * </pre>
+   * thread. It is better to use a non-asserting {@link Random} instance locally if tight loops with
+   * multiple invocations are present. See {@link #nonAssertingRandom(Random)}.
    */
   public static Random random() {
-    return RandomizedContext.current().getRandom();
+    return randomSupplier.get();
+  }
+
+  /**
+   * Returns a Random instance based on the current state of another Random. The returned instance
+   * should be faster for thousands of consecutive calls because it doesn't assert that it isn't
+   * shared between threads or used within the correct {@link RandomizedContext}.
+   *
+   * <p>Use this method for local tight loops that generate a lot of random data.
+   */
+  public static Random nonAssertingRandom(Random rnd) {
+    return new Xoroshiro128PlusRandom(rnd.nextLong());
   }
 
   /**
@@ -781,22 +833,6 @@ public abstract class LuceneTestCase extends Assert {
   public String getTestName() {
     return threadAndTestNameRule.testMethodName;
   }
-
-  /**
-   * Some tests expect the directory to contain a single segment, and want to do tests on that
-   * segment's reader. This is an utility method to help them.
-   */
-  /*
-  public static SegmentReader getOnlySegmentReader(DirectoryReader reader) {
-    List<LeafReaderContext> subReaders = reader.leaves();
-    if (subReaders.size() != 1) {
-      throw new IllegalArgumentException(reader + " has " + subReaders.size() + " segments instead of exactly one");
-    }
-    final LeafReader r = subReaders.get(0).reader();
-    assertTrue("expected a SegmentReader but got " + r, r instanceof SegmentReader);
-    return (SegmentReader) r;
-  }
-    */
 
   /**
    * Some tests expect the directory to contain a single segment, and want to do tests on that
@@ -1379,9 +1415,7 @@ public abstract class LuceneTestCase extends Assert {
     try {
       try {
         clazz = CommandLineUtil.loadFSDirectoryClass(fsdirClass);
-      } catch (
-          @SuppressWarnings("unused")
-          ClassCastException e) {
+      } catch (ClassCastException _) {
         // TEST_DIRECTORY is not a sub-class of FSDirectory, so draw one at random
         fsdirClass = RandomPicks.randomFrom(random(), FS_DIRECTORIES);
         clazz = CommandLineUtil.loadFSDirectoryClass(fsdirClass);
@@ -1661,9 +1695,7 @@ public abstract class LuceneTestCase extends Assert {
             clazz.getConstructor(Path.class, LockFactory.class);
         final Path dir = createTempDir("index");
         return pathCtor.newInstance(dir, lf);
-      } catch (
-          @SuppressWarnings("unused")
-          NoSuchMethodException nsme) {
+      } catch (NoSuchMethodException _) {
         // Ignore
       }
 
@@ -1673,9 +1705,7 @@ public abstract class LuceneTestCase extends Assert {
         // try ctor with only LockFactory
         try {
           return clazz.getConstructor(LockFactory.class).newInstance(lf);
-        } catch (
-            @SuppressWarnings("unused")
-            NoSuchMethodException nsme) {
+        } catch (NoSuchMethodException _) {
           // Ignore
         }
       }
@@ -1808,8 +1838,8 @@ public abstract class LuceneTestCase extends Assert {
 
   /** TODO: javadoc */
   public static IOContext newIOContext(Random random, IOContext oldContext) {
-    if (oldContext == IOContext.READONCE) {
-      return oldContext; // don't mess with the READONCE singleton
+    if (oldContext.hints().contains(ReadOnceHint.INSTANCE)) {
+      return oldContext; // just return as-is
     }
     final int randomNumDocs = random.nextInt(4192);
     final int size = random.nextInt(512) * randomNumDocs;
@@ -1829,7 +1859,7 @@ public abstract class LuceneTestCase extends Assert {
               random.nextBoolean(),
               TestUtil.nextInt(random, 1, 100)));
     } else {
-      // Make a totally random IOContext, except READONCE which has semantic implications
+      // Make a totally random IOContext
       final IOContext context;
       switch (random.nextInt(3)) {
         case 0:
@@ -2624,9 +2654,12 @@ public abstract class LuceneTestCase extends Assert {
             assertEquals(info, left, right);
           }
           // bytes
-          for (int docID = 0; docID < leftReader.maxDoc(); docID++) {
-            assertEquals(docID, leftValues.nextDoc());
+          while (true) {
+            int docID = leftValues.nextDoc();
             assertEquals(docID, rightValues.nextDoc());
+            if (docID == NO_MORE_DOCS) {
+              break;
+            }
             final BytesRef left = BytesRef.deepCopyOf(leftValues.lookupOrd(leftValues.ordValue()));
             final BytesRef right = rightValues.lookupOrd(rightValues.ordValue());
             assertEquals(info, left, right);
@@ -3074,7 +3107,7 @@ public abstract class LuceneTestCase extends Assert {
     try {
       dir.openInput(fileName, IOContext.READONCE).close();
       return true;
-    } catch (@SuppressWarnings("unused") NoSuchFileException | FileNotFoundException e) {
+    } catch (NoSuchFileException | FileNotFoundException _) {
       return false;
     }
   }
@@ -3134,44 +3167,6 @@ public abstract class LuceneTestCase extends Assert {
     }
 
     return Files.readAllLines(forkArgsPath, StandardCharsets.UTF_8);
-  }
-
-  /**
-   * Runs a code part with restricted permissions (be sure to add all required permissions, because
-   * it would start with empty permissions). You cannot grant more permissions than our policy file
-   * allows, but you may restrict writing to several dirs...
-   *
-   * <p><em>Note:</em> This assumes a {@link SecurityManager} enabled, otherwise it stops test
-   * execution. If enabled, it needs the following {@link SecurityPermission}: {@code
-   * "createAccessControlContext"}
-   */
-  @SuppressForbidden(reason = "security manager")
-  @SuppressWarnings("removal")
-  public static <T> T runWithRestrictedPermissions(
-      PrivilegedExceptionAction<T> action, Permission... permissions) throws Exception {
-    assumeTrue(
-        "runWithRestrictedPermissions requires a SecurityManager enabled",
-        System.getSecurityManager() != null);
-    // be sure to have required permission, otherwise doPrivileged runs with *no* permissions:
-    AccessController.checkPermission(new SecurityPermission("createAccessControlContext"));
-    final PermissionCollection perms = new Permissions();
-    Arrays.stream(permissions).forEach(perms::add);
-    final AccessControlContext ctx =
-        new AccessControlContext(new ProtectionDomain[] {new ProtectionDomain(null, perms)});
-    try {
-      return AccessController.doPrivileged(action, ctx);
-    } catch (PrivilegedActionException e) {
-      throw e.getException();
-    }
-  }
-
-  /** True if assertions (-ea) are enabled (at least for this class). */
-  public static final boolean assertsAreEnabled;
-
-  static {
-    boolean enabled = false;
-    assert enabled = true; // Intentional side-effect!!!
-    assertsAreEnabled = enabled;
   }
 
   /**

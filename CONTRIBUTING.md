@@ -13,7 +13,7 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
- -->
+-->
 
 # Contributing to Lucene Guide
 
@@ -60,16 +60,18 @@ In case your contribution fixes a bug, please create a new test case that fails 
 
 - *IntelliJ* - IntelliJ idea can import and build gradle-based projects out of the box. It will default to running tests by calling the gradle wrapper, and while this works, it is can be a bit slow. If instead you configure IntelliJ to use its own built-in test runner by (in 2024 version) navigating to settings for Build Execution & Deployment/Build Tools/Gradle (under File/Settings menu on some platforms) and selecting "Build and Run using: IntelliJ IDEA" and "Run Tests using: IntelliJ IDEA", then some tests will run faster. However some other tests will not run using this configuration.
 - *Eclipse*  - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L7)).
+- *VSCode*   - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L23)).
+- *Neovim*   - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L32)).
 - *Netbeans* - Not tested.
 
-## Benchmarking 
+## Benchmarking
 
 Use the tool suite at [luceneutil](https://github.com/mikemccand/luceneutil) to benchmark your code changes
 if you think that your change may have measurably changed the performance of a task. Apache Lucene also contains an off the shelf benchmark [module](https://github.com/apache/lucene/tree/main/lucene/benchmark).
 
 This is the same suite that is run in the [nightly benchmarks](https://benchmarks.mikemccandless.com/).
 
-The instructions for running the benchmarks can be found in the luceneutil [README](https://github.com/mikemccand/luceneutil/blob/master/README.md).
+The instructions for running the benchmarks can be found in the luceneutil [README](https://github.com/mikemccand/luceneutil/blob/main/README.md).
 
 The Lucene community is also interested in other implementations of these benchmark tasks.
 Feel free to share your findings (especially if your implementation performs better!) through the [Lucene mailing lists](https://lucene.apache.org/core/discussion.html) or open [PRs](https://github.com/mikemccand/luceneutil/pulls), [issues](https://github.com/mikemccand/luceneutil/issues) on the luceneutil project directly.

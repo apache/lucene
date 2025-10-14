@@ -65,7 +65,7 @@ import org.apache.lucene.queryparser.charstream.FastCharStream;
  *   upper-cased, and the non-unary operators (everything but NOT) support
  *   both infix <code>(a AND b AND c)</code> and prefix <code>AND(a, b,
  *   c)</code> notation. </p>
- 
+
  *  <p>The W and N operators express a positional relationship among their
  *  operands.  W is ordered, and N is unordered.  The distance is 1 by
  *  default, meaning the operands are adjacent, or may be provided as a
@@ -102,7 +102,7 @@ public class QueryParser {
       throw new ParseException(tme.getMessage());
     }
   }
-    
+
   protected SrndQuery getFieldsQuery(
       SrndQuery q, ArrayList<String> fieldNames) {
     /* FIXME: check acceptable subquery: at least one subquery should not be
@@ -110,7 +110,7 @@ public class QueryParser {
      */
     return new FieldsQuery(q, fieldNames, FIELD_OPERATOR);
   }
-  
+
   protected SrndQuery getOrQuery(List<SrndQuery> queries, boolean infix, Token orToken) {
     return new OrQuery(queries, infix, orToken.image);
   }
@@ -118,18 +118,18 @@ public class QueryParser {
   protected SrndQuery getAndQuery(List<SrndQuery> queries, boolean infix, Token andToken) {
     return new AndQuery( queries, infix, andToken.image);
   }
-  
+
   protected SrndQuery getNotQuery(List<SrndQuery> queries, Token notToken) {
     return new NotQuery( queries, notToken.image);
   }
-  
+
   protected static int getOpDistance(String distanceOp) {
     /* W, 2W, 3W etc -> 1, 2 3, etc. Same for N, 2N ... */
-    return distanceOp.length() == 1 
+    return distanceOp.length() == 1
       ? 1
       : Integer.parseInt( distanceOp.substring( 0, distanceOp.length() - 1));
   }
-  
+
   protected static void checkDistanceSubQueries(DistanceQuery distq, String opName)
   throws ParseException {
     String m = distq.distanceSubQueryNotAllowed();
@@ -137,7 +137,7 @@ public class QueryParser {
       throw new ParseException("Operator " + opName + ": " + m);
     }
   }
-  
+
   protected SrndQuery getDistanceQuery(
         List<SrndQuery> queries,
         boolean infix,
@@ -165,7 +165,7 @@ public class QueryParser {
       String prefix, boolean quoted) {
     return new SrndPrefixQuery(prefix, quoted, TRUNCATOR);
   }
-  
+
   protected boolean allowedTruncation(String truncated) {
     /* At least 3 normal characters needed. */
     int nrNormalChars = 0;
@@ -199,7 +199,7 @@ PARSER_END(QueryParser)
 | <#_STAR:       "*" > /* term truncation */
 | <#_ONE_CHAR:   "?" > /* precisely one character in a term */
 /* 2..99 prefix for distance operators */
-| <#_DISTOP_NUM: ((["2"-"9"](["0"-"9"])?) | ("1" ["0"-"9"]))> 
+| <#_DISTOP_NUM: ((["2"-"9"](["0"-"9"])?) | ("1" ["0"-"9"]))>
 }
 
 <DEFAULT> SKIP : {
@@ -209,7 +209,7 @@ PARSER_END(QueryParser)
 /* Operator tokens (in increasing order of precedence): */
 <DEFAULT> TOKEN :
 {
-  <OR:        "OR" | "or"> 
+  <OR:        "OR" | "or">
 | <AND:       "AND" | "and">
 | <NOT:       "NOT" | "not">
 | <W:         (<_DISTOP_NUM>)? ("W"|"w")>
@@ -286,7 +286,7 @@ SrndQuery OrQuery() : {
         queries = new ArrayList<SrndQuery>();
         queries.add(q);
       }
-    }    
+    }
     q = AndQuery() {
       queries.add(q);
     }
@@ -310,7 +310,7 @@ SrndQuery AndQuery() : {
     q = NotQuery() {
       queries.add(q);
     }
-  )* 
+  )*
   {return (queries == null) ? q : getAndQuery(queries, true /* infix */, oprt);}
 }
 
@@ -347,9 +347,9 @@ SrndQuery NQuery() : {
     }
     q = WQuery() {
       queries.add(q);
-      q = getDistanceQuery(queries, true /* infix */, dt, false /* not ordered */); 
+      q = getDistanceQuery(queries, true /* infix */, dt, false /* not ordered */);
     }
-  )* 
+  )*
   {return q;}
 }
 
@@ -365,10 +365,10 @@ SrndQuery WQuery() : {
       queries.add(q); /* left associative */
     }
     q = PrimaryQuery() {
-      queries.add(q); 
-      q = getDistanceQuery(queries, true /* infix */, wt, true /* ordered */); 
+      queries.add(q);
+      q = getDistanceQuery(queries, true /* infix */, wt, true /* ordered */);
     }
-  )* 
+  )*
   {return q;}
 }
 
@@ -392,15 +392,15 @@ SrndQuery PrefixOperatorQuery() : {
   ( oprt = <OR> /* prefix OR */
     queries = FieldsQueryList()
     {return getOrQuery(queries, false /* not infix */, oprt);}
-      
+
   | oprt = <AND> /* prefix AND */
     queries = FieldsQueryList()
     {return getAndQuery(queries, false /* not infix */, oprt);}
-  
+
   | oprt = <N> /* prefix N */
     queries = FieldsQueryList()
     {return getDistanceQuery(queries, false /* not infix */, oprt, false /* not ordered */);}
-    
+
   | oprt = <W> /* prefix W */
     queries = FieldsQueryList()
     {return getDistanceQuery(queries, false  /* not infix */, oprt, true /* ordered */);}
@@ -425,24 +425,24 @@ SrndQuery SimpleTerm() : {
 }{
   ( term=<TERM>
     {return getTermQuery(term.image, false /* not quoted */);}
-      
+
   | term=<QUOTED>
     {return getTermQuery(term.image.substring(1, term.image.length()-1), true /* quoted */);}
-      
+
   | term=<SUFFIXTERM> { /* ending in * */
       if (! allowedSuffix(term.image)) {
         throw new ParseException(TRUNCATION_ERROR_MESSAGE + term.image);
       }
       return getPrefixQuery(term.image.substring(0, term.image.length()-1), false /* not quoted */);
     }
-      
+
   | term=<TRUNCTERM> { /* with at least one * or ? */
       if (! allowedTruncation(term.image)) {
         throw new ParseException(TRUNCATION_ERROR_MESSAGE + term.image);
       }
       return getTruncQuery(term.image);
     }
-      
+
   | term=<TRUNCQUOTED> { /* eg. "9b-b,m"* */
       if ((term.image.length() - 3) < MINIMUM_PREFIX_LENGTH) {
         throw new ParseException(TRUNCATION_ERROR_MESSAGE + term.image);
@@ -465,7 +465,7 @@ void OptionalWeights(SrndQuery q) : {
       }
       if (f <= 0.0) {
         throw new ParseException(BOOST_ERROR_MESSAGE + weight.image);
-      }      
+      }
       q.setWeight(f * q.getWeight()); /* left associative, fwiw */
     }
   )*

@@ -46,7 +46,41 @@ import java.io.IOException;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.packed.PackedInts;
 
-import static org.apache.lucene.backward_codecs.lucene101.ForUtil.*;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.BLOCK_SIZE;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK16_1;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK16_2;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK16_4;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK16_5;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK16_6;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK16_7;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK16_8;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK32_1;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK32_10;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK32_11;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK32_12;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK32_13;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK32_14;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK32_15;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK32_16;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK32_2;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK32_3;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK32_4;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK32_5;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK32_6;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK32_7;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK32_8;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.MASK32_9;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.collapse16;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.collapse8;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.decode1;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.decode10;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.decode2;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.decode3;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.decode9;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.decodeSlow;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.encode;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.expand16;
+import static org.apache.lucene.backward_codecs.lucene101.ForUtil.expand8;
 
 /**
  * Inspired from https://fulmicoton.com/posts/bitpacking/
@@ -285,7 +319,7 @@ def writeRemainder(bpv, next_primitive, remaining_bits_per_int, o, num_values, f
       remaining_bits = remaining_bits_per_int-b
     f.write('      ints[intsIdx + %d] = l%d;\n' %(i, i))
   f.write('    }\n')
-  
+
 def writeDecode(bpv, f):
   next_primitive = primitive_size_for_bpv(bpv)
   if next_primitive % bpv == 0:

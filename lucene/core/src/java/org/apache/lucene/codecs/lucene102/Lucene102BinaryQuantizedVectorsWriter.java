@@ -39,7 +39,6 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
@@ -99,7 +98,6 @@ public class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
             state.segmentSuffix,
             Lucene102BinaryQuantizedVectorsFormat.VECTOR_DATA_EXTENSION);
     this.rawVectorDelegate = rawVectorDelegate;
-    boolean success = false;
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
       binarizedVectorData =
@@ -117,11 +115,9 @@ public class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           Lucene102BinaryQuantizedVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -452,7 +448,6 @@ public class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     IndexOutput tempScoreQuantizedVectorData = null;
     IndexInput binarizedDataInput = null;
     IndexInput binarizedScoreDataInput = null;
-    boolean success = false;
     OptimizedScalarQuantizer quantizer =
         new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
     try {
@@ -497,9 +492,14 @@ public class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           centroid,
           cDotC,
           docsWithField);
-      success = true;
+
       final IndexInput finalBinarizedDataInput = binarizedDataInput;
       final IndexInput finalBinarizedScoreDataInput = binarizedScoreDataInput;
+      tempQuantizedVectorData = null;
+      tempScoreQuantizedVectorData = null;
+      binarizedDataInput = null;
+      binarizedScoreDataInput = null;
+
       OffHeapBinarizedVectorValues vectorValues =
           new OffHeapBinarizedVectorValues.DenseOffHeapVectorValues(
               fieldInfo.getVectorDimension(),
@@ -526,22 +526,22 @@ public class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
             IOUtils.deleteFilesIgnoringExceptions(
                 segmentWriteState.directory, tempQuantizedVectorName, tempScoreQuantizedVectorName);
           });
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(
-            tempQuantizedVectorData,
-            tempScoreQuantizedVectorData,
-            binarizedDataInput,
-            binarizedScoreDataInput);
-        if (tempQuantizedVectorData != null) {
-          IOUtils.deleteFilesIgnoringExceptions(
-              segmentWriteState.directory, tempQuantizedVectorData.getName());
-        }
-        if (tempScoreQuantizedVectorData != null) {
-          IOUtils.deleteFilesIgnoringExceptions(
-              segmentWriteState.directory, tempScoreQuantizedVectorData.getName());
-        }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(
+          t,
+          tempQuantizedVectorData,
+          tempScoreQuantizedVectorData,
+          binarizedDataInput,
+          binarizedScoreDataInput);
+      if (tempQuantizedVectorData != null) {
+        IOUtils.deleteFilesSuppressingExceptions(
+            t, segmentWriteState.directory, tempQuantizedVectorData.getName());
       }
+      if (tempScoreQuantizedVectorData != null) {
+        IOUtils.deleteFilesSuppressingExceptions(
+            t, segmentWriteState.directory, tempScoreQuantizedVectorData.getName());
+      }
+      throw t;
     }
   }
 
@@ -551,9 +551,7 @@ public class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   static float[] getCentroid(KnnVectorsReader vectorsReader, String fieldName) {
-    if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader candidateReader) {
-      vectorsReader = candidateReader.getFieldReader(fieldName);
-    }
+    vectorsReader = vectorsReader.unwrapReaderForField(fieldName);
     if (vectorsReader instanceof Lucene102BinaryQuantizedVectorsReader reader) {
       return reader.getCentroid(fieldName);
     }
