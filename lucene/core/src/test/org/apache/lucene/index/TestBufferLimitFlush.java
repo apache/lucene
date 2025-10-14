@@ -71,7 +71,8 @@ public class TestBufferLimitFlush extends LuceneTestCase {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
     // Disable other flush triggers to isolate buffer limit testing
-    iwc.setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    iwc.setRAMBufferSizeMB(256.0);
+    iwc.setMaxBufferedDocs(10000);
 
     IndexWriter writer = new IndexWriter(dir, iwc);
 
