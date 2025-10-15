@@ -149,6 +149,41 @@ public class TestBinaryDocValuesUpdates extends LuceneTestCase {
     dir.close();
   }
 
+  public void testSimpleAddBDVFieldViaUpdate() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
+    // make sure random config doesn't flush on us
+    conf.setMaxBufferedDocs(10);
+    conf.setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    IndexWriter writer = new IndexWriter(dir, conf);
+    writer.addDocument(doc(0)); // val=1
+    writer.addDocument(doc(1)); // val=2
+    if (random().nextBoolean()) { // randomly commit before the update is sent
+      writer.commit();
+    }
+    writer.updateBinaryDocValue(new Term("id", "doc-0"), "new", toBytes(2)); // doc=0, exp=2
+
+    final DirectoryReader reader;
+    if (random().nextBoolean()) { // not NRT
+      writer.close();
+      reader = DirectoryReader.open(dir);
+    } else { // NRT
+      reader = DirectoryReader.open(writer);
+      writer.close();
+    }
+
+    assertEquals(1, reader.leaves().size());
+    LeafReader r = reader.leaves().get(0).reader();
+    BinaryDocValues bdv = r.getBinaryDocValues("new");
+    assertEquals(0, bdv.nextDoc());
+    assertEquals(2, getValue(bdv));
+    assertEquals(NO_MORE_DOCS, bdv.nextDoc());
+    // assertEquals(2, getValue(bdv));
+    reader.close();
+
+    dir.close();
+  }
+
   public void testUpdateFewSegments() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
