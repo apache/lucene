@@ -498,11 +498,12 @@ public class TestBinaryDocValuesUpdates extends LuceneTestCase {
     writer.commit();
     writer.addDocument(doc); // in-memory document
 
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          writer.updateBinaryDocValue(new Term("key", "doc"), "bdv", toBytes(17L));
-        });
+    // expectThrows(
+    //    IllegalArgumentException.class,
+    //    () -> {
+    // now we accept adding bdv field
+    writer.updateBinaryDocValue(new Term("key", "doc"), "bdv", toBytes(17L));
+    //    });
 
     expectThrows(
         IllegalArgumentException.class,
