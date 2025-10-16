@@ -968,7 +968,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         if (random().nextInt(10) == 2) {
           iw.deleteDocuments(new Term("id", Integer.toString(random().nextInt(i + 1))));
         }
-        if (random().nextInt(10) == 3) {
+        if (random().nextInt(23) == 1) {
           iw.commit();
         }
       }
@@ -1029,7 +1029,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         if (random().nextInt(10) == 2) {
           iw.deleteDocuments(new Term("id", Integer.toString(random().nextInt(i + 1))));
         }
-        if (random().nextInt(10) == 3) {
+        if (random().nextInt(23) == 1) {
           iw.commit();
         }
       }
@@ -1964,7 +1964,10 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   /**
    * Test that the query is a viable approximation to exact search. This test is designed to uncover
    * gross failures only, not to represent the true expected recall.
+   *
+   * <p>TODO: this test is incredibly slow
    */
+  @Nightly
   public void testRecall() throws IOException {
     VectorSimilarityFunction[] functions = {
       VectorSimilarityFunction.EUCLIDEAN,
@@ -2142,9 +2145,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
     if (r instanceof CodecReader codecReader) {
       KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-      if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
-        knnVectorsReader = fieldsReader.getFieldReader(fieldName);
-      }
+      knnVectorsReader = knnVectorsReader.unwrapReaderForField(fieldName);
       var offHeap = knnVectorsReader.getOffHeapByteSize(fieldInfo);
       long totalByteSize = offHeap.values().stream().mapToLong(Long::longValue).sum();
       if (knnVectorsReader instanceof SimpleTextKnnVectorsReader) {

@@ -31,11 +31,13 @@ public class TestMaxSizedFloatArrayList extends TestFloatArrayList {
     assertEquals(MAX_SIZE, list.maxSize);
 
     // Test invalid maxSize (expectedElements > maxSize)
-    expectThrows(
-        AssertionError.class,
-        () -> {
-          new MaxSizedFloatArrayList(2, 3);
-        });
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(
+          AssertionError.class,
+          () -> {
+            new MaxSizedFloatArrayList(2, 3);
+          });
+    }
   }
 
   @Test

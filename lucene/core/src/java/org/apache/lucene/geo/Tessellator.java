@@ -359,8 +359,8 @@ public final class Tessellator {
         throw new IllegalArgumentException("Illegal hole detected: " + polygon);
       }
     }
-    // Return a pointer to the list.
-    return outerNode;
+    // Filter co-planar nodes and return a pointer to the list.
+    return filterPoints(outerNode, null);
   }
 
   /** Finds a bridge between vertices that connects a hole with an outer ring, and links it */
@@ -387,9 +387,7 @@ public final class Tessellator {
           isPointInLine(outerNode, outerNode.next, holeNode)
               || isPointInLine(holeNode, holeNode.next, outerNode);
       // Split the resulting polygon.
-      Node node = splitPolygon(outerNode, holeNode, fromPolygon);
-      // Filter the split nodes.
-      filterPoints(node, node.next);
+      splitPolygon(outerNode, holeNode, fromPolygon);
       return true;
     } else {
       return false;
@@ -431,9 +429,7 @@ public final class Tessellator {
     } while (next != outerNode);
     if (sharedVertex != null) {
       // Split the resulting polygon.
-      Node node = splitPolygon(sharedVertexConnection, sharedVertex, true);
-      // Filter the split nodes.
-      filterPoints(node, node.next);
+      splitPolygon(sharedVertexConnection, sharedVertex, true);
       return true;
     }
     return false;

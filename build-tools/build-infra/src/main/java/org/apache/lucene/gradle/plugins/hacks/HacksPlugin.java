@@ -24,7 +24,6 @@ import java.nio.file.Files;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.apache.lucene.gradle.plugins.java.EcjLintPlugin;
 import org.apache.lucene.gradle.plugins.misc.CheckGradlewScriptsTweakedPlugin;
-import org.apache.lucene.gradle.plugins.spotless.ValidateSourcePatternsPlugin;
 import org.gradle.api.Project;
 
 /** This applies various odd hacks that we probably should not need. */
@@ -56,8 +55,7 @@ public class HacksPlugin extends LuceneGradlePlugin {
             task -> {
               var taskName = task.getName();
               return taskName.startsWith(EcjLintPlugin.TASK_PREFIX)
-                  || taskName.equals(CheckGradlewScriptsTweakedPlugin.TASK_NAME)
-                  || taskName.equals(ValidateSourcePatternsPlugin.TASK_NAME);
+                  || taskName.equals(CheckGradlewScriptsTweakedPlugin.TASK_NAME);
             })
         .configureEach(
             task -> {

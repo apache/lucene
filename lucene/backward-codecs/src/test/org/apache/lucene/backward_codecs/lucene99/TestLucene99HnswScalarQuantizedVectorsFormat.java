@@ -22,7 +22,6 @@ import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 import java.io.IOException;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.CodecReader;
@@ -37,7 +36,7 @@ import org.apache.lucene.tests.util.TestUtil;
 public class TestLucene99HnswScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
-    return TestUtil.alwaysKnnVectorsFormat(new Lucene99RWHnswScalarQuantizationVectorsFormat());
+    return TestUtil.alwaysKnnVectorsFormat(new Lucene99RWV0HnswScalarQuantizationVectorsFormat());
   }
 
   public void testSimpleOffHeapSize() throws IOException {
@@ -52,9 +51,7 @@ public class TestLucene99HnswScalarQuantizedVectorsFormat extends BaseKnnVectors
         LeafReader r = getOnlyLeafReader(reader);
         if (r instanceof CodecReader codecReader) {
           KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-          if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
-            knnVectorsReader = fieldsReader.getFieldReader("f");
-          }
+          knnVectorsReader = knnVectorsReader.unwrapReaderForField("f");
           var fieldInfo = r.getFieldInfos().fieldInfo("f");
           var offHeap = knnVectorsReader.getOffHeapByteSize(fieldInfo);
           assertEquals(vector.length * Float.BYTES, (long) offHeap.get("vec"));

@@ -438,7 +438,7 @@ public class Lucene104PostingsWriter extends PushPostingsWriterBase {
       int numBitsNextBitsPerValue = Math.min(Integer.SIZE, bitsPerValue + 1) * BLOCK_SIZE;
       if (docRange == BLOCK_SIZE) {
         level0Output.writeByte((byte) 0);
-      } else if (numBitsNextBitsPerValue <= docRange) {
+      } else if (numBitsNextBitsPerValue <= (numBitSetLongs * Long.SIZE)) {
         level0Output.writeByte((byte) bitsPerValue);
         forUtil.encode(docDeltaBuffer, bitsPerValue, level0Output);
       } else {

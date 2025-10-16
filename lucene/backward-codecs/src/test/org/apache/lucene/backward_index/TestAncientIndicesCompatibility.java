@@ -86,8 +86,9 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
 
   /**
    * This test checks that *only* IndexFormatTooOldExceptions are thrown when you open and operate
-   * on too old indexes!
+   * on too old indexes! TODO: this test is far too slow
    */
+  @Nightly
   public void testUnsupportedOldIndexes() throws Exception {
     for (String version : UNSUPPORTED_INDEXES) {
       if (VERBOSE) {

@@ -109,6 +109,7 @@ public class TestSegmentMerger extends LuceneTestCase {
             newIOContext(random(), IOContext.merge(new MergeInfo(-1, -1, false, -1))),
             new SameThreadExecutorService());
     MergeState mergeState = merger.merge();
+    merger.cleanupMerge();
     int docsMerged = mergeState.segmentInfo.maxDoc();
     assertTrue(docsMerged == 2);
     // Should be able to open a new SegmentReader against the new directory

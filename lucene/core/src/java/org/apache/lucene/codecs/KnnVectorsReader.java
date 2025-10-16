@@ -50,6 +50,14 @@ public abstract class KnnVectorsReader implements Closeable {
   public abstract void checkIntegrity() throws IOException;
 
   /**
+   * If this reader wraps another for {@code field}, return the underlying reader, else return
+   * {@code this}
+   */
+  public KnnVectorsReader unwrapReaderForField(String field) {
+    return this;
+  }
+
+  /**
    * Returns the {@link FloatVectorValues} for the given {@code field}. The behavior is undefined if
    * the given field doesn't have KNN vectors enabled on its {@link FieldInfo}. The return value is
    * never {@code null}.

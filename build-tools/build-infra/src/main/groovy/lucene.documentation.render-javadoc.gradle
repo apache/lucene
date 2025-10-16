@@ -31,7 +31,7 @@ allprojects {
     }
 
     dependencies {
-      missingdoclet project(":lucene:build-tools:missing-doclet")
+      missingdoclet project(":build-tools:missing-doclet")
     }
 
     project.ext {
@@ -116,7 +116,7 @@ allprojects {
       ("https://junit.org/junit4/javadoc/${junitVersion}/".toString()): junitJavadocPackages
     ]
 
-    luceneDocUrl = provider({ rootProject.luceneDocUrl })
+    luceneDocUrl = project.rootProject.buildOptions.getOption('lucene.javadoc.url').asStringProvider()
 
     // Set up custom doclet.
     dependsOn configurations.missingdoclet

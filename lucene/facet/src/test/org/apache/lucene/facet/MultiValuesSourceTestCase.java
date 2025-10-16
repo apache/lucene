@@ -32,20 +32,20 @@ import org.apache.lucene.search.LongValues;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 
 public abstract class MultiValuesSourceTestCase extends LuceneTestCase {
-  protected Directory dir;
-  protected IndexReader reader;
-  protected IndexSearcher searcher;
+  protected static Directory dir;
+  protected static IndexReader reader;
+  protected static IndexSearcher searcher;
 
-  @Override
-  public void setUp() throws Exception {
-    super.setUp();
-
+  @BeforeClass
+  public static void beforeClass() throws Exception {
     dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
 
-    int numDocs = RandomNumbers.randomIntBetween(random(), 100, 1000);
+    int numDocs = RandomNumbers.randomIntBetween(random(), 100, 300);
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
 
@@ -95,11 +95,13 @@ public abstract class MultiValuesSourceTestCase extends LuceneTestCase {
     searcher = newSearcher(reader);
   }
 
-  @Override
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void afterClass() throws Exception {
     reader.close();
     dir.close();
-    super.tearDown();
+    searcher = null;
+    reader = null;
+    dir = null;
   }
 
   protected void validateFieldBasedSource(NumericDocValues docValues, LongValues values, int maxDoc)
