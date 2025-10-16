@@ -22,6 +22,7 @@ import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SlowImpactsEnum;
+import org.apache.lucene.internal.hppc.FloatArrayList;
 import org.apache.lucene.search.similarities.Similarity.BulkSimScorer;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
@@ -41,6 +42,7 @@ public final class TermScorer extends Scorer {
   private final NumericDocValues norms;
   private final ImpactsDISI impactsDisi;
   private final MaxScoreCache maxScoreCache;
+  private float[] freqs = FloatArrayList.EMPTY_ARRAY;
   private long[] normValues = LongsRef.EMPTY_LONGS;
 
   /** Construct a {@link TermScorer} that will iterate all documents. */
@@ -164,5 +166,47 @@ public final class TermScorer extends Scorer {
     }
 
     bulkScorer.score(buffer.size, buffer.features, normValues, buffer.features);
+  }
+
+  @Override
+  public void applyAsRequiredClause(DocAndScoreAccBuffer buffer) throws IOException {
+    int size = buffer.size;
+    if (freqs.length < size) {
+      freqs = new float[ArrayUtil.oversize(size, Float.BYTES)];
+      normValues = new long[freqs.length];
+    }
+
+    int intersectionSize = 0;
+    int curDoc = docID();
+    for (int i = 0; i < size; i++) {
+      int targetDoc = buffer.docs[i];
+      if (curDoc < targetDoc) {
+        curDoc = postingsEnum.advance(targetDoc);
+      }
+      if (curDoc == targetDoc) {
+        buffer.docs[intersectionSize] = targetDoc;
+        buffer.scores[intersectionSize] = buffer.scores[i];
+        freqs[intersectionSize] = postingsEnum.freq();
+        intersectionSize++;
+      }
+    }
+    buffer.size = intersectionSize;
+
+    if (normValues.length < intersectionSize) {
+      normValues = new long[ArrayUtil.oversize(intersectionSize, Long.BYTES)];
+      if (norms == null) {
+        Arrays.fill(normValues, 1L);
+      }
+    }
+
+    if (norms != null) {
+      norms.longValues(intersectionSize, buffer.docs, normValues, 1L);
+    }
+
+    bulkScorer.score(intersectionSize, freqs, normValues, freqs);
+
+    for (int i = 0; i < intersectionSize; i++) {
+      buffer.scores[i] += freqs[i];
+    }
   }
 }
