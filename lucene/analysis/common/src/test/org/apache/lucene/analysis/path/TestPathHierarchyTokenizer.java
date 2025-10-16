@@ -241,7 +241,8 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
     String path1 = "c:\\a\\b\\c";
     String path2 = "/a/b/c";
     PathHierarchyTokenizer t =
-        new PathHierarchyTokenizer(newAttributeFactory(), 1024, new char[] {'/', '\\'}, '/', DEFAULT_SKIP);
+        new PathHierarchyTokenizer(
+            newAttributeFactory(), 1024, new char[] {'/', '\\'}, '/', DEFAULT_SKIP);
     t.setReader(new StringReader(path1));
     assertTokenStreamContents(
         t,
