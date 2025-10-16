@@ -22,11 +22,11 @@ import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SlowImpactsEnum;
+import org.apache.lucene.internal.hppc.FloatArrayList;
 import org.apache.lucene.search.similarities.Similarity.BulkSimScorer;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.LongsRef;
 
 /**
@@ -42,7 +42,7 @@ public final class TermScorer extends Scorer {
   private final NumericDocValues norms;
   private final ImpactsDISI impactsDisi;
   private final MaxScoreCache maxScoreCache;
-  private int[] freqs = IntsRef.EMPTY_INTS;
+  private float[] freqs = FloatArrayList.EMPTY_ARRAY;
   private long[] normValues = LongsRef.EMPTY_LONGS;
 
   /** Construct a {@link TermScorer} that will iterate all documents. */
@@ -172,7 +172,7 @@ public final class TermScorer extends Scorer {
   public void applyAsRequiredClause(DocAndScoreAccBuffer buffer) throws IOException {
     int size = buffer.size;
     if (freqs.length < size) {
-      freqs = ArrayUtil.growNoCopy(freqs, size);
+      freqs = new float[ArrayUtil.oversize(size, Float.BYTES)];
       normValues = new long[freqs.length];
     }
 
@@ -192,16 +192,21 @@ public final class TermScorer extends Scorer {
     }
     buffer.size = intersectionSize;
 
-    for (int i = 0; i < intersectionSize; i++) {
-      if (norms == null || norms.advanceExact(buffer.docs[i]) == false) {
-        normValues[i] = 1L;
-      } else {
-        normValues[i] = norms.longValue();
+    if (normValues.length < intersectionSize) {
+      normValues = new long[ArrayUtil.oversize(intersectionSize, Long.BYTES)];
+      if (norms == null) {
+        Arrays.fill(normValues, 1L);
       }
     }
 
+    if (norms != null) {
+      norms.longValues(intersectionSize, buffer.docs, normValues, 1L);
+    }
+
+    bulkScorer.score(intersectionSize, freqs, normValues, freqs);
+
     for (int i = 0; i < intersectionSize; i++) {
-      buffer.scores[i] += scorer.score(freqs[i], normValues[i]);
+      buffer.scores[i] += freqs[i];
     }
   }
 }
