@@ -75,6 +75,11 @@ public class PathHierarchyTokenizer extends Tokenizer {
 
   public PathHierarchyTokenizer(
       AttributeFactory factory, int bufferSize, char delimiter, char replacement, int skip) {
+    this(factory, bufferSize, new char[] {delimiter}, replacement, skip);
+  }
+
+  public PathHierarchyTokenizer(
+      AttributeFactory factory, int bufferSize, char[] delimiters, char replacement, int skip) {
     super(factory);
     if (bufferSize < 0) {
       throw new IllegalArgumentException("bufferSize cannot be negative");
@@ -84,7 +89,7 @@ public class PathHierarchyTokenizer extends Tokenizer {
     }
     termAtt.resizeBuffer(bufferSize);
 
-    this.delimiter = delimiter;
+    this.delimiters = delimiters;
     this.replacement = replacement;
     this.skip = skip;
     resultToken = new StringBuilder(bufferSize);
@@ -94,7 +99,7 @@ public class PathHierarchyTokenizer extends Tokenizer {
   public static final char DEFAULT_DELIMITER = '/';
   public static final int DEFAULT_SKIP = 0;
 
-  private final char delimiter;
+  private final char[] delimiters;
   private final char replacement;
   private final int skip;
 
@@ -145,13 +150,13 @@ public class PathHierarchyTokenizer extends Tokenizer {
         added = true;
         skipped++;
         if (skipped > skip) {
-          termAtt.append(c == delimiter ? replacement : (char) c);
+          termAtt.append(isDelimiterFound((char) c) ? replacement : (char) c);
           length++;
         } else {
           startPosition++;
         }
       } else {
-        if (c == delimiter) {
+        if (isDelimiterFound((char) c)) {
           if (skipped > skip) {
             endDelimiter = true;
             break;
@@ -179,6 +184,15 @@ public class PathHierarchyTokenizer extends Tokenizer {
     resultToken.setLength(0);
     resultToken.append(termAtt.buffer(), 0, length);
     return true;
+  }
+
+  private boolean isDelimiterFound(char c) {
+    for (char delimiter : delimiters) {
+      if (c == delimiter) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override

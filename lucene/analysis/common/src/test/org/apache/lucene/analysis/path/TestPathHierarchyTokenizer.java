@@ -237,6 +237,29 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         t, new String[] {"/"}, new int[] {1}, new int[] {2}, new int[] {1}, path.length());
   }
 
+  public void testWindowsAndLinuxPaths() throws Exception {
+    String path1 = "c:\\a\\b\\c";
+    String path2 = "/a/b/c";
+    PathHierarchyTokenizer t =
+        new PathHierarchyTokenizer(newAttributeFactory(), 1024, new char[] {'/', '\\'}, '/', DEFAULT_SKIP);
+    t.setReader(new StringReader(path1));
+    assertTokenStreamContents(
+        t,
+        new String[] {"c:", "c:/a", "c:/a/b", "c:/a/b/c"},
+        new int[] {0, 0, 0, 0},
+        new int[] {2, 4, 6, 8},
+        new int[] {1, 1, 1, 1},
+        path1.length());
+    t.setReader(new StringReader(path2));
+    assertTokenStreamContents(
+        t,
+        new String[] {"/a", "/a/b", "/a/b/c"},
+        new int[] {0, 0, 0},
+        new int[] {2, 4, 6},
+        new int[] {1, 1, 1},
+        path2.length());
+  }
+
   /** blast some random strings through the analyzer */
   public void testRandomStrings() throws Exception {
     Analyzer a =
