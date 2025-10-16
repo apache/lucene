@@ -431,6 +431,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
             input);
       }
 
+      // if trying to open some random old index (< Lucene 7)
       if (segMinVersion == null) {
         if (infos.indexCreatedVersionMajor < minSupportedMajorVersion) {
           throw new IndexFormatTooOldException(
