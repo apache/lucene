@@ -19,6 +19,7 @@ jobs:
 
     permissions:
       pull-requests: write # must comment/label PRs
+      actions: write # must manipulate actions cache to split workload across multiple runs
 
     steps:
       - name: Run stale PR action
