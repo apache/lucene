@@ -66,53 +66,74 @@ import org.apache.lucene.util.fst.Util;
 public class FSTTermsReader extends FieldsProducer {
   private final TreeMap<String, TermsReader> fields = new TreeMap<>();
   private final PostingsReaderBase postingsReader;
-  private final IndexInput fstTermsInput;
+  // IndexInput for FST metadata
+  private final IndexInput fstMetaInput;
+  // IndexInput for FST data
+  private final IndexInput fstDataInput;
 
   public FSTTermsReader(SegmentReadState state, PostingsReaderBase postingsReader)
       throws IOException {
-    final String termsFileName =
+    final String termsMetaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, FSTTermsWriter.TERMS_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, FSTTermsWriter.TERMS_META_EXTENSION);
+    final String termsDataFileName =
+        IndexFileNames.segmentFileName(
+            state.segmentInfo.name, state.segmentSuffix, FSTTermsWriter.TERMS_DATA_EXTENSION);
 
     this.postingsReader = postingsReader;
-    this.fstTermsInput =
-        state.directory.openInput(
-            termsFileName, state.context.withHints(FileTypeHint.DATA, PreloadHint.INSTANCE));
 
-    IndexInput in = this.fstTermsInput;
+    IndexInput metaIn = null, dataIn = null;
 
     try {
-      CodecUtil.checkIndexHeader(
-          in,
-          FSTTermsWriter.TERMS_CODEC_NAME,
-          FSTTermsWriter.TERMS_VERSION_START,
-          FSTTermsWriter.TERMS_VERSION_CURRENT,
-          state.segmentInfo.getId(),
-          state.segmentSuffix);
-      CodecUtil.checksumEntireFile(in);
-      this.postingsReader.init(in, state);
-      seekDir(in);
+      metaIn =
+          state.directory.openInput(
+              termsMetaFileName, state.context.withHints(FileTypeHint.DATA, PreloadHint.INSTANCE));
+      dataIn =
+          state.directory.openInput(
+              termsDataFileName, state.context.withHints(FileTypeHint.DATA, PreloadHint.INSTANCE));
+
+      verifyInput(state, metaIn);
+      verifyInput(state, dataIn);
+
+      this.postingsReader.init(metaIn, state);
+      seekDir(metaIn);
 
       final FieldInfos fieldInfos = state.fieldInfos;
-      final int numFields = in.readVInt();
+      final int numFields = metaIn.readVInt();
       for (int i = 0; i < numFields; i++) {
-        int fieldNumber = in.readVInt();
+        int fieldNumber = metaIn.readVInt();
         FieldInfo fieldInfo = fieldInfos.fieldInfo(fieldNumber);
-        long numTerms = in.readVLong();
-        long sumTotalTermFreq = in.readVLong();
+        long numTerms = metaIn.readVLong();
+        long sumTotalTermFreq = metaIn.readVLong();
         // if frequencies are omitted, sumTotalTermFreq=sumDocFreq and we only write one value
         long sumDocFreq =
-            fieldInfo.getIndexOptions() == IndexOptions.DOCS ? sumTotalTermFreq : in.readVLong();
-        int docCount = in.readVInt();
+            fieldInfo.getIndexOptions() == IndexOptions.DOCS
+                ? sumTotalTermFreq
+                : metaIn.readVLong();
+        int docCount = metaIn.readVInt();
         TermsReader current =
-            new TermsReader(fieldInfo, in, numTerms, sumTotalTermFreq, sumDocFreq, docCount);
+            new TermsReader(
+                fieldInfo, metaIn, dataIn, numTerms, sumTotalTermFreq, sumDocFreq, docCount);
         TermsReader previous = fields.put(fieldInfo.name, current);
-        checkFieldSummary(state.segmentInfo, in, current, previous);
+        checkFieldSummary(state.segmentInfo, metaIn, current, previous);
       }
+      this.fstMetaInput = metaIn;
+      this.fstDataInput = dataIn;
     } catch (Throwable t) {
-      IOUtils.closeWhileSuppressingExceptions(t, in);
+      IOUtils.closeWhileSuppressingExceptions(t, metaIn, dataIn);
       throw t;
     }
+  }
+
+  private static void verifyInput(SegmentReadState state, IndexInput in) throws IOException {
+    CodecUtil.checkIndexHeader(
+        in,
+        FSTTermsWriter.TERMS_CODEC_NAME,
+        FSTTermsWriter.TERMS_VERSION_START,
+        FSTTermsWriter.TERMS_VERSION_CURRENT,
+        state.segmentInfo.getId(),
+        state.segmentSuffix);
+    CodecUtil.checksumEntireFile(in);
   }
 
   private void seekDir(IndexInput in) throws IOException {
@@ -165,7 +186,7 @@ public class FSTTermsReader extends FieldsProducer {
   @Override
   public void close() throws IOException {
     try {
-      IOUtils.close(postingsReader, fstTermsInput);
+      IOUtils.close(postingsReader, fstMetaInput, fstDataInput);
     } finally {
       fields.clear();
     }
@@ -182,7 +203,8 @@ public class FSTTermsReader extends FieldsProducer {
 
     TermsReader(
         FieldInfo fieldInfo,
-        IndexInput in,
+        IndexInput metaIn,
+        IndexInput dataIn,
         long numTerms,
         long sumTotalTermFreq,
         long sumDocFreq,
@@ -194,10 +216,11 @@ public class FSTTermsReader extends FieldsProducer {
       this.sumDocFreq = sumDocFreq;
       this.docCount = docCount;
       FSTTermOutputs outputs = new FSTTermOutputs(fieldInfo);
-      final var fstMetadata = FST.readMetadata(in, outputs);
-      OffHeapFSTStore offHeapFSTStore = new OffHeapFSTStore(in, in.getFilePointer(), fstMetadata);
+      final var fstMetadata = FST.readMetadata(metaIn, outputs);
+      OffHeapFSTStore offHeapFSTStore =
+          new OffHeapFSTStore(dataIn, dataIn.getFilePointer(), fstMetadata);
       this.dict = FST.fromFSTReader(fstMetadata, offHeapFSTStore);
-      in.skipBytes(offHeapFSTStore.size());
+      dataIn.skipBytes(offHeapFSTStore.size());
     }
 
     @Override
