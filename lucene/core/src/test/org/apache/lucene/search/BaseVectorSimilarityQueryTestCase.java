@@ -591,7 +591,15 @@ abstract class BaseVectorSimilarityQueryTestCase<
   @SafeVarargs
   final Directory getIndexStore(V... vectors) throws IOException {
     Directory dir = newDirectory();
-    try (RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
+    try (RandomIndexWriter writer =
+        new RandomIndexWriter(
+            random(),
+            dir,
+            newIndexWriterConfig()
+                .setCodec(
+                    TestUtil.alwaysKnnVectorsFormat(
+                        new Lucene99HnswVectorsFormat(
+                            DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, -1))))) {
       for (int i = 0; i < vectors.length; ++i) {
         Document doc = new Document();
         doc.add(getVectorField(vectorField, vectors[i], function));
