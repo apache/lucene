@@ -140,7 +140,11 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
       // visitedLimit. This is fine since the test targets AbstractKnnVectorQuery logic, not the kNN
       // format
       // implementation.
-      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, -1)));
+      IndexWriterConfig iwc =
+          new IndexWriterConfig()
+              .setCodec(
+                  TestUtil.alwaysKnnVectorsFormat(
+                      new Lucene99HnswVectorsFormat(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, -1)));
       RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc);
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();

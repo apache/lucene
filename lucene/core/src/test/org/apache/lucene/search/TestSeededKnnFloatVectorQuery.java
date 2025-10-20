@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
+
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
@@ -32,9 +35,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.TestVectorUtil;
-
-import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
-import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
 
 public class TestSeededKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
   private static final Query MATCH_NONE = new MatchNoDocsQuery();
@@ -128,7 +128,11 @@ public class TestSeededKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
       // visitedLimit. This is fine since the test targets AbstractKnnVectorQuery logic, not the kNN
       // format
       // implementation.
-      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, -1)));
+      IndexWriterConfig iwc =
+          new IndexWriterConfig()
+              .setCodec(
+                  TestUtil.alwaysKnnVectorsFormat(
+                      new Lucene99HnswVectorsFormat(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, -1)));
       RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc);
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
