@@ -17,6 +17,8 @@
 package org.apache.lucene.tests.util;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayWithSize;
 import static org.hamcrest.Matchers.equalTo;
@@ -1413,7 +1415,7 @@ public final class TestUtil {
    * Lucene.
    */
   public static KnnVectorsFormat getDefaultKnnVectorsFormat() {
-    return new Lucene99HnswVectorsFormat();
+    return new Lucene99HnswVectorsFormat(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, -1);
   }
 
   public static boolean anyFilesExceptWriteLock(Directory dir) throws IOException {

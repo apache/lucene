@@ -2160,7 +2160,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             var quant = offHeap.getOrDefault("veq", offHeap.get("veb"));
             assertTrue(quant == null || quant > 0L);
           } else {
-            assertTrue(offHeap.get("vex") == null);
+            assertTrue(offHeap.get("vex") == null || offHeap.get("vex") == 0);
           }
 
           if (hasQuantized(knnVectorsReader, fieldInfo)) {
@@ -2205,7 +2205,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       knnVectorsReader = assertingReader.delegate;
     }
     if (knnVectorsReader instanceof HnswGraphProvider graphProvider) {
-      return graphProvider.getGraph(fieldInfo.name) != null;
+      return graphProvider.getGraph(fieldInfo.name) != null
+          && graphProvider.getGraph(fieldInfo.name).size() > 0;
     }
     String name = knnVectorsReader.getClass().getSimpleName().toLowerCase(Locale.ROOT);
     return name.contains("hnsw");

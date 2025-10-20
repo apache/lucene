@@ -16,10 +16,13 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
 import static org.apache.lucene.search.TestKnnByteVectorQuery.floatToBytes;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
@@ -137,7 +140,7 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
       // visitedLimit. This is fine since the test targets AbstractKnnVectorQuery logic, not the kNN
       // format
       // implementation.
-      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(TestUtil.getDefaultCodec());
+      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, -1)));
       RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc);
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();

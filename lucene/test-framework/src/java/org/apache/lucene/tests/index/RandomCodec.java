@@ -272,25 +272,29 @@ public class RandomCodec extends AssertingCodec {
             TestUtil.nextInt(random, 5, 50),
             TestUtil.nextInt(random, 10, 50),
             concurrentKnnMerging ? TestUtil.nextInt(random, 2, 8) : 1,
-            concurrentKnnMerging ? ForkJoinPool.commonPool() : null),
+            concurrentKnnMerging ? ForkJoinPool.commonPool() : null,
+            -1),
         new Lucene104HnswScalarQuantizedVectorsFormat(
             Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.SEVEN_BIT,
             TestUtil.nextInt(random, 5, 50),
             TestUtil.nextInt(random, 10, 50),
             concurrentKnnMerging ? TestUtil.nextInt(random, 2, 8) : 1,
-            concurrentKnnMerging ? ForkJoinPool.commonPool() : null),
+            concurrentKnnMerging ? ForkJoinPool.commonPool() : null,
+            -1),
         new Lucene104HnswScalarQuantizedVectorsFormat(
             Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.UNSIGNED_BYTE,
             TestUtil.nextInt(random, 5, 50),
             TestUtil.nextInt(random, 10, 50),
             concurrentKnnMerging ? TestUtil.nextInt(random, 2, 8) : 1,
-            concurrentKnnMerging ? ForkJoinPool.commonPool() : null),
+            concurrentKnnMerging ? ForkJoinPool.commonPool() : null,
+            -1),
         new Lucene104HnswScalarQuantizedVectorsFormat(
             Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.PACKED_NIBBLE,
             TestUtil.nextInt(random, 5, 50),
             TestUtil.nextInt(random, 10, 50),
             concurrentKnnMerging ? TestUtil.nextInt(random, 2, 8) : 1,
-            concurrentKnnMerging ? ForkJoinPool.commonPool() : null),
+            concurrentKnnMerging ? ForkJoinPool.commonPool() : null,
+            -1),
         new AssertingKnnVectorsFormat());
 
     Collections.shuffle(formats, random);
