@@ -1931,7 +1931,7 @@ public class IndexWriter
     if (value == null) {
       throw new IllegalArgumentException("cannot update a field to a null value: " + field);
     }
-    globalFieldNumberMap.verifyOrCreateDvOnlyField(field, DocValuesType.BINARY, true);
+    globalFieldNumberMap.verifyOrCreateDvOnlyField(field, DocValuesType.BINARY, false);
     try {
       return maybeProcessEvents(
           docWriter.updateDocValues(new BinaryDocValuesUpdate(term, field, value)));
