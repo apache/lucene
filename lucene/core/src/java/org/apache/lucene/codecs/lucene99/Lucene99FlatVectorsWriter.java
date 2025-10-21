@@ -257,13 +257,13 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   @Override
   public CloseableRandomVectorScorerSupplier mergeOneFieldToIndex(
       FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    long vectorDataOffset = alignOutput(vectorData, fieldInfo.getVectorEncoding());
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
             vectorData.getName(), "temp", segmentWriteState.context);
     IndexInput vectorDataInput = null;
     try {
       // write the vector data to a temporary file
-      long tempVectorDataOffset = alignOutput(tempVectorData, fieldInfo.getVectorEncoding());
       DocsWithFieldSet docsWithField =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE ->
@@ -277,8 +277,6 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
                     KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(
                         fieldInfo, mergeState));
           };
-      long vectorDataLength = tempVectorData.getFilePointer() - tempVectorDataOffset;
-
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 
@@ -290,13 +288,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
               tempVectorData.getName(),
               IOContext.DEFAULT.withHints(
                   FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
-      vectorDataInput.seek(tempVectorDataOffset);
-
       // copy the temporary file vectors to the actual data file
-      long vectorDataOffset = alignOutput(vectorData, fieldInfo.getVectorEncoding());
-      vectorData.copyBytes(vectorDataInput, vectorDataLength);
-
+      vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
       CodecUtil.retrieveChecksum(vectorDataInput);
+      long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
       writeMeta(
           fieldInfo,
           segmentWriteState.segmentInfo.maxDoc(),
@@ -315,8 +310,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
                     new OffHeapByteVectorValues.DenseOffHeapVectorValues(
                         fieldInfo.getVectorDimension(),
                         docsWithField.cardinality(),
-                        finalVectorDataInput.slice(
-                            "temp-vector-data", tempVectorDataOffset, vectorDataLength),
+                        finalVectorDataInput,
                         fieldInfo.getVectorDimension() * Byte.BYTES,
                         vectorsScorer,
                         fieldInfo.getVectorSimilarityFunction()));
@@ -326,8 +320,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
                     new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
                         fieldInfo.getVectorDimension(),
                         docsWithField.cardinality(),
-                        finalVectorDataInput.slice(
-                            "temp-vector-data", tempVectorDataOffset, vectorDataLength),
+                        finalVectorDataInput,
                         fieldInfo.getVectorDimension() * Float.BYTES,
                         vectorsScorer,
                         fieldInfo.getVectorSimilarityFunction()));
