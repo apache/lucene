@@ -475,7 +475,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
                     .setCodec(
                         TestUtil.alwaysKnnVectorsFormat(
                             new Lucene99HnswVectorsFormat(
-                                DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, -1))))) {
+                                DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, 0))))) {
       // Force merge because smaller segments have few filtered docs and often fall back to exact
       // search, making this test flaky
       w.forceMerge(1);
@@ -598,8 +598,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
             newIndexWriterConfig()
                 .setCodec(
                     TestUtil.alwaysKnnVectorsFormat(
-                        new Lucene99HnswVectorsFormat(
-                            DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, -1))))) {
+                        new Lucene99HnswVectorsFormat(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, 0))))) {
       for (int i = 0; i < vectors.length; ++i) {
         Document doc = new Document();
         doc.add(getVectorField(vectorField, vectors[i], function));

@@ -182,6 +182,8 @@ Optimizations
 
 * GITHUB#14863: Perform scoring for 4, 7, 8 bit quantized vectors off-heap. (Kaival Parikh)
 
+* GITHUB#14963: Bypass HNSW graph building for tiny segments. (Shubham Chaudhary, Benjamin Trent)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException

@@ -613,8 +613,11 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   private static boolean shouldCreateGraph(int k, int numNodes) {
+    if (k <= 0) {
+      return true;
+    }
     int expectedVisitedNodes = expectedVisitedNodes(k, numNodes);
-    return (numNodes > expectedVisitedNodes && expectedVisitedNodes > 0) || k < 0;
+    return numNodes > expectedVisitedNodes && expectedVisitedNodes > 0;
   }
 
   private static class FieldWriter<T> extends KnnFieldVectorsWriter<T> {

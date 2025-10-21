@@ -65,6 +65,12 @@ public class Lucene104HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat 
    * The threshold to use to bypass HNSW graph building for tiny segments in terms of k for a graph
    * i.e. number of docs to match the query (default is {@link
    * Lucene99HnswVectorsFormat#HNSW_GRAPH_THRESHOLD}).
+   *
+   * <ul>
+   *   <li>0 indicates that the graph is always built.
+   *   <li>0 indicates that the graph needs certain or more nodes before it starts building.
+   *   <li>Negative values aren't allowed.
+   * </ul>
    */
   private final int tinySegmentsThreshold;
 
@@ -173,7 +179,8 @@ public class Lucene104HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat 
         beamWidth,
         flatVectorsFormat.fieldsWriter(state),
         numMergeWorkers,
-        mergeExec);
+        mergeExec,
+        tinySegmentsThreshold);
   }
 
   @Override

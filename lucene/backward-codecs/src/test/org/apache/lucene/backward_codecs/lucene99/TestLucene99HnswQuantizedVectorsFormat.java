@@ -303,11 +303,11 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
           @Override
           public KnnVectorsFormat knnVectorsFormat() {
             return new Lucene99HnswScalarQuantizedVectorsFormat(
-                10, 20, 1, (byte) 4, false, 0.9f, null, -1);
+                10, 20, 1, (byte) 4, false, 0.9f, null);
           }
         };
     String expectedPattern =
-        "Lucene99HnswScalarQuantizedVectorsFormat(name=Lucene99HnswScalarQuantizedVectorsFormat, maxConn=10, beamWidth=20, tinySegmentsThreshold=-1, flatVectorFormat=Lucene99ScalarQuantizedVectorsFormat(name=Lucene99ScalarQuantizedVectorsFormat, confidenceInterval=0.9, bits=4, compress=false, flatVectorScorer=%s, rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s)))";
+        "Lucene99HnswScalarQuantizedVectorsFormat(name=Lucene99HnswScalarQuantizedVectorsFormat, maxConn=10, beamWidth=20, flatVectorFormat=Lucene99ScalarQuantizedVectorsFormat(name=Lucene99ScalarQuantizedVectorsFormat, confidenceInterval=0.9, bits=4, compress=false, flatVectorScorer=%s, rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s)))";
     var defaultScorer =
         format(
             Locale.ROOT,

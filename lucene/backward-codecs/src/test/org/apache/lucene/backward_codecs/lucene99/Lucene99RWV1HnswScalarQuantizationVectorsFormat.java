@@ -44,7 +44,7 @@ class Lucene99RWV1HnswScalarQuantizationVectorsFormat
       boolean compress,
       Float confidenceInterval,
       ExecutorService mergeExec) {
-    super(maxConn, beamWidth, numMergeWorkers, bits, compress, confidenceInterval, mergeExec, -1);
+    super(maxConn, beamWidth, numMergeWorkers, bits, compress, confidenceInterval, mergeExec);
     this.flatVectorsFormat =
         new Lucene99RWScalarQuantizedVectorsFormat(confidenceInterval, bits, compress);
   }
@@ -58,6 +58,6 @@ class Lucene99RWV1HnswScalarQuantizationVectorsFormat
         flatVectorsFormat.fieldsWriter(state),
         1,
         null,
-        -1);
+        0);
   }
 }

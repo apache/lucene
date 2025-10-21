@@ -1415,7 +1415,7 @@ public final class TestUtil {
    * Lucene.
    */
   public static KnnVectorsFormat getDefaultKnnVectorsFormat() {
-    return new Lucene99HnswVectorsFormat(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, -1);
+    return new Lucene99HnswVectorsFormat(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, 0);
   }
 
   public static boolean anyFilesExceptWriteLock(Directory dir) throws IOException {
