@@ -117,14 +117,19 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
   public static final int DEFAULT_NUM_MERGE_WORKER = 1;
 
   /**
-   * Threshold which HnswGraphSearcher#expectedVisitedNodes uses as k to determine when HNSW graph
-   * building is bypassed (useful in case if frequent flushes). It is in terms of k for a graph i.e.
-   * number of docs to match for the query. So having a graph only helps if,
+   * Minimum estimated search effort (in terms of expected visited nodes) required before building
+   * an HNSW graph for a segment.
    *
-   * <pre> k &lt;&lt; size / log(size) </pre>
+   * <p>This threshold is compared against the value produced by {@link
+   * org.apache.lucene.util.hnsw.HnswGraphSearcher#expectedVisitedNodes(int, int)}, which estimates
+   * how many nodes would be visited during a vector search based on the current graph size and
+   * {@code k} (neighbours to find).
    *
-   * i.e. k is at least 1 order less than size / log(size) where size if the number of nodes in the
-   * graph
+   * <p>If the estimated number of visited nodes falls below this threshold, HNSW graph construction
+   * is skipped for that segment - typically for small flushes or low document count segments -
+   * since the overhead of building the graph would outweigh its search benefits.
+   *
+   * <p>Default: {@code 100}
    */
   public static final int HNSW_GRAPH_THRESHOLD = 100;
 
