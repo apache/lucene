@@ -17,7 +17,7 @@ flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
 googleJavaFormat = "1.30.0"
 # gradle build support
-groovy = "5.0.1"
+groovy = "5.0.2"
 # test assertions
 hamcrest = "3.0"
 # analysis/icu/, gradle regeneration unicode support
