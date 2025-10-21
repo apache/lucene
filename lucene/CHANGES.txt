@@ -7,7 +7,7 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-* GITHUB#XXXX: <describe your Lucene change here> (contributor: kdt523)
+* GITHUB#15324: Fix MaxScoreBulkScorer could call TermScorer with docID >= maxDoc, causing EOFException on norms access (contributor: kdt523)
 
 * GITHUB#15215: Switch to Java 25 as the minimum required platform. Upgrade to gradle 9.1.0.
   (Robert Muir, Kaival Parikh, Dawid Weiss)
@@ -201,9 +201,6 @@ Optimizations
 * GITHUB#14863: Perform scoring for 4, 7, 8 bit quantized vectors off-heap. (Kaival Parikh)
 
 * GITHUB#15261: Implement longValues for MultiFieldNormValues to speedup CombinedQuery (Ge Song)
-
-* GITHUB#15343: Ensure that `AcceptDocs#cost()` only ever calls `BitSets#cardinality()`
-  once per instance to avoid redundant computation. (Ben Trent)
 
 Bug Fixes
 ---------------------
