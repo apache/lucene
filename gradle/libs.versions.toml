@@ -45,7 +45,7 @@ morfologik-ukrainian = "4.9.1"
 # benchmark/ html parsing
 nekohtml = "1.9.22"
 # analysis/opennlp/ support
-opennlp = "2.5.6"
+opennlp = "2.5.6.1"
 # distribution.tests/ process management
 procfork = "1.0.6"
 # unit tests
