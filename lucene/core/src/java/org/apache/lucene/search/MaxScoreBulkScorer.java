@@ -89,11 +89,15 @@ final class MaxScoreBulkScorer extends BulkScorer {
     // Then within these outer windows, it creates inner windows of size WINDOW_SIZE that help
     // collect matches into a bitset and save the overhead of rebalancing the priority queue on
     // every match.
+    // Never iterate beyond this leaf's maxDoc to avoid scoring invalid doc IDs.
+    final int loopMax = Math.min(max, maxDoc);
+
     int outerWindowMin = min;
     outer:
-    while (outerWindowMin < max) {
+    while (outerWindowMin < loopMax) {
       int outerWindowMax = computeOuterWindowMax(outerWindowMin);
-      outerWindowMax = Math.min(outerWindowMax, max);
+      // Cap outer window by loopMax (which itself is <= maxDoc)
+      outerWindowMax = Math.min(outerWindowMax, loopMax);
 
       while (true) {
         updateMaxWindowScores(outerWindowMin, outerWindowMax);
@@ -178,7 +182,9 @@ final class MaxScoreBulkScorer extends BulkScorer {
     // Only score an inner window, after that we'll check if the min competitive score has increased
     // enough for a more favorable partitioning to be used.
     int innerWindowMin = top.doc;
-    int innerWindowMax = MathUtil.unsignedMin(max, innerWindowMin + INNER_WINDOW_SIZE);
+    // Ensure innerWindowMax never exceeds maxDoc
+    int innerWindowMax =
+        Math.min(maxDoc, MathUtil.unsignedMin(max, innerWindowMin + INNER_WINDOW_SIZE));
 
     docAndScoreAccBuffer.size = 0;
     while (top.doc < innerWindowMax) {
@@ -241,7 +247,8 @@ final class MaxScoreBulkScorer extends BulkScorer {
     DisiWrapper top = essentialQueue.top();
 
     int innerWindowMin = top.doc;
-    int innerWindowMax = MathUtil.unsignedMin(max, innerWindowMin + INNER_WINDOW_SIZE);
+    int innerWindowMax =
+        Math.min(maxDoc, MathUtil.unsignedMin(max, innerWindowMin + INNER_WINDOW_SIZE));
     int innerWindowSize = innerWindowMax - innerWindowMin;
 
     // Collect matches of essential clauses into a bitset
