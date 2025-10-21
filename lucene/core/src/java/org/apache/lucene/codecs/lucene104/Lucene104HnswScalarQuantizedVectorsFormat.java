@@ -68,7 +68,7 @@ public class Lucene104HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat 
    *
    * <ul>
    *   <li>0 indicates that the graph is always built.
-   *   <li>0 indicates that the graph needs certain or more nodes before it starts building.
+   *   <li>greater than 0 indicates that the graph needs a certain number of nodes before it starts building. See {@link Lucene99HnswVectorsFormat#HNSW_GRAPH_THRESHOLD} for details.
    *   <li>Negative values aren't allowed.
    * </ul>
    */
