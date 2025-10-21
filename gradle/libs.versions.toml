@@ -3,19 +3,19 @@
 # expressions/ grammars
 antlr = "4.13.2"
 # test assertions
-assertj = "3.27.4"
+assertj = "3.27.6"
 # analysis/phonetic/ algorithms, gradle build checksums
 commons-codec = "1.19.0"
 # benchmark/ bzip2 compression
-commons-compress = "1.27.1"
+commons-compress = "1.28.0"
 # See ecj-lint.gradle (used for more linting).
 ecj = "I20250926-1800"
 # java linting
-errorprone = "2.41.0"
+errorprone = "2.42.0"
 # markdown documentation generation
 flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
-googleJavaFormat = "1.28.0"
+googleJavaFormat = "1.30.0"
 # gradle build support
 groovy = "5.0.1"
 # test assertions
@@ -27,7 +27,7 @@ javacc = "7.0.13"
 # analysis/ tokenizer grammars
 jflex = "1.9.1"
 # build infra only (diff of changes from google java format tasks)
-jgit = "7.3.0.202506031305-r"
+jgit = "7.4.0.202509020913-r"
 # benchmark-jmh/ microbenchmarks
 jmh = "1.37"
 # spatial-extras/ support
@@ -45,7 +45,7 @@ morfologik-ukrainian = "4.9.1"
 # benchmark/ html parsing
 nekohtml = "1.9.22"
 # analysis/opennlp/ support
-opennlp = "2.5.5"
+opennlp = "2.5.6"
 # distribution.tests/ process management
 procfork = "1.0.6"
 # unit tests
@@ -57,7 +57,7 @@ spatial4j = "0.8"
 # benchmark/ XML parsing
 xerces = "2.12.2"
 # external datasets decompression
-zstd = "1.5.7-4"
+zstd = "1.5.7-5"
 
 [libraries]
 antlr-core = { module = "org.antlr:antlr4", version.ref = "antlr" }
@@ -100,7 +100,7 @@ benmanes-versions = "com.github.ben-manes.versions:0.53.0"
 carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.0"
 carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.1.0"
 errorprone = "net.ltgt.errorprone:4.3.0"
-forbiddenapis = "de.thetaphi.forbiddenapis:3.9"
+forbiddenapis = "de.thetaphi.forbiddenapis:3.10"
 jacocolog = "org.barfuin.gradle.jacocolog:3.1.0"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
 spotless = "com.diffplug.spotless:8.0.0"

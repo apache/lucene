@@ -319,9 +319,13 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public HnswGraph getGraph(String field) throws IOException {
       final FieldInfo info = fieldInfos.fieldInfo(field);
+      if (info == null) {
+        return null;
+      }
+
       KnnVectorsReader knnVectorsReader = fields.get(info.number);
-      if (knnVectorsReader instanceof HnswGraphProvider) {
-        return ((HnswGraphProvider) knnVectorsReader).getGraph(field);
+      if (knnVectorsReader instanceof HnswGraphProvider hnswGraphProvider) {
+        return hnswGraphProvider.getGraph(field);
       } else {
         return null;
       }

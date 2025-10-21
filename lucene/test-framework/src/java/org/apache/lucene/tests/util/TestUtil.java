@@ -1697,6 +1697,8 @@ public final class TestUtil {
   }
 
   public static String randomSubString(Random random, int wordLength, boolean simple) {
+    random = LuceneTestCase.nonAssertingRandom(random);
+
     if (wordLength == 0) {
       return "";
     }

@@ -22,9 +22,6 @@ reportUnnecessaryComparison = "hint"         # Requires cleaning up some dead co
 reportUntypedNamedTuple = "hint"             # Requires moving to different type of named tuple
 reportUnusedCallResult = "none"              # Forces you to assign unused retvals to '_', very noisy.
 
-# Intentionally disabled because it slows pyright by 2x
-reportShadowedImports = "none"       # Extremely slow check
-
 [tool.ruff]
 target-version = "py312"
 line-length = 200

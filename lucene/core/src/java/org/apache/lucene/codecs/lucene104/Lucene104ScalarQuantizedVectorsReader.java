@@ -141,7 +141,7 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
 
     long numQuantizedVectorBytes =
         Math.multiplyExact(
-            (fieldEntry.scalarEncoding.getPackedLength(dimension)
+            (fieldEntry.scalarEncoding.getDocPackedLength(dimension)
                 + (Float.BYTES * 3)
                 + Integer.BYTES),
             (long) fieldEntry.size);

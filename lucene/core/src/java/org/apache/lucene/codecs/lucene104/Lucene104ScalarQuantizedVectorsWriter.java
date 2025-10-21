@@ -21,6 +21,8 @@ import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectors
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
+import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.packAsBinary;
+import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.transposeHalfByte;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -190,22 +192,21 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       FieldWriter fieldData, float[] clusterCenter, OptimizedScalarQuantizer scalarQuantizer)
       throws IOException {
     byte[] scratch =
-        new byte
-            [OptimizedScalarQuantizer.discretize(
-                fieldData.fieldInfo.getVectorDimension(), encoding.getDimensionsPerByte())];
+        new byte[encoding.getDiscreteDimensions(fieldData.fieldInfo.getVectorDimension())];
     byte[] vector =
         switch (encoding) {
-          case UNSIGNED_BYTE -> scratch;
-          case SEVEN_BIT -> scratch;
-          case PACKED_NIBBLE ->
-              new byte[encoding.getPackedLength(fieldData.fieldInfo.getVectorDimension())];
+          case UNSIGNED_BYTE, SEVEN_BIT -> scratch;
+          case PACKED_NIBBLE, SINGLE_BIT_QUERY_NIBBLE ->
+              new byte[encoding.getDocPackedLength(scratch.length)];
         };
     for (int i = 0; i < fieldData.getVectors().size(); i++) {
       float[] v = fieldData.getVectors().get(i);
       OptimizedScalarQuantizer.QuantizationResult corrections =
           scalarQuantizer.scalarQuantize(v, scratch, encoding.getBits(), clusterCenter);
-      if (encoding == ScalarEncoding.PACKED_NIBBLE) {
-        OffHeapScalarQuantizedVectorValues.packNibbles(scratch, vector);
+      switch (encoding) {
+        case PACKED_NIBBLE -> OffHeapScalarQuantizedVectorValues.packNibbles(scratch, vector);
+        case SINGLE_BIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.packAsBinary(scratch, vector);
+        case UNSIGNED_BYTE, SEVEN_BIT -> {}
       }
       vectorData.writeBytes(vector, vector.length);
       vectorData.writeInt(Float.floatToIntBits(corrections.lowerInterval()));
@@ -251,22 +252,21 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       OptimizedScalarQuantizer scalarQuantizer)
       throws IOException {
     byte[] scratch =
-        new byte
-            [OptimizedScalarQuantizer.discretize(
-                fieldData.fieldInfo.getVectorDimension(), encoding.getDimensionsPerByte())];
+        new byte[encoding.getDiscreteDimensions(fieldData.fieldInfo.getVectorDimension())];
     byte[] vector =
         switch (encoding) {
-          case UNSIGNED_BYTE -> scratch;
-          case SEVEN_BIT -> scratch;
-          case PACKED_NIBBLE ->
-              new byte[encoding.getPackedLength(fieldData.fieldInfo.getVectorDimension())];
+          case UNSIGNED_BYTE, SEVEN_BIT -> scratch;
+          case PACKED_NIBBLE, SINGLE_BIT_QUERY_NIBBLE ->
+              new byte[encoding.getDocPackedLength(scratch.length)];
         };
     for (int ordinal : ordMap) {
       float[] v = fieldData.getVectors().get(ordinal);
       OptimizedScalarQuantizer.QuantizationResult corrections =
           scalarQuantizer.scalarQuantize(v, scratch, encoding.getBits(), clusterCenter);
-      if (encoding == ScalarEncoding.PACKED_NIBBLE) {
-        OffHeapScalarQuantizedVectorValues.packNibbles(scratch, vector);
+      switch (encoding) {
+        case PACKED_NIBBLE -> OffHeapScalarQuantizedVectorValues.packNibbles(scratch, vector);
+        case SINGLE_BIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.packAsBinary(scratch, vector);
+        case UNSIGNED_BYTE, SEVEN_BIT -> {}
       }
       vectorData.writeBytes(vector, vector.length);
       vectorData.writeInt(Float.floatToIntBits(corrections.lowerInterval()));
@@ -385,6 +385,53 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     return docsWithField;
   }
 
+  static DocsWithFieldSet writeBinarizedVectorAndQueryData(
+      IndexOutput binarizedVectorData,
+      ScalarEncoding encoding,
+      IndexOutput binarizedQueryData,
+      FloatVectorValues floatVectorValues,
+      float[] centroid,
+      OptimizedScalarQuantizer binaryQuantizer)
+      throws IOException {
+    if (encoding.isAsymmetric() == false) {
+      throw new IllegalArgumentException("encoding and queryEncoding must be different");
+    }
+    DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    int discretizedDims = encoding.getDiscreteDimensions(floatVectorValues.dimension());
+    byte[][] quantizationScratch = new byte[2][];
+    quantizationScratch[0] = new byte[discretizedDims];
+    quantizationScratch[1] = new byte[discretizedDims];
+    byte[] toIndex = new byte[encoding.getDocPackedLength(discretizedDims)];
+    byte[] toQuery = new byte[encoding.getQueryPackedLength(discretizedDims)];
+    KnnVectorValues.DocIndexIterator iterator = floatVectorValues.iterator();
+    for (int docV = iterator.nextDoc(); docV != NO_MORE_DOCS; docV = iterator.nextDoc()) {
+      // write index vector
+      OptimizedScalarQuantizer.QuantizationResult[] r =
+          binaryQuantizer.multiScalarQuantize(
+              floatVectorValues.vectorValue(iterator.index()),
+              quantizationScratch,
+              new byte[] {encoding.getBits(), encoding.getQueryBits()},
+              centroid);
+      // pack and store document bit vector
+      packAsBinary(quantizationScratch[0], toIndex);
+      binarizedVectorData.writeBytes(toIndex, toIndex.length);
+      binarizedVectorData.writeInt(Float.floatToIntBits(r[0].lowerInterval()));
+      binarizedVectorData.writeInt(Float.floatToIntBits(r[0].upperInterval()));
+      binarizedVectorData.writeInt(Float.floatToIntBits(r[0].additionalCorrection()));
+      binarizedVectorData.writeInt(r[0].quantizedComponentSum());
+      docsWithField.add(docV);
+
+      // pack and store the 4bit query vector
+      transposeHalfByte(quantizationScratch[1], toQuery);
+      binarizedQueryData.writeBytes(toQuery, toQuery.length);
+      binarizedQueryData.writeInt(Float.floatToIntBits(r[1].lowerInterval()));
+      binarizedQueryData.writeInt(Float.floatToIntBits(r[1].upperInterval()));
+      binarizedQueryData.writeInt(Float.floatToIntBits(r[1].additionalCorrection()));
+      binarizedQueryData.writeInt(r[1].quantizedComponentSum());
+    }
+    return docsWithField;
+  }
+
   @Override
   public CloseableRandomVectorScorerSupplier mergeOneFieldToIndex(
       FieldInfo fieldInfo, MergeState mergeState) throws IOException {
@@ -417,7 +464,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     IndexOutput tempQuantizedVectorData = null;
+    IndexOutput tempScoreQuantizedVectorData = null;
     IndexInput quantizedDataInput = null;
+    IndexInput quantizedScoreDataInput = null;
     OptimizedScalarQuantizer quantizer =
         new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
     try {
@@ -425,15 +474,32 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
           segmentWriteState.directory.createTempOutput(
               vectorData.getName(), "temp", segmentWriteState.context);
       final String tempQuantizedVectorName = tempQuantizedVectorData.getName();
+      final String tempScoreQuantizedVectorName;
+      if (encoding.isAsymmetric()) {
+        tempScoreQuantizedVectorData =
+            segmentWriteState.directory.createTempOutput(
+                vectorData.getName() + "_score", "temp", segmentWriteState.context);
+        tempScoreQuantizedVectorName = tempScoreQuantizedVectorData.getName();
+      } else {
+        tempScoreQuantizedVectorName = null;
+      }
       FloatVectorValues floatVectorValues =
           MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
       if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
         floatVectorValues = new NormalizedFloatVectorValues(floatVectorValues);
       }
       DocsWithFieldSet docsWithField =
-          writeVectorData(
-              tempQuantizedVectorData,
-              new QuantizedFloatVectorValues(floatVectorValues, quantizer, encoding, centroid));
+          encoding.isAsymmetric()
+              ? writeBinarizedVectorAndQueryData(
+                  tempQuantizedVectorData,
+                  encoding,
+                  tempScoreQuantizedVectorData,
+                  floatVectorValues,
+                  centroid,
+                  quantizer)
+              : writeVectorData(
+                  tempQuantizedVectorData,
+                  new QuantizedFloatVectorValues(floatVectorValues, quantizer, encoding, centroid));
       CodecUtil.writeFooter(tempQuantizedVectorData);
       IOUtils.close(tempQuantizedVectorData);
       quantizedDataInput =
@@ -442,6 +508,13 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
           quantizedDataInput, quantizedDataInput.length() - CodecUtil.footerLength());
       long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
       CodecUtil.retrieveChecksum(quantizedDataInput);
+      if (tempScoreQuantizedVectorData != null) {
+        CodecUtil.writeFooter(tempScoreQuantizedVectorData);
+        IOUtils.close(tempScoreQuantizedVectorData);
+        quantizedScoreDataInput =
+            segmentWriteState.directory.openInput(
+                tempScoreQuantizedVectorName, segmentWriteState.context);
+      }
       writeMeta(
           fieldInfo,
           segmentWriteState.segmentInfo.maxDoc(),
@@ -452,8 +525,11 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
           docsWithField);
 
       final IndexInput finalQuantizedDataInput = quantizedDataInput;
+      final IndexInput finalQuantizedScoreDataInput = quantizedScoreDataInput;
       tempQuantizedVectorData = null;
+      tempScoreQuantizedVectorData = null;
       quantizedDataInput = null;
+      quantizedScoreDataInput = null;
 
       OffHeapScalarQuantizedVectorValues vectorValues =
           new OffHeapScalarQuantizedVectorValues.DenseOffHeapVectorValues(
@@ -466,22 +542,53 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
               fieldInfo.getVectorSimilarityFunction(),
               vectorsScorer,
               finalQuantizedDataInput);
+      OffHeapScalarQuantizedVectorValues scoreVectorValues = null;
+      if (finalQuantizedScoreDataInput != null) {
+        scoreVectorValues =
+            new OffHeapScalarQuantizedVectorValues.DenseOffHeapVectorValues(
+                true,
+                fieldInfo.getVectorDimension(),
+                docsWithField.cardinality(),
+                centroid,
+                cDotC,
+                quantizer,
+                encoding,
+                fieldInfo.getVectorSimilarityFunction(),
+                vectorsScorer,
+                finalQuantizedScoreDataInput);
+      }
       RandomVectorScorerSupplier scorerSupplier =
-          vectorsScorer.getRandomVectorScorerSupplier(
-              fieldInfo.getVectorSimilarityFunction(), vectorValues);
+          scoreVectorValues == null
+              ? vectorsScorer.getRandomVectorScorerSupplier(
+                  fieldInfo.getVectorSimilarityFunction(), vectorValues)
+              : vectorsScorer.getRandomVectorScorerSupplier(
+                  fieldInfo.getVectorSimilarityFunction(), scoreVectorValues, vectorValues);
       return new QuantizedCloseableRandomVectorScorerSupplier(
           scorerSupplier,
           vectorValues,
           () -> {
-            IOUtils.close(finalQuantizedDataInput);
+            IOUtils.close(finalQuantizedDataInput, finalQuantizedScoreDataInput);
+            if (tempScoreQuantizedVectorName != null) {
+              IOUtils.deleteFilesIgnoringExceptions(
+                  segmentWriteState.directory, tempScoreQuantizedVectorName);
+            }
             IOUtils.deleteFilesIgnoringExceptions(
                 segmentWriteState.directory, tempQuantizedVectorName);
           });
     } catch (Throwable t) {
-      IOUtils.closeWhileSuppressingExceptions(t, tempQuantizedVectorData, quantizedDataInput);
+      IOUtils.closeWhileSuppressingExceptions(
+          t,
+          tempQuantizedVectorData,
+          tempScoreQuantizedVectorData,
+          quantizedDataInput,
+          quantizedScoreDataInput);
       if (tempQuantizedVectorData != null) {
         IOUtils.deleteFilesSuppressingExceptions(
             t, segmentWriteState.directory, tempQuantizedVectorData.getName());
+      }
+      if (tempScoreQuantizedVectorData != null) {
+        IOUtils.deleteFilesSuppressingExceptions(
+            t, segmentWriteState.directory, tempScoreQuantizedVectorData.getName());
       }
       throw t;
     }
@@ -687,15 +794,12 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       this.values = delegate;
       this.quantizer = quantizer;
       this.encoding = encoding;
-      this.quantized =
-          new byte
-              [OptimizedScalarQuantizer.discretize(
-                  delegate.dimension(), encoding.getDimensionsPerByte())];
+      this.quantized = new byte[encoding.getDiscreteDimensions(delegate.dimension())];
       this.packed =
           switch (encoding) {
-            case UNSIGNED_BYTE -> this.quantized;
-            case SEVEN_BIT -> this.quantized;
-            case PACKED_NIBBLE -> new byte[encoding.getPackedLength(delegate.dimension())];
+            case UNSIGNED_BYTE, SEVEN_BIT -> this.quantized;
+            case PACKED_NIBBLE, SINGLE_BIT_QUERY_NIBBLE ->
+                new byte[encoding.getDocPackedLength(quantized.length)];
           };
       this.centroid = centroid;
       this.centroidDP = VectorUtil.dotProduct(centroid, centroid);
@@ -734,7 +838,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
     @Override
     public ScalarEncoding getScalarEncoding() {
-      throw new UnsupportedOperationException();
+      return encoding;
     }
 
     @Override
@@ -766,8 +870,10 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       corrections =
           quantizer.scalarQuantize(
               values.vectorValue(ord), quantized, encoding.getBits(), centroid);
-      if (encoding == ScalarEncoding.PACKED_NIBBLE) {
-        OffHeapScalarQuantizedVectorValues.packNibbles(quantized, packed);
+      switch (encoding) {
+        case PACKED_NIBBLE -> OffHeapScalarQuantizedVectorValues.packNibbles(quantized, packed);
+        case SINGLE_BIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.packAsBinary(quantized, packed);
+        case UNSIGNED_BYTE, SEVEN_BIT -> {}
       }
     }
 

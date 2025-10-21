@@ -132,7 +132,7 @@ public class TestSeededKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
           new IndexWriterConfig()
               .setCodec(
                   TestUtil.alwaysKnnVectorsFormat(
-                      new Lucene99HnswVectorsFormat(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, -1)));
+                      new Lucene99HnswVectorsFormat(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, 0)));
       RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc);
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();

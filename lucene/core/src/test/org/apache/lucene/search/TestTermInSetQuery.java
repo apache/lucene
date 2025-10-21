@@ -109,6 +109,8 @@ public class TestTermInSetQuery extends LuceneTestCase {
     dir.close();
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testDuel() throws IOException {
     final int iters = atLeast(2);
     final String field = "f";
