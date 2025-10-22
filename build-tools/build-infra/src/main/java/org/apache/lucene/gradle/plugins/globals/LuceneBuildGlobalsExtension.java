@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.inject.Inject;
 import org.apache.lucene.gradle.plugins.misc.QuietExec;
@@ -71,6 +72,11 @@ public abstract class LuceneBuildGlobalsExtension {
    */
   public boolean isCIBuild;
 
+  /**
+   * @see #getPublishedProjects()
+   */
+  Set<Project> publishedProjects;
+
   /** Returns per-project seed for randomization. */
   public abstract Property<Long> getProjectSeedAsLong();
 
@@ -85,6 +91,14 @@ public abstract class LuceneBuildGlobalsExtension {
 
   /** If set, returns certain flags helpful for configuring the build for the intellij idea IDE. */
   public abstract Property<IntellijIdea> getIntellijIdea();
+
+  /**
+   * Return a set of "maven-published" projects (those that are published to sonatype/maven
+   * central).
+   */
+  public Set<Project> getPublishedProjects() {
+    return publishedProjects;
+  }
 
   /**
    * Returns the path to the provided named external tool. Developers may set up different tool

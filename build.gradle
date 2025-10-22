@@ -33,10 +33,6 @@ plugins {
 
   id "lucene.misc.pylucene"
 
-  id "lucene.documentation"
-  id "lucene.documentation.markdown"
-  id "lucene.documentation.render-javadoc"
-
   id "lucene.regenerate"
   id "lucene.regenerate.jflex"
   id "lucene.regenerate.forUtil"

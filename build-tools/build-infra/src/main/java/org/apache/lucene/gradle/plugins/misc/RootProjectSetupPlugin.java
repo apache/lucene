@@ -20,6 +20,7 @@ import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin;
 import java.util.Collection;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.apache.lucene.gradle.plugins.astgrep.AstGrepPlugin;
+import org.apache.lucene.gradle.plugins.documentation.DocumentationConfigPlugin;
 import org.apache.lucene.gradle.plugins.eclint.EditorConfigLintPlugin;
 import org.apache.lucene.gradle.plugins.gitgrep.GitGrepPlugin;
 import org.apache.lucene.gradle.plugins.gitinfo.GitInfoPlugin;
@@ -86,6 +87,8 @@ public class RootProjectSetupPlugin extends LuceneGradlePlugin {
 
     plugins.apply(MeasureTaskTimesPlugin.class);
     plugins.apply(DumpGradleStateOnStalledBuildsPlugin.class);
+
+    plugins.apply(DocumentationConfigPlugin.class);
 
     // Apply more convention plugins to all projects.
     rootProject
