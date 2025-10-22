@@ -21,21 +21,32 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.apache.lucene.gradle.plugins.documentation.DocumentationConfigPlugin;
+import org.apache.tools.ant.taskdefs.Concat;
+import org.apache.tools.ant.taskdefs.FixCRLF;
+import org.apache.tools.ant.types.FileList;
 import org.gradle.api.GradleException;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
+import org.gradle.api.Task;
+import org.gradle.api.artifacts.ProjectDependency;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.file.RegularFile;
 import org.gradle.api.file.SourceDirectorySet;
 import org.gradle.api.internal.file.FileOperations;
 import org.gradle.api.plugins.JavaPlugin;
@@ -43,6 +54,7 @@ import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.CompileClasspath;
 import org.gradle.api.tasks.IgnoreEmptyDirectories;
@@ -72,8 +84,6 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
 
     var missingdocletConfiguration = project.getConfigurations().create("missingdoclet");
     project.getDependencies().add("missingdoclet", project.project(":build-tools:missing-doclet"));
-
-    var relativeDocPath = project.getPath().replaceFirst(":\\w+:", "").replace(':', '/');
 
     TaskContainer tasks = project.getTasks();
     var renderJavadoc =
@@ -127,32 +137,52 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
               task.dependsOn(renderJavadoc);
             });
 
-    // TODO, NOCOMMIT: implement this.
-    /*
-       if (project.path == ':lucene:luke' || !(project in rootProject.ext.mavenProjects)) {
-         // These projects are not part of the public API so we don't render their javadocs
-         // as part of the site's creation. Linting happens via javac
-       } else {
-         tasks.register("renderSiteJavadoc", RenderJavadocTask, {
-           description = "Generates Javadoc API documentation for the site (relative links)."
-           group = "documentation"
+    // Add a rendering task that produces the output suitable for the Lucene site.
+    Set<Project> publishedProjects = getLuceneBuildGlobals(project).getPublishedProjects();
 
-           taskResources = resources
-           dependsOn sourceSets.main.compileClasspath
-           classpath = sourceSets.main.compileClasspath
-           srcDirSet = sourceSets.main.java
-           releaseVersion = minJavaVersion
+    if (project.getPath().equals(":lucene:luke") || !(publishedProjects.contains(project))) {
+      // These projects are not part of the public API so we don't render their javadocs
+      // as part of the site's creation.
+    } else {
+      tasks.register(
+          "renderSiteJavadoc",
+          RenderJavadocTask.class,
+          task -> {
+            task.setGroup("documentation");
+            task.setDescription(
+                "Generates Javadoc API documentation for the site (relative links).");
 
-           relativeProjectLinks = true
+            task.getTaskResources().set(resources);
 
-           enableSearch = true
+            {
+              SourceSet mainSrcSet =
+                  project
+                      .getExtensions()
+                      .getByType(JavaPluginExtension.class)
+                      .getSourceSets()
+                      .getByName("main");
 
-           // Place the documentation under the documentation directory.
-           // docroot is defined in 'documentation.gradle'
-           outputDir = project.docroot.toPath().resolve(project.ext.relativeDocPath).toFile()
-         })
-       }
-    */
+              var compileCp = mainSrcSet.getCompileClasspath();
+              task.dependsOn(compileCp);
+              task.getClasspath().from(compileCp);
+              task.getSrcDirSet().set(mainSrcSet.getJava());
+            }
+
+            JavaVersion minJavaVersion = getLuceneBuildGlobals(project).getMinJavaVersion().get();
+            task.getReleaseVersion().set(minJavaVersion);
+
+            // site-creation specific settings.
+            task.getRelativeProjectLinks().set(true);
+            task.getEnableSearch().set(true);
+            // Place the documentation under the documentation directory.
+            task.getOutputDir()
+                .set(
+                    DocumentationConfigPlugin.getDocumentationRoot(project)
+                        .toPath()
+                        .resolve(DocumentationConfigPlugin.relativeDocPath(project))
+                        .toFile());
+          });
+    }
 
     // Set up titles and link up some offline docs for all documentation
     // (they may be unused but this doesn't do any harm).
@@ -164,7 +194,9 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
               + javaJavadocPackages
               + ", "
               + "create this directory and fetch the element-list file from "
-              + "from https://docs.oracle.com/en/java/javase/" + minJava + "/docs/api/element-list");
+              + "from https://docs.oracle.com/en/java/javase/"
+              + minJava
+              + "/docs/api/element-list");
     }
 
     String junitVersion = getVersionCatalog(project).findVersion("junit").get().toString();
@@ -175,7 +207,9 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
               + junitJavadocPackages
               + ", "
               + "create this directory and fetch the package-list file from "
-              + "from https://junit.org/junit4/javadoc/" + junitVersion + "/package-list");
+              + "from https://junit.org/junit4/javadoc/"
+              + junitVersion
+              + "/package-list");
     }
 
     project
@@ -280,21 +314,39 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
               }
             });
 
-    // TODO: NOCOMMIT
-    /*
     // Add cross-project documentation task dependencies:
-    // - each RenderJavaDocs task gets a dependency to all tasks with the same name in its dependencies
-    // - the dependency is using dependsOn with a closure to enable lazy evaluation
-    configure(subprojects) {
-      project.tasks.withType(RenderJavadocTask).configureEach { task ->
-        task.dependsOn {
-          task.project.configurations.implementation.allDependencies.withType(ProjectDependency).collect { dep ->
-            return dep.path + ":" + task.name
-          }
-        }
-      }
-    }
-    */
+    // - each RenderJavaDocs task gets a dependency to all tasks with the same name
+    //   present in this project's dependency configuration 'implementation'.
+    // - a lazy provider is used to collect these dependencies.
+    project
+        .getTasks()
+        .withType(RenderJavadocTask.class)
+        .configureEach(
+            task -> {
+              task.dependsOn(
+                  project
+                      .getProviders()
+                      .provider(
+                          () -> {
+                            var allDeps =
+                                task.getProject()
+                                    .getConfigurations()
+                                    .getByName("implementation")
+                                    .getAllDependencies();
+                            var subtasks =
+                                allDeps.withType(ProjectDependency.class).stream()
+                                    .map(dep -> dep.getPath() + ":" + task.getName())
+                                    .toList();
+
+                            task.getLogger()
+                                .info(
+                                    "Task {} depends on -> {}",
+                                    task.getPath(),
+                                    String.join(", ", subtasks));
+
+                            return subtasks;
+                          }));
+            });
   }
 
   @CacheableTask
@@ -374,6 +426,7 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
       getEnableSearch().convention(false);
       getRelativeProjectLinks().convention(false);
       getJavadocMissingLevel().convention("parameter");
+      getJavadocMissingIgnore().convention(List.of());
     }
 
     @TaskAction
@@ -386,7 +439,10 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
       Path optionsFile = getTemporaryDir().toPath().resolve("javadoc-options.txt");
       Files.createDirectories(optionsFile.getParent());
 
-      // create the directory, so relative link calculation knows that it's a directory:
+      // if we are re-rendering, wipe any previous data.
+      getFileOps().delete(getOutputDir().get().getAsFile());
+
+      // create the directory, so relative link calculation knows that it's a directory.
       Files.createDirectories(getOutputDir().get().getAsFile().toPath());
 
       List<Object> opts = new ArrayList<>();
@@ -456,12 +512,14 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
 
       opts.add(List.of("--missing-level", getJavadocMissingLevel().get()));
 
-      if (getJavadocMissingIgnore().isPresent()) {
-        opts.add(List.of("--missing-ignore", String.join(",", getJavadocMissingIgnore().get())));
+      var missingIgnored = getJavadocMissingIgnore().getOrElse(List.of());
+      if (!missingIgnored.isEmpty()) {
+        opts.add(List.of("--missing-ignore", String.join(",", missingIgnored)));
       }
 
-      if (getJavadocMissingMethod().isPresent()) {
-        opts.add(List.of("--missing-method", String.join(",", getJavadocMissingMethod().get())));
+      var missingMethod = getJavadocMissingMethod().getOrElse(List.of());
+      if (!missingMethod.isEmpty()) {
+        opts.add(List.of("--missing-method", String.join(",", missingMethod)));
       }
 
       opts.add("-quiet");
@@ -472,7 +530,8 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
       Map<String, File> allOfflineLinks = new LinkedHashMap<>();
       allOfflineLinks.putAll(getOfflineLinks().get());
 
-      // TODO, NOCOMMIT: Resolve inter-project links:
+      addOfflineOrRelativeLinksToDependencies(opts, allOfflineLinks);
+
       allOfflineLinks.forEach(
           (url, dir) -> {
             // Some sanity check/ validation here to ensure dir/package-list or dir/element-list is
@@ -482,7 +541,7 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
               throw new GradleException(
                   "Expected pre-rendered package-list or element-list at: " + dir);
             }
-            getLogger().info("Linking ${url} to ${dir}");
+            getLogger().info("Offline link: {} to {}", url, dir);
             opts.add(List.of("-linkoffline", url, dir.toString()));
           });
 
@@ -538,13 +597,12 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
 
       // Temporary file that holds all javadoc options for the current task (except jOpts)
       try (var writer = Files.newBufferedWriter(optionsFile)) {
-
         // escapes an option with single quotes or whitespace to be passed in the options.txt file
         // for
         Function<String, String> escapeJavadocOption =
             s -> {
               if (Pattern.compile("[ '\"]").matcher(s).find()) {
-                String escaped = s.replaceAll("[\\\\'\"]", "\\$0");
+                String escaped = s.replaceAll("[\\\\'\"]", "\\\\$0");
                 return "'" + escaped + "'";
               } else {
                 return s;
@@ -565,7 +623,7 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
       }
 
       var javadocCmd = getProject().file(getExecutable().get());
-      getLogger().info("Javadoc executable used: ${javadocCmd}");
+      getLogger().info("Javadoc executable used: " + javadocCmd);
 
       buildGlobals.quietExec(
           this,
@@ -575,27 +633,120 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
             execSpec.args(jOpts);
           });
 
-      /*
-      TODO: implement this.
+      if (getProject().getPath().contains("stempel")) {
+        getLogger().lifecycle("Sleepeing...");
+        try {
+          Thread.sleep(10 * 1000);
+        } catch (Exception e) {
+        }
+      }
 
-          // append some special table css, prettify css
-          ant.concat(destfile: "${outputDir}/stylesheet.css", append: "true", fixlastline: "true", encoding: "UTF-8") {
-            filelist(dir: taskResources, files:
-            [
-              "table_padding.css",
-              "custom_styles.css",
-              "prettify/prettify.css"
-            ].join(" ")
-            )
+      // append some special table css, prettify css.
+      concat(
+          getOutputDir().file("stylesheet.css"),
+          getTaskResources(),
+          "table_padding.css",
+          "custom_styles.css",
+          "prettify/prettify.css");
+
+      // append prettify to scripts
+      concat(
+          getOutputDir().file("script.js"),
+          getTaskResources().dir("prettify"),
+          "prettify.js",
+          "inject-javadocs.js");
+    }
+
+    private void concat(
+        Provider<RegularFile> targetFile, Provider<Directory> dir, String... files) {
+      var concat = (Concat) getAnt().getAntProject().createTask("concat");
+      concat.setDestfile(targetFile.get().getAsFile());
+      concat.setAppend(true);
+      concat.setFixLastLine(true);
+      concat.setEncoding("UTF-8");
+      concat.addFilelist(fileList(dir, files));
+      concat.execute();
+
+      var fixcrlf = (FixCRLF) getAnt().getAntProject().createTask("fixcrlf");
+      fixcrlf.setSrcdir(dir.get().getAsFile());
+      fixcrlf.setIncludes(String.join(" ", files));
+      fixcrlf.setEncoding("UTF-8");
+      fixcrlf.setFixlast(true);
+      var lf = new FixCRLF.CrLf();
+      lf.setValue("lf");
+      fixcrlf.setEol(lf);
+      fixcrlf.execute();
+    }
+
+    private FileList fileList(Provider<Directory> dir, String... files) {
+      var fileList = new FileList();
+      fileList.setDir(dir.get().getAsFile());
+      fileList.setFiles(String.join(" ", files));
+      return fileList;
+    }
+
+    /**
+     * Resolve inter-project links:
+     *
+     * <ul>
+     *   <li>find all (enabled) tasks from the subgraph of tasks this task depends on (with same
+     *       name)
+     *   <li>sort these tasks, ordering the 'core' first, then lexigraphically by path
+     *   <li>for each task, get the output dir to create relative or absolute link.
+     * </ul>
+     */
+    private void addOfflineOrRelativeLinksToDependencies(
+        List<Object> opts, Map<String, File> allOfflineLinks) {
+      List<RenderJavadocTask> sortedTaskDeps;
+      {
+        Set<RenderJavadocTask> taskDeps = new HashSet<>();
+        var taskGraph = getProject().getGradle().getTaskGraph();
+        ArrayDeque<Task> remaining = new ArrayDeque<>(List.of(this));
+        var thisTaskName = getName();
+        while (!remaining.isEmpty()) {
+          var task = remaining.pop();
+          taskGraph.getDependencies(task).stream()
+              .filter(t -> t.getName().equals(thisTaskName) && t.getEnabled())
+              .forEach(
+                  t -> {
+                    if (taskDeps.add(((RenderJavadocTask) t))) {
+                      remaining.add(t);
+                    }
+                  });
+        }
+
+        sortedTaskDeps =
+            taskDeps.stream()
+                .sorted(
+                    Comparator.<Task, Boolean>comparing(
+                            t -> !t.getProject().getName().equals("core"))
+                        .thenComparing(Task::getPath))
+                .toList();
+      }
+
+      for (var otherTask : sortedTaskDeps) {
+        Project otherProject = otherTask.getProject();
+        // For relative links we compute the actual relative link between projects.
+        if (getRelativeProjectLinks().getOrElse(true)) {
+          Path pathTo = otherTask.getOutputDir().get().getAsFile().toPath().toAbsolutePath();
+          Path pathFrom = getOutputDir().get().getAsFile().toPath().toAbsolutePath();
+          String relative = pathFrom.relativize(pathTo).toString().replace(File.separatorChar, '/');
+          getLogger().info("Relative link: {} to {}", otherProject.getPath(), relative);
+          opts.add(List.of("-link", relative));
+        } else {
+          // For absolute links, we determine the target URL by assembling the full URL (if base is
+          // available).
+          if (getLuceneDocUrl().isPresent()) {
+            allOfflineLinks.put(
+                getLuceneDocUrl().get()
+                    + "/"
+                    + DocumentationConfigPlugin.relativeDocPath(otherProject),
+                otherTask.getOutputDir().get().getAsFile());
+          } else {
+            // Ignore, not linking relative modules at all.
           }
-
-          // append prettify to scripts
-          ant.concat(destfile: "${outputDir}/script.js", append: "true", fixlastline: "true", encoding: "UTF-8") {
-            filelist(dir: project.file("${taskResources}/prettify"), files: "prettify.js inject-javadocs.js")
-          }
-
-          ant.fixcrlf(srcdir: outputDir, includes: "stylesheet.css script.js", eol: "lf", fixlast: "true", encoding: "UTF-8")
-       */
+        }
+      }
     }
   }
 

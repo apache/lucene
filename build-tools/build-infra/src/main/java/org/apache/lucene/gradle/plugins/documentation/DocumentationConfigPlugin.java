@@ -102,7 +102,7 @@ public class DocumentationConfigPlugin extends LuceneGradlePlugin {
   }
 
   private void configureDocumentationProject(Project project) {
-    File docroot = project.getLayout().getBuildDirectory().dir("site").get().getAsFile();
+    File docroot = getDocumentationRoot(project);
     File markdownSrc = project.file("src/markdown");
     File assets = project.file("src/assets");
 
@@ -170,6 +170,16 @@ public class DocumentationConfigPlugin extends LuceneGradlePlugin {
             configurablePublishArtifact -> {
               configurablePublishArtifact.builtBy(documentationTask);
             });
+  }
+
+  public static File getDocumentationRoot(Project project) {
+    return project
+        .project(":lucene:documentation")
+        .getLayout()
+        .getBuildDirectory()
+        .dir("site")
+        .get()
+        .getAsFile();
   }
 
   private void configureMarkdownConversion(File markdownSrc, File docroot, Project project) {
