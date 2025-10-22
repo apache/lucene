@@ -633,14 +633,6 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
             execSpec.args(jOpts);
           });
 
-      if (getProject().getPath().contains("stempel")) {
-        getLogger().lifecycle("Sleepeing...");
-        try {
-          Thread.sleep(10 * 1000);
-        } catch (Exception e) {
-        }
-      }
-
       // append some special table css, prettify css.
       concat(
           getOutputDir().file("stylesheet.css"),
