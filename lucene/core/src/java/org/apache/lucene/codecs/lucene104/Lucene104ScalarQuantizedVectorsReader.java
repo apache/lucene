@@ -57,7 +57,7 @@ import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /** Reader for scalar quantized vectors in the Lucene 10.4 format. */
-class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
+public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     implements QuantizedVectorsReader {
 
   private static final long SHALLOW_SIZE =
@@ -68,7 +68,7 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private final FlatVectorsReader rawVectorsReader;
   private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
 
-  Lucene104ScalarQuantizedVectorsReader(
+  public Lucene104ScalarQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,
       Lucene104ScalarQuantizedVectorScorer vectorsScorer)

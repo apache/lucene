@@ -57,7 +57,7 @@ import org.apache.lucene.util.quantization.ScalarQuantizer;
  *
  * @lucene.experimental
  */
-final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReader
+public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReader
     implements QuantizedVectorsReader {
 
   private static final long SHALLOW_SIZE =
@@ -68,7 +68,7 @@ final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReader
   private final FlatVectorsReader rawVectorsReader;
   private final FieldInfos fieldInfos;
 
-  Lucene99ScalarQuantizedVectorsReader(
+  public Lucene99ScalarQuantizedVectorsReader(
       SegmentReadState state, FlatVectorsReader rawVectorsReader, FlatVectorsScorer scorer)
       throws IOException {
     super(scorer);
