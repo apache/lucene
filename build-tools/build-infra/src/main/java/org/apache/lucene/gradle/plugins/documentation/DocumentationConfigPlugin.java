@@ -327,7 +327,7 @@ public class DocumentationConfigPlugin extends LuceneGradlePlugin {
     @TaskAction
     public void transform() throws IOException, ClassNotFoundException {
       var engine = new SimpleTemplateEngine();
-      var resolvedBinding = new HashMap<>(getBinding().get());
+      HashMap<String, Object> resolvedBinding = new HashMap<>(getBinding().get());
       String markdown =
           engine
               .createTemplate(Files.readString(getTemplateFile().get().getAsFile().toPath()))
