@@ -22,9 +22,144 @@ import static org.apache.lucene.geo.GeoUtils.orient;
 import org.apache.lucene.index.PointValues;
 
 /**
- * 2D Geometry object that supports spatial relationships with bounding boxes, triangles and points.
+ * Interface for 2D geometric components that support spatial relationship queries.
+ *
+ * <p>Component2D defines the contract for testing spatial relationships between geometric shapes
+ * and index structures (points, lines, triangles, bounding boxes). This interface is central to
+ * Lucene's spatial search implementation, enabling filtering of documents during geospatial
+ * queries.
+ *
+ * <p>Key Features:
+ *
+ * <ul>
+ *   <li>Point containment testing
+ *   <li>Line and triangle intersection detection
+ *   <li>Line and triangle containment testing
+ *   <li>Bounding box relationship computation
+ *   <li>"Within" relationship evaluation for spatial queries
+ * </ul>
+ *
+ * <p>Implementations:
+ *
+ * <p>Component2D is implemented by geometric shapes classes:
+ *
+ * <ul>
+ *   <li>{@link Circle2D} - Circular regions (both geographic and Cartesian)
+ *   <li>{@link Polygon2D} - Polygonal regions with hole support
+ *   <li>{@link Rectangle2D} - Rectangular bounding boxes
+ *   <li>{@link Line2D} - Line segments and polylines
+ *   <li>{@link Point2D} - Point geometries
+ * </ul>
+ *
+ * <p>Usage:
+ *
+ * <p>Component2D instances are created by calling {@code toComponent2D()} on high-level geometry
+ * objects:
+ *
+ * <pre>{@code
+ * // Create from a Circle
+ * double nycLat = 40.7128;
+ * double nycLon = -74.0060;
+ * double radiusMeters = 5000; // 5km radius
+ * Circle circle = new Circle(nycLat, nycLon, radiusMeters);
+ * Component2D component = circle.toComponent2D();
+ *
+ * // Test if a point is contained
+ * double xCoordinate = -74.0060;
+ * double yCoordinate = 40.7128;
+ * boolean contained = component.contains(xCoordinate, yCoordinate);
+ *
+ * // Test relationship with a bounding box
+ * double minX = -74.01;
+ * double maxX = -74.00;
+ * double minY = 40.71;
+ * double maxY = 40.72;
+ * PointValues.Relation relation = component.relate(minX, maxX, minY, maxY);
+ * }</pre>
+ *
+ * <p>Spatial Relationship Methods:
+ *
+ * <h3>Containment</h3>
+ *
+ * <ul>
+ *   <li>{@link #contains(double, double)} - Tests if a point is inside the geometry
+ *   <li>{@link #containsLine} - Tests if a line segment is fully contained
+ *   <li>{@link #containsTriangle} - Tests if a triangle is fully contained
+ * </ul>
+ *
+ * <h3>Intersection</h3>
+ *
+ * <ul>
+ *   <li>{@link #intersectsLine} - Tests if a line segment intersects the geometry
+ *   <li>{@link #intersectsTriangle} - Tests if a triangle intersects the geometry
+ * </ul>
+ *
+ * <h3>Relationship</h3>
+ *
+ * <ul>
+ *   <li>{@link #relate} - Determines spatial relationship with a bounding box (INSIDE, OUTSIDE, or
+ *       CROSSES)
+ *   <li>{@link #withinPoint} - Computes "within" relationship for a point
+ *   <li>{@link #withinLine} - Computes "within" relationship for a line
+ *   <li>{@link #withinTriangle} - Computes "within" relationship for a triangle
+ * </ul>
+ *
+ * <p>Bounding Box:
+ *
+ * <p>Every Component2D has an associated bounding box defined by:
+ *
+ * <ul>
+ *   <li>{@link #getMinX()}, {@link #getMaxX()} - Horizontal bounds
+ *   <li>{@link #getMinY()}, {@link #getMaxY()} - Vertical bounds
+ * </ul>
+ *
+ * <h3>Within Relationship</h3>
+ *
+ * <p>The "within" relationship is used to determine if the query shape is contained within an
+ * indexed shape. The {@link WithinRelation} enum provides three possible outcomes:
+ *
+ * <ul>
+ *   <li>{@link WithinRelation#CANDIDATE} - The shape might be within (requires further validation)
+ *   <li>{@link WithinRelation#NOTWITHIN} - The shape is definitely not within
+ *   <li>{@link WithinRelation#DISJOINT} - The shapes don't intersect at all
+ * </ul>
+ *
+ * <p>Performance Considerations:
+ *
+ * <ul>
+ *   <li>Bounding box checks ({@link #getMinX()}, etc.) enable elimination of non-intersecting
+ *       geometries
+ *   <li>Methods accepting pre-computed bounding boxes (minX, maxX, minY, maxY) avoid redundant
+ *       calculations
+ *   <li>Default methods compute bounding boxes automatically for convenience
+ *   <li>Implementations should optimize for the most common query patterns in their domain
+ * </ul>
+ *
+ * <p>Coordinate Systems:
+ *
+ * <p>Component2D works with encoded coordinate values:
+ *
+ * <ul>
+ *   <li><strong>Geographic</strong> - X represents longitude, Y represents latitude (both encoded)
+ *   <li><strong>Cartesian</strong> - X and Y represent planar coordinates
+ * </ul>
+ *
+ * <p>Utility Methods:
+ *
+ * <p>Component2D provides several static utility methods for common spatial operations:
+ *
+ * <ul>
+ *   <li>{@link #disjoint} - Tests if two bounding boxes don't overlap
+ *   <li>{@link #within} - Tests if one bounding box is fully contained within another
+ *   <li>{@link #containsPoint} - Tests if a point is inside a rectangle
+ *   <li>{@link #pointInTriangle} - Tests if a point is inside a triangle using winding order
+ * </ul>
  *
  * @lucene.internal
+ * @see Circle2D
+ * @see Polygon2D
+ * @see LatLonGeometry
+ * @see XYGeometry
  */
 public interface Component2D {
 

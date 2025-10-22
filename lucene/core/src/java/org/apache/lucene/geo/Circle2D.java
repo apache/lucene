@@ -20,7 +20,90 @@ package org.apache.lucene.geo;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.util.SloppyMath;
 
-/** 2D circle implementation containing spatial logic. */
+/**
+ * Internal 2D representation of a circle optimized for spatial query operations.
+ *
+ * <p>This class provides spatial logic for circle-based queries, converting high-level {@link
+ * Circle} or {@link XYCircle} geometries into optimized 2D representations. It is used internally
+ * by Lucene's spatial search implementation.
+ *
+ * <p>Key Features:
+ *
+ * <ul>
+ *   <li>Efficient point containment checks
+ *   <li>Line and triangle intersection tests
+ *   <li>Bounding box relationship calculations
+ *   <li>Support for both geographic (lat/lon) and Cartesian coordinate systems
+ *   <li>Handles dateline crossing for geographic circles
+ * </ul>
+ *
+ * <p>Distance Calculation Modes:
+ *
+ * <ul>
+ *   <li><strong>Haversin Distance</strong> - For geographic circles (lat/lon coordinates), uses
+ *       spherical Earth model
+ *   <li><strong>Cartesian Distance</strong> - For XY circles (planar coordinates), uses Euclidean
+ *       distance
+ * </ul>
+ *
+ * <p>Usage:
+ *
+ * <p>This class is typically not instantiated directly by users. Instead, it is created through the
+ * {@link Circle#toComponent2D()} or {@link XYCircle#toComponent2D()} methods:
+ *
+ * <pre>{@code
+ * // Geographic circle (lat/lon) - uses Haversin distance
+ * double eiffelTowerLat = 48.8584;
+ * double eiffelTowerLon = 2.2945;
+ * double radiusMeters = 1000; // 1km radius
+ * Circle geoCircle = new Circle(eiffelTowerLat, eiffelTowerLon, radiusMeters);
+ * Component2D geoComponent = geoCircle.toComponent2D(); // Creates Circle2D internally
+ *
+ * // Cartesian circle (XY) - uses Euclidean distance
+ * float centerX = 100.0f;
+ * float centerY = 200.0f;
+ * float radius = 50.0f;
+ * XYCircle xyCircle = new XYCircle(centerX, centerY, radius);
+ * Component2D xyComponent = xyCircle.toComponent2D(); // Creates Circle2D internally
+ * }</pre>
+ *
+ * <p>Spatial Operations:
+ *
+ * <p>Circle2D provides several spatial relationship methods:
+ *
+ * <ul>
+ *   <li>{@link #contains(double, double)} - Tests if a point is inside the circle
+ *   <li>{@link #relate(double, double, double, double)} - Determines relationship with a bounding
+ *       box
+ *   <li>{@link #intersectsLine} - Tests if a line segment intersects the circle
+ *   <li>{@link #intersectsTriangle} - Tests if a triangle intersects the circle
+ *   <li>{@link #containsLine} - Tests if a line segment is fully contained within the circle
+ *   <li>{@link #containsTriangle} - Tests if a triangle is fully contained within the circle
+ * </ul>
+ *
+ * <p>Performance Considerations:
+ *
+ * <ul>
+ *   <li>Uses bounding box checks to quickly eliminate non-intersecting geometries
+ *   <li>Cartesian distance calculations are faster than Haversin (geographic) calculations
+ *   <li>For geographic circles near poles or crossing the dateline, additional logic ensures
+ *       correctness
+ * </ul>
+ *
+ * <p>Implementation Details:
+ *
+ * <p>Circle2D uses a strategy pattern with {@link DistanceCalculator} implementations:
+ *
+ * <ul>
+ *   <li>{@link CartesianDistance} - For XY coordinate systems
+ *   <li>{@link HaversinDistance} - For geographic coordinate systems (lat/lon)
+ * </ul>
+ *
+ * @lucene.internal
+ * @see Circle
+ * @see XYCircle
+ * @see Component2D
+ */
 class Circle2D implements Component2D {
 
   private final DistanceCalculator calculator;

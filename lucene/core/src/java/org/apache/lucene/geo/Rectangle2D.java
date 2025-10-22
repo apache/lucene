@@ -28,7 +28,141 @@ import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitudeCeil;
 import java.util.Objects;
 import org.apache.lucene.index.PointValues;
 
-/** 2D rectangle implementation containing cartesian spatial logic. */
+/**
+ * Internal 2D representation of a rectangle optimized for spatial query operations.
+ *
+ * <p>This class provides spatial logic for rectangle-based queries, converting high-level {@link
+ * Rectangle} or {@link XYRectangle} geometries into optimized 2D representations. It is used
+ * internally by Lucene's spatial search implementation for bounding box operations.
+ *
+ * <p>Key Features:
+ *
+ * <ul>
+ *   <li>Point containment checks using simple coordinate comparisons
+ *   <li>Bounding box relationship calculations
+ *   <li>Line and triangle intersection detection
+ *   <li>Support for both geographic (lat/lon) and Cartesian coordinate systems
+ *   <li>Handling of dateline-crossing rectangles
+ * </ul>
+ *
+ * <p>Coordinate Systems:
+ *
+ * <ul>
+ *   <li><strong>Geographic (lat/lon)</strong> - X represents longitude, Y represents latitude (both
+ *       encoded as integers)
+ *   <li><strong>Cartesian (XY)</strong> - X and Y represent planar coordinates
+ * </ul>
+ *
+ * <p>Usage:
+ *
+ * <p>Rectangle2D instances are typically created through the static {@link #create(Rectangle)} or
+ * {@link #create(XYRectangle)} factory methods:
+ *
+ * <pre>{@code
+ * // Geographic rectangle (lat/lon)
+ * double minLat = 40.7;
+ * double maxLat = 40.8;
+ * double minLon = -74.0;
+ * double maxLon = -73.9;
+ * Rectangle geoRect = new Rectangle(minLat, maxLat, minLon, maxLon);
+ * Component2D geoComponent = Rectangle2D.create(geoRect);
+ *
+ * // Query operations
+ * double testLon = -73.95;
+ * double testLat = 40.75;
+ * boolean contained = geoComponent.contains(testLon, testLat);
+ *
+ * // Cartesian rectangle (XY)
+ * float minX = 100.0f;
+ * float maxX = 200.0f;
+ * float minY = 150.0f;
+ * float maxY = 250.0f;
+ * XYRectangle xyRect = new XYRectangle(minX, maxX, minY, maxY);
+ * Component2D xyComponent = Rectangle2D.create(xyRect);
+ *
+ * }</pre>
+ *
+ * <p>Dateline Crossing:
+ *
+ * <p>For geographic rectangles that cross the International Date Line (where minLon &gt; maxLon),
+ * Rectangle2D automatically creates a {@link ComponentTree} containing two separate Rectangle2D
+ * components to handle the split geometry correctly:
+ *
+ * <pre>{@code
+ * // Rectangle crossing the dateline (170°E to -170°E)
+ * double minLat = 20.0;
+ * double maxLat = 30.0;
+ * double minLon = 170.0;  // East of dateline
+ * double maxLon = -170.0; // West of dateline
+ * Rectangle datelineRect = new Rectangle(minLat, maxLat, minLon, maxLon);
+ *
+ * // Creates ComponentTree with two rectangles internally:
+ * // 1. From 170°E to 180°E
+ * // 2. From -180°E to -170°E
+ * Component2D component = Rectangle2D.create(datelineRect);
+ * }</pre>
+ *
+ * <p>Performance Characteristics:
+ *
+ * <ul>
+ *   <li><strong>Point containment</strong> - O(1) using simple coordinate comparisons
+ *   <li><strong>Bounding box checks</strong> - O(1) for disjoint and containment tests
+ *   <li><strong>Line intersection</strong> - O(1) checking against 4 edges
+ *   <li><strong>Triangle intersection</strong> - O(1) checking vertices and edges
+ * </ul>
+ *
+ * <p>Spatial Operations:
+ *
+ * <p>Rectangle2D implements all {@link Component2D} operations:
+ *
+ * <ul>
+ *   <li>{@link #contains(double, double)} - Tests if a point is inside the rectangle
+ *   <li>{@link #relate(double, double, double, double)} - Determines relationship with a bounding
+ *       box
+ *   <li>{@link #intersectsLine} - Tests if a line segment intersects the rectangle
+ *   <li>{@link #intersectsTriangle} - Tests if a triangle intersects the rectangle
+ *   <li>{@link #containsLine} - Tests if a line is fully contained (checks bounding boxes)
+ *   <li>{@link #containsTriangle} - Tests if a triangle is fully contained (checks bounding boxes)
+ * </ul>
+ *
+ * <p>Edge Intersection Algorithm:
+ *
+ * <p>Rectangle2D uses the {@link #edgesIntersect(double, double, double, double)} method to check
+ * if a line segment intersects any of the rectangle's four edges. This method:
+ *
+ * <ol>
+ *   <li>First performs a quick bounding box check to eliminate obvious non-intersections
+ *   <li>Tests intersection against each of the four rectangle edges (top, right, bottom, left)
+ *   <li>Uses {@link GeoUtils#lineCrossesLineWithBoundary} for precise intersection detection
+ * </ol>
+ *
+ * <p>Coordinate Encoding:
+ *
+ * <p>For geographic rectangles, latitude and longitude values are quantized to match Lucene's point
+ * encoding:
+ *
+ * <ul>
+ *   <li>Minimum values use ceiling encoding ({@code encodeLatitudeCeil}, {@code
+ *       encodeLongitudeCeil})
+ *   <li>Maximum values use standard encoding ({@code encodeLatitude}, {@code encodeLongitude})
+ *   <li>This ensures the encoded rectangle fully contains the original coordinate space
+ * </ul>
+ *
+ * <p>Use Cases:
+ *
+ * <ul>
+ *   <li>Bounding box queries in spatial indexes
+ *   <li>Range queries on lat/lon or XY coordinates
+ *   <li>Quick spatial filtering before more expensive geometry tests
+ *   <li>Building larger spatial structures (e.g., R-trees)
+ * </ul>
+ *
+ * @lucene.internal
+ * @see Rectangle
+ * @see XYRectangle
+ * @see Component2D
+ * @see ComponentTree
+ */
 final class Rectangle2D implements Component2D {
 
   private final double minX;
