@@ -128,7 +128,8 @@ public class Lucene102HnswBinaryQuantizedVectorsFormat extends KnnVectorsFormat 
         beamWidth,
         flatVectorsFormat.fieldsWriter(state),
         numMergeWorkers,
-        mergeExec);
+        mergeExec,
+        0);
   }
 
   @Override

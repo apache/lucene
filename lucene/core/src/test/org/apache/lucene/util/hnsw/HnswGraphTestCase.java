@@ -274,7 +274,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                               ((CodecReader) ctx.reader()).getVectorReader())
                           .getFieldReader("field"))
                   .getGraph("field");
-          assertGraphEqual(hnsw, graphValues);
+          if (graphValues.size() > 0) {
+            assertGraphEqual(hnsw, graphValues);
+          }
         }
       }
     }

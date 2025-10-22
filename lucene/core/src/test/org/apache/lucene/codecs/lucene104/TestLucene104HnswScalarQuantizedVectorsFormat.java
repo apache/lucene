@@ -68,7 +68,8 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
           }
         };
     String expectedPattern =
-        "Lucene104HnswScalarQuantizedVectorsFormat(name=Lucene104HnswScalarQuantizedVectorsFormat, maxConn=10, beamWidth=20,"
+        "Lucene104HnswScalarQuantizedVectorsFormat(name=Lucene104HnswScalarQuantizedVectorsFormat,"
+            + " maxConn=10, beamWidth=20, tinySegmentsThreshold=100,"
             + " flatVectorFormat=Lucene104ScalarQuantizedVectorsFormat(name=Lucene104ScalarQuantizedVectorsFormat,"
             + " encoding=UNSIGNED_BYTE,"
             + " flatVectorScorer=Lucene104ScalarQuantizedVectorScorer(nonQuantizedDelegate=%s()),"
@@ -171,7 +172,7 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
           var fieldInfo = r.getFieldInfos().fieldInfo("f");
           var offHeap = knnVectorsReader.getOffHeapByteSize(fieldInfo);
           assertEquals(vector.length * Float.BYTES, (long) offHeap.get("vec"));
-          assertEquals(1L, (long) offHeap.get("vex"));
+          assertNotNull(offHeap.get("vex"));
           long corrections = Float.BYTES + Float.BYTES + Float.BYTES + Integer.BYTES;
           long expected = fieldInfo.getVectorDimension() + corrections;
           assertEquals(expected, (long) offHeap.get("veq"));
