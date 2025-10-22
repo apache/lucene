@@ -18,12 +18,13 @@ package org.apache.lucene.codecs.lucene104;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
+import org.apache.lucene.codecs.lucene95.HasIndexSlice;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 
 /** Scalar quantized byte vector values */
-abstract class QuantizedByteVectorValues extends ByteVectorValues {
+public abstract class QuantizedByteVectorValues extends ByteVectorValues implements HasIndexSlice {
 
   /**
    * Retrieve the corrective terms for the given vector ordinal. For the dot-product family of
