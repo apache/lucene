@@ -68,6 +68,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private final FlatVectorsReader rawVectorsReader;
   private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
 
+  /** Sole constructor */
   public Lucene104ScalarQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,

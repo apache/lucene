@@ -68,6 +68,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   private final FlatVectorsReader rawVectorsReader;
   private final FieldInfos fieldInfos;
 
+  /** Sole constructor */
   public Lucene99ScalarQuantizedVectorsReader(
       SegmentReadState state, FlatVectorsReader rawVectorsReader, FlatVectorsScorer scorer)
       throws IOException {
