@@ -556,6 +556,27 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
       opts.add("-J-Duser.language=en");
       opts.add("-J-Duser.country=US");
 
+      // add custom scripts and css.
+      {
+        // append some special table css, prettify css.
+        Provider<RegularFile> customCss =
+            getOutputDir().file("resource-files/lucene-stylesheet.css");
+        concat(
+            customCss,
+            getTaskResources(),
+            "table_padding.css",
+            "custom_styles.css",
+            "prettify/prettify.css");
+
+        // append prettify to scripts
+        Provider<RegularFile> customScript = getOutputDir().file("script-files/lucene-script.js");
+        concat(
+            customScript, getTaskResources().dir("prettify"), "prettify.js", "inject-javadocs.js");
+
+        opts.add(List.of("--add-script", customScript.get().getAsFile().toString()));
+        opts.add(List.of("--add-stylesheet", customCss.get().getAsFile().toString()));
+      }
+
       // -J options have to be passed on command line, they are not interpreted if passed via args
       // file.
       var jOpts =
@@ -632,21 +653,6 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
             execSpec.args("@" + optionsFile);
             execSpec.args(jOpts);
           });
-
-      // append some special table css, prettify css.
-      concat(
-          getOutputDir().file("stylesheet.css"),
-          getTaskResources(),
-          "table_padding.css",
-          "custom_styles.css",
-          "prettify/prettify.css");
-
-      // append prettify to scripts
-      concat(
-          getOutputDir().file("script.js"),
-          getTaskResources().dir("prettify"),
-          "prettify.js",
-          "inject-javadocs.js");
     }
 
     private void concat(
