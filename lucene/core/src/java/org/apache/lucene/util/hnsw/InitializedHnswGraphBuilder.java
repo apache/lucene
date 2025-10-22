@@ -69,6 +69,9 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       while (it.hasNext()) {
         int oldOrd = it.nextInt();
         int newOrd = newOrdMap[oldOrd];
+        if (newOrd == -1) {
+          continue;
+        }
         hnsw.addNode(level, newOrd);
         hnsw.trySetNewEntryNode(newOrd, level);
         NeighborArray newNeighbors = hnsw.getNeighbors(level, newOrd);
@@ -77,6 +80,9 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
             oldNeighbor != NO_MORE_DOCS;
             oldNeighbor = initializerGraph.nextNeighbor()) {
           int newNeighbor = newOrdMap[oldNeighbor];
+          if (newNeighbor == -1) {
+            continue;
+          }
           // we will compute these scores later when we need to pop out the non-diverse nodes
           newNeighbors.addOutOfOrder(newNeighbor, Float.NaN);
         }
