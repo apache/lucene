@@ -79,7 +79,7 @@ import org.apache.lucene.index.PointValues;
  *
  * <p>Spatial Relationship Methods:
  *
- * <h3>Containment</h3>
+ * <p><strong>Containment:</strong>
  *
  * <ul>
  *   <li>{@link #contains(double, double)} - Tests if a point is inside the geometry
@@ -87,14 +87,14 @@ import org.apache.lucene.index.PointValues;
  *   <li>{@link #containsTriangle} - Tests if a triangle is fully contained
  * </ul>
  *
- * <h3>Intersection</h3>
+ * <p><strong>Intersection:</strong>
  *
  * <ul>
  *   <li>{@link #intersectsLine} - Tests if a line segment intersects the geometry
  *   <li>{@link #intersectsTriangle} - Tests if a triangle intersects the geometry
  * </ul>
  *
- * <h3>Relationship</h3>
+ * <p><strong>Relationship:</strong>
  *
  * <ul>
  *   <li>{@link #relate} - Determines spatial relationship with a bounding box (INSIDE, OUTSIDE, or
@@ -113,7 +113,7 @@ import org.apache.lucene.index.PointValues;
  *   <li>{@link #getMinY()}, {@link #getMaxY()} - Vertical bounds
  * </ul>
  *
- * <h3>Within Relationship</h3>
+ * <p><strong>Within Relationship:</strong>
  *
  * <p>The "within" relationship is used to determine if the query shape is contained within an
  * indexed shape. The {@link WithinRelation} enum provides three possible outcomes:
