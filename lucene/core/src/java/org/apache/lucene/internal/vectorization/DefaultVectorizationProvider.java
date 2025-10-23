@@ -25,14 +25,14 @@ import org.apache.lucene.store.IndexInput;
 /** Default provider returning scalar implementations. */
 final class DefaultVectorizationProvider extends VectorizationProvider {
 
-  private final VectorUtilSupport vectorUtilSupport;
+  private final VectorUtilSupport<?, ?> vectorUtilSupport;
 
   DefaultVectorizationProvider() {
     vectorUtilSupport = new DefaultVectorUtilSupport();
   }
 
   @Override
-  public VectorUtilSupport getVectorUtilSupport() {
+  public VectorUtilSupport<?, ?> getVectorUtilSupport() {
     return vectorUtilSupport;
   }
 

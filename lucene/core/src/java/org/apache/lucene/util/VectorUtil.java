@@ -17,6 +17,7 @@
 
 package org.apache.lucene.util;
 
+import java.lang.foreign.MemorySegment;
 import java.util.stream.IntStream;
 import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
@@ -50,7 +51,7 @@ public final class VectorUtil {
 
   public static final float EPSILON = 1e-4f;
 
-  private static final VectorUtilSupport IMPL =
+  private static final VectorUtilSupport<?, ?> IMPL =
       VectorizationProvider.getInstance().getVectorUtilSupport();
 
   private VectorUtil() {}
@@ -60,11 +61,11 @@ public final class VectorUtil {
    *
    * @throws IllegalArgumentException if the vectors' dimensions differ.
    */
-  public static float dotProduct(float[] a, float[] b) {
+  public static float dotProductFloats(float[] a, float[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    float r = IMPL.dotProduct(a, b);
+    float r = IMPL.dotProductFloats(a, b);
     assert Float.isFinite(r)
         : "not finite: "
             + r
@@ -76,51 +77,82 @@ public final class VectorUtil {
     return r;
   }
 
-  /**
-   * Returns the cosine similarity between the two vectors.
-   *
-   * @throws IllegalArgumentException if the vectors' dimensions differ.
-   */
-  public static float cosine(float[] a, float[] b) {
+  /** Returns the cosine similarity between two vectors, both on-heap. */
+  public static float cosineFloats(float[] a, float[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    float r = IMPL.cosine(a, b);
+    float r = IMPL.cosineFloats(a, b);
     assert Float.isFinite(r);
     return r;
   }
 
-  /** Returns the cosine similarity between the two vectors. */
-  public static float cosine(byte[] a, byte[] b) {
+  /** Returns the cosine similarity between two vectors, both on-heap. */
+  public static float cosineBytes(byte[] a, byte[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return IMPL.cosine(a, b);
+    return IMPL.cosineBytes(a, b);
   }
 
-  /**
-   * Returns the sum of squared differences of the two vectors.
-   *
-   * @throws IllegalArgumentException if the vectors' dimensions differ.
-   */
-  public static float squareDistance(float[] a, float[] b) {
+  /** Returns the cosine similarity between two vectors, one on-heap and one off-heap. */
+  public static float cosineBytes(byte[] a, MemorySegment b) {
+    if (a.length != b.byteSize()) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.length + "!=" + b.byteSize());
+    }
+    return IMPL.cosineBytes(a, b);
+  }
+
+  /** Returns the cosine similarity between two vectors, both off-heap. */
+  public static float cosineBytes(MemorySegment a, MemorySegment b) {
+    if (a.byteSize() != b.byteSize()) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.byteSize() + "!=" + b.byteSize());
+    }
+    return IMPL.cosineBytes(a, b);
+  }
+
+  /** Returns the sum of squared differences of the two vectors, both on-heap. */
+  public static float squareDistanceFloats(float[] a, float[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    float r = IMPL.squareDistance(a, b);
+    float r = IMPL.squareDistanceFloats(a, b);
     assert Float.isFinite(r);
     return r;
   }
 
-  /** Returns the sum of squared differences of the two vectors. */
-  public static int squareDistance(byte[] a, byte[] b) {
+  /** Returns the sum of squared differences of the two vectors, both on-heap. */
+  public static int squareDistanceBytes(byte[] a, byte[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return IMPL.squareDistance(a, b);
+    return IMPL.squareDistanceBytes(a, b);
   }
 
-  /** Returns the sum of squared differences between two uint4 (values between [0,15]) vectors. */
+  /** Returns the sum of squared differences of the two vectors, one on-heap and one off-heap. */
+  public static int squareDistanceBytes(byte[] a, MemorySegment b) {
+    if (a.length != b.byteSize()) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.length + "!=" + b.byteSize());
+    }
+    return IMPL.squareDistanceBytes(a, b);
+  }
+
+  /** Returns the sum of squared differences of the two vectors, both off-heap. */
+  public static int squareDistanceBytes(MemorySegment a, MemorySegment b) {
+    if (a.byteSize() != b.byteSize()) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.byteSize() + "!=" + b.byteSize());
+    }
+    return IMPL.squareDistanceBytes(a, b);
+  }
+
+  /**
+   * Returns the sum of squared differences between two uint4 (values between [0,15]) vectors, both
+   * on-heap.
+   */
   public static int int4SquareDistance(byte[] a, byte[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
@@ -129,8 +161,32 @@ public final class VectorUtil {
   }
 
   /**
-   * Returns the sum of squared differences between two uint4 (values between [0,15]) vectors. The
-   * second vector is considered "packed" (i.e. every byte representing two values).
+   * Returns the sum of squared differences between two uint4 (values between [0,15]) vectors, one
+   * on-heap and one off-heap.
+   */
+  public static int int4SquareDistance(byte[] a, MemorySegment b) {
+    if (a.length != b.byteSize()) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.length + "!=" + b.byteSize());
+    }
+    return IMPL.int4SquareDistance(a, b);
+  }
+
+  /**
+   * Returns the sum of squared differences between two uint4 (values between [0,15]) vectors, both
+   * off-heap.
+   */
+  public static int int4SquareDistance(MemorySegment a, MemorySegment b) {
+    if (a.byteSize() != b.byteSize()) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.byteSize() + "!=" + b.byteSize());
+    }
+    return IMPL.int4SquareDistance(a, b);
+  }
+
+  /**
+   * Returns the sum of squared differences between two uint4 (values between [0,15]) vectors, both
+   * on-heap. The second vector is considered "packed" (i.e. every byte representing two values).
    */
   public static int int4SquareDistanceSinglePacked(byte[] unpacked, byte[] packed) {
     if (packed.length != ((unpacked.length + 1) >> 1)) {
@@ -141,9 +197,18 @@ public final class VectorUtil {
   }
 
   /**
-   * Returns the sum of squared differences between two uint4 (values between [0,15]) vectors. Both
-   * vectors are considered "packed" (i.e. every byte representing two values).
+   * Returns the sum of squared differences between two uint4 (values between [0,15]) vectors, one
+   * on-heap and one off-heap. The second vector is considered "packed" (i.e. every byte
+   * representing two values).
    */
+  public static int int4SquareDistanceSinglePacked(byte[] unpacked, MemorySegment packed) {
+    if (packed.byteSize() != ((unpacked.length + 1) >> 1)) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + unpacked.length + "!= 2 * " + packed.byteSize());
+    }
+    return IMPL.int4SquareDistanceSinglePacked(unpacked, packed);
+  }
+
   public static int int4SquareDistanceBothPacked(byte[] a, byte[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
@@ -151,10 +216,49 @@ public final class VectorUtil {
     return IMPL.int4SquareDistanceBothPacked(a, b);
   }
 
-  /** Returns the sum of squared differences of the two vectors where each byte is unsigned */
+  /**
+   * Returns the sum of squared differences between two uint4 (values between [0,15]) vectors, both
+   * off-heap. Both vectors are considered "packed" (i.e. every byte representing two values).
+   */
+  public static int int4SquareDistanceBothPacked(MemorySegment a, MemorySegment b) {
+    if (a.byteSize() != b.byteSize()) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.byteSize() + "!=" + b.byteSize());
+    }
+    return IMPL.int4SquareDistanceBothPacked(a, b);
+  }
+
+  /**
+   * Returns the sum of squared differences of the two vectors where each byte is unsigned, both
+   * on-heap.
+   */
   public static int uint8SquareDistance(byte[] a, byte[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.uint8SquareDistance(a, b);
+  }
+
+  /**
+   * Returns the sum of squared differences of the two vectors where each byte is unsigned, one
+   * on-heap and one off-heap.
+   */
+  public static int uint8SquareDistance(byte[] a, MemorySegment b) {
+    if (a.length != b.byteSize()) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.length + "!=" + b.byteSize());
+    }
+    return IMPL.uint8SquareDistance(a, b);
+  }
+
+  /**
+   * Returns the sum of squared differences of the two vectors where each byte is unsigned, both
+   * off-heap.
+   */
+  public static int uint8SquareDistance(MemorySegment a, MemorySegment b) {
+    if (a.byteSize() != b.byteSize()) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.byteSize() + "!=" + b.byteSize());
     }
     return IMPL.uint8SquareDistance(a, b);
   }
@@ -171,7 +275,7 @@ public final class VectorUtil {
   }
 
   public static boolean isUnitVector(float[] v) {
-    double l1norm = IMPL.dotProduct(v, v);
+    double l1norm = IMPL.dotProductFloats(v, v);
     return Math.abs(l1norm - 1.0d) <= EPSILON;
   }
 
@@ -199,27 +303,33 @@ public final class VectorUtil {
     }
   }
 
-  /**
-   * Dot product computed over signed bytes.
-   *
-   * @param a bytes containing a vector
-   * @param b bytes containing another vector, of the same dimension
-   * @return the value of the dot product of the two vectors
-   */
-  public static int dotProduct(byte[] a, byte[] b) {
+  /** Dot product computed over signed bytes, both on-heap. */
+  public static int dotProductBytes(byte[] a, byte[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return IMPL.dotProduct(a, b);
+    return IMPL.dotProductBytes(a, b);
   }
 
-  /**
-   * Dot product over bytes assuming that the values are actually unsigned.
-   *
-   * @param a uint8 byte vector
-   * @param b another uint8 byte vector of the same dimension
-   * @return the value of the dot product of the two vectors
-   */
+  /** Dot product computed over signed bytes, one on-heap and one off-heap. */
+  public static int dotProductBytes(byte[] a, MemorySegment b) {
+    if (a.length != b.byteSize()) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.length + "!=" + b.byteSize());
+    }
+    return IMPL.dotProductBytes(a, b);
+  }
+
+  /** Dot product computed over signed bytes, both off-heap. */
+  public static int dotProductBytes(MemorySegment a, MemorySegment b) {
+    if (a.byteSize() != b.byteSize()) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.byteSize() + "!=" + b.byteSize());
+    }
+    return IMPL.dotProductBytes(a, b);
+  }
+
+  /** Dot product over bytes assuming that the values are actually unsigned, both on-heap. */
   public static int uint8DotProduct(byte[] a, byte[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
@@ -228,12 +338,27 @@ public final class VectorUtil {
   }
 
   /**
-   * Dot product computed over uint4 (values between [0,15]) bytes.
-   *
-   * @param a bytes containing a vector
-   * @param b bytes containing another vector, of the same dimension
-   * @return the value of the dot product of the two vectors
+   * Dot product over bytes assuming that the values are actually unsigned, one on-heap and one
+   * off-heap.
    */
+  public static int uint8DotProduct(byte[] a, MemorySegment b) {
+    if (a.length != b.byteSize()) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.length + "!=" + b.byteSize());
+    }
+    return IMPL.uint8DotProduct(a, b);
+  }
+
+  /** Dot product over bytes assuming that the values are actually unsigned, both off-heap. */
+  public static int uint8DotProduct(MemorySegment a, MemorySegment b) {
+    if (a.byteSize() != b.byteSize()) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.byteSize() + "!=" + b.byteSize());
+    }
+    return IMPL.uint8DotProduct(a, b);
+  }
+
+  /** Dot product computed over uint4 (values between [0,15]) bytes, both on-heap. */
   public static int int4DotProduct(byte[] a, byte[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
@@ -242,8 +367,29 @@ public final class VectorUtil {
   }
 
   /**
-   * Dot product computed over uint4 (values between [0,15]) bytes. The second vector is considered
-   * "packed" (i.e. every byte representing two values). The following packing is assumed:
+   * Dot product computed over uint4 (values between [0,15]) bytes, one on-heap and one off-heap.
+   */
+  public static int int4DotProduct(byte[] a, MemorySegment b) {
+    if (a.length != b.byteSize()) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.length + "!=" + b.byteSize());
+    }
+    return IMPL.int4DotProduct(a, b);
+  }
+
+  /** Dot product computed over uint4 (values between [0,15]) bytes, both off-heap. */
+  public static int int4DotProduct(MemorySegment a, MemorySegment b) {
+    if (a.byteSize() != b.byteSize()) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.byteSize() + "!=" + b.byteSize());
+    }
+    return IMPL.int4DotProduct(a, b);
+  }
+
+  /**
+   * Dot product computed over uint4 (values between [0,15]) bytes, both on-heap. The second vector
+   * is considered "packed" (i.e. every byte representing two values). The following packing is
+   * assumed:
    *
    * <pre class="prettyprint lang-java">
    *   packed[0] = (raw[0] * 16) | raw[packed.length];
@@ -265,17 +411,49 @@ public final class VectorUtil {
   }
 
   /**
-   * Dot product computed over uint4 (values between [0,15]) bytes. Both vectors are considered
-   * "packed" (i.e. every byte representing two values).
+   * Dot product computed over uint4 (values between [0,15]) bytes, one on-heap and one off-heap.
+   * The second vector is considered "packed" (i.e. every byte representing two values). The
+   * following packing is assumed:
    *
-   * @param a bytes containing a packed vector
-   * @param b bytes containing another packed vector, of the same dimension
+   * <pre class="prettyprint lang-java">
+   *   packed[0] = (raw[0] * 16) | raw[packed.length];
+   *   packed[1] = (raw[1] * 16) | raw[packed.length + 1];
+   *   ...
+   *   packed[packed.length - 1] = (raw[packed.length - 1] * 16) | raw[2 * packed.length - 1];
+   * </pre>
+   *
+   * @param unpacked the unpacked vector, of even length
+   * @param packed the packed vector, of length {@code (unpacked.length + 1) / 2}
    * @return the value of the dot product of the two vectors
+   */
+  public static int int4DotProductSinglePacked(byte[] unpacked, MemorySegment packed) {
+    if (packed.byteSize() != ((unpacked.length + 1) >> 1)) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + unpacked.length + " != 2 * " + packed.byteSize());
+    }
+    return IMPL.int4DotProductSinglePacked(unpacked, packed);
+  }
+
+  /**
+   * Dot product computed over uint4 (values between [0,15]) bytes, both on-heap. Both vectors are
+   * considered "packed" (i.e. every byte representing two values).
    */
   public static int int4DotProductBothPacked(byte[] a, byte[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException(
           "vector dimensions differ: " + a.length + " != " + b.length);
+    }
+    return IMPL.int4DotProductBothPacked(a, b);
+  }
+
+  /**
+   * Dot product computed over uint4 (values between [0,15]) bytes, both off-heap. Both vectors are
+   * considered "packed" (i.e. every byte representing two values).
+   */
+  public static int int4DotProductBothPacked(MemorySegment a, MemorySegment b) {
+    if (a.byteSize() != b.byteSize()) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.byteSize() + " != " + b.byteSize());
     }
     return IMPL.int4DotProductBothPacked(a, b);
   }
@@ -361,7 +539,7 @@ public final class VectorUtil {
   public static float dotProductScore(byte[] a, byte[] b) {
     // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
     float denom = (float) (a.length * (1 << 15));
-    return 0.5f + dotProduct(a, b) / denom;
+    return 0.5f + dotProductBytes(a, b) / denom;
   }
 
   /**
