@@ -46,6 +46,7 @@ import org.gradle.plugins.signing.SigningPlugin;
  */
 public class ConfigureMavenPublishingPlugin extends LuceneGradlePlugin {
   public static final String OPT_SIGN = "sign";
+  public static final String MAVEN_ARTIFACTS_CONFIGURATION = "mavenArtifacts";
 
   @Override
   public void apply(Project project) {
@@ -178,25 +179,26 @@ public class ConfigureMavenPublishingPlugin extends LuceneGradlePlugin {
     var publishedProjects = getLuceneBuildGlobals(project).getPublishedProjects();
 
     var tasks = project.getTasks();
-    tasks.register(
-        "mavenToBuild",
-        task -> {
-          task.getOutputs().dir(mavenRepositoryDir);
+    var mavenToBuildTask =
+        tasks.register(
+            "mavenToBuild",
+            task -> {
+              task.getOutputs().dir(mavenRepositoryDir);
 
-          // In signed mode, collect signed artifacts. Otherwise, collect
-          // unsigned JARs (and their checksums).
-          boolean withSignedArtifacts =
-              getBuildOptions(project).getOption(OPT_SIGN).asBooleanProvider().get();
-          var mavenConventionTask =
-              withSignedArtifacts
-                  ? "publishSignedJarsPublicationToBuildRepository"
-                  : "publishJarsPublicationToBuildRepository";
+              // In signed mode, collect signed artifacts. Otherwise, collect
+              // unsigned JARs (and their checksums).
+              boolean withSignedArtifacts =
+                  getBuildOptions(project).getOption(OPT_SIGN).asBooleanProvider().get();
+              var mavenConventionTask =
+                  withSignedArtifacts
+                      ? "publishSignedJarsPublicationToBuildRepository"
+                      : "publishJarsPublicationToBuildRepository";
 
-          task.dependsOn(
-              publishedProjects.stream()
-                  .map(p -> p.getTasks().matching(t -> t.getName().equals(mavenConventionTask)))
-                  .toList());
-        });
+              task.dependsOn(
+                  publishedProjects.stream()
+                      .map(p -> p.getTasks().matching(t -> t.getName().equals(mavenConventionTask)))
+                      .toList());
+            });
 
     var cleanBuildTask =
         tasks.register(
@@ -225,6 +227,17 @@ public class ConfigureMavenPublishingPlugin extends LuceneGradlePlugin {
                 repo.setUrl(mavenRepositoryDir);
               });
     }
+
+    project.getConfigurations().create(MAVEN_ARTIFACTS_CONFIGURATION);
+
+    project
+        .getArtifacts()
+        .add(
+            MAVEN_ARTIFACTS_CONFIGURATION,
+            mavenRepositoryDir,
+            configurablePublishArtifact -> {
+              configurablePublishArtifact.builtBy(mavenToBuildTask);
+            });
   }
 
   /**
