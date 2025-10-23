@@ -40,6 +40,7 @@ import org.gradle.jvm.tasks.Jar;
 /** Configures miscellaneous aspects required to support the java module system layer. */
 public class ModularPathsPlugin extends LuceneGradlePlugin {
   public static final String MODULAR_PATHS_EXTENSION_NAME = "modularPaths";
+  public static final String MODULAR_PATHS_EXTENSION_ECJ_NAME = "modularPathsForEcj";
 
   private static final Set<String> ECJ_CLASSPATH_ONLY_PROJECTS =
       Set.of(":lucene:spatial-extras", ":lucene:spatial3d");
@@ -75,7 +76,7 @@ public class ModularPathsPlugin extends LuceneGradlePlugin {
             modularPathsForEcj =
                 modularPaths.cloneWithMode(ModularPathsExtension.Mode.CLASSPATH_ONLY);
           }
-          sourceSet.getExtensions().add("modularPathsForEcj", modularPathsForEcj);
+          sourceSet.getExtensions().add(MODULAR_PATHS_EXTENSION_ECJ_NAME, modularPathsForEcj);
 
           // TODO: the tests of these projects currently don't compile or work in
           // module-path mode. Make the modular paths extension use class path only.
@@ -159,9 +160,11 @@ public class ModularPathsPlugin extends LuceneGradlePlugin {
 
     boolean mainIsEmpty = main.getAllJava().isEmpty();
     boolean mainIsModular =
-        main.getExtensions().getByType(ModularPathsExtension.class).hasModuleDescriptor();
+        ((ModularPathsExtension) main.getExtensions().getByName(MODULAR_PATHS_EXTENSION_NAME))
+            .hasModuleDescriptor();
     boolean testIsModular =
-        test.getExtensions().getByType(ModularPathsExtension.class).hasModuleDescriptor();
+        ((ModularPathsExtension) test.getExtensions().getByName(MODULAR_PATHS_EXTENSION_NAME))
+            .hasModuleDescriptor();
 
     // LUCENE-10304: if we modify the classpath here, IntelliJ no longer sees the dependencies as
     // compile-time dependencies, don't know why.
@@ -246,7 +249,8 @@ public class ModularPathsPlugin extends LuceneGradlePlugin {
           File forkProperties = new File(task.getTemporaryDir(), "jvm-forking.properties");
 
           ModularPathsExtension modularPaths =
-              testSourceSet.getExtensions().getByType(ModularPathsExtension.class);
+              ((ModularPathsExtension)
+                  testSourceSet.getExtensions().getByName(MODULAR_PATHS_EXTENSION_NAME));
           task.dependsOn(modularPaths);
 
           // Add modular dependencies (and transitives) to module path.
