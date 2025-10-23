@@ -317,6 +317,8 @@ Improvements
 * GITHUB#15063: Use optimistic-with-checking KNN Query strategy for `DiversifyingChildren*` queries.
   (Ben Trent)
 
+* GITHUB#15356: Improve docs for 4 internal classes in geo package (Matt Baranowski)
+
 Optimizations
 ---------------------
 * GITHUB#14932: Switched to GroupVarInt Encoding for HNSW Graph edges, added backwards compatibility (Akira Lonske)
