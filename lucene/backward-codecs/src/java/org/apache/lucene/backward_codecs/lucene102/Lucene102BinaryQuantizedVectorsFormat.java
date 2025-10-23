@@ -89,11 +89,11 @@ import org.apache.lucene.index.SegmentWriteState;
  */
 public class Lucene102BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
 
-  public static final byte QUERY_BITS = 4;
-  public static final byte INDEX_BITS = 1;
+  static final byte QUERY_BITS = 4;
+  static final byte INDEX_BITS = 1;
 
-  public static final String BINARIZED_VECTOR_COMPONENT = "BVEC";
-  public static final String NAME = "Lucene102BinaryQuantizedVectorsFormat";
+  static final String BINARIZED_VECTOR_COMPONENT = "BVEC";
+  static final String NAME = "Lucene102BinaryQuantizedVectorsFormat";
 
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
@@ -103,10 +103,11 @@ public class Lucene102BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
   static final String VECTOR_DATA_EXTENSION = "veb";
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
+  /** The raw (unquantized) vector format used to read the original vectors. */
   protected static final FlatVectorsFormat rawVectorFormat =
       new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
-  protected static final Lucene102BinaryFlatVectorsScorer scorer =
+  private static final Lucene102BinaryFlatVectorsScorer scorer =
       new Lucene102BinaryFlatVectorsScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   /** Creates a new instance with the default number of vectors per cluster. */

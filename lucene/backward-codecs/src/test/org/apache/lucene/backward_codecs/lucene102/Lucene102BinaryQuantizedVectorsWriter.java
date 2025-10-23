@@ -70,7 +70,7 @@ class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   private final List<FieldWriter> fields = new ArrayList<>();
   private final IndexOutput meta, binarizedVectorData;
   private final FlatVectorsWriter rawVectorDelegate;
-  private final Lucene102BinaryFlatVectorsScorer vectorsScorer;
+  private final Lucene102RWBinaryFlatVectorsScorer vectorsScorer;
   private boolean finished;
 
   /**
@@ -79,7 +79,7 @@ class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
    * @param vectorsScorer the scorer to use for scoring vectors
    */
   protected Lucene102BinaryQuantizedVectorsWriter(
-      Lucene102BinaryFlatVectorsScorer vectorsScorer,
+      Lucene102RWBinaryFlatVectorsScorer vectorsScorer,
       FlatVectorsWriter rawVectorDelegate,
       SegmentWriteState state)
       throws IOException {

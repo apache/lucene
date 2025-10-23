@@ -41,7 +41,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  */
 public class Lucene102HnswBinaryQuantizedVectorsFormat extends KnnVectorsFormat {
 
-  public static final String NAME = "Lucene102HnswBinaryQuantizedVectorsFormat";
+  static final String NAME = "Lucene102HnswBinaryQuantizedVectorsFormat";
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
@@ -60,22 +60,15 @@ public class Lucene102HnswBinaryQuantizedVectorsFormat extends KnnVectorsFormat 
   protected static final FlatVectorsFormat flatVectorsFormat =
       new Lucene102BinaryQuantizedVectorsFormat();
 
+  /** Number of workers (threads) that will be used when doing merge. */
   protected final int numMergeWorkers;
+
+  /** The {@link TaskExecutor} that will be used to do merge. */
   protected final TaskExecutor mergeExec;
 
   /** Constructs a format using default graph construction parameters */
   public Lucene102HnswBinaryQuantizedVectorsFormat() {
     this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, null);
-  }
-
-  /**
-   * Constructs a format using the given graph construction parameters.
-   *
-   * @param maxConn the maximum number of connections to a node in the HNSW graph
-   * @param beamWidth the size of the queue maintained during graph construction.
-   */
-  public Lucene102HnswBinaryQuantizedVectorsFormat(int maxConn, int beamWidth) {
-    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null);
   }
 
   /**

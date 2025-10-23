@@ -65,6 +65,14 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
   private final FlatVectorsReader rawVectorsReader;
   private final Lucene102BinaryFlatVectorsScorer vectorScorer;
 
+  /**
+   * Creates a new reader for binary quantized vectors.
+   *
+   * @param state the segment read state
+   * @param rawVectorsReader the reader for the raw (non-quantized) vectors
+   * @param vectorsScorer the scorer for binary quantized vectors
+   * @throws IOException if an I/O error occurs
+   */
   public Lucene102BinaryQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,
@@ -274,7 +282,7 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
     return KnnVectorsReader.mergeOffHeapByteSizeMaps(raw, quant);
   }
 
-  public float[] getCentroid(String field) {
+  float[] getCentroid(String field) {
     FieldEntry fieldEntry = fields.get(field);
     if (fieldEntry != null) {
       return fieldEntry.centroid;

@@ -17,13 +17,18 @@
 package org.apache.lucene.backward_codecs.lucene102;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.index.SegmentWriteState;
 
 public class Lucene102RWBinaryQuantizedVectorsFormat extends Lucene102BinaryQuantizedVectorsFormat {
+
+  private static final Lucene102RWBinaryFlatVectorsScorer rwScorer =
+      new Lucene102RWBinaryFlatVectorsScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
+
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene102BinaryQuantizedVectorsWriter(
-        scorer, rawVectorFormat.fieldsWriter(state), state);
+        rwScorer, rawVectorFormat.fieldsWriter(state), state);
   }
 }
