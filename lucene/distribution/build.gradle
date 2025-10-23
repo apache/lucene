@@ -15,12 +15,11 @@
  * limitations under the License.
  */
 
-
-import org.apache.lucene.gradle.plugins.gitinfo.GitInfoExtension
-
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import org.apache.lucene.gradle.plugins.gitinfo.GitInfoExtension
 import org.apache.lucene.gradle.plugins.misc.QuietExec
+import org.apache.lucene.gradle.plugins.publishing.ConfigureMavenPublishingPlugin
 
 plugins {
   id 'signing'
@@ -29,12 +28,7 @@ plugins {
 // This project puts together the Lucene "distribution", assembling bits and pieces
 // from across the project structure into release artifacts.
 
-Provider<Boolean> signOption = buildOptions.addBooleanOption("sign", "Sign assembled distribution artifacts.", false)
-
-ext {
-  releaseDir = file("${buildDir}/release")
-  withSignedArtifacts = signOption.get()
-}
+def releaseDir = project.layout.buildDirectory.dir("release")
 
 // Collect git revision.
 GitInfoExtension gitInfoExt = rootProject.extensions.getByName("gitinfo")
@@ -73,12 +67,8 @@ tasks.register("assembleSourceTgz", QuietExec, {
   ]
 })
 
-
 // Prepare the "binary" distribution artifact.
 apply from: buildscript.sourceFile.toPath().resolveSibling("binary-release.gradle")
-
-// Configure maven artifact collection to a local build folder (required to collect artifacts for the release).
-apply from: buildscript.sourceFile.toPath().resolveSibling("collect-maven-artifacts.gradle")
 
 // Configure release artifact signing.
 tasks.register("signReleaseArchives", Sign, {
@@ -90,7 +80,6 @@ tasks.register("signReleaseArchives", Sign, {
   sign sourceTgzFile.get().asFile
 })
 
-
 // Set up the HTML-rendered "changes" distribution artifact by linking to documentation's output.
 configurations {
   changesHtml
@@ -100,21 +89,19 @@ dependencies {
   changesHtml project(path: ":lucene:documentation", configuration: "changesHtml")
 }
 
-
 // Compute checksums for release archives.
 tasks.register("computeChecksums", org.apache.lucene.gradle.Checksum, {
   files = objects.fileCollection()
   [
     tasks.assembleSourceTgz,
     tasks.assembleBinaryTgz,
-  ].each { dep ->
+  ].each {dep ->
     dependsOn dep
     files += dep.outputs.files
   }
 
   outputDir = file("${buildDir}/checksums")
 })
-
 
 tasks.register("prepareGitRev", {
   Provider<RegularFile> outputFile = project.layout.buildDirectory.file(".gitrev")
@@ -126,7 +113,6 @@ tasks.register("prepareGitRev", {
     Files.writeString(outputFile.get().asFile.toPath(), gitRev.get(), StandardCharsets.UTF_8)
   }
 })
-
 
 // Assemble everything needed in the release folder structure.
 tasks.register("assembleRelease", Sync, {
@@ -147,13 +133,14 @@ tasks.register("assembleRelease", Sync, {
   from tasks.computeChecksums
 
   // Conditionally, attach signatures of all the release archives.
-  if (project.ext.withSignedArtifacts) {
+  Provider<Boolean> signOption = buildOptions.getOption(ConfigureMavenPublishingPlugin.OPT_SIGN)
+      .asBooleanProvider()
+  if (signOption.get()) {
     from tasks.signReleaseArchives
   }
 
   into releaseDir
 })
-
 
 // Add the description and task group to some of the tasks that make
 // sense at the user-level help.

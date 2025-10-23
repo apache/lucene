@@ -19,7 +19,7 @@
 // in a separate script.
 
 configure(project(":lucene:distribution")) {
-  def packageBaseName = "${buildDir}/packages/lucene-${version}"
+  def packageBaseName = project.layout.buildDirectory.dir("packages/lucene-${version}").get().asFile.toString()
 
   // Prepare site documentation dependency for inclusion.
   configurations {
@@ -32,15 +32,17 @@ configure(project(":lucene:distribution")) {
     binaryDirForTests
   }
 
-  dependencies { DependencyHandler handler ->
+  dependencies {
     docs project(path: ':lucene:documentation', configuration: 'site')
 
     // Maven-published submodule JARs are part of the binary distribution.
     // We don't copy their transitive dependencies.
-    def binaryModules = rootProject.ext.mavenProjects.findAll { p -> !(p.path in [
-      // Placed in a separate folder (module layer conflicts).
-      ":lucene:test-framework",
-    ]) }
+    def binaryModules = buildGlobals.publishedProjects.findAll {p ->
+      !(p.path in [
+          // Placed in a separate folder (module layer conflicts).
+          ":lucene:test-framework",
+      ])
+    }
     for (Project module : binaryModules) {
       jars(module, {
         transitive = false
@@ -66,7 +68,7 @@ configure(project(":lucene:distribution")) {
     }
   }
 
-  task assembleBinaryTgz(type: Tar) {
+  def assembleBinaryTgz = tasks.register("assembleBinaryTgz", Tar, {
     description = "Assemble binary Lucene artifact as a .tgz file."
 
     archiveFileName = packageBaseName + ".tgz"
@@ -76,26 +78,27 @@ configure(project(":lucene:distribution")) {
     compression = Compression.GZIP
 
     // Internal archive folder for all files.
-    into "lucene-${rootProject.version}/"
-  }
+    into("lucene-${rootProject.version}/")
+  })
 
-  task assembleBinaryDirForTests(type: Sync) {
+  def binaryDestinationDir = file("${packageBaseName}-itests")
+  def assembleBinaryDirForTests = tasks.register("assembleBinaryDirForTests", Sync, {
     description = "Assemble a subset of the binary Lucene distribution as an expanded directory for tests."
-    destinationDir = file("${packageBaseName}-itests")
-  }
+    destinationDir = binaryDestinationDir
+  })
 
   artifacts {
-    binaryDirForTests tasks.assembleBinaryDirForTests.destinationDir, {
-      builtBy tasks.assembleBinaryDirForTests
+    binaryDirForTests binaryDestinationDir, {
+      builtBy assembleBinaryDirForTests
     }
   }
 
   // Configure distribution content for archives and stand-alone directories.
   // This is split into binaries and other artifacts to speed up distribution
   // tests.
-  Closure<Void> distributionBinaryContent = { AbstractCopyTask task ->
+  Closure<Void> distributionBinaryContent = {AbstractCopyTask task ->
     // Manually correct posix permissions (matters when assembling archives on Windows).
-    filesMatching(["**/*.sh", "**/*.bat"]) { copy ->
+    filesMatching(["**/*.sh", "**/*.bat"]) {copy ->
       copy.permissions {
         unix("755")
       }
@@ -120,7 +123,7 @@ configure(project(":lucene:distribution")) {
     })
   }
 
-  Closure<Void> distributionOtherContent = { AbstractCopyTask task ->
+  Closure<Void> distributionOtherContent = {AbstractCopyTask task ->
     // Cherry-pick certain files from the root.
     from(project(':').projectDir, {
       include "LICENSE.txt"
@@ -142,12 +145,7 @@ configure(project(":lucene:distribution")) {
     })
   }
 
-  [tasks.assembleBinaryTgz].each { Task task ->
-    task.configure distributionBinaryContent
-    task.configure distributionOtherContent
-  }
-
-  [tasks.assembleBinaryDirForTests].each { Task task ->
-    task.configure distributionBinaryContent
-  }
+  assembleBinaryTgz.configure(distributionBinaryContent)
+  assembleBinaryTgz.configure(distributionOtherContent)
+  assembleBinaryDirForTests.configure(distributionBinaryContent)
 }
