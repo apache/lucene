@@ -45,6 +45,7 @@ public class JavaProjectConventionsPlugin extends LuceneGradlePlugin {
     plugins.apply(JavaFolderLayoutPlugin.class);
     plugins.apply(JavacConfigurationPlugin.class);
     plugins.apply(JarManifestConfigurationPlugin.class);
+    plugins.apply(ModularPathsPlugin.class);
     plugins.apply(TestsAndRandomizationPlugin.class);
     plugins.apply(TestsBeastingPlugin.class);
     plugins.apply(TestsSummaryPlugin.class);

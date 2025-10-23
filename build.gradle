@@ -24,7 +24,6 @@ plugins {
   id "lucene.root-project.setup"
   id "lucene.java-projects.conventions"
 
-  id "lucene.java.modules"
   id "lucene.validation.jar-checks"
 
   id "lucene.publications.maven"

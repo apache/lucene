@@ -123,8 +123,8 @@ public class EcjLintPlugin extends LuceneGradlePlugin {
     args.addAll(List.of("-properties", javadocPrefsPath.toAbsolutePath().toString()));
 
     // We depend on modular paths.
-    ModularPathsExtensionApi modularPaths =
-        (ModularPathsExtensionApi) sourceSet.getExtensions().getByName("modularPathsForEcj");
+    ModularPathsExtension modularPaths =
+        (ModularPathsExtension) sourceSet.getExtensions().getByName("modularPathsForEcj");
     task.dependsOn(modularPaths);
 
     // Collect modular dependencies and their transitive dependencies to module path.
