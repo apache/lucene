@@ -30,8 +30,6 @@ plugins {
   id "lucene.publications.maven-to-nexus-releases"
   id "lucene.publications.maven-to-nexus-snapshots"
 
-  id "lucene.misc.pylucene"
-
   id "lucene.regenerate"
   id "lucene.regenerate.jflex"
   id "lucene.regenerate.forUtil"
