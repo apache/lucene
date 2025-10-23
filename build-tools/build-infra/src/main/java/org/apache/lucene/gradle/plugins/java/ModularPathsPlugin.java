@@ -216,19 +216,19 @@ public class ModularPathsPlugin extends LuceneGradlePlugin {
                   + project.getPath());
         }
       } else {
-        if (mainIsModular) {
-          // This combination is a potential candidate for patching the main sourceset's module with
-          // test classes. I could not resolve all the difficulties that arise when you try to do it
-          // though - either a separate module descriptor is needed that opens test packages, adds
-          // dependencies via requires clauses or a series of jvm arguments (--add-reads,
-          // --add-opens, etc.) has to be generated and maintained. This is  very low-level (ECJ
-          // doesn't support a full set of these instructions, for example).
-          //
-          // Fall back to classpath mode.
-        } else {
-          // This is the 'plain old classpath' mode: neither the main source set nor the test set
-          // are modular.
-        }
+        // if (mainIsModular) {
+        //   This combination is a potential candidate for patching the main sourceset's module with
+        //   test classes. I could not resolve all the difficulties that arise when you try to do it
+        //   though - either a separate module descriptor is needed that opens test packages, adds
+        //   dependencies via requires clauses or a series of jvm arguments (--add-reads,
+        //   --add-opens, etc.) has to be generated and maintained. This is  very low-level (ECJ
+        //   doesn't support a full set of these instructions, for example).
+        //
+        //   Fall back to classpath mode.
+        // } else {
+        //   This is the 'plain old classpath' mode: neither the main source set nor the test set
+        //   are modular.
+        // }
       }
     }
 
