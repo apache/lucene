@@ -21,11 +21,11 @@ import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.util.SloppyMath;
 
 /**
- * Internal 2D representation of a circle optimized for spatial query operations.
+ * Internal 2D representation of a circle for spatial query operations.
  *
  * <p>This class provides spatial logic for circle-based queries, converting high-level {@link
- * Circle} or {@link XYCircle} geometries into optimized 2D representations. It is used internally
- * by Lucene's spatial search implementation.
+ * Circle} or {@link XYCircle} geometries into 2D representations. It is used internally by Lucene's
+ * spatial search implementation.
  *
  * <p>Key Features:
  *
@@ -48,8 +48,8 @@ import org.apache.lucene.util.SloppyMath;
  *
  * <p>Usage:
  *
- * <p>This class is typically not instantiated directly by users. Instead, it is created through the
- * {@link Circle#toComponent2D()} or {@link XYCircle#toComponent2D()} methods:
+ * <p>This class is created through the {@link Circle#toComponent2D()} or {@link
+ * XYCircle#toComponent2D()} methods:
  *
  * <pre>{@code
  * // Geographic circle (lat/lon) - uses Haversin distance
@@ -84,7 +84,7 @@ import org.apache.lucene.util.SloppyMath;
  * <p>Performance Considerations:
  *
  * <ul>
- *   <li>Uses bounding box checks to quickly eliminate non-intersecting geometries
+ *   <li>Uses bounding box checks to eliminate non-intersecting geometries
  *   <li>Cartesian distance calculations are faster than Haversin (geographic) calculations
  *   <li>For geographic circles near poles or crossing the dateline, additional logic ensures
  *       correctness

@@ -29,11 +29,11 @@ import java.util.Objects;
 import org.apache.lucene.index.PointValues;
 
 /**
- * Internal 2D representation of a rectangle optimized for spatial query operations.
+ * Internal 2D representation of a rectangle for spatial query operations.
  *
  * <p>This class provides spatial logic for rectangle-based queries, converting high-level {@link
- * Rectangle} or {@link XYRectangle} geometries into optimized 2D representations. It is used
- * internally by Lucene's spatial search implementation for bounding box operations.
+ * Rectangle} or {@link XYRectangle} geometries into 2D representations. It is used internally by
+ * Lucene's spatial search implementation for bounding box operations.
  *
  * <p>Key Features:
  *
@@ -55,8 +55,8 @@ import org.apache.lucene.index.PointValues;
  *
  * <p>Usage:
  *
- * <p>Rectangle2D instances are typically created through the static {@link #create(Rectangle)} or
- * {@link #create(XYRectangle)} factory methods:
+ * <p>Rectangle2D instances are created through the static {@link #create(Rectangle)} or {@link
+ * #create(XYRectangle)} factory methods:
  *
  * <pre>{@code
  * // Geographic rectangle (lat/lon)
