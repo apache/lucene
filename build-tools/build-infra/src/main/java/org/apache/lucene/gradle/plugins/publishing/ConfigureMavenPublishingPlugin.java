@@ -52,9 +52,8 @@ public class ConfigureMavenPublishingPlugin extends LuceneGradlePlugin {
   public void apply(Project project) {
     applicableToRootProjectOnly(project);
 
-    Provider<Boolean> signOption =
-        getBuildOptions(project)
-            .addBooleanOption(OPT_SIGN, "Sign assembled distribution artifacts.", false);
+    getBuildOptions(project)
+        .addBooleanOption(OPT_SIGN, "Sign assembled distribution artifacts.", false);
 
     configureGpgSigning(project);
     getLuceneBuildGlobals(project).getPublishedProjects().forEach(this::configureMavenPublications);
