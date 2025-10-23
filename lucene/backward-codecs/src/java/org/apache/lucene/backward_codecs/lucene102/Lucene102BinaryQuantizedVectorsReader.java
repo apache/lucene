@@ -14,9 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene102;
+package org.apache.lucene.backward_codecs.lucene102;
 
-import static org.apache.lucene.codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.VECTOR_DATA_EXTENSION;
+import static org.apache.lucene.backward_codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.VECTOR_DATA_EXTENSION;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.discretize;
@@ -55,7 +55,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 
 /** Reader for binary quantized vectors in the Lucene 10.2 format. */
-class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
+public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
 
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene102BinaryQuantizedVectorsReader.class);
@@ -65,7 +65,7 @@ class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
   private final FlatVectorsReader rawVectorsReader;
   private final Lucene102BinaryFlatVectorsScorer vectorScorer;
 
-  Lucene102BinaryQuantizedVectorsReader(
+  public Lucene102BinaryQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,
       Lucene102BinaryFlatVectorsScorer vectorsScorer)
@@ -100,7 +100,7 @@ class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
           openDataInput(
               state,
               versionMeta,
-              Lucene102BinaryQuantizedVectorsFormat.VECTOR_DATA_EXTENSION,
+              VECTOR_DATA_EXTENSION,
               Lucene102BinaryQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
               // Quantized vectors are accessed randomly from their node ID stored in the HNSW
               // graph.

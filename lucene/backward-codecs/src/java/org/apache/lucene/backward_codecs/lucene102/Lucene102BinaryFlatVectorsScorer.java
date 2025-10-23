@@ -14,9 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene102;
+package org.apache.lucene.backward_codecs.lucene102;
 
-import static org.apache.lucene.codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.QUERY_BITS;
+import static org.apache.lucene.backward_codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.QUERY_BITS;
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 import static org.apache.lucene.index.VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
@@ -69,7 +69,7 @@ public class Lucene102BinaryFlatVectorsScorer implements FlatVectorsScorer {
       target = copy;
       byte[] initial = new byte[target.length];
       byte[] quantized = new byte[QUERY_BITS * binarizedVectors.discretizedDimensions() / 8];
-      OptimizedScalarQuantizer.QuantizationResult queryCorrections =
+      QuantizationResult queryCorrections =
           quantizer.scalarQuantize(target, initial, (byte) 4, centroid);
       transposeHalfByte(initial, quantized);
       return new RandomVectorScorer.AbstractRandomVectorScorer(binarizedVectors) {
@@ -153,15 +153,14 @@ public class Lucene102BinaryFlatVectorsScorer implements FlatVectorsScorer {
 
   static float quantizedScore(
       byte[] quantizedQuery,
-      OptimizedScalarQuantizer.QuantizationResult queryCorrections,
+      QuantizationResult queryCorrections,
       BinarizedByteVectorValues targetVectors,
       int targetOrd,
       VectorSimilarityFunction similarityFunction)
       throws IOException {
     byte[] binaryCode = targetVectors.vectorValue(targetOrd);
     float qcDist = VectorUtil.int4BitDotProduct(quantizedQuery, binaryCode);
-    OptimizedScalarQuantizer.QuantizationResult indexCorrections =
-        targetVectors.getCorrectiveTerms(targetOrd);
+    QuantizationResult indexCorrections = targetVectors.getCorrectiveTerms(targetOrd);
     float x1 = indexCorrections.quantizedComponentSum();
     float ax = indexCorrections.lowerInterval();
     // Here we assume `lx` is simply bit vectors, so the scaling isn't necessary

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene102;
+package org.apache.lucene.backward_codecs.lucene102;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
@@ -103,10 +103,10 @@ public class Lucene102BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
   static final String VECTOR_DATA_EXTENSION = "veb";
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
-  private static final FlatVectorsFormat rawVectorFormat =
+  protected static final FlatVectorsFormat rawVectorFormat =
       new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
-  private static final Lucene102BinaryFlatVectorsScorer scorer =
+  protected static final Lucene102BinaryFlatVectorsScorer scorer =
       new Lucene102BinaryFlatVectorsScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   /** Creates a new instance with the default number of vectors per cluster. */
@@ -116,8 +116,7 @@ public class Lucene102BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene102BinaryQuantizedVectorsWriter(
-        scorer, rawVectorFormat.fieldsWriter(state), state);
+    throw new UnsupportedOperationException("Old codecs may only be used for reading");
   }
 
   @Override

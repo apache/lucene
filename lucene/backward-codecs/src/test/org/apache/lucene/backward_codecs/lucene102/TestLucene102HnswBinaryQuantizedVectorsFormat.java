@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene102;
+package org.apache.lucene.backward_codecs.lucene102;
 
 import static java.lang.String.format;
 import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
@@ -50,7 +50,7 @@ import org.apache.lucene.util.SameThreadExecutorService;
 
 public class TestLucene102HnswBinaryQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
-  private static final KnnVectorsFormat FORMAT = new Lucene102HnswBinaryQuantizedVectorsFormat();
+  private static final KnnVectorsFormat FORMAT = new Lucene102RWHnswBinaryQuantizedVectorsFormat();
 
   @Override
   protected Codec getCodec() {
@@ -62,7 +62,7 @@ public class TestLucene102HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
         new FilterCodec("foo", Codec.getDefault()) {
           @Override
           public KnnVectorsFormat knnVectorsFormat() {
-            return new Lucene102HnswBinaryQuantizedVectorsFormat(10, 20, 1, null);
+            return new Lucene102RWHnswBinaryQuantizedVectorsFormat(10, 20, 1, null);
           }
         };
     String expectedPattern =
@@ -121,24 +121,26 @@ public class TestLucene102HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
   public void testLimits() {
     expectThrows(
         IllegalArgumentException.class,
-        () -> new Lucene102HnswBinaryQuantizedVectorsFormat(-1, 20));
-    expectThrows(
-        IllegalArgumentException.class, () -> new Lucene102HnswBinaryQuantizedVectorsFormat(0, 20));
-    expectThrows(
-        IllegalArgumentException.class, () -> new Lucene102HnswBinaryQuantizedVectorsFormat(20, 0));
+        () -> new Lucene102RWHnswBinaryQuantizedVectorsFormat(-1, 20));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new Lucene102HnswBinaryQuantizedVectorsFormat(20, -1));
+        () -> new Lucene102RWHnswBinaryQuantizedVectorsFormat(0, 20));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new Lucene102HnswBinaryQuantizedVectorsFormat(512 + 1, 20));
+        () -> new Lucene102RWHnswBinaryQuantizedVectorsFormat(20, 0));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new Lucene102HnswBinaryQuantizedVectorsFormat(20, 3201));
+        () -> new Lucene102RWHnswBinaryQuantizedVectorsFormat(20, -1));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new Lucene102RWHnswBinaryQuantizedVectorsFormat(512 + 1, 20));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new Lucene102RWHnswBinaryQuantizedVectorsFormat(20, 3201));
     expectThrows(
         IllegalArgumentException.class,
         () ->
-            new Lucene102HnswBinaryQuantizedVectorsFormat(
+            new Lucene102RWHnswBinaryQuantizedVectorsFormat(
                 20, 100, 1, new SameThreadExecutorService()));
   }
 
