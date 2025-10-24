@@ -17,6 +17,9 @@
 package org.apache.lucene.analysis.path;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
@@ -84,17 +87,28 @@ public class PathHierarchyTokenizer extends Tokenizer {
     }
     termAtt.resizeBuffer(bufferSize);
 
-    this.delimiter = delimiter;
+    this.delimiters = Set.of(delimiter);
     this.replacement = replacement;
     this.skip = skip;
     resultToken = new StringBuilder(bufferSize);
+  }
+
+  public PathHierarchyTokenizer(Set<Character> delimiters, char replacement, int skip) {
+    super(DEFAULT_TOKEN_ATTRIBUTE_FACTORY);
+    this.delimiters =
+        Objects.isNull(delimiters) || delimiters.isEmpty()
+            ? new HashSet<>(DEFAULT_DELIMITER)
+            : delimiters;
+    this.replacement = replacement;
+    this.skip = skip;
+    resultToken = new StringBuilder(DEFAULT_BUFFER_SIZE);
   }
 
   private static final int DEFAULT_BUFFER_SIZE = 1024;
   public static final char DEFAULT_DELIMITER = '/';
   public static final int DEFAULT_SKIP = 0;
 
-  private final char delimiter;
+  private Set<Character> delimiters;
   private final char replacement;
   private final int skip;
 
@@ -145,13 +159,13 @@ public class PathHierarchyTokenizer extends Tokenizer {
         added = true;
         skipped++;
         if (skipped > skip) {
-          termAtt.append(c == delimiter ? replacement : (char) c);
+          termAtt.append(delimiters.contains((char) c) ? replacement : (char) c);
           length++;
         } else {
           startPosition++;
         }
       } else {
-        if (c == delimiter) {
+        if (delimiters.contains((char) c)) {
           if (skipped > skip) {
             endDelimiter = true;
             break;
