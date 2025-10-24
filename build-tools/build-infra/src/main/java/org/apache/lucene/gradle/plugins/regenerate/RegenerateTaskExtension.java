@@ -38,6 +38,9 @@ public abstract class RegenerateTaskExtension {
    */
   public abstract SetProperty<String> getFollowedUpBy();
 
+  /** A list of tasks that should be skipped if the regeneration task is skipped. */
+  public abstract SetProperty<String> getIfSkippedAlsoSkip();
+
   /** A set of task input properties that should be ignored in checksum calculation. */
   public abstract SetProperty<String> getIgnoredInputs();
 

@@ -24,17 +24,17 @@ import org.apache.lucene.gradle.plugins.misc.QuietExec
 void addGenerateFromPythonTask(Project project, File genDir, String taskName, String pyScript, String javaFile) {
   project.getTasks().register(
       "regenerate" + taskName, QuietExec, {
-    description = "Regenerate " + javaFile + " using " + pyScript + " in " + genDir
+        description = "Regenerate " + javaFile + " using " + pyScript + " in " + genDir
 
-    def genScript = project.file("${genDir}/${pyScript}")
-    def genOutput = project.file("${genDir}/${javaFile}")
-    inputs.file genScript
-    outputs.file genOutput
+        def genScript = project.file("${genDir}/${pyScript}")
+        def genOutput = project.file("${genDir}/${javaFile}")
+        inputs.file genScript
+        outputs.file genOutput
 
-    workingDir = genDir
-    executable = buildGlobals.externalTool("python3")
-    args = ['-B', genScript.toString()]
-  })
+        workingDir = genDir
+        executable = buildGlobals.externalTool("python3")
+        args = ['-B', genScript.toString()]
+      })
 }
 
 configure(project(":lucene:core")) {

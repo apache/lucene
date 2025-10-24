@@ -193,6 +193,33 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
                     .forEach(other -> other.mustRunAfter(delegate));
               }
 
+              // configure explicit skipping of other tasks if they are listed
+              {
+                var shouldRerun = project.getObjects().property(Boolean.class);
+                shouldRerun.finalizeValueOnRead();
+
+                if (project.getGradle().getStartParameter().isRerunTasks()) {
+                  shouldRerun.set(true);
+                } else {
+                  shouldRerun.set(
+                      project
+                          .getProviders()
+                          .provider(
+                              () -> {
+                                var current = computeChecksummedEntries(delegate);
+                                var expected = loadChecksums(checksumsFile);
+                                return !current.equals(expected);
+                              }));
+                }
+
+                delegate.onlyIf(_ -> shouldRerun.get());
+                var taskNames = regenerateExt.getIfSkippedAlsoSkip().get();
+                project
+                    .getTasks()
+                    .matching(task -> taskNames.contains(task.getName()))
+                    .forEach(other -> other.onlyIf(_ -> shouldRerun.get()));
+              }
+
               // only run if the delegate ran and did the job successfully.
               t.onlyIf(
                   _ -> {
@@ -294,7 +321,7 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
     try {
       Files.createDirectories(checksumsFile.getParent());
       Files.writeString(
-          checksumsFile, JsonOutput.prettyPrint(JsonOutput.toJson(currentChecksums) + '\n'));
+          checksumsFile, JsonOutput.prettyPrint(JsonOutput.toJson(currentChecksums)) + '\n');
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
