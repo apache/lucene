@@ -176,6 +176,8 @@ Improvements
 
 * GITHUB#15332: Add PhraseQuery.Builder.setMaxTerms() method to limit the maximum number of terms and excessive memory use (linyunanit)
 
+* GITHUB#15356: Improve docs for 4 internal classes in geo package (Matt Baranowski)
+
 Optimizations
 ---------------------
 * GITHUB#15140: Optimize TopScoreDocCollector with TernaryLongHeap for improved performance over Binary-LongHeap. (Ramakrishna Chilaka)
@@ -316,8 +318,6 @@ Improvements
 
 * GITHUB#15063: Use optimistic-with-checking KNN Query strategy for `DiversifyingChildren*` queries.
   (Ben Trent)
-
-* GITHUB#15356: Improve docs for 4 internal classes in geo package (Matt Baranowski)
 
 Optimizations
 ---------------------
