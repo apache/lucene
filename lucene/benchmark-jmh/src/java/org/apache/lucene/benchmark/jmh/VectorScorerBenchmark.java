@@ -33,6 +33,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
@@ -91,6 +92,11 @@ public class VectorScorerBenchmark {
             .getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValues)
             .scorer();
     scorer.setScoringOrdinal(0);
+
+    // Pollute call site!
+    for (int i = 0; i < 10_000_000; i++) {
+      VectorUtil.dotProduct(vec1, vec2);
+    }
   }
 
   @TearDown
@@ -106,6 +112,17 @@ public class VectorScorerBenchmark {
   @Benchmark
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public float binaryDotProductMemSeg() throws IOException {
+    return scorer.score(1);
+  }
+
+  @Benchmark
+  @Fork(
+      jvmArgsPrepend = {
+        "--add-modules=jdk.incubator.vector",
+        "-XX:+UnlockDiagnosticVMOptions",
+        "-XX:CompilerDirectivesFile=lucene/benchmark-jmh/src/resources/vector-directives.json"
+      })
+  public float binaryDotProductMemSegWithVectorDirectives() throws IOException {
     return scorer.score(1);
   }
 
