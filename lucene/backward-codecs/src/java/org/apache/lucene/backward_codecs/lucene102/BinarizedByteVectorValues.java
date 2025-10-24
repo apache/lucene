@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene102;
+package org.apache.lucene.backward_codecs.lucene102;
 
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.discretize;
 
@@ -51,15 +51,15 @@ abstract class BinarizedByteVectorValues extends ByteVectorValues {
    * @return the corrective terms
    * @throws IOException if an I/O error occurs
    */
-  public abstract OptimizedScalarQuantizer.QuantizationResult getCorrectiveTerms(int vectorOrd)
+  abstract OptimizedScalarQuantizer.QuantizationResult getCorrectiveTerms(int vectorOrd)
       throws IOException;
 
   /**
    * @return the quantizer used to quantize the vectors
    */
-  public abstract OptimizedScalarQuantizer getQuantizer();
+  abstract OptimizedScalarQuantizer getQuantizer();
 
-  public abstract float[] getCentroid() throws IOException;
+  abstract float[] getCentroid() throws IOException;
 
   int discretizedDimensions() {
     return discretize(dimension(), 64);
@@ -71,7 +71,7 @@ abstract class BinarizedByteVectorValues extends ByteVectorValues {
    * @param query the query vector
    * @return a {@link VectorScorer} instance or null
    */
-  public abstract VectorScorer scorer(float[] query) throws IOException;
+  abstract VectorScorer scorer(float[] query) throws IOException;
 
   @Override
   public abstract BinarizedByteVectorValues copy() throws IOException;

@@ -14,33 +14,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene102;
+package org.apache.lucene.backward_codecs.lucene102;
 
-import static org.apache.lucene.codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.QUERY_BITS;
-import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 import static org.apache.lucene.index.VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
-import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.transposeHalfByte;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
-import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
-import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer.QuantizationResult;
 
 /** Vector scorer over binarized vector values */
-public class Lucene102BinaryFlatVectorsScorer implements FlatVectorsScorer {
-  private final FlatVectorsScorer nonQuantizedDelegate;
-  private static final float FOUR_BIT_SCALE = 1f / ((1 << 4) - 1);
+public class Lucene102RWBinaryFlatVectorsScorer extends Lucene102BinaryFlatVectorsScorer {
 
-  public Lucene102BinaryFlatVectorsScorer(FlatVectorsScorer nonQuantizedDelegate) {
-    this.nonQuantizedDelegate = nonQuantizedDelegate;
+  /**
+   * @param nonQuantizedDelegate the delegate scorer for non-quantized vectors
+   */
+  public Lucene102RWBinaryFlatVectorsScorer(FlatVectorsScorer nonQuantizedDelegate) {
+    super(nonQuantizedDelegate);
   }
 
   @Override
@@ -52,42 +47,6 @@ public class Lucene102BinaryFlatVectorsScorer implements FlatVectorsScorer {
           "getRandomVectorScorerSupplier(VectorSimilarityFunction,RandomAccessVectorValues) not implemented for binarized format");
     }
     return nonQuantizedDelegate.getRandomVectorScorerSupplier(similarityFunction, vectorValues);
-  }
-
-  @Override
-  public RandomVectorScorer getRandomVectorScorer(
-      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, float[] target)
-      throws IOException {
-    if (vectorValues instanceof BinarizedByteVectorValues binarizedVectors) {
-      OptimizedScalarQuantizer quantizer = binarizedVectors.getQuantizer();
-      float[] centroid = binarizedVectors.getCentroid();
-      // We make a copy as the quantization process mutates the input
-      float[] copy = ArrayUtil.copyOfSubArray(target, 0, target.length);
-      if (similarityFunction == COSINE) {
-        VectorUtil.l2normalize(copy);
-      }
-      target = copy;
-      byte[] initial = new byte[target.length];
-      byte[] quantized = new byte[QUERY_BITS * binarizedVectors.discretizedDimensions() / 8];
-      OptimizedScalarQuantizer.QuantizationResult queryCorrections =
-          quantizer.scalarQuantize(target, initial, (byte) 4, centroid);
-      transposeHalfByte(initial, quantized);
-      return new RandomVectorScorer.AbstractRandomVectorScorer(binarizedVectors) {
-        @Override
-        public float score(int node) throws IOException {
-          return quantizedScore(
-              quantized, queryCorrections, binarizedVectors, node, similarityFunction);
-        }
-      };
-    }
-    return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
-  }
-
-  @Override
-  public RandomVectorScorer getRandomVectorScorer(
-      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, byte[] target)
-      throws IOException {
-    return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
 
   RandomVectorScorerSupplier getRandomVectorScorerSupplier(
@@ -153,15 +112,14 @@ public class Lucene102BinaryFlatVectorsScorer implements FlatVectorsScorer {
 
   static float quantizedScore(
       byte[] quantizedQuery,
-      OptimizedScalarQuantizer.QuantizationResult queryCorrections,
+      QuantizationResult queryCorrections,
       BinarizedByteVectorValues targetVectors,
       int targetOrd,
       VectorSimilarityFunction similarityFunction)
       throws IOException {
     byte[] binaryCode = targetVectors.vectorValue(targetOrd);
     float qcDist = VectorUtil.int4BitDotProduct(quantizedQuery, binaryCode);
-    OptimizedScalarQuantizer.QuantizationResult indexCorrections =
-        targetVectors.getCorrectiveTerms(targetOrd);
+    QuantizationResult indexCorrections = targetVectors.getCorrectiveTerms(targetOrd);
     float x1 = indexCorrections.quantizedComponentSum();
     float ax = indexCorrections.lowerInterval();
     // Here we assume `lx` is simply bit vectors, so the scaling isn't necessary

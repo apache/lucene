@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene102;
+package org.apache.lucene.backward_codecs.lucene102;
 
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.discretize;
 
