@@ -397,6 +397,27 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
   }
 
   @Override
+  public void writeInts(int[] src, int offset, int length) {
+    while (length > 0) {
+      if (!currentBlock.hasRemaining()) {
+        appendBlock();
+      }
+
+      int intsToWrite = Math.min(currentBlock.remaining() / Integer.BYTES, length);
+      if (intsToWrite > 0) {
+        currentBlock.asIntBuffer().put(src, offset, intsToWrite);
+        currentBlock.position(currentBlock.position() + intsToWrite * Integer.BYTES);
+        offset += intsToWrite;
+        length -= intsToWrite;
+      } else {
+        // Less than 4 bytes remaining, write individual int
+        writeInt(src[offset++]);
+        length--;
+      }
+    }
+  }
+
+  @Override
   public void writeLong(long v) {
     try {
       if (currentBlock.remaining() >= Long.BYTES) {

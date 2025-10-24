@@ -73,6 +73,12 @@ public class OutputStreamIndexOutput extends IndexOutput {
   }
 
   @Override
+  public void writeInts(int[] src, int offset, int length) throws IOException {
+    os.writeInts(src, offset, length);
+    bytesWritten += (long) length * Integer.BYTES;
+  }
+
+  @Override
   public void writeLong(long i) throws IOException {
     os.writeLong(i);
     bytesWritten += Long.BYTES;
@@ -128,6 +134,29 @@ public class OutputStreamIndexOutput extends IndexOutput {
       flushIfNeeded(Integer.BYTES);
       BitUtil.VH_LE_INT.set(buf, count, i);
       count += Integer.BYTES;
+    }
+
+    void writeInts(int[] src, int offset, int length) throws IOException {
+      int remaining = length;
+      int srcPos = offset;
+
+      while (remaining > 0) {
+        int available = (buf.length - count) / Integer.BYTES;
+        int batch = Math.min(remaining, available);
+
+        if (batch == 0) {
+          flush();
+          continue;
+        }
+
+        for (int i = 0; i < batch; i++) {
+          BitUtil.VH_LE_INT.set(buf, count, src[srcPos + i]);
+          count += Integer.BYTES;
+        }
+
+        srcPos += batch;
+        remaining -= batch;
+      }
     }
 
     void writeLong(long i) throws IOException {

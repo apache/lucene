@@ -119,6 +119,12 @@ public final class ByteBuffersIndexOutput extends IndexOutput {
   }
 
   @Override
+  public void writeInts(int[] src, int offset, int length) {
+    ensureOpen();
+    delegate.writeInts(src, offset, length);
+  }
+
+  @Override
   public void writeShort(short i) throws IOException {
     ensureOpen();
     delegate.writeShort(i);

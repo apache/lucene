@@ -203,6 +203,8 @@ Optimizations
 * GITHUB#15343: Ensure that `AcceptDocs#cost()` only ever calls `BitSets#cardinality()`
   once per instance to avoid redundant computation. (Ben Trent)
 
+* GITHUB#15358: Optimize bulk integer encoding with writeInts for better performance. (Ramakrishna Chilaka)
+
 * GITHUB#14963: Bypass HNSW graph building for tiny segments. (Shubham Chaudhary, Ben Trent)
 
 Bug Fixes

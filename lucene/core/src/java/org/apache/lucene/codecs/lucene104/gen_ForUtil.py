@@ -111,7 +111,7 @@ public final class ForUtil {
   private final int[] tmp = new int[BLOCK_SIZE];
 
   /** Encode 256 integers from {@code ints} into {@code out}. */
-  void encode(int[] ints, int bitsPerValue, DataOutput out) throws IOException {
+  public void encode(int[] ints, int bitsPerValue, DataOutput out) throws IOException {
     final int nextPrimitive;
     if (bitsPerValue <= 8) {
       nextPrimitive = 8;
@@ -125,10 +125,15 @@ public final class ForUtil {
     encode(ints, bitsPerValue, nextPrimitive, out, tmp);
   }
 
-  static void encode(int[] ints, int bitsPerValue, int primitiveSize, DataOutput out, int[] tmp) throws IOException {
+  static void encode(int[] ints, int bitsPerValue, int primitiveSize, DataOutput out, int[] tmp)
+      throws IOException {
     final int numInts = BLOCK_SIZE * primitiveSize / Integer.SIZE;
 
     final int numIntsPerShift = bitsPerValue * 8;
+
+    // Precompute masks to avoid array lookups
+    final int[] masks = (primitiveSize == 8) ? MASKS8 : (primitiveSize == 16) ? MASKS16 : MASKS32;
+
     int idx = 0;
     int shift = primitiveSize - bitsPerValue;
     for (int i = 0; i < numIntsPerShift; ++i) {
@@ -141,14 +146,7 @@ public final class ForUtil {
     }
 
     final int remainingBitsPerInt = shift + bitsPerValue;
-    final int maskRemainingBitsPerInt;
-    if (primitiveSize == 8) {
-      maskRemainingBitsPerInt = MASKS8[remainingBitsPerInt];
-    } else if (primitiveSize == 16) {
-      maskRemainingBitsPerInt = MASKS16[remainingBitsPerInt];
-    } else {
-      maskRemainingBitsPerInt = MASKS32[remainingBitsPerInt];
-    }
+    final int maskRemainingBitsPerInt = masks[remainingBitsPerInt];
 
     int tmpIdx = 0;
     int remainingBitsPerValue = bitsPerValue;
@@ -161,26 +159,15 @@ public final class ForUtil {
           remainingBitsPerValue = bitsPerValue;
         }
       } else {
-        final int mask1, mask2;
-        if (primitiveSize == 8) {
-          mask1 = MASKS8[remainingBitsPerValue];
-          mask2 = MASKS8[remainingBitsPerInt - remainingBitsPerValue];
-        } else if (primitiveSize == 16) {
-          mask1 = MASKS16[remainingBitsPerValue];
-          mask2 = MASKS16[remainingBitsPerInt - remainingBitsPerValue];
-        } else {
-          mask1 = MASKS32[remainingBitsPerValue];
-          mask2 = MASKS32[remainingBitsPerInt - remainingBitsPerValue];
-        }
+        final int mask1 = masks[remainingBitsPerValue];
+        final int mask2 = masks[remainingBitsPerInt - remainingBitsPerValue];
         tmp[tmpIdx] |= (ints[idx++] & mask1) << (remainingBitsPerInt - remainingBitsPerValue);
         remainingBitsPerValue = bitsPerValue - remainingBitsPerInt + remainingBitsPerValue;
         tmp[tmpIdx++] |= (ints[idx] >>> remainingBitsPerValue) & mask2;
       }
     }
 
-    for (int i = 0; i < numIntsPerShift; ++i) {
-      out.writeInt(tmp[i]);
-    }
+    out.writeInts(tmp, 0, numIntsPerShift);
   }
 
   /** Number of bytes required to encode 256 integers of {@code bitsPerValue} bits per value. */
