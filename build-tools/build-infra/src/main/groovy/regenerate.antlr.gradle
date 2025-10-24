@@ -16,7 +16,7 @@
  */
 
 //
-// Regenerate antl4 grammars.
+// Regenerate antlr4 grammars.
 //
 
 configure(project(":lucene:expressions")) {

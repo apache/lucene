@@ -24,10 +24,10 @@ plugins {
   id "lucene.root-project.setup"
 
   // TODO: move to java.
+  id 'regenerate.forUtil'
+  id 'regenerate.antlr'
+
   id "lucene.validation.jar-checks"
 }
-
-// apply code/source regeneration scripts.
-apply from: file("gradle/regenerate/regenerate-antlr.gradle")
 
 description = 'Grandparent project for Apache Lucene Core'

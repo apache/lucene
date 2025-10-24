@@ -156,6 +156,19 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
             taskPrefix + "ChecksumSave",
             t -> {
               var delegate = taskProvider.get();
+
+              // Check delegate's sanity.
+              if (delegate.getGroup() != null && !delegate.getGroup().isBlank()) {
+                throw new GradleException(
+                    "Internal regeneration tasks must not set task.group: " + delegate.getPath());
+              }
+              delegate.setGroup(REGEN_TASKS_GROUP);
+
+              if (delegate.getDescription() == null || delegate.getDescription().isBlank()) {
+                throw new GradleException(
+                    "Internal regeneration tasks must set task.description: " + delegate.getPath());
+              }
+
               RegenerateTaskExtension regenerateExt =
                   delegate.getExtensions().getByType(RegenerateTaskExtension.class);
 
