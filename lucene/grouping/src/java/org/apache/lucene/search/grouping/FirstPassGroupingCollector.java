@@ -23,6 +23,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.TreeSet;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Pruning;
@@ -50,9 +51,10 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
   private final LeafFieldComparator[] leafComparators;
   private final int[] reversed;
   private final int topNGroups;
-  private final boolean needsScores;
   private final HashMap<T, CollectedSearchGroup<T>> groupMap;
   private final int compIDXEnd;
+  private final ScoreMode scoreMode;
+  private final boolean canSetMinScore;
 
   // Set once we reach topNGroups unique groups:
   /**
@@ -62,6 +64,9 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
 
   private int docBase;
   private int spareSlot;
+  private Scorable scorer;
+  private int bottomSlot;
+  private float minCompetitiveScore;
 
   /**
    * Create the first pass collector.
@@ -104,7 +109,6 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
     // and specialize it?
 
     this.topNGroups = topNGroups;
-    this.needsScores = groupSort.needsScores();
     final SortField[] sortFields = groupSort.getSort();
     comparators = new FieldComparator<?>[sortFields.length];
     leafComparators = new LeafFieldComparator[sortFields.length];
@@ -113,10 +117,25 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
     for (int i = 0; i < sortFields.length; i++) {
       final SortField sortField = sortFields[i];
 
+      final Pruning pruning;
+      if (i == 0) {
+        pruning = compIDXEnd >= 0 ? Pruning.GREATER_THAN : Pruning.GREATER_THAN_OR_EQUAL_TO;
+      } else {
+        pruning = Pruning.NONE;
+      }
+
       // use topNGroups + 1 so we have a spare slot to use for comparing (tracked by
       // this.spareSlot):
-      comparators[i] = sortField.getComparator(topNGroups + 1, Pruning.NONE);
+      comparators[i] = sortField.getComparator(topNGroups + 1, pruning);
       reversed[i] = sortField.getReverse() ? -1 : 1;
+    }
+
+    if (SortField.FIELD_SCORE.equals(sortFields[0]) == true) {
+      scoreMode = ScoreMode.TOP_SCORES;
+      canSetMinScore = true;
+    } else {
+      scoreMode = groupSort.needsScores() ? ScoreMode.TOP_DOCS_WITH_SCORES : ScoreMode.TOP_DOCS;
+      canSetMinScore = false;
     }
 
     spareSlot = topNGroups;
@@ -125,7 +144,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
 
   @Override
   public ScoreMode scoreMode() {
-    return needsScores ? ScoreMode.COMPLETE : ScoreMode.COMPLETE_NO_SCORES;
+    return scoreMode;
   }
 
   /**
@@ -176,10 +195,12 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
 
   @Override
   public void setScorer(Scorable scorer) throws IOException {
+    this.scorer = scorer;
     groupSelector.setScorer(scorer);
     for (LeafFieldComparator comparator : leafComparators) {
       comparator.setScorer(scorer);
     }
+    setMinCompetitiveScore(scorer);
   }
 
   private boolean isCompetitive(int doc) throws IOException {
@@ -262,6 +283,9 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
         // number of groups; from here on we will drop
         // bottom group when we insert new one:
         buildSortedSet();
+
+        // Allow pruning for compatible leaf comparators.
+        leafComparators[0].setHitsThresholdReached();
       }
 
     } else {
@@ -286,9 +310,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       assert orderedGroups.size() == topNGroups;
 
       final int lastComparatorSlot = orderedGroups.last().comparatorSlot;
-      for (LeafFieldComparator fc : leafComparators) {
-        fc.setBottom(lastComparatorSlot);
-      }
+      setBottomSlot(lastComparatorSlot);
     }
   }
 
@@ -344,11 +366,14 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       // If we changed the value of the last group, or changed which group was last, then update
       // bottom:
       if (group == newLast || prevLast != newLast) {
-        for (LeafFieldComparator fc : leafComparators) {
-          fc.setBottom(newLast.comparatorSlot);
-        }
+        setBottomSlot(newLast.comparatorSlot);
       }
     }
+  }
+
+  @Override
+  public DocIdSetIterator competitiveIterator() throws IOException {
+    return leafComparators[0].competitiveIterator();
   }
 
   private void buildSortedSet() throws IOException {
@@ -372,13 +397,12 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
     orderedGroups.addAll(groupMap.values());
     assert orderedGroups.size() > 0;
 
-    for (LeafFieldComparator fc : leafComparators) {
-      fc.setBottom(orderedGroups.last().comparatorSlot);
-    }
+    setBottomSlot(orderedGroups.last().comparatorSlot);
   }
 
   @Override
   protected void doSetNextReader(LeafReaderContext readerContext) throws IOException {
+    minCompetitiveScore = 0f;
     docBase = readerContext.docBase;
     for (int i = 0; i < comparators.length; i++) {
       leafComparators[i] = comparators[i].getLeafComparator(readerContext);
@@ -395,5 +419,26 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
 
   private boolean isGroupMapFull() {
     return groupMap.size() >= topNGroups;
+  }
+
+  private void setBottomSlot(final int bottomSlot) throws IOException {
+    for (LeafFieldComparator fc : leafComparators) {
+      fc.setBottom(bottomSlot);
+    }
+
+    this.bottomSlot = bottomSlot;
+    setMinCompetitiveScore(scorer);
+  }
+
+  private void setMinCompetitiveScore(final Scorable scorer) throws IOException {
+    if (canSetMinScore == false || isGroupMapFull() == false) {
+      return;
+    }
+
+    final float minScore = (float) comparators[0].value(bottomSlot);
+    if (minScore > minCompetitiveScore) {
+      scorer.setMinCompetitiveScore(minScore);
+      minCompetitiveScore = minScore;
+    }
   }
 }
