@@ -32,7 +32,9 @@ import org.apache.lucene.gradle.plugins.hacks.WipeGradleTempPlugin;
 import org.apache.lucene.gradle.plugins.help.BuildOptionGroupsPlugin;
 import org.apache.lucene.gradle.plugins.ide.EclipseSupportPlugin;
 import org.apache.lucene.gradle.plugins.ide.IdeaSupportPlugin;
+import org.apache.lucene.gradle.plugins.java.JavaProjectConventionsPlugin;
 import org.apache.lucene.gradle.plugins.licenses.CheckLicensesPlugin;
+import org.apache.lucene.gradle.plugins.publishing.ConfigureMavenPublishingPlugin;
 import org.apache.lucene.gradle.plugins.regenerate.RegenerateTasksSupportPlugin;
 import org.apache.lucene.gradle.plugins.spotless.GradleGroovyFormatPlugin;
 import org.gradle.api.Project;
@@ -89,6 +91,10 @@ public class RootProjectSetupPlugin extends LuceneGradlePlugin {
     plugins.apply(DumpGradleStateOnStalledBuildsPlugin.class);
 
     plugins.apply(DocumentationConfigPlugin.class);
+
+    // Apply Java project conventions
+    plugins.apply(JavaProjectConventionsPlugin.class);
+    plugins.apply(ConfigureMavenPublishingPlugin.class);
 
     // Apply more convention plugins to all projects.
     rootProject

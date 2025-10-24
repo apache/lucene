@@ -18,30 +18,16 @@ import org.apache.lucene.gradle.plugins.publishing.ConfigureMavenPublishingPlugi
  */
 
 plugins {
-  // Apply build plugins from the composite build-infra project.
-  // The order of plugins does matter (most of the time).
-  id "lucene.root-project.check-environment"
-
   id "base"
+
+  id "lucene.root-project.check-environment"
   id "lucene.root-project.setup"
-  id "lucene.java-projects.conventions"
 
+  // TODO: move to java.
   id "lucene.validation.jar-checks"
-
-  id "lucene.regenerate"
-  id "lucene.regenerate.jflex"
-  id "lucene.regenerate.forUtil"
-  id "lucene.regenerate.moman"
-  id "lucene.regenerate.kuromoji"
-  id "lucene.regenerate.nori"
-  id "lucene.regenerate.icu"
-  id "lucene.regenerate.javacc"
-  id "lucene.regenerate.antlr"
-  id "lucene.regenerate.unicode-test-classes"
-  id "lucene.regenerate.snowball"
 }
 
-// configure publishing defaults.
-plugins.apply(ConfigureMavenPublishingPlugin.class);
+// apply code/source regeneration scripts.
+apply from: file("gradle/regenerate/regenerate-antlr.gradle")
 
 description = 'Grandparent project for Apache Lucene Core'

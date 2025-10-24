@@ -15,7 +15,9 @@
  * limitations under the License.
  */
 
-import org.apache.lucene.gradle.plugins.help.ExecOperationsProvider
+//
+// Regenerate antl4 grammars.
+//
 
 configure(project(":lucene:expressions")) {
   configurations {
@@ -26,22 +28,21 @@ configure(project(":lucene:expressions")) {
     antlr deps.antlr.core
   }
 
-  task generateAntlrInternal() {
+  tasks.register("regenerateAntlr", {
     description = "Regenerate Javascript.g4"
-    group = "generation"
 
     dependsOn configurations.antlr
 
     def generatedPatterns = [
-      "**/JavascriptBaseVisitor.java",
-      "**/JavascriptLexer.java",
-      "**/JavascriptParser.java",
-      "**/JavascriptVisitor.java",
+        "**/JavascriptBaseVisitor.java",
+        "**/JavascriptLexer.java",
+        "**/JavascriptParser.java",
+        "**/JavascriptVisitor.java",
     ]
 
     def sourceDir = "src/java/org/apache/lucene/expressions/js"
     def inputFiles = file("$sourceDir/Javascript.g4")
-    def tempOutput = file("$buildDir/antlr")
+    def tempOutput = layout.buildDirectory.dir("antlr").get().asFile
     def outputFiles = fileTree(dir: sourceDir, includes: generatedPatterns)
 
     inputs.property "antlr-version", deps.antlr.core.get().version
@@ -49,28 +50,26 @@ configure(project(":lucene:expressions")) {
     outputs.files outputFiles
 
     doFirst {
-      project.delete tempOutput
-
-      def execOps = objects.newInstance(ExecOperationsProvider).execOperations
-      execOps.javaexec {
+      buildGlobals.getFileOps().delete(tempOutput)
+      buildGlobals.getExecOps().javaexec {
         mainClass = "org.antlr.v4.Tool"
         classpath = configurations.antlr
 
         ignoreExitValue = false
         args = [
-          "-no-listener",
-          "-visitor",
-          "-package",
-          "org.apache.lucene.expressions.js",
-          "-o",
-          tempOutput,
-          inputFiles
+            "-no-listener",
+            "-visitor",
+            "-package",
+            "org.apache.lucene.expressions.js",
+            "-o",
+            tempOutput,
+            inputFiles
         ]
       }
 
       def generatedFiles = fileTree(dir: tempOutput, includes: generatedPatterns)
-      generatedFiles.each { file ->
-        modifyFile(file, { text ->
+      generatedFiles.each {file ->
+        buildGlobals.modifyFile(file, {text ->
           text = text.replaceAll("public ((interface|class) Javascript\\w+)", "\$1")
           text = text.replaceAll("// Generated from .*",
               """
@@ -97,21 +96,11 @@ configure(project(":lucene:expressions")) {
         })
       }
 
-      project.copy {
-        from tempOutput
-        into sourceDir
-        include generatedPatterns
-      }
+      buildGlobals.getFileOps().copy({CopySpec spec ->
+        spec.from(tempOutput)
+        spec.into(sourceDir)
+        spec.include(generatedPatterns)
+      })
     }
-  }
-
-  def generateAntlr = wrapWithPersistentChecksums(
-      generateAntlrInternal, [
-        andThenTasks: [
-          "applyGoogleJavaFormat"
-        ],
-        mustRunBefore: ["compileJava"]
-      ])
-
-  regenerate.dependsOn generateAntlr
+  })
 }

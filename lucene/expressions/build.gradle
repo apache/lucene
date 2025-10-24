@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 
-
-
 description = 'Dynamically computed values to sort/facet/search on based on a pluggable grammar'
 
 dependencies {
