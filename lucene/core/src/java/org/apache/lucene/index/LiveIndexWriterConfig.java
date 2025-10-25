@@ -368,9 +368,7 @@ public class LiveIndexWriterConfig {
    *
    * <p>Use <code>false</code> for batch indexing with very large ram buffer settings.
    *
-   * <p><b>Note: To control compound file usage during segment merges see {@link
-   * MergePolicy#setNoCFSRatio(double)} and {@link MergePolicy#setMaxCFSSegmentSizeMB(double)}. This
-   * setting only applies to newly created segments.</b>
+   * <p><b>Note: To control compound file usage during segment merges.</b>
    */
   public LiveIndexWriterConfig setUseCompoundFile(boolean useCompoundFile) {
     this.useCompoundFile = useCompoundFile;

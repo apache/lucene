@@ -65,7 +65,7 @@ public class TestAllFilesDetectTruncation extends LuceneTestCase {
     // time we test truncation of .cfs/.cfe too:
     if (cfs == false) {
       conf.setUseCompoundFile(false);
-      conf.getMergePolicy().setNoCFSRatio(0.0);
+      conf.getCodec().compoundFormat().setShouldUseCompoundFile(false);
     }
 
     RandomIndexWriter riw = new RandomIndexWriter(random(), dir, conf);

@@ -98,9 +98,10 @@ public class TestTermVectorsReader extends LuceneTestCase {
             dir,
             newIndexWriterConfig(new MyAnalyzer())
                 .setMaxBufferedDocs(-1)
-                .setMergePolicy(newLogMergePolicy(false, 10))
+                .setMergePolicy(newLogMergePolicy(10))
                 .setUseCompoundFile(false));
 
+    writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
     Document doc = new Document();
     for (int i = 0; i < testFields.length; i++) {
       FieldType customType = new FieldType(TextField.TYPE_NOT_STORED);
