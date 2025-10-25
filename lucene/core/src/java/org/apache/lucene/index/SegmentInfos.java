@@ -398,85 +398,6 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       SegmentInfo info =
           codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READONCE);
       info.setCodec(codec);
-      Version segMinVersion = info.getMinVersion();
-      Version segmentVersion = info.getVersion();
-
-      if (!segmentVersion.onOrAfter(infos.minSegmentLuceneVersion)) {
-        throw new CorruptIndexException(
-            "segments file recorded minSegmentLuceneVersion="
-                + infos.minSegmentLuceneVersion
-                + " but segment="
-                + info
-                + " has older version="
-                + segmentVersion,
-            input);
-      }
-
-      if (infos.indexCreatedVersionMajor >= 7
-          && segmentVersion.major < infos.indexCreatedVersionMajor) {
-        throw new CorruptIndexException(
-            "segments file recorded indexCreatedVersionMajor="
-                + infos.indexCreatedVersionMajor
-                + " but segment="
-                + info
-                + " has older version="
-                + segmentVersion,
-            input);
-      }
-
-      if (infos.indexCreatedVersionMajor >= 7 && segMinVersion == null) {
-        throw new CorruptIndexException(
-            "segments infos must record minVersion with indexCreatedVersionMajor="
-                + infos.indexCreatedVersionMajor,
-            input);
-      }
-
-      // if trying to open some random old index (< Lucene 7)
-      if (segMinVersion == null) {
-        if (infos.indexCreatedVersionMajor < minSupportedMajorVersion) {
-          throw new IndexFormatTooOldException(
-              input,
-              "Index created with Lucene "
-                  + infos.indexCreatedVersionMajor
-                  + ".x is not supported by Lucene "
-                  + Version.LATEST
-                  + ". This Lucene version only supports indexes created with major version "
-                  + minSupportedMajorVersion
-                  + " or later (found: "
-                  + infos.indexCreatedVersionMajor
-                  + ", minimum: "
-                  + minSupportedMajorVersion
-                  + "). To resolve this issue: (1) Re-index your data using Lucene "
-                  + Version.LATEST.major
-                  + ".x, or (2) Use an older Lucene version that supports your index format.");
-        } else {
-          throw new CorruptIndexException(
-              "segments infos must record minVersion with indexCreatedVersionMajor="
-                  + infos.indexCreatedVersionMajor,
-              input);
-        }
-      }
-
-      if (segMinVersion.major < minSupportedMajorVersion) {
-        throw new IndexFormatTooOldException(
-            input,
-            "Index has segment traces from Lucene version "
-                + segMinVersion.major
-                + ".x and is not supported by Lucene "
-                + Version.LATEST
-                + ". This Lucene version only supports indexes with major version "
-                + minSupportedMajorVersion
-                + " or later (found: "
-                + segMinVersion.major
-                + ", minimum supported: "
-                + minSupportedMajorVersion
-                + "). To resolve this issue: (1) Re-index your data using Lucene "
-                + minSupportedMajorVersion
-                + ".x or later (preferably "
-                + Version.LATEST.major
-                + ".x), or (2) Use an older Lucene version that supports your index format.");
-      }
-
       totalDocs += info.maxDoc();
       long delGen = CodecUtil.readBELong(input);
       int delCount = CodecUtil.readBEInt(input);
@@ -530,6 +451,60 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       }
       siPerCommit.setDocValuesUpdatesFiles(dvUpdateFiles);
       infos.add(siPerCommit);
+
+      Version segmentVersion = info.getVersion();
+
+      if (segmentVersion.onOrAfter(infos.minSegmentLuceneVersion) == false) {
+        throw new CorruptIndexException(
+            "segments file recorded minSegmentLuceneVersion="
+                + infos.minSegmentLuceneVersion
+                + " but segment="
+                + info
+                + " has older version="
+                + segmentVersion,
+            input);
+      }
+
+      if (infos.indexCreatedVersionMajor >= 7
+          && segmentVersion.major < infos.indexCreatedVersionMajor) {
+        throw new CorruptIndexException(
+            "segments file recorded indexCreatedVersionMajor="
+                + infos.indexCreatedVersionMajor
+                + " but segment="
+                + info
+                + " has older version="
+                + segmentVersion,
+            input);
+      }
+
+      if (infos.indexCreatedVersionMajor >= 7 && info.getMinVersion() == null) {
+        throw new CorruptIndexException(
+            "segments infos must record minVersion with indexCreatedVersionMajor="
+                + infos.indexCreatedVersionMajor,
+            input);
+      }
+
+      int segmentDerivedFromMajorVersion =
+          info.getMinVersion() == null
+              ? infos.indexCreatedVersionMajor
+              : info.getMinVersion().major;
+      if (info.getMinVersion() == null || info.getMinVersion().major < minSupportedMajorVersion) {
+        throw new IndexFormatTooOldException(
+            input,
+            "Index has segments derived from Lucene version "
+                + segmentDerivedFromMajorVersion
+                + ".x and is not supported by Lucene "
+                + Version.LATEST
+                + ". This Lucene version only supports indexes with major version "
+                + minSupportedMajorVersion
+                + " or later (found: "
+                + segmentDerivedFromMajorVersion
+                + ", minimum supported: "
+                + minSupportedMajorVersion
+                + "). To resolve this issue re-index your data using Lucene "
+                + minSupportedMajorVersion
+                + ".x or later.");
+      }
     }
 
     infos.userData = input.readMapOfStrings();
