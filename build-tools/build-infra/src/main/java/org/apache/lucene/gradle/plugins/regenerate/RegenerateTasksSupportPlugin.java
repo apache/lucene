@@ -74,7 +74,7 @@ import org.gradle.api.tasks.TaskProvider;
 public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
   private static final Pattern REGEN_TASK_PATTERN = Pattern.compile("regenerate(?<name>.+)");
 
-  private static final String REGEN_TASKS_GROUP = "Source/data regeneration";
+  private static final String REGEN_TASKS_GROUP = "Regeneration";
 
   private static final String REGEN_TASK_NAME = "regenerate";
 

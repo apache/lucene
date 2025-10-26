@@ -16,7 +16,7 @@
  */
 
 import org.apache.lucene.gradle.plugins.misc.QuietExec
-import org.apache.lucene.gradle.plugins.help.ExecOperationsProvider
+import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension
 
 // Add a top-level pseudo-task to which we will attach individual regenerate tasks.
 
@@ -33,9 +33,8 @@ configure(project(":lucene:core")) {
     jflex deps.jflex
   }
 
-  task generateStandardTokenizerInternal(type: JFlexTask) {
+  tasks.register("regenerateStandardTokenizer", JFlexTask, {
     description = "Regenerate StandardTokenizerImpl.java"
-    group = "generation"
 
     jflexFile = file('src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.jflex')
     skeleton = skeletonNoBufferExpansion
@@ -48,16 +47,7 @@ configure(project(":lucene:core")) {
           value: "private int ZZ_BUFFERSIZE ="
           )
     }
-  }
-
-  def generateStandardTokenizer = wrapWithPersistentChecksums(generateStandardTokenizerInternal, [
-    andThenTasks: [
-      "applyGoogleJavaFormat"
-    ],
-    mustRunBefore: ["compileJava"]
-  ])
-
-  regenerate.dependsOn generateStandardTokenizer
+  })
 }
 
 configure(project(":lucene:analysis:common")) {
@@ -69,13 +59,12 @@ configure(project(":lucene:analysis:common")) {
     jflex deps.jflex
   }
 
-  task generateTldsInternal() {
+  def regenerateTlds = tasks.register("regenerateTlds", {
     def tldZones = "https://data.iana.org/TLD/tlds-alpha-by-domain.txt"
     def jflexMacro = file("src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex")
     def tldList = file("src/test/org/apache/lucene/analysis/email/TLDs.txt")
 
     description = "Regenerate top-level domain jflex macros and tests"
-    group = "generation"
 
     dependsOn { sourceSets.tools.runtimeClasspath }
 
@@ -86,8 +75,7 @@ configure(project(":lucene:analysis:common")) {
       File tmpJflexMacro = File.createTempFile(jflexMacro.getName(), ".tmp", getTemporaryDir())
       File tmpTldList = File.createTempFile(tldList.getName(), ".tmp", getTemporaryDir())
 
-      def execOps = objects.newInstance(ExecOperationsProvider).execOperations
-      execOps.javaexec {
+      project.extensions.buildGlobals.execOps.javaexec {
         mainClass = "org.apache.lucene.analysis.standard.GenerateJflexTLDMacros"
         classpath = sourceSets.tools.runtimeClasspath
 
@@ -119,27 +107,29 @@ configure(project(":lucene:analysis:common")) {
         logger.lifecycle("You've regenerated the TLD include file, remember to regenerate UAX29URLEmailTokenizerImpl too.")
       }
     }
-  }
+  })
 
-  task generateWikipediaTokenizerInternal(type: JFlexTask) {
+  tasks.register("regenerateWikipediaTokenizer", JFlexTask, {
     description = "Regenerate WikipediaTokenizerImpl.java"
-    group = "generation"
 
     jflexFile = file('src/java/org/apache/lucene/analysis/wikipedia/WikipediaTokenizerImpl.jflex')
     skeleton = skeletonDefault
-  }
+  })
 
-  task generateClassicTokenizerInternal(type: JFlexTask) {
+  tasks.register("regenerateClassicTokenizer", JFlexTask, {
     description = "Regenerate ClassicTokenizerImpl.java"
-    group = "generation"
 
     jflexFile = file('src/java/org/apache/lucene/analysis/classic/ClassicTokenizerImpl.jflex')
     skeleton = skeletonDefault
-  }
+  })
 
-  task generateUAX29URLEmailTokenizerInternal(type: JFlexTask) {
+  tasks.register("regenerateUAX29URLEmailTokenizer", JFlexTask, {
     description = "Regenerate UAX29URLEmailTokenizerImpl.java"
-    group = "generation"
+
+    // UAX29URLEmailTokenizerImpl.jflex includes: ASCIITLD.jflex
+    // so we make sure it is up to date. Also, make sure the ordering of internal
+    // tasks is enforced (just scheduling top-level wrappers doesn't mean their subtask graphs cannot be reordered).
+    dependsOn regenerateTlds
 
     jflexFile = file('src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.jflex')
     skeleton = skeletonNoBufferExpansion
@@ -160,26 +150,11 @@ configure(project(":lucene:analysis:common")) {
           value: "private int ZZ_BUFFERSIZE ="
           )
     }
-  }
+  })
 
-  def generateUAX29URLEmailTokenizer = wrapWithPersistentChecksums(generateUAX29URLEmailTokenizerInternal, [
-    andThenTasks: [
-      "applyGoogleJavaFormat"
-    ],
-    mustRunBefore: ["compileJava"]
-  ])
+  def generateHTMLCharacterEntities = tasks.register("regenerateHTMLCharacterEntities", QuietExec, {
+    description = "Regenerate HTMLCharacterEntities.jflex"
 
-  // UAX29URLEmailTokenizerImpl.jflex includes: ASCIITLD.jflex
-  // so we make sure it is up to date. Also, make sure the ordering of internal
-  // tasks is enforced (just scheduling top-level wrappers doesn't mean their subtask graphs cannot be reordered).
-  configure (generateUAX29URLEmailTokenizer) {
-    dependsOn "generateTlds"
-  }
-  configure (generateUAX29URLEmailTokenizerInternal) {
-    mustRunAfter "generateTldsInternal"
-  }
-
-  def generateHTMLCharacterEntitiesInternal = tasks.register("generateHTMLCharacterEntitiesInternal", QuietExec, {
     def target = file('src/java/org/apache/lucene/analysis/charfilter/HTMLCharacterEntities.jflex')
     def script = file("${resources}/htmlentity.py")
 
@@ -204,39 +179,18 @@ configure(project(":lucene:analysis:common")) {
     }
   })
 
-  task generateHTMLStripCharFilterInternal(type: JFlexTask) {
+  tasks.register("regenerateHTMLStripCharFilter", JFlexTask, {
     description = "Regenerate HTMLStripCharFilter.java"
-    group = "generation"
+
+    // HTMLStripCharFilter.jflex includes HTMLCharacterEntities.jflex so we make sure it's up to date.
+    dependsOn generateHTMLCharacterEntities
 
     // Add included files as inputs.
     inputs.file file('src/java/org/apache/lucene/analysis/charfilter/HTMLCharacterEntities.jflex')
 
     jflexFile = file('src/java/org/apache/lucene/analysis/charfilter/HTMLStripCharFilter.jflex')
     skeleton = skeletonDefault
-  }
-
-  def extraConfig = [
-    andThenTasks: [
-      "applyGoogleJavaFormat"
-    ],
-    mustRunBefore: ["compileJava"]
-  ]
-
-  def generateHTMLStripCharFilter = wrapWithPersistentChecksums(generateHTMLStripCharFilterInternal, extraConfig)
-  // HTMLStripCharFilter.jflex includes HTMLCharacterEntities.jflex so we make sure it's up to date.
-  configure(generateHTMLStripCharFilter) {
-    dependsOn "generateHTMLCharacterEntities"
-  }
-  configure(generateHTMLStripCharFilterInternal) {
-    dependsOn "generateHTMLCharacterEntitiesInternal"
-  }
-
-  regenerate.dependsOn wrapWithPersistentChecksums(generateWikipediaTokenizerInternal, extraConfig),
-      wrapWithPersistentChecksums(generateClassicTokenizerInternal, extraConfig),
-      generateUAX29URLEmailTokenizer,
-      wrapWithPersistentChecksums2(generateHTMLCharacterEntitiesInternal, extraConfig),
-      generateHTMLStripCharFilter,
-      wrapWithPersistentChecksums(generateTldsInternal, extraConfig)
+  })
 }
 
 class JFlexTask extends DefaultTask {
@@ -268,8 +222,7 @@ class JFlexTask extends DefaultTask {
 
     logger.lifecycle("Recompiling JFlex: ${project.rootDir.relativePath(jflexFile)}")
 
-    def execOps = project.objects.newInstance(ExecOperationsProvider).execOperations
-    execOps.javaexec {
+    project.extensions.buildGlobals.execOps.javaexec {
       classpath {
         project.configurations.jflex
       }

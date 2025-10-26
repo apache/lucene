@@ -28,6 +28,7 @@ plugins {
   id 'regenerate.antlr'
   id 'regenerate.icu'
   id 'regenerate.javacc'
+  id 'regenerate.jflex'
 
   id "lucene.validation.jar-checks"
 }
