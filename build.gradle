@@ -29,6 +29,7 @@ plugins {
   id 'regenerate.icu'
   id 'regenerate.javacc'
   id 'regenerate.jflex'
+  id 'regenerate.kuromoji'
 
   id "lucene.validation.jar-checks"
 }

@@ -1,4 +1,5 @@
-# Generated from IANA TLD Database (gradlew generateTlds).aaa
+# Generated from IANA TLD Database (gradlew generateTlds).
+aaa
 aarp
 abb
 abbott

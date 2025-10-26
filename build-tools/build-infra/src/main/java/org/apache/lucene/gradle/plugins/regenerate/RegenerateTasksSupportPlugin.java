@@ -21,6 +21,7 @@ import groovy.json.JsonSlurper;
 import groovy.lang.Closure;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -368,6 +369,10 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
     var rootPath = sourceTask.getProject().getRootDir().toPath();
     for (var file : allFiles.getFiles()) {
       try {
+        if (Files.isDirectory(file.toPath())) {
+          throw new IOException(
+              "All regenerate task checksummed inputs/outputs should be files: " + file);
+        }
         allEntries.put(
             rootPath.relativize(file.toPath()).toString(),
             file.exists() ? digestUtils.digestAsHex(file).trim() : "--");
@@ -403,6 +408,10 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
       val = val.toString();
     }
 
+    if (val instanceof URL asUrl) {
+      val = asUrl.toString();
+    }
+
     if (val instanceof List<?> asList) {
       val =
           "["
@@ -421,7 +430,7 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
               "Input properties of wrapped tasks must all be strings: %s in %s is not: %s",
               key,
               sourceTaskName,
-              val.getClass().getName()));
+              val == null ? "null" : val.getClass().getName()));
     }
   }
 }
