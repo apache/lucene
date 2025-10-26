@@ -589,6 +589,69 @@ public class BKDReader extends PointValues {
       addAll(visitor, false);
     }
 
+    @Override
+    public void prepareOrVisitDocIDs(IntersectVisitor visitor) throws IOException {
+      resetNodeDataPosition();
+      prefetchAll(visitor, false);
+    }
+
+    @Override
+    public void visitDocIDs(long position, IntersectVisitor visitor) throws IOException {
+      visitDocIDs(position, visitor, false);
+    }
+
+    private void visitDocIDs(long position, IntersectVisitor visitor, boolean grown)
+        throws IOException {
+      leafNodes.seek(position);
+      int count = leafNodes.readVInt();
+      if (!grown) {
+        visitor.grow(count);
+      }
+      docIdsWriter.readInts(leafNodes, count, visitor, scratchIterator.docIDs);
+    }
+
+    private int getLeafNodeOrdinal() {
+      assert isLeafNode() : "nodeID=" + nodeID + " is not a leaf";
+      return nodeID - leafNodeOffset;
+    }
+
+    public void prefetchAll(IntersectVisitor visitor, boolean grown) throws IOException {
+      if (grown == false) {
+        final long size = size();
+        if (size <= Integer.MAX_VALUE) {
+          visitor.grow((int) size);
+          grown = true;
+        }
+      }
+      if (isLeafNode()) {
+        // int count = isLastLeaf() ? config.maxPointsInLeafNode() : lastLeafNodePointCount;
+        long leafFp = getLeafBlockFP();
+        int leafNodeOrdinal = getLeafNodeOrdinal();
+        if (visitor instanceof TwoPhaseIntersectVisitor twoPhaseIntersectVisitor) {
+          // Only call prefetch is this is the first leaf node ordinal or the first match in
+          // contigiuous sequence of matches for leaf nodes
+          // boolean prefetched = false;
+          if (twoPhaseIntersectVisitor.lastDeferredBlockOrdinal() == -1
+              || twoPhaseIntersectVisitor.lastDeferredBlockOrdinal() + 1 < leafNodeOrdinal) {
+            // System.out.println("Prefetched called on " + leafNodeOrdinal);
+            leafNodes.prefetch(leafFp, 1);
+            // prefetched = true;
+          }
+          twoPhaseIntersectVisitor.setLastDeferredBlockOrdinal(leafNodeOrdinal);
+          twoPhaseIntersectVisitor.deferBlock(leafFp);
+        } else {
+          visitDocIDs(getLeafBlockFP(), visitor, true);
+        }
+      } else {
+        pushLeft();
+        prefetchAll(visitor, grown);
+        pop();
+        pushRight();
+        prefetchAll(visitor, grown);
+        pop();
+      }
+    }
+
     public void addAll(PointValues.IntersectVisitor visitor, boolean grown) throws IOException {
       if (grown == false) {
         final long size = size();

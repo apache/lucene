@@ -17,8 +17,10 @@
 package org.apache.lucene.tests.index;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
@@ -1597,13 +1599,23 @@ public class AssertingLeafReader extends FilterLeafReader {
               pointValues.getBytesPerDimension(),
               visitor));
     }
+
+    @Override
+    public void visitDocIDs(long pos, IntersectVisitor visitor) throws IOException {
+      in.visitDocIDs(pos, visitor);
+    }
+
+    @Override
+    public void prepareOrVisitDocIDs(IntersectVisitor visitor) throws IOException {
+      in.prepareOrVisitDocIDs(visitor);
+    }
   }
 
   /**
    * Validates in the 1D case that all points are visited in order, and point values are in bounds
    * of the last cell checked
    */
-  static class AssertingIntersectVisitor implements IntersectVisitor {
+  static class AssertingIntersectVisitor extends PointValues.TwoPhaseIntersectVisitor {
     final IntersectVisitor in;
     final int numDataDims;
     final int numIndexDims;
@@ -1614,6 +1626,8 @@ public class AssertingLeafReader extends FilterLeafReader {
     private Relation lastCompareResult;
     private int lastDocID = -1;
     private int docBudget;
+    int lastMatchedBlock;
+    private List<Long> prefetchedBlocks;
 
     AssertingIntersectVisitor(
         int numDataDims, int numIndexDims, int bytesPerDim, IntersectVisitor in) {
@@ -1715,6 +1729,26 @@ public class AssertingLeafReader extends FilterLeafReader {
       System.arraycopy(minPackedValue, 0, lastMinPackedValue, 0, numIndexDims * bytesPerDim);
       lastCompareResult = in.compare(minPackedValue, maxPackedValue);
       return lastCompareResult;
+    }
+
+    @Override
+    public int lastDeferredBlockOrdinal() {
+      return lastMatchedBlock;
+    }
+
+    @Override
+    public void setLastDeferredBlockOrdinal(int leafNodeOrdinal) {
+      lastMatchedBlock = leafNodeOrdinal;
+    }
+
+    @Override
+    public void deferBlock(long leafFp) {
+      prefetchedBlocks.add(leafFp);
+    }
+
+    @Override
+    public List<Long> deferredBlocks() {
+      return new ArrayList<>(prefetchedBlocks);
     }
   }
 

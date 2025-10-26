@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.PointsFormat;
@@ -352,6 +353,69 @@ public class TestLucene90PointsFormat extends BasePointsFormatTestCase {
     } else {
       assertEquals(Math.min(pointCount, numDocs), docCount);
     }
+    r.close();
+    dir.close();
+  }
+
+  public void testBasicWithPrefetchVisitor() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    // Avoid mockRandomMP since it may cause non-optimal merges that make the
+    // number of points per leaf hard to predict
+    while (iwc.getMergePolicy() instanceof MockRandomMergePolicy) {
+      iwc.setMergePolicy(newMergePolicy());
+    }
+    IndexWriter w = new IndexWriter(dir, iwc);
+    byte[] pointValue = new byte[3];
+    byte[] uniquePointValue = new byte[3];
+    random().nextBytes(uniquePointValue);
+    final int numDocs =
+        TEST_NIGHTLY ? atLeast(10000) : atLeast(500); // at night, make sure we have several leaves
+    final boolean multiValues = random().nextBoolean();
+    int totalValues = 0;
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      if (i == numDocs / 2) {
+        totalValues++;
+        doc.add(new BinaryPoint("f", uniquePointValue));
+      } else {
+        final int numValues = (multiValues) ? TestUtil.nextInt(random(), 2, 100) : 1;
+        for (int j = 0; j < numValues; j++) {
+          do {
+            random().nextBytes(pointValue);
+          } while (Arrays.equals(pointValue, uniquePointValue));
+          doc.add(new BinaryPoint("f", pointValue));
+          totalValues++;
+        }
+      }
+      w.addDocument(doc);
+    }
+    w.forceMerge(1);
+    final IndexReader r = DirectoryReader.open(w);
+    w.close();
+
+    final LeafReader lr = getOnlyLeafReader(r);
+    PointValues points = lr.getPointValues("f");
+
+    PointValues.TwoPhaseIntersectVisitor allPointsVisitor =
+        new PointValues.TwoPhaseIntersectVisitor() {
+          @Override
+          public void visit(int docID, byte[] packedValue) throws IOException {}
+
+          @Override
+          public void visit(int docID) throws IOException {}
+
+          @Override
+          public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+            return Relation.CELL_INSIDE_QUERY;
+          }
+        };
+
+    List<Long> savedBlocks = allPointsVisitor.deferredBlocks();
+    assertEquals(0, savedBlocks.size()); // Test that all deferred blocks were processed
+    assertEquals(totalValues, points.estimatePointCount(allPointsVisitor));
+    assertEquals(numDocs, points.estimateDocCount(allPointsVisitor));
+
     r.close();
     dir.close();
   }

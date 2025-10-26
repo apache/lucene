@@ -147,7 +147,7 @@ public abstract class PointRangeQuery extends Query {
       }
 
       private IntersectVisitor getIntersectVisitor(DocIdSetBuilder result) {
-        return new IntersectVisitor() {
+        return new PointValues.TwoPhaseIntersectVisitor() {
 
           DocIdSetBuilder.BulkAdder adder;
 
@@ -194,7 +194,7 @@ public abstract class PointRangeQuery extends Query {
 
       /** Create a visitor that sets documents that do NOT match the range. */
       private IntersectVisitor getInverseIntersectVisitor(FixedBitSet result, long[] cost) {
-        return new IntersectVisitor() {
+        return new PointValues.TwoPhaseIntersectVisitor() {
 
           @Override
           public void visit(int docID) {
