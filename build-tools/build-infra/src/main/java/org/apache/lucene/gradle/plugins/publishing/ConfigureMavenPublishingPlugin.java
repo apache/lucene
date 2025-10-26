@@ -30,7 +30,7 @@ import org.gradle.api.publish.maven.MavenPublication;
 import org.gradle.api.publish.maven.plugins.MavenPublishPlugin;
 import org.gradle.api.publish.tasks.GenerateModuleMetadata;
 import org.gradle.api.tasks.Delete;
-import org.gradle.jvm.tasks.Jar;
+import org.gradle.api.tasks.bundling.Jar;
 import org.gradle.plugins.signing.SigningExtension;
 import org.gradle.plugins.signing.SigningPlugin;
 
@@ -74,6 +74,11 @@ public class ConfigureMavenPublishingPlugin extends LuceneGradlePlugin {
 
     var type = useReleaseRepository ? "Releases" : "Snapshots";
 
+    var publicationTask =
+        useReleaseRepository
+            ? "publishSignedJarsPublicationToApacheReleasesRepository"
+            : "publishJarsPublicationToApacheSnapshotsRepository";
+
     var tasks = rootProject.getTasks();
     tasks.register(
         "mavenToApache" + type,
@@ -86,14 +91,7 @@ public class ConfigureMavenPublishingPlugin extends LuceneGradlePlugin {
                   + apacheNexusRepositoryUrl);
 
           for (var p : getLuceneBuildGlobals(rootProject).getPublishedProjects()) {
-            var matchingTasks =
-                p.getTasks()
-                    .matching(
-                        t ->
-                            t.getName()
-                                .equals(
-                                    "publishSignedJarsPublicationToApache" + type + "Repository"));
-            task.dependsOn(matchingTasks);
+            task.dependsOn(p.getTasks().matching(t -> t.getName().equals(publicationTask)));
           }
         });
 
