@@ -30,6 +30,7 @@ plugins {
   id 'regenerate.javacc'
   id 'regenerate.jflex'
   id 'regenerate.kuromoji'
+  id 'regenerate.nori'
 
   id "lucene.validation.jar-checks"
 }
