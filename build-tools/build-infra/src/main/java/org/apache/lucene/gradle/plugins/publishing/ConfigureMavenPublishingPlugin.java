@@ -74,6 +74,11 @@ public class ConfigureMavenPublishingPlugin extends LuceneGradlePlugin {
 
     var type = useReleaseRepository ? "Releases" : "Snapshots";
 
+    var publicationTask =
+        useReleaseRepository
+            ? "publishSignedJarsPublicationToApacheReleasesRepository"
+            : "publishJarsPublicationToApacheSnapshotsRepository";
+
     var tasks = rootProject.getTasks();
     tasks.register(
         "mavenToApache" + type,
@@ -86,14 +91,7 @@ public class ConfigureMavenPublishingPlugin extends LuceneGradlePlugin {
                   + apacheNexusRepositoryUrl);
 
           for (var p : getLuceneBuildGlobals(rootProject).getPublishedProjects()) {
-            var matchingTasks =
-                p.getTasks()
-                    .matching(
-                        t ->
-                            t.getName()
-                                .equals(
-                                    "publishSignedJarsPublicationToApache" + type + "Repository"));
-            task.dependsOn(matchingTasks);
+            task.dependsOn(p.getTasks().matching(t -> t.getName().equals(publicationTask)));
           }
         });
 
