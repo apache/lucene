@@ -484,21 +484,23 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
             input);
       }
 
-      int segmentDerivedFromMajorVersion =
+      int createdOrSegmentMinVersion =
           info.getMinVersion() == null
               ? infos.indexCreatedVersionMajor
               : info.getMinVersion().major;
+
+      // version >=7 are expected to record minVersion
       if (info.getMinVersion() == null || info.getMinVersion().major < minSupportedMajorVersion) {
         throw new IndexFormatTooOldException(
             input,
             "Index has segments derived from Lucene version "
-                + segmentDerivedFromMajorVersion
+                + createdOrSegmentMinVersion
                 + ".x and is not supported by Lucene "
                 + Version.LATEST
                 + ". This Lucene version only supports indexes with major version "
                 + minSupportedMajorVersion
                 + " or later (found: "
-                + segmentDerivedFromMajorVersion
+                + createdOrSegmentMinVersion
                 + ", minimum supported: "
                 + minSupportedMajorVersion
                 + "). To resolve this issue re-index your data using Lucene "
