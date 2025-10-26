@@ -27,6 +27,7 @@ plugins {
   id 'regenerate.forUtil'
   id 'regenerate.antlr'
   id 'regenerate.icu'
+  id 'regenerate.javacc'
 
   id "lucene.validation.jar-checks"
 }
