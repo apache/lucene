@@ -20,7 +20,7 @@ import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.tasks.Sync;
-import org.gradle.jvm.tasks.Jar;
+import org.gradle.api.tasks.bundling.Jar;
 
 public class PyLuceneHelperPlugin extends LuceneGradlePlugin {
   @Override

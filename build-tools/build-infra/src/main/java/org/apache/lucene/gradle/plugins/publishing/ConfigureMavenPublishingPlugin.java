@@ -30,7 +30,7 @@ import org.gradle.api.publish.maven.MavenPublication;
 import org.gradle.api.publish.maven.plugins.MavenPublishPlugin;
 import org.gradle.api.publish.tasks.GenerateModuleMetadata;
 import org.gradle.api.tasks.Delete;
-import org.gradle.jvm.tasks.Jar;
+import org.gradle.api.tasks.bundling.Jar;
 import org.gradle.plugins.signing.SigningExtension;
 import org.gradle.plugins.signing.SigningPlugin;
 

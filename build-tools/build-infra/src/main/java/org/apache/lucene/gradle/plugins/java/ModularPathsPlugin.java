@@ -33,9 +33,9 @@ import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
+import org.gradle.api.tasks.bundling.Jar;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.testing.Test;
-import org.gradle.jvm.tasks.Jar;
 
 /** Configures miscellaneous aspects required to support the java module system layer. */
 public class ModularPathsPlugin extends LuceneGradlePlugin {
