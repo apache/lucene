@@ -23,8 +23,11 @@ package org.apache.lucene.analysis.classic;
 
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
-/** This class implements the classic lucene StandardTokenizer up until 3.0 */
-@SuppressWarnings({"fallthrough", "unused"})
+/**
+ * This class implements the classic lucene StandardTokenizer up until 3.0
+ */
+
+@SuppressWarnings({"fallthrough","unused"})
 class ClassicTokenizerImpl {
 
   /** This character denotes the end of file. */
@@ -37,189 +40,199 @@ class ClassicTokenizerImpl {
   public static final int YYINITIAL = 0;
 
   /**
-   * ZZ_LEXSTATE[l] is the state in the DFA for the lexical state l ZZ_LEXSTATE[l+1] is the state in
-   * the DFA for the lexical state l at the beginning of a line l is of the form l = 2*k, k a non
-   * negative integer
+   * ZZ_LEXSTATE[l] is the state in the DFA for the lexical state l
+   * ZZ_LEXSTATE[l+1] is the state in the DFA for the lexical state l
+   *                  at the beginning of a line
+   * l is of the form l = 2*k, k a non negative integer
    */
-  private static final int ZZ_LEXSTATE[] = {0, 0};
+  private static final int ZZ_LEXSTATE[] = {
+     0, 0
+  };
 
-  /** Top-level table for translating characters to character classes */
-  private static final int[] ZZ_CMAP_TOP = zzUnpackcmap_top();
+  /**
+   * Top-level table for translating characters to character classes
+   */
+  private static final int [] ZZ_CMAP_TOP = zzUnpackcmap_top();
 
   private static final String ZZ_CMAP_TOP_PACKED_0 =
-      "\1\0\1\u0100\1\u0200\1\u0300\1\u0400\1\u0500\1\u0600\1\u0700"
-          + "\1\u0800\1\u0900\1\u0a00\1\u0b00\1\u0c00\1\u0d00\1\u0e00\1\u0f00"
-          + "\1\u1000\1\u1100\1\u1200\1\u1300\1\u1400\1\u0100\1\u1500\1\u1600"
-          + "\1\u1700\5\u0800\1\u1800\1\u1900\1\u1a00\1\u1b00\16\u0800\1\u1c00"
-          + "\1\u1d00\1\u0800\1\u1e00\31\u1f00\1\u2000\121\u1f00\1\u2100\4\u0100"
-          + "\1\u2200\7\u0800\53\u0100\1\u2300\41\u0800\1\u1f00\1\u2400\1\u2500"
-          + "\1\u0100\1\u2600\1\u2700\1\u2800\u1000\u0800";
+    "\1\0\1\u0100\1\u0200\1\u0300\1\u0400\1\u0500\1\u0600\1\u0700"+
+    "\1\u0800\1\u0900\1\u0a00\1\u0b00\1\u0c00\1\u0d00\1\u0e00\1\u0f00"+
+    "\1\u1000\1\u1100\1\u1200\1\u1300\1\u1400\1\u0100\1\u1500\1\u1600"+
+    "\1\u1700\5\u0800\1\u1800\1\u1900\1\u1a00\1\u1b00\16\u0800\1\u1c00"+
+    "\1\u1d00\1\u0800\1\u1e00\31\u1f00\1\u2000\121\u1f00\1\u2100\4\u0100"+
+    "\1\u2200\7\u0800\53\u0100\1\u2300\41\u0800\1\u1f00\1\u2400\1\u2500"+
+    "\1\u0100\1\u2600\1\u2700\1\u2800\u1000\u0800";
 
-  private static int[] zzUnpackcmap_top() {
-    int[] result = new int[4352];
+  private static int [] zzUnpackcmap_top() {
+    int [] result = new int[4352];
     int offset = 0;
     offset = zzUnpackcmap_top(ZZ_CMAP_TOP_PACKED_0, offset, result);
     return result;
   }
 
-  private static int zzUnpackcmap_top(String packed, int offset, int[] result) {
-    int i = 0; /* index in packed string  */
-    int j = offset; /* index in unpacked array */
+  private static int zzUnpackcmap_top(String packed, int offset, int [] result) {
+    int i = 0;       /* index in packed string  */
+    int j = offset;  /* index in unpacked array */
     int l = packed.length();
     while (i < l) {
       int count = packed.charAt(i++);
       int value = packed.charAt(i++);
-      do result[j++] = value;
-      while (--count > 0);
+      do result[j++] = value; while (--count > 0);
     }
     return j;
   }
 
-  /** Second-level tables for translating characters to character classes */
-  private static final int[] ZZ_CMAP_BLOCKS = zzUnpackcmap_blocks();
+
+  /**
+   * Second-level tables for translating characters to character classes
+   */
+  private static final int [] ZZ_CMAP_BLOCKS = zzUnpackcmap_blocks();
 
   private static final String ZZ_CMAP_BLOCKS_PACKED_0 =
-      "\46\0\1\1\1\2\4\0\1\3\1\4\1\5\1\3"
-          + "\12\6\6\0\1\7\32\10\4\0\1\11\1\0\32\10"
-          + "\57\0\1\10\12\0\1\10\4\0\1\10\5\0\27\10"
-          + "\1\0\37\10\1\0\u0128\10\2\0\22\10\34\0\136\10"
-          + "\2\0\11\10\2\0\7\10\16\0\2\10\16\0\5\10"
-          + "\11\0\1\10\213\0\1\10\13\0\1\10\1\0\3\10"
-          + "\1\0\1\10\1\0\24\10\1\0\54\10\1\0\10\10"
-          + "\2\0\32\10\14\0\202\10\12\0\71\10\2\0\2\10"
-          + "\2\0\2\10\3\0\46\10\2\0\2\10\67\0\46\10"
-          + "\2\0\1\10\7\0\47\10\110\0\33\10\5\0\3\10"
-          + "\56\0\32\10\5\0\13\10\25\0\12\6\7\0\143\10"
-          + "\1\0\1\10\17\0\2\10\11\0\12\6\3\10\23\0"
-          + "\1\10\1\0\33\10\123\0\46\10\u015f\0\65\10\3\0"
-          + "\1\10\22\0\1\10\7\0\12\10\4\0\12\6\25\0"
-          + "\10\10\2\0\2\10\2\0\26\10\1\0\7\10\1\0"
-          + "\1\10\3\0\4\10\42\0\2\10\1\0\3\10\4\0"
-          + "\12\6\2\10\23\0\6\10\4\0\2\10\2\0\26\10"
-          + "\1\0\7\10\1\0\2\10\1\0\2\10\1\0\2\10"
-          + "\37\0\4\10\1\0\1\10\7\0\12\6\2\0\3\10"
-          + "\20\0\7\10\1\0\1\10\1\0\3\10\1\0\26\10"
-          + "\1\0\7\10\1\0\2\10\1\0\5\10\3\0\1\10"
-          + "\22\0\1\10\17\0\1\10\5\0\12\6\25\0\10\10"
-          + "\2\0\2\10\2\0\26\10\1\0\7\10\1\0\2\10"
-          + "\2\0\4\10\3\0\1\10\36\0\2\10\1\0\3\10"
-          + "\4\0\12\6\25\0\6\10\3\0\3\10\1\0\4\10"
-          + "\3\0\2\10\1\0\1\10\1\0\2\10\3\0\2\10"
-          + "\3\0\3\10\3\0\10\10\1\0\3\10\55\0\11\6"
-          + "\25\0\10\10\1\0\3\10\1\0\27\10\1\0\12\10"
-          + "\1\0\5\10\46\0\2\10\4\0\12\6\25\0\10\10"
-          + "\1\0\3\10\1\0\27\10\1\0\12\10\1\0\5\10"
-          + "\44\0\1\10\1\0\2\10\4\0\12\6\25\0\10\10"
-          + "\1\0\3\10\1\0\27\10\1\0\20\10\46\0\2\10"
-          + "\4\0\12\6\25\0\22\10\3\0\30\10\1\0\11\10"
-          + "\1\0\1\10\2\0\7\10\71\0\1\12\60\10\1\12"
-          + "\2\10\14\12\7\10\11\12\12\6\47\0\2\10\1\0"
-          + "\1\10\2\0\2\10\1\0\1\10\2\0\1\10\6\0"
-          + "\4\10\1\0\7\10\1\0\3\10\1\0\1\10\1\0"
-          + "\1\10\2\0\2\10\1\0\4\10\1\0\2\10\11\0"
-          + "\1\10\2\0\5\10\1\0\1\10\11\0\12\6\2\0"
-          + "\2\10\42\0\1\10\37\0\12\6\26\0\10\10\1\0"
-          + "\42\10\35\0\4\10\164\0\42\10\1\0\5\10\1\0"
-          + "\2\10\25\0\12\6\6\0\6\10\112\0\46\10\12\0"
-          + "\47\10\11\0\132\10\5\0\104\10\5\0\122\10\6\0"
-          + "\7\10\1\0\77\10\1\0\1\10\1\0\4\10\2\0"
-          + "\7\10\1\0\1\10\1\0\4\10\2\0\47\10\1\0"
-          + "\1\10\1\0\4\10\2\0\37\10\1\0\1\10\1\0"
-          + "\4\10\2\0\7\10\1\0\1\10\1\0\4\10\2\0"
-          + "\7\10\1\0\7\10\1\0\27\10\1\0\37\10\1\0"
-          + "\1\10\1\0\4\10\2\0\7\10\1\0\47\10\1\0"
-          + "\23\10\16\0\11\6\56\0\125\10\14\0\u016c\10\2\0"
-          + "\10\10\12\0\32\10\5\0\113\10\225\0\64\10\54\0"
-          + "\12\6\46\0\12\6\6\0\130\10\10\0\51\10\127\0"
-          + "\234\10\4\0\132\10\6\0\26\10\2\0\6\10\2\0"
-          + "\46\10\2\0\6\10\2\0\10\10\1\0\1\10\1\0"
-          + "\1\10\1\0\1\10\1\0\37\10\2\0\65\10\1\0"
-          + "\7\10\1\0\1\10\3\0\3\10\1\0\7\10\3\0"
-          + "\4\10\2\0\6\10\4\0\15\10\5\0\3\10\1\0"
-          + "\7\10\202\0\1\10\202\0\1\10\4\0\1\10\2\0"
-          + "\12\10\1\0\1\10\3\0\5\10\6\0\1\10\1\0"
-          + "\1\10\1\0\1\10\1\0\4\10\1\0\3\10\1\0"
-          + "\7\10\313\0\2\10\52\0\5\10\12\0\360\13\1\0"
-          + "\136\10\21\0\30\10\70\0\220\13\200\0\u01c0\13\100\0"
-          + "\u0100\13\215\10\163\0\244\10\134\0\u0100\13\7\10\14\0"
-          + "\5\10\5\0\1\10\1\0\12\10\1\0\15\10\1\0"
-          + "\5\10\1\0\1\10\1\0\2\10\1\0\2\10\1\0"
-          + "\154\10\41\0\153\10\22\0\100\10\2\0\66\10\50\0"
-          + "\14\10\164\0\3\10\1\0\1\10\1\0\207\10\23\0"
-          + "\12\6\7\0\32\10\6\0\32\10\12\0\73\13\37\10"
-          + "\3\0\6\10\2\0\6\10\2\0\6\10\2\0\3\10"
-          + "\43\0";
+    "\46\0\1\1\1\2\4\0\1\3\1\4\1\5\1\3"+
+    "\12\6\6\0\1\7\32\10\4\0\1\11\1\0\32\10"+
+    "\57\0\1\10\12\0\1\10\4\0\1\10\5\0\27\10"+
+    "\1\0\37\10\1\0\u0128\10\2\0\22\10\34\0\136\10"+
+    "\2\0\11\10\2\0\7\10\16\0\2\10\16\0\5\10"+
+    "\11\0\1\10\213\0\1\10\13\0\1\10\1\0\3\10"+
+    "\1\0\1\10\1\0\24\10\1\0\54\10\1\0\10\10"+
+    "\2\0\32\10\14\0\202\10\12\0\71\10\2\0\2\10"+
+    "\2\0\2\10\3\0\46\10\2\0\2\10\67\0\46\10"+
+    "\2\0\1\10\7\0\47\10\110\0\33\10\5\0\3\10"+
+    "\56\0\32\10\5\0\13\10\25\0\12\6\7\0\143\10"+
+    "\1\0\1\10\17\0\2\10\11\0\12\6\3\10\23\0"+
+    "\1\10\1\0\33\10\123\0\46\10\u015f\0\65\10\3\0"+
+    "\1\10\22\0\1\10\7\0\12\10\4\0\12\6\25\0"+
+    "\10\10\2\0\2\10\2\0\26\10\1\0\7\10\1\0"+
+    "\1\10\3\0\4\10\42\0\2\10\1\0\3\10\4\0"+
+    "\12\6\2\10\23\0\6\10\4\0\2\10\2\0\26\10"+
+    "\1\0\7\10\1\0\2\10\1\0\2\10\1\0\2\10"+
+    "\37\0\4\10\1\0\1\10\7\0\12\6\2\0\3\10"+
+    "\20\0\7\10\1\0\1\10\1\0\3\10\1\0\26\10"+
+    "\1\0\7\10\1\0\2\10\1\0\5\10\3\0\1\10"+
+    "\22\0\1\10\17\0\1\10\5\0\12\6\25\0\10\10"+
+    "\2\0\2\10\2\0\26\10\1\0\7\10\1\0\2\10"+
+    "\2\0\4\10\3\0\1\10\36\0\2\10\1\0\3\10"+
+    "\4\0\12\6\25\0\6\10\3\0\3\10\1\0\4\10"+
+    "\3\0\2\10\1\0\1\10\1\0\2\10\3\0\2\10"+
+    "\3\0\3\10\3\0\10\10\1\0\3\10\55\0\11\6"+
+    "\25\0\10\10\1\0\3\10\1\0\27\10\1\0\12\10"+
+    "\1\0\5\10\46\0\2\10\4\0\12\6\25\0\10\10"+
+    "\1\0\3\10\1\0\27\10\1\0\12\10\1\0\5\10"+
+    "\44\0\1\10\1\0\2\10\4\0\12\6\25\0\10\10"+
+    "\1\0\3\10\1\0\27\10\1\0\20\10\46\0\2\10"+
+    "\4\0\12\6\25\0\22\10\3\0\30\10\1\0\11\10"+
+    "\1\0\1\10\2\0\7\10\71\0\1\12\60\10\1\12"+
+    "\2\10\14\12\7\10\11\12\12\6\47\0\2\10\1\0"+
+    "\1\10\2\0\2\10\1\0\1\10\2\0\1\10\6\0"+
+    "\4\10\1\0\7\10\1\0\3\10\1\0\1\10\1\0"+
+    "\1\10\2\0\2\10\1\0\4\10\1\0\2\10\11\0"+
+    "\1\10\2\0\5\10\1\0\1\10\11\0\12\6\2\0"+
+    "\2\10\42\0\1\10\37\0\12\6\26\0\10\10\1\0"+
+    "\42\10\35\0\4\10\164\0\42\10\1\0\5\10\1\0"+
+    "\2\10\25\0\12\6\6\0\6\10\112\0\46\10\12\0"+
+    "\47\10\11\0\132\10\5\0\104\10\5\0\122\10\6\0"+
+    "\7\10\1\0\77\10\1\0\1\10\1\0\4\10\2\0"+
+    "\7\10\1\0\1\10\1\0\4\10\2\0\47\10\1\0"+
+    "\1\10\1\0\4\10\2\0\37\10\1\0\1\10\1\0"+
+    "\4\10\2\0\7\10\1\0\1\10\1\0\4\10\2\0"+
+    "\7\10\1\0\7\10\1\0\27\10\1\0\37\10\1\0"+
+    "\1\10\1\0\4\10\2\0\7\10\1\0\47\10\1\0"+
+    "\23\10\16\0\11\6\56\0\125\10\14\0\u016c\10\2\0"+
+    "\10\10\12\0\32\10\5\0\113\10\225\0\64\10\54\0"+
+    "\12\6\46\0\12\6\6\0\130\10\10\0\51\10\127\0"+
+    "\234\10\4\0\132\10\6\0\26\10\2\0\6\10\2\0"+
+    "\46\10\2\0\6\10\2\0\10\10\1\0\1\10\1\0"+
+    "\1\10\1\0\1\10\1\0\37\10\2\0\65\10\1\0"+
+    "\7\10\1\0\1\10\3\0\3\10\1\0\7\10\3\0"+
+    "\4\10\2\0\6\10\4\0\15\10\5\0\3\10\1\0"+
+    "\7\10\202\0\1\10\202\0\1\10\4\0\1\10\2\0"+
+    "\12\10\1\0\1\10\3\0\5\10\6\0\1\10\1\0"+
+    "\1\10\1\0\1\10\1\0\4\10\1\0\3\10\1\0"+
+    "\7\10\313\0\2\10\52\0\5\10\12\0\360\13\1\0"+
+    "\136\10\21\0\30\10\70\0\220\13\200\0\u01c0\13\100\0"+
+    "\u0100\13\215\10\163\0\244\10\134\0\u0100\13\7\10\14\0"+
+    "\5\10\5\0\1\10\1\0\12\10\1\0\15\10\1\0"+
+    "\5\10\1\0\1\10\1\0\2\10\1\0\2\10\1\0"+
+    "\154\10\41\0\153\10\22\0\100\10\2\0\66\10\50\0"+
+    "\14\10\164\0\3\10\1\0\1\10\1\0\207\10\23\0"+
+    "\12\6\7\0\32\10\6\0\32\10\12\0\73\13\37\10"+
+    "\3\0\6\10\2\0\6\10\2\0\6\10\2\0\3\10"+
+    "\43\0";
 
-  private static int[] zzUnpackcmap_blocks() {
-    int[] result = new int[10496];
+  private static int [] zzUnpackcmap_blocks() {
+    int [] result = new int[10496];
     int offset = 0;
     offset = zzUnpackcmap_blocks(ZZ_CMAP_BLOCKS_PACKED_0, offset, result);
     return result;
   }
 
-  private static int zzUnpackcmap_blocks(String packed, int offset, int[] result) {
-    int i = 0; /* index in packed string  */
-    int j = offset; /* index in unpacked array */
+  private static int zzUnpackcmap_blocks(String packed, int offset, int [] result) {
+    int i = 0;       /* index in packed string  */
+    int j = offset;  /* index in unpacked array */
     int l = packed.length();
     while (i < l) {
       int count = packed.charAt(i++);
       int value = packed.charAt(i++);
-      do result[j++] = value;
-      while (--count > 0);
+      do result[j++] = value; while (--count > 0);
     }
     return j;
   }
 
-  /** Translates DFA states to action switch labels. */
-  private static final int[] ZZ_ACTION = zzUnpackAction();
+  /**
+   * Translates DFA states to action switch labels.
+   */
+  private static final int [] ZZ_ACTION = zzUnpackAction();
 
   private static final String ZZ_ACTION_PACKED_0 =
-      "\1\0\1\1\3\2\1\3\12\0\1\2\1\0\6\4"
-          + "\3\5\1\0\1\6\1\7\2\4\2\0\3\5\1\6"
-          + "\1\5\2\10\4\0\1\10\1\11\1\10\1\12\1\5";
+    "\1\0\1\1\3\2\1\3\12\0\1\2\1\0\6\4"+
+    "\3\5\1\0\1\6\1\7\2\4\2\0\3\5\1\6"+
+    "\1\5\2\10\4\0\1\10\1\11\1\10\1\12\1\5";
 
-  private static int[] zzUnpackAction() {
-    int[] result = new int[50];
+  private static int [] zzUnpackAction() {
+    int [] result = new int[50];
     int offset = 0;
     offset = zzUnpackAction(ZZ_ACTION_PACKED_0, offset, result);
     return result;
   }
 
-  private static int zzUnpackAction(String packed, int offset, int[] result) {
-    int i = 0; /* index in packed string  */
-    int j = offset; /* index in unpacked array */
+  private static int zzUnpackAction(String packed, int offset, int [] result) {
+    int i = 0;       /* index in packed string  */
+    int j = offset;  /* index in unpacked array */
     int l = packed.length();
     while (i < l) {
       int count = packed.charAt(i++);
       int value = packed.charAt(i++);
-      do result[j++] = value;
-      while (--count > 0);
+      do result[j++] = value; while (--count > 0);
     }
     return j;
   }
 
-  /** Translates a state to a row index in the transition table */
-  private static final int[] ZZ_ROWMAP = zzUnpackRowMap();
+
+  /**
+   * Translates a state to a row index in the transition table
+   */
+  private static final int [] ZZ_ROWMAP = zzUnpackRowMap();
 
   private static final String ZZ_ROWMAP_PACKED_0 =
-      "\0\0\0\14\0\30\0\44\0\60\0\14\0\74\0\110"
-          + "\0\124\0\140\0\154\0\170\0\204\0\220\0\234\0\250"
-          + "\0\264\0\300\0\314\0\330\0\344\0\360\0\374\0\u0108"
-          + "\0\u0114\0\u0120\0\u012c\0\u0138\0\154\0\u0144\0\u0150\0\u015c"
-          + "\0\u0168\0\u0174\0\u0180\0\u018c\0\u0198\0\u01a4\0\u01b0\0\124"
-          + "\0\300\0\u01bc\0\u01c8\0\u01d4\0\u01e0\0\u01ec\0\u01f8\0\u0204"
-          + "\0\u0210\0\u021c";
+    "\0\0\0\14\0\30\0\44\0\60\0\14\0\74\0\110"+
+    "\0\124\0\140\0\154\0\170\0\204\0\220\0\234\0\250"+
+    "\0\264\0\300\0\314\0\330\0\344\0\360\0\374\0\u0108"+
+    "\0\u0114\0\u0120\0\u012c\0\u0138\0\154\0\u0144\0\u0150\0\u015c"+
+    "\0\u0168\0\u0174\0\u0180\0\u018c\0\u0198\0\u01a4\0\u01b0\0\124"+
+    "\0\300\0\u01bc\0\u01c8\0\u01d4\0\u01e0\0\u01ec\0\u01f8\0\u0204"+
+    "\0\u0210\0\u021c";
 
-  private static int[] zzUnpackRowMap() {
-    int[] result = new int[50];
+  private static int [] zzUnpackRowMap() {
+    int [] result = new int[50];
     int offset = 0;
     offset = zzUnpackRowMap(ZZ_ROWMAP_PACKED_0, offset, result);
     return result;
   }
 
-  private static int zzUnpackRowMap(String packed, int offset, int[] result) {
-    int i = 0; /* index in packed string  */
-    int j = offset; /* index in unpacked array */
+  private static int zzUnpackRowMap(String packed, int offset, int [] result) {
+    int i = 0;  /* index in packed string  */
+    int j = offset;  /* index in unpacked array */
     int l = packed.length() - 1;
     while (i < l) {
       int high = packed.charAt(i++) << 16;
@@ -228,83 +241,83 @@ class ClassicTokenizerImpl {
     return j;
   }
 
-  /** The transition table of the DFA */
-  private static final int[] ZZ_TRANS = zzUnpacktrans();
+  /**
+   * The transition table of the DFA
+   */
+  private static final int [] ZZ_TRANS = zzUnpacktrans();
 
   private static final String ZZ_TRANS_PACKED_0 =
-      "\6\2\1\3\1\2\1\4\1\2\1\5\1\6\17\0"
-          + "\1\7\1\10\1\11\1\3\1\12\1\3\1\10\1\5"
-          + "\2\0\1\13\1\14\1\15\1\16\1\17\1\3\1\20"
-          + "\1\21\1\16\1\5\4\0\1\15\1\16\1\22\1\5"
-          + "\1\12\1\5\1\16\1\5\7\0\1\23\1\0\1\24"
-          + "\1\0\1\25\7\0\1\26\1\0\1\27\1\0\1\30"
-          + "\7\0\1\31\1\0\1\32\1\0\1\33\7\0\1\34"
-          + "\1\0\1\34\1\0\1\34\11\0\1\35\13\0\1\36"
-          + "\11\0\1\37\1\0\1\15\11\0\1\40\1\0\1\41"
-          + "\1\0\1\42\7\0\1\43\1\0\1\44\1\0\1\45"
-          + "\7\0\1\34\1\0\1\46\1\0\1\34\2\0\1\13"
-          + "\1\14\1\15\1\16\1\22\1\3\1\20\1\21\1\16"
-          + "\1\5\7\0\1\43\1\0\1\47\1\0\1\45\4\0"
-          + "\3\7\1\23\1\0\1\23\1\7\1\25\4\0\3\15"
-          + "\1\23\1\0\1\24\1\15\1\25\4\0\3\15\1\25"
-          + "\1\0\1\25\1\15\1\25\4\0\1\7\2\10\1\26"
-          + "\1\12\1\26\1\10\1\30\4\0\1\15\2\16\1\26"
-          + "\1\12\1\27\1\16\1\30\4\0\1\15\2\16\1\30"
-          + "\1\12\1\30\1\16\1\30\4\0\1\7\1\10\1\50"
-          + "\1\31\1\12\1\31\1\10\1\33\4\0\1\15\1\16"
-          + "\1\51\1\31\1\12\1\32\1\16\1\33\4\0\1\15"
-          + "\1\16\1\51\1\33\1\12\1\33\1\16\1\33\5\0"
-          + "\2\52\1\34\1\0\1\34\1\0\1\34\3\0\1\14"
-          + "\5\0\1\36\6\0\3\53\1\37\1\0\1\37\1\53"
-          + "\5\0\1\53\2\54\1\40\1\12\1\40\1\54\1\42"
-          + "\5\0\2\55\1\40\1\12\1\41\1\55\1\42\5\0"
-          + "\2\55\1\42\1\12\1\42\1\55\1\42\4\0\1\53"
-          + "\1\54\1\56\1\43\1\12\1\43\1\54\1\45\5\0"
-          + "\1\55\1\57\1\43\1\12\1\47\1\55\1\45\5\0"
-          + "\1\55\1\60\1\45\1\12\1\45\1\55\1\45\5\0"
-          + "\2\52\1\34\1\0\1\46\1\0\1\34\5\0\1\55"
-          + "\1\60\1\43\1\12\1\47\1\55\1\45\7\0\1\61"
-          + "\1\0\1\61\1\0\1\61\7\0\1\25\1\0\1\25"
-          + "\1\0\1\25\7\0\1\30\1\0\1\30\1\0\1\30"
-          + "\7\0\1\42\1\0\1\42\1\0\1\42\7\0\1\33"
-          + "\1\0\1\33\1\0\1\33\7\0\1\45\1\0\1\62"
-          + "\1\0\1\45\7\0\1\45\1\0\1\45\1\0\1\45"
-          + "\5\0\2\52\1\61\1\0\1\61\1\0\1\61\5\0"
-          + "\1\55\1\57\1\45\1\12\1\45\1\55\1\45\1\0";
+    "\6\2\1\3\1\2\1\4\1\2\1\5\1\6\17\0"+
+    "\1\7\1\10\1\11\1\3\1\12\1\3\1\10\1\5"+
+    "\2\0\1\13\1\14\1\15\1\16\1\17\1\3\1\20"+
+    "\1\21\1\16\1\5\4\0\1\15\1\16\1\22\1\5"+
+    "\1\12\1\5\1\16\1\5\7\0\1\23\1\0\1\24"+
+    "\1\0\1\25\7\0\1\26\1\0\1\27\1\0\1\30"+
+    "\7\0\1\31\1\0\1\32\1\0\1\33\7\0\1\34"+
+    "\1\0\1\34\1\0\1\34\11\0\1\35\13\0\1\36"+
+    "\11\0\1\37\1\0\1\15\11\0\1\40\1\0\1\41"+
+    "\1\0\1\42\7\0\1\43\1\0\1\44\1\0\1\45"+
+    "\7\0\1\34\1\0\1\46\1\0\1\34\2\0\1\13"+
+    "\1\14\1\15\1\16\1\22\1\3\1\20\1\21\1\16"+
+    "\1\5\7\0\1\43\1\0\1\47\1\0\1\45\4\0"+
+    "\3\7\1\23\1\0\1\23\1\7\1\25\4\0\3\15"+
+    "\1\23\1\0\1\24\1\15\1\25\4\0\3\15\1\25"+
+    "\1\0\1\25\1\15\1\25\4\0\1\7\2\10\1\26"+
+    "\1\12\1\26\1\10\1\30\4\0\1\15\2\16\1\26"+
+    "\1\12\1\27\1\16\1\30\4\0\1\15\2\16\1\30"+
+    "\1\12\1\30\1\16\1\30\4\0\1\7\1\10\1\50"+
+    "\1\31\1\12\1\31\1\10\1\33\4\0\1\15\1\16"+
+    "\1\51\1\31\1\12\1\32\1\16\1\33\4\0\1\15"+
+    "\1\16\1\51\1\33\1\12\1\33\1\16\1\33\5\0"+
+    "\2\52\1\34\1\0\1\34\1\0\1\34\3\0\1\14"+
+    "\5\0\1\36\6\0\3\53\1\37\1\0\1\37\1\53"+
+    "\5\0\1\53\2\54\1\40\1\12\1\40\1\54\1\42"+
+    "\5\0\2\55\1\40\1\12\1\41\1\55\1\42\5\0"+
+    "\2\55\1\42\1\12\1\42\1\55\1\42\4\0\1\53"+
+    "\1\54\1\56\1\43\1\12\1\43\1\54\1\45\5\0"+
+    "\1\55\1\57\1\43\1\12\1\47\1\55\1\45\5\0"+
+    "\1\55\1\60\1\45\1\12\1\45\1\55\1\45\5\0"+
+    "\2\52\1\34\1\0\1\46\1\0\1\34\5\0\1\55"+
+    "\1\60\1\43\1\12\1\47\1\55\1\45\7\0\1\61"+
+    "\1\0\1\61\1\0\1\61\7\0\1\25\1\0\1\25"+
+    "\1\0\1\25\7\0\1\30\1\0\1\30\1\0\1\30"+
+    "\7\0\1\42\1\0\1\42\1\0\1\42\7\0\1\33"+
+    "\1\0\1\33\1\0\1\33\7\0\1\45\1\0\1\62"+
+    "\1\0\1\45\7\0\1\45\1\0\1\45\1\0\1\45"+
+    "\5\0\2\52\1\61\1\0\1\61\1\0\1\61\5\0"+
+    "\1\55\1\57\1\45\1\12\1\45\1\55\1\45\1\0";
 
-  private static int[] zzUnpacktrans() {
-    int[] result = new int[552];
+  private static int [] zzUnpacktrans() {
+    int [] result = new int[552];
     int offset = 0;
     offset = zzUnpacktrans(ZZ_TRANS_PACKED_0, offset, result);
     return result;
   }
 
-  private static int zzUnpacktrans(String packed, int offset, int[] result) {
-    int i = 0; /* index in packed string  */
-    int j = offset; /* index in unpacked array */
+  private static int zzUnpacktrans(String packed, int offset, int [] result) {
+    int i = 0;       /* index in packed string  */
+    int j = offset;  /* index in unpacked array */
     int l = packed.length();
     while (i < l) {
       int count = packed.charAt(i++);
       int value = packed.charAt(i++);
       value--;
-      do result[j++] = value;
-      while (--count > 0);
+      do result[j++] = value; while (--count > 0);
     }
     return j;
   }
 
+
   /** Error code for "Unknown internal scanner error". */
   private static final int ZZ_UNKNOWN_ERROR = 0;
-
   /** Error code for "could not match input". */
   private static final int ZZ_NO_MATCH = 1;
-
   /** Error code for "pushback value was too large". */
   private static final int ZZ_PUSHBACK_2BIG = 2;
 
   /**
-   * Error messages for {@link #ZZ_UNKNOWN_ERROR}, {@link #ZZ_NO_MATCH}, and {@link
-   * #ZZ_PUSHBACK_2BIG} respectively.
+   * Error messages for {@link #ZZ_UNKNOWN_ERROR}, {@link #ZZ_NO_MATCH}, and
+   * {@link #ZZ_PUSHBACK_2BIG} respectively.
    */
   private static final String ZZ_ERROR_MSG[] = {
     "Unknown internal scanner error",
@@ -312,28 +325,30 @@ class ClassicTokenizerImpl {
     "Error: pushback value was too large"
   };
 
-  /** ZZ_ATTRIBUTE[aState] contains the attributes of state {@code aState} */
-  private static final int[] ZZ_ATTRIBUTE = zzUnpackAttribute();
+  /**
+   * ZZ_ATTRIBUTE[aState] contains the attributes of state {@code aState}
+   */
+  private static final int [] ZZ_ATTRIBUTE = zzUnpackAttribute();
 
   private static final String ZZ_ATTRIBUTE_PACKED_0 =
-      "\1\0\1\11\3\1\1\11\12\0\1\1\1\0\11\1" + "\1\0\4\1\2\0\7\1\4\0\5\1";
+    "\1\0\1\11\3\1\1\11\12\0\1\1\1\0\11\1"+
+    "\1\0\4\1\2\0\7\1\4\0\5\1";
 
-  private static int[] zzUnpackAttribute() {
-    int[] result = new int[50];
+  private static int [] zzUnpackAttribute() {
+    int [] result = new int[50];
     int offset = 0;
     offset = zzUnpackAttribute(ZZ_ATTRIBUTE_PACKED_0, offset, result);
     return result;
   }
 
-  private static int zzUnpackAttribute(String packed, int offset, int[] result) {
-    int i = 0; /* index in packed string  */
-    int j = offset; /* index in unpacked array */
+  private static int zzUnpackAttribute(String packed, int offset, int [] result) {
+    int i = 0;       /* index in packed string  */
+    int j = offset;  /* index in unpacked array */
     int l = packed.length();
     while (i < l) {
       int count = packed.charAt(i++);
       int value = packed.charAt(i++);
-      do result[j++] = value;
-      while (--count > 0);
+      do result[j++] = value; while (--count > 0);
     }
     return j;
   }
@@ -367,7 +382,6 @@ class ClassicTokenizerImpl {
 
   /**
    * Whether the scanner is at the end of file.
-   *
    * @see #yyatEOF
    */
   private boolean zzAtEOF;
@@ -375,8 +389,8 @@ class ClassicTokenizerImpl {
   /**
    * The number of occupied positions in {@link #zzBuffer} beyond {@link #zzEndRead}.
    *
-   * <p>When a lead/high surrogate has been read from the input stream into the final {@link
-   * #zzBuffer} position, this will have a value of 1; otherwise, it will have a value of 0.
+   * <p>When a lead/high surrogate has been read from the input stream into the final
+   * {@link #zzBuffer} position, this will have a value of 1; otherwise, it will have a value of 0.
    */
   private int zzFinalHighSurrogate = 0;
 
@@ -401,64 +415,69 @@ class ClassicTokenizerImpl {
 
   /* user code: */
 
-  public static final int ALPHANUM = ClassicTokenizer.ALPHANUM;
-  public static final int APOSTROPHE = ClassicTokenizer.APOSTROPHE;
-  public static final int ACRONYM = ClassicTokenizer.ACRONYM;
-  public static final int COMPANY = ClassicTokenizer.COMPANY;
-  public static final int EMAIL = ClassicTokenizer.EMAIL;
-  public static final int HOST = ClassicTokenizer.HOST;
-  public static final int NUM = ClassicTokenizer.NUM;
-  public static final int CJ = ClassicTokenizer.CJ;
-  public static final int ACRONYM_DEP = ClassicTokenizer.ACRONYM_DEP;
+public static final int ALPHANUM          = ClassicTokenizer.ALPHANUM;
+public static final int APOSTROPHE        = ClassicTokenizer.APOSTROPHE;
+public static final int ACRONYM           = ClassicTokenizer.ACRONYM;
+public static final int COMPANY           = ClassicTokenizer.COMPANY;
+public static final int EMAIL             = ClassicTokenizer.EMAIL;
+public static final int HOST              = ClassicTokenizer.HOST;
+public static final int NUM               = ClassicTokenizer.NUM;
+public static final int CJ                = ClassicTokenizer.CJ;
+public static final int ACRONYM_DEP       = ClassicTokenizer.ACRONYM_DEP;
 
-  public static final String[] TOKEN_TYPES = ClassicTokenizer.TOKEN_TYPES;
+public static final String [] TOKEN_TYPES = ClassicTokenizer.TOKEN_TYPES;
 
-  public final int yychar() {
+public final int yychar()
+{
     // jflex supports > 2GB docs but not lucene
     return (int) yychar;
-  }
+}
 
-  /** Fills CharTermAttribute with the current token text. */
-  public final void getText(CharTermAttribute t) {
-    t.copyBuffer(zzBuffer, zzStartRead, zzMarkedPos - zzStartRead);
-  }
+/**
+ * Fills CharTermAttribute with the current token text.
+ */
+public final void getText(CharTermAttribute t) {
+  t.copyBuffer(zzBuffer, zzStartRead, zzMarkedPos-zzStartRead);
+}
 
-  public final void setBufferSize(int numChars) {
-    throw new UnsupportedOperationException();
-  }
+   public final void setBufferSize(int numChars) {
+     throw new UnsupportedOperationException();
+   }
+
 
   /**
    * Creates a new scanner
    *
-   * @param in the java.io.Reader to read input from.
+   * @param   in  the java.io.Reader to read input from.
    */
   ClassicTokenizerImpl(java.io.Reader in) {
     this.zzReader = in;
   }
+
 
   /** Returns the maximum size of the scanner buffer, which limits the size of tokens. */
   private int zzMaxBufferLen() {
     return Integer.MAX_VALUE;
   }
 
-  /** Whether the scanner buffer can grow to accommodate a larger token. */
+  /**  Whether the scanner buffer can grow to accommodate a larger token. */
   private boolean zzCanGrow() {
     return true;
   }
 
-  /** Translates raw input code points to DFA table row */
+  /**
+   * Translates raw input code points to DFA table row
+   */
   private static int zzCMap(int input) {
     int offset = input & 255;
-    return offset == input
-        ? ZZ_CMAP_BLOCKS[offset]
-        : ZZ_CMAP_BLOCKS[ZZ_CMAP_TOP[input >> 8] | offset];
+    return offset == input ? ZZ_CMAP_BLOCKS[offset] : ZZ_CMAP_BLOCKS[ZZ_CMAP_TOP[input >> 8] | offset];
   }
 
   /**
    * Refills the input buffer.
    *
    * @return {@code false} iff there was new input.
-   * @exception java.io.IOException if any I/O-Error occurs
+   * @exception java.io.IOException  if any I/O-Error occurs
    */
   private boolean zzRefill() throws java.io.IOException {
 
@@ -466,7 +485,9 @@ class ClassicTokenizerImpl {
     if (zzStartRead > 0) {
       zzEndRead += zzFinalHighSurrogate;
       zzFinalHighSurrogate = 0;
-      System.arraycopy(zzBuffer, zzStartRead, zzBuffer, 0, zzEndRead - zzStartRead);
+      System.arraycopy(zzBuffer, zzStartRead,
+                       zzBuffer, 0,
+                       zzEndRead - zzStartRead);
 
       /* translate stored positions */
       zzEndRead -= zzStartRead;
@@ -500,12 +521,12 @@ class ClassicTokenizerImpl {
         if (numRead == requested) { // We requested too few chars to encode a full Unicode character
           --zzEndRead;
           zzFinalHighSurrogate = 1;
-        } else { // There is room in the buffer for at least one more char
-          int c = zzReader.read(); // Expecting to read a paired low surrogate char
+        } else {                    // There is room in the buffer for at least one more char
+          int c = zzReader.read();  // Expecting to read a paired low surrogate char
           if (c == -1) {
             return true;
           } else {
-            zzBuffer[zzEndRead++] = (char) c;
+            zzBuffer[zzEndRead++] = (char)c;
           }
         }
       }
@@ -516,6 +537,7 @@ class ClassicTokenizerImpl {
     /* numRead < 0 ==> end of stream */
     return true;
   }
+
 
   /**
    * Closes the input reader.
@@ -530,6 +552,7 @@ class ClassicTokenizerImpl {
       zzReader.close();
     }
   }
+
 
   /**
    * Resets the scanner to read from a new input stream.
@@ -553,19 +576,22 @@ class ClassicTokenizerImpl {
     }
   }
 
-  /** Resets the input position. */
+  /**
+   * Resets the input position.
+   */
   private final void yyResetPosition() {
-    zzAtBOL = true;
-    zzAtEOF = false;
-    zzCurrentPos = 0;
-    zzMarkedPos = 0;
-    zzStartRead = 0;
-    zzEndRead = 0;
-    zzFinalHighSurrogate = 0;
-    yyline = 0;
-    yycolumn = 0;
-    yychar = 0L;
+      zzAtBOL  = true;
+      zzAtEOF  = false;
+      zzCurrentPos = 0;
+      zzMarkedPos = 0;
+      zzStartRead = 0;
+      zzEndRead = 0;
+      zzFinalHighSurrogate = 0;
+      yyline = 0;
+      yycolumn = 0;
+      yychar = 0L;
   }
+
 
   /**
    * Returns whether the scanner has reached the end of the reader it reads from.
@@ -576,6 +602,7 @@ class ClassicTokenizerImpl {
     return zzAtEOF;
   }
 
+
   /**
    * Returns the current lexical state.
    *
@@ -584,6 +611,7 @@ class ClassicTokenizerImpl {
   public final int yystate() {
     return zzLexicalState;
   }
+
 
   /**
    * Enters a new lexical state.
@@ -594,14 +622,16 @@ class ClassicTokenizerImpl {
     zzLexicalState = newState;
   }
 
+
   /**
    * Returns the text matched by the current regular expression.
    *
    * @return the matched text.
    */
   public final String yytext() {
-    return new String(zzBuffer, zzStartRead, zzMarkedPos - zzStartRead);
+    return new String(zzBuffer, zzStartRead, zzMarkedPos-zzStartRead);
   }
+
 
   /**
    * Returns the character at the given position from the matched text.
@@ -609,11 +639,13 @@ class ClassicTokenizerImpl {
    * <p>It is equivalent to {@code yytext().charAt(pos)}, but faster.
    *
    * @param position the position of the character to fetch. A value from 0 to {@code yylength()-1}.
+   *
    * @return the character at {@code position}.
    */
   public final char yycharat(int position) {
     return zzBuffer[zzStartRead + position];
   }
+
 
   /**
    * How many characters were matched.
@@ -621,15 +653,16 @@ class ClassicTokenizerImpl {
    * @return the length of the matched text region.
    */
   public final int yylength() {
-    return zzMarkedPos - zzStartRead;
+    return zzMarkedPos-zzStartRead;
   }
+
 
   /**
    * Reports an error that occurred while scanning.
    *
    * <p>In a well-formed scanner (no or only correct usage of {@code yypushback(int)} and a
-   * match-all fallback rule) this method will only be called with things that "Can't Possibly
-   * Happen".
+   * match-all fallback rule) this method will only be called with things that
+   * "Can't Possibly Happen".
    *
    * <p>If this method is called, something is seriously wrong (e.g. a JFlex bug producing a faulty
    * scanner etc.).
@@ -649,6 +682,7 @@ class ClassicTokenizerImpl {
     throw new Error(message);
   }
 
+
   /**
    * Pushes the specified amount of characters back into the input stream.
    *
@@ -657,11 +691,15 @@ class ClassicTokenizerImpl {
    * @param number the number of characters to be read again. This number must not be greater than
    *     {@link #yylength()}.
    */
-  public void yypushback(int number) {
-    if (number > yylength()) zzScanError(ZZ_PUSHBACK_2BIG);
+  public void yypushback(int number)  {
+    if ( number > yylength() )
+      zzScanError(ZZ_PUSHBACK_2BIG);
 
     zzMarkedPos -= number;
   }
+
+
+
 
   /**
    * Resumes scanning until the next regular expression is matched, the end of input is encountered
@@ -670,7 +708,8 @@ class ClassicTokenizerImpl {
    * @return the next token.
    * @exception java.io.IOException if any I/O-Error occurs.
    */
-  public int getNextToken() throws java.io.IOException {
+  public int getNextToken() throws java.io.IOException
+  {
     int zzInput;
     int zzAction;
 
@@ -680,14 +719,14 @@ class ClassicTokenizerImpl {
     int zzEndReadL = zzEndRead;
     char[] zzBufferL = zzBuffer;
 
-    int[] zzTransL = ZZ_TRANS;
-    int[] zzRowMapL = ZZ_ROWMAP;
-    int[] zzAttrL = ZZ_ATTRIBUTE;
+    int [] zzTransL = ZZ_TRANS;
+    int [] zzRowMapL = ZZ_ROWMAP;
+    int [] zzAttrL = ZZ_ATTRIBUTE;
 
     while (true) {
       zzMarkedPosL = zzMarkedPos;
 
-      yychar += zzMarkedPosL - zzStartRead;
+      yychar+= zzMarkedPosL-zzStartRead;
 
       zzAction = -1;
 
@@ -697,48 +736,52 @@ class ClassicTokenizerImpl {
 
       // set up zzAction for empty match case:
       int zzAttributes = zzAttrL[zzState];
-      if ((zzAttributes & 1) == 1) {
+      if ( (zzAttributes & 1) == 1 ) {
         zzAction = zzState;
       }
 
-      zzForAction:
-      {
+
+      zzForAction: {
         while (true) {
 
           if (zzCurrentPosL < zzEndReadL) {
             zzInput = Character.codePointAt(zzBufferL, zzCurrentPosL, zzEndReadL);
             zzCurrentPosL += Character.charCount(zzInput);
-          } else if (zzAtEOF) {
+          }
+          else if (zzAtEOF) {
             zzInput = YYEOF;
             break zzForAction;
-          } else {
+          }
+          else {
             // store back cached positions
-            zzCurrentPos = zzCurrentPosL;
-            zzMarkedPos = zzMarkedPosL;
+            zzCurrentPos  = zzCurrentPosL;
+            zzMarkedPos   = zzMarkedPosL;
             boolean eof = zzRefill();
             // get translated positions and possibly new buffer
-            zzCurrentPosL = zzCurrentPos;
-            zzMarkedPosL = zzMarkedPos;
-            zzBufferL = zzBuffer;
-            zzEndReadL = zzEndRead;
+            zzCurrentPosL  = zzCurrentPos;
+            zzMarkedPosL   = zzMarkedPos;
+            zzBufferL      = zzBuffer;
+            zzEndReadL     = zzEndRead;
             if (eof) {
               zzInput = YYEOF;
               break zzForAction;
-            } else {
+            }
+            else {
               zzInput = Character.codePointAt(zzBufferL, zzCurrentPosL, zzEndReadL);
               zzCurrentPosL += Character.charCount(zzInput);
             }
           }
-          int zzNext = zzTransL[zzRowMapL[zzState] + zzCMap(zzInput)];
+          int zzNext = zzTransL[ zzRowMapL[zzState] + zzCMap(zzInput) ];
           if (zzNext == -1) break zzForAction;
           zzState = zzNext;
 
           zzAttributes = zzAttrL[zzState];
-          if ((zzAttributes & 1) == 1) {
+          if ( (zzAttributes & 1) == 1 ) {
             zzAction = zzState;
             zzMarkedPosL = zzCurrentPosL;
-            if ((zzAttributes & 8) == 8) break zzForAction;
+            if ( (zzAttributes & 8) == 8 ) break zzForAction;
           }
+
         }
       }
 
@@ -748,82 +791,65 @@ class ClassicTokenizerImpl {
       if (zzInput == YYEOF && zzStartRead == zzCurrentPos) {
         zzAtEOF = true;
         return YYEOF;
-      } else {
+      }
+      else {
         switch (zzAction < 0 ? zzAction : ZZ_ACTION[zzAction]) {
           case 1:
-            {
-              break; /* ignore */
+            {  break;/* ignore */
             }
           // fall through
-          case 11:
-            break;
+          case 11: break;
           case 2:
-            {
-              return ALPHANUM;
+            { return ALPHANUM;
             }
           // fall through
-          case 12:
-            break;
+          case 12: break;
           case 3:
-            {
-              return CJ;
+            { return CJ;
             }
           // fall through
-          case 13:
-            break;
+          case 13: break;
           case 4:
-            {
-              return NUM;
+            { return NUM;
             }
           // fall through
-          case 14:
-            break;
+          case 14: break;
           case 5:
-            {
-              return HOST;
+            { return HOST;
             }
           // fall through
-          case 15:
-            break;
+          case 15: break;
           case 6:
-            {
-              return COMPANY;
+            { return COMPANY;
             }
           // fall through
-          case 16:
-            break;
+          case 16: break;
           case 7:
-            {
-              return APOSTROPHE;
+            { return APOSTROPHE;
             }
           // fall through
-          case 17:
-            break;
+          case 17: break;
           case 8:
-            {
-              return ACRONYM_DEP;
+            { return ACRONYM_DEP;
             }
           // fall through
-          case 18:
-            break;
+          case 18: break;
           case 9:
-            {
-              return ACRONYM;
+            { return ACRONYM;
             }
           // fall through
-          case 19:
-            break;
+          case 19: break;
           case 10:
-            {
-              return EMAIL;
+            { return EMAIL;
             }
           // fall through
-          case 20:
-            break;
+          case 20: break;
           default:
             zzScanError(ZZ_NO_MATCH);
         }
       }
     }
   }
+
+
 }

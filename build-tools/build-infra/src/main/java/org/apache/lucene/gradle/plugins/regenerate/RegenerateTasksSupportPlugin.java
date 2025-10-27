@@ -43,6 +43,7 @@ import org.gradle.api.Task;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.logging.LogLevel;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.Delete;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
 
@@ -78,6 +79,7 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
   private static final String REGEN_TASKS_GROUP = "Regeneration";
 
   private static final String REGEN_TASK_NAME = "regenerate";
+  private static final String REGEN_TASK_WIPE_CHECKSUMS = "removeRegenerateChecksums";
 
   @Override
   public void apply(Project rootProject) {
@@ -130,6 +132,11 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
           task.setDescription("Rerun any code or static data generation tasks.");
           task.dependsOn(regenerateTasks);
         });
+
+    // register a task to wipe all checksums. Use only for debugging.
+    tasks.register(REGEN_TASK_WIPE_CHECKSUMS, Delete.class, task -> {
+      task.delete(project.fileTree("src/generated/checksums", cfg -> cfg.include("*.json")));
+    });
 
     // Nearly all regeneration tasks touch input sources, which are inputs to checkLicenses
     // so schedule this globally, once.
