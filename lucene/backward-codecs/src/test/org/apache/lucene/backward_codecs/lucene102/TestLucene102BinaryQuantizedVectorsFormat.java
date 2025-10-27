@@ -14,10 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene102;
+package org.apache.lucene.backward_codecs.lucene102;
 
 import static java.lang.String.format;
-import static org.apache.lucene.codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.INDEX_BITS;
+import static org.apache.lucene.backward_codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.INDEX_BITS;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.discretize;
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.packAsBinary;
@@ -51,7 +51,7 @@ import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 
 public class TestLucene102BinaryQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
-  private static final KnnVectorsFormat FORMAT = new Lucene102BinaryQuantizedVectorsFormat();
+  private static final KnnVectorsFormat FORMAT = new Lucene102RWBinaryQuantizedVectorsFormat();
 
   @Override
   protected Codec getCodec() {
