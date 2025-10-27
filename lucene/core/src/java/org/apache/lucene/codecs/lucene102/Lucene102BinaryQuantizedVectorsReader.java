@@ -70,7 +70,6 @@ class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
       FlatVectorsReader rawVectorsReader,
       Lucene102BinaryFlatVectorsScorer vectorsScorer)
       throws IOException {
-    super(vectorsScorer);
     this.vectorScorer = vectorsScorer;
     this.rawVectorsReader = rawVectorsReader;
     int versionMeta = -1;
