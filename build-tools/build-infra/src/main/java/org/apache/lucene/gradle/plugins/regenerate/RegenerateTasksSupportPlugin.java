@@ -134,9 +134,12 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
         });
 
     // register a task to wipe all checksums. Use only for debugging.
-    tasks.register(REGEN_TASK_WIPE_CHECKSUMS, Delete.class, task -> {
-      task.delete(project.fileTree("src/generated/checksums", cfg -> cfg.include("*.json")));
-    });
+    tasks.register(
+        REGEN_TASK_WIPE_CHECKSUMS,
+        Delete.class,
+        task -> {
+          task.delete(project.fileTree("src/generated/checksums", cfg -> cfg.include("*.json")));
+        });
 
     // Nearly all regeneration tasks touch input sources, which are inputs to checkLicenses
     // so schedule this globally, once.
@@ -177,57 +180,6 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
                     "Internal regeneration tasks must set task.description: " + delegate.getPath());
               }
 
-              RegenerateTaskExtension regenerateExt =
-                  delegate.getExtensions().getByType(RegenerateTaskExtension.class);
-
-              // ensure proper scheduling of any must-run-before tasks,
-              // if there are any declared.
-              {
-                var taskNames = regenerateExt.getMustRunBefore().get();
-                project
-                    .getTasks()
-                    .matching(task -> taskNames.contains(task.getName()))
-                    .forEach(other -> other.mustRunAfter(t));
-              }
-
-              // ensure proper scheduling of any followedUpBy tasks (those happening before
-              // checksums are saved but after the source task ran).
-              {
-                var taskNames = regenerateExt.getFollowedUpBy().get();
-                t.dependsOn(taskNames);
-                project
-                    .getTasks()
-                    .matching(task -> taskNames.contains(task.getName()))
-                    .forEach(other -> other.mustRunAfter(delegate));
-              }
-
-              // configure explicit skipping of other tasks if they are listed
-              {
-                var shouldRerun = project.getObjects().property(Boolean.class);
-                shouldRerun.finalizeValueOnRead();
-
-                if (project.getGradle().getStartParameter().isRerunTasks()) {
-                  shouldRerun.set(true);
-                } else {
-                  shouldRerun.set(
-                      project
-                          .getProviders()
-                          .provider(
-                              () -> {
-                                var current = computeChecksummedEntries(delegate);
-                                var expected = loadChecksums(checksumsFile);
-                                return !current.equals(expected);
-                              }));
-                }
-
-                delegate.onlyIf(_ -> shouldRerun.get());
-                var taskNames = regenerateExt.getIfSkippedAlsoSkip().get();
-                project
-                    .getTasks()
-                    .matching(task -> taskNames.contains(task.getName()))
-                    .forEach(other -> other.onlyIf(_ -> shouldRerun.get()));
-              }
-
               // only run if the delegate ran and did the job successfully.
               t.onlyIf(
                   _ -> {
@@ -255,6 +207,71 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
                     }
                   });
             });
+
+    // TODO: so this entire block could/should reside inside checksumSaveTask.register() and be lazy
+    // but gradle throws an 'invalid context' exception on any task.configureEach within this block.
+    // I don't know how to do implement this without eager instantiation of tasks, sorry.
+    {
+      Task t = checksumSaveTask.get();
+      Task delegate = taskProvider.get();
+
+      RegenerateTaskExtension regenerateExt =
+          delegate.getExtensions().getByType(RegenerateTaskExtension.class);
+
+      // ensure proper scheduling of any must-run-before tasks,
+      // if there are any declared.
+      {
+        var taskNames = regenerateExt.getMustRunBefore().get();
+        project
+            .getTasks()
+            .matching(task -> taskNames.contains(task.getName()))
+            .configureEach(
+                other -> {
+                  other.mustRunAfter(t);
+                });
+      }
+
+      // ensure proper scheduling of any followedUpBy tasks (those happening before
+      // checksums are saved but after the source task ran).
+      {
+        var taskNames = regenerateExt.getFollowedUpBy().get();
+        t.dependsOn(taskNames);
+        project
+            .getTasks()
+            .matching(task -> taskNames.contains(task.getName()))
+            .configureEach(
+                other -> {
+                  other.mustRunAfter(delegate);
+                });
+      }
+
+      // configure explicit skipping of other tasks if they are listed
+      {
+        var shouldRerun = project.getObjects().property(Boolean.class);
+        shouldRerun.finalizeValueOnRead();
+
+        if (project.getGradle().getStartParameter().isRerunTasks()) {
+          shouldRerun.set(true);
+        } else {
+          shouldRerun.set(
+              project
+                  .getProviders()
+                  .provider(
+                      () -> {
+                        var current = computeChecksummedEntries(delegate);
+                        var expected = loadChecksums(checksumsFile);
+                        return !current.equals(expected);
+                      }));
+        }
+
+        delegate.onlyIf(_ -> shouldRerun.get());
+        var taskNames = regenerateExt.getIfSkippedAlsoSkip().get();
+        project
+            .getTasks()
+            .matching(task -> taskNames.contains(task.getName()))
+            .configureEach(other -> other.onlyIf(_ -> shouldRerun.get()));
+      }
+    }
 
     taskProvider.configure(
         task -> {

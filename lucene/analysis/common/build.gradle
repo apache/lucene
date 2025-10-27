@@ -17,8 +17,7 @@
 
 
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOption
-import java.nio.file.Files;
-import org.apache.lucene.gradle.plugins.help.ExecOperationsProvider
+import java.nio.file.Files
 
 
 description = 'Analyzers for indexing content in different languages and domains'
@@ -72,13 +71,11 @@ def cloningTasks = dictionaryProjects.collect { repoSpec ->
     inputs.properties(repoSpec)
 
     doFirst {
-      def execOps = objects.newInstance(ExecOperationsProvider).execOperations
-
       def logger = task.logger
       def dotGitPath = targetDir.get().asFile.toPath().toAbsolutePath().resolve(".git")
       def gitExec = { List<String> cmdArgs ->
         logger.lifecycle("Executing git " + cmdArgs.join(" "))
-        execOps.exec {
+        buildGlobals.execOps.exec {
           executable = buildGlobals.externalTool("git")
           ignoreExitValue = false
           workingDir dotGitPath.getParent().toString()
