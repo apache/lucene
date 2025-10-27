@@ -25,6 +25,7 @@ jobs:
         java-version: [ '25' ]
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     env:
       LUCENE_RELEASE_DIR: /tmp/lucene-release-dir
