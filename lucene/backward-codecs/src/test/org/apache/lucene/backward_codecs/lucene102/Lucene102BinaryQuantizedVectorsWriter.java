@@ -14,12 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene102;
+package org.apache.lucene.backward_codecs.lucene102;
 
-import static org.apache.lucene.codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.BINARIZED_VECTOR_COMPONENT;
-import static org.apache.lucene.codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
-import static org.apache.lucene.codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.INDEX_BITS;
-import static org.apache.lucene.codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.QUERY_BITS;
+import static org.apache.lucene.backward_codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.BINARIZED_VECTOR_COMPONENT;
+import static org.apache.lucene.backward_codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.backward_codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.INDEX_BITS;
+import static org.apache.lucene.backward_codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.QUERY_BITS;
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
@@ -63,7 +63,7 @@ import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 
 /** Copied from Lucene, replace with Lucene's implementation sometime after Lucene 10 */
-public class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
+class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   private static final long SHALLOW_RAM_BYTES_USED =
       shallowSizeOfInstance(Lucene102BinaryQuantizedVectorsWriter.class);
 
@@ -71,7 +71,7 @@ public class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   private final List<FieldWriter> fields = new ArrayList<>();
   private final IndexOutput meta, binarizedVectorData;
   private final FlatVectorsWriter rawVectorDelegate;
-  private final Lucene102BinaryFlatVectorsScorer vectorsScorer;
+  private final Lucene102RWBinaryFlatVectorsScorer vectorsScorer;
   private boolean finished;
 
   /**
@@ -80,7 +80,7 @@ public class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
    * @param vectorsScorer the scorer to use for scoring vectors
    */
   protected Lucene102BinaryQuantizedVectorsWriter(
-      Lucene102BinaryFlatVectorsScorer vectorsScorer,
+      Lucene102RWBinaryFlatVectorsScorer vectorsScorer,
       FlatVectorsWriter rawVectorDelegate,
       SegmentWriteState state)
       throws IOException {
