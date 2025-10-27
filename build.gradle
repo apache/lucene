@@ -31,6 +31,7 @@ plugins {
   id 'regenerate.jflex'
   id 'regenerate.kuromoji'
   id 'regenerate.nori'
+  id 'regenerate.unicode-test-classes'
 
   id "lucene.validation.jar-checks"
 }
