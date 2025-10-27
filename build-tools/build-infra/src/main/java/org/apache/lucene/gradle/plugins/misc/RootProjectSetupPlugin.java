@@ -36,6 +36,7 @@ import org.apache.lucene.gradle.plugins.java.JavaProjectConventionsPlugin;
 import org.apache.lucene.gradle.plugins.licenses.CheckJarChecksumsAndLicensesPlugin;
 import org.apache.lucene.gradle.plugins.licenses.CheckLicensesPlugin;
 import org.apache.lucene.gradle.plugins.publishing.ConfigureMavenPublishingPlugin;
+import org.apache.lucene.gradle.plugins.regenerate.RegenerateAntlrPlugin;
 import org.apache.lucene.gradle.plugins.regenerate.RegenerateTasksSupportPlugin;
 import org.apache.lucene.gradle.plugins.spotless.GradleGroovyFormatPlugin;
 import org.gradle.api.Project;
@@ -99,6 +100,9 @@ public class RootProjectSetupPlugin extends LuceneGradlePlugin {
 
     // Apply jar checksums plugin after java conventions.
     plugins.apply(CheckJarChecksumsAndLicensesPlugin.class);
+
+    // Apply resource regeneration fragments
+    plugins.apply(RegenerateAntlrPlugin.class);
 
     // Apply more convention plugins to all projects.
     rootProject
