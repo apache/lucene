@@ -33,6 +33,7 @@ plugins {
   id 'regenerate.nori'
   id 'regenerate.unicode-test-classes'
   id 'regenerate.moman'
+  id 'regenerate.snowball'
 
   id "lucene.validation.jar-checks"
 }
