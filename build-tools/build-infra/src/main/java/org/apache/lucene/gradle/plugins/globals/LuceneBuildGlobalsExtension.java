@@ -22,7 +22,6 @@ import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
@@ -156,20 +155,16 @@ public abstract class LuceneBuildGlobalsExtension {
   }
 
   /** Utility function to read a file, apply changes to its content and write it back. */
-  public void modifyFile(File file, Function<String, String> modifyFn) {
-    try {
-      Function<String, String> normalizeEols = text -> text.replace("\r\n", "\n");
+  public void modifyFile(File file, Function<String, String> modifyFn) throws IOException {
+    Function<String, String> normalizeEols = text -> text.replace("\r\n", "\n");
 
-      Path path = file.toPath();
-      String original = Files.readString(file.toPath());
-      String modified = normalizeEols.apply(original);
-      modified = modifyFn.apply(modified);
-      modified = normalizeEols.apply(modified);
-      if (!original.equals(modified)) {
-        Files.writeString(path, modified);
-      }
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
+    Path path = file.toPath();
+    String original = Files.readString(file.toPath());
+    String modified = normalizeEols.apply(original);
+    modified = modifyFn.apply(modified);
+    modified = normalizeEols.apply(modified);
+    if (!original.equals(modified)) {
+      Files.writeString(path, modified);
     }
   }
 

@@ -23,7 +23,7 @@ plugins {
 
   // TODO: move to java.
   id 'regenerate.forUtil'
-  // id 'regenerate.antlr'
+  id 'regenerate.antlr'
   id 'regenerate.icu'
   id 'regenerate.javacc'
   id 'regenerate.jflex'
