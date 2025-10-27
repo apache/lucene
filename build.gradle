@@ -1,3 +1,5 @@
+import org.apache.lucene.gradle.plugins.publishing.ConfigureMavenPublishingPlugin
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -24,18 +26,7 @@ plugins {
   id "lucene.root-project.setup"
   id "lucene.java-projects.conventions"
 
-  id "lucene.java.modules"
   id "lucene.validation.jar-checks"
-
-  id "lucene.publications.maven"
-  id "lucene.publications.maven-to-nexus-releases"
-  id "lucene.publications.maven-to-nexus-snapshots"
-
-  id "lucene.misc.pylucene"
-
-  id "lucene.documentation"
-  id "lucene.documentation.markdown"
-  id "lucene.documentation.render-javadoc"
 
   id "lucene.regenerate"
   id "lucene.regenerate.jflex"
@@ -49,5 +40,8 @@ plugins {
   id "lucene.regenerate.unicode-test-classes"
   id "lucene.regenerate.snowball"
 }
+
+// configure publishing defaults.
+plugins.apply(ConfigureMavenPublishingPlugin.class);
 
 description = 'Grandparent project for Apache Lucene Core'

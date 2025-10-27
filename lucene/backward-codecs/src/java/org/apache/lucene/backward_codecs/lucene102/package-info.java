@@ -15,26 +15,5 @@
  * limitations under the License.
  */
 
-/*
- * This script configures some helper tasks used by the sibling PyLucene
- * project.
- */
-
-configure(rootProject.ext.mavenProjects, {
-  plugins.withType(JavaPlugin).configureEach {
-    /**
-     * Collect the module's primary artifact and any runtime JARs it requires.
-     */
-    tasks.register("collectRuntimeJars", Sync, {
-      // Collect our own artifact.
-      from jar.outputs
-
-      // Collect all dependencies, excluding cross-module deps.
-      from(configurations.runtimeClasspath, {
-        exclude "lucene-*"
-      })
-
-      into project.layout.buildDirectory.file("runtimeJars")
-    })
-  }
-})
+/** Lucene 10.2 file format. */
+package org.apache.lucene.backward_codecs.lucene102;

@@ -14,17 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.backward_codecs.lucene102;
 
+import java.io.IOException;
+import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
+import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
+import org.apache.lucene.index.SegmentWriteState;
 
-// Configure on-demand maven publishing into ~/.m2 for developers' convenience.
+public class Lucene102RWBinaryQuantizedVectorsFormat extends Lucene102BinaryQuantizedVectorsFormat {
 
-configure(rootProject) {
-  tasks.register("mavenToLocal", {
-    group = "Distribution"
-    description = "Publish Lucene Maven artifacts to ~/.m2 repository."
+  private static final Lucene102RWBinaryFlatVectorsScorer rwScorer =
+      new Lucene102RWBinaryFlatVectorsScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
-    dependsOn rootProject.ext.mavenProjects.collect {
-      it.tasks.matching { it.name == "publishJarsPublicationToMavenLocal" }
-    }
-  })
+  @Override
+  public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+    return new Lucene102BinaryQuantizedVectorsWriter(
+        rwScorer, rawVectorFormat.fieldsWriter(state), state);
+  }
 }
