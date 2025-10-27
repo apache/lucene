@@ -95,7 +95,7 @@ jobs:
 
       - run: ./gradlew allOptions
       - run: ./gradlew helpWorkflow
-      - run: ./gradlew licenses updateLicenses
+      - run: ./gradlew licenses writeChecksums
       - run: ./gradlew check -x test
       - run: ./gradlew assembleRelease mavenToLocal
       - run: ./gradlew eclipse

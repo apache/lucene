@@ -299,7 +299,7 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
                       Map<String, String> expected = new TreeMap<>(expectedChecksums);
 
                       // remove the intersection of identical entries.
-                      var sameEntries = new TreeMap<>(current);
+                      Map<String, String> sameEntries = new TreeMap<>(current);
                       sameEntries.entrySet().retainAll(expected.entrySet());
                       current.entrySet().removeAll(sameEntries.entrySet());
                       expected.entrySet().removeAll(sameEntries.entrySet());

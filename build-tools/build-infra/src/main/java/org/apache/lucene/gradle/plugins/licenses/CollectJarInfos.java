@@ -14,24 +14,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.gradle.plugins.licenses;
 
-plugins {
-  id "base"
+import java.util.List;
+import java.util.stream.Collectors;
+import org.gradle.api.DefaultTask;
+import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Internal;
 
-  id "lucene.root-project.check-environment"
-  id "lucene.root-project.setup"
+/**
+ * A helper task class that can collect and aggregate jar info files produced by {@link
+ * ComputeJarInfos}.
+ */
+public abstract class CollectJarInfos extends DefaultTask {
+  @InputFiles
+  public abstract ConfigurableFileCollection getJarInfos();
 
-  // TODO: move to java.
-  id 'regenerate.forUtil'
-  id 'regenerate.antlr'
-  id 'regenerate.icu'
-  id 'regenerate.javacc'
-  id 'regenerate.jflex'
-  id 'regenerate.kuromoji'
-  id 'regenerate.nori'
-  id 'regenerate.unicode-test-classes'
-  id 'regenerate.moman'
-  id 'regenerate.snowball'
+  @Internal
+  protected List<JarInfo> getUniqueJarInfos() {
+    return getJarInfos().getFiles().stream()
+        .flatMap(it -> JarInfo.deserialize(it.toPath()).stream())
+        .collect(Collectors.toSet())
+        .stream()
+        .sorted()
+        .toList();
+  }
 }
-
-description = 'Grandparent project for Apache Lucene Core'

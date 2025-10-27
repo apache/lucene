@@ -33,6 +33,7 @@ import org.apache.lucene.gradle.plugins.help.BuildOptionGroupsPlugin;
 import org.apache.lucene.gradle.plugins.ide.EclipseSupportPlugin;
 import org.apache.lucene.gradle.plugins.ide.IdeaSupportPlugin;
 import org.apache.lucene.gradle.plugins.java.JavaProjectConventionsPlugin;
+import org.apache.lucene.gradle.plugins.licenses.CheckJarChecksumsAndLicensesPlugin;
 import org.apache.lucene.gradle.plugins.licenses.CheckLicensesPlugin;
 import org.apache.lucene.gradle.plugins.publishing.ConfigureMavenPublishingPlugin;
 import org.apache.lucene.gradle.plugins.regenerate.RegenerateTasksSupportPlugin;
@@ -95,6 +96,9 @@ public class RootProjectSetupPlugin extends LuceneGradlePlugin {
     // Apply Java project conventions
     plugins.apply(JavaProjectConventionsPlugin.class);
     plugins.apply(ConfigureMavenPublishingPlugin.class);
+
+    // Apply jar checksums plugin after java conventions.
+    plugins.apply(CheckJarChecksumsAndLicensesPlugin.class);
 
     // Apply more convention plugins to all projects.
     rootProject
