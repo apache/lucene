@@ -11,7 +11,7 @@ console-menu==0.8.0
 # pull request processing in githubPRs
 PyGithub==2.8.1
 # JIRA processing in githubPRs
-jira==3.8.0
+jira==3.10.5
 # type-checking in "make lint"
 basedpyright==1.31.7
 # linting in "make lint"
