@@ -32,6 +32,7 @@ plugins {
   id 'regenerate.kuromoji'
   id 'regenerate.nori'
   id 'regenerate.unicode-test-classes'
+  id 'regenerate.moman'
 
   id "lucene.validation.jar-checks"
 }
