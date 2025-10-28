@@ -17,8 +17,6 @@
 
 plugins {
   id "base"
-
-  id "lucene.root-project.check-environment"
   id "lucene.root-project.setup"
 }
 

@@ -75,10 +75,10 @@ plugins.withType(JavaPlugin).configureEach {
       // Compile the dictionary
       recompileDictionary(project, dictionaryName, {
         args += [
-            unpackedDir,
-            targetDir,
-            "utf-8",
-            false
+          unpackedDir,
+          targetDir,
+          "utf-8",
+          false
         ]
       })
     }

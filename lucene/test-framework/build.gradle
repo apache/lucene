@@ -53,9 +53,9 @@ tasks.register("regenerateEmojiTokenizationTest", QuietExec, {
   workingDir = genDir
   executable = buildGlobals.externalTool("perl")
   args = [
-      genScript,
-      "-v",
-      unicodeVersion
+    genScript,
+    "-v",
+    unicodeVersion
   ]
 })
 
@@ -75,8 +75,8 @@ tasks.register("regenerateJavaUnicodeWordBreakTest", QuietExec, {
   workingDir = genDir
   executable = buildGlobals.externalTool("perl")
   args = [
-      genScript,
-      "-v",
-      unicodeVersion
+    genScript,
+    "-v",
+    unicodeVersion
   ]
 })

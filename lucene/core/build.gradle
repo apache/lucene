@@ -282,14 +282,14 @@ tasks.register("regeneratePacked64SingleBlock", {
 
   def packedResources = rootProject.file("gradle/regenerate/packed")
   def templateFiles = [
-      file("${packedResources}/gen_BulkOperation.py"),
-      file("${packedResources}/gen_Packed64SingleBlock.py")
+    file("${packedResources}/gen_BulkOperation.py"),
+    file("${packedResources}/gen_Packed64SingleBlock.py")
   ]
 
   inputs.files templateFiles
   outputs.files fileTree(dir: targetDir, includes: [
-      "Packed64SingleBlock.java",
-      "BulkOperation*.java"
+    "Packed64SingleBlock.java",
+    "BulkOperation*.java"
   ])
 
   doLast {
@@ -307,7 +307,7 @@ tasks.register("regeneratePacked64SingleBlock", {
         includes: 'Packed64SingleBlock.java, BulkOperation*.java',
         encoding: 'UTF-8',
         eol: 'lf'
-    )
+        )
   }
 })
 
@@ -355,11 +355,11 @@ tasks.register("regenerateParametricDescription", {
           workingDir = targetDir
           executable = buildGlobals.externalTool("python3")
           args = [
-              '-B',
-              templateFile.toString(),
-              num,
-              transpose,
-              "${momanDir}/finenight/python"
+            '-B',
+            templateFile.toString(),
+            num,
+            transpose,
+            "${momanDir}/finenight/python"
           ]
         })
       }
@@ -369,6 +369,6 @@ tasks.register("regenerateParametricDescription", {
         includes: '*ParametricDescription.java',
         encoding: 'UTF-8',
         eol: 'lf'
-    )
+        )
   }
 })

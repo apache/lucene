@@ -77,19 +77,19 @@ def compileMecab = tasks.register("compileMecab", Download, {
       workingDir = unpackedDir
       executable "git"
       args += [
-          "apply",
-          project.file("src/tools/patches/Noun.proper.csv.patch").absolutePath
+        "apply",
+        project.file("src/tools/patches/Noun.proper.csv.patch").absolutePath
       ]
     })
 
     // Compile the dictionary
     recompileDictionary(project, mecabDictionaryName, {
       args += [
-          "ipadic",
-          unpackedDir,
-          targetDir,
-          "euc-jp",
-          false
+        "ipadic",
+        unpackedDir,
+        targetDir,
+        "euc-jp",
+        false
       ]
     })
   }
@@ -142,11 +142,11 @@ tasks.register("compileNaist", Download, {
     // Compile the dictionary
     recompileDictionary(project, naistDictionaryName, {
       args += [
-          "ipadic",
-          unpackedDir,
-          targetDir,
-          "euc-jp",
-          false
+        "ipadic",
+        unpackedDir,
+        targetDir,
+        "euc-jp",
+        false
       ]
     })
   }
