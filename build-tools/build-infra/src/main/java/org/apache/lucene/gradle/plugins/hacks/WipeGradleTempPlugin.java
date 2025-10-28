@@ -121,14 +121,13 @@ public abstract class WipeGradleTempPlugin extends LuceneGradlePlugin {
     private static final Logger LOGGER = Logging.getLogger(TempCleanupService.class);
 
     @Override
-    public void close() throws Exception {
+    public void close() {
       cleanUpRedirectedTmpDir(getParameters().getProjectRootDir().get());
       cleanUpGradlesTempDir(
           getParameters().getUserHomeDir().get(), getParameters().getGradleDaemonDir().get());
     }
 
     private void cleanUpGradlesTempDir(Directory gradleUserHomeDir, Directory gradleDaemonDir) {
-
       try {
         // clean up any files older than 3 hours from the user's gradle temp. the time
         // limit is added so that we don't interfere with any concurrent builds... just in
