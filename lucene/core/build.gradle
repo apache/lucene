@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+import de.undercouch.gradle.tasks.download.Download
 import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension
 import org.apache.lucene.gradle.plugins.misc.QuietExec
 import org.apache.lucene.gradle.plugins.mrjar.LuceneJavaCoreMrjarPlugin
@@ -269,3 +270,105 @@ configure(project(":lucene:analysis:common")) {
     skeleton = skeletonDefault
   })
 }
+
+//
+// Regenerate precomputed Packed* and bulkOperation* classes.
+//
+
+tasks.register("regeneratePacked64SingleBlock", {
+  description("Regenerate Packed64SingleBlock and BulkOperation*.java")
+
+  def targetDir = file("src/java/org/apache/lucene/util/packed")
+
+  def packedResources = rootProject.file("gradle/regenerate/packed")
+  def templateFiles = [
+      file("${packedResources}/gen_BulkOperation.py"),
+      file("${packedResources}/gen_Packed64SingleBlock.py")
+  ]
+
+  inputs.files templateFiles
+  outputs.files fileTree(dir: targetDir, includes: [
+      "Packed64SingleBlock.java",
+      "BulkOperation*.java"
+  ])
+
+  doLast {
+    templateFiles.each {prog ->
+      logger.lifecycle("Executing: ${prog} in ${targetDir}")
+      buildGlobals.quietExec(it, {
+        workingDir = targetDir
+        executable = buildGlobals.externalTool("python3")
+        args = ['-B', "${prog}"]
+      })
+    }
+    // Correct line endings for Windows.
+    project.ant.fixcrlf(
+        srcDir: targetDir,
+        includes: 'Packed64SingleBlock.java, BulkOperation*.java',
+        encoding: 'UTF-8',
+        eol: 'lf'
+    )
+  }
+})
+
+//
+// Regenerate moman-based resources
+//
+
+def momanSource = "https://github.com/jpbarrette/moman/archive/497c90e34e412b6494db6dabf0d95db8034bd325.zip"
+def momanDir = file("${buildDir}/moman")
+
+def installMoman = tasks.register("installMoman", Download, {
+  def momanZip = file("${momanDir}/moman.zip")
+
+  src momanSource
+  dest momanZip
+  onlyIfModified true
+
+  doLast {
+    ant.unzip(src: momanZip, dest: momanDir, overwrite: "true") {
+      ant.cutdirsmapper(dirs: "1")
+    }
+  }
+})
+
+tasks.register("regenerateParametricDescription", {
+  dependsOn installMoman
+
+  description("Regenerate *ParametricDescription")
+  regenerate {
+    ifSkippedAlsoSkip = ["installMoman"]
+  }
+
+  def momanResources = rootProject.file("gradle/regenerate/moman")
+  def targetDir = file("src/java/org/apache/lucene/util/automaton")
+  def templateFile = file("${momanResources}/createLevAutomata.py")
+
+  inputs.property("source", momanSource)
+  inputs.file templateFile
+  outputs.files fileTree(dir: targetDir, includes: ["*ParametricDescription.java"])
+
+  doLast {
+    ['1', '2'].each {num ->
+      ['True', 'False'].each {transpose ->
+        buildGlobals.quietExec(it, {
+          workingDir = targetDir
+          executable = buildGlobals.externalTool("python3")
+          args = [
+              '-B',
+              templateFile.toString(),
+              num,
+              transpose,
+              "${momanDir}/finenight/python"
+          ]
+        })
+      }
+    }
+    project.ant.fixcrlf(
+        srcDir: targetDir,
+        includes: '*ParametricDescription.java',
+        encoding: 'UTF-8',
+        eol: 'lf'
+    )
+  }
+})
