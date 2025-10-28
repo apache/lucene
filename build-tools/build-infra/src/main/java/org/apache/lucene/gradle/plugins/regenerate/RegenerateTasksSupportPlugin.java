@@ -19,6 +19,7 @@ package org.apache.lucene.gradle.plugins.regenerate;
 import groovy.json.JsonOutput;
 import groovy.json.JsonSlurper;
 import groovy.lang.Closure;
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URL;
@@ -393,7 +394,7 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
               "All regenerate task checksummed inputs/outputs should be files: " + file);
         }
         allEntries.put(
-            rootPath.relativize(file.toPath()).toString(),
+            rootPath.relativize(file.toPath()).toString().replace(File.separatorChar, '/'),
             file.exists() ? digestUtils.digestAsHex(file).trim() : "--");
       } catch (IOException e) {
         throw new UncheckedIOException(e);
