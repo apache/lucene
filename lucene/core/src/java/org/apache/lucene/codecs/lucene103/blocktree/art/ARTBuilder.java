@@ -17,7 +17,9 @@
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.function.BiConsumer;
@@ -70,6 +72,54 @@ public class ARTBuilder {
     }
   }
 
+  /** 1 Save node's Fp, outputFP, floorDataFp for reader like trie. 2 No recursion */
+  public void saveFP(DataOutput meta, IndexOutput index) throws IOException {
+    // start FP.
+    meta.writeVLong(index.getFilePointer());
+    saveNodes(index);
+    meta.writeVLong(root.fp);
+    index.writeLong(0L); // additional 8 bytes for over-reading (write long N bytes, read long)
+    // end FP.
+    meta.writeVLong(index.getFilePointer());
+  }
+
+  /** No recursion . */
+  private void saveNodes(IndexOutput index) throws IOException {
+    final long startFP = index.getFilePointer();
+    Deque<Node> stack = new ArrayDeque<>();
+    stack.push(root);
+
+    // Visit and save nodes of this trie in a post-order depth-first traversal.
+    while (stack.isEmpty() == false) {
+      Node node = stack.peek();
+      assert node.fp == -1;
+
+      if (node.nodeType == NodeType.LEAF_NODE) {
+        node.fp = index.getFilePointer() - startFP;
+        stack.pop();
+        node.saveNode(index);
+        continue;
+      }
+
+      // If there are any children have not been saved, push the first one into stack and continue.
+      // We want to ensure saving children before parent.
+      int nextChildPos = node.getNextLargerPos(node.savedChildPos);
+      if (nextChildPos != Node.ILLEGAL_IDX) {
+        Node child = node.getChild(nextChildPos);
+        assert child != null;
+        stack.push(child);
+        node.savedChildPos = nextChildPos;
+        continue;
+      }
+
+      // All children have been written(saved), now it's time to write the parent!
+      node.fp = index.getFilePointer() - startFP;
+      stack.pop();
+      // TODO: Enhance meta data like trie.
+      node.saveNode(index);
+    }
+  }
+
   /** insert the key and output pair. */
   public void insert(BytesRef key, Output output) {
     Node freshRoot = insert(root, key, 0, output);
@@ -80,7 +130,8 @@ public class ARTBuilder {
 
   /** Append an art builder to this. */
   public void append(ARTBuilder artBuilder) {
-    // TODO: Improve this or PendingBlock#subIndices store kvs?.
+    // TODO: Improve this , or store kvs instead of tmp compiled art in PendingBlock#subIndices, and
+    // compile it once in/before save ?.
     Map<BytesRef, Output> kvs = new TreeMap<>();
     visit(artBuilder.root, new BytesRefBuilder(), kvs::put);
 

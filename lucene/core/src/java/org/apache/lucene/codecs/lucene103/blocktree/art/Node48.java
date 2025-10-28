@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.RandomAccessInput;
 
 /** An ART node with children, the children's count limit from 17 to 48. */
 public class Node48 extends Node {
@@ -132,9 +133,9 @@ public class Node48 extends Node {
    */
   public static Node insert(Node currentNode, Node child, byte key) {
     Node48 node48 = (Node48) currentNode;
-    if (node48.count < 48) {
+    if (node48.childrenCount < 48) {
       // insert leaf node into current node
-      int pos = node48.count;
+      int pos = node48.childrenCount;
       assert node48.children[pos] == null;
       node48.children[pos] = child;
       int unsignedByte = Byte.toUnsignedInt(key);
@@ -144,7 +145,7 @@ public class Node48 extends Node {
       byte[] bytes = LongUtils.toBDBytes(original);
       bytes[bytePosition] = (byte) pos;
       node48.childIndex[longPosition] = LongUtils.fromBDBytes(bytes);
-      node48.count++;
+      node48.childrenCount++;
       return node48;
     } else {
       // grow to Node256
@@ -155,7 +156,7 @@ public class Node48 extends Node {
         node256.children[currentPos] = childNode;
         Node256.setBit((byte) currentPos, node256.bitmapMask);
       }
-      node256.count = node48.count;
+      node256.childrenCount = node48.childrenCount;
       copyNode(node48, node256);
       Node freshOne = Node256.insert(node256, child, key);
       return freshOne;
@@ -193,6 +194,15 @@ public class Node48 extends Node {
   public void readChildIndex(IndexInput dataInput) throws IOException {
     for (int i = 0; i < 32; i++) {
       childIndex[i] = dataInput.readLong();
+    }
+  }
+
+  @Override
+  public void readChildIndex(RandomAccessInput access, long fp) throws IOException {
+    int offset = 0;
+    for (int i = 0; i < 32; i++) {
+      childIndex[i] = access.readLong(fp + offset);
+      offset += 8;
     }
   }
 

@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.RandomAccessInput;
 
 /** An ART node with children, the children's count limit from 49 to 256. */
 public class Node256 extends Node {
@@ -108,7 +109,7 @@ public class Node256 extends Node {
    */
   public static Node256 insert(Node currentNode, Node child, byte key) {
     Node256 node256 = (Node256) currentNode;
-    node256.count++;
+    node256.childrenCount++;
     int i = Byte.toUnsignedInt(key);
     node256.children[i] = child;
     setBit(key, node256.bitmapMask);
@@ -135,6 +136,15 @@ public class Node256 extends Node {
   public void readChildIndex(IndexInput dataInput) throws IOException {
     for (int i = 0; i < bitmapMask.length; i++) {
       bitmapMask[i] = Long.reverseBytes(dataInput.readLong());
+    }
+  }
+
+  @Override
+  public void readChildIndex(RandomAccessInput access, long fp) throws IOException {
+    int offset = 0;
+    for (int i = 0; i < bitmapMask.length; i++) {
+      bitmapMask[i] = Long.reverseBytes(access.readLong(fp + offset));
+      offset += 8;
     }
   }
 

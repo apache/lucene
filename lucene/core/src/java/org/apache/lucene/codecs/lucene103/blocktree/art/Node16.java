@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.RandomAccessInput;
 
 /** An ART node with children, the children's count limit from 5 to 16. */
 public class Node16 extends Node {
@@ -35,15 +36,15 @@ public class Node16 extends Node {
   @Override
   public int getChildPos(byte k) {
     byte[] firstBytes = LongUtils.toBDBytes(firstChildIndex);
-    if (count <= 8) {
-      return Node.binarySearch(firstBytes, 0, count, k);
+    if (childrenCount <= 8) {
+      return Node.binarySearch(firstBytes, 0, childrenCount, k);
     } else {
       int pos = Node.binarySearch(firstBytes, 0, 8, k);
       if (pos != ILLEGAL_IDX) {
         return pos;
       } else {
         byte[] secondBytes = LongUtils.toBDBytes(secondChildIndex);
-        pos = Node.binarySearch(secondBytes, 0, (count - 8), k);
+        pos = Node.binarySearch(secondBytes, 0, (childrenCount - 8), k);
         if (pos != ILLEGAL_IDX) {
           return 8 + pos;
         } else {
@@ -83,12 +84,12 @@ public class Node16 extends Node {
       return 0;
     }
     pos++;
-    return pos < count ? pos : ILLEGAL_IDX;
+    return pos < childrenCount ? pos : ILLEGAL_IDX;
   }
 
   @Override
   public int getMaxPos() {
-    return count - 1;
+    return childrenCount - 1;
   }
 
   /**
@@ -101,21 +102,21 @@ public class Node16 extends Node {
    */
   public static Node insert(Node node, Node child, byte key) {
     Node16 currentNode16 = (Node16) node;
-    if (currentNode16.count < 8) {
+    if (currentNode16.childrenCount < 8) {
       // first
       byte[] bytes = LongUtils.toBDBytes(currentNode16.firstChildIndex);
-      bytes[currentNode16.count] = key;
+      bytes[currentNode16.childrenCount] = key;
       currentNode16.firstChildIndex = LongUtils.fromBDBytes(bytes);
-      currentNode16.children[currentNode16.count] = child;
-      currentNode16.count++;
+      currentNode16.children[currentNode16.childrenCount] = child;
+      currentNode16.childrenCount++;
       return currentNode16;
-    } else if (currentNode16.count < 16) {
+    } else if (currentNode16.childrenCount < 16) {
       // second
       byte[] bytes = LongUtils.toBDBytes(currentNode16.secondChildIndex);
-      bytes[currentNode16.count - 8] = key;
+      bytes[currentNode16.childrenCount - 8] = key;
       currentNode16.secondChildIndex = LongUtils.fromBDBytes(bytes);
-      currentNode16.children[currentNode16.count] = child;
-      currentNode16.count++;
+      currentNode16.children[currentNode16.childrenCount] = child;
+      currentNode16.childrenCount++;
       return currentNode16;
     } else {
       Node48 node48 = new Node48(currentNode16.prefixLength);
@@ -128,7 +129,7 @@ public class Node16 extends Node {
         node48.children[i] = currentNode16.children[i];
       }
       byte[] secondBytes = LongUtils.toBDBytes(currentNode16.secondChildIndex);
-      for (int i = 8; i < currentNode16.count; i++) {
+      for (int i = 8; i < currentNode16.childrenCount; i++) {
         byte v = secondBytes[i - 8];
         int unsignedIdx = Byte.toUnsignedInt(v);
         // i won't be beyond 48
@@ -136,7 +137,7 @@ public class Node16 extends Node {
         node48.children[i] = currentNode16.children[i];
       }
       copyNode(currentNode16, node48);
-      node48.count = currentNode16.count;
+      node48.childrenCount = currentNode16.childrenCount;
       Node freshOne = Node48.insert(node48, child, key);
       return freshOne;
     }
@@ -153,6 +154,12 @@ public class Node16 extends Node {
   public void readChildIndex(IndexInput dataInput) throws IOException {
     firstChildIndex = Long.reverseBytes(dataInput.readLong());
     secondChildIndex = Long.reverseBytes(dataInput.readLong());
+  }
+
+  @Override
+  public void readChildIndex(RandomAccessInput access, long fp) throws IOException {
+    firstChildIndex = Long.reverseBytes(access.readLong(fp));
+    secondChildIndex = Long.reverseBytes(access.readLong(fp + 8));
   }
 
   @Override

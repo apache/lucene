@@ -24,6 +24,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
+/** Test ART. */
 public class TestART extends LuceneTestCase {
 
   public void testNode4() throws IOException {

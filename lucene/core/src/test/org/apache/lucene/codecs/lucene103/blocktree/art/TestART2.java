@@ -27,7 +27,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
-/** Test from TestTrie. */
+/** Test ART for findTargetNode. */
 public class TestART2 extends LuceneTestCase {
 
   public void testRandomTerms() throws Exception {

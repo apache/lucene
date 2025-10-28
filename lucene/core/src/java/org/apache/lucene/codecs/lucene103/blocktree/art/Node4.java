@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.RandomAccessInput;
 
 /** An ART node with children, the children's count limit from 1 to 4. */
 public class Node4 extends Node {
@@ -33,7 +34,7 @@ public class Node4 extends Node {
 
   @Override
   public int getChildPos(byte k) {
-    for (int i = 0; i < count; i++) {
+    for (int i = 0; i < childrenCount; i++) {
       int shiftLeftLen = (3 - i) * 8;
       byte v = (byte) (childIndex >> shiftLeftLen);
       if (v == k) {
@@ -66,12 +67,12 @@ public class Node4 extends Node {
       return 0;
     }
     pos++;
-    return pos < count ? pos : ILLEGAL_IDX;
+    return pos < childrenCount ? pos : ILLEGAL_IDX;
   }
 
   @Override
   public int getMaxPos() {
-    return count - 1;
+    return childrenCount - 1;
   }
 
   /**
@@ -84,16 +85,16 @@ public class Node4 extends Node {
    */
   public static Node insert(Node node, Node childNode, byte key) {
     Node4 current = (Node4) node;
-    if (current.count < 4) {
+    if (current.childrenCount < 4) {
       // insert leaf into current node
-      current.childIndex = IntegerUtil.setByte(current.childIndex, key, current.count);
-      current.children[current.count] = childNode;
-      current.count++;
+      current.childIndex = IntegerUtil.setByte(current.childIndex, key, current.childrenCount);
+      current.children[current.childrenCount] = childNode;
+      current.childrenCount++;
       return current;
     } else {
       // grow to Node16
       Node16 node16 = new Node16(current.prefixLength);
-      node16.count = 4;
+      node16.childrenCount = 4;
       node16.firstChildIndex = LongUtils.initWithFirst4Byte(current.childIndex);
       System.arraycopy(current.children, 0, node16.children, 0, 4);
       copyNode(current, node16);
@@ -110,6 +111,11 @@ public class Node4 extends Node {
   @Override
   public void readChildIndex(IndexInput dataInput) throws IOException {
     childIndex = dataInput.readInt();
+  }
+
+  @Override
+  public void readChildIndex(RandomAccessInput access, long fp) throws IOException {
+    childIndex = access.readInt(fp);
   }
 
   @Override

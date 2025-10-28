@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene103.blocktree.art;
 
 import java.io.IOException;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -25,6 +26,9 @@ import org.apache.lucene.util.BytesRef;
  * the usage of fst in org.apache.lucene.analysis.charfilter.NormalizeCharMap).
  */
 public class ARTReader {
+
+  final RandomAccessInput access;
+  final IndexInput input;
   private Node root;
 
   // For testing.
@@ -34,13 +38,32 @@ public class ARTReader {
 
   // For testing.
   public ARTReader(Node root) {
+    this.access = null;
+    this.input = null;
     this.root = root;
   }
 
-  public ARTReader(IndexInput dataInput) throws IOException {
-    this.root = read(dataInput);
+  public ARTReader(IndexInput input) throws IOException {
+    this.access = null;
+    this.input = input;
+    this.root = read(input);
   }
 
+  /** Just read root node. */
+  public ARTReader(IndexInput input, long rootFP) throws IOException {
+    this.access = input.randomAccessSlice(0, input.length());
+    this.input = input;
+    this.root = load(rootFP);
+  }
+
+  /** Read one node from access with specify fp. */
+  private Node load(long fp) throws IOException {
+    Node node = Node.load(access, fp);
+    node.fp = fp;
+    return node;
+  }
+
+  // Read whole art into heap.
   private Node read(IndexInput dataInput) throws IOException {
     // TODO: Read specify node by node's fp like trie.
     Node node = Node.read(dataInput);
@@ -49,10 +72,31 @@ public class ARTReader {
       return node;
     } else {
       // Children count.
-      Node[] children = new Node[node.count];
+      Node[] children = new Node[node.childrenCount];
       // Read all not null children.
       //      System.out.println(node);
-      for (int i = 0; i < node.count; i++) {
+      for (int i = 0; i < node.childrenCount; i++) {
+        Node child = read(dataInput);
+        children[i] = child;
+      }
+      node.setChildren(children);
+      return node;
+    }
+  }
+
+  // TODO: read/set childrenFps. then we find pos, get fet pos' fp.
+  private Node read2(IndexInput dataInput) throws IOException {
+    // TODO: Read specify node by node's fp like trie.
+    Node node = Node.read(dataInput);
+
+    if (node.nodeType == NodeType.LEAF_NODE) {
+      return node;
+    } else {
+      // Children count.
+      Node[] children = new Node[node.childrenCount];
+      // Read all not null children.
+      //      System.out.println(node);
+      for (int i = 0; i < node.childrenCount; i++) {
         Node child = read(dataInput);
         children[i] = child;
       }

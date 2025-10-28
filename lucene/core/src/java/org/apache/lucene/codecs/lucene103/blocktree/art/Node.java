@@ -21,17 +21,62 @@ import java.util.Arrays;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BytesRef;
 
-/** The whole path of a node is: prefix bytes + childIndex byte + key bytes. */
+/**
+ * The whole path of a node is: prefix bytes + childIndex byte + key bytes. Non leafNode: prefix
+ * (allow null) + childIndex. LeafNode: key (allow null).
+ */
 public abstract class Node {
+  // we save one byte for node type, this sign is needless.
+  static final int SIGN_NO_CHILDREN = 0x00;
+  static final int SIGN_SINGLE_CHILD_WITH_OUTPUT = 0x01;
+  static final int SIGN_SINGLE_CHILD_WITHOUT_OUTPUT = 0x02;
+  static final int SIGN_MULTI_CHILDREN = 0x03;
+
+  static final int LEAF_NODE_HAS_TERMS = 1 << 3;
+  static final int LEAF_NODE_HAS_FLOOR = 1 << 4;
+  static final int NON_LEAF_NODE_HAS_OUTPUT = 1 << 3;
+  static final long NON_LEAF_NODE_HAS_TERMS = 1L << 1;
+  static final long NON_LEAF_NODE_HAS_FLOOR = 1L << 0;
+
+  static final long[] BYTES_MINUS_1_MASK =
+      new long[] {
+        0xFFL,
+        0xFFFFL,
+        0xFFFFFFL,
+        0xFFFFFFFFL,
+        0xFFFFFFFFFFL,
+        0xFFFFFFFFFFFFL,
+        0xFFFFFFFFFFFFFFL,
+        0xFFFFFFFFFFFFFFFFL
+      };
+
+  static final long NO_OUTPUT = -1;
+  static final long NO_FLOOR_DATA = -1;
+
+  // Save fp for reader
+  // The file pointer point to where the node saved. -1 means the node has not been saved.
+  // We just need write root node's fp, and children's fps to walk index.
+  long fp = -1;
+  long outputFp = -1;
+  boolean hasTerms;
+  long floorDataFp = -1;
+  int floorDataLen;
+  int childrenDeltaFpBytes;
+
+  // The latest child that have been saved. null means no child has been saved.
+  int savedChildPos = -1;
+
   // TODO: move to leafNode if key just exists in leafNode?
+  // TODO: rename to suffix.
   BytesRef key;
   Output output;
 
-  private static final int HAS_OUTPUT = 1;
-  private static final int HAS_FLOOR = 1 << 1;
-  private static final int HAS_TERMS = 1 << 2;
+  static final int HAS_OUTPUT = 1;
+  static final int HAS_FLOOR = 1 << 1;
+  static final int HAS_TERMS = 1 << 2;
 
   // node type
   public NodeType nodeType;
@@ -39,7 +84,9 @@ public abstract class Node {
   public int prefixLength;
   // the compressed path path (prefix)
   protected byte[] prefix;
-  protected short count;
+  // number of non-null children, the largest value will not beyond 255
+  // to benefit calculation,we keep the value as a short type
+  protected short childrenCount;
   public static final int ILLEGAL_IDX = -1;
 
   /**
@@ -51,7 +98,7 @@ public abstract class Node {
   public Node(NodeType nodeType, int compressedPrefixSize) {
     this.nodeType = nodeType;
     this.prefixLength = compressedPrefixSize;
-    count = 0;
+    childrenCount = 0;
     if (prefixLength > 0) {
       prefix = new byte[prefixLength];
     }
@@ -164,7 +211,7 @@ public abstract class Node {
     node.output = output;
     node.key = key;
     node.prefix = prefix;
-    node.count = count;
+    node.childrenCount = count;
 
     node.readChildIndex(dataInput);
     return node;
@@ -174,8 +221,9 @@ public abstract class Node {
   public void save(IndexOutput data) throws IOException {
     // Node type.
     data.writeByte((byte) this.nodeType.ordinal());
+    // TODO: Only save count, prefix for non-leaf node. Only save key for leaf node.
     // Children count.
-    data.writeShort(Short.reverseBytes(this.count));
+    data.writeShort(Short.reverseBytes(this.childrenCount));
     // Write prefix.
     data.writeVInt(this.prefixLength);
     if (prefixLength > 0) {
@@ -216,11 +264,151 @@ public abstract class Node {
     saveChildIndex(data);
   }
 
+  /**
+   * Write non leaf node to output. TODO: Move this to a non leaf node, or move leaf node into this.
+   */
+  public void saveNode(IndexOutput index) throws IOException {
+    // Node type.
+    index.writeByte((byte) this.nodeType.ordinal());
+    // Only save count, prefix for non-leaf node. Only save key for leaf node.
+    // Children count.
+    index.writeShort(Short.reverseBytes(this.childrenCount));
+    // Write prefix.
+    // TODO: Impl write/read VInt like DataInput#readVInt.
+    index.writeInt(this.prefixLength);
+    if (prefixLength > 0) {
+      index.writeBytes(this.prefix, 0, this.prefixLength);
+    }
+
+    // Get first child to compute max delta fp between parent and children.
+    // Children fps are in order, so the first child's fp is min, then delta is max.
+    int nextPos = getNextLargerPos(Node.ILLEGAL_IDX);
+    Node child = getChild(nextPos);
+    assert child.fp > -1 : "child should written before parent";
+    long maxChildDeltaFp = fp - child.fp;
+    assert maxChildDeltaFp > 0 : "parent always written after all children";
+
+    int childrenFpBytes = bytesRequiredVLong(maxChildDeltaFp);
+    int encodedOutputFpBytes = output == null ? 1 : bytesRequiredVLong(output.fp() << 2);
+    // 3 bit encodedOutputFpBytes - 1, 1 bit has output, 3bit childrenFpBytes - 1
+    int header =
+        (childrenFpBytes - 1)
+            | (output != null ? NON_LEAF_NODE_HAS_OUTPUT : 0)
+            | ((encodedOutputFpBytes - 1) << 4);
+
+    index.writeByte((byte) header);
+
+    if (output != null) {
+      long encodedFp = encodeFP(output);
+      writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
+    }
+
+    // Write children's delta fps from the first one.
+    nextPos = Node.ILLEGAL_IDX;
+    while ((nextPos = getNextLargerPos(nextPos)) != Node.ILLEGAL_IDX) {
+      child = getChild(nextPos);
+      assert child != null;
+      assert fp > child.fp : "parent always written after all children";
+      writeLongNBytes(fp - child.fp, childrenFpBytes, index);
+    }
+
+    // write floor data
+    // We can use node's fp, childrenCount * childrenFpBytes to calculate floorData's fp.
+    if (output != null && output.floorData() != null) {
+      BytesRef floorData = output.floorData();
+      // We need floorData.length to calculate ChildIndex fp.
+      index.writeInt(floorData.length);
+      index.writeBytes(floorData.bytes, floorData.offset, floorData.length);
+    }
+
+    saveChildIndex(index);
+  }
+
+  /** Read node from data input. */
+  public static Node load(RandomAccessInput access, long fp) throws IOException {
+    // Node type.
+    int offset = 0;
+    int nodeTypeOrdinal = access.readByte(fp + offset);
+    offset += 1;
+    if (nodeTypeOrdinal == NodeType.LEAF_NODE.ordinal()) {
+      // TODO: adjust this call architecture.
+      return LeafNode.load(access, fp);
+    }
+    // Children count.
+    // TODO: improve fp + n + n style
+    short childrenCount = Short.reverseBytes(access.readShort(fp + offset));
+    offset += 2;
+    // Prefix.
+    int prefixLength = access.readInt(fp + offset);
+    offset += 4;
+    byte[] prefix = null;
+    if (prefixLength > 0) {
+      prefix = new byte[prefixLength];
+      access.readBytes(fp + offset, prefix, 0, prefixLength);
+      offset += prefixLength;
+    }
+
+    // TODO: Change the constructor.
+    Node node;
+    if (nodeTypeOrdinal == NodeType.NODE4.ordinal()) {
+      node = new Node4(prefixLength);
+    } else if (nodeTypeOrdinal == NodeType.NODE16.ordinal()) {
+      node = new Node16(prefixLength);
+    } else if (nodeTypeOrdinal == NodeType.NODE48.ordinal()) {
+      node = new Node48(prefixLength);
+    } else if (nodeTypeOrdinal == NodeType.NODE256.ordinal()) {
+      node = new Node256(prefixLength);
+    } else {
+      throw new IOException("read error: bad nodeTypeOrdinal");
+    }
+
+    node.fp = fp;
+    node.prefix = prefix;
+    node.childrenCount = childrenCount;
+
+    // 3 bit encodedOutputFpBytes - 1, 1 bit has output, 3bit childrenFpBytes
+    int header = access.readByte(fp + offset);
+    offset += 1;
+    if ((header & NON_LEAF_NODE_HAS_OUTPUT) != 0) {
+      int encodedOutputFpBytes = ((header >>> 4) & 0x07) + 1;
+      // TODO: impl readLongFromNBytes.
+      long encodedOutputFp = access.readLong(fp + offset);
+      offset += encodedOutputFpBytes;
+      if (encodedOutputFpBytes < 8) {
+        encodedOutputFp = encodedOutputFp & BYTES_MINUS_1_MASK[encodedOutputFpBytes - 1];
+      }
+
+      node.outputFp = encodedOutputFp >>> 2;
+      node.hasTerms = (encodedOutputFp & NON_LEAF_NODE_HAS_TERMS) != 0;
+      // Read floor.
+      if ((encodedOutputFp & NON_LEAF_NODE_HAS_FLOOR) != 0) {
+        node.childrenDeltaFpBytes = (header & 0x07) + 1;
+        // Skip children delta fp bytes.
+        offset += childrenCount * node.childrenDeltaFpBytes;
+        node.floorDataLen = access.readInt(fp + offset);
+        offset += 4;
+        node.floorDataFp = fp + offset;
+      }
+    }
+
+    node.readChildIndex(access, fp + offset + node.floorDataLen);
+    return node;
+  }
+
+  private long encodeFP(Output output) {
+    assert output.fp() < 1L << 62;
+    return (output.floorData() != null ? NON_LEAF_NODE_HAS_FLOOR : 0)
+        | (output.hasTerms() ? NON_LEAF_NODE_HAS_TERMS : 0)
+        | (output.fp() << 2);
+  }
+
   /** Write childIndex to output. */
   public abstract void saveChildIndex(IndexOutput dataOutput) throws IOException;
 
   /** Write childIndex to output. */
   public abstract void readChildIndex(IndexInput dataInput) throws IOException;
+
+  public abstract void readChildIndex(RandomAccessInput access, long fp) throws IOException;
 
   protected static int bytesRequiredVLong(long v) {
     return Long.BYTES - (Long.numberOfLeadingZeros(v | 1) >>> 3);
@@ -329,7 +517,7 @@ public abstract class Node {
     stb.append(" prefix=").append(prefix == null ? "" : Arrays.toString(prefix));
     // May throw exception.
     stb.append(" key=").append(key == null ? "" : key.utf8ToString());
-    stb.append(" count=").append(count);
+    stb.append(" count=").append(childrenCount);
     return stb.toString();
   }
 
@@ -345,7 +533,7 @@ public abstract class Node {
     if (this.nodeType != ((Node) obj).nodeType) {
       return false;
     }
-    if (this.count != ((Node) obj).count) {
+    if (this.childrenCount != ((Node) obj).childrenCount) {
       return false;
     }
     if (this.prefixLength != ((Node) obj).prefixLength) {
