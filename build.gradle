@@ -17,21 +17,7 @@
 
 plugins {
   id "base"
-
-  id "lucene.root-project.check-environment"
   id "lucene.root-project.setup"
-
-  // TODO: move to java.
-  id 'regenerate.forUtil'
-  id 'regenerate.antlr'
-  id 'regenerate.icu'
-  id 'regenerate.javacc'
-  id 'regenerate.jflex'
-  id 'regenerate.kuromoji'
-  id 'regenerate.nori'
-  id 'regenerate.unicode-test-classes'
-  id 'regenerate.moman'
-  id 'regenerate.snowball'
 }
 
 description = 'Grandparent project for Apache Lucene Core'

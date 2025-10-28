@@ -103,9 +103,9 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
             skipReason = "skipped explicitly on a CI build it seems";
           } else {
             skipReason =
-                "skipped on builds not running inside CI environments, pass -P"
-                    + OPT_VALIDATION_ERRORPRONE
-                    + "=true to enable";
+                "skipped on non-CI environments, pass "
+                    + ("-P" + OPT_VALIDATION_ERRORPRONE + "=true")
+                    + " to enable";
           }
         }
       }
@@ -116,6 +116,15 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
             .register(
                 TASK_ERROR_PRONE_SKIPPED,
                 task -> {
+                  boolean hasCheckTask =
+                      project.getGradle().getStartParameter().getTaskNames().contains("check");
+
+                  task.onlyIf(
+                      _ -> {
+                        // Only complain if we're running a 'check'.
+                        return hasCheckTask;
+                      });
+
                   task.doFirst(
                       t -> {
                         t.getLogger().warn("Errorprone linting turned off ({})", skipReason);

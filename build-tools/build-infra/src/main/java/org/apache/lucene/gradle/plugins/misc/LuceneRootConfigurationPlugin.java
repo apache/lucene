@@ -48,10 +48,13 @@ import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
 
 /** Initialization of the root project, globals, etc. */
-public class RootProjectSetupPlugin extends LuceneGradlePlugin {
+public class LuceneRootConfigurationPlugin extends LuceneGradlePlugin {
   @Override
   public void apply(Project rootProject) {
     applicableToRootProjectOnly(rootProject);
+
+    PluginContainer plugins = rootProject.getPlugins();
+    plugins.apply(CheckEnvironmentPlugin.class);
 
     // Register these plugins early, for everything.
     rootProject
@@ -64,7 +67,6 @@ public class RootProjectSetupPlugin extends LuceneGradlePlugin {
             });
 
     // Register other root-level plugins.
-    PluginContainer plugins = rootProject.getPlugins();
     plugins.apply(RegisterBuildGlobalsPlugin.class);
     plugins.apply(GitInfoPlugin.class);
 

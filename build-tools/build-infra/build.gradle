@@ -17,8 +17,6 @@
 
 plugins {
   id "java-gradle-plugin"
-  id "groovy-gradle-plugin"
-
   alias(deps.plugins.forbiddenapis) apply false
 }
 
@@ -40,14 +38,9 @@ gradlePlugin {
   automatedPublishing = false
 
   plugins {
-    CheckEnvironmentPlugin {
-      id = 'lucene.root-project.check-environment'
-      implementationClass = 'org.apache.lucene.gradle.plugins.misc.CheckEnvironmentPlugin'
-    }
-
     RootProjectSetupPlugin {
       id = 'lucene.root-project.setup'
-      implementationClass = 'org.apache.lucene.gradle.plugins.misc.RootProjectSetupPlugin'
+      implementationClass = 'org.apache.lucene.gradle.plugins.misc.LuceneRootConfigurationPlugin'
     }
   }
 }
