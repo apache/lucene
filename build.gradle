@@ -22,11 +22,6 @@ plugins {
   id "lucene.root-project.setup"
 
   // TODO: move to java.
-  id 'regenerate.forUtil'
-  id 'regenerate.antlr'
-  id 'regenerate.icu'
-  id 'regenerate.javacc'
-  id 'regenerate.jflex'
   id 'regenerate.kuromoji'
   id 'regenerate.nori'
   id 'regenerate.unicode-test-classes'
