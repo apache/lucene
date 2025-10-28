@@ -116,14 +116,13 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
             .register(
                 TASK_ERROR_PRONE_SKIPPED,
                 task -> {
+                  boolean hasCheckTask =
+                      project.getGradle().getStartParameter().getTaskNames().contains("check");
+
                   task.onlyIf(
                       _ -> {
                         // Only complain if we're running a 'check'.
-                        return project
-                            .getGradle()
-                            .getStartParameter()
-                            .getTaskNames()
-                            .contains("check");
+                        return hasCheckTask;
                       });
 
                   task.doFirst(
