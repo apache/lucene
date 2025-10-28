@@ -346,30 +346,12 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
             input);
       }
 
-      if (indexCreatedVersion < minSupportedMajorVersion) {
-        throw new IndexFormatTooOldException(
-            input,
-            "Index created with Lucene "
-                + indexCreatedVersion
-                + ".x is not supported by Lucene "
-                + Version.LATEST
-                + ". This Lucene version only supports indexes created with major version "
-                + minSupportedMajorVersion
-                + " or later (found: "
-                + indexCreatedVersion
-                + ", minimum: "
-                + minSupportedMajorVersion
-                + "). To resolve this issue: (1) Re-index your data using Lucene "
-                + Version.LATEST.major
-                + ".x, or (2) Use an older Lucene version that supports your index format.");
-      }
-
       SegmentInfos infos = new SegmentInfos(indexCreatedVersion);
       infos.id = id;
       infos.generation = generation;
       infos.lastGeneration = generation;
       infos.luceneVersion = luceneVersion;
-      parseSegmentInfos(directory, input, infos, format);
+      parseSegmentInfos(directory, input, infos, format, minSupportedMajorVersion);
       return infos;
 
     } catch (Throwable t) {
@@ -385,7 +367,12 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   }
 
   private static void parseSegmentInfos(
-      Directory directory, DataInput input, SegmentInfos infos, int format) throws IOException {
+      Directory directory,
+      DataInput input,
+      SegmentInfos infos,
+      int format,
+      int minSupportedMajorVersion)
+      throws IOException {
     infos.version = CodecUtil.readBELong(input);
     // System.out.println("READ sis version=" + infos.version);
     infos.counter = input.readVLong();
@@ -402,11 +389,38 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     }
 
     long totalDocs = 0;
+
     for (int seg = 0; seg < numSegments; seg++) {
       String segName = input.readString();
       byte[] segmentID = new byte[StringHelper.ID_LENGTH];
       input.readBytes(segmentID, 0, segmentID.length);
-      Codec codec = readCodec(input);
+      Codec codec = null;
+      try {
+        codec = readCodec(input);
+      } catch (IllegalArgumentException e) {
+        if (e.getMessage() != null && e.getMessage().contains("Could not load codec")) {
+          // maybe we tried loading an old default codec which isn't present in backward-codecs
+          // anymore.
+          // aka index is too old
+          throw new IndexFormatTooOldException(
+              input,
+              "Index has segments derived from Lucene version "
+                  + infos.indexCreatedVersionMajor
+                  + ".x and is not supported by Lucene "
+                  + Version.LATEST
+                  + ". This Lucene version only supports indexes with major version "
+                  + minSupportedMajorVersion
+                  + " or later (found: "
+                  + infos.indexCreatedVersionMajor
+                  + ", minimum supported: "
+                  + minSupportedMajorVersion
+                  + "). To resolve this issue re-index your data using Lucene "
+                  + minSupportedMajorVersion
+                  + ".x or later.");
+        } else {
+          throw e;
+        }
+      }
       SegmentInfo info =
           codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READONCE);
       info.setCodec(codec);
@@ -494,6 +508,30 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
             "segments infos must record minVersion with indexCreatedVersionMajor="
                 + infos.indexCreatedVersionMajor,
             input);
+      }
+
+      int createdOrSegmentMinVersion =
+          info.getMinVersion() == null
+              ? infos.indexCreatedVersionMajor
+              : info.getMinVersion().major;
+
+      // version >=7 are expected to record minVersion
+      if (info.getMinVersion() == null || info.getMinVersion().major < minSupportedMajorVersion) {
+        throw new IndexFormatTooOldException(
+            input,
+            "Index has segments derived from Lucene version "
+                + createdOrSegmentMinVersion
+                + ".x and is not supported by Lucene "
+                + Version.LATEST
+                + ". This Lucene version only supports indexes with major version "
+                + minSupportedMajorVersion
+                + " or later (found: "
+                + createdOrSegmentMinVersion
+                + ", minimum supported: "
+                + minSupportedMajorVersion
+                + "). To resolve this issue re-index your data using Lucene "
+                + minSupportedMajorVersion
+                + ".x or later.");
       }
     }
 
