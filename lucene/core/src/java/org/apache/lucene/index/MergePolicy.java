@@ -939,4 +939,96 @@ public abstract class MergePolicy {
       this.hardLiveDocs = hardLiveDocs;
     }
   }
+
+  /**
+   * Observer for merge operations returned by {@link IndexWriter#forceMergeDeletes(boolean)}.
+   * Provides methods to query merge status and wait for completion.
+   *
+   * <p>When no merges are needed, {@link #hasNewMerges()} returns {@code false} and {@link
+   * #numMerges()} returns 0. In this case, {@link #await()} returns {@code true} immediately since
+   * there is nothing to wait for.
+   *
+   * @lucene.experimental
+   */
+  public static final class MergeObserver {
+    private final MergePolicy.MergeSpecification spec;
+
+    MergeObserver(MergePolicy.MergeSpecification spec) {
+      this.spec = spec;
+    }
+
+    /**
+     * Returns the number of merges in this specification.
+     *
+     * @return number of merges, or 0 if no merges were scheduled
+     */
+    public int numMerges() {
+      return spec == null ? 0 : spec.merges.size();
+    }
+
+    /**
+     * Returns whether any new merges were scheduled.
+     *
+     * @return {@code true} if merges were scheduled, {@code false} if no merges needed
+     */
+    public boolean hasNewMerges() {
+      return spec != null;
+    }
+
+    /**
+     * Waits for all merges in this specification to complete. Returns immediately if no merges were
+     * scheduled.
+     *
+     * @return {@code true} if all merges completed successfully or no merges were needed, {@code
+     *     false} on error
+     */
+    public boolean await() {
+      return spec == null || spec.await();
+    }
+
+    /**
+     * Waits for all merges in this specification to complete, with timeout. Returns immediately if
+     * no merges were scheduled.
+     *
+     * @param timeout maximum time to wait
+     * @param unit time unit for timeout
+     * @return {@code true} if all merges completed within timeout or no merges were needed, {@code
+     *     false} on timeout or error
+     */
+    public boolean await(long timeout, TimeUnit unit) {
+      return spec == null || spec.await(timeout, unit);
+    }
+
+    /**
+     * Returns a {@link CompletableFuture} that completes when all merges finish. Returns an
+     * already-completed future if no merges were scheduled.
+     *
+     * @return future that completes when merges finish
+     */
+    public CompletableFuture<Void> awaitAsync() {
+      return spec == null
+          ? CompletableFuture.completedFuture(null)
+          : spec.getMergeCompletedFutures();
+    }
+
+    @Override
+    public String toString() {
+      return spec == null ? "MergeObserver: no merges" : spec.toString();
+    }
+
+    /**
+     * Returns the merge at the specified index. Caller must ensure {@link #hasNewMerges()} returns
+     * {@code true} and index is within bounds.
+     *
+     * @param i merge index (0 to {@link #numMerges()} - 1)
+     * @return the merge at index i
+     * @throws IndexOutOfBoundsException if index is invalid or no merges exist
+     */
+    public MergePolicy.OneMerge getMerge(int i) {
+      if (spec == null) {
+        throw new IndexOutOfBoundsException("No merges available");
+      }
+      return spec.merges.get(i);
+    }
+  }
 }

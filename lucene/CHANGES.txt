@@ -69,6 +69,12 @@ Improvements
 
 * GITHUB#15124: Use RamUsageEstimator to calculate size for non-accountable queries. (Sagar Upadhyaya)
 
+* GITHUB#14515: IndexWriter.forceMergeDeletes() now returns MergePolicy.MergeObserver,
+  allowing applications to monitor merge progress, wait for completion (synchronously
+  via await() or asynchronously via CompletableFuture), and inspect individual merges.
+  Backward compatible - existing code that ignores the return value works unchanged.
+  (Salvatore Campagna)
+
 Optimizations
 ---------------------
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)

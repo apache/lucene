@@ -2221,8 +2221,10 @@ public class IndexWriter
    * Just like {@link #forceMergeDeletes()}, except you can specify whether the call should block
    * until the operation completes. This is only meaningful with a {@link MergeScheduler} that is
    * able to run merges in background threads.
+   *
+   * @return a {@link MergePolicy.MergeObserver} to monitor merge progress and wait for completion
    */
-  public void forceMergeDeletes(boolean doWait) throws IOException {
+  public MergePolicy.MergeObserver forceMergeDeletes(boolean doWait) throws IOException {
     ensureOpen();
 
     flush(true, true);
@@ -2234,20 +2236,20 @@ public class IndexWriter
     final MergePolicy mergePolicy = config.getMergePolicy();
     final CachingMergeContext cachingMergeContext = new CachingMergeContext(this);
     MergePolicy.MergeSpecification spec;
-    boolean newMergesFound = false;
+    MergePolicy.MergeObserver observer;
     synchronized (this) {
       spec = mergePolicy.findForcedDeletesMerges(segmentInfos, cachingMergeContext);
-      newMergesFound = spec != null;
-      if (newMergesFound) {
-        final int numMerges = spec.merges.size();
-        for (int i = 0; i < numMerges; i++) registerMerge(spec.merges.get(i));
+      observer = new MergePolicy.MergeObserver(spec);
+      if (observer.hasNewMerges()) {
+        final int numMerges = observer.numMerges();
+        for (int i = 0; i < numMerges; i++) registerMerge(observer.getMerge(i));
       }
     }
 
     mergeScheduler.merge(mergeSource, MergeTrigger.EXPLICIT);
 
-    if (spec != null && doWait) {
-      final int numMerges = spec.merges.size();
+    if (observer.hasNewMerges() && doWait) {
+      final int numMerges = observer.numMerges();
       synchronized (this) {
         boolean running = true;
         while (running) {
@@ -2263,7 +2265,7 @@ public class IndexWriter
           // if any of them have hit an exception.
           running = false;
           for (int i = 0; i < numMerges; i++) {
-            final MergePolicy.OneMerge merge = spec.merges.get(i);
+            final MergePolicy.OneMerge merge = observer.getMerge(i);
             if (pendingMerges.contains(merge) || runningMerges.contains(merge)) {
               running = true;
             }
@@ -2282,6 +2284,7 @@ public class IndexWriter
     // NOTE: in the ConcurrentMergeScheduler case, when
     // doWait is false, we can return immediately while
     // background threads accomplish the merging
+    return observer;
   }
 
   /**
@@ -2296,9 +2299,12 @@ public class IndexWriter
    *
    * <p><b>NOTE</b>: this method first flushes a new segment (if there are indexed documents), and
    * applies all buffered deletes.
+   *
+   * @return a {@link MergePolicy.MergeObserver} to monitor merge progress. Since this method blocks
+   *     until completion, merges will already be complete when it returns.
    */
-  public void forceMergeDeletes() throws IOException {
-    forceMergeDeletes(true);
+  public MergePolicy.MergeObserver forceMergeDeletes() throws IOException {
+    return forceMergeDeletes(true);
   }
 
   /**
