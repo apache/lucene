@@ -15,13 +15,11 @@
  * limitations under the License.
  */
 import de.undercouch.gradle.tasks.download.Download
-import org.apache.lucene.gradle.plugins.help.ExecOperationsProvider
 
 // This downloads and compiles Nori dictionaries.
 
 def recompileDictionary(project, dictionaryName, Closure closure) {
-  def execOps = objects.newInstance(ExecOperationsProvider).execOperations
-  execOps.javaexec {
+  buildGlobals.execOps.javaexec {
     mainClass = "org.apache.lucene.analysis.ko.dict.DictionaryBuilder"
     classpath = project.sourceSets.main.runtimeClasspath
 
@@ -38,25 +36,12 @@ configure(project(":lucene:analysis:nori")) {
       targetDir = project.file("src/resources")
     }
 
-    task deleteDictionaryData() {
-      // There should really be just one but since we don't know which
-      // one it'll be, let's process all of them.
-      doFirst {
-        sourceSets.main.resources.srcDirs.each { location ->
-          delete fileTree(dir: location, include: "org/apache/lucene/analysis/ko/dict/*.dat")
-        }
-      }
-    }
+    def dictionaryName = "mecab-ko-dic-2.1.1-20180720"
+    def dictionarySource = "https://s3.amazonaws.com/lucene-testdata/mecab/${dictionaryName}.tar.gz"
+    def compileMecabKo = tasks.register("compileMecabKo", Download, {
 
-    task compileMecabKo(type: Download) {
-      description = "Recompile dictionaries from Mecab-Ko data."
-      group = "generation"
-
-      dependsOn deleteDictionaryData
       dependsOn sourceSets.main.runtimeClasspath
 
-      def dictionaryName = "mecab-ko-dic-2.1.1-20180720"
-      def dictionarySource = "https://s3.amazonaws.com/lucene-testdata/mecab/${dictionaryName}.tar.gz"
       def dictionaryFile = file("${buildDir}/generate/${dictionaryName}.tar.gz")
       def unpackedDir = file("${buildDir}/generate/${dictionaryName}")
 
@@ -65,6 +50,10 @@ configure(project(":lucene:analysis:nori")) {
       onlyIfModified true
 
       doLast {
+        buildGlobals.fileOps.delete(sourceSets.main.resources.srcDirs.collect {File location ->
+          fileTree(dir: location, include: "org/apache/lucene/analysis/ja/dict/*.dat")
+        })
+
         // Unpack the downloaded archive.
         delete unpackedDir
         ant.untar(src: dictionaryFile, dest: unpackedDir, compression: "gzip") {
@@ -81,8 +70,21 @@ configure(project(":lucene:analysis:nori")) {
           ]
         })
       }
-    }
+    })
 
-    regenerate.dependsOn compileMecabKo
+    tasks.register("regenerateDictionariesFromMecabKo", {
+      description = "Recompile dictionaries from Mecab-Ko data."
+
+      dependsOn compileMecabKo
+
+      inputs.property("dictionarySource", dictionarySource)
+      outputs.files(fileTree(dir: "src/resources/org/apache/lucene/analysis/ko/dict", include: "*.dat"))
+
+      regenerate {
+        // No need to run any follow-ups, we generate binary files (not sources).
+        followedUpBy = []
+        ifSkippedAlsoSkip = ["compileMecabKo"]
+      }
+    })
   }
 }

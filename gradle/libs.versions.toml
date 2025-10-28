@@ -1,4 +1,4 @@
-# Run "gradlew writeLocks" and "gradlew updateLicenses" after modifying this file!
+# Run "gradlew writeLocks writeChecksums" after modifying this file!
 [versions]
 # expressions/ grammars
 antlr = "4.13.2"

@@ -14,14 +14,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.gradle.plugins.licenses;
 
-package org.apache.lucene.gradle.plugins.help;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.gradle.api.DefaultTask;
+import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Internal;
 
-import javax.inject.Inject;
-import org.gradle.process.ExecOperations;
+/**
+ * A helper task class that can collect and aggregate jar info files produced by {@link
+ * ComputeJarInfos}.
+ */
+public abstract class CollectJarInfos extends DefaultTask {
+  @InputFiles
+  public abstract ConfigurableFileCollection getJarInfos();
 
-// We need this for the new gradle configuration cache. I personally think it's awful.
-interface ExecOperationsProvider {
-  @Inject
-  ExecOperations getExecOperations();
+  @Internal
+  protected List<JarInfo> getUniqueJarInfos() {
+    return getJarInfos().getFiles().stream()
+        .flatMap(it -> JarInfo.deserialize(it.toPath()).stream())
+        .collect(Collectors.toSet())
+        .stream()
+        .sorted()
+        .toList();
+  }
 }

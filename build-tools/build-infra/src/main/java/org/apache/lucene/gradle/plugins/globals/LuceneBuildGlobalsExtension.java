@@ -23,8 +23,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import javax.inject.Inject;
 import org.apache.lucene.gradle.plugins.misc.QuietExec;
 import org.gradle.api.Action;
@@ -32,6 +34,7 @@ import org.gradle.api.GradleException;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
+import org.gradle.api.internal.file.FileOperations;
 import org.gradle.api.provider.Property;
 import org.gradle.process.ExecOperations;
 import org.gradle.process.ExecResult;
@@ -151,9 +154,27 @@ public abstract class LuceneBuildGlobalsExtension {
     }
   }
 
+  /** Utility function to read a file, apply changes to its content and write it back. */
+  public void modifyFile(File file, Function<String, String> modifyFn) throws IOException {
+    Function<String, String> normalizeEols = text -> text.replace("\r\n", "\n");
+
+    Path path = file.toPath();
+    String original = Files.readString(file.toPath());
+    String modified = normalizeEols.apply(original);
+    modified = modifyFn.apply(modified);
+    modified = normalizeEols.apply(modified);
+    if (!original.equals(modified)) {
+      Files.writeString(path, modified);
+    }
+  }
+
   /** For internal use. */
   @Inject
-  protected abstract ExecOperations getExecOps();
+  public abstract ExecOperations getExecOps();
+
+  /** For internal use. */
+  @Inject
+  public abstract FileOperations getFileOps();
 
   /** For internal use. */
   @Inject

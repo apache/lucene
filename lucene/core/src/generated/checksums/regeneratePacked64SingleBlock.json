@@ -28,6 +28,5 @@
     "lucene/core/src/java/org/apache/lucene/util/packed/BulkOperationPacked8.java": "bc5124047b26fc0be147db5bc855be038d306f65",
     "lucene/core/src/java/org/apache/lucene/util/packed/BulkOperationPacked9.java": "1121f69ea6d830ab6f4bd2f51d017b792c17d1b1",
     "lucene/core/src/java/org/apache/lucene/util/packed/BulkOperationPackedSingleBlock.java": "36984601502fcc812eb9d9a845fa10774e575653",
-    "lucene/core/src/java/org/apache/lucene/util/packed/Packed64SingleBlock.java": "2680e0a7c7207ddf615f50fd22465c809904ac42",
-    "property:source": "https://github.com/jpbarrette/moman/archive/497c90e34e412b6494db6dabf0d95db8034bd325.zip"
+    "lucene/core/src/java/org/apache/lucene/util/packed/Packed64SingleBlock.java": "2680e0a7c7207ddf615f50fd22465c809904ac42"
 }

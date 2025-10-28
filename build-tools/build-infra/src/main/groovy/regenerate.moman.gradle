@@ -19,26 +19,10 @@ import de.undercouch.gradle.tasks.download.Download
 def resources = rootProject.file("gradle/regenerate/moman")
 
 configure(project(":lucene:core")) {
-  ext {
-    momanSource = "https://github.com/jpbarrette/moman/archive/497c90e34e412b6494db6dabf0d95db8034bd325.zip"
-    momanDir = file("${buildDir}/moman")
-  }
 
-  task installMoman(type: Download) {
-    def momanZip = file("${momanDir}/moman.zip")
+  tasks.register("regeneratePacked64SingleBlock", {
+    description("Regenerate Packed64SingleBlock and BulkOperation*.java")
 
-    src momanSource
-    dest momanZip
-    onlyIfModified true
-
-    doLast {
-      ant.unzip(src: momanZip, dest: momanDir, overwrite: "true") {
-        ant.cutdirsmapper(dirs: "1")
-      }
-    }
-  }
-
-  task utilGenPackedInternal(dependsOn: installMoman) {
     def targetDir = file("src/java/org/apache/lucene/util/packed")
 
     def templateFiles = [
@@ -46,7 +30,6 @@ configure(project(":lucene:core")) {
       file("${resources}/gen_Packed64SingleBlock.py")
     ]
 
-    inputs.property("source", momanSource)
     inputs.files templateFiles
     outputs.files fileTree(dir: targetDir, includes: [
       "Packed64SingleBlock.java",
@@ -54,7 +37,7 @@ configure(project(":lucene:core")) {
     ])
 
     doLast {
-      templateFiles.each { prog ->
+      templateFiles.each {prog ->
         logger.lifecycle("Executing: ${prog} in ${targetDir}")
         buildGlobals.quietExec(it, {
           workingDir = targetDir
@@ -70,11 +53,34 @@ configure(project(":lucene:core")) {
           eol: 'lf'
           )
     }
-  }
+  })
 
-  task utilGenLevInternal(dependsOn: installMoman) {
+  def momanSource = "https://github.com/jpbarrette/moman/archive/497c90e34e412b6494db6dabf0d95db8034bd325.zip"
+  def momanDir = file("${buildDir}/moman")
+
+  def installMoman = tasks.register("installMoman", Download, {
+    def momanZip = file("${momanDir}/moman.zip")
+
+    src momanSource
+    dest momanZip
+    onlyIfModified true
+
+    doLast {
+      ant.unzip(src: momanZip, dest: momanDir, overwrite: "true") {
+        ant.cutdirsmapper(dirs: "1")
+      }
+    }
+  })
+
+  tasks.register("regenerateParametricDescription", {
+    dependsOn installMoman
+
+    description("Regenerate *ParametricDescription")
+    regenerate {
+      ifSkippedAlsoSkip = ["installMoman"]
+    }
+
     def targetDir = file("src/java/org/apache/lucene/util/automaton")
-
     def templateFile = file("${resources}/createLevAutomata.py")
 
     inputs.property("source", momanSource)
@@ -82,8 +88,8 @@ configure(project(":lucene:core")) {
     outputs.files fileTree(dir: targetDir, includes: ["*ParametricDescription.java"])
 
     doLast {
-      ['1', '2'].each { num ->
-        ['True', 'False'].each { transpose ->
+      ['1', '2'].each {num ->
+        ['True', 'False'].each {transpose ->
           buildGlobals.quietExec(it, {
             workingDir = targetDir
             executable = buildGlobals.externalTool("python3")
@@ -104,22 +110,5 @@ configure(project(":lucene:core")) {
           eol: 'lf'
           )
     }
-  }
-
-  task moman()  {
-    description = "Regenerate Moman-based sources."
-    group = "generation"
-
-    def extraConfig = [
-      andThenTasks: [
-        "applyGoogleJavaFormat"
-      ],
-      mustRunBefore: ["compileJava"]
-    ]
-
-    dependsOn wrapWithPersistentChecksums(utilGenPackedInternal, extraConfig)
-    dependsOn wrapWithPersistentChecksums(utilGenLevInternal, extraConfig)
-  }
-
-  regenerate.dependsOn moman
+  })
 }

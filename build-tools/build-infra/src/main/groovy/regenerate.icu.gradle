@@ -17,7 +17,6 @@
 
 import org.apache.tools.ant.taskdefs.condition.Os
 import java.nio.file.Files
-import org.apache.lucene.gradle.plugins.help.ExecOperationsProvider
 
 def resources = rootProject.file("gradle/regenerate/icu")
 
@@ -41,16 +40,11 @@ def setupIcuDependencies = { proj ->
 
   proj.dependencies {
     icu_current deps.icu4j
-    // Use a newer groovy that doesn't have illegal reflective accesses.
     groovy deps.groovy
   }
 }
 
-// This retrieves the module name/ version for ICU from the given
-// configuration (if present).
-def icuVersionFromConfiguration(Configuration configuration) {
-  return configuration.resolvedConfiguration.getFirstLevelModuleDependencies().findAll { dep -> dep.moduleGroup.startsWith("com.ibm.icu") }.collect { dep -> dep.module.id   }.join(", ")
-}
+def icu4jVersion = deps.icu4j.get().version
 
 configure(project(":lucene:analysis:icu")) {
   setupIcuDependencies(project)
@@ -71,32 +65,35 @@ configure(project(":lucene:analysis:icu")) {
     icupkg = file("${icuBinDir}/icupkg")
   }
 
-  // lazy gstring with ICU version.
-  def icu4jVersion = deps.icu4j.get().version
-
   def icuCompileTask = Os.isFamily(Os.FAMILY_WINDOWS) ? "compileIcuWindows" : "compileIcuLinux"
 
-  task genUtr30DataFilesInternal() {
+  tasks.register("regenerateUtr30DataFiles", {
+    description = "Regenerate utf30 norm files using ICU"
+
     def icuConfig = configurations.icu_current
 
     dependsOn icuConfig
     dependsOn icuCompileTask
 
+    regenerate {
+      ifSkippedAlsoSkip = [icuCompileTask]
+    }
+
     // May be undefined yet, so use a provider.
     dependsOn { sourceSets.tools.runtimeClasspath }
 
     // gennorm generates file order-dependent output, so make it constant here.
-    def inputFiles = fileTree(dir: utr30DataDir, include: "*.txt").asList().toSorted(Comparator.comparing { File f -> f.name })
+    def inputFiles = fileTree(dir: utr30DataDir, include: "*.txt")
+    .asList().toSorted(Comparator.comparing { File f -> f.name })
     def outputFile = file("src/resources/org/apache/lucene/analysis/icu/utr30.nrm")
 
     inputs.files inputFiles
-    inputs.property "icuConfig", provider { icuVersionFromConfiguration(icuConfig) }
+    inputs.property "icuConfig", icu4jVersion
     outputs.file outputFile
 
     doFirst {
       // all these steps must be done sequentially: it's a pipeline resulting in utr30.nrm
-      def execOps = objects.newInstance(ExecOperationsProvider).execOperations
-      execOps.javaexec {
+      buildGlobals.execOps.javaexec {
         mainClass = "org.apache.lucene.analysis.icu.GenerateUTR30DataFiles"
         classpath = sourceSets.tools.runtimeClasspath
 
@@ -128,9 +125,11 @@ configure(project(":lucene:analysis:icu")) {
         ]
       })
     }
-  }
+  })
 
-  task genRbbiInternal() {
+  tasks.register("regenerateRbbi", {
+    description = "Regenerate rbbi rules using ICU"
+
     def icuConfig = configurations.icu_current
 
     dependsOn icuConfig
@@ -142,12 +141,11 @@ configure(project(":lucene:analysis:icu")) {
     def targetDir = file("src/resources/org/apache/lucene/analysis/icu/segmentation")
 
     inputs.files fileTree(dir: sourceDir, include: "*.rbbi")
-    inputs.property "icuConfig", provider { icuVersionFromConfiguration(icuConfig) }
+    inputs.property "icuConfig", icu4jVersion
     outputs.files fileTree(dir: targetDir, include: "*.brk")
 
     doFirst {
-      def execOps = objects.newInstance(ExecOperationsProvider).execOperations
-      execOps.javaexec {
+      buildGlobals.execOps.javaexec {
         mainClass = "org.apache.lucene.analysis.icu.RBBIRuleCompiler"
         classpath = sourceSets.tools.runtimeClasspath
 
@@ -156,17 +154,9 @@ configure(project(":lucene:analysis:icu")) {
         args = [sourceDir, targetDir]
       }
     }
-  }
+  })
 
-  regenerate.dependsOn wrapWithPersistentChecksums(genUtr30DataFilesInternal, [
-    ignoreWithSource: icuCompileTask,
-    mustRunBefore: ["compileJava"]
-  ])
-  regenerate.dependsOn wrapWithPersistentChecksums(genRbbiInternal, [
-    mustRunBefore: ["compileJava"]
-  ])
-
-  task compileIcuWindows() {
+  tasks.register("compileIcuWindows", {
     doFirst {
       def v = icu4jVersion
       def icuBinZip = file("${icuBuildDir}/icu4c-${v.replace(".", "_")}.zip")
@@ -182,14 +172,14 @@ configure(project(":lucene:analysis:icu")) {
       }
 
       // Unzip.
-      project.copy {
+      buildGlobals.fileOps.copy({
         into icuBuildDir
         from zipTree(icuBinZip)
-      }
+      })
     }
-  }
+  })
 
-  task compileIcuLinux() {
+  tasks.register("compileIcuLinux", {
     doFirst {
       if (Os.isFamily(Os.FAMILY_WINDOWS)) {
         throw new GradleException("ICU compilation not supported on Windows.")
@@ -208,7 +198,7 @@ configure(project(":lucene:analysis:icu")) {
       }
 
       def icuSrcDir = file("${icuBuildDir}/icu/source")
-      project.delete icuSrcDir
+      buildGlobals.fileOps.delete(icuSrcDir)
 
       // Extract the tgz
       buildGlobals.quietExec(it, {
@@ -250,30 +240,29 @@ configure(project(":lucene:analysis:icu")) {
         args = ["-V"]
       })
     }
-  }
+  })
 }
 
 
 // Regenerates UnicodeProps.java
 configure(project(":lucene:analysis:common")) {
   setupIcuDependencies(project)
-  task generateUnicodePropsInternal() {
+
+  tasks.register("regenerateUnicodeProps", {
     def icuConfig = configurations.icu_current
     def groovyConfig = configurations.groovy
 
     def outputFile = file("src/java/org/apache/lucene/analysis/util/UnicodeProps.java")
 
-    description = "Regenerate ${outputFile} (with ${icuConfig.name})"
-    group = "generation"
+    description = "Regenerate ${outputFile} using ICU"
 
     dependsOn icuConfig
 
-    inputs.property "icuConfig", provider { icuVersionFromConfiguration(icuConfig) }
+    inputs.property "icuConfig", icu4jVersion
     outputs.file outputFile
 
     doFirst {
-      ExecOperations execOps = objects.newInstance(ExecOperationsProvider).execOperations
-      execOps.javaexec({ JavaExecSpec spec ->
+      buildGlobals.execOps.javaexec({ JavaExecSpec spec ->
         spec.mainClass = "groovy.lang.GroovyShell"
         spec.classpath(icuConfig, groovyConfig)
 
@@ -285,35 +274,27 @@ configure(project(":lucene:analysis:common")) {
         ])
       })
     }
-  }
-
-  regenerate.dependsOn wrapWithPersistentChecksums(generateUnicodePropsInternal, [
-    andThenTasks: [
-      "applyGoogleJavaFormat"
-    ],
-    mustRunBefore: ["compileJava"]
-  ])
+  })
 }
 
 // Regenerates CaseFolding.java
 configure(project(":lucene:core")) {
   setupIcuDependencies(project)
-  task generateUnicodePropsInternal() {
+
+  tasks.register("generateUnicodeProps", {
     def icuConfig = configurations.icu_current
     def groovyConfig = configurations.groovy
     def outputFile = file("src/java/org/apache/lucene/util/automaton/CaseFolding.java")
 
-    description = "Regenerate ${outputFile} (with ${icuConfig.name})"
-    group = "generation"
+    description = "Regenerate ${outputFile} using ICU"
 
     dependsOn icuConfig
 
-    inputs.property "icuConfig", provider { icuVersionFromConfiguration(icuConfig) }
+    inputs.property "icuConfig", icu4jVersion
     outputs.file outputFile
 
     doFirst {
-      def execOps = objects.newInstance(ExecOperationsProvider).execOperations
-      execOps.javaexec({
+      buildGlobals.execOps.javaexec({
         mainClass = "groovy.lang.GroovyShell"
         classpath icuConfig, groovyConfig
 
@@ -325,12 +306,5 @@ configure(project(":lucene:core")) {
         ]
       })
     }
-  }
-
-  regenerate.dependsOn wrapWithPersistentChecksums(generateUnicodePropsInternal, [
-    andThenTasks: [
-      "applyGoogleJavaFormat"
-    ],
-    mustRunBefore: ["compileJava"]
-  ])
+  })
 }

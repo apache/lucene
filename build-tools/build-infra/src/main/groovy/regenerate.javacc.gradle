@@ -16,7 +16,8 @@
  */
 
 import java.nio.charset.Charset
-import org.apache.lucene.gradle.plugins.help.ExecOperationsProvider
+import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension
+
 
 // This adds javacc generation support.
 
@@ -32,7 +33,7 @@ configure(rootProject) {
 def commonCleanups = { FileTree generatedFiles ->
   // This is a minor typo in a comment that nonetheless people have hand-corrected in the past.
   generatedFiles.matching({ include "CharStream.java" }).each {file ->
-    modifyFile(file, { text ->
+    buildGlobals.modifyFile(file, { text ->
       return text.replace(
           "implemetation",
           "implementation");
@@ -40,7 +41,7 @@ def commonCleanups = { FileTree generatedFiles ->
   }
 
   generatedFiles.each {file ->
-    modifyFile(file, { text ->
+    buildGlobals.modifyFile(file, { text ->
       // Normalize EOLs and tabs (EOLs are a side-effect of modifyFile).
       text = text.replace("\t", "    ");
       text = text.replaceAll("JavaCC - OriginalChecksum=[^*]+", "(filtered)")
@@ -50,7 +51,7 @@ def commonCleanups = { FileTree generatedFiles ->
   }
 
   generatedFiles.matching({ include "*TokenManager.java" }).each { file ->
-    modifyFile(file, { text ->
+    buildGlobals.modifyFile(file, { text ->
       // Remove redundant imports.
       text = text.replaceAll(
           /(?m)^import .+/,
@@ -92,16 +93,15 @@ configure(project(":lucene:queryparser")) {
     add("javacc", deps.javacc)
   }
 
-  task javaccParserClassicInternal(type: JavaCCTask) {
+  tasks.register("regenerateClassicQueryParser", JavaCCTask, {
     description = "Regenerate classic query parser from lucene/queryparser/classic/QueryParser.jj"
-    group = "generation"
 
     javaccFile = file('src/java/org/apache/lucene/queryparser/classic/QueryParser.jj')
 
     afterGenerate << commonCleanups
     afterGenerate << { FileTree generatedFiles ->
       generatedFiles.matching { include "QueryParser.java" }.each { file ->
-        modifyFile(file, { text ->
+        buildGlobals.modifyFile(file, { text ->
           text = text.replace(
               "public QueryParser(CharStream ",
               "protected QueryParser(CharStream ")
@@ -127,18 +127,17 @@ configure(project(":lucene:queryparser")) {
         })
       }
     }
-  }
+  })
 
-  task javaccParserSurroundInternal(type: JavaCCTask) {
+  tasks.register("regenerateSurroundQueryParser", JavaCCTask, {
     description = "Regenerate surround query parser from lucene/queryparser/surround/parser/QueryParser.jj"
-    group = "generation"
 
     javaccFile = file('src/java/org/apache/lucene/queryparser/surround/parser/QueryParser.jj')
 
     afterGenerate << commonCleanups
     afterGenerate << { FileTree generatedFiles ->
       generatedFiles.matching { include "QueryParser.java" }.each { file ->
-        modifyFile(file, { text ->
+        buildGlobals.modifyFile(file, { text ->
           text = text.replace(
               "import org.apache.lucene.analysis.TokenStream;",
               "")
@@ -152,18 +151,17 @@ configure(project(":lucene:queryparser")) {
         })
       }
     }
-  }
+  })
 
-  task javaccParserFlexibleInternal(type: JavaCCTask) {
+  tasks.register("regenerateFlexibleStandardSyntaxParser", JavaCCTask, {
     description = "Regenerate flexible query parser from queryparser/flexible/standard/parser/StandardSyntaxParser.jj"
-    group = "generation"
 
     javaccFile = file('src/java/org/apache/lucene/queryparser/flexible/standard/parser/StandardSyntaxParser.jj')
 
     afterGenerate << commonCleanups
     afterGenerate << { FileTree generatedFiles ->
       generatedFiles.matching { include "ParseException.java" }.each { file ->
-        modifyFile(file, { text ->
+        buildGlobals.modifyFile(file, { text ->
           // Modify constructor.
           text = text.replace(
               "class ParseException extends Exception",
@@ -214,7 +212,7 @@ configure(project(":lucene:queryparser")) {
       }
 
       generatedFiles.matching { include "StandardSyntaxParser.java" }.each { file ->
-        modifyFile(file, { text ->
+        buildGlobals.modifyFile(file, { text ->
           // Remove redundant cast
           text = text.replace(
               "new java.util.ArrayList<int[]>",
@@ -232,25 +230,7 @@ configure(project(":lucene:queryparser")) {
         })
       }
     }
-  }
-
-  task javacc() {
-    description = "Regenerate query parsers (javacc syntax definitions)."
-    group = "generation"
-
-    def extraConfig = [
-      andThenTasks: [
-        "applyGoogleJavaFormat"
-      ],
-      mustRunBefore: ["compileJava"]
-    ]
-
-    dependsOn wrapWithPersistentChecksums(javaccParserClassicInternal, extraConfig),
-        wrapWithPersistentChecksums(javaccParserSurroundInternal, extraConfig),
-        wrapWithPersistentChecksums(javaccParserFlexibleInternal, extraConfig)
-  }
-
-  regenerate.dependsOn "javacc"
+  })
 }
 
 // We always regenerate, no need to declare outputs.
@@ -292,18 +272,19 @@ class JavaCCTask extends DefaultTask {
       throw new GradleException("Input file does not exist: ${javaccFile}")
     }
 
+    def buildGlobals = project.getExtensions().getByType(LuceneBuildGlobalsExtension)
+
     // Run javacc generation into temporary folder so that we know all the generated files
     // and can post-process them easily.
     def tempDir = this.getTemporaryDir()
     tempDir.mkdirs()
-    project.delete project.fileTree(tempDir, { include: "**/*.java" })
+    buildGlobals.fileOps.delete(project.fileTree(tempDir, { include: "**/*.java" }))
 
     def targetDir = javaccFile.parentFile
     logger.lifecycle("Recompiling JavaCC: ${project.rootDir.relativePath(javaccFile)}")
 
     def output = new ByteArrayOutputStream()
-    def execOps = project.objects.newInstance(ExecOperationsProvider).execOperations
-    def result = execOps.javaexec({
+    def result = buildGlobals.execOps.javaexec({
       classpath {
         project.configurations.javacc
       }
@@ -337,12 +318,12 @@ class JavaCCTask extends DefaultTask {
     }
 
     // Copy back to mainline sources.
-    project.copy {
-      from tempDir
-      into targetDir
+    buildGlobals.fileOps.copy({ CopySpec spec ->
+      spec.from tempDir
+      spec.into targetDir
 
       // We don't need CharStream interface as we redirect to our own.
-      exclude "CharStream.java"
-    }
+      spec.exclude "CharStream.java"
+    })
   }
 }

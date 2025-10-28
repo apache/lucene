@@ -21,33 +21,31 @@ import org.apache.tools.ant.taskdefs.condition.Os
 def resources = rootProject.file("gradle/regenerate/snowball")
 
 configure(project(":lucene:analysis:common")) {
-  ext {
-    // git commit hash of source code https://github.com/snowballstem/snowball/
-    snowballStemmerCommit = "34f3612e5e8c48975243bc2e87561abdac5aa9bb"
-    // git commit hash of stopwords https://github.com/snowballstem/snowball-website
-    snowballWebsiteCommit = "424fd1f75044160bb4a92f1daf08cce618459374"
+  // git commit hash of source code https://github.com/snowballstem/snowball/
+  def snowballStemmerCommit = "34f3612e5e8c48975243bc2e87561abdac5aa9bb"
+  // git commit hash of stopwords https://github.com/snowballstem/snowball-website
+  def snowballWebsiteCommit = "424fd1f75044160bb4a92f1daf08cce618459374"
 
-    snowballWorkDir    = file("${buildDir}/snowball")
+  def snowballWorkDir    = file("${buildDir}/snowball")
 
-    snowballStemmerDir = file("${snowballWorkDir}/stemmers-${snowballStemmerCommit}")
-    snowballWebsiteDir = file("${snowballWorkDir}/website-${snowballWebsiteCommit}")
+  def snowballStemmerDir = file("${snowballWorkDir}/stemmers-${snowballStemmerCommit}")
+  def snowballWebsiteDir = file("${snowballWorkDir}/website-${snowballWebsiteCommit}")
 
-    snowballScript     = file("${resources}/snowball.sh")
-  }
+  def snowballScript     = file("${resources}/snowball.sh")
 
   def unpackFromZip = { zipFile, targetDir ->
-    project.sync {
-      from(zipTree(zipFile), {
+    buildGlobals.fileOps.sync({SyncSpec spec ->
+      spec.from(zipTree(zipFile), {
         eachFile { fcd ->
           fcd.relativePath = new RelativePath(true, fcd.relativePath.segments.drop(1))
         }
       })
-      into targetDir
-    }
+      spec.into targetDir
+    })
   }
 
-  // downloads snowball stemmers (or use cached copy)
-  task downloadSnowballStemmers(type: Download) {
+  // downloads snowball stemmers (or use a cached copy)
+  def downloadSnowballStemmers = tasks.register("downloadSnowballStemmers", Download, {
     src "https://github.com/snowballstem/snowball/archive/${snowballStemmerCommit}.zip"
     dest file("${snowballStemmerDir}.zip")
     overwrite false
@@ -56,10 +54,10 @@ configure(project(":lucene:analysis:common")) {
     doLast {
       unpackFromZip(dest, snowballStemmerDir)
     }
-  }
+  })
 
-  // downloads snowball website (or use cached copy)
-  task downloadSnowballWebsite(type: Download) {
+  // downloads snowball website (or use a cached copy)
+  def downloadSnowballWebsite = tasks.register("downloadSnowballWebsite", Download, {
     src "https://github.com/snowballstem/snowball-website/archive/${snowballWebsiteCommit}.zip"
     def snowballWebsiteZip = file("${snowballWebsiteDir}.zip")
     dest snowballWebsiteZip
@@ -69,12 +67,21 @@ configure(project(":lucene:analysis:common")) {
     doLast {
       unpackFromZip(snowballWebsiteZip, snowballWebsiteDir)
     }
-  }
+  })
 
-  // runs shell script to regenerate stemmers, base stemming subclasses, test data, and stopwords.
-  def snowballInternal = tasks.register("generateSnowballInternal", QuietExec, {
+  // runs a shell script to regenerate stemmers, base stemming subclasses, test data, and stopwords.
+  tasks.register("regenerateSnowball", QuietExec, {
     description = "Regenerate snowball stemmers."
-    group = "generation"
+
+    dependsOn downloadSnowballStemmers
+    dependsOn downloadSnowballWebsite
+
+    regenerate {
+      ifSkippedAlsoSkip = [
+        downloadSnowballStemmers.name,
+        downloadSnowballWebsite.name
+      ]
+    }
 
     inputs.files fileTree(
         dir: "src/java/org/tartarus/snowball",
@@ -89,15 +96,12 @@ configure(project(":lucene:analysis:common")) {
         dir: "src/resources/org/apache/lucene/analysis/snowball",
         include: "*_stop.txt")
 
-    // Don't even bother adding dependencies on Windows.
+    // Don't bother on Windows, won't work.
     if (Os.isFamily(Os.FAMILY_WINDOWS)) {
       doFirst {
         // Just emit a big fat error message. Fail the build so that checksums are not regenerated.
         throw new GradleException("Snowball generation does not work on Windows (bash must be available).")
       }
-    } else {
-      dependsOn downloadSnowballStemmers
-      dependsOn downloadSnowballWebsite
     }
 
     executable "bash"
@@ -108,15 +112,4 @@ configure(project(":lucene:analysis:common")) {
       projectDir
     ]
   })
-
-  regenerate.dependsOn wrapWithPersistentChecksums2(snowballInternal, [
-    andThenTasks: [
-      "applyGoogleJavaFormat"
-    ],
-    ignoreWithSource: [
-      downloadSnowballStemmers,
-      downloadSnowballWebsite
-    ],
-    mustRunBefore: ["compileJava"]
-  ])
 }

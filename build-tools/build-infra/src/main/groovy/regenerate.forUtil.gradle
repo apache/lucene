@@ -17,13 +17,14 @@
 
 import org.apache.lucene.gradle.plugins.misc.QuietExec
 
+//
 // Regenerates "ForUtil.java" code used by codecs.
+//
 
 void addGenerateFromPythonTask(Project project, File genDir, String taskName, String pyScript, String javaFile) {
-  var generateTaskProvider = project.getTasks().register(
-      "generate" + taskName + "Internal", QuietExec, {
+  project.getTasks().register(
+      "regenerate" + taskName, QuietExec, {
         description = "Regenerate " + javaFile + " using " + pyScript + " in " + genDir
-        group = "generation"
 
         def genScript = project.file("${genDir}/${pyScript}")
         def genOutput = project.file("${genDir}/${javaFile}")
@@ -34,15 +35,6 @@ void addGenerateFromPythonTask(Project project, File genDir, String taskName, St
         executable = buildGlobals.externalTool("python3")
         args = ['-B', genScript.toString()]
       })
-
-  var wrapped = project.wrapWithPersistentChecksums2(generateTaskProvider, [
-    andThenTasks: ["applyGoogleJavaFormat"],
-    mustRunBefore: ["compileJava"]
-  ])
-
-  project.getTasks().named("regenerate").configure {
-    dependsOn wrapped
-  }
 }
 
 configure(project(":lucene:core")) {
@@ -63,15 +55,24 @@ configure(project(":lucene:backward-codecs")) {
   addGenerateFromPythonTask(project,
       file("src/java/org/apache/lucene/backward_codecs/lucene912"), "ForUtil912", "gen_ForUtil.py", "ForUtil.java")
   addGenerateFromPythonTask(project,
-      file("src/java/org/apache/lucene/backward_codecs/lucene912"), "ForDeltaUtil912", "gen_ForDeltaUtil.py", "ForDeltaUtil.java")
+      file("src/java/org/apache/lucene/backward_codecs/lucene912"),
+      "ForDeltaUtil912",
+      "gen_ForDeltaUtil.py",
+      "ForDeltaUtil.java")
 
   addGenerateFromPythonTask(project,
       file("src/java/org/apache/lucene/backward_codecs/lucene101"), "ForUtil101", "gen_ForUtil.py", "ForUtil.java")
   addGenerateFromPythonTask(project,
-      file("src/java/org/apache/lucene/backward_codecs/lucene101"), "ForDeltaUtil101", "gen_ForDeltaUtil.py", "ForDeltaUtil.java")
+      file("src/java/org/apache/lucene/backward_codecs/lucene101"),
+      "ForDeltaUtil101",
+      "gen_ForDeltaUtil.py",
+      "ForDeltaUtil.java")
 
   addGenerateFromPythonTask(project,
       file("src/java/org/apache/lucene/backward_codecs/lucene103"), "ForUtil103", "gen_ForUtil.py", "ForUtil.java")
   addGenerateFromPythonTask(project,
-      file("src/java/org/apache/lucene/backward_codecs/lucene103"), "ForDeltaUtil103", "gen_ForDeltaUtil.py", "ForDeltaUtil.java")
+      file("src/java/org/apache/lucene/backward_codecs/lucene103"),
+      "ForDeltaUtil103",
+      "gen_ForDeltaUtil.py",
+      "ForDeltaUtil.java")
 }

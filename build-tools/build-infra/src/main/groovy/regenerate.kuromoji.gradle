@@ -15,13 +15,11 @@
  * limitations under the License.
  */
 import de.undercouch.gradle.tasks.download.Download
-import org.apache.lucene.gradle.plugins.help.ExecOperationsProvider
 
 // This downloads and compiles Kuromoji dictionaries.
 
 def recompileDictionary(project, dictionaryName, Closure closure) {
-  def execOps = objects.newInstance(ExecOperationsProvider).execOperations
-  execOps.javaexec {
+  buildGlobals.execOps.javaexec {
     mainClass = "org.apache.lucene.analysis.ja.dict.DictionaryBuilder"
     classpath = project.sourceSets.main.runtimeClasspath
 
@@ -38,33 +36,25 @@ configure(project(":lucene:analysis:kuromoji")) {
       targetDir = project.file("src/resources")
     }
 
-    task deleteDictionaryData() {
-      // There should really be just one but since we don't know which
-      // one it'll be, let's process all of them.
-      doFirst {
-        sourceSets.main.resources.srcDirs.each { location ->
-          delete fileTree(dir: location, include: "org/apache/lucene/analysis/ja/dict/*.dat")
-        }
-      }
-    }
+    def mecabDictionaryName = "mecab-ipadic-2.7.0-20070801"
+    // original source: "https://jaist.dl.sourceforge.net/project/mecab/mecab-ipadic/2.7.0-20070801/${mecabDictionaryName}.tar.gz"
+    def mecabDictionarySource = "https://s3.amazonaws.com/lucene-testdata/mecab/${mecabDictionaryName}.tar.gz"
 
-    task compileMecab(type: Download) {
-      description = "Recompile dictionaries from Mecab data."
-      group = "generation"
-
-      dependsOn deleteDictionaryData
+    def compileMecab = tasks.register("compileMecab", Download, {
       dependsOn sourceSets.main.runtimeClasspath
 
-      def dictionaryName = "mecab-ipadic-2.7.0-20070801"
-      def dictionarySource = "https://jaist.dl.sourceforge.net/project/mecab/mecab-ipadic/2.7.0-20070801/${dictionaryName}.tar.gz"
-      def dictionaryFile = file("${buildDir}/generate/${dictionaryName}.tar.gz")
-      def unpackedDir = file("${buildDir}/generate/${dictionaryName}")
+      def dictionaryFile = file("${buildDir}/generate/${mecabDictionaryName}.tar.gz")
+      def unpackedDir = file("${buildDir}/generate/${mecabDictionaryName}")
 
-      src dictionarySource
+      src mecabDictionarySource
       dest dictionaryFile
       onlyIfModified true
 
       doLast {
+        buildGlobals.fileOps.delete(sourceSets.main.resources.srcDirs.collect {File location ->
+          fileTree(dir: location, include: "org/apache/lucene/analysis/ja/dict/*.dat")
+        })
+
         // Unpack the downloaded archive.
         delete unpackedDir
         ant.untar(src: dictionaryFile, dest: unpackedDir, compression: "gzip") {
@@ -82,7 +72,7 @@ configure(project(":lucene:analysis:kuromoji")) {
         })
 
         // Compile the dictionary
-        recompileDictionary(project, dictionaryName, {
+        recompileDictionary(project, mecabDictionaryName, {
           args += [
             "ipadic",
             unpackedDir,
@@ -92,25 +82,45 @@ configure(project(":lucene:analysis:kuromoji")) {
           ]
         })
       }
-    }
+    })
 
-    task compileNaist(type: Download) {
+    tasks.register("regenerateDictionariesFromMecab", {
+      description = "Regenerate dictionaries from Mecab data"
+
+      dependsOn compileMecab
+
+      inputs.property("dictionarySource", mecabDictionarySource)
+      outputs.files(fileTree(dir: "src/resources/org/apache/lucene/analysis/ja/dict", include: "*.dat"))
+
+      regenerate {
+        // No need to run any follow-ups, we generate binary files (not sources).
+        followedUpBy = []
+        ifSkippedAlsoSkip = ["compileMecab"]
+      }
+    })
+
+    // TODO: this regenerates data files over the same files as mecab, above. This seems odd and inconsistent?
+
+    // original source (down): https://rwthaachen.dl.osdn.jp/naist-jdic/53500/mecab-naist-jdic-0.6.3b-20111013.tar.gz
+    def naistDictionaryName = "mecab-naist-jdic-0.6.3b-20111013"
+    def naistDictionarySource = "https://s3.amazonaws.com/lucene-testdata/mecab/${naistDictionaryName}.tar.gz"
+    tasks.register("compileNaist", Download, {
       description = "Recompile dictionaries from Naist data."
-      group = "generation"
 
-      dependsOn deleteDictionaryData
       dependsOn sourceSets.main.runtimeClasspath
 
-      def dictionaryName = "mecab-naist-jdic-0.6.3b-20111013"
-      def dictionarySource = "https://rwthaachen.dl.osdn.jp/naist-jdic/53500/${dictionaryName}.tar.gz"
-      def dictionaryFile = file("${buildDir}/generate/${dictionaryName}.tar.gz")
-      def unpackedDir = file("${buildDir}/generate/${dictionaryName}")
+      def dictionaryFile = file("${buildDir}/generate/${naistDictionaryName}.tar.gz")
+      def unpackedDir = file("${buildDir}/generate/${naistDictionaryName}")
 
-      src dictionarySource
+      src naistDictionarySource
       dest dictionaryFile
       onlyIfModified true
 
       doLast {
+        buildGlobals.fileOps.delete(sourceSets.main.resources.srcDirs.collect {File location ->
+          fileTree(dir: location, include: "org/apache/lucene/analysis/ja/dict/*.dat")
+        })
+
         // Unpack the downloaded archive.
         delete unpackedDir
         ant.untar(src: dictionaryFile, dest: unpackedDir, compression: "gzip") {
@@ -118,7 +128,7 @@ configure(project(":lucene:analysis:kuromoji")) {
         }
 
         // Compile the dictionary
-        recompileDictionary(project, dictionaryName, {
+        recompileDictionary(project, naistDictionaryName, {
           args += [
             "ipadic",
             unpackedDir,
@@ -128,8 +138,6 @@ configure(project(":lucene:analysis:kuromoji")) {
           ]
         })
       }
-    }
-
-    regenerate.dependsOn compileMecab
+    })
   }
 }
