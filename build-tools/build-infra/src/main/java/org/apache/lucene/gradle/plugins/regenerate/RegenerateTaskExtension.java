@@ -16,13 +16,37 @@
  */
 package org.apache.lucene.gradle.plugins.regenerate;
 
+import java.util.List;
 import org.gradle.api.provider.SetProperty;
 
 /**
- * An extension added to all tasks that regenerate some Lucene sources. The extension can be used to
- * add inputs and outputs used to compute hash signatures, which in turn control if the derived
- * resources haven't been altered (with respect to their sources).
+ * An extension added to all tasks that regenerate some Lucene sources.
+ *
+ * <p>The extension can be used to add inputs and outputs used to compute hash signatures, which in
+ * turn control if the derived resources haven't been altered (with respect to their sources).
  */
 public abstract class RegenerateTaskExtension {
+  /**
+   * A set of task names that should be scheduled to run <em>before</em> the task the extension is
+   * declared on.
+   */
+  public abstract SetProperty<String> getMustRunBefore();
+
+  /**
+   * A list of tasks that should be scheduled to run <em>after</em> the task the extension is
+   * declared on.
+   */
+  public abstract SetProperty<String> getFollowedUpBy();
+
+  /** A list of tasks that should be skipped if the regeneration task is skipped. */
+  public abstract SetProperty<String> getIfSkippedAlsoSkip();
+
+  /** A set of task input properties that should be ignored in checksum calculation. */
   public abstract SetProperty<String> getIgnoredInputs();
+
+  public RegenerateTaskExtension() {
+    // By default, run Java compilation and formatting in between regeneration
+    // tasks and saving checksums.
+    getFollowedUpBy().convention(List.of("applyGoogleJavaFormat", "compileJava"));
+  }
 }

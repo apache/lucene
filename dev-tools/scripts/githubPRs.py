@@ -25,15 +25,14 @@ sys.path.append(os.path.dirname(__file__))
 import argparse
 import json
 import re
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from github import Github
 from jinja2 import BaseLoader, Environment
-from jira import JIRA, Issue
+from jira import JIRA
 
 if TYPE_CHECKING:
   from github.PullRequest import PullRequest
-  from jira.client import ResultList
 
 
 def read_config():
@@ -114,7 +113,8 @@ def main():
     issue_ids.append(jira_issue_str)
     issue_to_pr[jira_issue_str] = pr
 
-  resolved_jiras = cast("ResultList[Issue]", jira.search_issues(jql_str="key in (%s) AND status in ('Closed', 'Resolved')" % ", ".join(issue_ids)))
+  resolved_jiras = jira.search_issues(jql_str="key in (%s) AND status in ('Closed', 'Resolved')" % ", ".join(issue_ids))
+  assert not isinstance(resolved_jiras, dict)
   closed_jiras: list[dict[str, Any]] = []
   for issue in resolved_jiras:
     pr_title = issue_to_pr[issue.key].title
