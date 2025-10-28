@@ -36,7 +36,6 @@ import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.file.Directory;
-import org.gradle.api.file.FileTree;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.tasks.TaskContainer;
 
@@ -141,20 +140,14 @@ public class CheckJarChecksumsAndLicensesPlugin extends LuceneGradlePlugin {
     }
 
     // Dangling files (not referenced)
-    Set<File> allExisting =
-        task.getProject()
-            .fileTree(
-                licensesDir,
-                (cfg) -> {
-                  cfg.exclude(
-                      Arrays.asList(
-                          "elegant-icon-font-*", // Used by Luke.
-                          "glove-LICENSE-PDDL.txt" // glove knn dictionary.
-                          ));
-                })
-            .getFiles();
+    var allExisting = task.getFileOperations().fileTree(licensesDir);
+    allExisting.exclude(
+        Arrays.asList(
+            "elegant-icon-font-*", // Used by Luke.
+            "glove-LICENSE-PDDL.txt" // glove knn dictionary.
+            ));
 
-    List<File> dangling = new ArrayList<>(allExisting);
+    List<File> dangling = new ArrayList<>(allExisting.getFiles());
     dangling.removeAll(referencedFiles);
     dangling.sort(Comparator.comparing(File::getPath));
 
@@ -214,9 +207,9 @@ public class CheckJarChecksumsAndLicensesPlugin extends LuceneGradlePlugin {
       candidates.add(new File(licensesDir, baseName + "-LICENSE-[type].txt"));
 
       var finalBaseName = baseName;
-      FileTree tree =
-          task.getProject()
-              .fileTree(licensesDir, cfg -> cfg.include(finalBaseName + "-LICENSE-*.txt"));
+      var tree = task.getFileOperations().fileTree(licensesDir);
+      tree.include(finalBaseName + "-LICENSE-*.txt");
+
       found.addAll(tree.getFiles());
 
       String prefix = baseName.replaceAll("[\\-][^-]+$", "");

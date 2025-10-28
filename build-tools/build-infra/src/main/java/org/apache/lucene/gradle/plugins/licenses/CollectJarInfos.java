@@ -18,8 +18,10 @@ package org.apache.lucene.gradle.plugins.licenses;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import javax.inject.Inject;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.internal.file.FileOperations;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 
@@ -30,6 +32,9 @@ import org.gradle.api.tasks.Internal;
 public abstract class CollectJarInfos extends DefaultTask {
   @InputFiles
   public abstract ConfigurableFileCollection getJarInfos();
+
+  @Inject
+  protected abstract FileOperations getFileOperations();
 
   @Internal
   protected List<JarInfo> getUniqueJarInfos() {

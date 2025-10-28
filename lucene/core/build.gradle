@@ -276,7 +276,7 @@ configure(project(":lucene:analysis:common")) {
 //
 
 tasks.register("regeneratePacked64SingleBlock", {
-  description("Regenerate Packed64SingleBlock and BulkOperation*.java")
+  description = "Regenerate Packed64SingleBlock and BulkOperation*.java"
 
   def targetDir = file("src/java/org/apache/lucene/util/packed")
 
@@ -335,7 +335,7 @@ def installMoman = tasks.register("installMoman", Download, {
 tasks.register("regenerateParametricDescription", {
   dependsOn installMoman
 
-  description("Regenerate *ParametricDescription")
+  description = "Regenerate *ParametricDescription"
   regenerate {
     ifSkippedAlsoSkip = ["installMoman"]
   }
