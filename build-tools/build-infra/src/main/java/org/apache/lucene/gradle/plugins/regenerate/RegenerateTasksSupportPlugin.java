@@ -44,8 +44,8 @@ import org.gradle.api.file.FileCollection;
 import org.gradle.api.logging.LogLevel;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Delete;
+import org.gradle.api.tasks.TaskCollection;
 import org.gradle.api.tasks.TaskContainer;
-import org.gradle.api.tasks.TaskProvider;
 
 /**
  * Adds support for tasks that regenerate (versioned) sources within Lucene.
@@ -84,10 +84,38 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
   @Override
   public void apply(Project rootProject) {
     applicableToRootProjectOnly(rootProject);
-    rootProject.getAllprojects().forEach(RegenerateTasksSupportPlugin::applyRegeneratePlugin);
+
+    var regenTasks =
+        rootProject.getAllprojects().stream()
+            .map(RegenerateTasksSupportPlugin::applyRegeneratePlugin)
+            .toList();
+
+    // wait until after the evaluation is completed to give tasks some time to configure
+    // extension properties, then process these tasks that have the regenerate task extension
+    // configured.
+    rootProject
+        .getGradle()
+        .projectsEvaluated(
+            _ -> {
+              for (var taskCollection : regenTasks) {
+                for (Task task : taskCollection.stream().toList()) {
+                  configureRegenerateTask(task);
+                }
+              }
+            });
+
+    // Nearly all regeneration tasks touch input sources, which are inputs to checkLicenses
+    // so schedule this globally, once.
+    rootProject
+        .getTasks()
+        .matching(task -> task.getName().equals(CheckLicensesPlugin.CHECK_LICENSES_TASK))
+        .configureEach(
+            task -> {
+              task.mustRunAfter(regenTasks);
+            });
   }
 
-  private static void applyRegeneratePlugin(Project project) {
+  private static TaskCollection<Task> applyRegeneratePlugin(Project project) {
     TaskContainer tasks = project.getTasks();
 
     var regenerateTasks =
@@ -112,18 +140,6 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
                   .addAll(Set.of("args", "executable", "ignoreExitValue"));
             });
 
-    // wait until after the evaluation is completed to give tasks some time to configure
-    // extension properties, then process these tasks. I don't
-    // think this can be done reasonably well based on lazy properties alone.
-    project.afterEvaluate(
-        _ -> {
-          for (String name : project.getTasks().getNames()) {
-            if (REGEN_TASK_PATTERN.matcher(name).matches()) {
-              configureRegenerateTask(project, regenerateTasks.named(name));
-            }
-          }
-        });
-
     // register a single task to invoke all regeneration tasks.
     tasks.register(
         REGEN_TASK_NAME,
@@ -141,23 +157,14 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
           task.delete(project.fileTree("src/generated/checksums", cfg -> cfg.include("*.json")));
         });
 
-    // Nearly all regeneration tasks touch input sources, which are inputs to checkLicenses
-    // so schedule this globally, once.
-    project
-        .getRootProject()
-        .getTasks()
-        .matching(task -> task.getName().equals(CheckLicensesPlugin.CHECK_LICENSES_TASK))
-        .configureEach(
-            task -> {
-              task.mustRunAfter(regenerateTasks);
-            });
+    return regenerateTasks;
   }
 
-  private static void configureRegenerateTask(
-      Project project, TaskProvider<? extends Task> taskProvider) {
+  private static void configureRegenerateTask(Task delegate) {
+    var project = delegate.getProject();
     var tasks = project.getTasks();
-    String taskName = taskProvider.getName();
-    String taskPrefix = taskProvider.getName();
+    String taskName = delegate.getName();
+    String taskPrefix = delegate.getName();
 
     Path checksumsFile = project.file("src/generated/checksums/" + taskPrefix + ".json").toPath();
 
@@ -166,8 +173,6 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
         tasks.register(
             taskPrefix + "ChecksumSave",
             t -> {
-              var delegate = taskProvider.get();
-
               // Check delegate's sanity.
               if (delegate.getGroup() != null && !delegate.getGroup().isBlank()) {
                 throw new GradleException(
@@ -208,13 +213,8 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
                   });
             });
 
-    // TODO: so this entire block could/should reside inside checksumSaveTask.register() and be lazy
-    // but gradle throws an 'invalid context' exception on any task.configureEach within this block.
-    // I don't know how to do implement this without eager instantiation of tasks, sorry.
+    // Configure task dependencies and wiring of after/before.
     {
-      Task t = checksumSaveTask.get();
-      Task delegate = taskProvider.get();
-
       RegenerateTaskExtension regenerateExt =
           delegate.getExtensions().getByType(RegenerateTaskExtension.class);
 
@@ -227,7 +227,7 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
             .matching(task -> taskNames.contains(task.getName()))
             .configureEach(
                 other -> {
-                  other.mustRunAfter(t);
+                  other.mustRunAfter(checksumSaveTask);
                 });
       }
 
@@ -235,7 +235,7 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
       // checksums are saved but after the source task ran).
       {
         var taskNames = regenerateExt.getFollowedUpBy().get();
-        t.dependsOn(taskNames);
+        checksumSaveTask.configure(t -> t.dependsOn(taskNames));
         project
             .getTasks()
             .matching(task -> taskNames.contains(task.getName()))
@@ -273,18 +273,13 @@ public class RegenerateTasksSupportPlugin extends LuceneGradlePlugin {
       }
     }
 
-    taskProvider.configure(
-        task -> {
-          task.finalizedBy(checksumSaveTask);
-        });
+    delegate.finalizedBy(checksumSaveTask);
 
     // Configure checksum check task (verification).
     var checksumCheckTask =
         tasks.register(
             taskName + "ChecksumCheck",
             t -> {
-              var delegate = taskProvider.get();
-
               // if we're regenerating, run any checks after the save.
               t.mustRunAfter(checksumSaveTask);
 

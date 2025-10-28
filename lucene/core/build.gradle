@@ -41,17 +41,17 @@ static void createForUtilRegenerateTask(
     Project project, String taskName, String javaFile, String pyScript, File genDir) {
   project.getTasks().register(
       "regenerate" + taskName, QuietExec, {
-    description = "Regenerate " + javaFile + " using " + pyScript + " in " + genDir
+        description = "Regenerate " + javaFile + " using " + pyScript + " in " + genDir
 
-    def genScript = project.file("${genDir}/${pyScript}")
-    def genOutput = project.file("${genDir}/${javaFile}")
-    inputs.file genScript
-    outputs.file genOutput
+        def genScript = project.file("${genDir}/${pyScript}")
+        def genOutput = project.file("${genDir}/${javaFile}")
+        inputs.file genScript
+        outputs.file genOutput
 
-    workingDir = genDir
-    executable = project.getExtensions().getByType(LuceneBuildGlobalsExtension).externalTool("python3")
-    args = ['-B', genScript.toString()]
-  })
+        workingDir = genDir
+        executable = project.getExtensions().getByType(LuceneBuildGlobalsExtension).externalTool("python3")
+        args = ['-B', genScript.toString()]
+      })
 }
 
 createForUtilRegenerateTask(project, "ForUtil", "ForUtil.java", "gen_ForUtil.py",
@@ -114,7 +114,7 @@ configure(project(":lucene:core")) {
           encoding: "UTF-8",
           token: "private static final int ZZ_BUFFERSIZE =",
           value: "private int ZZ_BUFFERSIZE ="
-      )
+          )
     }
   })
 }
@@ -150,9 +150,9 @@ configure(project(":lucene:analysis:common")) {
 
         ignoreExitValue = false
         args = [
-            tldZones,
-            tmpJflexMacro,
-            tmpTldList
+          tldZones,
+          tmpJflexMacro,
+          tmpTldList
         ]
       }
 
@@ -223,7 +223,7 @@ configure(project(":lucene:analysis:common")) {
           encoding: "UTF-8",
           token: "private static final int ZZ_BUFFERSIZE =",
           value: "private int ZZ_BUFFERSIZE ="
-      )
+          )
     }
   })
 
@@ -239,10 +239,10 @@ configure(project(":lucene:analysis:common")) {
     executable = buildGlobals.externalTool("python3")
     workingDir = target.parentFile
     args += [
-        "-B",
-        // don't write any bytecode cache
-        script,
-        target
+      "-B",
+      // don't write any bytecode cache
+      script,
+      target
     ]
 
     doLast {
@@ -250,7 +250,7 @@ configure(project(":lucene:analysis:common")) {
           file: target,
           encoding: "UTF-8",
           eol: "lf"
-      )
+          )
     }
   })
 

@@ -17,7 +17,6 @@
 package org.apache.lucene.gradle.plugins.regenerate;
 
 import java.util.List;
-import org.gradle.api.provider.Property;
 import org.gradle.api.provider.SetProperty;
 
 /**

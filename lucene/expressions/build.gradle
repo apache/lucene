@@ -43,10 +43,10 @@ tasks.register("regenerateAntlr", {
   dependsOn configurations.antlr
 
   def generatedPatterns = [
-      "**/JavascriptBaseVisitor.java",
-      "**/JavascriptLexer.java",
-      "**/JavascriptParser.java",
-      "**/JavascriptVisitor.java",
+    "**/JavascriptBaseVisitor.java",
+    "**/JavascriptLexer.java",
+    "**/JavascriptParser.java",
+    "**/JavascriptVisitor.java",
   ]
 
   def sourceDir = "src/java/org/apache/lucene/expressions/js"
@@ -66,13 +66,13 @@ tasks.register("regenerateAntlr", {
 
       ignoreExitValue = false
       args = [
-          "-no-listener",
-          "-visitor",
-          "-package",
-          "org.apache.lucene.expressions.js",
-          "-o",
-          tempOutput,
-          inputFiles
+        "-no-listener",
+        "-visitor",
+        "-package",
+        "org.apache.lucene.expressions.js",
+        "-o",
+        tempOutput,
+        inputFiles
       ]
     }
 

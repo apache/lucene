@@ -91,7 +91,7 @@ tasks.register("regenerateUtr30DataFiles", {
 
   // gennorm generates file order-dependent output, so make it constant here.
   def inputFiles = fileTree(dir: utr30DataDir, include: "*.txt")
-      .asList().toSorted(Comparator.comparing { File f -> f.name })
+  .asList().toSorted(Comparator.comparing { File f -> f.name })
   def outputFile = file("src/resources/org/apache/lucene/analysis/icu/utr30.nrm")
 
   inputs.files inputFiles
@@ -107,28 +107,28 @@ tasks.register("regenerateUtr30DataFiles", {
       ignoreExitValue = false
       workingDir utr30DataDir
       args = [
-          "release-${icu4jVersion.replace(".", "-")}"
+        "release-${icu4jVersion.replace(".", "-")}"
       ]
     }
 
     buildGlobals.quietExec(it, {
       executable gennorm
       args = [
-          "-v",
-          "-s",
-          utr30DataDir,
-          "-o",
-          "${buildDir}/utr30.tmp",
-          *(inputFiles.collect { it.name })
+        "-v",
+        "-s",
+        utr30DataDir,
+        "-o",
+        "${buildDir}/utr30.tmp",
+        *(inputFiles.collect { it.name })
       ]
     })
 
     buildGlobals.quietExec(it, {
       executable icupkg
       args = [
-          "-tb",
-          "${buildDir}/utr30.tmp",
-          outputFile
+        "-tb",
+        "${buildDir}/utr30.tmp",
+        outputFile
       ]
     })
   }
@@ -212,8 +212,8 @@ tasks.register("compileIcuLinux", {
       executable "tar"
       workingDir icuBuildDir
       args = [
-          "-zxf",
-          icuSrcTgz
+        "-zxf",
+        icuSrcTgz
       ]
     })
 
@@ -225,9 +225,9 @@ tasks.register("compileIcuLinux", {
       environment("CFLAGS", "-O0")
       environment("CXXFLAGS", "-O0")
       args = [
-          "configure",
-          "--prefix=${icuSrcDir}",
-          "--enable-rpath"
+        "configure",
+        "--prefix=${icuSrcDir}",
+        "--enable-rpath"
       ]
     })
 
@@ -235,7 +235,7 @@ tasks.register("compileIcuLinux", {
       executable "make"
       workingDir icuSrcDir
       args = [
-          "-j${buildOptions['tests.jvms'].get()}"
+        "-j${buildOptions['tests.jvms'].get()}"
       ]
     })
 
@@ -271,10 +271,10 @@ configure(project(":lucene:analysis:common")) {
         spec.classpath(icuConfig, groovyConfig)
 
         spec.args([
-            "--encoding",
-            "UTF-8",
-            file("${resources}/GenerateUnicodeProps.groovy").toString(),
-            outputFile.toString()
+          "--encoding",
+          "UTF-8",
+          file("${resources}/GenerateUnicodeProps.groovy").toString(),
+          outputFile.toString()
         ])
       })
     }
@@ -302,10 +302,10 @@ configure(project(":lucene:core")) {
         classpath icuConfig, groovyConfig
 
         args = [
-            "--encoding",
-            "UTF-8",
-            file("${resources}/GenerateCaseFolding.groovy"),
-            outputFile
+          "--encoding",
+          "UTF-8",
+          file("${resources}/GenerateCaseFolding.groovy"),
+          outputFile
         ]
       })
     }

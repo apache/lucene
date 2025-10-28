@@ -239,4 +239,3 @@ tasks.register("regenerateFlexibleStandardSyntaxParser", JavaCCTask, {
     }
   })
 })
-

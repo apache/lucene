@@ -40,11 +40,9 @@ import org.gradle.process.ExecResult;
 import org.gradle.process.JavaExecSpec;
 
 public abstract class JavaCCTask extends DefaultTask {
-  /**
-   * Apply closures to all generated files before they're copied back
-   * to mainline code.
-   */
-  // A subtle bug here is that this makes it not an input... should be a list of replacements instead?
+  /** Apply closures to all generated files before they're copied back to mainline code. */
+  // A subtle bug here is that this makes it not an input... should be a list of replacements
+  // instead?
   private final List<Consumer<FileTree>> afterGenerate = new ArrayList<>();
 
   @InputFile
@@ -55,10 +53,6 @@ public abstract class JavaCCTask extends DefaultTask {
   // extension checksums file.
   @Internal
   public abstract ConfigurableFileCollection getClasspath();
-
-  private List<Consumer<FileTree>> getAfterGenerate() {
-    return afterGenerate;
-  }
 
   public void afterGenerate(Consumer<FileTree> action) {
     this.afterGenerate.add(action);
