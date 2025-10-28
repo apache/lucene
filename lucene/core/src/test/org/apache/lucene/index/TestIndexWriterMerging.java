@@ -387,7 +387,15 @@ public class TestIndexWriterMerging extends LuceneTestCase {
     assertTrue(observer.hasNewMerges());
     assertTrue(observer.numMerges() > 0);
 
+    // Measure time to detect stuck merges
+    long startNanos = System.nanoTime();
     observer.await();
+    long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
+
+    assertTrue(
+        "Merge took too long: " + elapsedMillis + "ms (expected < 30000ms)",
+        elapsedMillis < 30_000);
+
     assertEquals(5, iw.getDocStats().maxDoc);
     assertEquals(5, iw.getDocStats().numDocs);
 
@@ -508,17 +516,13 @@ public class TestIndexWriterMerging extends LuceneTestCase {
 
     MergePolicy.MergeObserver observer = iw.forceMergeDeletes(false);
 
-    // Test that await(timeout, unit) returns true when merge completes successfully.
-    // Measure actual time to detect abnormally slow merges (potential deadlock/stuck merge).
+    // Measure time to detect stuck merges
     long startNanos = System.nanoTime();
     assertTrue("await should complete before timeout", observer.await(10, TimeUnit.MINUTES));
     long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
 
-    // This small merge should complete in ~1 second. Fail if it takes unreasonably long,
-    // which would indicate a performance regression or stuck merge.
     assertTrue(
-        "Merge took too long: " + elapsedMillis + "ms (expected < 30000ms). "
-            + "Possible stuck merge or severe performance issue.",
+        "Merge took too long: " + elapsedMillis + "ms (expected < 30000ms)",
         elapsedMillis < 30_000);
 
     iw.waitForMerges();
