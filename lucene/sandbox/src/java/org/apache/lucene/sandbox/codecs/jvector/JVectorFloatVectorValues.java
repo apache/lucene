@@ -64,6 +64,7 @@ public class JVectorFloatVectorValues extends FloatVectorValues {
     return view.getVector(ord);
   }
 
+  @Override
   public DocIndexIterator iterator() {
     return new DocIndexIterator() {
       private int docId = -1;
