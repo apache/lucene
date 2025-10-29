@@ -18,7 +18,6 @@
 package org.apache.lucene.sandbox.codecs.jvector;
 
 import static org.apache.lucene.sandbox.codecs.jvector.JVectorFormat.DEFAULT_MINIMUM_BATCH_SIZE_FOR_QUANTIZATION;
-import static org.opensearch.knn.index.engine.CommonTestUtils.getCodec;
 
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import java.io.IOException;
@@ -27,6 +26,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.*;
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
@@ -34,6 +34,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.junit.Assert;
 import org.junit.Test;
 import org.opensearch.knn.TestUtils;
@@ -1560,5 +1561,13 @@ public class KNNJVectorTests extends LuceneTestCase {
     }
 
     return groundTruthVectorsIds;
+  }
+
+  private Codec getCodec() {
+    return getCodec(JVectorFormat.DEFAULT_MINIMUM_BATCH_SIZE_FOR_QUANTIZATION);
+  }
+
+  private Codec getCodec(final int minimumBatchSizeForQuantization) {
+    return TestUtil.alwaysKnnVectorsFormat(new JVectorFormat(minimumBatchSizeForQuantization));
   }
 }
