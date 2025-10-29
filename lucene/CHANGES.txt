@@ -205,8 +205,10 @@ Optimizations
 
 * GITHUB#15261: Implement longValues for MultiFieldNormValues to speedup CombinedQuery (Ge Song)
 
+* GITHUB#15343: Ensure that `AcceptDocs#cost()` only ever calls `BitSets#cardinality()`
+  once per instance to avoid redundant computation. (Ben Trent)
+* GITHUB#14963: Bypass HNSW graph building for tiny segments. (Shubham Chaudhary, Ben Trent)
 Bug Fixes
----------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
   instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
 
