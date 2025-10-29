@@ -19,6 +19,7 @@ package org.apache.lucene.sandbox.codecs.jvector;
 
 import static org.apache.lucene.sandbox.codecs.jvector.JVectorFormat.DEFAULT_MINIMUM_BATCH_SIZE_FOR_QUANTIZATION;
 
+import com.carrotsearch.randomizedtesting.ThreadFilter;
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -37,7 +38,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.junit.Assert;
 import org.junit.Test;
-import org.opensearch.knn.index.ThreadLeakFiltersForTests;
 
 /** Test used specifically for JVector */
 // Currently {@link IndexGraphBuilder} is using the default ForkJoinPool.commonPool() which is not
@@ -47,7 +47,7 @@ import org.opensearch.knn.index.ThreadLeakFiltersForTests;
 // due to leaked thread pool warning.
 @ThreadLeakFilters(
     defaultFilters = true,
-    filters = {ThreadLeakFiltersForTests.class})
+    filters = {KNNJVectorTests.ThreadLeakFilter.class})
 public class KNNJVectorTests extends LuceneTestCase {
   private static final String TEST_FIELD = "test_field";
   private static final String TEST_ID_FIELD = "id";
@@ -1579,5 +1579,12 @@ public class KNNJVectorTests extends LuceneTestCase {
 
   private Codec getCodec(final int minimumBatchSizeForQuantization) {
     return TestUtil.alwaysKnnVectorsFormat(new JVectorFormat(minimumBatchSizeForQuantization));
+  }
+
+  public static class ThreadLeakFilter implements ThreadFilter {
+    @Override
+    public boolean reject(Thread thread) {
+      return thread.getName().contains("ForkJoinPool");
+    }
   }
 }
