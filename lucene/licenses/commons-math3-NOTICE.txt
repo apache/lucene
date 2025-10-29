@@ -1,0 +1,4 @@
+This product includes software developed by the Apache Commons Math project.
+https://commons.apache.org/proper/commons-math/
+
+Licensed under the Apache License, Version 2.0.

@@ -34,6 +34,7 @@ jmh = "1.37"
 jts = "1.20.0"
 # unit tests
 junit = "4.13.2"
+jvector = "4.0.0-rc.6"
 # @keep Minimum gradle version to run the build
 minGradle = "9.1.0"
 # @keep This is the minimum required Java version.
@@ -50,6 +51,7 @@ opennlp = "2.5.7"
 procfork = "1.0.6"
 # unit tests
 randomizedtesting = "2.8.3"
+slf4j =  "2.0.17"
 # spatial-extras/ support
 s2-geometry = "1.0.0"
 # spatial-extras/ support
@@ -83,6 +85,7 @@ jmh-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jts = { module = "org.locationtech.jts:jts-core", version.ref = "jts" }
 junit = { module = "junit:junit", version.ref = "junit" }
+jvector = { module = "io.github.jbellis:jvector", version.ref = "jvector"}
 morfologik-polish = { module = "org.carrot2:morfologik-polish", version.ref = "morfologik" }
 morfologik-stemming = { module = "org.carrot2:morfologik-stemming", version.ref = "morfologik" }
 morfologik-ukrainian = { module = "ua.net.nlp:morfologik-ukrainian-search", version.ref = "morfologik-ukrainian" }
@@ -90,6 +93,7 @@ nekohtml = { module = "net.sourceforge.nekohtml:nekohtml", version.ref = "nekoht
 opennlp-tools = { module = "org.apache.opennlp:opennlp-tools", version.ref = "opennlp" }
 procfork = { module = "com.carrotsearch:procfork", version.ref = "procfork" }
 randomizedtesting-runner = { module = "com.carrotsearch.randomizedtesting:randomizedtesting-runner", version.ref = "randomizedtesting" }
+slf4j = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 s2-geometry = { module = "io.sgr:s2-geometry-library-java", version.ref = "s2-geometry" }
 spatial4j = { module = "org.locationtech.spatial4j:spatial4j", version.ref = "spatial4j" }
 xerces = { module = "xerces:xercesImpl", version.ref = "xerces" }

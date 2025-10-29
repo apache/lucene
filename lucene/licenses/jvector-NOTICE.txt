@@ -1,0 +1,6 @@
+This product includes software developed by the JVector project.
+https://github.com/jbellis/jvector
+
+Copyright © 2023 Jonathan Ellis
+
+Licensed under the Apache License, Version 2.0.
