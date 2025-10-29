@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.gradle.plugins.hacks;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -25,13 +26,16 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
-import javax.inject.Inject;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.gradle.api.Project;
-import org.gradle.api.file.FileTree;
-import org.gradle.api.internal.file.FileOperations;
+import org.gradle.api.file.Directory;
+import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.invocation.Gradle;
+import org.gradle.api.logging.Logger;
+import org.gradle.api.logging.Logging;
 import org.gradle.api.plugins.JavaPlugin;
+import org.gradle.api.services.BuildService;
+import org.gradle.api.services.BuildServiceParameters;
 import org.gradle.api.tasks.Delete;
 import org.gradle.api.tasks.TaskCollection;
 import org.gradle.api.tasks.TaskContainer;
@@ -43,14 +47,33 @@ import org.gradle.api.tasks.testing.Test;
  * @see "LUCENE-9471"
  */
 public abstract class WipeGradleTempPlugin extends LuceneGradlePlugin {
-  @Inject
-  public abstract FileOperations getFileOps();
-
   @Override
   public void apply(Project rootProject) {
     applicableToRootProjectOnly(rootProject);
 
-    cleanTempFilesAfterBuildFinished(rootProject);
+    Gradle gradle = rootProject.getGradle();
+    gradle
+        .getSharedServices()
+        .registerIfAbsent(
+            "gradleTempCleanupService",
+            TempCleanupService.class,
+            service -> {
+              service.parameters(
+                  params -> {
+                    params.getProjectRootDir().set(getProjectRootPath(rootProject).toFile());
+                    File gradleUserHome = gradle.getGradleUserHomeDir();
+                    params.getUserHomeDir().set(gradleUserHome);
+                    params
+                        .getGradleDaemonDir()
+                        .set(
+                            gradleUserHome
+                                .toPath()
+                                .resolve("daemon")
+                                .resolve(gradle.getGradleVersion())
+                                .toFile());
+                  });
+            })
+        .get(); // make sure it'll run.
 
     rootProject
         .getAllprojects()
@@ -93,72 +116,84 @@ public abstract class WipeGradleTempPlugin extends LuceneGradlePlugin {
         });
   }
 
-  private void cleanTempFilesAfterBuildFinished(Project rootProject) {
-    rootProject
-        .getGradle()
-        .buildFinished(
-            _ -> {
-              cleanUpRedirectedTmpDir(rootProject);
-              cleanUpGradlesTempDir(rootProject);
-            });
-  }
+  public abstract static class TempCleanupService
+      implements BuildService<TempCleanupServiceParams>, AutoCloseable {
+    private static final Logger LOGGER = Logging.getLogger(TempCleanupService.class);
 
-  private static void cleanUpGradlesTempDir(Project rootProject) {
-    try {
-      // clean up any files older than 3 hours from the user's gradle temp. the time
-      // limit is added so that we don't interfere with any concurrent builds... just in
-      // case.
-      Instant deadline = Instant.now().minus(3, ChronoUnit.HOURS);
-      List<Stream<Path>> toDelete = new ArrayList<>();
+    @Override
+    public void close() {
+      cleanUpRedirectedTmpDir(getParameters().getProjectRootDir().get());
+      cleanUpGradlesTempDir(
+          getParameters().getUserHomeDir().get(), getParameters().getGradleDaemonDir().get());
+    }
 
-      Gradle gradle = rootProject.getGradle();
-      Path gradleUserHome = gradle.getGradleUserHomeDir().toPath();
+    private void cleanUpGradlesTempDir(Directory gradleUserHomeDir, Directory gradleDaemonDir) {
+      try {
+        // clean up any files older than 3 hours from the user's gradle temp. the time
+        // limit is added so that we don't interfere with any concurrent builds... just in
+        // case.
+        Instant deadline = Instant.now().minus(3, ChronoUnit.HOURS);
+        List<Stream<Path>> toDelete = new ArrayList<>();
 
-      var gradleTmp = gradleUserHome.resolve(".tmp");
-      if (Files.exists(gradleTmp)) {
-        toDelete.add(Files.list(gradleTmp));
-      }
+        Path gradleUserHome = gradleUserHomeDir.getAsFile().toPath();
 
-      var daemonDir = gradleUserHome.resolve("daemon").resolve(gradle.getGradleVersion());
-      if (Files.exists(daemonDir)) {
-        toDelete.add(Files.list(daemonDir).filter(path -> path.toString().endsWith(".out.log")));
-      }
-
-      for (Stream<Path> stream : toDelete) {
-        try {
-          for (var path : stream.toList()) {
-            if (!Files.isRegularFile(path)) {
-              continue;
-            }
-            if (!Files.getLastModifiedTime(path).toInstant().isBefore(deadline)) {
-              continue;
-            }
-            Files.deleteIfExists(path);
-          }
-        } finally {
-          stream.close();
+        var gradleTmp = gradleUserHome.resolve(".tmp");
+        LOGGER.info("Cleaning up gradle's user temp dir: {}", gradleTmp);
+        if (Files.exists(gradleTmp)) {
+          toDelete.add(Files.list(gradleTmp));
         }
+
+        var daemonDir = gradleDaemonDir.getAsFile().toPath();
+        LOGGER.info("Cleaning up gradle's daemon logs dir: {}", daemonDir);
+        if (Files.exists(daemonDir)) {
+          toDelete.add(Files.list(daemonDir).filter(path -> path.toString().endsWith(".out.log")));
+        }
+
+        for (Stream<Path> stream : toDelete) {
+          try {
+            for (var path : stream.toList()) {
+              if (!Files.isRegularFile(path)) {
+                continue;
+              }
+              if (!Files.getLastModifiedTime(path).toInstant().isBefore(deadline)) {
+                continue;
+              }
+              Files.deleteIfExists(path);
+            }
+          } finally {
+            stream.close();
+          }
+        }
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
       }
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
+    }
+
+    private void cleanUpRedirectedTmpDir(Directory projectRootDir) {
+      // Clean up the java.io.tmpdir we've redirected gradle to use (LUCENE-9471).
+      // these are still used and populated with junk.
+      try {
+        try (var files = Files.list(projectRootDir.dir(".gradle/tmp").getAsFile().toPath())) {
+          var workerPaths =
+              files
+                  .filter(
+                      path -> path.getFileName().toString().startsWith("gradle-worker-classpath"))
+                  .toList();
+          for (var path : workerPaths) {
+            Files.delete(path);
+          }
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 
-  private void cleanUpRedirectedTmpDir(Project rootProject) {
-    // Clean up the java.io.tmpdir we've redirected gradle to use (LUCENE-9471).
-    // these are still used and populated with junk.
-    FileTree tempFiles =
-        rootProject
-            .fileTree(".gradle/tmp")
-            .matching(
-                patternFilterable -> {
-                  patternFilterable.include("gradle-worker-classpath*");
-                });
-    getFileOps()
-        .delete(
-            spec -> {
-              spec.delete(tempFiles);
-              spec.setFollowSymlinks(false);
-            });
+  public interface TempCleanupServiceParams extends BuildServiceParameters {
+    DirectoryProperty getProjectRootDir();
+
+    DirectoryProperty getUserHomeDir();
+
+    DirectoryProperty getGradleDaemonDir();
   }
 }
