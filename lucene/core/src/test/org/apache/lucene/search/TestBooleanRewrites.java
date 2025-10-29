@@ -34,6 +34,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.RandomApproximationQuery;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -429,6 +430,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
     assertEquals(expected, searcher.rewrite(bq));
   }
 
+  @com.carrotsearch.randomizedtesting.annotations.Repeat(iterations = 500)
   public void testRandom() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
@@ -532,22 +534,26 @@ public class TestBooleanRewrites extends LuceneTestCase {
     if (random.nextInt(5) == 0) {
       return randomWrapper(random, randomQuery(random));
     }
-    switch (random().nextInt(6)) {
-      case 0:
-        return new MatchAllDocsQuery();
-      case 1:
-        return new TermQuery(new Term("body", "a"));
-      case 2:
-        return new TermQuery(new Term("body", "b"));
-      case 3:
-        return new TermQuery(new Term("body", "c"));
-      case 4:
-        return new TermQuery(new Term("body", "d"));
-      case 5:
-        return randomBooleanQuery(random);
-      default:
-        throw new AssertionError();
+    Query inner =
+        switch (random.nextInt(7)) {
+          case 0 -> new MatchAllDocsQuery();
+          case 1 -> new TermQuery(new Term("body", "a"));
+          case 2 -> new TermQuery(new Term("body", "b"));
+          case 3 -> new TermQuery(new Term("body", "c"));
+          case 4 -> new TermQuery(new Term("body", "d"));
+          case 5 ->
+              new PhraseQuery.Builder()
+                  .add(new Term("body", "d"))
+                  .add(new Term("body", "c"))
+                  .setSlop(1)
+                  .build();
+          case 6 -> randomBooleanQuery(random);
+          default -> throw new AssertionError();
+        };
+    if (random.nextBoolean()) {
+      inner = new RandomApproximationQuery(inner, random);
     }
+    return inner;
   }
 
   private void assertEquals(TopDocs td1, TopDocs td2) {
