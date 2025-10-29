@@ -234,10 +234,7 @@ public class JVectorReader extends KnnVectorsReader {
   }
 
   class FieldEntry implements Closeable {
-    private final FieldInfo fieldInfo;
-    private final VectorEncoding vectorEncoding;
     private final VectorSimilarityFunction similarityFunction;
-    private final int dimension;
     private final long vectorIndexOffset;
     private final long vectorIndexLength;
     private final long pqCodebooksAndVectorsLength;
@@ -257,12 +254,10 @@ public class JVectorReader extends KnnVectorsReader {
       this.similarityFunction =
           VectorSimilarityMapper.ordToDistFunc(
               vectorIndexFieldMetadata.vectorSimilarityFunction.ordinal());
-      this.vectorEncoding = vectorIndexFieldMetadata.vectorEncoding;
       this.vectorIndexOffset = vectorIndexFieldMetadata.vectorIndexOffset;
       this.vectorIndexLength = vectorIndexFieldMetadata.vectorIndexLength;
       this.pqCodebooksAndVectorsLength = vectorIndexFieldMetadata.pqCodebooksAndVectorsLength;
       this.pqCodebooksAndVectorsOffset = vectorIndexFieldMetadata.pqCodebooksAndVectorsOffset;
-      this.dimension = vectorIndexFieldMetadata.vectorDimension;
       this.graphNodeIdToDocMap = vectorIndexFieldMetadata.graphNodeIdToDocMap;
 
       this.vectorIndexFieldDataFileName =

@@ -30,9 +30,7 @@ import org.apache.lucene.util.IOUtils;
 
 public class JVectorRandomAccessReader implements RandomAccessReader {
   private final byte[] internalBuffer = new byte[Long.BYTES];
-  private final byte[] internalFloatBuffer = new byte[Float.BYTES];
   private final IndexInput indexInputDelegate;
-  private volatile boolean closed = false;
 
   public JVectorRandomAccessReader(IndexInput indexInputDelegate) {
     this.indexInputDelegate = indexInputDelegate;
@@ -118,7 +116,6 @@ public class JVectorRandomAccessReader implements RandomAccessReader {
 
   @Override
   public void close() throws IOException {
-    this.closed = true;
     // no need to really close the index input delegate since it is a clone
   }
 

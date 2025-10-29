@@ -584,9 +584,6 @@ public class JVectorWriter extends KnnVectorsWriter {
     private static final int READER_ORD = 1;
     private static final int LEADING_READER_IDX = 0;
 
-    private final VectorTypeSupport VECTOR_TYPE_SUPPORT =
-        VectorizationProvider.getInstance().getVectorTypeSupport();
-
     // Array of sub-readers
     private final KnnVectorsReader[] readers;
     private final JVectorFloatVectorValues[] perReaderFloatVectorValues;

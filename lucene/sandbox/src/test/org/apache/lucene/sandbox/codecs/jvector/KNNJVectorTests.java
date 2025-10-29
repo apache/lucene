@@ -959,8 +959,6 @@ public class KNNJVectorTests extends LuceneTestCase {
    */
   @Test
   public void testJVectorKnnIndex_simpleCase_withBinaryVector() throws IOException {
-    int k = 3; // The number of nearest neighbours to gather
-    int totalNumberOfDocs = 10;
     IndexWriterConfig indexWriterConfig = LuceneTestCase.newIndexWriterConfig();
     // TODO: re-enable this after fixing the compound file augmentation for JVector
     indexWriterConfig.setUseCompoundFile(false);
@@ -1485,15 +1483,6 @@ public class KNNJVectorTests extends LuceneTestCase {
         JVectorReader.DEFAULT_QUERY_SIMILARITY_THRESHOLD,
         JVectorReader.DEFAULT_QUERY_RERANK_FLOOR,
         JVectorReader.DEFAULT_QUERY_USE_PRUNING);
-  }
-
-  private static float[][] getMonotonicallyIncreasingVectors(int numVectors, int vectorDimension) {
-    float[][] vectors = new float[numVectors][vectorDimension];
-    for (int i = 0; i < numVectors; i++) {
-      vectors[i] = generateZerosVectorWithLastValue(vectorDimension, i);
-    }
-
-    return vectors;
   }
 
   private static float[] generateZerosVectorWithLastValue(int vectorDimension, int lastValue) {
