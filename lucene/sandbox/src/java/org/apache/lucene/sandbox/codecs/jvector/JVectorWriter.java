@@ -44,7 +44,6 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.*;
@@ -858,9 +857,8 @@ public class JVectorWriter extends KnnVectorsWriter {
       final PQVectors pqVectors;
       final OnHeapGraphIndex graph;
       // Get the leading reader
-      PerFieldKnnVectorsFormat.FieldsReader fieldsReader =
-          (PerFieldKnnVectorsFormat.FieldsReader) readers[LEADING_READER_IDX];
-      JVectorReader leadingReader = (JVectorReader) fieldsReader.getFieldReader(fieldName);
+      final JVectorReader leadingReader =
+          (JVectorReader) readers[LEADING_READER_IDX].unwrapReaderForField(fieldName);
       final BuildScoreProvider buildScoreProvider;
       // Check if the leading reader has pre-existing PQ codebooks and if so, refine them with the
       // remaining vectors
