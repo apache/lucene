@@ -42,7 +42,6 @@ import java.util.function.Function;
 import java.util.stream.IntStream;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
 import lombok.Value;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
@@ -485,7 +484,7 @@ public class JVectorWriter extends KnnVectorsWriter {
     private static final VectorTypeSupport VECTOR_TYPE_SUPPORT =
         VectorizationProvider.getInstance().getVectorTypeSupport();
     private final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(FieldWriter.class);
-    @Getter private final FieldInfo fieldInfo;
+    private final FieldInfo fieldInfo;
     private int lastDocID = -1;
     private final RandomAccessVectorValues randomAccessVectorValues;
     // The ordering of docIds matches the ordering of vectors, the index in this list corresponds to
