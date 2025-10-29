@@ -172,7 +172,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
     assert top.doc < max;
     while (top.doc < filter.doc) {
       // Must use the iterator as `top` might be a two-phase iterator
-      top.doc = top.approximation.advance(filter.doc);
+      top.doc = top.iterator.advance(filter.doc);
       top = essentialQueue.updateTop();
     }
 
