@@ -17,7 +17,7 @@
 
 package org.apache.lucene.sandbox.codecs.jvector;
 
-import static org.opensearch.knn.common.KNNConstants.DEFAULT_MINIMUM_BATCH_SIZE_FOR_QUANTIZATION;
+import static org.apache.lucene.sandbox.codecs.jvector.JVectorFormat.DEFAULT_MINIMUM_BATCH_SIZE_FOR_QUANTIZATION;
 import static org.opensearch.knn.index.engine.CommonTestUtils.getCodec;
 
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
@@ -37,7 +37,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Assert;
 import org.junit.Test;
 import org.opensearch.knn.TestUtils;
-import org.opensearch.knn.common.KNNConstants;
 import org.opensearch.knn.index.ThreadLeakFiltersForTests;
 
 /** Test used specifically for JVector */
@@ -1472,7 +1471,7 @@ public class KNNJVectorTests extends LuceneTestCase {
   private JVectorKnnFloatVectorQuery getJVectorKnnFloatVectorQuery(
       String fieldName, float[] target, int k, Query filterQuery) {
     return getJVectorKnnFloatVectorQuery(
-        fieldName, target, k, filterQuery, KNNConstants.DEFAULT_OVER_QUERY_FACTOR);
+        fieldName, target, k, filterQuery, JVectorReader.DEFAULT_OVER_QUERY_FACTOR);
   }
 
   private JVectorKnnFloatVectorQuery getJVectorKnnFloatVectorQuery(
@@ -1483,9 +1482,9 @@ public class KNNJVectorTests extends LuceneTestCase {
         k,
         filterQuery,
         overQueryFactor,
-        KNNConstants.DEFAULT_QUERY_SIMILARITY_THRESHOLD.floatValue(),
-        KNNConstants.DEFAULT_QUERY_RERANK_FLOOR.floatValue(),
-        KNNConstants.DEFAULT_QUERY_USE_PRUNING);
+        JVectorReader.DEFAULT_QUERY_SIMILARITY_THRESHOLD,
+        JVectorReader.DEFAULT_QUERY_RERANK_FLOOR,
+        JVectorReader.DEFAULT_QUERY_USE_PRUNING);
   }
 
   private static float[][] getMonotonicallyIncreasingVectors(int numVectors, int vectorDimension) {

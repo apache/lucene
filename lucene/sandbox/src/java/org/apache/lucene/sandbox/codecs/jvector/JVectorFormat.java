@@ -26,7 +26,6 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.opensearch.knn.common.KNNConstants;
 
 public class JVectorFormat extends KnnVectorsFormat {
   public static final String NAME = "JVectorFormat";
@@ -44,6 +43,10 @@ public class JVectorFormat extends KnnVectorsFormat {
   public static final int VERSION_CURRENT = VERSION_START;
   public static final int DEFAULT_MAX_CONN = 32;
   public static final int DEFAULT_BEAM_WIDTH = 100;
+  public static final int DEFAULT_MINIMUM_BATCH_SIZE_FOR_QUANTIZATION = 1024;
+  public static final float DEFAULT_NEIGHBOR_OVERFLOW = 2f;
+  public static final float DEFAULT_ALPHA = 2f;
+  public static final boolean DEFAULT_HIERARCHY_ENABLED = true;
   // Unfortunately, this can't be managed yet by the OpenSearch ThreadPool because it's not
   // supporting {@link ForkJoinPool} types
   public static final ForkJoinPool SIMD_POOL_MERGE = getPhysicalCoreExecutor();
@@ -63,11 +66,11 @@ public class JVectorFormat extends KnnVectorsFormat {
         NAME,
         DEFAULT_MAX_CONN,
         DEFAULT_BEAM_WIDTH,
-        KNNConstants.DEFAULT_NEIGHBOR_OVERFLOW_VALUE.floatValue(),
-        KNNConstants.DEFAULT_ALPHA_VALUE.floatValue(),
+        DEFAULT_NEIGHBOR_OVERFLOW,
+        DEFAULT_ALPHA,
         JVectorFormat::getDefaultNumberOfSubspacesPerVector,
-        KNNConstants.DEFAULT_MINIMUM_BATCH_SIZE_FOR_QUANTIZATION,
-        KNNConstants.DEFAULT_HIERARCHY_ENABLED);
+        DEFAULT_MINIMUM_BATCH_SIZE_FOR_QUANTIZATION,
+        DEFAULT_HIERARCHY_ENABLED);
   }
 
   public JVectorFormat(int minBatchSizeForQuantization) {
@@ -75,11 +78,11 @@ public class JVectorFormat extends KnnVectorsFormat {
         NAME,
         DEFAULT_MAX_CONN,
         DEFAULT_BEAM_WIDTH,
-        KNNConstants.DEFAULT_NEIGHBOR_OVERFLOW_VALUE.floatValue(),
-        KNNConstants.DEFAULT_ALPHA_VALUE.floatValue(),
+        DEFAULT_NEIGHBOR_OVERFLOW,
+        DEFAULT_ALPHA,
         JVectorFormat::getDefaultNumberOfSubspacesPerVector,
         minBatchSizeForQuantization,
-        KNNConstants.DEFAULT_HIERARCHY_ENABLED);
+        DEFAULT_HIERARCHY_ENABLED);
   }
 
   public JVectorFormat(

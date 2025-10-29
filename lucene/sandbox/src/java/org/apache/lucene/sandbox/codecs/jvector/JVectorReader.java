@@ -44,9 +44,13 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.*;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
-import org.opensearch.knn.common.KNNConstants;
 
 public class JVectorReader extends KnnVectorsReader {
+  public static final float DEFAULT_QUERY_SIMILARITY_THRESHOLD = 0f;
+  public static final float DEFAULT_QUERY_RERANK_FLOOR = 0f;
+  public static final int DEFAULT_OVER_QUERY_FACTOR = 3;
+  public static final boolean DEFAULT_QUERY_USE_PRUNING = false;
+
   private static final VectorTypeSupport VECTOR_TYPE_SUPPORT =
       VectorizationProvider.getInstance().getVectorTypeSupport();
 
@@ -148,10 +152,10 @@ public class JVectorReader extends KnnVectorsReader {
       jvectorKnnCollector =
           new JVectorKnnCollector(
               knnCollector,
-              KNNConstants.DEFAULT_QUERY_SIMILARITY_THRESHOLD.floatValue(),
-              KNNConstants.DEFAULT_QUERY_RERANK_FLOOR.floatValue(),
-              KNNConstants.DEFAULT_OVER_QUERY_FACTOR,
-              KNNConstants.DEFAULT_QUERY_USE_PRUNING);
+              DEFAULT_QUERY_SIMILARITY_THRESHOLD,
+              DEFAULT_QUERY_RERANK_FLOOR,
+              DEFAULT_OVER_QUERY_FACTOR,
+              DEFAULT_QUERY_USE_PRUNING);
     }
 
     // search for a random vector using a GraphSearcher and SearchScoreProvider
