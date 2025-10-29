@@ -40,9 +40,6 @@ import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 import java.util.stream.IntStream;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Value;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -328,15 +325,6 @@ public class JVectorWriter extends KnnVectorsWriter {
           segmentWriteState.segmentInfo.getId(),
           segmentWriteState.segmentSuffix);
       final long startOffset = indexOutput.getFilePointer();
-
-      var resultBuilder =
-          VectorIndexFieldMetadata.builder()
-              .fieldNumber(fieldInfo.number)
-              .vectorEncoding(fieldInfo.getVectorEncoding())
-              .vectorSimilarityFunction(fieldInfo.getVectorSimilarityFunction())
-              .vectorDimension(randomAccessVectorValues.dimension())
-              .graphNodeIdToDocMap(graphNodeIdToDocMap);
-
       try (var writer =
           new OnDiskSequentialGraphIndexWriter.Builder(graph, jVectorIndexWriter)
               .with(new InlineVectors(randomAccessVectorValues.dimension()))
@@ -348,25 +336,35 @@ public class JVectorWriter extends KnnVectorsWriter {
                     new InlineVectors.State(
                         randomAccessVectorValues.getVector(newToOldOrds[nodeId])));
         writer.write(suppliers);
-        long endGraphOffset = jVectorIndexWriter.position();
-        resultBuilder.vectorIndexOffset(startOffset);
-        resultBuilder.vectorIndexLength(endGraphOffset - startOffset);
+        final long endGraphOffset = jVectorIndexWriter.position();
 
         // If PQ is enabled and we have enough vectors, write the PQ codebooks and compressed
         // vectors
+        final long pqOffset;
+        final long pqLength;
         if (pqVectors != null) {
-          resultBuilder.pqCodebooksAndVectorsOffset(endGraphOffset);
+          pqOffset = endGraphOffset;
           // write the compressed vectors and codebooks to disk
           pqVectors.write(jVectorIndexWriter);
-          resultBuilder.pqCodebooksAndVectorsLength(jVectorIndexWriter.position() - endGraphOffset);
+          pqLength = jVectorIndexWriter.position() - endGraphOffset;
         } else {
-          resultBuilder.pqCodebooksAndVectorsOffset(0);
-          resultBuilder.pqCodebooksAndVectorsLength(0);
+          pqOffset = 0;
+          pqLength = 0;
         }
         CodecUtil.writeFooter(indexOutput);
-      }
 
-      return resultBuilder.build();
+        return new VectorIndexFieldMetadata(
+            fieldInfo.number,
+            fieldInfo.getVectorEncoding(),
+            fieldInfo.getVectorSimilarityFunction(),
+            randomAccessVectorValues.dimension(),
+            startOffset,
+            endGraphOffset - startOffset,
+            pqOffset,
+            pqLength,
+            degreeOverflow,
+            graphNodeIdToDocMap);
+      }
     }
   }
 
@@ -396,20 +394,40 @@ public class JVectorWriter extends KnnVectorsWriter {
     return pqVectors;
   }
 
-  @Value
-  @Builder(toBuilder = true)
-  @AllArgsConstructor
   public static class VectorIndexFieldMetadata {
-    int fieldNumber;
-    VectorEncoding vectorEncoding;
-    VectorSimilarityFunction vectorSimilarityFunction;
-    int vectorDimension;
-    long vectorIndexOffset;
-    long vectorIndexLength;
-    long pqCodebooksAndVectorsOffset;
-    long pqCodebooksAndVectorsLength;
-    float degreeOverflow; // important when leveraging cache
-    GraphNodeIdToDocMap graphNodeIdToDocMap;
+    final int fieldNumber;
+    final VectorEncoding vectorEncoding;
+    final VectorSimilarityFunction vectorSimilarityFunction;
+    final int vectorDimension;
+    final long vectorIndexOffset;
+    final long vectorIndexLength;
+    final long pqCodebooksAndVectorsOffset;
+    final long pqCodebooksAndVectorsLength;
+    final float degreeOverflow; // important when leveraging cache
+    final GraphNodeIdToDocMap graphNodeIdToDocMap;
+
+    public VectorIndexFieldMetadata(
+        int fieldNumber,
+        VectorEncoding vectorEncoding,
+        VectorSimilarityFunction vectorSimilarityFunction,
+        int vectorDimension,
+        long vectorIndexOffset,
+        long vectorIndexLength,
+        long pqCodebooksAndVectorsOffset,
+        long pqCodebooksAndVectorsLength,
+        float degreeOverflow,
+        GraphNodeIdToDocMap graphNodeIdToDocMap) {
+      this.fieldNumber = fieldNumber;
+      this.vectorEncoding = vectorEncoding;
+      this.vectorSimilarityFunction = vectorSimilarityFunction;
+      this.vectorDimension = vectorDimension;
+      this.vectorIndexOffset = vectorIndexOffset;
+      this.vectorIndexLength = vectorIndexLength;
+      this.pqCodebooksAndVectorsOffset = pqCodebooksAndVectorsOffset;
+      this.pqCodebooksAndVectorsLength = pqCodebooksAndVectorsLength;
+      this.degreeOverflow = degreeOverflow;
+      this.graphNodeIdToDocMap = graphNodeIdToDocMap;
+    }
 
     public void toOutput(IndexOutput out) throws IOException {
       out.writeInt(fieldNumber);

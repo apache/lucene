@@ -228,7 +228,7 @@ public class JVectorReader extends KnnVectorsReader {
       final FieldInfo fieldInfo = fieldInfos.fieldInfo(fieldNumber); // read field number
       JVectorWriter.VectorIndexFieldMetadata vectorIndexFieldMetadata =
           new JVectorWriter.VectorIndexFieldMetadata(meta);
-      assert fieldInfo.number == vectorIndexFieldMetadata.getFieldNumber();
+      assert fieldInfo.number == vectorIndexFieldMetadata.fieldNumber;
       fieldEntryMap.put(fieldInfo.name, new FieldEntry(fieldInfo, vectorIndexFieldMetadata));
     }
   }
@@ -256,14 +256,14 @@ public class JVectorReader extends KnnVectorsReader {
         throws IOException {
       this.similarityFunction =
           VectorSimilarityMapper.ordToDistFunc(
-              vectorIndexFieldMetadata.getVectorSimilarityFunction().ordinal());
-      this.vectorEncoding = vectorIndexFieldMetadata.getVectorEncoding();
-      this.vectorIndexOffset = vectorIndexFieldMetadata.getVectorIndexOffset();
-      this.vectorIndexLength = vectorIndexFieldMetadata.getVectorIndexLength();
-      this.pqCodebooksAndVectorsLength = vectorIndexFieldMetadata.getPqCodebooksAndVectorsLength();
-      this.pqCodebooksAndVectorsOffset = vectorIndexFieldMetadata.getPqCodebooksAndVectorsOffset();
-      this.dimension = vectorIndexFieldMetadata.getVectorDimension();
-      this.graphNodeIdToDocMap = vectorIndexFieldMetadata.getGraphNodeIdToDocMap();
+              vectorIndexFieldMetadata.vectorSimilarityFunction.ordinal());
+      this.vectorEncoding = vectorIndexFieldMetadata.vectorEncoding;
+      this.vectorIndexOffset = vectorIndexFieldMetadata.vectorIndexOffset;
+      this.vectorIndexLength = vectorIndexFieldMetadata.vectorIndexLength;
+      this.pqCodebooksAndVectorsLength = vectorIndexFieldMetadata.pqCodebooksAndVectorsLength;
+      this.pqCodebooksAndVectorsOffset = vectorIndexFieldMetadata.pqCodebooksAndVectorsOffset;
+      this.dimension = vectorIndexFieldMetadata.vectorDimension;
+      this.graphNodeIdToDocMap = vectorIndexFieldMetadata.graphNodeIdToDocMap;
 
       this.vectorIndexFieldDataFileName =
           baseDataFileName + "_" + fieldInfo.name + "." + JVectorFormat.VECTOR_INDEX_EXTENSION;
