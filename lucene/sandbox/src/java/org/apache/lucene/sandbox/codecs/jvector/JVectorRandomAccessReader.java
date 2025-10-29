@@ -25,11 +25,9 @@ import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import lombok.extern.log4j.Log4j2;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.IOUtils;
 
-@Log4j2
 public class JVectorRandomAccessReader implements RandomAccessReader {
   private final byte[] internalBuffer = new byte[Long.BYTES];
   private final byte[] internalFloatBuffer = new byte[Float.BYTES];
@@ -121,10 +119,8 @@ public class JVectorRandomAccessReader implements RandomAccessReader {
 
   @Override
   public void close() throws IOException {
-    log.debug("Closing JVectorRandomAccessReader for file: {}", indexInputDelegate);
     this.closed = true;
     // no need to really close the index input delegate since it is a clone
-    log.debug("Closed JVectorRandomAccessReader for file: {}", indexInputDelegate);
   }
 
   @Override

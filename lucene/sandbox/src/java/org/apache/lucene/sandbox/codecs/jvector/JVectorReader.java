@@ -37,7 +37,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import lombok.extern.log4j.Log4j2;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.*;
@@ -48,7 +47,6 @@ import org.apache.lucene.util.IOUtils;
 import org.opensearch.knn.common.KNNConstants;
 import org.opensearch.knn.plugin.stats.KNNCounter;
 
-@Log4j2
 public class JVectorReader extends KnnVectorsReader {
   private static final VectorTypeSupport VECTOR_TYPE_SUPPORT =
       VectorizationProvider.getInstance().getVectorTypeSupport();
@@ -146,8 +144,8 @@ public class JVectorReader extends KnnVectorsReader {
     if (knnCollector instanceof JVectorKnnCollector) {
       jvectorKnnCollector = (JVectorKnnCollector) knnCollector;
     } else {
-      log.warn(
-          "KnnCollector must be of type JVectorKnnCollector, for now we will re-wrap it but this is not ideal");
+      // KnnCollector must be of type JVectorKnnCollector, for now we will re-wrap it but this is
+      // not ideal
       jvectorKnnCollector =
           new JVectorKnnCollector(
               knnCollector,
@@ -199,7 +197,6 @@ public class JVectorReader extends KnnVectorsReader {
         }
         final long graphSearchEnd = System.currentTimeMillis();
         final long searchTime = graphSearchEnd - graphSearchStart;
-        log.debug("Search (including acquiring view) took {} ms", searchTime);
 
         // Collect the below metrics about the search and somehow wire this back to {@link
         // @KNNStats}
@@ -214,12 +211,6 @@ public class JVectorReader extends KnnVectorsReader {
         KNNCounter.KNN_QUERY_EXPANDED_NODES.add(expandedCount);
         KNNCounter.KNN_QUERY_EXPANDED_BASE_LAYER_NODES.add(expandedBaseLayerCount);
         KNNCounter.KNN_QUERY_GRAPH_SEARCH_TIME.add(searchTime);
-        log.debug(
-            "rerankedCount: {}, visitedNodesCount: {}, expandedCount: {}, expandedBaseLayerCount: {}",
-            rerankedCount,
-            visitedNodesCount,
-            expandedCount,
-            expandedBaseLayerCount);
       }
     }
   }
@@ -270,7 +261,6 @@ public class JVectorReader extends KnnVectorsReader {
     public FieldEntry(
         FieldInfo fieldInfo, JVectorWriter.VectorIndexFieldMetadata vectorIndexFieldMetadata)
         throws IOException {
-      this.fieldInfo = fieldInfo;
       this.similarityFunction =
           VectorSimilarityMapper.ordToDistFunc(
               vectorIndexFieldMetadata.getVectorSimilarityFunction().ordinal());
@@ -316,10 +306,6 @@ public class JVectorReader extends KnnVectorsReader {
                 directory.openInput(vectorIndexFieldDataFileName, IOContext.READONCE),
                 pqCodebooksAndVectorsOffset,
                 pqCodebooksAndVectorsLength);
-        log.debug(
-            "Loading PQ codebooks and vectors for field {}, with numbers of vectors: {}",
-            fieldInfo.name,
-            state.segmentInfo.maxDoc());
         try (final var randomAccessReader = pqCodebooksReaderSupplier.get()) {
           this.pqVectors = PQVectors.load(randomAccessReader);
         }

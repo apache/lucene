@@ -27,7 +27,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import lombok.extern.log4j.Log4j2;
 import org.apache.lucene.document.*;
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
@@ -51,8 +50,6 @@ import org.opensearch.knn.plugin.stats.KNNCounter;
 @ThreadLeakFilters(
     defaultFilters = true,
     filters = {ThreadLeakFiltersForTests.class})
-@LuceneTestCase.SuppressSysoutChecks(bugUrl = "")
-@Log4j2
 public class KNNJVectorTests extends LuceneTestCase {
   private static final String TEST_FIELD = "test_field";
   private static final String TEST_ID_FIELD = "id";
@@ -71,7 +68,6 @@ public class KNNJVectorTests extends LuceneTestCase {
     indexWriterConfig.setCodec(getCodec());
     indexWriterConfig.setMergePolicy(new ForceMergesOnlyMergePolicy());
     final Path indexPath = createTempDir();
-    log.info("Index path: {}", indexPath);
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       final float[] target = new float[] {0.0f, 0.0f};
@@ -81,11 +77,11 @@ public class KNNJVectorTests extends LuceneTestCase {
         doc.add(new KnnFloatVectorField("test_field", source, VectorSimilarityFunction.EUCLIDEAN));
         w.addDocument(doc);
       }
-      log.info("Flushing docs to make them discoverable on the file system");
+      // Flush docs to make them discoverable on the file system
       w.commit();
 
       try (IndexReader reader = DirectoryReader.open(w)) {
-        log.info("We should now have a single segment with 10 documents");
+        // We should now have a single segment with 10 documents;
         Assert.assertEquals(1, reader.getContext().leaves().size());
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
 
@@ -110,10 +106,8 @@ public class KNNJVectorTests extends LuceneTestCase {
             VectorSimilarityFunction.EUCLIDEAN.compare(target, new float[] {0.0f, 1.0f / 8.0f}),
             topDocs.scoreDocs[2].score,
             0.001f);
-        log.info("successfully completed search tests");
       }
     }
-    log.info("successfully closed directory");
   }
 
   /** Test the scenario when not all documents are populated with the vector field */
@@ -126,7 +120,6 @@ public class KNNJVectorTests extends LuceneTestCase {
     indexWriterConfig.setCodec(getCodec());
     indexWriterConfig.setMergePolicy(new ForceMergesOnlyMergePolicy());
     final Path indexPath = createTempDir();
-    log.info("Index path: {}", indexPath);
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       final float[] target = new float[] {0.0f, 0.0f};
@@ -139,11 +132,11 @@ public class KNNJVectorTests extends LuceneTestCase {
         doc.add(new IntField(TEST_ID_FIELD, i, Field.Store.YES));
         w.addDocument(doc);
       }
-      log.info("Flushing docs to make them discoverable on the file system");
+      // Flush docs to make them discoverable on the file system
       w.commit();
 
       try (IndexReader reader = DirectoryReader.open(w)) {
-        log.info("We should now have a single segment with 10 documents");
+        // We should now have a single segment with 10 documents
         Assert.assertEquals(1, reader.getContext().leaves().size());
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
 
@@ -168,10 +161,8 @@ public class KNNJVectorTests extends LuceneTestCase {
             VectorSimilarityFunction.EUCLIDEAN.compare(target, new float[] {0.0f, 4.0f}),
             topDocs.scoreDocs[2].score,
             0.001f);
-        log.info("successfully completed search tests");
       }
     }
-    log.info("successfully closed directory");
   }
 
   /**
@@ -194,7 +185,6 @@ public class KNNJVectorTests extends LuceneTestCase {
         new Sort(new SortField(sortFieldName, SortField.Type.INT, true))); // true = reverse order
 
     final Path indexPath = createTempDir();
-    log.info("Index path: {}", indexPath);
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       final float[] target = new float[] {0.0f, 0.0f};
@@ -207,11 +197,11 @@ public class KNNJVectorTests extends LuceneTestCase {
         doc.add(new NumericDocValuesField(sortFieldName, i));
         w.addDocument(doc);
       }
-      log.info("Flushing docs to make them discoverable on the file system");
+      // Flushing docs to make them discoverable on the file system
       w.commit();
 
       try (IndexReader reader = DirectoryReader.open(w)) {
-        log.info("We should now have a single segment with 10 documents");
+        // We should now have a single segment with 10 documents
         Assert.assertEquals(1, reader.getContext().leaves().size());
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
 
@@ -260,10 +250,8 @@ public class KNNJVectorTests extends LuceneTestCase {
             VectorSimilarityFunction.EUCLIDEAN.compare(target, new float[] {0.0f, 2.0f}),
             topDocs.scoreDocs[2].score,
             0.001f);
-        log.info("successfully completed search tests");
       }
     }
-    log.info("successfully closed directory");
   }
 
   /**
@@ -280,7 +268,6 @@ public class KNNJVectorTests extends LuceneTestCase {
     indexWriterConfig.setCodec(getCodec());
     indexWriterConfig.setMergePolicy(new ForceMergesOnlyMergePolicy(false));
     final Path indexPath = createTempDir();
-    log.info("Index path: {}", indexPath);
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       final float[] target = new float[] {0.0f, 0.0f};
@@ -291,10 +278,9 @@ public class KNNJVectorTests extends LuceneTestCase {
         w.addDocument(doc);
         w.commit(); // this creates a new segment
       }
-      log.info("Done writing all files to the file system");
 
       try (IndexReader reader = DirectoryReader.open(w)) {
-        log.info("We should now have 10 segments, each with a single document");
+        // We should now have 10 segments, each with a single document
         Assert.assertEquals(10, reader.getContext().leaves().size());
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
         final Query filterQuery = new MatchAllDocsQuery();
@@ -318,7 +304,6 @@ public class KNNJVectorTests extends LuceneTestCase {
             VectorSimilarityFunction.EUCLIDEAN.compare(target, new float[] {0.0f, 1.0f / 8.0f}),
             topDocs.scoreDocs[2].score,
             0.001f);
-        log.info("successfully completed search tests");
       }
     }
   }
@@ -338,7 +323,6 @@ public class KNNJVectorTests extends LuceneTestCase {
     indexWriterConfig.setMergePolicy(new ForceMergesOnlyMergePolicy());
     indexWriterConfig.setMergeScheduler(new SerialMergeScheduler());
     final Path indexPath = createTempDir();
-    log.info("Index path: {}", indexPath);
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       final float[] target = new float[] {0.0f, 0.0f};
@@ -350,12 +334,10 @@ public class KNNJVectorTests extends LuceneTestCase {
         w.addDocument(doc);
         w.commit(); // this creates a new segment without triggering a merge
       }
-      log.info("Done writing all files to the file system");
 
       w.forceMerge(1); // this merges all segments into a single segment
-      log.info("Done merging all segments");
       try (IndexReader reader = DirectoryReader.open(w)) {
-        log.info("We should now have 1 segment with 10 documents");
+        // We should now have 1 segment with 10 documents
         Assert.assertEquals(1, reader.getContext().leaves().size());
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
         final Query filterQuery = new MatchAllDocsQuery();
@@ -382,7 +364,6 @@ public class KNNJVectorTests extends LuceneTestCase {
             VectorSimilarityFunction.EUCLIDEAN.compare(target, new float[] {0.0f, 3.0f}),
             topDocs.scoreDocs[2].score,
             0.001f);
-        log.info("successfully completed search tests");
       }
     }
   }
@@ -403,7 +384,6 @@ public class KNNJVectorTests extends LuceneTestCase {
     indexWriterConfig.setMergeScheduler(new SerialMergeScheduler());
     final Path indexPath = createTempDir();
     final VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-    log.info("Index path: {}", indexPath);
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       final float[] target = new float[] {0.0f, 0.0f};
@@ -416,12 +396,10 @@ public class KNNJVectorTests extends LuceneTestCase {
         w.commit(); // this creates a new segment without triggering a merge
         w.forceMerge(1); // this merges all segments into a single segment
       }
-      log.info("Done writing all files to the file system");
 
       w.forceMerge(1); // this merges all segments into a single segment
-      log.info("Done merging all segments");
       try (IndexReader reader = DirectoryReader.open(w)) {
-        log.info("We should now have 1 segment with 10 documents");
+        // We should now have 1 segment with 10 documents
         Assert.assertEquals(1, reader.getContext().leaves().size());
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
         final Query filterQuery = new MatchAllDocsQuery();
@@ -448,7 +426,6 @@ public class KNNJVectorTests extends LuceneTestCase {
             VectorSimilarityFunction.EUCLIDEAN.compare(target, new float[] {0.0f, 3.0f}),
             topDocs.scoreDocs[2].score,
             0.001f);
-        log.info("successfully completed search tests");
       }
     }
   }
@@ -480,7 +457,6 @@ public class KNNJVectorTests extends LuceneTestCase {
         1000); // 1000MB per thread, this way we make sure that no premature flush will occur
 
     final Path indexPath = createTempDir();
-    log.info("Index path: {}", indexPath);
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       final float[] target = new float[] {0.0f, 0.0f};
@@ -494,12 +470,10 @@ public class KNNJVectorTests extends LuceneTestCase {
           w.commit(); // this creates a new segment without triggering a merge
         }
       }
-      log.info("Done writing all files to the file system");
 
       w.forceMerge(1); // this merges all segments into a single segment
-      log.info("Done merging all segments");
       try (IndexReader reader = DirectoryReader.open(w)) {
-        log.info("We should now have 1 segment with {} documents", totalNumberOfDocs);
+        // We should now have 1 segment with totalNumberOfDocs documents
         Assert.assertEquals(1, reader.getContext().leaves().size());
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
         final Query filterQuery = new MatchAllDocsQuery();
@@ -513,8 +487,6 @@ public class KNNJVectorTests extends LuceneTestCase {
             VectorSimilarityFunction.EUCLIDEAN.compare(target, new float[] {0.0f, k});
         final float recall = calculateRecall(topDocs, expectedMinScoreInTopK);
         Assert.assertEquals(1.0f, recall, 0.01f);
-
-        log.info("successfully completed search tests");
       }
     }
   }
@@ -555,7 +527,6 @@ public class KNNJVectorTests extends LuceneTestCase {
         1000); // 1000MB per thread, this way we make sure that no premature flush will occur
 
     final Path indexPath = createTempDir();
-    log.info("Index path: {}", indexPath);
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       for (int i = 0; i < source.length; i++) {
@@ -567,12 +538,10 @@ public class KNNJVectorTests extends LuceneTestCase {
           w.commit(); // this creates a new segment without triggering a merge
         }
       }
-      log.info("Done writing all files to the file system");
 
       w.forceMerge(1); // this merges all segments into a single segment
-      log.info("Done merging all segments");
       try (IndexReader reader = DirectoryReader.open(w)) {
-        log.info("We should now have a single segment with {} documents", totalNumberOfDocs);
+        // We should now have a single segment with totalNumberOfDocs documents
         Assert.assertEquals(1, reader.getContext().leaves().size());
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
 
@@ -584,7 +553,6 @@ public class KNNJVectorTests extends LuceneTestCase {
         assertEquals(k, topDocs.totalHits.value());
         final float recall = calculateRecall(reader, groundTruthVectorsIds, topDocs, k);
         Assert.assertEquals(1.0f, recall, 0.05f);
-        log.info("successfully completed search tests");
       }
     }
   }
@@ -669,18 +637,6 @@ public class KNNJVectorTests extends LuceneTestCase {
                     .getIntValue();
             float[] vectorValue = vectorValues.vectorValue(docIdSetIterator.index());
             float[] expectedVectorValue = sourceVectors[globalDocId];
-            // if the vectors do not match, also look which source vector should be the right result
-            if (!Arrays.equals(expectedVectorValue, vectorValue)) {
-              for (int i = 0; i < sourceVectors.length; i++) {
-                if (Arrays.equals(sourceVectors[i], vectorValue)) {
-                  log.error(
-                      "found vector with global id: {}, in docId: {}, however the actual position of the vector in source is: {}",
-                      globalDocId,
-                      luceneDocId,
-                      i);
-                }
-              }
-            }
             Assert.assertArrayEquals(
                 "vector with global id "
                     + globalDocId
@@ -744,13 +700,11 @@ public class KNNJVectorTests extends LuceneTestCase {
                         totalQueries.incrementAndGet();
                       } catch (Throwable e) {
                         failureDetected.compareAndSet(false, true);
-                        log.error("Exception encountered", e);
                         fail("Exception during concurrent search: " + e.getMessage());
                       }
                     }
                   } finally {
                     latch.countDown();
-                    log.warn("Ran {} queries", i);
                   }
                 });
           }
@@ -764,9 +718,6 @@ public class KNNJVectorTests extends LuceneTestCase {
               "Incorrect number of queries executed",
               numThreads * queriesPerThread,
               totalQueries.get());
-
-          // Log the number of successful queries
-          log.info("Successfully completed {} concurrent kNN search queries!", totalQueries.get());
 
         } finally {
           executor.shutdownNow();
@@ -906,7 +857,6 @@ public class KNNJVectorTests extends LuceneTestCase {
     indexWriterConfig.setMergePolicy(new ForceMergesOnlyMergePolicy(true));
     indexWriterConfig.setMergeScheduler(new SerialMergeScheduler());
     final Path indexPath = createTempDir();
-    log.info("Index path: {}", indexPath);
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       final float[] target = new float[] {0.0f, 0.0f};
@@ -917,12 +867,10 @@ public class KNNJVectorTests extends LuceneTestCase {
         w.addDocument(doc);
         w.flush(); // this creates a new segment without triggering a merge
       }
-      log.info("Done writing all files to the file system");
 
       w.forceMerge(1); // this merges all segments into a single segment
-      log.info("Done merging all segments");
       try (IndexReader reader = DirectoryReader.open(w)) {
-        log.info("We should now have 1 segment with 10 documents");
+        // We should now have 1 segment with 10 documents
         Assert.assertEquals(1, reader.getContext().leaves().size());
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
         final Query filterQuery = new MatchAllDocsQuery();
@@ -946,7 +894,6 @@ public class KNNJVectorTests extends LuceneTestCase {
             VectorSimilarityFunction.EUCLIDEAN.compare(target, new float[] {0.0f, 1.0f / 8.0f}),
             topDocs.scoreDocs[2].score,
             0.01f);
-        log.info("successfully completed search tests");
       }
     }
   }
@@ -967,7 +914,6 @@ public class KNNJVectorTests extends LuceneTestCase {
     indexWriterConfig.setMergePolicy(new ForceMergesOnlyMergePolicy(true));
     indexWriterConfig.setMergeScheduler(new SerialMergeScheduler());
     final Path indexPath = createTempDir();
-    log.info("Index path: {}", indexPath);
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       final float[] target = new float[] {1.0f, 1.0f};
@@ -978,12 +924,10 @@ public class KNNJVectorTests extends LuceneTestCase {
         w.addDocument(doc);
         w.flush(); // this creates a new segment without triggering a merge
       }
-      log.info("Done writing all files to the file system");
 
       w.forceMerge(1); // this merges all segments into a single segment
-      log.info("Done merging all segments");
       try (IndexReader reader = DirectoryReader.open(w)) {
-        log.info("We should now have 1 segment with 10 documents");
+        // We should now have 1 segment with 10 documents
         Assert.assertEquals(1, reader.getContext().leaves().size());
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
         final Query filterQuery = new MatchAllDocsQuery();
@@ -1007,7 +951,6 @@ public class KNNJVectorTests extends LuceneTestCase {
             VectorSimilarityFunction.COSINE.compare(target, new float[] {4.0f, 6.0f}),
             topDocs.scoreDocs[2].score,
             0.001f);
-        log.info("successfully completed search tests");
       }
     }
   }
@@ -1026,7 +969,6 @@ public class KNNJVectorTests extends LuceneTestCase {
     indexWriterConfig.setCodec(getCodec());
     indexWriterConfig.setMergePolicy(new ForceMergesOnlyMergePolicy());
     final Path indexPath = createTempDir();
-    log.info("Index path: {}", indexPath);
     try (Directory dir = newFSDirectory(indexPath);
         RandomIndexWriter w = new RandomIndexWriter(random(), dir, indexWriterConfig)) {
       final byte[] source = new byte[] {(byte) 0, (byte) 0};
@@ -1049,7 +991,6 @@ public class KNNJVectorTests extends LuceneTestCase {
     indexWriterConfig.setCodec(getCodec());
     indexWriterConfig.setMergePolicy(new ForceMergesOnlyMergePolicy());
     final Path indexPath = createTempDir();
-    log.info("Index path: {}", indexPath);
     try (Directory dir = newFSDirectory(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       final float[] target = new float[] {0.0f, 0.0f};
@@ -1060,18 +1001,16 @@ public class KNNJVectorTests extends LuceneTestCase {
         doc.add(new StringField("filter_field", i % 2 == 0 ? "even" : "odd", Field.Store.YES));
         w.addDocument(doc);
       }
-      log.info("Flushing docs to make them discoverable on the file system");
+      // Flushing docs to make them discoverable on the file system
       w.commit();
 
       try (IndexReader reader = DirectoryReader.open(w)) {
-        log.info("Applying filter to the KNN search");
         final Query filterQuery = new TermQuery(new Term("filter_field", "even"));
         final IndexSearcher searcher = newSearcher(reader);
         KnnFloatVectorQuery knnFloatVectorQuery =
             getJVectorKnnFloatVectorQuery("test_field", target, k, filterQuery);
         TopDocs topDocs = searcher.search(knnFloatVectorQuery, k);
 
-        log.info("Validating filtered KNN results");
         assertEquals(k, topDocs.totalHits.value());
         assertEquals(9, topDocs.scoreDocs[0].doc);
         Assert.assertEquals(
@@ -1088,7 +1027,6 @@ public class KNNJVectorTests extends LuceneTestCase {
             VectorSimilarityFunction.EUCLIDEAN.compare(target, new float[] {0.0f, 1.0f / 6.0f}),
             topDocs.scoreDocs[2].score,
             0.001f);
-        log.info("successfully completed filtered search tests");
       }
     }
   }
@@ -1117,7 +1055,6 @@ public class KNNJVectorTests extends LuceneTestCase {
     indexWriterConfig.setRAMPerThreadHardLimitMB(
         1000); // 1000MB per thread, this way we make sure that no premature flush will occur
     final Path indexPath = createTempDir();
-    log.info("Index path: {}", indexPath);
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       final float[] target = generateZerosVectorWithLastValue(dimension, 0);
@@ -1130,11 +1067,11 @@ public class KNNJVectorTests extends LuceneTestCase {
         doc.add(new IntField(TEST_ID_FIELD, i, Field.Store.YES));
         w.addDocument(doc);
       }
-      log.info("Flushing docs to make them discoverable on the file system");
+      // Flushing docs to make them discoverable on the file system
       w.commit();
 
       try (IndexReader reader = DirectoryReader.open(w)) {
-        log.info("We should now have a single segment with {} documents", totalNumberOfDocs);
+        // We should now have a single segment with totalNumberOfDocs documents
         Assert.assertEquals(1, reader.getContext().leaves().size());
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
 
@@ -1146,7 +1083,6 @@ public class KNNJVectorTests extends LuceneTestCase {
         assertEquals(k, topDocs.totalHits.value());
         final float recall = calculateRecall(reader, groundTruthVectorsIds, topDocs, k);
         Assert.assertEquals(1.0f, recall, 0.05f);
-        log.info("successfully completed search tests");
       }
     }
   }
@@ -1170,7 +1106,6 @@ public class KNNJVectorTests extends LuceneTestCase {
     indexWriterConfig.setRAMPerThreadHardLimitMB(
         1000); // 1000MB per thread, this way we make sure that no premature flush will occur
     final Path indexPath = createTempDir();
-    log.info("Index path: {}", indexPath);
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       final float[] target = generateZerosVectorWithLastValue(dimension, 0);
@@ -1180,11 +1115,11 @@ public class KNNJVectorTests extends LuceneTestCase {
         doc.add(new KnnFloatVectorField("test_field", source, VectorSimilarityFunction.EUCLIDEAN));
         w.addDocument(doc);
       }
-      log.info("Flushing docs to make them discoverable on the file system");
+      // Flushing docs to make them discoverable on the file system
       w.commit();
 
       try (IndexReader reader = DirectoryReader.open(w)) {
-        log.info("We should now have a single segment with {} documents", totalNumberOfDocs);
+        // We should now have a single segment with totalNumberOfDocs documents
         Assert.assertEquals(1, reader.getContext().leaves().size());
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
 
@@ -1213,8 +1148,6 @@ public class KNNJVectorTests extends LuceneTestCase {
         assertEquals(k, topDocs.totalHits.value());
         float recallWithHighOverqueryFactor = calculateRecall(topDocs, expectedMinScoreInTopK);
         Assert.assertTrue(recallWithLowOverqueryFactor <= recallWithHighOverqueryFactor);
-
-        log.info("successfully completed search tests");
       }
     }
   }
@@ -1252,7 +1185,6 @@ public class KNNJVectorTests extends LuceneTestCase {
     indexWriterConfig.setRAMPerThreadHardLimitMB(
         1000); // 1000MB per thread, this way we make sure that no premature flush will occur
     final Path indexPath = createTempDir();
-    log.info("Index path: {}", indexPath);
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       final float[] target = generateZerosVectorWithLastValue(dimension, 0);
@@ -1269,11 +1201,11 @@ public class KNNJVectorTests extends LuceneTestCase {
           w.commit();
         }
       }
-      log.info("Flushing docs to make them discoverable on the file system");
+      // Flushing docs to make them discoverable on the file system
       w.forceMerge(1);
 
       try (IndexReader reader = DirectoryReader.open(w)) {
-        log.info("We should now have a single segment with {} documents", totalNumberOfDocs);
+        // We should now have a single segment with totalNumberOfDocs documents
         Assert.assertEquals(1, reader.getContext().leaves().size());
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
 
@@ -1285,7 +1217,6 @@ public class KNNJVectorTests extends LuceneTestCase {
         assertEquals(k, topDocs.totalHits.value());
         final float recall = calculateRecall(reader, groundTruthVectorsIds, topDocs, k);
         Assert.assertEquals(1.0f, recall, 0.05f);
-        log.info("successfully completed search tests");
       }
     }
   }
@@ -1327,7 +1258,6 @@ public class KNNJVectorTests extends LuceneTestCase {
     indexWriterConfig.setRAMPerThreadHardLimitMB(
         1000); // 1000MB per thread, this way we make sure that no premature flush will occur
     final Path indexPath = createTempDir();
-    log.info("Index path: {}", indexPath);
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       final float[] target = generateZerosVectorWithLastValue(dimension, 0);
@@ -1344,11 +1274,11 @@ public class KNNJVectorTests extends LuceneTestCase {
           w.commit();
         }
       }
-      log.info("Flushing docs to make them discoverable on the file system");
+      // Flushing docs to make them discoverable on the file system
       w.forceMerge(1);
 
       try (IndexReader reader = DirectoryReader.open(w)) {
-        log.info("We should now have a single segment with {} documents", totalNumberOfDocs);
+        // We should now have a single segment with totalNumberOfDocs documents
         Assert.assertEquals(1, reader.getContext().leaves().size());
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
 
@@ -1360,7 +1290,6 @@ public class KNNJVectorTests extends LuceneTestCase {
         assertEquals(k, topDocs.totalHits.value());
         final float recall = calculateRecall(reader, groundTruthVectorsIds, topDocs, k);
         Assert.assertEquals(1.0f, recall, 0.05f);
-        log.info("successfully completed search tests");
       }
     }
   }
@@ -1404,7 +1333,6 @@ public class KNNJVectorTests extends LuceneTestCase {
     indexWriterConfig.setRAMPerThreadHardLimitMB(
         1000); // 1000MB per thread, this way we make sure that no premature flush will occur
     final Path indexPath = createTempDir();
-    log.info("Index path: {}", indexPath);
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       final float[] target = generateZerosVectorWithLastValue(dimension, 0);
@@ -1424,11 +1352,11 @@ public class KNNJVectorTests extends LuceneTestCase {
         }
       }
       w.commit();
-      log.info("Flushing docs to make them discoverable on the file system");
+      // Flushing docs to make them discoverable on the file system
       w.forceMerge(1);
 
       try (IndexReader reader = DirectoryReader.open(w)) {
-        log.info("We should now have a single segment with {} documents", totalNumberOfDocs);
+        // We should now have a single segment with totalNumberOfDocs documents
         Assert.assertEquals(1, reader.getContext().leaves().size());
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
 
@@ -1441,7 +1369,6 @@ public class KNNJVectorTests extends LuceneTestCase {
         final float recall = calculateRecall(reader, groundTruthVectorsIds, topDocs, k);
         Assert.assertEquals(
             "Expected to have recall of 1.0+/-0.05 but got " + recall, 1.0f, recall, 0.05f);
-        log.info("successfully completed search tests");
       }
     }
 
@@ -1485,7 +1412,6 @@ public class KNNJVectorTests extends LuceneTestCase {
     indexWriterConfig.setRAMPerThreadHardLimitMB(
         1000); // 1000MB per thread, this way we make sure that no premature flush will occur
     final Path indexPath = createTempDir();
-    log.info("Index path: {}", indexPath);
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       final float[] target = generateZerosVectorWithLastValue(dimension, 0);
@@ -1514,11 +1440,11 @@ public class KNNJVectorTests extends LuceneTestCase {
         }
       }
       w.commit();
-      log.info("Flushing docs to make them discoverable on the file system");
+      // Flushing docs to make them discoverable on the file system
       w.forceMerge(1);
 
       try (IndexReader reader = DirectoryReader.open(w)) {
-        log.info("We should now have a single segment with {} documents", totalNumberOfDocs);
+        // We should now have a single segment with totalNumberOfDocs documents
         Assert.assertEquals(1, reader.getContext().leaves().size());
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
 
@@ -1531,7 +1457,6 @@ public class KNNJVectorTests extends LuceneTestCase {
         final float recall = calculateRecall(reader, groundTruthVectorsIds, topDocs, k);
         Assert.assertEquals(
             "Expected to have recall of 1.0+/-0.05 but got " + recall, 1.0f, recall, 0.05f);
-        log.info("successfully completed search tests");
       }
     }
 
@@ -1555,29 +1480,7 @@ public class KNNJVectorTests extends LuceneTestCase {
       }
     }
     float recall = ((float) totalRelevantDocs) / ((float) topDocs.scoreDocs.length);
-
-    if (recall == 0.0f) {
-      log.info(
-          "Recall is 0.0, this is probably not correct, here is some debug information\n topDocs: {}, minScoreInTopK: {}, totalRelevantDocs: {}",
-          topDocsToString(topDocs),
-          minScoreInTopK,
-          totalRelevantDocs);
-    }
     return recall;
-  }
-
-  // convert topDocs to a pretty printed string
-  private String topDocsToString(TopDocs topDocs) {
-    StringBuilder sb = new StringBuilder();
-    sb.append("TopDocs: [");
-    for (int i = 0; i < topDocs.scoreDocs.length; i++) {
-      sb.append(topDocs.scoreDocs[i].doc)
-          .append(" (")
-          .append(topDocs.scoreDocs[i].score)
-          .append("), ");
-    }
-    sb.append("]");
-    return sb.toString();
   }
 
   private JVectorKnnFloatVectorQuery getJVectorKnnFloatVectorQuery(

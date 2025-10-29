@@ -19,7 +19,6 @@ package org.apache.lucene.sandbox.codecs.jvector;
 
 import java.io.IOException;
 import java.util.Arrays;
-import lombok.extern.log4j.Log4j2;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -33,7 +32,6 @@ import org.apache.lucene.store.IndexOutput;
  *
  * <p>Which means that we also need to persist this mapping to disk to be available across merges.
  */
-@Log4j2
 public class GraphNodeIdToDocMap {
   private static final int VERSION = 1;
   private int[] graphNodeIdsToDocIds;
@@ -88,12 +86,8 @@ public class GraphNodeIdToDocMap {
               + " is less than the number of ordinals "
               + graphNodeIdsToDocIds.length);
     }
-    if (maxDocId > graphNodeIdsToDocIds.length) {
-      log.warn(
-          "Max doc id {} is greater than the number of ordinals {}, this implies a lot of deleted documents. Or that some documents are missing vectors. Wasting a lot of memory",
-          maxDocId,
-          graphNodeIdsToDocIds.length);
-    }
+    // When maxDocId > graphNodeIdsToDocIds.length, there are lots of deleted documents or missing
+    // values, which wastes memory
     this.docIdsToGraphNodeIds = new int[maxDocs];
     Arrays.fill(this.docIdsToGraphNodeIds, -1); // -1 means no mapping to ordinal
     for (int ord = 0; ord < graphNodeIdsToDocIds.length; ord++) {

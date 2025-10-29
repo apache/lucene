@@ -19,14 +19,12 @@ package org.apache.lucene.sandbox.codecs.jvector;
 
 import io.github.jbellis.jvector.disk.IndexWriter;
 import java.io.IOException;
-import lombok.extern.log4j.Log4j2;
 import org.apache.lucene.store.IndexOutput;
 
 /**
  * JVectorRandomAccessWriter is a wrapper around IndexOutput that implements RandomAccessWriter.
  * Note: This is not thread safe!
  */
-@Log4j2
 public class JVectorIndexWriter implements IndexWriter {
   private final IndexOutput indexOutputDelegate;
 

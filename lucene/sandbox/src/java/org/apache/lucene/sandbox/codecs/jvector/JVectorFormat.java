@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.function.Function;
-import lombok.extern.log4j.Log4j2;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -29,7 +28,6 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.opensearch.knn.common.KNNConstants;
 
-@Log4j2
 public class JVectorFormat extends KnnVectorsFormat {
   public static final String NAME = "JVectorFormat";
   public static final String META_CODEC_NAME = "JVectorVectorsFormatMeta";
@@ -206,9 +204,6 @@ public class JVectorFormat extends KnnVectorsFormat {
           return thread;
         };
 
-    log.info(
-        "Creating SIMD ForkJoinPool with {} physical cores for JVector SIMD operations",
-        estimatedPhysicalCoreCount);
     return new ForkJoinPool(estimatedPhysicalCoreCount, factory, null, true);
   }
 }
