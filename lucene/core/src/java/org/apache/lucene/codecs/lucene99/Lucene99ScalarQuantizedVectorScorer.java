@@ -95,6 +95,7 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       VectorSimilarityFunction sim,
       float constMultiplier,
       QuantizedByteVectorValues values) {
+    FlatVectorsScorer.checkDimensions(values.dimension(), targetBytes.length);
     return switch (sim) {
       case EUCLIDEAN -> new Euclidean(values, constMultiplier, targetBytes);
       case COSINE, DOT_PRODUCT ->
