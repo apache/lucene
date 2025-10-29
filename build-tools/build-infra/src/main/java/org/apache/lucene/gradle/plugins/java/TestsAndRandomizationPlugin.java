@@ -91,12 +91,14 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                           BuildOptionsPlugin.LOCAL_BUILD_OPTIONS_FILE + " file";
                     };
 
+                var seedValueProvider = testsSeedOption.asStringProvider();
+
                 task.doFirst(
                     t -> {
                       t.getLogger()
                           .lifecycle(
                               "Running tests with root randomization seed tests.seed="
-                                  + testsSeedOption.asStringProvider().get()
+                                  + seedValueProvider.get()
                                   + ", source: "
                                   + seedSource);
                     });
