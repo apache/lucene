@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.opensearch.knn.index.codec.jvector;
+package org.apache.lucene.sandbox.codecs.jvector;
 
 import static io.github.jbellis.jvector.quantization.KMeansPlusPlusClusterer.UNWEIGHTED;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;

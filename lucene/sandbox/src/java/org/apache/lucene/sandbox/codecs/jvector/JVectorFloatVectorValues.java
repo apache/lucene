@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.opensearch.knn.index.codec.jvector;
+package org.apache.lucene.sandbox.codecs.jvector;
 
 import io.github.jbellis.jvector.graph.disk.OnDiskGraphIndex;
 import io.github.jbellis.jvector.util.Bits;

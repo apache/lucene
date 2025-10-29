@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.opensearch.knn.index.codec.jvector;
+package org.apache.lucene.sandbox.codecs.jvector;
 
 import io.github.jbellis.jvector.disk.RandomAccessReader;
 import io.github.jbellis.jvector.disk.ReaderSupplier;

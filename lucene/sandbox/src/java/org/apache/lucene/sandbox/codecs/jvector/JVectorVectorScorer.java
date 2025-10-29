@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.opensearch.knn.index.codec.jvector;
+package org.apache.lucene.sandbox.codecs.jvector;
 
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import io.github.jbellis.jvector.vector.types.VectorFloat;

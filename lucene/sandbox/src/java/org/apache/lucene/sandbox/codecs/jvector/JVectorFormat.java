@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.opensearch.knn.index.codec.jvector;
+package org.apache.lucene.sandbox.codecs.jvector;
 
 import java.io.IOException;
 import java.util.concurrent.ForkJoinPool;
