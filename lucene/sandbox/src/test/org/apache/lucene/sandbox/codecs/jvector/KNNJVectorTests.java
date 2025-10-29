@@ -37,7 +37,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.junit.Assert;
 import org.junit.Test;
-import org.opensearch.knn.TestUtils;
 import org.opensearch.knn.index.ThreadLeakFiltersForTests;
 
 /** Test used specifically for JVector */
@@ -506,8 +505,8 @@ public class KNNJVectorTests extends LuceneTestCase {
     int k = 3; // The number of nearest neighbors to gather
     final int dimension = 2;
     final VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-    final float[] target = TestUtils.generateRandomVectors(1, dimension)[0];
-    final float[][] source = TestUtils.generateRandomVectors(totalNumberOfDocs, dimension);
+    final float[] target = generateRandomVectors(1, dimension)[0];
+    final float[][] source = generateRandomVectors(totalNumberOfDocs, dimension);
     final Set<Integer> groundTruthVectorsIds =
         calculateGroundTruthVectorsIds(target, source, k, vectorSimilarityFunction);
 
@@ -586,7 +585,7 @@ public class KNNJVectorTests extends LuceneTestCase {
     final String floatVectorField = "vec";
     final String expectedDocIdField = "expectedDocId";
     final Path indexPath = createTempDir();
-    final float[][] sourceVectors = TestUtils.generateRandomVectors(numDocs, 2);
+    final float[][] sourceVectors = generateRandomVectors(numDocs, 2);
     final VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
 
     try (Directory dir = newFSDirectory(indexPath)) {
@@ -660,7 +659,7 @@ public class KNNJVectorTests extends LuceneTestCase {
         final FloatVectorValues vectorValues = context.reader().getFloatVectorValues("vec");
         final int k = 1;
         for (int i = 0; i < reader.maxDoc(); i++) {
-          float[] query = TestUtils.generateRandomVectors(1, 2)[0];
+          float[] query = generateRandomVectors(1, 2)[0];
           TopDocs td =
               searcher.search(
                   getJVectorKnnFloatVectorQuery("vec", query, k, new MatchAllDocsQuery()), k);
@@ -687,7 +686,7 @@ public class KNNJVectorTests extends LuceneTestCase {
 
                   try {
                     for (i = 0; i < queriesPerThread && !failureDetected.get(); i++) {
-                      float[] query = TestUtils.generateRandomVectors(1, 2)[0];
+                      float[] query = generateRandomVectors(1, 2)[0];
                       try {
                         TopDocs td = searcher.search(new KnnFloatVectorQuery("vec", query, k), k);
                         assertEquals(
@@ -1057,7 +1056,7 @@ public class KNNJVectorTests extends LuceneTestCase {
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       final float[] target = generateZerosVectorWithLastValue(dimension, 0);
-      final float[][] vectors = TestUtils.generateRandomVectors(totalNumberOfDocs, dimension);
+      final float[][] vectors = generateRandomVectors(totalNumberOfDocs, dimension);
       final Set<Integer> groundTruthVectorsIds =
           calculateGroundTruthVectorsIds(target, vectors, k, vectorSimilarityFunction);
       for (int i = 0; i < vectors.length; i++) {
@@ -1187,7 +1186,7 @@ public class KNNJVectorTests extends LuceneTestCase {
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       final float[] target = generateZerosVectorWithLastValue(dimension, 0);
-      final float[][] vectors = TestUtils.generateRandomVectors(totalNumberOfDocs, dimension);
+      final float[][] vectors = generateRandomVectors(totalNumberOfDocs, dimension);
       final Set<Integer> groundTruthVectorsIds =
           calculateGroundTruthVectorsIds(target, vectors, k, vectorSimilarityFunction);
 
@@ -1260,7 +1259,7 @@ public class KNNJVectorTests extends LuceneTestCase {
     try (FSDirectory dir = FSDirectory.open(indexPath);
         IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
       final float[] target = generateZerosVectorWithLastValue(dimension, 0);
-      final float[][] vectors = TestUtils.generateRandomVectors(totalNumberOfDocs, dimension);
+      final float[][] vectors = generateRandomVectors(totalNumberOfDocs, dimension);
       final Set<Integer> groundTruthVectorsIds =
           calculateGroundTruthVectorsIds(target, vectors, k, vectorSimilarityFunction);
       for (int i = 0; i < totalNumberOfDocs; i++) {
@@ -1337,7 +1336,7 @@ public class KNNJVectorTests extends LuceneTestCase {
       final float[] target = generateZerosVectorWithLastValue(dimension, 0);
       // We will use random vectors because otherwise PQ will have a correlated subspaces which will
       // result in a broken linear graph
-      final float[][] vectors = TestUtils.generateRandomVectors(totalNumberOfDocs, dimension);
+      final float[][] vectors = generateRandomVectors(totalNumberOfDocs, dimension);
       final Set<Integer> groundTruthVectorsIds =
           calculateGroundTruthVectorsIds(target, vectors, k, vectorSimilarityFunction);
       for (int i = 0; i < totalNumberOfDocs; i++) {
@@ -1413,7 +1412,7 @@ public class KNNJVectorTests extends LuceneTestCase {
       final float[] target = generateZerosVectorWithLastValue(dimension, 0);
       // We will use random vectors because otherwise PQ will have a correlated subspaces which will
       // result in a broken linear graph
-      final float[][] vectors = TestUtils.generateRandomVectors(totalNumberOfDocs, dimension);
+      final float[][] vectors = generateRandomVectors(totalNumberOfDocs, dimension);
       final Set<Integer> groundTruthVectorsIds =
           calculateGroundTruthVectorsIds(target, vectors, k, vectorSimilarityFunction);
       for (int i = 0; i < totalNumberOfDocs; i++) {
@@ -1561,6 +1560,17 @@ public class KNNJVectorTests extends LuceneTestCase {
     }
 
     return groundTruthVectorsIds;
+  }
+
+  static float[][] generateRandomVectors(int count, int dimension) {
+    final var rng = nonAssertingRandom(random());
+    final float[][] vectors = new float[count][dimension];
+    for (int i = 0; i < vectors.length; ++i) {
+      for (int j = 0; j < vectors[i].length; ++j) {
+        vectors[i][j] = rng.nextFloat();
+      }
+    }
+    return vectors;
   }
 
   private Codec getCodec() {
