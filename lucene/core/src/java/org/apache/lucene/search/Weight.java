@@ -284,7 +284,8 @@ public abstract class Weight implements SegmentCacheable {
       } else if (competitiveIterator == null) {
         scoreTwoPhaseIterator(collector, acceptDocs, iterator, twoPhase, max, docBuffer);
       } else if (twoPhase == null) {
-        scoreCompetitiveIterator(collector, acceptDocs, iterator, competitiveIterator, max, docBuffer);
+        scoreCompetitiveIterator(
+            collector, acceptDocs, iterator, competitiveIterator, max, docBuffer);
       } else {
         scoreTwoPhaseOrCompetitiveIterator(
             collector, acceptDocs, iterator, twoPhase, competitiveIterator, max, docBuffer);
@@ -383,7 +384,8 @@ public abstract class Weight implements SegmentCacheable {
       collect(collector, docs, count, -1);
     }
 
-    private static int collect(LeafCollector collector, int[] docs, int count, int docId) throws IOException {
+    private static int collect(LeafCollector collector, int[] docs, int count, int docId)
+        throws IOException {
       if (count == docs.length || docId == -1) {
         collector.collect(docs, count);
         count = 0;
