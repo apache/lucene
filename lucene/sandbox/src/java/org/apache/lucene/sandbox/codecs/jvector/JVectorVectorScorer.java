@@ -24,6 +24,7 @@ import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 
+/// Implements Lucene scoring over a JVector index
 public class JVectorVectorScorer implements VectorScorer {
   private final JVectorFloatVectorValues floatVectorValues;
   private final KnnVectorValues.DocIndexIterator docIndexIterator;

@@ -393,6 +393,7 @@ public class JVectorWriter extends KnnVectorsWriter {
     return pqVectors;
   }
 
+  /// Metadata about the index to be persisted on disk
   public static class VectorIndexFieldMetadata {
     final int fieldNumber;
     final VectorEncoding vectorEncoding;

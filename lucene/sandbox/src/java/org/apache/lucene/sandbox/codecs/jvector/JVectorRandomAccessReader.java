@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.IOUtils;
 
+/// Implements JVector reader capabilities over a Lucene IndexInput
 public class JVectorRandomAccessReader implements RandomAccessReader {
   private final byte[] internalBuffer = new byte[Long.BYTES];
   private final IndexInput indexInputDelegate;

@@ -46,6 +46,7 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.*;
 import org.apache.lucene.util.IOUtils;
 
+/// Implements KnnVectorsReader over an on-disk JVector index serialized using {@link JVectorWriter}
 public class JVectorReader extends KnnVectorsReader {
   public static final float DEFAULT_QUERY_SIMILARITY_THRESHOLD = 0f;
   public static final float DEFAULT_QUERY_RERANK_FLOOR = 0f;

@@ -27,6 +27,7 @@ import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
+/// Implements K-NN search using JVector library for indexing
 public class JVectorFormat extends KnnVectorsFormat {
   public static final String NAME = "JVectorFormat";
   public static final String META_CODEC_NAME = "JVectorVectorsFormatMeta";

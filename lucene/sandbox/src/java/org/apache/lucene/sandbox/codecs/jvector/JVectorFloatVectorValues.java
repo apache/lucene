@@ -27,6 +27,7 @@ import java.io.IOException;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.search.VectorScorer;
 
+/// Implements Lucene vector access over a JVector on-disk index
 public class JVectorFloatVectorValues extends FloatVectorValues {
   private static final VectorTypeSupport VECTOR_TYPE_SUPPORT =
       VectorizationProvider.getInstance().getVectorTypeSupport();
@@ -88,8 +89,7 @@ public class JVectorFloatVectorValues extends FloatVectorValues {
       @Override
       public int nextDoc() throws IOException {
         // Advance to the next node docId starts from -1 which is why we need to increment docId by
-        // 1 "size"
-        // times
+        // 1 "size" times
         while (docId < size - 1) {
           docId++;
           if (liveNodes.get(docId)) {
