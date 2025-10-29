@@ -41,7 +41,11 @@ public final class DocIdSetBuilder {
    *
    * @see DocIdSetBuilder#grow
    */
-  public sealed interface BulkAdder permits FixedBitSetAdder, BufferAdder {
+  public sealed interface BulkAdder
+      permits FixedBitSetAdder,
+          BufferAdder,
+          PartitionAwareFixedBitSetAdder,
+          PartitionAwareBufferAdder {
     void add(int doc);
 
     void add(IntsRef docs);
@@ -76,6 +80,53 @@ public final class DocIdSetBuilder {
       for (int i = docs.offset, to = docs.offset + docs.length; i < to; i++) {
         int doc = docs.ints[i];
         if (doc >= docLowerBoundInclusive) {
+          bitSet.set(doc);
+        }
+      }
+    }
+  }
+
+  /**
+   * Partition-aware FixedBitSetAdder that filters docs to only include those within the specified
+   * range.
+   */
+  private record PartitionAwareFixedBitSetAdder(FixedBitSet bitSet, int minDocId, int maxDocId)
+      implements BulkAdder {
+
+    @Override
+    public void add(int doc) {
+      if (doc >= minDocId && doc < maxDocId) {
+        bitSet.set(doc);
+      }
+    }
+
+    @Override
+    public void add(IntsRef docs) {
+      for (int i = docs.offset, to = docs.offset + docs.length; i < to; i++) {
+        int doc = docs.ints[i];
+        if (doc >= minDocId && doc < maxDocId) {
+          bitSet.set(doc);
+        }
+      }
+    }
+
+    @Override
+    public void add(DocIdSetIterator iterator) throws IOException {
+      // Advance iterator to minDocId first, then collect docs up to maxDocId
+      int doc = iterator.nextDoc();
+      if (doc < minDocId) {
+        doc = iterator.advance(minDocId);
+      }
+      if (doc < maxDocId) {
+        iterator.intoBitSet(maxDocId, bitSet, minDocId);
+      }
+    }
+
+    @Override
+    public void add(IntsRef docs, int docLowerBoundInclusive) {
+      for (int i = docs.offset, to = docs.offset + docs.length; i < to; i++) {
+        int doc = docs.ints[i];
+        if (doc >= Math.max(docLowerBoundInclusive, minDocId) && doc < maxDocId) {
           bitSet.set(doc);
         }
       }
@@ -131,11 +182,62 @@ public final class DocIdSetBuilder {
     }
   }
 
+  /**
+   * Partition-aware BufferAdder that filters docs to only include those within the specified
+   * range.
+   */
+  private record PartitionAwareBufferAdder(Buffer buffer, int minDocId, int maxDocId)
+      implements BulkAdder {
+
+    @Override
+    public void add(int doc) {
+      if (doc >= minDocId && doc < maxDocId) {
+        buffer.array[buffer.length++] = doc;
+      }
+    }
+
+    @Override
+    public void add(IntsRef docs) {
+      int index = buffer.length;
+      for (int i = docs.offset, to = docs.offset + docs.length; i < to; i++) {
+        int doc = docs.ints[i];
+        if (doc >= minDocId && doc < maxDocId) {
+          buffer.array[index++] = doc;
+        }
+      }
+      buffer.length = index;
+    }
+
+    @Override
+    public void add(DocIdSetIterator iterator) throws IOException {
+      int docID;
+      while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        add(docID);
+      }
+    }
+
+    @Override
+    public void add(IntsRef docs, int docLowerBoundInclusive) {
+      int index = buffer.length;
+      for (int i = docs.offset, to = docs.offset + docs.length; i < to; i++) {
+        int doc = docs.ints[i];
+        if (doc >= Math.max(docLowerBoundInclusive, minDocId) && doc < maxDocId) {
+          buffer.array[index++] = doc;
+        }
+      }
+      buffer.length = index;
+    }
+  }
+
   private final int maxDoc;
   private final int threshold;
   // pkg-private for testing
   final boolean multivalued;
   final double numValuesPerDoc;
+
+  // Partition filtering support - filters docs to only include those within [minDocId, maxDocId)
+  private final int minDocId; // inclusive
+  private final int maxDocId; // exclusive
 
   private List<Buffer> buffers = new ArrayList<>();
   private int totalAllocated; // accumulated size of the allocated buffers
@@ -166,8 +268,58 @@ public final class DocIdSetBuilder {
     this(maxDoc, values.getDocCount(), values.size());
   }
 
+  /**
+   * Create a partition-aware {@link DocIdSetBuilder} instance that only accepts doc IDs within the
+   * specified range. This is useful for intra-segment concurrency where each partition only needs
+   * to collect docs within its assigned range.
+   *
+   * @param maxDoc the maximum doc ID in the segment
+   * @param minDocId the minimum doc ID (inclusive) to accept
+   * @param maxDocId the maximum doc ID (exclusive) to accept
+   * @param docCount estimated document count
+   * @param valueCount estimated value count
+   */
+  public DocIdSetBuilder(int maxDoc, int minDocId, int maxDocId, int docCount, long valueCount) {
+    this(maxDoc, docCount, valueCount, minDocId, maxDocId);
+  }
+
+  /**
+   * Create a partition-aware {@link DocIdSetBuilder} for {@link PointValues} that only accepts doc
+   * IDs within the specified range.
+   *
+   * @param maxDoc the maximum doc ID in the segment
+   * @param values the point values
+   * @param minDocId the minimum doc ID (inclusive) to accept
+   * @param maxDocId the maximum doc ID (exclusive) to accept
+   */
+  public DocIdSetBuilder(int maxDoc, PointValues values, int minDocId, int maxDocId)
+      throws IOException {
+    this(maxDoc, values.getDocCount(), values.size(), minDocId, maxDocId);
+  }
+
+  /**
+   * Create a partition-aware {@link DocIdSetBuilder} for {@link Terms} that only accepts doc IDs
+   * within the specified range.
+   *
+   * @param maxDoc the maximum doc ID in the segment
+   * @param terms the terms
+   * @param minDocId the minimum doc ID (inclusive) to accept
+   * @param maxDocId the maximum doc ID (exclusive) to accept
+   */
+  public DocIdSetBuilder(int maxDoc, Terms terms, int minDocId, int maxDocId) throws IOException {
+    this(maxDoc, terms.getDocCount(), terms.getSumDocFreq(), minDocId, maxDocId);
+  }
+
   DocIdSetBuilder(int maxDoc, int docCount, long valueCount) {
+    this(maxDoc, docCount, valueCount, 0, maxDoc);
+  }
+
+  private DocIdSetBuilder(
+      int maxDoc, int docCount, long valueCount, int minDocId, int maxDocId) {
     this.maxDoc = maxDoc;
+    this.minDocId = minDocId;
+    this.maxDocId = maxDocId;
+
     this.multivalued = docCount < 0 || docCount != valueCount;
     if (docCount <= 0 || valueCount < 0) {
       // assume one value per doc, this means the cost will be overestimated
@@ -184,7 +336,12 @@ public final class DocIdSetBuilder {
     // maxDoc >>> 7 is a good value if you want to save memory, lower values
     // such as maxDoc >>> 11 should provide faster building but at the expense
     // of using a full bitset even for quite sparse data
-    this.threshold = maxDoc >>> 7;
+    //
+    // When filtering to a partition (minDocId > 0 or maxDocId < maxDoc), use the partition size
+    // for threshold calculation to ensure the threshold scales correctly with the partition size
+    boolean isPartition = (minDocId > 0 || maxDocId < maxDoc);
+    int effectiveMaxDoc = isPartition ? (maxDocId - minDocId) : maxDoc;
+    this.threshold = effectiveMaxDoc >>> 7;
 
     this.bitSet = null;
   }
@@ -267,7 +424,12 @@ public final class DocIdSetBuilder {
   private Buffer addBuffer(int len) {
     Buffer buffer = new Buffer(len);
     buffers.add(buffer);
-    adder = new BufferAdder(buffer);
+    // Use partition-aware adder if filtering to a specific doc ID range
+    if (minDocId > 0 || maxDocId < maxDoc) {
+      adder = new PartitionAwareBufferAdder(buffer, minDocId, maxDocId);
+    } else {
+      adder = new BufferAdder(buffer);
+    }
     totalAllocated += buffer.array.length;
     return buffer;
   }
@@ -292,7 +454,12 @@ public final class DocIdSetBuilder {
     this.bitSet = bitSet;
     this.counter = counter;
     this.buffers = null;
-    this.adder = new FixedBitSetAdder(bitSet);
+    // Use partition-aware adder if filtering to a specific doc ID range
+    if (minDocId > 0 || maxDocId < maxDoc) {
+      this.adder = new PartitionAwareFixedBitSetAdder(bitSet, minDocId, maxDocId);
+    } else {
+      this.adder = new FixedBitSetAdder(bitSet);
+    }
   }
 
   /** Build a {@link DocIdSet} from the accumulated doc IDs. */

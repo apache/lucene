@@ -828,7 +828,16 @@ public class IndexSearcher {
       // continue with the following leaf
       return;
     }
-    ScorerSupplier scorerSupplier = weight.scorerSupplier(ctx);
+
+    // Create partition object to pass to weight
+    final LeafReaderContextPartition partition;
+    if (minDocId == 0 && maxDocId == DocIdSetIterator.NO_MORE_DOCS) {
+      partition = LeafReaderContextPartition.createForEntireSegment(ctx);
+    } else {
+      partition = LeafReaderContextPartition.createFromAndTo(ctx, minDocId, maxDocId);
+    }
+
+    ScorerSupplier scorerSupplier = weight.scorerSupplier(partition);
     if (scorerSupplier != null) {
       scorerSupplier.setTopLevelScoringClause();
       BulkScorer scorer = scorerSupplier.bulkScorer();
