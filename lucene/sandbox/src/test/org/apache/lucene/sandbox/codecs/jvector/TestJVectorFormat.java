@@ -48,8 +48,8 @@ import org.junit.Test;
 // due to leaked thread pool warning.
 @ThreadLeakFilters(
     defaultFilters = true,
-    filters = {KNNJVectorTests.ThreadLeakFilter.class})
-public class KNNJVectorTests extends LuceneTestCase {
+    filters = {TestJVectorFormat.ThreadLeakFilter.class})
+public class TestJVectorFormat extends LuceneTestCase {
   private static final String TEST_FIELD = "test_field";
   private static final String TEST_ID_FIELD = "id";
 
