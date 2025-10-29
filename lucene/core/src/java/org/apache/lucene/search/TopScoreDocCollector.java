@@ -127,6 +127,11 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
         }
       }
 
+      @Override
+      public void collect(int[] docs, int count) {
+        collect(docs, count);
+      }
+
       private void collectCompetitiveHit(int doc, float score) throws IOException {
         final long code = DocScoreEncoder.encode(doc + docBase, score);
         topCode = heap.updateTop(code);

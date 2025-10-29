@@ -275,29 +275,35 @@ public abstract class Weight implements SegmentCacheable {
       // collect() because only a subset of collectors produce a competitive iterator, and the set
       // of implementing classes for two-phase approximations is smaller than the set of doc id set
       // iterator implementations.
+
+      // Is it better to initialize the buffer within each iterator implementation?
+      int[] docBuffer = new int[64];
       if (twoPhase == null && competitiveIterator == null) {
         // Optimize simple iterators with collectors that can't skip
-        scoreIterator(collector, acceptDocs, iterator, max);
+        scoreIterator(collector, acceptDocs, iterator, max, docBuffer);
       } else if (competitiveIterator == null) {
-        scoreTwoPhaseIterator(collector, acceptDocs, iterator, twoPhase, max);
+        scoreTwoPhaseIterator(collector, acceptDocs, iterator, twoPhase, max, docBuffer);
       } else if (twoPhase == null) {
-        scoreCompetitiveIterator(collector, acceptDocs, iterator, competitiveIterator, max);
+        scoreCompetitiveIterator(collector, acceptDocs, iterator, competitiveIterator, max, docBuffer);
       } else {
         scoreTwoPhaseOrCompetitiveIterator(
-            collector, acceptDocs, iterator, twoPhase, competitiveIterator, max);
+            collector, acceptDocs, iterator, twoPhase, competitiveIterator, max, docBuffer);
       }
 
       return iterator.docID();
     }
 
     private static void scoreIterator(
-        LeafCollector collector, Bits acceptDocs, DocIdSetIterator iterator, int max)
+        LeafCollector collector, Bits acceptDocs, DocIdSetIterator iterator, int max, int[] docs)
         throws IOException {
+      int count = 0;
       for (int doc = iterator.docID(); doc < max; doc = iterator.nextDoc()) {
         if (acceptDocs == null || acceptDocs.get(doc)) {
-          collector.collect(doc);
+          count = collect(collector, docs, count, doc);
         }
       }
+
+      collect(collector, docs, count, -1);
     }
 
     private static void scoreTwoPhaseIterator(
@@ -305,13 +311,17 @@ public abstract class Weight implements SegmentCacheable {
         Bits acceptDocs,
         DocIdSetIterator iterator,
         TwoPhaseIterator twoPhase,
-        int max)
+        int max,
+        int[] docs)
         throws IOException {
+      int count = 0;
       for (int doc = iterator.docID(); doc < max; doc = iterator.nextDoc()) {
         if ((acceptDocs == null || acceptDocs.get(doc)) && twoPhase.matches()) {
-          collector.collect(doc);
+          count = collect(collector, docs, count, doc);
         }
       }
+
+      collect(collector, docs, count, -1);
     }
 
     private static void scoreCompetitiveIterator(
@@ -319,8 +329,10 @@ public abstract class Weight implements SegmentCacheable {
         Bits acceptDocs,
         DocIdSetIterator iterator,
         DocIdSetIterator competitiveIterator,
-        int max)
+        int max,
+        int[] docs)
         throws IOException {
+      int count = 0;
       for (int doc = iterator.docID(); doc < max; ) {
         assert competitiveIterator.docID() <= doc; // invariant
         if (competitiveIterator.docID() < doc) {
@@ -332,11 +344,13 @@ public abstract class Weight implements SegmentCacheable {
         }
 
         if ((acceptDocs == null || acceptDocs.get(doc))) {
-          collector.collect(doc);
+          count = collect(collector, docs, count, doc);
         }
 
         doc = iterator.nextDoc();
       }
+
+      collect(collector, docs, count, -1);
     }
 
     private static void scoreTwoPhaseOrCompetitiveIterator(
@@ -345,8 +359,10 @@ public abstract class Weight implements SegmentCacheable {
         DocIdSetIterator iterator,
         TwoPhaseIterator twoPhase,
         DocIdSetIterator competitiveIterator,
-        int max)
+        int max,
+        int[] docs)
         throws IOException {
+      int count = 0;
       for (int doc = iterator.docID(); doc < max; ) {
         assert competitiveIterator.docID() <= doc; // invariant
         if (competitiveIterator.docID() < doc) {
@@ -358,11 +374,25 @@ public abstract class Weight implements SegmentCacheable {
         }
 
         if ((acceptDocs == null || acceptDocs.get(doc)) && twoPhase.matches()) {
-          collector.collect(doc);
+          count = collect(collector, docs, count, doc);
         }
 
         doc = iterator.nextDoc();
       }
+
+      collect(collector, docs, count, -1);
+    }
+
+    private static int collect(LeafCollector collector, int[] docs, int count, int docId) throws IOException {
+      if (count == docs.length || docId == -1) {
+        collector.collect(docs, count);
+        count = 0;
+      }
+
+      // count is always expected to be less than docs.length
+      docs[count++] = docId;
+
+      return count;
     }
   }
 }
