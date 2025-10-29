@@ -43,16 +43,12 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.*;
 import org.apache.lucene.util.IOUtils;
 
 /// Implements KnnVectorsReader over an on-disk JVector index serialized using {@link JVectorWriter}
 public class JVectorReader extends KnnVectorsReader {
-  public static final float DEFAULT_QUERY_SIMILARITY_THRESHOLD = 0f;
-  public static final float DEFAULT_QUERY_RERANK_FLOOR = 0f;
-  public static final int DEFAULT_OVER_QUERY_FACTOR = 3;
-  public static final boolean DEFAULT_QUERY_USE_PRUNING = false;
-
   private static final VectorTypeSupport VECTOR_TYPE_SUPPORT =
       VectorizationProvider.getInstance().getVectorTypeSupport();
 
@@ -145,20 +141,14 @@ public class JVectorReader extends KnnVectorsReader {
   public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     final OnDiskGraphIndex index = fieldEntryMap.get(field).index;
-    final JVectorKnnCollector jvectorKnnCollector;
-    if (knnCollector instanceof JVectorKnnCollector) {
-      jvectorKnnCollector = (JVectorKnnCollector) knnCollector;
-    } else {
-      // KnnCollector must be of type JVectorKnnCollector, for now we will re-wrap it but this is
-      // not ideal
-      jvectorKnnCollector =
-          new JVectorKnnCollector(
-              knnCollector,
-              DEFAULT_QUERY_SIMILARITY_THRESHOLD,
-              DEFAULT_QUERY_RERANK_FLOOR,
-              DEFAULT_OVER_QUERY_FACTOR,
-              DEFAULT_QUERY_USE_PRUNING);
-    }
+
+    final JVectorSearchStrategy searchStrategy;
+    if (knnCollector.getSearchStrategy() instanceof JVectorSearchStrategy strategy) {
+      searchStrategy = strategy;
+    } else if (knnCollector.getSearchStrategy() instanceof KnnSearchStrategy.Seeded seeded
+        && seeded.originalStrategy() instanceof JVectorSearchStrategy strategy) {
+      searchStrategy = strategy;
+    } else searchStrategy = JVectorSearchStrategy.DEFAULT;
 
     // search for a random vector using a GraphSearcher and SearchScoreProvider
     VectorFloat<?> q = VECTOR_TYPE_SUPPORT.createFloatVector(target);
@@ -197,13 +187,13 @@ public class JVectorReader extends KnnVectorsReader {
         final var searchResults =
             graphSearcher.search(
                 ssp,
-                jvectorKnnCollector.k(),
-                jvectorKnnCollector.k() * jvectorKnnCollector.overQueryFactor,
-                jvectorKnnCollector.threshold,
-                jvectorKnnCollector.rerankFloor,
+                knnCollector.k(),
+                knnCollector.k() * searchStrategy.overQueryFactor,
+                searchStrategy.threshold,
+                searchStrategy.rerankFloor,
                 compatibleBits);
         for (SearchResult.NodeScore ns : searchResults.getNodes()) {
-          jvectorKnnCollector.collect(jvectorLuceneDocMap.getLuceneDocId(ns.node), ns.score);
+          knnCollector.collect(jvectorLuceneDocMap.getLuceneDocId(ns.node), ns.score);
         }
       }
     }

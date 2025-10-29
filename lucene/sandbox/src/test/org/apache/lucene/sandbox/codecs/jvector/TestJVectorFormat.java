@@ -86,8 +86,8 @@ public class TestJVectorFormat extends LuceneTestCase {
 
         final Query filterQuery = new MatchAllDocsQuery();
         final IndexSearcher searcher = newSearcher(reader);
-        KnnFloatVectorQuery knnFloatVectorQuery =
-            getJVectorKnnFloatVectorQuery("test_field", target, k, filterQuery);
+        final KnnFloatVectorQuery knnFloatVectorQuery =
+            new KnnFloatVectorQuery("test_field", target, k, filterQuery);
         TopDocs topDocs = searcher.search(knnFloatVectorQuery, k);
         assertEquals(k, topDocs.totalHits.value());
         assertEquals(9, topDocs.scoreDocs[0].doc);
@@ -142,8 +142,8 @@ public class TestJVectorFormat extends LuceneTestCase {
 
         final Query filterQuery = new MatchAllDocsQuery();
         final IndexSearcher searcher = newSearcher(reader);
-        KnnFloatVectorQuery knnFloatVectorQuery =
-            getJVectorKnnFloatVectorQuery("test_field", target, k, filterQuery);
+        final KnnFloatVectorQuery knnFloatVectorQuery =
+            new KnnFloatVectorQuery("test_field", target, k, filterQuery);
         TopDocs topDocs = searcher.search(knnFloatVectorQuery, k);
         assertEquals(k, topDocs.totalHits.value());
         assertEquals(0, topDocs.scoreDocs[0].doc);
@@ -208,8 +208,8 @@ public class TestJVectorFormat extends LuceneTestCase {
 
         final Query filterQuery = new MatchAllDocsQuery();
         final IndexSearcher searcher = newSearcher(reader);
-        KnnFloatVectorQuery knnFloatVectorQuery =
-            getJVectorKnnFloatVectorQuery("test_field", target, k, filterQuery);
+        final KnnFloatVectorQuery knnFloatVectorQuery =
+            new KnnFloatVectorQuery("test_field", target, k, filterQuery);
         TopDocs topDocs = searcher.search(knnFloatVectorQuery, k);
         assertEquals(k, topDocs.totalHits.value());
         assertEquals(9, topDocs.scoreDocs[0].doc);
@@ -286,7 +286,7 @@ public class TestJVectorFormat extends LuceneTestCase {
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
         final Query filterQuery = new MatchAllDocsQuery();
         final IndexSearcher searcher = newSearcher(reader);
-        KnnFloatVectorQuery knnFloatVectorQuery =
+        final KnnFloatVectorQuery knnFloatVectorQuery =
             new KnnFloatVectorQuery("test_field", target, k, filterQuery);
         TopDocs topDocs = searcher.search(knnFloatVectorQuery, k);
         assertEquals(k, topDocs.totalHits.value());
@@ -343,8 +343,8 @@ public class TestJVectorFormat extends LuceneTestCase {
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
         final Query filterQuery = new MatchAllDocsQuery();
         final IndexSearcher searcher = newSearcher(reader);
-        KnnFloatVectorQuery knnFloatVectorQuery =
-            getJVectorKnnFloatVectorQuery("test_field", target, k, filterQuery);
+        final KnnFloatVectorQuery knnFloatVectorQuery =
+            new KnnFloatVectorQuery("test_field", target, k, filterQuery);
         TopDocs topDocs = searcher.search(knnFloatVectorQuery, k);
         assertEquals(k, topDocs.totalHits.value());
         Document doc = reader.storedFields().document(topDocs.scoreDocs[0].doc);
@@ -405,8 +405,8 @@ public class TestJVectorFormat extends LuceneTestCase {
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
         final Query filterQuery = new MatchAllDocsQuery();
         final IndexSearcher searcher = newSearcher(reader);
-        KnnFloatVectorQuery knnFloatVectorQuery =
-            getJVectorKnnFloatVectorQuery("test_field", target, k, filterQuery);
+        final KnnFloatVectorQuery knnFloatVectorQuery =
+            new KnnFloatVectorQuery("test_field", target, k, filterQuery);
         TopDocs topDocs = searcher.search(knnFloatVectorQuery, k);
         assertEquals(k, topDocs.totalHits.value());
         Document doc = reader.storedFields().document(topDocs.scoreDocs[0].doc);
@@ -479,8 +479,8 @@ public class TestJVectorFormat extends LuceneTestCase {
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
         final Query filterQuery = new MatchAllDocsQuery();
         final IndexSearcher searcher = newSearcher(reader);
-        KnnFloatVectorQuery knnFloatVectorQuery =
-            getJVectorKnnFloatVectorQuery("test_field", target, k, filterQuery);
+        final KnnFloatVectorQuery knnFloatVectorQuery =
+            new KnnFloatVectorQuery("test_field", target, k, filterQuery);
         TopDocs topDocs = searcher.search(knnFloatVectorQuery, k);
         assertEquals(k, topDocs.totalHits.value());
 
@@ -548,8 +548,8 @@ public class TestJVectorFormat extends LuceneTestCase {
 
         final Query filterQuery = new MatchAllDocsQuery();
         final IndexSearcher searcher = newSearcher(reader);
-        KnnFloatVectorQuery knnFloatVectorQuery =
-            getJVectorKnnFloatVectorQuery(TEST_FIELD, target, k, filterQuery);
+        final KnnFloatVectorQuery knnFloatVectorQuery =
+            new KnnFloatVectorQuery(TEST_FIELD, target, k, filterQuery);
         TopDocs topDocs = searcher.search(knnFloatVectorQuery, k);
         assertEquals(k, topDocs.totalHits.value());
         final float recall = calculateRecall(reader, groundTruthVectorsIds, topDocs, k);
@@ -664,8 +664,7 @@ public class TestJVectorFormat extends LuceneTestCase {
         for (int i = 0; i < reader.maxDoc(); i++) {
           float[] query = generateRandomVectors(1, 2)[0];
           TopDocs td =
-              searcher.search(
-                  getJVectorKnnFloatVectorQuery("vec", query, k, new MatchAllDocsQuery()), k);
+              searcher.search(new KnnFloatVectorQuery("vec", query, k, new MatchAllDocsQuery()), k);
           assertEquals(k, td.scoreDocs.length);
 
           compareSearchResults(
@@ -827,7 +826,7 @@ public class TestJVectorFormat extends LuceneTestCase {
           final float[] target = {0.0f, 1.0f * (i + docToDeleteInEachBatch)};
           final IndexSearcher searcher = newSearcher(reader);
           final KnnFloatVectorQuery knnFloatVectorQuery =
-              getJVectorKnnFloatVectorQuery("test_field", target, k, new MatchAllDocsQuery());
+              new KnnFloatVectorQuery("test_field", target, k, new MatchAllDocsQuery());
           TopDocs topDocs = searcher.search(knnFloatVectorQuery, k);
           assertEquals(k, topDocs.totalHits.value());
           for (int j = 0; j < k; j++) {
@@ -877,8 +876,8 @@ public class TestJVectorFormat extends LuceneTestCase {
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
         final Query filterQuery = new MatchAllDocsQuery();
         final IndexSearcher searcher = newSearcher(reader);
-        KnnFloatVectorQuery knnFloatVectorQuery =
-            getJVectorKnnFloatVectorQuery("test_field", target, k, filterQuery);
+        final KnnFloatVectorQuery knnFloatVectorQuery =
+            new KnnFloatVectorQuery("test_field", target, k, filterQuery);
         TopDocs topDocs = searcher.search(knnFloatVectorQuery, k);
         assertEquals(k, topDocs.totalHits.value());
         assertEquals(9, topDocs.scoreDocs[0].doc);
@@ -934,8 +933,8 @@ public class TestJVectorFormat extends LuceneTestCase {
         Assert.assertEquals(totalNumberOfDocs, reader.numDocs());
         final Query filterQuery = new MatchAllDocsQuery();
         final IndexSearcher searcher = newSearcher(reader);
-        KnnFloatVectorQuery knnFloatVectorQuery =
-            getJVectorKnnFloatVectorQuery("test_field", target, k, filterQuery);
+        final KnnFloatVectorQuery knnFloatVectorQuery =
+            new KnnFloatVectorQuery("test_field", target, k, filterQuery);
         TopDocs topDocs = searcher.search(knnFloatVectorQuery, k);
         assertEquals(k, topDocs.totalHits.value());
         assertEquals(0, topDocs.scoreDocs[0].doc);
@@ -1007,8 +1006,8 @@ public class TestJVectorFormat extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(w)) {
         final Query filterQuery = new TermQuery(new Term("filter_field", "even"));
         final IndexSearcher searcher = newSearcher(reader);
-        KnnFloatVectorQuery knnFloatVectorQuery =
-            getJVectorKnnFloatVectorQuery("test_field", target, k, filterQuery);
+        final KnnFloatVectorQuery knnFloatVectorQuery =
+            new KnnFloatVectorQuery("test_field", target, k, filterQuery);
         TopDocs topDocs = searcher.search(knnFloatVectorQuery, k);
 
         assertEquals(k, topDocs.totalHits.value());
@@ -1077,8 +1076,8 @@ public class TestJVectorFormat extends LuceneTestCase {
 
         final Query filterQuery = new MatchAllDocsQuery();
         final IndexSearcher searcher = newSearcher(reader);
-        KnnFloatVectorQuery knnFloatVectorQuery =
-            getJVectorKnnFloatVectorQuery(TEST_FIELD, target, k, filterQuery);
+        final KnnFloatVectorQuery knnFloatVectorQuery =
+            new KnnFloatVectorQuery(TEST_FIELD, target, k, filterQuery);
         TopDocs topDocs = searcher.search(knnFloatVectorQuery, k);
         assertEquals(k, topDocs.totalHits.value());
         final float recall = calculateRecall(reader, groundTruthVectorsIds, topDocs, k);
@@ -1134,16 +1133,19 @@ public class TestJVectorFormat extends LuceneTestCase {
                 });
 
         // Query with essentially no reranking and expect recall to be very low
+        JVectorSearchStrategy searchStrategy =
+            JVectorSearchStrategy.builder().withOverQueryFactor(1).build();
         KnnFloatVectorQuery knnFloatVectorQuery =
-            getJVectorKnnFloatVectorQuery("test_field", target, k, filterQuery, 1);
+            new KnnFloatVectorQuery("test_field", target, k, filterQuery, searchStrategy);
         TopDocs topDocs = searcher.search(knnFloatVectorQuery, k);
         assertEquals(k, topDocs.totalHits.value());
 
         final float recallWithLowOverqueryFactor = calculateRecall(topDocs, expectedMinScoreInTopK);
 
         // Query with reranking and expect recall to be high
+        searchStrategy = JVectorSearchStrategy.builder().withOverQueryFactor(5).build();
         knnFloatVectorQuery =
-            getJVectorKnnFloatVectorQuery("test_field", target, k, filterQuery, 5);
+            new KnnFloatVectorQuery("test_field", target, k, filterQuery, searchStrategy);
         topDocs = searcher.search(knnFloatVectorQuery, k);
         assertEquals(k, topDocs.totalHits.value());
         float recallWithHighOverqueryFactor = calculateRecall(topDocs, expectedMinScoreInTopK);
@@ -1211,8 +1213,8 @@ public class TestJVectorFormat extends LuceneTestCase {
 
         final Query filterQuery = new MatchAllDocsQuery();
         final IndexSearcher searcher = newSearcher(reader);
-        KnnFloatVectorQuery knnFloatVectorQuery =
-            getJVectorKnnFloatVectorQuery("test_field", target, k, filterQuery);
+        final KnnFloatVectorQuery knnFloatVectorQuery =
+            new KnnFloatVectorQuery("test_field", target, k, filterQuery);
         TopDocs topDocs = searcher.search(knnFloatVectorQuery, k);
         assertEquals(k, topDocs.totalHits.value());
         final float recall = calculateRecall(reader, groundTruthVectorsIds, topDocs, k);
@@ -1284,8 +1286,8 @@ public class TestJVectorFormat extends LuceneTestCase {
 
         final Query filterQuery = new MatchAllDocsQuery();
         final IndexSearcher searcher = newSearcher(reader);
-        KnnFloatVectorQuery knnFloatVectorQuery =
-            getJVectorKnnFloatVectorQuery("test_field", target, k, filterQuery);
+        final KnnFloatVectorQuery knnFloatVectorQuery =
+            new KnnFloatVectorQuery("test_field", target, k, filterQuery);
         TopDocs topDocs = searcher.search(knnFloatVectorQuery, k);
         assertEquals(k, topDocs.totalHits.value());
         final float recall = calculateRecall(reader, groundTruthVectorsIds, topDocs, k);
@@ -1362,8 +1364,10 @@ public class TestJVectorFormat extends LuceneTestCase {
 
         final Query filterQuery = new MatchAllDocsQuery();
         final IndexSearcher searcher = newSearcher(reader);
-        KnnFloatVectorQuery knnFloatVectorQuery =
-            getJVectorKnnFloatVectorQuery("test_field", target, k, filterQuery, 1000);
+        final JVectorSearchStrategy searchStrategy =
+            JVectorSearchStrategy.builder().withOverQueryFactor(1000).build();
+        final KnnFloatVectorQuery knnFloatVectorQuery =
+            new KnnFloatVectorQuery("test_field", target, k, filterQuery, searchStrategy);
         TopDocs topDocs = searcher.search(knnFloatVectorQuery, k);
         assertEquals(k, topDocs.totalHits.value());
         final float recall = calculateRecall(reader, groundTruthVectorsIds, topDocs, k);
@@ -1439,8 +1443,10 @@ public class TestJVectorFormat extends LuceneTestCase {
 
         final Query filterQuery = new MatchAllDocsQuery();
         final IndexSearcher searcher = newSearcher(reader);
-        KnnFloatVectorQuery knnFloatVectorQuery =
-            getJVectorKnnFloatVectorQuery("test_field", target, k, filterQuery, 1000);
+        final JVectorSearchStrategy searchStrategy =
+            JVectorSearchStrategy.builder().withOverQueryFactor(1000).build();
+        final KnnFloatVectorQuery knnFloatVectorQuery =
+            new KnnFloatVectorQuery("test_field", target, k, filterQuery, searchStrategy);
         TopDocs topDocs = searcher.search(knnFloatVectorQuery, k);
         assertEquals(k, topDocs.totalHits.value());
         final float recall = calculateRecall(reader, groundTruthVectorsIds, topDocs, k);
@@ -1468,25 +1474,6 @@ public class TestJVectorFormat extends LuceneTestCase {
     }
     float recall = ((float) totalRelevantDocs) / ((float) topDocs.scoreDocs.length);
     return recall;
-  }
-
-  private JVectorKnnFloatVectorQuery getJVectorKnnFloatVectorQuery(
-      String fieldName, float[] target, int k, Query filterQuery) {
-    return getJVectorKnnFloatVectorQuery(
-        fieldName, target, k, filterQuery, JVectorReader.DEFAULT_OVER_QUERY_FACTOR);
-  }
-
-  private JVectorKnnFloatVectorQuery getJVectorKnnFloatVectorQuery(
-      String fieldName, float[] target, int k, Query filterQuery, int overQueryFactor) {
-    return new JVectorKnnFloatVectorQuery(
-        fieldName,
-        target,
-        k,
-        filterQuery,
-        overQueryFactor,
-        JVectorReader.DEFAULT_QUERY_SIMILARITY_THRESHOLD,
-        JVectorReader.DEFAULT_QUERY_RERANK_FLOOR,
-        JVectorReader.DEFAULT_QUERY_USE_PRUNING);
   }
 
   private static float[] generateZerosVectorWithLastValue(int vectorDimension, int lastValue) {
