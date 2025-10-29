@@ -27,6 +27,7 @@ import io.github.jbellis.jvector.graph.similarity.ScoreFunction;
 import io.github.jbellis.jvector.graph.similarity.SearchScoreProvider;
 import io.github.jbellis.jvector.quantization.PQVectors;
 import io.github.jbellis.jvector.quantization.ProductQuantization;
+import io.github.jbellis.jvector.util.Bits;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import io.github.jbellis.jvector.vector.VectorizationProvider;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
@@ -40,9 +41,9 @@ import java.util.Optional;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.*;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.*;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 
 public class JVectorReader extends KnnVectorsReader {
@@ -140,7 +141,7 @@ public class JVectorReader extends KnnVectorsReader {
   }
 
   @Override
-  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     final OnDiskGraphIndex index = fieldEntryMap.get(field).index;
     final JVectorKnnCollector jvectorKnnCollector;
@@ -182,8 +183,14 @@ public class JVectorReader extends KnnVectorsReader {
       // Logic works as follows: if acceptDocs is null, we accept all ordinals. Otherwise, we check
       // if the jVector ordinal has a
       // corresponding Lucene doc ID accepted by acceptDocs filter.
-      io.github.jbellis.jvector.util.Bits compatibleBits =
-          ord -> acceptDocs == null || acceptDocs.get(jvectorLuceneDocMap.getLuceneDocId(ord));
+
+      Bits compatibleBits = Bits.ALL;
+      if (acceptDocs != null) {
+        final var luceneBits = acceptDocs.bits();
+        if (luceneBits != null) {
+          compatibleBits = ord -> luceneBits.get(jvectorLuceneDocMap.getLuceneDocId(ord));
+        }
+      }
 
       try (var graphSearcher = new GraphSearcher(index)) {
         final var searchResults =
@@ -202,7 +209,7 @@ public class JVectorReader extends KnnVectorsReader {
   }
 
   @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     // TODO: implement this
     throw new UnsupportedOperationException("Byte vector search is not supported yet with jVector");
