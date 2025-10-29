@@ -80,8 +80,8 @@ import org.apache.lucene.util.RamUsageEstimator;
  * jVector ordinals and the new Lucene document IDs. This is achieved by keeping checkpoints of the
  * {@link GraphNodeIdToDocMap} class in the index metadata and allowing us to update the mapping as
  * needed across merges by constructing a new mapping from the previous mapping and the {@link
- * MergeState.DocMap} provided in the {@link MergeState}. And across sorts with {@link
- * GraphNodeIdToDocMap#update(Sorter.DocMap)} during flushes.
+ * org.apache.lucene.index.MergeState.DocMap} provided in the {@link MergeState}. And across sorts
+ * with {@link GraphNodeIdToDocMap#update(Sorter.DocMap)} during flushes.
  */
 public class JVectorWriter extends KnnVectorsWriter {
   private static final long SHALLOW_RAM_BYTES_USED =
