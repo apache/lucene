@@ -36,6 +36,7 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -673,7 +674,8 @@ public class KNNJVectorTests extends LuceneTestCase {
         // not exhausting the file handles
         int numThreads = 10; // Number of concurrent search threads
         int queriesPerThread = 100; // Number of searches per thread
-        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+        ExecutorService executor =
+            Executors.newFixedThreadPool(numThreads, new NamedThreadFactory("KNNJVectorTests"));
         CountDownLatch latch = new CountDownLatch(numThreads);
         AtomicBoolean failureDetected = new AtomicBoolean(false);
         AtomicInteger totalQueries = new AtomicInteger(0);
