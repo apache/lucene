@@ -190,9 +190,9 @@ public class JVectorReader extends KnnVectorsReader {
             graphSearcher.search(
                 ssp,
                 jvectorKnnCollector.k(),
-                jvectorKnnCollector.k() * jvectorKnnCollector.getOverQueryFactor(),
-                jvectorKnnCollector.getThreshold(),
-                jvectorKnnCollector.getRerankFloor(),
+                jvectorKnnCollector.k() * jvectorKnnCollector.overQueryFactor,
+                jvectorKnnCollector.threshold,
+                jvectorKnnCollector.rerankFloor,
                 compatibleBits);
         for (SearchResult.NodeScore ns : searchResults.getNodes()) {
           jvectorKnnCollector.collect(jvectorLuceneDocMap.getLuceneDocId(ns.node), ns.score);

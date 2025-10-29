@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.sandbox.codecs.jvector;
 
-import lombok.Value;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
@@ -25,13 +24,25 @@ import org.apache.lucene.search.knn.KnnSearchStrategy;
  * Wrapper class for KnnCollector that provides passing of additional parameters specific for
  * JVector.
  */
-@Value
 public class JVectorKnnCollector implements KnnCollector {
-  KnnCollector delegate;
-  float threshold;
-  float rerankFloor;
-  int overQueryFactor;
-  boolean usePruning;
+  final KnnCollector delegate;
+  final float threshold;
+  final float rerankFloor;
+  final int overQueryFactor;
+  final boolean usePruning;
+
+  public JVectorKnnCollector(
+      KnnCollector delegate,
+      float threshold,
+      float rerankFloor,
+      int overQueryFactor,
+      boolean usePruning) {
+    this.delegate = delegate;
+    this.threshold = threshold;
+    this.rerankFloor = rerankFloor;
+    this.overQueryFactor = overQueryFactor;
+    this.usePruning = usePruning;
+  }
 
   @Override
   public boolean earlyTerminated() {
