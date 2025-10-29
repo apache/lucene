@@ -24,7 +24,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.RAMDirectory;
+// ...existing code...
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 /**
@@ -34,7 +34,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestMaxScoreBulkScorerFilterBounds extends LuceneTestCase {
 
   public void testFilteredDisjunctionDoesNotScorePastMaxDoc() throws Exception {
-    Directory dir = new RAMDirectory();
+  Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig();
     try (IndexWriter w = new IndexWriter(dir, iwc)) {
       // Create a small index where one clause matches more docs than the other, and a restrictive
