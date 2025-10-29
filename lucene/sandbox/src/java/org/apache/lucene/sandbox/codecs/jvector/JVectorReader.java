@@ -45,7 +45,6 @@ import org.apache.lucene.store.*;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.opensearch.knn.common.KNNConstants;
-import org.opensearch.knn.plugin.stats.KNNCounter;
 
 public class JVectorReader extends KnnVectorsReader {
   private static final VectorTypeSupport VECTOR_TYPE_SUPPORT =
@@ -160,7 +159,6 @@ public class JVectorReader extends KnnVectorsReader {
     final SearchScoreProvider ssp;
 
     try (var view = index.getView()) {
-      final long graphSearchStart = System.currentTimeMillis();
       if (fieldEntryMap.get(field).pqVectors
           != null) { // Quantized, use the precomputed score function
         final PQVectors pqVectors = fieldEntryMap.get(field).pqVectors;
@@ -195,22 +193,6 @@ public class JVectorReader extends KnnVectorsReader {
         for (SearchResult.NodeScore ns : searchResults.getNodes()) {
           jvectorKnnCollector.collect(jvectorLuceneDocMap.getLuceneDocId(ns.node), ns.score);
         }
-        final long graphSearchEnd = System.currentTimeMillis();
-        final long searchTime = graphSearchEnd - graphSearchStart;
-
-        // Collect the below metrics about the search and somehow wire this back to {@link
-        // @KNNStats}
-        final int visitedNodesCount = searchResults.getVisitedCount();
-        final int rerankedCount = searchResults.getRerankedCount();
-
-        final int expandedCount = searchResults.getExpandedCount();
-        final int expandedBaseLayerCount = searchResults.getExpandedCountBaseLayer();
-
-        KNNCounter.KNN_QUERY_VISITED_NODES.add(visitedNodesCount);
-        KNNCounter.KNN_QUERY_RERANKED_COUNT.add(rerankedCount);
-        KNNCounter.KNN_QUERY_EXPANDED_NODES.add(expandedCount);
-        KNNCounter.KNN_QUERY_EXPANDED_BASE_LAYER_NODES.add(expandedBaseLayerCount);
-        KNNCounter.KNN_QUERY_GRAPH_SEARCH_TIME.add(searchTime);
       }
     }
   }

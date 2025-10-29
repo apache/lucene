@@ -36,7 +36,6 @@ import io.github.jbellis.jvector.vector.types.VectorFloat;
 import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.time.Clock;
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
@@ -56,7 +55,6 @@ import org.apache.lucene.store.*;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.opensearch.knn.plugin.stats.KNNCounter;
 
 /**
  * JVectorWriter is responsible for writing vector data into index segments using the JVector
@@ -192,7 +190,6 @@ public class JVectorWriter extends KnnVectorsWriter {
   @Override
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     try {
-      final long mergeStart = Clock.systemDefaultZone().millis();
       switch (fieldInfo.getVectorEncoding()) {
         case BYTE:
           throw new UnsupportedEncodingException("Byte vectors are not supported in JVector.");
@@ -201,9 +198,6 @@ public class JVectorWriter extends KnnVectorsWriter {
           mergeRavv.merge();
           break;
       }
-      final long mergeEnd = Clock.systemDefaultZone().millis();
-      final long mergeTime = mergeEnd - mergeStart;
-      KNNCounter.KNN_GRAPH_MERGE_TIME.add(mergeTime);
     } catch (Exception e) {
       throw e;
     }
@@ -382,7 +376,6 @@ public class JVectorWriter extends KnnVectorsWriter {
       throws IOException {
     final VectorSimilarityFunction vectorSimilarityFunction =
         fieldInfo.getVectorSimilarityFunction();
-    final long start = Clock.systemDefaultZone().millis();
     final var M = numberOfSubspacesPerVectorSupplier.apply(randomAccessVectorValues.dimension());
     final var numberOfClustersPerSubspace =
         Math.min(256, randomAccessVectorValues.size()); // number of centroids per
@@ -397,9 +390,6 @@ public class JVectorWriter extends KnnVectorsWriter {
             SIMD_POOL_MERGE,
             ForkJoinPool.commonPool());
 
-    final long end = Clock.systemDefaultZone().millis();
-    final long trainingTime = end - start;
-    KNNCounter.KNN_QUANTIZATION_TRAINING_TIME.add(trainingTime);
     // PQVectors pqVectors = pq.encodeAll(randomAccessVectorValues, SIMD_POOL);
     PQVectors pqVectors =
         PQVectors.encodeAndBuild(
@@ -865,7 +855,6 @@ public class JVectorWriter extends KnnVectorsWriter {
           pqVectors = null;
         }
       } else {
-        final long start = Clock.systemDefaultZone().millis();
         ProductQuantization leadingCompressor =
             leadingReader.getProductQuantizationForField(fieldName).get();
         // Refine the leadingCompressor with the remaining vectors in the merge, we skip the leading
@@ -878,9 +867,6 @@ public class JVectorWriter extends KnnVectorsWriter {
               new RandomAccessVectorValuesOverVectorValues(values);
           leadingCompressor.refine(randomAccessVectorValues);
         }
-        final long end = Clock.systemDefaultZone().millis();
-        final long trainingTime = end - start;
-        KNNCounter.KNN_QUANTIZATION_TRAINING_TIME.add(trainingTime);
         pqVectors =
             PQVectors.encodeAndBuild(
                 leadingCompressor,

@@ -39,7 +39,6 @@ import org.junit.Test;
 import org.opensearch.knn.TestUtils;
 import org.opensearch.knn.common.KNNConstants;
 import org.opensearch.knn.index.ThreadLeakFiltersForTests;
-import org.opensearch.knn.plugin.stats.KNNCounter;
 
 /** Test used specifically for JVector */
 // Currently {@link IndexGraphBuilder} is using the default ForkJoinPool.commonPool() which is not
@@ -1371,11 +1370,8 @@ public class KNNJVectorTests extends LuceneTestCase {
             "Expected to have recall of 1.0+/-0.05 but got " + recall, 1.0f, recall, 0.05f);
       }
     }
-
-    Assert.assertTrue(
-        "No quantization time recorded", KNNCounter.KNN_QUANTIZATION_TRAINING_TIME.getCount() > 0);
-    Assert.assertTrue(
-        "No graph merge time recorded", KNNCounter.KNN_GRAPH_MERGE_TIME.getCount() > 0);
+    // TODO: assert no quantization
+    // TODO: assert no graph merge
   }
 
   /**
@@ -1427,16 +1423,8 @@ public class KNNJVectorTests extends LuceneTestCase {
         doc.add(new KnnFloatVectorField(TEST_FIELD, source, vectorSimilarityFunction));
         w.addDocument(doc);
         if (i % idealBatchSize == 0) {
-          final long beforeTrainingTime = KNNCounter.KNN_QUANTIZATION_TRAINING_TIME.getCount();
           w.commit();
           w.forceMerge(1); // force merge will trigger PQ refinement if other segments are present
-          final long afterTrainingTime = KNNCounter.KNN_QUANTIZATION_TRAINING_TIME.getCount();
-          Assert.assertTrue(
-              "Expected to have a training time of at least "
-                  + beforeTrainingTime
-                  + " but got "
-                  + afterTrainingTime,
-              afterTrainingTime >= beforeTrainingTime);
         }
       }
       w.commit();
@@ -1459,9 +1447,7 @@ public class KNNJVectorTests extends LuceneTestCase {
             "Expected to have recall of 1.0+/-0.05 but got " + recall, 1.0f, recall, 0.05f);
       }
     }
-
-    Assert.assertTrue(
-        "No graph merge time recorded", KNNCounter.KNN_GRAPH_MERGE_TIME.getCount() > 0);
+    // TODO: Assert no graph merge
   }
 
   /**
