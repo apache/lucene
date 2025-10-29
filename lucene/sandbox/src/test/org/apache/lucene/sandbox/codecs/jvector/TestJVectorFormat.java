@@ -110,6 +110,7 @@ public class TestJVectorFormat extends LuceneTestCase {
   }
 
   /** Test the scenario when not all documents are populated with the vector field */
+  @Test
   public void testMissing_fields() throws IOException {
     final int k = 3; // The number of nearest neighbors to gather
     final int totalNumberOfDocs = 10;
@@ -170,6 +171,7 @@ public class TestJVectorFormat extends LuceneTestCase {
    *
    * @throws IOException if an I/O error occurs
    */
+  @Test
   public void test_sorted_index() throws IOException {
     final int k = 3; // The number of nearest neighbors to gather
     final int totalNumberOfDocs = 10;
