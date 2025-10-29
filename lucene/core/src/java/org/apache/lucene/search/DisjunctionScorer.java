@@ -108,7 +108,7 @@ abstract class DisjunctionScorer extends Scorer {
     private boolean assertVerifiedMatchesApproximationDocID() {
       int docID = docID();
       for (DisiWrapper w = verifiedMatches; w != null; w = w.next) {
-        if (w.approximation.docID() != docID) {
+        if (w.doc != docID) {
           return false;
         }
       }
