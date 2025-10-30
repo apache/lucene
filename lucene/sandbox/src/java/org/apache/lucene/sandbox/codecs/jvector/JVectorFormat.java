@@ -20,7 +20,7 @@ package org.apache.lucene.sandbox.codecs.jvector;
 import java.io.IOException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
-import java.util.function.Function;
+import java.util.function.IntUnaryOperator;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -55,8 +55,8 @@ public class JVectorFormat extends KnnVectorsFormat {
 
   private final int maxConn;
   private final int beamWidth;
-  private final Function<Integer, Integer>
-      numberOfSubspacesPerVectorSupplier; // as a function of the original dimension
+  // As a function of the original dimension
+  private final IntUnaryOperator numberOfSubspacesPerVectorSupplier;
   private final int minBatchSizeForQuantization;
   private final float alpha;
   private final float neighborOverflow;
@@ -91,7 +91,7 @@ public class JVectorFormat extends KnnVectorsFormat {
       int beamWidth,
       float neighborOverflow,
       float alpha,
-      Function<Integer, Integer> numberOfSubspacesPerVectorSupplier,
+      IntUnaryOperator numberOfSubspacesPerVectorSupplier,
       int minBatchSizeForQuantization,
       boolean hierarchyEnabled) {
     this(
@@ -111,7 +111,7 @@ public class JVectorFormat extends KnnVectorsFormat {
       int beamWidth,
       float neighborOverflow,
       float alpha,
-      Function<Integer, Integer> numberOfSubspacesPerVectorSupplier,
+      IntUnaryOperator numberOfSubspacesPerVectorSupplier,
       int minBatchSizeForQuantization,
       boolean hierarchyEnabled) {
     super(name);

@@ -38,7 +38,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
-import java.util.function.Function;
+import java.util.function.IntUnaryOperator;
 import java.util.stream.IntStream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
@@ -98,9 +98,8 @@ public class JVectorWriter extends KnnVectorsWriter {
   private final int beamWidth;
   private final float degreeOverflow;
   private final float alpha;
-  private final Function<Integer, Integer>
-      numberOfSubspacesPerVectorSupplier; // Number of subspaces used per vector for PQ quantization
-  // as a function of the original dimension
+  /// Number of subspaces used per vector in PQ quantization as a function of the original dimension
+  private final IntUnaryOperator numberOfSubspacesPerVectorSupplier;
   private final int
       minimumBatchSizeForQuantization; // Threshold for the vector count above which we will trigger
   // PQ quantization
@@ -114,7 +113,7 @@ public class JVectorWriter extends KnnVectorsWriter {
       int beamWidth,
       float degreeOverflow,
       float alpha,
-      Function<Integer, Integer> numberOfSubspacesPerVectorSupplier,
+      IntUnaryOperator numberOfSubspacesPerVectorSupplier,
       int minimumBatchSizeForQuantization,
       boolean hierarchyEnabled)
       throws IOException {
@@ -372,7 +371,8 @@ public class JVectorWriter extends KnnVectorsWriter {
       throws IOException {
     final VectorSimilarityFunction vectorSimilarityFunction =
         fieldInfo.getVectorSimilarityFunction();
-    final var M = numberOfSubspacesPerVectorSupplier.apply(randomAccessVectorValues.dimension());
+    final int M =
+        numberOfSubspacesPerVectorSupplier.applyAsInt(randomAccessVectorValues.dimension());
     final var numberOfClustersPerSubspace =
         Math.min(256, randomAccessVectorValues.size()); // number of centroids per
     // subspace
