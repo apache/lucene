@@ -195,6 +195,10 @@ public class JVectorReader extends KnnVectorsReader {
         for (SearchResult.NodeScore ns : searchResults.getNodes()) {
           knnCollector.collect(jvectorLuceneDocMap.getLuceneDocId(ns.node), ns.score);
         }
+        // JVector does not seem to count the entry-point as visited
+        if (index.size(index.getMaxLevel()) > 0) {
+          knnCollector.incVisitedCount(1 + searchResults.getVisitedCount());
+        }
       }
     }
   }
