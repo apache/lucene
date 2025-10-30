@@ -88,15 +88,20 @@ public final class DocIdSetBuilder {
 
   /**
    * Partition-aware FixedBitSetAdder that filters docs to only include those within the specified
-   * range.
+   * range. Stores docs using partition-relative indices (doc - offset) to save memory.
+   *
+   * @param bitSet the partition-sized bitset to store relative doc indices
+   * @param minDocId minimum doc ID (inclusive) to accept
+   * @param maxDocId maximum doc ID (exclusive) to accept
+   * @param offset the value to subtract from absolute doc IDs (typically minDocId)
    */
-  private record PartitionAwareFixedBitSetAdder(FixedBitSet bitSet, int minDocId, int maxDocId)
-      implements BulkAdder {
+  private record PartitionAwareFixedBitSetAdder(
+      FixedBitSet bitSet, int minDocId, int maxDocId, int offset) implements BulkAdder {
 
     @Override
     public void add(int doc) {
       if (doc >= minDocId && doc < maxDocId) {
-        bitSet.set(doc);
+        bitSet.set(doc - offset);
       }
     }
 
@@ -105,20 +110,21 @@ public final class DocIdSetBuilder {
       for (int i = docs.offset, to = docs.offset + docs.length; i < to; i++) {
         int doc = docs.ints[i];
         if (doc >= minDocId && doc < maxDocId) {
-          bitSet.set(doc);
+          bitSet.set(doc - offset);
         }
       }
     }
 
     @Override
     public void add(DocIdSetIterator iterator) throws IOException {
-      // Advance iterator to minDocId first, then collect docs up to maxDocId
+      // Advance iterator to minDocId first
       int doc = iterator.nextDoc();
       if (doc < minDocId) {
         doc = iterator.advance(minDocId);
       }
+      // Use optimized intoBitSet with partition boundaries and offset
       if (doc < maxDocId) {
-        iterator.intoBitSet(maxDocId, bitSet, minDocId);
+        iterator.intoBitSet(maxDocId, bitSet, offset);
       }
     }
 
@@ -127,7 +133,7 @@ public final class DocIdSetBuilder {
       for (int i = docs.offset, to = docs.offset + docs.length; i < to; i++) {
         int doc = docs.ints[i];
         if (doc >= Math.max(docLowerBoundInclusive, minDocId) && doc < maxDocId) {
-          bitSet.set(doc);
+          bitSet.set(doc - offset);
         }
       }
     }
@@ -441,22 +447,31 @@ public final class DocIdSetBuilder {
 
   private void upgradeToBitSet() {
     assert bitSet == null;
-    FixedBitSet bitSet = new FixedBitSet(maxDoc);
+
+    // For partitions, create a smaller bitset sized to the partition range only
+    // This saves memory by not allocating bits outside [minDocId, maxDocId)
+    boolean isPartition = (minDocId > 0 || maxDocId < maxDoc);
+    int bitSetSize = isPartition ? (maxDocId - minDocId) : maxDoc;
+
+    FixedBitSet bitSet = new FixedBitSet(bitSetSize);
     long counter = 0;
     for (Buffer buffer : buffers) {
       int[] array = buffer.array;
       int length = buffer.length;
       counter += length;
       for (int i = 0; i < length; ++i) {
-        bitSet.set(array[i]);
+        // For partitions, convert absolute doc ID to partition-relative index
+        int docId = array[i];
+        int bitIndex = isPartition ? (docId - minDocId) : docId;
+        bitSet.set(bitIndex);
       }
     }
     this.bitSet = bitSet;
     this.counter = counter;
     this.buffers = null;
     // Use partition-aware adder if filtering to a specific doc ID range
-    if (minDocId > 0 || maxDocId < maxDoc) {
-      this.adder = new PartitionAwareFixedBitSetAdder(bitSet, minDocId, maxDocId);
+    if (isPartition) {
+      this.adder = new PartitionAwareFixedBitSetAdder(bitSet, minDocId, maxDocId, minDocId);
     } else {
       this.adder = new FixedBitSetAdder(bitSet);
     }
@@ -468,7 +483,14 @@ public final class DocIdSetBuilder {
       if (bitSet != null) {
         assert counter >= 0;
         final long cost = Math.round(counter / numValuesPerDoc);
-        return new BitDocIdSet(bitSet, cost);
+
+        // For partition-relative bitsets, wrap with offset to return absolute doc IDs
+        boolean isPartition = (minDocId > 0 || maxDocId < maxDoc);
+        if (isPartition) {
+          return new OffsetBitDocIdSet(bitSet, cost, minDocId);
+        } else {
+          return new BitDocIdSet(bitSet, cost);
+        }
       } else {
         Buffer concatenated = concat(buffers);
         LSBRadixSorter sorter = new LSBRadixSorter();
@@ -487,6 +509,73 @@ public final class DocIdSetBuilder {
     } finally {
       this.buffers = null;
       this.bitSet = null;
+    }
+  }
+
+  /**
+   * Wrapper for partition-relative bitsets that offsets doc IDs back to absolute values when
+   * iterating.
+   */
+  private static class OffsetBitDocIdSet extends DocIdSet {
+    private final BitDocIdSet delegate;
+    private final int offset;
+
+    OffsetBitDocIdSet(FixedBitSet bitSet, long cost, int offset) {
+      this.delegate = new BitDocIdSet(bitSet, cost);
+      this.offset = offset;
+    }
+
+    @Override
+    public DocIdSetIterator iterator() {
+      DocIdSetIterator delegateIterator = delegate.iterator();
+      if (delegateIterator == null) {
+        return null;
+      }
+      return new OffsetDocIdSetIterator(delegateIterator, offset);
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return delegate.ramBytesUsed();
+    }
+  }
+
+  /**
+   * Iterator that adds an offset to all doc IDs from the underlying iterator, converting
+   * partition-relative indices back to absolute doc IDs.
+   */
+  private static class OffsetDocIdSetIterator extends DocIdSetIterator {
+    private final DocIdSetIterator delegate;
+    private final int offset;
+
+    OffsetDocIdSetIterator(DocIdSetIterator delegate, int offset) {
+      this.delegate = delegate;
+      this.offset = offset;
+    }
+
+    @Override
+    public int docID() {
+      int doc = delegate.docID();
+      return doc == NO_MORE_DOCS ? NO_MORE_DOCS : doc + offset;
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      int doc = delegate.nextDoc();
+      return doc == NO_MORE_DOCS ? NO_MORE_DOCS : doc + offset;
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      // Convert target from absolute to partition-relative, advance, then convert back
+      int relativeTarget = target - offset;
+      int doc = delegate.advance(Math.max(0, relativeTarget));
+      return doc == NO_MORE_DOCS ? NO_MORE_DOCS : doc + offset;
+    }
+
+    @Override
+    public long cost() {
+      return delegate.cost();
     }
   }
 

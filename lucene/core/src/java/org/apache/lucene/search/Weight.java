@@ -21,6 +21,7 @@ import java.util.Objects;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.IndexSearcher.LeafReaderContextPartition;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -166,10 +167,10 @@ public abstract class Weight implements SegmentCacheable {
    * @param partition the leaf reader context partition containing the context and doc ID range
    * @return a {@link ScorerSupplier} providing the scorer, or null if scorer is null
    * @throws IOException if an IOException occurs
-   * @see IndexSearcher.LeafReaderContextPartition
+   * @see LeafReaderContextPartition
    * @since 10.1
    */
-  public ScorerSupplier scorerSupplier(IndexSearcher.LeafReaderContextPartition partition)
+  public ScorerSupplier scorerSupplier(LeafReaderContextPartition partition)
       throws IOException {
     return scorerSupplier(partition.ctx);
   }
