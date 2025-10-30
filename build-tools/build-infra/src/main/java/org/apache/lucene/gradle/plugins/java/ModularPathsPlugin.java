@@ -24,13 +24,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
-import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
@@ -242,83 +242,11 @@ public class ModularPathsPlugin extends LuceneGradlePlugin {
       }
     }
 
-    //
-    // Configures a Test task associated with the provided source set to use module paths.
-    //
-    // There is no explicit connection between source sets and test tasks so there is no way (?)
-    // to do this automatically, convention-style.
-    //
-    // This closure can be used to configure a different task, with a different source set, should
-    // we
-    // have the need for it.
-    Action<Test> configureTestTaskForSourceSet =
-        task -> {
-          // Default: configure for SourceSet 'test'. You can call this for other pairs if needed.
-          SourceSet testSourceSet = sourceSets.getByName(SourceSet.TEST_SOURCE_SET_NAME);
-
-          File forkProperties = new File(task.getTemporaryDir(), "jvm-forking.properties");
-
-          ModularPathsExtension modularPaths =
-              ((ModularPathsExtension)
-                  testSourceSet.getExtensions().getByName(MODULAR_PATHS_EXTENSION_NAME));
-          task.dependsOn(modularPaths);
-
-          // Add modular dependencies (and transitives) to module path.
-          task.getJvmArgumentProviders().add(modularPaths.getRuntimeArguments());
-
-          // Modify default classpath for tests.
-          task.setClasspath(modularPaths.getTestRuntimeClasspath());
-
-          Property<String> debugInfo =
-              project
-                  .getObjects()
-                  .property(String.class)
-                  .convention(
-                      project.getProviders().provider(modularPaths::getRuntimePathDebugInfo));
-
-          task.doFirst(t -> t.getLogger().info(debugInfo.get()));
-
-          // Pass all the required properties for tests which fork the JVM. We don't use
-          // regular system properties here because this could affect task up-to-date checks.
-          task.getJvmArgumentProviders()
-              .add(() -> List.of("-Dtests.jvmForkArgsFile=" + forkProperties.getAbsolutePath()));
-
-          // Before execution: compute full JVM args to be used by forked processes
-          // and persist to file.
-          task.doFirst(
-              _ -> {
-                // Start with runtime module-path args
-                List<String> args = new ArrayList<>();
-                modularPaths.getRuntimeArguments().asArguments().forEach(args::add);
-
-                String cp = modularPaths.getRuntimeClasspath().getAsPath();
-                if (!cp.isBlank()) {
-                  args.add("-cp");
-                  args.add(cp);
-                }
-
-                // Sanity check: no newlines in individual args
-                for (String s : args) {
-                  if (s.contains("\n")) {
-                    throw new GradleException("LF in a forked jvm property?: " + s);
-                  }
-                }
-
-                try {
-                  Files.createDirectories(forkProperties.toPath().getParent());
-                  Files.writeString(forkProperties.toPath(), String.join("\n", args));
-                } catch (IOException e) {
-                  throw new GradleException(
-                      "Failed to write fork properties file: " + forkProperties, e);
-                }
-              });
-        };
-
     project
         .getTasks()
         .withType(Test.class)
         .matching(it -> it.getName().matches("test(_[0-9]+)?"))
-        .configureEach(configureTestTaskForSourceSet);
+        .configureEach(t -> configureTestTaskForSourceSet(t, sourceSets));
 
     // Configure module versions.
     project
@@ -342,5 +270,86 @@ public class ModularPathsPlugin extends LuceneGradlePlugin {
 
               task.getOptions().getJavaModuleVersion().set(projectVersion);
             });
+  }
+
+  /**
+   * Configures the {@link Test} task associated with the provided source set to use module paths.
+   *
+   * <p>There is no explicit connection between source sets and test tasks so there is no way (?) to
+   * do this automatically, convention-style.
+   *
+   * <p>This closure can be used to configure a different task, with a different source set, should
+   * we have the need for it.
+   */
+  private void configureTestTaskForSourceSet(Test task, SourceSetContainer sourceSets) {
+    var project = task.getProject();
+
+    // Default: configure for SourceSet 'test'. You can call this for other pairs if needed.
+    SourceSet testSourceSet = sourceSets.getByName(SourceSet.TEST_SOURCE_SET_NAME);
+
+    ModularPathsExtension modularPaths =
+        ((ModularPathsExtension)
+            testSourceSet.getExtensions().getByName(MODULAR_PATHS_EXTENSION_NAME));
+    task.dependsOn(modularPaths);
+
+    // Add modular dependencies (and transitives) to module path.
+    task.getJvmArgumentProviders().add(modularPaths.getRuntimeArguments());
+
+    // Modify default classpath for tests.
+    task.setClasspath(modularPaths.getTestRuntimeClasspath());
+
+    // Pass all the required properties for tests which fork the JVM. We don't use
+    // regular system properties here because this could affect task up-to-date checks.
+    File forkProperties = new File(task.getTemporaryDir(), "jvm-forking.properties");
+    task.getJvmArgumentProviders()
+        .add(() -> List.of("-Dtests.jvmForkArgsFile=" + forkProperties.getAbsolutePath()));
+
+    // Before execution: compute full JVM args list to be used by forked processes
+    // and persist to file.
+    ListProperty<String> jvmArgsProperty =
+        project
+            .getObjects()
+            .listProperty(String.class)
+            .value(
+                project
+                    .getProviders()
+                    .provider(
+                        () -> {
+                          List<String> args = new ArrayList<>();
+
+                          // Start with runtime module-path args
+                          modularPaths.getRuntimeArguments().asArguments().forEach(args::add);
+
+                          String cp = modularPaths.getRuntimeClasspath().getAsPath();
+                          if (!cp.isBlank()) {
+                            args.add("-cp");
+                            args.add(cp);
+                          }
+
+                          // Sanity check: no newlines in individual args
+                          for (String s : args) {
+                            if (s.contains("\n")) {
+                              throw new GradleException("LF in a forked jvm property?: " + s);
+                            }
+                          }
+
+                          return args;
+                        }));
+    task.doFirst(
+        _ -> {
+          try {
+            Files.createDirectories(forkProperties.toPath().getParent());
+            Files.writeString(forkProperties.toPath(), String.join("\n", jvmArgsProperty.get()));
+          } catch (IOException e) {
+            throw new GradleException("Failed to write fork properties file: " + forkProperties, e);
+          }
+        });
+
+    Property<String> debugInfo =
+        project
+            .getObjects()
+            .property(String.class)
+            .convention(project.getProviders().provider(modularPaths::getRuntimePathDebugInfo));
+    task.doFirst(t -> t.getLogger().info(debugInfo.get()));
   }
 }

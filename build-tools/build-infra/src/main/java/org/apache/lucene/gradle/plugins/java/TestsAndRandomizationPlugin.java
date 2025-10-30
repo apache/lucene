@@ -38,10 +38,12 @@ import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.Delete;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
+import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.testing.Test;
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat;
@@ -353,10 +355,11 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
     boolean incubatorJavaVersion =
         Set.of("21", "22", "23", "24", "25").contains(runtimeJava.getMajorVersion());
 
+    TaskContainer tasks = project.getTasks();
+
     // if the vector module is in incubator, pass lint flags to suppress excessive warnings.
     if (incubatorJavaVersion) {
-      project
-          .getTasks()
+      tasks
           .withType(JavaCompile.class)
           .configureEach(
               task -> {
@@ -364,13 +367,32 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
               });
     }
 
-    project
-        .getTasks()
+    var wipeOutputsTask =
+        tasks.register(
+            "cleanTestOutputs",
+            Delete.class,
+            t -> {
+              for (var testTask : tasks.withType(Test.class)) {
+                t.delete(
+                    testTask
+                        .getReports()
+                        .getJunitXml()
+                        .getOutputLocation()
+                        .dir("outputs")
+                        .get()
+                        .getAsFile());
+              }
+            });
+
+    tasks
         .withType(Test.class)
         .configureEach(
             task -> {
               // Running any test task should first display the root randomization seed.
               task.dependsOn(":showTestsSeed");
+
+              // Wipe any existing outputs before we run.
+              task.dependsOn(wipeOutputsTask);
 
               File testOutputsDir =
                   task.getReports()
@@ -514,12 +536,6 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
               task.setScanForTestClasses(false);
               task.include("**/Test*.class");
               task.exclude("**/*$*");
-
-              // Set up custom test output handler.
-              task.doFirst(
-                  _ -> {
-                    project.delete(testOutputsDir);
-                  });
 
               var spillDir = task.getTemporaryDir().toPath();
               var listener =
