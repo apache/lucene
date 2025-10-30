@@ -8,6 +8,7 @@ permissions: {}
 jobs:
   changelog-verifier-and-milestone-setter:
     name: Verify Change Log Entry and Set Milestone
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
     permissions:

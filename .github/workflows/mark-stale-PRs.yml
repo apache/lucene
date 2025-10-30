@@ -21,6 +21,8 @@ jobs:
       pull-requests: write # must comment/label PRs
       actions: write # must manipulate actions cache to split workload across multiple runs
 
+    timeout-minutes: 15
+
     steps:
       - name: Run stale PR action
         uses: actions/stale@5f858e3efba33a5ca4407a664cc011ad407f2008 # v10.1.0

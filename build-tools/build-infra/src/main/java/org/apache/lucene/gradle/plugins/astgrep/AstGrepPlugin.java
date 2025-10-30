@@ -70,9 +70,16 @@ public class AstGrepPlugin implements Plugin<Project> {
               }
 
               var args = new ArrayList<String>();
-              // fail on any rule match regardless of severity level
+              // fail on any rule match regardless of severity level. Scan hidden files/directories
+              // too.
               args.addAll(
-                  List.of("scan", "-c", "gradle/validation/ast-grep/sgconfig.yml", "--error"));
+                  List.of(
+                      "scan",
+                      "-c",
+                      "gradle/validation/ast-grep/sgconfig.yml",
+                      "--error",
+                      "--no-ignore",
+                      "hidden"));
               // use the github format when being run as a workflow
               if (System.getenv("CI") != null && System.getenv("GITHUB_WORKFLOW") != null) {
                 args.addAll(List.of("--format", "github"));
