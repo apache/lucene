@@ -58,7 +58,11 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 
-/** Copied from Lucene, replace with Lucene's implementation sometime after Lucene 10 */
+/**
+ * Writes quantized vector values and metadata to index segments in the format for Lucene 10.4.
+ *
+ * @lucene.experimental
+ */
 public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private static final long SHALLOW_RAM_BYTES_USED =
       shallowSizeOfInstance(Lucene104ScalarQuantizedVectorsWriter.class);
@@ -71,12 +75,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private final Lucene104ScalarQuantizedVectorScorer vectorsScorer;
   private boolean finished;
 
-  /**
-   * Sole constructor
-   *
-   * @param vectorsScorer the scorer to use for scoring vectors
-   */
-  protected Lucene104ScalarQuantizedVectorsWriter(
+  /** Sole constructor */
+  public Lucene104ScalarQuantizedVectorsWriter(
       SegmentWriteState state,
       ScalarEncoding encoding,
       FlatVectorsWriter rawVectorDelegate,
