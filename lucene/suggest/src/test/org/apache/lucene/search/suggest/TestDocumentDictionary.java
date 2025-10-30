@@ -249,7 +249,7 @@ public class TestDocumentDictionary extends LuceneTestCase {
     iwc.setMergePolicy(newLogMergePolicy());
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
     Map.Entry<List<String>, Map<String, Document>> res =
-        generateIndexDocuments(atLeast(1000), false);
+        generateIndexDocuments(atLeast(200), false);
     Map<String, Document> docs = res.getValue();
     List<String> invalidDocTerms = res.getKey();
     Random rand = random();

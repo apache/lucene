@@ -46,15 +46,13 @@ public class TestAssertions extends LuceneTestCase {
   public void testTokenStreams() {
     new TestTokenStream1();
     new TestTokenStream2();
-    try {
-      new TestTokenStream3();
-      if (assertsAreEnabled) {
-        fail("TestTokenStream3 should fail assertion");
-      }
-    } catch (
-        @SuppressWarnings("unused")
-        AssertionError e) {
-      // expected
+
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(
+          AssertionError.class,
+          () -> {
+            new TestTokenStream3();
+          });
     }
   }
 }

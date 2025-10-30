@@ -1,23 +1,23 @@
-# Run "gradlew writeLocks" and "gradlew updateLicenses" after modifying this file!
+# Run "gradlew writeLocks writeChecksums" after modifying this file!
 [versions]
 # expressions/ grammars
 antlr = "4.13.2"
 # test assertions
-assertj = "3.27.3"
+assertj = "3.27.6"
 # analysis/phonetic/ algorithms, gradle build checksums
-commons-codec = "1.18.0"
+commons-codec = "1.19.0"
 # benchmark/ bzip2 compression
-commons-compress = "1.27.1"
+commons-compress = "1.28.0"
 # See ecj-lint.gradle (used for more linting).
-ecj = "3.42.0"
+ecj = "I20250926-1800"
 # java linting
-errorprone = "2.38.0"
+errorprone = "2.42.0"
 # markdown documentation generation
 flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
-googleJavaFormat = "1.28.0"
+googleJavaFormat = "1.30.0"
 # gradle build support
-groovy = "4.0.27"
+groovy = "5.0.2"
 # test assertions
 hamcrest = "3.0"
 # analysis/icu/, gradle regeneration unicode support
@@ -27,7 +27,7 @@ javacc = "7.0.13"
 # analysis/ tokenizer grammars
 jflex = "1.9.1"
 # build infra only (diff of changes from google java format tasks)
-jgit = "7.3.0.202506031305-r"
+jgit = "7.4.0.202509020913-r"
 # benchmark-jmh/ microbenchmarks
 jmh = "1.37"
 # spatial-extras/ support
@@ -35,9 +35,9 @@ jts = "1.20.0"
 # unit tests
 junit = "4.13.2"
 # @keep Minimum gradle version to run the build
-minGradle = "8.14"
+minGradle = "9.1.0"
 # @keep This is the minimum required Java version.
-minJava = "24"
+minJava = "25"
 # analysis/morfologik polish support
 morfologik = "2.1.9"
 # analysis/morfologik ukrainian support
@@ -45,13 +45,11 @@ morfologik-ukrainian = "4.9.1"
 # benchmark/ html parsing
 nekohtml = "1.9.22"
 # analysis/opennlp/ support
-opennlp = "2.5.4"
+opennlp = "2.5.6.1"
 # distribution.tests/ process management
 procfork = "1.0.6"
 # unit tests
 randomizedtesting = "2.8.3"
-# license checks
-rat = "0.15"
 # spatial-extras/ support
 s2-geometry = "1.0.0"
 # spatial-extras/ support
@@ -59,7 +57,7 @@ spatial4j = "0.8"
 # benchmark/ XML parsing
 xerces = "2.12.2"
 # external datasets decompression
-zstd = "1.5.7-4"
+zstd = "1.5.7-6"
 
 [libraries]
 antlr-core = { module = "org.antlr:antlr4", version.ref = "antlr" }
@@ -92,21 +90,19 @@ nekohtml = { module = "net.sourceforge.nekohtml:nekohtml", version.ref = "nekoht
 opennlp-tools = { module = "org.apache.opennlp:opennlp-tools", version.ref = "opennlp" }
 procfork = { module = "com.carrotsearch:procfork", version.ref = "procfork" }
 randomizedtesting-runner = { module = "com.carrotsearch.randomizedtesting:randomizedtesting-runner", version.ref = "randomizedtesting" }
-rat = { module = "org.apache.rat:apache-rat", version.ref = "rat" }
 s2-geometry = { module = "io.sgr:s2-geometry-library-java", version.ref = "s2-geometry" }
 spatial4j = { module = "org.locationtech.spatial4j:spatial4j", version.ref = "spatial4j" }
 xerces = { module = "xerces:xercesImpl", version.ref = "xerces" }
 zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
 
 [plugins]
-benmanes-versions = "com.github.ben-manes.versions:0.52.0"
+benmanes-versions = "com.github.ben-manes.versions:0.53.0"
 carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.0"
 carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.1.0"
 errorprone = "net.ltgt.errorprone:4.3.0"
-forbiddenapis = "de.thetaphi.forbiddenapis:3.9"
+forbiddenapis = "de.thetaphi.forbiddenapis:3.10"
 jacocolog = "org.barfuin.gradle.jacocolog:3.1.0"
-owasp-dependencycheck = "org.owasp.dependencycheck:12.1.3"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
-spotless = "com.diffplug.spotless:7.1.0"
+spotless = "com.diffplug.spotless:8.0.0"
 undercouch-download = "de.undercouch.download:5.6.0"
-versionCatalogUpdate = "nl.littlerobots.version-catalog-update:1.0.0"
+versionCatalogUpdate = "nl.littlerobots.version-catalog-update:1.0.1"

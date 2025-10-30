@@ -29,16 +29,16 @@ echo -n "* The number of commits to any branch: "
 git log --all --pretty='format:%h,%as,%an,%s' --since="$SINCE" --before="$UNTIL" | wc -l
 
 echo -n "* The number of issues filed: "
-gh issue list --state all --search "created:$SINCE_TS..$UNTIL_TS" --repo $REPO --limit 1000 --json id | jq length
+gh issue list --state all --search "created:$SINCE_TS..$UNTIL_TS" --repo "$REPO" --limit 1000 --json id | jq length
 
 echo -n "* The number of closed issues out of those filed: "
-gh issue list --state all --search "created:$SINCE_TS..$UNTIL_TS is:closed" --repo $REPO --limit 1000 --json id | jq length
+gh issue list --state all --search "created:$SINCE_TS..$UNTIL_TS is:closed" --repo "$REPO" --limit 1000 --json id | jq length
 
 echo -n "* The number of pull requests: "
-gh pr list --state all --search "created:$SINCE_TS..$UNTIL_TS" --repo $REPO --limit 1000 --json id | jq length
+gh pr list --state all --search "created:$SINCE_TS..$UNTIL_TS" --repo "$REPO" --limit 1000 --json id | jq length
 
 echo -n "* The number of closed pull requests out of those filed: "
-gh pr list --state all --search "created:$SINCE_TS..$UNTIL_TS is:closed" --repo $REPO --limit 1000 --json id | jq length
+gh pr list --state all --search "created:$SINCE_TS..$UNTIL_TS is:closed" --repo "$REPO" --limit 1000 --json id | jq length
 
 echo
 echo "## Top contributors in the given time period (all commits, any branch)"
@@ -55,7 +55,7 @@ echo '```'
 echo
 echo "## All pull requests:"
 echo '```'
-gh pr list --state all --search "created:$SINCE_TS..$UNTIL_TS" --repo $REPO --limit 1000 \
+gh pr list --state all --search "created:$SINCE_TS..$UNTIL_TS" --repo "$REPO" --limit 1000 \
   --json number,author,title,createdAt,state \
   --template '{{range .}}{{tablerow (printf "#%v" .number ) .state .title .author.name (timeago .createdAt)}}{{end}}'
 echo '```'
@@ -63,7 +63,7 @@ echo '```'
 echo
 echo "## All issues:"
 echo '```'
-gh issue list --state all --search "created:$SINCE_TS..$UNTIL_TS" --repo $REPO --limit 1000 \
+gh issue list --state all --search "created:$SINCE_TS..$UNTIL_TS" --repo "$REPO" --limit 1000 \
   --json number,author,title,createdAt,state \
   --template '{{range .}}{{tablerow (printf "#%v" .number ) .state .title .author.name (timeago .createdAt)}}{{end}}'
 echo '```'

@@ -109,3 +109,6 @@ Wolfgang Hoschek
 Yonik Seeley
 Zach Chen
 Chao Zhang
+Simon Cooper
+Samuel.G
+panguixin

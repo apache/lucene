@@ -20,7 +20,7 @@ Checksum validation errors
 --------------------------
 
 LUCENE-9868 introduced a system of storing (and validating) checksums of
-generated files so that they are not accidentally modified. This checkums
+generated files so that they are not accidentally modified. This checksums
 system will fail the build with a message similar to this one:
 
 Execution failed for task ':lucene:core:generateStandardTokenizerChecksumCheck'.
@@ -69,24 +69,22 @@ gradlew -p lucene/analysis/common regenerate
 If you're interested in what specific generation tasks are available, see
 the task list for the generation group:
 
-gradlew tasks --group generation
+gradlew tasks --group regeneration
 
 or limit the output to a particular module:
 
-gradlew -p lucene/analysis/common tasks --group generation
+gradlew -p lucene/analysis/common tasks --group regeneration
 
 which displays (at the moment of writing):
 
-generateClassicTokenizer - Regenerate ClassicTokenizerImpl.java (if sources changed)
-generateHTMLStripCharFilter - Regenerate HTMLStripCharFilter.java (if sources changed)
-generateTlds - Regenerate top-level domain jflex macros and tests (if sources changed)
-generateUAX29URLEmailTokenizer - Regenerate UAX29URLEmailTokenizerImpl.java (if sources changed)
-generateWikipediaTokenizer - Regenerate WikipediaTokenizerImpl.java (if sources changed)
 regenerate - Rerun any code or static data generation tasks.
-snowball - Regenerates snowball stemmers.
-
-You may wonder why none of these tasks actually exist in gradle source files (identically
-named tasks with a suffix "Internal" exist).
+regenerateClassicTokenizer - Regenerate ClassicTokenizerImpl.java
+regenerateHTMLCharacterEntities - Regenerate HTMLCharacterEntities.jflex
+regenerateHTMLStripCharFilter - Regenerate HTMLStripCharFilter.java
+regenerateTlds - Regenerate top-level domain jflex macros and tests
+regenerateUAX29URLEmailTokenizer - Regenerate UAX29URLEmailTokenizerImpl.java
+regenerateUnicodeProps - Regenerate UnicodeProps.java using ICU
+regenerateWikipediaTokenizer - Regenerate WikipediaTokenizerImpl.java
 
 
 Resource checksums, incremental generation and advanced topics
@@ -102,12 +100,12 @@ plain console, for example:
 gradlew -p lucene/analysis/common regenerate --console=plain
 
 ...
-> Task :lucene:analysis:common:generateUnicodeProps
-Checksums consistent with sources, skipping task: :lucene:analysis:common:generateUnicodePropsInternal
+> Task :lucene:analysis:common:regenerateUnicodeProps SKIPPED
+> Task :lucene:analysis:common:regenerateUAX29URLEmailTokenizer SKIPPED
 ...
 
-This shouldn't worry you at all - the internal tasks are skipped by wrappers
-if the inputs and outputs of the internal task have not changed. If they have changed,
+This shouldn't worry you at all - the internal tasks are skipped because
+the inputs and outputs of these task have not changed. If they have changed,
 the task is re-run and followed up by other tasks, such as code-formatting (tidy).
 
 Of course, sometimes you may want to *force* the regeneration task to run, even if the
@@ -130,23 +128,13 @@ gradlew -p lucene/analysis/common regenerate --rerun-tasks
 
 Scoping the call to a particular task will also work:
 
-gradlew -p lucene/analysis/common generateUnicodeProps --rerun-tasks
-
-You *should not* call the underlying generation task directly; this is possible
-but discouraged:
-
-gradlew -p lucene/analysis/common generateUnicodePropsInternal --rerun-tasks
-
-The reason is that some of these generation tasks require follow-up (for example
-source code tidying) and, more importantly, the checksums for these
-regenerated resources won't be saved (so the next time you run 'check' it'll fail
-with checksum mismatches).
+gradlew -p lucene/analysis/common regenerateUnicodeProps --rerun-tasks
 
 Finally, if you do feel like force-regenerating everything, remember to exclude this
 monster...
 
-gradlew regenerate -x generateUAX29URLEmailTokenizerInternal --rerun-tasks
+gradlew regenerate -x regenerateUAX29URLEmailTokenizer --rerun-tasks
 
 and on Windows, exclude snowball regeneration (requires bash):
 
-gradlew regenerate -x generateUAX29URLEmailTokenizerInternal -x snowball --rerun-tasks
+gradlew regenerate -x regenerateUAX29URLEmailTokenizer -x snowball --rerun-tasks

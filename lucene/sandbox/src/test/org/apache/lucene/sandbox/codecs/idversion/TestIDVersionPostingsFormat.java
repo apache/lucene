@@ -207,7 +207,7 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
     RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc, false);
     // IndexWriter w = new IndexWriter(dir, iwc);
     int numDocs = atLeast(1000);
-    Map<String, Long> idValues = new HashMap<String, Long>();
+    Map<String, Long> idValues = new HashMap<>();
     int docUpto = 0;
     if (VERBOSE) {
       System.out.println("TEST: numDocs=" + numDocs);
@@ -424,9 +424,7 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
       w.commit();
       w.forceMerge(1);
       fail("didn't hit exception");
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalArgumentException iae) {
+    } catch (IllegalArgumentException _) {
       // expected: SMS will hit this
     } catch (IOException | IllegalStateException exc) {
       // expected
@@ -678,6 +676,8 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
 
   // Simulates optimistic concurrency in a distributed indexing app and confirms the latest version
   // always wins:
+  // TODO: incredibly slow (maybe from the sleeping?)
+  @Nightly
   @SuppressForbidden(reason = "Thread sleep")
   public void testGlobalVersions() throws Exception {
     Directory dir = newDirectory();
@@ -690,7 +690,7 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
     if (VERBOSE) {
       System.out.println("TEST: " + numIDs + " ids");
     }
-    Set<String> idsSeen = new HashSet<String>();
+    Set<String> idsSeen = new HashSet<>();
     while (idsSeen.size() < numIDs) {
       idsSeen.add(idsSource.next());
     }
@@ -708,7 +708,7 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
     final Long missingValue = -1L;
 
     final LiveFieldValues<IndexSearcher, Long> versionValues =
-        new LiveFieldValues<IndexSearcher, Long>(mgr, missingValue) {
+        new LiveFieldValues<>(mgr, missingValue) {
           @Override
           protected Long lookupFromSearcher(IndexSearcher s, String id) {
             // TODO: would be cleaner if we could do our PerThreadLookup here instead of "up above":

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
@@ -28,6 +30,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.IntStream;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntField;
@@ -465,7 +468,14 @@ abstract class BaseVectorSimilarityQueryTestCase<
     Query filter = IntField.newSetQuery(idField, getFiltered(numFiltered));
 
     try (Directory indexStore = getIndexStore(vectors);
-        IndexWriter w = new IndexWriter(indexStore, newIndexWriterConfig())) {
+        IndexWriter w =
+            new IndexWriter(
+                indexStore,
+                newIndexWriterConfig()
+                    .setCodec(
+                        TestUtil.alwaysKnnVectorsFormat(
+                            new Lucene99HnswVectorsFormat(
+                                DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, 0))))) {
       // Force merge because smaller segments have few filtered docs and often fall back to exact
       // search, making this test flaky
       w.forceMerge(1);
@@ -581,7 +591,14 @@ abstract class BaseVectorSimilarityQueryTestCase<
   @SafeVarargs
   final Directory getIndexStore(V... vectors) throws IOException {
     Directory dir = newDirectory();
-    try (RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
+    try (RandomIndexWriter writer =
+        new RandomIndexWriter(
+            random(),
+            dir,
+            newIndexWriterConfig()
+                .setCodec(
+                    TestUtil.alwaysKnnVectorsFormat(
+                        new Lucene99HnswVectorsFormat(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, 0))))) {
       for (int i = 0; i < vectors.length; ++i) {
         Document doc = new Document();
         doc.add(getVectorField(vectorField, vectors[i], function));

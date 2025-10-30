@@ -97,9 +97,7 @@ public class WindowsFS extends HandleTrackingFS {
   private Object getKeyOrNull(Path path) {
     try {
       return getKey(path);
-    } catch (
-        @SuppressWarnings("unused")
-        Exception ignore) {
+    } catch (Exception _) {
       // we don't care if the file doesn't exist
     }
     return null;

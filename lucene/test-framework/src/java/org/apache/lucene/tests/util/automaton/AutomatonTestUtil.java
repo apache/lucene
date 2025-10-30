@@ -61,9 +61,7 @@ public class AutomatonTestUtil extends Assert {
       try {
         new RegExp(regexp, RegExp.NONE);
         return regexp;
-      } catch (
-          @SuppressWarnings("unused")
-          Exception e) {
+      } catch (Exception _) {
       }
     }
   }
@@ -269,9 +267,7 @@ public class AutomatonTestUtil extends Assert {
           a1 = Operations.complement(a1, DEFAULT_MAX_DETERMINIZED_STATES);
         }
         return a1;
-      } catch (
-          @SuppressWarnings("unused")
-          TooComplexToDeterminizeException tctde) {
+      } catch (TooComplexToDeterminizeException _) {
         // This can (rarely) happen if the random regexp is too hard; just try again...
       }
     }
@@ -384,7 +380,7 @@ public class AutomatonTestUtil extends Assert {
 
   /** Simple, original brics implementation of Brzozowski minimize() */
   public static Automaton minimizeSimple(Automaton a) {
-    Set<Integer> initialSet = new HashSet<Integer>();
+    Set<Integer> initialSet = new HashSet<>();
     a = determinizeSimple(reverseOriginal(a, initialSet), initialSet);
     initialSet.clear();
     a = determinizeSimple(reverseOriginal(a, initialSet), initialSet);
@@ -491,7 +487,7 @@ public class AutomatonTestUtil extends Assert {
    */
   public static Set<IntsRef> getFiniteStringsRecursive(Automaton a, int limit) {
     HashSet<IntsRef> strings = new HashSet<>();
-    if (!getFiniteStrings(a, 0, new HashSet<Integer>(), strings, new IntsRefBuilder(), limit)) {
+    if (!getFiniteStrings(a, 0, new HashSet<>(), strings, new IntsRefBuilder(), limit)) {
       return strings;
     }
     return strings;

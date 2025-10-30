@@ -27,12 +27,13 @@ import java.util.stream.IntStream;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.codecs.Impact;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.ImpactsSource;
@@ -742,6 +743,20 @@ public class TestPhraseQuery extends LuceneTestCase {
         });
   }
 
+  public void testPhraseQueryMaxTerms() throws Exception {
+    PhraseQuery.Builder builder = new PhraseQuery.Builder();
+    int termThreshold = 5;
+    builder.setMaxTerms(termThreshold);
+    for (int i = 0; i < termThreshold; i++) {
+      builder.add(new Term("field", "one" + i), i);
+    }
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          builder.add(new Term("field", "three"), termThreshold);
+        });
+  }
+
   private static final String[] DOCS =
       new String[] {
         "a b c d e f g h",
@@ -914,8 +929,16 @@ public class TestPhraseQuery extends LuceneTestCase {
     assertEquals(impacts.length, actual.numLevels());
     for (int i = 0; i < impacts.length; ++i) {
       assertEquals(docIdUpTo[i], actual.getDocIdUpTo(i));
-      assertEquals(Arrays.asList(impacts[i]), actual.getImpacts(i));
+      assertEquals(Arrays.asList(impacts[i]), copyOf(actual.getImpacts(i)));
     }
+  }
+
+  private static List<Impact> copyOf(FreqAndNormBuffer buffer) {
+    List<Impact> copy = new ArrayList<>();
+    for (int i = 0; i < buffer.size; ++i) {
+      copy.add(new Impact(buffer.freqs[i], buffer.norms[i]));
+    }
+    return copy;
   }
 
   private static class DummyImpactsEnum extends ImpactsEnum {
@@ -953,8 +976,10 @@ public class TestPhraseQuery extends LuceneTestCase {
         }
 
         @Override
-        public List<Impact> getImpacts(int level) {
-          return Arrays.asList(impacts[level]);
+        public FreqAndNormBuffer getImpacts(int level) {
+          FreqAndNormBuffer buffer = new FreqAndNormBuffer();
+          Arrays.stream(impacts[level]).forEach(impact -> buffer.add(impact.freq, impact.norm));
+          return buffer;
         }
       };
     }

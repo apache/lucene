@@ -16,11 +16,11 @@
  */
 package org.apache.lucene.store;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBytesOfLength;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomLongBetween;
 
-import com.carrotsearch.randomizedtesting.RandomizedTest;
-import com.carrotsearch.randomizedtesting.Xoroshiro128PlusRandom;
 import com.carrotsearch.randomizedtesting.annotations.Timeout;
 import java.io.EOFException;
 import java.io.IOException;
@@ -32,7 +32,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOConsumer;
 import org.junit.Test;
 
-public final class TestByteBuffersDataInput extends RandomizedTest {
+public final class TestByteBuffersDataInput extends LuceneTestCase {
   @Test
   public void testSanity() throws IOException {
     ByteBuffersDataOutput out = new ByteBuffersDataOutput();
@@ -69,10 +69,9 @@ public final class TestByteBuffersDataInput extends RandomizedTest {
   public void testRandomReads() throws Exception {
     ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
 
-    long seed = randomLong();
     int max = LuceneTestCase.TEST_NIGHTLY ? 1_000_000 : 100_000;
     List<IOConsumer<DataInput>> reply =
-        TestByteBuffersDataOutput.addRandomData(dst, new Xoroshiro128PlusRandom(seed), max);
+        TestByteBuffersDataOutput.addRandomData(dst, nonAssertingRandom(random()), max);
 
     ByteBuffersDataInput src = dst.toDataInput();
     for (IOConsumer<DataInput> c : reply) {
@@ -94,10 +93,9 @@ public final class TestByteBuffersDataInput extends RandomizedTest {
       byte[] prefix = new byte[randomIntBetween(0, 1024 * 8)];
       dst.writeBytes(prefix);
 
-      long seed = randomLong();
-      int max = 10_000;
+      int max = atLeast(5000);
       List<IOConsumer<DataInput>> reply =
-          TestByteBuffersDataOutput.addRandomData(dst, new Xoroshiro128PlusRandom(seed), max);
+          TestByteBuffersDataOutput.addRandomData(dst, nonAssertingRandom(random()), max);
 
       byte[] suffix = new byte[randomIntBetween(0, 1024 * 8)];
       dst.writeBytes(suffix);
@@ -150,10 +148,9 @@ public final class TestByteBuffersDataInput extends RandomizedTest {
         dst.writeBytes(prefix);
       }
 
-      long seed = randomLong();
       int max = 1000;
       List<IOConsumer<DataInput>> reply =
-          TestByteBuffersDataOutput.addRandomData(dst, new Xoroshiro128PlusRandom(seed), max);
+          TestByteBuffersDataOutput.addRandomData(dst, random(), max);
 
       ByteBuffersDataInput in = dst.toDataInput().slice(prefix.length, dst.size() - prefix.length);
 

@@ -56,8 +56,11 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     this.scorables =
         Arrays.stream(this.scorers).map(ScorerUtil::likelyTermScorer).toArray(Scorable[]::new);
     this.iterators =
-        Arrays.stream(this.scorers).map(Scorer::iterator).toArray(DocIdSetIterator[]::new);
-    lead = ScorerUtil.likelyImpactsEnum(iterators[0]);
+        Arrays.stream(this.scorers)
+            .map(Scorer::iterator)
+            .map(ScorerUtil::likelyImpactsEnum)
+            .toArray(DocIdSetIterator[]::new);
+    lead = iterators[0];
     this.sumOfOtherClauses = new double[this.scorers.length];
     Arrays.fill(sumOfOtherClauses, Double.POSITIVE_INFINITY);
     this.maxDoc = maxDoc;
@@ -84,7 +87,10 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
     collector.setScorer(scorable);
 
-    int windowMin = scoreDocFirstUntilDynamicPruning(collector, acceptDocs, min, max);
+    int windowMin = Math.max(lead.docID(), min);
+    if (scorable.minCompetitiveScore == 0) {
+      windowMin = scoreDocFirstUntilDynamicPruning(collector, acceptDocs, min, max);
+    }
 
     while (windowMin < max) {
       // Use impacts of the least costly scorer to compute windows

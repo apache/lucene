@@ -25,6 +25,7 @@ import java.util.stream.Stream;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
@@ -47,6 +48,14 @@ public abstract class KnnVectorsReader implements Closeable {
    * @lucene.internal
    */
   public abstract void checkIntegrity() throws IOException;
+
+  /**
+   * If this reader wraps another for {@code field}, return the underlying reader, else return
+   * {@code this}
+   */
+  public KnnVectorsReader unwrapReaderForField(String field) {
+    return this;
+  }
 
   /**
    * Returns the {@link FloatVectorValues} for the given {@code field}. The behavior is undefined if
@@ -88,7 +97,8 @@ public abstract class KnnVectorsReader implements Closeable {
    *     if they are all allowed to match.
    */
   public abstract void search(
-      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException;
+      String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException;
 
   /**
    * Return the k nearest neighbor documents as determined by comparison of their vector values for
@@ -116,7 +126,8 @@ public abstract class KnnVectorsReader implements Closeable {
    *     if they are all allowed to match.
    */
   public abstract void search(
-      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException;
+      String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException;
 
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread
@@ -124,7 +135,7 @@ public abstract class KnnVectorsReader implements Closeable {
    *
    * <p>The default implementation returns {@code this}
    */
-  public KnnVectorsReader getMergeInstance() {
+  public KnnVectorsReader getMergeInstance() throws IOException {
     return this;
   }
 

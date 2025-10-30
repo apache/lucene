@@ -21,7 +21,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.TreeSet;
-import org.apache.lucene.index.Impact;
 
 /** This class accumulates the (freq, norm) pairs that may produce competitive scores. */
 public final class CompetitiveImpactAccumulator {

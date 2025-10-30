@@ -26,3 +26,4 @@ org.apache.lucene.backward_codecs.lucene99.Lucene99Codec
 org.apache.lucene.backward_codecs.lucene912.Lucene912Codec
 org.apache.lucene.backward_codecs.lucene100.Lucene100Codec
 org.apache.lucene.backward_codecs.lucene101.Lucene101Codec
+org.apache.lucene.backward_codecs.lucene103.Lucene103Codec

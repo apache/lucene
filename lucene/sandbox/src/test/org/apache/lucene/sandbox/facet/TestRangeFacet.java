@@ -897,7 +897,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
 
-    int numDocs = atLeast(1000);
+    int numDocs = atLeast(500);
     if (VERBOSE) {
       System.out.println("TEST: numDocs=" + numDocs);
     }
@@ -926,12 +926,12 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     IndexSearcher s = newSearcher(r, false);
     FacetsConfig config = new FacetsConfig();
 
-    int numIters = atLeast(10);
+    int numIters = atLeast(3);
     for (int iter = 0; iter < numIters; iter++) {
       if (VERBOSE) {
         System.out.println("TEST: iter=" + iter);
       }
-      int numRange = TestUtil.nextInt(random(), 1, 100);
+      int numRange = TestUtil.nextInt(random(), 1, 50);
       LongRange[] ranges = new LongRange[numRange];
       int[] expectedCounts = new int[numRange];
       long minAcceptedValue = Long.MAX_VALUE;

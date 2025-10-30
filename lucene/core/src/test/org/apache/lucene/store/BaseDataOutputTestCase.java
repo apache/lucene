@@ -38,8 +38,8 @@ public abstract class BaseDataOutputTestCase<T extends DataOutput> extends Lucen
   protected abstract byte[] toBytes(T instance);
 
   @FunctionalInterface
-  private interface ThrowingBiFunction<T, U, R> {
-    R apply(T t, U u) throws Exception;
+  private interface IOBiFunction<T, U, R> {
+    R apply(T t, U u) throws IOException;
   }
 
   @Test
@@ -58,6 +58,7 @@ public abstract class BaseDataOutputTestCase<T extends DataOutput> extends Lucen
   protected static List<IOConsumer<DataInput>> addRandomData(
       DataOutput dst, Random rnd, int maxAddCalls) throws IOException {
     try {
+      rnd = LuceneTestCase.nonAssertingRandom(rnd);
       List<IOConsumer<DataInput>> reply = new ArrayList<>();
       for (int i = 0; i < maxAddCalls; i++) {
         reply.add(RandomPicks.randomFrom(rnd, GENERATORS).apply(dst, rnd));
@@ -68,8 +69,7 @@ public abstract class BaseDataOutputTestCase<T extends DataOutput> extends Lucen
     }
   }
 
-  private static final List<ThrowingBiFunction<DataOutput, Random, IOConsumer<DataInput>>>
-      GENERATORS;
+  private static final List<IOBiFunction<DataOutput, Random, IOConsumer<DataInput>>> GENERATORS;
 
   static {
     GENERATORS = new ArrayList<>();

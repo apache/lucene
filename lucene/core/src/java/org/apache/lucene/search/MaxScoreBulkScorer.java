@@ -147,8 +147,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
       LeafCollector collector, Bits acceptDocs, int max, DisiWrapper filter) throws IOException {
     if (filter != null) {
       scoreInnerWindowWithFilter(collector, acceptDocs, max, filter);
-    } else if (allScorers.length - firstRequiredScorer >= 2) {
-      scoreInnerWindowAsConjunction(collector, acceptDocs, max);
     } else {
       DisiWrapper top = essentialQueue.top();
       DisiWrapper top2 = essentialQueue.top2();
@@ -173,7 +171,8 @@ final class MaxScoreBulkScorer extends BulkScorer {
     DisiWrapper top = essentialQueue.top();
     assert top.doc < max;
     while (top.doc < filter.doc) {
-      top.doc = top.approximation.advance(filter.doc);
+      // Must use the iterator as `top` might be a two-phase iterator
+      top.doc = top.iterator.advance(filter.doc);
       top = essentialQueue.updateTop();
     }
 
@@ -236,42 +235,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
     top.doc = top.iterator.docID();
     essentialQueue.updateTop();
-  }
-
-  private void scoreInnerWindowAsConjunction(LeafCollector collector, Bits acceptDocs, int max)
-      throws IOException {
-    assert firstEssentialScorer == allScorers.length - 1;
-    assert firstRequiredScorer <= allScorers.length - 2;
-    DisiWrapper lead1 = allScorers[allScorers.length - 1];
-    assert essentialQueue.size() == 1;
-    assert lead1 == essentialQueue.top();
-
-    for (lead1.scorer.nextDocsAndScores(max, acceptDocs, docAndScoreBuffer);
-        docAndScoreBuffer.size > 0;
-        lead1.scorer.nextDocsAndScores(max, acceptDocs, docAndScoreBuffer)) {
-
-      docAndScoreAccBuffer.copyFrom(docAndScoreBuffer);
-
-      for (int i = allScorers.length - 2; i >= firstRequiredScorer; --i) {
-
-        if (scorable.minCompetitiveScore > 0) {
-          ScorerUtil.filterCompetitiveHits(
-              docAndScoreAccBuffer,
-              maxScoreSums[i],
-              scorable.minCompetitiveScore,
-              allScorers.length);
-        }
-
-        DisiWrapper scorer = allScorers[i];
-        ScorerUtil.applyRequiredClause(docAndScoreAccBuffer, scorer.iterator, scorer.scorable);
-      }
-
-      scoreNonEssentialClauses(collector, docAndScoreAccBuffer, firstRequiredScorer);
-    }
-
-    for (int i = allScorers.length - 1; i >= firstRequiredScorer; --i) {
-      allScorers[i].doc = allScorers[i].iterator.docID();
-    }
   }
 
   private void scoreInnerWindowMultipleEssentialClauses(
@@ -375,9 +338,15 @@ final class MaxScoreBulkScorer extends BulkScorer {
       DisiWrapper scorer = allScorers[i];
       assert scorable.minCompetitiveScore > 0
           : "All clauses are essential if minCompetitiveScore is equal to zero";
+
       ScorerUtil.filterCompetitiveHits(
           buffer, maxScoreSums[i], scorable.minCompetitiveScore, allScorers.length);
-      ScorerUtil.applyOptionalClause(buffer, scorer.iterator, scorer.scorable);
+
+      if (i >= firstRequiredScorer) {
+        ScorerUtil.applyRequiredClause(buffer, scorer.iterator, scorer.scorable);
+      } else {
+        ScorerUtil.applyOptionalClause(buffer, scorer.iterator, scorer.scorable);
+      }
       scorer.doc = scorer.iterator.docID();
     }
 

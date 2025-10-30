@@ -28,8 +28,11 @@ public class TestNeighborArray extends LuceneTestCase {
     neighbors.addInOrder(0, 1);
     neighbors.addInOrder(1, 0.8f);
 
-    AssertionError ex = expectThrows(AssertionError.class, () -> neighbors.addInOrder(2, 0.9f));
-    assert ex.getMessage().startsWith("Nodes are added in the incorrect order!") : ex.getMessage();
+    if (TEST_ASSERTS_ENABLED) {
+      AssertionError ex = expectThrows(AssertionError.class, () -> neighbors.addInOrder(2, 0.9f));
+      assert ex.getMessage().startsWith("Nodes are added in the incorrect order!")
+          : ex.getMessage();
+    }
 
     neighbors.insertSorted(3, 0.9f);
     assertScoresEqual(new float[] {1, 0.9f, 0.8f}, neighbors);
@@ -77,8 +80,11 @@ public class TestNeighborArray extends LuceneTestCase {
     neighbors.addInOrder(0, 0.1f);
     neighbors.addInOrder(1, 0.3f);
 
-    AssertionError ex = expectThrows(AssertionError.class, () -> neighbors.addInOrder(2, 0.15f));
-    assert ex.getMessage().startsWith("Nodes are added in the incorrect order!") : ex.getMessage();
+    if (TEST_ASSERTS_ENABLED) {
+      AssertionError ex = expectThrows(AssertionError.class, () -> neighbors.addInOrder(2, 0.15f));
+      assert ex.getMessage().startsWith("Nodes are added in the incorrect order!")
+          : ex.getMessage();
+    }
 
     neighbors.insertSorted(3, 0.3f);
     assertScoresEqual(new float[] {0.1f, 0.3f, 0.3f}, neighbors);
@@ -125,7 +131,9 @@ public class TestNeighborArray extends LuceneTestCase {
     NeighborArray neighbors = new NeighborArray(10, false);
     neighbors.addOutOfOrder(1, 2);
     // we disallow calling addInOrder after addOutOfOrder even if they're actual in order
-    expectThrows(AssertionError.class, () -> neighbors.addInOrder(1, 2));
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(AssertionError.class, () -> neighbors.addInOrder(1, 2));
+    }
     neighbors.addOutOfOrder(2, 3);
     neighbors.addOutOfOrder(5, 6);
     neighbors.addOutOfOrder(3, 4);
@@ -155,7 +163,9 @@ public class TestNeighborArray extends LuceneTestCase {
     NeighborArray neighbors = new NeighborArray(10, true);
     neighbors.addOutOfOrder(1, 7);
     // we disallow calling addInOrder after addOutOfOrder even if they're actual in order
-    expectThrows(AssertionError.class, () -> neighbors.addInOrder(1, 2));
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(AssertionError.class, () -> neighbors.addInOrder(1, 2));
+    }
     neighbors.addOutOfOrder(2, 6);
     neighbors.addOutOfOrder(5, 3);
     neighbors.addOutOfOrder(3, 5);
@@ -184,7 +194,9 @@ public class TestNeighborArray extends LuceneTestCase {
   public void testAddwithScoringFunction() throws IOException {
     NeighborArray neighbors = new NeighborArray(10, true);
     neighbors.addOutOfOrder(1, Float.NaN);
-    expectThrows(AssertionError.class, () -> neighbors.addInOrder(1, 2));
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(AssertionError.class, () -> neighbors.addInOrder(1, 2));
+    }
     neighbors.addOutOfOrder(2, Float.NaN);
     neighbors.addOutOfOrder(5, Float.NaN);
     neighbors.addOutOfOrder(3, Float.NaN);
@@ -200,7 +212,9 @@ public class TestNeighborArray extends LuceneTestCase {
   public void testAddwithScoringFunctionLargeOrd() throws IOException {
     NeighborArray neighbors = new NeighborArray(10, true);
     neighbors.addOutOfOrder(11, Float.NaN);
-    expectThrows(AssertionError.class, () -> neighbors.addInOrder(1, 2));
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(AssertionError.class, () -> neighbors.addInOrder(1, 2));
+    }
     neighbors.addOutOfOrder(12, Float.NaN);
     neighbors.addOutOfOrder(15, Float.NaN);
     neighbors.addOutOfOrder(13, Float.NaN);
@@ -264,7 +278,9 @@ public class TestNeighborArray extends LuceneTestCase {
     neighbors.addOutOfOrder(1, 0.8f);
 
     // Try to add third node in order - should fail because we used addOutOfOrder
-    expectThrows(AssertionError.class, () -> neighbors.addInOrder(2, 0.6f));
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(AssertionError.class, () -> neighbors.addInOrder(2, 0.6f));
+    }
 
     // Add third node out of order
     neighbors.addOutOfOrder(2, 0.6f);
