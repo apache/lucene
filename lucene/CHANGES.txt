@@ -7,7 +7,8 @@ http://s.apache.org/luceneversions
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#15380: Fix potential EOF introduced by optimized filter iterations in MaxScoreBulkScorer. The
+  approximation and the match verification could get out of sync, resulting in an EOFException. (Ben Trent)
 
 ======================= Lucene 10.3.1 =======================
 

@@ -34,6 +34,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.RandomApproximationQuery;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -518,11 +519,13 @@ public class TestBooleanRewrites extends LuceneTestCase {
   }
 
   private Query randomWrapper(Random random, Query query) {
-    switch (random.nextInt(2)) {
+    switch (random.nextInt(3)) {
       case 0:
         return new BoostQuery(query, TestUtil.nextInt(random, 0, 4));
       case 1:
         return new ConstantScoreQuery(query);
+      case 2:
+        return new RandomApproximationQuery(query, random);
       default:
         throw new AssertionError();
     }
