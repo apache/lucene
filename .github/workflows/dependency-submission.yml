@@ -15,6 +15,7 @@ jobs:
   dependency-submission:
     name: Submit gradle dependencies
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write # see action's documentation
     steps:

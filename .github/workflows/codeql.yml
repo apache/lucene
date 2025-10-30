@@ -18,6 +18,7 @@ jobs:
     name: Analyze (${{ matrix.language }})
     # Consider using larger runners or machines with greater resources for possible analysis time improvements.
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     permissions:
       security-events: write # integrate with Github Advanced Security
 
