@@ -1,3 +1,3 @@
-Highlighter: avoid merging zero-score fragments 
-MaxScoreBulkScorer: clamp candidate advancement to leaf bounds when filtered disjunctions are used 
+Highlighter: avoid merging zero-score fragments
+MaxScoreBulkScorer: clamp candidate advancement to leaf bounds when filtered disjunctions are used
 Add regression tests and CHANGES entries
