@@ -35,6 +35,7 @@ import io.github.jbellis.jvector.vector.VectorizationProvider;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
 import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
@@ -84,6 +85,8 @@ import org.apache.lucene.util.RamUsageEstimator;
  * with {@link GraphNodeIdToDocMap#update(Sorter.DocMap)} during flushes.
  */
 public class JVectorWriter extends KnnVectorsWriter {
+  private static final VectorTypeSupport VECTOR_TYPE_SUPPORT =
+      VectorizationProvider.getInstance().getVectorTypeSupport();
   private static final long SHALLOW_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(JVectorWriter.class);
 
@@ -328,17 +331,16 @@ public class JVectorWriter extends KnnVectorsWriter {
       if (graph.size() == 0) {
         CodecUtil.writeFooter(indexOutput);
         return new VectorIndexFieldMetadata(
-          fieldInfo.number,
-          fieldInfo.getVectorEncoding(),
-          fieldInfo.getVectorSimilarityFunction(),
-          randomAccessVectorValues.dimension(),
-          0,
-          0,
-          0,
-          0,
-          degreeOverflow,
-          graphNodeIdToDocMap
-        );
+            fieldInfo.number,
+            fieldInfo.getVectorEncoding(),
+            fieldInfo.getVectorSimilarityFunction(),
+            randomAccessVectorValues.dimension(),
+            0,
+            0,
+            0,
+            0,
+            degreeOverflow,
+            graphNodeIdToDocMap);
       }
       try (var writer =
           new OnDiskSequentialGraphIndexWriter.Builder(graph, jVectorIndexWriter)
@@ -516,8 +518,6 @@ public class JVectorWriter extends KnnVectorsWriter {
    *     support specific implementations, such as float[] or byte[] vectors.
    */
   static class FieldWriter<T> extends KnnFieldVectorsWriter<T> {
-    private static final VectorTypeSupport VECTOR_TYPE_SUPPORT =
-        VectorizationProvider.getInstance().getVectorTypeSupport();
     private final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(FieldWriter.class);
     private final FieldInfo fieldInfo;
     private int lastDocID = -1;
@@ -605,7 +605,7 @@ public class JVectorWriter extends KnnVectorsWriter {
 
     // Array of sub-readers
     private final KnnVectorsReader[] readers;
-    private final JVectorFloatVectorValues[] perReaderFloatVectorValues;
+    private final FloatVectorValues[] perReaderFloatVectorValues;
 
     // Maps the ravv ordinals to the reader index and the ordinal in that reader. This is allowing
     // us to get a unified view of all the
@@ -662,7 +662,7 @@ public class JVectorWriter extends KnnVectorsWriter {
         FieldInfos fieldInfos = mergeState.fieldInfos[i];
         baseOrds[i] = totalVectorsCount;
         if (MergedVectorValues.hasVectorValues(fieldInfos, fieldName)) {
-          KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
+          KnnVectorsReader reader = mergeState.knnVectorsReaders[i].unwrapReaderForField(fieldName);
           if (reader != null) {
             FloatVectorValues values = reader.getFloatVectorValues(fieldName);
             if (values != null) {
@@ -678,7 +678,8 @@ public class JVectorWriter extends KnnVectorsWriter {
                   deletesFound = true;
                 }
               }
-              if (liveVectorCountInReader >= vectorsCountInLeadingReader) {
+              if (reader instanceof JVectorReader
+                  && liveVectorCountInReader >= vectorsCountInLeadingReader) {
                 vectorsCountInLeadingReader = liveVectorCountInReader;
                 tempLeadingReaderIdx = i;
               }
@@ -706,7 +707,7 @@ public class JVectorWriter extends KnnVectorsWriter {
       // For this part we need to make sure we also swap all the other metadata arrays that are
       // indexed by reader index
       // Such as readers, docMaps, liveDocs, baseOrds, deletedOrds
-      if (tempLeadingReaderIdx != 0) {
+      if (tempLeadingReaderIdx > 0) {
         final KnnVectorsReader temp = readers[LEADING_READER_IDX];
         readers[LEADING_READER_IDX] = readers[tempLeadingReaderIdx];
         readers[tempLeadingReaderIdx] = temp;
@@ -720,7 +721,7 @@ public class JVectorWriter extends KnnVectorsWriter {
         baseOrds[tempLeadingReaderIdx] = tempBaseOrd;
       }
 
-      this.perReaderFloatVectorValues = new JVectorFloatVectorValues[readers.length];
+      this.perReaderFloatVectorValues = new FloatVectorValues[readers.length];
       this.dimension = dimension;
 
       // Build mapping from global ordinal to [readerIndex, readerOrd]
@@ -743,8 +744,7 @@ public class JVectorWriter extends KnnVectorsWriter {
         // TODO: remove this logic once we support incremental graph building with deletes see
         // https://github.com/opensearch-project/opensearch-jvector/issues/171
         for (int readerIdx = 0; readerIdx < readers.length; readerIdx++) {
-          final JVectorFloatVectorValues values =
-              (JVectorFloatVectorValues) readers[readerIdx].getFloatVectorValues(fieldName);
+          final FloatVectorValues values = readers[readerIdx].getFloatVectorValues(fieldName);
           perReaderFloatVectorValues[readerIdx] = values;
           // For each vector in this reader
           KnnVectorValues.DocIndexIterator it = values.iterator();
@@ -778,8 +778,8 @@ public class JVectorWriter extends KnnVectorsWriter {
         // This is necessary because we are later going to expand that graph with new vectors from
         // the other readers.
         // The leading reader is ALWAYS the first one in the readers array
-        final JVectorFloatVectorValues leadingReaderValues =
-            (JVectorFloatVectorValues) readers[LEADING_READER_IDX].getFloatVectorValues(fieldName);
+        final FloatVectorValues leadingReaderValues =
+            readers[LEADING_READER_IDX].getFloatVectorValues(fieldName);
         perReaderFloatVectorValues[LEADING_READER_IDX] = leadingReaderValues;
         var leadingReaderIt = leadingReaderValues.iterator();
         for (int docId = leadingReaderIt.nextDoc();
@@ -802,8 +802,7 @@ public class JVectorWriter extends KnnVectorsWriter {
         // For the remaining readers we map the graph node id to the ravv ordinal in the order they
         // appear
         for (int readerIdx = 1; readerIdx < readers.length; readerIdx++) {
-          final JVectorFloatVectorValues values =
-              (JVectorFloatVectorValues) readers[readerIdx].getFloatVectorValues(fieldName);
+          final FloatVectorValues values = readers[readerIdx].getFloatVectorValues(fieldName);
           perReaderFloatVectorValues[readerIdx] = values;
           // For each vector in this reader
           KnnVectorValues.DocIndexIterator it = values.iterator();
@@ -873,21 +872,14 @@ public class JVectorWriter extends KnnVectorsWriter {
       final PQVectors pqVectors;
       final OnHeapGraphIndex graph;
       // Get the leading reader
-      final JVectorReader leadingReader =
-          (JVectorReader) readers[LEADING_READER_IDX].unwrapReaderForField(fieldName);
+      final var leadingReader = readers[LEADING_READER_IDX].unwrapReaderForField(fieldName);
       final BuildScoreProvider buildScoreProvider;
       // Check if the leading reader has pre-existing PQ codebooks and if so, refine them with the
       // remaining vectors
-      if (leadingReader.getProductQuantizationForField(fieldInfo.name).isEmpty()) {
-        // No pre-existing codebooks, check if we have enough vectors to trigger quantization
-        if (this.size() >= minimumBatchSizeForQuantization) {
-          pqVectors = getPQVectors(graphNodeIdsToRavvOrds, this, fieldInfo);
-        } else {
-          pqVectors = null;
-        }
-      } else {
-        ProductQuantization leadingCompressor =
-            leadingReader.getProductQuantizationForField(fieldName).get();
+      if (leadingReader instanceof JVectorReader reader
+          && reader.getProductQuantizationForField(fieldName).isPresent()) {
+        final ProductQuantization leadingCompressor =
+            reader.getProductQuantizationForField(fieldName).get();
         // Refine the leadingCompressor with the remaining vectors in the merge, we skip the leading
         // reader since it's already been
         // used to create the leadingCompressor
@@ -905,6 +897,11 @@ public class JVectorWriter extends KnnVectorsWriter {
                 graphNodeIdsToRavvOrds,
                 this,
                 SIMD_POOL_MERGE);
+      } else if (this.size() >= minimumBatchSizeForQuantization) {
+        // No pre-existing codebooks, check if we have enough vectors to trigger quantization
+        pqVectors = getPQVectors(graphNodeIdsToRavvOrds, this, fieldInfo);
+      } else {
+        pqVectors = null;
       }
 
       if (pqVectors == null) {
@@ -918,7 +915,7 @@ public class JVectorWriter extends KnnVectorsWriter {
             && reader.hasIndex(fieldName)) {
           // Expand graph when there are no deletes and no PQ codebooks
           final RandomAccessReader leadingOnHeapGraphReader =
-              leadingReader.getNeighborsScoreCacheForField(fieldName);
+              reader.getNeighborsScoreCacheForField(fieldName);
           final int numBaseVectors = leadingReader.getFloatVectorValues(fieldName).size();
           graph =
               (OnHeapGraphIndex)
@@ -985,7 +982,15 @@ public class JVectorWriter extends KnnVectorsWriter {
 
       // Access to float values is not thread safe
       synchronized (perReaderFloatVectorValues[readerIdx]) {
-        return perReaderFloatVectorValues[readerIdx].vectorFloatValue(readerOrd);
+        if (perReaderFloatVectorValues[readerIdx] instanceof JVectorFloatVectorValues values) {
+          return values.vectorFloatValue(readerOrd);
+        }
+        try {
+          return VECTOR_TYPE_SUPPORT.createFloatVector(
+              perReaderFloatVectorValues[readerIdx].vectorValue(readerOrd));
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
+        }
       }
     }
 
