@@ -23,7 +23,6 @@ import io.github.jbellis.jvector.graph.GraphSearcher;
 import io.github.jbellis.jvector.graph.SearchResult;
 import io.github.jbellis.jvector.graph.disk.OnDiskGraphIndex;
 import io.github.jbellis.jvector.graph.similarity.DefaultSearchScoreProvider;
-import io.github.jbellis.jvector.graph.similarity.ScoreFunction;
 import io.github.jbellis.jvector.graph.similarity.SearchScoreProvider;
 import io.github.jbellis.jvector.quantization.PQVectors;
 import io.github.jbellis.jvector.quantization.ProductQuantization;
@@ -140,7 +139,8 @@ public class JVectorReader extends KnnVectorsReader {
   @Override
   public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
-    final OnDiskGraphIndex index = fieldEntryMap.get(field).index;
+    final var fieldEntry = fieldEntryMap.get(field);
+    final OnDiskGraphIndex index = fieldEntry.index;
 
     final JVectorSearchStrategy searchStrategy;
     if (knnCollector.getSearchStrategy() instanceof JVectorSearchStrategy strategy) {
@@ -159,21 +159,17 @@ public class JVectorReader extends KnnVectorsReader {
         // Skip search when the graph is empty
         return;
       }
-      if (fieldEntryMap.get(field).pqVectors
-          != null) { // Quantized, use the precomputed score function
-        final PQVectors pqVectors = fieldEntryMap.get(field).pqVectors;
+      if (fieldEntry.pqVectors != null) { // Quantized, use the precomputed score function
+        final PQVectors pqVectors = fieldEntry.pqVectors;
         // SearchScoreProvider that does a first pass with the loaded-in-memory PQVectors,
         // then reranks with the exact vectors that are stored on disk in the index
-        ScoreFunction.ApproximateScoreFunction asf =
-            pqVectors.precomputedScoreFunctionFor(q, fieldEntryMap.get(field).similarityFunction);
-        ScoreFunction.ExactScoreFunction reranker =
-            view.rerankerFor(q, fieldEntryMap.get(field).similarityFunction);
+        final var asf = pqVectors.precomputedScoreFunctionFor(q, fieldEntry.similarityFunction);
+        final var reranker = view.rerankerFor(q, fieldEntry.similarityFunction);
         ssp = new DefaultSearchScoreProvider(asf, reranker);
       } else { // Not quantized, used typical searcher
-        ssp =
-            DefaultSearchScoreProvider.exact(q, fieldEntryMap.get(field).similarityFunction, view);
+        ssp = DefaultSearchScoreProvider.exact(q, fieldEntry.similarityFunction, view);
       }
-      final GraphNodeIdToDocMap jvectorLuceneDocMap = fieldEntryMap.get(field).graphNodeIdToDocMap;
+      final GraphNodeIdToDocMap jvectorLuceneDocMap = fieldEntry.graphNodeIdToDocMap;
       // Convert the acceptDocs bitmap from Lucene to jVector ordinal bitmap filter
       // Logic works as follows: if acceptDocs is null, we accept all ordinals. Otherwise, we check
       // if the jVector ordinal has a
