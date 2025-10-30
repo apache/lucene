@@ -72,10 +72,11 @@ public class HelpPlugin extends LuceneGradlePlugin {
           task -> {
             task.setGroup("Help (developer guides and hints)");
             task.setDescription(helpEntry.description);
+            var helpFilePath = rootProject.file(helpEntry.path).toPath();
             task.doFirst(
                 _ -> {
                   try {
-                    println("\n" + Files.readString(rootProject.file(helpEntry.path).toPath()));
+                    println("\n" + Files.readString(helpFilePath));
                   } catch (IOException e) {
                     throw new UncheckedIOException(e);
                   }
@@ -88,12 +89,15 @@ public class HelpPlugin extends LuceneGradlePlugin {
         .named("help")
         .configure(
             task -> {
+              Object version = rootProject.getVersion();
+              String gradleVersion = rootProject.getGradle().getGradleVersion();
+
               task.doFirst(
                   _ -> {
                     printf("");
                     printf(
                         "This is Lucene %s build file (gradle %s). See some guidelines in files",
-                        rootProject.getVersion(), rootProject.getGradle().getGradleVersion());
+                        version, gradleVersion);
                     printf("found under the help/* folder or type any of these:");
                     printf("");
 

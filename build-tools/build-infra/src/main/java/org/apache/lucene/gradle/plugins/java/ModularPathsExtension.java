@@ -17,15 +17,11 @@
 package org.apache.lucene.gradle.plugins.java;
 
 import java.io.File;
-import java.nio.file.Path;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -35,7 +31,7 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.attributes.LibraryElements;
 import org.gradle.api.file.FileCollection;
-import org.gradle.api.logging.Logger;
+import org.gradle.api.file.FileSystemLocation;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.process.CommandLineArgumentProvider;
@@ -72,11 +68,14 @@ public class ModularPathsExtension implements Cloneable, Iterable<Configuration>
   /** More verbose debugging for paths. */
   private boolean debugPaths;
 
+  final boolean hasModuleDescriptor;
+
   /**
    * A list of module name - path provider entries that will be converted into {@code
    * --patch-module} options.
    */
-  private final List<Map.Entry<String, Provider<Path>>> modulePatches = new ArrayList<>();
+  private final List<Map.Entry<String, Provider<? extends FileSystemLocation>>> modulePatches =
+      new ArrayList<>();
 
   public ModularPathsExtension(Project project, SourceSet sourceSet) {
     this.project = project;
@@ -84,6 +83,10 @@ public class ModularPathsExtension implements Cloneable, Iterable<Configuration>
 
     // enable to debug paths.
     this.debugPaths = false;
+    this.hasModuleDescriptor =
+        sourceSet.getAllJava().getSrcDirs().stream()
+            .map(dir -> new File(dir, "module-info.java"))
+            .anyMatch(File::exists);
 
     ConfigurationContainer configurations = project.getConfigurations();
 
@@ -159,8 +162,23 @@ public class ModularPathsExtension implements Cloneable, Iterable<Configuration>
    * Adds {@code --patch-module} option for the provided module name and the provider of a folder or
    * JAR file.
    */
-  public void patchModule(String moduleName, Provider<Path> pathProvider) {
-    modulePatches.add(new AbstractMap.SimpleImmutableEntry<>(moduleName, pathProvider));
+  public void patchModule(String moduleName, Provider<? extends FileSystemLocation> pathProvider) {
+    modulePatches.add(Map.entry(moduleName, pathProvider));
+  }
+
+  public void patchModule(String moduleName, FileCollection singleFileCollection) {
+    patchModule(
+        moduleName,
+        singleFileCollection
+            .getElements()
+            .map(
+                elements -> {
+                  if (elements.size() != 1) {
+                    throw new RuntimeException(
+                        "Expected a single file as an argument for patchModule.");
+                  }
+                  return elements.iterator().next();
+                }));
   }
 
   private FileCollection getCompilationModulePath() {
@@ -172,7 +190,7 @@ public class ModularPathsExtension implements Cloneable, Iterable<Configuration>
 
   private FileCollection getRuntimeModulePath() {
     if (mode == Mode.CLASSPATH_ONLY) {
-      if (hasModuleDescriptor()) {
+      if (hasModuleDescriptor) {
         throw new GradleException(
             "Source set contains a module but classpath-only dependencies requested: "
                 + project.getPath()
@@ -186,28 +204,34 @@ public class ModularPathsExtension implements Cloneable, Iterable<Configuration>
   }
 
   private FileCollection removeNonExisting(FileCollection fc) {
-    return fc.filter(File::exists);
+    return fc.filter(file -> file.exists());
   }
 
   public FileCollection getCompilationClasspath() {
+    var compileClasspath = sourceSet.getCompileClasspath();
+
     if (mode == Mode.CLASSPATH_ONLY) {
       return removeNonExisting(sourceSet.getCompileClasspath());
     }
 
-    // Lazy computation to subtract module-path artifacts (and patches) from compile classpath.
     return removeNonExisting(
-        project.files(
-            (Callable<Object>)
-                () ->
-                    sourceSet
-                        .getCompileClasspath()
-                        .minus(compileModulePathConfiguration)
-                        .minus(modulePatchOnlyConfiguration)));
+        compileClasspath.minus(compileModulePathConfiguration).minus(modulePatchOnlyConfiguration));
   }
 
   public CommandLineArgumentProvider getCompilationArguments() {
-    return () -> {
-      FileCollection modulePath = getCompilationModulePath();
+    return new CompilationArgumentsProvider(
+        getCompilationModulePath(), hasModuleDescriptor, modulePatches);
+  }
+
+  /** Keep this class static to avoid references to the outer class. */
+  public record CompilationArgumentsProvider(
+      FileCollection modulePath,
+      boolean hasModuleDescriptor,
+      List<Map.Entry<String, Provider<? extends FileSystemLocation>>> modulePatches)
+      implements CommandLineArgumentProvider {
+
+    @Override
+    public Iterable<String> asArguments() {
       if (modulePath.isEmpty()) {
         return List.of();
       }
@@ -216,7 +240,7 @@ public class ModularPathsExtension implements Cloneable, Iterable<Configuration>
       extraArgs.add("--module-path");
       extraArgs.add(joinPaths(modulePath));
 
-      if (!hasModuleDescriptor()) {
+      if (!hasModuleDescriptor) {
         // We're compiling what appears to be a non-module source set so we'll
         // bring everything on module path in the resolution graph,
         // otherwise modular dependencies wouldn't be part of the resolved module graph and this
@@ -229,20 +253,16 @@ public class ModularPathsExtension implements Cloneable, Iterable<Configuration>
       extraArgs.addAll(getPatchModuleArguments(modulePatches));
 
       return extraArgs;
-    };
+    }
   }
 
   public FileCollection getRuntimeClasspath() {
+    var runtimeClasspath = sourceSet.getRuntimeClasspath();
+
     if (mode == Mode.CLASSPATH_ONLY) {
-      return sourceSet.getRuntimeClasspath();
+      return runtimeClasspath;
     }
-    return project.files(
-        (Callable<Object>)
-            () ->
-                sourceSet
-                    .getRuntimeClasspath()
-                    .minus(getRuntimeModulePath())
-                    .minus(modulePatchOnlyConfiguration));
+    return runtimeClasspath.minus(getRuntimeModulePath()).minus(modulePatchOnlyConfiguration);
   }
 
   /**
@@ -255,27 +275,32 @@ public class ModularPathsExtension implements Cloneable, Iterable<Configuration>
    * indirectly added by gradle internal logic.
    */
   public FileCollection getTestRuntimeClasspath() {
+    var runtimeClasspath = sourceSet.getRuntimeClasspath();
+
     if (mode == Mode.CLASSPATH_ONLY) {
-      return sourceSet.getRuntimeClasspath();
+      return runtimeClasspath;
     }
-    return project.files(
-        (Callable<Object>)
-            () ->
-                sourceSet
-                    .getRuntimeClasspath()
-                    .minus(getRuntimeModulePath())
-                    .minus(modulePatchOnlyConfiguration)
-                    .plus(
-                        sourceSet
-                            .getRuntimeClasspath()
-                            .filter(file -> file.getName().contains("junit"))));
+    return runtimeClasspath
+        .minus(getRuntimeModulePath())
+        .minus(modulePatchOnlyConfiguration)
+        .plus(runtimeModulePathConfiguration.filter(file -> file.getName().contains("junit")));
   }
 
   public CommandLineArgumentProvider getRuntimeArguments() {
-    return () -> {
-      FileCollection modulePath = getRuntimeModulePath();
+    return new RuntimeArgumentsProvider(getRuntimeModulePath(), hasModuleDescriptor, modulePatches);
+  }
+
+  /** Keep this class static to avoid references to the outer class. */
+  public record RuntimeArgumentsProvider(
+      FileCollection modulePath,
+      boolean hasModuleDescriptor,
+      List<Map.Entry<String, Provider<? extends FileSystemLocation>>> modulePatches)
+      implements CommandLineArgumentProvider {
+
+    @Override
+    public Iterable<String> asArguments() {
       if (modulePath.isEmpty()) {
-        return Collections.emptyList();
+        return List.of();
       }
 
       List<String> extraArgs = new ArrayList<>();
@@ -285,10 +310,8 @@ public class ModularPathsExtension implements Cloneable, Iterable<Configuration>
       extraArgs.add(joinPaths(modulePath));
 
       // Ideally, we should only add the sourceset's module here, everything else would be resolved
-      // via the
-      // module descriptor. But this would require parsing the module descriptor and may cause JVM
-      // version conflicts
-      // so keeping it simple.
+      // via the module descriptor. But this would require parsing the module descriptor and may
+      // cause JVM version conflicts so keeping it simple.
       extraArgs.add("--add-modules");
       extraArgs.add("ALL-MODULE-PATH");
 
@@ -296,21 +319,15 @@ public class ModularPathsExtension implements Cloneable, Iterable<Configuration>
       extraArgs.addAll(getPatchModuleArguments(modulePatches));
 
       return extraArgs;
-    };
-  }
-
-  public boolean hasModuleDescriptor() {
-    return sourceSet.getAllJava().getSrcDirs().stream()
-        .map(dir -> new File(dir, "module-info.java"))
-        .anyMatch(File::exists);
+    }
   }
 
   private static List<String> getPatchModuleArguments(
-      List<Map.Entry<String, Provider<Path>>> patches) {
+      List<Map.Entry<String, Provider<? extends FileSystemLocation>>> modulePatches) {
     List<String> args = new ArrayList<>();
-    for (Map.Entry<String, Provider<Path>> e : patches) {
+    for (var e : modulePatches) {
       args.add("--patch-module");
-      args.add(e.getKey() + "=" + e.getValue().get());
+      args.add(e.getKey() + "=" + e.getValue().get().getAsFile());
     }
     return args;
   }
@@ -326,43 +343,32 @@ public class ModularPathsExtension implements Cloneable, Iterable<Configuration>
         .collect(Collectors.joining("\n"));
   }
 
-  private static String toList(List<Map.Entry<String, Provider<Path>>> patches) {
+  private static String toList(
+      List<Map.Entry<String, Provider<? extends FileSystemLocation>>> patches) {
     if (patches.isEmpty()) {
       return " [empty]";
     }
     return patches.stream()
-        .map(e -> "    " + e.getKey() + "=" + e.getValue().get())
+        .map(e -> "    " + e.getKey() + "=" + e.getValue().get().getAsFile())
         .collect(Collectors.joining("\n"));
   }
 
-  public void logCompilationPaths(Logger logger) {
-    String value =
-        "Modular extension, compilation paths, source set="
-            + (sourceSet.getName() + (hasModuleDescriptor() ? " (module)" : ""))
-            + (", mode=" + mode + ":\n")
-            + ("  Module path:" + toList(getCompilationModulePath()) + "\n")
-            + ("  Class path: " + toList(getCompilationClasspath()) + "\n")
-            + ("  Patches:    " + toList(modulePatches));
-    if (debugPaths) {
-      logger.lifecycle(value);
-    } else {
-      logger.info(value);
-    }
+  public String getCompilationPathDebugInfo() {
+    return "Modular extension, compilation paths, source set="
+        + (sourceSet.getName() + (hasModuleDescriptor ? " (module)" : ""))
+        + (", mode=" + mode + ":\n")
+        + ("  Module path:" + toList(getCompilationModulePath()) + "\n")
+        + ("  Class path: " + toList(getCompilationClasspath()) + "\n")
+        + ("  Patches:    " + toList(modulePatches));
   }
 
-  public void logRuntimePaths(Logger logger) {
-    String value =
-        "Modular extension, runtime paths, source set="
-            + (sourceSet.getName() + (hasModuleDescriptor() ? " (module)" : ""))
-            + (", mode=" + mode + ":\n")
-            + ("  Module path:" + toList(getRuntimeModulePath()) + "\n")
-            + ("  Class path: " + toList(getRuntimeClasspath()) + "\n")
-            + ("  Patches   : " + toList(modulePatches));
-    if (debugPaths) {
-      logger.lifecycle(value);
-    } else {
-      logger.info(value);
-    }
+  public String getRuntimePathDebugInfo() {
+    return "Modular extension, runtime paths, source set="
+        + (sourceSet.getName() + (hasModuleDescriptor ? " (module)" : ""))
+        + (", mode=" + mode + ":\n")
+        + ("  Module path:" + toList(getRuntimeModulePath()) + "\n")
+        + ("  Class path: " + toList(getRuntimeClasspath()) + "\n")
+        + ("  Patches   : " + toList(modulePatches));
   }
 
   @Override
