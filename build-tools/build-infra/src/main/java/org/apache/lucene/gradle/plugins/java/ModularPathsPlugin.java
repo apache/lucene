@@ -31,6 +31,7 @@ import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.bundling.Jar;
@@ -120,7 +121,16 @@ public class ModularPathsPlugin extends LuceneGradlePlugin {
                       task.setClasspath(modularPaths.getCompilationClasspath());
                     }
 
-                    task.doFirst(t -> modularPaths.logCompilationPaths(t.getLogger()));
+                    Property<String> debugInfo =
+                        project
+                            .getObjects()
+                            .property(String.class)
+                            .convention(
+                                project
+                                    .getProviders()
+                                    .provider(modularPaths::getCompilationPathDebugInfo));
+
+                    task.doFirst(t -> t.getLogger().info(debugInfo.get()));
                   });
 
           // For source sets that contain a module descriptor, configure a jar task that
@@ -161,10 +171,10 @@ public class ModularPathsPlugin extends LuceneGradlePlugin {
     boolean mainIsEmpty = main.getAllJava().isEmpty();
     boolean mainIsModular =
         ((ModularPathsExtension) main.getExtensions().getByName(MODULAR_PATHS_EXTENSION_NAME))
-            .hasModuleDescriptor();
+            .hasModuleDescriptor;
     boolean testIsModular =
         ((ModularPathsExtension) test.getExtensions().getByName(MODULAR_PATHS_EXTENSION_NAME))
-            .hasModuleDescriptor();
+            .hasModuleDescriptor;
 
     // LUCENE-10304: if we modify the classpath here, IntelliJ no longer sees the dependencies as
     // compile-time dependencies, don't know why.
@@ -259,7 +269,14 @@ public class ModularPathsPlugin extends LuceneGradlePlugin {
           // Modify default classpath for tests.
           task.setClasspath(modularPaths.getTestRuntimeClasspath());
 
-          task.doFirst(t -> modularPaths.logRuntimePaths(t.getLogger()));
+          Property<String> debugInfo =
+              project
+                  .getObjects()
+                  .property(String.class)
+                  .convention(
+                      project.getProviders().provider(modularPaths::getRuntimePathDebugInfo));
+
+          task.doFirst(t -> t.getLogger().info(debugInfo.get()));
 
           // Pass all the required properties for tests which fork the JVM. We don't use
           // regular system properties here because this could affect task up-to-date checks.
