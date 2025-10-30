@@ -285,7 +285,9 @@ public class JVectorWriter extends KnnVectorsWriter {
           JVectorFormat.VERSION_CURRENT,
           segmentWriteState.segmentInfo.getId(),
           segmentWriteState.segmentSuffix);
-      graph.save(jVectorIndexWriter);
+      if (graph.entryNode() != null) {
+        graph.save(jVectorIndexWriter);
+      }
       CodecUtil.writeFooter(indexOutput);
     }
   }
@@ -323,6 +325,21 @@ public class JVectorWriter extends KnnVectorsWriter {
           segmentWriteState.segmentInfo.getId(),
           segmentWriteState.segmentSuffix);
       final long startOffset = indexOutput.getFilePointer();
+      if (graph.size() == 0) {
+        CodecUtil.writeFooter(indexOutput);
+        return new VectorIndexFieldMetadata(
+          fieldInfo.number,
+          fieldInfo.getVectorEncoding(),
+          fieldInfo.getVectorSimilarityFunction(),
+          randomAccessVectorValues.dimension(),
+          0,
+          0,
+          0,
+          0,
+          degreeOverflow,
+          graphNodeIdToDocMap
+        );
+      }
       try (var writer =
           new OnDiskSequentialGraphIndexWriter.Builder(graph, jVectorIndexWriter)
               .with(new InlineVectors(randomAccessVectorValues.dimension()))
@@ -896,7 +913,9 @@ public class JVectorWriter extends KnnVectorsWriter {
                 this, graphNodeIdsToRavvOrds, getVectorSimilarityFunction(fieldInfo));
         // graph = getGraph(buildScoreProvider, this, newToOldOrds, fieldInfo,
         // segmentWriteState.segmentInfo.name);
-        if (!deletesFound) {
+        if (!deletesFound
+            && leadingReader instanceof JVectorReader reader
+            && reader.hasIndex(fieldName)) {
           // Expand graph when there are no deletes and no PQ codebooks
           final RandomAccessReader leadingOnHeapGraphReader =
               leadingReader.getNeighborsScoreCacheForField(fieldName);

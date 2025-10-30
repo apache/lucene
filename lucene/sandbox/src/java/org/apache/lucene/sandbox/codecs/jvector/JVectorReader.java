@@ -42,6 +42,7 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.*;
 import org.apache.lucene.util.IOUtils;
@@ -107,6 +108,35 @@ public class JVectorReader extends KnnVectorsReader {
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     final FieldEntry fieldEntry = fieldEntryMap.get(field);
+    if (fieldEntry == null || fieldEntry.index == null) {
+      return new FloatVectorValues() {
+        @Override
+        public float[] vectorValue(int ord) throws IOException {
+          throw new IndexOutOfBoundsException();
+        }
+
+        @Override
+        public FloatVectorValues copy() throws IOException {
+          return this;
+        }
+
+        @Override
+        public int dimension() {
+          return fieldEntry.vectorDimension;
+        }
+
+        @Override
+        public int size() {
+          return 0;
+        }
+
+        @Override
+        public VectorScorer scorer(float[] target) throws IOException {
+          return null;
+        }
+      };
+    }
+
     return new JVectorFloatVectorValues(
         fieldEntry.index, fieldEntry.similarityFunction, fieldEntry.graphNodeIdToDocMap);
   }
@@ -132,8 +162,9 @@ public class JVectorReader extends KnnVectorsReader {
     return fieldEntry.neighborsScoreCacheIndexReaderSupplier.get();
   }
 
-  public OnDiskGraphIndex getOnDiskGraphIndex(String field) throws IOException {
-    return fieldEntryMap.get(field).index;
+  public boolean hasIndex(String field) {
+    final var fieldEntry = fieldEntryMap.get(field);
+    return fieldEntry != null && fieldEntry.index != null;
   }
 
   @Override
@@ -141,6 +172,10 @@ public class JVectorReader extends KnnVectorsReader {
       throws IOException {
     final var fieldEntry = fieldEntryMap.get(field);
     final OnDiskGraphIndex index = fieldEntry.index;
+    if (index == null) {
+      // Skip search when the graph is empty
+      return;
+    }
 
     final JVectorSearchStrategy searchStrategy;
     if (knnCollector.getSearchStrategy() instanceof JVectorSearchStrategy strategy) {
@@ -155,10 +190,6 @@ public class JVectorReader extends KnnVectorsReader {
     final SearchScoreProvider ssp;
 
     try (var view = index.getView()) {
-      if (view.entryNode() == null) {
-        // Skip search when the graph is empty
-        return;
-      }
       if (fieldEntry.pqVectors != null) { // Quantized, use the precomputed score function
         final PQVectors pqVectors = fieldEntry.pqVectors;
         // SearchScoreProvider that does a first pass with the loaded-in-memory PQVectors,
@@ -228,6 +259,7 @@ public class JVectorReader extends KnnVectorsReader {
 
   class FieldEntry implements Closeable {
     private final VectorSimilarityFunction similarityFunction;
+    private final int vectorDimension;
     private final long vectorIndexOffset;
     private final long vectorIndexLength;
     private final long pqCodebooksAndVectorsLength;
@@ -247,6 +279,7 @@ public class JVectorReader extends KnnVectorsReader {
       this.similarityFunction =
           VectorSimilarityMapper.ordToDistFunc(
               vectorIndexFieldMetadata.vectorSimilarityFunction.ordinal());
+      this.vectorDimension = vectorIndexFieldMetadata.vectorDimension;
       this.vectorIndexOffset = vectorIndexFieldMetadata.vectorIndexOffset;
       this.vectorIndexLength = vectorIndexFieldMetadata.vectorIndexLength;
       this.pqCodebooksAndVectorsLength = vectorIndexFieldMetadata.pqCodebooksAndVectorsLength;
@@ -262,18 +295,22 @@ public class JVectorReader extends KnnVectorsReader {
               + "."
               + JVectorFormat.NEIGHBORS_SCORE_CACHE_EXTENSION;
 
-      // For the slice we would like to include the Lucene header, unfortunately, we have to do this
-      // because jVector use global
-      // offsets instead of local offsets
-      final long sliceLength =
-          vectorIndexLength
-              + CodecUtil.indexHeaderLength(
-                  JVectorFormat.VECTOR_INDEX_CODEC_NAME, state.segmentSuffix);
-      // Load the graph index
-      this.indexReaderSupplier =
-          new JVectorRandomAccessReader.Supplier(
-              directory.openInput(vectorIndexFieldDataFileName, state.context), 0, sliceLength);
-      this.index = OnDiskGraphIndex.load(indexReaderSupplier, vectorIndexOffset);
+      if (vectorIndexLength != 0) {
+        // For the slice we would like to include the Lucene header, unfortunately, we have to do
+        // this because jVector use global offsets instead of local offsets
+        final long sliceLength =
+            vectorIndexLength
+                + CodecUtil.indexHeaderLength(
+                    JVectorFormat.VECTOR_INDEX_CODEC_NAME, state.segmentSuffix);
+        // Load the graph index
+        this.indexReaderSupplier =
+            new JVectorRandomAccessReader.Supplier(
+                directory.openInput(vectorIndexFieldDataFileName, state.context), 0, sliceLength);
+        this.index = OnDiskGraphIndex.load(indexReaderSupplier, vectorIndexOffset);
+      } else {
+        this.indexReaderSupplier = null;
+        this.index = null;
+      }
 
       // If quantized load the compressed product quantized vectors with their codebooks
       if (pqCodebooksAndVectorsLength > 0) {
