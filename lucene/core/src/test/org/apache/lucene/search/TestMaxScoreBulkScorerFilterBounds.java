@@ -33,7 +33,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestMaxScoreBulkScorerFilterBounds extends LuceneTestCase {
 
   public void testFilteredDisjunctionDoesNotScorePastMaxDoc() throws Exception {
-  Directory dir = newDirectory();
+    Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig();
     try (IndexWriter w = new IndexWriter(dir, iwc)) {
       // Create a small index where one clause matches more docs than the other, and a restrictive
@@ -75,4 +75,3 @@ public class TestMaxScoreBulkScorerFilterBounds extends LuceneTestCase {
     }
   }
 }
-

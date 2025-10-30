@@ -23,9 +23,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
-/**
- * Regression test for merging zero-scored fragments into scored fragments (#15333).
- */
+/** Regression test for merging zero-scored fragments into scored fragments (#15333). */
 public class TestZeroScoreMerging extends LuceneTestCase {
 
   public void testZeroScoredFragmentsAreNotMergedIntoHighlights() throws Exception {
