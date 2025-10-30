@@ -145,7 +145,6 @@ public interface LeafCollector {
     for (int i = 0; i < count; ++i) {
       collect(docs[i]);
     }
-    ;
   }
 
   /**
