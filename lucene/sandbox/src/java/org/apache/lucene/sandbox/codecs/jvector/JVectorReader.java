@@ -155,6 +155,10 @@ public class JVectorReader extends KnnVectorsReader {
     final SearchScoreProvider ssp;
 
     try (var view = index.getView()) {
+      if (view.entryNode() == null) {
+        // Skip search when the graph is empty
+        return;
+      }
       if (fieldEntryMap.get(field).pqVectors
           != null) { // Quantized, use the precomputed score function
         final PQVectors pqVectors = fieldEntryMap.get(field).pqVectors;
@@ -196,9 +200,7 @@ public class JVectorReader extends KnnVectorsReader {
           knnCollector.collect(jvectorLuceneDocMap.getLuceneDocId(ns.node), ns.score);
         }
         // JVector does not seem to count the entry-point as visited
-        if (index.size(index.getMaxLevel()) > 0) {
-          knnCollector.incVisitedCount(1 + searchResults.getVisitedCount());
-        }
+        knnCollector.incVisitedCount(1 + searchResults.getVisitedCount());
       }
     }
   }
