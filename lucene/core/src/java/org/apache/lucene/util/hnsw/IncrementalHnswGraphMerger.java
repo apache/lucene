@@ -21,6 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
@@ -129,6 +130,8 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     }
     if (!graphReaders.contains(largestGraphReader)) {
       graphReaders.addFirst(largestGraphReader);
+    } else {
+      graphReaders.sort(Comparator.comparingInt(GraphReader::graphSize).reversed());
     }
 
     final BitSet initializedNodes =
