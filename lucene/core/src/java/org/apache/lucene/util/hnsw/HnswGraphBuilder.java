@@ -65,7 +65,7 @@ public class HnswGraphBuilder implements HnswBuilder {
   public static long randSeed = DEFAULT_RAND_SEED;
 
   protected final int M; // max number of connections on upper layers
-  private final double ml;
+  protected final double ml;
 
   private final SplittableRandom random;
   protected final UpdateableRandomVectorScorer scorer;

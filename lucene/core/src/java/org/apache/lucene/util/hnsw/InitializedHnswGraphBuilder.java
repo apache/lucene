@@ -184,10 +184,9 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
   private void rebalanceGraph() throws IOException {
     SplittableRandom random = new SplittableRandom();
     int size = hnsw.size();
-    double invMaxConn = 1.0 / M;
 
     for (int level = 1; ; level++) {
-      int maxNodesAtLevel = (int) (size * Math.pow(invMaxConn, level));
+      int maxNodesAtLevel = (int) (size * Math.pow(ml, level));
       if (maxNodesAtLevel <= 0) break;
 
       int currentNodesAtLevel = 0;
@@ -206,7 +205,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       while (it.hasNext() && currentNodesAtLevel < maxNodesAtLevel) {
         int node = it.next().value;
         scorer.setScoringOrdinal(node);
-        if (random.nextDouble() < invMaxConn && !hnsw.nodeExistAtLevel(level, node)) {
+        if (random.nextDouble() < ml && !hnsw.nodeExistAtLevel(level, node)) {
           addNodeToLevel(node, level, scorer, currentNodesAtLevel++);
           levelToNodes[level].add(node);
         }
