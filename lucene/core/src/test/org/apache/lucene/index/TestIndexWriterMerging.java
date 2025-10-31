@@ -384,8 +384,7 @@ public class TestIndexWriterMerging extends LuceneTestCase {
     assertEquals(5, iw.getDocStats().numDocs);
     MergePolicy.MergeObserver observer = iw.forceMergeDeletes(false);
 
-    assertTrue(observer.hasNewMerges());
-    assertTrue(observer.numMerges() > 0);
+    assertTrue("Should have scheduled merges", observer.numMerges() > 0);
 
     // Measure time to detect stuck merges
     long startNanos = System.nanoTime();
@@ -419,7 +418,6 @@ public class TestIndexWriterMerging extends LuceneTestCase {
 
     MergePolicy.MergeObserver observer = writer.forceMergeDeletes(false);
 
-    assertFalse("Should have no merges when no deletions", observer.hasNewMerges());
     assertEquals("Should have zero merges", 0, observer.numMerges());
 
     writer.close();
@@ -506,7 +504,7 @@ public class TestIndexWriterMerging extends LuceneTestCase {
 
     MergePolicy.MergeObserver observer = indexer.forceMergeDeletes(false);
 
-    if (observer.hasNewMerges()) {
+    if (observer.numMerges() > 0) {
       mergeStarted.await();
       assertFalse("await should timeout", observer.await(10, TimeUnit.MILLISECONDS));
       allowMergeToFinish.countDown();
@@ -554,7 +552,6 @@ public class TestIndexWriterMerging extends LuceneTestCase {
     assertEquals(5, iw.getDocStats().numDocs);
 
     MergePolicy.MergeObserver observer = iw.forceMergeDeletes(true);
-    assertTrue("Should have scheduled merges", observer.hasNewMerges());
     assertTrue("Should have completed merges", observer.numMerges() > 0);
     assertTrue("await should return true immediately", observer.await());
 
@@ -579,7 +576,6 @@ public class TestIndexWriterMerging extends LuceneTestCase {
     iw.commit();
 
     MergePolicy.MergeObserver observer = iw.forceMergeDeletes(true);
-    assertFalse("Should have no merges", observer.hasNewMerges());
     assertEquals("Should have zero merges", 0, observer.numMerges());
     assertTrue("await with timeout should return true", observer.await(1, TimeUnit.SECONDS));
     assertTrue("await should return true", observer.await());

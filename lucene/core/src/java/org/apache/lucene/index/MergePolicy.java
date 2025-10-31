@@ -944,9 +944,8 @@ public abstract class MergePolicy {
    * Observer for merge operations returned by {@link IndexWriter#forceMergeDeletes(boolean)}.
    * Provides methods to query merge status and wait for completion.
    *
-   * <p>When no merges are needed, {@link #hasNewMerges()} returns {@code false} and {@link
-   * #numMerges()} returns 0. In this case, {@link #await()} returns {@code true} immediately since
-   * there is nothing to wait for.
+   * <p>When no merges are needed, {@link #numMerges()} returns 0. In this case, {@link #await()}
+   * returns {@code true} immediately since there is nothing to wait for.
    *
    * @lucene.experimental
    */
@@ -964,15 +963,6 @@ public abstract class MergePolicy {
      */
     public int numMerges() {
       return spec == null ? 0 : spec.merges.size();
-    }
-
-    /**
-     * Returns whether any new merges were scheduled.
-     *
-     * @return {@code true} if merges were scheduled, {@code false} if no merges needed
-     */
-    public boolean hasNewMerges() {
-      return spec != null;
     }
 
     /**
