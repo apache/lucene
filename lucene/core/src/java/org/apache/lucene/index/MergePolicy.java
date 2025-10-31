@@ -1015,20 +1015,5 @@ public abstract class MergePolicy {
     public String toString() {
       return spec == null ? "MergeObserver: no merges" : spec.toString();
     }
-
-    /**
-     * Returns the merge at the specified index. Caller must ensure {@link #hasNewMerges()} returns
-     * {@code true} and index is within bounds.
-     *
-     * @param i merge index (0 to {@link #numMerges()} - 1)
-     * @return the merge at index i
-     * @throws IndexOutOfBoundsException if index is invalid or no merges exist
-     */
-    public MergePolicy.OneMerge getMerge(int i) {
-      if (spec == null) {
-        throw new IndexOutOfBoundsException("No merges available");
-      }
-      return spec.merges.get(i);
-    }
   }
 }

@@ -404,65 +404,6 @@ public class TestIndexWriterMerging extends LuceneTestCase {
     dir.close();
   }
 
-  public void testMergeObserverGetMerges() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter indexer =
-        new IndexWriter(
-            dir,
-            newIndexWriterConfig(new MockAnalyzer(random()))
-                .setMergePolicy(NoMergePolicy.INSTANCE));
-
-    for (int i = 0; i < 10; i++) {
-      Document doc = new Document();
-      Field idField = newStringField("id", "" + i, Field.Store.NO);
-      doc.add(idField);
-      indexer.addDocument(doc);
-    }
-    indexer.close();
-
-    IndexWriter deleter =
-        new IndexWriter(
-            dir,
-            newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(newLogMergePolicy()));
-    for (int i = 0; i < 2; i++) {
-      deleter.deleteDocuments(new Term("id", "" + i));
-    }
-
-    MergePolicy.MergeObserver observer = deleter.forceMergeDeletes(false);
-    assertTrue(observer.hasNewMerges());
-    assertTrue(observer.numMerges() > 0);
-
-    int numMerges = observer.numMerges();
-    for (int j = 0; j < numMerges; j++) {
-      MergePolicy.OneMerge oneMerge = observer.getMerge(j);
-      assertNotNull(oneMerge);
-    }
-
-    try {
-      observer.getMerge(-1);
-      fail("Should throw IndexOutOfBoundsException");
-    } catch (IndexOutOfBoundsException expected) {
-      String message = expected.getMessage();
-      assertTrue(
-          "Message should mention 'out of bounds', got: " + message,
-          message.contains("Index -1 out of bounds for length 1"));
-    }
-
-    try {
-      observer.getMerge(numMerges);
-      fail("Should throw IndexOutOfBoundsException");
-    } catch (IndexOutOfBoundsException expected) {
-      String message = expected.getMessage();
-      assertTrue(
-          "Message should mention 'out of bounds', got: " + message,
-          message.contains("Index " + numMerges + " out of bounds for length 1"));
-    }
-
-    deleter.waitForMerges();
-    deleter.close();
-    dir.close();
-  }
-
   public void testMergeObserverNoMerges() throws IOException {
     Directory dir = newDirectory();
     IndexWriter writer =
@@ -480,16 +421,6 @@ public class TestIndexWriterMerging extends LuceneTestCase {
 
     assertFalse("Should have no merges when no deletions", observer.hasNewMerges());
     assertEquals("Should have zero merges", 0, observer.numMerges());
-
-    try {
-      observer.getMerge(0);
-      fail("Should throw IndexOutOfBoundsException when no merges");
-    } catch (IndexOutOfBoundsException expected) {
-      String message = expected.getMessage();
-      assertTrue(
-          "Message should mention 'no merges', got: " + message,
-          message.contains("No merges available"));
-    }
 
     writer.close();
     dir.close();

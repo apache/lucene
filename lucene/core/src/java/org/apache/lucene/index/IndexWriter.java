@@ -2236,20 +2236,18 @@ public class IndexWriter
     final MergePolicy mergePolicy = config.getMergePolicy();
     final CachingMergeContext cachingMergeContext = new CachingMergeContext(this);
     MergePolicy.MergeSpecification spec;
-    MergePolicy.MergeObserver observer;
     synchronized (this) {
       spec = mergePolicy.findForcedDeletesMerges(segmentInfos, cachingMergeContext);
-      observer = new MergePolicy.MergeObserver(spec);
-      if (observer.hasNewMerges()) {
-        final int numMerges = observer.numMerges();
-        for (int i = 0; i < numMerges; i++) registerMerge(observer.getMerge(i));
+      if (spec != null) {
+        for (MergePolicy.OneMerge merge : spec.merges) {
+          registerMerge(merge);
+        }
       }
     }
 
     mergeScheduler.merge(mergeSource, MergeTrigger.EXPLICIT);
 
-    if (observer.hasNewMerges() && doWait) {
-      final int numMerges = observer.numMerges();
+    if (spec != null && doWait) {
       synchronized (this) {
         boolean running = true;
         while (running) {
@@ -2264,8 +2262,7 @@ public class IndexWriter
           // do, to see if any of them are still running and
           // if any of them have hit an exception.
           running = false;
-          for (int i = 0; i < numMerges; i++) {
-            final MergePolicy.OneMerge merge = observer.getMerge(i);
+          for (MergePolicy.OneMerge merge : spec.merges) {
             if (pendingMerges.contains(merge) || runningMerges.contains(merge)) {
               running = true;
             }
@@ -2284,7 +2281,7 @@ public class IndexWriter
     // NOTE: in the ConcurrentMergeScheduler case, when
     // doWait is false, we can return immediately while
     // background threads accomplish the merging
-    return observer;
+    return new MergePolicy.MergeObserver(spec);
   }
 
   /**
