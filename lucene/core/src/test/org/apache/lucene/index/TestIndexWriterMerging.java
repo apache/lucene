@@ -386,14 +386,14 @@ public class TestIndexWriterMerging extends LuceneTestCase {
 
     assertTrue("Should have scheduled merges", observer.numMerges() > 0);
 
-    // Measure time to detect stuck merges
-    long startNanos = System.nanoTime();
-    observer.await();
-    long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
-
     assertTrue(
-        "Merge took too long: " + elapsedMillis + "ms (expected < 30000ms)",
-        elapsedMillis < 30_000);
+        "Merges should complete within 30 seconds",
+        observer.await(30_000, TimeUnit.MILLISECONDS));
+
+    assertEquals(
+        "All merges should be completed after await() returns true",
+        observer.numMerges(),
+        observer.numCompletedMerges());
 
     assertEquals(5, iw.getDocStats().maxDoc);
     assertEquals(5, iw.getDocStats().numDocs);
@@ -445,14 +445,14 @@ public class TestIndexWriterMerging extends LuceneTestCase {
 
     MergePolicy.MergeObserver observer = iw.forceMergeDeletes(false);
 
-    // Measure time to detect stuck merges
-    long startNanos = System.nanoTime();
-    assertTrue("await should complete before timeout", observer.await(10, TimeUnit.MINUTES));
-    long elapsedMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
-
     assertTrue(
-        "Merge took too long: " + elapsedMillis + "ms (expected < 30000ms)",
-        elapsedMillis < 30_000);
+        "Merges should complete within 30 seconds",
+        observer.await(30_000, TimeUnit.MILLISECONDS));
+
+    assertEquals(
+        "All merges should be completed after await() returns true",
+        observer.numMerges(),
+        observer.numCompletedMerges());
 
     iw.waitForMerges();
     iw.close();
