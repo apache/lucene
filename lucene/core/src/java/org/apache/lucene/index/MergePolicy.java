@@ -966,6 +966,25 @@ public abstract class MergePolicy {
     }
 
     /**
+     * Returns the number of completed merges in this specification. Useful for tracking merge
+     * progress: {@code numCompletedMerges() / numMerges()}.
+     *
+     * @return number of completed merges
+     */
+    public int numCompletedMerges() {
+      if (spec == null) {
+        return 0;
+      }
+      int completed = 0;
+      for (OneMerge merge : spec.merges) {
+        if (merge.mergeCompleted.isDone()) {
+          completed++;
+        }
+      }
+      return completed;
+    }
+
+    /**
      * Waits for all merges in this specification to complete. Returns immediately if no merges were
      * scheduled.
      *
@@ -1003,7 +1022,11 @@ public abstract class MergePolicy {
 
     @Override
     public String toString() {
-      return spec == null ? "MergeObserver: no merges" : spec.toString();
+      if (spec == null) {
+        return "MergeObserver: no merges";
+      }
+      return String.format(
+          "MergeObserver: %d merges (%d completed)", numMerges(), numCompletedMerges());
     }
   }
 }
