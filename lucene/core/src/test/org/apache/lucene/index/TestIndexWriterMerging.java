@@ -387,8 +387,7 @@ public class TestIndexWriterMerging extends LuceneTestCase {
     assertTrue("Should have scheduled merges", observer.numMerges() > 0);
 
     assertTrue(
-        "Merges should complete within 30 seconds",
-        observer.await(30_000, TimeUnit.MILLISECONDS));
+        "Merges should complete within 30 seconds", observer.await(30_000, TimeUnit.MILLISECONDS));
 
     assertEquals(
         "All merges should be completed after await() returns true",
@@ -446,8 +445,7 @@ public class TestIndexWriterMerging extends LuceneTestCase {
     MergePolicy.MergeObserver observer = iw.forceMergeDeletes(false);
 
     assertTrue(
-        "Merges should complete within 30 seconds",
-        observer.await(30_000, TimeUnit.MILLISECONDS));
+        "Merges should complete within 30 seconds", observer.await(30_000, TimeUnit.MILLISECONDS));
 
     assertEquals(
         "All merges should be completed after await() returns true",
