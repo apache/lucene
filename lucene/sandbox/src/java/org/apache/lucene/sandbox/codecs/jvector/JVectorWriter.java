@@ -620,7 +620,7 @@ public class JVectorWriter extends KnnVectorsWriter {
       int dimension = 0;
       int tempLeadingReaderIdx = -1;
       int vectorsCountInLeadingReader = -1;
-      List<KnnVectorsReader> allReaders = new ArrayList<>();
+      this.readers = mergeState.knnVectorsReaders.clone();
       final MergeState.DocMap[] docMaps = mergeState.docMaps.clone();
       final Bits[] liveDocs = mergeState.liveDocs.clone();
       final int[] baseOrds = new int[mergeState.knnVectorsReaders.length];
@@ -635,7 +635,6 @@ public class JVectorWriter extends KnnVectorsWriter {
           if (reader != null) {
             FloatVectorValues values = reader.getFloatVectorValues(fieldName);
             if (values != null) {
-              allReaders.add(reader);
               int vectorCountInReader = values.size();
               int liveVectorCountInReader = 0;
               KnnVectorValues.DocIndexIterator it = values.iterator();
@@ -664,10 +663,6 @@ public class JVectorWriter extends KnnVectorsWriter {
       assert (dimension > 0) : "No vectors found for field " + fieldName;
 
       this.size = totalVectorsCount;
-      this.readers = new KnnVectorsReader[allReaders.size()];
-      for (int i = 0; i < readers.length; i++) {
-        readers[i] = allReaders.get(i);
-      }
 
       // always swap the leading reader to the first position
       // For this part we need to make sure we also swap all the other metadata arrays that are
