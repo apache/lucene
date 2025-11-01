@@ -1025,8 +1025,7 @@ public abstract class MergePolicy {
       if (spec == null) {
         return "MergeObserver: no merges";
       }
-      return String.format(
-          "MergeObserver: %d merges (%d completed)", numMerges(), numCompletedMerges());
+      return String.format("MergeObserver: %d merges", numMerges());
     }
   }
 }
