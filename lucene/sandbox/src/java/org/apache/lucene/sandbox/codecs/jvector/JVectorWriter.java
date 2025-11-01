@@ -577,7 +577,6 @@ public class JVectorWriter extends KnnVectorsWriter {
   class RandomAccessMergedFloatVectorValues implements RandomAccessVectorValues {
     private static final int READER_ID = 0;
     private static final int READER_ORD = 1;
-    private static final int LEADING_READER_IDX = 0;
 
     // Array of sub-readers
     private final KnnVectorsReader[] readers;
@@ -598,6 +597,8 @@ public class JVectorWriter extends KnnVectorsWriter {
     private final FieldInfo fieldInfo;
     private final GraphNodeIdToDocMap graphNodeIdToDocMap;
     private final int[] graphNodeIdsToRavvOrds;
+    private final int pqReaderIndex;
+    private final ProductQuantization pq;
 
     /**
      * Creates a random access view over merged float vector values.
@@ -618,7 +619,8 @@ public class JVectorWriter extends KnnVectorsWriter {
       int totalVectorsCount = 0;
       int totalLiveVectorsCount = 0;
       int dimension = 0;
-      int tempLeadingReaderIdx = -1;
+      int pqReaderIndex = -1;
+      ProductQuantization pq = null;
       int vectorsCountInLeadingReader = -1;
       this.readers = mergeState.knnVectorsReaders.clone();
       final MergeState.DocMap[] docMaps = mergeState.docMaps.clone();
@@ -643,10 +645,14 @@ public class JVectorWriter extends KnnVectorsWriter {
                   liveVectorCountInReader++;
                 }
               }
-              if (reader instanceof JVectorReader
+              if (reader instanceof JVectorReader jVectorReader
                   && liveVectorCountInReader >= vectorsCountInLeadingReader) {
                 vectorsCountInLeadingReader = liveVectorCountInReader;
-                tempLeadingReaderIdx = i;
+                final var maybeNewPq = jVectorReader.getProductQuantizationForField(fieldName);
+                if (maybeNewPq.isPresent()) {
+                  pqReaderIndex = i;
+                  pq = maybeNewPq.get();
+                }
               }
               totalVectorsCount += vectorCountInReader;
               totalLiveVectorsCount += liveVectorCountInReader;
@@ -662,26 +668,9 @@ public class JVectorWriter extends KnnVectorsWriter {
           : "Total number of live vectors exceeds the total number of vectors";
       assert (dimension > 0) : "No vectors found for field " + fieldName;
 
+      this.pq = pq;
+      this.pqReaderIndex = pqReaderIndex;
       this.size = totalVectorsCount;
-
-      // always swap the leading reader to the first position
-      // For this part we need to make sure we also swap all the other metadata arrays that are
-      // indexed by reader index
-      // Such as readers, docMaps, liveDocs, baseOrds, deletedOrds
-      if (tempLeadingReaderIdx > 0) {
-        final KnnVectorsReader temp = readers[LEADING_READER_IDX];
-        readers[LEADING_READER_IDX] = readers[tempLeadingReaderIdx];
-        readers[tempLeadingReaderIdx] = temp;
-        // also swap the leading doc map to the first position to match the readers
-        final MergeState.DocMap tempDocMap = docMaps[LEADING_READER_IDX];
-        docMaps[LEADING_READER_IDX] = docMaps[tempLeadingReaderIdx];
-        docMaps[tempLeadingReaderIdx] = tempDocMap;
-        // swap base ords
-        final int tempBaseOrd = baseOrds[LEADING_READER_IDX];
-        baseOrds[LEADING_READER_IDX] = baseOrds[tempLeadingReaderIdx];
-        baseOrds[tempLeadingReaderIdx] = tempBaseOrd;
-      }
-
       this.perReaderFloatVectorValues = new FloatVectorValues[readers.length];
       this.dimension = dimension;
 
@@ -768,27 +757,24 @@ public class JVectorWriter extends KnnVectorsWriter {
       // Get PQ compressor for leading reader
       final String fieldName = fieldInfo.name;
       final PQVectors pqVectors;
-      // Get the leading reader
-      final var leadingReader = readers[LEADING_READER_IDX].unwrapReaderForField(fieldName);
       // Check if the leading reader has pre-existing PQ codebooks and if so, refine them with the
       // remaining vectors
-      if (leadingReader instanceof JVectorReader reader
-          && reader.getProductQuantizationForField(fieldName).isPresent()) {
-        final ProductQuantization leadingCompressor =
-            reader.getProductQuantizationForField(fieldName).get();
-        // Refine the leadingCompressor with the remaining vectors in the merge, we skip the leading
-        // reader since it's already been
-        // used to create the leadingCompressor
-        // We assume the leading reader is ALWAYS the first one in the readers array
-        for (int i = LEADING_READER_IDX + 1; i < readers.length; i++) {
+      if (pq != null) {
+        // Refine the leadingCompressor with the remaining vectors in the merge
+        ProductQuantization newPq = pq;
+        for (int i = 0; i < readers.length; i++) {
+          if (i == pqReaderIndex) {
+            // Skip the reader associated with the re-used PQ codebook
+            continue;
+          }
           final FloatVectorValues values = readers[i].getFloatVectorValues(fieldName);
           final RandomAccessVectorValues randomAccessVectorValues =
               new RandomAccessVectorValuesOverVectorValues(values);
-          leadingCompressor.refine(randomAccessVectorValues);
+          newPq = newPq.refine(randomAccessVectorValues);
         }
         pqVectors =
             PQVectors.encodeAndBuild(
-                leadingCompressor,
+                newPq,
                 graphNodeIdsToRavvOrds.length,
                 graphNodeIdsToRavvOrds,
                 this,
