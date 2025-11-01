@@ -22,7 +22,6 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVe
 import static org.apache.lucene.sandbox.codecs.jvector.JVectorFormat.SIMD_POOL_FLUSH;
 import static org.apache.lucene.sandbox.codecs.jvector.JVectorFormat.SIMD_POOL_MERGE;
 
-import io.github.jbellis.jvector.disk.RandomAccessReader;
 import io.github.jbellis.jvector.graph.*;
 import io.github.jbellis.jvector.graph.disk.*;
 import io.github.jbellis.jvector.graph.disk.feature.Feature;
@@ -270,29 +269,6 @@ public class JVectorWriter extends KnnVectorsWriter {
             graphNodeIdToDocMap);
     meta.writeInt(fieldInfo.number);
     vectorIndexFieldMetadata.toOutput(meta);
-
-    // field data file, which contains the graph
-    final String neighborsScoreCacheIndexFieldFileName =
-        baseDataFileName
-            + "_"
-            + fieldInfo.name
-            + "."
-            + JVectorFormat.NEIGHBORS_SCORE_CACHE_EXTENSION;
-    try (IndexOutput indexOutput =
-            segmentWriteState.directory.createOutput(
-                neighborsScoreCacheIndexFieldFileName, segmentWriteState.context);
-        final var jVectorIndexWriter = new JVectorIndexWriter(indexOutput)) {
-      CodecUtil.writeIndexHeader(
-          indexOutput,
-          JVectorFormat.NEIGHBORS_SCORE_CACHE_CODEC_NAME,
-          JVectorFormat.VERSION_CURRENT,
-          segmentWriteState.segmentInfo.getId(),
-          segmentWriteState.segmentSuffix);
-      if (graph.entryNode() != null) {
-        graph.save(jVectorIndexWriter);
-      }
-      CodecUtil.writeFooter(indexOutput);
-    }
   }
 
   /**
@@ -622,7 +598,6 @@ public class JVectorWriter extends KnnVectorsWriter {
     private final FieldInfo fieldInfo;
     private final GraphNodeIdToDocMap graphNodeIdToDocMap;
     private final int[] graphNodeIdsToRavvOrds;
-    private boolean deletesFound = false;
 
     /**
      * Creates a random access view over merged float vector values.
@@ -649,12 +624,6 @@ public class JVectorWriter extends KnnVectorsWriter {
       final MergeState.DocMap[] docMaps = mergeState.docMaps.clone();
       final Bits[] liveDocs = mergeState.liveDocs.clone();
       final int[] baseOrds = new int[mergeState.knnVectorsReaders.length];
-      final int[] deletedOrds =
-          new int
-              [mergeState
-                  .knnVectorsReaders
-                  .length]; // counts the number of deleted documents in each reader
-      // that previously had a vector
 
       // Find the leading reader, count the total number of live vectors, and the base ordinals for
       // each reader
@@ -673,9 +642,6 @@ public class JVectorWriter extends KnnVectorsWriter {
               while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
                 if (liveDocs[i] == null || liveDocs[i].get(it.docID())) {
                   liveVectorCountInReader++;
-                } else {
-                  deletedOrds[i]++;
-                  deletesFound = true;
                 }
               }
               if (reader instanceof JVectorReader
@@ -738,94 +704,31 @@ public class JVectorWriter extends KnnVectorsWriter {
       this.graphNodeIdsToRavvOrds = new int[totalLiveVectorsCount];
 
       int graphNodeId = 0;
-      if (deletesFound) {
-        // If there are deletes, we need to build a new graph from scratch and compact the graph
-        // node ids
-        // TODO: remove this logic once we support incremental graph building with deletes see
-        // https://github.com/opensearch-project/opensearch-jvector/issues/171
-        for (int readerIdx = 0; readerIdx < readers.length; readerIdx++) {
-          final FloatVectorValues values = readers[readerIdx].getFloatVectorValues(fieldName);
-          perReaderFloatVectorValues[readerIdx] = values;
-          // For each vector in this reader
-          KnnVectorValues.DocIndexIterator it = values.iterator();
+      // Build a new graph from scratch and compact the graph node ids
+      for (int readerIdx = 0; readerIdx < readers.length; readerIdx++) {
+        final FloatVectorValues values = readers[readerIdx].getFloatVectorValues(fieldName);
+        perReaderFloatVectorValues[readerIdx] = values;
+        // For each vector in this reader
+        KnnVectorValues.DocIndexIterator it = values.iterator();
 
-          for (int docId = it.nextDoc();
-              docId != DocIdSetIterator.NO_MORE_DOCS;
-              docId = it.nextDoc()) {
-            if (docMaps[readerIdx].get(docId) != -1) {
-              // Mapping from ravv ordinals to [readerIndex, readerOrd]
-              // Map graph node id to ravv ordinal
-              // Map graph node id to doc id
-              final int newGlobalDocId = docMaps[readerIdx].get(docId);
-              final int ravvLocalOrd = it.index();
-              final int ravvGlobalOrd = ravvLocalOrd + baseOrds[readerIdx];
-              graphNodeIdToDocIds[graphNodeId] = newGlobalDocId;
-              graphNodeIdsToRavvOrds[graphNodeId] = ravvGlobalOrd;
-              graphNodeId++;
-              ravvOrdToReaderMapping[ravvGlobalOrd][READER_ID] = readerIdx; // Reader index
-              ravvOrdToReaderMapping[ravvGlobalOrd][READER_ORD] = ravvLocalOrd; // Ordinal in reader
-            }
-
-            documentsIterated++;
-          }
-        }
-      } else {
-        // If there are no deletes, we can reuse the existing graph and simply remap the ravv
-        // ordinals to the new global doc ids
-        // for the leading reader we must preserve the original node Ids and map them to the
-        // corresponding ravv vectors originally
-        // used to build the graph
-        // This is necessary because we are later going to expand that graph with new vectors from
-        // the other readers.
-        // The leading reader is ALWAYS the first one in the readers array
-        final FloatVectorValues leadingReaderValues =
-            readers[LEADING_READER_IDX].getFloatVectorValues(fieldName);
-        perReaderFloatVectorValues[LEADING_READER_IDX] = leadingReaderValues;
-        var leadingReaderIt = leadingReaderValues.iterator();
-        for (int docId = leadingReaderIt.nextDoc();
+        for (int docId = it.nextDoc();
             docId != DocIdSetIterator.NO_MORE_DOCS;
-            docId = leadingReaderIt.nextDoc()) {
-          final int newGlobalDocId = docMaps[LEADING_READER_IDX].get(docId);
-          if (newGlobalDocId != -1) {
-            final int ravvLocalOrd = leadingReaderIt.index();
-            final int ravvGlobalOrd = ravvLocalOrd + baseOrds[LEADING_READER_IDX];
-            graphNodeIdToDocIds[ravvLocalOrd] = newGlobalDocId;
-            graphNodeIdsToRavvOrds[ravvLocalOrd] = ravvGlobalOrd;
+            docId = it.nextDoc()) {
+          if (docMaps[readerIdx].get(docId) != -1) {
+            // Mapping from ravv ordinals to [readerIndex, readerOrd]
+            // Map graph node id to ravv ordinal
+            // Map graph node id to doc id
+            final int newGlobalDocId = docMaps[readerIdx].get(docId);
+            final int ravvLocalOrd = it.index();
+            final int ravvGlobalOrd = ravvLocalOrd + baseOrds[readerIdx];
+            graphNodeIdToDocIds[graphNodeId] = newGlobalDocId;
+            graphNodeIdsToRavvOrds[graphNodeId] = ravvGlobalOrd;
             graphNodeId++;
-            ravvOrdToReaderMapping[ravvGlobalOrd][READER_ID] = LEADING_READER_IDX; // Reader index
+            ravvOrdToReaderMapping[ravvGlobalOrd][READER_ID] = readerIdx; // Reader index
             ravvOrdToReaderMapping[ravvGlobalOrd][READER_ORD] = ravvLocalOrd; // Ordinal in reader
           }
 
           documentsIterated++;
-        }
-
-        // For the remaining readers we map the graph node id to the ravv ordinal in the order they
-        // appear
-        for (int readerIdx = 1; readerIdx < readers.length; readerIdx++) {
-          final FloatVectorValues values = readers[readerIdx].getFloatVectorValues(fieldName);
-          perReaderFloatVectorValues[readerIdx] = values;
-          // For each vector in this reader
-          KnnVectorValues.DocIndexIterator it = values.iterator();
-
-          for (int docId = it.nextDoc();
-              docId != DocIdSetIterator.NO_MORE_DOCS;
-              docId = it.nextDoc()) {
-            if (docMaps[readerIdx].get(docId) != -1) {
-              // Mapping from ravv ordinals to [readerIndex, readerOrd]
-              // Map graph node id to ravv ordinal
-              // Map graph node id to doc id
-              final int newGlobalDocId = docMaps[readerIdx].get(docId);
-              final int ravvLocalOrd = it.index();
-              final int ravvGlobalOrd = ravvLocalOrd + baseOrds[readerIdx];
-              graphNodeIdToDocIds[graphNodeId] = newGlobalDocId;
-              graphNodeIdsToRavvOrds[graphNodeId] = ravvGlobalOrd;
-              graphNodeId++;
-              ravvOrdToReaderMapping[ravvGlobalOrd][READER_ID] = readerIdx; // Reader index
-              ravvOrdToReaderMapping[ravvGlobalOrd][READER_ORD] = ravvLocalOrd; // Ordinal in reader
-            }
-
-            documentsIterated++;
-          }
         }
       }
 
@@ -870,10 +773,8 @@ public class JVectorWriter extends KnnVectorsWriter {
       // Get PQ compressor for leading reader
       final String fieldName = fieldInfo.name;
       final PQVectors pqVectors;
-      final OnHeapGraphIndex graph;
       // Get the leading reader
       final var leadingReader = readers[LEADING_READER_IDX].unwrapReaderForField(fieldName);
-      final BuildScoreProvider buildScoreProvider;
       // Check if the leading reader has pre-existing PQ codebooks and if so, refine them with the
       // remaining vectors
       if (leadingReader instanceof JVectorReader reader
@@ -904,43 +805,8 @@ public class JVectorWriter extends KnnVectorsWriter {
         pqVectors = null;
       }
 
-      if (pqVectors == null) {
-        buildScoreProvider =
-            BuildScoreProvider.randomAccessScoreProvider(
-                this, graphNodeIdsToRavvOrds, getVectorSimilarityFunction(fieldInfo));
-        // graph = getGraph(buildScoreProvider, this, newToOldOrds, fieldInfo,
-        // segmentWriteState.segmentInfo.name);
-        if (!deletesFound
-            && leadingReader instanceof JVectorReader reader
-            && reader.hasIndex(fieldName)) {
-          // Expand graph when there are no deletes and no PQ codebooks
-          final RandomAccessReader leadingOnHeapGraphReader =
-              reader.getNeighborsScoreCacheForField(fieldName);
-          final int numBaseVectors = leadingReader.getFloatVectorValues(fieldName).size();
-          graph =
-              (OnHeapGraphIndex)
-                  GraphIndexBuilder.buildAndMergeNewNodes(
-                      leadingOnHeapGraphReader,
-                      this,
-                      buildScoreProvider,
-                      numBaseVectors,
-                      graphNodeIdsToRavvOrds,
-                      beamWidth,
-                      degreeOverflow,
-                      alpha,
-                      hierarchyEnabled);
-        } else {
-          // Build a new graph from scratch when there are deletes and no PQ codebooks
-          graph =
-              getGraph(
-                  buildScoreProvider,
-                  this,
-                  graphNodeIdsToRavvOrds,
-                  fieldInfo,
-                  segmentWriteState.segmentInfo.name,
-                  SIMD_POOL_MERGE);
-        }
-      } else {
+      final BuildScoreProvider buildScoreProvider;
+      if (pqVectors != null) {
         // Re-use PQ codebooks to build a new graph from scratch
         buildScoreProvider =
             BuildScoreProvider.pqBuildScoreProvider(
@@ -948,15 +814,19 @@ public class JVectorWriter extends KnnVectorsWriter {
         // Pre-init the diversity provider here to avoid doing it lazily (as it could block the SIMD
         // threads)
         buildScoreProvider.diversityProviderFor(0);
-        graph =
-            getGraph(
-                buildScoreProvider,
-                this,
-                graphNodeIdsToRavvOrds,
-                fieldInfo,
-                segmentWriteState.segmentInfo.name,
-                SIMD_POOL_MERGE);
+      } else {
+        buildScoreProvider =
+            BuildScoreProvider.randomAccessScoreProvider(
+                this, graphNodeIdsToRavvOrds, getVectorSimilarityFunction(fieldInfo));
       }
+      final OnHeapGraphIndex graph =
+          getGraph(
+              buildScoreProvider,
+              this,
+              graphNodeIdsToRavvOrds,
+              fieldInfo,
+              segmentWriteState.segmentInfo.name,
+              SIMD_POOL_MERGE);
 
       writeField(fieldInfo, this, pqVectors, graphNodeIdsToRavvOrds, graphNodeIdToDocMap, graph);
     }
