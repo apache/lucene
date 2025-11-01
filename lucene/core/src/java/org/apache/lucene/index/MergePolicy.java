@@ -1026,7 +1026,8 @@ public abstract class MergePolicy {
       if (spec == null) {
         return "MergeObserver: no merges";
       }
-      return String.format(Locale.ROOT, "MergeObserver: %d merges\n%s", numMerges(), spec.toString());
+      return String.format(
+          Locale.ROOT, "MergeObserver: %d merges\n%s", numMerges(), spec.toString());
     }
   }
 }
