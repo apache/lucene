@@ -13,6 +13,6 @@ PyGithub==2.8.1
 # JIRA processing in githubPRs
 jira==3.10.5
 # type-checking in "make lint"
-basedpyright==1.31.7
+basedpyright==1.32.1
 # linting in "make lint"
 ruff==0.14.1
