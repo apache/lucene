@@ -2236,18 +2236,20 @@ public class IndexWriter
     final MergePolicy mergePolicy = config.getMergePolicy();
     final CachingMergeContext cachingMergeContext = new CachingMergeContext(this);
     MergePolicy.MergeSpecification spec;
+    boolean newMergesFound = false;
     synchronized (this) {
       spec = mergePolicy.findForcedDeletesMerges(segmentInfos, cachingMergeContext);
-      if (spec != null) {
-        for (MergePolicy.OneMerge merge : spec.merges) {
-          registerMerge(merge);
-        }
+      newMergesFound = spec != null;
+      if (newMergesFound) {
+        final int numMerges = spec.merges.size();
+        for (int i = 0; i < numMerges; i++) registerMerge(spec.merges.get(i));
       }
     }
 
     mergeScheduler.merge(mergeSource, MergeTrigger.EXPLICIT);
 
     if (spec != null && doWait) {
+      final int numMerges = spec.merges.size();
       synchronized (this) {
         boolean running = true;
         while (running) {
@@ -2262,7 +2264,8 @@ public class IndexWriter
           // do, to see if any of them are still running and
           // if any of them have hit an exception.
           running = false;
-          for (MergePolicy.OneMerge merge : spec.merges) {
+          for (int i = 0; i < numMerges; i++) {
+            final MergePolicy.OneMerge merge = spec.merges.get(i);
             if (pendingMerges.contains(merge) || runningMerges.contains(merge)) {
               running = true;
             }
