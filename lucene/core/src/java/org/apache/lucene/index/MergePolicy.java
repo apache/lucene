@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -1025,7 +1026,7 @@ public abstract class MergePolicy {
       if (spec == null) {
         return "MergeObserver: no merges";
       }
-      return String.format("MergeObserver: %d merges", numMerges());
+      return String.format(Locale.ROOT, "MergeObserver: %d merges", numMerges());
     }
   }
 }
