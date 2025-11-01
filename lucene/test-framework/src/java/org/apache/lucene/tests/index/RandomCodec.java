@@ -33,10 +33,11 @@ import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90PointsReader;
 import org.apache.lucene.codecs.lucene90.Lucene90PointsWriter;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.memory.DirectPostingsFormat;
 import org.apache.lucene.codecs.memory.FSTPostingsFormat;
@@ -271,33 +272,29 @@ public class RandomCodec extends AssertingCodec {
             TestUtil.nextInt(random, 5, 50),
             TestUtil.nextInt(random, 10, 50),
             concurrentKnnMerging ? TestUtil.nextInt(random, 2, 8) : 1,
-            concurrentKnnMerging ? ForkJoinPool.commonPool() : null),
-        new Lucene99HnswScalarQuantizedVectorsFormat(
+            concurrentKnnMerging ? ForkJoinPool.commonPool() : null,
+            0),
+        new Lucene104HnswScalarQuantizedVectorsFormat(
+            Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.SEVEN_BIT,
             TestUtil.nextInt(random, 5, 50),
             TestUtil.nextInt(random, 10, 50),
             concurrentKnnMerging ? TestUtil.nextInt(random, 2, 8) : 1,
-            7,
-            false,
-            randomConfidenceInterval(random),
-            concurrentKnnMerging ? ForkJoinPool.commonPool() : null),
-        // TODO: also test 4-bit quantization, but this must somehow be restricted to even-length
-        // fields
-        /*
-         * new Lucene99HnswScalarQuantizedVectorsFormat(TestUtil.nextInt(random, 5, 50),
-         *                                              TestUtil.nextInt(random, 10, 50),
-         *                                              1,
-         *                                              4,
-         *                                              random.nextBoolean(),
-         *                                              randomConfidenceInterval(random),
-         *                                              null),
-         * new Lucene99HnswScalarQuantizedVectorsFormat(TestUtil.nextInt(random, 5, 50),
-         *                                              TestUtil.nextInt(random, 10, 50),
-         *                                              TestUtil.nextInt(random, 2, 8),
-         *                                              4,
-         *                                              random.nextBoolean(),
-         *                                              randomConfidenceInterval(random),
-         *                                              ForkJoinPool.commonPool()),
-         */
+            concurrentKnnMerging ? ForkJoinPool.commonPool() : null,
+            0),
+        new Lucene104HnswScalarQuantizedVectorsFormat(
+            Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.UNSIGNED_BYTE,
+            TestUtil.nextInt(random, 5, 50),
+            TestUtil.nextInt(random, 10, 50),
+            concurrentKnnMerging ? TestUtil.nextInt(random, 2, 8) : 1,
+            concurrentKnnMerging ? ForkJoinPool.commonPool() : null,
+            0),
+        new Lucene104HnswScalarQuantizedVectorsFormat(
+            Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.PACKED_NIBBLE,
+            TestUtil.nextInt(random, 5, 50),
+            TestUtil.nextInt(random, 10, 50),
+            concurrentKnnMerging ? TestUtil.nextInt(random, 2, 8) : 1,
+            concurrentKnnMerging ? ForkJoinPool.commonPool() : null,
+            0),
         new AssertingKnnVectorsFormat());
 
     Collections.shuffle(formats, random);
@@ -313,18 +310,6 @@ public class RandomCodec extends AssertingCodec {
     }
     if (knnFormats.size() > 4) {
       knnFormats = knnFormats.subList(0, 4);
-    }
-  }
-
-  private final Float randomConfidenceInterval(Random random) {
-    switch (random.nextInt(3)) {
-      default:
-      case 0:
-        return null;
-      case 1:
-        return 0f;
-      case 2:
-        return random.nextFloat(0.9f, 1f);
     }
   }
 

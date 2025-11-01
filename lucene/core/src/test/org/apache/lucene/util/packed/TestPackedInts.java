@@ -75,8 +75,17 @@ public class TestPackedInts extends LuceneTestCase {
     assertEquals(61, PackedInts.bitsRequired(0x1FFFFFFFFFFFFFFFL));
     assertEquals(62, PackedInts.bitsRequired(0x3FFFFFFFFFFFFFFFL));
     assertEquals(63, PackedInts.bitsRequired(0x7FFFFFFFFFFFFFFFL));
-    assertEquals(64, PackedInts.unsignedBitsRequired(-1));
+    assertEquals(64, PackedInts.unsignedBitsRequired(-1L));
     assertEquals(64, PackedInts.unsignedBitsRequired(Long.MIN_VALUE));
+    assertEquals(1, PackedInts.bitsRequired(0L));
+  }
+
+  public void testBitsRequiredInt() {
+    assertEquals(29, PackedInts.bitsRequired((int) Math.pow(2, 29) - 1));
+    assertEquals(30, PackedInts.bitsRequired(0x3FFFFFFF));
+    assertEquals(31, PackedInts.bitsRequired(0x7FFFFFFF));
+    assertEquals(32, PackedInts.unsignedBitsRequired(-1));
+    assertEquals(32, PackedInts.unsignedBitsRequired(Integer.MIN_VALUE));
     assertEquals(1, PackedInts.bitsRequired(0));
   }
 
@@ -1216,20 +1225,21 @@ public class TestPackedInts extends LuceneTestCase {
   }
 
   public void testMonotonicBlockPackedReaderWriter() throws IOException {
+    var random = nonAssertingRandom(random());
+
     final int iters = atLeast(2);
     for (int iter = 0; iter < iters; ++iter) {
-      final int blockSize = 1 << TestUtil.nextInt(random(), 6, 18);
-      final int valueCount = random().nextInt(1 << 18);
+      final int blockSize = 1 << TestUtil.nextInt(random, 6, 18);
+      final int valueCount = random.nextInt(1 << 18);
       final long[] values = new long[valueCount];
       if (valueCount > 0) {
-        values[0] =
-            random().nextBoolean() ? random().nextInt(10) : random().nextInt(Integer.MAX_VALUE);
-        int maxDelta = random().nextInt(64);
+        values[0] = random.nextBoolean() ? random.nextInt(10) : random.nextInt(Integer.MAX_VALUE);
+        int maxDelta = random.nextInt(64);
         for (int i = 1; i < valueCount; ++i) {
-          if (random().nextDouble() < 0.1d) {
-            maxDelta = random().nextInt(64);
+          if (random.nextDouble() < 0.1d) {
+            maxDelta = random.nextInt(64);
           }
-          values[i] = Math.max(0, values[i - 1] + TestUtil.nextInt(random(), -16, maxDelta));
+          values[i] = Math.max(0, values[i - 1] + TestUtil.nextInt(random, -16, maxDelta));
         }
       }
 

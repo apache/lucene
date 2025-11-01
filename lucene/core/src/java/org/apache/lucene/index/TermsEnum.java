@@ -196,8 +196,30 @@ public abstract class TermsEnum implements BytesRefIterator {
    * Attributes to it. This should not be a problem, as the enum is always empty and the existence
    * of unused Attributes does not matter.
    */
+  // Avoid refactoring that results in a dependency on a subclass, like BaseTermsEnum.
+  // See: https://github.com/apache/lucene/issues/15317
   public static final TermsEnum EMPTY =
-      new BaseTermsEnum() {
+      new TermsEnum() {
+
+        private AttributeSource atts;
+
+        @Override
+        public AttributeSource attributes() {
+          if (atts == null) {
+            atts = new AttributeSource();
+          }
+          return atts;
+        }
+
+        @Override
+        public boolean seekExact(BytesRef text) {
+          return seekCeil(text) == SeekStatus.FOUND;
+        }
+
+        @Override
+        public IOBooleanSupplier prepareSeekExact(BytesRef text) {
+          return () -> seekExact(text);
+        }
 
         @Override
         public SeekStatus seekCeil(BytesRef term) {

@@ -14,8 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+import de.undercouch.gradle.tasks.download.Download
+import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension
+import org.apache.lucene.gradle.plugins.misc.QuietExec
 import org.apache.lucene.gradle.plugins.mrjar.LuceneJavaCoreMrjarPlugin
 import org.apache.lucene.gradle.plugins.mrjar.MrJarsExtension
+import org.apache.lucene.gradle.plugins.regenerate.JFlexTask
 
 plugins.apply(LuceneJavaCoreMrjarPlugin)
 
@@ -27,4 +32,343 @@ dependencies {
 }
 
 // Setup api stub generation and multi-release jar support for the following JDKs.
-project.getExtensions().getByType(MrJarsExtension).setupFor(24)
+project.getExtensions().getByType(MrJarsExtension).setupFor(Integer.parseInt(deps.versions.minJava.get()))
+
+//
+// Regenerates "ForUtil.java" code used by codecs in this project and in backward-codecs
+//
+
+static void createForUtilRegenerateTask(
+    Project project, String taskName, String javaFile, String pyScript, File genDir) {
+  project.getTasks().register(
+      "regenerate" + taskName, QuietExec, {
+        description = "Regenerate " + javaFile + " using " + pyScript + " in " + genDir
+
+        def genScript = project.file("${genDir}/${pyScript}")
+        def genOutput = project.file("${genDir}/${javaFile}")
+        inputs.file genScript
+        outputs.file genOutput
+
+        workingDir = genDir
+        executable = project.getExtensions().getByType(LuceneBuildGlobalsExtension).externalTool("python3")
+        args = ['-B', genScript.toString()]
+      })
+}
+
+createForUtilRegenerateTask(project, "ForUtil", "ForUtil.java", "gen_ForUtil.py",
+    file("src/java/org/apache/lucene/codecs/lucene104"))
+
+configure(project(":lucene:backward-codecs")) {
+  createForUtilRegenerateTask(project, "ForUtil84", "ForUtil.java", "gen_ForUtil.py",
+      file("src/java/org/apache/lucene/backward_codecs/lucene84"))
+
+  createForUtilRegenerateTask(project, "ForUtil90", "ForUtil.java", "gen_ForUtil.py",
+      file("src/java/org/apache/lucene/backward_codecs/lucene90"))
+
+  createForUtilRegenerateTask(project, "ForUtil99", "ForUtil.java", "gen_ForUtil.py",
+      file("src/java/org/apache/lucene/backward_codecs/lucene99"))
+
+  createForUtilRegenerateTask(project, "ForUtil912", "ForUtil.java", "gen_ForUtil.py",
+      file("src/java/org/apache/lucene/backward_codecs/lucene912"))
+  createForUtilRegenerateTask(project, "ForDeltaUtil912", "ForDeltaUtil.java", "gen_ForDeltaUtil.py",
+      file("src/java/org/apache/lucene/backward_codecs/lucene912"))
+
+  createForUtilRegenerateTask(project, "ForUtil101", "ForUtil.java", "gen_ForUtil.py",
+      file("src/java/org/apache/lucene/backward_codecs/lucene101"))
+  createForUtilRegenerateTask(project, "ForDeltaUtil101", "ForDeltaUtil.java", "gen_ForDeltaUtil.py",
+      file("src/java/org/apache/lucene/backward_codecs/lucene101"))
+
+  createForUtilRegenerateTask(project, "ForUtil103", "ForUtil.java", "gen_ForUtil.py",
+      file("src/java/org/apache/lucene/backward_codecs/lucene103"))
+  createForUtilRegenerateTask(project, "ForDeltaUtil103", "ForDeltaUtil.java", "gen_ForDeltaUtil.py",
+      file("src/java/org/apache/lucene/backward_codecs/lucene103"))
+}
+
+//
+// Regenerate jflex generated sources in this and other projects
+//
+
+def resources = rootProject.file("gradle/regenerate/jflex")
+def skeletonDefault = file("${resources}/skeleton.default.txt")
+def skeletonNoBufferExpansion = file("${resources}/skeleton.disable.buffer.expansion.txt")
+
+configure(project(":lucene:core")) {
+  configurations {
+    jflex
+  }
+
+  dependencies {
+    jflex deps.jflex
+  }
+
+  tasks.register("regenerateStandardTokenizer", JFlexTask, {
+    description = "Regenerate StandardTokenizerImpl.java"
+
+    classpath = configurations.jflex
+
+    jflexFile = file('src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.jflex')
+    skeleton = skeletonNoBufferExpansion
+
+    doLast {
+      ant.replace(
+          file: file('src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.java'),
+          encoding: "UTF-8",
+          token: "private static final int ZZ_BUFFERSIZE =",
+          value: "private int ZZ_BUFFERSIZE ="
+          )
+    }
+  })
+}
+
+configure(project(":lucene:analysis:common")) {
+  configurations {
+    jflex
+  }
+
+  dependencies {
+    jflex deps.jflex
+  }
+
+  def regenerateTlds = tasks.register("regenerateTlds", {
+    def tldZones = "https://data.iana.org/TLD/tlds-alpha-by-domain.txt"
+    def jflexMacro = file("src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex")
+    def tldList = file("src/test/org/apache/lucene/analysis/email/TLDs.txt")
+
+    description = "Regenerate top-level domain jflex macros and tests"
+
+    dependsOn { sourceSets.tools.runtimeClasspath }
+
+    inputs.property "tldZones", tldZones
+    outputs.files jflexMacro, tldList
+
+    doFirst {
+      File tmpJflexMacro = File.createTempFile(jflexMacro.getName(), ".tmp", getTemporaryDir())
+      File tmpTldList = File.createTempFile(tldList.getName(), ".tmp", getTemporaryDir())
+
+      project.extensions.buildGlobals.execOps.javaexec {
+        mainClass = "org.apache.lucene.analysis.standard.GenerateJflexTLDMacros"
+        classpath = sourceSets.tools.runtimeClasspath
+
+        ignoreExitValue = false
+        args = [
+          tldZones,
+          tmpJflexMacro,
+          tmpTldList
+        ]
+      }
+
+      // LUCENE-9926: tldZones is regenerated daily. Compare the generated content (excluding comments) so that
+      // we only update actual output files if non-comments have changed.
+      def contentLines = { File file ->
+        if (file.exists()) {
+          List<String> lines = file.readLines("UTF-8")
+          lines.removeIf { line -> line.isBlank() || line.startsWith("//") }
+          return lines
+        } else {
+          return []
+        }
+      }
+
+      if (contentLines(tmpTldList).equals(contentLines(tldList))) {
+        logger.lifecycle("Generated TLD content identical as before, not updating.")
+      } else {
+        tldList.setBytes tmpTldList.bytes
+        jflexMacro.setBytes tmpJflexMacro.bytes
+        logger.lifecycle("You've regenerated the TLD include file, remember to regenerate UAX29URLEmailTokenizerImpl too.")
+      }
+    }
+  })
+
+  tasks.register("regenerateWikipediaTokenizer", JFlexTask, {
+    description = "Regenerate WikipediaTokenizerImpl.java"
+
+    classpath = configurations.jflex
+
+    jflexFile = file('src/java/org/apache/lucene/analysis/wikipedia/WikipediaTokenizerImpl.jflex')
+    skeleton = skeletonDefault
+  })
+
+  tasks.register("regenerateClassicTokenizer", JFlexTask, {
+    description = "Regenerate ClassicTokenizerImpl.java"
+
+    classpath = configurations.jflex
+
+    jflexFile = file('src/java/org/apache/lucene/analysis/classic/ClassicTokenizerImpl.jflex')
+    skeleton = skeletonDefault
+  })
+
+  tasks.register("regenerateUAX29URLEmailTokenizer", JFlexTask, {
+    description = "Regenerate UAX29URLEmailTokenizerImpl.java"
+
+    classpath = configurations.jflex
+
+    // UAX29URLEmailTokenizerImpl.jflex includes: ASCIITLD.jflex
+    // so we make sure it is up to date. Also, make sure the ordering of internal
+    // tasks is enforced (just scheduling top-level wrappers doesn't mean their subtask graphs cannot be reordered).
+    dependsOn regenerateTlds
+
+    jflexFile = file('src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.jflex')
+    skeleton = skeletonNoBufferExpansion
+    heapSize = "12g"
+
+    // Add included files as inputs.
+    inputs.file file('src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex')
+
+    doFirst {
+      logger.lifecycle("Regenerating UAX29URLEmailTokenizerImpl. This may take a long time (and requires ${heapSize} of memory!).")
+    }
+
+    doLast {
+      ant.replace(
+          file: file('src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.java'),
+          encoding: "UTF-8",
+          token: "private static final int ZZ_BUFFERSIZE =",
+          value: "private int ZZ_BUFFERSIZE ="
+          )
+    }
+  })
+
+  def generateHTMLCharacterEntities = tasks.register("regenerateHTMLCharacterEntities", QuietExec, {
+    description = "Regenerate HTMLCharacterEntities.jflex"
+
+    def target = file('src/java/org/apache/lucene/analysis/charfilter/HTMLCharacterEntities.jflex')
+    def script = file("${resources}/htmlentity.py")
+
+    outputs.files target
+    inputs.file script
+
+    executable = buildGlobals.externalTool("python3")
+    workingDir = target.parentFile
+    args += [
+      "-B",
+      // don't write any bytecode cache
+      script,
+      target
+    ]
+
+    doLast {
+      project.ant.fixcrlf(
+          file: target,
+          encoding: "UTF-8",
+          eol: "lf"
+          )
+    }
+  })
+
+  tasks.register("regenerateHTMLStripCharFilter", JFlexTask, {
+    description = "Regenerate HTMLStripCharFilter.java"
+
+    classpath = configurations.jflex
+
+    // HTMLStripCharFilter.jflex includes HTMLCharacterEntities.jflex so we make sure it's up to date.
+    dependsOn generateHTMLCharacterEntities
+
+    // Add included files as inputs.
+    inputs.file file('src/java/org/apache/lucene/analysis/charfilter/HTMLCharacterEntities.jflex')
+
+    jflexFile = file('src/java/org/apache/lucene/analysis/charfilter/HTMLStripCharFilter.jflex')
+    skeleton = skeletonDefault
+  })
+}
+
+//
+// Regenerate precomputed Packed* and bulkOperation* classes.
+//
+
+tasks.register("regeneratePacked64SingleBlock", {
+  description = "Regenerate Packed64SingleBlock and BulkOperation*.java"
+
+  def targetDir = file("src/java/org/apache/lucene/util/packed")
+
+  def packedResources = rootProject.file("gradle/regenerate/packed")
+  def templateFiles = [
+    file("${packedResources}/gen_BulkOperation.py"),
+    file("${packedResources}/gen_Packed64SingleBlock.py")
+  ]
+
+  inputs.files templateFiles
+  outputs.files fileTree(dir: targetDir, includes: [
+    "Packed64SingleBlock.java",
+    "BulkOperation*.java"
+  ])
+
+  doLast {
+    templateFiles.each {prog ->
+      logger.lifecycle("Executing: ${prog} in ${targetDir}")
+      buildGlobals.quietExec(it, {
+        workingDir = targetDir
+        executable = buildGlobals.externalTool("python3")
+        args = ['-B', "${prog}"]
+      })
+    }
+    // Correct line endings for Windows.
+    project.ant.fixcrlf(
+        srcDir: targetDir,
+        includes: 'Packed64SingleBlock.java, BulkOperation*.java',
+        encoding: 'UTF-8',
+        eol: 'lf'
+        )
+  }
+})
+
+//
+// Regenerate moman-based resources
+//
+
+def momanSource = "https://github.com/jpbarrette/moman/archive/497c90e34e412b6494db6dabf0d95db8034bd325.zip"
+def momanDir = file("${buildDir}/moman")
+
+def installMoman = tasks.register("installMoman", Download, {
+  def momanZip = file("${momanDir}/moman.zip")
+
+  src momanSource
+  dest momanZip
+  onlyIfModified true
+
+  doLast {
+    ant.unzip(src: momanZip, dest: momanDir, overwrite: "true") {
+      ant.cutdirsmapper(dirs: "1")
+    }
+  }
+})
+
+tasks.register("regenerateParametricDescription", {
+  dependsOn installMoman
+
+  description = "Regenerate *ParametricDescription"
+  regenerate {
+    ifSkippedAlsoSkip = ["installMoman"]
+  }
+
+  def momanResources = rootProject.file("gradle/regenerate/moman")
+  def targetDir = file("src/java/org/apache/lucene/util/automaton")
+  def templateFile = file("${momanResources}/createLevAutomata.py")
+
+  inputs.property("source", momanSource)
+  inputs.file templateFile
+  outputs.files fileTree(dir: targetDir, includes: ["*ParametricDescription.java"])
+
+  doLast {
+    ['1', '2'].each {num ->
+      ['True', 'False'].each {transpose ->
+        buildGlobals.quietExec(it, {
+          workingDir = targetDir
+          executable = buildGlobals.externalTool("python3")
+          args = [
+            '-B',
+            templateFile.toString(),
+            num,
+            transpose,
+            "${momanDir}/finenight/python"
+          ]
+        })
+      }
+    }
+    project.ant.fixcrlf(
+        srcDir: targetDir,
+        includes: '*ParametricDescription.java',
+        encoding: 'UTF-8',
+        eol: 'lf'
+        )
+  }
+})

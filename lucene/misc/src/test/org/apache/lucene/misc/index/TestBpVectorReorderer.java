@@ -25,9 +25,7 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
-import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene103.Lucene103Codec;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StoredField;
@@ -45,6 +43,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.VectorUtil;
 
 /** Tests reordering vector values using Binary Partitioning */
@@ -64,12 +63,7 @@ public class TestBpVectorReorderer extends LuceneTestCase {
   private void createQuantizedIndex(Directory dir, List<float[]> vectors) throws IOException {
     IndexWriterConfig cfg = new IndexWriterConfig();
     cfg.setCodec(
-        new Lucene103Codec() {
-          @Override
-          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene99HnswScalarQuantizedVectorsFormat(8, 32);
-          }
-        });
+        TestUtil.alwaysKnnVectorsFormat(new Lucene104HnswScalarQuantizedVectorsFormat(8, 32)));
     try (IndexWriter writer = new IndexWriter(dir, cfg)) {
       int i = 0;
       for (float[] vector : vectors) {

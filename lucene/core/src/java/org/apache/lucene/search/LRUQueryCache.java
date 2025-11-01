@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import static org.apache.lucene.util.RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
 import static org.apache.lucene.util.RamUsageEstimator.LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY;
-import static org.apache.lucene.util.RamUsageEstimator.QUERY_DEFAULT_RAM_BYTES_USED;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -91,7 +90,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
   private final Predicate<LeafReaderContext> leavesToCache;
   // maps queries that are contained in the cache to a singleton so that this
   // cache does not store several copies of the same query
-  private final Map<Query, Query> uniqueQueries;
+  private final Map<Query, QueryMetadata> uniqueQueries;
   // The contract between this set and the per-leaf caches is that per-leaf caches
   // are only allowed to store sub-sets of the queries that are contained in
   // mostRecentlyUsedQueries. This is why write operations are performed under a lock
@@ -174,6 +173,11 @@ public class LRUQueryCache implements QueryCache, Accountable {
    */
   public LRUQueryCache(int maxSize, long maxRamBytesUsed) {
     this(maxSize, maxRamBytesUsed, new MinSegmentSizePredicate(10000), 10);
+  }
+
+  // pkg-private for testing
+  Map<Query, QueryMetadata> getUniqueQueries() {
+    return uniqueQueries;
   }
 
   // pkg-private for testing
@@ -300,32 +304,35 @@ public class LRUQueryCache implements QueryCache, Accountable {
       return null;
     }
     // this get call moves the query to the most-recently-used position
-    final Query singleton = uniqueQueries.get(key);
-    if (singleton == null) {
+    final QueryMetadata record = uniqueQueries.get(key);
+    if (record == null || record.query == null) {
       onMiss(readerKey, key);
       return null;
     }
-    final CacheAndCount cached = leafCache.get(singleton);
+    final CacheAndCount cached = leafCache.get(record.query);
     if (cached == null) {
-      onMiss(readerKey, singleton);
+      onMiss(readerKey, record.query);
     } else {
-      onHit(readerKey, singleton);
+      onHit(readerKey, record.query);
     }
     return cached;
   }
 
-  private void putIfAbsent(Query query, CacheAndCount cached, IndexReader.CacheHelper cacheHelper) {
+  public void putIfAbsent(Query query, CacheAndCount cached, IndexReader.CacheHelper cacheHelper) {
     assert query instanceof BoostQuery == false;
     assert query instanceof ConstantScoreQuery == false;
     // under a lock to make sure that mostRecentlyUsedQueries and cache remain sync'ed
     writeLock.lock();
     try {
-      Query singleton = uniqueQueries.putIfAbsent(query, query);
-      if (singleton == null) {
-        onQueryCache(query, getRamBytesUsed(query));
-      } else {
-        query = singleton;
-      }
+      QueryMetadata record =
+          uniqueQueries.computeIfAbsent(
+              query,
+              q -> {
+                long queryRamBytesUsed = getRamBytesUsed(q);
+                onQueryCache(q, queryRamBytesUsed);
+                return new QueryMetadata(q, queryRamBytesUsed);
+              });
+      query = record.query;
       final IndexReader.CacheKey key = cacheHelper.getKey();
       LeafCache leafCache = cache.get(key);
       if (leafCache == null) {
@@ -347,25 +354,24 @@ public class LRUQueryCache implements QueryCache, Accountable {
     assert writeLock.isHeldByCurrentThread();
     // under a lock to make sure that mostRecentlyUsedQueries and cache keep sync'ed
     if (requiresEviction()) {
-
-      Iterator<Query> iterator = mostRecentlyUsedQueries.iterator();
+      Iterator<Map.Entry<Query, QueryMetadata>> iterator = uniqueQueries.entrySet().iterator();
       do {
-        final Query query = iterator.next();
-        final int size = mostRecentlyUsedQueries.size();
+        final Map.Entry<Query, QueryMetadata> entry = iterator.next();
+        final int size = uniqueQueries.size();
         iterator.remove();
-        if (size == mostRecentlyUsedQueries.size()) {
+        if (size == uniqueQueries.size()) {
           // size did not decrease, because the hash of the query changed since it has been
           // put into the cache
           throw new ConcurrentModificationException(
               "Removal from the cache failed! This "
                   + "is probably due to a query which has been modified after having been put into "
                   + " the cache or a badly implemented clone(). Query class: ["
-                  + query.getClass()
+                  + entry.getKey().getClass()
                   + "], query: ["
-                  + query
+                  + entry.getKey()
                   + "]");
         }
-        onEviction(query);
+        onEviction(entry.getKey(), entry.getValue().queryRamBytesUsed);
       } while (iterator.hasNext() && requiresEviction());
     }
   }
@@ -394,18 +400,18 @@ public class LRUQueryCache implements QueryCache, Accountable {
   public void clearQuery(Query query) {
     writeLock.lock();
     try {
-      final Query singleton = uniqueQueries.remove(query);
-      if (singleton != null) {
-        onEviction(singleton);
+      final QueryMetadata record = uniqueQueries.remove(query);
+      if (record != null && record.query != null) {
+        onEviction(record.query, record.queryRamBytesUsed);
       }
     } finally {
       writeLock.unlock();
     }
   }
 
-  private void onEviction(Query singleton) {
+  private void onEviction(Query singleton, long querySizeInBytes) {
     assert writeLock.isHeldByCurrentThread();
-    onQueryEviction(singleton, getRamBytesUsed(singleton));
+    onQueryEviction(singleton, querySizeInBytes);
     for (LeafCache leafCache : cache.values()) {
       leafCache.remove(singleton);
     }
@@ -426,10 +432,9 @@ public class LRUQueryCache implements QueryCache, Accountable {
   }
 
   private static long getRamBytesUsed(Query query) {
-    return LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY
-        + (query instanceof Accountable accountableQuery
-            ? accountableQuery.ramBytesUsed()
-            : QUERY_DEFAULT_RAM_BYTES_USED);
+    // Here 32 represents a rough shallow size for a query object
+    long queryRamBytesUsed = RamUsageEstimator.sizeOf(query, 32);
+    return LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY + queryRamBytesUsed;
   }
 
   // pkg-private for testing
@@ -539,6 +544,8 @@ public class LRUQueryCache implements QueryCache, Accountable {
     scorer.score(
         new LeafCollector() {
 
+          private int[] buffer;
+
           @Override
           public void setScorer(Scorable scorer) throws IOException {}
 
@@ -546,6 +553,19 @@ public class LRUQueryCache implements QueryCache, Accountable {
           public void collect(int doc) throws IOException {
             count[0]++;
             bitSet.set(doc);
+          }
+
+          @Override
+          public void collect(DocIdStream stream) throws IOException {
+            if (buffer == null) {
+              buffer = new int[128];
+            }
+            for (int c = stream.intoArray(buffer); c != 0; c = stream.intoArray(buffer)) {
+              for (int i = 0; i < c; ++i) {
+                bitSet.set(buffer[i]);
+              }
+              count[0] += c;
+            }
           }
         },
         null,
@@ -560,12 +580,26 @@ public class LRUQueryCache implements QueryCache, Accountable {
     scorer.score(
         new LeafCollector() {
 
+          private int[] buffer = null;
+
           @Override
           public void setScorer(Scorable scorer) throws IOException {}
 
           @Override
           public void collect(int doc) throws IOException {
             builder.add(doc);
+          }
+
+          @Override
+          public void collect(DocIdStream stream) throws IOException {
+            if (buffer == null) {
+              buffer = new int[128];
+            }
+            for (int c = stream.intoArray(buffer); c != 0; c = stream.intoArray(buffer)) {
+              for (int i = 0; i < c; ++i) {
+                builder.add(buffer[i]);
+              }
+            }
           }
         },
         null,
@@ -704,6 +738,9 @@ public class LRUQueryCache implements QueryCache, Accountable {
       return ramBytesUsed;
     }
   }
+
+  // pkg-private for testing
+  record QueryMetadata(Query query, long queryRamBytesUsed) {}
 
   private class CachingWrapperWeight extends ConstantScoreWeight {
 

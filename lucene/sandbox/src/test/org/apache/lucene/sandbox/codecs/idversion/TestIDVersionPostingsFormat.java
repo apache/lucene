@@ -676,6 +676,8 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
 
   // Simulates optimistic concurrency in a distributed indexing app and confirms the latest version
   // always wins:
+  // TODO: incredibly slow (maybe from the sleeping?)
+  @Nightly
   @SuppressForbidden(reason = "Thread sleep")
   public void testGlobalVersions() throws Exception {
     Directory dir = newDirectory();

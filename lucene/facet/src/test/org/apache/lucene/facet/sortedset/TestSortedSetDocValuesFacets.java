@@ -1434,6 +1434,8 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
     }
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandomHierarchicalFlatMix() throws Exception {
     int fullIterations = LuceneTestCase.TEST_NIGHTLY ? 20 : 3;
     for (int fullIter = 0; fullIter < fullIterations; fullIter++) {

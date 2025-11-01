@@ -146,6 +146,8 @@ public class TestNRTThreads extends ThreadedIndexingAndSearchingTestCase {
     return newSearcher(r2);
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testNRTThreads() throws Exception {
     runTest("TestNRTThreads");
   }

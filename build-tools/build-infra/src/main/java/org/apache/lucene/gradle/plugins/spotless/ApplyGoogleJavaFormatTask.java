@@ -45,9 +45,8 @@ public abstract class ApplyGoogleJavaFormatTask extends ParentGoogleJavaFormatTa
     WorkQueue workQueue = getWorkQueue();
     List<File> sourceFiles = getIncrementalBatch(inputChanges);
 
-    if (sourceFiles.isEmpty()) {
-      return;
-    }
+    var fileStates = readFileStatesFrom(getFileStateCache());
+    sourceFiles = maybeRefilter(fileStates, sourceFiles);
 
     getLogger()
         .info(
@@ -55,19 +54,24 @@ public abstract class ApplyGoogleJavaFormatTask extends ParentGoogleJavaFormatTa
             sourceFiles.size(),
             sourceFiles.size() == 1 ? "file" : "files");
 
-    for (var batch : batchSourceFiles(sourceFiles)) {
-      workQueue.submit(
-          ApplyGoogleJavaFormatAction.class,
-          params -> {
-            params.getTargetFiles().setFrom(batch);
-          });
+    if (!sourceFiles.isEmpty()) {
+      for (var batch : batchSourceFiles(sourceFiles)) {
+        workQueue.submit(
+            ApplyGoogleJavaFormatAction.class,
+            params -> {
+              params.getTargetFiles().setFrom(batch);
+            });
+      }
+
+      workQueue.await();
+
+      updateFileStates(fileStates, sourceFiles);
+      writeFileStates(getFileStateCache(), fileStates);
     }
 
     Path taskOutput = getOutputChangeListFile().get().getAsFile().toPath();
     Files.writeString(
         taskOutput, sourceFiles.stream().map(File::getPath).collect(Collectors.joining("\n")));
-
-    workQueue.await();
   }
 
   public abstract static class ApplyGoogleJavaFormatAction

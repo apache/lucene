@@ -1,4 +1,5 @@
-# Generated from IANA TLD Database (gradlew generateTlds).aaa
+# Generated from IANA TLD Database (gradlew generateTlds).
+aaa
 aarp
 abb
 abbott
@@ -343,7 +344,6 @@ download
 drive
 dtv
 dubai
-dunlop
 dupont
 durban
 dvag
@@ -944,7 +944,6 @@ realtor
 realty
 recipes
 red
-redstone
 redumbrella
 rehab
 reise

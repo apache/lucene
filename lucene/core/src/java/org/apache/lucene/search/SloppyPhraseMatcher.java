@@ -19,13 +19,11 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
-import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsSource;
 import org.apache.lucene.index.Term;
@@ -128,14 +126,20 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
           public Impacts getImpacts() throws IOException {
             return new Impacts() {
 
+              private final FreqAndNormBuffer impactBuffer = new FreqAndNormBuffer();
+
+              {
+                impactBuffer.add(Integer.MAX_VALUE, 1);
+              }
+
               @Override
               public int numLevels() {
                 return 1;
               }
 
               @Override
-              public List<Impact> getImpacts(int level) {
-                return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
+              public FreqAndNormBuffer getImpacts(int level) {
+                return impactBuffer;
               }
 
               @Override

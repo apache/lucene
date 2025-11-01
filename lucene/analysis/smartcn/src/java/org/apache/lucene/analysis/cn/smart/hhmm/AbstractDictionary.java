@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.analysis.cn.smart.hhmm;
 
+import java.io.ObjectInputFilter.FilterInfo;
+import java.io.ObjectInputFilter.Status;
+import java.io.ObjectInputStream;
 import java.io.UnsupportedEncodingException;
 
 /**
@@ -194,5 +197,17 @@ abstract class AbstractDictionary {
     }
 
     return hash;
+  }
+
+  /** Safety filter for {@link ObjectInputStream} to only allow arrays of primitive types. */
+  final Status filterObjectInputStream(FilterInfo info) {
+    var cl = info.serialClass();
+    if (cl == null) {
+      return Status.UNDECIDED;
+    }
+    while (cl.isArray()) {
+      cl = cl.getComponentType();
+    }
+    return cl.isPrimitive() ? Status.ALLOWED : Status.REJECTED;
   }
 }

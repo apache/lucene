@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntField;
@@ -66,7 +66,7 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
     // Set up the IndexWriterConfig to use quantized vector storage
     config = new IndexWriterConfig();
     config.setCodec(
-        TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswScalarQuantizedVectorsFormat()));
+        TestUtil.alwaysKnnVectorsFormat(new Lucene104HnswScalarQuantizedVectorsFormat()));
   }
 
   @Test
@@ -78,7 +78,9 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
                 new TermQuery(new Term("test")), DoubleValuesSource.constant(0), 0));
   }
 
+  // TODO: incredibly slow
   @Test
+  @Nightly
   public void testRescoreField() throws Exception {
     Map<Integer, float[]> vectors = new HashMap<>();
 
@@ -167,9 +169,9 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
     final String LATE_I_FIELD = "li_vector";
     final String KNN_FIELD = "knn_vector";
     List<float[][]> corpus = new ArrayList<>();
-    final int numDocs = atLeast(1000);
-    final int numSegments = random().nextInt(2, 10);
-    final int dim = 128;
+    final int numDocs = atLeast(100);
+    final int numSegments = atLeast(2);
+    final int dim = 8;
     final VectorSimilarityFunction vectorSimilarityFunction =
         VectorSimilarityFunction.values()[
             random().nextInt(VectorSimilarityFunction.values().length)];

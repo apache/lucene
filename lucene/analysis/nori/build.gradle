@@ -15,7 +15,8 @@
  * limitations under the License.
  */
 
-
+import de.undercouch.gradle.tasks.download.Download
+import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension
 
 description = 'Korean Morphological Analyzer'
 
@@ -24,4 +25,77 @@ dependencies {
   moduleApi project(':lucene:analysis:common')
 
   moduleTestImplementation project(':lucene:test-framework')
+}
+
+//
+// This configures regeneration of Nori dictionaries.
+//
+
+static void recompileDictionary(Project project, String dictionaryName, Closure closure) {
+  project.getExtensions().getByType(LuceneBuildGlobalsExtension).execOps.javaexec {
+    mainClass = "org.apache.lucene.analysis.ko.dict.DictionaryBuilder"
+    classpath = project.sourceSets.main.runtimeClasspath
+
+    jvmArgs '-Xmx1G'
+
+    with closure
+  }
+  project.logger.lifecycle("Automaton regenerated from dictionary: ${dictionaryName}")
+}
+
+plugins.withType(JavaPlugin).configureEach {
+  project.ext {
+    targetDir = project.file("src/resources")
+  }
+
+  def dictionaryName = "mecab-ko-dic-2.1.1-20180720"
+  def dictionarySource = "https://s3.amazonaws.com/lucene-testdata/mecab/${dictionaryName}.tar.gz"
+  def compileMecabKo = tasks.register("compileMecabKo", Download, {
+
+    dependsOn sourceSets.main.runtimeClasspath
+
+    def dictionaryFile = file("${buildDir}/generate/${dictionaryName}.tar.gz")
+    def unpackedDir = file("${buildDir}/generate/${dictionaryName}")
+
+    src dictionarySource
+    dest dictionaryFile
+    onlyIfModified true
+
+    doLast {
+      buildGlobals.fileOps.delete(sourceSets.main.resources.srcDirs.collect {File location ->
+        fileTree(dir: location, include: "org/apache/lucene/analysis/ja/dict/*.dat")
+      })
+
+      // Unpack the downloaded archive.
+      delete unpackedDir
+      ant.untar(src: dictionaryFile, dest: unpackedDir, compression: "gzip") {
+        ant.cutdirsmapper(dirs: "1")
+      }
+
+      // Compile the dictionary
+      recompileDictionary(project, dictionaryName, {
+        args += [
+          unpackedDir,
+          targetDir,
+          "utf-8",
+          false
+        ]
+      })
+    }
+  })
+
+  tasks.register("regenerateDictionariesFromMecabKo", {
+    description = "Recompile dictionaries from Mecab-Ko data."
+
+    dependsOn compileMecabKo
+
+    inputs.property("dictionarySource", dictionarySource)
+    outputs.files(fileTree(dir: "src/resources/org/apache/lucene/analysis/ko/dict", include: "*.dat"))
+
+    regenerate {
+      // No need to run any follow-ups, we generate binary files (not sources).
+      followedUpBy = []
+      ifSkippedAlsoSkip = ["compileMecabKo"]
+    }
+  })
 }

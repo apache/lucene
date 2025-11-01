@@ -54,6 +54,29 @@ public class TestBitSetDocIdStream extends LuceneTestCase {
     assertEquals(bitSet.cardinality(), stream.count());
   }
 
+  public void testIntoArray() {
+    FixedBitSet bitSet = randomBitSet();
+    BitSetIterator bitSetIterator = new BitSetIterator(bitSet, 0L);
+    int base = 42;
+    BitSetDocIdStream stream = new BitSetDocIdStream(bitSet, base);
+    int[] array = new int[16];
+
+    int o = array.length;
+    int count = array.length;
+
+    for (int expected = bitSetIterator.nextDoc();
+        expected != DocIdSetIterator.NO_MORE_DOCS;
+        expected = bitSetIterator.nextDoc()) {
+      if (o == count) {
+        count = stream.intoArray(array);
+        o = 0;
+      }
+      assertEquals(expected + base, array[o++]);
+    }
+    assertEquals(count, o);
+    assertEquals(0, stream.intoArray(array));
+  }
+
   public void testForEachUpTo() throws IOException {
     FixedBitSet bitSet = randomBitSet();
     int base = 42;
@@ -97,6 +120,36 @@ public class TestBitSetDocIdStream extends LuceneTestCase {
     assertEquals(bitSet.cardinality(100 - 42, bitSet.length()), stream.count(200));
 
     assertFalse(stream.mayHaveRemaining());
+  }
+
+  public void testIntoArrayUpTo() throws IOException {
+    FixedBitSet bitSet = randomBitSet();
+    BitSetIterator bitSetIterator = new BitSetIterator(bitSet, 0L);
+    bitSetIterator.nextDoc();
+    int base = 42;
+    BitSetDocIdStream stream = new BitSetDocIdStream(bitSet, base);
+    int[] array = new int[16];
+
+    int o = array.length;
+    int count = array.length;
+
+    for (int upTo = 0; upTo < bitSet.length(); ) {
+      int newUpTo = Math.min(upTo + random().nextInt(40), 100);
+
+      for (int expected = bitSetIterator.docID();
+          expected < newUpTo;
+          expected = bitSetIterator.nextDoc()) {
+        if (o == count) {
+          count = stream.intoArray(base + newUpTo, array);
+          o = 0;
+        }
+        assertEquals(expected + base, array[o++]);
+      }
+      assertEquals(count, o);
+      assertEquals(0, stream.intoArray(base + newUpTo, array));
+
+      upTo = newUpTo;
+    }
   }
 
   public void testMixForEachCountUpTo() throws IOException {

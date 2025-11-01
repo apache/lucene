@@ -628,7 +628,9 @@ public class TestPhraseWildcardQuery extends LuceneTestCase {
     // Only verify test counters if the number of segments is 2 as expected.
     // If the randomization produced a different number of segments,
     // then just ignore test counters.
-    return reader.leaves().size() == 2 ? new AssertCounters() : AssertCounters.NO_OP;
+    return reader.leaves().size() == 2 && TEST_ASSERTS_ENABLED
+        ? new AssertCounters()
+        : AssertCounters.NO_OP;
   }
 
   /** Fluent API to assert {@link TestCounters}. */
