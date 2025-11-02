@@ -80,6 +80,7 @@ public class StageArtifacts {
       }
     }
 
+    @SuppressWarnings("SystemConsoleNull")
     static Params parse(String[] args) {
       try {
         var params = new Params();
@@ -138,11 +139,12 @@ public class StageArtifacts {
           params.userPass = envVar("ASF_PASSWORD");
           if (params.userPass == null) {
             Console console = System.console();
-            if (console != null) {
+            if (console != null && console.isTerminal()) {
               System.out.println("Enter password for " + params.userName + ":");
               params.userPass = console.readPassword();
             } else {
-              throw new RuntimeException("No console, can't prompt for password.");
+              throw new RuntimeException(
+                  "No console or console isn't a terminal, can't prompt for password.");
             }
           }
         }
