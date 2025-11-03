@@ -81,7 +81,7 @@ public class ScorerIndexSearcher extends IndexSearcher {
               }
             };
           }
-          
+
           @Override
           public ScorerSupplier scorerSupplier(IndexSearcher.LeafReaderContextPartition partition)
               throws IOException {
