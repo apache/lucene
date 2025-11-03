@@ -690,7 +690,13 @@ public class JVectorWriter extends KnnVectorsWriter {
       int graphNodeId = 0;
       // Build a new graph from scratch and compact the graph node ids
       for (int readerIdx = 0; readerIdx < readers.length; readerIdx++) {
+        if (readers[readerIdx] == null) {
+          continue;
+        }
         final FloatVectorValues values = readers[readerIdx].getFloatVectorValues(fieldName);
+        if (values == null || values.size() == 0) {
+          continue;
+        }
         perReaderFloatVectorValues[readerIdx] = values;
         // For each vector in this reader
         KnnVectorValues.DocIndexIterator it = values.iterator();
