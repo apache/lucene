@@ -42,7 +42,8 @@ jobs:
 
       - shell: bash
         run: |
-          output=$(./gradlew help)
+          set -uo pipefail
+          output=$(./gradlew 2>&1)
           status=$?
           if [ $status -eq 0 ] && [[ "$output" == *"ERROR: java version must be"* ]]; then
             echo "Passed."
