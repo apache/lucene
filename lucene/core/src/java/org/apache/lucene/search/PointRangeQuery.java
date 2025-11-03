@@ -344,7 +344,8 @@ public abstract class PointRangeQuery extends Query {
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         // Delegate to partition-aware version for entire segment
-        return scorerSupplier(IndexSearcher.LeafReaderContextPartition.createForEntireSegment(context));
+        return scorerSupplier(
+            IndexSearcher.LeafReaderContextPartition.createForEntireSegment(context));
       }
 
       @Override

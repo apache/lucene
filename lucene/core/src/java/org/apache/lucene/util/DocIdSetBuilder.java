@@ -189,8 +189,7 @@ public final class DocIdSetBuilder {
   }
 
   /**
-   * Partition-aware BufferAdder that filters docs to only include those within the specified
-   * range.
+   * Partition-aware BufferAdder that filters docs to only include those within the specified range.
    */
   private record PartitionAwareBufferAdder(Buffer buffer, int minDocId, int maxDocId)
       implements BulkAdder {
@@ -320,8 +319,7 @@ public final class DocIdSetBuilder {
     this(maxDoc, docCount, valueCount, 0, maxDoc);
   }
 
-  private DocIdSetBuilder(
-      int maxDoc, int docCount, long valueCount, int minDocId, int maxDocId) {
+  private DocIdSetBuilder(int maxDoc, int docCount, long valueCount, int minDocId, int maxDocId) {
     this.maxDoc = maxDoc;
     this.minDocId = minDocId;
     this.maxDocId = maxDocId;
