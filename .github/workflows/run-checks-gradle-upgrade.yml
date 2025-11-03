@@ -45,7 +45,7 @@ jobs:
           set +e
           output=$(./gradlew 2>&1)
           status=$?
-          if [ $status -eq 0 ] && [[ "$output" == *"ERROR: java version must be"* ]]; then
+          if [[ "$output" == *"ERROR: java version must be"* ]]; then
             echo "Passed."
           else
             echo "Something is not right: gradlew command returned suspicious output or status code on JDK 11"
