@@ -209,6 +209,7 @@ public class WrapperDownloader {
     }
   }
 
+  @SuppressForbidden(reason = "Valid use of thread.sleep.")
   private static void sleep(long millis) throws InterruptedException {
     Thread.sleep(millis);
   }
