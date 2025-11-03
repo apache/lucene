@@ -107,7 +107,6 @@ class QueryProfilerWeight extends FilterWeight {
   @Override
   public ScorerSupplier scorerSupplier(IndexSearcher.LeafReaderContextPartition partition)
       throws IOException {
-    // Delegate to the context method to ensure profiling logic is applied
     return scorerSupplier(partition.ctx);
   }
 
