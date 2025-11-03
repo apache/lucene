@@ -18,6 +18,8 @@
 package org.apache.lucene.sandbox.codecs.jvector;
 
 import io.github.jbellis.jvector.graph.disk.OnDiskGraphIndex;
+import io.github.jbellis.jvector.graph.similarity.ScoreFunction;
+import io.github.jbellis.jvector.quantization.PQVectors;
 import io.github.jbellis.jvector.util.Bits;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import io.github.jbellis.jvector.vector.VectorizationProvider;
@@ -25,6 +27,7 @@ import io.github.jbellis.jvector.vector.types.VectorFloat;
 import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 import java.io.IOException;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 
 /// Implements Lucene vector access over a JVector on-disk index
@@ -33,15 +36,18 @@ public class JVectorFloatVectorValues extends FloatVectorValues {
       VectorizationProvider.getInstance().getVectorTypeSupport();
 
   private final OnDiskGraphIndex.View view;
+  private final PQVectors pq;
   private final VectorSimilarityFunction similarityFunction;
   private final GraphNodeIdToDocMap graphNodeIdToDocMap;
 
   public JVectorFloatVectorValues(
       OnDiskGraphIndex onDiskGraphIndex,
+      PQVectors pq,
       VectorSimilarityFunction similarityFunction,
       GraphNodeIdToDocMap graphNodeIdToDocMap)
       throws IOException {
     this.view = onDiskGraphIndex.getView();
+    this.pq = pq;
     this.similarityFunction = similarityFunction;
     this.graphNodeIdToDocMap = graphNodeIdToDocMap;
   }
@@ -121,7 +127,39 @@ public class JVectorFloatVectorValues extends FloatVectorValues {
 
   @Override
   public VectorScorer scorer(float[] query) throws IOException {
-    return new JVectorVectorScorer(
-        this, VECTOR_TYPE_SUPPORT.createFloatVector(query), similarityFunction);
+    if (pq != null) {
+      final var vector = VECTOR_TYPE_SUPPORT.createFloatVector(query);
+      final var quantizedScoreFunction = pq.precomputedScoreFunctionFor(vector, similarityFunction);
+      return new JVectorScorer(quantizedScoreFunction, iterator());
+    } else {
+      return rescorer(query);
+    }
+  }
+
+  @Override
+  public VectorScorer rescorer(float[] target) throws IOException {
+    final var vector = VECTOR_TYPE_SUPPORT.createFloatVector(target);
+    final var scoreFunction = view.rerankerFor(vector, similarityFunction);
+    return new JVectorScorer(scoreFunction, iterator());
+  }
+
+  private static class JVectorScorer implements VectorScorer {
+    private final ScoreFunction scoreFunction;
+    private final DocIndexIterator iterator;
+
+    JVectorScorer(ScoreFunction scoreFunction, DocIndexIterator iterator) {
+      this.scoreFunction = scoreFunction;
+      this.iterator = iterator;
+    }
+
+    @Override
+    public float score() throws IOException {
+      return scoreFunction.similarityTo(iterator.index());
+    }
+
+    @Override
+    public DocIdSetIterator iterator() {
+      return iterator;
+    }
   }
 }

@@ -130,7 +130,10 @@ public class JVectorReader extends KnnVectorsReader {
     }
 
     return new JVectorFloatVectorValues(
-        fieldEntry.index, fieldEntry.similarityFunction, fieldEntry.graphNodeIdToDocMap);
+        fieldEntry.index,
+        fieldEntry.pqVectors,
+        fieldEntry.similarityFunction,
+        fieldEntry.graphNodeIdToDocMap);
   }
 
   @Override
