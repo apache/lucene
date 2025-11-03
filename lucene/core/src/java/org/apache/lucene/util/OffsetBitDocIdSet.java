@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.util;
 
-import java.io.IOException;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 
