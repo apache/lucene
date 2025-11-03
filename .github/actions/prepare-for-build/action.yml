@@ -15,6 +15,11 @@ inputs:
     default: "temurin"
     description: "The default JDK distribution type"
 
+  use-cache:
+    required: false
+    default: true
+    description: "Use setup-gradle for dependency caching"
+
 runs:
   using: "composite"
   steps:
@@ -33,6 +38,7 @@ runs:
 
     # This includes "smart" caching of gradle dependencies.
     - name: Set up Gradle
+      if: ${{ inputs.use-cache }}
       uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6c972d7336334ccaf61c96 # v4.4.1
       with:
         # increase expiry time for the temp. develocity token.
