@@ -29,6 +29,16 @@ Run the following to set up Eclipse project files:
 
 Open the lucene checkout in VSCode.
 
+GitHub Codespaces
+=====
+
+Fork the apache/lucene repository
+
+Browse to https://github.com/codespaces/new
+
+Repository: yourfork/lucene
+Click "Create codespace"
+
 Neovim
 ======
 
