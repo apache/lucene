@@ -610,6 +610,7 @@ public class JVectorWriter extends KnnVectorsWriter {
         throws IOException {
       this.totalDocsCount = Math.toIntExact(Arrays.stream(mergeState.maxDocs).asLongStream().sum());
       this.fieldInfo = fieldInfo;
+      this.dimension = fieldInfo.getVectorDimension();
 
       final String fieldName = fieldInfo.name;
 
@@ -618,7 +619,6 @@ public class JVectorWriter extends KnnVectorsWriter {
       // between global ordinals and global lucene doc ids
       int totalVectorsCount = 0;
       int totalLiveVectorsCount = 0;
-      int dimension = 0;
       int pqReaderIndex = -1;
       ProductQuantization pq = null;
       int vectorsCountInLeadingReader = -1;
@@ -656,7 +656,7 @@ public class JVectorWriter extends KnnVectorsWriter {
               }
               totalVectorsCount += vectorCountInReader;
               totalLiveVectorsCount += liveVectorCountInReader;
-              dimension = Math.max(dimension, values.dimension());
+              assert values.dimension() == dimension;
             }
           }
         }
@@ -672,7 +672,6 @@ public class JVectorWriter extends KnnVectorsWriter {
       this.pqReaderIndex = pqReaderIndex;
       this.size = totalVectorsCount;
       this.perReaderFloatVectorValues = new FloatVectorValues[readers.length];
-      this.dimension = dimension;
 
       // Build mapping from global ordinal to [readerIndex, readerOrd]
       this.ravvOrdToReaderMapping = new int[totalDocsCount][2];
