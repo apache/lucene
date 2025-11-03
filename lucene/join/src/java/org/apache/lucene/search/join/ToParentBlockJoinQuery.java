@@ -189,6 +189,12 @@ public class ToParentBlockJoinQuery extends Query {
     }
 
     @Override
+    public ScorerSupplier scorerSupplier(IndexSearcher.LeafReaderContextPartition partition)
+        throws IOException {
+      return scorerSupplier(partition.ctx);
+    }
+
+    @Override
     public Explanation explain(LeafReaderContext context, int doc) throws IOException {
       BlockJoinScorer scorer = (BlockJoinScorer) scorer(context);
       if (scorer != null && scorer.iterator().advance(doc) == doc) {
