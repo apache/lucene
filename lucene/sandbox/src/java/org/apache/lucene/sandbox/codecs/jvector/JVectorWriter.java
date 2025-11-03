@@ -26,6 +26,7 @@ import io.github.jbellis.jvector.graph.GraphIndexBuilder;
 import io.github.jbellis.jvector.graph.ListRandomAccessVectorValues;
 import io.github.jbellis.jvector.graph.OnHeapGraphIndex;
 import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
+import io.github.jbellis.jvector.graph.RemappedRandomAccessVectorValues;
 import io.github.jbellis.jvector.graph.disk.OnDiskSequentialGraphIndexWriter;
 import io.github.jbellis.jvector.graph.disk.feature.Feature;
 import io.github.jbellis.jvector.graph.disk.feature.FeatureId;
@@ -218,15 +219,11 @@ public class JVectorWriter extends KnnVectorsWriter {
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
     for (FieldWriter<?> field : fields) {
       final RandomAccessVectorValues randomAccessVectorValues = field.randomAccessVectorValues;
-      final int[] newToOldOrds = new int[randomAccessVectorValues.size()];
-      for (int ord = 0; ord < randomAccessVectorValues.size(); ord++) {
-        newToOldOrds[ord] = ord;
-      }
       final BuildScoreProvider buildScoreProvider;
       final PQVectors pqVectors;
       final FieldInfo fieldInfo = field.fieldInfo;
       if (randomAccessVectorValues.size() >= minimumBatchSizeForQuantization) {
-        pqVectors = getPQVectors(newToOldOrds, randomAccessVectorValues, fieldInfo);
+        pqVectors = getPQVectors(randomAccessVectorValues, fieldInfo);
         buildScoreProvider =
             BuildScoreProvider.pqBuildScoreProvider(
                 getVectorSimilarityFunction(fieldInfo), pqVectors);
@@ -252,17 +249,11 @@ public class JVectorWriter extends KnnVectorsWriter {
           getGraph(
               buildScoreProvider,
               randomAccessVectorValues,
-              newToOldOrds,
               fieldInfo,
               segmentWriteState.segmentInfo.name,
               SIMD_POOL_FLUSH);
       writeField(
-          field.fieldInfo,
-          field.randomAccessVectorValues,
-          pqVectors,
-          newToOldOrds,
-          graphNodeIdToDocMap,
-          graph);
+          field.fieldInfo, field.randomAccessVectorValues, pqVectors, graphNodeIdToDocMap, graph);
     }
   }
 
@@ -270,18 +261,11 @@ public class JVectorWriter extends KnnVectorsWriter {
       FieldInfo fieldInfo,
       RandomAccessVectorValues randomAccessVectorValues,
       PQVectors pqVectors,
-      int[] newToOldOrds,
       GraphNodeIdToDocMap graphNodeIdToDocMap,
       OnHeapGraphIndex graph)
       throws IOException {
     final var vectorIndexFieldMetadata =
-        writeGraph(
-            graph,
-            randomAccessVectorValues,
-            fieldInfo,
-            pqVectors,
-            newToOldOrds,
-            graphNodeIdToDocMap);
+        writeGraph(graph, randomAccessVectorValues, fieldInfo, pqVectors, graphNodeIdToDocMap);
     meta.writeInt(fieldInfo.number);
     vectorIndexFieldMetadata.toOutput(meta);
   }
@@ -300,7 +284,6 @@ public class JVectorWriter extends KnnVectorsWriter {
       RandomAccessVectorValues randomAccessVectorValues,
       FieldInfo fieldInfo,
       PQVectors pqVectors,
-      int[] newToOldOrds,
       GraphNodeIdToDocMap graphNodeIdToDocMap)
       throws IOException {
     // field data file, which contains the graph
@@ -340,9 +323,7 @@ public class JVectorWriter extends KnnVectorsWriter {
         var suppliers =
             Feature.singleStateFactory(
                 FeatureId.INLINE_VECTORS,
-                nodeId ->
-                    new InlineVectors.State(
-                        randomAccessVectorValues.getVector(newToOldOrds[nodeId])));
+                nodeId -> new InlineVectors.State(randomAccessVectorValues.getVector(nodeId)));
         writer.write(suppliers);
         final long endGraphOffset = jVectorIndexWriter.position();
 
@@ -377,8 +358,7 @@ public class JVectorWriter extends KnnVectorsWriter {
   }
 
   private PQVectors getPQVectors(
-      int[] newToOldOrds, RandomAccessVectorValues randomAccessVectorValues, FieldInfo fieldInfo)
-      throws IOException {
+      RandomAccessVectorValues randomAccessVectorValues, FieldInfo fieldInfo) throws IOException {
     final VectorSimilarityFunction vectorSimilarityFunction =
         fieldInfo.getVectorSimilarityFunction();
     final int M =
@@ -396,11 +376,7 @@ public class JVectorWriter extends KnnVectorsWriter {
             SIMD_POOL_MERGE,
             ForkJoinPool.commonPool());
 
-    // PQVectors pqVectors = pq.encodeAll(randomAccessVectorValues, SIMD_POOL);
-    PQVectors pqVectors =
-        PQVectors.encodeAndBuild(
-            pq, newToOldOrds.length, newToOldOrds, randomAccessVectorValues, SIMD_POOL_MERGE);
-    return pqVectors;
+    return pq.encodeAll(randomAccessVectorValues, SIMD_POOL_MERGE);
   }
 
   /// Metadata about the index to be persisted on disk
@@ -773,6 +749,8 @@ public class JVectorWriter extends KnnVectorsWriter {
      * @throws IOException if there is an issue during reading or writing vector data.
      */
     public void merge() throws IOException {
+      final RandomAccessVectorValues mapped =
+          new RemappedRandomAccessVectorValues(this, graphNodeIdsToRavvOrds);
       // This section creates the PQVectors to be used for this merge
       // Get PQ compressor for leading reader
       final String fieldName = fieldInfo.name;
@@ -792,16 +770,10 @@ public class JVectorWriter extends KnnVectorsWriter {
               new RandomAccessVectorValuesOverVectorValues(values);
           newPq = newPq.refine(randomAccessVectorValues);
         }
-        pqVectors =
-            PQVectors.encodeAndBuild(
-                newPq,
-                graphNodeIdsToRavvOrds.length,
-                graphNodeIdsToRavvOrds,
-                this,
-                SIMD_POOL_MERGE);
-      } else if (this.size() >= minimumBatchSizeForQuantization) {
+        pqVectors = newPq.encodeAll(mapped, SIMD_POOL_MERGE);
+      } else if (mapped.size() >= minimumBatchSizeForQuantization) {
         // No pre-existing codebooks, check if we have enough vectors to trigger quantization
-        pqVectors = getPQVectors(graphNodeIdsToRavvOrds, this, fieldInfo);
+        pqVectors = getPQVectors(mapped, fieldInfo);
       } else {
         pqVectors = null;
       }
@@ -816,20 +788,17 @@ public class JVectorWriter extends KnnVectorsWriter {
         // threads)
         buildScoreProvider.diversityProviderFor(0);
       } else {
-        buildScoreProvider =
-            BuildScoreProvider.randomAccessScoreProvider(
-                this, graphNodeIdsToRavvOrds, getVectorSimilarityFunction(fieldInfo));
+        buildScoreProvider = BuildScoreProvider.randomAccessScoreProvider(mapped, getVectorSimilarityFunction(fieldInfo));
       }
       final OnHeapGraphIndex graph =
           getGraph(
               buildScoreProvider,
-              this,
-              graphNodeIdsToRavvOrds,
+              mapped,
               fieldInfo,
               segmentWriteState.segmentInfo.name,
               SIMD_POOL_MERGE);
 
-      writeField(fieldInfo, this, pqVectors, graphNodeIdsToRavvOrds, graphNodeIdToDocMap, graph);
+      writeField(fieldInfo, mapped, pqVectors, graphNodeIdToDocMap, graph);
     }
 
     @Override
@@ -884,7 +853,6 @@ public class JVectorWriter extends KnnVectorsWriter {
   public OnHeapGraphIndex getGraph(
       BuildScoreProvider buildScoreProvider,
       RandomAccessVectorValues randomAccessVectorValues,
-      int[] newToOldOrds,
       FieldInfo fieldInfo,
       String segmentName,
       ForkJoinPool SIMD_POOL) {
@@ -908,16 +876,13 @@ public class JVectorWriter extends KnnVectorsWriter {
     var vv = randomAccessVectorValues.threadLocalSupplier();
 
     // parallel graph construction from the merge documents Ids
+    final int size = randomAccessVectorValues.size();
     SIMD_POOL
         .submit(
             () ->
-                IntStream.range(0, newToOldOrds.length)
+                IntStream.range(0, size)
                     .parallel()
-                    .forEach(
-                        ord -> {
-                          graphIndexBuilder.addGraphNode(
-                              ord, vv.get().getVector(newToOldOrds[ord]));
-                        }))
+                    .forEach(ord -> graphIndexBuilder.addGraphNode(ord, vv.get().getVector(ord))))
         .join();
     graphIndexBuilder.cleanup();
     graphIndex = (OnHeapGraphIndex) graphIndexBuilder.getGraph();
