@@ -34,8 +34,6 @@ public class JVectorFloatVectorValues extends FloatVectorValues {
 
   private final OnDiskGraphIndex.View view;
   private final VectorSimilarityFunction similarityFunction;
-  private final int dimension;
-  private final int size;
   private final GraphNodeIdToDocMap graphNodeIdToDocMap;
 
   public JVectorFloatVectorValues(
@@ -44,20 +42,18 @@ public class JVectorFloatVectorValues extends FloatVectorValues {
       GraphNodeIdToDocMap graphNodeIdToDocMap)
       throws IOException {
     this.view = onDiskGraphIndex.getView();
-    this.dimension = view.dimension();
-    this.size = view.size();
     this.similarityFunction = similarityFunction;
     this.graphNodeIdToDocMap = graphNodeIdToDocMap;
   }
 
   @Override
   public int dimension() {
-    return dimension;
+    return view.dimension();
   }
 
   @Override
   public int size() {
-    return size;
+    return view.size();
   }
 
   // This allows us to access the vector without copying it to float[]
@@ -90,7 +86,7 @@ public class JVectorFloatVectorValues extends FloatVectorValues {
       public int nextDoc() throws IOException {
         // Advance to the next node docId starts from -1 which is why we need to increment docId by
         // 1 "size" times
-        while (docId < size - 1) {
+        while (docId < size() - 1) {
           docId++;
           if (liveNodes.get(docId)) {
             return docId;
@@ -116,10 +112,6 @@ public class JVectorFloatVectorValues extends FloatVectorValues {
     } catch (Throwable e) {
       throw new RuntimeException(e);
     }
-  }
-
-  public VectorFloat<?> vectorValueObject(int i) throws IOException {
-    return vectorFloatValue(i);
   }
 
   @Override
