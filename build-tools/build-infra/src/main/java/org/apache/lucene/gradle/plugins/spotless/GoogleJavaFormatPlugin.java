@@ -96,39 +96,9 @@ public class GoogleJavaFormatPlugin extends LuceneGradlePlugin {
 
   private void configureExclusions(Project project, ConfigurableFileTree ftree) {
     switch (project.getPath()) {
-      case ":lucene:core":
-        ftree.exclude("**/StandardTokenizerImpl.java");
-        break;
-
       case ":lucene:analysis:common":
+        // These two cause stack overflow errors in google java format. Just leave them.
         ftree.exclude("**/HTMLStripCharFilter.java", "**/UAX29URLEmailTokenizerImpl.java");
-        break;
-
-      case ":lucene:test-framework":
-        ftree.exclude(
-            "**/EmojiTokenizationTestUnicode_11_0.java", "**/WordBreakTestUnicode_9_0_0.java");
-        break;
-
-      case ":lucene:queryparser":
-        ftree.exclude(
-            "**/classic/ParseException.java",
-            "**/classic/QueryParser.java",
-            "**/classic/QueryParserConstants.java",
-            "**/classic/QueryParserTokenManager.java",
-            "**/classic/Token.java",
-            "**/classic/TokenMgrError.java",
-            "**/standard/parser/ParseException.java",
-            "**/standard/parser/StandardSyntaxParser.java",
-            "**/standard/parser/StandardSyntaxParserConstants.java",
-            "**/standard/parser/StandardSyntaxParserTokenManager.java",
-            "**/standard/parser/Token.java",
-            "**/standard/parser/TokenMgrError.java",
-            "**/surround/parser/ParseException.java",
-            "**/surround/parser/QueryParser.java",
-            "**/surround/parser/QueryParserConstants.java",
-            "**/surround/parser/QueryParserTokenManager.java",
-            "**/surround/parser/Token.java",
-            "**/surround/parser/TokenMgrError.java");
         break;
     }
   }
