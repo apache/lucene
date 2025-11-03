@@ -1,0 +1,159 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.lucene.search.comparators;
+
+import java.io.IOException;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.DoublePoint;
+import org.apache.lucene.document.FloatPoint;
+import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.Pruning;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.tests.util.LuceneTestCase;
+
+public class TestNumericComparator extends LuceneTestCase {
+
+  public void testEmptyCompetitiveIteratorOptimization() throws Exception {
+    final int numDocs = atLeast(1000);
+    try (var dir = newDirectory()) {
+      try (var writer =
+          new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+        for (int i = 0; i < numDocs; i++) {
+          var doc = new Document();
+
+          doc.add(NumericDocValuesField.indexedField("long_field_1", i));
+          doc.add(new LongPoint("long_field_2", i));
+          doc.add(new NumericDocValuesField("long_field_2", i));
+
+          doc.add(NumericDocValuesField.indexedField("int_field_1", i));
+          doc.add(new IntPoint("int_field_2", i));
+          doc.add(new NumericDocValuesField("int_field_2", i));
+
+          doc.add(NumericDocValuesField.indexedField("float_field_1", i));
+          doc.add(new FloatPoint("float_field_2", i));
+          doc.add(new NumericDocValuesField("float_field_2", i));
+
+          doc.add(NumericDocValuesField.indexedField("double_field_1", i));
+          doc.add(new DoublePoint("double_field_2", i));
+          doc.add(new NumericDocValuesField("double_field_2", i));
+
+          writer.addDocument(doc);
+          writer.forceMerge(1);
+          try (var reader = DirectoryReader.open(writer)) {
+            assertEquals(1, reader.leaves().size());
+            var leafContext = reader.leaves().get(0);
+
+            // long field 1 ascending:
+            assertLongField("long_field_1", false, -1, leafContext);
+            // long field 1 descending:
+            assertLongField("long_field_1", true, numDocs + 1, leafContext);
+            // long field 2 ascending:
+            assertLongField("long_field_2", false, -1, leafContext);
+            // long field 2 descending:
+            assertLongField("long_field_2", true, numDocs + 1, leafContext);
+
+            // int field 1 ascending:
+            assertIntField("int_field_1", false, -1, leafContext);
+            // int field 1 descending:
+            assertIntField("int_field_1", true, numDocs + 1, leafContext);
+            // int field 2 ascending:
+            assertIntField("int_field_2", false, -1, leafContext);
+            // int field 2 descending:
+            assertIntField("int_field_2", true, numDocs + 1, leafContext);
+
+            // float field 1 ascending:
+            assertFloatField("float_field_1", false, -1, leafContext);
+            // float field 1 descending:
+            assertFloatField("float_field_1", true, numDocs + 1, leafContext);
+            // float field 2 ascending:
+            assertFloatField("float_field_2", false, -1, leafContext);
+            // float field 2 descending:
+            assertFloatField("float_field_2", true, numDocs + 1, leafContext);
+
+            // double field 1 ascending:
+            assertDoubleField("double_field_1", false, -1, leafContext);
+            // double field 1 descending:
+            assertDoubleField("double_field_1", true, numDocs + 1, leafContext);
+            // double field 2 ascending:
+            assertDoubleField("double_field_2", false, -1, leafContext);
+            // double field 2 descending:
+            assertDoubleField("double_field_2", true, numDocs + 1, leafContext);
+          }
+        }
+      }
+    }
+  }
+
+  private static void assertLongField(
+      String fieldName, boolean reverse, int bottom, LeafReaderContext leafContext)
+      throws IOException {
+    var comparator1 =
+        (LongComparator)
+            new SortField(fieldName, SortField.Type.LONG, reverse)
+                .getComparator(1, Pruning.GREATER_THAN_OR_EQUAL_TO);
+    comparator1.queueFull = true;
+    comparator1.bottom = bottom;
+    var leafComparator = comparator1.getLeafComparator(leafContext);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, leafComparator.competitiveIterator().nextDoc());
+  }
+
+  private static void assertIntField(
+      String fieldName, boolean reverse, int bottom, LeafReaderContext leafContext)
+      throws IOException {
+    var comparator1 =
+        (IntComparator)
+            new SortField(fieldName, SortField.Type.INT, reverse)
+                .getComparator(1, Pruning.GREATER_THAN_OR_EQUAL_TO);
+    comparator1.queueFull = true;
+    comparator1.bottom = bottom;
+    var leafComparator = comparator1.getLeafComparator(leafContext);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, leafComparator.competitiveIterator().nextDoc());
+  }
+
+  private static void assertFloatField(
+      String fieldName, boolean reverse, int bottom, LeafReaderContext leafContext)
+      throws IOException {
+    var comparator1 =
+        (FloatComparator)
+            new SortField(fieldName, SortField.Type.FLOAT, reverse)
+                .getComparator(1, Pruning.GREATER_THAN_OR_EQUAL_TO);
+    comparator1.queueFull = true;
+    comparator1.bottom = bottom;
+    var leafComparator = comparator1.getLeafComparator(leafContext);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, leafComparator.competitiveIterator().nextDoc());
+  }
+
+  private static void assertDoubleField(
+      String fieldName, boolean reverse, int bottom, LeafReaderContext leafContext)
+      throws IOException {
+    var comparator1 =
+        (DoubleComparator)
+            new SortField(fieldName, SortField.Type.DOUBLE, reverse)
+                .getComparator(1, Pruning.GREATER_THAN_OR_EQUAL_TO);
+    comparator1.queueFull = true;
+    comparator1.bottom = bottom;
+    var leafComparator = comparator1.getLeafComparator(leafContext);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, leafComparator.competitiveIterator().nextDoc());
+  }
+}
