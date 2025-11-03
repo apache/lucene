@@ -27,6 +27,7 @@ env:
 jobs:
   gradleScriptBootstrapCheck:
     name: "Check gradle boostrap script sanity on old JVMs."
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
@@ -44,7 +45,6 @@ jobs:
         run: |
           set +e
           output=$(./gradlew 2>&1)
-          status=$?
           if [[ "$output" == *"ERROR: java version must be"* ]]; then
             echo "Passed."
           else
