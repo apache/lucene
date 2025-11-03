@@ -49,6 +49,7 @@ jobs:
       - uses: ./.github/actions/prepare-for-build
         with:
           java-version: ${{ matrix.java-version }}
+          use-cache: false
 
       - name: Set up RUNTIME_JAVA_HOME variable
         if: ${{ matrix.uses-alt-java }}
