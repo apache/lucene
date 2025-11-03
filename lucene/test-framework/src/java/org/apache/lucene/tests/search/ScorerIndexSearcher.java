@@ -81,12 +81,6 @@ public class ScorerIndexSearcher extends IndexSearcher {
               }
             };
           }
-
-          @Override
-          public ScorerSupplier scorerSupplier(IndexSearcher.LeafReaderContextPartition partition)
-              throws IOException {
-            return scorerSupplier(partition.ctx);
-          }
         };
 
     super.searchLeaf(ctx, minDocId, maxDocId, filterWeight, collector);
