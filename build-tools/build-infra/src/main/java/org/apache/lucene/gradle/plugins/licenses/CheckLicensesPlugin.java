@@ -83,6 +83,9 @@ public class CheckLicensesPlugin extends LuceneGradlePlugin {
                 "**/*.xls",
                 "**/*.zip",
 
+                // JSON doesn't support comments
+                "**/*.json",
+
                 // Ignore build infrastructure and misc utility files.
                 ".asf.yaml",
                 ".dir-locals.el",
