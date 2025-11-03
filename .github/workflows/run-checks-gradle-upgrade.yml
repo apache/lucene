@@ -42,7 +42,7 @@ jobs:
 
       - shell: bash
         run: |
-          set -uo pipefail
+          set +e
           output=$(./gradlew 2>&1)
           status=$?
           if [ $status -eq 0 ] && [[ "$output" == *"ERROR: java version must be"* ]]; then
