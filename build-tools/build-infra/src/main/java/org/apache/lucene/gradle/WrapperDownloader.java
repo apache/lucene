@@ -47,6 +47,7 @@ import java.util.logging.Logger;
 public class WrapperDownloader {
   /**
    * Copied to keep the class isolated from any other classes.
+   *
    * @see "https://github.com/apache/lucene/issues/15399"
    */
   @Retention(RetentionPolicy.CLASS)
