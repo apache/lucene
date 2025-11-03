@@ -21,6 +21,7 @@ import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.FilterWeight;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
@@ -101,6 +102,13 @@ class QueryProfilerWeight extends FilterWeight {
         subQueryScorerSupplier.setTopLevelScoringClause();
       }
     };
+  }
+
+  @Override
+  public ScorerSupplier scorerSupplier(IndexSearcher.LeafReaderContextPartition partition)
+      throws IOException {
+    // Delegate to the context method to ensure profiling logic is applied
+    return scorerSupplier(partition.ctx);
   }
 
   @Override
