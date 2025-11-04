@@ -60,46 +60,46 @@ public class TestNumericComparator extends LuceneTestCase {
 
           writer.addDocument(doc);
           writer.forceMerge(1);
-          try (var reader = DirectoryReader.open(writer)) {
-            assertEquals(1, reader.leaves().size());
-            var leafContext = reader.leaves().get(0);
+        }
+        try (var reader = DirectoryReader.open(writer)) {
+          assertEquals(1, reader.leaves().size());
+          var leafContext = reader.leaves().get(0);
 
-            // long field 1 ascending:
-            assertLongField("long_field_1", false, -1, leafContext);
-            // long field 1 descending:
-            assertLongField("long_field_1", true, numDocs + 1, leafContext);
-            // long field 2 ascending:
-            assertLongField("long_field_2", false, -1, leafContext);
-            // long field 2 descending:
-            assertLongField("long_field_2", true, numDocs + 1, leafContext);
+          // long field 1 ascending:
+          assertLongField("long_field_1", false, -1, leafContext);
+          // long field 1 descending:
+          assertLongField("long_field_1", true, numDocs + 1, leafContext);
+          // long field 2 ascending:
+          assertLongField("long_field_2", false, -1, leafContext);
+          // long field 2 descending:
+          assertLongField("long_field_2", true, numDocs + 1, leafContext);
 
-            // int field 1 ascending:
-            assertIntField("int_field_1", false, -1, leafContext);
-            // int field 1 descending:
-            assertIntField("int_field_1", true, numDocs + 1, leafContext);
-            // int field 2 ascending:
-            assertIntField("int_field_2", false, -1, leafContext);
-            // int field 2 descending:
-            assertIntField("int_field_2", true, numDocs + 1, leafContext);
+          // int field 1 ascending:
+          assertIntField("int_field_1", false, -1, leafContext);
+          // int field 1 descending:
+          assertIntField("int_field_1", true, numDocs + 1, leafContext);
+          // int field 2 ascending:
+          assertIntField("int_field_2", false, -1, leafContext);
+          // int field 2 descending:
+          assertIntField("int_field_2", true, numDocs + 1, leafContext);
 
-            // float field 1 ascending:
-            assertFloatField("float_field_1", false, -1, leafContext);
-            // float field 1 descending:
-            assertFloatField("float_field_1", true, numDocs + 1, leafContext);
-            // float field 2 ascending:
-            assertFloatField("float_field_2", false, -1, leafContext);
-            // float field 2 descending:
-            assertFloatField("float_field_2", true, numDocs + 1, leafContext);
+          // float field 1 ascending:
+          assertFloatField("float_field_1", false, -1, leafContext);
+          // float field 1 descending:
+          assertFloatField("float_field_1", true, numDocs + 1, leafContext);
+          // float field 2 ascending:
+          assertFloatField("float_field_2", false, -1, leafContext);
+          // float field 2 descending:
+          assertFloatField("float_field_2", true, numDocs + 1, leafContext);
 
-            // double field 1 ascending:
-            assertDoubleField("double_field_1", false, -1, leafContext);
-            // double field 1 descending:
-            assertDoubleField("double_field_1", true, numDocs + 1, leafContext);
-            // double field 2 ascending:
-            assertDoubleField("double_field_2", false, -1, leafContext);
-            // double field 2 descending:
-            assertDoubleField("double_field_2", true, numDocs + 1, leafContext);
-          }
+          // double field 1 ascending:
+          assertDoubleField("double_field_1", false, -1, leafContext);
+          // double field 1 descending:
+          assertDoubleField("double_field_1", true, numDocs + 1, leafContext);
+          // double field 2 ascending:
+          assertDoubleField("double_field_2", false, -1, leafContext);
+          // double field 2 descending:
+          assertDoubleField("double_field_2", true, numDocs + 1, leafContext);
         }
       }
     }
