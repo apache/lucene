@@ -21,7 +21,6 @@ import static io.github.jbellis.jvector.quantization.KMeansPlusPlusClusterer.UNW
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 import static org.apache.lucene.sandbox.codecs.jvector.JVectorFormat.SIMD_POOL_FLUSH;
 import static org.apache.lucene.sandbox.codecs.jvector.JVectorFormat.SIMD_POOL_MERGE;
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import io.github.jbellis.jvector.graph.GraphIndexBuilder;
 import io.github.jbellis.jvector.graph.ListRandomAccessVectorValues;
@@ -237,14 +236,7 @@ public class JVectorWriter extends KnnVectorsWriter {
                 randomAccessVectorValues, getVectorSimilarityFunction(fieldInfo));
       }
 
-      // Generate the ord to doc mapping
-      final int[] ordinalsToDocIds = new int[randomAccessVectorValues.size()];
-      int ord = 0;
-      final var docIter = field.docIds.iterator();
-      for (int docId = docIter.nextDoc(); docId != NO_MORE_DOCS; docId = docIter.nextDoc()) {
-        ordinalsToDocIds[ord++] = docId;
-      }
-      final GraphNodeIdToDocMap graphNodeIdToDocMap = new GraphNodeIdToDocMap(ordinalsToDocIds);
+      final GraphNodeIdToDocMap graphNodeIdToDocMap = field.createGraphNodeIdToDocMap();
       if (sortMap != null) {
         graphNodeIdToDocMap.update(sortMap);
       }
@@ -517,6 +509,10 @@ public class JVectorWriter extends KnnVectorsWriter {
 
     public RandomAccessVectorValues toRandomAccessVectorValues() {
       return new ListRandomAccessVectorValues(vectors, fieldInfo.getVectorDimension());
+    }
+
+    public GraphNodeIdToDocMap createGraphNodeIdToDocMap() {
+      return new GraphNodeIdToDocMap(docIds);
     }
 
     @Override

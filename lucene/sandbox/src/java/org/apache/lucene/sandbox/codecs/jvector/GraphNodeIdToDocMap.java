@@ -17,9 +17,13 @@
 
 package org.apache.lucene.sandbox.codecs.jvector;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Arrays;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.KnnVectorValues.DocIndexIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -97,6 +101,33 @@ public class GraphNodeIdToDocMap {
     }
   }
 
+  public GraphNodeIdToDocMap(DocsWithFieldSet docs) {
+    this.graphNodeIdsToDocIds = new int[docs.cardinality()];
+
+    int ord = 0;
+    int maxDocId = -1;
+    final var docsIterator = docs.iterator();
+    try {
+      for (int docId = docsIterator.nextDoc();
+          docId != NO_MORE_DOCS;
+          docId = docsIterator.nextDoc()) {
+        graphNodeIdsToDocIds[ord++] = docId;
+        if (docId > maxDocId) {
+          maxDocId = docId;
+        }
+      }
+    } catch (IOException e) {
+      // This should never happen; docsIterator should be FixedBitSet or DocSetIterator.all()
+      throw new UncheckedIOException(e);
+    }
+
+    this.docIdsToGraphNodeIds = new int[maxDocId + 1];
+    Arrays.fill(docIdsToGraphNodeIds, -1);
+    for (ord = 0; ord < graphNodeIdsToDocIds.length; ++ord) {
+      docIdsToGraphNodeIds[graphNodeIdsToDocIds[ord]] = ord;
+    }
+  }
+
   /**
    * Updates the mapping from the Lucene document IDs to the jVector ordinals based on the sort
    * operation. (during flush)
@@ -170,6 +201,7 @@ public class GraphNodeIdToDocMap {
   public DocIndexIterator iterator() {
     return new DocIndexIterator() {
       int docId = -1;
+
       @Override
       public int index() {
         return docIdsToGraphNodeIds[docId];
