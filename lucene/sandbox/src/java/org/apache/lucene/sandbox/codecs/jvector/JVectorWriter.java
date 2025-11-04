@@ -105,7 +105,7 @@ public class JVectorWriter extends KnnVectorsWriter {
   private static final long SHALLOW_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(JVectorWriter.class);
 
-  private final List<FieldWriter<?>> fields = new ArrayList<>();
+  private final List<FieldWriter> fields = new ArrayList<>();
 
   private final IndexOutput meta;
   private final IndexOutput vectorIndex;
@@ -193,7 +193,7 @@ public class JVectorWriter extends KnnVectorsWriter {
               + "This can provides much greater savings in storage and memory";
       throw new UnsupportedOperationException(errorMessage);
     }
-    FieldWriter<?> newField = new FieldWriter<>(fieldInfo);
+    FieldWriter newField = new FieldWriter(fieldInfo);
 
     fields.add(newField);
     return newField;
@@ -217,7 +217,7 @@ public class JVectorWriter extends KnnVectorsWriter {
 
   @Override
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
-    for (FieldWriter<?> field : fields) {
+    for (FieldWriter field : fields) {
       final RandomAccessVectorValues randomAccessVectorValues = field.randomAccessVectorValues;
       final BuildScoreProvider buildScoreProvider;
       final PQVectors pqVectors;
@@ -469,7 +469,7 @@ public class JVectorWriter extends KnnVectorsWriter {
   @Override
   public long ramBytesUsed() {
     long total = SHALLOW_RAM_BYTES_USED;
-    for (FieldWriter<?> field : fields) {
+    for (FieldWriter field : fields) {
       // the field tracks the delegate field usage
       total += field.ramBytesUsed();
     }
@@ -480,11 +480,8 @@ public class JVectorWriter extends KnnVectorsWriter {
    * The FieldWriter class is responsible for writing vector field data into index segments. It
    * provides functionality to process vector values as those being added, manage memory usage, and
    * build HNSW graph indexing structures for efficient retrieval during search queries.
-   *
-   * @param <T> The type of vector value to be handled by the writer. This is often specialized to
-   *     support specific implementations, such as float[] or byte[] vectors.
    */
-  static class FieldWriter<T> extends KnnFieldVectorsWriter<T> {
+  static class FieldWriter extends KnnFieldVectorsWriter<float[]> {
     private final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(FieldWriter.class);
     private final FieldInfo fieldInfo;
     private int lastDocID = -1;
@@ -502,7 +499,7 @@ public class JVectorWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public void addValue(int docID, T vectorValue) throws IOException {
+    public void addValue(int docID, float[] vectorValue) throws IOException {
       if (docID == lastDocID) {
         throw new IllegalArgumentException(
             "VectorValuesField \""
@@ -510,24 +507,14 @@ public class JVectorWriter extends KnnVectorsWriter {
                 + "\" appears more than once in this document (only one value is allowed per field)");
       }
       docIds.add(docID);
-      if (vectorValue instanceof float[]) {
-        vectors.add(VECTOR_TYPE_SUPPORT.createFloatVector(vectorValue));
-      } else if (vectorValue instanceof byte[]) {
-        final String errorMessage =
-            "byte[] vectors are not supported in JVector. "
-                + "Instead you should only use float vectors and leverage product quantization during indexing."
-                + "This can provides much greater savings in storage and memory";
-        throw new UnsupportedOperationException(errorMessage);
-      } else {
-        throw new IllegalArgumentException("Unsupported vector type: " + vectorValue.getClass());
-      }
+      vectors.add(VECTOR_TYPE_SUPPORT.createFloatVector(vectorValue));
 
       lastDocID = docID;
     }
 
     @Override
-    public T copyValue(T vectorValue) {
-      throw new UnsupportedOperationException("copyValue not supported");
+    public float[] copyValue(float[] vectorValue) {
+      return vectorValue.clone();
     }
 
     @Override
