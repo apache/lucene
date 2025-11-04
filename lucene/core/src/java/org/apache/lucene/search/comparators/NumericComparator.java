@@ -374,6 +374,11 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
      */
     void postInitializeCompetitiveIterator() throws IOException {
       if (queueFull) {
+        // if some documents have missing points, then check that missing values prohibits
+        // optimization
+        if (docCount() < maxDoc && isMissingValueCompetitive()) {
+          return;
+        }
         long bottom = leafComparator.bottomAsComparableLong();
         long minValue = sortableBytesToLong(pointValues.getMinPackedValue());
         long maxValue = sortableBytesToLong(pointValues.getMaxPackedValue());
@@ -532,6 +537,11 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
      */
     void postInitializeCompetitiveIterator() {
       if (queueFull) {
+        // if some documents have missing doc values, check that missing values prohibits
+        // optimization
+        if (docCount() < maxDoc && isMissingValueCompetitive()) {
+          return;
+        }
         long bottom = leafComparator.bottomAsComparableLong();
         if (reverse == false && bottom < skipper.minValue()) {
           competitiveIterator.update(DocIdSetIterator.empty());

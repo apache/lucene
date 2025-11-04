@@ -28,7 +28,10 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FieldDoc;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Pruning;
+import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
@@ -100,6 +103,61 @@ public class TestNumericComparator extends LuceneTestCase {
           assertDoubleField("double_field_2", false, -1, leafContext);
           // double field 2 descending:
           assertDoubleField("double_field_2", true, numDocs + 1, leafContext);
+        }
+      }
+    }
+  }
+
+  public void testEmptyCompetitiveIteratorOptimizationWithMissingValue() throws Exception {
+    final int numDocs = atLeast(1000);
+    try (var dir = newDirectory()) {
+      try (var writer =
+          new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+        // index docs without missing values:
+        for (int i = 0; i < numDocs; i++) {
+          var doc = new Document();
+
+          doc.add(NumericDocValuesField.indexedField("long_field_1", i));
+          doc.add(new LongPoint("long_field_2", i));
+          doc.add(new NumericDocValuesField("long_field_2", i));
+
+          writer.addDocument(doc);
+          if (i % 100 == 0) {
+            writer.flush();
+          }
+        }
+
+        // Index one doc with without long_field_1 and long_field_2 fields
+        var doc = new Document();
+        doc.add(new NumericDocValuesField("another_field", numDocs));
+        writer.addDocument(doc);
+        writer.flush();
+
+        try (var reader = DirectoryReader.open(writer)) {
+          var indexSearcher = newSearcher(reader);
+          indexSearcher.setQueryCache(null);
+          {
+            var sortField = new SortField("long_field_1", SortField.Type.LONG, false);
+            sortField.setMissingValue(Long.MIN_VALUE);
+            var topDocs = indexSearcher.search(new MatchAllDocsQuery(), 3, new Sort(sortField));
+            assertEquals(numDocs, topDocs.scoreDocs[0].doc);
+            assertEquals(Long.MIN_VALUE, ((FieldDoc) topDocs.scoreDocs[0]).fields[0]);
+            assertEquals(0, topDocs.scoreDocs[1].doc);
+            assertEquals(0L, ((FieldDoc) topDocs.scoreDocs[1]).fields[0]);
+            assertEquals(1, topDocs.scoreDocs[2].doc);
+            assertEquals(1L, ((FieldDoc) topDocs.scoreDocs[2]).fields[0]);
+          }
+          {
+            var sortField = new SortField("long_field_2", SortField.Type.LONG, false);
+            sortField.setMissingValue(Long.MIN_VALUE);
+            var topDocs = indexSearcher.search(new MatchAllDocsQuery(), 3, new Sort(sortField));
+            assertEquals(numDocs, topDocs.scoreDocs[0].doc);
+            assertEquals(Long.MIN_VALUE, ((FieldDoc) topDocs.scoreDocs[0]).fields[0]);
+            assertEquals(0, topDocs.scoreDocs[1].doc);
+            assertEquals(0L, ((FieldDoc) topDocs.scoreDocs[1]).fields[0]);
+            assertEquals(1, topDocs.scoreDocs[2].doc);
+            assertEquals(1L, ((FieldDoc) topDocs.scoreDocs[2]).fields[0]);
+          }
         }
       }
     }
