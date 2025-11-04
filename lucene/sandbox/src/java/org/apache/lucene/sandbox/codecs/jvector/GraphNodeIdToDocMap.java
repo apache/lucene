@@ -22,7 +22,6 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Arrays;
-import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.KnnVectorValues.DocIndexIterator;
 import org.apache.lucene.store.IndexInput;
@@ -39,8 +38,8 @@ import org.apache.lucene.store.IndexOutput;
  */
 public class GraphNodeIdToDocMap {
   private static final int VERSION = 1;
-  private int[] graphNodeIdsToDocIds;
-  private int[] docIdsToGraphNodeIds;
+  private final int[] graphNodeIdsToDocIds;
+  private final int[] docIdsToGraphNodeIds;
 
   /**
    * Constructor that reads the mapping from the index input
@@ -126,39 +125,6 @@ public class GraphNodeIdToDocMap {
     for (ord = 0; ord < graphNodeIdsToDocIds.length; ++ord) {
       docIdsToGraphNodeIds[graphNodeIdsToDocIds[ord]] = ord;
     }
-  }
-
-  /**
-   * Updates the mapping from the Lucene document IDs to the jVector ordinals based on the sort
-   * operation. (during flush)
-   *
-   * @param sortMap The sort map
-   */
-  public void update(Sorter.DocMap sortMap) {
-    final int[] newGraphNodeIdsToDocIds = new int[graphNodeIdsToDocIds.length];
-    final int maxNewDocId =
-        Arrays.stream(graphNodeIdsToDocIds).map(sortMap::oldToNew).max().getAsInt();
-    final int maxDocs = maxNewDocId + 1;
-    if (maxDocs < graphNodeIdsToDocIds.length) {
-      throw new IllegalStateException(
-          "Max docs "
-              + maxDocs
-              + " is less than the number of ordinals "
-              + graphNodeIdsToDocIds.length);
-    }
-    final int[] newDocIdsToOrdinals = new int[maxDocs];
-    Arrays.fill(newDocIdsToOrdinals, -1);
-    for (int oldDocId = 0; oldDocId < docIdsToGraphNodeIds.length; oldDocId++) {
-      if (docIdsToGraphNodeIds[oldDocId] == -1) {
-        continue;
-      }
-      final int newDocId = sortMap.oldToNew(oldDocId);
-      final int oldOrd = docIdsToGraphNodeIds[oldDocId];
-      newDocIdsToOrdinals[newDocId] = oldOrd;
-      newGraphNodeIdsToDocIds[oldOrd] = newDocId;
-    }
-    this.docIdsToGraphNodeIds = newDocIdsToOrdinals;
-    this.graphNodeIdsToDocIds = newGraphNodeIdsToDocIds;
   }
 
   /**

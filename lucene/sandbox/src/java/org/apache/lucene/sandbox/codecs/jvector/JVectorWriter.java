@@ -42,6 +42,7 @@ import java.io.UncheckedIOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.IntUnaryOperator;
@@ -98,7 +99,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  * {@link GraphNodeIdToDocMap} class in the index metadata and allowing us to update the mapping as
  * needed across merges by constructing a new mapping from the previous mapping and the {@link
  * org.apache.lucene.index.MergeState.DocMap} provided in the {@link MergeState}. And across sorts
- * with {@link GraphNodeIdToDocMap#update(Sorter.DocMap)} during flushes.
+ * with {@link FieldWriter#applySort(Sorter.DocMap)} during flushes.
  */
 public class JVectorWriter extends KnnVectorsWriter {
   private static final VectorTypeSupport VECTOR_TYPE_SUPPORT =
@@ -219,6 +220,9 @@ public class JVectorWriter extends KnnVectorsWriter {
   @Override
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
     for (FieldWriter field : fields) {
+      if (sortMap != null) {
+        field.applySort(sortMap);
+      }
       final RandomAccessVectorValues randomAccessVectorValues = field.toRandomAccessVectorValues();
       final BuildScoreProvider buildScoreProvider;
       final PQVectors pqVectors;
@@ -237,10 +241,6 @@ public class JVectorWriter extends KnnVectorsWriter {
       }
 
       final GraphNodeIdToDocMap graphNodeIdToDocMap = field.createGraphNodeIdToDocMap();
-      if (sortMap != null) {
-        graphNodeIdToDocMap.update(sortMap);
-      }
-
       OnHeapGraphIndex graph =
           getGraph(
               buildScoreProvider,
@@ -505,6 +505,32 @@ public class JVectorWriter extends KnnVectorsWriter {
     @Override
     public float[] copyValue(float[] vectorValue) {
       return vectorValue.clone();
+    }
+
+    public void applySort(Sorter.DocMap sortMap) throws IOException {
+      // Ensure that all existing docs can be sorted
+      final int[] oldToNewOrd = new int[vectors.size()];
+      final DocsWithFieldSet oldDocIds = docIds;
+      docIds = new DocsWithFieldSet();
+      mapOldOrdToNewOrd(oldDocIds, sortMap, oldToNewOrd, null, docIds);
+
+      // Swap vectors into their new ordinals
+      for (int oldOrd = 0; oldOrd < vectors.size(); ++oldOrd) {
+        final int newOrd = oldToNewOrd[oldOrd];
+        if (oldOrd == newOrd) {
+          continue;
+        }
+
+        // Swap the element at oldOrd into its position at newOrd and update the index mapping
+        Collections.swap(vectors, oldOrd, newOrd);
+        oldToNewOrd[oldOrd] = oldToNewOrd[newOrd];
+        oldToNewOrd[newOrd] = newOrd;
+
+        // The element at oldOrd may be displaced and need to be swapped again
+        if (oldToNewOrd[oldOrd] != oldOrd) {
+          oldOrd -= 1;
+        }
+      }
     }
 
     public RandomAccessVectorValues toRandomAccessVectorValues() {
