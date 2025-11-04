@@ -20,7 +20,6 @@ package org.apache.lucene.sandbox.codecs.jvector;
 import io.github.jbellis.jvector.graph.disk.OnDiskGraphIndex;
 import io.github.jbellis.jvector.graph.similarity.ScoreFunction;
 import io.github.jbellis.jvector.quantization.PQVectors;
-import io.github.jbellis.jvector.util.Bits;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import io.github.jbellis.jvector.vector.VectorizationProvider;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
@@ -69,45 +68,7 @@ public class JVectorFloatVectorValues extends FloatVectorValues {
 
   @Override
   public DocIndexIterator iterator() {
-    return new DocIndexIterator() {
-      private int docId = -1;
-      private final Bits liveNodes = view.liveNodes();
-
-      @Override
-      public long cost() {
-        return size();
-      }
-
-      @Override
-      public int index() {
-        return graphNodeIdToDocMap.getJVectorNodeId(docId);
-      }
-
-      @Override
-      public int docID() {
-        return docId;
-      }
-
-      @Override
-      public int nextDoc() throws IOException {
-        // Advance to the next node docId starts from -1 which is why we need to increment docId by
-        // 1 "size" times
-        while (docId < size() - 1) {
-          docId++;
-          if (liveNodes.get(docId)) {
-            return docId;
-          }
-        }
-        docId = NO_MORE_DOCS;
-
-        return docId;
-      }
-
-      @Override
-      public int advance(int target) throws IOException {
-        return slowAdvance(target);
-      }
-    };
+    return graphNodeIdToDocMap.iterator(view.liveNodes());
   }
 
   @Override

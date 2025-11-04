@@ -17,9 +17,11 @@
 
 package org.apache.lucene.sandbox.codecs.jvector;
 
+import io.github.jbellis.jvector.util.Bits;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.index.KnnVectorValues.DocIndexIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 
@@ -164,5 +166,49 @@ public class GraphNodeIdToDocMap {
     for (int ord = 0; ord < graphNodeIdsToDocIds.length; ord++) {
       out.writeVInt(graphNodeIdsToDocIds[ord]);
     }
+  }
+
+  public DocIndexIterator iterator(Bits liveOrds) {
+    return new DocIndexIterator() {
+      int docId = -1;
+      @Override
+      public int index() {
+        return docIdsToGraphNodeIds[docId];
+      }
+
+      @Override
+      public int docID() {
+        return docId;
+      }
+
+      @Override
+      public int nextDoc() throws IOException {
+        while (docId < docIdsToGraphNodeIds.length - 1) {
+          ++docId;
+          final int ord = docIdsToGraphNodeIds[docId];
+          if (ord >= 0 && liveOrds.get(ord)) {
+            return docId;
+          }
+        }
+        return docId = NO_MORE_DOCS;
+      }
+
+      @Override
+      public int advance(int target) throws IOException {
+        if (target <= docId) {
+          throw new IllegalArgumentException();
+        } else if (target >= docIdsToGraphNodeIds.length) {
+          return docId = NO_MORE_DOCS;
+        }
+
+        docId = target - 1;
+        return nextDoc();
+      }
+
+      @Override
+      public long cost() {
+        return graphNodeIdsToDocIds.length;
+      }
+    };
   }
 }
