@@ -26,7 +26,6 @@ import io.github.jbellis.jvector.graph.GraphIndexBuilder;
 import io.github.jbellis.jvector.graph.ListRandomAccessVectorValues;
 import io.github.jbellis.jvector.graph.OnHeapGraphIndex;
 import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
-import io.github.jbellis.jvector.graph.RemappedRandomAccessVectorValues;
 import io.github.jbellis.jvector.graph.disk.OnDiskSequentialGraphIndexWriter;
 import io.github.jbellis.jvector.graph.disk.feature.Feature;
 import io.github.jbellis.jvector.graph.disk.feature.FeatureId;
@@ -49,11 +48,10 @@ import java.util.function.IntUnaryOperator;
 import java.util.stream.IntStream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
-import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.KnnVectorValues;
@@ -62,10 +60,8 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 
@@ -208,8 +204,7 @@ public class JVectorWriter extends KnnVectorsWriter {
         case BYTE:
           throw new UnsupportedEncodingException("Byte vectors are not supported in JVector.");
         case FLOAT32:
-          final var mergeRavv = new RandomAccessMergedFloatVectorValues(fieldInfo, mergeState);
-          mergeRavv.merge();
+          mergeAndWriteField(fieldInfo, mergeState);
           break;
       }
     } catch (Exception e) {
@@ -562,261 +557,167 @@ public class JVectorWriter extends KnnVectorsWriter {
     };
   }
 
-  /**
-   * Implementation of RandomAccessVectorValues that directly uses the source FloatVectorValues from
-   * multiple segments without copying the vectors.
-   *
-   * <p>Some details about the implementation logic:
-   *
-   * <p>First, we identify the leading reader, which is the one with the most live vectors. Second,
-   * we build a mapping between the ravv ordinals and the reader index and the ordinal in that
-   * reader. Third, we build a mapping between the ravv ordinals and the global doc ids.
-   *
-   * <p>Very important to note that for the leading graph the node Ids need to correspond to their
-   * original ravv ordinals in the reader. This is because we are later going to expand that graph
-   * with new vectors from the other readers. While the new vectors can be assigned arbitrary node
-   * Ids, the leading graph needs to preserve its original node Ids and map them to the original
-   * ravv vector ordinals.
-   */
-  class RandomAccessMergedFloatVectorValues implements RandomAccessVectorValues {
-    private static final int READER_ID = 0;
-    private static final int READER_ORD = 1;
+  private void mergeAndWriteField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    assert fieldInfo.hasVectorValues();
+    final int dimension = fieldInfo.getVectorDimension();
+    final int mergeCount = mergeState.knnVectorsReaders.length;
 
-    // Array of sub-readers
-    private final KnnVectorsReader[] readers;
-    private final FloatVectorValues[] perReaderFloatVectorValues;
-
-    // Maps the ravv ordinals to the reader index and the ordinal in that reader. This is allowing
-    // us to get a unified view of all the
-    // vectors in all the readers with a single unified ordinal space.
-    private final int[][] ravvOrdToReaderMapping;
-
-    // Total number of vectors
-    private final int size;
-    // Total number of documents including those without values
-    private final int totalDocsCount;
-
-    // Vector dimension
-    private final int dimension;
-    private final FieldInfo fieldInfo;
-    private final GraphNodeIdToDocMap graphNodeIdToDocMap;
-    private final int[] graphNodeIdsToRavvOrds;
-    private final int pqReaderIndex;
-    private final ProductQuantization pq;
-
-    /**
-     * Creates a random access view over merged float vector values.
-     *
-     * @param fieldInfo Field info for the vector field
-     * @param mergeState Merge state containing readers and doc maps
-     */
-    public RandomAccessMergedFloatVectorValues(FieldInfo fieldInfo, MergeState mergeState)
-        throws IOException {
-      this.totalDocsCount = Math.toIntExact(Arrays.stream(mergeState.maxDocs).asLongStream().sum());
-      this.fieldInfo = fieldInfo;
-      this.dimension = fieldInfo.getVectorDimension();
-
-      final String fieldName = fieldInfo.name;
-
-      // Count total vectors, collect readers and identify leading reader, collect base ordinals to
-      // later be used to build the mapping
-      // between global ordinals and global lucene doc ids
-      int totalVectorsCount = 0;
-      int totalLiveVectorsCount = 0;
-      int pqReaderIndex = -1;
-      ProductQuantization pq = null;
-      int vectorsCountInLeadingReader = -1;
-      this.readers = mergeState.knnVectorsReaders.clone();
-      final MergeState.DocMap[] docMaps = mergeState.docMaps.clone();
-      final Bits[] liveDocs = mergeState.liveDocs.clone();
-      final int[] baseOrds = new int[mergeState.knnVectorsReaders.length];
-
-      // Find the leading reader, count the total number of live vectors, and the base ordinals for
-      // each reader
-      for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
-        FieldInfos fieldInfos = mergeState.fieldInfos[i];
-        baseOrds[i] = totalVectorsCount;
-        if (MergedVectorValues.hasVectorValues(fieldInfos, fieldName)) {
-          KnnVectorsReader reader = mergeState.knnVectorsReaders[i].unwrapReaderForField(fieldName);
-          if (reader != null) {
-            FloatVectorValues values = reader.getFloatVectorValues(fieldName);
-            if (values != null) {
-              int vectorCountInReader = values.size();
-              int liveVectorCountInReader = 0;
-              KnnVectorValues.DocIndexIterator it = values.iterator();
-              while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-                if (liveDocs[i] == null || liveDocs[i].get(it.docID())) {
-                  liveVectorCountInReader++;
-                }
-              }
-              if (reader instanceof JVectorReader jVectorReader
-                  && liveVectorCountInReader >= vectorsCountInLeadingReader) {
-                vectorsCountInLeadingReader = liveVectorCountInReader;
-                final var maybeNewPq = jVectorReader.getProductQuantizationForField(fieldName);
-                if (maybeNewPq.isPresent()) {
-                  pqReaderIndex = i;
-                  pq = maybeNewPq.get();
-                }
-              }
-              totalVectorsCount += vectorCountInReader;
-              totalLiveVectorsCount += liveVectorCountInReader;
-              assert values.dimension() == dimension;
-            }
-          }
-        }
+    // Collect the sub-readers into a list to make a DocIdMerger
+    final List<SubFloatVectors> subs = new ArrayList<>(mergeCount);
+    final FloatVectorValues[] vectors = new FloatVectorValues[mergeCount];
+    for (int i = 0; i < mergeCount; ++i) {
+      if (false == MergedVectorValues.hasVectorValues(mergeState.fieldInfos[i], fieldInfo.name)) {
+        continue;
+      }
+      final var reader = mergeState.knnVectorsReaders[i];
+      if (reader == null) {
+        continue;
+      }
+      final var values = reader.getFloatVectorValues(fieldInfo.name);
+      if (values == null || values.size() == 0) {
+        continue;
       }
 
-      assert (totalVectorsCount <= totalDocsCount)
-          : "Total number of vectors exceeds the total number of documents";
-      assert (totalLiveVectorsCount <= totalVectorsCount)
-          : "Total number of live vectors exceeds the total number of vectors";
-      assert (dimension > 0) : "No vectors found for field " + fieldName;
-
-      this.pq = pq;
-      this.pqReaderIndex = pqReaderIndex;
-      this.size = totalVectorsCount;
-      this.perReaderFloatVectorValues = new FloatVectorValues[readers.length];
-
-      // Build mapping from global ordinal to [readerIndex, readerOrd]
-      this.ravvOrdToReaderMapping = new int[totalDocsCount][2];
-
-      int documentsIterated = 0;
-
-      // Will be used to build the new graphNodeIdToDocMap with the new graph node id to docId
-      // mapping.
-      // This mapping should not be used to access the vectors at any time during construction, but
-      // only after the merge is complete
-      // and the new segment is created and used by searchers.
-      final int[] graphNodeIdToDocIds = new int[totalLiveVectorsCount];
-      this.graphNodeIdsToRavvOrds = new int[totalLiveVectorsCount];
-
-      int graphNodeId = 0;
-      // Build a new graph from scratch and compact the graph node ids
-      for (int readerIdx = 0; readerIdx < readers.length; readerIdx++) {
-        if (readers[readerIdx] == null) {
-          continue;
-        }
-        final FloatVectorValues values = readers[readerIdx].getFloatVectorValues(fieldName);
-        if (values == null || values.size() == 0) {
-          continue;
-        }
-        perReaderFloatVectorValues[readerIdx] = values;
-        // For each vector in this reader
-        KnnVectorValues.DocIndexIterator it = values.iterator();
-
-        for (int docId = it.nextDoc();
-            docId != DocIdSetIterator.NO_MORE_DOCS;
-            docId = it.nextDoc()) {
-          if (docMaps[readerIdx].get(docId) != -1) {
-            // Mapping from ravv ordinals to [readerIndex, readerOrd]
-            // Map graph node id to ravv ordinal
-            // Map graph node id to doc id
-            final int newGlobalDocId = docMaps[readerIdx].get(docId);
-            final int ravvLocalOrd = it.index();
-            final int ravvGlobalOrd = ravvLocalOrd + baseOrds[readerIdx];
-            graphNodeIdToDocIds[graphNodeId] = newGlobalDocId;
-            graphNodeIdsToRavvOrds[graphNodeId] = ravvGlobalOrd;
-            graphNodeId++;
-            ravvOrdToReaderMapping[ravvGlobalOrd][READER_ID] = readerIdx; // Reader index
-            ravvOrdToReaderMapping[ravvGlobalOrd][READER_ORD] = ravvLocalOrd; // Ordinal in reader
-          }
-
-          documentsIterated++;
-        }
-      }
-
-      if (documentsIterated < totalVectorsCount) {
-        throw new IllegalStateException(
-            "More documents were expected than what was found in the readers."
-                + "Expected at least number of total vectors: "
-                + totalVectorsCount
-                + " but found only: "
-                + documentsIterated
-                + " documents.");
-      }
-
-      this.graphNodeIdToDocMap = new GraphNodeIdToDocMap(graphNodeIdToDocIds);
+      assert values.dimension() == dimension;
+      subs.add(new SubFloatVectors(mergeState.docMaps[i], i, values));
+      vectors[i] = values;
     }
 
-    /**
-     * Merges the float vector values from multiple readers into a unified structure. This process
-     * includes handling product quantization (PQ) for vector compression, generating ord-to-doc
-     * mappings, and writing the merged index into a new segment file.
-     *
-     * <p>The method determines if pre-existing product quantization codebooks are available from
-     * the leading reader. If available, it refines them using remaining vectors from other readers
-     * in the merge. If no pre-existing codebooks are found and the total vector count meets the
-     * required minimum threshold, new codebooks and compressed vectors are computed. Otherwise, no
-     * PQ compression is applied.
-     *
-     * <p>Also, it generates a mapping of ordinals to document IDs by iterating through the provided
-     * vector data, which is further used to write the field data.
-     *
-     * <p>In the event of no deletes or quantization, the graph construction is done by
-     * incrementally adding vectors from smaller segments into the largest segment. For all other
-     * cases, we build a new graph from scratch from all the vectors.
-     *
-     * <p>TODO: Add support for incremental graph building with quantization see <a
-     * href="https://github.com/opensearch-project/opensearch-jvector/issues/166">issue</a>
-     *
-     * @throws IOException if there is an issue during reading or writing vector data.
-     */
-    public void merge() throws IOException {
-      final RandomAccessVectorValues mapped =
-          new RemappedRandomAccessVectorValues(this, graphNodeIdsToRavvOrds);
-      // This section creates the PQVectors to be used for this merge
-      // Get PQ compressor for leading reader
-      final String fieldName = fieldInfo.name;
-      final PQVectors pqVectors;
-      // Check if the leading reader has pre-existing PQ codebooks and if so, refine them with the
-      // remaining vectors
-      if (pq != null) {
-        // Refine the leadingCompressor with the remaining vectors in the merge
-        ProductQuantization newPq = pq;
-        for (int i = 0; i < readers.length; i++) {
-          if (i == pqReaderIndex) {
-            // Skip the reader associated with the re-used PQ codebook
-            continue;
+    // These arrays may be larger than strictly necessary if there are deleted docs/missing fields
+    final int totalMaxDocs = Arrays.stream(mergeState.maxDocs).reduce(0, Math::addExact);
+    final int[] liveDocCounts = new int[mergeCount];
+    final DocsWithFieldSet docIds = new DocsWithFieldSet();
+    final int[] ordToReaderIndex = new int[totalMaxDocs];
+    final int[] ordToReaderOrd = new int[totalMaxDocs];
+
+    // Construct ordinal mappings for the new graph
+    int ord = 0;
+    final var docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
+    for (var sub = docIdMerger.next(); sub != null; sub = docIdMerger.next()) {
+      final int readerIndex = sub.readerIndex;
+      liveDocCounts[readerIndex] += 1;
+      docIds.add(sub.mappedDocID);
+      ordToReaderIndex[ord] = sub.readerIndex;
+      ordToReaderOrd[ord] = sub.index();
+      ord += 1;
+    }
+
+    // Make a RandomAccessVectorValues instance using the new graph ordinals
+    final int totalLiveDocsCount = ord;
+    final var ravv =
+        new RandomAccessMergedFloatVectorValues(
+            totalLiveDocsCount,
+            dimension,
+            vectors,
+            i -> ordToReaderIndex[i],
+            i -> ordToReaderOrd[i]);
+
+    // Find the largest quantized reader to re-use its PQ codebook, if possible
+    int largestQuantizedReaderIndex = 0;
+    ProductQuantization pq = null;
+    for (int i = 0; i < liveDocCounts.length; ++i) {
+      if (liveDocCounts[i] > liveDocCounts[largestQuantizedReaderIndex]) {
+        if (mergeState.knnVectorsReaders[i] instanceof JVectorReader jVectorReader) {
+          final var maybeNewPq = jVectorReader.getProductQuantizationForField(fieldInfo.name);
+          if (maybeNewPq.isPresent()) {
+            largestQuantizedReaderIndex = i;
+            pq = maybeNewPq.get();
           }
-          final FloatVectorValues values = readers[i].getFloatVectorValues(fieldName);
-          final RandomAccessVectorValues randomAccessVectorValues =
-              new RandomAccessVectorValuesOverVectorValues(values);
-          newPq = newPq.refine(randomAccessVectorValues);
         }
-        pqVectors = newPq.encodeAll(mapped, SIMD_POOL_MERGE);
-      } else if (mapped.size() >= minimumBatchSizeForQuantization) {
-        // No pre-existing codebooks, check if we have enough vectors to trigger quantization
-        pqVectors = getPQVectors(mapped, fieldInfo);
-      } else {
-        pqVectors = null;
       }
+    }
 
-      final BuildScoreProvider buildScoreProvider;
-      if (pqVectors != null) {
-        // Re-use PQ codebooks to build a new graph from scratch
-        buildScoreProvider =
-            BuildScoreProvider.pqBuildScoreProvider(
-                getVectorSimilarityFunction(fieldInfo), pqVectors);
-        // Pre-init the diversity provider here to avoid doing it lazily (as it could block the SIMD
-        // threads)
-        buildScoreProvider.diversityProviderFor(0);
-      } else {
-        buildScoreProvider = BuildScoreProvider.randomAccessScoreProvider(mapped, getVectorSimilarityFunction(fieldInfo));
+    // Perform PQ if applicable
+    final PQVectors pqVectors;
+    if (pq != null) {
+      // Refine the leadingCompressor with the remaining vectors in the merge
+      ProductQuantization newPq = pq;
+      for (int i = 0; i < mergeCount; i++) {
+        if (i == largestQuantizedReaderIndex || vectors[i] == null) {
+          // Skip the reader associated with the re-used PQ codebook
+          continue;
+        }
+        final FloatVectorValues values = vectors[i];
+        final RandomAccessVectorValues randomAccessVectorValues =
+            new RandomAccessVectorValuesOverVectorValues(values);
+        newPq = newPq.refine(randomAccessVectorValues);
       }
-      final OnHeapGraphIndex graph =
-          getGraph(
-              buildScoreProvider,
-              mapped,
-              fieldInfo,
-              segmentWriteState.segmentInfo.name,
-              SIMD_POOL_MERGE);
+      pqVectors = newPq.encodeAll(ravv, SIMD_POOL_MERGE);
+    } else if (ravv.size() >= minimumBatchSizeForQuantization) {
+      // No pre-existing codebooks, check if we have enough vectors to trigger quantization
+      pqVectors = getPQVectors(ravv, fieldInfo);
+    } else {
+      pqVectors = null;
+    }
 
-      writeField(fieldInfo, mapped, pqVectors, graphNodeIdToDocMap, graph);
+    final BuildScoreProvider buildScoreProvider;
+    final var similarityFunction = getVectorSimilarityFunction(fieldInfo);
+    if (pqVectors != null) {
+      // Re-use PQ codebooks to build a new graph from scratch
+      buildScoreProvider = BuildScoreProvider.pqBuildScoreProvider(similarityFunction, pqVectors);
+      // Pre-init the diversity provider here to avoid doing it lazily (as it could block the SIMD
+      // threads)
+      buildScoreProvider.diversityProviderFor(0);
+    } else {
+      buildScoreProvider = BuildScoreProvider.randomAccessScoreProvider(ravv, similarityFunction);
+    }
+    final var graphNodeIdToDocMap = new GraphNodeIdToDocMap(docIds);
+    final var graph =
+        getGraph(
+            buildScoreProvider,
+            ravv,
+            fieldInfo,
+            segmentWriteState.segmentInfo.name,
+            SIMD_POOL_MERGE);
+    writeField(fieldInfo, ravv, pqVectors, graphNodeIdToDocMap, graph);
+  }
+
+  private static final class SubFloatVectors extends DocIDMerger.Sub {
+    final int readerIndex;
+    final KnnVectorValues.DocIndexIterator iterator;
+    int docId = -1;
+
+    SubFloatVectors(MergeState.DocMap docMap, int readerIndex, FloatVectorValues values) {
+      super(docMap);
+      this.readerIndex = readerIndex;
+      this.iterator = values.iterator();
     }
 
     @Override
-    public int size() {
-      return size;
+    public int nextDoc() throws IOException {
+      docId = iterator.nextDoc();
+      return docId;
+    }
+
+    public int index() {
+      return iterator.index();
+    }
+  }
+
+  private static final class RandomAccessMergedFloatVectorValues
+      implements RandomAccessVectorValues {
+    private final int size;
+    private final int dimension;
+    private final FloatVectorValues[] vectors;
+    private final IntUnaryOperator ordToReader;
+    private final IntUnaryOperator ordToReaderOrd;
+
+    public RandomAccessMergedFloatVectorValues(
+        int size,
+        int dimension,
+        FloatVectorValues[] values,
+        IntUnaryOperator ordToReader,
+        IntUnaryOperator ordToReaderOrd) {
+      this.size = size;
+      this.dimension = dimension;
+      this.vectors = values;
+      this.ordToReader = ordToReader;
+      this.ordToReaderOrd = ordToReaderOrd;
+    }
+
+    @Override
+    public RandomAccessMergedFloatVectorValues copy() {
+      throw new UnsupportedOperationException();
     }
 
     @Override
@@ -825,24 +726,33 @@ public class JVectorWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public VectorFloat<?> getVector(int ord) {
-      if (ord < 0 || ord >= totalDocsCount) {
-        throw new IllegalArgumentException("Ordinal out of bounds: " + ord);
+    public VectorFloat<?> getVector(int nodeId) {
+      final var vector = VECTOR_TYPE_SUPPORT.createFloatVector(dimension);
+      getVectorInto(nodeId, vector, 0);
+      return vector;
+    }
+
+    @Override
+    public void getVectorInto(int node, VectorFloat<?> destinationVector, int offset) {
+      final FloatVectorValues values = vectors[ordToReader.applyAsInt(node)];
+      final int ord = ordToReaderOrd.applyAsInt(node);
+
+      if (values instanceof JVectorFloatVectorValues jVectorValues) {
+        synchronized (this) {
+          jVectorValues.getVectorInto(ord, destinationVector, offset);
+        }
       }
 
-      final int readerIdx = ravvOrdToReaderMapping[ord][READER_ID];
-      final int readerOrd = ravvOrdToReaderMapping[ord][READER_ORD];
-
-      // Access to float values is not thread safe
-      synchronized (perReaderFloatVectorValues[readerIdx]) {
-        if (perReaderFloatVectorValues[readerIdx] instanceof JVectorFloatVectorValues values) {
-          return values.vectorFloatValue(readerOrd);
-        }
+      synchronized (this) {
+        final float[] srcVector;
         try {
-          return VECTOR_TYPE_SUPPORT.createFloatVector(
-              perReaderFloatVectorValues[readerIdx].vectorValue(readerOrd));
+          srcVector = values.vectorValue(ord);
         } catch (IOException e) {
           throw new UncheckedIOException(e);
+        }
+
+        for (int i = 0; i < srcVector.length; ++i) {
+          destinationVector.set(i + offset, srcVector[i]);
         }
       }
     }
@@ -853,8 +763,8 @@ public class JVectorWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public RandomAccessVectorValues copy() {
-      throw new UnsupportedOperationException("Copy not supported");
+    public int size() {
+      return size;
     }
   }
 

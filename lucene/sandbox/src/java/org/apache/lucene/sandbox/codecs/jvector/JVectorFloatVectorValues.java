@@ -72,6 +72,10 @@ public class JVectorFloatVectorValues extends FloatVectorValues {
     return view.getVector(ord);
   }
 
+  public void getVectorInto(int node, VectorFloat<?> vector, int offset) {
+    view.getVectorInto(node, vector, offset);
+  }
+
   @Override
   public DocIndexIterator iterator() {
     assert view.liveNodes() instanceof MatchAllBits : "All OnDiskGraphIndex nodes must be live";

@@ -65,41 +65,6 @@ public class GraphNodeIdToDocMap {
     }
   }
 
-  /**
-   * Constructor that creates a new mapping between ordinals and docIds
-   *
-   * @param graphNodeIdsToDocIds The mapping from ordinals to docIds
-   */
-  public GraphNodeIdToDocMap(int[] graphNodeIdsToDocIds) {
-    if (graphNodeIdsToDocIds.length == 0) {
-      this.graphNodeIdsToDocIds = new int[0];
-      this.docIdsToGraphNodeIds = new int[0];
-      return;
-    }
-    this.graphNodeIdsToDocIds = new int[graphNodeIdsToDocIds.length];
-    System.arraycopy(
-        graphNodeIdsToDocIds, 0, this.graphNodeIdsToDocIds, 0, graphNodeIdsToDocIds.length);
-    final int maxDocId = Arrays.stream(graphNodeIdsToDocIds).max().getAsInt();
-    final int maxDocs = maxDocId + 1;
-    // We are going to assume that the number of ordinals is roughly the same as the number of
-    // documents in the segment, therefore,
-    // the mapping will not be sparse.
-    if (maxDocs < graphNodeIdsToDocIds.length) {
-      throw new IllegalStateException(
-          "Max docs "
-              + maxDocs
-              + " is less than the number of ordinals "
-              + graphNodeIdsToDocIds.length);
-    }
-    // When maxDocId > graphNodeIdsToDocIds.length, there are lots of deleted documents or missing
-    // values, which wastes memory
-    this.docIdsToGraphNodeIds = new int[maxDocs];
-    Arrays.fill(this.docIdsToGraphNodeIds, -1); // -1 means no mapping to ordinal
-    for (int ord = 0; ord < graphNodeIdsToDocIds.length; ord++) {
-      this.docIdsToGraphNodeIds[graphNodeIdsToDocIds[ord]] = ord;
-    }
-  }
-
   public GraphNodeIdToDocMap(DocsWithFieldSet docs) {
     this.graphNodeIdsToDocIds = new int[docs.cardinality()];
 
