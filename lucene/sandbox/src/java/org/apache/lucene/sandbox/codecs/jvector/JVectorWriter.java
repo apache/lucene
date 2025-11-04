@@ -218,7 +218,7 @@ public class JVectorWriter extends KnnVectorsWriter {
   @Override
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
     for (FieldWriter field : fields) {
-      final RandomAccessVectorValues randomAccessVectorValues = field.randomAccessVectorValues;
+      final RandomAccessVectorValues randomAccessVectorValues = field.toRandomAccessVectorValues();
       final BuildScoreProvider buildScoreProvider;
       final PQVectors pqVectors;
       final FieldInfo fieldInfo = field.fieldInfo;
@@ -252,8 +252,7 @@ public class JVectorWriter extends KnnVectorsWriter {
               fieldInfo,
               segmentWriteState.segmentInfo.name,
               SIMD_POOL_FLUSH);
-      writeField(
-          field.fieldInfo, field.randomAccessVectorValues, pqVectors, graphNodeIdToDocMap, graph);
+      writeField(field.fieldInfo, randomAccessVectorValues, pqVectors, graphNodeIdToDocMap, graph);
     }
   }
 
@@ -485,7 +484,6 @@ public class JVectorWriter extends KnnVectorsWriter {
     private final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(FieldWriter.class);
     private final FieldInfo fieldInfo;
     private int lastDocID = -1;
-    private final RandomAccessVectorValues randomAccessVectorValues;
     // The ordering of docIds matches the ordering of vectors, the index in this list corresponds to
     // the jVector ordinal
     private final List<VectorFloat<?>> vectors = new ArrayList<>();
@@ -493,8 +491,6 @@ public class JVectorWriter extends KnnVectorsWriter {
 
     FieldWriter(FieldInfo fieldInfo) {
       /** For creating a new field from a flat field vectors writer. */
-      this.randomAccessVectorValues =
-          new ListRandomAccessVectorValues(vectors, fieldInfo.getVectorDimension());
       this.fieldInfo = fieldInfo;
     }
 
@@ -515,6 +511,10 @@ public class JVectorWriter extends KnnVectorsWriter {
     @Override
     public float[] copyValue(float[] vectorValue) {
       return vectorValue.clone();
+    }
+
+    public RandomAccessVectorValues toRandomAccessVectorValues() {
+      return new ListRandomAccessVectorValues(vectors, fieldInfo.getVectorDimension());
     }
 
     @Override
