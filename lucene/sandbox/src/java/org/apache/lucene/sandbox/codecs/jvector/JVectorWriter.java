@@ -21,6 +21,7 @@ import static io.github.jbellis.jvector.quantization.KMeansPlusPlusClusterer.UNW
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 import static org.apache.lucene.sandbox.codecs.jvector.JVectorFormat.SIMD_POOL_FLUSH;
 import static org.apache.lucene.sandbox.codecs.jvector.JVectorFormat.SIMD_POOL_MERGE;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import io.github.jbellis.jvector.graph.GraphIndexBuilder;
 import io.github.jbellis.jvector.graph.ListRandomAccessVectorValues;
@@ -50,6 +51,7 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
@@ -237,8 +239,10 @@ public class JVectorWriter extends KnnVectorsWriter {
 
       // Generate the ord to doc mapping
       final int[] ordinalsToDocIds = new int[randomAccessVectorValues.size()];
-      for (int ord = 0; ord < randomAccessVectorValues.size(); ord++) {
-        ordinalsToDocIds[ord] = field.docIds.get(ord);
+      int ord = 0;
+      final var docIter = field.docIds.iterator();
+      for (int docId = docIter.nextDoc(); docId != NO_MORE_DOCS; docId = docIter.nextDoc()) {
+        ordinalsToDocIds[ord++] = docId;
       }
       final GraphNodeIdToDocMap graphNodeIdToDocMap = new GraphNodeIdToDocMap(ordinalsToDocIds);
       if (sortMap != null) {
@@ -483,20 +487,20 @@ public class JVectorWriter extends KnnVectorsWriter {
   static class FieldWriter extends KnnFieldVectorsWriter<float[]> {
     private final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(FieldWriter.class);
     private final FieldInfo fieldInfo;
-    private int lastDocID = -1;
     // The ordering of docIds matches the ordering of vectors, the index in this list corresponds to
     // the jVector ordinal
     private final List<VectorFloat<?>> vectors = new ArrayList<>();
-    private final List<Integer> docIds = new ArrayList<>();
+    private DocsWithFieldSet docIds;
 
     FieldWriter(FieldInfo fieldInfo) {
       /** For creating a new field from a flat field vectors writer. */
       this.fieldInfo = fieldInfo;
+      this.docIds = new DocsWithFieldSet();
     }
 
     @Override
     public void addValue(int docID, float[] vectorValue) throws IOException {
-      if (docID == lastDocID) {
+      if (docID < docIds.cardinality()) {
         throw new IllegalArgumentException(
             "VectorValuesField \""
                 + fieldInfo.name
@@ -504,8 +508,6 @@ public class JVectorWriter extends KnnVectorsWriter {
       }
       docIds.add(docID);
       vectors.add(VECTOR_TYPE_SUPPORT.createFloatVector(copyValue(vectorValue)));
-
-      lastDocID = docID;
     }
 
     @Override
@@ -519,7 +521,9 @@ public class JVectorWriter extends KnnVectorsWriter {
 
     @Override
     public long ramBytesUsed() {
-      return SHALLOW_SIZE + (long) vectors.size() * fieldInfo.getVectorDimension() * Float.BYTES;
+      return SHALLOW_SIZE
+          + (long) vectors.size() * fieldInfo.getVectorDimension() * Float.BYTES
+          + docIds.ramBytesUsed();
     }
   }
 
