@@ -62,6 +62,11 @@ public class JVectorFloatVectorValues extends FloatVectorValues {
     return view.size();
   }
 
+  @Override
+  public int ordToDoc(int ord) {
+    return graphNodeIdToDocMap.getLuceneDocId(ord);
+  }
+
   // This allows us to access the vector without copying it to float[]
   public VectorFloat<?> vectorFloatValue(int ord) {
     return view.getVector(ord);
