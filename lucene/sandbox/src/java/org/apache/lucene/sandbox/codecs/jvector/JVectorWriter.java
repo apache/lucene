@@ -507,7 +507,7 @@ public class JVectorWriter extends KnnVectorsWriter {
                 + "\" appears more than once in this document (only one value is allowed per field)");
       }
       docIds.add(docID);
-      vectors.add(VECTOR_TYPE_SUPPORT.createFloatVector(vectorValue));
+      vectors.add(VECTOR_TYPE_SUPPORT.createFloatVector(copyValue(vectorValue)));
 
       lastDocID = docID;
     }
