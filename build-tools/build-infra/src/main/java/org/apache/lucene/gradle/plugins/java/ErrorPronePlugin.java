@@ -265,7 +265,6 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "AlwaysThrows:OFF", // we don't use guava
     "AmbiguousMethodReference:OFF",
     "AndroidInjectionBeforeSuper:OFF", // we don't use android
-    "AndroidJdkLibsChecker:OFF", // TODO: new, not checked if applicable to Lucene
     "AnnotateFormatMethod:OFF", // we don't use this annotation
     "AnnotationMirrorToString:OFF", // TODO: new, not checked if applicable to Lucene
     "AnnotationPosition:OFF", // TODO: new, not checked if applicable to Lucene
@@ -647,6 +646,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "NonRuntimeAnnotation:ERROR",
     "NotJavadoc:WARN",
     "NullArgumentForNonNullParameter:OFF", // we don't use this annotation
+    "NullNeedsCastForVarargs:ERROR",
     "NullOptional:WARN",
     "NullTernary:ERROR",
     "NullableConstructor:OFF", // we don't use this annotation
@@ -712,6 +712,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "ReachabilityFenceUsage:WARN",
     "RectIntersectReturnValueIgnored:OFF", // we don't use android
     "RedundantControlFlow:OFF", // stylistic
+    "RedundantNullCheck:ERROR",
     "RedundantOverride:OFF", // TODO: new, not checked if applicable to Lucene
     "RedundantSetterCall:OFF", // we don't use protobuf
     "RedundantThrows:OFF", // TODO: new, not checked if applicable to Lucene
