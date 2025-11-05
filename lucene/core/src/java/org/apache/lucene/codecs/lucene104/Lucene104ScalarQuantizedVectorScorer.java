@@ -263,7 +263,9 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
           queryCorrections.additionalCorrection()
               + indexCorrections.additionalCorrection()
               - 2 * score;
-      return Math.max(1 / (1f + score), 0);
+      // Ensure that 'score' (the squared euclidean distance) is non-negative. The computed value
+      // may be negative a result of quantization loss.
+      return 1 / (1f + Math.max(score, 0f));
     } else {
       // For cosine and max inner product, we need to apply the additional correction, which is
       // assumed to be the non-centered dot-product between the vector and the centroid
