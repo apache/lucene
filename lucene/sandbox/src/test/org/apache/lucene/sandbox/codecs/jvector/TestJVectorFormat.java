@@ -17,6 +17,10 @@
 
 package org.apache.lucene.sandbox.codecs.jvector;
 
+import static org.apache.lucene.index.VectorEncoding.FLOAT32;
+import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
+import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
+import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 import static org.apache.lucene.sandbox.codecs.jvector.JVectorFormat.DEFAULT_MINIMUM_BATCH_SIZE_FOR_QUANTIZATION;
 
 import com.carrotsearch.randomizedtesting.ThreadFilter;
@@ -33,11 +37,13 @@ import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /** Test used specifically for JVector */
@@ -49,9 +55,41 @@ import org.junit.Test;
 @ThreadLeakFilters(
     defaultFilters = true,
     filters = {TestJVectorFormat.ThreadLeakFilter.class})
-public class TestJVectorFormat extends LuceneTestCase {
+public class TestJVectorFormat extends BaseKnnVectorsFormatTestCase {
+  private static final VectorEncoding[] SUPPORTED_ENCODINGS = {FLOAT32};
+  private static final VectorSimilarityFunction[] SUPPORTED_FUNCTIONS = {
+    DOT_PRODUCT, EUCLIDEAN, COSINE
+  };
   private static final String TEST_FIELD = "test_field";
   private static final String TEST_ID_FIELD = "id";
+
+  @Override
+  @Ignore("Does not honor visitedLimit")
+  public void testSearchWithVisitedLimit() {}
+
+  @Override
+  @Ignore("Does not support byte vectors")
+  public void testByteVectorScorerIteration() {}
+
+  @Override
+  @Ignore("Does not support byte vectors")
+  public void testMismatchedFields() {}
+
+  @Override
+  @Ignore("Does not support byte vectors")
+  public void testSortedIndexBytes() {}
+
+  @Override
+  @Ignore("Does not support byte vectors")
+  public void testRandomBytes() {}
+
+  @Override
+  @Ignore("Does not support byte vectors")
+  public void testEmptyByteVectorData() {}
+
+  @Override
+  @Ignore("Does not support byte vectors")
+  public void testMergingWithDifferentByteKnnFields() {}
 
   /**
    * Test to verify that the JVector codec is able to successfully search for the nearest neighbours
@@ -1553,7 +1591,21 @@ public class TestJVectorFormat extends LuceneTestCase {
     return vectors;
   }
 
-  private Codec getCodec() {
+  @Override
+  protected VectorEncoding randomVectorEncoding() {
+    return SUPPORTED_ENCODINGS[random().nextInt(SUPPORTED_ENCODINGS.length)];
+  }
+
+  @Override
+  protected VectorSimilarityFunction randomSimilarity() {
+    return SUPPORTED_FUNCTIONS[random().nextInt(SUPPORTED_FUNCTIONS.length)];
+  }
+
+  @Override
+  protected void assertOffHeapByteSize(LeafReader r, String fieldName) throws IOException {}
+
+  @Override
+  protected Codec getCodec() {
     return getCodec(JVectorFormat.DEFAULT_MINIMUM_BATCH_SIZE_FOR_QUANTIZATION);
   }
 
