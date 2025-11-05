@@ -166,7 +166,8 @@ public class TestNumericComparator extends LuceneTestCase {
   }
 
   public void testEmptyCompetitiveIteratorOptimizationAndHitsThresholdReached() throws Exception {
-    final int numDocs = TestUtil.nextInt(random(), 128, 512); // Below IndexSearcher.DEFAULT_HITS_THRESHOLD
+    final int numDocs =
+        TestUtil.nextInt(random(), 128, 512); // Below IndexSearcher.DEFAULT_HITS_THRESHOLD
     try (var dir = newDirectory()) {
       try (var writer =
           new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
