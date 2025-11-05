@@ -717,7 +717,18 @@ public class JVectorWriter extends KnnVectorsWriter {
 
     @Override
     public RandomAccessMergedFloatVectorValues copy() {
-      throw new UnsupportedOperationException();
+      final FloatVectorValues[] newVectors = new FloatVectorValues[vectors.length];
+      for (int i = 0; i < newVectors.length; ++i) {
+        if (vectors[i] != null) {
+          try {
+            newVectors[i] = vectors[i].copy();
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          }
+        }
+      }
+      return new RandomAccessMergedFloatVectorValues(
+          size, dimension, newVectors, ordToReader, ordToReaderOrd);
     }
 
     @Override
@@ -738,28 +749,25 @@ public class JVectorWriter extends KnnVectorsWriter {
       final int ord = ordToReaderOrd.applyAsInt(node);
 
       if (values instanceof JVectorFloatVectorValues jVectorValues) {
-        synchronized (this) {
-          jVectorValues.getVectorInto(ord, destinationVector, offset);
-        }
+        jVectorValues.getVectorInto(ord, destinationVector, offset);
       }
 
-      synchronized (this) {
-        final float[] srcVector;
-        try {
-          srcVector = values.vectorValue(ord);
-        } catch (IOException e) {
-          throw new UncheckedIOException(e);
-        }
+      final float[] srcVector;
+      try {
+        srcVector = values.vectorValue(ord);
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
 
-        for (int i = 0; i < srcVector.length; ++i) {
-          destinationVector.set(i + offset, srcVector[i]);
-        }
+      for (int i = 0; i < srcVector.length; ++i) {
+        destinationVector.set(i + offset, srcVector[i]);
       }
     }
 
     @Override
     public boolean isValueShared() {
-      return false;
+      // force thread-local copies
+      return true;
     }
 
     @Override

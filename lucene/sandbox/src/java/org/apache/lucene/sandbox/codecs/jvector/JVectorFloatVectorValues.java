@@ -35,18 +35,20 @@ public class JVectorFloatVectorValues extends FloatVectorValues {
   private static final VectorTypeSupport VECTOR_TYPE_SUPPORT =
       VectorizationProvider.getInstance().getVectorTypeSupport();
 
+  private final OnDiskGraphIndex index;
   private final OnDiskGraphIndex.View view;
   private final PQVectors pq;
   private final VectorSimilarityFunction similarityFunction;
   private final GraphNodeIdToDocMap graphNodeIdToDocMap;
 
   public JVectorFloatVectorValues(
-      OnDiskGraphIndex onDiskGraphIndex,
+      OnDiskGraphIndex index,
       PQVectors pq,
       VectorSimilarityFunction similarityFunction,
       GraphNodeIdToDocMap graphNodeIdToDocMap)
       throws IOException {
-    this.view = onDiskGraphIndex.getView();
+    this.index = index;
+    this.view = index.getView();
     this.pq = pq;
     this.similarityFunction = similarityFunction;
     this.graphNodeIdToDocMap = graphNodeIdToDocMap;
@@ -94,7 +96,7 @@ public class JVectorFloatVectorValues extends FloatVectorValues {
 
   @Override
   public FloatVectorValues copy() throws IOException {
-    return this;
+    return new JVectorFloatVectorValues(index, pq, similarityFunction, graphNodeIdToDocMap);
   }
 
   @Override
