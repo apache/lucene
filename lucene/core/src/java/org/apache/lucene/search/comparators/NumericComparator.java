@@ -373,7 +373,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
      * @throws IOException i/o exception while fetching min and max values from point values
      */
     void postInitializeCompetitiveIterator() throws IOException {
-      if (queueFull) {
+      if (queueFull && hitsThresholdReached) {
         // if some documents have missing points, then check that missing values prohibits
         // optimization
         if (docCount() < maxDoc && isMissingValueCompetitive()) {
@@ -536,7 +536,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
      * iterator as competitive iterator.
      */
     void postInitializeCompetitiveIterator() {
-      if (queueFull) {
+      if (queueFull && hitsThresholdReached) {
         // if some documents have missing doc values, check that missing values prohibits
         // optimization
         if (docCount() < maxDoc && isMissingValueCompetitive()) {

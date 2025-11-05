@@ -33,7 +33,9 @@ import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestNumericComparator extends LuceneTestCase {
 
@@ -163,6 +165,44 @@ public class TestNumericComparator extends LuceneTestCase {
     }
   }
 
+  public void testEmptyCompetitiveIteratorOptimizationAndHitsThresholdReached() throws Exception {
+    final int numDocs = TestUtil.nextInt(random(), 128, 512); // Below IndexSearcher.DEFAULT_HITS_THRESHOLD
+    try (var dir = newDirectory()) {
+      try (var writer =
+          new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+        for (int i = 0; i < numDocs; i++) {
+          var doc = new Document();
+
+          doc.add(NumericDocValuesField.indexedField("field_1", i));
+          doc.add(new LongPoint("field_2", i));
+          doc.add(new NumericDocValuesField("field_2", i));
+
+          writer.addDocument(doc);
+          if (i % 100 == 0) {
+            writer.flush();
+          }
+        }
+
+        try (var reader = DirectoryReader.open(writer)) {
+          var indexSearcher = newSearcher(reader);
+          indexSearcher.setQueryCache(null);
+          for (String field : new String[] {"field_1", "field_2"}) {
+            var sortField = new SortField(field, SortField.Type.LONG, false);
+            var topDocs = indexSearcher.search(new MatchAllDocsQuery(), 3, new Sort(sortField));
+            assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
+            assertEquals(numDocs, topDocs.totalHits.value());
+            assertEquals(0, topDocs.scoreDocs[0].doc);
+            assertEquals(0L, ((FieldDoc) topDocs.scoreDocs[0]).fields[0]);
+            assertEquals(1, topDocs.scoreDocs[1].doc);
+            assertEquals(1L, ((FieldDoc) topDocs.scoreDocs[1]).fields[0]);
+            assertEquals(2, topDocs.scoreDocs[2].doc);
+            assertEquals(2L, ((FieldDoc) topDocs.scoreDocs[2]).fields[0]);
+          }
+        }
+      }
+    }
+  }
+
   private static void assertLongField(
       String fieldName, boolean reverse, int bottom, LeafReaderContext leafContext)
       throws IOException {
@@ -171,6 +211,7 @@ public class TestNumericComparator extends LuceneTestCase {
             new SortField(fieldName, SortField.Type.LONG, reverse)
                 .getComparator(1, Pruning.GREATER_THAN_OR_EQUAL_TO);
     comparator1.queueFull = true;
+    comparator1.hitsThresholdReached = true;
     comparator1.bottom = bottom;
     var leafComparator = comparator1.getLeafComparator(leafContext);
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, leafComparator.competitiveIterator().nextDoc());
@@ -184,6 +225,7 @@ public class TestNumericComparator extends LuceneTestCase {
             new SortField(fieldName, SortField.Type.INT, reverse)
                 .getComparator(1, Pruning.GREATER_THAN_OR_EQUAL_TO);
     comparator1.queueFull = true;
+    comparator1.hitsThresholdReached = true;
     comparator1.bottom = bottom;
     var leafComparator = comparator1.getLeafComparator(leafContext);
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, leafComparator.competitiveIterator().nextDoc());
@@ -197,6 +239,7 @@ public class TestNumericComparator extends LuceneTestCase {
             new SortField(fieldName, SortField.Type.FLOAT, reverse)
                 .getComparator(1, Pruning.GREATER_THAN_OR_EQUAL_TO);
     comparator1.queueFull = true;
+    comparator1.hitsThresholdReached = true;
     comparator1.bottom = bottom;
     var leafComparator = comparator1.getLeafComparator(leafContext);
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, leafComparator.competitiveIterator().nextDoc());
@@ -210,6 +253,7 @@ public class TestNumericComparator extends LuceneTestCase {
             new SortField(fieldName, SortField.Type.DOUBLE, reverse)
                 .getComparator(1, Pruning.GREATER_THAN_OR_EQUAL_TO);
     comparator1.queueFull = true;
+    comparator1.hitsThresholdReached = true;
     comparator1.bottom = bottom;
     var leafComparator = comparator1.getLeafComparator(leafContext);
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, leafComparator.competitiveIterator().nextDoc());
