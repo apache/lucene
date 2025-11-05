@@ -135,7 +135,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
             oldNeighbor = initializerGraph.nextNeighbor()) {
           int newNeighbor = newOrdMap[oldNeighbor];
           if (newNeighbor != -1) {
-            newNeighbors.addOutOfOrder(newNeighbor, scorer.score(newNeighbor));
+            newNeighbors.addOutOfOrder(newNeighbor, Float.NaN);
           }
         }
 
