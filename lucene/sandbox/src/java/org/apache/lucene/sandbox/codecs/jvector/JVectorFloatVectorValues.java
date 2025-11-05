@@ -20,6 +20,7 @@ package org.apache.lucene.sandbox.codecs.jvector;
 import io.github.jbellis.jvector.graph.disk.OnDiskGraphIndex;
 import io.github.jbellis.jvector.graph.similarity.ScoreFunction;
 import io.github.jbellis.jvector.quantization.PQVectors;
+import io.github.jbellis.jvector.util.Bits.MatchAllBits;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import io.github.jbellis.jvector.vector.VectorizationProvider;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
@@ -68,7 +69,8 @@ public class JVectorFloatVectorValues extends FloatVectorValues {
 
   @Override
   public DocIndexIterator iterator() {
-    return graphNodeIdToDocMap.iterator(view.liveNodes());
+    assert view.liveNodes() instanceof MatchAllBits : "All OnDiskGraphIndex nodes must be live";
+    return graphNodeIdToDocMap.iterator();
   }
 
   @Override

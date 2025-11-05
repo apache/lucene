@@ -17,7 +17,6 @@
 
 package org.apache.lucene.sandbox.codecs.jvector;
 
-import io.github.jbellis.jvector.util.Bits;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.index.Sorter;
@@ -168,7 +167,7 @@ public class GraphNodeIdToDocMap {
     }
   }
 
-  public DocIndexIterator iterator(Bits liveOrds) {
+  public DocIndexIterator iterator() {
     return new DocIndexIterator() {
       int docId = -1;
       @Override
@@ -186,7 +185,7 @@ public class GraphNodeIdToDocMap {
         while (docId < docIdsToGraphNodeIds.length - 1) {
           ++docId;
           final int ord = docIdsToGraphNodeIds[docId];
-          if (ord >= 0 && liveOrds.get(ord)) {
+          if (ord >= 0) {
             return docId;
           }
         }
