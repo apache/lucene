@@ -245,6 +245,13 @@ Build
 ---------------------
 * Upgrade forbiddenapis to version 3.10.  (Uwe Schindler)
 
+======================= Lucene 10.3.2 =======================
+
+Bug Fixes
+---------------------
+* GITHUB#15411: Bound quantized scores for euclidean, cosine, and dot product scoring.
+  (Trevor McCulloch)
+
 ======================= Lucene 10.3.1 =======================
 
 Bug Fixes
