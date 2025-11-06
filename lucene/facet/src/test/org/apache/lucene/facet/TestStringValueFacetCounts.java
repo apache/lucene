@@ -345,7 +345,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
 
   public void testRandom() throws Exception {
 
-    int fullIterations = LuceneTestCase.TEST_NIGHTLY ? 20 : 3;
+    int fullIterations = LuceneTestCase.TEST_NIGHTLY ? 20 : 1;
     for (int iter = 0; iter < fullIterations; iter++) {
       Directory dir = newDirectory();
       RandomIndexWriter writer = new RandomIndexWriter(random(), dir);

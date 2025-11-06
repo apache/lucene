@@ -231,6 +231,8 @@ public class TestTransactions extends LuceneTestCase {
     writer.close();
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testTransactions() throws Throwable {
     // we cant use non-ramdir on windows, because this test needs to double-write.
     MockDirectoryWrapper dir1 = new MockDirectoryWrapper(random(), new ByteBuffersDirectory());

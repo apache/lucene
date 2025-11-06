@@ -84,7 +84,7 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
   public RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityType, KnnVectorValues vectorValues, float[] target)
       throws IOException {
-    checkDimensions(target.length, vectorValues.dimension());
+    FlatVectorsScorer.checkDimensions(target.length, vectorValues.dimension());
     if (vectorValues instanceof FloatVectorValues fvv
         && fvv instanceof HasIndexSlice floatVectorValues
         && floatVectorValues.getSlice() != null) {
@@ -102,7 +102,7 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
   public RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityType, KnnVectorValues vectorValues, byte[] queryVector)
       throws IOException {
-    checkDimensions(queryVector.length, vectorValues.dimension());
+    FlatVectorsScorer.checkDimensions(queryVector.length, vectorValues.dimension());
     // a quantized values here is a wrapping or delegation issue
     assert !(vectorValues instanceof QuantizedByteVectorValues);
     if (vectorValues instanceof ByteVectorValues bvv
@@ -116,13 +116,6 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
       }
     }
     return delegate.getRandomVectorScorer(similarityType, vectorValues, queryVector);
-  }
-
-  static void checkDimensions(int queryLen, int fieldLen) {
-    if (queryLen != fieldLen) {
-      throw new IllegalArgumentException(
-          "vector query dimension: " + queryLen + " differs from field dimension: " + fieldLen);
-    }
   }
 
   @Override

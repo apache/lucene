@@ -11,6 +11,8 @@ on:
       - main
     paths:
       - '.github/**'
+  schedule:
+    - cron: '22 2 * * *'
 
 permissions: {}
 
@@ -18,6 +20,7 @@ jobs:
   actionlint:
     name: Run actionlint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -30,6 +33,7 @@ jobs:
   zizmor:
     name: Run zizmor
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       security-events: write # integration with github advanced security
     steps:
@@ -43,8 +47,8 @@ jobs:
         run: uvx zizmor --pedantic --format=sarif . > results.sarif
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # TODO: offline checks only to avoid any rate-limiting issues, maybe enable nightly?
-          ZIZMOR_OFFLINE: true
+          # run offline for branches and PRs to avoid rate limits
+          ZIZMOR_OFFLINE: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@3599b3baa15b485a2e49ef411a7a4bb2452e7f93 # v3.30.5
         with:

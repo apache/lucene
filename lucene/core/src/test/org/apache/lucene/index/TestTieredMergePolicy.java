@@ -913,6 +913,8 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
             MergeTrigger.EXPLICIT, infos, new MockMergeContext(SegmentCommitInfo::getDelCount)));
   }
 
+  // TODO: incredibly slow
+  @Nightly
   @Override
   public void testSimulateAppendOnly() throws IOException {
     TieredMergePolicy mergePolicy = mergePolicy();

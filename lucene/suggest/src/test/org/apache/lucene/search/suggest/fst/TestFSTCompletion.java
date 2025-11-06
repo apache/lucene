@@ -265,6 +265,8 @@ public class TestFSTCompletion extends LuceneTestCase {
     tempDir.close();
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandom() throws Exception {
     List<Input> freqs = new ArrayList<>();
     Random rnd = random();

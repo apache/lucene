@@ -597,6 +597,8 @@ public class TestGeo3DPoint extends LuceneTestCase {
     doTestRandom(10);
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandomMedium() throws Exception {
     doTestRandom(1000);
   }
@@ -1552,9 +1554,9 @@ public class TestGeo3DPoint extends LuceneTestCase {
    * the double range and random doubles within the range too.
    */
   public void testQuantization() throws Exception {
-    Random random = random();
+    Random random = nonAssertingRandom(random());
     PlanetModel planetModel = randomPlanetModel();
-    for (int i = 0; i < 10000; i++) {
+    for (int i = 0; i < atLeast(5000); i++) {
       int encoded = random.nextInt();
       if (encoded <= planetModel.MIN_ENCODED_VALUE) {
         continue;

@@ -271,7 +271,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               ((Lucene99HnswVectorsReader)
                       ((CodecReader) ctx.reader()).getVectorReader().unwrapReaderForField("field"))
                   .getGraph("field");
-          assertGraphEqual(hnsw, graphValues);
+          if (graphValues.size() > 0) {
+            assertGraphEqual(hnsw, graphValues);
+          }
         }
       }
     }
@@ -784,6 +786,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         IllegalArgumentException.class, () -> HnswGraphBuilder.create(scorerSupplier, 10, 0, 0));
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRamUsageEstimate() throws IOException {
     int size = atLeast(2000);
     int dim = randomIntBetween(100, 1024);

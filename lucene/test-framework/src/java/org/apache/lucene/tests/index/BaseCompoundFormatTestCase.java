@@ -169,6 +169,8 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
   }
 
   // LUCENE-5724: actually test we play nice with NRTCachingDir and massive file
+  // TODO: very slow with SimpleText
+  @Nightly
   public void testLargeCFS() throws IOException {
     final String testfile = "_123.test";
     IOContext context = IOContext.flush(new FlushInfo(0, 512 * 1024 * 1024));
@@ -680,8 +682,8 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
   /** Creates a file of the specified size with random data. */
   protected static void createRandomFile(Directory dir, String name, int size, byte[] segId)
       throws IOException {
-    Random rnd = random();
-    try (IndexOutput os = dir.createOutput(name, newIOContext(random()))) {
+    Random rnd = nonAssertingRandom(random());
+    try (IndexOutput os = dir.createOutput(name, newIOContext(rnd))) {
       CodecUtil.writeIndexHeader(os, "Foo", 0, segId, "suffix");
       for (int i = 0; i < size; i++) {
         byte b = (byte) rnd.nextInt(256);
