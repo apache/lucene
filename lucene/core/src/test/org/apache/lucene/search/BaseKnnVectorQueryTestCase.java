@@ -611,8 +611,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     try (Directory d = newDirectoryForTest()) {
       // Always use the default kNN format to have predictable behavior around when it hits
       // visitedLimit. This is fine since the test targets AbstractKnnVectorQuery logic, not the kNN
-      // format
-      // implementation.
+      // format implementation.
       IndexWriterConfig iwc = configStandardCodec();
       RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc);
       for (int i = 0; i < numDocs; i++) {
@@ -659,7 +658,9 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
             assertEquals(1, fieldDoc.fields.length);
 
             int tag = (int) fieldDoc.fields[0];
-            assertTrue(lower <= tag && tag <= numDocs);
+            assertTrue(
+                "tag=" + tag + " lower=" + lower + " numDocs=" + numDocs,
+                lower <= tag && tag <= numDocs);
           }
           // Test a filter with cost slightly more than k, and check we use exact search as k
           // results are not retrieved from approximate search

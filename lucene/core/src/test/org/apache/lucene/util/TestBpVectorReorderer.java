@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.misc.index;
+package org.apache.lucene.util;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -44,7 +44,6 @@ import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.VectorUtil;
 
 /** Tests reordering vector values using Binary Partitioning */
 public class TestBpVectorReorderer extends LuceneTestCase {
@@ -126,6 +125,7 @@ public class TestBpVectorReorderer extends LuceneTestCase {
   }
 
   public void testQuantizedIndex() throws Exception {
+    // FIXME test with an executor sometimes
     doTestQuantizedIndex(null);
   }
 

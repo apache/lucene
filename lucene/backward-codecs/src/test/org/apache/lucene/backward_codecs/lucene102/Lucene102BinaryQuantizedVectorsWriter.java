@@ -288,7 +288,13 @@ class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       meta.writeInt(Float.floatToIntBits(centroidDp));
     }
     OrdToDocDISIReaderConfiguration.writeStoredMeta(
-        DIRECT_MONOTONIC_BLOCK_SHIFT, meta, binarizedVectorData, count, maxDoc, docsWithField);
+        DIRECT_MONOTONIC_BLOCK_SHIFT,
+        meta,
+        binarizedVectorData,
+        count,
+        maxDoc,
+        docsWithField,
+        null);
   }
 
   @Override

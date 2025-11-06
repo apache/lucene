@@ -591,7 +591,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     int count = docsWithField.cardinality();
     meta.writeInt(count);
     OrdToDocDISIReaderConfiguration.writeStoredMeta(
-        DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, count, maxDoc, docsWithField);
+        DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, count, maxDoc, docsWithField, null);
     meta.writeVInt(M);
     // write graph nodes on each level
     if (graph == null) {

@@ -303,7 +303,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       meta.writeInt(Float.floatToIntBits(centroidDp));
     }
     OrdToDocDISIReaderConfiguration.writeStoredMeta(
-        DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, count, maxDoc, docsWithField);
+        DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, count, maxDoc, docsWithField, null);
   }
 
   @Override

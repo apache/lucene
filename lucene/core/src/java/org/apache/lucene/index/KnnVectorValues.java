@@ -65,8 +65,6 @@ public abstract class KnnVectorValues {
 
   /** Returns a Bits accepting docs accepted by the argument and having a vector value */
   public Bits getAcceptOrds(Bits acceptDocs) {
-    // FIXME: change default to return acceptDocs and provide this impl
-    // somewhere more specialized (in every non-dense impl).
     if (acceptDocs == null) {
       return null;
     }

@@ -423,7 +423,7 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
 
   /**
    * Returns an iterator that delegates to the IndexedDISI. Advancing this iterator will advance the
-   * underlying IndexedDISI, and vice-versa.
+   * underlying IndexedDISI, and vice versa.
    */
   public static KnnVectorValues.DocIndexIterator asDocIndexIterator(IndexedDISI disi) {
     // can we replace with fromDISI?

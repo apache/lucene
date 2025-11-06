@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.misc.index;
+package org.apache.lucene.util;
 
 import java.io.IOException;
 import java.util.concurrent.Executor;
@@ -22,7 +22,7 @@ import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.store.Directory;
 
-/** Interface for docid-reordering expected by {@link BPReorderingMergePolicy}. */
+/** Interface for docid-reordering expected by BPReorderingMergePolicy. */
 public interface IndexReorderer {
   /**
    * Returns a mapping from old to new docids.

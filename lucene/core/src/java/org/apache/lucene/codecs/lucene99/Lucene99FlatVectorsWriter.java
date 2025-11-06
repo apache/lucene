@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
@@ -51,6 +52,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BpVectorReorderer;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
@@ -69,13 +71,15 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorData;
+  private final boolean enableReorder;
 
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
 
-  public Lucene99FlatVectorsWriter(SegmentWriteState state, FlatVectorsScorer scorer)
-      throws IOException {
+  Lucene99FlatVectorsWriter(
+      SegmentWriteState state, FlatVectorsScorer scorer, boolean enableReorder) throws IOException {
     super(scorer);
+    this.enableReorder = enableReorder;
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -163,7 +167,12 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
     writeMeta(
-        fieldData.fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, fieldData.docsWithField);
+        fieldData.fieldInfo,
+        maxDoc,
+        vectorDataOffset,
+        vectorDataLength,
+        fieldData.docsWithField,
+        null);
   }
 
   private void writeFloat32Vectors(FieldWriter<?> fieldData) throws IOException {
@@ -197,7 +206,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         };
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
-    writeMeta(fieldData.fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, newDocsWithField);
+    writeMeta(
+        fieldData.fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, newDocsWithField, null);
   }
 
   private long writeSortedFloat32Vectors(FieldWriter<?> fieldData, int[] ordMap)
@@ -224,7 +234,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
   @Override
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    // Since we know we will not be searching for additional indexing, we can just write the
+    // Since we know we will not be searching for additional indexing, we can just write
     // the vectors directly to the new segment.
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     // No need to use temporary file as we don't have to re-open for reading
@@ -246,92 +256,173 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         segmentWriteState.segmentInfo.maxDoc(),
         vectorDataOffset,
         vectorDataLength,
-        docsWithField);
+        docsWithField,
+        null);
   }
 
   @Override
   public CloseableRandomVectorScorerSupplier mergeOneFieldToIndex(
       FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-    IndexOutput tempVectorData =
-        segmentWriteState.directory.createTempOutput(
-            vectorData.getName(), "temp", segmentWriteState.context);
-    IndexInput vectorDataInput = null;
-    try {
-      // write the vector data to a temporary file
-      DocsWithFieldSet docsWithField =
-          switch (fieldInfo.getVectorEncoding()) {
-            case BYTE ->
-                writeByteVectorData(
-                    tempVectorData,
-                    KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(
-                        fieldInfo, mergeState));
-            case FLOAT32 ->
-                writeVectorData(
-                    tempVectorData,
-                    KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(
-                        fieldInfo, mergeState));
-          };
-      CodecUtil.writeFooter(tempVectorData);
-      IOUtils.close(tempVectorData);
+    return new FieldMerger(fieldInfo, mergeState).merge();
+  }
 
-      // This temp file will be accessed in a random-access fashion to construct the HNSW graph.
-      // Note: don't use the context from the state, which is a flush/merge context, not expecting
-      // to perform random reads.
-      vectorDataInput =
+  // Hold some state while merging one field
+  private class FieldMerger {
+    private final FieldInfo fieldInfo;
+    private final MergeState mergeState;
+
+    List<Closeable> toClose = new ArrayList<>();
+    List<String> tempFileNames = new ArrayList<>();
+    IndexInput vectorDataInput;
+    String tempFileName;
+    Sorter.DocMap ordToDocMap;
+
+    FieldMerger(FieldInfo fieldInfo, MergeState mergeState) {
+      this.fieldInfo = fieldInfo;
+      this.mergeState = mergeState;
+    }
+
+    CloseableRandomVectorScorerSupplier merge() throws IOException {
+      long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
+      IndexOutput tempVectorData = openOutput(vectorData.getName(), "temp");
+      try {
+        // write the vector data to a temporary file
+        DocsWithFieldSet docsWithField =
+            switch (fieldInfo.getVectorEncoding()) {
+              case BYTE ->
+                  writeByteVectorData(
+                      tempVectorData,
+                      MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
+              case FLOAT32 ->
+                  writeVectorData(
+                      tempVectorData,
+                      MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
+            };
+        closeWithFooter(tempVectorData);
+        tempFileName = tempVectorData.getName();
+
+        // This temp file will be accessed in a random-access fashion to construct the HNSW graph.
+        // Note: don't use the context from the state, which is a flush/merge context, not expecting
+        // to perform random reads.
+        vectorDataInput = openInput(tempFileName);
+
+        if (enableReorder
+            && fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT32
+            && docsWithField.cardinality() > 0) {
+          reorderVectors(docsWithField);
+        }
+
+        // copy the temporary file vectors to the actual data file in docid order
+        vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
+
+        CodecUtil.retrieveChecksum(vectorDataInput);
+        long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
+        writeMeta(
+            fieldInfo,
+            segmentWriteState.segmentInfo.maxDoc(),
+            vectorDataOffset,
+            vectorDataLength,
+            docsWithField,
+            ordToDocMap);
+
+        final RandomVectorScorerSupplier randomVectorScorerSupplier =
+            switch (fieldInfo.getVectorEncoding()) {
+              case BYTE ->
+                  vectorsScorer.getRandomVectorScorerSupplier(
+                      fieldInfo.getVectorSimilarityFunction(),
+                      new OffHeapByteVectorValues.DenseOffHeapVectorValues(
+                          fieldInfo.getVectorDimension(),
+                          docsWithField.cardinality(),
+                          vectorDataInput,
+                          fieldInfo.getVectorDimension() * Byte.BYTES,
+                          vectorsScorer,
+                          fieldInfo.getVectorSimilarityFunction()));
+              case FLOAT32 ->
+                  vectorsScorer.getRandomVectorScorerSupplier(
+                      fieldInfo.getVectorSimilarityFunction(),
+                      new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
+                          fieldInfo.getVectorDimension(),
+                          docsWithField.cardinality(),
+                          vectorDataInput,
+                          fieldInfo.getVectorDimension() * Float.BYTES,
+                          vectorsScorer,
+                          fieldInfo.getVectorSimilarityFunction()));
+            };
+        return new FlatCloseableRandomVectorScorerSupplier(
+            () -> {
+              IOUtils.close(vectorDataInput);
+              deleteFile(tempFileName);
+            },
+            docsWithField.cardinality(),
+            randomVectorScorerSupplier);
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, toClose);
+        IOUtils.deleteFilesSuppressingExceptions(t, segmentWriteState.directory, tempFileNames);
+        throw t;
+      }
+    }
+
+    void reorderVectors(DocsWithFieldSet docsWithField) throws IOException {
+      int vectorDimension = fieldInfo.getVectorDimension();
+      int byteSize = fieldInfo.getVectorEncoding().byteSize;
+      int vectorCount = docsWithField.cardinality();
+      FloatVectorValues vectorValues =
+          new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
+              vectorDimension,
+              vectorCount,
+              vectorDataInput,
+              byteSize,
+              DefaultFlatVectorScorer.INSTANCE,
+              fieldInfo.getVectorSimilarityFunction());
+      BpVectorReorderer vectorReorderer = new BpVectorReorderer();
+      // nocommit use mergeState.intraTaskExecutor
+      Sorter.DocMap ordMap =
+          vectorReorderer.computeValueMap(
+              vectorValues, fieldInfo.getVectorSimilarityFunction(), null);
+      // copy the temporary file vectors to yet another temp file after reordering
+      IndexOutput tempReorderVectorData = openOutput(vectorData.getName(), "tempReorder");
+      int vectorByteSize = vectorDimension * byteSize;
+      for (int ord = 0; ord < vectorCount; ord++) {
+        int oldOrd = ordMap.newToOld(ord);
+        vectorDataInput.seek((long) oldOrd * vectorByteSize);
+        tempReorderVectorData.copyBytes(vectorDataInput, vectorByteSize);
+      }
+      closeWithFooter(tempReorderVectorData);
+      ordToDocMap = BpVectorReorderer.ordToDocFromValueMap(ordMap, docsWithField);
+      // clean up
+      IOUtils.close(vectorDataInput);
+      deleteFile(tempFileName);
+      // swap temp vector file to the reordered one
+      tempFileName = tempReorderVectorData.getName();
+      vectorDataInput = openInput(tempFileName);
+    }
+
+    IndexOutput openOutput(String name, String ext) throws IOException {
+      IndexOutput output =
+          segmentWriteState.directory.createTempOutput(name, ext, segmentWriteState.context);
+      toClose.add(output);
+      tempFileNames.add(output.getName());
+      return output;
+    }
+
+    IndexInput openInput(String name) throws IOException {
+      IndexInput input =
           segmentWriteState.directory.openInput(
-              tempVectorData.getName(),
+              name,
               IOContext.DEFAULT.withHints(
                   FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
-      // copy the temporary file vectors to the actual data file
-      vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
-      CodecUtil.retrieveChecksum(vectorDataInput);
-      long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
-      writeMeta(
-          fieldInfo,
-          segmentWriteState.segmentInfo.maxDoc(),
-          vectorDataOffset,
-          vectorDataLength,
-          docsWithField);
+      toClose.add(input);
+      return input;
+    }
 
-      final IndexInput finalVectorDataInput = vectorDataInput;
-      vectorDataInput = null;
+    void closeWithFooter(IndexOutput output) throws IOException {
+      CodecUtil.writeFooter(output);
+      IOUtils.close(output);
+    }
 
-      final RandomVectorScorerSupplier randomVectorScorerSupplier =
-          switch (fieldInfo.getVectorEncoding()) {
-            case BYTE ->
-                vectorsScorer.getRandomVectorScorerSupplier(
-                    fieldInfo.getVectorSimilarityFunction(),
-                    new OffHeapByteVectorValues.DenseOffHeapVectorValues(
-                        fieldInfo.getVectorDimension(),
-                        docsWithField.cardinality(),
-                        finalVectorDataInput,
-                        fieldInfo.getVectorDimension() * Byte.BYTES,
-                        vectorsScorer,
-                        fieldInfo.getVectorSimilarityFunction()));
-            case FLOAT32 ->
-                vectorsScorer.getRandomVectorScorerSupplier(
-                    fieldInfo.getVectorSimilarityFunction(),
-                    new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
-                        fieldInfo.getVectorDimension(),
-                        docsWithField.cardinality(),
-                        finalVectorDataInput,
-                        fieldInfo.getVectorDimension() * Float.BYTES,
-                        vectorsScorer,
-                        fieldInfo.getVectorSimilarityFunction()));
-          };
-      return new FlatCloseableRandomVectorScorerSupplier(
-          () -> {
-            IOUtils.close(finalVectorDataInput);
-            segmentWriteState.directory.deleteFile(tempVectorData.getName());
-          },
-          docsWithField.cardinality(),
-          randomVectorScorerSupplier);
-    } catch (Throwable t) {
-      IOUtils.closeWhileSuppressingExceptions(t, vectorDataInput, tempVectorData);
-      IOUtils.deleteFilesSuppressingExceptions(
-          t, segmentWriteState.directory, tempVectorData.getName());
-      throw t;
+    void deleteFile(String filename) throws IOException {
+      segmentWriteState.directory.deleteFile(filename);
+      tempFileNames.remove(filename);
     }
   }
 
@@ -340,7 +431,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       int maxDoc,
       long vectorDataOffset,
       long vectorDataLength,
-      DocsWithFieldSet docsWithField)
+      DocsWithFieldSet docsWithField,
+      Sorter.DocMap sortMap)
       throws IOException {
     meta.writeInt(field.number);
     meta.writeInt(field.getVectorEncoding().ordinal());
@@ -353,7 +445,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     int count = docsWithField.cardinality();
     meta.writeInt(count);
     OrdToDocDISIReaderConfiguration.writeStoredMeta(
-        DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, count, maxDoc, docsWithField);
+        DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, count, maxDoc, docsWithField, sortMap);
   }
 
   /**
