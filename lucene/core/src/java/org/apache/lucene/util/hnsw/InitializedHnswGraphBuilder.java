@@ -270,7 +270,6 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
   private void repairDisconnectedNodes(
       Map<Integer, List<Integer>> disconnectedNodesByLevel, int numLevels) throws IOException {
     for (int level = numLevels - 1; level >= 0; level--) {
-      System.out.println("At LEVEL: " + level + " disconnected node size: " + disconnectedNodesByLevel.get(level).size());
       fixDisconnectedNodes(disconnectedNodesByLevel.get(level), level, scorer);
     }
   }
@@ -320,6 +319,9 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
 
         // Add diverse neighbors using HNSW heuristic (prunes similar neighbors)
         addDiverseNeighbors(level, node, scratchArray, scorer, true);
+      } else {
+        // Node has no nighbors, add connections from scratch
+        addConnections(node, level, scorer);
       }
 
       // Clear for next iteration
@@ -374,47 +376,48 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
 
       while (it.hasNext() && currentNodesAtLevel < maxNodesAtLevel) {
         int node = it.next().value;
-        scorer.setScoringOrdinal(node);
 
         // Promote with probability 1/M, matching HNSW's level assignment distribution
         if (random.nextDouble() < invMaxConn && !hnsw.nodeExistAtLevel(level, node)) {
-          addNodeToLevel(node, level, scorer, currentNodesAtLevel++);
+          scorer.setScoringOrdinal(node);
+          hnsw.addNode(level, node);
+
+          // If this is the first node at this level, try to make it the entry point
+          if (currentNodesAtLevel == 0) {
+            hnsw.tryPromoteNewEntryNode(node, level, hnsw.numLevels() - 1);
+          } else {
+            // Add connections for non-first nodes
+            addConnections(node, level, scorer);
+          }
+
           levelToNodes[level].add(node);
+          currentNodesAtLevel++;
         }
       }
     }
   }
 
   /**
-   * Adds an existing node to a specific level in the graph and establishes connections
-   * to appropriate neighbors.
+   * Adds connections for an existing node at a specific level in the graph hierarchy.
    *
    * <p>The process involves:
+   *
    * <ol>
-   *   <li>If this is the first node at the topmost level, promote it as the entry point
-   *   <li>Otherwise, navigate down from the top level to find the closest node at the target level
+   *   <li>Navigate down from the top level to find the closest node at the target level
    *   <li>Perform a full search at the target level to find neighbors
    *   <li>Add diverse neighbors using the HNSW heuristic selection
    * </ol>
    *
-   * @param node the node ordinal to add
-   * @param targetLevel the level to add the node to
+   * @param node the node ordinal to add connections for
+   * @param targetLevel the level to add connections at
    * @param scorer vector similarity scorer for distance calculations
-   * @param currentNodes number of nodes already present at the target level
    * @throws IOException if an I/O error occurs during search or neighbor addition
    */
-  private void addNodeToLevel(
-      int node, int targetLevel, UpdateableRandomVectorScorer scorer, int currentNodes)
-      throws IOException {
-    hnsw.addNode(targetLevel, node);
+  private void addConnections(
+      int node, int targetLevel, UpdateableRandomVectorScorer scorer) throws IOException {
 
-    // If this is the first node at this level, try to make it the entry point
-    if (currentNodes == 0) {
-      hnsw.tryPromoteNewEntryNode(node, targetLevel, hnsw.numLevels() - 1);
-      return;
-    }
-
-    GraphBuilderKnnCollector candidates = new GraphBuilderKnnCollector(beamCandidates.k());
+    int beamWidth = beamCandidates.k();
+    GraphBuilderKnnCollector candidates = new GraphBuilderKnnCollector(beamWidth);
     int[] eps = {hnsw.entryNode()};
 
     // Navigate down from top to target level, greedily moving toward the new node
@@ -427,7 +430,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
     // Perform full search at target level to find neighbors
     graphSearcher.searchLevel(candidates, scorer, targetLevel, eps, hnsw, null);
 
-    NeighborArray scratchArray = new NeighborArray(beamCandidates.k(), false);
+    NeighborArray scratchArray = new NeighborArray(beamWidth, false);
     popToScratch(candidates, scratchArray);
 
     // Add diverse neighbors and establish bidirectional connections
