@@ -53,6 +53,16 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
 
   private int numReaders = 0;
 
+  /**
+   * The maximum acceptable deletion percentage for a graph to be considered as the base graph.
+   * Graphs with deletion percentages above this threshold are not used for initialization as they
+   * may have degraded connectivity.
+   *
+   * <p>A value of 40 means that if more than 40% of the graph's original vectors have been
+   * deleted, the graph will not be selected as the base.
+   */
+  private final int DELETE_PCT_THRESHOLD = 40;
+
   /** Represents a vector reader that contains graph info. */
   protected record GraphReader(
       KnnVectorsReader reader, MergeState.DocMap initDocMap, int graphSize) {}
@@ -103,7 +113,12 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     }
 
     GraphReader graphReader = new GraphReader(reader, docMap, candidateVectorCount);
-    if (largestGraphReader == null || candidateVectorCount > largestGraphReader.graphSize) {
+
+    int graphSize = graph.size();
+    int deletePct = ((graphSize - candidateVectorCount) * 100) / graphSize;
+
+    if (deletePct <= DELETE_PCT_THRESHOLD &&
+        (largestGraphReader == null || candidateVectorCount > largestGraphReader.graphSize)) {
       largestGraphReader = graphReader;
     }
 
