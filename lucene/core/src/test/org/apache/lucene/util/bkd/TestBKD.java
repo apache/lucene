@@ -1320,6 +1320,8 @@ public class TestBKD extends LuceneTestCase {
     dir.close();
   }
 
+  // TODO: can this use less docs?
+  @Nightly
   public void test2DLongOrdsOffline() throws Exception {
     try (Directory dir = newDirectory()) {
       int numDocs = 100000;

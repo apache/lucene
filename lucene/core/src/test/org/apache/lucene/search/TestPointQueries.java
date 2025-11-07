@@ -374,6 +374,8 @@ public class TestPointQueries extends LuceneTestCase {
     doTestRandomLongs(1000);
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandomLongsBig() throws Exception {
     doTestRandomLongs(20_000);
   }

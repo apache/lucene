@@ -55,7 +55,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
 
     try (Directory dir = getDirectory(createTempDir("testAceWithThreads"))) {
       try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
-        final Random random = random();
+        final Random random = nonAssertingRandom(random());
         for (int i = 0; i < nInts; i++) {
           out.writeInt(random.nextInt());
         }

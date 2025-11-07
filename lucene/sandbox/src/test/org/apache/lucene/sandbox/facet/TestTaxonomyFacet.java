@@ -163,11 +163,13 @@ public class TestTaxonomyFacet extends SandboxFacetTestCase {
               new FacetLabel("Author", "Bob"),
             }));
 
-    expectThrows(
-        AssertionError.class,
-        () -> {
-          getTopChildrenByCount(countRecorder2, taxoReader, 10, "Non exitent dim");
-        });
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(
+          AssertionError.class,
+          () -> {
+            getTopChildrenByCount(countRecorder2, taxoReader, 10, "Non exitent dim");
+          });
+    }
 
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);

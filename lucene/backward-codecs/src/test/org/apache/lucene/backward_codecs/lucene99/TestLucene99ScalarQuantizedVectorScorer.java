@@ -29,7 +29,6 @@ import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorScorer;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -217,9 +216,7 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
       VectorSimilarityFunction function, LeafReader leafReader, float[] vector) throws IOException {
     if (leafReader instanceof CodecReader codecReader) {
       KnnVectorsReader format = codecReader.getVectorReader();
-      if (format instanceof PerFieldKnnVectorsFormat.FieldsReader perFieldFormat) {
-        format = perFieldFormat.getFieldReader("field");
-      }
+      format = format.unwrapReaderForField("field");
       if (format instanceof Lucene99HnswVectorsReader hnswFormat) {
         OffHeapQuantizedByteVectorValues quantizedByteVectorReader =
             (OffHeapQuantizedByteVectorValues) hnswFormat.getQuantizedVectorValues("field");

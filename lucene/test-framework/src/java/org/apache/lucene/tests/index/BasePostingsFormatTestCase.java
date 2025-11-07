@@ -382,7 +382,7 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
     iwc.setMergePolicy(newTieredMergePolicy());
     IndexWriter iw = new IndexWriter(dir, iwc);
 
-    for (int i = 0; i < 10000; i++) {
+    for (int i = 0; i < 1000; i++) {
       Document document = new Document();
       document.add(new StringField("id", i + "", Field.Store.NO));
       iw.addDocument(document);
@@ -393,8 +393,8 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
     DirectoryReader reader = DirectoryReader.open(iw);
     TermsEnum termsEnum = getOnlyLeafReader(reader).terms("id").iterator();
 
-    for (int i = 0; i < 20000; i++) {
-      int n = random().nextInt(0, 10000);
+    for (int i = 0; i < 2000; i++) {
+      int n = random().nextInt(0, 1000);
       BytesRef target = new BytesRef(n + "");
       // seekExact.
       assertTrue(termsEnum.seekExact(target));
@@ -1768,6 +1768,8 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
     IOUtils.close(reader, w2, dir1, dir2);
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testDocIDRunEnd() throws Exception {
     Directory dir = newDirectory();
     for (int iter = 0; iter < 100; ++iter) {

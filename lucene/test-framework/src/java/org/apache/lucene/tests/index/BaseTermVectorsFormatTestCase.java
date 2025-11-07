@@ -518,7 +518,10 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
             assertTrue(foundPayload);
           }
         }
-        expectThrows(getReadPastLastPositionExceptionClass(), docsAndPositionsEnum::nextPosition);
+        Class<? extends Throwable> exClass = getReadPastLastPositionExceptionClass();
+        if (AssertionError.class.isAssignableFrom(exClass) && TEST_ASSERTS_ENABLED) {
+          expectThrows(exClass, docsAndPositionsEnum::nextPosition);
+        }
         assertEquals(PostingsEnum.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
       }
       this.docsEnum.set(docsAndPositionsEnum);

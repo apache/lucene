@@ -17,9 +17,12 @@
 package org.apache.lucene.gradle.plugins.mrjar;
 
 import de.thetaphi.forbiddenapis.gradle.CheckForbiddenApis;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
+import org.apache.lucene.gradle.plugins.regenerate.RegenerateTaskExtension;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.file.Directory;
@@ -33,6 +36,7 @@ import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.bundling.Jar;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
@@ -61,6 +65,8 @@ public class LuceneJavaCoreMrjarPlugin extends LuceneGradlePlugin {
 
     var javaExt = project.getExtensions().getByType(JavaPluginExtension.class);
 
+    TaskContainer tasks = project.getTasks();
+
     for (var jdkVersion : mrjarJavaVersions) {
       SourceSet sourceSet = javaExt.getSourceSets().create("main" + jdkVersion);
       sourceSet.getJava().setSrcDirs(List.of("src/java" + jdkVersion));
@@ -77,8 +83,7 @@ public class LuceneJavaCoreMrjarPlugin extends LuceneGradlePlugin {
       RegularFile apijar = apijars.file("jdk" + jdkVersion + "-api.jar");
 
       // include api jar in forbidden APIs.
-      project
-          .getTasks()
+      tasks
           .withType(CheckForbiddenApis.class)
           .named("forbiddenApisMain" + jdkVersion)
           .configure(
@@ -87,8 +92,7 @@ public class LuceneJavaCoreMrjarPlugin extends LuceneGradlePlugin {
               });
 
       // configure javac.
-      project
-          .getTasks()
+      tasks
           .withType(JavaCompile.class)
           .named("compileMain" + jdkVersion + "Java")
           .configure(
@@ -120,8 +124,7 @@ public class LuceneJavaCoreMrjarPlugin extends LuceneGradlePlugin {
 
     // configure jar task to include mr-jar classes.
     var buildGlobals = getLuceneBuildGlobals(project);
-    project
-        .getTasks()
+    tasks
         .withType(Jar.class)
         .configureEach(
             spec -> {
@@ -151,68 +154,77 @@ public class LuceneJavaCoreMrjarPlugin extends LuceneGradlePlugin {
     // add regeneration of the apijar(s).
     var javaToolchains = project.getExtensions().getByType(JavaToolchainService.class);
     for (var jdkVersion : mrjarJavaVersions) {
+      RegularFile apijar = apijars.file("jdk" + jdkVersion + "-api.jar");
+      Path extractJdkApisSrc =
+          getProjectRootPath(project)
+              .resolve(
+                  "build-tools/build-infra/src/main/java/org/apache/lucene/gradle/plugins/mrjar/ExtractJdkApis.java");
+
       var generateJdkApiJarTask =
-          project
-              .getTasks()
-              .register(
-                  "generateJdkApiJar" + jdkVersion,
-                  JavaExec.class,
-                  spec -> {
-                    spec.setDescription(
-                        "Regenerate the API-only JAR file with public Panama Vector API from JDK "
-                            + jdkVersion);
-                    spec.setGroup("generation");
+          tasks.register(
+              "generateJdkApiJar" + jdkVersion,
+              JavaExec.class,
+              spec -> {
+                Property<JavaLauncher> javaLauncher = spec.getJavaLauncher();
+                javaLauncher.set(
+                    javaToolchains.launcherFor(
+                        toolchainSpec -> {
+                          toolchainSpec
+                              .getLanguageVersion()
+                              .set(JavaLanguageVersion.of(jdkVersion));
+                        }));
 
-                    Property<JavaLauncher> javaLauncher = spec.getJavaLauncher();
-                    javaLauncher.set(
-                        javaToolchains.launcherFor(
-                            toolchainSpec -> {
-                              toolchainSpec
-                                  .getLanguageVersion()
-                                  .set(JavaLanguageVersion.of(jdkVersion));
-                            }));
-
-                    spec.setOnlyIf(
-                        t -> {
-                          try {
-                            return javaLauncher.isPresent() && javaLauncher.get() != null;
-                          } catch (Exception e) {
-                            var logger = t.getLogger();
-                            logger.warn(
-                                "Launcher for Java {} is not available; skipping regeneration of Panama Vector API JAR.",
-                                jdkVersion);
-                            logger.warn("Error: {}", e.getCause().getMessage());
-                            logger.warn(
-                                "Please make sure to point env 'JAVA{}_HOME' to exactly JDK version {} or enable Gradle toolchain auto-download.",
+                spec.doFirst(
+                    _ -> {
+                      try {
+                        javaLauncher.isPresent();
+                      } catch (Exception e) {
+                        throw new GradleException(
+                            String.format(
+                                Locale.ROOT,
+                                "Launcher for Java %s is not available; skipping regeneration of Panama Vector API JAR. "
+                                    + "Please make sure to point env 'JAVA%s_HOME' to exactly JDK version %s or enable Gradle toolchain auto-download.",
                                 jdkVersion,
-                                jdkVersion);
-                            return false;
-                          }
-                        });
+                                jdkVersion,
+                                jdkVersion),
+                            e);
+                      }
+                    });
 
-                    spec.getMainClass()
-                        .set(
-                            getProjectRootPath(project)
-                                .resolve(
-                                    "build-tools/build-infra/src/main/java/org/apache/lucene/gradle/plugins/mrjar/ExtractJdkApis.java")
-                                .toString());
+                spec.getMainClass().set(extractJdkApisSrc.toString());
 
-                    spec.getSystemProperties()
-                        .putAll(
-                            Map.of(
-                                "user.timezone", "UTC",
-                                "file.encoding", "UTF-8"));
+                spec.getSystemProperties()
+                    .putAll(
+                        Map.of(
+                            "user.timezone", "UTC",
+                            "file.encoding", "UTF-8"));
 
-                    RegularFile apijar = apijars.file("jdk" + jdkVersion + "-api.jar");
-                    spec.setArgs(
-                        List.of(
-                            buildGlobals.getMinJavaVersion().get().toString(),
-                            jdkVersion.toString(),
-                            apijar.getAsFile().toString()));
-                  });
+                spec.setArgs(
+                    List.of(
+                        buildGlobals.getMinJavaVersion().get().toString(),
+                        jdkVersion.toString(),
+                        apijar.getAsFile().toString()));
+              });
 
-      project
-          .getTasks()
+      tasks.register(
+          "regenerateJdkApiJar" + jdkVersion,
+          task -> {
+            task.setDescription(
+                "Regenerate the API-only JAR file with public Panama Vector API from JDK "
+                    + jdkVersion);
+
+            task.dependsOn(generateJdkApiJarTask);
+            task.getExtensions()
+                .getByType(RegenerateTaskExtension.class)
+                .getIfSkippedAlsoSkip()
+                .set(List.of(generateJdkApiJarTask.getName()));
+
+            task.getInputs().file(extractJdkApisSrc);
+            task.getInputs().property("jdk-version", jdkVersion);
+            task.getOutputs().file(apijar);
+          });
+
+      tasks
           .named("regenerate")
           .configure(
               t -> {
