@@ -58,8 +58,8 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
    * Graphs with deletion percentages above this threshold are not used for initialization as they
    * may have degraded connectivity.
    *
-   * <p>A value of 40 means that if more than 40% of the graph's original vectors have been
-   * deleted, the graph will not be selected as the base.
+   * <p>A value of 40 means that if more than 40% of the graph's original vectors have been deleted,
+   * the graph will not be selected as the base.
    */
   private final int DELETE_PCT_THRESHOLD = 40;
 
@@ -117,8 +117,8 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     int graphSize = graph.size();
     int deletePct = ((graphSize - candidateVectorCount) * 100) / graphSize;
 
-    if (deletePct <= DELETE_PCT_THRESHOLD &&
-        (largestGraphReader == null || candidateVectorCount > largestGraphReader.graphSize)) {
+    if (deletePct <= DELETE_PCT_THRESHOLD
+        && (largestGraphReader == null || candidateVectorCount > largestGraphReader.graphSize)) {
       largestGraphReader = graphReader;
     }
 

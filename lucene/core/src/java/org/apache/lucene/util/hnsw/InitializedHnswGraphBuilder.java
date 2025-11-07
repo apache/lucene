@@ -39,16 +39,16 @@ import org.apache.lucene.util.BitSet;
  *
  * <ul>
  *   <li>Copies the graph structure from the initializer graph with ordinal remapping
- *   <li>Identifies and repairs disconnected nodes (nodes that lost a portion of their
- *       neighbors due to deletions)
- *   <li>Rebalances the graph hierarchy to maintain proper level distribution according to the
- *       HNSW probabilistic model
+ *   <li>Identifies and repairs disconnected nodes (nodes that lost a portion of their neighbors due
+ *       to deletions)
+ *   <li>Rebalances the graph hierarchy to maintain proper level distribution according to the HNSW
+ *       probabilistic model
  *   <li>Allows incremental addition of new nodes while preserving initialized nodes
  * </ul>
  *
  * <p><b>Disconnected Node Detection:</b> A node is considered disconnected if it retains less than
- * {@link #DISCONNECTED_NODE_FACTOR} of its original neighbor count from the source graph.
- * This typically occurs when many of the node's neighbors were deleted documents that couldn't be
+ * {@link #DISCONNECTED_NODE_FACTOR} of its original neighbor count from the source graph. This
+ * typically occurs when many of the node's neighbors were deleted documents that couldn't be
  * remapped.
  *
  * @lucene.experimental
@@ -62,19 +62,19 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
   private final BitSet initializedNodes;
 
   /**
-   * Maps each level in the graph hierarchy to the list of node ordinals present at that level.
-   * Used during graph rebalancing to identify candidates for promotion to higher levels.
+   * Maps each level in the graph hierarchy to the list of node ordinals present at that level. Used
+   * during graph rebalancing to identify candidates for promotion to higher levels.
    */
   private IntArrayList[] levelToNodes;
 
   /**
    * The threshold factor for determining if a node is disconnected. A node is considered
-   * disconnected if its new neighbor count is less than
-   * {@code (old neighbor count * DISCONNECTED_NODE_FACTOR)}.
+   * disconnected if its new neighbor count is less than {@code (old neighbor count *
+   * DISCONNECTED_NODE_FACTOR)}.
    *
-   * <p>This helps identify nodes that have lost a significant portion of their neighbors
-   * (typically due to document deletions) and need additional connections to maintain
-   * graph connectivity and search performance.
+   * <p>This helps identify nodes that have lost a significant portion of their neighbors (typically
+   * due to document deletions) and need additional connections to maintain graph connectivity and
+   * search performance.
    */
   private final double DISCONNECTED_NODE_FACTOR = 0.85;
 
@@ -91,8 +91,8 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    * @param initializerGraph the source graph to copy structure from
    * @param newOrdMap maps old ordinals in the initializer graph to new ordinals in the merged
    *     graph; -1 indicates a deleted document that should be skipped
-   * @param initializedNodes bit set marking which nodes are already initialized (can be null if
-   *     not tracking)
+   * @param initializedNodes bit set marking which nodes are already initialized (can be null if not
+   *     tracking)
    * @param totalNumberOfVectors the total number of vectors in the merged graph (used for
    *     pre-allocation)
    * @return a new builder initialized with the provided graph structure
@@ -153,7 +153,6 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
     return builder.getGraph();
   }
 
-
   private InitializedHnswGraphBuilder(
       RandomVectorScorerSupplier scorerSupplier,
       int beamWidth,
@@ -173,7 +172,6 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    *   <li>Repair disconnected nodes by finding additional neighbors
    *   <li>Rebalance the entire hnsw graph
    * </ol>
-   *
    *
    * @param initializerGraph the source graph to copy from
    * @param newOrdMap ordinal mapping from old to new ordinals
@@ -286,8 +284,8 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    *   <li>Add diverse neighbors using the HNSW heuristic selection algorithm
    * </ol>
    *
-   * <p>If a node has no neighbors at all, it cannot be repaired at this level and will rely on
-   * the rebalancing phase.
+   * <p>If a node has no neighbors at all, it cannot be repaired at this level and will rely on the
+   * rebalancing phase.
    *
    * @param disconnectedNodes list of node ordinals that need additional neighbors
    * @param level the level at which to repair connections
@@ -413,8 +411,8 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    * @param scorer vector similarity scorer for distance calculations
    * @throws IOException if an I/O error occurs during search or neighbor addition
    */
-  private void addConnections(
-      int node, int targetLevel, UpdateableRandomVectorScorer scorer) throws IOException {
+  private void addConnections(int node, int targetLevel, UpdateableRandomVectorScorer scorer)
+      throws IOException {
 
     int beamWidth = beamCandidates.k();
     GraphBuilderKnnCollector candidates = new GraphBuilderKnnCollector(beamWidth);
