@@ -43,6 +43,8 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
 
   private IntArrayList[] levelToNodes;
 
+  private double DISCONNECT_FACTOR = 0.5;
+
   public static InitializedHnswGraphBuilder fromGraph(
       RandomVectorScorerSupplier scorerSupplier,
       int beamWidth,
@@ -116,7 +118,6 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       levelToNodes[level] = new IntArrayList();
       List<Integer> disconnectedNodes = new ArrayList<>();
       HnswGraph.NodesIterator it = initializerGraph.getNodesOnLevel(level);
-      int disconnectedNodethreshold = level == 0 ? M : M / 2;
 
       while (it.hasNext()) {
         int oldOrd = it.nextInt();
@@ -130,16 +131,18 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
         scorer.setScoringOrdinal(newOrd);
         NeighborArray newNeighbors = hnsw.getNeighbors(level, newOrd);
         initializerGraph.seek(level, oldOrd);
+        int oldNeighbourCount = 0;
         for (int oldNeighbor = initializerGraph.nextNeighbor();
             oldNeighbor != NO_MORE_DOCS;
             oldNeighbor = initializerGraph.nextNeighbor()) {
+          oldNeighbourCount++;
           int newNeighbor = newOrdMap[oldNeighbor];
           if (newNeighbor != -1) {
             newNeighbors.addOutOfOrder(newNeighbor, Float.NaN);
           }
         }
 
-        if (newNeighbors.size() < disconnectedNodethreshold) {
+        if (newNeighbors.size() < oldNeighbourCount * DISCONNECT_FACTOR) {
           disconnectedNodes.add(newOrd);
         }
       }
