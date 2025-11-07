@@ -48,7 +48,9 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.SameThreadExecutorService;
+import org.apache.lucene.util.VectorUtil;
 import org.junit.Before;
 
 public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
@@ -110,7 +112,11 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
       try (Directory dir = newDirectory();
           IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", vector, similarityFunction));
+        float[] docVector =
+            similarityFunction == VectorSimilarityFunction.DOT_PRODUCT
+                ? VectorUtil.l2normalize(ArrayUtil.copyArray(vector))
+                : vector;
+        doc.add(new KnnFloatVectorField("f", docVector, similarityFunction));
         w.addDocument(doc);
         w.commit();
         try (IndexReader reader = DirectoryReader.open(w)) {
@@ -119,10 +125,14 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
           KnnVectorValues.DocIndexIterator docIndexIterator = vectorValues.iterator();
           assert (vectorValues.size() == 1);
           while (docIndexIterator.nextDoc() != NO_MORE_DOCS) {
-            assertArrayEquals(vector, vectorValues.vectorValue(docIndexIterator.index()), 0.00001f);
+            assertArrayEquals(
+                docVector, vectorValues.vectorValue(docIndexIterator.index()), 0.00001f);
           }
-          float[] randomVector = randomVector(vector.length);
-          float trueScore = similarityFunction.compare(vector, randomVector);
+          float[] randomVector =
+              similarityFunction == VectorSimilarityFunction.DOT_PRODUCT
+                  ? randomNormalizedVector(vector.length)
+                  : randomVector(vector.length);
+          float trueScore = similarityFunction.compare(docVector, randomVector);
           TopDocs td =
               r.searchNearestVectors(
                   "f",
