@@ -30,7 +30,10 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.DenseLiveDocs;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.SparseFixedBitSet;
+import org.apache.lucene.util.SparseLiveDocs;
 
 /**
  * Lucene 9.0 live docs format
@@ -59,6 +62,12 @@ public final class Lucene90LiveDocsFormat extends LiveDocsFormat {
 
   private static final int VERSION_CURRENT = VERSION_START;
 
+  /**
+   * Deletion rate threshold for choosing sparse vs dense representation. If deletion rate is at or
+   * below this threshold, use SparseFixedBitSet; otherwise use dense FixedBitSet.
+   */
+  private static final double SPARSE_DENSE_THRESHOLD = 0.01; // 1%
+
   /** Sole constructor. */
   public Lucene90LiveDocsFormat() {}
 
@@ -67,7 +76,10 @@ public final class Lucene90LiveDocsFormat extends LiveDocsFormat {
       throws IOException {
     long gen = info.getDelGen();
     String name = IndexFileNames.fileNameFromGeneration(info.info.name, EXTENSION, gen);
-    final int length = info.info.maxDoc();
+    final int maxDoc = info.info.maxDoc();
+    final int delCount = info.getDelCount();
+    final double deletionRate = (double) delCount / maxDoc;
+
     try (ChecksumIndexInput input = dir.openChecksumInput(name)) {
       Throwable priorE = null;
       try {
@@ -79,17 +91,7 @@ public final class Lucene90LiveDocsFormat extends LiveDocsFormat {
             info.info.getId(),
             Long.toString(gen, Character.MAX_RADIX));
 
-        FixedBitSet fbs = readFixedBitSet(input, length);
-
-        if (fbs.length() - fbs.cardinality() != info.getDelCount()) {
-          throw new CorruptIndexException(
-              "bits.deleted="
-                  + (fbs.length() - fbs.cardinality())
-                  + " info.delcount="
-                  + info.getDelCount(),
-              input);
-        }
-        return fbs.asReadOnlyBits();
+        return readLiveDocs(input, maxDoc, deletionRate, delCount);
       } catch (Throwable exception) {
         priorE = exception;
       } finally {
@@ -103,6 +105,57 @@ public final class Lucene90LiveDocsFormat extends LiveDocsFormat {
     long[] data = new long[FixedBitSet.bits2words(length)];
     input.readLongs(data, 0, data.length);
     return new FixedBitSet(data, length);
+  }
+
+  /**
+   * Reads live docs from input and chooses between sparse and dense representation based on
+   * deletion rate.
+   */
+  private Bits readLiveDocs(IndexInput input, int maxDoc, double deletionRate, int expectedDelCount)
+      throws IOException {
+    Bits liveDocs;
+    int actualDelCount;
+
+    if (deletionRate <= SPARSE_DENSE_THRESHOLD) {
+      SparseFixedBitSet sparse = readSparseFixedBitSet(input, maxDoc);
+      actualDelCount = sparse.cardinality();
+      liveDocs = new SparseLiveDocs(sparse, maxDoc);
+    } else {
+      FixedBitSet dense = readFixedBitSet(input, maxDoc);
+      actualDelCount = maxDoc - dense.cardinality();
+      liveDocs = new DenseLiveDocs(dense, maxDoc);
+    }
+
+    if (actualDelCount != expectedDelCount) {
+      throw new CorruptIndexException(
+          "bits.deleted=" + actualDelCount + " info.delcount=" + expectedDelCount, input);
+    }
+
+    return liveDocs;
+  }
+
+  private SparseFixedBitSet readSparseFixedBitSet(IndexInput input, int length) throws IOException {
+    long[] data = new long[FixedBitSet.bits2words(length)];
+    input.readLongs(data, 0, data.length);
+
+    SparseFixedBitSet sparse = new SparseFixedBitSet(length);
+    for (int wordIndex = 0; wordIndex < data.length; wordIndex++) {
+      long word = data[wordIndex];
+      // Skip words with all bits set (all docs live, no deletions in this word)
+      if (word == -1L) {
+        continue;
+      }
+      int baseDocId = wordIndex << 6;
+      int maxDocInWord = Math.min(baseDocId + 64, length);
+      for (int docId = baseDocId; docId < maxDocInWord; docId++) {
+        int bitIndex = docId & 63;
+        // If bit is 0 (deleted doc), set it in sparse representation
+        if ((word & (1L << bitIndex)) == 0) {
+          sparse.set(docId);
+        }
+      }
+    }
+    return sparse;
   }
 
   @Override
