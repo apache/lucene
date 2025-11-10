@@ -198,6 +198,7 @@ public class LiveDocsBenchmark {
     long denseBytes = denseLiveDocs.ramBytesUsed();
     double overheadPct = ((double) sparseBytes / denseBytes - 1.0) * 100;
     System.out.printf(
+        java.util.Locale.ROOT,
         "[Memory] pattern=%s, maxDoc=%,d, delRate=%.1f%%, deleted=%,d: Sparse=%,d bytes, Dense=%,d bytes, Overhead=%.1f%%%n",
         deletionPattern,
         maxDoc,

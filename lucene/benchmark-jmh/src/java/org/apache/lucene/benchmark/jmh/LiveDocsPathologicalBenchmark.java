@@ -170,6 +170,7 @@ public class LiveDocsPathologicalBenchmark {
 
     double overheadPct = ((double) sparseBytes / denseBytes - 1.0) * 100;
     System.out.printf(
+        java.util.Locale.ROOT,
         "[Memory] maxDoc=%,d, deletionRate=%.4f%%, deleted=%,d: Sparse=%,d bytes, Dense=%,d bytes, Overhead=%.1f%%%n",
         maxDoc, deletionRate * 100, deletedCount, sparseBytes, denseBytes, overheadPct);
   }
