@@ -101,12 +101,6 @@ public final class Lucene90LiveDocsFormat extends LiveDocsFormat {
     throw new AssertionError();
   }
 
-  private FixedBitSet readFixedBitSet(IndexInput input, int length) throws IOException {
-    long[] data = new long[FixedBitSet.bits2words(length)];
-    input.readLongs(data, 0, data.length);
-    return new FixedBitSet(data, length);
-  }
-
   /**
    * Reads live docs from input and chooses between sparse and dense representation based on
    * deletion rate.
@@ -134,6 +128,12 @@ public final class Lucene90LiveDocsFormat extends LiveDocsFormat {
     return liveDocs;
   }
 
+  private FixedBitSet readFixedBitSet(IndexInput input, int length) throws IOException {
+    long[] data = new long[FixedBitSet.bits2words(length)];
+    input.readLongs(data, 0, data.length);
+    return new FixedBitSet(data, length);
+  }
+
   private SparseFixedBitSet readSparseFixedBitSet(IndexInput input, int length) throws IOException {
     long[] data = new long[FixedBitSet.bits2words(length)];
     input.readLongs(data, 0, data.length);
@@ -141,7 +141,9 @@ public final class Lucene90LiveDocsFormat extends LiveDocsFormat {
     SparseFixedBitSet sparse = new SparseFixedBitSet(length);
     for (int wordIndex = 0; wordIndex < data.length; wordIndex++) {
       long word = data[wordIndex];
-      // Skip words with all bits set (all docs live, no deletions in this word)
+      // Semantic inversion: disk format stores LIVE docs (bit=1 means live, bit=0 means deleted)
+      // but SparseLiveDocs stores DELETED docs (bit=1 means deleted).
+      // Skip words with all bits set (all docs live in disk format = no deletions to convert)
       if (word == -1L) {
         continue;
       }
@@ -149,7 +151,8 @@ public final class Lucene90LiveDocsFormat extends LiveDocsFormat {
       int maxDocInWord = Math.min(baseDocId + 64, length);
       for (int docId = baseDocId; docId < maxDocInWord; docId++) {
         int bitIndex = docId & 63;
-        // If bit is 0 (deleted doc), set it in sparse representation
+        // If bit is 0 in disk format (deleted doc), set it in sparse representation (bit=1 means
+        // deleted)
         if ((word & (1L << bitIndex)) == 0) {
           sparse.set(docId);
         }

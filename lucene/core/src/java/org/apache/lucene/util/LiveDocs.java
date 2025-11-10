@@ -22,17 +22,16 @@ import org.apache.lucene.search.DocIdSetIterator;
  * Extension of {@link Bits} that provides efficient iteration over deleted documents.
  *
  * <p>This interface enables efficient sequential access to deleted documents, which is beneficial
- * when deletions are sparse (typically &lt; 20% of documents). For sparse deletions, iterating
+ * when deletions are sparse (typically for low deletion rates). For sparse deletions, iterating
  * deleted documents directly in O(deletedDocs) time is much more efficient than scanning all
  * documents in O(maxDoc) time.
  *
  * <p>Implementations should provide optimal iteration strategies based on deletion density:
  *
  * <ul>
- *   <li>Sparse deletions (&lt; 20%): Use {@link SparseFixedBitSet} to store deleted docs, enabling
+ *   <li>Sparse deletions: Use {@link SparseFixedBitSet} to store deleted docs, enabling
  *       O(deletedDocs) iteration
- *   <li>Dense deletions (&ge; 20%): Use {@link FixedBitSet} to store live docs, maintaining current
- *       behavior
+ *   <li>Dense deletions: Use {@link FixedBitSet} to store live docs, maintaining current behavior
  * </ul>
  *
  * @lucene.experimental
@@ -71,16 +70,14 @@ public interface LiveDocs extends Bits {
    * <p>Callers can use {@link DocIdSetIterator#cost()} to determine if sparse iteration would be
    * beneficial for their use case.
    *
-   * @return an iterator over deleted document IDs, or an empty iterator if no documents are
-   *     deleted
+   * @return an iterator over deleted document IDs, or an empty iterator if no documents are deleted
    */
   DocIdSetIterator deletedDocsIterator();
 
   /**
    * Returns the number of deleted documents.
    *
-   * <p>This can be used to determine deletion density and choose appropriate algorithms. For
-   * example, histogram collection might skip sparse correction if deletedCount is very small.
+   * <p>This can be used to determine deletion density and choose appropriate algorithms.
    *
    * @return the number of deleted documents in this segment
    */

@@ -16,12 +16,10 @@
  */
 package org.apache.lucene.util;
 
-import java.io.IOException;
-import java.util.function.IntPredicate;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
- * LiveDocs implementation optimized for sparse deletions.
+ * {@link LiveDocs} implementation optimized for sparse deletions.
  *
  * <p>This implementation stores DELETED documents using {@link SparseFixedBitSet}, which provides:
  *
@@ -31,16 +29,19 @@ import org.apache.lucene.search.DocIdSetIterator;
  *   <li>Memory usage proportional to number of deleted documents, not total documents
  * </ul>
  *
- * <p>This is efficient when deletions are sparse. For dense deletions, {@link DenseLiveDocs}
+ * <p>This is most efficient when deletions are sparse. For denser deletions, {@link DenseLiveDocs}
  * should be used instead.
  *
  * <p><b>Inverted semantics:</b> Unlike typical live docs that store which documents are live, this
  * stores which documents are DELETED. Therefore:
  *
  * <ul>
- *   <li>{@link #get(int)} returns true if doc is LIVE (bit is NOT set in deletedDocs)
+ *   <li>{@link #get(int)} returns {@code true} if doc is LIVE (bit is NOT set in deletedDocs)
  *   <li>{@link #deletedDocsIterator()} iterates documents where bit IS set in deletedDocs
  * </ul>
+ *
+ * <p><b>Immutability:</b> This class is immutable once constructed. Instances are typically created
+ * by wrapping an existing {@link SparseFixedBitSet} read from disk during segment loading.
  *
  * @lucene.experimental
  */
@@ -48,6 +49,9 @@ public class SparseLiveDocs implements LiveDocs {
 
   private final SparseFixedBitSet deletedDocs;
   private final int maxDoc;
+  // Cached at construction for performance. Safe because this class is immutable.
+  // Eliminates repeated O(n) cardinality() calls.
+  private final int deletedCount;
 
   /**
    * Creates a new SparseLiveDocs with no deletions.
@@ -57,6 +61,7 @@ public class SparseLiveDocs implements LiveDocs {
   public SparseLiveDocs(int maxDoc) {
     this.maxDoc = maxDoc;
     this.deletedDocs = new SparseFixedBitSet(maxDoc);
+    this.deletedCount = this.deletedDocs.cardinality();
   }
 
   /**
@@ -69,6 +74,7 @@ public class SparseLiveDocs implements LiveDocs {
     assert deletedDocs.length >= maxDoc;
     this.maxDoc = maxDoc;
     this.deletedDocs = deletedDocs;
+    this.deletedCount = this.deletedDocs.cardinality();
   }
 
   @Override
@@ -83,40 +89,18 @@ public class SparseLiveDocs implements LiveDocs {
 
   @Override
   public DocIdSetIterator liveDocsIterator() {
-    // For sparse deletions, we need to scan all docs and skip deleted ones
-    // Return docs where bit is NOT set (live docs)
-    return new FilteredDocIdSetIterator(deletedDocs, maxDoc, maxDoc - deletedDocs.cardinality(), doc -> !deletedDocs.get(doc));
+    return new FilteredDocIdSetIterator(
+        maxDoc, maxDoc - deletedCount, doc -> !deletedDocs.get(doc));
   }
 
   @Override
   public DocIdSetIterator deletedDocsIterator() {
-    return new BitSetIterator(deletedDocs, deletedDocs.approximateCardinality());
+    return new BitSetIterator(deletedDocs, deletedCount);
   }
 
   @Override
   public int deletedCount() {
-    return deletedDocs.cardinality();
-  }
-
-  /**
-   * Marks a document as deleted.
-   *
-   * @param docID the document ID to delete
-   */
-  public void delete(int docID) {
-    deletedDocs.set(docID);
-  }
-
-  /**
-   * Returns the underlying sparse bit set of deleted documents.
-   *
-   * <p>Exposed for testing and codec serialization. Note that set bits represent DELETED
-   * documents.
-   *
-   * @return the sparse bit set of deleted documents
-   */
-  public SparseFixedBitSet getDeletedDocs() {
-    return deletedDocs;
+    return deletedCount;
   }
 
   /**

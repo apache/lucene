@@ -17,8 +17,8 @@
 package org.apache.lucene.util;
 
 /**
- * Immutable read-only view of SparseFixedBitSet representing live docs.
- * The underlying bitSet stores DELETED docs, so get() returns the inverse.
+ * Immutable read-only view of SparseFixedBitSet representing live docs. The underlying bitSet
+ * stores DELETED docs, so get() returns the inverse.
  */
 record SparseLiveBits(SparseFixedBitSet bitSet) implements Bits {
 

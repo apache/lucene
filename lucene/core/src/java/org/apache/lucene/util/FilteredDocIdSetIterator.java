@@ -16,20 +16,19 @@
  */
 package org.apache.lucene.util;
 
-import java.io.IOException;
 import java.util.function.IntPredicate;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
- * Iterator that returns documents matching a predicate by scanning all document positions.
+ * {@link DocIdSetIterator} that returns documents matching a predicate by scanning all document
+ * positions.
  *
  * <p>This generic iterator can be used to iterate either live or deleted documents based on a
- * predicate function. It has O(maxDoc) complexity since it must scan all document positions.
+ * predicate function. Iteration has O(maxDoc) complexity since it must scan all document positions.
  *
  * @lucene.internal
  */
 final class FilteredDocIdSetIterator extends DocIdSetIterator {
-  private final Bits bits;
   private final int maxDoc;
   private final int cost;
   private final IntPredicate predicate;
@@ -38,14 +37,12 @@ final class FilteredDocIdSetIterator extends DocIdSetIterator {
   /**
    * Creates a filtered iterator over documents.
    *
-   * @param bits the bit set (not used, kept for future optimization)
    * @param maxDoc the maximum document ID (exclusive)
    * @param cost the expected number of documents to return
-   * @param predicate predicate to test each document ID; returns true if document should be
-   *     included
+   * @param predicate predicate to test each document ID; returns {@code true} if document should be
+   *     included in iteration
    */
-  FilteredDocIdSetIterator(final Bits bits, int maxDoc, int cost, IntPredicate predicate) {
-    this.bits = bits;
+  FilteredDocIdSetIterator(int maxDoc, int cost, IntPredicate predicate) {
     this.maxDoc = maxDoc;
     this.cost = cost;
     this.predicate = predicate;
@@ -57,12 +54,12 @@ final class FilteredDocIdSetIterator extends DocIdSetIterator {
   }
 
   @Override
-  public int nextDoc() throws IOException {
+  public int nextDoc() {
     return advance(doc + 1);
   }
 
   @Override
-  public int advance(int target) throws IOException {
+  public int advance(int target) {
     if (target >= maxDoc) {
       doc = NO_MORE_DOCS;
       return doc;
