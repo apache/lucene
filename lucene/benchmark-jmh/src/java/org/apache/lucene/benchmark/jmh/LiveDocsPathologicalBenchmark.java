@@ -172,7 +172,12 @@ public class LiveDocsPathologicalBenchmark {
     System.out.printf(
         java.util.Locale.ROOT,
         "[Memory] maxDoc=%,d, deletionRate=%.4f%%, deleted=%,d: Sparse=%,d bytes, Dense=%,d bytes, Overhead=%.1f%%%n",
-        maxDoc, deletionRate * 100, deletedCount, sparseBytes, denseBytes, overheadPct);
+        maxDoc,
+        deletionRate * 100,
+        deletedCount,
+        sparseBytes,
+        denseBytes,
+        overheadPct);
   }
 
   /**
