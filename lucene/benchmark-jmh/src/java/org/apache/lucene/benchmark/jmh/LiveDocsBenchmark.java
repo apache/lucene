@@ -17,13 +17,16 @@
 package org.apache.lucene.benchmark.jmh;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.DenseLiveDocs;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.SparseFixedBitSet;
 import org.apache.lucene.util.SparseLiveDocs;
+import org.openjdk.jmh.annotations.AuxCounters;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -131,6 +134,47 @@ public class LiveDocsBenchmark {
   /** Number of random accesses to perform in each benchmark iteration. */
   private static final int RANDOM_ACCESS_SIZE = 10000;
 
+  /** Memory used by SparseLiveDocs in bytes. */
+  private long sparseBytes;
+
+  /** Memory used by DenseLiveDocs in bytes. */
+  private long denseBytes;
+
+  /** Memory overhead percentage (negative means sparse uses less memory). */
+  private double overheadPct;
+
+  /** Number of deleted documents. */
+  private int deleted;
+
+  /**
+   * JMH auxiliary counters for tracking memory metrics across benchmark runs.
+   *
+   * <p>These metrics are reported as secondary results in JMH output and include: segment size,
+   * deletion count, deletion rate percentage, memory usage for both implementations, and overhead
+   * percentage.
+   */
+  @AuxCounters(AuxCounters.Type.EVENTS)
+  @State(Scope.Thread)
+  public static class LiveDocsMetrics {
+    /** Total number of documents in the segment. */
+    public long maxDoc;
+
+    /** Deletion rate as a percentage (e.g., 1.0 for 1%). */
+    public double deletionRatePct;
+
+    /** Number of deleted documents. */
+    public int deleted;
+
+    /** Memory used by SparseLiveDocs in bytes. */
+    public long sparseBytes;
+
+    /** Memory used by DenseLiveDocs in bytes. */
+    public long denseBytes;
+
+    /** Memory overhead percentage (negative means sparse uses less memory). */
+    public double overheadPct;
+  }
+
   /**
    * Sets up the benchmark by creating both sparse and dense LiveDocs with identical deletion
    * patterns.
@@ -149,11 +193,11 @@ public class LiveDocsBenchmark {
 
     switch (deletionPattern) {
       case "RANDOM":
-        java.util.Set<Integer> deleted = new java.util.HashSet<>();
-        while (deleted.size() < numDeleted) {
-          deleted.add(random.nextInt(maxDoc));
+        Set<Integer> deletedSet = new HashSet<>();
+        while (deletedSet.size() < numDeleted) {
+          deletedSet.add(random.nextInt(maxDoc));
         }
-        for (int docId : deleted) {
+        for (int docId : deletedSet) {
           sparseSet.set(docId);
           fixedSet.clear(docId);
         }
@@ -178,6 +222,11 @@ public class LiveDocsBenchmark {
     sparseLiveDocs = new SparseLiveDocs(sparseSet, maxDoc);
     denseLiveDocs = new DenseLiveDocs(fixedSet, maxDoc);
 
+    sparseBytes = sparseLiveDocs.ramBytesUsed();
+    denseBytes = denseLiveDocs.ramBytesUsed();
+    overheadPct = ((double) sparseBytes - denseBytes) / denseBytes * 100.0;
+    deleted = (int) (maxDoc * deletionRate);
+
     randomDocIds = new int[RANDOM_ACCESS_SIZE];
     for (int i = 0; i < RANDOM_ACCESS_SIZE; i++) {
       randomDocIds[i] = random.nextInt(maxDoc);
@@ -191,10 +240,13 @@ public class LiveDocsBenchmark {
    * implementation has additional indirection overhead (block lookup + word lookup) compared to
    * dense.
    *
+   * @param metrics JMH auxiliary counters for memory statistics
    * @param blackhole JMH blackhole to prevent dead code elimination
    */
   @Benchmark
-  public void sparseRandomAccess(Blackhole blackhole) {
+  public void sparseRandomAccess(final LiveDocsMetrics metrics, final Blackhole blackhole) {
+    fillMetrics(metrics);
+
     for (int docId : randomDocIds) {
       blackhole.consume(sparseLiveDocs.get(docId));
     }
@@ -206,10 +258,13 @@ public class LiveDocsBenchmark {
    * <p>Tests 10,000 random get() operations on pre-generated random document IDs. Dense
    * implementation uses simple array access with bit masking.
    *
+   * @param metrics JMH auxiliary counters for memory statistics
    * @param blackhole JMH blackhole to prevent dead code elimination
    */
   @Benchmark
-  public void denseRandomAccess(Blackhole blackhole) {
+  public void denseRandomAccess(final LiveDocsMetrics metrics, final Blackhole blackhole) {
+    fillMetrics(metrics);
+
     for (int docId : randomDocIds) {
       blackhole.consume(denseLiveDocs.get(docId));
     }
@@ -223,11 +278,14 @@ public class LiveDocsBenchmark {
    *
    * <p><b>Expected performance:</b>
    *
+   * @param metrics JMH auxiliary counters for memory statistics
    * @return number of deleted documents (for verification)
    * @throws IOException if iteration fails
    */
   @Benchmark
-  public int sparseIterateDeleted() throws IOException {
+  public int sparseIterateDeleted(final LiveDocsMetrics metrics) throws IOException {
+    fillMetrics(metrics);
+
     DocIdSetIterator it = sparseLiveDocs.deletedDocsIterator();
     int count = 0;
     for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
@@ -242,11 +300,14 @@ public class LiveDocsBenchmark {
    * <p>Dense implementation must scan all maxDoc positions to find deleted documents, making it
    * slower at low deletion rates but more predictable.
    *
+   * @param metrics JMH auxiliary counters for memory statistics
    * @return number of deleted documents (for verification)
    * @throws IOException if iteration fails
    */
   @Benchmark
-  public int denseIterateDeleted() throws IOException {
+  public int denseIterateDeleted(final LiveDocsMetrics metrics) throws IOException {
+    fillMetrics(metrics);
+
     DocIdSetIterator it = denseLiveDocs.deletedDocsIterator();
     int count = 0;
     for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
@@ -267,11 +328,14 @@ public class LiveDocsBenchmark {
    *   <li>RANDOM: Variable (4× faster at 0.1%, but can be 2.4× SLOWER at 30%)
    * </ul>
    *
+   * @param metrics JMH auxiliary counters for memory statistics
    * @return number of live documents (for verification)
    * @throws IOException if iteration fails
    */
   @Benchmark
-  public int sparseIterateLiveDocs() throws IOException {
+  public int sparseIterateLiveDocs(final LiveDocsMetrics metrics) throws IOException {
+    fillMetrics(metrics);
+
     DocIdSetIterator it = sparseLiveDocs.liveDocsIterator();
     int count = 0;
     for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
@@ -286,11 +350,14 @@ public class LiveDocsBenchmark {
    * <p>Dense implementation provides consistent, predictable performance regardless of deletion
    * pattern or rate.
    *
+   * @param metrics JMH auxiliary counters for memory statistics
    * @return number of live documents (for verification)
    * @throws IOException if iteration fails
    */
   @Benchmark
-  public int denseIterateLiveDocs() throws IOException {
+  public int denseIterateLiveDocs(final LiveDocsMetrics metrics) throws IOException {
+    fillMetrics(metrics);
+
     DocIdSetIterator it = denseLiveDocs.liveDocsIterator();
     int count = 0;
     for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
@@ -305,11 +372,14 @@ public class LiveDocsBenchmark {
    * <p>Tests iteration over live documents in a specific range (from maxDoc/4 to maxDoc/2),
    * simulating range queries.
    *
+   * @param metrics JMH auxiliary counters for memory statistics
    * @return number of live documents in range (for verification)
    * @throws IOException if iteration fails
    */
   @Benchmark
-  public int sparseIterateLiveDocsRange() throws IOException {
+  public int sparseIterateLiveDocsRange(final LiveDocsMetrics metrics) throws IOException {
+    fillMetrics(metrics);
+
     int rangeStart = maxDoc / 4;
     int rangeEnd = maxDoc / 2;
     DocIdSetIterator it = sparseLiveDocs.liveDocsIterator();
@@ -328,11 +398,14 @@ public class LiveDocsBenchmark {
    * <p>Tests iteration over live documents in a specific range (from maxDoc/4 to maxDoc/2),
    * simulating range queries.
    *
+   * @param metrics JMH auxiliary counters for memory statistics
    * @return number of live documents in range (for verification)
    * @throws IOException if iteration fails
    */
   @Benchmark
-  public int denseIterateLiveDocsRange() throws IOException {
+  public int denseIterateLiveDocsRange(final LiveDocsMetrics metrics) throws IOException {
+    fillMetrics(metrics);
+
     int rangeStart = maxDoc / 4;
     int rangeEnd = maxDoc / 2;
     DocIdSetIterator it = denseLiveDocs.liveDocsIterator();
@@ -343,5 +416,14 @@ public class LiveDocsBenchmark {
       doc = it.nextDoc();
     }
     return count;
+  }
+
+  private void fillMetrics(final LiveDocsMetrics metrics) {
+    metrics.maxDoc = maxDoc;
+    metrics.deletionRatePct = deletionRate * 100.0;
+    metrics.sparseBytes = sparseBytes;
+    metrics.denseBytes = denseBytes;
+    metrics.overheadPct = overheadPct;
+    metrics.deleted = deleted;
   }
 }
