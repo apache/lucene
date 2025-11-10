@@ -19,6 +19,7 @@ package org.apache.lucene.util;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -251,12 +252,12 @@ public class TestLiveDocs extends LuceneTestCase {
             + ", dense="
             + denseBytes
             + ", ratio="
-            + String.format("%.2f%%", 100.0 * sparseBytes / denseBytes)
+            + String.format(Locale.ROOT, "%.2f%%", 100.0 * sparseBytes / denseBytes)
             + ")",
         sparseBytes < denseBytes);
     assertTrue(
         "Sparse should use significantly less memory (< 50%) for very sparse deletions (ratio="
-            + String.format("%.2f%%", 100.0 * sparseBytes / denseBytes)
+            + String.format(Locale.ROOT, "%.2f%%", 100.0 * sparseBytes / denseBytes)
             + ")",
         sparseBytes < denseBytes / 2);
   }
@@ -557,7 +558,7 @@ public class TestLiveDocs extends LuceneTestCase {
         sparseBytes < denseBytes);
     assertTrue(
         "Sparse should use significantly less memory (<50%) for very sparse deletions (ratio="
-            + String.format("%.2f%%", 100.0 * sparseBytes / denseBytes)
+            + String.format(Locale.ROOT, "%.2f%%", 100.0 * sparseBytes / denseBytes)
             + ")",
         sparseBytes < denseBytes / 2);
   }
