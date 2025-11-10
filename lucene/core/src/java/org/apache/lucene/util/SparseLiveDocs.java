@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util;
 
+import java.util.Locale;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
@@ -119,7 +120,7 @@ public class SparseLiveDocs implements LiveDocs {
         + ", deleted="
         + deletedCount()
         + ", deletionRate="
-        + String.format("%.2f%%", 100.0 * deletedCount() / maxDoc)
+        + String.format(Locale.ROOT, "%.2f%%", 100.0 * deletedCount() / maxDoc)
         + ")";
   }
 }
