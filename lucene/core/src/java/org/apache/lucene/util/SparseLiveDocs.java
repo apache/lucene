@@ -46,7 +46,7 @@ import org.apache.lucene.search.DocIdSetIterator;
  *
  * @lucene.experimental
  */
-public class SparseLiveDocs implements LiveDocs {
+public final class SparseLiveDocs implements LiveDocs {
 
   private final SparseFixedBitSet deletedDocs;
   private final int maxDoc;

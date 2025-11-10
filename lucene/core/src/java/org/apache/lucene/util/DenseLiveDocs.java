@@ -47,7 +47,7 @@ import org.apache.lucene.search.DocIdSetIterator;
  *
  * @lucene.experimental
  */
-public class DenseLiveDocs implements LiveDocs {
+public final class DenseLiveDocs implements LiveDocs {
 
   private final FixedBitSet liveDocs;
   private final int maxDoc;
