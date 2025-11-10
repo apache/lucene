@@ -1853,7 +1853,6 @@ public class AssertingLeafReader extends FilterLeafReader {
     Bits liveDocs = super.getLiveDocs();
     if (liveDocs != null) {
       assert maxDoc() == liveDocs.length();
-      // Preserve LiveDocs interface if the underlying implementation supports it
       if (liveDocs instanceof LiveDocs) {
         liveDocs = new AssertingLiveDocs((LiveDocs) liveDocs);
       } else {

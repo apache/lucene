@@ -38,7 +38,6 @@ public class AssertingLiveDocsFormat extends LiveDocsFormat {
     Bits raw = in.readLiveDocs(dir, info, context);
     assert raw != null;
     check(raw, info.info.maxDoc(), info.getDelCount());
-    // Preserve LiveDocs interface if the underlying implementation supports it
     if (raw instanceof LiveDocs) {
       return new AssertingLiveDocs((LiveDocs) raw);
     }

@@ -567,16 +567,6 @@ public class SparseFixedBitSet extends BitSet {
     return ramBytesUsed;
   }
 
-  /**
-   * Convert this instance to read-only {@link Bits}. This is useful in the case that this {@link
-   * SparseFixedBitSet} is returned as a {@link Bits} instance, to make sure that consumers may not
-   * get write access back by casting to a {@link SparseFixedBitSet}. NOTE: Changes to this {@link
-   * SparseFixedBitSet} will be reflected on the returned {@link Bits}.
-   */
-  public Bits asReadOnlyBits() {
-    return new SparseLiveBits(this);
-  }
-
   @Override
   public String toString() {
     return "SparseFixedBitSet(size=" + length + ",cardinality=~" + approximateCardinality();
