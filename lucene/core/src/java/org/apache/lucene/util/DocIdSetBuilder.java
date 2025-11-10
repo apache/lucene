@@ -42,10 +42,7 @@ public final class DocIdSetBuilder {
    * @see DocIdSetBuilder#grow
    */
   public sealed interface BulkAdder
-      permits FixedBitSetAdder,
-          BufferAdder,
-          PartitionAwareFixedBitSetAdder,
-          PartitionAwareBufferAdder {
+      permits PartitionAwareFixedBitSetAdder, PartitionAwareBufferAdder {
     void add(int doc);
 
     void add(IntsRef docs);
@@ -53,37 +50,6 @@ public final class DocIdSetBuilder {
     void add(DocIdSetIterator iterator) throws IOException;
 
     void add(IntsRef docs, int docLowerBoundInclusive);
-  }
-
-  private record FixedBitSetAdder(FixedBitSet bitSet) implements BulkAdder {
-
-    @Override
-    public void add(int doc) {
-      bitSet.set(doc);
-    }
-
-    @Override
-    public void add(IntsRef docs) {
-      for (int i = docs.offset, to = docs.offset + docs.length; i < to; i++) {
-        bitSet.set(docs.ints[i]);
-      }
-    }
-
-    @Override
-    public void add(DocIdSetIterator iterator) throws IOException {
-      iterator.nextDoc();
-      iterator.intoBitSet(DocIdSetIterator.NO_MORE_DOCS, bitSet, 0);
-    }
-
-    @Override
-    public void add(IntsRef docs, int docLowerBoundInclusive) {
-      for (int i = docs.offset, to = docs.offset + docs.length; i < to; i++) {
-        int doc = docs.ints[i];
-        if (doc >= docLowerBoundInclusive) {
-          bitSet.set(doc);
-        }
-      }
-    }
   }
 
   /**
@@ -151,40 +117,6 @@ public final class DocIdSetBuilder {
     Buffer(int[] array, int length) {
       this.array = array;
       this.length = length;
-    }
-  }
-
-  private record BufferAdder(Buffer buffer) implements BulkAdder {
-
-    @Override
-    public void add(int doc) {
-      buffer.array[buffer.length++] = doc;
-    }
-
-    @Override
-    public void add(IntsRef docs) {
-      System.arraycopy(docs.ints, docs.offset, buffer.array, buffer.length, docs.length);
-      buffer.length += docs.length;
-    }
-
-    @Override
-    public void add(DocIdSetIterator iterator) throws IOException {
-      int docID;
-      while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-        add(docID);
-      }
-    }
-
-    @Override
-    public void add(IntsRef docs, int docLowerBoundInclusive) {
-      int index = buffer.length;
-      for (int i = docs.offset, to = docs.offset + docs.length; i < to; i++) {
-        int doc = docs.ints[i];
-        if (doc >= docLowerBoundInclusive) {
-          buffer.array[index++] = doc;
-        }
-      }
-      buffer.length = index;
     }
   }
 
@@ -428,12 +360,10 @@ public final class DocIdSetBuilder {
   private Buffer addBuffer(int len) {
     Buffer buffer = new Buffer(len);
     buffers.add(buffer);
-    // Use partition-aware adder if filtering to a specific doc ID range
-    if (minDocId > 0 || maxDocId < maxDoc) {
-      adder = new PartitionAwareBufferAdder(buffer, minDocId, maxDocId);
-    } else {
-      adder = new BufferAdder(buffer);
-    }
+    // Always use partition-aware adder to avoid megamorphic call sites
+    // For non-partitioned case (minDocId=0, maxDocId=maxDoc), the bounds check
+    // becomes a predictable branch that the JIT optimizes away
+    adder = new PartitionAwareBufferAdder(buffer, minDocId, maxDocId);
     totalAllocated += buffer.array.length;
     return buffer;
   }
@@ -467,12 +397,11 @@ public final class DocIdSetBuilder {
     this.bitSet = bitSet;
     this.counter = counter;
     this.buffers = null;
-    // Use partition-aware adder if filtering to a specific doc ID range
-    if (isPartition) {
-      this.adder = new PartitionAwareFixedBitSetAdder(bitSet, minDocId, maxDocId, minDocId);
-    } else {
-      this.adder = new FixedBitSetAdder(bitSet);
-    }
+    // Always use partition-aware adder to avoid megamorphic call sites
+    // For non-partitioned case, use offset=0 and bounds=[0, maxDoc)
+    // The JIT will optimize away the redundant checks for non-partitioned case
+    int offset = isPartition ? minDocId : 0;
+    this.adder = new PartitionAwareFixedBitSetAdder(bitSet, minDocId, maxDocId, offset);
   }
 
   /** Build a {@link DocIdSet} from the accumulated doc IDs. */

@@ -321,7 +321,7 @@ public class IndexSearcher {
    * href="https://github.com/apache/lucene/issues/13745">the corresponding github issue</a>.
    */
   protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-    return slices(leaves, MAX_DOCS_PER_SLICE, MAX_SEGMENTS_PER_SLICE, false);
+    return slices(leaves, MAX_DOCS_PER_SLICE, MAX_SEGMENTS_PER_SLICE, true);
   }
 
   /**
