@@ -65,17 +65,6 @@ import org.openjdk.jmh.infra.Blackhole;
  *       </ul>
  * </ul>
  *
- * <h2>Memory Reporting</h2>
- *
- * <p>Memory usage for each configuration is printed during {@link #setup()} in the format:
- *
- * <pre>
- * [Memory] pattern=CLUSTERED, maxDoc=10,000,000, delRate=1.0%, deleted=100,000:
- *   Sparse=42,376 bytes, Dense=1,250,040 bytes, Overhead=-96.6%
- * </pre>
- *
- * Negative overhead indicates memory savings (sparse uses less memory than dense).
- *
  * <h2>Usage</h2>
  *
  * <p>Run all benchmarks:
@@ -144,7 +133,7 @@ public class LiveDocsBenchmark {
 
   /**
    * Sets up the benchmark by creating both sparse and dense LiveDocs with identical deletion
-   * patterns. Prints memory usage statistics for analysis.
+   * patterns.
    *
    * <p>This method is called once per trial (combination of parameters) before any benchmark
    * iterations run.
@@ -193,20 +182,6 @@ public class LiveDocsBenchmark {
     for (int i = 0; i < RANDOM_ACCESS_SIZE; i++) {
       randomDocIds[i] = random.nextInt(maxDoc);
     }
-
-    long sparseBytes = sparseLiveDocs.ramBytesUsed();
-    long denseBytes = denseLiveDocs.ramBytesUsed();
-    double overheadPct = ((double) sparseBytes / denseBytes - 1.0) * 100;
-    System.out.printf(
-        java.util.Locale.ROOT,
-        "[Memory] pattern=%s, maxDoc=%,d, delRate=%.1f%%, deleted=%,d: Sparse=%,d bytes, Dense=%,d bytes, Overhead=%.1f%%%n",
-        deletionPattern,
-        maxDoc,
-        deletionRate * 100,
-        numDeleted,
-        sparseBytes,
-        denseBytes,
-        overheadPct);
   }
 
   /**

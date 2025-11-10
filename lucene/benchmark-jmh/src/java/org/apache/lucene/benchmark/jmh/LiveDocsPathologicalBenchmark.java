@@ -131,9 +131,6 @@ public class LiveDocsPathologicalBenchmark {
    * <p>Applies worst-case deletion pattern: deletes 64 documents per 4096-bit block (one deletion
    * per 64-bit long), spread across all blocks. This maximizes memory allocation in the sparse
    * structure while maintaining ~1.56% deletion rate.
-   *
-   * <p>Prints detailed memory statistics including actual deletion count, deletion rate, and memory
-   * overhead comparison.
    */
   @Setup(Level.Trial)
   public void setup() {
@@ -162,22 +159,6 @@ public class LiveDocsPathologicalBenchmark {
 
     sparseLiveDocs = new SparseLiveDocs(sparseSet, maxDoc);
     denseLiveDocs = new DenseLiveDocs(fixedSet, maxDoc);
-
-    long sparseBytes = sparseLiveDocs.ramBytesUsed();
-    long denseBytes = denseLiveDocs.ramBytesUsed();
-    int deletedCount = sparseLiveDocs.deletedCount();
-    double deletionRate = (double) deletedCount / maxDoc;
-
-    double overheadPct = ((double) sparseBytes / denseBytes - 1.0) * 100;
-    System.out.printf(
-        java.util.Locale.ROOT,
-        "[Memory] maxDoc=%,d, deletionRate=%.4f%%, deleted=%,d: Sparse=%,d bytes, Dense=%,d bytes, Overhead=%.1f%%%n",
-        maxDoc,
-        deletionRate * 100,
-        deletedCount,
-        sparseBytes,
-        denseBytes,
-        overheadPct);
   }
 
   /**
