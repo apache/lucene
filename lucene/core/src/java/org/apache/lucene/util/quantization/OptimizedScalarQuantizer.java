@@ -239,14 +239,14 @@ public class OptimizedScalarQuantizer {
   /**
    * Dequantizes a quantized byte vector back to float values.
    *
-   * <p>This method reconstructs float vectors from their quantized byte representation
-   * using linear interpolation between the corrective range [a, b] and adding back
-   * the centroid offset.
+   * <p>This method reconstructs float vectors from their quantized byte representation using linear
+   * interpolation between the corrective range [a, b] and adding back the centroid offset.
    *
    * @param quantized the quantized byte vector to dequantize
    * @param dequantized the output array to store dequantized float values
    * @param bits the number of bits used for quantization
-   * @param correctiveValues array containing [a, b, unused] where a=min, b=max of quantization range
+   * @param correctiveValues array containing [a, b, unused] where a=min, b=max of quantization
+   *     range
    * @param centroid the centroid vector that was subtracted during quantization
    * @return the dequantized float array (same as dequantized parameter)
    */
@@ -266,7 +266,6 @@ public class OptimizedScalarQuantizer {
     }
     return dequantized;
   }
-
 
   /**
    * Compute the loss of the vector given the interval. Effectively, we are computing the MSE of a

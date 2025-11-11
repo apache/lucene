@@ -218,12 +218,10 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
           fi.ordToDocDISIReaderConfiguration,
           fi.dimension,
           fi.size,
-          new OptimizedScalarQuantizer(fi.similarityFunction),
           fi.scalarEncoding,
           fi.similarityFunction,
           vectorScorer,
           fi.centroid,
-          fi.centroidDP,
           fi.vectorDataOffset,
           fi.vectorDataLength,
           quantizedVectorData);

@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.lucene.codecs.lucene104;
 
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.deQuantize;
@@ -51,33 +68,19 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
   private int lastOrd = -1;
   final float[] correctiveValues;
   int quantizedComponentSum;
-  final OptimizedScalarQuantizer quantizer;
   final Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding encoding;
   final float[] centroid;
-  final float centroidDp;
   final boolean isQuerySide;
 
   OffHeapScalarQuantizedFloatVectorValues(
       int dimension,
       int size,
       float[] centroid,
-      float centroidDp,
-      OptimizedScalarQuantizer quantizer,
       Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding encoding,
       VectorSimilarityFunction similarityFunction,
       FlatVectorsScorer vectorsScorer,
       IndexInput slice) {
-    this(
-        false,
-        dimension,
-        size,
-        centroid,
-        centroidDp,
-        quantizer,
-        encoding,
-        similarityFunction,
-        vectorsScorer,
-        slice);
+    this(false, dimension, size, centroid, encoding, similarityFunction, vectorsScorer, slice);
   }
 
   OffHeapScalarQuantizedFloatVectorValues(
@@ -85,8 +88,6 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
       int dimension,
       int size,
       float[] centroid,
-      float centroidDp,
-      OptimizedScalarQuantizer quantizer,
       Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding encoding,
       VectorSimilarityFunction similarityFunction,
       FlatVectorsScorer vectorsScorer,
@@ -99,7 +100,6 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
     this.vectorsScorer = vectorsScorer;
     this.slice = slice;
     this.centroid = centroid;
-    this.centroidDp = centroidDp;
     this.correctiveValues = new float[3];
     this.encoding = encoding;
     int docPackedLength =
@@ -111,7 +111,6 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
     this.vectorValue = new float[dimension];
     this.byteValue = byteBuffer.array();
     this.unpackedByteVectorValue = new byte[dimension];
-    this.quantizer = quantizer;
   }
 
   @Override
@@ -184,12 +183,10 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
       OrdToDocDISIReaderConfiguration configuration,
       int dimension,
       int size,
-      OptimizedScalarQuantizer quantizer,
       Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding encoding,
       VectorSimilarityFunction similarityFunction,
       FlatVectorsScorer vectorsScorer,
       float[] centroid,
-      float centroidDp,
       long quantizedVectorDataOffset,
       long quantizedVectorDataLength,
       IndexInput vectorData)
@@ -206,23 +203,13 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
             quantizedVectorDataLength);
     if (configuration.isDense()) {
       return new OffHeapScalarQuantizedFloatVectorValues.DenseOffHeapVectorValues(
-          dimension,
-          size,
-          centroid,
-          centroidDp,
-          quantizer,
-          encoding,
-          similarityFunction,
-          vectorsScorer,
-          bytesSlice);
+          dimension, size, centroid, encoding, similarityFunction, vectorsScorer, bytesSlice);
     } else {
       return new OffHeapScalarQuantizedFloatVectorValues.SparseOffHeapVectorValues(
           configuration,
           dimension,
           size,
           centroid,
-          centroidDp,
-          quantizer,
           encoding,
           vectorData,
           similarityFunction,
@@ -237,22 +224,11 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
         int dimension,
         int size,
         float[] centroid,
-        float centroidDp,
-        OptimizedScalarQuantizer quantizer,
         Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding encoding,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer,
         IndexInput slice) {
-      super(
-          dimension,
-          size,
-          centroid,
-          centroidDp,
-          quantizer,
-          encoding,
-          similarityFunction,
-          vectorsScorer,
-          slice);
+      super(dimension, size, centroid, encoding, similarityFunction, vectorsScorer, slice);
     }
 
     DenseOffHeapVectorValues(
@@ -260,8 +236,6 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
         int dimension,
         int size,
         float[] centroid,
-        float centroidDp,
-        OptimizedScalarQuantizer quantizer,
         Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding encoding,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer,
@@ -271,8 +245,6 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
           dimension,
           size,
           centroid,
-          centroidDp,
-          quantizer,
           encoding,
           similarityFunction,
           vectorsScorer,
@@ -287,8 +259,6 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
           dimension,
           size,
           centroid,
-          centroidDp,
-          quantizer,
           encoding,
           similarityFunction,
           vectorsScorer,
@@ -339,24 +309,13 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
         int dimension,
         int size,
         float[] centroid,
-        float centroidDp,
-        OptimizedScalarQuantizer quantizer,
         Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding encoding,
         IndexInput dataIn,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer,
         IndexInput slice)
         throws IOException {
-      super(
-          dimension,
-          size,
-          centroid,
-          centroidDp,
-          quantizer,
-          encoding,
-          similarityFunction,
-          vectorsScorer,
-          slice);
+      super(dimension, size, centroid, encoding, similarityFunction, vectorsScorer, slice);
       assert isQuerySide == false;
       this.configuration = configuration;
       this.dataIn = dataIn;
@@ -373,8 +332,6 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
           dimension,
           size,
           centroid,
-          centroidDp,
-          quantizer,
           encoding,
           dataIn,
           similarityFunction,
@@ -439,8 +396,6 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
       super(
           dimension,
           0,
-          null,
-          Float.NaN,
           null,
           Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.UNSIGNED_BYTE,
           similarityFunction,
