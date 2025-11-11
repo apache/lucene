@@ -145,6 +145,12 @@ API Changes
 * GITHUB#15234: Remove unused method which does unsafe XML parsing.
   (Uwe Schindler, Isaac David)
 
+* GITHUB#14515: IndexWriter.forceMergeDeletes() now returns MergePolicy.MergeObserver,
+  allowing applications to monitor merge progress and wait for completion. The observer
+  provides methods to query merge count, check completion status, and wait synchronously
+  (with optional timeout) or asynchronously via CompletableFuture. Backward compatible -
+  existing code that ignores the return value works unchanged. (Salvatore Campagna)
+
 New Features
 ---------------------
 * GITHUB#15328: VectorSimilarityFunction.getValues() now implements doubleVal allowing its
@@ -206,6 +212,8 @@ Optimizations
   once per instance to avoid redundant computation. (Ben Trent)
 
 * GITHUB#14963: Bypass HNSW graph building for tiny segments. (Shubham Chaudhary, Ben Trent)
+
+* GITHUB#15397: NumericComparator: immediately check whether a segment is competitive with the recorded bottom (Martijn van Groningen)
 
 * GITHUB#15003: Avoid reconstructing HNSW graph during merging (Pulkit Gupta)
 

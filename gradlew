@@ -228,7 +228,7 @@ if [ ! -e "$GRADLE_WRAPPER_JAR" ] || ! ( cd "$APP_HOME/gradle/wrapper" && "$shas
     "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "$GRADLE_WRAPPER_JAR"
     WRAPPER_STATUS=$?
     if [ "$WRAPPER_STATUS" -eq 1 ]; then
-        echo "ERROR: Something went wrong. Make sure you're using Java version of exactly 23."
+        echo "ERROR: Something went wrong. Make sure you're using Java version of exactly 25."
         exit $WRAPPER_STATUS
     elif [ "$WRAPPER_STATUS" -ne 0 ]; then
         exit $WRAPPER_STATUS
