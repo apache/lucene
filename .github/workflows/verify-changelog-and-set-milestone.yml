@@ -56,7 +56,7 @@ jobs:
 
           echo "Diff:"
           if git diff --exit-code --name-only "$BASE_COMMIT" HEAD -- "$CHANGE_LOG_FILE"; then
-            echo "Change log file:$CHANGE_LOG_FILE does not contains an entry corresponding to changes introduced in PR. Please add a changelog entry."
+            echo "::error ::Change log file:$CHANGE_LOG_FILE does not contains an entry corresponding to changes introduced in PR. Please add a changelog entry."
             exit 1
           else
             echo "$CHANGE_LOG_FILE contains change log entry. Proceeding with next steps."
