@@ -149,19 +149,12 @@ public class LiveDocsBenchmark {
   /**
    * JMH auxiliary counters for tracking memory metrics across benchmark runs.
    *
-   * <p>These metrics are reported as secondary results in JMH output and include: segment size,
-   * deletion count, deletion rate percentage, memory usage for both implementations, and overhead
-   * percentage.
+   * <p>These metrics are reported as secondary results in JMH output and include: deletion count,
+   * memory usage for both implementations, and overhead percentage.
    */
   @AuxCounters(AuxCounters.Type.EVENTS)
   @State(Scope.Thread)
   public static class LiveDocsMetrics {
-    /** Total number of documents in the segment. */
-    public long maxDoc;
-
-    /** Deletion rate as a percentage (e.g., 1.0 for 1%). */
-    public double deletionRatePct;
-
     /** Number of deleted documents. */
     public int deleted;
 
@@ -419,11 +412,9 @@ public class LiveDocsBenchmark {
   }
 
   private void fillMetrics(final LiveDocsMetrics metrics) {
-    metrics.maxDoc = maxDoc;
-    metrics.deletionRatePct = deletionRate * 100.0;
+    metrics.deleted = deleted;
     metrics.sparseBytes = sparseBytes;
     metrics.denseBytes = denseBytes;
     metrics.overheadPct = overheadPct;
-    metrics.deleted = deleted;
   }
 }
