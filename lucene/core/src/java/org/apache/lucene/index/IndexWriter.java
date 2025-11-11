@@ -5348,7 +5348,7 @@ public class IndexWriter
                 .info
                 .getCodec()
                 .compoundFormat()
-                .useCompoundFile(mergePolicy.size(merge.info, this), mergePolicy);
+                .useCompoundFile(mergePolicy.size(merge.getMergeInfo(), this), mergePolicy);
       }
 
       if (useCompoundFile) {

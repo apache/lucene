@@ -1459,7 +1459,6 @@ public class TestAddIndexes extends LuceneTestCase {
     // Force creation of CFS:
     conf.getCodec().compoundFormat().setShouldUseCompoundFile(true);
     conf.getCodec().compoundFormat().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
-    conf.setUseCompoundFile(true);
     IndexWriter w3 = new IndexWriter(dir, conf);
     TestUtil.addIndexesSlowly(w3, readers);
     w3.close();
