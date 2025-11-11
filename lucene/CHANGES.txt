@@ -207,6 +207,8 @@ Optimizations
 
 * GITHUB#14963: Bypass HNSW graph building for tiny segments. (Shubham Chaudhary, Ben Trent)
 
+* GITHUB#15003: Avoid reconstructing HNSW graph during merging (Pulkit Gupta)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException

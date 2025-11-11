@@ -78,6 +78,9 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    */
   private final double DISCONNECTED_NODE_FACTOR = 0.85;
 
+  // Tracks if the graph has deletes
+  private boolean hasDeletes = false;
+
   /**
    * Creates an initialized HNSW graph builder from an existing graph.
    *
@@ -169,8 +172,9 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    *
    * <ol>
    *   <li>Copy the graph structure with ordinal remapping, identifying disconnected nodes
-   *   <li>Repair disconnected nodes by finding additional neighbors
-   *   <li>Rebalance the entire hnsw graph
+   *   <li>If deletions occurred, repair disconnected nodes by finding additional neighbors
+   *   <li>If deletions occurred, rebalance the graph hierarchy to maintain proper level
+   *       distribution
    * </ol>
    *
    * @param initializerGraph the source graph to copy from
@@ -178,15 +182,19 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    * @throws IOException if an I/O error occurs during initialization
    */
   private void initializeFromGraph(HnswGraph initializerGraph, int[] newOrdMap) throws IOException {
+    hasDeletes = false;
     // Phase 1: Copy structure and identify nodes that lost too many neighbors
     Map<Integer, List<Integer>> disconnectedNodesByLevel =
         copyGraphStructure(initializerGraph, newOrdMap);
 
-    // Phase 2: Repair nodes with insufficient connections
-    repairDisconnectedNodes(disconnectedNodesByLevel, initializerGraph.numLevels());
+    // Repair graph if it has deletes
+    if (hasDeletes) {
+      // Phase 2: Repair nodes with insufficient connections
+      repairDisconnectedNodes(disconnectedNodesByLevel, initializerGraph.numLevels());
 
-    // Phase 3: Rebalance graph to maintain proper level distribution
-    rebalanceGraph();
+      // Phase 3: Rebalance graph to maintain proper level distribution
+      rebalanceGraph();
+    }
   }
 
   /**
@@ -223,6 +231,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
 
         // Skip deleted documents (mapped to -1)
         if (newOrd == -1) {
+          hasDeletes = true;
           continue;
         }
 

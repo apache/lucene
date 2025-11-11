@@ -85,7 +85,6 @@ import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
-import org.junit.Ignore;
 
 /** Tests HNSW KNN graphs */
 abstract class HnswGraphTestCase<T> extends LuceneTestCase {
@@ -544,7 +543,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         j.size() < graph.size());
   }
 
-  @Ignore("graph structure can be changed")
   public void testHnswGraphBuilderInitializationFromGraph_withOffsetZero() throws IOException {
     int totalSize = atLeast(100);
     int initializerSize = random().nextInt(5, totalSize);
@@ -588,14 +586,13 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                 DocIdSetIterator.range(docIdOffset, initializerSize + docIdOffset), totalSize + 1),
             totalSize);
 
-    //    // When offset is 0, the graphs should be identical before vectors are added
+    // When offset is 0, the graphs should be identical before vectors are added
     assertGraphEqual(initializerGraph, graphAfterInit);
 
     OnHeapHnswGraph finalGraph = finalBuilder.build(finalVectorValues.size());
     assertGraphContainsGraph(finalGraph, initializerGraph, initializerOrdMap);
   }
 
-  @Ignore("graph structure can be changed")
   public void testHnswGraphBuilderInitializationFromGraph_withNonZeroOffset() throws IOException {
     int totalSize = atLeast(100);
     int initializerSize = random().nextInt(5, totalSize);
