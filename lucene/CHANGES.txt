@@ -177,7 +177,7 @@ New Features
     (Ben Trent)
 
  * GITHUB#15415: Add fallback support to Lucene104ScalarQuantizedVectorsFormat getFloatVectorValues when there are
-   no full-precision vectors present
+   no full-precision vectors present (Pulkit Gupta)
 
 Improvements
 ---------------------
