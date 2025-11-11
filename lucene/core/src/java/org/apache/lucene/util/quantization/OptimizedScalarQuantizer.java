@@ -237,6 +237,38 @@ public class OptimizedScalarQuantizer {
   }
 
   /**
+   * Dequantizes a quantized byte vector back to float values.
+   *
+   * <p>This method reconstructs float vectors from their quantized byte representation
+   * using linear interpolation between the corrective range [a, b] and adding back
+   * the centroid offset.
+   *
+   * @param quantized the quantized byte vector to dequantize
+   * @param dequantized the output array to store dequantized float values
+   * @param bits the number of bits used for quantization
+   * @param correctiveValues array containing [a, b, unused] where a=min, b=max of quantization range
+   * @param centroid the centroid vector that was subtracted during quantization
+   * @return the dequantized float array (same as dequantized parameter)
+   */
+  public static float[] deQuantize(
+      byte[] quantized,
+      float[] dequantized,
+      byte bits,
+      float[] correctiveValues,
+      float[] centroid) {
+    float a = correctiveValues[0];
+    float b = correctiveValues[1];
+    int nSteps = (1 << bits) - 1;
+    double step = (b - a) / nSteps;
+    for (int h = 0; h < quantized.length; h++) {
+      double xi = (double) (quantized[h] & 0xFF) * step + a;
+      dequantized[h] = (float) (xi + centroid[h]);
+    }
+    return dequantized;
+  }
+
+
+  /**
    * Compute the loss of the vector given the interval. Effectively, we are computing the MSE of a
    * dequantized vector with the raw vector.
    *
@@ -388,6 +420,25 @@ public class OptimizedScalarQuantizer {
       int index = ((i + 7) / 8) - 1;
       assert index < packed.length;
       packed[index] = result;
+    }
+  }
+
+  /**
+   * Unpack a binary array back to a vector.
+   *
+   * @param packed the packed binary array
+   * @param vector the unpacked vector (each byte will be 0 or 1)
+   */
+  public static void unpackBinary(byte[] packed, byte[] vector) {
+    int vectorIndex = 0;
+    for (int packedIndex = 0;
+        packedIndex < packed.length && vectorIndex < vector.length;
+        packedIndex++) {
+      byte packedByte = packed[packedIndex];
+      for (int j = 7; j >= 0 && vectorIndex < vector.length; j--) {
+        vector[vectorIndex] = (byte) ((packedByte >> j) & 1);
+        vectorIndex++;
+      }
     }
   }
 

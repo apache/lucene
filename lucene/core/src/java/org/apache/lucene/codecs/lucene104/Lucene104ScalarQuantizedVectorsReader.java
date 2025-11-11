@@ -210,6 +210,25 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               + " expected: "
               + VectorEncoding.FLOAT32);
     }
+
+    FloatVectorValues rawFloatVectorValues = rawVectorsReader.getFloatVectorValues(field);
+
+    if (rawFloatVectorValues.size() == 0) {
+      return OffHeapScalarQuantizedFloatVectorValues.load(
+          fi.ordToDocDISIReaderConfiguration,
+          fi.dimension,
+          fi.size,
+          new OptimizedScalarQuantizer(fi.similarityFunction),
+          fi.scalarEncoding,
+          fi.similarityFunction,
+          vectorScorer,
+          fi.centroid,
+          fi.centroidDP,
+          fi.vectorDataOffset,
+          fi.vectorDataLength,
+          quantizedVectorData);
+    }
+
     OffHeapScalarQuantizedVectorValues sqvv =
         OffHeapScalarQuantizedVectorValues.load(
             fi.ordToDocDISIReaderConfiguration,
@@ -224,7 +243,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
             fi.vectorDataOffset,
             fi.vectorDataLength,
             quantizedVectorData);
-    return new ScalarQuantizedVectorValues(rawVectorsReader.getFloatVectorValues(field), sqvv);
+    return new ScalarQuantizedVectorValues(rawFloatVectorValues, sqvv);
   }
 
   @Override
