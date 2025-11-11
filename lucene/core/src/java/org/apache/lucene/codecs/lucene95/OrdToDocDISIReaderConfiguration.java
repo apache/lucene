@@ -123,7 +123,6 @@ public class OrdToDocDISIReaderConfiguration {
             directMonotonicBlockShift, outputMeta, vectorData, count, docsWithField);
       }
     }
-    // nocommit -- how can count be zero here?  Maybe we computed sortMap over deleted docs?
     assert sortMap == null || count > 0;
     if (sortMap != null && count > 0) {
       writeRandomOrdToDoc(outputMeta, vectorData, maxDoc, sortMap);

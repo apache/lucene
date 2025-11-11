@@ -56,12 +56,25 @@ import org.apache.lucene.store.IndexOutput;
  *   <li><b>[vlong]</b> length of this field's vectors, in bytes
  *   <li><b>[vint]</b> dimension of this field's vectors
  *   <li><b>[int]</b> the number of documents having values for this field
- *   <li><b>[int8]</b> if equals to -2, empty - no vector values. If equals to -1, dense – all
- *       documents have values for a field. If equals to 0, sparse – some documents missing values.
- *       If equals to -3, dense *and* vectors have been reordered.
+ *   <li><b>[int64]</b> docsWithFieldOffset: if equals to -2, empty - no vector values. If equals to
+ *       -1, dense – all documents have values for a field. If &gt;= 0, sparse – some documents
+ *       missing values, and this value is the offset to the docsWithField bitset in the main data
+ *       (.vec) file. If equals to -3, dense *and* vectors have been reordered.
+ *   <li><b>[int64]</b> docsWithFieldLength: 0, or the length of the docsWithField bitset when
+ *       sparse.
+ *   <li><b>[int16]</b> jumpTableEntryCount: used when sparse; otherwise -1.
+ *   <li><b>[int8]</b> denseRankPower: used when sparse; otherwise -1.
  *   <li>DocIds were encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)}
- *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter} in
- *       sparse case without reordering, or (nocommit) by int[] when reordering (sparse or dense).
+ *   <li>When Sparse and monotonically ordered:
+ *   <li><b>[int64]</b> addressesOffset: pointer to OrdToDoc in vector data.
+ *   <li><b>[int64]</b> addressesLength: length of OrdToDoc in vector data.
+ *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}.
+ *   <li>When re-ordered:
+ *   <li><b>[int64]</b> addressesOffset: pointer to OrdToDoc in vector data.
+ *   <li><b>[int64]</b> addressesLength: length of OrdToDoc in vector data.
+ *   <li><b>[int64]</b> docToOrdLength: length of DocToOrd in vector data.
+ *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectWriter}.
+ *   <li>DocToOrd was encoded by {@link org.apache.lucene.util.GroupVIntUtil}.
  * </ul>
  *
  * @lucene.experimental
@@ -81,14 +94,11 @@ public final class Lucene99FlatVectorsFormat extends FlatVectorsFormat {
   private final FlatVectorsScorer vectorsScorer;
   private final boolean enableReorder;
 
-  // nocommit: make reordering configurable
-
   /** Constructs a format */
   public Lucene99FlatVectorsFormat(FlatVectorsScorer vectorsScorer) {
     super(NAME);
     this.vectorsScorer = vectorsScorer;
-    // nocommit - enabling by default for testing during development only
-    this.enableReorder = true;
+    this.enableReorder = false;
   }
 
   Lucene99FlatVectorsFormat(FlatVectorsScorer vectorsScorer, boolean enableReorder) {
