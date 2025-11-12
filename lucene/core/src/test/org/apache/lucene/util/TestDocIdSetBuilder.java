@@ -17,6 +17,9 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -248,6 +251,190 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     builder = new DocIdSetBuilder(100, terms);
     assertEquals(1d, builder.numValuesPerDoc, 0d);
     assertTrue(builder.multivalued);
+  }
+
+  /** Test empty partition - no docs match */
+  public void testPartitionEmpty() throws IOException {
+    final int maxDoc = 10000;
+    final int minDocId = 5000;
+    final int maxDocId = 6000;
+    PointValues values = new DummyPointValues(1000, 1000);
+    DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc, values, minDocId, maxDocId);
+    DocIdSet result = builder.build();
+    assertEquals(null, result);
+    assertNotNull(result);
+    DocIdSetIterator iter = result.iterator();
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iter.nextDoc());
+  }
+
+  /** Test single doc in partition */
+  public void testPartitionSingleDoc() throws IOException {
+    final int maxDoc = 10000;
+    final int minDocId = 5000;
+    final int maxDocId = 6000;
+    PointValues values = new DummyPointValues(1000, 1000);
+    DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc, values, minDocId, maxDocId);
+    builder.grow(1).add(5500);
+    DocIdSet result = builder.build();
+    assertNotNull(result);
+    DocIdSetIterator iter = result.iterator();
+    assertEquals(5500, iter.nextDoc());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iter.nextDoc());
+  }
+
+
+  /** Test that docs outside partition range are filtered */
+  public void testPartitionFiltering() throws IOException {
+    final int maxDoc = 10000;
+    final int minDocId = 5000;
+    final int maxDocId = 6000;
+    PointValues values = new DummyPointValues(1000, 1000);
+    DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc, values, minDocId, maxDocId);
+    DocIdSetBuilder.BulkAdder adder = builder.grow(8);
+    adder.add(4999);
+    adder.add(6000);
+    adder.add(6001);
+    adder.add(100);
+    adder.add(9000);
+    adder.add(5000);
+    adder.add(5500);
+    adder.add(5999);
+    DocIdSet result = builder.build();
+    assertNotNull(result);
+    DocIdSetIterator iter = result.iterator();
+    assertEquals(5000, iter.nextDoc());
+    assertEquals(5500, iter.nextDoc());
+    assertEquals(5999, iter.nextDoc());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iter.nextDoc());
+  }
+
+  /** Test advance() operation across partition boundaries */
+  public void testPartitionAdvance() throws IOException {
+    final int maxDoc = 10000;
+    final int minDocId = 5000;
+    final int maxDocId = 6000;
+    PointValues values = new DummyPointValues(1000, 1000);
+    DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc, values, minDocId, maxDocId);
+    DocIdSetBuilder.BulkAdder adder = builder.grow(5);
+    adder.add(5000);
+    adder.add(5100);
+    adder.add(5500);
+    adder.add(5900);
+    adder.add(5999);
+    DocIdSet result = builder.build();
+    assertNotNull(result);
+    DocIdSetIterator iter = result.iterator();
+    assertEquals(5500, iter.advance(5500));
+    assertEquals(5900, iter.nextDoc());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iter.advance(6000));
+  }
+
+  /** Test advance() before partition starts */
+  public void testPartitionAdvanceBeforeStart() throws IOException {
+    final int maxDoc = 10000;
+    final int minDocId = 5000;
+    final int maxDocId = 6000;
+    PointValues values = new DummyPointValues(1000, 1000);
+    DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc, values, minDocId, maxDocId);
+    DocIdSetBuilder.BulkAdder adder = builder.grow(2);
+    adder.add(5100);
+    adder.add(5500);
+    DocIdSet result = builder.build();
+    assertNotNull(result);
+    DocIdSetIterator iter = result.iterator();
+    assertEquals(5100, iter.advance(4000));
+    assertEquals(5500, iter.nextDoc());
+  }
+
+  /** Test large partition with many docs crossing upgrade threshold */
+  public void testPartitionUpgradeToBitSet() throws IOException {
+    final int maxDoc = 100000;
+    final int minDocId = 50000;
+    final int maxDocId = 60000;
+    PointValues values = new DummyPointValues(10000, 10000);
+    DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc, values, minDocId, maxDocId);
+    DocIdSetBuilder.BulkAdder adder = builder.grow(200);
+    for (int i = 0; i < 200; i++) {
+      adder.add(minDocId + i * 50);
+    }
+    DocIdSet result = builder.build();
+    assertNotNull(result);
+    DocIdSetIterator iter = result.iterator();
+    for (int i = 0; i < 200; i++) {
+      int expected = minDocId + i * 50;
+      if (expected < maxDocId) {
+        assertEquals("Doc " + i, expected, iter.nextDoc());
+      }
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iter.nextDoc());
+  }
+
+  /** Test partition boundaries are respected after upgrade to bitset */
+  public void testPartitionBitSetFiltering() throws IOException {
+    final int maxDoc = 10000;
+    final int minDocId = 5000;
+    final int maxDocId = 6000;
+    PointValues values = new DummyPointValues(1000, 1000);
+    DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc, values, minDocId, maxDocId);
+    DocIdSetBuilder.BulkAdder adder = builder.grow(500);
+    for (int i = 0; i < 500; i++) {
+      adder.add(4000 + i);
+    }
+    DocIdSet result = builder.build();
+    assertNotNull(result);
+    DocIdSetIterator iter = result.iterator();
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iter.nextDoc());
+  }
+
+  /** Test entire segment as partition (no filtering) */
+  public void testFullSegmentPartition() throws IOException {
+    final int maxDoc = 1000;
+    final int minDocId = 0;
+    final int maxDocId = 1000;
+    PointValues values = new DummyPointValues(100, 100);
+    DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc, values, minDocId, maxDocId);
+    DocIdSetBuilder.BulkAdder adder = builder.grow(3);
+    adder.add(0);
+    adder.add(500);
+    adder.add(999);
+    DocIdSet result = builder.build();
+    assertNotNull(result);
+    DocIdSetIterator iter = result.iterator();
+    assertEquals(0, iter.nextDoc());
+    assertEquals(500, iter.nextDoc());
+    assertEquals(999, iter.nextDoc());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iter.nextDoc());
+  }
+
+  /** Test random docs across partition boundaries */
+  public void testPartitionRandom() throws IOException {
+    final int maxDoc = 100000;
+    final int minDocId = 30000;
+    final int maxDocId = 70000;
+    PointValues values = new DummyPointValues(40000, 40000);
+    DocIdSetBuilder builder = new DocIdSetBuilder(maxDoc, values, minDocId, maxDocId);
+    int numDocs = 1000;
+    List<Integer> docsInPartition = new ArrayList<>();
+    DocIdSetBuilder.BulkAdder adder = builder.grow(numDocs);
+    for (int i = 0; i < numDocs; i++) {
+      int doc = random().nextInt(maxDoc);
+      adder.add(doc);
+      if (doc >= minDocId && doc < maxDocId) {
+        docsInPartition.add(doc);
+      }
+    }
+    Collections.sort(docsInPartition);
+    RoaringDocIdSet.Builder expected = new RoaringDocIdSet.Builder(maxDoc);
+    int prevDoc = -1;
+    for (int doc : docsInPartition) {
+      if (doc != prevDoc) {
+        expected.add(doc);
+        prevDoc = doc;
+      }
+    }
+    DocIdSet result = builder.build();
+    DocIdSet expectedSet = expected.build();
+    assertEquals(expectedSet, result);
   }
 
   public void testCostIsCorrectAfterBitsetUpgrade() throws IOException {

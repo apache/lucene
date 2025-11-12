@@ -206,21 +206,6 @@ public final class DocIdSetBuilder {
   }
 
   /**
-   * Create a partition-aware {@link DocIdSetBuilder} instance that only accepts doc IDs within the
-   * specified range. This is useful for intra-segment concurrency where each partition only needs
-   * to collect docs within its assigned range.
-   *
-   * @param maxDoc the maximum doc ID in the segment
-   * @param minDocId the minimum doc ID (inclusive) to accept
-   * @param maxDocId the maximum doc ID (exclusive) to accept
-   * @param docCount estimated document count
-   * @param valueCount estimated value count
-   */
-  public DocIdSetBuilder(int maxDoc, int minDocId, int maxDocId, int docCount, long valueCount) {
-    this(maxDoc, docCount, valueCount, minDocId, maxDocId);
-  }
-
-  /**
    * Create a partition-aware {@link DocIdSetBuilder} for {@link PointValues} that only accepts doc
    * IDs within the specified range.
    *
@@ -232,19 +217,6 @@ public final class DocIdSetBuilder {
   public DocIdSetBuilder(int maxDoc, PointValues values, int minDocId, int maxDocId)
       throws IOException {
     this(maxDoc, values.getDocCount(), values.size(), minDocId, maxDocId);
-  }
-
-  /**
-   * Create a partition-aware {@link DocIdSetBuilder} for {@link Terms} that only accepts doc IDs
-   * within the specified range.
-   *
-   * @param maxDoc the maximum doc ID in the segment
-   * @param terms the terms
-   * @param minDocId the minimum doc ID (inclusive) to accept
-   * @param maxDocId the maximum doc ID (exclusive) to accept
-   */
-  public DocIdSetBuilder(int maxDoc, Terms terms, int minDocId, int maxDocId) throws IOException {
-    this(maxDoc, terms.getDocCount(), terms.getSumDocFreq(), minDocId, maxDocId);
   }
 
   DocIdSetBuilder(int maxDoc, int docCount, long valueCount) {
@@ -259,7 +231,7 @@ public final class DocIdSetBuilder {
     this.multivalued = docCount < 0 || docCount != valueCount;
     if (docCount <= 0 || valueCount < 0) {
       // assume one value per doc, this means the cost will be overestimated
-      // if the docs are actually multi-valued
+      // if the docs are actually multivalued
       this.numValuesPerDoc = 1;
     } else {
       // otherwise compute from index stats
