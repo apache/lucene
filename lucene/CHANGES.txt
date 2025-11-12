@@ -243,6 +243,9 @@ Other
   Applications using SecurityManager now need to grant SerializablePermission("serialFilter")
   to the analysis-smartcn module. (Uwe Schindler, Isaac David)
 
+* GITHUB#15341: Align float vectors on disk to 64 bytes, for optimal performance on Arm Neoverse
+  machines. (Mike McCandless, Kaival Parikh)
+
 Build
 ---------------------
 * Upgrade forbiddenapis to version 3.10.  (Uwe Schindler)
