@@ -245,8 +245,8 @@ public class OptimizedScalarQuantizer {
    * @param quantized the quantized byte vector to dequantize
    * @param dequantized the output array to store dequantized float values
    * @param bits the number of bits used for quantization
-   * @param lowerCorrectiveValue min value of quantization range
-   * @param upperCorrectiveValue max value of quantization range
+   * @param lowerInterval lower value of quantization range
+   * @param upperInterval upper value of quantization range
    * @param centroid the centroid vector that was subtracted during quantization
    * @return the dequantized float array (same as dequantized parameter)
    */
@@ -254,13 +254,13 @@ public class OptimizedScalarQuantizer {
       byte[] quantized,
       float[] dequantized,
       byte bits,
-      float lowerCorrectiveValue,
-      float upperCorrectiveValue,
+      float lowerInterval,
+      float upperInterval,
       float[] centroid) {
     int nSteps = (1 << bits) - 1;
-    double step = (upperCorrectiveValue - lowerCorrectiveValue) / nSteps;
+    double step = (upperInterval - lowerInterval) / nSteps;
     for (int h = 0; h < quantized.length; h++) {
-      double xi = (double) (quantized[h] & 0xFF) * step + lowerCorrectiveValue;
+      double xi = (double) (quantized[h] & 0xFF) * step + lowerInterval;
       dequantized[h] = (float) (xi + centroid[h]);
     }
     return dequantized;
