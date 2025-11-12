@@ -66,7 +66,8 @@ public class TestOptimizedScalarQuantizer extends LuceneTestCase {
             destination,
             dequantized,
             bit,
-            new float[] {result.lowerInterval(), result.upperInterval()},
+            result.lowerInterval(),
+            result.upperInterval(),
             centroid);
         float mae = 0;
         for (int k = 0; k < dims; ++k) {

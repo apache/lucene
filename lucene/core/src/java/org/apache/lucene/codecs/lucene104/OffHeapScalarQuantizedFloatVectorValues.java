@@ -70,7 +70,6 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
   int quantizedComponentSum;
   final Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding encoding;
   final float[] centroid;
-  final boolean isQuerySide;
 
   OffHeapScalarQuantizedFloatVectorValues(
       int dimension,
@@ -80,20 +79,6 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
       VectorSimilarityFunction similarityFunction,
       FlatVectorsScorer vectorsScorer,
       IndexInput slice) {
-    this(false, dimension, size, centroid, encoding, similarityFunction, vectorsScorer, slice);
-  }
-
-  OffHeapScalarQuantizedFloatVectorValues(
-      boolean isQuerySide,
-      int dimension,
-      int size,
-      float[] centroid,
-      Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding encoding,
-      VectorSimilarityFunction similarityFunction,
-      FlatVectorsScorer vectorsScorer,
-      IndexInput slice) {
-    assert isQuerySide == false || encoding.isAsymmetric();
-    this.isQuerySide = isQuerySide;
     this.dimension = dimension;
     this.size = size;
     this.similarityFunction = similarityFunction;
@@ -102,10 +87,7 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
     this.centroid = centroid;
     this.correctiveValues = new float[3];
     this.encoding = encoding;
-    int docPackedLength =
-        isQuerySide
-            ? encoding.getQueryPackedLength(dimension)
-            : encoding.getDocPackedLength(dimension);
+    int docPackedLength = encoding.getDocPackedLength(dimension);
     this.byteSize = docPackedLength + (Float.BYTES * 3) + Integer.BYTES;
     this.byteBuffer = ByteBuffer.allocate(docPackedLength);
     this.vectorValue = new float[dimension];
@@ -142,7 +124,13 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
       case SINGLE_BIT_QUERY_NIBBLE ->
           OptimizedScalarQuantizer.unpackBinary(byteValue, unpackedByteVectorValue);
       case UNSIGNED_BYTE, SEVEN_BIT -> {
-        deQuantize(byteValue, vectorValue, encoding.getBits(), correctiveValues, centroid);
+        deQuantize(
+            byteValue,
+            vectorValue,
+            encoding.getBits(),
+            correctiveValues[0],
+            correctiveValues[1],
+            centroid);
         lastOrd = targetOrd;
         return vectorValue;
       }
@@ -150,7 +138,12 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
 
     // dequantize
     deQuantize(
-        unpackedByteVectorValue, vectorValue, encoding.getBits(), correctiveValues, centroid);
+        unpackedByteVectorValue,
+        vectorValue,
+        encoding.getBits(),
+        correctiveValues[0],
+        correctiveValues[1],
+        centroid);
 
     lastOrd = targetOrd;
     return vectorValue;
@@ -219,7 +212,7 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
   }
 
   /** Dense off-heap scalar quantized vector values */
-  static class DenseOffHeapVectorValues extends OffHeapScalarQuantizedFloatVectorValues {
+  private static class DenseOffHeapVectorValues extends OffHeapScalarQuantizedFloatVectorValues {
     DenseOffHeapVectorValues(
         int dimension,
         int size,
@@ -231,38 +224,11 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
       super(dimension, size, centroid, encoding, similarityFunction, vectorsScorer, slice);
     }
 
-    DenseOffHeapVectorValues(
-        boolean isQuerySide,
-        int dimension,
-        int size,
-        float[] centroid,
-        Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding encoding,
-        VectorSimilarityFunction similarityFunction,
-        FlatVectorsScorer vectorsScorer,
-        IndexInput slice) {
-      super(
-          isQuerySide,
-          dimension,
-          size,
-          centroid,
-          encoding,
-          similarityFunction,
-          vectorsScorer,
-          slice);
-    }
-
     @Override
     public OffHeapScalarQuantizedFloatVectorValues.DenseOffHeapVectorValues copy()
         throws IOException {
       return new OffHeapScalarQuantizedFloatVectorValues.DenseOffHeapVectorValues(
-          isQuerySide,
-          dimension,
-          size,
-          centroid,
-          encoding,
-          similarityFunction,
-          vectorsScorer,
-          slice.clone());
+          dimension, size, centroid, encoding, similarityFunction, vectorsScorer, slice.clone());
     }
 
     @Override
@@ -272,7 +238,6 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
 
     @Override
     public VectorScorer scorer(float[] target) throws IOException {
-      assert isQuerySide == false;
       OffHeapScalarQuantizedFloatVectorValues.DenseOffHeapVectorValues copy = copy();
       DocIndexIterator iterator = copy.iterator();
       RandomVectorScorer scorer =
@@ -316,7 +281,6 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
         IndexInput slice)
         throws IOException {
       super(dimension, size, centroid, encoding, similarityFunction, vectorsScorer, slice);
-      assert isQuerySide == false;
       this.configuration = configuration;
       this.dataIn = dataIn;
       this.ordToDoc = configuration.getDirectMonotonicReader(dataIn);
@@ -326,7 +290,6 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
     @Override
     public OffHeapScalarQuantizedFloatVectorValues.SparseOffHeapVectorValues copy()
         throws IOException {
-      assert isQuerySide == false;
       return new OffHeapScalarQuantizedFloatVectorValues.SparseOffHeapVectorValues(
           configuration,
           dimension,
@@ -369,7 +332,6 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
 
     @Override
     public VectorScorer scorer(float[] target) throws IOException {
-      assert isQuerySide == false;
       OffHeapScalarQuantizedFloatVectorValues.SparseOffHeapVectorValues copy = copy();
       DocIndexIterator iterator = copy.iterator();
       RandomVectorScorer scorer =
@@ -388,6 +350,7 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
     }
   }
 
+  /** Empty vector values */
   private static class EmptyOffHeapVectorValues extends OffHeapScalarQuantizedFloatVectorValues {
     EmptyOffHeapVectorValues(
         int dimension,
@@ -401,7 +364,6 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
           similarityFunction,
           vectorsScorer,
           null);
-      assert isQuerySide == false;
     }
 
     @Override
