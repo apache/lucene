@@ -282,7 +282,6 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, iter.nextDoc());
   }
 
-
   /** Test that docs outside partition range are filtered */
   public void testPartitionFiltering() throws IOException {
     final int maxDoc = 10000;
@@ -358,6 +357,7 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
       adder.add(minDocId + i * 50);
     }
     DocIdSet result = builder.build();
+    assertTrue(result instanceof OffsetBitDocIdSet);
     assertNotNull(result);
     DocIdSetIterator iter = result.iterator();
     for (int i = 0; i < 200; i++) {
@@ -382,6 +382,7 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     }
     DocIdSet result = builder.build();
     assertNotNull(result);
+    assertTrue(result instanceof OffsetBitDocIdSet);
     DocIdSetIterator iter = result.iterator();
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, iter.nextDoc());
   }
