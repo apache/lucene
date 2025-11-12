@@ -1,0 +1,7 @@
+{
+    "lucene/analysis/icu/src/data/uax29/Default.rbbi": "161deef4109a0dcf68a3f52339e973e07ad9579d",
+    "lucene/analysis/icu/src/data/uax29/MyanmarSyllable.rbbi": "fe2ae2b8d556fd64e96f1cd45434035e107ada10",
+    "lucene/analysis/icu/src/resources/org/apache/lucene/analysis/icu/segmentation/Default.brk": "80484c29b39798ae7f927415735c9e5e7b564086",
+    "lucene/analysis/icu/src/resources/org/apache/lucene/analysis/icu/segmentation/MyanmarSyllable.brk": "bc65ccfdffc5597a60b8c1608262be218a4c646f",
+    "property:icuConfig": "78.1"
+}

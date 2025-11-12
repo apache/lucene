@@ -25,6 +25,7 @@ jobs:
         java-version: [ '25' ]
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     env:
       LUCENE_RELEASE_DIR: /tmp/lucene-release-dir
@@ -79,7 +80,7 @@ jobs:
 
       - name: "Store smoke tester logs"
         if: ${{ always() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: smoke-tester-logs-jdk-${{ matrix.java-version }}
           path: |

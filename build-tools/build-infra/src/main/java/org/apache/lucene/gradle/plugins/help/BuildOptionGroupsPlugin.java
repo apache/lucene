@@ -20,6 +20,7 @@ import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsTask;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.lucene.gradle.plugins.documentation.DocumentationConfigPlugin;
 import org.apache.lucene.gradle.plugins.hacks.DumpGradleStateOnStalledBuildsPlugin;
 import org.apache.lucene.gradle.plugins.ide.EclipseSupportPlugin;
 import org.apache.lucene.gradle.plugins.java.ErrorPronePlugin;
@@ -77,7 +78,7 @@ public class BuildOptionGroupsPlugin implements Plugin<Project> {
 
                     optionGroups.group(
                         "Options useful for release managers",
-                        explicitList("lucene.javadoc.url", "sign", "useGpg"));
+                        explicitList(DocumentationConfigPlugin.OPT_JAVADOC_URL, "sign", "useGpg"));
 
                     optionGroups.group(
                         "Build control and information",

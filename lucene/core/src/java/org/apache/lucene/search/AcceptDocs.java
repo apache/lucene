@@ -190,7 +190,7 @@ public abstract class AcceptDocs {
     @Override
     public int cost() throws IOException {
       createBitSetAcceptDocsIfNecessary();
-      return acceptBitSet.cardinality();
+      return cardinality;
     }
 
     @Override

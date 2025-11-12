@@ -26,6 +26,7 @@ jobs:
       pull-requests: write # manipulate existing labels
 
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Run Labeler action

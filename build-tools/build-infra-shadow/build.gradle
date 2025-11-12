@@ -40,9 +40,6 @@ tasks.matching {
   it.name in [
     "renderSiteJavadoc",
     "renderJavadoc",
-    "validateJarChecksums",
-    "validateJarLicenses",
-    "collectJarInfos",
     // "compileJava", we do need to compile the sources so that forbidden apis are applied.
     "compileTestJava",
     "assemble"

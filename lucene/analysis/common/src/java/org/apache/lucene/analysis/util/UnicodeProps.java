@@ -24,13 +24,13 @@ import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
  * This file contains unicode properties used by various {@link CharTokenizer}s. The data was
- * generated using ICU4J v77.1.0.0, unicode version: 16.0.0.0.
+ * generated using ICU4J v78.1.0.0, unicode version: 17.0.0.0.
  */
 public final class UnicodeProps {
   private UnicodeProps() {}
 
   /** Unicode version that was used to generate this file: {@value} */
-  public static final String UNICODE_VERSION = "16.0.0.0";
+  public static final String UNICODE_VERSION = "17.0.0.0";
 
   /** Bitset with Unicode WHITESPACE code points. */
   public static final Bits WHITESPACE =
