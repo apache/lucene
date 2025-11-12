@@ -328,7 +328,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
         throw new IndexFormatTooOldException(
             input, magic, CodecUtil.CODEC_MAGIC, CodecUtil.CODEC_MAGIC);
       }
-      format = CodecUtil.checkHeaderNoMagic(input, "segments", VERSION_74, VERSION_CURRENT);
+      format = CodecUtil.checkHeaderNoMagic(input, "segments", VERSION_86, VERSION_CURRENT);
       byte[] id = new byte[StringHelper.ID_LENGTH];
       input.readBytes(id, 0, id.length);
       CodecUtil.checkIndexHeaderSuffix(input, Long.toString(generation, Character.MAX_RADIX));
@@ -394,33 +394,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       String segName = input.readString();
       byte[] segmentID = new byte[StringHelper.ID_LENGTH];
       input.readBytes(segmentID, 0, segmentID.length);
-      Codec codec = null;
-      try {
-        codec = readCodec(input);
-      } catch (IllegalArgumentException e) {
-        if (e.getMessage() != null && e.getMessage().contains("Could not load codec")) {
-          // maybe we tried loading an old default codec which isn't present in backward-codecs
-          // anymore.
-          // aka index is too old
-          throw new IndexFormatTooOldException(
-              input,
-              "Index has segments derived from Lucene version "
-                  + infos.indexCreatedVersionMajor
-                  + ".x and is not supported by Lucene "
-                  + Version.LATEST
-                  + ". This Lucene version only supports indexes with major version "
-                  + minSupportedMajorVersion
-                  + " or later (found: "
-                  + infos.indexCreatedVersionMajor
-                  + ", minimum supported: "
-                  + minSupportedMajorVersion
-                  + "). To resolve this issue re-index your data using Lucene "
-                  + minSupportedMajorVersion
-                  + ".x or later.");
-        } else {
-          throw e;
-        }
-      }
+      Codec codec = readCodec(input);
       SegmentInfo info =
           codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READONCE);
       info.setCodec(codec);
