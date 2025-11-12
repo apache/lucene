@@ -21,9 +21,169 @@ import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.util.ArrayUtil;
 
 /**
- * 2D multi-component geometry implementation represented as an interval tree of components.
+ * Internal spatial index structure for querying multi-component geometries.
  *
- * <p>Construction takes {@code O(n log n)} time for sorting and tree construction.
+ * <p>ComponentTree organizes multiple {@link Component2D} objects into a binary interval tree,
+ * enabling spatial queries across complex geometries with many parts. This structure is used
+ * internally when a geometry contains multiple components (e.g., a polygon with multiple holes, or
+ * a multi-polygon).
+ *
+ * <p>Key Features:
+ *
+ * <ul>
+ *   <li>Binary interval tree structure for spatial partitioning
+ *   <li>Alternating split dimensions (X and Y) for balanced space division
+ *   <li>Pruning of non-intersecting components during queries
+ *   <li>Support for all standard spatial relationship operations
+ *   <li>Optimized for geometries with multiple components
+ * </ul>
+ *
+ * <p>Tree Structure:
+ *
+ * <p>The tree is constructed by recursively splitting components along alternating dimensions:
+ *
+ * <ul>
+ *   <li><strong>Root level</strong> - Splits along Y axis
+ *   <li><strong>Level 1</strong> - Splits along X axis
+ *   <li><strong>Level 2</strong> - Splits along Y axis again
+ *   <li>Pattern continues alternating...
+ * </ul>
+ *
+ * <p>This alternating split strategy ensures balanced spatial partitioning and efficient query
+ * performance across different geometry distributions.
+ *
+ * <p>Construction:
+ *
+ * <p>ComponentTree is created from an array of Component2D objects using the static {@link
+ * #create(Component2D[])} method:
+ *
+ * <pre>{@code
+ * // Create multiple circle components
+ * double lat1 = 40.7128;
+ * double lon1 = -74.0060;
+ * double radius1 = 1000;
+ * Circle circle1 = new Circle(lat1, lon1, radius1);
+ *
+ * double lat2 = 40.7589;
+ * double lon2 = -73.9851;
+ * double radius2 = 1000;
+ * Circle circle2 = new Circle(lat2, lon2, radius2);
+ *
+ * double lat3 = 40.7484;
+ * double lon3 = -73.9857;
+ * double radius3 = 1000;
+ * Circle circle3 = new Circle(lat3, lon3, radius3);
+ *
+ * Component2D[] components = new Component2D[] {
+ *   circle1.toComponent2D(),
+ *   circle2.toComponent2D(),
+ *   circle3.toComponent2D()
+ * };
+ *
+ * // Create tree from components
+ * Component2D tree = ComponentTree.create(components);
+ *
+ * // Query the tree
+ * double testLon = -74.0060;
+ * double testLat = 40.7128;
+ * boolean contained = tree.contains(testLon, testLat);
+ * }</pre>
+ *
+ * <p>Performance Characteristics:
+ *
+ * <ul>
+ *   <li><strong>Construction time</strong> - O(n log n) for sorting and tree building
+ *   <li><strong>Space complexity</strong> - O(n) for storing n components
+ *   <li><strong>Query time</strong> - O(log n) average case with pruning
+ *   <li><strong>Worst case</strong> - O(n) when all components must be checked
+ * </ul>
+ *
+ * <p>Query Operations:
+ *
+ * <p>ComponentTree supports all standard Component2D operations:
+ *
+ * <ul>
+ *   <li>{@link #contains(double, double)} - Point containment test
+ *   <li>{@link #relate(double, double, double, double)} - Bounding box relationship
+ *   <li>{@link #intersectsLine} - Line intersection test
+ *   <li>{@link #intersectsTriangle} - Triangle intersection test
+ *   <li>{@link #containsLine} - Line containment test
+ *   <li>{@link #containsTriangle} - Triangle containment test
+ * </ul>
+ *
+ * <p>Queries traverse the tree recursively, using bounding box checks to prune branches that cannot
+ * contribute to the result.
+ *
+ * <p>Limitations:
+ *
+ * <ul>
+ *   <li><strong>Within queries</strong> - Only supported for single-component geometries
+ *   <li>{@link #withinPoint(double, double)} throws exception if tree has multiple components
+ *   <li>{@link #withinLine} throws exception if tree has multiple components
+ *   <li>{@link #withinTriangle} throws exception if tree has multiple components
+ * </ul>
+ *
+ * <p>Implementation Details:
+ *
+ * <p>Each node in the tree contains:
+ *
+ * <ul>
+ *   <li>A Component2D representing one geometric component
+ *   <li>A bounding box (minX, maxX, minY, maxY) for efficient pruning
+ *   <li>Left and right child nodes (or null for leaf nodes)
+ *   <li>The split dimension used at this level (implicit, alternates by level)
+ * </ul>
+ *
+ * <p>The tree construction algorithm:
+ *
+ * <ol>
+ *   <li>Sorts components along the split dimension at each level
+ *   <li>Selects median component as the split point
+ *   <li>Recursively builds left subtree with components below median
+ *   <li>Recursively builds right subtree with components above median
+ *   <li>Propagates maximum bounding box values up the tree
+ *   <li>Adjusts root node to contain consistent minimum bounds
+ * </ol>
+ *
+ * <p>Use Cases:
+ *
+ * <ul>
+ *   <li>Polygons with multiple holes
+ *   <li>Multi-polygon geometries
+ *   <li>Collections of geometric shapes
+ *   <li>Complex geographic regions with multiple parts
+ * </ul>
+ *
+ * <p>Example with Multiple Polygon Components:
+ *
+ * <pre>{@code
+ * // Create multiple separate polygons (e.g., for a multi-polygon geometry)
+ * double[] lats1 = {40.7128, 40.7589, 40.7484, 40.7128};
+ * double[] lons1 = {-74.0060, -73.9851, -73.9857, -74.0060};
+ * Polygon polygon1 = new Polygon(lats1, lons1);
+ *
+ * double[] lats2 = {40.7300, 40.7400, 40.7350, 40.7300};
+ * double[] lons2 = {-73.9900, -73.9950, -73.9975, -73.9900};
+ * Polygon polygon2 = new Polygon(lats2, lons2);
+ *
+ * // Create a tree from multiple polygon components
+ * Component2D[] components = new Component2D[] {
+ *   polygon1.toComponent2D(),
+ *   polygon2.toComponent2D()
+ * };
+ *
+ * Component2D tree = ComponentTree.create(components);
+ *
+ * // Note: For a single polygon with holes, pass holes to the Polygon constructor:
+ * // Polygon hole = new Polygon(holeLats, holeLons);
+ * // Polygon polygonWithHole = new Polygon(outerLats, outerLons, hole);
+ * // Component2D component = polygonWithHole.toComponent2D();
+ * }</pre>
+ *
+ * @lucene.internal
+ * @see Component2D
+ * @see Circle2D
+ * @see Polygon2D
  */
 final class ComponentTree implements Component2D {
 
