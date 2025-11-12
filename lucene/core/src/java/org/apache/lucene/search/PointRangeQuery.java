@@ -299,8 +299,6 @@ public abstract class PointRangeQuery extends Query {
         } else {
           return new ConstantScoreScorerSupplier(score(), scoreMode, reader.maxDoc()) {
 
-            // Create partition-aware DocIdSetBuilder that filters docs and uses partition-sized
-            // threshold
             final DocIdSetBuilder result =
                 new DocIdSetBuilder(
                     reader.maxDoc(), values, partition.minDocId, partition.maxDocId);
@@ -343,7 +341,6 @@ public abstract class PointRangeQuery extends Query {
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        // Delegate to partition-aware version for entire segment
         return scorerSupplier(
             IndexSearcher.LeafReaderContextPartition.createForEntireSegment(context));
       }

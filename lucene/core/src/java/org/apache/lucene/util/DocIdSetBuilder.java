@@ -83,12 +83,10 @@ public final class DocIdSetBuilder {
 
     @Override
     public void add(DocIdSetIterator iterator) throws IOException {
-      // Advance iterator to minDocId first
       int doc = iterator.nextDoc();
       if (doc < minDocId) {
         doc = iterator.advance(minDocId);
       }
-      // Use optimized intoBitSet with partition boundaries and offset
       if (doc < maxDocId) {
         iterator.intoBitSet(maxDocId, bitSet, offset);
       }
@@ -172,9 +170,8 @@ public final class DocIdSetBuilder {
   final boolean multivalued;
   final double numValuesPerDoc;
 
-  // Partition filtering support - filters docs to only include those within [minDocId, maxDocId)
-  private final int minDocId; // inclusive
-  private final int maxDocId; // exclusive
+  private final int minDocId;
+  private final int maxDocId;
 
   private List<Buffer> buffers = new ArrayList<>();
   private int totalAllocated; // accumulated size of the allocated buffers
@@ -231,7 +228,7 @@ public final class DocIdSetBuilder {
     this.multivalued = docCount < 0 || docCount != valueCount;
     if (docCount <= 0 || valueCount < 0) {
       // assume one value per doc, this means the cost will be overestimated
-      // if the docs are actually multivalued
+      // if the docs are actually multi-valued
       this.numValuesPerDoc = 1;
     } else {
       // otherwise compute from index stats
@@ -244,7 +241,6 @@ public final class DocIdSetBuilder {
     // maxDoc >>> 7 is a good value if you want to save memory, lower values
     // such as maxDoc >>> 11 should provide faster building but at the expense
     // of using a full bitset even for quite sparse data
-    //
     // When filtering to a partition (minDocId > 0 or maxDocId < maxDoc), use the partition size
     // for threshold calculation to ensure the threshold scales correctly with the partition size
     boolean isPartition = (minDocId > 0 || maxDocId < maxDoc);
@@ -332,9 +328,6 @@ public final class DocIdSetBuilder {
   private Buffer addBuffer(int len) {
     Buffer buffer = new Buffer(len);
     buffers.add(buffer);
-    // Always use partition-aware adder to avoid megamorphic call sites
-    // For non-partitioned case (minDocId=0, maxDocId=maxDoc), the bounds check
-    // becomes a predictable branch that the JIT optimizes away
     adder = new PartitionAwareBufferAdder(buffer, minDocId, maxDocId);
     totalAllocated += buffer.array.length;
     return buffer;
@@ -360,7 +353,6 @@ public final class DocIdSetBuilder {
       int length = buffer.length;
       counter += length;
       for (int i = 0; i < length; ++i) {
-        // For partitions, convert absolute doc ID to partition-relative index
         int docId = array[i];
         int bitIndex = isPartition ? (docId - minDocId) : docId;
         bitSet.set(bitIndex);
@@ -369,9 +361,6 @@ public final class DocIdSetBuilder {
     this.bitSet = bitSet;
     this.counter = counter;
     this.buffers = null;
-    // Always use partition-aware adder to avoid megamorphic call sites
-    // For non-partitioned case, use offset=0 and bounds=[0, maxDoc)
-    // The JIT will optimize away the redundant checks for non-partitioned case
     int offset = isPartition ? minDocId : 0;
     this.adder = new PartitionAwareFixedBitSetAdder(bitSet, minDocId, maxDocId, offset);
   }
@@ -382,7 +371,6 @@ public final class DocIdSetBuilder {
       if (bitSet != null) {
         assert counter >= 0;
         final long cost = Math.round(counter / numValuesPerDoc);
-
         // For partition-relative bitsets, wrap with offset to return absolute doc IDs
         boolean isPartition = (minDocId > 0 || maxDocId < maxDoc);
         if (isPartition) {

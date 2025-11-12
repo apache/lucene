@@ -828,8 +828,6 @@ public class IndexSearcher {
       // continue with the following leaf
       return;
     }
-
-    // Create partition object to pass to weight
     final LeafReaderContextPartition partition;
     if (minDocId == 0 && maxDocId == DocIdSetIterator.NO_MORE_DOCS) {
       partition = LeafReaderContextPartition.createForEntireSegment(ctx);
