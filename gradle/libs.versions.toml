@@ -15,13 +15,13 @@ errorprone = "2.43.0"
 # markdown documentation generation
 flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
-googleJavaFormat = "1.31.0"
+googleJavaFormat = "1.32.0"
 # gradle build support
 groovy = "5.0.2"
 # test assertions
 hamcrest = "3.0"
 # analysis/icu/, gradle regeneration unicode support
-icu4j = "77.1"
+icu4j = "78.1"
 # queryparsers/ grammars
 javacc = "7.0.13"
 # analysis/ tokenizer grammars
