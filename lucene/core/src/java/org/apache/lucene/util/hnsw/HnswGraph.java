@@ -191,9 +191,14 @@ public abstract class HnswGraph {
     private final int[] nodes;
     private int cur = 0;
 
-    /** Sole constructor */
+    /** Normal constructor */
     public ArrayNodesIterator(int[] nodes) {
-      super(nodes.length);
+      this(nodes, nodes.length);
+    }
+
+    /** Constructor that allows overriding size, used only for back-compat */
+    public ArrayNodesIterator(int[] nodes, int size) {
+      super(size);
       this.nodes = nodes;
     }
 
