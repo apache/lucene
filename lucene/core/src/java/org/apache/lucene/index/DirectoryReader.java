@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import org.apache.lucene.search.SearcherManager; // javadocs
 import org.apache.lucene.store.Directory;
 
@@ -61,6 +62,18 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
   }
 
   /**
+   * Returns a IndexReader reading the index in the given Directory
+   *
+   * @param directory the index directory
+   * @param executor an executor service for processing the creation of segment readers
+   * @throws IOException if there is a low-level IO error
+   */
+  public static DirectoryReader open(final Directory directory, ExecutorService executor)
+      throws IOException {
+    return StandardDirectoryReader.open(directory, null, null, executor);
+  }
+
+  /**
    * Returns a IndexReader for the index in the given Directory
    *
    * @param directory the index directory
@@ -74,7 +87,27 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
    */
   public static DirectoryReader open(final Directory directory, Comparator<LeafReader> leafSorter)
       throws IOException {
-    return StandardDirectoryReader.open(directory, null, leafSorter);
+    return StandardDirectoryReader.open(directory, null, leafSorter, null);
+  }
+
+  /**
+   * Returns a IndexReader for the index in the given Directory
+   *
+   * @param directory the index directory
+   * @param leafSorter a comparator for sorting leaf readers. Providing leafSorter is useful for
+   *     indices on which it is expected to run many queries with particular sort criteria (e.g. for
+   *     time-based indices this is usually a descending sort on timestamp). In this case {@code
+   *     leafSorter} should sort leaves according to this sort criteria. Providing leafSorter allows
+   *     to speed up this particular type of sort queries by early terminating while iterating
+   *     through segments and segments' documents.
+   * @param executor provies an executor service that will be utilized to intialize segment readers.
+   *     Providing an executor is useful to parallelize
+   * @throws IOException if there is a low-level IO error
+   */
+  public static DirectoryReader open(
+      final Directory directory, Comparator<LeafReader> leafSorter, ExecutorService executor)
+      throws IOException {
+    return StandardDirectoryReader.open(directory, null, leafSorter, executor);
   }
 
   /**
@@ -119,7 +152,19 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
    * @throws IOException if there is a low-level IO error
    */
   public static DirectoryReader open(final IndexCommit commit) throws IOException {
-    return StandardDirectoryReader.open(commit.getDirectory(), commit, null);
+    return StandardDirectoryReader.open(commit.getDirectory(), commit, null, null);
+  }
+
+  /**
+   * Expert: returns an IndexReader reading the index in the given {@link IndexCommit}.
+   *
+   * @param commit the commit point to open
+   * @param executorService executor provided for intra-open parallelization
+   * @throws IOException if there is a low-level IO error
+   */
+  public static DirectoryReader open(final IndexCommit commit, ExecutorService executorService)
+      throws IOException {
+    return StandardDirectoryReader.open(commit.getDirectory(), commit, null, executorService);
   }
 
   /**
@@ -144,7 +189,36 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
       final IndexCommit commit, int minSupportedMajorVersion, Comparator<LeafReader> leafSorter)
       throws IOException {
     return StandardDirectoryReader.open(
-        commit.getDirectory(), minSupportedMajorVersion, commit, leafSorter);
+        commit.getDirectory(), minSupportedMajorVersion, commit, leafSorter, null);
+  }
+
+  /**
+   * Expert: returns an IndexReader reading the index on the given {@link IndexCommit}. This method
+   * allows to open indices that were created with a Lucene version older than N-1 provided that all
+   * codecs for this index are available in the classpath and the segment file format used was
+   * created with Lucene 7 or newer. Users of this API must be aware that Lucene doesn't guarantee
+   * semantic compatibility for indices created with versions older than N-1. All backwards
+   * compatibility aside from the file format is optional and applied on a best effort basis.
+   *
+   * @param commit the commit point to open
+   * @param minSupportedMajorVersion the minimum supported major index version
+   * @param leafSorter a comparator for sorting leaf readers. Providing leafSorter is useful for
+   *     indices on which it is expected to run many queries with particular sort criteria (e.g. for
+   *     time-based indices, this is usually a descending sort on timestamp). In this case {@code
+   *     leafSorter} should sort leaves according to this sort criteria. Providing leafSorter allows
+   *     to speed up this particular type of sort queries by early terminating while iterating
+   *     through segments and segments' documents
+   * @param executorService executor provided for intra-open parallelization
+   * @throws IOException if there is a low-level IO error
+   */
+  public static DirectoryReader open(
+      final IndexCommit commit,
+      int minSupportedMajorVersion,
+      Comparator<LeafReader> leafSorter,
+      ExecutorService executorService)
+      throws IOException {
+    return StandardDirectoryReader.open(
+        commit.getDirectory(), minSupportedMajorVersion, commit, leafSorter, executorService);
   }
 
   /**
