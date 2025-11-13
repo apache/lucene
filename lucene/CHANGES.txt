@@ -187,6 +187,8 @@ Improvements
 
 * GITHUB#15332: Add PhraseQuery.Builder.setMaxTerms() method to limit the maximum number of terms and excessive memory use (linyunanit)
 
+* GITHUB#15425: Refactoring internal HnswGraph.NodesIterator to avoid unneeded copying and sorting (Mike Sokolov)
+
 Optimizations
 ---------------------
 * GITHUB#15140: Optimize TopScoreDocCollector with TernaryLongHeap for improved performance over Binary-LongHeap. (Ramakrishna Chilaka)
