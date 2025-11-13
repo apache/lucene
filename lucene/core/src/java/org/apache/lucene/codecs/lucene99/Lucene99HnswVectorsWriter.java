@@ -364,7 +364,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         if (level == 0) {
           return graph.getNodesOnLevel(0);
         } else {
-          return new ArrayNodesIterator(nodesByLevel.get(level), nodesByLevel.get(level).length);
+          return new ArrayNodesIterator(nodesByLevel.get(level));
         }
       }
     };
@@ -414,7 +414,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       // build the graph using the temporary vector data
       // we use Lucene99HnswVectorsReader.DenseOffHeapVectorValues for the graph construction
       // doesn't need to know docIds
-      // TODO: separate random access vector values from DocIdSetIterator?
       OnHeapHnswGraph graph = null;
       int[][] vectorIndexNodeOffsets = null;
       // Check if we should bypass graph building for tiny segments
@@ -483,11 +482,11 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     int[][] offsets = new int[graph.numLevels()][];
     int[] scratch = new int[graph.maxConn() * 2];
     for (int level = 0; level < graph.numLevels(); level++) {
-      int[] sortedNodes = NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
-      offsets[level] = new int[sortedNodes.length];
+      NodesIterator sortedNodes = graph.getSortedNodes(level);
+      offsets[level] = new int[sortedNodes.size()];
       int nodeOffsetId = 0;
-      for (int node : sortedNodes) {
-        NeighborArray neighbors = graph.getNeighbors(level, node);
+      while (sortedNodes.hasNext()) {
+        NeighborArray neighbors = graph.getNeighbors(level, sortedNodes.next());
         int size = neighbors.size();
         // Write size in VInt as the neighbors list is typically small
         long offsetStart = vectorIndex.getFilePointer();
