@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.lessThan;
+
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FeatureField;
@@ -109,11 +111,11 @@ public class TestScorerUtil extends LuceneTestCase {
       } else {
         // The value before minRequiredScore must not be able to produce a score >=
         // minCompetitiveScore.
-        assertFalse(
+        assertThat(
             (float)
-                    MathUtil.sumUpperBound(
-                        Math.nextDown(minRequiredScore) + maxRemainingScore, numScorers)
-                >= minCompetitiveScore);
+                MathUtil.sumUpperBound(
+                    Math.nextDown(minRequiredScore) + maxRemainingScore, numScorers),
+            lessThan(minCompetitiveScore));
       }
 
       // NOTE: we need to assert the internal while loop ends within an acceptable iterations. But
