@@ -149,11 +149,20 @@ public final class DirectWriter {
     }
     assert !finished;
     flush();
+
     // add padding bytes for fast io
+    final int paddingBytesNeeded = paddingBytesNeeded(bitsPerValue);
+    for (int i = 0; i < paddingBytesNeeded; i++) {
+      output.writeByte((byte) 0);
+    }
+    finished = true;
+  }
+
+  private static int paddingBytesNeeded(int bitsPerValue) {
     // for every number of bits per value, we want to be able to read the entire value in a single
     // read e.g. for 20 bits per value, we want to be able to read values using ints so we need
     // 32 - 20 = 12 bits of padding
-    int paddingBitsNeeded;
+    final int paddingBitsNeeded;
     if (bitsPerValue > Integer.SIZE) {
       paddingBitsNeeded = Long.SIZE - bitsPerValue;
     } else if (bitsPerValue > Short.SIZE) {
@@ -166,20 +175,20 @@ public final class DirectWriter {
     assert paddingBitsNeeded >= 0;
     final int paddingBytesNeeded = (paddingBitsNeeded + Byte.SIZE - 1) / Byte.SIZE;
     assert paddingBytesNeeded <= 3;
-
-    for (int i = 0; i < paddingBytesNeeded; i++) {
-      output.writeByte((byte) 0);
-    }
-    finished = true;
+    return paddingBytesNeeded;
   }
 
   /** Returns an instance suitable for encoding {@code numValues} using {@code bitsPerValue} */
   public static DirectWriter getInstance(DataOutput output, long numValues, int bitsPerValue) {
+    checkBitsPerValue(bitsPerValue);
+    return new DirectWriter(output, numValues, bitsPerValue);
+  }
+
+  private static void checkBitsPerValue(int bitsPerValue) {
     if (Arrays.binarySearch(SUPPORTED_BITS_PER_VALUE, bitsPerValue) < 0) {
       throw new IllegalArgumentException(
           "Unsupported bitsPerValue " + bitsPerValue + ". Did you use bitsRequired?");
     }
-    return new DirectWriter(output, numValues, bitsPerValue);
   }
 
   /**
@@ -224,4 +233,17 @@ public final class DirectWriter {
 
   static final int[] SUPPORTED_BITS_PER_VALUE =
       new int[] {1, 2, 4, 8, 12, 16, 20, 24, 28, 32, 40, 48, 56, 64};
+
+  /**
+   * Returns how many bytes are written for encoding {@code numValues} using {@code bitsPerValue}.
+   *
+   * @param numValues total number of values
+   * @param bitsPerValue the number of bits required per value
+   * @return The amount of bytes written
+   */
+  public static long bytesRequired(long numValues, int bitsPerValue) {
+    checkBitsPerValue(bitsPerValue);
+    final long bytes = (numValues * bitsPerValue + Byte.SIZE - 1) / 8;
+    return bytes + paddingBytesNeeded(bitsPerValue);
+  }
 }
