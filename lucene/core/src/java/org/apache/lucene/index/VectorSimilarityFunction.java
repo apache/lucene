@@ -16,13 +16,16 @@
  */
 package org.apache.lucene.index;
 
-import static org.apache.lucene.util.VectorUtil.cosine;
-import static org.apache.lucene.util.VectorUtil.dotProduct;
+import static org.apache.lucene.util.VectorUtil.cosineBytes;
+import static org.apache.lucene.util.VectorUtil.cosineFloats;
+import static org.apache.lucene.util.VectorUtil.dotProductBytes;
+import static org.apache.lucene.util.VectorUtil.dotProductFloats;
 import static org.apache.lucene.util.VectorUtil.dotProductScore;
 import static org.apache.lucene.util.VectorUtil.normalizeDistanceToUnitInterval;
 import static org.apache.lucene.util.VectorUtil.normalizeToUnitInterval;
 import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
-import static org.apache.lucene.util.VectorUtil.squareDistance;
+import static org.apache.lucene.util.VectorUtil.squareDistanceBytes;
+import static org.apache.lucene.util.VectorUtil.squareDistanceFloats;
 
 /**
  * Vector similarity function; used in search to return top K most similar vectors to a target
@@ -35,12 +38,12 @@ public enum VectorSimilarityFunction {
   EUCLIDEAN {
     @Override
     public float compare(float[] v1, float[] v2) {
-      return normalizeDistanceToUnitInterval(squareDistance(v1, v2));
+      return normalizeDistanceToUnitInterval(squareDistanceFloats(v1, v2));
     }
 
     @Override
     public float compare(byte[] v1, byte[] v2) {
-      return 1 / (1f + squareDistance(v1, v2));
+      return 1 / (1f + squareDistanceBytes(v1, v2));
     }
   },
 
@@ -54,7 +57,7 @@ public enum VectorSimilarityFunction {
   DOT_PRODUCT {
     @Override
     public float compare(float[] v1, float[] v2) {
-      return normalizeToUnitInterval(dotProduct(v1, v2));
+      return normalizeToUnitInterval(dotProductFloats(v1, v2));
     }
 
     @Override
@@ -72,12 +75,12 @@ public enum VectorSimilarityFunction {
   COSINE {
     @Override
     public float compare(float[] v1, float[] v2) {
-      return normalizeToUnitInterval(cosine(v1, v2));
+      return normalizeToUnitInterval(cosineFloats(v1, v2));
     }
 
     @Override
     public float compare(byte[] v1, byte[] v2) {
-      return (1 + cosine(v1, v2)) / 2;
+      return (1 + cosineBytes(v1, v2)) / 2;
     }
   },
 
@@ -89,12 +92,12 @@ public enum VectorSimilarityFunction {
   MAXIMUM_INNER_PRODUCT {
     @Override
     public float compare(float[] v1, float[] v2) {
-      return scaleMaxInnerProductScore(dotProduct(v1, v2));
+      return scaleMaxInnerProductScore(dotProductFloats(v1, v2));
     }
 
     @Override
     public float compare(byte[] v1, byte[] v2) {
-      return scaleMaxInnerProductScore(dotProduct(v1, v2));
+      return scaleMaxInnerProductScore(dotProductBytes(v1, v2));
     }
   };
 

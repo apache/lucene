@@ -176,7 +176,9 @@ class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     writeBinarizedVectors(fieldData, clusterCenter, quantizer);
     long vectorDataLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
     float centroidDp =
-        fieldData.getVectors().size() > 0 ? VectorUtil.dotProduct(clusterCenter, clusterCenter) : 0;
+        fieldData.getVectors().size() > 0
+            ? VectorUtil.dotProductFloats(clusterCenter, clusterCenter)
+            : 0;
 
     writeMeta(
         fieldData.fieldInfo,
@@ -227,7 +229,7 @@ class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     writeSortedBinarizedVectors(fieldData, clusterCenter, ordMap, scalarQuantizer);
     long quantizedVectorLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
 
-    float centroidDp = VectorUtil.dotProduct(clusterCenter, clusterCenter);
+    float centroidDp = VectorUtil.dotProductFloats(clusterCenter, clusterCenter);
     writeMeta(
         fieldData.fieldInfo,
         maxDoc,
@@ -336,7 +338,7 @@ class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           writeBinarizedVectorData(binarizedVectorData, binarizedVectorValues);
       long vectorDataLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
       float centroidDp =
-          docsWithField.cardinality() > 0 ? VectorUtil.dotProduct(centroid, centroid) : 0;
+          docsWithField.cardinality() > 0 ? VectorUtil.dotProductFloats(centroid, centroid) : 0;
       writeMeta(
           fieldInfo,
           segmentWriteState.segmentInfo.maxDoc(),
@@ -426,7 +428,7 @@ class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       // Don't need access to the random vectors, we can just use the merged
       rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
       centroid = mergedCentroid;
-      cDotC = vectorCount > 0 ? VectorUtil.dotProduct(centroid, centroid) : 0;
+      cDotC = vectorCount > 0 ? VectorUtil.dotProductFloats(centroid, centroid) : 0;
       if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
         segmentWriteState.infoStream.message(
             BINARIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
@@ -696,7 +698,7 @@ class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     public void addValue(int docID, float[] vectorValue) throws IOException {
       flatFieldVectorsWriter.addValue(docID, vectorValue);
       if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-        float dp = VectorUtil.dotProduct(vectorValue, vectorValue);
+        float dp = VectorUtil.dotProductFloats(vectorValue, vectorValue);
         float divisor = (float) Math.sqrt(dp);
         magnitudes.add(divisor);
         for (int i = 0; i < vectorValue.length; i++) {
