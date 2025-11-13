@@ -274,7 +274,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
           "graph build not complete, size=" + size() + " maxNodeId=" + maxNodeId());
     }
     if (level == 0) {
-      return new ArrayNodesIterator(size());
+      return new DenseNodesIterator(size());
     } else {
       generateLevelToNodes();
       return new CollectionNodesIterator(levelToNodes[level]);

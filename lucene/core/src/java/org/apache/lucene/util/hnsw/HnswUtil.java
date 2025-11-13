@@ -90,7 +90,7 @@ public class HnswUtil {
     HnswGraph.NodesIterator entryPoints;
     // System.out.println("components level=" + level);
     if (level == hnsw.numLevels() - 1) {
-      entryPoints = new HnswGraph.ArrayNodesIterator(new int[] {hnsw.entryNode()}, 1);
+      entryPoints = new HnswGraph.ArrayNodesIterator(new int[] {hnsw.entryNode()});
     } else {
       entryPoints = hnsw.getNodesOnLevel(level + 1);
     }
