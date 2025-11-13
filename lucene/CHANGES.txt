@@ -184,6 +184,9 @@ Improvements
 
 * GITHUB#15332: Add PhraseQuery.Builder.setMaxTerms() method to limit the maximum number of terms and excessive memory use (linyunanit)
 
+* GITHUB#15422: Add a new method in DirectWriter to compute how many bytes are written for encoding a number of values using a number of
+  bits per value. (Ignacio Vera)
+
 Optimizations
 ---------------------
 * GITHUB#15140: Optimize TopScoreDocCollector with TernaryLongHeap for improved performance over Binary-LongHeap. (Ramakrishna Chilaka)
