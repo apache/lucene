@@ -227,6 +227,7 @@ public abstract class HnswGraph {
     }
   }
 
+  /** NodesIterator that enumerates [0, size) */
   public static class DenseNodesIterator extends NodesIterator {
     private static final NodesIterator EMPTY = new DenseNodesIterator(0);
 
