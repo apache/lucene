@@ -753,6 +753,19 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
     return delta;
   }
 
+  /**
+   * Returns true if any of the ByteBlockPools used by this DWPT are approaching their buffer limit.
+   * This is used to trigger a flush before integer overflow occurs in ByteBlockPool.byteOffset.
+   *
+   * @return true if buffer count is approaching the limit
+   */
+  boolean isApproachingBufferLimit() {
+    assert isHeldByCurrentThread();
+    // Use a threshold of 65000 to provide some safety margin before the actual limit of 65535
+    final int threshold = 65000;
+    return indexingChain.isApproachingBufferLimit(threshold);
+  }
+
   @Override
   public void lock() {
     lock.lock();
