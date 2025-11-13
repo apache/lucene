@@ -25,6 +25,7 @@ import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.LiveDocs;
 
 /**
  * {@code LeafReader} is an abstract class, providing an interface for accessing an index. Search of
@@ -391,6 +392,24 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * additional synchronization.
    */
   public abstract Bits getLiveDocs();
+
+  /**
+   * Returns a {@link LiveDocs} view with efficient iteration support, or null if not available.
+   * When non-null, provides O(deletedDocs) iteration via {@link LiveDocs#deletedDocsIterator()}
+   * instead of O(maxDoc) scanning. Callers should fall back to {@link #getLiveDocs()} when null.
+   *
+   * <p>This method enables consumers to opt into efficient deleted document iteration when the
+   * underlying implementation supports it (e.g., SparseLiveDocs or DenseLiveDocs).
+   *
+   * <p>Default implementation returns the {@link LiveDocs} instance if {@link #getLiveDocs()}
+   * implements that interface.
+   *
+   * @lucene.experimental
+   */
+  public LiveDocs getLiveDocsWithDeletedIterator() {
+    Bits bits = getLiveDocs();
+    return bits instanceof LiveDocs ? (LiveDocs) bits : null;
+  }
 
   /**
    * Returns the {@link PointValues} used for numeric or spatial searches for the given field, or
