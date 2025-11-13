@@ -899,6 +899,16 @@ public class TestValueSources extends LuceneTestCase {
     for (int i = 0; i < originalScoreDocs.length; i++) {
       assertEquals(originalScoreDocs[i].doc, sortedScoreDocs[i].doc);
     }
+
+    // Search with the inverse sort.
+    sortedDocs = searcher.search(query, documents.size(), sort.inverse());
+    sortedScoreDocs = sortedDocs.scoreDocs;
+
+    // Verify we got the same docs in-order but don't check the scores
+    assertEquals(originalScoreDocs.length, sortedScoreDocs.length);
+    for (int i = 0; i < originalScoreDocs.length; i++) {
+      assertEquals(originalScoreDocs[originalScoreDocs.length - i - 1].doc, sortedScoreDocs[i].doc);
+    }
   }
 
   /**

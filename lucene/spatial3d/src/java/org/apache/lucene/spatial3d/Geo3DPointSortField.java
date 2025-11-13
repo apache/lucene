@@ -42,6 +42,11 @@ final class Geo3DPointSortField extends SortField {
   }
 
   @Override
+  public SortField inverseSort() {
+    throw new UnsupportedOperationException("Inverse sort not supported on Geo3DPointSortField");
+  }
+
+  @Override
   public FieldComparator<?> getComparator(int numHits, Pruning pruning) {
     return new Geo3DPointDistanceComparator(getField(), planetModel, distanceShape, numHits);
   }
