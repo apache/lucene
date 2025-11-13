@@ -173,9 +173,9 @@ public final class Lucene91OnHeapHnswGraph extends HnswGraph {
   @Override
   public NodesIterator getNodesOnLevel(int level) {
     if (level == 0) {
-      return new ArrayNodesIterator(size());
+      return new DenseNodesIterator(size());
     } else {
-      return new ArrayNodesIterator(nodesByLevel.get(level), graph.get(level).size());
+      return new ArrayNodesIterator(nodesByLevel.get(level));
     }
   }
 }

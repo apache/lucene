@@ -45,6 +45,7 @@ import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.IndexOutput;
@@ -60,6 +61,7 @@ import org.apache.lucene.util.hnsw.HnswGraphMerger;
 import org.apache.lucene.util.hnsw.IncrementalHnswGraphMerger;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
@@ -360,7 +362,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         if (level == 0) {
           return graph.getNodesOnLevel(0);
         } else {
-          return new ArrayNodesIterator(nodesByLevel.get(level), nodesByLevel.get(level).length);
+          return new ArrayNodesIterator(nodesByLevel.get(level));
         }
       }
     };
@@ -402,6 +404,15 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
   @Override
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    // nocommit
+    // FIXME this scorer supplier is currently built from reordered vectors, but the
+    // merge below uses the pre-ordered ones, and the graphs (that we may re-use) have
+    // ordinals from the pre-ordered space as well.  We could try to apply the reordering
+    // on top of these, but maybe it would be simpler to return the pre-ordered vectors
+    // here (while writing the reordered ones to the merged segment), and apply the same
+    // re-ordering to the merged HNSW graph while writing it to the new segment.
+    // To do this, we would need to somehow return the vector reordering map here.
+    // I guess we could add to CloseableRandomVectorScorerSupplier.getSortMap
     CloseableRandomVectorScorerSupplier scorerSupplier =
         flatVectorWriter.mergeOneFieldToIndex(fieldInfo, mergeState);
     try {
@@ -409,7 +420,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       // build the graph using the temporary vector data
       // we use Lucene99HnswVectorsReader.DenseOffHeapVectorValues for the graph construction
       // doesn't need to know docIds
-      // TODO: separate random access vector values from DocIdSetIterator?
       OnHeapHnswGraph graph = null;
       int[][] vectorIndexNodeOffsets = null;
       // Check if we should bypass graph building for tiny segments
@@ -446,6 +456,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 mergedVectorValues,
                 segmentWriteState.infoStream,
                 scorerSupplier.totalVectorCount());
+        // TODO: create a sorted HnswGraph
         vectorIndexNodeOffsets = writeGraph(graph);
       }
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
@@ -465,6 +476,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
   /**
    * @param graph Write the graph in a compressed format
+   * @param sortMap if not null, used to map the node ordinals (old to new) while rewriting
    * @return The non-cumulative offsets for the nodes. Should be used to create cumulative offsets.
    * @throws IOException if writing to vectorIndex fails
    */
@@ -475,10 +487,11 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     int[][] offsets = new int[graph.numLevels()][];
     int[] scratch = new int[graph.maxConn() * 2];
     for (int level = 0; level < graph.numLevels(); level++) {
-      int[] sortedNodes = NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
-      offsets[level] = new int[sortedNodes.length];
+      NodesIterator sortedNodes = graph.getSortedNodes(level);
+      offsets[level] = new int[sortedNodes.size()];
       int nodeOffsetId = 0;
-      for (int node : sortedNodes) {
+      for (NodesIterator it = sortedNodes; it.hasNext(); ) {
+        int node = it.next();
         NeighborArray neighbors = graph.getNeighbors(level, node);
         int size = neighbors.size();
         // Write size in VInt as the neighbors list is typically small
