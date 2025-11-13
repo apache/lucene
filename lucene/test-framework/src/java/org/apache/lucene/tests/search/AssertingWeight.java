@@ -23,6 +23,7 @@ import java.util.Random;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.FilterWeight;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
@@ -112,5 +113,11 @@ class AssertingWeight extends FilterWeight {
         inScorerSupplier.setTopLevelScoringClause();
       }
     };
+  }
+
+  @Override
+  public ScorerSupplier scorerSupplier(IndexSearcher.LeafReaderContextPartition partition)
+      throws IOException {
+    return scorerSupplier(partition.ctx);
   }
 }
