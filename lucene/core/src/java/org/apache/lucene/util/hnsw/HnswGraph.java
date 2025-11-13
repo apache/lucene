@@ -186,8 +186,6 @@ public abstract class HnswGraph {
   }
 
   /** NodesIterator that accepts nodes as an integer array. */
-  // TODO: break this class into this and DenseNodesIterator that just counts up
-  // It's not using an array in that case, so the naming is deceptive, and we can avoid the branching
   public static class ArrayNodesIterator extends NodesIterator {
 
     private final int[] nodes;
