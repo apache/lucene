@@ -24,12 +24,11 @@ import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
-import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.internal.hppc.IntIntHashMap;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
@@ -73,31 +72,26 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
   public IncrementalHnswGraphMerger addReader(
       KnnVectorsReader reader, MergeState.DocMap docMap, Bits liveDocs) throws IOException {
     numReaders++;
-    if (hasDeletes(liveDocs) || !(reader instanceof HnswGraphProvider)) {
+    if (!(reader instanceof HnswGraphProvider provider)) {
       return this;
     }
-    HnswGraph graph = ((HnswGraphProvider) reader).getGraph(fieldInfo.name);
+
+    HnswGraph graph = provider.getGraph(fieldInfo.name);
     if (graph == null || graph.size() == 0) {
       return this;
     }
 
-    int candidateVectorCount = 0;
-    switch (fieldInfo.getVectorEncoding()) {
-      case BYTE -> {
-        ByteVectorValues byteVectorValues = reader.getByteVectorValues(fieldInfo.name);
-        if (byteVectorValues == null) {
-          return this;
-        }
-        candidateVectorCount = byteVectorValues.size();
-      }
-      case FLOAT32 -> {
-        FloatVectorValues vectorValues = reader.getFloatVectorValues(fieldInfo.name);
-        if (vectorValues == null) {
-          return this;
-        }
-        candidateVectorCount = vectorValues.size();
-      }
+    KnnVectorValues values =
+        switch (fieldInfo.getVectorEncoding()) {
+          case BYTE -> reader.getByteVectorValues(fieldInfo.name);
+          case FLOAT32 -> reader.getFloatVectorValues(fieldInfo.name);
+        };
+
+    if (values == null || hasDeletes(values.iterator(), liveDocs)) {
+      return this;
     }
+
+    int candidateVectorCount = values.size();
     graphReaders.add(new GraphReader(reader, docMap, candidateVectorCount));
     return this;
   }
@@ -192,13 +186,13 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     return builder.build(maxOrd);
   }
 
-  private static boolean hasDeletes(Bits liveDocs) {
+  private static boolean hasDeletes(DocIdSetIterator iterator, Bits liveDocs) throws IOException {
     if (liveDocs == null) {
       return false;
     }
 
-    for (int i = 0; i < liveDocs.length(); i++) {
-      if (!liveDocs.get(i)) {
+    for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
+      if (!liveDocs.get(doc)) {
         return true;
       }
     }
