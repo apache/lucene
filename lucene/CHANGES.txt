@@ -46,6 +46,8 @@ API Changes
 
 * GITHUB#15187: Restrict visibility of PerFieldKnnVectorsFormat.FieldsReader (Simon Cooper)
 
+* GITHUB##15428: Add support for ExecutorServices to be passed into DirectoryReader.open() API (Bryce Kane)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
