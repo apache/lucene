@@ -60,6 +60,7 @@ import org.apache.lucene.util.hnsw.HnswGraphMerger;
 import org.apache.lucene.util.hnsw.IncrementalHnswGraphMerger;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
@@ -233,7 +234,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     // write graph
     long vectorIndexOffset = vectorIndex.getFilePointer();
     OnHeapHnswGraph graph = fieldData.getGraph();
-    int[][] graphLevelNodeOffsets = writeGraph(graph);
+    int[][] graphLevelNodeOffsets = writeGraph(graph, null);
     long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
 
     writeMeta(
@@ -445,15 +446,19 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 mergedVectorValues,
                 segmentWriteState.infoStream,
                 scorerSupplier.totalVectorCount());
-        vectorIndexNodeOffsets = writeGraph(graph);
+        vectorIndexNodeOffsets = writeGraph(graph, scorerSupplier.sortMap());
       }
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
+      HnswGraph graphToWrite = graph;
+      if (scorerSupplier.sortMap() != null && graph != null) {
+        graphToWrite = withReorderedNodes(graph, scorerSupplier.sortMap());
+      }
       writeMeta(
           fieldInfo,
           vectorIndexOffset,
           vectorIndexLength,
           scorerSupplier.totalVectorCount(),
-          graph,
+          graphToWrite,
           vectorIndexNodeOffsets);
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, scorerSupplier);
@@ -464,11 +469,14 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
   /**
    * @param graph Write the graph in a compressed format
+   * @param sortMap if not null, used to map the node ordinals (old to new) while rewriting
    * @return The non-cumulative offsets for the nodes. Should be used to create cumulative offsets.
    * @throws IOException if writing to vectorIndex fails
    */
-  private int[][] writeGraph(OnHeapHnswGraph graph) throws IOException {
-    if (graph == null) return new int[0][0];
+  private int[][] writeGraph(OnHeapHnswGraph graph, Sorter.DocMap sortMap) throws IOException {
+    if (graph == null) {
+      return new int[0][0];
+    }
     // write vectors' neighbours on each level into the vectorIndex file
     int countOnLevel0 = graph.size();
     int[][] offsets = new int[graph.numLevels()][];
@@ -483,6 +491,11 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         // Write size in VInt as the neighbors list is typically small
         long offsetStart = vectorIndex.getFilePointer();
         int[] nnodes = neighbors.nodes();
+        if (sortMap != null) {
+          for (int i = 0; i < size; i++) {
+            nnodes[i] = sortMap.oldToNew(nnodes[i]);
+          }
+        }
         Arrays.sort(nnodes, 0, size);
         // Now that we have sorted, do delta encoding to minimize the required bits to store the
         // information
@@ -513,6 +526,70 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       }
     }
     return offsets;
+  }
+
+  private static HnswGraph withReorderedNodes(HnswGraph inner, Sorter.DocMap sortMap) {
+    return new HnswGraph() {
+      @Override
+      public void seek(int level, int target) throws IOException {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public int neighborCount() {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public int size() {
+        return inner.size();
+      }
+
+      @Override
+      public int nextNeighbor() throws IOException {
+        return sortMap.oldToNew(inner.nextNeighbor());
+      }
+
+      @Override
+      public int numLevels() throws IOException {
+        return inner.numLevels();
+      }
+
+      @Override
+      public int maxConn() {
+        return inner.maxConn();
+      }
+
+      @Override
+      public int entryNode() throws IOException {
+        return sortMap.oldToNew(inner.entryNode());
+      }
+
+      @Override
+      public NodesIterator getNodesOnLevel(int level) throws IOException {
+        NodesIterator innerIter = inner.getNodesOnLevel(level);
+        return new NodesIterator(innerIter.size()) {
+          @Override
+          public int consume(int[] dest) {
+            int result = innerIter.consume(dest);
+            for (int i = 0; i < result; i++) {
+              dest[i] = sortMap.oldToNew(dest[i]);
+            }
+            return result;
+          }
+
+          @Override
+          public int nextInt() {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public boolean hasNext() {
+            throw new UnsupportedOperationException();
+          }
+        };
+      }
+    };
   }
 
   private void writeMeta(

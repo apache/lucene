@@ -24,6 +24,7 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeScheduler;
 import org.apache.lucene.index.SegmentReadState;
@@ -50,7 +51,7 @@ import org.apache.lucene.util.hnsw.HnswGraphBuilder;
  *               <li><b>[vint]</b> the number of neighbor nodes
  *               <li><b>array[vint]</b> the delta encoded neighbor ordinals
  *             </ul>
- *       </ul>
+ *       </ul>re
  *   <li>After all levels are encoded, memory offsets for each node's neighbor nodes are appended to
  *       the end of the file. The offsets are encoded by {@link
  *       org.apache.lucene.util.packed.DirectMonotonicWriter}.
@@ -149,11 +150,16 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
   private final int beamWidth;
 
   /** The format for storing, reading, and merging vectors on disk. */
-  private static final FlatVectorsFormat flatVectorsFormat =
-      new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
+  private static final FlatVectorsScorer DEFAULT_FLAT_VECTORS_SCORER = FlatVectorScorerUtil.getLucene99FlatVectorsScorer();
+  private static final FlatVectorsFormat DEFAULT_FLAT_VECTORS_FORMAT =
+      new Lucene99FlatVectorsFormat(DEFAULT_FLAT_VECTORS_SCORER, false);
+  private static final FlatVectorsFormat REORDERING_FLAT_VECTORS_FORMAT =
+      new Lucene99FlatVectorsFormat(DEFAULT_FLAT_VECTORS_SCORER, true);
 
   private final int numMergeWorkers;
   private final TaskExecutor mergeExec;
+
+  private final boolean enableReorder;
 
   /**
    * The threshold to use to bypass HNSW graph building for tiny segments in terms of k for a graph
@@ -168,6 +174,8 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    */
   private final int tinySegmentsThreshold;
 
+  private final FlatVectorsFormat flatVectorsFormat;
+
   private final int writeVersion;
 
   /** Constructs a format using default graph construction parameters */
@@ -178,6 +186,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
         DEFAULT_NUM_MERGE_WORKER,
         null,
         HNSW_GRAPH_THRESHOLD,
+        false,
         VERSION_CURRENT);
   }
 
@@ -188,7 +197,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    * @param beamWidth the size of the queue maintained during graph construction.
    */
   public Lucene99HnswVectorsFormat(int maxConn, int beamWidth) {
-    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, HNSW_GRAPH_THRESHOLD, VERSION_CURRENT);
+    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, HNSW_GRAPH_THRESHOLD, false, VERSION_CURRENT);
   }
 
   /**
@@ -201,7 +210,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    */
   public Lucene99HnswVectorsFormat(int maxConn, int beamWidth, int tinySegmentsThreshold) {
     this(
-        maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, tinySegmentsThreshold, VERSION_CURRENT);
+        maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, tinySegmentsThreshold, false, VERSION_CURRENT);
   }
 
   /**
@@ -217,7 +226,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    */
   public Lucene99HnswVectorsFormat(
       int maxConn, int beamWidth, int numMergeWorkers, ExecutorService mergeExec) {
-    this(maxConn, beamWidth, numMergeWorkers, mergeExec, HNSW_GRAPH_THRESHOLD, VERSION_CURRENT);
+    this(maxConn, beamWidth, numMergeWorkers, mergeExec, HNSW_GRAPH_THRESHOLD, false, VERSION_CURRENT);
   }
 
   /**
@@ -240,7 +249,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
       int numMergeWorkers,
       ExecutorService mergeExec,
       int tinySegmentsThreshold) {
-    this(maxConn, beamWidth, numMergeWorkers, mergeExec, tinySegmentsThreshold, VERSION_CURRENT);
+    this(maxConn, beamWidth, numMergeWorkers, mergeExec, tinySegmentsThreshold, false, VERSION_CURRENT);
   }
 
   /**
@@ -255,6 +264,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    *     MergeScheduler#getIntraMergeExecutor(MergePolicy.OneMerge)} is used.
    * @param tinySegmentsThreshold the expected number of vector operations to return k nearest
    *     neighbors of the current graph size
+   * @param enableReorder if true, BpVectorReorderer is used to sort vector nodes when merging. TODO: better explanation
    * @param writeVersion the version used for the writer to encode docID's (VarInt=0, GroupVarInt=1)
    */
   Lucene99HnswVectorsFormat(
@@ -263,6 +273,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
       int numMergeWorkers,
       ExecutorService mergeExec,
       int tinySegmentsThreshold,
+      boolean enableReorder,
       int writeVersion) {
     super("Lucene99HnswVectorsFormat");
     if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
@@ -282,6 +293,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
     this.tinySegmentsThreshold = tinySegmentsThreshold;
+    this.enableReorder = enableReorder;
     this.writeVersion = writeVersion;
     if (numMergeWorkers == 1 && mergeExec != null) {
       throw new IllegalArgumentException(
@@ -292,6 +304,11 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
       this.mergeExec = new TaskExecutor(mergeExec);
     } else {
       this.mergeExec = null;
+    }
+    if (enableReorder) {
+      flatVectorsFormat = REORDERING_FLAT_VECTORS_FORMAT;
+    } else {
+      flatVectorsFormat = DEFAULT_FLAT_VECTORS_FORMAT;
     }
   }
 

@@ -98,10 +98,10 @@ public final class Lucene99FlatVectorsFormat extends FlatVectorsFormat {
   public Lucene99FlatVectorsFormat(FlatVectorsScorer vectorsScorer) {
     super(NAME);
     this.vectorsScorer = vectorsScorer;
-    this.enableReorder = false;
+    this.enableReorder = true;
   }
 
-  Lucene99FlatVectorsFormat(FlatVectorsScorer vectorsScorer, boolean enableReorder) {
+  public Lucene99FlatVectorsFormat(FlatVectorsScorer vectorsScorer, boolean enableReorder) {
     super(NAME);
     this.vectorsScorer = vectorsScorer;
     this.enableReorder = enableReorder;

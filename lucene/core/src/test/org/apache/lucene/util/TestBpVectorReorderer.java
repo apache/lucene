@@ -26,6 +26,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StoredField;
@@ -44,6 +45,8 @@ import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_NUM_MERGE_WORKER;
 
 /** Tests reordering vector values using Binary Partitioning */
 public class TestBpVectorReorderer extends LuceneTestCase {
@@ -310,13 +313,17 @@ public class TestBpVectorReorderer extends LuceneTestCase {
                 && angularDifference(t1min, t1max) < angularDifference(t1min, t0max)));
   }
 
+  // nocommit disable reordering in the codec for all of these tests
   public void testIndexReorderDense() throws Exception {
     List<float[]> vectors = shuffleVectors(randomLinearVectors());
 
     Path tmpdir = createTempDir();
     try (Directory dir = newFSDirectory(tmpdir)) {
       // create an index with a single leaf
-      try (IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig())) {
+      IndexWriterConfig cfg = newIndexWriterConfig();
+      cfg.setCodec(
+          TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(8, 32)));
+      try (IndexWriter writer = new IndexWriter(dir, cfg)) {
         int id = 0;
         for (float[] vector : vectors) {
           Document doc = new Document();

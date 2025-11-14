@@ -275,6 +275,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     List<String> tempFileNames = new ArrayList<>();
     IndexInput vectorDataInput;
     String tempFileName;
+    Sorter.DocMap ordMap;
     Sorter.DocMap ordToDocMap;
 
     FieldMerger(FieldInfo fieldInfo, MergeState mergeState) {
@@ -310,10 +311,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
             && fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT32
             && docsWithField.cardinality() > 0) {
           reorderVectors(docsWithField);
+        } else {
+          // copy the temporary file vectors to the actual data file in docid order
+          vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
         }
-
-        // copy the temporary file vectors to the actual data file in docid order
-        vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
 
         CodecUtil.retrieveChecksum(vectorDataInput);
         long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
@@ -354,7 +355,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
               deleteFile(tempFileName);
             },
             docsWithField.cardinality(),
-            randomVectorScorerSupplier);
+            randomVectorScorerSupplier,
+            ordMap);
       } catch (Throwable t) {
         IOUtils.closeWhileSuppressingExceptions(t, toClose);
         IOUtils.deleteFilesSuppressingExceptions(t, segmentWriteState.directory, tempFileNames);
@@ -376,7 +378,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
               fieldInfo.getVectorSimilarityFunction());
       BpVectorReorderer vectorReorderer = new BpVectorReorderer();
       // nocommit use mergeState.intraTaskExecutor
-      Sorter.DocMap ordMap =
+      ordMap =
           vectorReorderer.computeValueMap(
               vectorValues, fieldInfo.getVectorSimilarityFunction(), null);
       // copy the temporary file vectors to yet another temp file after reordering
@@ -391,9 +393,16 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       ordToDocMap = BpVectorReorderer.ordToDocFromValueMap(ordMap, docsWithField);
       // clean up
       IOUtils.close(vectorDataInput);
-      deleteFile(tempFileName);
-      // swap temp vector file to the reordered one
-      tempFileName = tempReorderVectorData.getName();
+      // Copy the reordered vector data input to the merged segment vector data
+      String reorderedTempFileName = tempReorderVectorData.getName();
+      try {
+        vectorDataInput = openInput(reorderedTempFileName);
+        vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
+      } finally {
+        IOUtils.close(vectorDataInput);
+        deleteFile(reorderedTempFileName);
+      }
+      // reopen vectorDataInput on the *unordered* vectors to be used when building HNSW graph
       vectorDataInput = openInput(tempFileName);
     }
 
@@ -591,12 +600,14 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     private final RandomVectorScorerSupplier supplier;
     private final Closeable onClose;
     private final int numVectors;
+    private final Sorter.DocMap sortMap;
 
     FlatCloseableRandomVectorScorerSupplier(
-        Closeable onClose, int numVectors, RandomVectorScorerSupplier supplier) {
+        Closeable onClose, int numVectors, RandomVectorScorerSupplier supplier, Sorter.DocMap sortMap) {
       this.onClose = onClose;
       this.supplier = supplier;
       this.numVectors = numVectors;
+      this.sortMap = sortMap;
     }
 
     @Override
@@ -617,6 +628,11 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     @Override
     public int totalVectorCount() {
       return numVectors;
+    }
+
+    @Override
+    public Sorter.DocMap sortMap() {
+      return sortMap;
     }
   }
 }

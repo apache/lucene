@@ -17,6 +17,7 @@
 
 package org.apache.lucene.util.hnsw;
 
+import org.apache.lucene.index.Sorter;
 import java.io.Closeable;
 
 /**
@@ -28,4 +29,11 @@ import java.io.Closeable;
  */
 public interface CloseableRandomVectorScorerSupplier extends Closeable, RandomVectorScorerSupplier {
   int totalVectorCount();
+
+  /**
+   * If the vectors were reordered, this encodes the mapping from old (before reordering) node ordinals to new (reordered) ones.
+   * If no reordering was done, this will be null.  Note that the RandomVectorScorer(s) returned from this will be
+   * based on the old ordinals; the reordering is only indicative.
+   */
+  default Sorter.DocMap sortMap() { return null; }
 }
