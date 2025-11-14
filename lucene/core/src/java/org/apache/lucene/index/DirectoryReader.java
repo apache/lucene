@@ -65,12 +65,12 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
    * Returns a IndexReader reading the index in the given Directory
    *
    * @param directory the index directory
-   * @param executor an executor service for processing the creation of segment readers
+   * @param executorService an executor service for processing the creation of segment readers
    * @throws IOException if there is a low-level IO error
    */
-  public static DirectoryReader open(final Directory directory, ExecutorService executor)
+  public static DirectoryReader open(final Directory directory, ExecutorService executorService)
       throws IOException {
-    return StandardDirectoryReader.open(directory, null, null, executor);
+    return StandardDirectoryReader.open(directory, null, null, executorService);
   }
 
   /**
@@ -100,14 +100,14 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
    *     leafSorter} should sort leaves according to this sort criteria. Providing leafSorter allows
    *     to speed up this particular type of sort queries by early terminating while iterating
    *     through segments and segments' documents.
-   * @param executor provies an executor service that will be utilized to intialize segment readers.
+   * @param executorService provies an executor service that will be utilized to intialize segment readers.
    *     Providing an executor is useful to parallelize
    * @throws IOException if there is a low-level IO error
    */
   public static DirectoryReader open(
-      final Directory directory, Comparator<LeafReader> leafSorter, ExecutorService executor)
+      final Directory directory, Comparator<LeafReader> leafSorter, ExecutorService executorService)
       throws IOException {
-    return StandardDirectoryReader.open(directory, null, leafSorter, executor);
+    return StandardDirectoryReader.open(directory, null, leafSorter, executorService);
   }
 
   /**
