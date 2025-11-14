@@ -27,6 +27,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -62,9 +65,12 @@ public final class StandardDirectoryReader extends DirectoryReader {
   }
 
   static DirectoryReader open(
-      final Directory directory, final IndexCommit commit, Comparator<LeafReader> leafSorter)
+      final Directory directory,
+      final IndexCommit commit,
+      Comparator<LeafReader> leafSorter,
+      ExecutorService executor)
       throws IOException {
-    return open(directory, Version.MIN_SUPPORTED_MAJOR, commit, leafSorter);
+    return open(directory, Version.MIN_SUPPORTED_MAJOR, commit, leafSorter, executor);
   }
 
   /** called from DirectoryReader.open(...) methods */
@@ -72,7 +78,8 @@ public final class StandardDirectoryReader extends DirectoryReader {
       final Directory directory,
       int minSupportedMajorVersion,
       final IndexCommit commit,
-      Comparator<LeafReader> leafSorter)
+      Comparator<LeafReader> leafSorter,
+      ExecutorService executor)
       throws IOException {
     return new SegmentInfos.FindSegmentsFile<DirectoryReader>(directory) {
       @Override
@@ -88,10 +95,37 @@ public final class StandardDirectoryReader extends DirectoryReader {
             SegmentInfos.readCommit(directory, segmentFileName, minSupportedMajorVersion);
         final SegmentReader[] readers = new SegmentReader[sis.size()];
         try {
-          for (int i = sis.size() - 1; i >= 0; i--) {
-            readers[i] =
-                new SegmentReader(
-                    sis.info(i), sis.getIndexCreatedVersionMajor(), IOContext.DEFAULT);
+          if (executor != null) {
+            List<Future<SegmentReader>> futures = new ArrayList<>();
+            for (int i = sis.size() - 1; i >= 0; i--) {
+              final int index = i;
+              // parallelize segment reader initialization
+              futures.add(
+                  (executor)
+                      .submit(
+                          () ->
+                              new SegmentReader(
+                                  sis.info(index),
+                                  sis.getIndexCreatedVersionMajor(),
+                                  IOContext.DEFAULT)));
+            }
+            RuntimeException firstException = null;
+            for (int i = 0; i < futures.size(); i++) {
+              try {
+                readers[sis.size() - 1 - i] = futures.get(i).get();
+              } catch (ExecutionException | InterruptedException e) {
+                // If there is an exception creating the reader we still process
+                // the rest of the completed futures to allow us to close created readers
+                if (firstException == null) firstException = new RuntimeException(e);
+              }
+            }
+            if (firstException != null) throw firstException;
+          } else {
+            for (int i = sis.size() - 1; i >= 0; i--) {
+              readers[i] =
+                  new SegmentReader(
+                      sis.info(i), sis.getIndexCreatedVersionMajor(), IOContext.DEFAULT);
+            }
           }
           // This may throw CorruptIndexException if there are too many docs, so
           // it must be inside try clause so we close readers in that case:
