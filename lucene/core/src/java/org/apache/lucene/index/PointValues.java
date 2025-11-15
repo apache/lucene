@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.Field;
@@ -274,6 +276,19 @@ public abstract class PointValues {
 
     /** Visit all the docs and values below the current node. */
     void visitDocValues(IntersectVisitor visitor) throws IOException;
+
+    /** Visit all the docs below the node at position pos */
+    default void visitDocIDs(long pos, IntersectVisitor visitor) throws IOException {}
+    ;
+
+    /**
+     * call prefetch for docs below the current node if vistor supports prefetching otherwise visit
+     * docIds
+     */
+    default void prepareOrVisitDocIDs(IntersectVisitor visitor) throws IOException {
+      visitDocIDs(visitor);
+    }
+    ;
   }
 
   /**
@@ -342,12 +357,62 @@ public abstract class PointValues {
   }
 
   /**
+   * We can recurse the {@link PointTree} using {@link TwoPhaseIntersectVisitor}. This visitor
+   * caches the blocks during recursion, calling prefetch on required blocks. This should
+   * potentially trigger IO for these blocks asynchronously in the first phase. In the second phase,
+   * the cached blocks are visited one by one.
+   *
+   * @lucene.experimental
+   */
+  public abstract static class TwoPhaseIntersectVisitor implements IntersectVisitor {
+
+    int lastDeferredBlockOrdinal = -1;
+    List<Long> deferredBlocks = new ArrayList<>();
+
+    /**
+     * return the last deferred block ordinal - this is used to avoid prefetching call for
+     * contiguous ordinals assuming contiguous ordinals prefetching can be taken care by readaheads.
+     */
+    public int lastDeferredBlockOrdinal() {
+      return lastDeferredBlockOrdinal;
+    }
+
+    /** set last deferred block ordinal * */
+    public void setLastDeferredBlockOrdinal(int leafNodeOrdinal) {
+      lastDeferredBlockOrdinal = leafNodeOrdinal;
+    }
+
+    /** Defer this block for processing in the second phase. */
+    public void deferBlock(long leafFp) {
+      deferredBlocks.add(leafFp);
+    }
+
+    /** Returns a snapshot of the currently deferred blocks. */
+    public List<Long> deferredBlocks() {
+      return new ArrayList<>(deferredBlocks);
+    }
+
+    /** Mark the given block as processed and remove it from the deferred set. */
+    public void onProcessingDeferredBlock(long leafFp) {
+      deferredBlocks.remove(leafFp);
+    }
+  }
+
+  /**
    * Finds all documents and points matching the provided visitor. This method does not enforce live
    * documents, so it's up to the caller to test whether each document is deleted, if necessary.
    */
   public final void intersect(IntersectVisitor visitor) throws IOException {
     final PointTree pointTree = getPointTree();
     intersect(visitor, pointTree);
+    if (visitor instanceof TwoPhaseIntersectVisitor twoPhaseVisitor) {
+      List<Long> fps = twoPhaseVisitor.deferredBlocks();
+      for (int i = 0; i < fps.size(); ++i) {
+        long fp = fps.get(i);
+        pointTree.visitDocIDs(fp, visitor);
+        twoPhaseVisitor.onProcessingDeferredBlock(fp);
+      }
+    }
     assert pointTree.moveToParent() == false;
   }
 
@@ -358,7 +423,7 @@ public abstract class PointValues {
       if (compare == Relation.CELL_INSIDE_QUERY) {
         // This cell is fully inside the query shape: recursively add all points in this cell
         // without filtering
-        pointTree.visitDocIDs(visitor);
+        pointTree.prepareOrVisitDocIDs(visitor);
       } else if (compare == Relation.CELL_CROSSES_QUERY) {
         // The cell crosses the shape boundary, or the cell fully contains the query, so we fall
         // through and do full filtering:

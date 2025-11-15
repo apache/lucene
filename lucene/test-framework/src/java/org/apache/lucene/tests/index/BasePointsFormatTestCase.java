@@ -124,6 +124,73 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
     IOUtils.close(r, dir);
   }
 
+  public void testBasicWithPrefetchCapableVisitor() throws Exception {
+    Directory dir = getDirectory(20);
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setMergePolicy(newLogMergePolicy());
+    IndexWriter w = new IndexWriter(dir, iwc);
+    byte[] point = new byte[4];
+    for (int i = 0; i < 20; i++) {
+      Document doc = new Document();
+      NumericUtils.intToSortableBytes(i, point, 0);
+      doc.add(new BinaryPoint("dim", point));
+      w.addDocument(doc);
+    }
+    w.forceMerge(1);
+    w.close();
+
+    DirectoryReader r = DirectoryReader.open(dir);
+    LeafReader sub = getOnlyLeafReader(r);
+    PointValues values = sub.getPointValues("dim");
+
+    // Simple test: make sure prefetch capable visitor can visit every doc when cell crosses query:
+    BitSet seen = new BitSet();
+    values.intersect(
+        new PointValues.TwoPhaseIntersectVisitor() {
+          @Override
+          public Relation compare(byte[] minPacked, byte[] maxPacked) {
+            return Relation.CELL_CROSSES_QUERY;
+          }
+
+          @Override
+          public void visit(int docID) {
+            throw new IllegalStateException();
+          }
+
+          @Override
+          public void visit(int docID, byte[] packedValue) {
+            seen.set(docID);
+            assertEquals(docID, NumericUtils.sortableBytesToInt(packedValue, 0));
+          }
+        });
+    assertEquals(20, seen.cardinality());
+    // Make sure prefetch capable visitor can visit all docs when all docs are inside query
+    // Also test we are not visiting documents twice based on whether PointTree has a prefetch
+    // implementation of
+    // prepareOrVisit or uses the default implementation
+    seen.clear();
+    final int[] docCount = {0};
+    values.intersect(
+        new PointValues.TwoPhaseIntersectVisitor() {
+          @Override
+          public void visit(int docID) throws IOException {
+            seen.set(docID);
+            docCount[0]++;
+          }
+
+          @Override
+          public void visit(int docID, byte[] packedValue) throws IOException {}
+
+          @Override
+          public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+            return Relation.CELL_INSIDE_QUERY;
+          }
+        });
+    assertEquals(20, seen.cardinality());
+    assertEquals(20, docCount[0]);
+    IOUtils.close(r, dir);
+  }
+
   public void testMerge() throws Exception {
     Directory dir = getDirectory(20);
     IndexWriterConfig iwc = newIndexWriterConfig();
