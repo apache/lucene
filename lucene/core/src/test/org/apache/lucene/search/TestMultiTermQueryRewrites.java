@@ -310,7 +310,7 @@ public class TestMultiTermQueryRewrites extends LuceneTestCase {
 
   private List<TermQuery> extractTermQueries(Query query, List<TermQuery> result) {
     if (query instanceof BooleanQuery) {
-      ((BooleanQuery) query).clauses().forEach(c -> extractTermQueries(c.getQuery(), result));
+      ((BooleanQuery) query).clauses().forEach(c -> extractTermQueries(c.query(), result));
     } else if (query instanceof BoostQuery) {
       extractTermQueries(((BoostQuery) query).getQuery(), result);
     } else if (query instanceof TermQuery) {
