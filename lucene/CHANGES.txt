@@ -131,6 +131,8 @@ Other
 * GITHUB#14761: Use more Comparators for PriorityQueue implementations. (Simon Cooper)
 * GITHUB#14817: Refactor some complex uses of PriorityQueue to use Comparators. (Simon Cooper)
 
+* GITHUB#14607: Index open performs version check on each segment, ignores indexCreatedVersionMajor (Rahul Goswami)
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes
@@ -176,6 +178,9 @@ New Features
    `Lucene104HnswScalarQuantizedVectorsFormat(ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE, int, int)`
     (Ben Trent)
 
+ * GITHUB#15415: Add fallback support to Lucene104ScalarQuantizedVectorsFormat getFloatVectorValues when there are
+   no full-precision vectors present (Pulkit Gupta)
+
 Improvements
 ---------------------
 * GITHUB#15148: Add support uint8 distance and allow 8 bit scalar quantization (Trevor McCulloch)
@@ -183,6 +188,8 @@ Improvements
 * GITHUB#15184: Refactoring internal HNSWGraphBuilder's APIs and avoid creating new scorer for each call (Patrick Zhai)
 
 * GITHUB#15332: Add PhraseQuery.Builder.setMaxTerms() method to limit the maximum number of terms and excessive memory use (linyunanit)
+
+* GITHUB#15425: Refactoring internal HnswGraph.NodesIterator to avoid unneeded copying and sorting (Mike Sokolov)
 
 Optimizations
 ---------------------
@@ -214,6 +221,8 @@ Optimizations
 * GITHUB#14963: Bypass HNSW graph building for tiny segments. (Shubham Chaudhary, Ben Trent)
 
 * GITHUB#15397: NumericComparator: immediately check whether a segment is competitive with the recorded bottom (Martijn van Groningen)
+
+# GITHUB#15303: Speed up NumericUtils#{add,subtract} by operating on integers instead of bytes. (Kaival Parikh)
 
 Bug Fixes
 ---------------------
@@ -249,6 +258,13 @@ Other
 Build
 ---------------------
 * Upgrade forbiddenapis to version 3.10.  (Uwe Schindler)
+
+======================= Lucene 10.3.2 =======================
+
+Bug Fixes
+---------------------
+* GITHUB#15380: Fix potential EOF introduced by optimized filter iterations in MaxScoreBulkScorer. The
+  approximation and the match verification could get out of sync, resulting in an EOFException. (Ben Trent)
 
 ======================= Lucene 10.3.1 =======================
 
