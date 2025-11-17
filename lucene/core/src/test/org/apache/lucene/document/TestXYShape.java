@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.document;
 
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Component2D;
 import org.apache.lucene.geo.Tessellator;
@@ -282,6 +284,33 @@ public class TestXYShape extends LuceneTestCase {
     assertEquals(0, searcher.count(query));
 
     IOUtils.close(w, reader, dir);
+  }
+
+  /** Checks if at least two of the given polygon's vertices are identical. */
+  private boolean hasDuplicateVertices(XYPolygon poly) {
+    Set<XYPoint> vertices = new HashSet<>();
+    // The first and last vertices are always equal, so we don't check the last.
+    for (int i = 0; i < poly.numPoints() - 1; i++) {
+      XYPoint vertex = new XYPoint(poly.getPolyX(i), poly.getPolyY(i));
+      if (vertices.contains(vertex)) {
+        return true;
+      }
+      vertices.add(vertex);
+    }
+    return false;
+  }
+
+  /**
+   * Tests that for small radii and large numbers of vertices, we produce valid regular polygons.
+   */
+  public void testRegularPolygonsAreLargeEnough() {
+    final int maxGons = 100;
+    // The more vertices, the larger radius we need for the polygon not to collapse into a point.
+    double radius = random().nextDouble(0, ShapeTestUtil.smallestRadius(maxGons));
+    int gons = random().nextInt(3, maxGons);
+
+    XYPolygon regularNGon = ShapeTestUtil.createRegularPolygon(0, 0, radius, gons);
+    assertFalse(hasDuplicateVertices(regularNGon));
   }
 
   private static boolean areBoxDisjoint(XYRectangle r1, XYRectangle r2) {
