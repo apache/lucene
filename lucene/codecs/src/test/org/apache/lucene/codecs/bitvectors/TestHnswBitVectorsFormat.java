@@ -122,9 +122,4 @@ public class TestHnswBitVectorsFormat extends BaseIndexFileFormatTestCase {
     expectThrows(IllegalArgumentException.class, () -> new HnswBitVectorsFormat(512 + 1, 20));
     expectThrows(IllegalArgumentException.class, () -> new HnswBitVectorsFormat(20, 3201));
   }
-
-  @Override
-  public void testMergeStability() throws Exception {
-    assumeTrue("testMergeStability disabled for HnswBitVectorsFormat", true);
-  }
 }
