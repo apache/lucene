@@ -63,6 +63,10 @@ import org.apache.lucene.store.IndexOutput;
  *       that only in sparse case
  * </ul>
  *
+ * <p>NOTE: This format aligns float vectors of specific dimensions (multiples of 16) to 64 bytes in
+ * the index, for optimal performance on Arm Neoverse machines. There may be a small performance
+ * penalty in using float vectors of other dimensions on these machines.
+ *
  * @lucene.experimental
  */
 public final class Lucene99FlatVectorsFormat extends FlatVectorsFormat {
