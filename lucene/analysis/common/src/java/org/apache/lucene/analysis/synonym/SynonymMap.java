@@ -29,6 +29,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.store.ByteArrayDataOutput;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.BytesRefHash;
@@ -53,12 +54,24 @@ public class SynonymMap {
   public final FST<BytesRef> fst;
 
   /** map&lt;ord, outputword&gt; */
-  public final BytesRefHash words;
+  public final SynonymDictionary words;
 
   /** maxHorizontalContext: maximum context we need on the tokenstream */
   public final int maxHorizontalContext;
 
   public SynonymMap(FST<BytesRef> fst, BytesRefHash words, int maxHorizontalContext) {
+    this(
+        fst,
+        new SynonymDictionary() {
+          @Override
+          public void get(int id, BytesRef scratch) {
+            words.get(id, scratch);
+          }
+        },
+        maxHorizontalContext);
+  }
+
+  SynonymMap(FST<BytesRef> fst, SynonymDictionary words, int maxHorizontalContext) {
     this.fst = fst;
     this.words = words;
     this.maxHorizontalContext = maxHorizontalContext;
@@ -218,12 +231,26 @@ public class SynonymMap {
       add(input, countWords(input), output, countWords(output), includeOrig);
     }
 
-    /** Builds an {@link SynonymMap} and returns it. */
+    /** Buils a {@link SynonymMap} and returns it. */
     public SynonymMap build() throws IOException {
+      return build(null);
+    }
+
+    /**
+     * Builds a {@link SynonymMap} and returns it. If directory is non-null, it will write the
+     * compiled SynonymMap to disk and return an off-heap version.
+     */
+    public SynonymMap build(SynonymMapDirectory directory) throws IOException {
       ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
       // TODO: are we using the best sharing options?
-      FSTCompiler<BytesRef> fstCompiler =
-          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE4, outputs).build();
+      FSTCompiler.Builder<BytesRef> fstCompilerBuilder =
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE4, outputs);
+      IndexOutput fstOutput = null;
+      if (directory != null) {
+        fstOutput = directory.fstOutput();
+        fstCompilerBuilder.dataOutput(fstOutput);
+      }
+      FSTCompiler<BytesRef> fstCompiler = fstCompilerBuilder.build();
 
       BytesRefBuilder scratch = new BytesRefBuilder();
       ByteArrayDataOutput scratchOutput = new ByteArrayDataOutput();
@@ -290,9 +317,26 @@ public class SynonymMap {
         fstCompiler.add(Util.toUTF32(input, scratchIntsRef), scratch.toBytesRef());
       }
 
-      FST<BytesRef> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
+      FST.FSTMetadata<BytesRef> fstMetaData = fstCompiler.compile();
+      if (directory != null) {
+        fstOutput.close(); // TODO -- Should fstCompiler.compile take care of this?
+        try (SynonymMapDirectory.WordsOutput wordsOutput = directory.wordsOutput()) {
+          BytesRef scratchRef = new BytesRef();
+          for (int i = 0; i < words.size(); i++) {
+            words.get(i, scratchRef);
+            wordsOutput.addWord(scratchRef);
+          }
+        }
+        directory.writeMetadata(words.size(), maxHorizontalContext, fstMetaData);
+        return directory.readMap();
+      }
+      FST<BytesRef> fst = FST.fromFSTReader(fstMetaData, fstCompiler.getFSTReader());
       return new SynonymMap(fst, words, maxHorizontalContext);
     }
+  }
+
+  abstract static class SynonymDictionary {
+    public abstract void get(int id, BytesRef scratch) throws IOException;
   }
 
   /**
