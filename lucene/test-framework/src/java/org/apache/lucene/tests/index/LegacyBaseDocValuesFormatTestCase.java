@@ -3183,7 +3183,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
 
   public void testOneSortedNumberOneMissing() throws IOException {
     Directory directory = newDirectory();
-    IndexWriter writer = new IndexWriter(directory, new IndexWriterConfig(null));
+    IndexWriter writer = new IndexWriter(directory, new IndexWriterConfig((Analyzer) null));
     Document doc = new Document();
     doc.add(new SortedNumericDocValuesField("dv", 5));
     writer.addDocument(doc);
@@ -3277,7 +3277,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
 
   public void testTwoSortedNumberOneMissing() throws IOException {
     Directory directory = newDirectory();
-    IndexWriter writer = new IndexWriter(directory, new IndexWriterConfig(null));
+    IndexWriter writer = new IndexWriter(directory, new IndexWriterConfig((Analyzer) null));
     Document doc = new Document();
     doc.add(new SortedNumericDocValuesField("dv", 11));
     doc.add(new SortedNumericDocValuesField("dv", -5));
@@ -3301,7 +3301,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
 
   public void testSortedNumberMerge() throws IOException {
     Directory directory = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig(null);
+    IndexWriterConfig iwc = new IndexWriterConfig((Analyzer) null);
     iwc.setMergePolicy(newLogMergePolicy());
     IndexWriter writer = new IndexWriter(directory, iwc);
     Document doc = new Document();
