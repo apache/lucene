@@ -353,7 +353,7 @@ public final class QueryParserPaneProvider implements QueryParserTabOperator {
             .map(PointTypesTableModel.NumType::name)
             .toArray(String[]::new);
     JComboBox<String> numTypesCombo = new JComboBox<>(numTypes);
-    numTypesCombo.setRenderer((list, value, index, isSelected, cellHasFocus) -> new JLabel(value));
+    numTypesCombo.setRenderer((_, value, _, _, _) -> new JLabel(value));
     pointRangeQueryTable
         .getColumnModel()
         .getColumn(PointTypesTableModel.Column.TYPE.getIndex())
@@ -361,8 +361,7 @@ public final class QueryParserPaneProvider implements QueryParserTabOperator {
     pointRangeQueryTable
         .getColumnModel()
         .getColumn(PointTypesTableModel.Column.TYPE.getIndex())
-        .setCellRenderer(
-            (table, value, isSelected, hasFocus, row, column) -> new JLabel((String) value));
+        .setCellRenderer((_, value, _, _, _, _) -> new JLabel((String) value));
     pointRangeQueryTable
         .getColumnModel()
         .getColumn(PointTypesTableModel.Column.FIELD.getIndex())
@@ -421,7 +420,7 @@ public final class QueryParserPaneProvider implements QueryParserTabOperator {
         .fuzzyMinSim(fuzzyMinSimFloat)
         .fuzzyPrefixLength(fuzzyPrefLenInt)
         .dateResolution(DateTools.Resolution.valueOf((String) dateResCB.getSelectedItem()))
-        .locale(new Locale(locationTF.getText()))
+        .locale(new Locale.Builder().setLanguageTag(locationTF.getText()).build())
         .timeZone(TimeZone.getTimeZone(timezoneTF.getText()))
         .typeMap(typeMap)
         .build();

@@ -69,7 +69,7 @@ public class RepSelectByPrefTask extends RepSumByPrefTask {
         first = false;
         String line = taskReportLine(longestOp, stat);
         if (taskStats.size() > 2 && reported % 2 == 0) {
-          line = line.replaceAll("   ", " - ");
+          line = line.replace("   ", " - ");
         }
         sb.append(line);
       }

@@ -49,11 +49,13 @@ import java.util.Set;
  *
  * <pre class="prettyprint">
  *  final boolean isDeprecatedMethodOverridden =
- *   oldMethod.getImplementationDistance(this.getClass()) &gt; newMethod.getImplementationDistance(this.getClass());
+ *   AccessController.doPrivileged((PrivilegedAction&lt;Boolean&gt;) () -&gt;
+ *    (oldMethod.getImplementationDistance(this.getClass()) &gt; newMethod.getImplementationDistance(this.getClass())));
  *
  *  <em>// alternatively (more readable):</em>
  *  final boolean isDeprecatedMethodOverridden =
- *   VirtualMethod.compareImplementationDistance(this.getClass(), oldMethod, newMethod) &gt; 0
+ *   AccessController.doPrivileged((PrivilegedAction&lt;Boolean&gt;) () -&gt;
+ *    VirtualMethod.compareImplementationDistance(this.getClass(), oldMethod, newMethod) &gt; 0);
  * </pre>
  *
  * <p>{@link #getImplementationDistance} returns the distance of the subclass that overrides this
@@ -72,7 +74,7 @@ public final class VirtualMethod<C> {
   private final String method;
   private final Class<?>[] parameters;
   private final ClassValue<Integer> distanceOfClass =
-      new ClassValue<Integer>() {
+      new ClassValue<>() {
         @Override
         protected Integer computeValue(Class<?> subclazz) {
           return Integer.valueOf(reflectImplementationDistance(subclazz));
@@ -138,9 +140,7 @@ public final class VirtualMethod<C> {
         try {
           clazz.getDeclaredMethod(method, parameters);
           overridden = true;
-        } catch (
-            @SuppressWarnings("unused")
-            NoSuchMethodException nsme) {
+        } catch (NoSuchMethodException _) {
         }
       }
 

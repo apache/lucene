@@ -114,7 +114,7 @@ public class BooleanQueryTestFacade {
   public void doTest() throws Exception {
 
     if (verbose) {
-      System.out.println("");
+      System.out.println();
       System.out.println("Query: " + queryText);
     }
 

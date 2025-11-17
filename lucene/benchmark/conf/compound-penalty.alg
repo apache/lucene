@@ -37,8 +37,8 @@ doc.term.vector=vector:true:true:false:false
 log.step=500
 log.step.DeleteDoc=100
 
-docs.dir=reuters-out
-#docs.dir=reuters-111
+work.dir=data
+docs.dir=reuters21578
 
 content.source=org.apache.lucene.benchmark.byTask.feeds.ReutersContentSource
 
@@ -58,31 +58,31 @@ ResetSystemErase
   { "AddDocs" AddDoc > : 10000
   CloseIndex
 
-  OpenReader  
+  OpenReader
   { "SearchSameRdr" Search > : 500
-  CloseReader 
-              
+  CloseReader
+
   { "WarmNewRdr" Warm > : 50
-              
+
   { "SrchNewRdr" Search > : 500
-              
+
   { "SrchTrvNewRdr" SearchTrav > : 300
-              
+
   { "SrchTrvRetNewRdr" SearchTravRet > : 100
 
   [ "WarmNewRdr" Warm > : 50
-              
+
   [ "SrchNewRdr" Search > : 500
-              
+
   [ "SrchTrvNewRdr" SearchTrav > : 300
-              
+
   [ "SrchTrvRetNewRdr" SearchTravRet > : 100
 
   ResetInputs
   RepSumByName
   NewRound
 } : 4
-            
+
 RepSumByName
 RepSumByNameRound
 RepSumByPrefRound AddDocs

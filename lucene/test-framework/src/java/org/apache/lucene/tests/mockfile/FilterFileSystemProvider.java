@@ -51,8 +51,10 @@ public abstract class FilterFileSystemProvider extends FileSystemProvider {
 
   /** The underlying {@code FileSystemProvider}. */
   protected final FileSystemProvider delegate;
+
   /** The underlying {@code FileSystem} instance. */
   protected FilterFileSystem fileSystem;
+
   /** The URI scheme for this provider. */
   protected final String scheme;
 
@@ -224,7 +226,7 @@ public abstract class FilterFileSystemProvider extends FileSystemProvider {
   public DirectoryStream<Path> newDirectoryStream(Path dir, final Filter<? super Path> filter)
       throws IOException {
     Filter<Path> wrappedFilter =
-        new Filter<Path>() {
+        new Filter<>() {
           @Override
           public boolean accept(Path entry) throws IOException {
             return filter.accept(wrapPath(entry));
@@ -256,8 +258,7 @@ public abstract class FilterFileSystemProvider extends FileSystemProvider {
   }
 
   protected Path toDelegate(Path path) {
-    if (path instanceof FilterPath) {
-      FilterPath fp = (FilterPath) path;
+    if (path instanceof FilterPath fp) {
       if (fp.fileSystem != fileSystem) {
         throw new ProviderMismatchException(
             "mismatch, expected: "

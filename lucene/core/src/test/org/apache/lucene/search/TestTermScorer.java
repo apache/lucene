@@ -39,6 +39,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.Bits;
 
 public class TestTermScorer extends LuceneTestCase {
   protected Directory directory;
@@ -123,7 +124,9 @@ public class TestTermScorer extends LuceneTestCase {
             return ScoreMode.COMPLETE;
           }
         },
-        null);
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
     assertTrue("docs Size: " + docs.size() + " is not: " + 2, docs.size() == 2);
     TestHit doc0 = docs.get(0);
     TestHit doc5 = docs.get(1);
@@ -205,11 +208,13 @@ public class TestTermScorer extends LuceneTestCase {
     IndexSearcher indexSearcher = new IndexSearcher(forbiddenNorms);
 
     Weight weight = indexSearcher.createWeight(termQuery, ScoreMode.COMPLETE, 1);
-    expectThrows(
-        AssertionError.class,
-        () -> {
-          weight.scorer(forbiddenNorms.getContext()).iterator().nextDoc();
-        });
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(
+          AssertionError.class,
+          () -> {
+            weight.scorer(forbiddenNorms.getContext()).iterator().nextDoc();
+          });
+    }
 
     Weight weight2 = indexSearcher.createWeight(termQuery, ScoreMode.COMPLETE_NO_SCORES, 1);
     // should not fail this time since norms are not necessary
@@ -242,10 +247,10 @@ public class TestTermScorer extends LuceneTestCase {
     for (int iter = 0; iter < 15; ++iter) {
       Query query = new TermQuery(new Term("foo", Integer.toString(iter)));
 
-      CollectorManager<TopScoreDocCollector, TopDocs> completeManager =
-          TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE);
-      CollectorManager<TopScoreDocCollector, TopDocs> topScoresManager =
-          TopScoreDocCollector.createSharedManager(10, null, 1);
+      TopScoreDocCollectorManager completeManager =
+          new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
+      TopScoreDocCollectorManager topScoresManager =
+          new TopScoreDocCollectorManager(10, 1); // TOP_SCORES
 
       TopDocs complete = searcher.search(query, completeManager);
       TopDocs topScores = searcher.search(query, topScoresManager);
@@ -258,13 +263,53 @@ public class TestTermScorer extends LuceneTestCase {
               .add(new TermQuery(new Term("foo", Integer.toString(filterTerm))), Occur.FILTER)
               .build();
 
-      completeManager = TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE);
-      topScoresManager = TopScoreDocCollector.createSharedManager(10, null, 1);
+      completeManager = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
+      topScoresManager = new TopScoreDocCollectorManager(10, 1); // TOP_SCORES
       complete = searcher.search(filteredQuery, completeManager);
       topScores = searcher.search(filteredQuery, topScoresManager);
       CheckHits.checkEqual(query, complete.scoreDocs, topScores.scoreDocs);
     }
     reader.close();
     dir.close();
+  }
+
+  public void testNextDocsAndScores() throws IOException {
+    Term allTerm = new Term(FIELD, "all");
+    TermQuery termQuery = new TermQuery(allTerm);
+    Weight weight = indexSearcher.createWeight(termQuery, ScoreMode.TOP_SCORES, 1f);
+    LeafReaderContext context = indexSearcher.getIndexReader().leaves().get(0);
+    Bits liveDocs = context.reader().getLiveDocs();
+    Scorer scorer1 = weight.scorer(context);
+    Scorer scorer2 = weight.scorer(context);
+    scorer1.iterator().nextDoc();
+    scorer2.iterator().nextDoc();
+    DocAndFloatFeatureBuffer buffer = new DocAndFloatFeatureBuffer();
+    while (true) {
+      int curDoc = scorer2.iterator().docID();
+      int upTo =
+          TestUtil.nextInt(random(), curDoc, (int) Math.min(Integer.MAX_VALUE, curDoc + 512L));
+      scorer1.nextDocsAndScores(upTo, liveDocs, buffer);
+      assertEquals(buffer.size == 0, curDoc >= upTo);
+
+      for (int i = 0; i < buffer.size; ++i) {
+        while (liveDocs != null && liveDocs.get(scorer2.iterator().docID()) == false) {
+          scorer2.iterator().nextDoc();
+        }
+        assertEquals(scorer2.iterator().docID(), buffer.docs[i]);
+        assertEquals(scorer2.score(), buffer.features[i], 0f);
+        scorer2.iterator().nextDoc();
+      }
+
+      assertEquals(scorer2.iterator().docID(), scorer1.iterator().docID());
+      if (scorer1.iterator().docID() == DocIdSetIterator.NO_MORE_DOCS) {
+        break;
+      }
+    }
+
+    Scorer scorer3 = weight.scorer(context);
+    scorer3.iterator().nextDoc();
+    scorer3.nextDocsAndScores(
+        DocIdSetIterator.NO_MORE_DOCS, new Bits.MatchNoBits(context.reader().maxDoc()), buffer);
+    assertEquals(0, buffer.size);
   }
 }

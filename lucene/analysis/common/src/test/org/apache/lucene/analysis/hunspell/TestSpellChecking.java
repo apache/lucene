@@ -59,6 +59,14 @@ public class TestSpellChecking extends LuceneTestCase {
 
   public void testRepSuggestions() throws Exception {
     doTest("rep");
+
+    //noinspection DataFlowIssue
+    Path aff = Path.of(getClass().getResource("rep.aff").toURI());
+    Dictionary dictionary = TestAllDictionaries.loadDictionary(aff);
+    Suggester suggester = new Suggester(dictionary);
+    assertEquals(List.of("auto's"), suggester.suggestNoTimeout("autos", () -> {}));
+    assertEquals(
+        List.of("auto's", "auto"), suggester.proceedPastRep().suggestNoTimeout("autos", () -> {}));
   }
 
   public void testPhSuggestions() throws Exception {
@@ -256,15 +264,22 @@ public class TestSpellChecking extends LuceneTestCase {
   }
 
   static void checkSpellCheckerExpectations(Path basePath) throws IOException, ParseException {
-    InputStream affixStream = Files.newInputStream(Path.of(basePath.toString() + ".aff"));
+    checkSpellCheckerExpectations(
+        basePath, SortingStrategy.offline(new ByteBuffersDirectory(), "dictionary"));
+    checkSpellCheckerExpectations(basePath, SortingStrategy.inMemory());
+  }
+
+  private static void checkSpellCheckerExpectations(Path basePath, SortingStrategy strategy)
+      throws IOException, ParseException {
+    Path affFile = Path.of(basePath + ".aff");
     Path dicFile = Path.of(basePath + ".dic");
+    InputStream affixStream = Files.newInputStream(affFile);
     InputStream dictStream = Files.newInputStream(dicFile);
 
     Hunspell speller;
     Map<String, Suggester> suggesters = new LinkedHashMap<>();
     try {
-      Dictionary dictionary =
-          new Dictionary(new ByteBuffersDirectory(), "dictionary", affixStream, dictStream);
+      Dictionary dictionary = new Dictionary(affixStream, List.of(dictStream), false, strategy);
       speller = new Hunspell(dictionary, TimeoutPolicy.NO_TIMEOUT, () -> {});
       Suggester suggester = new Suggester(dictionary);
       suggesters.put("default", suggester);

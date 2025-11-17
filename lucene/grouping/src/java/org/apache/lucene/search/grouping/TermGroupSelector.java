@@ -19,11 +19,10 @@ package org.apache.lucene.search.grouping;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
@@ -33,7 +32,7 @@ public class TermGroupSelector extends GroupSelector<BytesRef> {
 
   private final String field;
   private final BytesRefHash values = new BytesRefHash();
-  private final Map<Integer, Integer> ordsToGroupIds = new HashMap<>();
+  private final IntIntHashMap ordsToGroupIds = new IntIntHashMap();
 
   private SortedDocValues docValues;
   private int groupId;

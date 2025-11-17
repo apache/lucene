@@ -17,8 +17,12 @@
 
 package org.apache.lucene.util.hnsw;
 
+import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.util.ArrayUtil;
+import java.util.function.LongConsumer;
+import org.apache.lucene.internal.hppc.MaxSizedFloatArrayList;
+import org.apache.lucene.internal.hppc.MaxSizedIntArrayList;
+import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * NeighborArray encodes the neighbors of a node and their mutual scores in the HNSW graph as a pair
@@ -29,17 +33,32 @@ import org.apache.lucene.util.ArrayUtil;
  * @lucene.internal
  */
 public class NeighborArray {
+  private static final long BASE_RAM_BYTES_USED =
+      RamUsageEstimator.shallowSizeOfInstance(NeighborArray.class);
+
   private final boolean scoresDescOrder;
   private int size;
-
-  float[] score;
-  int[] node;
+  private final int maxSize;
+  private final MaxSizedFloatArrayList scores;
+  private final MaxSizedIntArrayList nodes;
   private int sortedNodeSize;
+  private long ramBytesUsed = BASE_RAM_BYTES_USED;
+  private final LongConsumer onHeapMemoryUsageListener;
 
   public NeighborArray(int maxSize, boolean descOrder) {
-    node = new int[maxSize];
-    score = new float[maxSize];
+    this(maxSize, descOrder, null);
+  }
+
+  public NeighborArray(int maxSize, boolean descOrder, LongConsumer onHeapMemoryUsageListener) {
+    this.maxSize = maxSize;
+    nodes = new MaxSizedIntArrayList(maxSize, maxSize / 8);
+    scores = new MaxSizedFloatArrayList(maxSize, maxSize / 8);
+    this.ramBytesUsed += nodes.ramBytesUsed() + scores.ramBytesUsed();
     this.scoresDescOrder = descOrder;
+    this.onHeapMemoryUsageListener = onHeapMemoryUsageListener;
+    if (onHeapMemoryUsageListener != null) {
+      onHeapMemoryUsageListener.accept(ramBytesUsed);
+    }
   }
 
   /**
@@ -48,31 +67,66 @@ public class NeighborArray {
    */
   public void addInOrder(int newNode, float newScore) {
     assert size == sortedNodeSize : "cannot call addInOrder after addOutOfOrder";
-    if (size == node.length) {
-      node = ArrayUtil.grow(node);
-      score = ArrayUtil.growExact(score, node.length);
+    if (size == maxSize) {
+      throw new IllegalStateException("No growth is allowed");
     }
     if (size > 0) {
-      float previousScore = score[size - 1];
+      float previousScore = scores.get(size - 1);
       assert ((scoresDescOrder && (previousScore >= newScore))
               || (scoresDescOrder == false && (previousScore <= newScore)))
-          : "Nodes are added in the incorrect order!";
+          : "Nodes are added in the incorrect order! Comparing "
+              + newScore
+              + " to "
+              + Arrays.toString(scores.toArray());
     }
-    node[size] = newNode;
-    score[size] = newScore;
+    int previousLength = nodes.buffer.length;
+    nodes.add(newNode);
+    scores.add(newScore);
+    alertOnHeapMemoryUsageChange(nodes.buffer.length, previousLength);
     ++size;
     ++sortedNodeSize;
   }
 
-  /** Add node and score but do not insert as sorted */
+  /** Add node and newScore but do not insert as sorted */
   public void addOutOfOrder(int newNode, float newScore) {
-    if (size == node.length) {
-      node = ArrayUtil.grow(node);
-      score = ArrayUtil.growExact(score, node.length);
+    if (size == maxSize) {
+      throw new IllegalStateException("No growth is allowed");
     }
-    node[size] = newNode;
-    score[size] = newScore;
+    int previousLength = nodes.buffer.length;
+    nodes.add(newNode);
+    scores.add(newScore);
+    alertOnHeapMemoryUsageChange(nodes.buffer.length, previousLength);
     size++;
+  }
+
+  private void alertOnHeapMemoryUsageChange(int newLength, int previousLength) {
+    if (newLength > previousLength && onHeapMemoryUsageListener != null) {
+      int lengthDelta = newLength - previousLength;
+      onHeapMemoryUsageListener.accept(
+          (long) (lengthDelta) * Integer.BYTES + (long) (lengthDelta) * Float.BYTES);
+    }
+  }
+
+  /**
+   * In addition to {@link #addOutOfOrder(int, float)}, this function will also remove the
+   * least-diverse node if the node array is full after insertion
+   *
+   * <p>In multi-threading environment, this method need to be locked as it will be called by
+   * multiple threads while other add method is only supposed to be called by one thread.
+   *
+   * @param nodeId node Id of the owner of this NeighbourArray
+   */
+  public void addAndEnsureDiversity(
+      int newNode, float newScore, int nodeId, UpdateableRandomVectorScorer scorer)
+      throws IOException {
+    addOutOfOrder(newNode, newScore);
+    if (size < maxSize) {
+      return;
+    }
+    // we're oversize, need to do diversity check and pop out the least diverse neighbour
+    scorer.setScoringOrdinal(nodeId);
+    removeIndex(findWorstNonDiverse(scorer));
+    assert size == maxSize - 1;
   }
 
   /**
@@ -82,7 +136,7 @@ public class NeighborArray {
    * @return indexes of newly sorted (unchecked) nodes, in ascending order, or null if the array is
    *     already fully sorted
    */
-  public int[] sort() {
+  int[] sort(RandomVectorScorer scorer) throws IOException {
     if (size == sortedNodeSize) {
       // all nodes checked and sorted
       return null;
@@ -91,7 +145,10 @@ public class NeighborArray {
     int[] uncheckedIndexes = new int[size - sortedNodeSize];
     int count = 0;
     while (sortedNodeSize != size) {
-      uncheckedIndexes[count] = insertSortedInternal(); // sortedNodeSize is increased inside
+      // TODO: Instead of do an array copy on every insertion, I think we can do better here:
+      //       Remember the insertion point of each unsorted node and insert them altogether
+      //       We can save several array copy by doing that
+      uncheckedIndexes[count] = insertSortedInternal(scorer); // sortedNodeSize is increased inside
       for (int i = 0; i < count; i++) {
         if (uncheckedIndexes[i] >= uncheckedIndexes[count]) {
           // the previous inserted nodes has been shifted
@@ -105,28 +162,41 @@ public class NeighborArray {
   }
 
   /** insert the first unsorted node into its sorted position */
-  private int insertSortedInternal() {
+  private int insertSortedInternal(RandomVectorScorer scorer) throws IOException {
     assert sortedNodeSize < size : "Call this method only when there's unsorted node";
-    int tmpNode = node[sortedNodeSize];
-    float tmpScore = score[sortedNodeSize];
+    int tmpNode = nodes.get(sortedNodeSize);
+    float tmpScore = scores.get(sortedNodeSize);
+
+    if (Float.isNaN(tmpScore)) {
+      tmpScore = scorer.score(tmpNode);
+    }
+
     int insertionPoint =
         scoresDescOrder
             ? descSortFindRightMostInsertionPoint(tmpScore, sortedNodeSize)
             : ascSortFindRightMostInsertionPoint(tmpScore, sortedNodeSize);
     System.arraycopy(
-        node, insertionPoint, node, insertionPoint + 1, sortedNodeSize - insertionPoint);
+        nodes.buffer,
+        insertionPoint,
+        nodes.buffer,
+        insertionPoint + 1,
+        sortedNodeSize - insertionPoint);
     System.arraycopy(
-        score, insertionPoint, score, insertionPoint + 1, sortedNodeSize - insertionPoint);
-    node[insertionPoint] = tmpNode;
-    score[insertionPoint] = tmpScore;
+        scores.buffer,
+        insertionPoint,
+        scores.buffer,
+        insertionPoint + 1,
+        sortedNodeSize - insertionPoint);
+    nodes.buffer[insertionPoint] = tmpNode;
+    scores.buffer[insertionPoint] = tmpScore;
     ++sortedNodeSize;
     return insertionPoint;
   }
 
   /** This method is for test only. */
-  void insertSorted(int newNode, float newScore) {
+  void insertSorted(int newNode, float newScore) throws IOException {
     addOutOfOrder(newNode, newScore);
-    insertSortedInternal();
+    insertSortedInternal(null);
   }
 
   public int size() {
@@ -138,27 +208,41 @@ public class NeighborArray {
    *
    * @lucene.internal
    */
-  public int[] node() {
-    return node;
+  public int[] nodes() {
+    return nodes.buffer;
   }
 
-  public float[] score() {
-    return score;
+  /**
+   * Get the score at the given index
+   *
+   * @param i index of the score to get
+   * @return the score at the given index
+   */
+  public float getScores(int i) {
+    return scores.get(i);
   }
 
   public void clear() {
     size = 0;
     sortedNodeSize = 0;
+    nodes.clear();
+    scores.clear();
   }
 
-  public void removeLast() {
+  void removeLast() {
+    nodes.removeLast();
+    scores.removeLast();
     size--;
     sortedNodeSize = Math.min(sortedNodeSize, size);
   }
 
-  public void removeIndex(int idx) {
-    System.arraycopy(node, idx + 1, node, idx, size - idx - 1);
-    System.arraycopy(score, idx + 1, score, idx, size - idx - 1);
+  void removeIndex(int idx) {
+    if (idx == size - 1) {
+      removeLast();
+      return;
+    }
+    nodes.removeAt(idx);
+    scores.removeAt(idx);
     if (idx < sortedNodeSize) {
       sortedNodeSize--;
     }
@@ -171,10 +255,11 @@ public class NeighborArray {
   }
 
   private int ascSortFindRightMostInsertionPoint(float newScore, int bound) {
-    int insertionPoint = Arrays.binarySearch(score, 0, bound, newScore);
+    int insertionPoint = Arrays.binarySearch(scores.buffer, 0, bound, newScore);
     if (insertionPoint >= 0) {
       // find the right most position with the same score
-      while ((insertionPoint < bound - 1) && (score[insertionPoint + 1] == score[insertionPoint])) {
+      while ((insertionPoint < bound - 1)
+          && (scores.get(insertionPoint + 1) == scores.get(insertionPoint))) {
         insertionPoint++;
       }
       insertionPoint++;
@@ -189,9 +274,65 @@ public class NeighborArray {
     int end = bound - 1;
     while (start <= end) {
       int mid = (start + end) / 2;
-      if (score[mid] < newScore) end = mid - 1;
+      if (scores.get(mid) < newScore) end = mid - 1;
       else start = mid + 1;
     }
     return start;
+  }
+
+  /**
+   * Find first non-diverse neighbour among the list of neighbors starting from the most distant
+   * neighbours
+   */
+  private int findWorstNonDiverse(UpdateableRandomVectorScorer scorer) throws IOException {
+    int[] uncheckedIndexes = sort(scorer);
+    assert uncheckedIndexes != null : "We will always have something unchecked";
+    int uncheckedCursor = uncheckedIndexes.length - 1;
+    for (int i = size - 1; i > 0; i--) {
+      if (uncheckedCursor < 0) {
+        // no unchecked node left
+        break;
+      }
+      scorer.setScoringOrdinal(nodes.get(i));
+      if (isWorstNonDiverse(i, uncheckedIndexes, uncheckedCursor, scorer)) {
+        return i;
+      }
+      if (i == uncheckedIndexes[uncheckedCursor]) {
+        uncheckedCursor--;
+      }
+    }
+    return size - 1;
+  }
+
+  private boolean isWorstNonDiverse(
+      int candidateIndex, int[] uncheckedIndexes, int uncheckedCursor, RandomVectorScorer scorer)
+      throws IOException {
+    float minAcceptedSimilarity = scores.get(candidateIndex);
+    if (candidateIndex == uncheckedIndexes[uncheckedCursor]) {
+      // the candidate itself is unchecked
+      for (int i = candidateIndex - 1; i >= 0; i--) {
+        float neighborSimilarity = scorer.score(nodes.get(i));
+        // candidate node is too similar to node i given its score relative to the base node
+        if (neighborSimilarity >= minAcceptedSimilarity) {
+          return true;
+        }
+      }
+    } else {
+      // else we just need to make sure candidate does not violate diversity with the (newly
+      // inserted) unchecked nodes
+      assert candidateIndex > uncheckedIndexes[uncheckedCursor];
+      for (int i = uncheckedCursor; i >= 0; i--) {
+        float neighborSimilarity = scorer.score(nodes.get(uncheckedIndexes[i]));
+        // candidate node is too similar to node i given its score relative to the base node
+        if (neighborSimilarity >= minAcceptedSimilarity) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  public int maxSize() {
+    return maxSize;
   }
 }

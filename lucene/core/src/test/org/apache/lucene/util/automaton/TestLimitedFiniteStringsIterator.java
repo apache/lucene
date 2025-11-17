@@ -41,9 +41,7 @@ public class TestLimitedFiniteStringsIterator extends LuceneTestCase {
         // NOTE: cannot do this, because the method is not
         // guaranteed to detect cycles when you have a limit
         // assertTrue(AutomatonTestUtil.isFinite(a));
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException iae) {
+      } catch (IllegalArgumentException _) {
         assertFalse(AutomatonTestUtil.isFinite(a));
       }
     }
@@ -78,7 +76,7 @@ public class TestLimitedFiniteStringsIterator extends LuceneTestCase {
   }
 
   public void testLimit() {
-    Automaton a = Operations.union(Automata.makeString("foo"), Automata.makeString("bar"));
+    Automaton a = Operations.union(List.of(Automata.makeString("foo"), Automata.makeString("bar")));
 
     // Test without limit
     FiniteStringsIterator withoutLimit = new LimitedFiniteStringsIterator(a, -1);
@@ -90,7 +88,7 @@ public class TestLimitedFiniteStringsIterator extends LuceneTestCase {
   }
 
   public void testSize() {
-    Automaton a = Operations.union(Automata.makeString("foo"), Automata.makeString("bar"));
+    Automaton a = Operations.union(List.of(Automata.makeString("foo"), Automata.makeString("bar")));
     LimitedFiniteStringsIterator iterator = new LimitedFiniteStringsIterator(a, -1);
     List<IntsRef> actual = getFiniteStrings(iterator);
     assertEquals(2, actual.size());

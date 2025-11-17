@@ -92,7 +92,7 @@ public class TestDemoExpressions extends LuceneTestCase {
     // compile an expression:
     Expression expr = JavascriptCompiler.compile("sqrt(_score) + ln(popularity)");
 
-    // we use SimpleBindings: which just maps variables to SortField instances
+    // we use SimpleBindings: which just maps variables to DoubleValuesSource instances
     SimpleBindings bindings = new SimpleBindings();
     bindings.add("_score", DoubleValuesSource.SCORES);
     bindings.add("popularity", DoubleValuesSource.fromIntField("popularity"));

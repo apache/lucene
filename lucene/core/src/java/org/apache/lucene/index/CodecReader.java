@@ -25,8 +25,8 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.util.Bits;
+import org.apache.lucene.search.AcceptDocs;
+import org.apache.lucene.search.KnnCollector;
 
 /** LeafReader implemented by codec APIs. */
 public abstract class CodecReader extends LeafReader {
@@ -87,6 +87,13 @@ public abstract class CodecReader extends LeafReader {
   public final StoredFields storedFields() throws IOException {
     final StoredFields reader = getFieldsReader();
     return new StoredFields() {
+      @Override
+      public void prefetch(int docID) throws IOException {
+        // Don't trust the codec to do proper checks
+        Objects.checkIndex(docID, maxDoc());
+        reader.prefetch(docID);
+      }
+
       @Override
       public void document(int docID, StoredFieldVisitor visitor) throws IOException {
         // Don't trust the codec to do proper checks
@@ -190,6 +197,16 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
+  public final DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null || fi.docValuesSkipIndexType() == DocValuesSkipIndexType.NONE) {
+      return null;
+    }
+    return getDocValuesReader().getSkipper(fi);
+  }
+
+  @Override
   public final NumericDocValues getNormValues(String field) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
@@ -242,29 +259,33 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
-  public final TopDocs searchNearestVectors(
-      String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
+  public final void searchNearestVectors(
+      String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
+    if (fi == null
+        || fi.getVectorDimension() == 0
+        || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
       // Field does not exist or does not index vectors
-      return null;
+      return;
     }
-
-    return getVectorReader().search(field, target, k, acceptDocs, visitedLimit);
+    getVectorReader().search(field, target, knnCollector, acceptDocs);
   }
 
   @Override
-  public final TopDocs searchNearestVectors(
-      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
+  public final void searchNearestVectors(
+      String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
+    if (fi == null
+        || fi.getVectorDimension() == 0
+        || fi.getVectorEncoding() != VectorEncoding.BYTE) {
       // Field does not exist or does not index vectors
-      return null;
+      return;
     }
-
-    return getVectorReader().search(field, target, k, acceptDocs, visitedLimit);
+    getVectorReader().search(field, target, knnCollector, acceptDocs);
   }
 
   @Override

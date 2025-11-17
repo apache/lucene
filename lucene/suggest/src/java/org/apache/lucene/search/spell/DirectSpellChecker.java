@@ -59,30 +59,40 @@ public class DirectSpellChecker {
 
   /** maximum edit distance for candidate terms */
   private int maxEdits = LevenshteinAutomata.MAXIMUM_SUPPORTED_DISTANCE;
+
   /** minimum prefix for candidate terms */
   private int minPrefix = 1;
+
   /** maximum number of top-N inspections per suggestion */
   private int maxInspections = 5;
+
   /** minimum accuracy for a term to match */
   private float accuracy = SpellChecker.DEFAULT_ACCURACY;
+
   /**
    * value in [0..1] (or absolute number &gt;= 1) representing the minimum number of documents (of
    * the total) where a term should appear.
    */
   private float thresholdFrequency = 0f;
+
   /** minimum length of a query word to return suggestions */
   private int minQueryLength = 4;
+
   /** maximum length of a query word to return suggestions */
   private int maxQueryLength = Integer.MAX_VALUE;
+
   /**
    * value in [0..1] (or absolute number &gt;= 1) representing the maximum number of documents (of
    * the total) a query term can appear in to be corrected.
    */
   private float maxQueryFrequency = 0.01f;
+
   /** true if the spellchecker should lowercase terms */
   private boolean lowerCaseTerms = true;
+
   /** the comparator to use */
   private Comparator<SuggestWord> comparator = SuggestWordQueue.DEFAULT_COMPARATOR;
+
   /** the string distance to use */
   private StringDistance distance = INTERNAL_LEVENSHTEIN;
 

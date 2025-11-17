@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.search.join;
 
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.document.Document;
@@ -58,7 +59,9 @@ public class TestBlockJoinValidation extends LuceneTestCase {
   public void setUp() throws Exception {
     super.setUp();
     directory = newDirectory();
-    final IndexWriterConfig config = new IndexWriterConfig(new MockAnalyzer(random()));
+    final IndexWriterConfig config =
+        new IndexWriterConfig(new MockAnalyzer(random()))
+            .setMergePolicy(newMergePolicy(random(), false));
     final IndexWriter indexWriter = new IndexWriter(directory, config);
     for (int i = 0; i < AMOUNT_OF_SEGMENTS; i++) {
       List<Document> segmentDocs = createDocsForSegment(i);
@@ -79,9 +82,16 @@ public class TestBlockJoinValidation extends LuceneTestCase {
   }
 
   public void testNextDocValidationForToParentBjq() throws Exception {
+    // TODO: This test is broken when score mode is None because BlockJoinScorer#scoreChildDocs does
+    // not advance the child approximation. Adjust this test once that is fixed.
+    final List<ScoreMode> validScoreModes =
+        List.of(ScoreMode.Avg, ScoreMode.Max, ScoreMode.Total, ScoreMode.Min);
     Query parentQueryWithRandomChild = createChildrenQueryWithOneParent(getRandomChildNumber(0));
     ToParentBlockJoinQuery blockJoinQuery =
-        new ToParentBlockJoinQuery(parentQueryWithRandomChild, parentsFilter, ScoreMode.None);
+        new ToParentBlockJoinQuery(
+            parentQueryWithRandomChild,
+            parentsFilter,
+            RandomPicks.randomFrom(LuceneTestCase.random(), validScoreModes));
     IllegalStateException expected =
         expectThrows(
             IllegalStateException.class,

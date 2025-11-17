@@ -26,10 +26,12 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -46,33 +48,43 @@ import org.apache.lucene.util.PriorityQueue;
  */
 public class TermOrdValComparator extends FieldComparator<BytesRef> {
 
-  /* Ords for each slot.
-  @lucene.internal */
+  /*
+   * Ords for each slot.
+   * @lucene.internal
+   */
   final int[] ords;
 
-  /* Values for each slot.
-  @lucene.internal */
+  /*
+   * Values for each slot.
+   * @lucene.internal
+   */
   final BytesRef[] values;
   private final BytesRefBuilder[] tempBRs;
 
-  /* Which reader last copied a value into the slot. When
-  we compare two slots, we just compare-by-ord if the
-  readerGen is the same; else we must compare the
-  values (slower).
-  @lucene.internal */
+  /*
+   * Which reader last copied a value into the slot. When
+   * we compare two slots, we just compare-by-ord if the
+   * readerGen is the same; else we must compare the
+   * values (slower).
+   * @lucene.internal
+   */
   final int[] readerGen;
 
-  /* Gen of current reader we are on.
-  @lucene.internal */
+  /*
+   * Gen of current reader we are on.
+   * @lucene.internal
+   */
   int currentReaderGen = -1;
 
   private final String field;
   private final boolean reverse;
   private final boolean sortMissingLast;
 
-  /* Bottom value (same as values[bottomSlot] once
-   bottomSlot is set).  Cached for faster compares.
-  @lucene.internal */
+  /*
+   * Bottom value (same as values[bottomSlot] once
+   * bottomSlot is set).  Cached for faster compares.
+   * @lucene.internal
+   */
   BytesRef bottomValue;
 
   /* Bottom slot, or -1 if queue isn't full yet */
@@ -88,7 +100,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
   private boolean singleSort;
 
   /** Whether this comparator is allowed to skip documents. */
-  private boolean canSkipDocuments = true;
+  private boolean canSkipDocuments;
 
   /** Whether the collector is done with counting hits so that we can start skipping documents. */
   private boolean hitsThresholdReached = false;
@@ -98,8 +110,8 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
    * missing values at the end.
    */
   public TermOrdValComparator(
-      int numHits, String field, boolean sortMissingLast, boolean reverse, boolean enableSkipping) {
-    canSkipDocuments = enableSkipping;
+      int numHits, String field, boolean sortMissingLast, boolean reverse, Pruning pruning) {
+    canSkipDocuments = pruning != Pruning.NONE;
     ords = new int[numHits];
     values = new BytesRef[numHits];
     tempBRs = new BytesRefBuilder[numHits];
@@ -198,7 +210,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     /** Which ordinal to use for a missing value. */
     final int missingOrd;
 
-    private final CompetitiveIterator competitiveIterator;
+    private final CompetitiveState competitiveState;
 
     private final boolean dense;
 
@@ -263,9 +275,9 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
         }
       }
       if (enableSkipping) {
-        competitiveIterator = new CompetitiveIterator(context, field, dense, values.termsEnum());
+        competitiveState = new CompetitiveState(context, field, dense, values.termsEnum());
       } else {
-        competitiveIterator = null;
+        competitiveState = null;
       }
       updateCompetitiveIterator();
     }
@@ -380,7 +392,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     public void setScorer(Scorable scorer) {}
 
     private void updateCompetitiveIterator() throws IOException {
-      if (competitiveIterator == null || hitsThresholdReached == false || bottomSlot == -1) {
+      if (competitiveState == null || hitsThresholdReached == false || bottomSlot == -1) {
         return;
       }
       // This logic to figure out min and max ords is quite complex and verbose, can it be made
@@ -454,88 +466,71 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       }
       assert minOrd >= 0;
       assert maxOrd < termsIndex.getValueCount();
-      competitiveIterator.update(minOrd, maxOrd);
+      competitiveState.update(minOrd, maxOrd);
     }
 
     @Override
     public DocIdSetIterator competitiveIterator() {
-      return competitiveIterator;
+      return competitiveState != null ? competitiveState.iterator : null;
     }
   }
 
-  private static class PostingsEnumAndOrd {
-    private final PostingsEnum postings;
-    private final int ord;
+  private record PostingsEnumAndOrd(PostingsEnum postings, int ord) {}
 
-    PostingsEnumAndOrd(PostingsEnum postings, int ord) {
-      this.postings = postings;
-      this.ord = ord;
-    }
-  }
+  private class CompetitiveState {
 
-  private class CompetitiveIterator extends DocIdSetIterator {
-
-    private static final int MAX_TERMS = 128;
+    private static final int MAX_TERMS = 1024;
 
     private final LeafReaderContext context;
-    private final int maxDoc;
     private final String field;
     private final boolean dense;
     private final TermsEnum docValuesTerms;
-    private int doc = -1;
     private ArrayDeque<PostingsEnumAndOrd> postings;
     private DocIdSetIterator docsWithField;
     private PriorityQueue<PostingsEnumAndOrd> disjunction;
+    private final DocIdSetIterator disjunctionIterator;
 
-    CompetitiveIterator(
+    private final UpdateableDocIdSetIterator iterator;
+
+    CompetitiveState(
         LeafReaderContext context, String field, boolean dense, TermsEnum docValuesTerms) {
       this.context = context;
-      this.maxDoc = context.reader().maxDoc();
       this.field = field;
       this.dense = dense;
       this.docValuesTerms = docValuesTerms;
-    }
+      this.disjunctionIterator =
+          new AbstractDocIdSetIterator() {
 
-    @Override
-    public int docID() {
-      return doc;
-    }
+            @Override
+            public int nextDoc() throws IOException {
+              return advance(doc + 1);
+            }
 
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(docID() + 1);
-    }
+            @Override
+            public int advance(int target) throws IOException {
+              PostingsEnumAndOrd top = disjunction.top();
+              if (top == null) {
+                // priority queue is empty, none of the remaining documents are competitive
+                return doc = NO_MORE_DOCS;
+              }
+              while (top.postings.docID() < target) {
+                top.postings.advance(target);
+                top = disjunction.updateTop();
+              }
+              return this.doc = top.postings.docID();
+            }
 
-    @Override
-    public int advance(int target) throws IOException {
-      if (target >= maxDoc) {
-        return doc = NO_MORE_DOCS;
-      } else if (disjunction == null) {
-        if (docsWithField != null) {
-          // The field is sparse and we're only interested in documents that have a value.
-          assert dense == false;
-          return doc = docsWithField.advance(target);
-        } else {
-          // We haven't started skipping yet
-          return doc = target;
-        }
-      } else {
-        PostingsEnumAndOrd top = disjunction.top();
-        if (top == null) {
-          // priority queue is empty, none of the remaining documents are competitive
-          return doc = NO_MORE_DOCS;
-        }
-        while (top.postings.docID() < target) {
-          top.postings.advance(target);
-          top = disjunction.updateTop();
-        }
-        return doc = top.postings.docID();
-      }
-    }
-
-    @Override
-    public long cost() {
-      return context.reader().maxDoc();
+            @Override
+            public long cost() {
+              long cost = 0;
+              for (PostingsEnumAndOrd posting : disjunction) {
+                cost += posting.postings.cost();
+              }
+              return cost;
+            }
+          };
+      this.iterator = new UpdateableDocIdSetIterator();
+      this.iterator.update(DocIdSetIterator.all(context.reader().maxDoc()));
     }
 
     /**
@@ -548,9 +543,11 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       if (size > maxTerms) {
         if (dense == false && docsWithField == null) {
           docsWithField = getSortedDocValues(context, field);
+          iterator.update(docsWithField);
         }
       } else if (postings == null) {
         init(minOrd, maxOrd);
+        iterator.update(disjunctionIterator);
       } else if (size < postings.size()) {
         // One or more ords got removed
         assert postings.isEmpty() || postings.getFirst().ord <= minOrd;
@@ -598,12 +595,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
         }
       }
       disjunction =
-          new PriorityQueue<PostingsEnumAndOrd>(size) {
-            @Override
-            protected boolean lessThan(PostingsEnumAndOrd a, PostingsEnumAndOrd b) {
-              return a.postings.docID() < b.postings.docID();
-            }
-          };
+          PriorityQueue.usingLessThan(size, (a, b) -> a.postings.docID() < b.postings.docID());
       disjunction.addAll(postings);
     }
   }

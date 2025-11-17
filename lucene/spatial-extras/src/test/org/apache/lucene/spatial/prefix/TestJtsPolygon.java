@@ -59,7 +59,7 @@ public class TestJtsPolygon extends StrategyTestCase {
   }
 
   @Test
-  /** LUCENE-4464 */
+  /* LUCENE-4464 */
   public void testCloseButNoMatch() throws Exception {
     getAddAndVerifyIndexedDocuments("LUCENE-4464.txt");
     SpatialArgs args =
@@ -119,6 +119,6 @@ public class TestJtsPolygon extends StrategyTestCase {
       System.out.println(indexSearcher.storedFields().document(scoreDoc.doc));
     }
 
-    assertEquals(1, search.totalHits.value);
+    assertEquals(1, search.totalHits.value());
   }
 }

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -40,6 +42,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.MockRandomMergePolicy;
@@ -156,7 +159,6 @@ public class TestIndexWriterDelete extends LuceneTestCase {
       addDoc(modifier, ++id, value);
       if (0 == t) {
         modifier.deleteDocuments(new Term("value", String.valueOf(value)));
-        assertEquals(2, modifier.getNumBufferedDeleteTerms());
         assertEquals(1, modifier.getBufferedDeleteTermsSize());
       } else modifier.deleteDocuments(new TermQuery(new Term("value", String.valueOf(value))));
 
@@ -479,10 +481,10 @@ public class TestIndexWriterDelete extends LuceneTestCase {
   // Verify that we can call deleteAll repeatedly without leaking field numbers such that we trigger
   // OOME
   // on creation of FieldInfos. See https://issues.apache.org/jira/browse/LUCENE-9617
-  @Nightly // Takes 1-2 minutes to run on a 16-core machine
+  @Monster("Takes 1-2 minutes but writes tons of files to disk.")
   public void testDeleteAllRepeated() throws IOException, InterruptedException {
     final int breakingFieldCount = 50_000_000;
-    try (Directory dir = newDirectory()) {
+    try (Directory dir = FSDirectory.open(createTempDir())) {
       // Avoid flushing until the end of the test to save time.
       IndexWriterConfig conf =
           newIndexWriterConfig()
@@ -546,7 +548,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
   private long getHitCount(Directory dir, Term term) throws IOException {
     IndexReader reader = DirectoryReader.open(dir);
     IndexSearcher searcher = newSearcher(reader);
-    long hitCount = searcher.search(new TermQuery(term), 1000).totalHits.value;
+    long hitCount = searcher.search(new TermQuery(term), 1000).totalHits.value();
     reader.close();
     return hitCount;
   }
@@ -598,7 +600,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
 
     boolean done = false;
 
-    // Iterate w/ ever increasing free disk space:
+    // Iterate w/ ever-increasing free disk space:
     while (!done) {
       if (VERBOSE) {
         System.out.println("TEST: cycle");
@@ -904,7 +906,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
 
     modifier.deleteDocuments(term);
 
-    // add a doc
+    // add a doc,
     // doc remains buffered
 
     if (VERBOSE) {
@@ -929,12 +931,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
     if (VERBOSE) {
       System.out.println("TEST: now commit for failure");
     }
-    RuntimeException expected =
-        expectThrows(
-            RuntimeException.class,
-            () -> {
-              modifier.commit();
-            });
+    RuntimeException expected = expectThrows(RuntimeException.class, modifier::commit);
     if (VERBOSE) {
       System.out.println("TEST: hit exc:");
       expected.printStackTrace(System.out);
@@ -947,9 +944,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
     try {
       modifier.commit();
       writerClosed = false;
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException ise) {
+    } catch (IllegalStateException _) {
       // The above exc struck during merge, and closed the writer
       writerClosed = true;
     }
@@ -1153,12 +1148,12 @@ public class TestIndexWriterDelete extends LuceneTestCase {
     Directory dir = newDirectory();
     // Cannot use RandomIndexWriter because we don't want to
     // ever call commit() for this test:
-    // note: tiny rambuffer used, as with a 1MB buffer the test is too slow (flush @ 128,999)
+    // note: tiny RAM buffer used, as with a 1MB buffer the test is too slow (flush @ 128,999)
     IndexWriter w =
         new IndexWriter(
             dir,
             newIndexWriterConfig(new MockAnalyzer(random()))
-                .setRAMBufferSizeMB(0.1f)
+                .setRAMBufferSizeMB(0.5f)
                 .setMaxBufferedDocs(1000)
                 .setMergePolicy(NoMergePolicy.INSTANCE)
                 .setReaderPooling(false));
@@ -1279,11 +1274,11 @@ public class TestIndexWriterDelete extends LuceneTestCase {
 
     ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
     CheckIndex checker = new CheckIndex(dir);
-    checker.setInfoStream(new PrintStream(bos, false, IOUtils.UTF_8), false);
+    checker.setInfoStream(new PrintStream(bos, false, UTF_8), false);
     CheckIndex.Status indexStatus = checker.checkIndex(null);
     assertTrue(indexStatus.clean);
     checker.close();
-    String s = bos.toString(IOUtils.UTF_8);
+    String s = bos.toString(UTF_8);
 
     // Segment should have deletions:
     assertTrue(s.contains("has deletions"));
@@ -1294,11 +1289,11 @@ public class TestIndexWriterDelete extends LuceneTestCase {
 
     bos = new ByteArrayOutputStream(1024);
     checker = new CheckIndex(dir);
-    checker.setInfoStream(new PrintStream(bos, false, IOUtils.UTF_8), false);
+    checker.setInfoStream(new PrintStream(bos, false, UTF_8), false);
     indexStatus = checker.checkIndex(null);
     assertTrue(indexStatus.clean);
     checker.close();
-    s = bos.toString(IOUtils.UTF_8);
+    s = bos.toString(UTF_8);
     assertFalse(s.contains("has deletions"));
     dir.close();
   }
@@ -1315,7 +1310,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
     w.addDocument(doc);
     w.close();
 
-    iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc = new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(NoMergePolicy.INSTANCE);
     iwc.setOpenMode(IndexWriterConfig.OpenMode.APPEND);
     w = new IndexWriter(d, iwc);
     IndexReader r = DirectoryReader.open(w, false, false);

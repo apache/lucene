@@ -66,7 +66,6 @@ final class CompletionFieldsConsumer extends FieldsConsumer {
     this.state = state;
     String dictFile =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, DICT_EXTENSION);
-    boolean success = false;
     try {
       this.delegateFieldsConsumer = delegatePostingsFormat.fieldsConsumer(state);
       dictOut = state.directory.createOutput(dictFile, state.context);
@@ -76,11 +75,9 @@ final class CompletionFieldsConsumer extends FieldsConsumer {
           COMPLETION_VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(dictOut, delegateFieldsConsumer);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, dictOut, delegateFieldsConsumer);
+      throw t;
     }
   }
 
@@ -126,7 +123,6 @@ final class CompletionFieldsConsumer extends FieldsConsumer {
     String indexFile =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, INDEX_EXTENSION);
-    boolean success = false;
     try (IndexOutput indexOut = state.directory.createOutput(indexFile, state.context)) {
       delegateFieldsConsumer.close();
       CodecUtil.writeIndexHeader(
@@ -155,27 +151,13 @@ final class CompletionFieldsConsumer extends FieldsConsumer {
       CodecUtil.writeFooter(indexOut);
       CodecUtil.writeFooter(dictOut);
       IOUtils.close(dictOut);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(dictOut, delegateFieldsConsumer);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, dictOut, delegateFieldsConsumer);
+      throw t;
     }
   }
 
-  private static class CompletionMetaData {
-    private final long filePointer;
-    private final long minWeight;
-    private final long maxWeight;
-    private final byte type;
-
-    private CompletionMetaData(long filePointer, long minWeight, long maxWeight, byte type) {
-      this.filePointer = filePointer;
-      this.minWeight = minWeight;
-      this.maxWeight = maxWeight;
-      this.type = type;
-    }
-  }
+  private record CompletionMetaData(long filePointer, long minWeight, long maxWeight, byte type) {}
 
   // builds an FST based on the terms written
   private static class CompletionTermWriter {
@@ -190,7 +172,7 @@ final class CompletionFieldsConsumer extends FieldsConsumer {
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final NRTSuggesterBuilder builder;
 
-    public CompletionTermWriter() {
+    public CompletionTermWriter() throws IOException {
       builder = new NRTSuggesterBuilder();
       first = true;
     }
@@ -223,7 +205,7 @@ final class CompletionFieldsConsumer extends FieldsConsumer {
           ByteArrayDataInput input =
               new ByteArrayDataInput(payload.bytes, payload.offset, payload.length);
           int len = input.readVInt();
-          scratch.grow(len);
+          scratch.growNoCopy(len);
           scratch.setLength(len);
           input.readBytes(scratch.bytes(), 0, scratch.length());
           long weight = input.readVInt() - 1;

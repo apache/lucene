@@ -95,7 +95,7 @@ public class TestRuleLimitSysouts extends TestRuleAdapter {
 
   private static final AtomicLong hardLimit;
 
-  /**
+  /*
    * We capture system output and error streams as early as possible because certain components
    * (like the Java logging system) steal these references and never refresh them.
    *
@@ -140,7 +140,7 @@ public class TestRuleLimitSysouts extends TestRuleAdapter {
   /** Test failures from any tests or rules before. */
   private final TestRuleMarkFailure failureMarker;
 
-  static interface LimitPredicate {
+  interface LimitPredicate {
     void check(long before, long after) throws IOException;
   }
 

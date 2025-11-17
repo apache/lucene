@@ -60,13 +60,20 @@ public class TestPayloadSpans extends LuceneTestCase {
   protected IndexReader indexReader;
   private IndexReader closeIndexReader;
   private Directory directory;
+  private PayloadHelper helper;
 
   @Override
   public void setUp() throws Exception {
     super.setUp();
-    PayloadHelper helper = new PayloadHelper();
+    helper = new PayloadHelper();
     searcher = helper.setUp(random(), similarity, 1000);
     indexReader = searcher.getIndexReader();
+  }
+
+  @Override
+  public void tearDown() throws Exception {
+    helper.tearDown();
+    super.tearDown();
   }
 
   public void testSpanTermQuery() throws Exception {

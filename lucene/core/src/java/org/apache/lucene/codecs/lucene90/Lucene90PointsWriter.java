@@ -32,6 +32,7 @@ import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.bkd.BKDConfig;
 import org.apache.lucene.util.bkd.BKDWriter;
@@ -45,23 +46,24 @@ public class Lucene90PointsWriter extends PointsWriter {
   final SegmentWriteState writeState;
   final int maxPointsInLeafNode;
   final double maxMBSortInHeap;
+  final int version;
   private boolean finished;
 
   /** Full constructor */
   public Lucene90PointsWriter(
-      SegmentWriteState writeState, int maxPointsInLeafNode, double maxMBSortInHeap)
+      SegmentWriteState writeState, int maxPointsInLeafNode, double maxMBSortInHeap, int version)
       throws IOException {
     assert writeState.fieldInfos.hasPointValues();
     this.writeState = writeState;
     this.maxPointsInLeafNode = maxPointsInLeafNode;
     this.maxMBSortInHeap = maxMBSortInHeap;
+    this.version = version;
     String dataFileName =
         IndexFileNames.segmentFileName(
             writeState.segmentInfo.name,
             writeState.segmentSuffix,
             Lucene90PointsFormat.DATA_EXTENSION);
     dataOut = writeState.directory.createOutput(dataFileName, writeState.context);
-    boolean success = false;
     try {
       CodecUtil.writeIndexHeader(
           dataOut,
@@ -95,24 +97,37 @@ public class Lucene90PointsWriter extends PointsWriter {
           Lucene90PointsFormat.VERSION_CURRENT,
           writeState.segmentInfo.getId(),
           writeState.segmentSuffix);
-
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
+  public Lucene90PointsWriter(
+      SegmentWriteState writeState, int maxPointsInLeafNode, double maxMBSortInHeap)
+      throws IOException {
+    this(writeState, maxPointsInLeafNode, maxMBSortInHeap, Lucene90PointsFormat.VERSION_CURRENT);
+  }
+
   /**
-   * Uses the defaults values for {@code maxPointsInLeafNode} (1024) and {@code maxMBSortInHeap}
+   * Uses the defaults values for {@code maxPointsInLeafNode} (512) and {@code maxMBSortInHeap}
    * (16.0)
    */
   public Lucene90PointsWriter(SegmentWriteState writeState) throws IOException {
     this(
         writeState,
         BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE,
-        BKDWriter.DEFAULT_MAX_MB_SORT_IN_HEAP);
+        BKDWriter.DEFAULT_MAX_MB_SORT_IN_HEAP,
+        Lucene90PointsFormat.VERSION_CURRENT);
+  }
+
+  /** Constructor that takes a version. This is used for testing with older versions. */
+  Lucene90PointsWriter(SegmentWriteState writeState, int version) throws IOException {
+    this(
+        writeState,
+        BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE,
+        BKDWriter.DEFAULT_MAX_MB_SORT_IN_HEAP,
+        version);
   }
 
   @Override
@@ -134,10 +149,11 @@ public class Lucene90PointsWriter extends PointsWriter {
             writeState.segmentInfo.name,
             config,
             maxMBSortInHeap,
-            values.size())) {
+            values.size(),
+            Lucene90PointsFormat.bkdVersion(version))) {
 
       if (values instanceof MutablePointTree) {
-        Runnable finalizer =
+        IORunnable finalizer =
             writer.writeField(
                 metaOut, indexOut, dataOut, fieldInfo.name, (MutablePointTree) values);
         if (finalizer != null) {
@@ -166,7 +182,7 @@ public class Lucene90PointsWriter extends PointsWriter {
           });
 
       // We could have 0 points on merge since all docs with dimensional fields may be deleted:
-      Runnable finalizer = writer.finish(metaOut, indexOut, dataOut);
+      IORunnable finalizer = writer.finish(metaOut, indexOut, dataOut);
       if (finalizer != null) {
         metaOut.writeInt(fieldInfo.number);
         finalizer.run();
@@ -176,7 +192,7 @@ public class Lucene90PointsWriter extends PointsWriter {
 
   @Override
   public void merge(MergeState mergeState) throws IOException {
-    /**
+    /*
      * If indexSort is activated and some of the leaves are not sorted the next test will catch that
      * and the non-optimized merge will run. If the readers are all sorted then it's safe to perform
      * a bulk merge of the points.
@@ -232,7 +248,8 @@ public class Lucene90PointsWriter extends PointsWriter {
                   writeState.segmentInfo.name,
                   config,
                   maxMBSortInHeap,
-                  totMaxSize)) {
+                  totMaxSize,
+                  Lucene90PointsFormat.bkdVersion(version))) {
             List<PointValues> pointValues = new ArrayList<>();
             List<MergeState.DocMap> docMaps = new ArrayList<>();
             for (int i = 0; i < mergeState.pointsReaders.length; i++) {
@@ -252,7 +269,7 @@ public class Lucene90PointsWriter extends PointsWriter {
                 FieldInfos readerFieldInfos = mergeState.fieldInfos[i];
                 FieldInfo readerFieldInfo = readerFieldInfos.fieldInfo(fieldInfo.name);
                 if (readerFieldInfo != null && readerFieldInfo.getPointDimensionCount() > 0) {
-                  PointValues aPointValues = reader90.readers.get(readerFieldInfo.number);
+                  PointValues aPointValues = reader90.getValues(readerFieldInfo.name);
                   if (aPointValues != null) {
                     pointValues.add(aPointValues);
                     docMaps.add(mergeState.docMaps[i]);
@@ -261,7 +278,7 @@ public class Lucene90PointsWriter extends PointsWriter {
               }
             }
 
-            Runnable finalizer = writer.merge(metaOut, indexOut, dataOut, docMaps, pointValues);
+            IORunnable finalizer = writer.merge(metaOut, indexOut, dataOut, docMaps, pointValues);
             if (finalizer != null) {
               metaOut.writeInt(fieldInfo.number);
               finalizer.run();

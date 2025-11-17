@@ -46,11 +46,23 @@ public class DFISimilarity extends SimilarityBase {
   private final Independence independence;
 
   /**
-   * Create DFI with the specified divergence from independence measure
+   * Create DFI with the specified divergence from independence measure and using default
+   * discountOverlaps value
    *
    * @param independenceMeasure measure of divergence from independence
    */
   public DFISimilarity(Independence independenceMeasure) {
+    this(independenceMeasure, true);
+  }
+
+  /**
+   * Create DFI with the specified parameters
+   *
+   * @param independenceMeasure measure of divergence from independence
+   * @param discountOverlaps true if overlap tokens should not impact document length for scoring.
+   */
+  public DFISimilarity(Independence independenceMeasure, boolean discountOverlaps) {
+    super(discountOverlaps);
     this.independence = independenceMeasure;
   }
 

@@ -34,6 +34,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
 
 /*
@@ -222,6 +223,7 @@ public class TestDeletionPolicy extends LuceneTestCase {
    */
   // TODO: this wall-clock-dependent test doesn't seem to actually test any deletionpolicy logic?
   @Nightly
+  @SuppressForbidden(reason = "Thread sleep")
   public void testExpirationTimeDeletionPolicy() throws IOException, InterruptedException {
 
     final double SECONDS = 2.0;
@@ -299,9 +301,7 @@ public class TestDeletionPolicy extends LuceneTestCase {
                 + (lastDeleteTime - modTime)
                 + " ms) but did not get deleted ",
             lastDeleteTime - modTime <= leeway);
-      } catch (
-          @SuppressWarnings("unused")
-          IOException e) {
+      } catch (IOException _) {
         // OK
         break;
       }
@@ -459,7 +459,8 @@ public class TestDeletionPolicy extends LuceneTestCase {
             dir,
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setIndexDeletionPolicy(policy)
-                .setIndexCommit(lastCommit));
+                .setIndexCommit(lastCommit)
+                .setMergePolicy(newLogMergePolicy(10)));
     assertEquals(10, writer.getDocStats().numDocs);
 
     // Should undo our rollback:
@@ -476,12 +477,13 @@ public class TestDeletionPolicy extends LuceneTestCase {
             dir,
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setIndexDeletionPolicy(policy)
-                .setIndexCommit(lastCommit));
+                .setIndexCommit(lastCommit)
+                .setMergePolicy(newLogMergePolicy(10)));
     assertEquals(10, writer.getDocStats().numDocs);
     // Commits the rollback:
     writer.close();
 
-    // Now 8 because we made another commit
+    // Now 7 because we made another commit
     assertEquals(7, DirectoryReader.listCommits(dir).size());
 
     r = DirectoryReader.open(dir);
@@ -507,7 +509,10 @@ public class TestDeletionPolicy extends LuceneTestCase {
     // but this time keeping only the last commit:
     writer =
         new IndexWriter(
-            dir, newIndexWriterConfig(new MockAnalyzer(random())).setIndexCommit(lastCommit));
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setIndexCommit(lastCommit)
+                .setMergePolicy(newLogMergePolicy(10)));
     assertEquals(10, writer.getDocStats().numDocs);
 
     // Reader still sees fully merged index, because writer
@@ -757,6 +762,56 @@ public class TestDeletionPolicy extends LuceneTestCase {
 
       dir.close();
     }
+  }
+
+  public void testKeepLastNCommitsDeletionPolicy() throws IOException {
+
+    int numCommitsToKeep = 3;
+    IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
+    conf.setIndexDeletionPolicy(new KeepLastNCommitsDeletionPolicy(numCommitsToKeep));
+
+    assertEquals(KeepLastNCommitsDeletionPolicy.class, conf.getIndexDeletionPolicy().getClass());
+
+    // Create an index and make several commits
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, conf);
+
+    for (int i = 0; i < 5; i++) {
+      addDoc(writer);
+      writer.commit();
+    }
+
+    writer.close();
+
+    // Check that only the last N commits are kept
+    List<IndexCommit> commits = DirectoryReader.listCommits(dir);
+    assertEquals(numCommitsToKeep, commits.size());
+
+    // Verify that we can open and read from each of the remaining commits
+    for (IndexCommit commit : commits) {
+      try (DirectoryReader reader = DirectoryReader.open(commit)) {
+        assertTrue(reader.numDocs() > 0);
+      }
+    }
+
+    // Check that the retained commits are the most recent ones
+    long latestGen = commits.getLast().getGeneration();
+    for (int i = 0; i < numCommitsToKeep; i++) {
+      assertEquals(latestGen - i, commits.get(commits.size() - 1 - i).getGeneration());
+    }
+
+    dir.close();
+  }
+
+  public void testKeepLastNCommitsDeletionPolicyWithZeroCommits() throws IOException {
+    int numCommitsToKeep = 0;
+    IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                conf.setIndexDeletionPolicy(new KeepLastNCommitsDeletionPolicy(numCommitsToKeep)));
+    assertTrue(expected.getMessage().contains("number of recent commits to keep must be positive"));
   }
 
   private void addDocWithID(IndexWriter writer, int id) throws IOException {

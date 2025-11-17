@@ -20,6 +20,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.junit.Test;
 
 /** Tests for {@link org.apache.lucene.classification.KNearestNeighborClassifier} */
@@ -74,9 +75,7 @@ public class TestKNearestNeighborDocumentClassifier
           VIDEOGAME_RESULT);
 
     } finally {
-      if (indexReader != null) {
-        indexReader.close();
-      }
+      IOUtils.close(indexReader);
     }
   }
 
@@ -134,9 +133,7 @@ public class TestKNearestNeighborDocumentClassifier
               VIDEOGAME_RESULT);
       assertEquals(1.0, score4, 0);
     } finally {
-      if (indexReader != null) {
-        indexReader.close();
-      }
+      IOUtils.close(indexReader);
     }
   }
 
@@ -171,9 +168,7 @@ public class TestKNearestNeighborDocumentClassifier
           getBatmanAmbiguosDocument(),
           VIDEOGAME_RESULT);
     } finally {
-      if (indexReader != null) {
-        indexReader.close();
-      }
+      IOUtils.close(indexReader);
     }
   }
 
@@ -208,9 +203,7 @@ public class TestKNearestNeighborDocumentClassifier
           getBatmanDocument(),
           VIDEOGAME_RESULT);
     } finally {
-      if (indexReader != null) {
-        indexReader.close();
-      }
+      IOUtils.close(indexReader);
     }
   }
 }

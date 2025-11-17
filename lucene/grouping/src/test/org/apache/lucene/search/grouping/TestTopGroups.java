@@ -125,11 +125,11 @@ public class TestTopGroups extends LuceneTestCase {
               : createEmptyGroupDocs(redGroupValue, new Object[] {redAntSize});
 
       shard1TopGroups =
-          new TopGroups<String>(
+          new TopGroups<>(
               sort.getSort() /* groupSort */,
               sort.getSort() /* withinGroupSort */,
-              group1.scoreDocs.length + group2.scoreDocs.length /* totalHitCount */,
-              group1.scoreDocs.length + group2.scoreDocs.length /* totalGroupedHitCount */,
+              group1.scoreDocs().length + group2.scoreDocs().length /* totalHitCount */,
+              group1.scoreDocs().length + group2.scoreDocs().length /* totalGroupedHitCount */,
               combineGroupDocs(group1, group2) /* groups */,
               (haveBlueWhale
                   ? blueWhaleScore
@@ -159,11 +159,11 @@ public class TestTopGroups extends LuceneTestCase {
               : createEmptyGroupDocs(redGroupValue, new Object[] {redSquirrelSize});
 
       shard2TopGroups =
-          new TopGroups<String>(
+          new TopGroups<>(
               sort.getSort() /* groupSort */,
               sort.getSort() /* withinGroupSort */,
-              group1.scoreDocs.length + group2.scoreDocs.length /* totalHitCount */,
-              group1.scoreDocs.length + group2.scoreDocs.length /* totalGroupedHitCount */,
+              group1.scoreDocs().length + group2.scoreDocs().length /* totalHitCount */,
+              group1.scoreDocs().length + group2.scoreDocs().length /* totalGroupedHitCount */,
               combineGroupDocs(group1, group2) /* groups */,
               (haveRedSquirrel
                   ? redSquirrelScore
@@ -191,16 +191,16 @@ public class TestTopGroups extends LuceneTestCase {
 
     assertEquals(2, mergedTopGroups.groups.length);
     {
-      assertEquals(blueGroupValue, mergedTopGroups.groups[0].groupValue);
+      assertEquals(blueGroupValue, mergedTopGroups.groups[0].groupValue());
       final float expectedBlueMaxScore =
           (haveBlueWhale ? blueWhaleScore : (haveBlueDragonfly ? blueDragonflyScore : Float.NaN));
-      checkMaxScore(expectedBlueMaxScore, mergedTopGroups.groups[0].maxScore);
+      checkMaxScore(expectedBlueMaxScore, mergedTopGroups.groups[0].maxScore());
     }
     {
-      assertEquals(redGroupValue, mergedTopGroups.groups[1].groupValue);
+      assertEquals(redGroupValue, mergedTopGroups.groups[1].groupValue());
       final float expectedRedMaxScore =
           (haveRedSquirrel ? redSquirrelScore : (haveRedAnt ? redAntScore : Float.NaN));
-      checkMaxScore(expectedRedMaxScore, mergedTopGroups.groups[1].maxScore);
+      checkMaxScore(expectedRedMaxScore, mergedTopGroups.groups[1].maxScore());
     }
 
     final float expectedMaxScore =
@@ -226,7 +226,7 @@ public class TestTopGroups extends LuceneTestCase {
 
   private static GroupDocs<String> createEmptyGroupDocs(
       String groupValue, Object[] groupSortValues) {
-    return new GroupDocs<String>(
+    return new GroupDocs<>(
         Float.NaN /* score */,
         Float.NaN /* maxScore */,
         new TotalHits(0, TotalHits.Relation.EQUAL_TO),
@@ -237,7 +237,7 @@ public class TestTopGroups extends LuceneTestCase {
 
   private static GroupDocs<String> createSingletonGroupDocs(
       String groupValue, Object[] groupSortValues, int docId, float docScore, int shardIndex) {
-    return new GroupDocs<String>(
+    return new GroupDocs<>(
         Float.NaN /* score */,
         docScore /* maxScore */,
         new TotalHits(1, TotalHits.Relation.EQUAL_TO),

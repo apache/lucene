@@ -30,6 +30,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.junit.Test;
 
 /** Tests for {@link BM25NBClassifier} */
@@ -45,9 +46,7 @@ public class TestBM25NBClassifier extends ClassificationTestBase<BytesRef> {
           new BM25NBClassifier(leafReader, analyzer, null, categoryFieldName, textFieldName);
       checkCorrectClassification(classifier, TECHNOLOGY_INPUT, TECHNOLOGY_RESULT);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 
@@ -62,9 +61,7 @@ public class TestBM25NBClassifier extends ClassificationTestBase<BytesRef> {
           new BM25NBClassifier(leafReader, analyzer, query, categoryFieldName, textFieldName);
       checkCorrectClassification(classifier, TECHNOLOGY_INPUT, TECHNOLOGY_RESULT);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 
@@ -78,9 +75,7 @@ public class TestBM25NBClassifier extends ClassificationTestBase<BytesRef> {
           new BM25NBClassifier(leafReader, analyzer, null, categoryFieldName, textFieldName);
       checkCorrectClassification(classifier, TECHNOLOGY_INPUT, TECHNOLOGY_RESULT);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 

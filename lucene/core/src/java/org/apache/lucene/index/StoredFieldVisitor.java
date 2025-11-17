@@ -40,6 +40,21 @@ public abstract class StoredFieldVisitor {
   protected StoredFieldVisitor() {}
 
   /**
+   * Expert: Process a binary field directly from the {@link StoredFieldDataInput}. Implementors of
+   * this method must read {@code StoredFieldDataInput#length} bytes from the given {@link
+   * StoredFieldDataInput}. The default implementation reads all bytes in a newly created byte array
+   * and calls {@link #binaryField(FieldInfo, byte[])}.
+   *
+   * @param value the stored field data input.
+   */
+  public void binaryField(FieldInfo fieldInfo, StoredFieldDataInput value) throws IOException {
+    int length = value.length();
+    final byte[] data = new byte[length];
+    value.getDataInput().readBytes(data, 0, value.getLength());
+    binaryField(fieldInfo, data);
+  }
+
+  /**
    * Process a binary field.
    *
    * @param value newly allocated byte array with the binary contents.
@@ -49,7 +64,7 @@ public abstract class StoredFieldVisitor {
   /** Process a string field. */
   public void stringField(FieldInfo fieldInfo, String value) throws IOException {}
 
-  /** Process a int numeric field. */
+  /** Process an int numeric field. */
   public void intField(FieldInfo fieldInfo, int value) throws IOException {}
 
   /** Process a long numeric field. */

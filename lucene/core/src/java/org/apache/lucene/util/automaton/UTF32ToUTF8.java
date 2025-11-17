@@ -16,9 +16,8 @@
  */
 package org.apache.lucene.util.automaton;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
+import org.apache.lucene.internal.hppc.IntArrayList;
 
 // TODO
 //   - do we really need the .bits...?  if not we can make util in UnicodeUtil to convert 1 char
@@ -35,13 +34,11 @@ public final class UTF32ToUTF8 {
   private static final int[] startCodes = new int[] {0, 128, 2048, 65536};
   private static final int[] endCodes = new int[] {127, 2047, 65535, 1114111};
 
-  static int[] MASKS = new int[32];
+  private static final byte[] MASKS = new byte[8];
 
   static {
-    int v = 2;
-    for (int i = 0; i < 32; i++) {
-      MASKS[i] = v - 1;
-      v *= 2;
+    for (int i = 0; i < 7; i++) {
+      MASKS[i + 1] = (byte) ((2 << i) - 1);
     }
   }
 
@@ -49,7 +46,7 @@ public final class UTF32ToUTF8 {
   // define a code point.  value is the byte value; bits is
   // how many bits are "used" by utf8 at that byte
   private static class UTF8Byte {
-    int value; // TODO: change to byte
+    byte value;
     byte bits;
   }
 
@@ -67,7 +64,7 @@ public final class UTF32ToUTF8 {
     }
 
     public int byteAt(int idx) {
-      return bytes[idx].value;
+      return bytes[idx].value & 0xFF;
     }
 
     public int numBits(int idx) {
@@ -77,33 +74,54 @@ public final class UTF32ToUTF8 {
     private void set(int code) {
       if (code < 128) {
         // 0xxxxxxx
-        bytes[0].value = code;
+        bytes[0].value = (byte) code;
         bytes[0].bits = 7;
         len = 1;
       } else if (code < 2048) {
         // 110yyyxx 10xxxxxx
-        bytes[0].value = (6 << 5) | (code >> 6);
+        bytes[0].value = (byte) ((6 << 5) | (code >> 6));
         bytes[0].bits = 5;
         setRest(code, 1);
         len = 2;
       } else if (code < 65536) {
         // 1110yyyy 10yyyyxx 10xxxxxx
-        bytes[0].value = (14 << 4) | (code >> 12);
+        bytes[0].value = (byte) ((14 << 4) | (code >> 12));
         bytes[0].bits = 4;
         setRest(code, 2);
         len = 3;
       } else {
         // 11110zzz 10zzyyyy 10yyyyxx 10xxxxxx
-        bytes[0].value = (30 << 3) | (code >> 18);
+        bytes[0].value = (byte) ((30 << 3) | (code >> 18));
         bytes[0].bits = 3;
         setRest(code, 3);
         len = 4;
       }
     }
 
+    // Only set first byte value for tmp utf8.
+    private void setFirstByte(int code) {
+      if (code < 128) {
+        // 0xxxxxxx
+        bytes[0].value = (byte) code;
+        len = 1;
+      } else if (code < 2048) {
+        // 110yyyxx 10xxxxxx
+        bytes[0].value = (byte) ((6 << 5) | (code >> 6));
+        len = 2;
+      } else if (code < 65536) {
+        // 1110yyyy 10yyyyxx 10xxxxxx
+        bytes[0].value = (byte) ((14 << 4) | (code >> 12));
+        len = 3;
+      } else {
+        // 11110zzz 10zzyyyy 10yyyyxx 10xxxxxx
+        bytes[0].value = (byte) ((30 << 3) | (code >> 18));
+        len = 4;
+      }
+    }
+
     private void setRest(int code, int numBytes) {
       for (int i = 0; i < numBytes; i++) {
-        bytes[numBytes - i].value = 128 | (code & MASKS[5]);
+        bytes[numBytes - i].value = (byte) (128 | (code & MASKS[6]));
         bytes[numBytes - i].bits = 6;
         code = code >> 6;
       }
@@ -116,7 +134,7 @@ public final class UTF32ToUTF8 {
         if (i > 0) {
           b.append(' ');
         }
-        b.append(Integer.toBinaryString(bytes[i].value));
+        b.append(Integer.toBinaryString(byteAt(i)));
       }
       return b.toString();
     }
@@ -154,15 +172,12 @@ public final class UTF32ToUTF8 {
 
         // Single value leading edge
         utf8.addTransition(start, n, startUTF8.byteAt(upto));
-        // start.addTransition(new Transition(startUTF8.byteAt(upto), n));  // type=single
 
         // Recurse for the rest
         build(n, end, startUTF8, endUTF8, 1 + upto);
       }
     } else if (startUTF8.len == endUTF8.len) {
       if (upto == startUTF8.len - 1) {
-        // start.addTransition(new Transition(startUTF8.byteAt(upto), endUTF8.byteAt(upto), end));
-        //      // type=startend
         utf8.addTransition(start, end, startUTF8.byteAt(upto), endUTF8.byteAt(upto));
       } else {
         start(start, end, startUTF8, upto, false);
@@ -186,10 +201,8 @@ public final class UTF32ToUTF8 {
       int byteCount = 1 + startUTF8.len - upto;
       final int limit = endUTF8.len - upto;
       while (byteCount < limit) {
-        // wasteful: we only need first byte, and, we should
-        // statically encode this first byte:
-        tmpUTF8a.set(startCodes[byteCount - 1]);
-        tmpUTF8b.set(endCodes[byteCount - 1]);
+        tmpUTF8a.setFirstByte(startCodes[byteCount - 1]);
+        tmpUTF8b.setFirstByte(endCodes[byteCount - 1]);
         all(start, end, tmpUTF8a.byteAt(0), tmpUTF8b.byteAt(0), tmpUTF8a.len - 1);
         byteCount++;
       }
@@ -206,15 +219,12 @@ public final class UTF32ToUTF8 {
           start,
           end,
           startUTF8.byteAt(upto),
-          startUTF8.byteAt(upto) | MASKS[startUTF8.numBits(upto) - 1]); // type=start
-      // start.addTransition(new Transition(startUTF8.byteAt(upto), startUTF8.byteAt(upto) |
-      // MASKS[startUTF8.numBits(upto)-1], end));  // type=start
+          startUTF8.byteAt(upto) | MASKS[startUTF8.numBits(upto)]); // type=start
     } else {
       int n = utf8.createState();
       utf8.addTransition(start, n, startUTF8.byteAt(upto));
-      // start.addTransition(new Transition(startUTF8.byteAt(upto), n));  // type=start
       start(n, end, startUTF8, 1 + upto, true);
-      int endCode = startUTF8.byteAt(upto) | MASKS[startUTF8.numBits(upto) - 1];
+      int endCode = startUTF8.byteAt(upto) | MASKS[startUTF8.numBits(upto)];
       if (doAll && startUTF8.byteAt(upto) != endCode) {
         all(start, end, startUTF8.byteAt(upto) + 1, endCode, startUTF8.len - upto - 1);
       }
@@ -224,28 +234,32 @@ public final class UTF32ToUTF8 {
   private void end(int start, int end, UTF8Sequence endUTF8, int upto, boolean doAll) {
     if (upto == endUTF8.len - 1) {
       // Done recursing
-      // start.addTransition(new Transition(endUTF8.byteAt(upto) &
-      // (~MASKS[endUTF8.numBits(upto)-1]), endUTF8.byteAt(upto), end));   // type=end
       utf8.addTransition(
-          start,
-          end,
-          endUTF8.byteAt(upto) & (~MASKS[endUTF8.numBits(upto) - 1]),
-          endUTF8.byteAt(upto));
+          start, end, endUTF8.byteAt(upto) & (~MASKS[endUTF8.numBits(upto)]), endUTF8.byteAt(upto));
     } else {
       final int startCode;
-      if (endUTF8.numBits(upto) == 5) {
-        // special case -- avoid created unused edges (endUTF8
-        // doesn't accept certain byte sequences) -- there
-        // are other cases we could optimize too:
-        startCode = 194;
+      // GH-ISSUE#12472: UTF-8 special case for the different start byte of the different
+      // length=2,3,4
+      if (endUTF8.len == 2) {
+        assert upto == 0; // the upto==1 case will be handled by the first if above
+        // the first length=2 UTF8 Unicode character is C2 80,
+        // so we must special case 0xC2 as the 1st byte.
+        startCode = 0xC2;
+      } else if (endUTF8.len == 3 && upto == 1 && endUTF8.byteAt(0) == 0xE0) {
+        // the first length=3 UTF8 Unicode character is E0 A0 80,
+        // so we must special case 0xA0 as the 2nd byte when E0 was the first byte of endUTF8.
+        startCode = 0xA0;
+      } else if (endUTF8.len == 4 && upto == 1 && endUTF8.byteAt(0) == 0xF0) {
+        // the first length=4 UTF8 Unicode character is F0 90 80 80,
+        // so we must special case 0x90 as the 2nd byte when F0 was the first byte of endUTF8.
+        startCode = 0x90;
       } else {
-        startCode = endUTF8.byteAt(upto) & (~MASKS[endUTF8.numBits(upto) - 1]);
+        startCode = endUTF8.byteAt(upto) & (~MASKS[endUTF8.numBits(upto)]);
       }
       if (doAll && endUTF8.byteAt(upto) != startCode) {
         all(start, end, startCode, endUTF8.byteAt(upto) - 1, endUTF8.len - upto - 1);
       }
       int n = utf8.createState();
-      // start.addTransition(new Transition(endUTF8.byteAt(upto), n));  // type=end
       utf8.addTransition(start, n, endUTF8.byteAt(upto));
       end(n, end, endUTF8, 1 + upto, true);
     }
@@ -253,20 +267,16 @@ public final class UTF32ToUTF8 {
 
   private void all(int start, int end, int startCode, int endCode, int left) {
     if (left == 0) {
-      // start.addTransition(new Transition(startCode, endCode, end));  // type=all
       utf8.addTransition(start, end, startCode, endCode);
     } else {
       int lastN = utf8.createState();
-      // start.addTransition(new Transition(startCode, endCode, lastN));  // type=all
       utf8.addTransition(start, lastN, startCode, endCode);
       while (left > 1) {
         int n = utf8.createState();
-        // lastN.addTransition(new Transition(128, 191, n));  // type=all*
         utf8.addTransition(lastN, n, 128, 191); // type=all*
         left--;
         lastN = n;
       }
-      // lastN.addTransition(new Transition(128, 191, end)); // type = all*
       utf8.addTransition(lastN, end, 128, 191); // type = all*
     }
   }
@@ -286,7 +296,7 @@ public final class UTF32ToUTF8 {
     int[] map = new int[utf32.getNumStates()];
     Arrays.fill(map, -1);
 
-    List<Integer> pending = new ArrayList<>();
+    IntArrayList pending = new IntArrayList();
     int utf32State = 0;
     pending.add(utf32State);
     utf8 = new Automaton.Builder();
@@ -300,7 +310,7 @@ public final class UTF32ToUTF8 {
     Transition scratch = new Transition();
 
     while (pending.size() != 0) {
-      utf32State = pending.remove(pending.size() - 1);
+      utf32State = pending.removeLast();
       utf8State = map[utf32State];
       assert utf8State != -1;
 

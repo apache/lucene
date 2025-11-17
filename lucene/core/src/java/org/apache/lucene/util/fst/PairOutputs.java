@@ -48,8 +48,7 @@ public class PairOutputs<A, B> extends Outputs<PairOutputs.Pair<A, B>> {
     public boolean equals(Object other) {
       if (other == this) {
         return true;
-      } else if (other instanceof Pair) {
-        Pair pair = (Pair) other;
+      } else if (other instanceof Pair pair) {
         return output1.equals(pair.output1) && output2.equals(pair.output2);
       } else {
         return false;
@@ -66,7 +65,6 @@ public class PairOutputs<A, B> extends Outputs<PairOutputs.Pair<A, B>> {
       return "Pair(" + output1 + "," + output2 + ")";
     }
   }
-  ;
 
   public PairOutputs(Outputs<A> outputs1, Outputs<B> outputs2) {
     this.outputs1 = outputs1;
@@ -183,7 +181,7 @@ public class PairOutputs<A, B> extends Outputs<PairOutputs.Pair<A, B>> {
   }
 
   private static final long BASE_NUM_BYTES =
-      RamUsageEstimator.shallowSizeOf(new Pair<Object, Object>(null, null));
+      RamUsageEstimator.shallowSizeOf(new Pair<>(null, null));
 
   @Override
   public long ramBytesUsed(Pair<A, B> output) {

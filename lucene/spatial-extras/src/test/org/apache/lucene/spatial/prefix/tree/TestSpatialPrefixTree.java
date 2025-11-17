@@ -74,6 +74,7 @@ public class TestSpatialPrefixTree extends SpatialTestCase {
       assertTrue(prevNShape.getHeight() > sbox.getHeight());
     }
   }
+
   /**
    * A PrefixTree pruning optimization gone bad, applicable when optimize=true. See <a
    * href="https://issues.apache.org/jira/browse/LUCENE-4770">LUCENE-4770</a>.
@@ -109,6 +110,6 @@ public class TestSpatialPrefixTree extends SpatialTestCase {
       System.out.println(indexSearcher.storedFields().document(scoreDoc.doc));
     }
 
-    assertEquals(1, search.totalHits.value);
+    assertEquals(1, search.totalHits.value());
   }
 }

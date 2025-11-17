@@ -51,8 +51,7 @@ public class DistanceQuery extends ComposedQuery implements DistanceSubQuery {
     Iterator<?> sqi = getSubQueriesIterator();
     while (sqi.hasNext()) {
       Object leq = sqi.next();
-      if (leq instanceof DistanceSubQuery) {
-        DistanceSubQuery dsq = (DistanceSubQuery) leq;
+      if (leq instanceof DistanceSubQuery dsq) {
         String m = dsq.distanceSubQueryNotAllowed();
         if (m != null) {
           return m;

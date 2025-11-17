@@ -1,0 +1,70 @@
+# cloudformation stack name
+stack_name: lucene-jmh
+
+# region to launch instances, make sure they are supported!
+region: us-east-1
+
+# ssh keypair to use for accessing instances
+ssh_key: ~/.ssh/id_ed25519
+
+# user to create remotely
+user: lucene
+
+# ami to use
+x86_ami: ami-04cb4ca688797756f
+arm_ami: ami-06f9c0b2ce386dda7
+
+# instance types to spin up
+instances:
+  - name: haswell
+    type: c4.large
+    ami: "{{ x86_ami }}"
+  - name: cascadelake
+    type: c5.large
+    ami: "{{ x86_ami }}"
+  - name: icelake
+    type: c6i.large
+    ami: "{{ x86_ami }}"
+  - name: sapphirerapids
+    type: c7i.large
+    ami: "{{ x86_ami }}"
+  - name: zen2
+    type: c5a.large
+    ami: "{{ x86_ami }}"
+  - name: zen3
+    type: c6a.large
+    ami: "{{ x86_ami }}"
+  - name: zen4
+    type: c7a.large
+    ami: "{{ x86_ami }}"
+  - name: graviton2
+    type: c6g.large
+    ami: "{{ arm_ami }}"
+  - name: graviton3
+    type: c7g.large
+    ami: "{{ arm_ami }}"
+  - name: graviton4
+    type: c8g.large
+    ami: "{{ arm_ami }}"
+
+jdk_version: 21.0.1
+x86_jdk_url: "https://download.java.net/java/GA/jdk{{ jdk_version }}/415e3f918a1f4062a0074a2794853d0d/12/GPL/openjdk-{{ jdk_version }}_linux-x64_bin.tar.gz"
+arm_jdk_url: "https://download.java.net/java/GA/jdk{{ jdk_version }}/415e3f918a1f4062a0074a2794853d0d/12/GPL/openjdk-{{ jdk_version }}_linux-aarch64_bin.tar.gz"
+jdk_url: "{{ arm_jdk_url if ansible_architecture == 'aarch64' else x86_jdk_url }}"
+
+main_branch: "apache:main"
+patch_branch: "{{ lookup('env', 'PATCH_BRANCH') }}"
+
+assemble_command: ./gradlew -p lucene/benchmark-jmh assemble
+# must match benchmark jar to run
+jmh_jar_path: "lucene/benchmark-jmh/build/benchmarks/"
+jmh_jar_glob: "lucene-benchmark-jmh-*.jar"
+jmh_args: "{{ lookup('env', 'JMH_ARGS', default='-p size=1024') }}"
+
+# services that cause noise and don't help us
+disable_services:
+  - atd.service
+  - logrotate.timer
+  - sysstat-collect.timer
+  - sysstat-summary.timer
+  - systemd-tmpfiles-clean.timer

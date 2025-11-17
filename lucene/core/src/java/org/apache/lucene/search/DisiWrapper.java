@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import java.util.Objects;
+import org.apache.lucene.index.PostingsEnum;
+
 /**
  * Wrapper used in {@link DisiPriorityQueue}.
  *
@@ -23,7 +26,10 @@ package org.apache.lucene.search;
  */
 public class DisiWrapper {
   public final DocIdSetIterator iterator;
+  // Same as `iterator` if `iterator` is an instance of PostingsEnum, null otherwise
+  final PostingsEnum postingsEnum;
   public final Scorer scorer;
+  public final Scorable scorable;
   public final long cost;
   public final float matchCost; // the match cost for two-phase iterators, 0 otherwise
   public int doc; // the current doc, used for comparison
@@ -39,12 +45,25 @@ public class DisiWrapper {
   // For WANDScorer
   long scaledMaxScore;
 
-  // For BlockMaxMaxscoreScorer
-  float maxScore;
+  // for MaxScoreBulkScorer
+  float maxWindowScore;
 
-  public DisiWrapper(Scorer scorer) {
-    this.scorer = scorer;
-    this.iterator = scorer.iterator();
+  // for CombinedFieldQuery (BM25F)
+  final float weight;
+
+  public DisiWrapper(Scorer scorer, boolean impacts) {
+    this(scorer, impacts, 1f);
+  }
+
+  DisiWrapper(Scorer scorer, boolean impacts, float weight) {
+    this.scorer = Objects.requireNonNull(scorer);
+    this.scorable = ScorerUtil.likelyTermScorer(scorer);
+    if (impacts) {
+      this.iterator = ScorerUtil.likelyImpactsEnum(scorer.iterator());
+    } else {
+      this.iterator = scorer.iterator();
+    }
+    this.postingsEnum = iterator instanceof PostingsEnum pe ? pe : null;
     this.cost = iterator.cost();
     this.doc = -1;
     this.twoPhaseView = scorer.twoPhaseIterator();
@@ -56,5 +75,7 @@ public class DisiWrapper {
       approximation = iterator;
       matchCost = 0f;
     }
+
+    this.weight = weight;
   }
 }

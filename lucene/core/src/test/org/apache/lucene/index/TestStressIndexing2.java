@@ -41,23 +41,15 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
-import org.junit.Before;
 
 public class TestStressIndexing2 extends LuceneTestCase {
-  static int maxFields = 4;
-  static int bigFieldSize = 10;
-  static boolean sameFieldOrder = false;
-  static int mergeFactor = 3;
-  static int maxBufferedDocs = 3;
-  static int seed = 0;
-  private static Map<String, FieldType> fieldTypes;
-
-  @Before
-  @Override
-  public void setUp() throws Exception {
-    super.setUp();
-    fieldTypes = new ConcurrentHashMap<>();
-  }
+  int maxFields = 4;
+  int bigFieldSize = 10;
+  boolean sameFieldOrder = false;
+  int mergeFactor = 3;
+  int maxBufferedDocs = 3;
+  int seed = 0;
+  private final Map<String, FieldType> fieldTypes = new ConcurrentHashMap<>();
 
   public void testRandomIWReader() throws Throwable {
     Directory dir = newMaybeVirusCheckingDirectory();
@@ -140,13 +132,8 @@ public class TestStressIndexing2 extends LuceneTestCase {
   }
 
   IndexingThread[] threads;
-  static Comparator<IndexableField> fieldNameComparator =
-      new Comparator<IndexableField>() {
-        @Override
-        public int compare(IndexableField o1, IndexableField o2) {
-          return o1.name().compareTo(o2.name());
-        }
-      };
+  private static final Comparator<IndexableField> fieldNameComparator =
+      Comparator.comparing(IndexableField::name);
 
   // This test avoids using any extra synchronization in the multiple
   // indexing threads to test that IndexWriter does correctly synchronize
@@ -173,12 +160,12 @@ public class TestStressIndexing2 extends LuceneTestCase {
     LogMergePolicy lmp = (LogMergePolicy) w.getConfig().getMergePolicy();
     lmp.setNoCFSRatio(0.0);
     lmp.setMergeFactor(mergeFactor);
-    /***
+    /*
      * w.setMaxMergeDocs(Integer.MAX_VALUE);
      * w.setMaxFieldLength(10000);
      * w.setRAMBufferSizeMB(1);
      * w.setMergeFactor(10);
-     ***/
+     */
 
     threads = new IndexingThread[nThreads];
     for (int i = 0; i < threads.length; i++) {
@@ -736,7 +723,7 @@ public class TestStressIndexing2 extends LuceneTestCase {
     assertFalse(fieldsEnum2.hasNext());
   }
 
-  private static class IndexingThread extends Thread {
+  private class IndexingThread extends Thread {
     IndexWriter w;
     int base;
     int range;
@@ -825,7 +812,7 @@ public class TestStressIndexing2 extends LuceneTestCase {
         FieldType fieldType =
             fieldTypes.computeIfAbsent(
                 fieldName,
-                fn -> {
+                _ -> {
                   FieldType ft = new FieldType();
                   switch (nextInt(4)) {
                     case 0:

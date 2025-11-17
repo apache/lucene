@@ -94,7 +94,7 @@ public class TestWildcardRandom extends LuceneTestCase {
     }
     Query wq = new WildcardQuery(new Term("field", filledPattern));
     TopDocs docs = searcher.search(wq, 25);
-    assertEquals("Incorrect hits for pattern: " + pattern, numHits, docs.totalHits.value);
+    assertEquals("Incorrect hits for pattern: " + pattern, numHits, docs.totalHits.value());
   }
 
   @Override
@@ -105,7 +105,6 @@ public class TestWildcardRandom extends LuceneTestCase {
   }
 
   public void testWildcards() throws Exception {
-    ;
     int num = atLeast(1);
     for (int i = 0; i < num; i++) {
       assertPatternHits("NNN", 1);

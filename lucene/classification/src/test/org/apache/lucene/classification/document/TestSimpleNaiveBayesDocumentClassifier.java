@@ -17,6 +17,7 @@
 package org.apache.lucene.classification.document;
 
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.junit.Test;
 
 /** Tests for {@link org.apache.lucene.classification.SimpleNaiveBayesClassifier} */
@@ -56,9 +57,7 @@ public class TestSimpleNaiveBayesDocumentClassifier
           getBatmanDocument(),
           VIDEOGAME_ANALYZED_RESULT);
     } finally {
-      if (indexReader != null) {
-        indexReader.close();
-      }
+      IOUtils.close(indexReader);
     }
   }
 
@@ -111,9 +110,7 @@ public class TestSimpleNaiveBayesDocumentClassifier
               VIDEOGAME_ANALYZED_RESULT);
       assertEquals(0.52, score4, 0.01);
     } finally {
-      if (indexReader != null) {
-        indexReader.close();
-      }
+      IOUtils.close(indexReader);
     }
   }
 
@@ -140,9 +137,7 @@ public class TestSimpleNaiveBayesDocumentClassifier
           getBatmanAmbiguosDocument(),
           VIDEOGAME_ANALYZED_RESULT);
     } finally {
-      if (indexReader != null) {
-        indexReader.close();
-      }
+      IOUtils.close(indexReader);
     }
   }
 }

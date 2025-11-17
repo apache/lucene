@@ -69,28 +69,15 @@ public class BlockTermsWriter extends FieldsConsumer {
   private final TermsIndexWriterBase termsIndexWriter;
   private final int maxDoc;
 
-  private static class FieldMetaData {
-    public final FieldInfo fieldInfo;
-    public final long numTerms;
-    public final long termsStartPointer;
-    public final long sumTotalTermFreq;
-    public final long sumDocFreq;
-    public final int docCount;
-
-    public FieldMetaData(
-        FieldInfo fieldInfo,
-        long numTerms,
-        long termsStartPointer,
-        long sumTotalTermFreq,
-        long sumDocFreq,
-        int docCount) {
+  private record FieldMetaData(
+      FieldInfo fieldInfo,
+      long numTerms,
+      long termsStartPointer,
+      long sumTotalTermFreq,
+      long sumDocFreq,
+      int docCount) {
+    private FieldMetaData {
       assert numTerms > 0;
-      this.fieldInfo = fieldInfo;
-      this.termsStartPointer = termsStartPointer;
-      this.numTerms = numTerms;
-      this.sumTotalTermFreq = sumTotalTermFreq;
-      this.sumDocFreq = sumDocFreq;
-      this.docCount = docCount;
     }
   }
 
@@ -109,7 +96,6 @@ public class BlockTermsWriter extends FieldsConsumer {
     this.termsIndexWriter = termsIndexWriter;
     maxDoc = state.segmentInfo.maxDoc();
     out = state.directory.createOutput(termsFileName, state.context);
-    boolean success = false;
     try {
       fieldInfos = state.fieldInfos;
       CodecUtil.writeIndexHeader(
@@ -121,11 +107,9 @@ public class BlockTermsWriter extends FieldsConsumer {
       // System.out.println("BTW.init seg=" + state.segmentName);
 
       postingsWriter.init(out, state); // have consumer write its format/header
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(out);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, out);
+      throw t;
     }
   }
 

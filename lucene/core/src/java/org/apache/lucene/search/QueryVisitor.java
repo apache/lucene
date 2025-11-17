@@ -59,7 +59,7 @@ public abstract class QueryVisitor {
   public void visitLeaf(Query query) {}
 
   /**
-   * Whether or not terms from this field are of interest to the visitor
+   * Whether or not this field is of interest to the visitor
    *
    * <p>Implement this to avoid collecting terms from heavy queries such as {@link TermInSetQuery}
    * that are not running on fields of interest

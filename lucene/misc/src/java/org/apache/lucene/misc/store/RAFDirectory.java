@@ -93,10 +93,13 @@ public class RAFDirectory extends FSDirectory {
 
     /** the file channel we will read from */
     protected final RandomAccessFile file;
+
     /** is this instance a clone and hence does not own the file to close it */
     boolean isClone = false;
+
     /** start offset: non-zero in the slice case */
     protected final long off;
+
     /** end offset (start+length) */
     protected final long end;
 
@@ -133,7 +136,7 @@ public class RAFDirectory extends FSDirectory {
 
     @Override
     public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
-      if (offset < 0 || length < 0 || offset + length > this.length()) {
+      if ((length | offset) < 0 || length > this.length() - offset) {
         throw new IllegalArgumentException(
             "slice() " + sliceDescription + " out of bounds: " + this);
       }

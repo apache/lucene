@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util;
 
 /*
  * Some of this code came from the excellent Unicode
@@ -82,6 +81,8 @@ package org.apache.lucene.util;
  * dealings in this Software without prior written authorization of the
  * copyright holder.
  */
+
+package org.apache.lucene.util;
 
 import java.util.Arrays;
 
@@ -477,50 +478,77 @@ public final class UnicodeUtil {
     int utf8Upto = utf8.offset;
     final byte[] bytes = utf8.bytes;
     final int utf8Limit = utf8.offset + utf8.length;
+    UTF8CodePoint reuse = null;
     while (utf8Upto < utf8Limit) {
-      final int numBytes = utf8CodeLength[bytes[utf8Upto] & 0xFF];
-      int v = 0;
-      switch (numBytes) {
-        case 1:
-          ints[utf32Count++] = bytes[utf8Upto++];
-          continue;
-        case 2:
-          // 5 useful bits
-          v = bytes[utf8Upto++] & 31;
-          break;
-        case 3:
-          // 4 useful bits
-          v = bytes[utf8Upto++] & 15;
-          break;
-        case 4:
-          // 3 useful bits
-          v = bytes[utf8Upto++] & 7;
-          break;
-        default:
-          throw new IllegalArgumentException("invalid utf8");
-      }
-
-      // TODO: this may read past utf8's limit.
-      final int limit = utf8Upto + numBytes - 1;
-      while (utf8Upto < limit) {
-        v = v << 6 | bytes[utf8Upto++] & 63;
-      }
-      ints[utf32Count++] = v;
+      reuse = codePointAt(bytes, utf8Upto, reuse);
+      ints[utf32Count++] = reuse.codePoint;
+      utf8Upto += reuse.numBytes;
     }
 
     return utf32Count;
   }
 
+  /**
+   * Computes the codepoint and codepoint length (in bytes) of the specified {@code offset} in the
+   * provided {@code utf8} byte array, assuming UTF8 encoding. As with other related methods in this
+   * class, this assumes valid UTF8 input and <strong>does not perform</strong> full UTF8
+   * validation. Passing invalid UTF8 or a position that is not a valid header byte position may
+   * result in undefined behavior. This makes no attempt to synchronize or validate.
+   */
+  public static UTF8CodePoint codePointAt(byte[] utf8, int pos, UTF8CodePoint reuse) {
+    if (reuse == null) {
+      reuse = new UTF8CodePoint();
+    }
+
+    int leadByte = utf8[pos] & 0xFF;
+    int numBytes = utf8CodeLength[leadByte];
+    reuse.numBytes = numBytes;
+    int v;
+    switch (numBytes) {
+      case 1 -> {
+        reuse.codePoint = leadByte;
+        return reuse;
+      }
+      case 2 -> v = leadByte & 31; // 5 useful bits
+      case 3 -> v = leadByte & 15; // 4 useful bits
+      case 4 -> v = leadByte & 7; // 3 useful bits
+      default ->
+          throw new IllegalArgumentException(
+              "Invalid UTF8 header byte: 0x" + Integer.toHexString(leadByte));
+    }
+
+    // TODO: this may read past utf8's limit.
+    final int limit = pos + numBytes;
+    pos++;
+    while (pos < limit) {
+      v = v << 6 | utf8[pos++] & 63;
+    }
+    reuse.codePoint = v;
+
+    return reuse;
+  }
+
+  /** Holds a codepoint along with the number of bytes required to represent it in UTF8 */
+  public static final class UTF8CodePoint {
+    public int codePoint;
+    public int numBytes;
+  }
+
   /** Shift value for lead surrogate to form a supplementary character. */
   private static final int LEAD_SURROGATE_SHIFT_ = 10;
+
   /** Mask to retrieve the significant value from a trail surrogate. */
   private static final int TRAIL_SURROGATE_MASK_ = 0x3FF;
+
   /** Trail surrogate minimum value */
   private static final int TRAIL_SURROGATE_MIN_VALUE = 0xDC00;
+
   /** Lead surrogate minimum value */
   private static final int LEAD_SURROGATE_MIN_VALUE = 0xD800;
+
   /** The minimum value for Supplementary code points */
   private static final int SUPPLEMENTARY_MIN_VALUE = 0x10000;
+
   /** Value that all lead surrogate starts with */
   private static final int LEAD_SURROGATE_OFFSET_ =
       LEAD_SURROGATE_MIN_VALUE - (SUPPLEMENTARY_MIN_VALUE >> LEAD_SURROGATE_SHIFT_);
@@ -557,9 +585,7 @@ public final class UnicodeUtil {
             w += 2;
           }
           break;
-        } catch (
-            @SuppressWarnings("unused")
-            IndexOutOfBoundsException ex) {
+        } catch (IndexOutOfBoundsException _) {
           int newlen = (int) (Math.ceil((double) codePoints.length * (w + 2) / (r - offset + 1)));
           char[] temp = new char[newlen];
           System.arraycopy(chars, 0, temp, 0, w);

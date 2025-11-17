@@ -53,6 +53,7 @@ public class LineDocSource extends ContentSource {
   /** Reader of a single input line into {@link DocData}. */
   public abstract static class LineParser {
     protected final String[] header;
+
     /**
      * Construct with the header
      *
@@ -61,6 +62,7 @@ public class LineDocSource extends ContentSource {
     public LineParser(String[] header) {
       this.header = header;
     }
+
     /** parse an input line and fill doc data appropriately */
     public abstract void parseLine(DocData docData, String line);
   }
@@ -204,9 +206,7 @@ public class LineDocSource extends ContentSource {
 
   private synchronized void openFile() {
     try {
-      if (reader != null) {
-        reader.close();
-      }
+      IOUtils.close(reader);
       InputStream is = StreamUtils.inputStream(file);
       reader = new BufferedReader(new InputStreamReader(is, encoding), StreamUtils.BUFFER_SIZE);
       if (skipHeaderLine) {
@@ -219,10 +219,8 @@ public class LineDocSource extends ContentSource {
 
   @Override
   public void close() throws IOException {
-    if (reader != null) {
-      reader.close();
-      reader = null;
-    }
+    IOUtils.close(reader);
+    reader = null;
   }
 
   @Override

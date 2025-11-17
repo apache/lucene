@@ -100,11 +100,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         result.toString());
 
     // test getTopChildren(0, dim)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(0, "field");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(0, "field"));
 
     r.close();
     d.close();
@@ -160,11 +156,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         result.toString());
 
     // test getTopChildren(0, dim)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(0, "field");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(0, "field"));
 
     r.close();
     d.close();
@@ -224,11 +216,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     assertEquals(0, topNDimsResult.size());
 
     // test getAllDims(0)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getAllDims(0);
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getAllDims(0));
 
     r.close();
     d.close();
@@ -289,60 +277,34 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         result.get(0).toString());
 
     // test getTopChildren(0, dim)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(0, "field");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(0, "field"));
 
     r.close();
     d.close();
   }
 
   public void testUselessRangeSingleDim() {
+    expectThrows(IllegalArgumentException.class, () -> new LongRange("useless", 7, true, 6, true));
+    expectThrows(IllegalArgumentException.class, () -> new LongRange("useless", 7, true, 7, false));
     expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new LongRange("useless", 7, true, 6, true);
-        });
+        IllegalArgumentException.class, () -> new DoubleRange("useless", 7.0, true, 6.0, true));
     expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new LongRange("useless", 7, true, 7, false);
-        });
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new DoubleRange("useless", 7.0, true, 6.0, true);
-        });
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new DoubleRange("useless", 7.0, true, 7.0, false);
-        });
+        IllegalArgumentException.class, () -> new DoubleRange("useless", 7.0, true, 7.0, false));
   }
 
   public void testUselessMultiDimRange() {
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          new LongRange("useless", longArray(7L, 7L), longArray(6L, 6L));
-        });
+        () -> new LongRange("useless", longArray(7L, 7L), longArray(6L, 6L)));
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          new LongRange("useless", longArray(7L, 7L), longArray(7L, 6L));
-        });
+        () -> new LongRange("useless", longArray(7L, 7L), longArray(7L, 6L)));
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          new DoubleRange("useless", doubleArray(7.0, 7.0), doubleArray(6.0, 6.0));
-        });
+        () -> new DoubleRange("useless", doubleArray(7.0, 7.0), doubleArray(6.0, 6.0)));
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          new DoubleRange("useless", doubleArray(7.0, 7.0), doubleArray(7.0, 6.0));
-        });
+        () -> new DoubleRange("useless", doubleArray(7.0, 7.0), doubleArray(7.0, 6.0)));
   }
 
   public void testSingleDimLongMinMax() throws Exception {
@@ -530,7 +492,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
 
     final TaxonomyReader tr = new DirectoryTaxonomyReader(tw);
 
-    IndexSearcher s = newSearcher(r, false, false);
+    IndexSearcher s = newSearcher(r, false, false, Concurrency.INTER_SEGMENT);
     // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
     // timeouts whose implementation scores one window of doc IDs at a time.
     s.setTimeout(null);
@@ -587,7 +549,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     DrillDownQuery ddq = new DrillDownQuery(config);
     DrillSideways.DrillSidewaysResult dsr = ds.search(null, ddq, 10);
 
-    assertEquals(100, dsr.hits.totalHits.value);
+    assertEquals(100, dsr.hits.totalHits.value());
     assertEquals(
         "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
         dsr.facets.getTopChildren(10, "dim").toString());
@@ -600,7 +562,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     ddq.add("dim", "b");
     dsr = ds.search(null, ddq, 10);
 
-    assertEquals(75, dsr.hits.totalHits.value);
+    assertEquals(75, dsr.hits.totalHits.value());
     assertEquals(
         "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
         dsr.facets.getTopChildren(10, "dim").toString());
@@ -643,7 +605,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
 
     final TaxonomyReader tr = new DirectoryTaxonomyReader(tw);
 
-    IndexSearcher s = newSearcher(r, false, false);
+    IndexSearcher s = newSearcher(r, false, false, Concurrency.INTER_SEGMENT);
     // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
     // timeouts whose implementation scores one window of doc IDs at a time.
     s.setTimeout(null);
@@ -704,7 +666,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     DrillDownQuery ddq = new DrillDownQuery(config);
     DrillSideways.DrillSidewaysResult dsr = ds.search(null, ddq, 10);
 
-    assertEquals(100, dsr.hits.totalHits.value);
+    assertEquals(100, dsr.hits.totalHits.value());
     assertEquals(
         "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
         dsr.facets.getTopChildren(10, "dim").toString());
@@ -717,7 +679,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     ddq.add("dim", "b");
     dsr = ds.search(null, ddq, 10);
 
-    assertEquals(75, dsr.hits.totalHits.value);
+    assertEquals(75, dsr.hits.totalHits.value());
     assertEquals(
         "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
         dsr.facets.getTopChildren(10, "dim").toString());
@@ -769,11 +731,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         result.toString());
 
     // test getTopChildren(0, dim)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(0, "field");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(0, "field"));
 
     IOUtils.close(r, d);
   }
@@ -830,11 +788,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         result.toString());
 
     // test getTopChildren(0, dim)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(0, "field");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(0, "field"));
 
     IOUtils.close(r, d);
   }

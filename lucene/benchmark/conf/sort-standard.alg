@@ -31,7 +31,8 @@ doc.tokenized=true
 doc.term.vector=false
 log.step=100000
 
-docs.dir=reuters-out
+work.dir=data
+docs.dir=reuters21578
 
 content.source=org.apache.lucene.benchmark.byTask.feeds.SortableSingleDocSource
 
@@ -44,7 +45,7 @@ log.queries=true
 # -------------------------------------------------------------------------------------
 
 { "Rounds"
-	{ "Run"
+  { "Run"
       ResetSystemErase
 
       { "Populate"
@@ -53,19 +54,19 @@ log.queries=true
         -ForceMerge(1)
         -CloseIndex
       }
-    
+
       { "TestSortSpeed"
-        OpenReader  
-        { "LoadFieldCacheAndSearch" SearchWithSort(sort_field:int) > : 1 
+        OpenReader
+        { "LoadFieldCacheAndSearch" SearchWithSort(sort_field:int) > : 1
         { "SearchWithSort" SearchWithSort(sort_field:int) > : 5000
-        CloseReader 
-      
+        CloseReader
+
       }
-    
+
       NewRound
      } : 4
 
-} 
+}
 
 RepSumByName
 

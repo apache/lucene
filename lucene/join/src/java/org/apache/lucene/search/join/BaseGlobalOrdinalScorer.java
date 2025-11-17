@@ -21,25 +21,25 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
-import org.apache.lucene.search.Weight;
 
 abstract class BaseGlobalOrdinalScorer extends Scorer {
 
   final SortedDocValues values;
   final DocIdSetIterator approximation;
+  final float boost;
 
   float score;
 
   public BaseGlobalOrdinalScorer(
-      Weight weight, SortedDocValues values, DocIdSetIterator approximationScorer) {
-    super(weight);
+      SortedDocValues values, DocIdSetIterator approximationScorer, float boost) {
     this.values = values;
     this.approximation = approximationScorer;
+    this.boost = boost;
   }
 
   @Override
   public float score() throws IOException {
-    return score;
+    return score * boost;
   }
 
   @Override

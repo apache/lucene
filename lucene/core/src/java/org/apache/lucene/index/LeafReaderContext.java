@@ -23,6 +23,7 @@ import java.util.List;
 public final class LeafReaderContext extends IndexReaderContext {
   /** The reader's ord in the top-level's leaves array */
   public final int ord;
+
   /** The reader's absolute doc base */
   public final int docBase;
 

@@ -30,7 +30,7 @@ import org.apache.lucene.queryparser.flexible.messages.MessageImpl;
  */
 public class BoostQueryNode extends QueryNodeImpl {
 
-  private float value = 0;
+  private float value;
 
   /**
    * Constructs a boost node
@@ -51,14 +51,12 @@ public class BoostQueryNode extends QueryNodeImpl {
   }
 
   /**
-   * Returns the single child which this node boosts.
-   *
    * @return the single child which this node boosts
    */
   public QueryNode getChild() {
     List<QueryNode> children = getChildren();
 
-    if (children == null || children.size() == 0) {
+    if (children == null || children.isEmpty()) {
       return null;
     }
 

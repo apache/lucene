@@ -30,23 +30,11 @@ public abstract class FilterScorer extends Scorer implements Unwrappable<Scorer>
   protected final Scorer in;
 
   /**
-   * Create a new FilterScorer
+   * Create a new FilterScorer with a specific weight
    *
    * @param in the {@link Scorer} to wrap
    */
   public FilterScorer(Scorer in) {
-    super(in.weight);
-    this.in = in;
-  }
-
-  /**
-   * Create a new FilterScorer with a specific weight
-   *
-   * @param in the {@link Scorer} to wrap
-   * @param weight a {@link Weight}
-   */
-  public FilterScorer(Scorer in, Weight weight) {
-    super(weight);
     if (in == null) {
       throw new NullPointerException("wrapped Scorer must not be null");
     }

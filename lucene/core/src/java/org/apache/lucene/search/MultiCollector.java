@@ -25,7 +25,7 @@ import org.apache.lucene.index.LeafReaderContext;
 /**
  * A {@link Collector} which allows running a search with several {@link Collector}s. It offers a
  * static {@link #wrap} method which accepts a list of collectors and wraps them with {@link
- * MultiCollector}, while filtering out the <code>null</code> null ones.
+ * MultiCollector}, while filtering out the <code>null</code> ones.
  *
  * <p><b>NOTE:</b>When mixing collectors that want to skip low-scoring hits ({@link
  * ScoreMode#TOP_SCORES}) with ones that require to see all hits, such as mixing {@link
@@ -128,9 +128,7 @@ public class MultiCollector implements Collector {
       final LeafCollector leafCollector;
       try {
         leafCollector = collector.getLeafCollector(context);
-      } catch (
-          @SuppressWarnings("unused")
-          CollectionTerminatedException e) {
+      } catch (CollectionTerminatedException _) {
         // this leaf collector does not need this segment
         continue;
       }
@@ -150,8 +148,12 @@ public class MultiCollector implements Collector {
           && (scoreMode() == ScoreMode.TOP_SCORES || leafScoreMode != ScoreMode.TOP_SCORES)) {
         return leafCollectors.get(0);
       }
-      return new MultiLeafCollector(
-          leafCollectors, cacheScores, scoreMode() == ScoreMode.TOP_SCORES);
+      LeafCollector collector =
+          new MultiLeafCollector(leafCollectors, scoreMode() == ScoreMode.TOP_SCORES);
+      if (cacheScores) {
+        collector = ScoreCachingWrappingScorer.wrap(collector);
+      }
+      return collector;
     }
   }
 
@@ -169,24 +171,18 @@ public class MultiCollector implements Collector {
 
   private static class MultiLeafCollector implements LeafCollector {
 
-    private final boolean cacheScores;
     private final LeafCollector[] collectors;
     private final float[] minScores;
     private final boolean skipNonCompetitiveScores;
 
-    private MultiLeafCollector(
-        List<LeafCollector> collectors, boolean cacheScores, boolean skipNonCompetitive) {
+    private MultiLeafCollector(List<LeafCollector> collectors, boolean skipNonCompetitive) {
       this.collectors = collectors.toArray(new LeafCollector[collectors.size()]);
-      this.cacheScores = cacheScores;
       this.skipNonCompetitiveScores = skipNonCompetitive;
       this.minScores = this.skipNonCompetitiveScores ? new float[this.collectors.length] : null;
     }
 
     @Override
     public void setScorer(Scorable scorer) throws IOException {
-      if (cacheScores) {
-        scorer = ScoreCachingWrappingScorer.wrap(scorer);
-      }
       if (skipNonCompetitiveScores) {
         for (int i = 0; i < collectors.length; ++i) {
           final LeafCollector c = collectors[i];
@@ -213,6 +209,7 @@ public class MultiCollector implements Collector {
       }
     }
 
+    // NOTE: not propagating collect(DocIdStream) since DocIdStreams may only be consumed once.
     @Override
     public void collect(int doc) throws IOException {
       for (int i = 0; i < collectors.length; i++) {
@@ -220,14 +217,22 @@ public class MultiCollector implements Collector {
         if (collector != null) {
           try {
             collector.collect(doc);
-          } catch (
-              @SuppressWarnings("unused")
-              CollectionTerminatedException e) {
+          } catch (CollectionTerminatedException _) {
+            collectors[i].finish();
             collectors[i] = null;
             if (allCollectorsTerminated()) {
               throw new CollectionTerminatedException();
             }
           }
+        }
+      }
+    }
+
+    @Override
+    public void finish() throws IOException {
+      for (LeafCollector collector : collectors) {
+        if (collector != null) {
+          collector.finish();
         }
       }
     }

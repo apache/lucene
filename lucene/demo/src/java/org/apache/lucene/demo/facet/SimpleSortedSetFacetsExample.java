@@ -25,6 +25,7 @@ import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.sortedset.DefaultSortedSetDocValuesReaderState;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesFacetCounts;
@@ -91,13 +92,14 @@ public class SimpleSortedSetFacetsExample {
     SortedSetDocValuesReaderState state =
         new DefaultSortedSetDocValuesReaderState(indexReader, config);
 
-    // Aggregatses the facet counts
-    FacetsCollector fc = new FacetsCollector();
+    // Aggregates the facet counts
+    FacetsCollectorManager fcm = new FacetsCollectorManager();
 
     // MatchAllDocsQuery is for "browsing" (counts facets
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query:
-    FacetsCollector.search(searcher, new MatchAllDocsQuery(), 10, fc);
+    FacetsCollector fc =
+        FacetsCollectorManager.search(searcher, new MatchAllDocsQuery(), 10, fcm).facetsCollector();
 
     // Retrieve results
     Facets facets = new SortedSetDocValuesFacetCounts(state, fc);
@@ -120,8 +122,8 @@ public class SimpleSortedSetFacetsExample {
     // Now user drills down on Publish Year/2010:
     DrillDownQuery q = new DrillDownQuery(config);
     q.add("Publish Year", "2010");
-    FacetsCollector fc = new FacetsCollector();
-    FacetsCollector.search(searcher, q, 10, fc);
+    FacetsCollectorManager fcm = new FacetsCollectorManager();
+    FacetsCollector fc = FacetsCollectorManager.search(searcher, q, 10, fcm).facetsCollector();
 
     // Retrieve results
     Facets facets = new SortedSetDocValuesFacetCounts(state, fc);
@@ -150,7 +152,7 @@ public class SimpleSortedSetFacetsExample {
     SimpleSortedSetFacetsExample example = new SimpleSortedSetFacetsExample();
     List<FacetResult> results = example.runSearch();
     System.out.println("Author: " + results.get(0));
-    System.out.println("Publish Year: " + results.get(0));
+    System.out.println("Publish Year: " + results.get(1));
 
     System.out.println("\n");
     System.out.println("Facet drill-down example (Publish Year/2010):");

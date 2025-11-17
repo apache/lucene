@@ -16,12 +16,12 @@
  */
 package org.apache.lucene.document;
 
+import java.util.Collection;
 import java.util.Objects;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.ConstantScoreQuery;
-import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.MultiTermQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
@@ -171,12 +171,11 @@ public class KeywordField extends Field {
    * @throws NullPointerException if {@code field} is null.
    * @return a query matching documents with this exact value
    */
-  public static Query newSetQuery(String field, BytesRef... values) {
+  public static Query newSetQuery(String field, Collection<BytesRef> values) {
     Objects.requireNonNull(field, "field must not be null");
     Objects.requireNonNull(values, "values must not be null");
-    Query indexQuery = new TermInSetQuery(field, values);
-    Query dvQuery = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, field, values);
-    return new IndexOrDocValuesQuery(indexQuery, dvQuery);
+    return TermInSetQuery.newIndexOrDocValuesQuery(
+        MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE, field, values);
   }
 
   /**

@@ -18,12 +18,15 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.index.MergeState.DocMap;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.PriorityQueue;
+import org.apache.lucene.util.Version;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
 
@@ -50,29 +53,52 @@ final class MultiSorter {
             "Cannot use sort field " + fields[i] + " for index sorting");
       }
       comparables[i] = sorter.getComparableProviders(readers);
+      for (int j = 0; j < readers.size(); j++) {
+        CodecReader codecReader = readers.get(j);
+        FieldInfos fieldInfos = codecReader.getFieldInfos();
+        LeafMetaData metaData = codecReader.getMetaData();
+        if (metaData.hasBlocks() && fieldInfos.getParentField() != null) {
+          NumericDocValues parentDocs =
+              codecReader.getNumericDocValues(fieldInfos.getParentField());
+          assert parentDocs != null
+              : "parent field: "
+                  + fieldInfos.getParentField()
+                  + " must be present if index sorting is used with blocks";
+          BitSet parents = BitSet.of(parentDocs, codecReader.maxDoc());
+          IndexSorter.ComparableProvider[] providers = comparables[i];
+          IndexSorter.ComparableProvider provider = providers[j];
+          providers[j] = docId -> provider.getAsComparableLong(parents.nextSetBit(docId));
+        }
+        if (metaData.hasBlocks()
+            && fieldInfos.getParentField() == null
+            && metaData.createdVersionMajor() >= Version.LUCENE_10_0_0.major) {
+          throw new CorruptIndexException(
+              "parent field is not set but the index has blocks and uses index sorting. indexCreatedVersionMajor: "
+                  + metaData.createdVersionMajor(),
+              "IndexingChain");
+        }
+      }
       reverseMuls[i] = fields[i].getReverse() ? -1 : 1;
     }
     int leafCount = readers.size();
 
     PriorityQueue<LeafAndDocID> queue =
-        new PriorityQueue<LeafAndDocID>(leafCount) {
-          @Override
-          public boolean lessThan(LeafAndDocID a, LeafAndDocID b) {
-            for (int i = 0; i < comparables.length; i++) {
-              int cmp = Long.compare(a.valuesAsComparableLongs[i], b.valuesAsComparableLongs[i]);
-              if (cmp != 0) {
-                return reverseMuls[i] * cmp < 0;
-              }
-            }
-
-            // tie-break by docID natural order:
-            if (a.readerIndex != b.readerIndex) {
-              return a.readerIndex < b.readerIndex;
-            } else {
-              return a.docID < b.docID;
-            }
-          }
-        };
+        PriorityQueue.usingComparator(
+            leafCount,
+            ((Comparator<LeafAndDocID>)
+                    (a, b) -> {
+                      for (int i = 0; i < comparables.length; i++) {
+                        int cmp =
+                            Long.compare(
+                                a.valuesAsComparableLongs[i], b.valuesAsComparableLongs[i]);
+                        if (cmp != 0) {
+                          return reverseMuls[i] * cmp;
+                        }
+                      }
+                      return 0;
+                    })
+                .thenComparingInt(ld -> ld.readerIndex)
+                .thenComparingInt(ld -> ld.docID));
 
     PackedLongValues.Builder[] builders = new PackedLongValues.Builder[leafCount];
 
@@ -122,14 +148,11 @@ final class MultiSorter {
       final PackedLongValues remapped = builders[i].build();
       final Bits liveDocs = readers.get(i).getLiveDocs();
       docMaps[i] =
-          new MergeState.DocMap() {
-            @Override
-            public int get(int docID) {
-              if (liveDocs == null || liveDocs.get(docID)) {
-                return (int) remapped.get(docID);
-              } else {
-                return -1;
-              }
+          docID -> {
+            if (liveDocs == null || liveDocs.get(docID)) {
+              return (int) remapped.get(docID);
+            } else {
+              return -1;
             }
           };
     }

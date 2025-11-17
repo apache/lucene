@@ -35,25 +35,34 @@ import org.apache.lucene.util.CollectionUtil;
 class GeoConvexPolygon extends GeoBasePolygon {
   /** The list of polygon points */
   protected final List<GeoPoint> points;
+
   /** A bitset describing, for each edge, whether it is internal or not */
   protected final BitSet isInternalEdges;
+
   /** The list of holes. If a point is in the hole, it is *not* in the polygon */
   protected final List<GeoPolygon> holes;
 
   /** A list of edges */
   protected SidedPlane[] edges = null;
+
   /** A list of edge starting bounding planes */
   protected SidedPlane[] startBounds = null;
+
   /** A list of edge ending bounding planes */
   protected SidedPlane[] endBounds = null;
+
   /** The set of notable points for each edge */
   protected GeoPoint[][] notableEdgePoints = null;
+
   /** A point which is on the boundary of the polygon */
   protected GeoPoint[] edgePoints = null;
+
   /** Set to true when the polygon is complete */
   protected boolean isDone = false;
+
   /** Map from edge to its previous non-coplanar brother */
   protected Map<SidedPlane, SidedPlane> prevBrotherMap = null;
+
   /** Map from edge to its next non-coplanar brother */
   protected Map<SidedPlane, SidedPlane> nextBrotherMap = null;
 

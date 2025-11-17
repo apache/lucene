@@ -25,15 +25,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ForkJoinPool;
 import org.apache.lucene.codecs.DocValuesFormat;
+import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90PointsReader;
 import org.apache.lucene.codecs.lucene90.Lucene90PointsWriter;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.memory.DirectPostingsFormat;
 import org.apache.lucene.codecs.memory.FSTPostingsFormat;
 import org.apache.lucene.index.FieldInfo;
@@ -44,6 +49,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.codecs.asserting.AssertingDocValuesFormat;
+import org.apache.lucene.tests.codecs.asserting.AssertingKnnVectorsFormat;
 import org.apache.lucene.tests.codecs.asserting.AssertingPointsFormat;
 import org.apache.lucene.tests.codecs.asserting.AssertingPostingsFormat;
 import org.apache.lucene.tests.codecs.blockterms.LuceneFixedGap;
@@ -53,6 +59,7 @@ import org.apache.lucene.tests.codecs.bloom.TestBloomFilteredLucenePostings;
 import org.apache.lucene.tests.codecs.mockrandom.MockRandomPostingsFormat;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.bkd.BKDConfig;
 import org.apache.lucene.util.bkd.BKDWriter;
 
@@ -70,11 +77,17 @@ public class RandomCodec extends AssertingCodec {
   /** Shuffled list of docvalues formats to use for new mappings */
   private List<DocValuesFormat> dvFormats = new ArrayList<>();
 
+  /** Shuffled list of knn formats to use for new mappings */
+  private List<KnnVectorsFormat> knnFormats = new ArrayList<>();
+
   /** unique set of format names this codec knows about */
   public Set<String> formatNames = new HashSet<>();
 
   /** unique set of docvalues format names this codec knows about */
   public Set<String> dvFormatNames = new HashSet<>();
+
+  /** unique set of knn format names this codec knows about */
+  public Set<String> knnFormatNames = new HashSet<>();
 
   public final Set<String> avoidCodecs;
 
@@ -87,10 +100,14 @@ public class RandomCodec extends AssertingCodec {
 
   private Map<String, DocValuesFormat> previousDVMappings =
       Collections.synchronizedMap(new HashMap<String, DocValuesFormat>());
+
+  private Map<String, KnnVectorsFormat> previousKnnMappings =
+      Collections.synchronizedMap(new HashMap<String, KnnVectorsFormat>());
+
   private final int perFieldSeed;
 
   // a little messy: randomize the default codec's parameters here.
-  // with the default values, we have e,g, 1024 points in leaf nodes,
+  // with the default values, we have e,g, 512 points in leaf nodes,
   // which is less effective for testing.
   // TODO: improve how we randomize this...
   private final int maxPointsInLeafNode;
@@ -149,7 +166,7 @@ public class RandomCodec extends AssertingCodec {
 
                   // We could have 0 points on merge since all docs with dimensional fields may be
                   // deleted:
-                  Runnable finalizer = writer.finish(metaOut, indexOut, dataOut);
+                  IORunnable finalizer = writer.finish(metaOut, indexOut, dataOut);
                   if (finalizer != null) {
                     metaOut.writeInt(fieldInfo.number);
                     finalizer.run();
@@ -188,6 +205,18 @@ public class RandomCodec extends AssertingCodec {
       assert previousDVMappings.size() < 10000 : "test went insane";
     }
     return codec;
+  }
+
+  @Override
+  public KnnVectorsFormat getKnnVectorsFormatForField(String name) {
+    KnnVectorsFormat format = previousKnnMappings.get(name);
+    if (format == null) {
+      format = knnFormats.get(Math.abs(perFieldSeed ^ name.hashCode()) % knnFormats.size());
+      previousKnnMappings.put(name, format);
+      // Safety:
+      assert previousKnnMappings.size() < 10000 : "test went insane";
+    }
+    return format;
   }
 
   public RandomCodec(Random random, Set<String> avoidCodecs) {
@@ -235,8 +264,42 @@ public class RandomCodec extends AssertingCodec {
         new Lucene90DocValuesFormat(),
         new AssertingDocValuesFormat());
 
+    boolean concurrentKnnMerging = random.nextBoolean();
+    addKnn(
+        avoidCodecs,
+        TestUtil.getDefaultKnnVectorsFormat(),
+        new Lucene99HnswVectorsFormat(
+            TestUtil.nextInt(random, 5, 50),
+            TestUtil.nextInt(random, 10, 50),
+            concurrentKnnMerging ? TestUtil.nextInt(random, 2, 8) : 1,
+            concurrentKnnMerging ? ForkJoinPool.commonPool() : null,
+            0),
+        new Lucene104HnswScalarQuantizedVectorsFormat(
+            Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.SEVEN_BIT,
+            TestUtil.nextInt(random, 5, 50),
+            TestUtil.nextInt(random, 10, 50),
+            concurrentKnnMerging ? TestUtil.nextInt(random, 2, 8) : 1,
+            concurrentKnnMerging ? ForkJoinPool.commonPool() : null,
+            0),
+        new Lucene104HnswScalarQuantizedVectorsFormat(
+            Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.UNSIGNED_BYTE,
+            TestUtil.nextInt(random, 5, 50),
+            TestUtil.nextInt(random, 10, 50),
+            concurrentKnnMerging ? TestUtil.nextInt(random, 2, 8) : 1,
+            concurrentKnnMerging ? ForkJoinPool.commonPool() : null,
+            0),
+        new Lucene104HnswScalarQuantizedVectorsFormat(
+            Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.PACKED_NIBBLE,
+            TestUtil.nextInt(random, 5, 50),
+            TestUtil.nextInt(random, 10, 50),
+            concurrentKnnMerging ? TestUtil.nextInt(random, 2, 8) : 1,
+            concurrentKnnMerging ? ForkJoinPool.commonPool() : null,
+            0),
+        new AssertingKnnVectorsFormat());
+
     Collections.shuffle(formats, random);
     Collections.shuffle(dvFormats, random);
+    Collections.shuffle(knnFormats, random);
 
     // Avoid too many open files:
     if (formats.size() > 4) {
@@ -244,6 +307,9 @@ public class RandomCodec extends AssertingCodec {
     }
     if (dvFormats.size() > 4) {
       dvFormats = dvFormats.subList(0, 4);
+    }
+    if (knnFormats.size() > 4) {
+      knnFormats = knnFormats.subList(0, 4);
     }
   }
 
@@ -269,11 +335,22 @@ public class RandomCodec extends AssertingCodec {
     }
   }
 
+  private final void addKnn(Set<String> avoidCodecs, KnnVectorsFormat... knnFormat) {
+    for (KnnVectorsFormat kf : knnFormat) {
+      if (!avoidCodecs.contains(kf.getName())) {
+        knnFormats.add(kf);
+        knnFormatNames.add(kf.getName());
+      }
+    }
+  }
+
   @Override
   public String toString() {
     return super.toString()
         + ": "
         + previousMappings.toString()
+        + ", knn_vectors:"
+        + previousKnnMappings.toString()
         + ", docValues:"
         + previousDVMappings.toString()
         + ", maxPointsInLeafNode="
@@ -307,7 +384,7 @@ public class RandomCodec extends AssertingCodec {
     protected int split(byte[] minPackedValue, byte[] maxPackedValue, int[] parentDims) {
       // BKD normally defaults by the widest dimension, to try to make as squarish cells as
       // possible, but we just pick a random one ;)
-      return random.nextInt(config.numIndexDims);
+      return random.nextInt(config.numIndexDims());
     }
   }
 }

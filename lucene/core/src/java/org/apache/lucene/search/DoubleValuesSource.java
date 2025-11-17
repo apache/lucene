@@ -25,6 +25,7 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.comparators.DoubleComparator;
+import org.apache.lucene.util.NumericUtils;
 
 /**
  * Base class for producing {@link DoubleValues}
@@ -114,6 +115,70 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
     return new LongDoubleValuesSource(this);
   }
 
+  /** Convert to {@link LongValuesSource} by calling {@link NumericUtils#doubleToSortableLong} */
+  public final LongValuesSource toSortableLongDoubleValuesSource() {
+    return new SortableLongDoubleValuesSource(this);
+  }
+
+  private static class SortableLongDoubleValuesSource extends LongValuesSource {
+
+    private final DoubleValuesSource inner;
+
+    private SortableLongDoubleValuesSource(DoubleValuesSource inner) {
+      this.inner = Objects.requireNonNull(inner);
+    }
+
+    @Override
+    public LongValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
+      DoubleValues in = inner.getValues(ctx, scores);
+
+      return new LongValues() {
+        @Override
+        public long longValue() throws IOException {
+          return NumericUtils.doubleToSortableLong(in.doubleValue());
+        }
+
+        @Override
+        public boolean advanceExact(int doc) throws IOException {
+          return in.advanceExact(doc);
+        }
+      };
+    }
+
+    @Override
+    public boolean needsScores() {
+      return inner.needsScores();
+    }
+
+    @Override
+    public int hashCode() {
+      return inner.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      SortableLongDoubleValuesSource that = (SortableLongDoubleValuesSource) o;
+      return Objects.equals(inner, that.inner);
+    }
+
+    @Override
+    public String toString() {
+      return "sortableLong(" + inner.toString() + ")";
+    }
+
+    @Override
+    public LongValuesSource rewrite(IndexSearcher searcher) throws IOException {
+      return inner.rewrite(searcher).toLongValuesSource();
+    }
+
+    @Override
+    public boolean isCacheable(LeafReaderContext ctx) {
+      return false;
+    }
+  }
+
   private static class LongDoubleValuesSource extends LongValuesSource {
 
     private final DoubleValuesSource inner;
@@ -170,6 +235,36 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
     public LongValuesSource rewrite(IndexSearcher searcher) throws IOException {
       return inner.rewrite(searcher).toLongValuesSource();
     }
+  }
+
+  /**
+   * Returns a DoubleValues instance for computing the vector similarity score per document against
+   * the byte query vector
+   *
+   * @param ctx the context for which to return the DoubleValues
+   * @param queryVector byte query vector
+   * @param vectorField knn byte field name
+   * @return DoubleValues instance
+   * @throws IOException if an {@link IOException} occurs
+   */
+  public static DoubleValues similarityToQueryVector(
+      LeafReaderContext ctx, byte[] queryVector, String vectorField) throws IOException {
+    return new ByteVectorSimilarityValuesSource(queryVector, vectorField).getValues(ctx, null);
+  }
+
+  /**
+   * Returns a DoubleValues instance for computing the vector similarity score per document against
+   * the float query vector
+   *
+   * @param ctx the context for which to return the DoubleValues
+   * @param queryVector float query vector
+   * @param vectorField knn float field name
+   * @return DoubleValues instance
+   * @throws IOException if an {@link IOException} occurs
+   */
+  public static DoubleValues similarityToQueryVector(
+      LeafReaderContext ctx, float[] queryVector, String vectorField) throws IOException {
+    return new FloatVectorSimilarityValuesSource(queryVector, vectorField).getValues(ctx, null);
   }
 
   /**
@@ -328,8 +423,9 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
    * Returns a DoubleValues instance that wraps scores returned by a Scorer.
    *
    * <p>Note: If you intend to call {@link Scorable#score()} on the provided {@code scorer}
-   * separately, you may want to consider wrapping it with {@link
-   * ScoreCachingWrappingScorer#wrap(Scorable)} to avoid computing the actual score multiple times.
+   * separately, you may want to consider wrapping the collector with {@link
+   * ScoreCachingWrappingScorer#wrap(LeafCollector)} to avoid computing the actual score multiple
+   * times.
    */
   public static DoubleValues fromScorer(Scorable scorer) {
     return new DoubleValues() {
@@ -340,7 +436,6 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
       @Override
       public boolean advanceExact(int doc) throws IOException {
-        assert scorer.docID() == doc;
         return true;
       }
     };
@@ -481,8 +576,8 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
     @Override
     public FieldComparator<Double> newComparator(
-        String fieldname, int numHits, boolean enableSkipping, boolean reversed) {
-      return new DoubleComparator(numHits, fieldname, missingValue, reversed, false) {
+        String fieldname, int numHits, Pruning pruning, boolean reversed) {
+      return new DoubleComparator(numHits, fieldname, missingValue, reversed, Pruning.NONE) {
         @Override
         public LeafFieldComparator getLeafComparator(LeafReaderContext context) throws IOException {
           DoubleValuesHolder holder = new DoubleValuesHolder();

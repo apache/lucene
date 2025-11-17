@@ -59,6 +59,7 @@ import org.apache.lucene.util.NamedThreadFactory;
 /** Factory of optimize index dialog */
 public final class OptimizeIndexDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static OptimizeIndexDialogFactory instance;
 
   private final Preferences prefs;
@@ -170,7 +171,7 @@ public final class OptimizeIndexDialogFactory implements DialogOpener.DialogFact
     JButton closeBtn = new JButton(MessageUtils.getLocalizedMessage("button.close"));
     closeBtn.setFont(StyleConstants.FONT_BUTTON_LARGE);
     closeBtn.setMargin(new Insets(3, 0, 3, 0));
-    closeBtn.addActionListener(e -> dialog.dispose());
+    closeBtn.addActionListener(_ -> dialog.dispose());
     execButtons.add(closeBtn);
     panel.add(execButtons);
 
@@ -207,7 +208,7 @@ public final class OptimizeIndexDialogFactory implements DialogOpener.DialogFact
           Executors.newFixedThreadPool(1, new NamedThreadFactory("optimize-index-dialog"));
 
       SwingWorker<Void, Void> task =
-          new SwingWorker<Void, Void>() {
+          new SwingWorker<>() {
 
             @Override
             protected Void doInBackground() {

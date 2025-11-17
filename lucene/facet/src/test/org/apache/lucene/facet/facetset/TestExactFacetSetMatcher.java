@@ -20,11 +20,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.facet.*;
+import org.apache.lucene.facet.FacetResult;
+import org.apache.lucene.facet.FacetTestCase;
+import org.apache.lucene.facet.Facets;
+import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
+import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -414,11 +418,7 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
 
   private static Query createFastMatchQuery(String field, int... values) {
     return new TermInSetQuery(
-        field,
-        Arrays.stream(values)
-            .mapToObj(String::valueOf)
-            .map(BytesRef::new)
-            .collect(Collectors.toList()));
+        field, Arrays.stream(values).mapToObj(String::valueOf).map(BytesRef::new).toList());
   }
 
   private static void addFastMatchField(

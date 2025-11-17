@@ -18,6 +18,7 @@
 package org.apache.lucene.index;
 
 import org.apache.lucene.document.Document;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -30,8 +31,8 @@ public class TestTermStates extends LuceneTestCase {
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
     w.addDocument(new Document());
     IndexReader r = w.getReader();
-    TermStates states =
-        TermStates.build(r.getContext(), new Term("foo", "bar"), random().nextBoolean());
+    IndexSearcher s = new IndexSearcher(r);
+    TermStates states = TermStates.build(s, new Term("foo", "bar"), random().nextBoolean());
     assertEquals("TermStates\n  state=null\n", states.toString());
     IOUtils.close(r, w, dir);
   }

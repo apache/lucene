@@ -26,12 +26,12 @@ import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.Stack;
 import org.apache.lucene.benchmark.byTask.utils.Config;
 
 /**
@@ -81,7 +81,7 @@ public class DirContentSource extends ContentSource {
 
     int count = 0;
 
-    Stack<Path> stack = new Stack<>();
+    ArrayDeque<Path> stack = new ArrayDeque<>();
 
     /* this seems silly ... there must be a better way ...
     not that this is good, but can it matter? */
@@ -93,7 +93,7 @@ public class DirContentSource extends ContentSource {
     }
 
     void find() throws IOException {
-      if (stack.empty()) {
+      if (stack.isEmpty()) {
         return;
       }
       if (!Files.isDirectory(stack.peek())) {
@@ -210,18 +210,23 @@ public class DirContentSource extends ContentSource {
       name = f.toRealPath() + "_" + iteration;
     }
 
-    BufferedReader reader = Files.newBufferedReader(f, StandardCharsets.UTF_8);
     String line = null;
-    // First line is the date, 3rd is the title, rest is body
-    String dateStr = reader.readLine();
-    reader.readLine(); // skip an empty line
-    String title = reader.readLine();
-    reader.readLine(); // skip an empty line
-    StringBuilder bodyBuf = new StringBuilder(1024);
-    while ((line = reader.readLine()) != null) {
-      bodyBuf.append(line).append(' ');
+    String title = null;
+    String dateStr = null;
+    StringBuilder bodyBuf = null;
+
+    // Use try-with-resources to ensure the reader is closed
+    try (BufferedReader reader = Files.newBufferedReader(f, StandardCharsets.UTF_8)) {
+      // First line is the date, 3rd is the title, rest is body
+      dateStr = reader.readLine();
+      reader.readLine(); // skip an empty line
+      title = reader.readLine();
+      reader.readLine(); // skip an empty line
+      bodyBuf = new StringBuilder(1024);
+      while ((line = reader.readLine()) != null) {
+        bodyBuf.append(line).append(' ');
+      }
     }
-    reader.close();
     addBytes(Files.size(f));
 
     Date date = parseDate(dateStr);

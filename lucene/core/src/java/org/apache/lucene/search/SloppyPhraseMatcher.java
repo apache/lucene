@@ -19,19 +19,18 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.stream.Collectors;
-import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsSource;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.PriorityQueue;
 
 /**
  * Find all slop-valid position-combinations (matches) encountered while traversing/hopping the
@@ -56,7 +55,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
 
   private final int slop;
   private final int numPostings;
-  private final PhraseQueue pq; // for advancing min position
+  private final PriorityQueue<PhrasePositions> pq; // for advancing min position
   private final boolean captureLeadMatch;
 
   private final DocIdSetIterator approximation;
@@ -92,7 +91,22 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     this.slop = slop;
     this.numPostings = postings.length;
     this.captureLeadMatch = captureLeadMatch;
-    pq = new PhraseQueue(postings.length);
+    pq =
+        PriorityQueue.usingLessThan(
+            postings.length,
+            (pp1, pp2) -> {
+              if (pp1.position == pp2.position)
+                // same doc and pp.position, so decide by actual term positions.
+                // rely on: pp.position == tp.position - offset.
+                if (pp1.offset == pp2.offset) {
+                  return pp1.ord < pp2.ord;
+                } else {
+                  return pp1.offset < pp2.offset;
+                }
+              else {
+                return pp1.position < pp2.position;
+              }
+            });
     phrasePositions = new PhrasePositions[postings.length];
     for (int i = 0; i < postings.length; ++i) {
       phrasePositions[i] =
@@ -100,8 +114,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     }
 
     approximation =
-        ConjunctionUtils.intersectIterators(
-            Arrays.stream(postings).map(p -> p.postings).collect(Collectors.toList()));
+        ConjunctionUtils.intersectIterators(Arrays.stream(postings).map(p -> p.postings).toList());
     // What would be a good upper bound of the sloppy frequency? A sum of the
     // sub frequencies would be correct, but it is usually so much higher than
     // the actual sloppy frequency that it doesn't help skip irrelevant
@@ -113,14 +126,20 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
           public Impacts getImpacts() throws IOException {
             return new Impacts() {
 
+              private final FreqAndNormBuffer impactBuffer = new FreqAndNormBuffer();
+
+              {
+                impactBuffer.add(Integer.MAX_VALUE, 1);
+              }
+
               @Override
               public int numLevels() {
                 return 1;
               }
 
               @Override
-              public List<Impact> getImpacts(int level) {
-                return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
+              public FreqAndNormBuffer getImpacts(int level) {
+                return impactBuffer;
               }
 
               @Override
@@ -133,7 +152,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
           @Override
           public void advanceShallow(int target) throws IOException {}
         };
-    impactsApproximation = new ImpactsDISI(approximation, impactsSource, scorer);
+    impactsApproximation = new ImpactsDISI(approximation, new MaxScoreCache(impactsSource, scorer));
   }
 
   @Override
@@ -334,8 +353,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
   private int collide(PhrasePositions pp) {
     int tpPos = tpPos(pp);
     PhrasePositions[] rg = rptGroups[pp.rptGroup];
-    for (int i = 0; i < rg.length; i++) {
-      PhrasePositions pp2 = rg[i];
+    for (PhrasePositions pp2 : rg) {
       if (pp2 != pp && tpPos(pp2) == tpPos) {
         return pp2.rptInd;
       }
@@ -511,13 +529,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
    */
   private void sortRptGroups(ArrayList<ArrayList<PhrasePositions>> rgs) {
     rptGroups = new PhrasePositions[rgs.size()][];
-    Comparator<PhrasePositions> cmprtr =
-        new Comparator<PhrasePositions>() {
-          @Override
-          public int compare(PhrasePositions pp1, PhrasePositions pp2) {
-            return pp1.offset - pp2.offset;
-          }
-        };
+    Comparator<PhrasePositions> cmprtr = Comparator.comparingInt(pp -> pp.offset);
     for (int i = 0; i < rptGroups.length; i++) {
       PhrasePositions[] rg = rgs.get(i).toArray(new PhrasePositions[0]);
       Arrays.sort(rg, cmprtr);
@@ -565,9 +577,9 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
       ArrayList<FixedBitSet> bb = ppTermsBitSets(rpp, rptTerms);
       unionTermGroups(bb);
       HashMap<Term, Integer> tg = termGroups(rptTerms, bb);
-      HashSet<Integer> distinctGroupIDs = new HashSet<>(tg.values());
-      for (int i = 0; i < distinctGroupIDs.size(); i++) {
-        tmp.add(new HashSet<PhrasePositions>());
+      int numDistinctGroupIds = new IntHashSet(tg.values()).size();
+      for (int i = 0; i < numDistinctGroupIds; i++) {
+        tmp.add(new HashSet<>());
       }
       for (PhrasePositions pp : rpp) {
         for (Term t : pp.terms) {
@@ -586,8 +598,8 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     return res;
   }
 
-  /** Actual position in doc of a PhrasePosition, relies on that position = tpPos - offset) */
-  private final int tpPos(PhrasePositions pp) {
+  /** Actual position in doc of a PhrasePosition, relies on that position = tpPos - offset */
+  private int tpPos(PhrasePositions pp) {
     return pp.position + pp.offset;
   }
 
@@ -597,7 +609,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     HashMap<Term, Integer> tcnt = new HashMap<>();
     for (PhrasePositions pp : phrasePositions) {
       for (Term t : pp.terms) {
-        Integer cnt = tcnt.compute(t, (key, old) -> old == null ? 1 : 1 + old);
+        Integer cnt = tcnt.compute(t, (_, old) -> old == null ? 1 : 1 + old);
         if (cnt == 2) {
           tord.put(t, tord.size());
         }

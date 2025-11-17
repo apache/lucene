@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.lucene.benchmark.byTask.PerfRunData;
 
 /** Test Search task which counts number of searches. */
+@SuppressWarnings("NonFinalStaticField")
 public class CountingSearchTestTask extends SearchTask {
 
   public static int numSearches = 0;

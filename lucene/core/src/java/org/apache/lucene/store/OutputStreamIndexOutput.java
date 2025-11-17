@@ -135,5 +135,19 @@ public class OutputStreamIndexOutput extends IndexOutput {
       BitUtil.VH_LE_LONG.set(buf, count, i);
       count += Long.BYTES;
     }
+
+    @Override
+    public void write(int b) throws IOException {
+      // override single byte write to avoid synchronization overhead now that JEP374 removed biased
+      // locking
+      byte[] buffer = buf;
+      int count = this.count;
+      if (count >= buffer.length) {
+        super.write(b);
+      } else {
+        buffer[count] = (byte) b;
+        this.count = count + 1;
+      }
+    }
   }
 }

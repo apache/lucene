@@ -24,7 +24,7 @@ import java.util.TreeMap;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Fields;
@@ -54,7 +54,7 @@ import org.apache.lucene.util.automaton.TransitionAccessor;
 //   - or: longer dense skip lists than just next byte?
 
 /**
- * Wraps {@link Lucene90PostingsFormat} format for on-disk storage, but then at read time loads and
+ * Wraps {@link Lucene104PostingsFormat} format for on-disk storage, but then at read time loads and
  * stores all terms and postings directly in RAM as byte[], int[].
  *
  * <p><b>WARNING</b>: This is exceptionally RAM intensive: it makes no effort to compress the
@@ -97,13 +97,13 @@ public final class DirectPostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    return PostingsFormat.forName("Lucene90").fieldsConsumer(state);
+    return PostingsFormat.forName("Lucene104").fieldsConsumer(state);
   }
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
-    FieldsProducer postings = PostingsFormat.forName("Lucene90").fieldsProducer(state);
-    if (state.context.context != IOContext.Context.MERGE) {
+    FieldsProducer postings = PostingsFormat.forName("Lucene104").fieldsProducer(state);
+    if (state.context.context() != IOContext.Context.MERGE) {
       FieldsProducer loadedPostings;
       try {
         postings.checkIntegrity();
@@ -994,7 +994,10 @@ public final class DirectPostingsFormat extends PostingsFormat {
 
               while (label > states[i].transitionMax) {
                 states[i].transitionUpto++;
-                assert states[i].transitionUpto < states[i].transitionCount;
+                if (states[i].transitionUpto >= states[i].transitionCount) {
+                  // All transitions compare less than the required label
+                  break;
+                }
                 transitionAccessor.getNextTransition(states[i].transition);
                 states[i].transitionMin = states[i].transition.min;
                 states[i].transitionMax = states[i].transition.max;
@@ -1119,12 +1122,14 @@ public final class DirectPostingsFormat extends PostingsFormat {
             }
           }
 
-          final int termOffset = termOffsets[termOrd];
-          final int termLen = termOffsets[1 + termOrd] - termOffset;
+          if (termOrd >= 0) {
+            final int termOffset = termOffsets[termOrd];
+            final int termLen = termOffsets[1 + termOrd] - termOffset;
 
-          if (termOrd >= 0 && !startTerm.equals(new BytesRef(termBytes, termOffset, termLen))) {
-            stateUpto -= skipUpto;
-            termOrd--;
+            if (!startTerm.equals(new BytesRef(termBytes, termOffset, termLen))) {
+              stateUpto -= skipUpto;
+              termOrd--;
+            }
           }
           // if (DEBUG) {
           //   System.out.println("  loop end; return termOrd=" + termOrd + " stateUpto=" +
@@ -1251,13 +1256,13 @@ public final class DirectPostingsFormat extends PostingsFormat {
           }
 
           /*
-          if (DEBUG) {
-            System.out.println("    check ord=" + termOrd + " term[" + stateUpto + "]=" + (char) label + "(" + label + ") term=" + new BytesRef(terms[termOrd].term).utf8ToString() + " trans " +
-                               (char) state.transitionMin + "(" + state.transitionMin + ")" + "-" + (char) state.transitionMax + "(" + state.transitionMax + ") nextChange=+" + (state.changeOrd - termOrd) + " skips=" + (skips == null ? "null" : Arrays.toString(skips)));
-            System.out.println("    check ord=" + termOrd + " term[" + stateUpto + "]=" + Integer.toHexString(label) + "(" + label + ") term=" + new BytesRef(termBytes, termOffset, termLength) + " trans " +
-                               Integer.toHexString(state.transitionMin) + "(" + state.transitionMin + ")" + "-" + Integer.toHexString(state.transitionMax) + "(" + state.transitionMax + ") nextChange=+" + (state.changeOrd - termOrd) + " skips=" + (skips == null ? "null" : Arrays.toString(skips)));
-          }
-          */
+           * if (DEBUG) {
+           *   System.out.println("    check ord=" + termOrd + " term[" + stateUpto + "]=" + (char) label + "(" + label + ") term=" + new BytesRef(terms[termOrd].term).utf8ToString() + " trans " +
+           *                    (char) state.transitionMin + "(" + state.transitionMin + ")" + "-" + (char) state.transitionMax + "(" + state.transitionMax + ") nextChange=+" + (state.changeOrd - termOrd) + " skips=" + (skips == null ? "null" : Arrays.toString(skips)));
+           *   System.out.println("    check ord=" + termOrd + " term[" + stateUpto + "]=" + Integer.toHexString(label) + "(" + label + ") term=" + new BytesRef(termBytes, termOffset, termLength) + " trans " +
+           *                     Integer.toHexString(state.transitionMin) + "(" + state.transitionMin + ")" + "-" + Integer.toHexString(state.transitionMax) + "(" + state.transitionMax + ") nextChange=+" + (state.changeOrd - termOrd) + " skips=" + (skips == null ? "null" : Arrays.toString(skips)));
+           * }
+           */
 
           final int targetLabel = state.transitionMin;
 
@@ -1917,9 +1922,7 @@ public final class DirectPostingsFormat extends PostingsFormat {
       upto++;
       try {
         return docID = docIDs[upto];
-      } catch (
-          @SuppressWarnings("unused")
-          ArrayIndexOutOfBoundsException e) {
+      } catch (ArrayIndexOutOfBoundsException _) {
       }
       return docID = NO_MORE_DOCS;
     }

@@ -337,8 +337,8 @@ public abstract class LongValuesSource implements SegmentCacheable {
 
     @Override
     public FieldComparator<Long> newComparator(
-        String fieldname, int numHits, boolean enableSkipping, boolean reversed) {
-      return new LongComparator(numHits, fieldname, missingValue, reversed, false) {
+        String fieldname, int numHits, Pruning pruning, boolean reversed) {
+      return new LongComparator(numHits, fieldname, missingValue, reversed, Pruning.NONE) {
         @Override
         public LeafFieldComparator getLeafComparator(LeafReaderContext context) throws IOException {
           LongValuesHolder holder = new LongValuesHolder();

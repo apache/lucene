@@ -19,6 +19,7 @@ package org.apache.lucene.monitor;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.lucene.analysis.core.KeywordAnalyzer;
 import org.apache.lucene.index.DirectoryReader;
@@ -52,7 +53,7 @@ public class TestTermPresearcher extends PresearcherTestBase {
       Map<String, Long> timings = new HashMap<>();
       QueryTimeListener timeListener =
           (queryId, timeInNanos) ->
-              timings.compute(queryId, (q, t) -> t == null ? timeInNanos : t + timeInNanos);
+              timings.compute(queryId, (_, t) -> t == null ? timeInNanos : t + timeInNanos);
       MatchingQueries<QueryMatch> matches =
           monitor.match(
               buildDoc(TEXTFIELD, "this is a test document"),
@@ -144,7 +145,7 @@ public class TestTermPresearcher extends PresearcherTestBase {
                 .add(
                     should(
                         new BooleanQuery.Builder()
-                            .add(should(new TermInSetQuery("f", new BytesRef("test"))))
+                            .add(should(new TermInSetQuery("f", List.of(new BytesRef("test")))))
                             .build()))
                 .add(should(new TermQuery(new Term("__anytokenfield", "__ANYTOKEN__"))))
                 .build();

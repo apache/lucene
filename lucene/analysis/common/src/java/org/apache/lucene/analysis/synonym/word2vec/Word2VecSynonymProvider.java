@@ -23,14 +23,16 @@ import static org.apache.lucene.util.hnsw.HnswGraphBuilder.DEFAULT_MAX_CONN;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
-import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.TermAndBoost;
-import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
-import org.apache.lucene.util.hnsw.NeighborQueue;
+import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
 /**
  * The Word2VecSynonymProvider generates the list of sysnonyms of a term.
@@ -41,9 +43,9 @@ public class Word2VecSynonymProvider {
 
   private static final VectorSimilarityFunction SIMILARITY_FUNCTION =
       VectorSimilarityFunction.DOT_PRODUCT;
-  private static final VectorEncoding VECTOR_ENCODING = VectorEncoding.FLOAT32;
   private final Word2VecModel word2VecModel;
-  private final HnswGraph hnswGraph;
+  private final OnHeapHnswGraph hnswGraph;
+  private final DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
 
   /**
    * Word2VecSynonymProvider constructor
@@ -51,17 +53,17 @@ public class Word2VecSynonymProvider {
    * @param model containing the set of TermAndVector entries
    */
   public Word2VecSynonymProvider(Word2VecModel model) throws IOException {
-    word2VecModel = model;
-
-    HnswGraphBuilder<float[]> builder =
+    this.word2VecModel = model;
+    RandomVectorScorerSupplier scorerSupplier =
+        defaultFlatVectorScorer.getRandomVectorScorerSupplier(SIMILARITY_FUNCTION, word2VecModel);
+    HnswGraphBuilder builder =
         HnswGraphBuilder.create(
-            word2VecModel,
-            VECTOR_ENCODING,
-            SIMILARITY_FUNCTION,
+            scorerSupplier,
             DEFAULT_MAX_CONN,
             DEFAULT_BEAM_WIDTH,
-            HnswGraphBuilder.randSeed);
-    this.hnswGraph = builder.build(word2VecModel.copy());
+            HnswGraphBuilder.randSeed,
+            word2VecModel.size());
+    this.hnswGraph = builder.build(word2VecModel.size());
   }
 
   public List<TermAndBoost> getSynonyms(
@@ -74,28 +76,27 @@ public class Word2VecSynonymProvider {
     LinkedList<TermAndBoost> result = new LinkedList<>();
     float[] query = word2VecModel.vectorValue(term);
     if (query != null) {
-      NeighborQueue synonyms =
+      RandomVectorScorer scorer =
+          defaultFlatVectorScorer.getRandomVectorScorer(SIMILARITY_FUNCTION, word2VecModel, query);
+      KnnCollector synonyms =
           HnswGraphSearcher.search(
-              query,
+              scorer,
               // The query vector is in the model. When looking for the top-k
               // it's always the nearest neighbour of itself so, we look for the top-k+1
               maxSynonymsPerTerm + 1,
-              word2VecModel,
-              VECTOR_ENCODING,
-              SIMILARITY_FUNCTION,
               hnswGraph,
               null,
               Integer.MAX_VALUE);
+      TopDocs topDocs = synonyms.topDocs();
 
-      int size = synonyms.size();
-      for (int i = 0; i < size; i++) {
-        float similarity = synonyms.topScore();
-        int id = synonyms.pop();
+      for (int i = 0; i < topDocs.scoreDocs.length; i++) {
+        float similarity = topDocs.scoreDocs[i].score;
+        int id = topDocs.scoreDocs[i].doc;
 
         BytesRef synonym = word2VecModel.termValue(id);
         // We remove the original query term
         if (!synonym.equals(term) && similarity >= minAcceptedSimilarity) {
-          result.addFirst(new TermAndBoost(synonym, similarity));
+          result.addLast(new TermAndBoost(synonym, similarity));
         }
       }
     }

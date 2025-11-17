@@ -22,22 +22,14 @@ import org.apache.lucene.codecs.PostingsFormat;
  * {@link org.apache.lucene.search.suggest.document.CompletionPostingsFormat} for {@code
  * org.apache.lucene.backward_codecs.lucene84.Lucene84PostingsFormat}. This format is only used for
  * backward-compatibility of the index format and cannot be used to write data, use {@link
- * Completion90PostingsFormat} on new indices.
+ * Completion99PostingsFormat} on new indices.
  *
  * @lucene.experimental
  */
 public class Completion84PostingsFormat extends CompletionPostingsFormat {
-  /** Creates a {@link Completion84PostingsFormat} that will load the completion FST on-heap. */
+  /** Creates a {@link Completion84PostingsFormat}. */
   public Completion84PostingsFormat() {
-    this(FSTLoadMode.ON_HEAP);
-  }
-
-  /**
-   * Creates a {@link Completion84PostingsFormat} that will use the provided <code>fstLoadMode
-   * </code> to determine if the completion FST should be loaded on or off heap.
-   */
-  public Completion84PostingsFormat(FSTLoadMode fstLoadMode) {
-    super("Completion84", fstLoadMode);
+    super("Completion84");
   }
 
   @Override

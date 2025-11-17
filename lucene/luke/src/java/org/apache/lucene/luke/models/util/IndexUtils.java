@@ -36,7 +36,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
@@ -98,7 +97,7 @@ public final class IndexUtils {
     // find all valid index directories in this directory
     Files.walkFileTree(
         root,
-        new SimpleFileVisitor<Path>() {
+        new SimpleFileVisitor<>() {
           @Override
           public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes attrs)
               throws IOException {
@@ -127,7 +126,7 @@ public final class IndexUtils {
     if (readers.size() == 1) {
       return readers.get(0);
     } else {
-      return new MultiReader(readers.toArray(new IndexReader[readers.size()]));
+      return new MultiReader(readers.toArray(new IndexReader[0]));
     }
   }
 
@@ -342,7 +341,7 @@ public final class IndexUtils {
       @Override
       protected String doBody(String segmentFileName) throws IOException {
         String format = "unknown";
-        try (IndexInput in = dir.openInput(segmentFileName, IOContext.READ)) {
+        try (IndexInput in = dir.openInput(segmentFileName, IOContext.READONCE)) {
           if (CodecUtil.CODEC_MAGIC == CodecUtil.readBEInt(in)) {
             int actualVersion =
                 CodecUtil.checkHeaderNoMagic(
@@ -448,7 +447,7 @@ public final class IndexUtils {
   public static Collection<String> getFieldNames(IndexReader reader) {
     return StreamSupport.stream(getFieldInfos(reader).spliterator(), false)
         .map(f -> f.name)
-        .collect(Collectors.toList());
+        .toList();
   }
 
   /**

@@ -57,7 +57,7 @@ public class STBlockLine extends BlockLine {
    */
   public void collectFields(Collection<FieldMetadata> collector) {
     for (FieldMetadataTermState fieldTermState : termStates) {
-      collector.add(fieldTermState.fieldMetadata);
+      collector.add(fieldTermState.fieldMetadata());
     }
   }
 
@@ -82,13 +82,13 @@ public class STBlockLine extends BlockLine {
       assert size > 0 : "not valid block line with :" + size + " lines.";
       if (size == 1) {
         // When there is only 1 field, write its id as negative, followed by the field TermState.
-        int fieldID = line.termStates.get(0).fieldMetadata.getFieldInfo().number;
+        int fieldID = line.termStates.get(0).fieldMetadata().getFieldInfo().number;
         termStatesOutput.writeZInt(-fieldID);
         fieldMetadataTermState = line.termStates.get(0);
         encoder.writeTermState(
             termStatesOutput,
-            fieldMetadataTermState.fieldMetadata.getFieldInfo(),
-            fieldMetadataTermState.state);
+            fieldMetadataTermState.fieldMetadata().getFieldInfo(),
+            fieldMetadataTermState.state());
         return;
       }
 
@@ -96,15 +96,15 @@ public class STBlockLine extends BlockLine {
       // First iteration writes the fields ids.
       for (int i = 0; i < size; i++) {
         fieldMetadataTermState = line.termStates.get(i);
-        termStatesOutput.writeVInt(fieldMetadataTermState.fieldMetadata.getFieldInfo().number);
+        termStatesOutput.writeVInt(fieldMetadataTermState.fieldMetadata().getFieldInfo().number);
       }
       // Second iteration writes the corresponding field TermStates.
       for (int i = 0; i < size; i++) {
         fieldMetadataTermState = line.termStates.get(i);
         encoder.writeTermState(
             termStatesOutput,
-            fieldMetadataTermState.fieldMetadata.getFieldInfo(),
-            fieldMetadataTermState.state);
+            fieldMetadataTermState.fieldMetadata().getFieldInfo(),
+            fieldMetadataTermState.state());
       }
     }
 

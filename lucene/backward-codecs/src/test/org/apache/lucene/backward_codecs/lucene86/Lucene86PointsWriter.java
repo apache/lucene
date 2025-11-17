@@ -33,6 +33,7 @@ import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.bkd.BKDConfig;
 import org.apache.lucene.util.bkd.BKDWriter;
@@ -111,7 +112,7 @@ public class Lucene86PointsWriter extends PointsWriter {
   }
 
   /**
-   * Uses the defaults values for {@code maxPointsInLeafNode} (1024) and {@code maxMBSortInHeap}
+   * Uses the defaults values for {@code maxPointsInLeafNode} (512) and {@code maxMBSortInHeap}
    * (16.0)
    */
   public Lucene86PointsWriter(SegmentWriteState writeState) throws IOException {
@@ -143,7 +144,7 @@ public class Lucene86PointsWriter extends PointsWriter {
             values.size())) {
 
       if (values instanceof MutablePointTree) {
-        Runnable finalizer =
+        IORunnable finalizer =
             writer.writeField(
                 metaOut, indexOut, dataOut, fieldInfo.name, (MutablePointTree) values);
         if (finalizer != null) {
@@ -172,7 +173,7 @@ public class Lucene86PointsWriter extends PointsWriter {
           });
 
       // We could have 0 points on merge since all docs with dimensional fields may be deleted:
-      Runnable finalizer = writer.finish(metaOut, indexOut, dataOut);
+      IORunnable finalizer = writer.finish(metaOut, indexOut, dataOut);
       if (finalizer != null) {
         metaOut.writeInt(fieldInfo.number);
         finalizer.run();
@@ -182,7 +183,7 @@ public class Lucene86PointsWriter extends PointsWriter {
 
   @Override
   public void merge(MergeState mergeState) throws IOException {
-    /**
+    /*
      * If indexSort is activated and some of the leaves are not sorted the next test will catch that
      * and the non-optimized merge will run. If the readers are all sorted then it's safe to perform
      * a bulk merge of the points.
@@ -248,7 +249,7 @@ public class Lucene86PointsWriter extends PointsWriter {
 
                 // we confirmed this up above
                 assert reader instanceof Lucene86PointsReader;
-                Lucene86PointsReader reader60 = (Lucene86PointsReader) reader;
+                Lucene86PointsReader reader86 = (Lucene86PointsReader) reader;
 
                 // NOTE: we cannot just use the merged fieldInfo.number (instead of resolving to
                 // this
@@ -258,7 +259,7 @@ public class Lucene86PointsWriter extends PointsWriter {
                 FieldInfos readerFieldInfos = mergeState.fieldInfos[i];
                 FieldInfo readerFieldInfo = readerFieldInfos.fieldInfo(fieldInfo.name);
                 if (readerFieldInfo != null && readerFieldInfo.getPointDimensionCount() > 0) {
-                  PointValues aPointValues = reader60.readers.get(readerFieldInfo.number);
+                  PointValues aPointValues = reader86.getValues(readerFieldInfo.name);
                   if (aPointValues != null) {
                     pointValues.add(aPointValues);
                     docMaps.add(mergeState.docMaps[i]);
@@ -267,7 +268,7 @@ public class Lucene86PointsWriter extends PointsWriter {
               }
             }
 
-            Runnable finalizer = writer.merge(metaOut, indexOut, dataOut, docMaps, pointValues);
+            IORunnable finalizer = writer.merge(metaOut, indexOut, dataOut, docMaps, pointValues);
             if (finalizer != null) {
               metaOut.writeInt(fieldInfo.number);
               finalizer.run();

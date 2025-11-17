@@ -18,12 +18,15 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
+import java.util.Map;
+import java.util.Set;
 import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.util.Bits;
+import org.apache.lucene.search.AcceptDocs;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.NamedSPILoader;
 
 /**
@@ -31,6 +34,9 @@ import org.apache.lucene.util.NamedSPILoader;
  * nearest-neighbor search
  */
 public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
+
+  /** The maximum number of vector dimensions */
+  public static final int DEFAULT_MAX_DIMENSIONS = 1024;
 
   /**
    * This static holder class prevents classloading deadlock by delaying init of doc values formats
@@ -65,9 +71,27 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
     return name;
   }
 
+  /**
+   * Reloads the KnnVectorsFormat list from the given {@link ClassLoader}.
+   *
+   * <p><b>NOTE:</b> Only new KnnVectorsFormat are added, existing ones are never removed or
+   * replaced.
+   *
+   * <p><em>This method is expensive and should only be called for discovery of new KnnVectorsFormat
+   * on the given classpath/classloader!</em>
+   */
+  public static void reloadKnnVectorsFormat(ClassLoader classloader) {
+    Holder.getLoader().reload(classloader);
+  }
+
   /** looks up a format by name */
   public static KnnVectorsFormat forName(String name) {
     return Holder.getLoader().lookup(name);
+  }
+
+  /** returns a list of all available format names */
+  public static Set<String> availableKnnVectorsFormats() {
+    return Holder.getLoader().availableServices();
   }
 
   /** Returns a {@link KnnVectorsWriter} to write the vectors to the index. */
@@ -75,6 +99,17 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
 
   /** Returns a {@link KnnVectorsReader} to read the vectors from the index. */
   public abstract KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException;
+
+  /**
+   * Returns the maximum number of vector dimensions supported by this codec for the given field
+   * name
+   *
+   * <p>Codecs implement this method to specify the maximum number of dimensions they support.
+   *
+   * @param fieldName the field name
+   * @return the maximum number of vector dimensions.
+   */
+  public abstract int getMaxDimensions(String fieldName);
 
   /**
    * EMPTY throws an exception when written. It acts as a sentinel indicating a Codec that does not
@@ -104,25 +139,30 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
             }
 
             @Override
-            public TopDocs search(
-                String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
+            public void search(
+                String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
               throw new UnsupportedOperationException();
             }
 
             @Override
-            public TopDocs search(
-                String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
+            public void search(
+                String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
               throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+              return Map.of();
             }
 
             @Override
             public void close() {}
-
-            @Override
-            public long ramBytesUsed() {
-              return 0;
-            }
           };
+        }
+
+        @Override
+        public int getMaxDimensions(String fieldName) {
+          return 0;
         }
       };
 }

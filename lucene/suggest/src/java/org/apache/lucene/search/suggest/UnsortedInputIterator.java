@@ -33,6 +33,7 @@ public class UnsortedInputIterator extends BufferedInputIterator {
   private int currentOrd = -1;
   private final BytesRefBuilder spare = new BytesRefBuilder();
   private final BytesRefBuilder payloadSpare = new BytesRefBuilder();
+
   /**
    * Creates a new iterator, wrapping the specified iterator and returning elements in a random
    * order.

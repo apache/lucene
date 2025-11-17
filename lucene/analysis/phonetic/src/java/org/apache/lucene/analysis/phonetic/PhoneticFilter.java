@@ -32,11 +32,13 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
  */
 public final class PhoneticFilter extends TokenFilter {
   /** true if encoded tokens should be added as synonyms */
-  protected boolean inject = true;
+  private final boolean inject;
+
   /** phonetic encoder */
-  protected Encoder encoder = null;
+  private final Encoder encoder;
+
   /** captured state, non-null when <code>inject=true</code> and a token is buffered */
-  protected State save = null;
+  private State save = null;
 
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   private final PositionIncrementAttribute posAtt = addAttribute(PositionIncrementAttribute.class);
@@ -70,9 +72,7 @@ public final class PhoneticFilter extends TokenFilter {
     try {
       String v = encoder.encode(value).toString();
       if (v.length() > 0 && !value.equals(v)) phonetic = v;
-    } catch (
-        @SuppressWarnings("unused")
-        Exception ignored) {
+    } catch (Exception _) {
     } // just use the direct text
 
     if (phonetic == null) return true;

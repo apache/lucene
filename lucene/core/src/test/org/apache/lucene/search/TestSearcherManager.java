@@ -32,11 +32,13 @@ import org.apache.lucene.index.ConcurrentMergeScheduler;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FilterDirectoryReader;
 import org.apache.lucene.index.FilterLeafReader;
+import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NoDeletionPolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
@@ -47,6 +49,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.apache.lucene.util.SuppressForbidden;
 
 @SuppressCodecs({"SimpleText", "Direct"})
 public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
@@ -105,11 +108,13 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     lifetimeMGR = new SearcherLifetimeManager();
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   @Override
   protected void doSearching(ExecutorService es, final int maxIterations) throws Exception {
 
     Thread reopenThread =
         new Thread() {
+          @SuppressForbidden(reason = "Thread sleep")
           @Override
           public void run() {
             try {
@@ -236,9 +241,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
                 awaitEnterWarm.countDown();
                 awaitClose.await();
               }
-            } catch (
-                @SuppressWarnings("unused")
-                InterruptedException e) {
+            } catch (InterruptedException _) {
               //
             }
             return new IndexSearcher(r, es);
@@ -273,9 +276,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
                   }
                   searcherManager.maybeRefresh();
                   success.set(true);
-                } catch (
-                    @SuppressWarnings("unused")
-                    AlreadyClosedException e) {
+                } catch (AlreadyClosedException _) {
                   // expected
                 } catch (Throwable e) {
                   if (VERBOSE) {
@@ -647,9 +648,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
                   IndexSearcher searcher;
                   try {
                     searcher = mgr.acquire();
-                  } catch (
-                      @SuppressWarnings("unused")
-                      AlreadyClosedException ace) {
+                  } catch (AlreadyClosedException _) {
                     // ok
                     continue;
                   }
@@ -679,9 +678,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
                   refreshCount++;
                   try {
                     mgr.maybeRefreshBlocking();
-                  } catch (
-                      @SuppressWarnings("unused")
-                      AlreadyClosedException ace) {
+                  } catch (AlreadyClosedException _) {
                     // ok
                     aceCount++;
                     continue;
@@ -713,9 +710,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
                   try {
                     mgrRef.set(new SearcherManager(writerRef.get(), null));
                     break;
-                  } catch (
-                      @SuppressWarnings("unused")
-                      AlreadyClosedException ace) {
+                  } catch (AlreadyClosedException _) {
                     // ok
                     aceCount++;
                   }
@@ -742,6 +737,66 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
 
     mgrRef.get().close();
     writerRef.get().close();
+    dir.close();
+  }
+
+  /** Returns the first commit with generation higher than current reader commit */
+  public static class NextCommitSelector implements RefreshCommitSupplier {
+    @Override
+    public IndexCommit getSearcherRefreshCommit(DirectoryReader reader) throws IOException {
+      List<IndexCommit> commits = DirectoryReader.listCommits(reader.directory());
+      IndexCommit current = reader.getIndexCommit();
+      for (int i = 0; i < commits.size(); i++) {
+        IndexCommit commit = commits.get(i);
+        if (commit.getGeneration() > current.getGeneration()) {
+          return commit;
+        }
+      }
+      // we're already on latest commit
+      return null;
+    }
+  }
+
+  public void testStepWiseCommitRefresh() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter w =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE));
+    int docId = 0;
+    // create initial commit
+    for (int i = 0; i < 20; i++) {
+      Document doc = new Document();
+      doc.add(newStringField("docId", "doc-" + docId++, Field.Store.YES));
+      w.addDocument(doc);
+    }
+    w.commit();
+    SearcherManager sm =
+        new SearcherManager(DirectoryReader.open(dir), null, new NextCommitSelector());
+    final int numCommits = 5;
+    for (int i = 0; i < numCommits; i++) {
+      for (int j = 0; j < 20; j++) {
+        Document doc = new Document();
+        doc.add(newStringField("docId", "doc-" + docId++, Field.Store.YES));
+        w.addDocument(doc);
+      }
+      w.commit();
+    }
+
+    // maybeRefresh only refreshes on the next incremental commit
+    // so it takes us numCommits to get to latest
+    int stepsToCurrent = 0;
+    while (sm.isSearcherCurrent() == false) {
+      long oldGen = sm.getSearcherCommitGeneration();
+      sm.maybeRefreshBlocking();
+      long newGen = sm.getSearcherCommitGeneration();
+      assertTrue(newGen == oldGen + 1);
+      stepsToCurrent++;
+    }
+    assertEquals(numCommits, stepsToCurrent);
+    sm.close();
+    w.close();
     dir.close();
   }
 }

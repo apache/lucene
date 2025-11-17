@@ -29,9 +29,12 @@
 
 package org.apache.lucene.util.automaton;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Objects;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.StringHelper;
 
 /**
@@ -40,6 +43,11 @@ import org.apache.lucene.util.StringHelper;
  * @lucene.experimental
  */
 public final class Automata {
+  /**
+   * {@link #makeStringUnion(Iterable)} limits terms of this max length to ensure the stack doesn't
+   * overflow while building, since our algorithm currently relies on recursion.
+   */
+  public static final int MAX_STRING_UNION_TERM_LENGTH = 1000;
 
   private Automata() {}
 
@@ -129,6 +137,32 @@ public final class Automata {
     int s2 = a.createState();
     a.setAccept(s2, true);
     a.addTransition(s1, s2, min, max);
+    a.finishState();
+    return a;
+  }
+
+  /** Returns a new minimal automaton that accepts any of the provided codepoints */
+  public static Automaton makeCharSet(int[] codepoints) {
+    return makeCharClass(codepoints, codepoints);
+  }
+
+  /** Returns a new minimal automaton that accepts any of the codepoint ranges */
+  public static Automaton makeCharClass(int[] starts, int[] ends) {
+    Objects.requireNonNull(starts);
+    Objects.requireNonNull(ends);
+    if (starts.length != ends.length) {
+      throw new IllegalArgumentException("starts must match ends");
+    }
+    if (starts.length == 0) {
+      return makeEmpty();
+    }
+    Automaton a = new Automaton();
+    int s1 = a.createState();
+    int s2 = a.createState();
+    a.setAccept(s2, true);
+    for (int i = 0; i < starts.length; i++) {
+      a.addTransition(s1, s2, starts[i], ends[i]);
+    }
     a.finishState();
     return a;
   }
@@ -457,6 +491,7 @@ public final class Automata {
    */
   public static Automaton makeDecimalInterval(int min, int max, int digits)
       throws IllegalArgumentException {
+    // TODO: can this be improved to always return a DFA?
     String x = Integer.toString(min);
     String y = Integer.toString(max);
     if (min > max || (digits > 0 && y.length() > digits)) {
@@ -499,7 +534,7 @@ public final class Automata {
       a1.finishState();
     }
 
-    return a1;
+    return Operations.removeDeadStates(a1);
   }
 
   /** Returns a new (deterministic) automaton that accepts the single given string. */
@@ -569,11 +604,53 @@ public final class Automata {
    * @return An {@link Automaton} accepting all input strings. The resulting automaton is codepoint
    *     based (full unicode codepoints on transitions).
    */
-  public static Automaton makeStringUnion(Collection<BytesRef> utf8Strings) {
-    if (utf8Strings.isEmpty()) {
+  public static Automaton makeStringUnion(Iterable<BytesRef> utf8Strings) {
+    if (utf8Strings.iterator().hasNext() == false) {
       return makeEmpty();
     } else {
-      return DaciukMihovAutomatonBuilder.build(utf8Strings);
+      return StringsToAutomaton.build(utf8Strings, false);
     }
+  }
+
+  /**
+   * Returns a new (deterministic and minimal) automaton that accepts the union of the given
+   * collection of {@link BytesRef}s representing UTF-8 encoded strings. The resulting automaton
+   * will be built in a binary representation.
+   *
+   * @param utf8Strings The input strings, UTF-8 encoded. The collection must be in sorted order.
+   * @return An {@link Automaton} accepting all input strings. The resulting automaton is binary
+   *     based (UTF-8 encoded byte transition labels).
+   */
+  public static Automaton makeBinaryStringUnion(Iterable<BytesRef> utf8Strings) {
+    if (utf8Strings.iterator().hasNext() == false) {
+      return makeEmpty();
+    } else {
+      return StringsToAutomaton.build(utf8Strings, true);
+    }
+  }
+
+  /**
+   * Returns a new (deterministic and minimal) automaton that accepts the union of the given
+   * iterator of {@link BytesRef}s representing UTF-8 encoded strings.
+   *
+   * @param utf8Strings The input strings, UTF-8 encoded. The iterator must be in sorted order.
+   * @return An {@link Automaton} accepting all input strings. The resulting automaton is codepoint
+   *     based (full unicode codepoints on transitions).
+   */
+  public static Automaton makeStringUnion(BytesRefIterator utf8Strings) throws IOException {
+    return StringsToAutomaton.build(utf8Strings, false);
+  }
+
+  /**
+   * Returns a new (deterministic and minimal) automaton that accepts the union of the given
+   * iterator of {@link BytesRef}s representing UTF-8 encoded strings. The resulting automaton will
+   * be built in a binary representation.
+   *
+   * @param utf8Strings The input strings, UTF-8 encoded. The iterator must be in sorted order.
+   * @return An {@link Automaton} accepting all input strings. The resulting automaton is binary
+   *     based (UTF-8 encoded byte transition labels).
+   */
+  public static Automaton makeBinaryStringUnion(BytesRefIterator utf8Strings) throws IOException {
+    return StringsToAutomaton.build(utf8Strings, true);
   }
 }

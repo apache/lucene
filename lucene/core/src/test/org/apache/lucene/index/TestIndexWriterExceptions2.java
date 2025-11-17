@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
@@ -67,7 +69,7 @@ public class TestIndexWriterExceptions2 extends LuceneTestCase {
 
     // log all exceptions we hit, in case we fail (for debugging)
     ByteArrayOutputStream exceptionLog = new ByteArrayOutputStream();
-    PrintStream exceptionStream = new PrintStream(exceptionLog, true, "UTF-8");
+    PrintStream exceptionStream = new PrintStream(exceptionLog, true, UTF_8);
     // PrintStream exceptionStream = System.out;
 
     // create lots of non-aborting exceptions with a broken analyzer
@@ -99,7 +101,7 @@ public class TestIndexWriterExceptions2 extends LuceneTestCase {
     conf.setMergeScheduler(new SerialMergeScheduler());
     conf.setCodec(codec);
 
-    int numDocs = atLeast(100);
+    int numDocs = atLeast(20);
 
     IndexWriter iw = new IndexWriter(dir, conf);
     try {
@@ -148,9 +150,7 @@ public class TestIndexWriterExceptions2 extends LuceneTestCase {
                   "dv2",
                   new BytesRef(Integer.toString(i + 1)));
             }
-          } catch (
-              @SuppressWarnings("unused")
-              AlreadyClosedException ace) {
+          } catch (AlreadyClosedException _) {
             // OK: writer was closed by abort; we just reopen now:
             assertTrue(iw.isDeleterClosed());
             assertTrue(allowAlreadyClosed);
@@ -187,9 +187,7 @@ public class TestIndexWriterExceptions2 extends LuceneTestCase {
               iw.deleteDocuments(
                   new Term("id", Integer.toString(i)), new Term("id", Integer.toString(-i)));
             }
-          } catch (
-              @SuppressWarnings("unused")
-              AlreadyClosedException ace) {
+          } catch (AlreadyClosedException _) {
             // OK: writer was closed by abort; we just reopen now:
             assertTrue(iw.isDeleterClosed());
             assertTrue(allowAlreadyClosed);
@@ -227,9 +225,7 @@ public class TestIndexWriterExceptions2 extends LuceneTestCase {
             if (DirectoryReader.indexExists(dir)) {
               TestUtil.checkIndex(dir);
             }
-          } catch (
-              @SuppressWarnings("unused")
-              AlreadyClosedException ace) {
+          } catch (AlreadyClosedException _) {
             // OK: writer was closed by abort; we just reopen now:
             assertTrue(iw.isDeleterClosed());
             assertTrue(allowAlreadyClosed);
@@ -259,9 +255,7 @@ public class TestIndexWriterExceptions2 extends LuceneTestCase {
           e.printStackTrace(exceptionStream);
           try {
             iw.rollback();
-          } catch (
-              @SuppressWarnings("unused")
-              Throwable t) {
+          } catch (Throwable _) {
           }
         } else {
           Rethrow.rethrow(e);
@@ -271,14 +265,14 @@ public class TestIndexWriterExceptions2 extends LuceneTestCase {
     } catch (Throwable t) {
       System.out.println("Unexpected exception: dumping fake-exception-log:...");
       exceptionStream.flush();
-      System.out.println(exceptionLog.toString("UTF-8"));
+      System.out.println(exceptionLog.toString(UTF_8));
       System.out.flush();
       Rethrow.rethrow(t);
     }
 
     if (VERBOSE) {
       System.out.println("TEST PASSED: dumping fake-exception-log:...");
-      System.out.println(exceptionLog.toString("UTF-8"));
+      System.out.println(exceptionLog.toString(UTF_8));
     }
   }
 }

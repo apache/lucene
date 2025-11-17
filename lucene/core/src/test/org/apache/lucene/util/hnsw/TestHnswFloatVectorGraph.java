@@ -17,18 +17,20 @@
 
 package org.apache.lucene.util.hnsw;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.FixedBitSet;
 import org.junit.Before;
@@ -57,52 +59,44 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   }
 
   @Override
-  AbstractMockVectorValues<float[]> vectorValues(int size, int dimension) {
+  MockVectorValues vectorValues(int size, int dimension) {
     return MockVectorValues.fromValues(createRandomFloatVectors(size, dimension, random()));
   }
 
   @Override
-  AbstractMockVectorValues<float[]> vectorValues(float[][] values) {
+  MockVectorValues vectorValues(float[][] values) {
     return MockVectorValues.fromValues(values);
   }
 
   @Override
-  AbstractMockVectorValues<float[]> vectorValues(LeafReader reader, String fieldName)
-      throws IOException {
+  MockVectorValues vectorValues(LeafReader reader, String fieldName) throws IOException {
     FloatVectorValues vectorValues = reader.getFloatVectorValues(fieldName);
     float[][] vectors = new float[reader.maxDoc()][];
-    while (vectorValues.nextDoc() != NO_MORE_DOCS) {
-      vectors[vectorValues.docID()] =
-          ArrayUtil.copyOfSubArray(
-              vectorValues.vectorValue(), 0, vectorValues.vectorValue().length);
+    for (int i = 0; i < vectorValues.size(); i++) {
+      vectors[vectorValues.ordToDoc(i)] =
+          ArrayUtil.copyOfSubArray(vectorValues.vectorValue(i), 0, vectorValues.dimension());
     }
     return MockVectorValues.fromValues(vectors);
   }
 
   @Override
-  AbstractMockVectorValues<float[]> vectorValues(
-      int size,
-      int dimension,
-      AbstractMockVectorValues<float[]> pregeneratedVectorValues,
-      int pregeneratedOffset) {
+  MockVectorValues vectorValues(
+      int size, int dimension, KnnVectorValues pregeneratedVectorValues, int pregeneratedOffset) {
+    MockVectorValues pvv = (MockVectorValues) pregeneratedVectorValues;
     float[][] vectors = new float[size][];
     float[][] randomVectors =
-        createRandomFloatVectors(
-            size - pregeneratedVectorValues.values.length, dimension, random());
+        createRandomFloatVectors(size - pvv.values.length, dimension, random());
 
     for (int i = 0; i < pregeneratedOffset; i++) {
       vectors[i] = randomVectors[i];
     }
 
-    int currentDoc;
-    while ((currentDoc = pregeneratedVectorValues.nextDoc()) != NO_MORE_DOCS) {
-      vectors[pregeneratedOffset + currentDoc] = pregeneratedVectorValues.values[currentDoc];
+    for (int currentOrd = 0; currentOrd < pvv.size(); currentOrd++) {
+      vectors[pregeneratedOffset + currentOrd] = pvv.values[currentOrd];
     }
 
-    for (int i = pregeneratedOffset + pregeneratedVectorValues.values.length;
-        i < vectors.length;
-        i++) {
-      vectors[i] = randomVectors[i - pregeneratedVectorValues.values.length];
+    for (int i = pregeneratedOffset + pvv.values.length; i < vectors.length; i++) {
+      vectors[i] = randomVectors[i - pvv.values.length];
     }
 
     return MockVectorValues.fromValues(vectors);
@@ -114,7 +108,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   }
 
   @Override
-  RandomAccessVectorValues<float[]> circularVectorValues(int nDoc) {
+  CircularFloatVectorValues circularVectorValues(int nDoc) {
     return new CircularFloatVectorValues(nDoc);
   }
 
@@ -126,34 +120,26 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   public void testSearchWithSkewedAcceptOrds() throws IOException {
     int nDoc = 1000;
     similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-    RandomAccessVectorValues<float[]> vectors = circularVectorValues(nDoc);
-    HnswGraphBuilder<float[]> builder =
-        HnswGraphBuilder.create(
-            vectors, getVectorEncoding(), similarityFunction, 16, 100, random().nextInt());
-    OnHeapHnswGraph hnsw = builder.build(vectors.copy());
+    FloatVectorValues vectors = circularVectorValues(nDoc);
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
+    OnHeapHnswGraph hnsw = builder.build(vectors.size());
 
     // Skip over half of the documents that are closest to the query vector
     FixedBitSet acceptOrds = new FixedBitSet(nDoc);
     for (int i = 500; i < nDoc; i++) {
       acceptOrds.set(i);
     }
-    NeighborQueue nn =
+    KnnCollector nn =
         HnswGraphSearcher.search(
-            getTargetVector(),
-            10,
-            vectors.copy(),
-            getVectorEncoding(),
-            similarityFunction,
-            hnsw,
-            acceptOrds,
-            Integer.MAX_VALUE);
+            buildScorer(vectors, getTargetVector()), 10, hnsw, acceptOrds, Integer.MAX_VALUE);
 
-    int[] nodes = nn.nodes();
-    assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
+    TopDocs nodes = nn.topDocs();
+    assertEquals("Number of found results is not equal to [10].", 10, nodes.scoreDocs.length);
     int sum = 0;
-    for (int node : nodes) {
-      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node));
-      sum += node;
+    for (ScoreDoc node : nodes.scoreDocs) {
+      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node.doc));
+      sum += node.doc;
     }
     // We still expect to get reasonable recall. The lowest non-skipped docIds
     // are closest to the query vector: sum(500,509) = 5045

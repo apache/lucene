@@ -80,6 +80,7 @@ public class PrefixCompletionQuery extends CompletionQuery {
   public void visit(QueryVisitor visitor) {
     visitor.visitLeaf(this);
   }
+
   /** Gets the analyzer used to analyze the prefix. */
   public Analyzer getAnalyzer() {
     return analyzer;

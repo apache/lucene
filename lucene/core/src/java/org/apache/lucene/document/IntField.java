@@ -62,20 +62,6 @@ public final class IntField extends Field {
   private final StoredValue storedValue;
 
   /**
-   * Creates a new IntField, indexing the provided point and storing it as a DocValue.
-   *
-   * @param name field name
-   * @param value the int value
-   * @throws IllegalArgumentException if the field name or value is null.
-   * @deprecated Use {@link #IntField(String, int, Field.Store)} with {@link Field.Store#NO}
-   *     instead.
-   */
-  @Deprecated
-  public IntField(String name, int value) {
-    this(name, value, Field.Store.NO);
-  }
-
-  /**
    * Creates a new IntField, indexing the provided point, storing it as a DocValue, and optionally
    * storing it as a stored field.
    *

@@ -18,10 +18,11 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
-import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsSource;
+import org.apache.lucene.internal.hppc.FloatArrayList;
+import org.apache.lucene.search.similarities.Similarity.BulkSimScorer;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 
@@ -31,21 +32,34 @@ import org.apache.lucene.util.ArrayUtil;
  *
  * @lucene.internal
  */
-final class MaxScoreCache {
+public final class MaxScoreCache {
 
   private final ImpactsSource impactsSource;
-  private final SimScorer scorer;
+  private final BulkSimScorer bulkScorer;
   private final float globalMaxScore;
   private float[] maxScoreCache;
   private int[] maxScoreCacheUpTo;
+  private float[] spare = FloatArrayList.EMPTY_ARRAY;
 
   /** Sole constructor. */
   public MaxScoreCache(ImpactsSource impactsSource, SimScorer scorer) {
     this.impactsSource = impactsSource;
-    this.scorer = scorer;
+    this.bulkScorer = scorer.asBulkSimScorer();
     this.globalMaxScore = scorer.score(Float.MAX_VALUE, 1L);
     maxScoreCache = new float[0];
     maxScoreCacheUpTo = new int[0];
+  }
+
+  /**
+   * Implement the contract of {@link Scorer#advanceShallow(int)} based on the wrapped {@link
+   * ImpactsSource}.
+   *
+   * @see Scorer#advanceShallow(int)
+   */
+  public int advanceShallow(int target) throws IOException {
+    impactsSource.advanceShallow(target);
+    Impacts impacts = impactsSource.getImpacts();
+    return impacts.getDocIdUpTo(0);
   }
 
   private void ensureCacheSize(int size) {
@@ -57,15 +71,29 @@ final class MaxScoreCache {
     }
   }
 
-  private float computeMaxScore(List<Impact> impacts) {
+  private float computeMaxScore(FreqAndNormBuffer impacts) {
+    int size = impacts.size;
+    if (spare.length < size) {
+      spare = new float[ArrayUtil.oversize(size, Float.BYTES)];
+    }
+    for (int i = 0; i < size; ++i) {
+      spare[i] = impacts.freqs[i];
+    }
+    bulkScorer.score(size, spare, impacts.norms, spare);
+
     float maxScore = 0;
-    for (Impact impact : impacts) {
-      maxScore = Math.max(scorer.score(impact.freq, impact.norm), maxScore);
+    for (int i = 0; i < size; ++i) {
+      maxScore = Math.max(maxScore, spare[i]);
     }
     return maxScore;
   }
 
-  float getMaxScore(int upTo) throws IOException {
+  /**
+   * Return the maximum score up to upTo included.
+   *
+   * @see Scorer#getMaxScore(int)
+   */
+  public float getMaxScore(int upTo) throws IOException {
     final int level = getLevel(upTo);
     if (level == -1) {
       return globalMaxScore;

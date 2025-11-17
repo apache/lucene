@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.util.Bits;
 
 /** A query that matches all documents. */
 public final class MatchAllDocsQuery extends Query {
@@ -32,45 +31,13 @@ public final class MatchAllDocsQuery extends Query {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        return new ConstantScoreScorer(
-            this, score(), scoreMode, DocIdSetIterator.all(context.reader().maxDoc()));
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, context.reader().maxDoc());
       }
 
       @Override
       public boolean isCacheable(LeafReaderContext ctx) {
         return true;
-      }
-
-      @Override
-      public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-        if (scoreMode.isExhaustive() == false) {
-          return super.bulkScorer(context);
-        }
-        final float score = score();
-        final int maxDoc = context.reader().maxDoc();
-        return new BulkScorer() {
-          @Override
-          public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
-              throws IOException {
-            max = Math.min(max, maxDoc);
-            ScoreAndDoc scorer = new ScoreAndDoc();
-            scorer.score = score;
-            collector.setScorer(scorer);
-            for (int doc = min; doc < max; ++doc) {
-              scorer.doc = doc;
-              if (acceptDocs == null || acceptDocs.get(doc)) {
-                collector.collect(doc);
-              }
-            }
-            return max == maxDoc ? DocIdSetIterator.NO_MORE_DOCS : max;
-          }
-
-          @Override
-          public long cost() {
-            return maxDoc;
-          }
-        };
       }
 
       @Override

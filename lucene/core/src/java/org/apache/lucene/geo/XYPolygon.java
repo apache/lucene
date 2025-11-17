@@ -31,12 +31,16 @@ public final class XYPolygon extends XYGeometry {
 
   /** minimum x of this polygon's bounding box area */
   public final float minX;
+
   /** maximum x of this polygon's bounding box area */
   public final float maxX;
+
   /** minimum y of this polygon's bounding box area */
   public final float minY;
+
   /** maximum y of this polygon's bounding box area */
   public final float maxY;
+
   /** winding order of the vertices */
   private final GeoUtils.WindingOrder windingOrder;
 
@@ -180,9 +184,23 @@ public final class XYPolygon extends XYGeometry {
     return true;
   }
 
+  public static String verticesToGeoJSON(final float[] xs, final float[] ys) {
+    StringBuilder sb = new StringBuilder();
+    sb.append('[');
+    for (int i = 0; i < xs.length; i++) {
+      sb.append("[").append(xs[i]).append(", ").append(ys[i]).append("]");
+      if (i != xs.length - 1) {
+        sb.append(", ");
+      }
+    }
+    sb.append(']');
+    return sb.toString();
+  }
+
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
+    sb.append("XYPolygon");
     for (int i = 0; i < x.length; i++) {
       sb.append("[").append(x[i]).append(", ").append(y[i]).append("] ");
     }

@@ -28,18 +28,25 @@ import java.io.OutputStream;
 class GeoLatitudeZone extends GeoBaseBBox {
   /** The top latitude of the zone */
   protected final double topLat;
+
   /** The bottom latitude of the zone */
   protected final double bottomLat;
+
   /** Cosine of the top lat */
   protected final double cosTopLat;
+
   /** Cosine of the bottom lat */
   protected final double cosBottomLat;
+
   /** The top plane */
   protected final SidedPlane topPlane;
+
   /** The bottom plane */
   protected final SidedPlane bottomPlane;
+
   /** An interior point */
   protected final GeoPoint interiorPoint;
+
   /** Notable points (none) */
   protected static final GeoPoint[] planePoints = new GeoPoint[0];
 
@@ -49,8 +56,10 @@ class GeoLatitudeZone extends GeoBaseBBox {
 
   /** Top boundary point */
   protected final GeoPoint topBoundaryPoint;
+
   /** Bottom boundary point */
   protected final GeoPoint bottomBoundaryPoint;
+
   /** A point on each distinct edge */
   protected final GeoPoint[] edgePoints;
 

@@ -51,6 +51,7 @@ import org.apache.lucene.store.RateLimitedIndexOutput;
 import org.apache.lucene.store.RateLimiter;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.SuppressForbidden;
 
 class SimpleReplicaNode extends ReplicaNode {
   final int tcpPort;
@@ -135,7 +136,7 @@ class SimpleReplicaNode extends ReplicaNode {
         c.out.writeByte((byte) 1);
         c.flush();
         copyState = TestSimpleServer.readCopyState(c.in);
-        files = copyState.files;
+        files = copyState.files();
       } else {
         c.out.writeByte((byte) 0);
         copyState = null;
@@ -170,6 +171,7 @@ class SimpleReplicaNode extends ReplicaNode {
   static final byte CMD_PRE_COPY_MERGE = 17;
 
   /** Handles incoming request to the naive TCP server wrapping this node */
+  @SuppressForbidden(reason = "Thread sleep")
   void handleOneConnection(
       ServerSocket ss,
       AtomicBoolean stop,
@@ -195,9 +197,7 @@ class SimpleReplicaNode extends ReplicaNode {
 
       try {
         cmd = in.readByte();
-      } catch (
-          @SuppressWarnings("unused")
-          EOFException eofe) {
+      } catch (EOFException _) {
         break;
       }
 
@@ -341,7 +341,6 @@ class SimpleReplicaNode extends ReplicaNode {
 
           // Silly keep alive mechanism, else if e.g. we (replica node) crash, the primary
           // won't notice for a very long time:
-          boolean success = false;
           try {
             int count = 0;
             while (true) {
@@ -365,9 +364,10 @@ class SimpleReplicaNode extends ReplicaNode {
 
             out.writeByte((byte) 1);
             bos.flush();
-            success = true;
-          } finally {
-            message("done merge copy files=" + files.keySet() + " success=" + success);
+            message("done merge copy files=" + files.keySet() + " success=true");
+          } catch (Throwable t) {
+            message("done merge copy files=" + files.keySet() + " success=false");
+            throw t;
           }
           break;
 

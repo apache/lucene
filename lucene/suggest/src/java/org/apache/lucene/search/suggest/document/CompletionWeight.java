@@ -23,6 +23,7 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.suggest.BitsProducer;
 import org.apache.lucene.util.Bits;
@@ -61,36 +62,6 @@ public class CompletionWeight extends Weight {
     return automaton;
   }
 
-  @Override
-  public BulkScorer bulkScorer(final LeafReaderContext context) throws IOException {
-    final LeafReader reader = context.reader();
-    final Terms terms;
-    final NRTSuggester suggester;
-    if ((terms = reader.terms(completionQuery.getField())) == null) {
-      return null;
-    }
-    if (terms instanceof CompletionTerms) {
-      CompletionTerms completionTerms = (CompletionTerms) terms;
-      if ((suggester = completionTerms.suggester()) == null) {
-        // a segment can have a null suggester
-        // i.e. no FST was built
-        return null;
-      }
-    } else {
-      throw new IllegalArgumentException(completionQuery.getField() + " is not a SuggestField");
-    }
-
-    BitsProducer filter = completionQuery.getFilter();
-    Bits filteredDocs = null;
-    if (filter != null) {
-      filteredDocs = filter.getBits(context);
-      if (filteredDocs.getClass() == Bits.MatchNoBits.class) {
-        return null;
-      }
-    }
-    return new CompletionScorer(this, suggester, reader, filteredDocs, filter != null, automaton);
-  }
-
   /**
    * Set for every partial path in the index that matched the query automaton.
    *
@@ -120,8 +91,49 @@ public class CompletionWeight extends Weight {
   }
 
   @Override
-  public Scorer scorer(LeafReaderContext context) throws IOException {
-    throw new UnsupportedOperationException();
+  public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+    final CompletionWeight weight = this;
+    return new ScorerSupplier() {
+      @Override
+      public Scorer get(long leadCost) throws IOException {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public BulkScorer bulkScorer() throws IOException {
+        final LeafReader reader = context.reader();
+        final Terms terms;
+        final NRTSuggester suggester;
+        if ((terms = reader.terms(completionQuery.getField())) == null) {
+          return null;
+        }
+        if (terms instanceof CompletionTerms completionTerms) {
+          if ((suggester = completionTerms.suggester()) == null) {
+            // a segment can have a null suggester
+            // i.e. no FST was built
+            return null;
+          }
+        } else {
+          throw new IllegalArgumentException(completionQuery.getField() + " is not a SuggestField");
+        }
+
+        BitsProducer filter = completionQuery.getFilter();
+        Bits filteredDocs = null;
+        if (filter != null) {
+          filteredDocs = filter.getBits(context);
+          if (filteredDocs.getClass() == Bits.MatchNoBits.class) {
+            return null;
+          }
+        }
+        return new CompletionScorer(
+            weight, suggester, reader, filteredDocs, filter != null, automaton);
+      }
+
+      @Override
+      public long cost() {
+        throw new UnsupportedOperationException();
+      }
+    };
   }
 
   /**

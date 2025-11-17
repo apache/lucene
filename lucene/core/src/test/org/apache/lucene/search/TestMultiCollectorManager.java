@@ -25,7 +25,6 @@ import java.util.Random;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -53,10 +52,8 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     for (int iter = 0; iter < 100; iter++) {
       int docs = RandomNumbers.randomIntBetween(random(), 1000, 10000);
       SortedSet<Integer> expected = generateDocIds(docs, random());
-      List<Integer> expectedEven =
-          expected.stream().filter(evenPredicate).collect(Collectors.toList());
-      List<Integer> expectedOdd =
-          expected.stream().filter(oddPredicate).collect(Collectors.toList());
+      List<Integer> expectedEven = expected.stream().filter(evenPredicate).toList();
+      List<Integer> expectedOdd = expected.stream().filter(oddPredicate).toList();
 
       // Test only wrapping one of the collector managers:
       MultiCollectorManager mcm = new MultiCollectorManager(cm1);
@@ -92,20 +89,22 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     LeafReaderContext ctx = reader.leaves().get(0);
 
     // no collector needs scores => no caching
-    CollectorManager<?, ?> cm1 = collectorManager(ScoreMode.COMPLETE_NO_SCORES, ScoreAndDoc.class);
-    CollectorManager<?, ?> cm2 = collectorManager(ScoreMode.COMPLETE_NO_SCORES, ScoreAndDoc.class);
+    CollectorManager<?, ?> cm1 =
+        collectorManager(ScoreMode.COMPLETE_NO_SCORES, SimpleScorable.class);
+    CollectorManager<?, ?> cm2 =
+        collectorManager(ScoreMode.COMPLETE_NO_SCORES, SimpleScorable.class);
     new MultiCollectorManager(cm1, cm2)
         .newCollector()
         .getLeafCollector(ctx)
-        .setScorer(new ScoreAndDoc());
+        .setScorer(new SimpleScorable());
 
     // only one collector needs scores => no caching
-    cm1 = collectorManager(ScoreMode.COMPLETE, ScoreAndDoc.class);
-    cm2 = collectorManager(ScoreMode.COMPLETE_NO_SCORES, ScoreAndDoc.class);
+    cm1 = collectorManager(ScoreMode.COMPLETE, SimpleScorable.class);
+    cm2 = collectorManager(ScoreMode.COMPLETE_NO_SCORES, SimpleScorable.class);
     new MultiCollectorManager(cm1, cm2)
         .newCollector()
         .getLeafCollector(ctx)
-        .setScorer(new ScoreAndDoc());
+        .setScorer(new SimpleScorable());
 
     // several collectors need scores => caching
     cm1 = collectorManager(ScoreMode.COMPLETE, ScoreCachingWrappingScorer.class);
@@ -113,7 +112,7 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     new MultiCollectorManager(cm1, cm2)
         .newCollector()
         .getLeafCollector(ctx)
-        .setScorer(new ScoreAndDoc());
+        .setScorer(new SimpleScorable());
 
     reader.close();
     dir.close();
@@ -135,7 +134,7 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     new MultiCollectorManager(cm1, cm2)
         .newCollector()
         .getLeafCollector(ctx)
-        .setScorer(new ScoreAndDoc());
+        .setScorer(new SimpleScorable());
 
     // both wrapped collector managers need scores, but one is exhaustive, so they should
     // see a ScoreCachingWrappingScorer pass in as their scorer:
@@ -144,7 +143,7 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     new MultiCollectorManager(cm1, cm2)
         .newCollector()
         .getLeafCollector(ctx)
-        .setScorer(new ScoreAndDoc());
+        .setScorer(new SimpleScorable());
 
     reader.close();
     dir.close();
@@ -198,8 +197,9 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     C collector = collectorManager.newCollector();
     collectors.add(collector);
     LeafCollector leafCollector = collector.getLeafCollector(ctx);
+    Random random = nonAssertingRandom(random());
     for (Integer v : values) {
-      if (random().nextInt(10) == 1) {
+      if (random.nextInt(10) == 1) {
         collector = collectorManager.newCollector();
         collectors.add(collector);
         leafCollector = collector.getLeafCollector(ctx);
@@ -228,7 +228,7 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     private final Predicate<Integer> predicate;
 
     SimpleCollectorManager() {
-      this.predicate = val -> true;
+      this.predicate = _ -> true;
     }
 
     SimpleCollectorManager(Predicate<Integer> predicate) {
@@ -306,7 +306,7 @@ public class TestMultiCollectorManager extends LuceneTestCase {
 
   private static CollectorManager<?, ?> collectorManager(
       ScoreMode scoreMode, Class<?> expectedScorer) {
-    return new CollectorManager<Collector, Object>() {
+    return new CollectorManager<>() {
 
       @Override
       public Collector newCollector() throws IOException {

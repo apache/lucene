@@ -30,5 +30,5 @@ public abstract class FieldComparatorSource {
    * @return FieldComparator.
    */
   public abstract FieldComparator<?> newComparator(
-      String fieldname, int numHits, boolean enableSkipping, boolean reversed);
+      String fieldname, int numHits, Pruning pruning, boolean reversed);
 }

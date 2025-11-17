@@ -21,6 +21,8 @@ import static org.apache.lucene.analysis.morph.BinaryDictionary.DICT_FILENAME_SU
 import static org.apache.lucene.analysis.morph.BinaryDictionary.POSDICT_FILENAME_SUFFIX;
 import static org.apache.lucene.analysis.morph.BinaryDictionary.TARGETMAP_FILENAME_SUFFIX;
 
+import java.io.BufferedInputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -28,12 +30,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.apache.lucene.analysis.ko.POS;
+import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.UnicodeUtil;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.IntsRefFSTEnum;
+import org.apache.lucene.util.fst.PositiveIntOutputs;
 
 /** Tests of TokenInfoDictionary build tools; run using ant test-tools */
 public class TestTokenInfoDictionary extends LuceneTestCase {
@@ -166,14 +170,14 @@ public class TestTokenInfoDictionary extends LuceneTestCase {
           if (decompound != null) {
             int offset = 0;
             for (KoMorphData.Morpheme morph : decompound) {
-              assertTrue(UnicodeUtil.validUTF16String(morph.surfaceForm));
-              assertFalse(morph.surfaceForm.isEmpty());
-              assertEquals(morph.surfaceForm.trim(), morph.surfaceForm);
+              assertTrue(UnicodeUtil.validUTF16String(morph.surfaceForm()));
+              assertFalse(morph.surfaceForm().isEmpty());
+              assertEquals(morph.surfaceForm().trim(), morph.surfaceForm());
               if (type != POS.Type.INFLECT) {
                 assertEquals(
-                    morph.surfaceForm,
-                    surfaceForm.substring(offset, offset + morph.surfaceForm.length()));
-                offset += morph.surfaceForm.length();
+                    morph.surfaceForm(),
+                    surfaceForm.substring(offset, offset + morph.surfaceForm().length()));
+                offset += morph.surfaceForm().length();
               }
             }
             assertTrue(offset <= surfaceForm.length());
@@ -183,6 +187,27 @@ public class TestTokenInfoDictionary extends LuceneTestCase {
     }
     if (VERBOSE) {
       System.out.println("checked " + numTerms + " terms, " + numWords + " words.");
+    }
+  }
+
+  // #12911: make sure our shipped binary FST for TokenInfoDictionary is the latest & greatest
+  // format
+  public void testBinaryFSTIsLatestFormat() throws Exception {
+    try (InputStream is =
+        new BufferedInputStream(
+            TokenInfoDictionary.getClassResource(TokenInfoDictionary.FST_FILENAME_SUFFIX))) {
+      // we only need to load the FSTMetadata to check version:
+      int actualVersion =
+          FST.readMetadata(new InputStreamDataInput(is), PositiveIntOutputs.getSingleton())
+              .getVersion();
+      assertEquals(
+          "TokenInfoDictionary's FST is not the latest version: expected "
+              + FST.VERSION_CURRENT
+              + " but got: "
+              + actualVersion
+              + "; run \"./gradlew :lucene:analysis:nori:regenerate\" to regenerate this FST",
+          FST.VERSION_CURRENT,
+          actualVersion);
     }
   }
 }

@@ -32,6 +32,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LiveIndexWriterConfig;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SoftDeletesDirectoryReaderWrapper;
 import org.apache.lucene.index.Term;
@@ -39,6 +40,7 @@ import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.internal.tests.IndexWriterAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -157,6 +159,7 @@ public class RandomIndexWriter implements Closeable {
     } else {
       softDeletesRatio = 0d;
     }
+
     w = mockIndexWriter(dir, c, r);
     config = w.getConfig();
     flushAt = TestUtil.nextInt(r, 10, 1000);
@@ -193,7 +196,7 @@ public class RandomIndexWriter implements Closeable {
 
                 @Override
                 public Iterator<Iterable<T>> iterator() {
-                  return new Iterator<Iterable<T>>() {
+                  return new Iterator<>() {
 
                     boolean done;
 
@@ -283,7 +286,12 @@ public class RandomIndexWriter implements Closeable {
           w.softUpdateDocuments(
               delTerm, docs, new NumericDocValuesField(config.getSoftDeletesField(), 1));
     } else {
-      seqNo = w.updateDocuments(delTerm, docs);
+      if (r.nextInt(10) < 3) {
+        // 30% chance
+        seqNo = w.updateDocuments(new TermQuery(delTerm), docs);
+      } else {
+        seqNo = w.updateDocuments(delTerm, docs);
+      }
     }
     maybeFlushOrCommit();
     return seqNo;
@@ -423,14 +431,20 @@ public class RandomIndexWriter implements Closeable {
   private boolean doRandomForceMerge;
   private boolean doRandomForceMergeAssert;
 
-  public void forceMergeDeletes(boolean doWait) throws IOException {
+  /**
+   * @see IndexWriter#forceMergeDeletes(boolean)
+   */
+  public MergePolicy.MergeObserver forceMergeDeletes(boolean doWait) throws IOException {
     LuceneTestCase.maybeChangeLiveIndexWriterConfig(r, config);
-    w.forceMergeDeletes(doWait);
+    return w.forceMergeDeletes(doWait);
   }
 
-  public void forceMergeDeletes() throws IOException {
+  /**
+   * @see IndexWriter#forceMergeDeletes()
+   */
+  public MergePolicy.MergeObserver forceMergeDeletes() throws IOException {
     LuceneTestCase.maybeChangeLiveIndexWriterConfig(r, config);
-    w.forceMergeDeletes();
+    return w.forceMergeDeletes();
   }
 
   public void setDoRandomForceMerge(boolean v) {

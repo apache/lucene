@@ -21,10 +21,10 @@ import java.nio.file.CopyOption;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * FileSystem that (imperfectly) acts like windows.
@@ -38,6 +38,7 @@ public class WindowsFS extends HandleTrackingFS {
   // ownership for
   // the path we rename ie. hardlinks will still resolve to the same key
   final Map<Object, Map<Path, Integer>> openFiles = new HashMap<>();
+
   // TODO: try to make this as realistic as possible... it depends e.g. how you
   // open files, if you map them, etc, if you can delete them (Uwe knows the rules)
 
@@ -54,10 +55,10 @@ public class WindowsFS extends HandleTrackingFS {
 
   /** Returns file "key" (e.g. inode) for the specified path */
   private Object getKey(Path existing) throws IOException {
-    BasicFileAttributeView view =
-        Files.getFileAttributeView(existing, BasicFileAttributeView.class);
-    BasicFileAttributes attributes = view.readAttributes();
-    return attributes.fileKey();
+    // the key may be null, e.g. on real Windows!
+    // in that case we fallback to the file path as key.
+    return Optional.ofNullable(Files.readAttributes(existing, BasicFileAttributes.class).fileKey())
+        .orElse(existing);
   }
 
   @Override
@@ -66,8 +67,8 @@ public class WindowsFS extends HandleTrackingFS {
       final Object key = getKey(path);
       // we have to read the key under the lock otherwise me might leak the openFile handle
       // if we concurrently delete or move this file.
-      Map<Path, Integer> pathMap = openFiles.computeIfAbsent(key, k -> new HashMap<>());
-      pathMap.put(path, pathMap.computeIfAbsent(path, p -> 0).intValue() + 1);
+      Map<Path, Integer> pathMap = openFiles.computeIfAbsent(key, _ -> new HashMap<>());
+      pathMap.put(path, pathMap.computeIfAbsent(path, _ -> 0).intValue() + 1);
     }
   }
 
@@ -96,9 +97,7 @@ public class WindowsFS extends HandleTrackingFS {
   private Object getKeyOrNull(Path path) {
     try {
       return getKey(path);
-    } catch (
-        @SuppressWarnings("unused")
-        Exception ignore) {
+    } catch (Exception _) {
       // we don't care if the file doesn't exist
     }
     return null;
@@ -146,7 +145,7 @@ public class WindowsFS extends HandleTrackingFS {
             Integer v = map.remove(target);
             if (v != null) {
               Map<Path, Integer> pathIntegerMap =
-                  openFiles.computeIfAbsent(newKey, k -> new HashMap<>());
+                  openFiles.computeIfAbsent(newKey, _ -> new HashMap<>());
               Integer existingValue = pathIntegerMap.getOrDefault(target, 0);
               pathIntegerMap.put(target, existingValue + v);
             }

@@ -17,6 +17,8 @@
 
 package org.apache.lucene;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -37,10 +39,9 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.PrintStreamInfoStream;
-import org.junit.AfterClass;
+import org.junit.After;
 
 /**
  * Holds tests cases to verify external APIs are accessible while not being in
@@ -51,7 +52,7 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
   volatile boolean mergeCalled;
   volatile boolean mergeThreadCreated;
   volatile boolean excCalled;
-  static volatile InfoStream infoStream;
+  volatile InfoStream infoStream;
 
   private class MyMergeScheduler extends ConcurrentMergeScheduler {
 
@@ -86,7 +87,7 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
     }
   }
 
-  private static class FailOnlyOnMerge extends MockDirectoryWrapper.Failure {
+  private class FailOnlyOnMerge extends MockDirectoryWrapper.Failure {
     @Override
     public void eval(MockDirectoryWrapper dir) throws IOException {
       if (callStackContainsAnyOf("doMerge")) {
@@ -95,15 +96,15 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
         PrintWriter pw = new PrintWriter(sw);
         ioe.printStackTrace(pw);
         if (infoStream.isEnabled("IW")) {
-          infoStream.message("IW", "TEST: now throw exc:\n" + sw.toString());
+          infoStream.message("IW", "TEST: now throw exc:\n" + sw);
         }
         throw ioe;
       }
     }
   }
 
-  @AfterClass
-  public static void afterClass() {
+  @After
+  public void after() {
     infoStream = null;
   }
 
@@ -115,15 +116,16 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
     Field idField = newStringField("id", "", Field.Store.YES);
     doc.add(idField);
 
+    MyMergeScheduler mergeScheduler = new MyMergeScheduler();
     IndexWriterConfig iwc =
         newIndexWriterConfig(new MockAnalyzer(random()))
-            .setMergeScheduler(new MyMergeScheduler())
+            .setMergeScheduler(mergeScheduler)
             .setMaxBufferedDocs(2)
             .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
             .setMergePolicy(newLogMergePolicy());
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    infoStream = new PrintStreamInfoStream(new PrintStream(baos, true, IOUtils.UTF_8));
+    infoStream = new PrintStreamInfoStream(new PrintStream(baos, true, UTF_8));
     iwc.setInfoStream(infoStream);
 
     IndexWriter writer = new IndexWriter(dir, iwc);
@@ -131,22 +133,14 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
     logMP.setMergeFactor(10);
 
     try {
-      for (int i = 0; i < 20; i++) {
+      for (int i = 0; i < 60; i++) {
         writer.addDocument(doc);
       }
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException ise) {
+    } catch (IllegalStateException _) {
       // OK
     }
 
-    try {
-      ((MyMergeScheduler) writer.getConfig().getMergeScheduler()).sync();
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException ise) {
-      // OK
-    }
+    mergeScheduler.sync();
     writer.rollback();
 
     try {
@@ -155,7 +149,7 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
       assertTrue(excCalled);
     } catch (AssertionError ae) {
       System.out.println("TEST FAILED; IW infoStream output:");
-      System.out.println(baos.toString(IOUtils.UTF_8));
+      System.out.println(baos.toString(UTF_8));
       throw ae;
     }
     dir.close();
@@ -165,7 +159,7 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
 
     @Override
     public void merge(MergeSource mergeSource, MergeTrigger trigger) throws IOException {
-      OneMerge merge = null;
+      OneMerge merge;
       while ((merge = mergeSource.getNextMerge()) != null) {
         if (VERBOSE) {
           System.out.println("executing merge " + merge.segString());

@@ -81,7 +81,7 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortedNumericSelector.Type;
@@ -760,22 +760,28 @@ public class TestValueSources extends LuceneTestCase {
           throws IOException {
         return new FilterWeight(in.createWeight(searcher, scoreMode, boost)) {
           @Override
-          public Scorer scorer(LeafReaderContext context) throws IOException {
-            return new FilterScorer(super.scorer(context)) {
-              int lastDocId = -1;
+          public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+            final var subScorer = in.scorer(context);
+            if (subScorer == null) {
+              return null;
+            }
+            final var scorer =
+                new FilterScorer(subScorer) {
+                  int lastDocId = -1;
 
-              @Override
-              public float score() throws IOException {
-                assertTrue("shouldn't re-compute score", lastDocId != docID());
-                this.lastDocId = docID();
-                return super.score();
-              }
+                  @Override
+                  public float score() throws IOException {
+                    assertTrue("shouldn't re-compute score", lastDocId != docID());
+                    this.lastDocId = docID();
+                    return in.score();
+                  }
 
-              @Override
-              public float getMaxScore(int upTo) throws IOException {
-                return in.getMaxScore(upTo);
-              }
-            };
+                  @Override
+                  public float getMaxScore(int upTo) throws IOException {
+                    return in.getMaxScore(upTo);
+                  }
+                };
+            return new DefaultScorerSupplier(scorer);
           }
         };
       }
@@ -830,7 +836,6 @@ public class TestValueSources extends LuceneTestCase {
         return new FloatDocValues(this) {
           @Override
           public float floatVal(int doc) throws IOException {
-            assertEquals(doc, scorer.docID());
             return scorer.score();
           }
         };
@@ -871,6 +876,31 @@ public class TestValueSources extends LuceneTestCase {
         new FunctionQuery(ValueSource.fromDoubleValuesSource(dvs)), new float[] {3.63f, 5.65f});
   }
 
+  public void testFromDoubleValuesSortWithScore() throws Exception {
+    // Create a query that matches all documents
+    var query = new TermQuery(new Term("text", "test"));
+
+    // Get the original scores
+    TopDocs originalDocs = searcher.search(query, documents.size());
+    ScoreDoc[] originalScoreDocs = originalDocs.scoreDocs;
+
+    // Use a DoubleValuesSource that references the score and convert it to a ValueSource
+    ValueSource scoreSource = ValueSource.fromDoubleValuesSource(DoubleValuesSource.SCORES);
+    SortField sortField = scoreSource.getSortField(true); // true for reverse (descending)
+    Sort sort = new Sort(sortField);
+
+    // Search with the sort.
+    //   note: used to fail with an assertion before fromDoubleValuesSource's impl was improved
+    TopDocs sortedDocs = searcher.search(query, documents.size(), sort);
+    ScoreDoc[] sortedScoreDocs = sortedDocs.scoreDocs;
+
+    // Verify we got the same docs in-order but don't check the scores
+    assertEquals(originalScoreDocs.length, sortedScoreDocs.length);
+    for (int i = 0; i < originalScoreDocs.length; i++) {
+      assertEquals(originalScoreDocs[i].doc, sortedScoreDocs[i].doc);
+    }
+  }
+
   /**
    * Asserts that for every doc, the {@link FunctionValues#exists} value from the {@link
    * ValueSource} is <b>true</b>.
@@ -878,6 +908,7 @@ public class TestValueSources extends LuceneTestCase {
   void assertAllExist(ValueSource vs) {
     assertExists(ALL_EXIST_VS, vs);
   }
+
   /**
    * Asserts that for every doc, the {@link FunctionValues#exists} value from the {@link
    * ValueSource} is <b>false</b>.
@@ -885,6 +916,7 @@ public class TestValueSources extends LuceneTestCase {
   void assertNoneExist(ValueSource vs) {
     assertExists(NONE_EXIST_VS, vs);
   }
+
   /**
    * Asserts that for every doc, the {@link FunctionValues#exists} value from the <code>actual
    * </code> {@link ValueSource} matches the {@link FunctionValues#exists} value from the <code>
@@ -976,6 +1008,7 @@ public class TestValueSources extends LuceneTestCase {
    * @see ExistsValueSource
    */
   private static final ValueSource ALL_EXIST_VS = new ExistsValueSource(true);
+
   /**
    * @see ExistsValueSource
    */

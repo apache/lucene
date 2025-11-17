@@ -26,7 +26,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.PrintStream;
 import java.io.Writer;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
@@ -39,7 +41,7 @@ import java.util.Locale;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
+import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * Downloads/generates lucene/analysis/icu/src/data/utr30/*.txt for the specified icu release tag.
@@ -55,6 +57,13 @@ import java.util.stream.Collectors;
  * </ol>
  */
 public class GenerateUTR30DataFiles {
+  private static final PrintStream syserr = getSysErr();
+
+  @SuppressForbidden(reason = "Uses System.err, which is fine here.")
+  private static PrintStream getSysErr() {
+    return System.err;
+  }
+
   private static final String ICU_GIT_TAG_URL = "https://raw.githubusercontent.com/unicode-org/icu";
   private static final String ICU_DATA_NORM2_PATH = "icu4c/source/data/unidata/norm2";
   private static final String NFC_TXT = "nfc.txt";
@@ -80,7 +89,7 @@ public class GenerateUTR30DataFiles {
       getNFKCDataFilesFromIcuProject(args[0]);
       expandRulesInUTR30DataFiles();
     } catch (Throwable t) {
-      t.printStackTrace(System.err);
+      t.printStackTrace(syserr);
       System.exit(1);
     }
   }
@@ -96,7 +105,7 @@ public class GenerateUTR30DataFiles {
               && !name.equals(NFKC_CF_TXT);
         };
     try (var stream = Files.list(Paths.get(".")).filter(predicate)) {
-      for (Path file : stream.collect(Collectors.toList())) {
+      for (Path file : stream.toList()) {
         expandDataFileRules(file);
       }
     }
@@ -128,8 +137,8 @@ public class GenerateUTR30DataFiles {
               String rightHandSide = ruleMatcher.group(2).trim();
               expandSingleRule(builder, leftHandSide, rightHandSide);
             } catch (IllegalArgumentException e) {
-              System.err.println("ERROR in " + file.getFileName() + " line #" + lineNum + ":");
-              e.printStackTrace(System.err);
+              syserr.println("ERROR in " + file.getFileName() + " line #" + lineNum + ":");
+              e.printStackTrace(syserr);
               System.exit(1);
             }
             modified = true;
@@ -149,25 +158,25 @@ public class GenerateUTR30DataFiles {
     }
 
     if (modified) {
-      System.err.println("Expanding rules in and overwriting " + file.getFileName());
+      syserr.println("Expanding rules in and overwriting " + file.getFileName());
       Files.writeString(file, builder.toString(), StandardCharsets.UTF_8);
     }
   }
 
   private static void getNFKCDataFilesFromIcuProject(String releaseTag) throws IOException {
-    URL icuTagsURL = new URL(ICU_GIT_TAG_URL + "/");
-    URL icuReleaseTagURL = new URL(icuTagsURL, releaseTag + "/");
-    URL norm2url = new URL(icuReleaseTagURL, ICU_DATA_NORM2_PATH + "/");
+    URI icuTagsURI = URI.create(ICU_GIT_TAG_URL + "/");
+    URI icuReleaseTagURI = icuTagsURI.resolve(releaseTag + "/");
+    URI norm2uri = icuReleaseTagURI.resolve(ICU_DATA_NORM2_PATH + "/");
 
-    System.err.print("Downloading " + NFKC_TXT + " ... ");
-    download(new URL(norm2url, NFKC_TXT), NFKC_TXT);
-    System.err.println("done.");
-    System.err.print("Downloading " + NFKC_CF_TXT + " ... ");
-    download(new URL(norm2url, NFKC_CF_TXT), NFKC_CF_TXT);
-    System.err.println("done.");
+    syserr.print("Downloading " + NFKC_TXT + " ... ");
+    download(norm2uri.resolve(NFKC_TXT), NFKC_TXT);
+    syserr.println("done.");
+    syserr.print("Downloading " + NFKC_CF_TXT + " ... ");
+    download(norm2uri.resolve(NFKC_CF_TXT), NFKC_CF_TXT);
+    syserr.println("done.");
 
-    System.err.print("Downloading " + NFKC_CF_TXT + " and making diacritic rules one-way ... ");
-    URLConnection connection = openConnection(new URL(norm2url, NFC_TXT));
+    syserr.print("Downloading " + NFKC_CF_TXT + " and making diacritic rules one-way ... ");
+    URLConnection connection = openConnection(norm2uri.resolve(NFC_TXT).toURL());
     try (BufferedReader reader =
             new BufferedReader(
                 new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8));
@@ -207,11 +216,11 @@ public class GenerateUTR30DataFiles {
         writer.write("\n");
       }
     }
-    System.err.println("done.");
+    syserr.println("done.");
   }
 
-  private static void download(URL url, String outputFile) throws IOException {
-    final URLConnection connection = openConnection(url);
+  private static void download(URI uri, String outputFile) throws IOException {
+    final URLConnection connection = openConnection(uri.toURL());
     try (InputStream inputStream = connection.getInputStream();
         OutputStream outputStream = Files.newOutputStream(Path.of(outputFile))) {
       inputStream.transferTo(outputStream);
@@ -249,7 +258,7 @@ public class GenerateUTR30DataFiles {
           builder.append('>').append(rightHandSide).append("\n");
         }
       } else {
-        System.err.println("ERROR: String '" + it.getString() + "' found in UnicodeSet");
+        syserr.println("ERROR: String '" + it.getString() + "' found in UnicodeSet");
         System.exit(1);
       }
     }

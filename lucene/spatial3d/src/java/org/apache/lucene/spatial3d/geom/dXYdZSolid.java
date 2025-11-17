@@ -30,10 +30,13 @@ class dXYdZSolid extends BaseXYZSolid {
 
   /** X */
   protected final double X;
+
   /** Min-Y */
   protected final double minY;
+
   /** Max-Y */
   protected final double maxY;
+
   /** Z */
   protected final double Z;
 

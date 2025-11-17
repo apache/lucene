@@ -17,6 +17,8 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Arrays;
+import org.apache.lucene.util.Bits;
 
 /**
  * A constant-scoring {@link Scorer}.
@@ -64,16 +66,15 @@ public final class ConstantScoreScorer extends Scorer {
    * Constructor based on a {@link DocIdSetIterator} which will be used to drive iteration. Two
    * phase iteration will not be supported.
    *
-   * @param weight the parent weight
    * @param score the score to return on each document
    * @param scoreMode the score mode
    * @param disi the iterator that defines matching documents
    */
-  public ConstantScoreScorer(
-      Weight weight, float score, ScoreMode scoreMode, DocIdSetIterator disi) {
-    super(weight);
+  public ConstantScoreScorer(float score, ScoreMode scoreMode, DocIdSetIterator disi) {
     this.score = score;
     this.scoreMode = scoreMode;
+    // TODO: Only wrap when it is the top-level scoring clause? See
+    // ScorerSupplier#setTopLevelScoringClause
     this.approximation =
         scoreMode == ScoreMode.TOP_SCORES ? new DocIdSetIteratorWrapper(disi) : disi;
     this.twoPhaseIterator = null;
@@ -84,17 +85,16 @@ public final class ConstantScoreScorer extends Scorer {
    * Constructor based on a {@link TwoPhaseIterator}. In that case the {@link Scorer} will support
    * two-phase iteration.
    *
-   * @param weight the parent weight
    * @param score the score to return on each document
    * @param scoreMode the score mode
    * @param twoPhaseIterator the iterator that defines matching documents
    */
-  public ConstantScoreScorer(
-      Weight weight, float score, ScoreMode scoreMode, TwoPhaseIterator twoPhaseIterator) {
-    super(weight);
+  public ConstantScoreScorer(float score, ScoreMode scoreMode, TwoPhaseIterator twoPhaseIterator) {
     this.score = score;
     this.scoreMode = scoreMode;
     if (scoreMode == ScoreMode.TOP_SCORES) {
+      // TODO: Only wrap when it is the top-level scoring clause? See
+      // ScorerSupplier#setTopLevelScoringClause
       this.approximation = new DocIdSetIteratorWrapper(twoPhaseIterator.approximation());
       this.twoPhaseIterator =
           new TwoPhaseIterator(this.approximation) {
@@ -145,5 +145,22 @@ public final class ConstantScoreScorer extends Scorer {
   @Override
   public float score() throws IOException {
     return score;
+  }
+
+  @Override
+  public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
+      throws IOException {
+    int batchSize = 64;
+    buffer.growNoCopy(batchSize);
+    int size = 0;
+    DocIdSetIterator iterator = iterator();
+    for (int doc = iterator.docID(); doc < upTo && size < batchSize; doc = iterator.nextDoc()) {
+      if (liveDocs == null || liveDocs.get(doc)) {
+        buffer.docs[size] = doc;
+        ++size;
+      }
+    }
+    Arrays.fill(buffer.features, 0, size, score);
+    buffer.size = size;
   }
 }

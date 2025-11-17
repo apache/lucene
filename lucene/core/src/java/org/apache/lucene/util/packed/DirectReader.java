@@ -27,7 +27,7 @@ import org.apache.lucene.util.LongValues;
  * <p>Example usage:
  *
  * <pre class="prettyprint">
- *   int bitsPerValue = 100;
+ *   int bitsPerValue = DirectWriter.bitsRequired(100);
  *   IndexInput in = dir.openInput("packed", IOContext.DEFAULT);
  *   LongValues values = DirectReader.getInstance(in.randomAccessSlice(start, end), bitsPerValue);
  *   for (int i = 0; i &lt; numValues; i++) {
@@ -233,7 +233,6 @@ public class DirectReader {
     DirectPackedReader4(RandomAccessInput in, long offset) {
       this.in = in;
       this.offset = offset;
-      ;
     }
 
     @Override

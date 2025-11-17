@@ -144,15 +144,13 @@ public class TestAllFilesDetectTruncation extends LuceneTestCase {
               // In some rare cases, the codec footer would still appear as correct even though the
               // file has been truncated. We just skip the test is this rare case.
               return;
-            } catch (
-                @SuppressWarnings("unused")
-                CorruptIndexException e) {
+            } catch (CorruptIndexException _) {
               // expected
             }
           }
 
           try (IndexOutput out = dirCopy.createOutput(name, IOContext.DEFAULT);
-              IndexInput in = dir.openInput(name, IOContext.DEFAULT)) {
+              IndexInput in = dir.openInput(name, IOContext.READONCE)) {
             out.copyBytes(in, victimLength - lostBytes);
           }
         }
@@ -166,7 +164,11 @@ public class TestAllFilesDetectTruncation extends LuceneTestCase {
       expectThrows(Exception.class, () -> DirectoryReader.open(dirCopy).close());
 
       // CheckIndex should also fail:
-      expectThrows(Exception.class, () -> TestUtil.checkIndex(dirCopy, true, true, true, null));
+      expectThrows(
+          Exception.class,
+          () ->
+              TestUtil.checkIndex(
+                  dirCopy, CheckIndex.Level.MIN_LEVEL_FOR_SLOW_CHECKS, true, true, null));
     }
   }
 }

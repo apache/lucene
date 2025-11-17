@@ -91,7 +91,7 @@ public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
     int totCount = 0;
     for (FacetsCollector.MatchingDocs hits : matchingDocs) {
 
-      BinaryDocValues binaryDocValues = DocValues.getBinary(hits.context.reader(), field);
+      BinaryDocValues binaryDocValues = DocValues.getBinary(hits.context().reader(), field);
 
       final DocIdSetIterator it = createIterator(hits, binaryDocValues);
       if (it == null) {
@@ -161,12 +161,8 @@ public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
     topN = Math.min(topN, counts.length);
 
     PriorityQueue<Entry> pq =
-        new PriorityQueue<>(topN, () -> new Entry("", 0)) {
-          @Override
-          protected boolean lessThan(Entry a, Entry b) {
-            return compare(a.count, b.count, a.label, b.label) < 0;
-          }
-        };
+        PriorityQueue.usingComparator(
+            topN, () -> new Entry("", 0), (a, b) -> compare(a.count, b.count, a.label, b.label));
 
     int childCount = 0;
     Entry reuse = pq.top();

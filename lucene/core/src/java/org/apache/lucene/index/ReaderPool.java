@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.LongSupplier;
-import java.util.stream.Collectors;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.CollectionUtil;
@@ -177,7 +176,7 @@ final class ReaderPool implements Closeable {
 
   /**
    * Releases the {@link ReadersAndUpdates}. This should only be called if the {@link
-   * #get(SegmentCommitInfo, boolean)} is called with the create paramter set to true.
+   * #get(SegmentCommitInfo, boolean)} is called with the 'create' parameter set to true.
    *
    * @return <code>true</code> if any files were written by this release call.
    */
@@ -274,9 +273,9 @@ final class ReaderPool implements Closeable {
   }
 
   /**
-   * Returns a list of all currently maintained ReadersAndUpdates sorted by it's ram consumption
+   * Returns a list of all currently maintained ReadersAndUpdates sorted by their ram consumption
    * largest to smallest. This list can also contain readers that don't consume any ram at this
-   * point ie. don't have any updates buffered.
+   * point i.e. don't have any updates buffered.
    */
   synchronized List<ReadersAndUpdates> getReadersByRam() {
     class RamRecordingHolder {
@@ -295,19 +294,17 @@ final class ReaderPool implements Closeable {
       }
       readersByRam = new ArrayList<>(readerMap.size());
       for (ReadersAndUpdates rld : readerMap.values()) {
-        // we have to record the ram usage once and then sort
-        // since the ram usage can change concurrently and that will confuse the sort or hit an
+        // we have to record the RAM usage once and then sort
+        // since the RAM usage can change concurrently and that will confuse the sort or hit an
         // assertion
         // the we can acquire here is not enough we would need to lock all ReadersAndUpdates to make
-        // sure it doesn't
-        // change
+        // sure it doesn't change
         readersByRam.add(new RamRecordingHolder(rld));
       }
     }
     // Sort this outside of the lock by largest ramBytesUsed:
     CollectionUtil.introSort(readersByRam, (a, b) -> Long.compare(b.ramBytesUsed, a.ramBytesUsed));
-    return Collections.unmodifiableList(
-        readersByRam.stream().map(h -> h.updates).collect(Collectors.toList()));
+    return readersByRam.stream().map(h -> h.updates).toList();
   }
 
   /** Remove all our references to readers, and commits any pending changes. */
@@ -334,7 +331,7 @@ final class ReaderPool implements Closeable {
         priorE = IOUtils.useOrSuppress(priorE, t);
       }
     }
-    assert readerMap.size() == 0;
+    assert readerMap.isEmpty();
     if (priorE != null) {
       throw IOUtils.rethrowAlways(priorE);
     }

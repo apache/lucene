@@ -40,6 +40,7 @@ import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingS
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.compressing.CompressionMode;
@@ -50,12 +51,15 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.index.StoredFieldDataInput;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
@@ -71,6 +75,9 @@ import org.apache.lucene.util.LongsRef;
  */
 public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsReader {
 
+  private static final int PREFETCH_CACHE_SIZE = 1 << 4;
+  private static final int PREFETCH_CACHE_MASK = PREFETCH_CACHE_SIZE - 1;
+
   private final int version;
   private final FieldInfos fieldInfos;
   private final FieldsIndex indexReader;
@@ -85,6 +92,11 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   private final long numChunks; // number of written blocks
   private final long numDirtyChunks; // number of incomplete compressed blocks written
   private final long numDirtyDocs; // cumulative number of docs in incomplete chunks
+  // Cache of recently prefetched block IDs. This helps reduce chances of prefetching the same block
+  // multiple times, which is otherwise likely due to index sorting or recursive graph bisection
+  // clustering similar documents together. NOTE: this cache must be small since it's fully scanned.
+  private final long[] prefetchedBlockIDCache;
+  private int prefetchedBlockIDCacheIndex;
   private boolean closed;
 
   // used by clone
@@ -102,6 +114,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     this.numChunks = reader.numChunks;
     this.numDirtyChunks = reader.numDirtyChunks;
     this.numDirtyDocs = reader.numDirtyDocs;
+    this.prefetchedBlockIDCache = new long[PREFETCH_CACHE_SIZE];
+    Arrays.fill(prefetchedBlockIDCache, -1);
     this.merging = merging;
     this.state = new BlockState();
     this.closed = false;
@@ -119,7 +133,6 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       throws IOException {
     this.compressionMode = compressionMode;
     final String segment = si.name;
-    boolean success = false;
     fieldInfos = fn;
     numDocs = si.maxDoc();
 
@@ -128,7 +141,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     ChecksumIndexInput metaIn = null;
     try {
       // Open the data file
-      fieldsStream = d.openInput(fieldsStreamFN, context);
+      fieldsStream =
+          d.openInput(fieldsStreamFN, context.withHints(FileTypeHint.DATA, DataAccessHint.RANDOM));
       version =
           CodecUtil.checkIndexHeader(
               fieldsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);
@@ -149,6 +163,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       chunkSize = metaIn.readVInt();
 
       decompressor = compressionMode.newDecompressor();
+      this.prefetchedBlockIDCache = new long[PREFETCH_CACHE_SIZE];
+      Arrays.fill(prefetchedBlockIDCache, -1);
       this.merging = false;
       this.state = new BlockState();
 
@@ -163,7 +179,14 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
       FieldsIndexReader fieldsIndexReader =
           new FieldsIndexReader(
-              d, si.name, segmentSuffix, INDEX_EXTENSION, INDEX_CODEC_NAME, si.getId(), metaIn);
+              d,
+              si.name,
+              segmentSuffix,
+              INDEX_EXTENSION,
+              INDEX_CODEC_NAME,
+              si.getId(),
+              metaIn,
+              context);
       indexReader = fieldsIndexReader;
       maxPointer = fieldsIndexReader.getMaxPointer();
 
@@ -201,18 +224,16 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
       CodecUtil.checkFooter(metaIn, null);
       metaIn.close();
-
-      success = true;
     } catch (Throwable t) {
-      if (metaIn != null) {
-        CodecUtil.checkFooter(metaIn, t);
-        throw new AssertionError("unreachable");
-      } else {
-        throw t;
-      }
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this, metaIn);
+      try {
+        if (metaIn != null) {
+          CodecUtil.checkFooter(metaIn, t);
+          throw new AssertionError("unreachable");
+        } else {
+          throw t;
+        }
+      } finally {
+        IOUtils.closeWhileSuppressingExceptions(t, this, metaIn);
       }
     }
   }
@@ -240,9 +261,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     switch (bits & TYPE_MASK) {
       case BYTE_ARR:
         int length = in.readVInt();
-        byte[] data = new byte[length];
-        in.readBytes(data, 0, length);
-        visitor.binaryField(info, data);
+        visitor.binaryField(info, new StoredFieldDataInput(in, length));
         break;
       case STRING:
         visitor.stringField(info, in.readString());
@@ -421,19 +440,16 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
     /** Reset this block so that it stores state for the block that contains the given doc id. */
     void reset(int docID) throws IOException {
-      boolean success = false;
       try {
         doReset(docID);
-        success = true;
-      } finally {
-        if (success == false) {
-          // if the read failed, set chunkDocs to 0 so that it does not
-          // contain any docs anymore and is not reused. This should help
-          // get consistent exceptions when trying to get several
-          // documents which are in the same corrupted block since it will
-          // force the header to be decoded again
-          chunkDocs = 0;
-        }
+      } catch (Throwable t) {
+        // if the read failed, set chunkDocs to 0 so that it does not
+        // contain any docs anymore and is not reused. This should help
+        // get consistent exceptions when trying to get several
+        // documents which are in the same corrupted block since it will
+        // force the header to be decoded again
+        chunkDocs = 0;
+        throw t;
       }
     }
 
@@ -601,6 +617,23 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
       return new SerializedDocument(documentInput, length, numStoredFields);
     }
+  }
+
+  @Override
+  public void prefetch(int docID) throws IOException {
+    final long blockID = indexReader.getBlockID(docID);
+
+    for (long prefetchedBlockID : prefetchedBlockIDCache) {
+      if (prefetchedBlockID == blockID) {
+        return;
+      }
+    }
+
+    final long blockStartPointer = indexReader.getBlockStartPointer(blockID);
+    final long blockLength = indexReader.getBlockLength(blockID);
+    fieldsStream.prefetch(blockStartPointer, blockLength);
+
+    prefetchedBlockIDCache[prefetchedBlockIDCacheIndex++ & PREFETCH_CACHE_MASK] = blockID;
   }
 
   SerializedDocument serializedDocument(int docID) throws IOException {

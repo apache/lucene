@@ -22,8 +22,8 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * A {@link CollectorManager} implements which wrap a set of {@link CollectorManager} as {@link
- * MultiCollector} acts for {@link Collector}.
+ * A composite {@link CollectorManager} which wraps a set of {@link CollectorManager} instances,
+ * akin to how {@link MultiCollector} wraps {@link Collector} instances.
  */
 public class MultiCollectorManager implements CollectorManager<Collector, Object[]> {
 
@@ -56,21 +56,21 @@ public class MultiCollectorManager implements CollectorManager<Collector, Object
   }
 
   @Override
-  public Object[] reduce(Collection<Collector> reducableCollectors) throws IOException {
-    final int size = reducableCollectors.size();
+  public Object[] reduce(Collection<Collector> reducibleCollectors) throws IOException {
+    final int size = reducibleCollectors.size();
     final Object[] results = new Object[collectorManagers.length];
     for (int i = 0; i < collectorManagers.length; i++) {
-      final List<Collector> reducableCollector = new ArrayList<>(size);
-      for (Collector collector : reducableCollectors) {
+      final List<Collector> reducibleCollector = new ArrayList<>(size);
+      for (Collector collector : reducibleCollectors) {
         // MultiCollector will not actually wrap the collector if only one is provided, so we
         // check the instance type here:
         if (collector instanceof MultiCollector) {
-          reducableCollector.add(((MultiCollector) collector).getCollectors()[i]);
+          reducibleCollector.add(((MultiCollector) collector).getCollectors()[i]);
         } else {
-          reducableCollector.add(collector);
+          reducibleCollector.add(collector);
         }
       }
-      results[i] = collectorManagers[i].reduce(reducableCollector);
+      results[i] = collectorManagers[i].reduce(reducibleCollector);
     }
     return results;
   }

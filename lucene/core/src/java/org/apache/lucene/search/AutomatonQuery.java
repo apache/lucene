@@ -34,8 +34,8 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
  * Alternatively, it can be created from a regular expression with {@link RegexpQuery} or from the
  * standard Lucene wildcard syntax with {@link WildcardQuery}.
  *
- * <p>When the query is executed, it will will enumerate the term dictionary in an intelligent way
- * to reduce the number of comparisons. For example: the regular expression of <code>[dl]og?</code>
+ * <p>When the query is executed, it will enumerate the term dictionary in an intelligent way to
+ * reduce the number of comparisons. For example: the regular expression of <code>[dl]og?</code>
  * will make approximately four comparisons: do, dog, lo, and log.
  *
  * @lucene.experimental
@@ -48,6 +48,7 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
   protected final Automaton automaton;
 
   protected final CompiledAutomaton compiled;
+
   /** term containing the field, and possibly some pattern structure */
   protected final Term term;
 

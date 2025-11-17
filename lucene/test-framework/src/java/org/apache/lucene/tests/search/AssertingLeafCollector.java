@@ -16,11 +16,17 @@
  */
 package org.apache.lucene.tests.search;
 
+import static org.apache.lucene.tests.util.LuceneTestCase.rarely;
+
 import java.io.IOException;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.DocIdStream;
+import org.apache.lucene.search.FilterDocIdSetIterator;
 import org.apache.lucene.search.FilterLeafCollector;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
+import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IOIntConsumer;
 
 /** Wraps another Collector and checks that order is respected. */
 class AssertingLeafCollector extends FilterLeafCollector {
@@ -28,8 +34,10 @@ class AssertingLeafCollector extends FilterLeafCollector {
   private final int min;
   private final int max;
 
-  private Scorable scorer;
   private int lastCollected = -1;
+  private boolean finishCalled;
+
+  private int[] docBuffer;
 
   AssertingLeafCollector(LeafCollector collector, int min, int max) {
     super(collector);
@@ -39,8 +47,35 @@ class AssertingLeafCollector extends FilterLeafCollector {
 
   @Override
   public void setScorer(Scorable scorer) throws IOException {
-    this.scorer = scorer;
     super.setScorer(AssertingScorable.wrap(scorer));
+  }
+
+  @Override
+  public void collect(DocIdStream stream) throws IOException {
+    if (rarely()) {
+      if (docBuffer == null) {
+        docBuffer = new int[32];
+      }
+      for (int count = stream.intoArray(docBuffer);
+          count != 0;
+          count = stream.intoArray(docBuffer)) {
+        for (int i = 0; i < count; ++i) {
+          collect(docBuffer[i]);
+        }
+      }
+    } else {
+      in.collect(new AssertingDocIdStream(stream));
+    }
+  }
+
+  @Override
+  public void collectRange(int min, int max) throws IOException {
+    assert min > lastCollected;
+    assert max > min;
+    assert min >= this.min : "Out of range: " + min + " < " + this.min;
+    assert max <= this.max : "Out of range: " + (max - 1) + " >= " + this.max;
+    in.collectRange(min, max);
+    lastCollected = max - 1;
   }
 
   @Override
@@ -48,13 +83,165 @@ class AssertingLeafCollector extends FilterLeafCollector {
     assert doc > lastCollected : "Out of order : " + lastCollected + " " + doc;
     assert doc >= min : "Out of range: " + doc + " < " + min;
     assert doc < max : "Out of range: " + doc + " >= " + max;
-    assert scorer.docID() == doc : "Collected: " + doc + " but scorer: " + scorer.docID();
     in.collect(doc);
     lastCollected = doc;
   }
 
   @Override
   public DocIdSetIterator competitiveIterator() throws IOException {
-    return in.competitiveIterator();
+    final DocIdSetIterator in = this.in.competitiveIterator();
+    if (in == null) {
+      return null;
+    }
+    return new FilterDocIdSetIterator(in) {
+
+      @Override
+      public int nextDoc() throws IOException {
+        assert in.docID() < max
+            : "advancing beyond the end of the scored window: docID=" + in.docID() + ", max=" + max;
+        return in.nextDoc();
+      }
+
+      @Override
+      public int advance(int target) throws IOException {
+        assert target <= max
+            : "advancing beyond the end of the scored window: target=" + target + ", max=" + max;
+        return in.advance(target);
+      }
+
+      @Override
+      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+        assert upTo <= max
+            : "advancing beyond the end of the scored window: upTo=" + upTo + ", max=" + max;
+        in.intoBitSet(upTo, bitSet, offset);
+        assert in.docID() >= upTo;
+      }
+
+      @Override
+      public int docIDRunEnd() throws IOException {
+        assert docID() != -1;
+        assert docID() != NO_MORE_DOCS;
+        int nextNonMatchingDocID = in.docIDRunEnd();
+        assert nextNonMatchingDocID > docID();
+        return nextNonMatchingDocID;
+      }
+    };
+  }
+
+  @Override
+  public void finish() throws IOException {
+    assert finishCalled == false;
+    finishCalled = true;
+    super.finish();
+  }
+
+  private class AssertingDocIdStream extends DocIdStream {
+
+    private final DocIdStream stream;
+    private int lastUpTo = -1;
+
+    AssertingDocIdStream(DocIdStream stream) {
+      this.stream = stream;
+    }
+
+    @Override
+    public void forEach(IOIntConsumer consumer) throws IOException {
+      assert lastUpTo != DocIdSetIterator.NO_MORE_DOCS : "exhausted";
+      stream.forEach(
+          doc -> {
+            assert doc > lastCollected : "Out of order : " + lastCollected + " " + doc;
+            assert doc >= min : "Out of range: " + doc + " < " + min;
+            assert doc < max : "Out of range: " + doc + " >= " + max;
+            consumer.accept(doc);
+            lastCollected = doc;
+          });
+      lastUpTo = DocIdSetIterator.NO_MORE_DOCS;
+      assert stream.mayHaveRemaining() == false;
+    }
+
+    @Override
+    public void forEach(int upTo, IOIntConsumer consumer) throws IOException {
+      assert lastUpTo < upTo : "upTo=" + upTo + " but previous upTo=" + lastUpTo;
+      stream.forEach(
+          doc -> {
+            assert doc > lastCollected : "Out of order : " + lastCollected + " " + doc;
+            assert doc >= min : "Out of range: " + doc + " < " + min;
+            assert doc < max : "Out of range: " + doc + " >= " + max;
+            consumer.accept(doc);
+            lastCollected = doc;
+          });
+      lastUpTo = upTo;
+      if (upTo == DocIdSetIterator.NO_MORE_DOCS) {
+        assert stream.mayHaveRemaining() == false;
+      }
+    }
+
+    @Override
+    public int count() throws IOException {
+      assert lastUpTo != DocIdSetIterator.NO_MORE_DOCS : "exhausted";
+      int count = stream.count();
+      lastUpTo = DocIdSetIterator.NO_MORE_DOCS;
+      assert stream.mayHaveRemaining() == false;
+      return count;
+    }
+
+    @Override
+    public int count(int upTo) throws IOException {
+      assert lastUpTo < upTo : "upTo=" + upTo + " but previous upTo=" + lastUpTo;
+      int count = stream.count(upTo);
+      lastUpTo = upTo;
+      if (upTo == DocIdSetIterator.NO_MORE_DOCS) {
+        assert stream.mayHaveRemaining() == false;
+      }
+      return count;
+    }
+
+    @Override
+    public int intoArray(int[] array) {
+      assert array.length > 0;
+      int count = stream.intoArray(array);
+      assert lastUpTo != DocIdSetIterator.NO_MORE_DOCS || count == 0;
+      if (count < array.length) {
+        lastUpTo = DocIdSetIterator.NO_MORE_DOCS;
+        assert stream.mayHaveRemaining() == false;
+      } else {
+        lastUpTo = array[array.length - 1] + 1;
+      }
+      return count;
+    }
+
+    @Override
+    public int intoArray(int upTo, int[] array) {
+      assert array.length > 0;
+      assert lastUpTo <= upTo : "upTo=" + upTo + " but previous upTo=" + lastUpTo;
+      int count = stream.intoArray(upTo, array);
+
+      assert lastUpTo != upTo || count == 0;
+
+      if (count != 0) {
+        assert array[count - 1] < upTo;
+      }
+
+      if (count < array.length) {
+        lastUpTo = upTo;
+      } else {
+        lastUpTo = array[array.length - 1] + 1;
+      }
+
+      if (upTo == DocIdSetIterator.NO_MORE_DOCS && count < array.length) {
+        assert stream.mayHaveRemaining() == false;
+      }
+
+      return count;
+    }
+
+    @Override
+    public boolean mayHaveRemaining() {
+      boolean mayHaveRemaining = stream.mayHaveRemaining();
+      if (lastUpTo == DocIdSetIterator.NO_MORE_DOCS) {
+        assert mayHaveRemaining == false;
+      }
+      return mayHaveRemaining;
+    }
   }
 }

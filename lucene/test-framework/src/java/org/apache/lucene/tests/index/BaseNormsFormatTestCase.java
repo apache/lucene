@@ -54,8 +54,8 @@ import org.apache.lucene.util.IOUtils;
 /**
  * Abstract class to do basic tests for a norms format. NOTE: This test focuses on the norms impl,
  * nothing else. The [stretch] goal is for this test to be so thorough in testing a new NormsFormat
- * that if this test passes, then all Lucene/Solr tests should also pass. Ie, if there is some bug
- * in a given NormsFormat that this test fails to catch then this test needs to be improved!
+ * that if this test passes, then all Lucene tests should also pass. Ie, if there is some bug in a
+ * given NormsFormat that this test fails to catch then this test needs to be improved!
  */
 public abstract class BaseNormsFormatTestCase extends BaseIndexFileFormatTestCase {
 
@@ -588,6 +588,28 @@ public abstract class BaseNormsFormatTestCase extends BaseIndexFileFormatTestCas
           assertEquals("doc " + d, expected.longValue(), actual.longValue());
         }
         assertEquals(NO_MORE_DOCS, actual.nextDoc());
+
+        // Now check bulk fetching
+        expected = r.getNumericDocValues("dv");
+        actual = r.getNormValues("indexed");
+
+        int[] docs = new int[16];
+        long[] expectedValues = new long[16];
+        long[] actualValues = new long[16];
+        for (int doc = -1; doc < r.maxDoc(); ) {
+          int size = 0;
+          for (int j = 0; j < docs.length; ++j) {
+            doc += 1 + (j & 0x03);
+            if (doc >= r.maxDoc()) {
+              break;
+            }
+            docs[size++] = doc;
+          }
+
+          expected.longValues(size, docs, expectedValues, size);
+          actual.longValues(size, docs, actualValues, size);
+          assertArrayEquals(expectedValues, actualValues);
+        }
       }
     }
   }

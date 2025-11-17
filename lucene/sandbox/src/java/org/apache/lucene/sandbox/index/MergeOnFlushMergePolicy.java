@@ -73,6 +73,7 @@ public class MergeOnFlushMergePolicy extends FilterMergePolicy {
     }
     return null;
   }
+
   /** Utility class to handle conversion between megabytes and bytes */
   static class Units {
 

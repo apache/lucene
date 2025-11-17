@@ -30,7 +30,8 @@ doc.tokenized=true
 doc.term.vector=false
 log.step=500
 
-docs.dir=reuters-out
+work.dir=data
+docs.dir=reuters21578
 #docs.dir=reuters-111
 
 content.source=org.apache.lucene.benchmark.byTask.feeds.SingleDocSource
@@ -51,7 +52,7 @@ ResetSystemErase
 
 { "Populate"
     CreateIndex
-    { "MAddDocs" AddDoc(2000) > : 20000     
+    { "MAddDocs" AddDoc(2000) > : 20000
     ForceMerge(1)
     CloseIndex
 }
@@ -59,15 +60,15 @@ ResetSystemErase
 
 { "Round"
 
-  OpenReader  
+  OpenReader
   { "SearchSameRdr" Search > : 6000
-  CloseReader 
+  CloseReader
 
   ResetInputs
   RepSumByName
   NewRound
 } : 4
-            
+
 RepSumByPrefRound MAddDocs
 
 RepSumByName

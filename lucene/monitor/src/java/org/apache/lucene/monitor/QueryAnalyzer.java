@@ -40,7 +40,7 @@ class QueryAnalyzer {
   }
 
   QueryAnalyzer() {
-    this.unknownQueryMapper = (q, w) -> null;
+    this.unknownQueryMapper = (_, _) -> null;
   }
 
   private static BiFunction<Query, TermWeightor, QueryTree> buildMapper(
@@ -81,28 +81,24 @@ class QueryAnalyzer {
       }
       if (occur == BooleanClause.Occur.MUST_NOT) {
         // Check if we're in a pure negative disjunction
-        if (parent instanceof BooleanQuery) {
-          BooleanQuery bq = (BooleanQuery) parent;
+        if (parent instanceof BooleanQuery bq) {
           long positiveCount =
-              bq.clauses().stream()
-                  .filter(c -> c.getOccur() != BooleanClause.Occur.MUST_NOT)
-                  .count();
+              bq.clauses().stream().filter(c -> c.occur() != BooleanClause.Occur.MUST_NOT).count();
           if (positiveCount == 0) {
-            children.add(w -> QueryTree.anyTerm("PURE NEGATIVE QUERY[" + parent + "]"));
+            children.add(_ -> QueryTree.anyTerm("PURE NEGATIVE QUERY[" + parent + "]"));
           }
         }
         return QueryVisitor.EMPTY_VISITOR;
       }
       // It's a disjunction clause.  If the parent has MUST or FILTER clauses, we can
       // ignore it
-      if (parent instanceof BooleanQuery) {
-        BooleanQuery bq = (BooleanQuery) parent;
+      if (parent instanceof BooleanQuery bq) {
         long requiredCount =
             bq.clauses().stream()
                 .filter(
                     c ->
-                        c.getOccur() == BooleanClause.Occur.MUST
-                            || c.getOccur() == BooleanClause.Occur.FILTER)
+                        c.occur() == BooleanClause.Occur.MUST
+                            || c.occur() == BooleanClause.Occur.FILTER)
                 .count();
         if (requiredCount > 0) {
           return QueryVisitor.EMPTY_VISITOR;

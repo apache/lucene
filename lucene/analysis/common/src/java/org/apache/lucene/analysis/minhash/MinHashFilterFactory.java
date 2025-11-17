@@ -32,13 +32,13 @@ public class MinHashFilterFactory extends TokenFilterFactory {
   /** SPI name */
   public static final String NAME = "minHash";
 
-  private int hashCount = MinHashFilter.DEFAULT_HASH_COUNT;
+  private final int hashCount;
 
-  private int bucketCount = MinHashFilter.DEFAULT_BUCKET_COUNT;
+  private final int bucketCount;
 
-  private int hashSetSize = MinHashFilter.DEFAULT_HASH_SET_SIZE;
+  private final int hashSetSize;
 
-  private boolean withRotation;
+  private final boolean withRotation;
 
   /** Create a {@link MinHashFilterFactory}. */
   public MinHashFilterFactory(Map<String, String> args) {

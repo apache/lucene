@@ -16,28 +16,26 @@
  */
 package org.apache.lucene.util;
 
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 
-@SuppressWarnings("BoxedPrimitiveEquality")
 public class TestPriorityQueue extends LuceneTestCase {
 
   private static class IntegerQueue extends PriorityQueue<Integer> {
     public IntegerQueue(int count) {
-      super(count);
-    }
-
-    @Override
-    protected boolean lessThan(Integer a, Integer b) {
-      return (a < b);
+      super(count, (a, b) -> a < b);
     }
 
     protected final void checkValidity() {
@@ -45,9 +43,7 @@ public class TestPriorityQueue extends LuceneTestCase {
       for (int i = 1; i <= size(); i++) {
         int parent = i >>> 1;
         if (parent > 1) {
-          if (lessThan((Integer) heapArray[parent], (Integer) heapArray[i]) == false) {
-            assertEquals(heapArray[parent], heapArray[i]);
-          }
+          assertThat((Integer) heapArray[i], greaterThanOrEqualTo((Integer) heapArray[parent]));
         }
       }
     }
@@ -74,13 +70,7 @@ public class TestPriorityQueue extends LuceneTestCase {
       }
     }
 
-    PriorityQueue<Value> pq =
-        new PriorityQueue<>(5) {
-          @Override
-          protected boolean lessThan(Value a, Value b) {
-            return a.value < b.value;
-          }
-        };
+    PriorityQueue<Value> pq = new PriorityQueue<>(5, (a, b) -> a.value < b.value);
 
     // Make all elements equal but record insertion order.
     for (int i = 0; i < 100; i++) {
@@ -94,15 +84,20 @@ public class TestPriorityQueue extends LuceneTestCase {
 
     // All elements are "equal" so we should have exactly the indexes of those elements that were
     // added first.
-    MatcherAssert.assertThat(indexes, Matchers.containsInAnyOrder(0, 1, 2, 3, 4));
+    assertThat(indexes, Matchers.containsInAnyOrder(0, 1, 2, 3, 4));
   }
 
   public void testPQ() throws Exception {
-    testPQ(atLeast(10000), random());
+    int size = atLeast(10000);
+    testPQ(new IntegerQueue(size), size, random());
   }
 
-  public static void testPQ(int count, Random gen) {
-    PriorityQueue<Integer> pq = new IntegerQueue(count);
+  public void testComparatorPQ() throws Exception {
+    int size = atLeast(10000);
+    testPQ(PriorityQueue.usingComparator(size, Integer::compareTo), size, random());
+  }
+
+  public static void testPQ(PriorityQueue<Integer> pq, int count, Random gen) {
     int sum = 0, sum2 = 0;
 
     for (int i = 0; i < count; i++) {
@@ -114,7 +109,7 @@ public class TestPriorityQueue extends LuceneTestCase {
     int last = Integer.MIN_VALUE;
     for (int i = 0; i < count; i++) {
       Integer next = pq.pop();
-      assertTrue(next.intValue() >= last);
+      assertThat(next, greaterThanOrEqualTo(last));
       last = next.intValue();
       sum2 += last;
     }
@@ -158,10 +153,10 @@ public class TestPriorityQueue extends LuceneTestCase {
     assertNull(pq.insertWithOverflow(i2));
     assertNull(pq.insertWithOverflow(i3));
     assertNull(pq.insertWithOverflow(i4));
-    assertTrue(pq.insertWithOverflow(i5) == i3); // i3 should have been dropped
-    assertTrue(pq.insertWithOverflow(i6) == i6); // i6 should not have been inserted
-    assertEquals(size, pq.size());
-    assertEquals((Integer) 2, pq.top());
+    assertThat(pq.insertWithOverflow(i5), equalTo(i3)); // i3 should have been dropped
+    assertThat(pq.insertWithOverflow(i6), equalTo(i6)); // i6 should not have been inserted
+    assertThat(pq.size(), equalTo(size));
+    assertThat(pq.top(), equalTo(2));
   }
 
   public void testAddAllToEmptyQueue() {
@@ -213,57 +208,48 @@ public class TestPriorityQueue extends LuceneTestCase {
         () -> pq.addAll(list));
   }
 
+  /** Randomly add and remove elements, comparing against the reference java.util.PriorityQueue. */
   public void testRemovalsAndInsertions() {
-    Random random = random();
-    int numDocsInPQ = TestUtil.nextInt(random, 1, 100);
-    IntegerQueue pq = new IntegerQueue(numDocsInPQ);
-    Integer lastLeast = null;
+    int maxElement = RandomNumbers.randomIntBetween(random(), 1, 10_000);
+    int size = maxElement / 2 + 1;
 
-    // Basic insertion of new content
-    ArrayList<Integer> sds = new ArrayList<Integer>(numDocsInPQ);
-    for (int i = 0; i < numDocsInPQ * 10; i++) {
-      Integer newEntry = Math.abs(random.nextInt());
-      sds.add(newEntry);
-      Integer evicted = pq.insertWithOverflow(newEntry);
-      pq.checkValidity();
-      if (evicted != null) {
-        assertTrue(sds.remove(evicted));
-        if (evicted != newEntry) {
-          assertSame(evicted, lastLeast);
+    var reference = new java.util.PriorityQueue<Integer>();
+    var pq = new IntegerQueue(size);
+
+    Random localRandom = nonAssertingRandom(random());
+
+    // Lucene's PriorityQueue.remove uses reference equality, not .equals to determine which
+    // elements
+    // to remove (!).
+    HashMap<Integer, Integer> ints = new HashMap<>();
+
+    for (int i = 0, iters = size * 2; i < iters; i++) {
+      Integer element = ints.computeIfAbsent(localRandom.nextInt(maxElement), k -> k);
+
+      var action = localRandom.nextInt(100);
+      if (action < 25) {
+        // removals, possibly misses.
+        assertEquals("remove() difference: " + i, reference.remove(element), pq.remove(element));
+      } else {
+        // additions.
+        var dropped = pq.insertWithOverflow(element);
+
+        reference.add(element);
+        Integer droppedReference;
+        if (reference.size() > size) {
+          droppedReference = reference.remove();
+        } else {
+          droppedReference = null;
         }
+
+        assertEquals("insertWithOverflow() difference.", dropped, droppedReference);
       }
-      Integer newLeast = pq.top();
-      if ((lastLeast != null) && (newLeast != newEntry) && (newLeast != lastLeast)) {
-        // If there has been a change of least entry and it wasn't our new
-        // addition we expect the scores to increase
-        assertTrue(newLeast <= newEntry);
-        assertTrue(newLeast >= lastLeast);
-      }
-      lastLeast = newLeast;
+
+      assertEquals("insertWithOverflow() size difference?", reference.size(), pq.size());
+      assertEquals("top() difference?", reference.peek(), pq.top());
     }
 
-    // Try many random additions to existing entries - we should always see
-    // increasing scores in the lowest entry in the PQ
-    for (int p = 0; p < 500000; p++) {
-      int element = (int) (random.nextFloat() * (sds.size() - 1));
-      Integer objectToRemove = sds.get(element);
-      assertSame(sds.remove(element), objectToRemove);
-      assertTrue(pq.remove(objectToRemove));
-      pq.checkValidity();
-      Integer newEntry = Math.abs(random.nextInt());
-      sds.add(newEntry);
-      assertNull(pq.insertWithOverflow(newEntry));
-      pq.checkValidity();
-      Integer newLeast = pq.top();
-      if ((objectToRemove != lastLeast) && (lastLeast != null) && (newLeast != newEntry)) {
-        // If there has been a change of least entry and it wasn't our new
-        // addition or the loss of our randomly removed entry we expect the
-        // scores to increase
-        assertTrue(newLeast <= newEntry);
-        assertTrue(newLeast >= lastLeast);
-      }
-      lastLeast = newLeast;
-    }
+    pq.checkValidity();
   }
 
   public void testIteratorEmpty() {
@@ -337,15 +323,7 @@ public class TestPriorityQueue extends LuceneTestCase {
   public void testMaxIntSize() {
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          new PriorityQueue<Boolean>(Integer.MAX_VALUE) {
-            @Override
-            public boolean lessThan(Boolean a, Boolean b) {
-              // uncalled
-              return true;
-            }
-          };
-        });
+        () -> new PriorityQueue<Boolean>(Integer.MAX_VALUE, (_, _) -> true));
   }
 
   private void assertOrderedWhenDrained(IntegerQueue pq, List<Integer> referenceDataList) {

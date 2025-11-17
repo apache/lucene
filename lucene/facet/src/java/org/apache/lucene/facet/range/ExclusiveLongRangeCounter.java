@@ -30,10 +30,13 @@ class ExclusiveLongRangeCounter extends LongRangeCounter {
 
   /** elementary interval boundaries used for efficient counting (bsearch to find interval) */
   private final long[] boundaries;
+
   /** original range number each elementary interval corresponds to (index into countBuffer) */
   private final int[] rangeNums;
+
   /** number of counted documents that haven't matched any requested ranges */
   private int missingCount;
+
   /** whether-or-not the multi-valued doc currently being counted has matched any ranges */
   private boolean multiValuedDocMatchedRange;
 
@@ -158,13 +161,5 @@ class ExclusiveLongRangeCounter extends LongRangeCounter {
   }
 
   /** Simple container for a requested range and its original position */
-  private static final class LongRangeAndPos {
-    final LongRange range;
-    final int pos;
-
-    LongRangeAndPos(LongRange range, int pos) {
-      this.range = range;
-      this.pos = pos;
-    }
-  }
+  private record LongRangeAndPos(LongRange range, int pos) {}
 }

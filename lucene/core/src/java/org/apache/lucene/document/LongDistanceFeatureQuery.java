@@ -35,9 +35,13 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.NumericUtils;
 
 final class LongDistanceFeatureQuery extends Query {
+  // MIN_SKIP_INTERVAL and MAX_SKIP_INTERVAL both should be powers of 2
+  private static final int MIN_SKIP_INTERVAL = 32;
+  private static final int MAX_SKIP_INTERVAL = 8192;
 
   private final String field;
   private final long origin;
@@ -205,14 +209,12 @@ final class LongDistanceFeatureQuery extends Query {
         final SortedNumericDocValues multiDocValues =
             DocValues.getSortedNumeric(context.reader(), field);
         final NumericDocValues docValues = selectValues(multiDocValues);
-
-        final Weight weight = this;
         return new ScorerSupplier() {
 
           @Override
           public Scorer get(long leadCost) throws IOException {
             return new DistanceScorer(
-                weight, context.reader().maxDoc(), leadCost, boost, pointValues, docValues);
+                context.reader().maxDoc(), leadCost, boost, pointValues, docValues);
           }
 
           @Override
@@ -220,15 +222,6 @@ final class LongDistanceFeatureQuery extends Query {
             return docValues.cost();
           }
         };
-      }
-
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
       }
     };
   }
@@ -244,14 +237,16 @@ final class LongDistanceFeatureQuery extends Query {
     private final NumericDocValues docValues;
     private long maxDistance = Long.MAX_VALUE;
 
+    private int currentSkipInterval = MIN_SKIP_INTERVAL;
+    // helps to be conservative about increasing the sampling interval
+    private int tryUpdateFailCount = 0;
+
     protected DistanceScorer(
-        Weight weight,
         int maxDoc,
         long leadCost,
         float boost,
         PointValues pointValues,
         NumericDocValues docValues) {
-      super(weight);
       this.maxDoc = maxDoc;
       this.leadCost = leadCost;
       this.boost = boost;
@@ -358,7 +353,9 @@ final class LongDistanceFeatureQuery extends Query {
 
       // Start sampling if we get called too much
       setMinCompetitiveScoreCounter++;
-      if (setMinCompetitiveScoreCounter > 256 && (setMinCompetitiveScoreCounter & 0x1f) != 0x1f) {
+      if (setMinCompetitiveScoreCounter > 256
+          && (setMinCompetitiveScoreCounter & (currentSkipInterval - 1))
+              != currentSkipInterval - 1) {
         return;
       }
 
@@ -419,6 +416,21 @@ final class LongDistanceFeatureQuery extends Query {
             }
 
             @Override
+            public void visit(DocIdSetIterator iterator) throws IOException {
+              int docID;
+              while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+                visit(docID);
+              }
+            }
+
+            @Override
+            public void visit(IntsRef ref) {
+              for (int i = 0; i < ref.length; ++i) {
+                visit(ref.ints[ref.offset + i]);
+              }
+            }
+
+            @Override
             public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
               long minDocValue = NumericUtils.sortableBytesToLong(minPackedValue, 0);
               long maxDocValue = NumericUtils.sortableBytesToLong(maxPackedValue, 0);
@@ -436,16 +448,33 @@ final class LongDistanceFeatureQuery extends Query {
           };
 
       final long currentQueryCost = Math.min(leadCost, it.cost());
-      final long threshold = currentQueryCost >>> 3;
-      long estimatedNumberOfMatches =
-          pointValues.estimatePointCount(visitor); // runs in O(log(numPoints))
       // TODO: what is the right factor compared to the current disi? Is 8 optimal?
-      if (estimatedNumberOfMatches >= threshold) {
+      final long threshold = currentQueryCost >>> 3;
+      if (PointValues.isEstimatedPointCountGreaterThanOrEqualTo(
+          visitor, pointValues.getPointTree(), threshold)) {
         // the new range is not selective enough to be worth materializing
+        updateSkipInterval(false);
         return;
       }
       pointValues.intersect(visitor);
       it = result.build().iterator();
+      updateSkipInterval(true);
+    }
+
+    private void updateSkipInterval(boolean success) {
+      if (setMinCompetitiveScoreCounter > 256) {
+        if (success) {
+          currentSkipInterval = Math.max(currentSkipInterval / 2, MIN_SKIP_INTERVAL);
+          tryUpdateFailCount = 0;
+        } else {
+          if (tryUpdateFailCount >= 3) {
+            currentSkipInterval = Math.min(currentSkipInterval * 2, MAX_SKIP_INTERVAL);
+            tryUpdateFailCount = 0;
+          } else {
+            tryUpdateFailCount++;
+          }
+        }
+      }
     }
   }
 }

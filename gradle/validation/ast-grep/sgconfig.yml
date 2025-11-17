@@ -1,0 +1,10 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/project.json
+ruleDirs:
+  - ./rules
+
+testConfigs:
+  - testDir: ./tests
+
+utilDirs:
+  - ./utils

@@ -22,7 +22,11 @@ import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.QueryTimeout;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestVectorUtil;
 
@@ -35,6 +39,12 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
   AbstractKnnVectorQuery getThrowingKnnVectorQuery(String field, float[] vec, int k, Query query) {
     return new ThrowingKnnVectorQuery(field, floatToBytes(vec), k, query);
+  }
+
+  @Override
+  AbstractKnnVectorQuery getCappedResultsThrowingKnnVectorQuery(
+      String field, float[] vec, int k, Query query, int maxResults) {
+    return new CappedResultsThrowingKnnVectorQuery(field, floatToBytes(vec), k, query, maxResults);
   }
 
   @Override
@@ -59,7 +69,7 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     return new KnnByteVectorField(name, floatToBytes(vector), VectorSimilarityFunction.EUCLIDEAN);
   }
 
-  private static byte[] floatToBytes(float[] query) {
+  static byte[] floatToBytes(float[] query) {
     byte[] bytes = new byte[query.length];
     for (int i = 0; i < query.length; i++) {
       assert query[i] <= Byte.MAX_VALUE && query[i] >= Byte.MIN_VALUE && (query[i] % 1) == 0
@@ -76,8 +86,12 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
       AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {0, 1}, 10);
       assertEquals("KnnByteVectorQuery:field[0,...][10]", query.toString("ignored"));
 
-      Query rewritten = query.rewrite(newSearcher(reader));
-      assertEquals("DocAndScoreQuery[0,...][1.0,...]", rewritten.toString("ignored"));
+      assertDocScoreQueryToString(query.rewrite(newSearcher(reader)));
+
+      // test with filter
+      Query filter = new TermQuery(new Term("id", "text"));
+      query = getKnnVectorQuery("field", new float[] {0, 1}, 10, filter);
+      assertEquals("KnnByteVectorQuery:field[0,...][10][id:text]", query.toString("ignored"));
     }
   }
 
@@ -88,20 +102,63 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     assertNotSame(queryVectorBytes, q1.getTargetCopy());
   }
 
-  private static class ThrowingKnnVectorQuery extends KnnByteVectorQuery {
+  public void testVectorEncodingMismatch() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      Query filter = null;
+      if (random().nextBoolean()) {
+        filter = new MatchAllDocsQuery();
+      }
+      AbstractKnnVectorQuery query =
+          new KnnFloatVectorQuery("field", new float[] {0, 1}, 10, filter);
+      IndexSearcher searcher = newSearcher(reader);
+      expectThrows(IllegalStateException.class, () -> searcher.search(query, 10));
+    }
+  }
+
+  static class ThrowingKnnVectorQuery extends KnnByteVectorQuery {
 
     public ThrowingKnnVectorQuery(String field, byte[] target, int k, Query filter) {
-      super(field, target, k, filter);
+      super(field, target, k, filter, new KnnSearchStrategy.Hnsw(0));
     }
 
     @Override
-    protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator) {
+    protected TopDocs exactSearch(
+        LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout) {
       throw new UnsupportedOperationException("exact search is not supported");
     }
 
     @Override
     public String toString(String field) {
       return null;
+    }
+  }
+
+  static class CappedResultsThrowingKnnVectorQuery extends ThrowingKnnVectorQuery {
+
+    private final int maxResults;
+
+    public CappedResultsThrowingKnnVectorQuery(
+        String field, byte[] target, int k, Query filter, int maxResults) {
+      super(field, target, k, filter);
+      this.maxResults = maxResults;
+    }
+
+    @Override
+    protected TopDocs approximateSearch(
+        LeafReaderContext context,
+        AcceptDocs acceptDocs,
+        int visitedLimit,
+        KnnCollectorManager knnCollectorManager)
+        throws IOException {
+      TopDocs topDocs =
+          super.approximateSearch(context, acceptDocs, Integer.MAX_VALUE, knnCollectorManager);
+      long results = Math.min(topDocs.totalHits.value(), maxResults);
+      ScoreDoc[] scoreDocs = new ScoreDoc[(int) results];
+      System.arraycopy(topDocs.scoreDocs, 0, scoreDocs, 0, scoreDocs.length);
+
+      return new TopDocs(new TotalHits(results, TotalHits.Relation.EQUAL_TO), scoreDocs);
     }
   }
 }

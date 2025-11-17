@@ -41,6 +41,7 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -106,7 +107,6 @@ public class BlockTermsReader extends FieldsProducer {
             state.segmentInfo.name, state.segmentSuffix, BlockTermsWriter.TERMS_EXTENSION);
     in = state.directory.openInput(filename, state.context);
 
-    boolean success = false;
     try {
       CodecUtil.checkIndexHeader(
           in,
@@ -170,11 +170,9 @@ public class BlockTermsReader extends FieldsProducer {
           throw new CorruptIndexException("duplicate fields: " + fieldInfo.name, in);
         }
       }
-      success = true;
-    } finally {
-      if (!success) {
-        in.close();
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, in);
+      throw t;
     }
 
     this.indexReader = indexReader;
@@ -190,22 +188,16 @@ public class BlockTermsReader extends FieldsProducer {
   public void close() throws IOException {
     try {
       try {
-        if (indexReader != null) {
-          indexReader.close();
-        }
+        IOUtils.close(indexReader);
       } finally {
         // null so if an app hangs on to us (ie, we are not
         // GCable, despite being closed) we still free most
         // ram
         indexReader = null;
-        if (in != null) {
-          in.close();
-        }
+        IOUtils.close(in);
       }
     } finally {
-      if (postingsReader != null) {
-        postingsReader.close();
-      }
+      IOUtils.close(postingsReader);
     }
   }
 
@@ -380,13 +372,13 @@ public class BlockTermsReader extends FieldsProducer {
         // target.utf8ToString() + " " + target + " current=" + term().utf8ToString() + " " + term()
         // + " indexIsCurrent=" + indexIsCurrent + " didIndexNext=" + didIndexNext + " seekPending="
         // + seekPending + " divisor=" + indexReader.getDivisor() + " this="  + this);
-        if (didIndexNext) {
-          if (nextIndexTerm == null) {
-            // System.out.println("  nextIndexTerm=null");
-          } else {
-            // System.out.println("  nextIndexTerm=" + nextIndexTerm.utf8ToString());
-          }
-        }
+        // if (didIndexNext) {
+        //  if (nextIndexTerm == null) {
+        //    // System.out.println("  nextIndexTerm=null");
+        //  } else {
+        //    // System.out.println("  nextIndexTerm=" + nextIndexTerm.utf8ToString());
+        //  }
+        // }
 
         boolean doSeek = true;
 

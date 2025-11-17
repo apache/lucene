@@ -1,0 +1,128 @@
+name: "Change Log Entry Verifier and Milestone Setter"
+run-name: Change log entry verifier and milestone setter
+on:
+  - pull_request_target # zizmor: ignore[dangerous-triggers]
+
+permissions: {}
+
+jobs:
+  changelog-verifier-and-milestone-setter:
+    name: Verify Change Log Entry and Set Milestone
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    permissions:
+      pull-requests: write # edits PR milestones, adds comments
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: false
+
+      - name: ChangeLog Entry Verifier and Milestone Setter
+        run: |
+          echo "################## STEP 1 ##################"
+          echo "Get all labels from PR #$PR_NUMBER"
+          # Use the BASE_REPO variable to ensure it expands correctly
+          mapfile -t labels < <(gh pr view "$PR_NUMBER" --repo "$BASE_REPO" --json labels -q '.labels[].name')
+          IFS=','; echo "${labels[*]}"
+          for label in "${labels[@]}"; do
+            if [[ "$label" == "$SKIP_CHANGELOG_LABEL" ]]; then
+              echo "Skipping github action workflow as label: ${SKIP_CHANGELOG_LABEL} is found in the PR."
+              exit 0
+            fi
+          done
+          echo "$SKIP_CHANGELOG_LABEL not found in the PR. Proceeding with next steps."
+
+          echo -e "\n"
+          echo "################## STEP 2 ##################"
+          echo "Checking for change log entry in $CHANGE_LOG_FILE"
+          git remote add upstream "https://github.com/${BASE_REPO}.git"
+
+          # Add and fetch full history of the base branch
+          # We need this to ensure we will be able to find the merge base
+          git fetch upstream "$BASE_BRANCH" --unshallow
+
+          # Find merge base commit to diff against
+          BASE_COMMIT=$(git merge-base HEAD "upstream/$BASE_BRANCH")
+          echo "Using merge base for comparison: $BASE_COMMIT"
+          echo "Last 3 commits up to merge base:"
+          git log --oneline -n 3 "$BASE_COMMIT"
+          echo "Last 3 commits up to PR head:"
+          git log --oneline -n 3 HEAD
+
+          echo "Diff:"
+          if git diff --exit-code --name-only "$BASE_COMMIT" HEAD -- "$CHANGE_LOG_FILE"; then
+            echo "::error ::Change log file:$CHANGE_LOG_FILE does not contains an entry corresponding to changes introduced in PR. Please add a changelog entry."
+            exit 1
+          else
+            echo "$CHANGE_LOG_FILE contains change log entry. Proceeding with next steps."
+          fi
+
+
+          echo -e "\n"
+          echo "################## STEP 3 ##################"
+          echo "Extracting Lucene version from change log entry"
+          # git diff header pattern -> "@@ -15,0 +16,4 @@"
+          # try to extract the line number at which new entry is added, here it's line number 16
+          echo "Diff:"
+          git diff --unified=0 "$BASE_COMMIT" HEAD -- "$CHANGE_LOG_FILE"
+          diff=$(git diff --unified=0 "$BASE_COMMIT" HEAD -- "$CHANGE_LOG_FILE")
+          lucene_version=""
+          diff_header_pattern="@@ -[0-9]+,?[0-9]* \+([0-9]*),?[0-9]* @@"
+          if [[ $diff =~ $diff_header_pattern ]]; then
+            echo "Match found: ${BASH_REMATCH[0]}"
+            new_entry_line_number=$((BASH_REMATCH[1]))
+            echo "Found introduced change log entry at line number:${new_entry_line_number}"
+            lucene_version_regex="=+ ?Lucene ?([0-9.]*) ?=+"
+            current_line_number=0
+            while IFS="" read -r line; do
+              current_line_number=$((current_line_number+1))
+                if [[ $line =~ $lucene_version_regex ]]; then
+                  lucene_version="${BASH_REMATCH[1]}"
+                fi
+                if [[ $current_line_number -ge $new_entry_line_number ]]; then
+                  echo "Reached the line number at which new entry is added in $CHANGE_LOG_FILE"
+                  break
+                fi
+            done < "$CHANGE_LOG_FILE"
+            if [[ -z $lucene_version ]]; then
+              echo "Could not find Lucene version in the change log entry. Please add the Lucene version in the change log entry."
+              exit 0
+            fi
+            echo "Found corresponding Lucene version: ${lucene_version} based on change log entry. Proceeding with next steps."
+          else
+            echo "Could not find the line number at which new entry is added in $CHANGE_LOG_FILE"
+            exit 0
+          fi
+
+
+          echo -e "\n"
+          echo "################## STEP 4 ##################"
+          echo "Adding/Updating milestone for the PR"
+          mapfile -t milestones < <(gh repo view --json milestones -q '.milestones[].title')
+          IFS=','; echo "${milestones[*]}"
+          milestone_exists=false
+          for milestone in "${milestones[@]}"; do
+            if [[ $milestone == "$lucene_version" ]]; then
+              milestone_exists=true
+              break
+            fi
+          done
+          if [[ $milestone_exists == false ]]; then
+            echo "Milestone:${lucene_version} does not exist. Please create the milestone and run the workflow again."
+            exit 0
+          fi
+          echo "Adding/Updating milestone for the PR to:${lucene_version}"
+          gh pr edit "$PR_NUMBER" --milestone "${lucene_version}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ github.event.issue.html_url }}
+          PR_NUMBER: ${{ github.event.number }}
+          BASE_REPO: ${{ github.repository }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          SKIP_CHANGELOG_LABEL: skip-changelog
+          CHANGE_LOG_FILE: lucene/CHANGES.txt

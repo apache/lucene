@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -27,6 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.codecs.DocValuesConsumer;
@@ -38,6 +40,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StoredValue;
@@ -49,6 +52,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash.MaxBytesLengthExceededException;
@@ -57,8 +61,9 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.IntBlockPool;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.Version;
 
-/** Default general purpose indexing chain, which handles indexing all types of fields. */
+/** Default general purpose indexing chain, which handles indexing of all types of fields. */
 final class IndexingChain implements Accountable {
 
   final Counter bytesUsed = Counter.newCounter();
@@ -148,7 +153,7 @@ final class IndexingChain implements Accountable {
       @Override
       public NumericDocValues getNumericDocValues(String field) {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.NUMERIC) {
@@ -160,7 +165,7 @@ final class IndexingChain implements Accountable {
       @Override
       public BinaryDocValues getBinaryDocValues(String field) {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.BINARY) {
@@ -172,7 +177,7 @@ final class IndexingChain implements Accountable {
       @Override
       public SortedDocValues getSortedDocValues(String field) throws IOException {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.SORTED) {
@@ -184,7 +189,7 @@ final class IndexingChain implements Accountable {
       @Override
       public SortedNumericDocValues getSortedNumericDocValues(String field) throws IOException {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.SORTED_NUMERIC) {
@@ -196,7 +201,7 @@ final class IndexingChain implements Accountable {
       @Override
       public SortedSetDocValues getSortedSetDocValues(String field) throws IOException {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.SORTED_SET) {
@@ -219,7 +224,31 @@ final class IndexingChain implements Accountable {
     }
 
     LeafReader docValuesReader = getDocValuesLeafReader();
+    Function<IndexSorter.DocComparator, IndexSorter.DocComparator> comparatorWrapper =
+        Function.identity();
 
+    if (state.segmentInfo.getHasBlocks() && state.fieldInfos.getParentField() != null) {
+      final DocIdSetIterator readerValues =
+          docValuesReader.getNumericDocValues(state.fieldInfos.getParentField());
+      if (readerValues == null) {
+        throw new CorruptIndexException(
+            "missing doc values for parent field \"" + state.fieldInfos.getParentField() + "\"",
+            "IndexingChain");
+      }
+      BitSet parents = BitSet.of(readerValues, state.segmentInfo.maxDoc());
+      comparatorWrapper =
+          in ->
+              (docID1, docID2) ->
+                  in.compare(parents.nextSetBit(docID1), parents.nextSetBit(docID2));
+    }
+    if (state.segmentInfo.getHasBlocks()
+        && state.fieldInfos.getParentField() == null
+        && indexCreatedVersionMajor >= Version.LUCENE_10_0_0.major) {
+      throw new CorruptIndexException(
+          "parent field is not set but the index has blocks and uses index sorting. indexCreatedVersionMajor: "
+              + indexCreatedVersionMajor,
+          "IndexingChain");
+    }
     List<IndexSorter.DocComparator> comparators = new ArrayList<>();
     for (int i = 0; i < indexSort.getSort().length; i++) {
       SortField sortField = indexSort.getSort()[i];
@@ -227,7 +256,10 @@ final class IndexingChain implements Accountable {
       if (sorter == null) {
         throw new UnsupportedOperationException("Cannot sort index using sort field " + sortField);
       }
-      comparators.add(sorter.getDocComparator(docValuesReader, state.segmentInfo.maxDoc()));
+
+      IndexSorter.DocComparator docComparator =
+          sorter.getDocComparator(docValuesReader, state.segmentInfo.maxDoc());
+      comparators.add(comparatorWrapper.apply(docComparator));
     }
     Sorter sorter = new Sorter(indexSort);
     // returns null if the documents are already sorted
@@ -252,7 +284,7 @@ final class IndexingChain implements Accountable {
             state.directory,
             state.segmentInfo,
             state.fieldInfos,
-            IOContext.READ,
+            IOContext.DEFAULT,
             state.segmentSuffix);
 
     t0 = System.nanoTime();
@@ -336,14 +368,13 @@ final class IndexingChain implements Accountable {
   /** Writes all buffered points. */
   private void writePoints(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
     PointsWriter pointsWriter = null;
-    boolean success = false;
     try {
       for (int i = 0; i < fieldHash.length; i++) {
         PerField perField = fieldHash[i];
         while (perField != null) {
           if (perField.pointValuesWriter != null) {
             // We could have initialized pointValuesWriter, but failed to write even a single doc
-            if (perField.pointValuesWriter.getNumDocs() > 0) {
+            if (perField.fieldInfo.getPointDimensionCount() > 0) {
               if (pointsWriter == null) {
                 // lazy init
                 PointsFormat fmt = state.segmentInfo.getCodec().pointsFormat();
@@ -364,21 +395,17 @@ final class IndexingChain implements Accountable {
       }
       if (pointsWriter != null) {
         pointsWriter.finish();
+        pointsWriter.close();
       }
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(pointsWriter);
-      } else {
-        IOUtils.closeWhileHandlingException(pointsWriter);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, pointsWriter);
+      throw t;
     }
   }
 
   /** Writes all buffered doc values (called from {@link #flush}). */
   private void writeDocValues(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
     DocValuesConsumer dvConsumer = null;
-    boolean success = false;
     try {
       for (int i = 0; i < fieldHash.length; i++) {
         PerField perField = fieldHash[i];
@@ -418,13 +445,12 @@ final class IndexingChain implements Accountable {
       // null/"" depending on how docs landed in segments?
       // but we can't detect all cases, and we should leave
       // this behavior undefined. dv is not "schemaless": it's column-stride.
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(dvConsumer);
-      } else {
-        IOUtils.closeWhileHandlingException(dvConsumer);
+      if (dvConsumer != null) {
+        dvConsumer.close();
       }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, dvConsumer);
+      throw t;
     }
 
     if (state.fieldInfos.hasDocValues() == false) {
@@ -441,7 +467,6 @@ final class IndexingChain implements Accountable {
   }
 
   private void writeNorms(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
-    boolean success = false;
     NormsConsumer normsConsumer = null;
     try {
       if (state.fieldInfos.hasNorms()) {
@@ -462,13 +487,12 @@ final class IndexingChain implements Accountable {
           }
         }
       }
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(normsConsumer);
-      } else {
-        IOUtils.closeWhileHandlingException(normsConsumer);
+      if (normsConsumer != null) {
+        normsConsumer.close();
       }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, normsConsumer);
+      throw t;
     }
   }
 
@@ -546,7 +570,17 @@ final class IndexingChain implements Accountable {
       // build schema for each unique doc field
       for (IndexableField field : document) {
         IndexableFieldType fieldType = field.fieldType();
-        PerField pf = getOrAddPerField(field.name());
+        final boolean isReserved = field.getClass() == ReservedField.class;
+        PerField pf =
+            getOrAddPerField(
+                field.name(), false
+                /* we never add reserved fields during indexing should be done during DWPT setup*/ );
+        if (pf.reserved != isReserved) {
+          throw new IllegalArgumentException(
+              "\""
+                  + field.name()
+                  + "\" is a reserved field and should not be added to any document");
+        }
         if (pf.fieldGen != fieldGen) { // first time we see this field in this document
           fields[fieldCount++] = pf;
           pf.fieldGen = fieldGen;
@@ -556,7 +590,7 @@ final class IndexingChain implements Accountable {
         docFields[docFieldIdx++] = pf;
         updateDocFieldSchema(field.name(), pf.schema, fieldType);
       }
-      // For each field, if it the first time we see this field in this segment,
+      // For each field, if it's the first time we see this field in this segment,
       // initialize its FieldInfo.
       // If we have already seen this field, verify that its schema
       // within the current doc matches its schema in the index.
@@ -621,6 +655,12 @@ final class IndexingChain implements Accountable {
       final Sort indexSort = indexWriterConfig.getIndexSort();
       validateIndexSortDVType(indexSort, pf.fieldName, s.docValuesType);
     }
+    if (s.vectorDimension != 0) {
+      validateMaxVectorDimension(
+          pf.fieldName,
+          s.vectorDimension,
+          indexWriterConfig.getCodec().knnVectorsFormat().getMaxDimensions(pf.fieldName));
+    }
     FieldInfo fi =
         fieldInfos.add(
             new FieldInfo(
@@ -632,6 +672,7 @@ final class IndexingChain implements Accountable {
                 false,
                 s.indexOptions,
                 s.docValuesType,
+                s.docValuesSkipIndex,
                 -1,
                 s.attributes,
                 s.pointDimensionCount,
@@ -640,7 +681,8 @@ final class IndexingChain implements Accountable {
                 s.vectorDimension,
                 s.vectorEncoding,
                 s.vectorSimilarityFunction,
-                pf.fieldName.equals(fieldInfos.getSoftDeletesFieldName())));
+                pf.fieldName.equals(fieldInfos.getSoftDeletesFieldName()),
+                pf.fieldName.equals(fieldInfos.getParentFieldName())));
     pf.setFieldInfo(fi);
     if (fi.getIndexOptions() != IndexOptions.NONE) {
       pf.setInvertState();
@@ -735,7 +777,7 @@ final class IndexingChain implements Accountable {
    * Returns a previously created {@link PerField}, absorbing the type information from {@link
    * FieldType}, and creates a new {@link PerField} if this field name wasn't seen yet.
    */
-  private PerField getOrAddPerField(String fieldName) {
+  private PerField getOrAddPerField(String fieldName, boolean reserved) {
     final int hashPos = fieldName.hashCode() & hashMask;
     PerField pf = fieldHash[hashPos];
     while (pf != null && pf.fieldName.equals(fieldName) == false) {
@@ -751,7 +793,8 @@ final class IndexingChain implements Accountable {
               schema,
               indexWriterConfig.getSimilarity(),
               indexWriterConfig.getInfoStream(),
-              indexWriterConfig.getAnalyzer());
+              indexWriterConfig.getAnalyzer(),
+              reserved);
       pf.next = fieldHash[hashPos];
       fieldHash[hashPos] = pf;
       totalFieldCount++;
@@ -781,7 +824,14 @@ final class IndexingChain implements Accountable {
       verifyUnIndexedFieldType(fieldName, fieldType);
     }
     if (fieldType.docValuesType() != DocValuesType.NONE) {
-      schema.setDocValues(fieldType.docValuesType());
+      schema.setDocValues(fieldType.docValuesType(), fieldType.docValuesSkipIndexType());
+    } else if (fieldType.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
+      throw new IllegalArgumentException(
+          "field '"
+              + schema.name
+              + "' cannot have docValuesSkipIndexType="
+              + fieldType.docValuesSkipIndexType()
+              + " without doc values");
     }
     if (fieldType.pointDimensionCount() != 0) {
       schema.setPoints(
@@ -828,6 +878,19 @@ final class IndexingChain implements Accountable {
               + "for a field that is not indexed (field=\""
               + name
               + "\")");
+    }
+  }
+
+  private static void validateMaxVectorDimension(
+      String fieldName, int vectorDim, int maxVectorDim) {
+    if (vectorDim > maxVectorDim) {
+      throw new IllegalArgumentException(
+          "Field ["
+              + fieldName
+              + "] vector's dimensions must be <= ["
+              + maxVectorDim
+              + "]; got "
+              + vectorDim);
     }
   }
 
@@ -965,10 +1028,12 @@ final class IndexingChain implements Accountable {
       int docID, PerField pf, VectorEncoding vectorEncoding, IndexableField field)
       throws IOException {
     switch (vectorEncoding) {
-      case BYTE -> ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
-          .addValue(docID, ((KnnByteVectorField) field).vectorValue());
-      case FLOAT32 -> ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
-          .addValue(docID, ((KnnFloatVectorField) field).vectorValue());
+      case BYTE ->
+          ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
+              .addValue(docID, ((KnnByteVectorField) field).vectorValue());
+      case FLOAT32 ->
+          ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
+              .addValue(docID, ((KnnFloatVectorField) field).vectorValue());
     }
   }
 
@@ -1003,6 +1068,7 @@ final class IndexingChain implements Accountable {
     final String fieldName;
     final int indexCreatedVersionMajor;
     final FieldSchema schema;
+    final boolean reserved;
     FieldInfo fieldInfo;
     final Similarity similarity;
 
@@ -1040,13 +1106,15 @@ final class IndexingChain implements Accountable {
         FieldSchema schema,
         Similarity similarity,
         InfoStream infoStream,
-        Analyzer analyzer) {
+        Analyzer analyzer,
+        boolean reserved) {
       this.fieldName = fieldName;
       this.indexCreatedVersionMajor = indexCreatedVersionMajor;
       this.schema = schema;
       this.similarity = similarity;
       this.infoStream = infoStream;
       this.analyzer = analyzer;
+      this.reserved = reserved;
     }
 
     void reset(int docId) {
@@ -1070,7 +1138,7 @@ final class IndexingChain implements Accountable {
         // segment
         norms = new NormValuesWriter(fieldInfo, bytesUsed);
       }
-      if (fieldInfo.hasVectors()) {
+      if (fieldInfo.hasTermVectors()) {
         termVectorsWriter.setHasVectors();
       }
     }
@@ -1366,6 +1434,7 @@ final class IndexingChain implements Accountable {
     private boolean storeTermVector = false;
     private IndexOptions indexOptions = IndexOptions.NONE;
     private DocValuesType docValuesType = DocValuesType.NONE;
+    private DocValuesSkipIndexType docValuesSkipIndex = DocValuesSkipIndexType.NONE;
     private int pointDimensionCount = 0;
     private int pointIndexDimensionCount = 0;
     private int pointNumBytes = 0;
@@ -1373,7 +1442,7 @@ final class IndexingChain implements Accountable {
     private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
     private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
 
-    private static String errMsg =
+    private static final String errMsg =
         "Inconsistency of field data structures across documents for field ";
 
     FieldSchema(String name) {
@@ -1431,11 +1500,14 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setDocValues(DocValuesType newDocValuesType) {
+    void setDocValues(
+        DocValuesType newDocValuesType, DocValuesSkipIndexType newDocValuesSkipIndex) {
       if (docValuesType == DocValuesType.NONE) {
         this.docValuesType = newDocValuesType;
+        this.docValuesSkipIndex = newDocValuesSkipIndex;
       } else {
         assertSame("doc values type", docValuesType, newDocValuesType);
+        assertSame("doc values skip index type", docValuesSkipIndex, newDocValuesSkipIndex);
       }
     }
 
@@ -1481,8 +1553,9 @@ final class IndexingChain implements Accountable {
     void assertSameSchema(FieldInfo fi) {
       assertSame("index options", fi.getIndexOptions(), indexOptions);
       assertSame("omit norms", fi.omitsNorms(), omitNorms);
-      assertSame("store term vector", fi.hasVectors(), storeTermVector);
+      assertSame("store term vector", fi.hasTermVectors(), storeTermVector);
       assertSame("doc values type", fi.getDocValuesType(), docValuesType);
+      assertSame("doc values skip index type", fi.docValuesSkipIndexType(), docValuesSkipIndex);
       assertSame(
           "vector similarity function", fi.getVectorSimilarityFunction(), vectorSimilarityFunction);
       assertSame("vector encoding", fi.getVectorEncoding(), vectorEncoding);
@@ -1491,6 +1564,79 @@ final class IndexingChain implements Accountable {
       assertSame(
           "point index dimension", fi.getPointIndexDimensionCount(), pointIndexDimensionCount);
       assertSame("point num bytes", fi.getPointNumBytes(), pointNumBytes);
+    }
+  }
+
+  /**
+   * Wraps the given field in a reserved field and registers it as reserved. Only DWPT should do
+   * this to mark fields as private / reserved to prevent this fieldname to be used from the outside
+   * of the IW / DWPT eco-system
+   */
+  <T extends IndexableField> ReservedField<T> markAsReserved(T field) {
+    getOrAddPerField(field.name(), true);
+    return new ReservedField<>(field);
+  }
+
+  static final class ReservedField<T extends IndexableField> implements IndexableField {
+
+    private final T delegate;
+
+    private ReservedField(T delegate) {
+      this.delegate = delegate;
+    }
+
+    T getDelegate() {
+      return delegate;
+    }
+
+    @Override
+    public String name() {
+      return delegate.name();
+    }
+
+    @Override
+    public IndexableFieldType fieldType() {
+      return delegate.fieldType();
+    }
+
+    @Override
+    public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
+      return delegate.tokenStream(analyzer, reuse);
+    }
+
+    @Override
+    public BytesRef binaryValue() {
+      return delegate.binaryValue();
+    }
+
+    @Override
+    public String stringValue() {
+      return delegate.stringValue();
+    }
+
+    @Override
+    public CharSequence getCharSequenceValue() {
+      return delegate.getCharSequenceValue();
+    }
+
+    @Override
+    public Reader readerValue() {
+      return delegate.readerValue();
+    }
+
+    @Override
+    public Number numericValue() {
+      return delegate.numericValue();
+    }
+
+    @Override
+    public StoredValue storedValue() {
+      return delegate.storedValue();
+    }
+
+    @Override
+    public InvertableType invertableType() {
+      return delegate.invertableType();
     }
   }
 }

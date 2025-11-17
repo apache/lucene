@@ -79,6 +79,7 @@ abstract class TermCollectingRewrite<B> extends MultiTermQuery.RewriteMethod {
       this.readerContext = readerContext;
       this.topReaderContext = topReaderContext;
     }
+
     /** attributes used for communication with the enum */
     public final AttributeSource attributes = new AttributeSource();
 

@@ -27,6 +27,7 @@ import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.IndexableFieldType;
+import org.apache.lucene.index.StoredFieldDataInput;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -36,10 +37,10 @@ import org.apache.lucene.util.BytesRef;
  * <ul>
  *   <li>{@link TextField}: {@link Reader} or {@link String} indexed for full-text search
  *   <li>{@link StringField}: {@link String} indexed verbatim as a single token
- *   <li>{@link IntPoint}: {@code int} indexed for exact/range queries.
- *   <li>{@link LongPoint}: {@code long} indexed for exact/range queries.
- *   <li>{@link FloatPoint}: {@code float} indexed for exact/range queries.
- *   <li>{@link DoublePoint}: {@code double} indexed for exact/range queries.
+ *   <li>{@link IntField}: {@code int} indexed for exact/range queries.
+ *   <li>{@link LongField}: {@code long} indexed for exact/range queries.
+ *   <li>{@link FloatField}: {@code float} indexed for exact/range queries.
+ *   <li>{@link DoubleField}: {@code double} indexed for exact/range queries.
  *   <li>{@link SortedDocValuesField}: {@code byte[]} indexed column-wise for sorting/faceting
  *   <li>{@link SortedSetDocValuesField}: {@code SortedSet<byte[]>} indexed column-wise for
  *       sorting/faceting
@@ -619,6 +620,8 @@ public class Field implements IndexableField {
       return new StoredValue((double) fieldsData);
     } else if (fieldsData instanceof BytesRef) {
       return new StoredValue((BytesRef) fieldsData);
+    } else if (fieldsData instanceof StoredFieldDataInput) {
+      return new StoredValue((StoredFieldDataInput) fieldsData);
     } else if (fieldsData instanceof String) {
       return new StoredValue((String) fieldsData);
     } else {

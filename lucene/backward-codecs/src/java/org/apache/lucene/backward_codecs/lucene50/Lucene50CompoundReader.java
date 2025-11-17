@@ -57,8 +57,7 @@ final class Lucene50CompoundReader extends CompoundDirectory {
   /** Create a new CompoundFileDirectory. */
   // TODO: we should just pre-strip "entries" and append segment name up-front like simpletext?
   // this need not be a "general purpose" directory anymore (it only writes index files)
-  public Lucene50CompoundReader(Directory directory, SegmentInfo si, IOContext context)
-      throws IOException {
+  public Lucene50CompoundReader(Directory directory, SegmentInfo si) throws IOException {
     this.directory = directory;
     this.segmentName = si.name;
     String dataFileName =
@@ -74,7 +73,7 @@ final class Lucene50CompoundReader extends CompoundDirectory {
     }
     expectedLength += CodecUtil.footerLength();
 
-    handle = directory.openInput(dataFileName, context);
+    handle = directory.openInput(dataFileName, IOContext.DEFAULT);
     // DirectoryUtil.openInput(directory, dataFileName, context);
     try {
       CodecUtil.checkIndexHeader(
@@ -170,7 +169,7 @@ final class Lucene50CompoundReader extends CompoundDirectory {
               + entries.keySet()
               + ")");
     }
-    return handle.slice(name, entry.offset, entry.length);
+    return handle.slice(name, entry.offset, entry.length, context);
   }
 
   /** Returns an array of strings, one for each file in the directory. */

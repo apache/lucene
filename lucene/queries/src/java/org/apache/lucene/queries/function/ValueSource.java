@@ -29,6 +29,7 @@ import org.apache.lucene.search.FieldComparatorSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.SimpleFieldComparator;
 import org.apache.lucene.search.SortField;
@@ -90,11 +91,6 @@ public abstract class ValueSource {
 
     public ScorableView(DoubleValues scores) {
       this.scores = scores == null ? DoubleValues.EMPTY : scores;
-    }
-
-    @Override
-    public int docID() {
-      return docId;
     }
 
     @Override
@@ -324,6 +320,12 @@ public abstract class ValueSource {
     }
 
     @Override
+    public SortField getSortField(boolean reverse) {
+      // avoids indirection and supports a better needsScores()
+      return in.getSortField(reverse);
+    }
+
+    @Override
     public boolean equals(Object o) {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
@@ -381,7 +383,7 @@ public abstract class ValueSource {
 
     @Override
     public FieldComparator<Double> newComparator(
-        String fieldname, int numHits, boolean enableSkipping, boolean reversed) {
+        String fieldname, int numHits, Pruning pruning, boolean reversed) {
       return new ValueSourceComparator(context, numHits);
     }
   }

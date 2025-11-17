@@ -18,27 +18,33 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.search.similarities.Similarity.SimScorer;
 
 class PhraseScorer extends Scorer {
 
   final DocIdSetIterator approximation;
   final ImpactsDISI impactsApproximation;
+  final MaxScoreCache maxScoreCache;
   final PhraseMatcher matcher;
   final ScoreMode scoreMode;
-  private final LeafSimScorer simScorer;
+  private final SimScorer simScorer;
+  private final NumericDocValues norms;
   final float matchCost;
 
   private float minCompetitiveScore = 0;
   private float freq = 0;
 
-  PhraseScorer(Weight weight, PhraseMatcher matcher, ScoreMode scoreMode, LeafSimScorer simScorer) {
-    super(weight);
+  PhraseScorer(
+      PhraseMatcher matcher, ScoreMode scoreMode, SimScorer simScorer, NumericDocValues norms) {
     this.matcher = matcher;
     this.scoreMode = scoreMode;
     this.simScorer = simScorer;
+    this.norms = norms;
     this.matchCost = matcher.getMatchCost();
     this.approximation = matcher.approximation();
     this.impactsApproximation = matcher.impactsApproximation();
+    this.maxScoreCache = impactsApproximation.getMaxScoreCache();
   }
 
   @Override
@@ -49,7 +55,11 @@ class PhraseScorer extends Scorer {
         matcher.reset();
         if (scoreMode == ScoreMode.TOP_SCORES && minCompetitiveScore > 0) {
           float maxFreq = matcher.maxFreq();
-          if (simScorer.score(docID(), maxFreq) < minCompetitiveScore) {
+          long norm = 1L;
+          if (norms != null && norms.advanceExact(docID())) {
+            norm = norms.longValue();
+          }
+          if (simScorer.score(maxFreq, norm) < minCompetitiveScore) {
             // The maximum score we could get is less than the min competitive score
             return false;
           }
@@ -78,7 +88,11 @@ class PhraseScorer extends Scorer {
         freq += matcher.sloppyWeight();
       }
     }
-    return simScorer.score(docID(), freq);
+    long norm = 1L;
+    if (norms != null && norms.advanceExact(docID())) {
+      norm = norms.longValue();
+    }
+    return simScorer.score(freq, norm);
   }
 
   @Override
@@ -94,16 +108,11 @@ class PhraseScorer extends Scorer {
 
   @Override
   public int advanceShallow(int target) throws IOException {
-    return impactsApproximation.advanceShallow(target);
+    return maxScoreCache.advanceShallow(target);
   }
 
   @Override
   public float getMaxScore(int upTo) throws IOException {
-    return impactsApproximation.getMaxScore(upTo);
-  }
-
-  @Override
-  public String toString() {
-    return "PhraseScorer(" + weight + ")";
+    return maxScoreCache.getMaxScore(upTo);
   }
 }

@@ -29,7 +29,6 @@ import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.TermAndBoost;
 
 /**
  * Applies single-token synonyms from a Word2Vec trained network to an incoming {@link TokenStream}.
@@ -81,7 +80,7 @@ public final class Word2VecSynonymFilter extends TokenFilter {
       clearAttributes();
       restoreState(this.lastState);
       termAtt.setEmpty();
-      termAtt.append(synonym.term.utf8ToString());
+      termAtt.append(synonym.term().utf8ToString());
       typeAtt.setType(SynonymGraphFilter.TYPE_SYNONYM);
       posLenAtt.setPositionLength(1);
       posIncrementAtt.setPositionIncrement(0);

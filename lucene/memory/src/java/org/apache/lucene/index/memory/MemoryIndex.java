@@ -36,15 +36,50 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.index.*;
+import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.index.BaseTermsEnum;
+import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
+import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FieldInvertState;
+import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.IndexableFieldType;
+import org.apache.lucene.index.LeafMetaData;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.OrdTermState;
+import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.SlowImpactsEnum;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.TermState;
+import org.apache.lucene.index.TermVectors;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
-import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.ArrayUtil;
@@ -57,8 +92,6 @@ import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.BytesRefHash.DirectBytesStartArray;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.IntBlockPool;
-import org.apache.lucene.util.IntBlockPool.SliceReader;
-import org.apache.lucene.util.IntBlockPool.SliceWriter;
 import org.apache.lucene.util.RecyclingByteBlockAllocator;
 import org.apache.lucene.util.RecyclingIntBlockAllocator;
 import org.apache.lucene.util.Version;
@@ -164,6 +197,218 @@ import org.apache.lucene.util.Version;
  * </a>).
  */
 public class MemoryIndex {
+  static class SlicedIntBlockPool extends IntBlockPool {
+    /**
+     * An array holding the offset into the {@link SlicedIntBlockPool#LEVEL_SIZE_ARRAY} to quickly
+     * navigate to the next slice level.
+     */
+    private static final int[] NEXT_LEVEL_ARRAY = {1, 2, 3, 4, 5, 6, 7, 8, 9, 9};
+
+    /** An array holding the level sizes for int slices. */
+    private static final int[] LEVEL_SIZE_ARRAY = {2, 4, 8, 16, 16, 32, 32, 64, 64, 128};
+
+    /** The first level size for new slices */
+    private static final int FIRST_LEVEL_SIZE = LEVEL_SIZE_ARRAY[0];
+
+    SlicedIntBlockPool(Allocator allocator) {
+      super(allocator);
+    }
+
+    /**
+     * For slices, buffers must be filled with zeros, so that we can find a slice's end based on a
+     * non-zero final value.
+     */
+    private static boolean assertSliceBuffer(int[] buffer) {
+      for (int value : buffer) {
+        if (value != 0) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    /**
+     * Creates a new int slice with the given starting size and returns the slices offset in the
+     * pool.
+     *
+     * @see SliceReader
+     */
+    private int newSlice(final int size) {
+      if (intUpto > INT_BLOCK_SIZE - size) {
+        nextBuffer();
+        assert assertSliceBuffer(buffer);
+      }
+
+      final int upto = intUpto;
+      intUpto += size;
+      buffer[intUpto - 1] = 16;
+      return upto;
+    }
+
+    /** Allocates a new slice from the given offset */
+    private int allocSlice(final int[] slice, final int sliceOffset) {
+      final int level = slice[sliceOffset] & 15;
+      final int newLevel = NEXT_LEVEL_ARRAY[level];
+      final int newSize = LEVEL_SIZE_ARRAY[newLevel];
+      // Maybe allocate another block
+      if (intUpto > INT_BLOCK_SIZE - newSize) {
+        nextBuffer();
+        assert assertSliceBuffer(buffer);
+      }
+
+      final int newUpto = intUpto;
+      final int offset = newUpto + intOffset;
+      intUpto += newSize;
+      // Write forwarding address at end of last slice:
+      slice[sliceOffset] = offset;
+
+      // Write new level:
+      buffer[intUpto - 1] = 16 | newLevel;
+
+      return newUpto;
+    }
+
+    /**
+     * A {@link SliceWriter} that allows to write multiple integer slices into a given {@link
+     * IntBlockPool}.
+     *
+     * @see SliceReader
+     * @lucene.internal
+     */
+    static class SliceWriter {
+
+      private int offset;
+      private final SlicedIntBlockPool slicedIntBlockPool;
+
+      public SliceWriter(SlicedIntBlockPool slicedIntBlockPool) {
+        this.slicedIntBlockPool = slicedIntBlockPool;
+      }
+
+      /** */
+      public void reset(int sliceOffset) {
+        this.offset = sliceOffset;
+      }
+
+      /** Writes the given value into the slice and resizes the slice if needed */
+      public void writeInt(int value) {
+        int[] ints = slicedIntBlockPool.buffers[offset >> INT_BLOCK_SHIFT];
+        assert ints != null;
+        int relativeOffset = offset & INT_BLOCK_MASK;
+        if (ints[relativeOffset] != 0) {
+          // End of slice; allocate a new one
+          relativeOffset = slicedIntBlockPool.allocSlice(ints, relativeOffset);
+          ints = slicedIntBlockPool.buffer;
+          offset = relativeOffset + slicedIntBlockPool.intOffset;
+        }
+        ints[relativeOffset] = value;
+        offset++;
+      }
+
+      /**
+       * starts a new slice and returns the start offset. The returned value should be used as the
+       * start offset to initialize a {@link SliceReader}.
+       */
+      public int startNewSlice() {
+        return offset =
+            slicedIntBlockPool.newSlice(FIRST_LEVEL_SIZE) + slicedIntBlockPool.intOffset;
+      }
+
+      /**
+       * Returns the offset of the currently written slice. The returned value should be used as the
+       * end offset to initialize a {@link SliceReader} once this slice is fully written or to reset
+       * the writer if another slice needs to be written.
+       */
+      public int getCurrentOffset() {
+        return offset;
+      }
+    }
+
+    /**
+     * A {@link SliceReader} that can read int slices written by a {@link SliceWriter}
+     *
+     * @lucene.internal
+     */
+    static class SliceReader {
+
+      private final SlicedIntBlockPool slicedIntBlockPool;
+      private int upto;
+      private int bufferUpto;
+      private int bufferOffset;
+      private int[] buffer;
+      private int limit;
+      private int level;
+      private int end;
+
+      /** Creates a new {@link SliceReader} on the given pool */
+      public SliceReader(SlicedIntBlockPool slicedIntBlockPool) {
+        this.slicedIntBlockPool = slicedIntBlockPool;
+      }
+
+      /** Resets the reader to a slice give the slices absolute start and end offset in the pool */
+      public void reset(int startOffset, int endOffset) {
+        bufferUpto = startOffset / INT_BLOCK_SIZE;
+        bufferOffset = bufferUpto * INT_BLOCK_SIZE;
+        this.end = endOffset;
+        level = 0;
+
+        buffer = slicedIntBlockPool.buffers[bufferUpto];
+        upto = startOffset & INT_BLOCK_MASK;
+
+        final int firstSize = LEVEL_SIZE_ARRAY[0];
+        if (startOffset + firstSize >= endOffset) {
+          // There is only this one slice to read
+          limit = endOffset & INT_BLOCK_MASK;
+        } else {
+          limit = upto + firstSize - 1;
+        }
+      }
+
+      /**
+       * Returns <code>true</code> iff the current slice is fully read. If this method returns
+       * <code>
+       * true</code> {@link SliceReader#readInt()} should not be called again on this slice.
+       */
+      public boolean endOfSlice() {
+        assert upto + bufferOffset <= end;
+        return upto + bufferOffset == end;
+      }
+
+      /**
+       * Reads the next int from the current slice and returns it.
+       *
+       * @see SliceReader#endOfSlice()
+       */
+      public int readInt() {
+        assert !endOfSlice();
+        assert upto <= limit;
+        if (upto == limit) nextSlice();
+        return buffer[upto++];
+      }
+
+      private void nextSlice() {
+        // Skip to our next slice
+        final int nextIndex = buffer[limit];
+        level = NEXT_LEVEL_ARRAY[level];
+        final int newSize = LEVEL_SIZE_ARRAY[level];
+
+        bufferUpto = nextIndex / INT_BLOCK_SIZE;
+        bufferOffset = bufferUpto * INT_BLOCK_SIZE;
+
+        buffer = slicedIntBlockPool.buffers[bufferUpto];
+        upto = nextIndex & INT_BLOCK_MASK;
+
+        if (nextIndex + newSize >= end) {
+          // We are advancing to the final slice
+          assert end - nextIndex > 0;
+          limit = end - bufferOffset;
+        } else {
+          // This is not the final slice (subtract 4 for the
+          // forwarding address at the end of this new slice)
+          limit = upto + newSize - 1;
+        }
+      }
+    }
+  }
 
   private static final boolean DEBUG = false;
 
@@ -174,9 +419,8 @@ public class MemoryIndex {
   private final boolean storePayloads;
 
   private final ByteBlockPool byteBlockPool;
-  private final IntBlockPool intBlockPool;
-  //  private final IntBlockPool.SliceReader postingsReader;
-  private final IntBlockPool.SliceWriter postingsWriter;
+  private final SlicedIntBlockPool slicedIntBlockPool;
+  private final SlicedIntBlockPool.SliceWriter postingsWriter;
   private final BytesRefArray payloadsBytesRefs; // non null only when storePayloads
 
   private Counter bytesUsed;
@@ -237,19 +481,17 @@ public class MemoryIndex {
     final int maxBufferedIntBlocks =
         (int)
             ((maxReusedBytes - (maxBufferedByteBlocks * (long) ByteBlockPool.BYTE_BLOCK_SIZE))
-                / (IntBlockPool.INT_BLOCK_SIZE * (long) Integer.BYTES));
+                / (SlicedIntBlockPool.INT_BLOCK_SIZE * (long) Integer.BYTES));
     assert (maxBufferedByteBlocks * ByteBlockPool.BYTE_BLOCK_SIZE)
-            + (maxBufferedIntBlocks * IntBlockPool.INT_BLOCK_SIZE * Integer.BYTES)
+            + (maxBufferedIntBlocks * SlicedIntBlockPool.INT_BLOCK_SIZE * Integer.BYTES)
         <= maxReusedBytes;
     byteBlockPool =
-        new ByteBlockPool(
-            new RecyclingByteBlockAllocator(
-                ByteBlockPool.BYTE_BLOCK_SIZE, maxBufferedByteBlocks, bytesUsed));
-    intBlockPool =
-        new IntBlockPool(
+        new ByteBlockPool(new RecyclingByteBlockAllocator(maxBufferedByteBlocks, bytesUsed));
+    slicedIntBlockPool =
+        new SlicedIntBlockPool(
             new RecyclingIntBlockAllocator(
-                IntBlockPool.INT_BLOCK_SIZE, maxBufferedIntBlocks, bytesUsed));
-    postingsWriter = new SliceWriter(intBlockPool);
+                SlicedIntBlockPool.INT_BLOCK_SIZE, maxBufferedIntBlocks, bytesUsed));
+    postingsWriter = new SlicedIntBlockPool.SliceWriter(slicedIntBlockPool);
     // TODO refactor BytesRefArray to allow us to apply maxReusedBytes option
     payloadsBytesRefs = storePayloads ? new BytesRefArray(bytesUsed) : null;
   }
@@ -429,6 +671,10 @@ public class MemoryIndex {
     if (field.fieldType().stored()) {
       storeValues(info, field);
     }
+
+    if (field.fieldType().vectorDimension() > 0) {
+      storeVectorValues(info, field);
+    }
   }
 
   /**
@@ -521,6 +767,7 @@ public class MemoryIndex {
         storePayloads,
         indexOptions,
         fieldType.docValuesType(),
+        fieldType.docValuesSkipIndexType(),
         -1,
         Collections.emptyMap(),
         fieldType.pointDimensionCount(),
@@ -529,6 +776,7 @@ public class MemoryIndex {
         fieldType.vectorDimension(),
         fieldType.vectorEncoding(),
         fieldType.vectorSimilarityFunction(),
+        false,
         false);
   }
 
@@ -538,6 +786,56 @@ public class MemoryIndex {
     }
     info.pointValues = ArrayUtil.grow(info.pointValues, info.pointValuesCount + 1);
     info.pointValues[info.pointValuesCount++] = BytesRef.deepCopyOf(pointValue);
+  }
+
+  private void storeVectorValues(Info info, IndexableField vectorField) {
+    assert vectorField instanceof KnnFloatVectorField || vectorField instanceof KnnByteVectorField;
+    switch (info.fieldInfo.getVectorEncoding()) {
+      case BYTE -> {
+        if (vectorField instanceof KnnByteVectorField byteVectorField) {
+          if (info.byteVectorCount == 1) {
+            throw new IllegalArgumentException(
+                "Only one value per field allowed for byte vector field ["
+                    + vectorField.name()
+                    + "]");
+          }
+          info.byteVectorCount++;
+          if (info.byteVectorValues == null) {
+            info.byteVectorValues = new byte[1][];
+          }
+          info.byteVectorValues[0] =
+              ArrayUtil.copyOfSubArray(
+                  byteVectorField.vectorValue(), 0, info.fieldInfo.getVectorDimension());
+          return;
+        }
+        throw new IllegalArgumentException(
+            "Field ["
+                + vectorField.name()
+                + "] is not a byte vector field, but the field info is configured for byte vectors");
+      }
+      case FLOAT32 -> {
+        if (vectorField instanceof KnnFloatVectorField floatVectorField) {
+          if (info.floatVectorCount == 1) {
+            throw new IllegalArgumentException(
+                "Only one value per field allowed for float vector field ["
+                    + vectorField.name()
+                    + "]");
+          }
+          info.floatVectorCount++;
+          if (info.floatVectorValues == null) {
+            info.floatVectorValues = new float[1][];
+          }
+          info.floatVectorValues[0] =
+              ArrayUtil.copyOfSubArray(
+                  floatVectorField.vectorValue(), 0, info.fieldInfo.getVectorDimension());
+          return;
+        }
+        throw new IllegalArgumentException(
+            "Field ["
+                + vectorField.name()
+                + "] is not a float vector field, but the field info is configured for float vectors");
+      }
+    }
   }
 
   private void storeValues(Info info, IndexableField field) {
@@ -569,11 +867,12 @@ public class MemoryIndex {
           new FieldInfo(
               info.fieldInfo.name,
               info.fieldInfo.number,
-              info.fieldInfo.hasVectors(),
+              info.fieldInfo.hasTermVectors(),
               info.fieldInfo.hasPayloads(),
               info.fieldInfo.hasPayloads(),
               info.fieldInfo.getIndexOptions(),
               docValuesType,
+              DocValuesSkipIndexType.NONE,
               -1,
               info.fieldInfo.attributes(),
               info.fieldInfo.getPointDimensionCount(),
@@ -582,7 +881,8 @@ public class MemoryIndex {
               info.fieldInfo.getVectorDimension(),
               info.fieldInfo.getVectorEncoding(),
               info.fieldInfo.getVectorSimilarityFunction(),
-              info.fieldInfo.isSoftDeletesField());
+              info.fieldInfo.isSoftDeletesField(),
+              info.fieldInfo.isParentField());
     } else if (existingDocValuesType != docValuesType) {
       throw new IllegalArgumentException(
           "Can't add ["
@@ -842,7 +1142,8 @@ public class MemoryIndex {
       result.append(fieldName).append(":\n");
       SliceByteStartArray sliceArray = info.sliceArray;
       int numPositions = 0;
-      SliceReader postingsReader = new SliceReader(intBlockPool);
+      SlicedIntBlockPool.SliceReader postingsReader =
+          new SlicedIntBlockPool.SliceReader(slicedIntBlockPool);
       for (int j = 0; j < info.terms.size(); j++) {
         int ord = info.sortedTerms[j];
         info.terms.get(ord, spare);
@@ -935,6 +1236,18 @@ public class MemoryIndex {
     private List<Object> storedValues;
 
     private BytesRef[] pointValues;
+
+    /** Number of float vectors added for this field */
+    private int floatVectorCount;
+
+    /** the float vectors added for this field */
+    private float[][] floatVectorValues;
+
+    /** Number of byte vectors added for this field */
+    private int byteVectorCount;
+
+    /** the byte vectors added for this field */
+    private byte[][] byteVectorValues;
 
     private byte[] minPackedValue;
 
@@ -1056,9 +1369,7 @@ public class MemoryIndex {
     }
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
   // Nested classes:
-  ///////////////////////////////////////////////////////////////////////////////
 
   private static class MemoryDocValuesIterator {
 
@@ -1413,6 +1724,12 @@ public class MemoryIndex {
     }
 
     @Override
+    public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+      // Skipping isn't needed on a 1-doc index.
+      return null;
+    }
+
+    @Override
     public PointValues getPointValues(String fieldName) {
       Info info = fields.get(fieldName);
       if (info == null || info.pointValues == null) {
@@ -1423,25 +1740,29 @@ public class MemoryIndex {
 
     @Override
     public FloatVectorValues getFloatVectorValues(String fieldName) {
-      return null;
+      Info info = fields.get(fieldName);
+      if (info == null || info.floatVectorValues == null) {
+        return null;
+      }
+      return new MemoryFloatVectorValues(info);
     }
 
     @Override
     public ByteVectorValues getByteVectorValues(String fieldName) {
-      return null;
+      Info info = fields.get(fieldName);
+      if (info == null || info.byteVectorValues == null) {
+        return null;
+      }
+      return new MemoryByteVectorValues(info);
     }
 
     @Override
-    public TopDocs searchNearestVectors(
-        String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
-      return null;
-    }
+    public void searchNearestVectors(
+        String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {}
 
     @Override
-    public TopDocs searchNearestVectors(
-        String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
-      return null;
-    }
+    public void searchNearestVectors(
+        String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {}
 
     @Override
     public void checkIntegrity() throws IOException {
@@ -1652,7 +1973,7 @@ public class MemoryIndex {
 
     private class MemoryPostingsEnum extends PostingsEnum {
 
-      private final SliceReader sliceReader;
+      private final SlicedIntBlockPool.SliceReader sliceReader;
       private int posUpto; // for assert
       private boolean hasNext;
       private int doc = -1;
@@ -1663,7 +1984,7 @@ public class MemoryIndex {
       private final BytesRefBuilder payloadBuilder; // only non-null when storePayloads
 
       public MemoryPostingsEnum() {
-        this.sliceReader = new SliceReader(intBlockPool);
+        this.sliceReader = new SlicedIntBlockPool.SliceReader(slicedIntBlockPool);
         this.payloadBuilder = storePayloads ? new BytesRefBuilder() : null;
       }
 
@@ -1923,7 +2244,7 @@ public class MemoryIndex {
 
     @Override
     public LeafMetaData getMetaData() {
-      return new LeafMetaData(Version.LATEST.major, Version.LATEST, null);
+      return new LeafMetaData(Version.LATEST.major, Version.LATEST, null, false);
     }
 
     @Override
@@ -1942,7 +2263,7 @@ public class MemoryIndex {
     fields.clear();
     this.normSimilarity = IndexSearcher.getDefaultSimilarity();
     byteBlockPool.reset(false, false); // no need to 0-fill the buffers
-    intBlockPool.reset(true, false); // here must must 0-fill since we use slices
+    slicedIntBlockPool.reset(true, false); // here must must 0-fill since we use slices
     if (payloadsBytesRefs != null) {
       payloadsBytesRefs.clear();
     }
@@ -1988,6 +2309,134 @@ public class MemoryIndex {
     public int[] clear() {
       start = end = null;
       return super.clear();
+    }
+  }
+
+  private static final class MemoryFloatVectorValues extends FloatVectorValues {
+    private final Info info;
+
+    MemoryFloatVectorValues(Info info) {
+      this.info = info;
+    }
+
+    @Override
+    public int dimension() {
+      return info.fieldInfo.getVectorDimension();
+    }
+
+    @Override
+    public int size() {
+      return info.floatVectorCount;
+    }
+
+    @Override
+    public float[] vectorValue(int ord) {
+      if (ord == 0) {
+        return info.floatVectorValues[0];
+      } else {
+        return null;
+      }
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return createDenseIterator();
+    }
+
+    @Override
+    public VectorScorer scorer(float[] query) {
+      if (query.length != info.fieldInfo.getVectorDimension()) {
+        throw new IllegalArgumentException(
+            "query vector dimension "
+                + query.length
+                + " does not match field dimension "
+                + info.fieldInfo.getVectorDimension());
+      }
+      MemoryFloatVectorValues vectorValues = new MemoryFloatVectorValues(info);
+      DocIndexIterator iterator = vectorValues.iterator();
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          assert iterator.docID() == 0;
+          return info.fieldInfo
+              .getVectorSimilarityFunction()
+              .compare(vectorValues.vectorValue(0), query);
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return iterator;
+        }
+      };
+    }
+
+    @Override
+    public MemoryFloatVectorValues copy() {
+      return this;
+    }
+  }
+
+  private static final class MemoryByteVectorValues extends ByteVectorValues {
+    private final Info info;
+
+    MemoryByteVectorValues(Info info) {
+      this.info = info;
+    }
+
+    @Override
+    public int dimension() {
+      return info.fieldInfo.getVectorDimension();
+    }
+
+    @Override
+    public int size() {
+      return info.byteVectorCount;
+    }
+
+    @Override
+    public byte[] vectorValue(int ord) {
+      if (ord == 0) {
+        return info.byteVectorValues[0];
+      } else {
+        return null;
+      }
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return createDenseIterator();
+    }
+
+    @Override
+    public VectorScorer scorer(byte[] query) {
+      if (query.length != info.fieldInfo.getVectorDimension()) {
+        throw new IllegalArgumentException(
+            "query vector dimension "
+                + query.length
+                + " does not match field dimension "
+                + info.fieldInfo.getVectorDimension());
+      }
+      MemoryByteVectorValues vectorValues = new MemoryByteVectorValues(info);
+      DocIndexIterator iterator = vectorValues.iterator();
+      return new VectorScorer() {
+        @Override
+        public float score() {
+          assert iterator.docID() == 0;
+          return info.fieldInfo
+              .getVectorSimilarityFunction()
+              .compare(vectorValues.vectorValue(0), query);
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return iterator;
+        }
+      };
+    }
+
+    @Override
+    public MemoryByteVectorValues copy() {
+      return this;
     }
   }
 }

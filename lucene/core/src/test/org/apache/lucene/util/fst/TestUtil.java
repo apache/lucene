@@ -43,6 +43,26 @@ public class TestUtil extends LuceneTestCase {
     assertEquals(-7, Util.binarySearch(fst, arc, 'P'));
   }
 
+  public void testContinuous() throws Exception {
+    List<String> letters = Arrays.asList("A", "B", "C", "D", "E", "F", "G", "H");
+    FST<Object> fst = buildFST(letters, true, false);
+    FST.Arc<Object> first = fst.getFirstArc(new FST.Arc<>());
+    FST.Arc<Object> arc = new FST.Arc<>();
+    FST.BytesReader in = fst.getBytesReader();
+
+    for (String letter : letters) {
+      char c = letter.charAt(0);
+      arc = Util.readCeilArc(c, fst, first, arc, in);
+      assertNotNull(arc);
+      assertEquals(c, arc.label());
+    }
+
+    // in the middle
+    assertEquals('F', Util.readCeilArc('F', fst, first, arc, in).label());
+    // no following arcs
+    assertNull(Util.readCeilArc('A', fst, arc, arc, in));
+  }
+
   public void testReadCeilArcPackedArray() throws Exception {
     List<String> letters = Arrays.asList("A", "E", "J", "K", "L", "O", "T", "z");
     verifyReadCeilArc(letters, true, false);
@@ -96,6 +116,6 @@ public class TestUtil extends LuceneTestCase {
       fstCompiler.add(
           Util.toIntsRef(new BytesRef(word), new IntsRefBuilder()), outputs.getNoOutput());
     }
-    return fstCompiler.compile();
+    return FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
   }
 }

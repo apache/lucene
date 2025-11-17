@@ -27,12 +27,13 @@ import java.util.stream.IntStream;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.codecs.Impact;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.ImpactsSource;
@@ -742,7 +743,21 @@ public class TestPhraseQuery extends LuceneTestCase {
         });
   }
 
-  static String[] DOCS =
+  public void testPhraseQueryMaxTerms() throws Exception {
+    PhraseQuery.Builder builder = new PhraseQuery.Builder();
+    int termThreshold = 5;
+    builder.setMaxTerms(termThreshold);
+    for (int i = 0; i < termThreshold; i++) {
+      builder.add(new Term("field", "one" + i), i);
+    }
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          builder.add(new Term("field", "three"), termThreshold);
+        });
+  }
+
+  private static final String[] DOCS =
       new String[] {
         "a b c d e f g h",
         "b c b",
@@ -755,7 +770,7 @@ public class TestPhraseQuery extends LuceneTestCase {
   public void testTopPhrases() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-    String[] docs = ArrayUtil.copyOfSubArray(DOCS, 0, DOCS.length);
+    String[] docs = ArrayUtil.copyArray(DOCS);
     Collections.shuffle(Arrays.asList(docs), random());
     for (String value : DOCS) {
       Document doc = new Document();
@@ -772,13 +787,14 @@ public class TestPhraseQuery extends LuceneTestCase {
             new PhraseQuery("f", "d", "d") // repeated term
             )) {
       for (int topN = 1; topN <= 2; ++topN) {
-        CollectorManager<TopScoreDocCollector, TopDocs> manager =
-            TopScoreDocCollector.createSharedManager(topN, null, Integer.MAX_VALUE);
-        TopDocs topDocs = searcher.search(query, manager);
-        ScoreDoc[] hits1 = topDocs.scoreDocs;
-        manager = TopScoreDocCollector.createSharedManager(topN, null, 1);
-        topDocs = searcher.search(query, manager);
-        ScoreDoc[] hits2 = topDocs.scoreDocs;
+        TopScoreDocCollectorManager collectorManager =
+            new TopScoreDocCollectorManager(topN, Integer.MAX_VALUE);
+        ScoreDoc[] hits1 = searcher.search(query, collectorManager).scoreDocs;
+
+        collectorManager = new TopScoreDocCollectorManager(topN, 1);
+        TopDocs topDocs2 = searcher.search(query, collectorManager);
+        ScoreDoc[] hits2 = topDocs2.scoreDocs;
+
         assertTrue("" + query, hits1.length > 0);
         CheckHits.checkEqual(query, hits1, hits2);
       }
@@ -913,8 +929,16 @@ public class TestPhraseQuery extends LuceneTestCase {
     assertEquals(impacts.length, actual.numLevels());
     for (int i = 0; i < impacts.length; ++i) {
       assertEquals(docIdUpTo[i], actual.getDocIdUpTo(i));
-      assertEquals(Arrays.asList(impacts[i]), actual.getImpacts(i));
+      assertEquals(Arrays.asList(impacts[i]), copyOf(actual.getImpacts(i)));
     }
+  }
+
+  private static List<Impact> copyOf(FreqAndNormBuffer buffer) {
+    List<Impact> copy = new ArrayList<>();
+    for (int i = 0; i < buffer.size; ++i) {
+      copy.add(new Impact(buffer.freqs[i], buffer.norms[i]));
+    }
+    return copy;
   }
 
   private static class DummyImpactsEnum extends ImpactsEnum {
@@ -952,8 +976,10 @@ public class TestPhraseQuery extends LuceneTestCase {
         }
 
         @Override
-        public List<Impact> getImpacts(int level) {
-          return Arrays.asList(impacts[level]);
+        public FreqAndNormBuffer getImpacts(int level) {
+          FreqAndNormBuffer buffer = new FreqAndNormBuffer();
+          Arrays.stream(impacts[level]).forEach(impact -> buffer.add(impact.freq, impact.norm));
+          return buffer;
         }
       };
     }
@@ -1016,7 +1042,7 @@ public class TestPhraseQuery extends LuceneTestCase {
       int numTerms = random().nextInt(1 << random().nextInt(5));
       String text =
           IntStream.range(0, numTerms)
-              .mapToObj(index -> random().nextBoolean() ? "a" : random().nextBoolean() ? "b" : "c")
+              .mapToObj(_ -> random().nextBoolean() ? "a" : random().nextBoolean() ? "b" : "c")
               .collect(Collectors.joining(" "));
       doc.add(new TextField("foo", text, Store.NO));
       w.addDocument(doc);
@@ -1029,10 +1055,10 @@ public class TestPhraseQuery extends LuceneTestCase {
       for (String secondTerm : new String[] {"a", "b", "c"}) {
         Query query = new PhraseQuery("foo", newBytesRef(firstTerm), newBytesRef(secondTerm));
 
-        CollectorManager<TopScoreDocCollector, TopDocs> completeManager =
-            TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE); // COMPLETE
-        CollectorManager<TopScoreDocCollector, TopDocs> topScoresManager =
-            TopScoreDocCollector.createSharedManager(10, null, 10); // TOP_SCORES
+        TopScoreDocCollectorManager completeManager =
+            new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
+        TopScoreDocCollectorManager topScoresManager =
+            new TopScoreDocCollectorManager(10, 10); // TOP_SCORES
 
         TopDocs complete = searcher.search(query, completeManager);
         TopDocs topScores = searcher.search(query, topScoresManager);
@@ -1044,9 +1070,9 @@ public class TestPhraseQuery extends LuceneTestCase {
                 .add(new TermQuery(new Term("foo", "b")), Occur.FILTER)
                 .build();
 
-        completeManager =
-            TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE); // COMPLETE
-        topScoresManager = TopScoreDocCollector.createSharedManager(10, null, 10); // TOP_SCORES
+        completeManager = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
+        topScoresManager = new TopScoreDocCollectorManager(10, 10); // TOP_SCORES
+
         complete = searcher.search(filteredQuery, completeManager);
         topScores = searcher.search(filteredQuery, topScoresManager);
         CheckHits.checkEqual(query, complete.scoreDocs, topScores.scoreDocs);

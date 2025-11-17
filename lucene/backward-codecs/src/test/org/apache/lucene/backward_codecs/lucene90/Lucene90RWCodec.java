@@ -17,9 +17,13 @@
 package org.apache.lucene.backward_codecs.lucene90;
 
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.PostingsFormat;
+import org.apache.lucene.codecs.SegmentInfoFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 
 public class Lucene90RWCodec extends Lucene90Codec {
+
+  private final SegmentInfoFormat segmentInfosFormat = new Lucene90RWSegmentInfoFormat();
 
   private final KnnVectorsFormat defaultKnnVectorsFormat;
   private final KnnVectorsFormat knnVectorsFormat =
@@ -29,6 +33,7 @@ public class Lucene90RWCodec extends Lucene90Codec {
           return defaultKnnVectorsFormat;
         }
       };
+  private final PostingsFormat postingsFormat = new Lucene90RWPostingsFormat();
 
   public Lucene90RWCodec() {
     this.defaultKnnVectorsFormat =
@@ -40,5 +45,15 @@ public class Lucene90RWCodec extends Lucene90Codec {
   @Override
   public KnnVectorsFormat knnVectorsFormat() {
     return knnVectorsFormat;
+  }
+
+  @Override
+  public SegmentInfoFormat segmentInfoFormat() {
+    return segmentInfosFormat;
+  }
+
+  @Override
+  public PostingsFormat getPostingsFormatForField(String field) {
+    return postingsFormat;
   }
 }

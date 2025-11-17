@@ -38,6 +38,7 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.IntsRef;
 
 /**
  * Finds all previously indexed points that fall within the specified XY geometries.
@@ -91,6 +92,11 @@ final class XYPointInGeometryQuery extends Query {
       }
 
       @Override
+      public void visit(IntsRef ref) {
+        adder.add(ref);
+      }
+
+      @Override
       public void visit(int docID, byte[] packedValue) {
         double x = XYEncodingUtils.decode(packedValue, 0);
         double y = XYEncodingUtils.decode(packedValue, Integer.BYTES);
@@ -141,18 +147,17 @@ final class XYPointInGeometryQuery extends Query {
           return null;
         }
         XYPointField.checkCompatible(fieldInfo);
-        final Weight weight = this;
 
         return new ScorerSupplier() {
 
           long cost = -1;
-          DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+          final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
           final IntersectVisitor visitor = getIntersectVisitor(result, tree);
 
           @Override
           public Scorer get(long leadCost) throws IOException {
             values.intersect(visitor);
-            return new ConstantScoreScorer(weight, score(), scoreMode, result.build().iterator());
+            return new ConstantScoreScorer(score(), scoreMode, result.build().iterator());
           }
 
           @Override
@@ -165,15 +170,6 @@ final class XYPointInGeometryQuery extends Query {
             return cost;
           }
         };
-      }
-
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
       }
 
       @Override

@@ -153,8 +153,7 @@ public class CharArraySet extends AbstractSet<Object> {
    */
   public static CharArraySet copy(final Set<?> set) {
     if (set == EMPTY_SET) return EMPTY_SET;
-    if (set instanceof CharArraySet) {
-      final CharArraySet source = (CharArraySet) set;
+    if (set instanceof CharArraySet source) {
       return new CharArraySet(CharArrayMap.copy(source.map));
     }
     return new CharArraySet(set, false);
@@ -162,7 +161,6 @@ public class CharArraySet extends AbstractSet<Object> {
 
   /** Returns an {@link Iterator} for {@code char[]} instances in this set. */
   @Override
-  @SuppressWarnings("unchecked")
   public Iterator<Object> iterator() {
     // use the AbstractSet#keySet()'s iterator (to not produce endless recursion)
     return map.originalKeySet().iterator();

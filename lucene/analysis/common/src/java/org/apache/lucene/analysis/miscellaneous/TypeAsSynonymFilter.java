@@ -47,6 +47,7 @@ public final class TypeAsSynonymFilter extends TokenFilter {
   public TypeAsSynonymFilter(TokenStream input) {
     this(input, null, null, ~0);
   }
+
   /**
    * @param input input tokenstream
    * @param prefix Prepend this string to every token type emitted as token text. If null, nothing

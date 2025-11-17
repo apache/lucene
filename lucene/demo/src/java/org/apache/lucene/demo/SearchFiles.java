@@ -43,6 +43,7 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.IOUtils;
 
 /** Simple command-line based search demo. */
 public class SearchFiles {
@@ -154,10 +155,7 @@ public class SearchFiles {
         break;
       }
     }
-    if (vectorDict != null) {
-      vectorDict.close();
-    }
-    reader.close();
+    IOUtils.close(vectorDict, reader);
   }
 
   /**
@@ -181,7 +179,7 @@ public class SearchFiles {
     TopDocs results = searcher.search(query, 5 * hitsPerPage);
     ScoreDoc[] hits = results.scoreDocs;
 
-    int numTotalHits = Math.toIntExact(results.totalHits.value);
+    int numTotalHits = Math.toIntExact(results.totalHits.value());
     System.out.println(numTotalHits + " total matching documents");
 
     int start = 0;
@@ -197,7 +195,7 @@ public class SearchFiles {
                 + " total matching documents collected.");
         System.out.println("Collect more (y/n) ?");
         String line = in.readLine();
-        if (line.length() == 0 || line.charAt(0) == 'n') {
+        if (line == null || line.length() == 0 || line.charAt(0) == 'n') {
           break;
         }
 
@@ -219,7 +217,7 @@ public class SearchFiles {
           System.out.println((i + 1) + ". " + path);
           String title = doc.get("title");
           if (title != null) {
-            System.out.println("   Title: " + doc.get("title"));
+            System.out.println("   Title: " + title);
           }
         } else {
           System.out.println((i + 1) + ". " + "No path for this document");
@@ -243,7 +241,7 @@ public class SearchFiles {
           System.out.println("(q)uit or enter number to jump to a page.");
 
           String line = in.readLine();
-          if (line.length() == 0 || line.charAt(0) == 'q') {
+          if (line == null || line.length() == 0 || line.charAt(0) == 'q') {
             quit = true;
             break;
           }

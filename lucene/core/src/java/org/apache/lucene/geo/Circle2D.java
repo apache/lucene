@@ -100,7 +100,7 @@ class Circle2D implements Component2D {
         || contains(bX, bY)
         || contains(cX, cY)
         || Component2D.pointInTriangle(
-            minX, maxX, minY, maxY, calculator.geX(), calculator.getY(), aX, aY, bX, bY, cX, cY)
+            minX, maxX, minY, maxY, calculator.getX(), calculator.getY(), aX, aY, bX, bY, cX, cY)
         || calculator.intersectsLine(aX, aY, bX, bY)
         || calculator.intersectsLine(bX, bY, cX, cY)
         || calculator.intersectsLine(cX, cY, aX, aY);
@@ -209,7 +209,7 @@ class Circle2D implements Component2D {
     // candidate but that is ol
     // is fine as the center must be inside to be one of the triangles.
     if (Component2D.pointInTriangle(
-            minX, maxX, minY, maxY, calculator.geX(), calculator.getY(), aX, aY, bX, bY, cX, cY)
+            minX, maxX, minY, maxY, calculator.getX(), calculator.getY(), aX, aY, bX, bY, cX, cY)
         == true) {
       return WithinRelation.CANDIDATE;
     }
@@ -259,24 +259,34 @@ class Circle2D implements Component2D {
 
     /** check if the point is within a distance */
     boolean contains(double x, double y);
+
     /** check if the line is within a distance */
     boolean intersectsLine(double aX, double aY, double bX, double bY);
+
     /** Relates this calculator to the provided bounding box */
     Relation relate(double minX, double maxX, double minY, double maxY);
+
     /** check if the bounding box is disjoint with this calculator bounding box */
     boolean disjoint(double minX, double maxX, double minY, double maxY);
+
     /** check if the bounding box is contains this calculator bounding box */
     boolean within(double minX, double maxX, double minY, double maxY);
+
     /** get min X of this calculator */
     double getMinX();
+
     /** get max X of this calculator */
     double getMaxX();
+
     /** get min Y of this calculator */
     double getMinY();
+
     /** get max Y of this calculator */
     double getMaxY();
+
     /** get center X */
-    double geX();
+    double getX();
+
     /** get center Y */
     double getY();
   }
@@ -380,7 +390,7 @@ class Circle2D implements Component2D {
     }
 
     @Override
-    public double geX() {
+    public double getX() {
       return centerX;
     }
 
@@ -545,7 +555,7 @@ class Circle2D implements Component2D {
     }
 
     @Override
-    public double geX() {
+    public double getX() {
       return centerLon;
     }
 

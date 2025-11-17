@@ -35,8 +35,10 @@ import org.apache.lucene.util.AttributeSource; // javadocs only
  */
 public interface BoostAttribute extends Attribute {
   float DEFAULT_BOOST = 1.0f;
+
   /** Sets the boost in this attribute */
   public void setBoost(float boost);
+
   /** Retrieves the boost, default is {@code 1.0f}. */
   public float getBoost();
 }

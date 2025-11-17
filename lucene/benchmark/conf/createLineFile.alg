@@ -22,7 +22,7 @@
 #
 # To use this run:
 #
-#   gradlew :lucene:benchmark:run -Ptask.alg=conf/createLineFile.alg
+#   ./gradlew :lucene:benchmark:run -PtaskAlg=conf/createLineFile.alg
 #
 # Then, to index the documents in the line file, see
 # indexLineFile.alg.
@@ -44,4 +44,4 @@ content.source.forever=false
 # -------------------------------------------------------------------------------------
 
 # Process all documents, appending each one to the line file:
-{WriteLineDoc()}: * 
+{WriteLineDoc()}: *

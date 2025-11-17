@@ -78,6 +78,13 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends AbstractSortedSetDo
   }
 
   @Override
+  boolean hasCounts() {
+    // TODO: safe to always assume there are counts, but maybe it would be more optimal to
+    // actually track if we see a count?
+    return true;
+  }
+
+  @Override
   int getCount(int ord) {
     return counts.get(ord);
   }
@@ -99,6 +106,11 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends AbstractSortedSetDo
 
     @Override
     public Void call() throws IOException {
+      // If we're counting collected hits but there were none, short-circuit:
+      if (hits != null && hits.totalHits() == 0) {
+        return null;
+      }
+
       SortedSetDocValues multiValues = DocValues.getSortedSet(leafReader, field);
       if (multiValues == null) {
         // nothing to count here
@@ -128,7 +140,7 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends AbstractSortedSetDo
         final Bits liveDocs = leafReader.getLiveDocs();
         it = (liveDocs != null) ? FacetUtils.liveDocsDISI(valuesIt, liveDocs) : valuesIt;
       } else {
-        it = ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), valuesIt));
+        it = ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits().iterator(), valuesIt));
       }
 
       if (ordinalMap != null) {
@@ -136,7 +148,7 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends AbstractSortedSetDo
 
         int numSegOrds = (int) multiValues.getValueCount();
 
-        if (hits != null && hits.totalHits < numSegOrds / 10) {
+        if (hits != null && hits.totalHits() < numSegOrds / 10) {
           // Remap every ord to global ord as we iterate:
           if (singleValues != null) {
             if (singleValues == it) {
@@ -283,14 +295,14 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends AbstractSortedSetDo
       // the top-level reader passed to the
       // SortedSetDocValuesReaderState, else cryptic
       // AIOOBE can happen:
-      if (ReaderUtil.getTopLevelContext(hits.context).reader() != reader) {
+      if (ReaderUtil.getTopLevelContext(hits.context()).reader() != reader) {
         throw new IllegalStateException(
             "the SortedSetDocValuesReaderState provided to this class does not match the reader being searched; you must create a new SortedSetDocValuesReaderState every time you open a new IndexReader");
       }
 
       results.add(
           exec.submit(
-              new CountOneSegment(hits.context.reader(), hits, ordinalMap, hits.context.ord)));
+              new CountOneSegment(hits.context().reader(), hits, ordinalMap, hits.context().ord)));
     }
 
     for (Future<Void> result : results) {

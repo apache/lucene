@@ -121,8 +121,8 @@ public class FSTCompletionBuilder {
   /** Scratch buffer for {@link #add(BytesRef, int)}. */
   private final BytesRefBuilder scratch = new BytesRefBuilder();
 
-  /** Max tail sharing length. */
-  private final int shareMaxTailLength;
+  /** Max tail sharing RAM (MB). */
+  private final double suffixRAMLimitMB;
 
   /**
    * Creates an {@link FSTCompletion} with default options: 10 buckets, exact match promoted to
@@ -130,7 +130,7 @@ public class FSTCompletionBuilder {
    * Comparator#naturalOrder()}.
    */
   public FSTCompletionBuilder() {
-    this(DEFAULT_BUCKETS, new InMemorySorter(Comparator.naturalOrder()), Integer.MAX_VALUE);
+    this(DEFAULT_BUCKETS, new InMemorySorter(Comparator.naturalOrder()), Double.POSITIVE_INFINITY);
   }
 
   /**
@@ -141,13 +141,13 @@ public class FSTCompletionBuilder {
    * @param sorter {@link BytesRefSorter} used for re-sorting input for the automaton. For large
    *     inputs, use on-disk sorting implementations. The sorter is closed automatically in {@link
    *     #build()} if it implements {@link Closeable}.
-   * @param shareMaxTailLength Max shared suffix sharing length.
+   * @param suffixRAMLimitMB Max shared suffix RAM size (MB).
    *     <p>See the description of this parameter in {@link
    *     org.apache.lucene.util.fst.FSTCompiler.Builder}. In general, for very large inputs you'll
    *     want to construct a non-minimal automaton which will be larger, but the construction will
-   *     take far less ram. For minimal automata, set it to {@link Integer#MAX_VALUE}.
+   *     take far less ram. For minimal automata, set it to {@link Double#MAX_VALUE}.
    */
-  public FSTCompletionBuilder(int buckets, BytesRefSorter sorter, int shareMaxTailLength) {
+  public FSTCompletionBuilder(int buckets, BytesRefSorter sorter, double suffixRAMLimitMB) {
     if (buckets < 1 || buckets > 255) {
       throw new IllegalArgumentException("Buckets must be >= 1 and <= 255: " + buckets);
     }
@@ -158,7 +158,7 @@ public class FSTCompletionBuilder {
 
     this.sorter = sorter;
     this.buckets = buckets;
-    this.shareMaxTailLength = shareMaxTailLength;
+    this.suffixRAMLimitMB = suffixRAMLimitMB;
   }
 
   /**
@@ -176,7 +176,7 @@ public class FSTCompletionBuilder {
           "Bucket outside of the allowed range [0, " + buckets + "): " + bucket);
     }
 
-    scratch.grow(utf8.length + 10);
+    scratch.growNoCopy(utf8.length + 10);
     scratch.clear();
     scratch.append((byte) bucket);
     scratch.append(utf8);
@@ -204,7 +204,7 @@ public class FSTCompletionBuilder {
     final Object empty = outputs.getNoOutput();
     final FSTCompiler<Object> fstCompiler =
         new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs)
-            .shareMaxTailLength(shareMaxTailLength)
+            .suffixRAMLimitMB(suffixRAMLimitMB)
             .build();
 
     BytesRefBuilder scratch = new BytesRefBuilder();
@@ -220,6 +220,6 @@ public class FSTCompletionBuilder {
       }
     }
 
-    return count == 0 ? null : fstCompiler.compile();
+    return count == 0 ? null : FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
   }
 }

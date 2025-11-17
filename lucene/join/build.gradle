@@ -15,11 +15,12 @@
  * limitations under the License.
  */
 
-apply plugin: 'java-library'
+
 
 description = 'Index-time and Query-time joins for normalized content'
 
 dependencies {
   moduleApi project(':lucene:core')
+
   moduleTestImplementation project(':lucene:test-framework')
 }

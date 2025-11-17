@@ -36,7 +36,6 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.CollectionUtil;
@@ -55,6 +54,7 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
   static final BytesRef SI_MIN_VERSION = new BytesRef("    min version ");
   static final BytesRef SI_DOCCOUNT = new BytesRef("    number of documents ");
   static final BytesRef SI_USECOMPOUND = new BytesRef("    uses compound file ");
+  static final BytesRef SI_HAS_BLOCKS = new BytesRef("    has blocks ");
   static final BytesRef SI_NUM_DIAG = new BytesRef("    diagnostics ");
   static final BytesRef SI_DIAG_KEY = new BytesRef("      key ");
   static final BytesRef SI_DIAG_VALUE = new BytesRef("      value ");
@@ -114,6 +114,10 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
           Boolean.parseBoolean(readString(SI_USECOMPOUND.length, scratch));
 
       SimpleTextUtil.readLine(input, scratch);
+      assert StringHelper.startsWith(scratch.get(), SI_HAS_BLOCKS);
+      final boolean hasBlocks = Boolean.parseBoolean(readString(SI_HAS_BLOCKS.length, scratch));
+
+      SimpleTextUtil.readLine(input, scratch);
       assert StringHelper.startsWith(scratch.get(), SI_NUM_DIAG);
       int numDiag = Integer.parseInt(readString(SI_NUM_DIAG.length, scratch));
       Map<String, String> diagnostics = CollectionUtil.newHashMap(numDiag);
@@ -159,7 +163,7 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
 
       SimpleTextUtil.readLine(input, scratch);
       assert StringHelper.startsWith(scratch.get(), SI_ID);
-      final byte[] id = ArrayUtil.copyOfSubArray(scratch.bytes(), SI_ID.length, scratch.length());
+      final byte[] id = SimpleTextUtil.fromBytesRefString(readString(SI_ID.length, scratch)).bytes;
 
       if (!Arrays.equals(segmentID, id)) {
         throw new CorruptIndexException(
@@ -192,7 +196,13 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
         sortField[i] = SortFieldProvider.forName(provider).readSortField(bytes);
         assert bytes.eof();
       }
-      Sort indexSort = sortField.length == 0 ? null : new Sort(sortField);
+
+      final Sort indexSort;
+      if (sortField.length == 0) {
+        indexSort = null;
+      } else {
+        indexSort = new Sort(sortField);
+      }
 
       SimpleTextUtil.checkFooter(input);
 
@@ -204,6 +214,7 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
               segmentName,
               docCount,
               isCompoundFile,
+              hasBlocks,
               null,
               diagnostics,
               id,
@@ -247,6 +258,10 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
 
       SimpleTextUtil.write(output, SI_USECOMPOUND);
       SimpleTextUtil.write(output, Boolean.toString(si.getUseCompoundFile()), scratch);
+      SimpleTextUtil.writeNewline(output);
+
+      SimpleTextUtil.write(output, SI_HAS_BLOCKS);
+      SimpleTextUtil.write(output, Boolean.toString(si.getHasBlocks()), scratch);
       SimpleTextUtil.writeNewline(output);
 
       Map<String, String> diagnostics = si.getDiagnostics();
@@ -297,7 +312,7 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
       }
 
       SimpleTextUtil.write(output, SI_ID);
-      SimpleTextUtil.write(output, new BytesRef(si.getId()));
+      SimpleTextUtil.write(output, new BytesRef(si.getId()).toString(), scratch);
       SimpleTextUtil.writeNewline(output);
 
       Sort indexSort = si.getIndexSort();
@@ -326,7 +341,6 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
         SimpleTextUtil.write(output, b.bytes.get().toString(), scratch);
         SimpleTextUtil.writeNewline(output);
       }
-
       SimpleTextUtil.writeChecksum(output, scratch);
     }
   }

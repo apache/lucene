@@ -22,9 +22,8 @@ import java.io.IOException;
  * Abstract decorator class of a DocIdSetIterator implementation that provides on-demand
  * filter/validation mechanism on an underlying DocIdSetIterator.
  */
-public abstract class FilteredDocIdSetIterator extends DocIdSetIterator {
+public abstract class FilteredDocIdSetIterator extends AbstractDocIdSetIterator {
   protected DocIdSetIterator _innerIter;
-  private int doc;
 
   /**
    * Constructor.
@@ -51,12 +50,7 @@ public abstract class FilteredDocIdSetIterator extends DocIdSetIterator {
    * @return true if input docid should be in the result set, false otherwise.
    * @see #FilteredDocIdSetIterator(DocIdSetIterator)
    */
-  protected abstract boolean match(int doc);
-
-  @Override
-  public int docID() {
-    return doc;
-  }
+  protected abstract boolean match(int doc) throws IOException;
 
   @Override
   public int nextDoc() throws IOException {

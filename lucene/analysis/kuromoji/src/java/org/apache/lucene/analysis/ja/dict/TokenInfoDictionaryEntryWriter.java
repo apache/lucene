@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import org.apache.lucene.analysis.morph.DictionaryEntryWriter;
+import org.apache.lucene.analysis.util.CSVUtil;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
 

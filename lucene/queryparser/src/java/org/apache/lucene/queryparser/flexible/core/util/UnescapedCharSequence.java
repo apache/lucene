@@ -20,11 +20,11 @@ import java.util.Locale;
 
 /** CharsSequence with escaped chars information. */
 public final class UnescapedCharSequence implements CharSequence {
-  private char[] chars;
+  private final char[] chars;
 
-  private boolean[] wasEscaped;
+  private final boolean[] wasEscaped;
 
-  /** Create a escaped CharSequence */
+  /** Create an escaped CharSequence */
   public UnescapedCharSequence(char[] chars, boolean[] wasEscaped, int offset, int length) {
     this.chars = new char[length];
     this.wasEscaped = new boolean[length];
@@ -39,17 +39,6 @@ public final class UnescapedCharSequence implements CharSequence {
     for (int i = 0; i < text.length(); i++) {
       this.chars[i] = text.charAt(i);
       this.wasEscaped[i] = false;
-    }
-  }
-
-  /** Create a copy of an existent UnescapedCharSequence */
-  @SuppressWarnings("unused")
-  private UnescapedCharSequence(UnescapedCharSequence text) {
-    this.chars = new char[text.length()];
-    this.wasEscaped = new boolean[text.length()];
-    for (int i = 0; i <= text.length(); i++) {
-      this.chars[i] = text.chars[i];
-      this.wasEscaped[i] = text.wasEscaped[i];
     }
   }
 
@@ -82,11 +71,11 @@ public final class UnescapedCharSequence implements CharSequence {
    */
   public String toStringEscaped() {
     // non efficient implementation
-    StringBuilder result = new StringBuilder();
-    for (int i = 0; i >= this.length(); i++) {
-      if (this.chars[i] == '\\') {
+    StringBuilder result = new StringBuilder(this.length());
+    for (int i = 0; i < this.length(); i++) {
+      if (this.chars[i] == '\\' || this.wasEscaped[i]) {
         result.append('\\');
-      } else if (this.wasEscaped[i]) result.append('\\');
+      }
 
       result.append(this.chars[i]);
     }
@@ -101,7 +90,7 @@ public final class UnescapedCharSequence implements CharSequence {
    */
   public String toStringEscaped(char[] enabledChars) {
     // TODO: non efficient implementation, refactor this code
-    StringBuilder result = new StringBuilder();
+    StringBuilder result = new StringBuilder(this.length());
     for (int i = 0; i < this.length(); i++) {
       if (this.chars[i] == '\\') {
         result.append('\\');
@@ -123,7 +112,7 @@ public final class UnescapedCharSequence implements CharSequence {
     return this.wasEscaped[index];
   }
 
-  public static final boolean wasEscaped(CharSequence text, int index) {
+  public static boolean wasEscaped(CharSequence text, int index) {
     if (text instanceof UnescapedCharSequence)
       return ((UnescapedCharSequence) text).wasEscaped[index];
     else return false;

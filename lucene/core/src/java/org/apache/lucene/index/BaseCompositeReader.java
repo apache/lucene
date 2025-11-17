@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public abstract class BaseCompositeReader<R extends IndexReader> extends CompositeReader {
   private final R[] subReaders;
+
   /** A comparator for sorting sub-readers */
   protected final Comparator<R> subReadersSorter;
 
@@ -83,7 +84,6 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
       starts[i] = (int) maxDoc;
       final IndexReader r = subReaders[i];
       maxDoc += r.maxDoc(); // compute maxDocs
-      r.registerParentReader(this);
     }
 
     if (maxDoc > IndexWriter.getActualMaxDocs()) {
@@ -116,6 +116,15 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
     ensureOpen();
     TermVectors[] subVectors = new TermVectors[subReaders.length];
     return new TermVectors() {
+      @Override
+      public void prefetch(int docID) throws IOException {
+        final int i = readerIndex(docID); // find subreader num
+        if (subVectors[i] == null) {
+          subVectors[i] = subReaders[i].termVectors();
+        }
+        subVectors[i].prefetch(docID - starts[i]);
+      }
+
       @Override
       public Fields get(int docID) throws IOException {
         final int i = readerIndex(docID); // find subreader num
@@ -162,6 +171,15 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
     ensureOpen();
     StoredFields[] subFields = new StoredFields[subReaders.length];
     return new StoredFields() {
+      @Override
+      public void prefetch(int docID) throws IOException {
+        final int i = readerIndex(docID); // find subreader num
+        if (subFields[i] == null) {
+          subFields[i] = subReaders[i].storedFields();
+        }
+        subFields[i].prefetch(docID - starts[i]);
+      }
+
       @Override
       public void document(int docID, StoredFieldVisitor visitor) throws IOException {
         final int i = readerIndex(docID); // find subreader num

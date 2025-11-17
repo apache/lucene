@@ -98,7 +98,7 @@ public final class CommandLineUtil {
           "The " + FSDirectory.class.getSimpleName() + " implementation must not be null or empty");
     }
 
-    if (clazzName.indexOf(".") == -1) { // if not fully qualified, assume .store
+    if (clazzName.indexOf('.') == -1) { // if not fully qualified, assume .store
       clazzName = Directory.class.getPackage().getName() + "." + clazzName;
     }
     return clazzName;

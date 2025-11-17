@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.facet.taxonomy;
 
-import com.carrotsearch.hppc.IntArrayList;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -28,6 +27,7 @@ import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.FilterSortedNumericDocValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**

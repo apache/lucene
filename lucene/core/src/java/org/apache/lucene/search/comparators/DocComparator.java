@@ -22,6 +22,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 
 /** Comparator that sorts by asc _doc */
@@ -35,10 +36,10 @@ public class DocComparator extends FieldComparator<Integer> {
   private boolean hitsThresholdReached;
 
   /** Creates a new comparator based on document ids for {@code numHits} */
-  public DocComparator(int numHits, boolean reverse, boolean enableSkipping) {
+  public DocComparator(int numHits, boolean reverse, Pruning pruning) {
     this.docIDs = new int[numHits];
     // skipping functionality is enabled if we are sorting by _doc in asc order as a primary sort
-    this.enableSkipping = (reverse == false && enableSkipping);
+    this.enableSkipping = (reverse == false && pruning != Pruning.NONE);
   }
 
   @Override
@@ -76,7 +77,8 @@ public class DocComparator extends FieldComparator<Integer> {
     private final int docBase;
     private final int minDoc;
     private final int maxDoc;
-    private DocIdSetIterator competitiveIterator; // iterator that starts from topValue
+    private final UpdateableDocIdSetIterator
+        competitiveIterator; // iterator that starts from topValue
 
     public DocLeafComparator(LeafReaderContext context) {
       this.docBase = context.docBase;
@@ -87,7 +89,8 @@ public class DocComparator extends FieldComparator<Integer> {
         // with the same docID.
         this.minDoc = topValue;
         this.maxDoc = context.reader().maxDoc();
-        this.competitiveIterator = DocIdSetIterator.all(maxDoc);
+        this.competitiveIterator = new UpdateableDocIdSetIterator();
+        this.competitiveIterator.update(DocIdSetIterator.all(maxDoc));
       } else {
         this.minDoc = -1;
         this.maxDoc = -1;
@@ -127,33 +130,7 @@ public class DocComparator extends FieldComparator<Integer> {
 
     @Override
     public DocIdSetIterator competitiveIterator() {
-      if (enableSkipping == false) {
-        return null;
-      } else {
-        return new DocIdSetIterator() {
-          private int docID = competitiveIterator.docID();
-
-          @Override
-          public int nextDoc() throws IOException {
-            return advance(docID + 1);
-          }
-
-          @Override
-          public int docID() {
-            return docID;
-          }
-
-          @Override
-          public long cost() {
-            return competitiveIterator.cost();
-          }
-
-          @Override
-          public int advance(int target) throws IOException {
-            return docID = competitiveIterator.advance(target);
-          }
-        };
-      }
+      return competitiveIterator;
     }
 
     @Override
@@ -169,14 +146,16 @@ public class DocComparator extends FieldComparator<Integer> {
         // Currently early termination on _doc is also implemented in TopFieldCollector, but this
         // will be removed
         // once all bulk scores uses collectors' iterators
-        competitiveIterator = DocIdSetIterator.empty();
+        competitiveIterator.update(DocIdSetIterator.empty());
       } else if (topValueSet) {
         // skip to the desired top doc
         if (docBase + maxDoc <= minDoc) {
-          competitiveIterator = DocIdSetIterator.empty(); // skip this segment
+          competitiveIterator.update(DocIdSetIterator.empty()); // skip this segment
         } else {
           int segmentMinDoc = Math.max(competitiveIterator.docID(), minDoc - docBase);
-          competitiveIterator = new MinDocIterator(segmentMinDoc, maxDoc);
+          // The competitive iterator may not be positioned yet.
+          segmentMinDoc = Math.max(0, segmentMinDoc);
+          competitiveIterator.update(DocIdSetIterator.range(segmentMinDoc, maxDoc));
         }
       }
     }

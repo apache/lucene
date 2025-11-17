@@ -25,7 +25,7 @@ import org.apache.lucene.search.PhraseQuery; // javadocs
 /** Query node for {@link PhraseQuery}'s slop factor. */
 public class PhraseSlopQueryNode extends QueryNodeImpl implements FieldableNode {
 
-  private int value = 0;
+  private int value;
 
   /**
    * @exception QueryNodeError throw in overridden method to disallow

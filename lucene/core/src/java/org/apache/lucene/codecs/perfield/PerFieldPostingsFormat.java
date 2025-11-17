@@ -79,21 +79,13 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
     super(PER_FIELD_NAME);
   }
 
-  /** Group of fields written by one PostingsFormat */
-  static class FieldsGroup {
-    final List<String> fields;
-    final int suffix;
-    /**
-     * Custom SegmentWriteState for this group of fields, with the segmentSuffix uniqueified for
-     * this PostingsFormat
-     */
-    final SegmentWriteState state;
-
-    private FieldsGroup(List<String> fields, int suffix, SegmentWriteState state) {
-      this.fields = fields;
-      this.suffix = suffix;
-      this.state = state;
-    }
+  /**
+   * Group of fields written by one PostingsFormat
+   *
+   * @param state Custom SegmentWriteState for this group of fields, with the segmentSuffix
+   *     uniqueified for this PostingsFormat
+   */
+  record FieldsGroup(List<String> fields, int suffix, SegmentWriteState state) {
 
     static class Builder {
       final Set<String> fields;
@@ -118,7 +110,6 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
       }
     }
   }
-  ;
 
   static String getSuffix(String formatName, String suffix) {
     return formatName + "_" + suffix;
@@ -141,7 +132,7 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
 
   private class FieldsWriter extends FieldsConsumer {
     final SegmentWriteState writeState;
-    final List<Closeable> toClose = new ArrayList<Closeable>();
+    final List<Closeable> toClose = new ArrayList<>();
 
     public FieldsWriter(SegmentWriteState writeState) {
       this.writeState = writeState;
@@ -152,7 +143,6 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
       Map<PostingsFormat, FieldsGroup> formatToGroups = buildFieldsGroupMapping(fields);
 
       // Write postings
-      boolean success = false;
       try {
         for (Map.Entry<PostingsFormat, FieldsGroup> ent : formatToGroups.entrySet()) {
           PostingsFormat format = ent.getKey();
@@ -171,11 +161,9 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
           toClose.add(consumer);
           consumer.write(maskedFields, norms);
         }
-        success = true;
-      } finally {
-        if (!success) {
-          IOUtils.closeWhileHandlingException(toClose);
-        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, toClose);
+        throw t;
       }
     }
 
@@ -193,8 +181,6 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
       Map<PostingsFormat, FieldsGroup> formatToGroups = buildFieldsGroupMapping(indexedFieldNames);
 
       // Merge postings
-      PerFieldMergeState pfMergeState = new PerFieldMergeState(mergeState);
-      boolean success = false;
       try {
         for (Map.Entry<PostingsFormat, FieldsGroup> ent : formatToGroups.entrySet()) {
           PostingsFormat format = ent.getKey();
@@ -202,14 +188,11 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
 
           FieldsConsumer consumer = format.fieldsConsumer(group.state);
           toClose.add(consumer);
-          consumer.merge(pfMergeState.apply(group.fields), norms);
+          consumer.merge(PerFieldMergeState.restrictFields(mergeState, group.fields), norms);
         }
-        success = true;
-      } finally {
-        pfMergeState.reset();
-        if (!success) {
-          IOUtils.closeWhileHandlingException(toClose);
-        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, toClose);
+        throw t;
       }
     }
 
@@ -308,7 +291,6 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
     public FieldsReader(final SegmentReadState readState) throws IOException {
 
       // Read _X.per and init each format:
-      boolean success = false;
       try {
         // Read field name -> format name
         for (FieldInfo fi : readState.fieldInfos) {
@@ -333,11 +315,9 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
             }
           }
         }
-        success = true;
-      } finally {
-        if (!success) {
-          IOUtils.closeWhileHandlingException(formats.values());
-        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, formats.values());
+        throw t;
       }
 
       this.segment = readState.segmentInfo.name;

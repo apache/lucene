@@ -41,18 +41,25 @@ public final class StandardTokenizer extends Tokenizer {
 
   /** Alpha/numeric token type */
   public static final int ALPHANUM = 0;
+
   /** Numeric token type */
   public static final int NUM = 1;
+
   /** Southeast Asian token type */
   public static final int SOUTHEAST_ASIAN = 2;
+
   /** Ideographic token type */
   public static final int IDEOGRAPHIC = 3;
+
   /** Hiragana token type */
   public static final int HIRAGANA = 4;
+
   /** Katakana token type */
   public static final int KATAKANA = 5;
+
   /** Hangul token type */
   public static final int HANGUL = 6;
+
   /** Emoji token type. */
   public static final int EMOJI = 7;
 
@@ -128,8 +135,8 @@ public final class StandardTokenizer extends Tokenizer {
     this.scanner = new StandardTokenizerImpl(input);
   }
 
-  // this tokenizer generates three attributes:
-  // term offset, positionIncrement and type
+  // this tokenizer generates four attributes:
+  // term, offset, positionIncrement and type
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
   private final PositionIncrementAttribute posIncrAtt =

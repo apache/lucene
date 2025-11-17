@@ -77,7 +77,7 @@ public class BBoxStrategy extends SpatialStrategy {
   //  create more than one Field.
 
   /** pointValues, docValues, and nothing else. */
-  public static FieldType DEFAULT_FIELDTYPE;
+  public static final FieldType DEFAULT_FIELDTYPE;
 
   static {
     // Default: pointValues + docValues
@@ -138,19 +138,22 @@ public class BBoxStrategy extends SpatialStrategy {
 
     fieldType.freeze();
     this.optionsFieldType = fieldType;
+    this.hasStored = fieldType.stored();
+    this.hasDocVals = fieldType.docValuesType() != DocValuesType.NONE;
+    this.hasPointVals = fieldType.pointDimensionCount() > 0;
 
     int numQuads = 0;
-    if ((this.hasStored = fieldType.stored())) {
+
+    if (hasStored) {
       numQuads++;
     }
-    if ((this.hasDocVals = fieldType.docValuesType() != DocValuesType.NONE)) {
-      numQuads++;
-    }
-    if ((this.hasPointVals = fieldType.pointDimensionCount() > 0)) {
+
+    if (hasDocVals) {
       numQuads++;
     }
 
     if (hasPointVals) { // if we have an index...
+      numQuads++;
       xdlFieldType = new FieldType(StringField.TYPE_NOT_STORED);
       xdlFieldType.setIndexOptions(IndexOptions.DOCS);
       xdlFieldType.freeze();

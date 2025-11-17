@@ -14,11 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util;
-
-import java.util.Arrays;
-import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.TestUtil;
 
 /*
  * Some of this code came from the excellent Unicode
@@ -86,6 +81,15 @@ import org.apache.lucene.tests.util.TestUtil;
  * dealings in this Software without prior written authorization of the
  * copyright holder.
  */
+
+package org.apache.lucene.util;
+
+import java.util.Arrays;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.automaton.Automaton;
+import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.FiniteStringsIterator;
 
 public class TestUnicodeUtil extends LuceneTestCase {
   public void testCodePointCount() {
@@ -166,6 +170,55 @@ public class TestUnicodeUtil extends LuceneTestCase {
     }
   }
 
+  public void testUTF8CodePointAt() {
+    int num = atLeast(50000);
+    UnicodeUtil.UTF8CodePoint reuse = null;
+    for (int i = 0; i < num; i++) {
+      final String s = TestUtil.randomUnicodeString(random());
+      final byte[] utf8 = new byte[UnicodeUtil.maxUTF8Length(s.length())];
+      final int utf8Len = UnicodeUtil.UTF16toUTF8(s, 0, s.length(), utf8);
+
+      int[] expected = s.codePoints().toArray();
+      int pos = 0;
+      int expectedUpto = 0;
+      while (pos < utf8Len) {
+        reuse = UnicodeUtil.codePointAt(utf8, pos, reuse);
+        assertEquals(expected[expectedUpto], reuse.codePoint);
+        expectedUpto++;
+        pos += reuse.numBytes;
+      }
+      assertEquals(utf8Len, pos);
+      assertEquals(expected.length, expectedUpto);
+    }
+  }
+
+  public void testUTF8SpanMultipleBytes() throws Exception {
+    Automaton.Builder b = new Automaton.Builder();
+    // start state:
+    int s1 = b.createState();
+
+    // single end accept state:
+    int s2 = b.createState();
+    b.setAccept(s2, true);
+
+    // utf8 codepoint length range from [1,2]
+    b.addTransition(s1, s2, 0x7F, 0x80);
+    // utf8 codepoint length range from [2,3]
+    b.addTransition(s1, s2, 0x7FF, 0x800);
+    // utf8 codepoint length range from [3,4]
+    b.addTransition(s1, s2, 0xFFFF, 0x10000);
+
+    Automaton a = b.finish();
+
+    CompiledAutomaton c = new CompiledAutomaton(a);
+    FiniteStringsIterator it = new FiniteStringsIterator(c.automaton);
+    int termCount = 0;
+    for (IntsRef r = it.next(); r != null; r = it.next()) {
+      termCount++;
+    }
+    assertEquals(6, termCount);
+  }
+
   public void testNewString() {
     final int[] codePoints = {
       Character.toCodePoint(Character.MIN_HIGH_SURROGATE, Character.MAX_LOW_SURROGATE),
@@ -208,9 +261,7 @@ public class TestUnicodeUtil extends LuceneTestCase {
         assertFalse(rc == -1);
         assertEquals(cpString.substring(rs, rs + rc), str);
         continue;
-      } catch (@SuppressWarnings("unused")
-          IndexOutOfBoundsException
-          | IllegalArgumentException e1) {
+      } catch (IndexOutOfBoundsException | IllegalArgumentException _) {
         // Ignored.
       }
       assertTrue(rc == -1);

@@ -24,7 +24,7 @@ package org.apache.lucene.analysis.hunspell;
  * @see NGramFragmentChecker
  */
 public interface FragmentChecker {
-  FragmentChecker EVERYTHING_POSSIBLE = (word, start, end) -> false;
+  FragmentChecker EVERYTHING_POSSIBLE = (_, _, _) -> false;
 
   /**
    * Check if the given word range intersects any fragment which is impossible in the current

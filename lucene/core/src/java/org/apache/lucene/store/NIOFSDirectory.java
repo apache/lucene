@@ -36,7 +36,7 @@ import org.apache.lucene.util.IOUtils;
  * <p><b>NOTE</b>: NIOFSDirectory is not recommended on Windows because of a bug in how
  * FileChannel.read is implemented in Sun's JRE. Inside of the implementation the position is
  * apparently synchronized. See <a
- * href="http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6265734">here</a> for details.
+ * href="https://bugs.java.com/bugdatabase/view_bug?bug_id=6265734">here</a> for details.
  *
  * <p><b>NOTE:</b> Accessing this class either directly or indirectly from a thread while it's
  * interrupted can close the underlying file descriptor immediately if at the same time the thread
@@ -76,16 +76,11 @@ public class NIOFSDirectory extends FSDirectory {
     ensureCanRead(name);
     Path path = getDirectory().resolve(name);
     FileChannel fc = FileChannel.open(path, StandardOpenOption.READ);
-    boolean success = false;
     try {
-      final NIOFSIndexInput indexInput =
-          new NIOFSIndexInput("NIOFSIndexInput(path=\"" + path + "\")", fc, context);
-      success = true;
-      return indexInput;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(fc);
-      }
+      return new NIOFSIndexInput("NIOFSIndexInput(path=\"" + path + "\")", fc, context);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, fc);
+      throw t;
     }
   }
 
@@ -96,10 +91,13 @@ public class NIOFSDirectory extends FSDirectory {
 
     /** the file channel we will read from */
     protected final FileChannel channel;
+
     /** is this instance a clone and hence does not own the file to close it */
     boolean isClone = false;
+
     /** start offset: non-zero in the slice case */
     protected final long off;
+
     /** end offset (start+length) */
     protected final long end;
 
@@ -136,7 +134,7 @@ public class NIOFSDirectory extends FSDirectory {
 
     @Override
     public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
-      if (offset < 0 || length < 0 || offset + length > this.length()) {
+      if ((length | offset) < 0 || length > this.length() - offset) {
         throw new IllegalArgumentException(
             "slice() "
                 + sliceDescription

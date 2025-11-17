@@ -16,8 +16,13 @@
  */
 package org.apache.lucene.document;
 
+import static org.hamcrest.Matchers.anyOf;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.equalTo;
+
 import java.io.IOException;
 import java.util.List;
+import java.util.Random;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -33,11 +38,16 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.BM25Similarity;
+import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 
 public class TestFeatureField extends LuceneTestCase {
 
@@ -85,6 +95,9 @@ public class TestFeatureField extends LuceneTestCase {
 
     IndexSearcher searcher = LuceneTestCase.newSearcher(reader);
     LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
+
+    var fieldInfo = context.reader().getFieldInfos().fieldInfo("features");
+    assertFalse(fieldInfo.hasTermVectors());
 
     Query q = FeatureField.newLogQuery("features", "pagerank", 3f, 4.5f);
     Weight w = q.createWeight(searcher, ScoreMode.TOP_SCORES, 2);
@@ -177,8 +190,7 @@ public class TestFeatureField extends LuceneTestCase {
 
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, s.iterator().nextDoc());
 
-    reader.close();
-    dir.close();
+    IOUtils.close(reader, dir);
   }
 
   public void testExplanations() throws Exception {
@@ -237,8 +249,7 @@ public class TestFeatureField extends LuceneTestCase {
     QueryUtils.check(
         random(), FeatureField.newSigmoidQuery("features", "pagerank", .2f, 12f, 0.6f), searcher);
 
-    reader.close();
-    dir.close();
+    IOUtils.close(reader, dir);
   }
 
   public void testLogSimScorer() {
@@ -273,7 +284,8 @@ public class TestFeatureField extends LuceneTestCase {
 
     // Make sure that we create a legal pivot on missing features
     DirectoryReader reader = writer.getReader();
-    float pivot = FeatureField.computePivotFeatureValue(reader, "features", "pagerank");
+    IndexSearcher searcher = LuceneTestCase.newSearcher(reader);
+    float pivot = FeatureField.computePivotFeatureValue(searcher, "features", "pagerank");
     assertTrue(Float.isFinite(pivot));
     assertTrue(pivot > 0);
     reader.close();
@@ -299,12 +311,12 @@ public class TestFeatureField extends LuceneTestCase {
     reader = writer.getReader();
     writer.close();
 
-    pivot = FeatureField.computePivotFeatureValue(reader, "features", "pagerank");
+    searcher = LuceneTestCase.newSearcher(reader);
+    pivot = FeatureField.computePivotFeatureValue(searcher, "features", "pagerank");
     double expected = Math.pow(10 * 100 * 1 * 42, 1 / 4.); // geometric mean
     assertEquals(expected, pivot, 0.1);
 
-    reader.close();
-    dir.close();
+    IOUtils.close(reader, dir);
   }
 
   public void testDemo() throws IOException {
@@ -359,8 +371,7 @@ public class TestFeatureField extends LuceneTestCase {
     assertEquals(3, topDocs.scoreDocs[2].doc);
     assertEquals(2, topDocs.scoreDocs[3].doc);
 
-    reader.close();
-    dir.close();
+    IOUtils.close(reader, dir);
   }
 
   public void testBasicsNonScoringCase() throws IOException {
@@ -444,6 +455,142 @@ public class TestFeatureField extends LuceneTestCase {
         assertEquals(q.toString(), DocIdSetIterator.NO_MORE_DOCS, s.iterator().nextDoc());
       }
       reader.close();
+    }
+  }
+
+  public void testStoreTermVectors() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter writer =
+        new RandomIndexWriter(
+            random(),
+            dir,
+            newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+    Document doc = new Document();
+    FeatureField pagerank = new FeatureField("features", "pagerank", 1, true);
+    FeatureField urlLength = new FeatureField("features", "urlLen", 1, true);
+    doc.add(pagerank);
+    doc.add(urlLength);
+
+    pagerank.setFeatureValue(10);
+    urlLength.setFeatureValue(0.5f);
+    writer.addDocument(doc);
+
+    writer.addDocument(new Document()); // gap
+
+    pagerank.setFeatureValue(42);
+    urlLength.setFeatureValue(1.5f);
+    writer.addDocument(doc);
+
+    doc.clear();
+    FeatureField invalid = new FeatureField("features", "pagerank", 1, false);
+    doc.add(invalid);
+    var exc = expectThrows(Exception.class, () -> writer.addDocument(doc));
+    assertThat(
+        exc.getMessage(),
+        anyOf(containsString("store term vector"), containsString("storeTermVector")));
+
+    writer.forceMerge(1);
+    DirectoryReader reader = writer.getReader();
+    writer.close();
+
+    IndexSearcher searcher = LuceneTestCase.newSearcher(reader);
+    LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
+
+    var fieldInfo = context.reader().getFieldInfos().fieldInfo("features");
+    assertTrue(fieldInfo.hasTermVectors());
+
+    var terms = context.reader().termVectors().get(0, "features");
+    var termsEnum = terms.iterator();
+    assertThat(termsEnum.next(), equalTo(new BytesRef("pagerank")));
+    var postings = termsEnum.postings(null);
+    assertThat(postings.nextDoc(), equalTo(0));
+    assertThat(FeatureField.decodeFeatureValue(postings.freq()), equalTo(10f));
+    assertThat(postings.nextDoc(), equalTo(DocIdSetIterator.NO_MORE_DOCS));
+
+    assertThat(termsEnum.next(), equalTo(new BytesRef("urlLen")));
+    postings = termsEnum.postings(postings);
+    assertThat(postings.nextDoc(), equalTo(0));
+    assertThat(FeatureField.decodeFeatureValue(postings.freq()), equalTo(0.5f));
+    assertThat(postings.nextDoc(), equalTo(DocIdSetIterator.NO_MORE_DOCS));
+
+    terms = context.reader().termVectors().get(1, "features");
+    assertNull(terms);
+
+    terms = context.reader().termVectors().get(2, "features");
+    termsEnum = terms.iterator();
+    assertThat(termsEnum.next(), equalTo(new BytesRef("pagerank")));
+    postings = termsEnum.postings(postings);
+    assertThat(postings.nextDoc(), equalTo(0));
+    assertThat(FeatureField.decodeFeatureValue(postings.freq()), equalTo(42f));
+    assertThat(postings.nextDoc(), equalTo(DocIdSetIterator.NO_MORE_DOCS));
+
+    assertThat(termsEnum.next(), equalTo(new BytesRef("urlLen")));
+    postings = termsEnum.postings(null);
+    assertThat(postings.nextDoc(), equalTo(0));
+    assertThat(FeatureField.decodeFeatureValue(postings.freq()), equalTo(1.5f));
+    assertThat(postings.nextDoc(), equalTo(DocIdSetIterator.NO_MORE_DOCS));
+
+    IOUtils.close(reader, dir);
+  }
+
+  public void testLinearBulkScorer() {
+    FeatureField.LinearFunction func = new FeatureField.LinearFunction();
+    SimScorer scorer = func.scorer(2f); // weight = 2
+    Similarity.BulkSimScorer bulkScorer = scorer.asBulkSimScorer();
+    doTestBulkScorer(scorer, bulkScorer);
+  }
+
+  public void testLogBulkScorer() {
+    FeatureField.LogFunction func = new FeatureField.LogFunction(4.5f);
+    SimScorer scorer = func.scorer(3f); // weight = 3
+    Similarity.BulkSimScorer bulkScorer = scorer.asBulkSimScorer();
+    doTestBulkScorer(scorer, bulkScorer);
+  }
+
+  public void testSaturationBulkScorer() {
+    FeatureField.SaturationFunction func = new FeatureField.SaturationFunction("foo", "bar", 4.5f);
+    SimScorer scorer = func.scorer(3f);
+    Similarity.BulkSimScorer bulkScorer = scorer.asBulkSimScorer();
+    doTestBulkScorer(scorer, bulkScorer);
+  }
+
+  public void testSigmoidBulkScorer() {
+    FeatureField.SigmoidFunction func = new FeatureField.SigmoidFunction(4.5f, 0.6f);
+    SimScorer scorer = func.scorer(3f);
+    Similarity.BulkSimScorer bulkScorer = scorer.asBulkSimScorer();
+    doTestBulkScorer(scorer, bulkScorer);
+  }
+
+  private void doTestBulkScorer(SimScorer scorer, Similarity.BulkSimScorer bulkScorer) {
+    Random random = random();
+    int iters = atLeast(3);
+    float[] freqs = new float[0];
+    long[] norms = new long[0];
+    float[] scores = new float[0];
+
+    for (int iter = 0; iter < iters; ++iter) {
+      int size = TestUtil.nextInt(random, 0, 200);
+      if (size > freqs.length) {
+        freqs = new float[ArrayUtil.oversize(size, Float.BYTES)];
+        norms = new long[freqs.length];
+        scores = new float[freqs.length];
+      }
+      for (int i = 0; i < size; ++i) {
+        freqs[i] = TestUtil.nextInt(random, 1, 1000); // freq values
+        norms[i] = TestUtil.nextLong(random, 1, 255); // norms in byte range
+      }
+
+      float[] expected = new float[size];
+      for (int i = 0; i < size; ++i) {
+        expected[i] = scorer.score(freqs[i], norms[i]);
+      }
+
+      bulkScorer.score(size, freqs, norms, scores);
+
+      assertArrayEquals(
+          ArrayUtil.copyOfSubArray(expected, 0, size),
+          ArrayUtil.copyOfSubArray(scores, 0, size),
+          0f);
     }
   }
 }

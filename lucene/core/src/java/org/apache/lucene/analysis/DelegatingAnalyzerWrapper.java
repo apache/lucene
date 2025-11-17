@@ -100,5 +100,4 @@ public abstract class DelegatingAnalyzerWrapper extends AnalyzerWrapper {
       }
     }
   }
-  ;
 }

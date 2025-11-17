@@ -50,14 +50,23 @@ public class TotalHitCountCollector implements Collector {
       totalHits += leafCount;
       throw new CollectionTerminatedException();
     }
+    return createLeafCollector();
+  }
+
+  protected final LeafCollector createLeafCollector() {
     return new LeafCollector() {
 
       @Override
-      public void setScorer(Scorable scorer) throws IOException {}
+      public void setScorer(Scorable scorer) {}
 
       @Override
-      public void collect(int doc) throws IOException {
+      public void collect(int doc) {
         totalHits++;
+      }
+
+      @Override
+      public void collect(DocIdStream stream) throws IOException {
+        totalHits += stream.count();
       }
     };
   }

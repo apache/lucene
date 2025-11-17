@@ -40,7 +40,9 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.VectorUtil;
 
@@ -82,6 +84,24 @@ public class TestFieldExistsQuery extends LuceneTestCase {
 
     assertTrue(
         new FieldExistsQuery("dim").rewrite(newSearcher(reader)) instanceof MatchAllDocsQuery);
+    reader.close();
+    dir.close();
+  }
+
+  public void testDocValuesRewriteWithDocValuesSkipperPresent() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    final int numDocs = atLeast(100);
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      doc.add(NumericDocValuesField.indexedField("dim", 2));
+      iw.addDocument(doc);
+    }
+    iw.commit();
+    final IndexReader reader = iw.getReader();
+    iw.close();
+
+    assertEquals(new MatchAllDocsQuery(), new FieldExistsQuery("dim").rewrite(newSearcher(reader)));
     reader.close();
     dir.close();
   }
@@ -646,6 +666,39 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     }
   }
 
+  public void testDeleteKnnVector() throws IOException {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+      final int numDocs = atLeast(100);
+
+      boolean allDocsHaveVector = random().nextBoolean();
+      BitSet docWithVector = new FixedBitSet(numDocs);
+      for (int i = 0; i < numDocs; ++i) {
+        Document doc = new Document();
+        if (allDocsHaveVector || random().nextBoolean()) {
+          doc.add(new KnnFloatVectorField("vector", randomVector(5)));
+          docWithVector.set(i);
+        }
+        doc.add(new StringField("id", Integer.toString(i), Store.NO));
+        iw.addDocument(doc);
+      }
+      if (random().nextBoolean()) {
+        final int numDeleted = random().nextInt(numDocs) + 1;
+        for (int i = 0; i < numDeleted; ++i) {
+          iw.deleteDocuments(new Term("id", Integer.toString(i)));
+          docWithVector.clear(i);
+        }
+      }
+
+      try (IndexReader reader = iw.getReader()) {
+        final IndexSearcher searcher = newSearcher(reader);
+
+        final int count = searcher.count(new FieldExistsQuery("vector"));
+        assertEquals(docWithVector.cardinality(), count);
+      }
+    }
+  }
+
   public void testKnnVectorConjunction() throws IOException {
     try (Directory dir = newDirectory();
         RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
@@ -704,6 +757,41 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     }
     VectorUtil.l2normalize(v);
     return v;
+  }
+
+  public void testDeleteDocValues() throws IOException {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+      final int numDocs = atLeast(100);
+
+      boolean allDocsHaveValue = random().nextBoolean();
+      BitSet docWithValue = new FixedBitSet(numDocs);
+      for (int i = 0; i < numDocs; ++i) {
+        Document doc = new Document();
+        if (allDocsHaveValue || random().nextBoolean()) {
+          doc.add(NumericDocValuesField.indexedField("num", i));
+          docWithValue.set(i);
+        }
+        doc.add(new StringField("id", Integer.toString(i), Store.NO));
+        iw.addDocument(doc);
+      }
+
+      if (random().nextBoolean()) {
+        final int numDeleted = random().nextInt(numDocs) + 1;
+        for (int i = 0; i < numDeleted; ++i) {
+          int id = random().nextInt(numDocs);
+          iw.deleteDocuments(new Term("id", Integer.toString(id)));
+          docWithValue.clear(id);
+        }
+      }
+
+      try (IndexReader reader = iw.getReader()) {
+        final IndexSearcher searcher = newSearcher(reader);
+
+        final int count = searcher.count(new FieldExistsQuery("num"));
+        assertEquals(docWithValue.cardinality(), count);
+      }
+    }
   }
 
   public void testDeleteAllPointDocs() throws Exception {
@@ -769,7 +857,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     final int maxDoc = searcher.getIndexReader().maxDoc();
     final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
     final TopDocs td2 = searcher.search(q2, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
-    assertEquals(td1.totalHits.value, td2.totalHits.value);
+    assertEquals(td1.totalHits.value(), td2.totalHits.value());
     for (int i = 0; i < td1.scoreDocs.length; ++i) {
       assertEquals(td1.scoreDocs[i].doc, td2.scoreDocs[i].doc);
       if (scores) {

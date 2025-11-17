@@ -49,7 +49,7 @@ public class TrecLATimesParser extends TrecDocParser {
       if (d2a > 0) {
         dateStr = dateStr.substring(0, d2a + 3); // we need the "day" part
       }
-      dateStr = stripTags(dateStr, 0).toString();
+      dateStr = stripTags(dateStr, 0);
       date = trecSrc.parseDate(dateStr.trim());
     }
 
@@ -59,14 +59,14 @@ public class TrecLATimesParser extends TrecDocParser {
       title = extract(docBuf, HEADLINE, HEADLINE_END, -1, null);
     }
     if (title != null) {
-      title = stripTags(title, 0).toString().trim();
+      title = stripTags(title, 0).trim();
     }
 
     docData.clear();
     docData.setName(name);
     docData.setDate(date);
     docData.setTitle(title);
-    docData.setBody(stripTags(docBuf, mark).toString());
+    docData.setBody(stripTags(docBuf, mark));
     return docData;
   }
 }

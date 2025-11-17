@@ -29,6 +29,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BitSetIterator;
@@ -151,8 +152,17 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
               postingsEnum = segmentTermsEnum.postings(postingsEnum, PostingsEnum.NONE);
               if (postingsEnum.advance(doc) == doc) {
                 final float score = TermsIncludingScoreQuery.this.scores[ords[i]];
-                return Explanation.match(
-                    score, "Score based on join value " + segmentTermsEnum.term().utf8ToString());
+                if (boost == 1.0f) {
+                  return Explanation.match(
+                      score, "Score based on join value " + segmentTermsEnum.term().utf8ToString());
+                } else {
+                  return Explanation.match(
+                      score * boost,
+                      "Score based on join value "
+                          + segmentTermsEnum.term().utf8ToString()
+                          + "^"
+                          + boost);
+                }
               }
             }
           }
@@ -161,7 +171,8 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        final Scorer scorer;
         Terms terms = context.reader().terms(toField);
         if (terms == null) {
           return null;
@@ -172,10 +183,11 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
 
         TermsEnum segmentTermsEnum = terms.iterator();
         if (multipleValuesPerDocument) {
-          return new MVInOrderScorer(this, segmentTermsEnum, context.reader().maxDoc(), cost);
+          scorer = new MVInOrderScorer(segmentTermsEnum, context.reader().maxDoc(), cost, boost);
         } else {
-          return new SVInOrderScorer(this, segmentTermsEnum, context.reader().maxDoc(), cost);
+          scorer = new SVInOrderScorer(segmentTermsEnum, context.reader().maxDoc(), cost, boost);
         }
+        return new DefaultScorerSupplier(scorer);
       }
 
       @Override
@@ -190,14 +202,15 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
     final DocIdSetIterator matchingDocsIterator;
     final float[] scores;
     final long cost;
+    final float boost;
 
-    SVInOrderScorer(Weight weight, TermsEnum termsEnum, int maxDoc, long cost) throws IOException {
-      super(weight);
+    SVInOrderScorer(TermsEnum termsEnum, int maxDoc, long cost, float boost) throws IOException {
       FixedBitSet matchingDocs = new FixedBitSet(maxDoc);
       this.scores = new float[maxDoc];
       fillDocsAndScores(matchingDocs, termsEnum);
       this.matchingDocsIterator = new BitSetIterator(matchingDocs, cost);
       this.cost = cost;
+      this.boost = boost;
     }
 
     protected void fillDocsAndScores(FixedBitSet matchingDocs, TermsEnum termsEnum)
@@ -223,7 +236,7 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
 
     @Override
     public float score() throws IOException {
-      return scores[docID()];
+      return scores[docID()] * boost;
     }
 
     @Override
@@ -246,8 +259,8 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
   // related documents.
   class MVInOrderScorer extends SVInOrderScorer {
 
-    MVInOrderScorer(Weight weight, TermsEnum termsEnum, int maxDoc, long cost) throws IOException {
-      super(weight, termsEnum, maxDoc, cost);
+    MVInOrderScorer(TermsEnum termsEnum, int maxDoc, long cost, float boost) throws IOException {
+      super(termsEnum, maxDoc, cost, boost);
     }
 
     @Override
@@ -268,9 +281,8 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
               matchingDocs.set(doc);
             }*/
             // But this behaves the same as MVInnerScorer and only then the tests will pass:
-            if (!matchingDocs.get(doc)) {
+            if (!matchingDocs.getAndSet(doc)) {
               scores[doc] = score;
-              matchingDocs.set(doc);
             }
           }
         }

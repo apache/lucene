@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.MathUtil;
 
 /**
  * The {@link TimeLimitingBulkScorer} is used to timeout search requests that take longer than the
@@ -41,6 +42,12 @@ final class TimeLimitingBulkScorer extends BulkScorer {
     private TimeExceededException() {
       super("TimeLimit Exceeded");
     }
+
+    @Override
+    public Throwable fillInStackTrace() {
+      // never re-thrown so we can save the expensive stacktrace
+      return this;
+    }
   }
 
   private final BulkScorer in;
@@ -55,7 +62,7 @@ final class TimeLimitingBulkScorer extends BulkScorer {
    *     TimeLimitingBulkScorer.TimeExceededException} is thrown
    */
   public TimeLimitingBulkScorer(BulkScorer bulkScorer, QueryTimeout queryTimeout) {
-    this.in = bulkScorer;
+    this.in = Objects.requireNonNull(bulkScorer);
     this.queryTimeout = Objects.requireNonNull(queryTimeout);
   }
 
@@ -63,7 +70,7 @@ final class TimeLimitingBulkScorer extends BulkScorer {
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
     int interval = INTERVAL;
     while (min < max) {
-      final int newMax = (int) Math.min((long) min + interval, max);
+      final int newMax = MathUtil.unsignedMin(min + interval, max);
       final int newInterval =
           interval + (interval >> 1); // increase the interval by 50% on each iteration
       // overflow check

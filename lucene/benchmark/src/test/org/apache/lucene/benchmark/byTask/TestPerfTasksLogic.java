@@ -793,19 +793,17 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
 
     // ROOT locale
     benchmark = execBenchmark(getLocaleConfig("ROOT"));
-    assertEquals(new Locale(""), benchmark.getRunData().getLocale());
+    assertEquals(Locale.ROOT, benchmark.getRunData().getLocale());
 
     // specify just a language
     benchmark = execBenchmark(getLocaleConfig("de"));
-    assertEquals(new Locale("de"), benchmark.getRunData().getLocale());
+    assertEquals(
+        new Locale.Builder().setLanguageTag("de").build(), benchmark.getRunData().getLocale());
 
     // specify language + country
-    benchmark = execBenchmark(getLocaleConfig("en,US"));
-    assertEquals(new Locale("en", "US"), benchmark.getRunData().getLocale());
-
-    // specify language + country + variant
-    benchmark = execBenchmark(getLocaleConfig("no,NO,NY"));
-    assertEquals(new Locale("no", "NO", "NY"), benchmark.getRunData().getLocale());
+    benchmark = execBenchmark(getLocaleConfig("en-US"));
+    assertEquals(
+        new Locale.Builder().setLanguageTag("en-US").build(), benchmark.getRunData().getLocale());
   }
 
   private String[] getLocaleConfig(String localeParam) {
@@ -832,22 +830,28 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
   public void testCollator() throws Exception {
     // ROOT locale
     Benchmark benchmark = execBenchmark(getCollatorConfig("ROOT", "impl:jdk"));
-    CollationKeyAnalyzer expected = new CollationKeyAnalyzer(Collator.getInstance(new Locale("")));
+    CollationKeyAnalyzer expected = new CollationKeyAnalyzer(Collator.getInstance(Locale.ROOT));
     assertEqualCollation(expected, benchmark.getRunData().getAnalyzer(), "foobar");
 
     // specify just a language
     benchmark = execBenchmark(getCollatorConfig("de", "impl:jdk"));
-    expected = new CollationKeyAnalyzer(Collator.getInstance(new Locale("de")));
+    expected =
+        new CollationKeyAnalyzer(
+            Collator.getInstance(new Locale.Builder().setLanguageTag("de").build()));
     assertEqualCollation(expected, benchmark.getRunData().getAnalyzer(), "foobar");
 
     // specify language + country
-    benchmark = execBenchmark(getCollatorConfig("en,US", "impl:jdk"));
-    expected = new CollationKeyAnalyzer(Collator.getInstance(new Locale("en", "US")));
+    benchmark = execBenchmark(getCollatorConfig("en-US", "impl:jdk"));
+    expected =
+        new CollationKeyAnalyzer(
+            Collator.getInstance(new Locale.Builder().setLanguageTag("en-US").build()));
     assertEqualCollation(expected, benchmark.getRunData().getAnalyzer(), "foobar");
 
     // specify language + country + variant
-    benchmark = execBenchmark(getCollatorConfig("no,NO,NY", "impl:jdk"));
-    expected = new CollationKeyAnalyzer(Collator.getInstance(new Locale("no", "NO", "NY")));
+    benchmark = execBenchmark(getCollatorConfig("nn-NO", "impl:jdk"));
+    expected =
+        new CollationKeyAnalyzer(
+            Collator.getInstance(new Locale.Builder().setLanguageTag("nn-NO").build()));
     assertEqualCollation(expected, benchmark.getRunData().getAnalyzer(), "foobar");
   }
 
@@ -957,12 +961,11 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
   }
 
   private String[] getAnalyzerFactoryConfig(String name, String params) {
-    final String singleQuoteEscapedName = name.replaceAll("'", "\\\\'");
+    final String singleQuoteEscapedName = name.replace("'", "\\'");
     String[] algLines = {
       "content.source=org.apache.lucene.benchmark.byTask.feeds.LineDocSource",
       "docs.file=" + getReuters20LinesFile(),
-      "work.dir="
-          + getWorkDir().toAbsolutePath().toString().replaceAll("\\\\", "/"), // Fix Windows path
+      "work.dir=" + getWorkDir().toAbsolutePath().toString().replace('\\', '/'), // Fix Windows path
       "content.source.forever=false",
       "directory=ByteBuffersDirectory",
       "AnalyzerFactory(name:'" + singleQuoteEscapedName + "', " + params + ")",

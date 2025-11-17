@@ -16,15 +16,15 @@
  */
 package org.apache.lucene.index;
 
+import org.apache.lucene.search.PhraseQuery;
+
 /**
  * Controls how much information is stored in the postings lists.
  *
  * @lucene.experimental
  */
 public enum IndexOptions {
-  // NOTE: order is important here; FieldInfo uses this
-  // order to merge two conflicting IndexOptions (always
-  // "downgrades" by picking the lowest).
+  // NOTE: order is important here; enum ordinals can be used to compare options.
   /** Not indexed */
   NONE,
   /**
@@ -35,7 +35,7 @@ public enum IndexOptions {
   DOCS,
   /**
    * Only documents and term frequencies are indexed: positions are omitted. This enables normal
-   * scoring, except Phrase and other positional queries will throw an exception.
+   * scoring, except {@link PhraseQuery} and other positional queries will throw an exception.
    */
   DOCS_AND_FREQS,
   /**

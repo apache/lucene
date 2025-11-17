@@ -25,8 +25,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.lucene.internal.hppc.LongHashSet;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
@@ -56,7 +56,6 @@ final class BufferedUpdatesStream implements Accountable {
   private final FinishedSegments finishedSegments;
   private final InfoStream infoStream;
   private final AtomicLong bytesUsed = new AtomicLong();
-  private final AtomicInteger numTerms = new AtomicInteger();
 
   BufferedUpdatesStream(InfoStream infoStream) {
     this.infoStream = infoStream;
@@ -78,7 +77,6 @@ final class BufferedUpdatesStream implements Accountable {
     assert checkDeleteStats();
 
     updates.add(packet);
-    numTerms.addAndGet(packet.numTermDeletes);
     bytesUsed.addAndGet(packet.bytesUsed);
     if (infoStream.isEnabled("BD")) {
       infoStream.message(
@@ -104,7 +102,6 @@ final class BufferedUpdatesStream implements Accountable {
     updates.clear();
     nextGen = 1;
     finishedSegments.clear();
-    numTerms.set(0);
     bytesUsed.set(0);
   }
 
@@ -112,28 +109,16 @@ final class BufferedUpdatesStream implements Accountable {
     return bytesUsed.get() != 0;
   }
 
-  int numTerms() {
-    return numTerms.get();
-  }
-
   @Override
   public long ramBytesUsed() {
     return bytesUsed.get();
   }
 
-  static class ApplyDeletesResult {
-
-    // True if any actual deletes took place:
-    final boolean anyDeletes;
-
-    // If non-null, contains segments that are 100% deleted
-    final List<SegmentCommitInfo> allDeleted;
-
-    ApplyDeletesResult(boolean anyDeletes, List<SegmentCommitInfo> allDeleted) {
-      this.anyDeletes = anyDeletes;
-      this.allDeleted = allDeleted;
-    }
-  }
+  /**
+   * @param anyDeletes True if any actual deletes took place:
+   * @param allDeleted If non-null, contains segments that are 100% deleted
+   */
+  record ApplyDeletesResult(boolean anyDeletes, List<SegmentCommitInfo> allDeleted) {}
 
   /**
    * Waits for all in-flight packets, which are already being resolved concurrently by indexing
@@ -175,8 +160,6 @@ final class BufferedUpdatesStream implements Accountable {
     packet.applied.countDown();
 
     updates.remove(packet);
-    numTerms.addAndGet(-packet.numTermDeletes);
-    assert numTerms.get() >= 0 : "numTerms=" + numTerms + " packet=" + packet;
 
     bytesUsed.addAndGet(-packet.bytesUsed);
 
@@ -292,7 +275,7 @@ final class BufferedUpdatesStream implements Accountable {
         ReadersAndUpdates rld, IOConsumer<ReadersAndUpdates> onClose, SegmentCommitInfo info)
         throws IOException {
       this.rld = rld;
-      reader = rld.getReader(IOContext.READ);
+      reader = rld.getReader(IOContext.DEFAULT);
       startDelCount = rld.getDelCount();
       delGen = info.getBufferedDeletesGen();
       this.onClose = onClose;
@@ -311,13 +294,10 @@ final class BufferedUpdatesStream implements Accountable {
 
   // only for assert
   private boolean checkDeleteStats() {
-    int numTerms2 = 0;
     long bytesUsed2 = 0;
     for (FrozenBufferedUpdates packet : updates) {
-      numTerms2 += packet.numTermDeletes;
       bytesUsed2 += packet.bytesUsed;
     }
-    assert numTerms2 == numTerms.get() : "numTerms2=" + numTerms2 + " vs " + numTerms.get();
     assert bytesUsed2 == bytesUsed.get() : "bytesUsed2=" + bytesUsed2 + " vs " + bytesUsed;
     return true;
   }
@@ -336,7 +316,7 @@ final class BufferedUpdatesStream implements Accountable {
      * This lets us track the "holes" in the current frontier of applying del gens; once the holes
      * are filled in we can advance completedDelGen.
      */
-    private final Set<Long> finishedDelGens = new HashSet<>();
+    private final LongHashSet finishedDelGens = new LongHashSet();
 
     private final InfoStream infoStream;
 

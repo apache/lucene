@@ -156,10 +156,10 @@ class SimpleGeoJSONPolygonParser {
         o = parseString();
       } else if (ch == 't') {
         scan("true");
-        o = Boolean.TRUE;
+        o = true;
       } else if (ch == 'f') {
         scan("false");
-        o = Boolean.FALSE;
+        o = false;
       } else if (ch == 'n') {
         scan("null");
         o = null;
@@ -194,7 +194,7 @@ class SimpleGeoJSONPolygonParser {
         } else if (type.equals("MultiPolygon") && isValidGeometryPath(path)) {
           polyType = "MultiPolygon";
         } else if ((type.equals("FeatureCollection") || type.equals("Feature"))
-            && (path.equals("features.[]") || path.equals(""))) {
+            && (path.equals("features.[]") || path.isEmpty())) {
           // OK, we recurse
         } else {
           upto = uptoStart;
@@ -220,7 +220,7 @@ class SimpleGeoJSONPolygonParser {
 
   /** Returns true if the object path is a valid location to see a Multi/Polygon geometry */
   private boolean isValidGeometryPath(String path) {
-    return path.equals("") || path.equals("geometry") || path.equals("features.[].geometry");
+    return path.isEmpty() || path.equals("geometry") || path.equals("features.[].geometry");
   }
 
   private Polygon parsePolygon(List<Object> coordinates) throws ParseException {
@@ -342,9 +342,7 @@ class SimpleGeoJSONPolygonParser {
     // we only handle doubles
     try {
       return Double.parseDouble(b.toString());
-    } catch (
-        @SuppressWarnings("unused")
-        NumberFormatException nfe) {
+    } catch (NumberFormatException _) {
       upto = uptoStart;
       throw newParseException("could not parse number as double");
     }

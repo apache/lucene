@@ -20,6 +20,7 @@ class Geo3DUtil {
 
   /** How many radians are in one degree */
   static final double RADIANS_PER_DEGREE = Math.PI / 180.0;
+
   /** How many degrees in a radian */
   static final double DEGREES_PER_RADIAN = 180.0 / Math.PI;
 

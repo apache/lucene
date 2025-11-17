@@ -17,6 +17,7 @@
 package org.apache.lucene.util.fst;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.IntsRef;
@@ -43,28 +44,29 @@ public final class IntSequenceOutputs extends Outputs<IntsRef> {
     assert output1 != null;
     assert output2 != null;
 
-    int pos1 = output1.offset;
-    int pos2 = output2.offset;
-    int stopAt1 = pos1 + Math.min(output1.length, output2.length);
-    while (pos1 < stopAt1) {
-      if (output1.ints[pos1] != output2.ints[pos2]) {
-        break;
-      }
-      pos1++;
-      pos2++;
-    }
+    int mismatchPos =
+        Arrays.mismatch(
+            output1.ints,
+            output1.offset,
+            output1.offset + output1.length,
+            output2.ints,
+            output2.offset,
+            output2.offset + output2.length);
 
-    if (pos1 == output1.offset) {
+    if (mismatchPos == 0) {
       // no common prefix
       return NO_OUTPUT;
-    } else if (pos1 == output1.offset + output1.length) {
+    } else if (mismatchPos == -1) {
+      // exactly equals
+      return output1;
+    } else if (mismatchPos == output1.length) {
       // output1 is a prefix of output2
       return output1;
-    } else if (pos2 == output2.offset + output2.length) {
+    } else if (mismatchPos == output2.length) {
       // output2 is a prefix of output1
       return output2;
     } else {
-      return new IntsRef(output1.ints, output1.offset, pos1 - output1.offset);
+      return new IntsRef(output1.ints, output1.offset, mismatchPos);
     }
   }
 

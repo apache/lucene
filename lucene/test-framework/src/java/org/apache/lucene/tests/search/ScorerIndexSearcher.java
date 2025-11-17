@@ -17,18 +17,16 @@
 package org.apache.lucene.tests.search;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.concurrent.Executor;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.Collector;
-import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FilterWeight;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.util.Bits;
 
 /** An {@link IndexSearcher} that always uses the {@link Scorer} API, never {@link BulkScorer}. */
 public class ScorerIndexSearcher extends IndexSearcher {
@@ -53,26 +51,38 @@ public class ScorerIndexSearcher extends IndexSearcher {
   }
 
   @Override
-  protected void search(List<LeafReaderContext> leaves, Weight weight, Collector collector)
+  protected void searchLeaf(
+      LeafReaderContext ctx, int minDocId, int maxDocId, Weight weight, Collector collector)
       throws IOException {
-    for (LeafReaderContext ctx : leaves) { // search each subreader
-      // we force the use of Scorer (not BulkScorer) to make sure
-      // that the scorer passed to LeafCollector.setScorer supports
-      // Scorer.getChildren
-      Scorer scorer = weight.scorer(ctx);
-      if (scorer != null) {
-        final DocIdSetIterator iterator = scorer.iterator();
-        final LeafCollector leafCollector = collector.getLeafCollector(ctx);
-        leafCollector.setScorer(scorer);
-        final Bits liveDocs = ctx.reader().getLiveDocs();
-        for (int doc = iterator.nextDoc();
-            doc != DocIdSetIterator.NO_MORE_DOCS;
-            doc = iterator.nextDoc()) {
-          if (liveDocs == null || liveDocs.get(doc)) {
-            leafCollector.collect(doc);
+    Weight filterWeight =
+        new FilterWeight(weight) {
+          @Override
+          public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+            ScorerSupplier in = super.scorerSupplier(context);
+            if (in == null) {
+              return null;
+            }
+            return new ScorerSupplier() {
+
+              @Override
+              public Scorer get(long leadCost) throws IOException {
+                return in.get(leadCost);
+              }
+
+              @Override
+              public BulkScorer bulkScorer() throws IOException {
+                // Don't delegate to `in` to make sure we get a DefaultBulkScorer
+                return super.bulkScorer();
+              }
+
+              @Override
+              public long cost() {
+                return in.cost();
+              }
+            };
           }
-        }
-      }
-    }
+        };
+
+    super.searchLeaf(ctx, minDocId, maxDocId, filterWeight, collector);
   }
 }

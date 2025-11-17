@@ -61,7 +61,7 @@ import org.junit.BeforeClass;
 //   - skipTo(doc)
 
 public class TestCodecs extends LuceneTestCase {
-  private static String[] fieldNames = new String[] {"one", "two", "three", "four"};
+  private static final String[] fieldNames = new String[] {"one", "two", "three", "four"};
 
   private static int NUM_TEST_ITER;
   private static final int NUM_TEST_THREADS = 3;
@@ -106,6 +106,7 @@ public class TestCodecs extends LuceneTestCase {
                     storePayloads,
                     indexOptions,
                     DocValuesType.NONE,
+                    DocValuesSkipIndexType.NONE,
                     -1,
                     new HashMap<>(),
                     0,
@@ -114,6 +115,7 @@ public class TestCodecs extends LuceneTestCase {
                     0,
                     VectorEncoding.FLOAT32,
                     VectorSimilarityFunction.EUCLIDEAN,
+                    false,
                     false));
       }
       this.terms = terms;
@@ -229,7 +231,8 @@ public class TestCodecs extends LuceneTestCase {
       terms[i] = new TermData(text, docs, null);
     }
 
-    final FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
+    final FieldInfos.Builder builder =
+        new FieldInfos.Builder(new FieldInfos.FieldNumbers(null, null));
 
     final FieldData field = new FieldData("field", builder, terms, true, false);
     final FieldData[] fields = new FieldData[] {field};
@@ -243,6 +246,7 @@ public class TestCodecs extends LuceneTestCase {
             Version.LATEST,
             SEGMENT,
             10000,
+            false,
             false,
             codec,
             Collections.emptyMap(),
@@ -291,7 +295,8 @@ public class TestCodecs extends LuceneTestCase {
   }
 
   public void testRandomPostings() throws Throwable {
-    final FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
+    final FieldInfos.Builder builder =
+        new FieldInfos.Builder(new FieldInfos.FieldNumbers(null, null));
 
     final FieldData[] fields = new FieldData[NUM_FIELDS];
     for (int i = 0; i < NUM_FIELDS; i++) {
@@ -321,6 +326,7 @@ public class TestCodecs extends LuceneTestCase {
             Version.LATEST,
             SEGMENT,
             10000,
+            false,
             false,
             codec,
             Collections.emptyMap(),
@@ -453,9 +459,7 @@ public class TestCodecs extends LuceneTestCase {
         try {
           termsEnum.seekExact(idx);
           success = true;
-        } catch (
-            @SuppressWarnings("unused")
-            UnsupportedOperationException uoe) {
+        } catch (UnsupportedOperationException _) {
           // ok -- skip it
         }
         if (success) {
@@ -507,9 +511,7 @@ public class TestCodecs extends LuceneTestCase {
             termsEnum.seekExact(i);
             assertEquals(field.terms[i].docs.length, termsEnum.docFreq());
             assertTrue(termsEnum.term().bytesEquals(new BytesRef(field.terms[i].text2)));
-          } catch (
-              @SuppressWarnings("unused")
-              UnsupportedOperationException uoe) {
+          } catch (UnsupportedOperationException _) {
           }
         }
 
@@ -600,7 +602,7 @@ public class TestCodecs extends LuceneTestCase {
 
     @Override
     public Iterator<String> iterator() {
-      return new Iterator<String>() {
+      return new Iterator<>() {
         int upto = -1;
 
         @Override

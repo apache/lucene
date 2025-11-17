@@ -17,10 +17,12 @@
 package org.apache.lucene.analysis.charfilter;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringReader;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -172,7 +174,7 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
       "<a href='http://alievi.wordpress.com/category/01-todos-posts/' style='font-size: 275%; padding: 1px; margin: 1px;' title='01 - Todos Post's (83)'>",
       "",
       "The <a href=<a href=\"http://www.advancedmd.com>medical\">http://www.advancedmd.com>medical</a> practice software</a>",
-      "The <a href=medical\">http://www.advancedmd.com>medical practice software",
+      "The <a href=http://www.advancedmd.com>medical practice software",
       "<a href=\"node/21426\" class=\"clipTitle2\" title=\"Levi.com/BMX 2008 Clip of the Week 29 \"Morgan Wade Leftover Clips\"\">Levi.com/BMX 2008 Clip of the Week 29...",
       "Levi.com/BMX 2008 Clip of the Week 29...",
       "<a href=\"printer_friendly.php?branch=&year=&submit=go&screen=\";\">Printer Friendly",
@@ -250,13 +252,13 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
       "<a  href=\"http://blog.edu-cyberpg.com/ct.ashx?id=6143c528-080c-4bb2-b765-5ec56c8256d3&url=http%3a%2f%2fwww.gsa.ac.uk%2fmackintoshsketchbook%2f\"\" eudora=\"autourl\">",
       "",
 
-      // "<" before ">" inhibits tag recognition
+      // LUCENE-10520: "<" and ">" in attribute values is valid per the HTML5 spec
       "<input type=\"text\" value=\"<search here>\">",
-      "<input type=\"text\" value=\"\n\">",
+      "",
       "<input type=\"text\" value=\"<search here\">",
-      "<input type=\"text\" value=\"\n",
+      "",
       "<input type=\"text\" value=\"search here>\">",
-      "\">",
+      "",
 
       // "<" and ">" chars are accepted in on[Event] attribute values
       "<input type=\"text\" value=\"&lt;search here&gt;\" onFocus=\"this.value='<search here>'\">",
@@ -476,14 +478,14 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
         // ">"
         =
             TestUtil.randomHtmlishString(random(), maxNumElems)
-                .replaceAll(">", " ")
+                .replace('>', ' ')
                 .replaceFirst("^--", "__");
     String closedAngleBangNonCDATA = "<!" + randomHtmlishString1 + "-[CDATA[&]]>";
 
     // Don't create a comment (disallow "<!--") and don't include a closing ">"
     String randomHtmlishString2 =
         TestUtil.randomHtmlishString(random(), maxNumElems)
-            .replaceAll(">", " ")
+            .replace('>', ' ')
             .replaceFirst("^--", "__");
     String unclosedAngleBangNonCDATA = "<!" + randomHtmlishString2 + "-[CDATA[";
 
@@ -593,8 +595,7 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
         }
     }
     Reader reader = new HTMLStripCharFilter(new StringReader(text.toString()));
-    while (reader.read() != -1)
-      ;
+    while (reader.read() != -1) {}
   }
 
   public void testUTF16Surrogates() throws Exception {
@@ -632,6 +633,22 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
     analyzer.close();
   }
 
+  /**
+   * Test that attributes with {@code '>'} or {@code '<'} characters are parsed correctly.
+   *
+   * @see <a href="https://github.com/apache/lucene/issues/11556">GITHUB#11556</a>
+   * @throws IOException on IO error
+   */
+  public void testForIssue10520() throws IOException {
+    String test =
+        "<!DOCTYPE html><html lang=\"en\"><head><title>Test</title></head><body><p class=\"foo>bar\" id=\"baz\">Some text.</p></body></html>";
+    Reader reader = new StringReader(test);
+    HTMLStripCharFilter filter = new HTMLStripCharFilter(reader);
+    StringWriter result = new StringWriter();
+    filter.transferTo(result);
+    assertEquals("Test\n\n\n\nSome text.", result.toString().trim());
+  }
+
   public static void assertHTMLStripsTo(String input, String gold, Set<String> escapedTags)
       throws Exception {
     assertHTMLStripsTo(new StringReader(input), gold, escapedTags);
@@ -652,7 +669,7 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
         builder.append((char) ch);
       }
     } catch (Exception e) {
-      if (gold.equals(builder.toString())) {
+      if (gold.contentEquals(builder)) {
         throw e;
       }
       throw new Exception(

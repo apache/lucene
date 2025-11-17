@@ -16,11 +16,11 @@
  */
 package org.apache.lucene.store;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBytesOfLength;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomLongBetween;
 
-import com.carrotsearch.randomizedtesting.RandomizedTest;
-import com.carrotsearch.randomizedtesting.Xoroshiro128PlusRandom;
 import com.carrotsearch.randomizedtesting.annotations.Timeout;
 import java.io.EOFException;
 import java.io.IOException;
@@ -32,12 +32,12 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOConsumer;
 import org.junit.Test;
 
-public final class TestByteBuffersDataInput extends RandomizedTest {
+public final class TestByteBuffersDataInput extends LuceneTestCase {
   @Test
   public void testSanity() throws IOException {
     ByteBuffersDataOutput out = new ByteBuffersDataOutput();
     ByteBuffersDataInput o1 = out.toDataInput();
-    assertEquals(0, o1.size());
+    assertEquals(0, o1.length());
     LuceneTestCase.expectThrows(
         EOFException.class,
         () -> {
@@ -47,9 +47,9 @@ public final class TestByteBuffersDataInput extends RandomizedTest {
     out.writeByte((byte) 1);
 
     ByteBuffersDataInput o2 = out.toDataInput();
-    assertEquals(1, o2.size());
+    assertEquals(1, o2.length());
     assertEquals(0, o2.position());
-    assertEquals(0, o1.size());
+    assertEquals(0, o1.length());
 
     assertTrue(o2.ramBytesUsed() > 0);
     assertEquals(1, o2.readByte());
@@ -69,10 +69,9 @@ public final class TestByteBuffersDataInput extends RandomizedTest {
   public void testRandomReads() throws Exception {
     ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
 
-    long seed = randomLong();
     int max = LuceneTestCase.TEST_NIGHTLY ? 1_000_000 : 100_000;
     List<IOConsumer<DataInput>> reply =
-        TestByteBuffersDataOutput.addRandomData(dst, new Xoroshiro128PlusRandom(seed), max);
+        TestByteBuffersDataOutput.addRandomData(dst, nonAssertingRandom(random()), max);
 
     ByteBuffersDataInput src = dst.toDataInput();
     for (IOConsumer<DataInput> c : reply) {
@@ -94,10 +93,9 @@ public final class TestByteBuffersDataInput extends RandomizedTest {
       byte[] prefix = new byte[randomIntBetween(0, 1024 * 8)];
       dst.writeBytes(prefix);
 
-      long seed = randomLong();
-      int max = 10_000;
+      int max = atLeast(5000);
       List<IOConsumer<DataInput>> reply =
-          TestByteBuffersDataOutput.addRandomData(dst, new Xoroshiro128PlusRandom(seed), max);
+          TestByteBuffersDataOutput.addRandomData(dst, nonAssertingRandom(random()), max);
 
       byte[] suffix = new byte[randomIntBetween(0, 1024 * 8)];
       dst.writeBytes(suffix);
@@ -106,7 +104,7 @@ public final class TestByteBuffersDataInput extends RandomizedTest {
           dst.toDataInput().slice(prefix.length, dst.size() - prefix.length - suffix.length);
 
       assertEquals(0, src.position());
-      assertEquals(dst.size() - prefix.length - suffix.length, src.size());
+      assertEquals(dst.size() - prefix.length - suffix.length, src.length());
       for (IOConsumer<DataInput> c : reply) {
         c.accept(src);
       }
@@ -150,10 +148,9 @@ public final class TestByteBuffersDataInput extends RandomizedTest {
         dst.writeBytes(prefix);
       }
 
-      long seed = randomLong();
       int max = 1000;
       List<IOConsumer<DataInput>> reply =
-          TestByteBuffersDataOutput.addRandomData(dst, new Xoroshiro128PlusRandom(seed), max);
+          TestByteBuffersDataOutput.addRandomData(dst, random(), max);
 
       ByteBuffersDataInput in = dst.toDataInput().slice(prefix.length, dst.size() - prefix.length);
 
@@ -190,8 +187,8 @@ public final class TestByteBuffersDataInput extends RandomizedTest {
         curr = skipTo + 1; // +1 for read byte
       }
 
-      in.seek(in.size());
-      assertEquals(in.size(), in.position());
+      in.seek(in.length());
+      assertEquals(in.length(), in.position());
       LuceneTestCase.expectThrows(
           EOFException.class,
           () -> {
@@ -203,19 +200,18 @@ public final class TestByteBuffersDataInput extends RandomizedTest {
   @Test
   public void testSlicingWindow() throws Exception {
     ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
-    assertEquals(0, dst.toDataInput().slice(0, 0).size());
-    ;
+    assertEquals(0, dst.toDataInput().slice(0, 0).length());
 
     dst.writeBytes(randomBytesOfLength(1024 * 8));
     ByteBuffersDataInput in = dst.toDataInput();
     for (int offset = 0, max = (int) dst.size(); offset < max; offset++) {
-      assertEquals(0, in.slice(offset, 0).size());
-      assertEquals(1, in.slice(offset, 1).size());
+      assertEquals(0, in.slice(offset, 0).length());
+      assertEquals(1, in.slice(offset, 1).length());
 
       int window = Math.min(max - offset, 1024);
-      assertEquals(window, in.slice(offset, window).size());
+      assertEquals(window, in.slice(offset, window).length());
     }
-    assertEquals(0, in.slice((int) dst.size(), 0).size());
+    assertEquals(0, in.slice((int) dst.size(), 0).length());
   }
 
   @Test
@@ -266,17 +262,17 @@ public final class TestByteBuffersDataInput extends RandomizedTest {
     buffers.get(0).position(shift);
 
     ByteBuffersDataInput dst = new ByteBuffersDataInput(buffers);
-    assertEquals(simulatedLength, dst.size());
+    assertEquals(simulatedLength, dst.length());
 
-    final long max = dst.size();
+    final long max = dst.length();
     long offset = 0;
     for (; offset < max; offset += randomIntBetween(MB, 4 * MB)) {
-      assertEquals(0, dst.slice(offset, 0).size());
-      assertEquals(1, dst.slice(offset, 1).size());
+      assertEquals(0, dst.slice(offset, 0).length());
+      assertEquals(1, dst.slice(offset, 1).length());
 
       long window = Math.min(max - offset, 1024);
       ByteBuffersDataInput slice = dst.slice(offset, window);
-      assertEquals(window, slice.size());
+      assertEquals(window, slice.length());
 
       // Sanity check of the content against original pages.
       for (int i = 0; i < window; i++) {

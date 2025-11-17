@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.TermAndBoost;
 import org.apache.lucene.util.TermAndVector;
 import org.junit.Test;
 
@@ -65,7 +64,7 @@ public class TestWord2VecSynonymProvider extends LuceneTestCase {
 
     assertEquals(4, actualSynonymsResults.size());
     for (int i = 0; i < expectedSynonyms.length; i++) {
-      assertEquals(new BytesRef(expectedSynonyms[i]), actualSynonymsResults.get(i).term);
+      assertEquals(new BytesRef(expectedSynonyms[i]), actualSynonymsResults.get(i).term());
     }
   }
 
@@ -84,8 +83,8 @@ public class TestWord2VecSynonymProvider extends LuceneTestCase {
 
     BytesRef expectedFirstSynonymTerm = new BytesRef("b");
     double expectedFirstSynonymBoost = 1.0;
-    assertEquals(expectedFirstSynonymTerm, actualSynonymsResults.get(0).term);
-    assertEquals(expectedFirstSynonymBoost, actualSynonymsResults.get(0).boost, 0.001f);
+    assertEquals(expectedFirstSynonymTerm, actualSynonymsResults.get(0).term());
+    assertEquals(expectedFirstSynonymBoost, actualSynonymsResults.get(0).boost(), 0.001f);
   }
 
   @Test
@@ -121,8 +120,8 @@ public class TestWord2VecSynonymProvider extends LuceneTestCase {
   @Test
   public void normalizedVector_shouldReturnModule1() {
     TermAndVector synonymTerm = new TermAndVector(new BytesRef("a"), new float[] {10, 10});
-    synonymTerm.normalizeVector();
-    float[] vector = synonymTerm.getVector();
+    synonymTerm = synonymTerm.normalizeVector();
+    float[] vector = synonymTerm.vector();
     float len = 0;
     for (int i = 0; i < vector.length; i++) {
       len += vector[i] * vector[i];

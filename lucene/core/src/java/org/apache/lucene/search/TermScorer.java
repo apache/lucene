@@ -17,9 +17,16 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SlowImpactsEnum;
+import org.apache.lucene.search.similarities.Similarity.BulkSimScorer;
+import org.apache.lucene.search.similarities.Similarity.SimScorer;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.LongsRef;
 
 /**
  * Expert: A <code>Scorer</code> for documents matching a <code>Term</code>.
@@ -28,30 +35,46 @@ import org.apache.lucene.index.SlowImpactsEnum;
  */
 public final class TermScorer extends Scorer {
   private final PostingsEnum postingsEnum;
-  private final ImpactsEnum impactsEnum;
   private final DocIdSetIterator iterator;
-  private final LeafSimScorer docScorer;
+  private final SimScorer scorer;
+  private final BulkSimScorer bulkScorer;
+  private final NumericDocValues norms;
   private final ImpactsDISI impactsDisi;
+  private final MaxScoreCache maxScoreCache;
+  private long[] normValues = LongsRef.EMPTY_LONGS;
 
   /** Construct a {@link TermScorer} that will iterate all documents. */
-  public TermScorer(Weight weight, PostingsEnum postingsEnum, LeafSimScorer docScorer) {
-    super(weight);
+  public TermScorer(PostingsEnum postingsEnum, SimScorer scorer, NumericDocValues norms) {
     iterator = this.postingsEnum = postingsEnum;
-    impactsEnum = new SlowImpactsEnum(postingsEnum);
-    impactsDisi = new ImpactsDISI(impactsEnum, impactsEnum, docScorer.getSimScorer());
-    this.docScorer = docScorer;
+    ImpactsEnum impactsEnum = new SlowImpactsEnum(postingsEnum);
+    maxScoreCache = new MaxScoreCache(impactsEnum, scorer);
+    impactsDisi = null;
+    this.scorer = scorer;
+    this.norms = norms;
+    this.bulkScorer = scorer.asBulkSimScorer();
   }
 
   /**
    * Construct a {@link TermScorer} that will use impacts to skip blocks of non-competitive
    * documents.
    */
-  TermScorer(Weight weight, ImpactsEnum impactsEnum, LeafSimScorer docScorer) {
-    super(weight);
-    postingsEnum = this.impactsEnum = impactsEnum;
-    impactsDisi = new ImpactsDISI(impactsEnum, impactsEnum, docScorer.getSimScorer());
-    iterator = impactsDisi;
-    this.docScorer = docScorer;
+  public TermScorer(
+      ImpactsEnum impactsEnum,
+      SimScorer scorer,
+      NumericDocValues norms,
+      boolean topLevelScoringClause) {
+    postingsEnum = impactsEnum;
+    maxScoreCache = new MaxScoreCache(impactsEnum, scorer);
+    if (topLevelScoringClause) {
+      impactsDisi = new ImpactsDISI(impactsEnum, maxScoreCache);
+      iterator = impactsDisi;
+    } else {
+      impactsDisi = null;
+      iterator = impactsEnum;
+    }
+    this.scorer = scorer;
+    this.norms = norms;
+    this.bulkScorer = scorer.asBulkSimScorer();
   }
 
   @Override
@@ -71,33 +94,75 @@ public final class TermScorer extends Scorer {
 
   @Override
   public float score() throws IOException {
-    assert docID() != DocIdSetIterator.NO_MORE_DOCS;
-    return docScorer.score(postingsEnum.docID(), postingsEnum.freq());
+    var postingsEnum = this.postingsEnum;
+    var norms = this.norms;
+
+    long norm = 1L;
+    if (norms != null && norms.advanceExact(postingsEnum.docID())) {
+      norm = norms.longValue();
+    }
+    return scorer.score(postingsEnum.freq(), norm);
   }
 
   @Override
   public float smoothingScore(int docId) throws IOException {
-    return docScorer.score(docId, 0);
+    long norm = 1L;
+    if (norms != null && norms.advanceExact(docId)) {
+      norm = norms.longValue();
+    }
+    return scorer.score(0, norm);
   }
 
   @Override
   public int advanceShallow(int target) throws IOException {
-    return impactsDisi.advanceShallow(target);
+    return maxScoreCache.advanceShallow(target);
   }
 
   @Override
   public float getMaxScore(int upTo) throws IOException {
-    return impactsDisi.getMaxScore(upTo);
+    return maxScoreCache.getMaxScore(upTo);
   }
 
   @Override
   public void setMinCompetitiveScore(float minScore) {
-    impactsDisi.setMinCompetitiveScore(minScore);
+    if (impactsDisi != null) {
+      impactsDisi.setMinCompetitiveScore(minScore);
+    }
   }
 
-  /** Returns a string representation of this <code>TermScorer</code>. */
   @Override
-  public String toString() {
-    return "scorer(" + weight + ")[" + super.toString() + "]";
+  public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
+      throws IOException {
+    for (; ; ) {
+      if (impactsDisi != null) {
+        impactsDisi.ensureCompetitive();
+      }
+
+      postingsEnum.nextPostings(upTo, buffer);
+      if (liveDocs != null && buffer.size != 0) {
+        // An empty return value indicates that there are no more docs before upTo. We may be
+        // unlucky, and there are docs left, but all docs from the current batch happen to be marked
+        // as deleted. So we need to iterate until we find a batch that has at least one non-deleted
+        // doc.
+        buffer.apply(liveDocs);
+        if (buffer.size == 0) {
+          continue;
+        }
+      }
+      break;
+    }
+
+    int size = buffer.size;
+    if (normValues.length < size) {
+      normValues = new long[ArrayUtil.oversize(size, Long.BYTES)];
+      if (norms == null) {
+        Arrays.fill(normValues, 1L);
+      }
+    }
+    if (norms != null) {
+      norms.longValues(size, buffer.docs, normValues, 1L);
+    }
+
+    bulkScorer.score(buffer.size, buffer.features, normValues, buffer.features);
   }
 }

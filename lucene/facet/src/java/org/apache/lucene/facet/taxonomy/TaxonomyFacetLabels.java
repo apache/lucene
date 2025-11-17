@@ -84,7 +84,7 @@ public class TaxonomyFacetLabels {
     private int currentDocOrdinalCount;
 
     // Lazily set when nextFacetLabel(int docId, String facetDimension) is first called
-    private int[] parents;
+    private ParallelTaxonomyArrays.IntArray parents;
 
     /** Construct from a specified {@link SortedNumericDocValues} field. */
     public FacetLabelReader(SortedNumericDocValues ordinalValues) {
@@ -141,10 +141,10 @@ public class TaxonomyFacetLabels {
 
     private boolean isDescendant(int ord, int ancestorOrd) {
       while (ord != INVALID_ORDINAL && ord != ROOT_ORDINAL) {
-        if (parents[ord] == ancestorOrd) {
+        if (parents.get(ord) == ancestorOrd) {
           return true;
         }
-        ord = parents[ord];
+        ord = parents.get(ord);
       }
       return false;
     }

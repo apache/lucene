@@ -1,0 +1,30 @@
+# invalid tests around the (ERROR) node are not possible:
+# instead parsers are just validated to be functional and working
+---
+id: css-syntax
+valid:
+  - |
+    color: red;
+---
+id: html-syntax
+valid:
+  - |
+    <html></html>
+---
+id: javascript-syntax
+valid:
+  - x = 1;
+---
+id: json-syntax
+valid:
+  - |
+    []
+---
+id: python-syntax
+valid:
+  - x = 1
+---
+id: yaml-syntax
+valid:
+  - |
+    foo: bar

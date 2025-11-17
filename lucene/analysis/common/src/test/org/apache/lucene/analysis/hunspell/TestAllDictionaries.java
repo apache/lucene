@@ -41,7 +41,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.tests.util.RamUsageTester;
@@ -56,6 +55,10 @@ import org.junit.Ignore;
  * property and prints their memory usage. All *.aff files are traversed recursively inside the
  * given directory. Each *.aff file must have a same-named sibling *.dic file. For examples of such
  * directories, refer to the {@link org.apache.lucene.analysis.hunspell package documentation}.
+ *
+ * <p>The build contains tasks that automatically download certain public dictionary files and test
+ * against them. Take a look at github workflows under {@code .github/workflows} to see how these
+ * tests are launched if you'd like to repeat locally.
  */
 @SuppressSysoutChecks(bugUrl = "prints important memory utilization stats per dictionary")
 public class TestAllDictionaries extends LuceneTestCase {
@@ -72,9 +75,18 @@ public class TestAllDictionaries extends LuceneTestCase {
     Path dic = Path.of(affPath.substring(0, affPath.length() - 4) + ".dic");
     assert Files.exists(dic) : dic;
     try (InputStream dictionary = Files.newInputStream(dic);
-        InputStream affix = Files.newInputStream(aff);
-        BaseDirectoryWrapper tempDir = newDirectory()) {
-      return new Dictionary(tempDir, "dictionary", affix, dictionary);
+        InputStream affix = Files.newInputStream(aff)) {
+      return new Dictionary(affix, List.of(dictionary), false, SortingStrategy.inMemory()) {
+        @Override
+        protected boolean tolerateAffixRuleCountMismatches() {
+          return true;
+        }
+
+        @Override
+        protected boolean tolerateRepRuleCountMismatches() {
+          return true;
+        }
+      };
     }
   }
 
@@ -94,7 +106,7 @@ public class TestAllDictionaries extends LuceneTestCase {
     AtomicBoolean failTest = new AtomicBoolean();
 
     Map<String, List<Long>> global = new LinkedHashMap<>();
-    for (Path aff : findAllAffixFiles().collect(Collectors.toList())) {
+    for (Path aff : findAllAffixFiles().toList()) {
       Map<String, List<Long>> local = new LinkedHashMap<>();
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
       try (ExposePosition is = new ExposePosition(Files.readAllBytes(aff))) {
@@ -109,8 +121,8 @@ public class TestAllDictionaries extends LuceneTestCase {
               switch (firstWord) {
                 case "SET":
                 case "FLAG":
-                  local.computeIfAbsent(firstWord, (k) -> new ArrayList<>()).add(is.position());
-                  global.computeIfAbsent(firstWord, (k) -> new ArrayList<>()).add(is.position());
+                  local.computeIfAbsent(firstWord, (_) -> new ArrayList<>()).add(is.position());
+                  global.computeIfAbsent(firstWord, (_) -> new ArrayList<>()).add(is.position());
                   break;
               }
             }
@@ -164,9 +176,7 @@ public class TestAllDictionaries extends LuceneTestCase {
             Suggester suggester = new Suggester(dic).withSuggestibleEntryCache();
             try {
               suggester.suggestWithTimeout("aaaaaaaaaa", Hunspell.SUGGEST_TIME_LIMIT, () -> {});
-            } catch (
-                @SuppressWarnings("unused")
-                SuggestionTimeoutException e) {
+            } catch (SuggestionTimeoutException _) {
             }
             totalMemory.addAndGet(RamUsageTester.ramUsed(dic));
             memoryWithCache.addAndGet(RamUsageTester.ramUsed(suggester));
@@ -181,9 +191,7 @@ public class TestAllDictionaries extends LuceneTestCase {
         };
 
     List<Callable<Void>> tasks =
-        findAllAffixFiles()
-            .map(aff -> (Callable<Void>) () -> process.apply(aff))
-            .collect(Collectors.toList());
+        findAllAffixFiles().map(aff -> (Callable<Void>) () -> process.apply(aff)).toList();
     try {
       for (Future<?> future : executor.invokeAll(tasks)) {
         future.get();

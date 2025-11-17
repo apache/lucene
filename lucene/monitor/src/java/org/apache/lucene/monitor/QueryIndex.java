@@ -34,10 +34,10 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 
@@ -67,8 +67,8 @@ abstract class QueryIndex implements Closeable {
     BytesRef[] bytesHolder = new BytesRef[1];
     search(
         new TermQuery(new Term(FIELDS.query_id, queryId)),
-        (id, query, dataValues) -> bytesHolder[0] = dataValues.mq.binaryValue());
-    return serializer.deserialize(bytesHolder[0]);
+        (_, _, dataValues) -> bytesHolder[0] = dataValues.mq.binaryValue());
+    return bytesHolder[0] != null ? serializer.deserialize(bytesHolder[0]) : null;
   }
 
   public void scan(QueryCollector matcher) throws IOException {
@@ -76,7 +76,7 @@ abstract class QueryIndex implements Closeable {
   }
 
   long search(final Query query, QueryCollector matcher) throws IOException {
-    QueryBuilder builder = termFilter -> query;
+    QueryBuilder builder = _ -> query;
     return search(builder, matcher);
   }
 
@@ -121,16 +121,17 @@ abstract class QueryIndex implements Closeable {
     SortedDocValues queryId;
     SortedDocValues cacheId;
     BinaryDocValues mq;
-    Scorable scorer;
+    Weight weight;
     LeafReaderContext ctx;
+    int docID;
 
     void advanceTo(int doc) throws IOException {
-      assert scorer.docID() == doc;
       queryId.advanceExact(doc);
       cacheId.advanceExact(doc);
       if (mq != null) {
         mq.advanceExact(doc);
       }
+      this.docID = doc;
     }
   }
 
@@ -141,7 +142,7 @@ abstract class QueryIndex implements Closeable {
     QueryTermFilter(IndexReader reader) throws IOException {
       for (LeafReaderContext ctx : reader.leaves()) {
         for (FieldInfo fi : ctx.reader().getFieldInfos()) {
-          BytesRefHash terms = termsHash.computeIfAbsent(fi.name, f -> new BytesRefHash());
+          BytesRefHash terms = termsHash.computeIfAbsent(fi.name, _ -> new BytesRefHash());
           Terms t = ctx.reader().terms(fi.name);
           if (t != null) {
             TermsEnum te = t.iterator();

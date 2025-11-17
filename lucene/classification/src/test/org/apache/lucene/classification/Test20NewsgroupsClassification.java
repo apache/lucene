@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -63,7 +62,9 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.apache.lucene.util.SuppressForbidden;
 import org.junit.Test;
 
 @LuceneTestCase.SuppressSysoutChecks(bugUrl = "none")
@@ -74,21 +75,20 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
   private static final String CATEGORY_FIELD = "category";
   private static final String BODY_FIELD = "body";
   private static final String SUBJECT_FIELD = "subject";
-  private static final String INDEX_DIR = "/path/to/lucene-solr/lucene/classification/20n";
+  // private static final String INDEX_DIR = "/path/to/lucene-solr/lucene/classification/20n";
 
-  private static boolean index = true;
-  private static boolean split = true;
+  private boolean index = true;
+  private boolean split = true;
 
+  @SuppressForbidden(reason = "Thread sleep")
   @Test
   public void test20Newsgroups() throws Exception {
 
     String indexProperty = System.getProperty("index");
     if (indexProperty != null) {
       try {
-        index = Boolean.valueOf(indexProperty);
-      } catch (
-          @SuppressWarnings("unused")
-          Exception e) {
+        index = Boolean.parseBoolean(indexProperty);
+      } catch (Exception _) {
         // ignore
       }
     }
@@ -96,10 +96,8 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
     String splitProperty = System.getProperty("split");
     if (splitProperty != null) {
       try {
-        split = Boolean.valueOf(splitProperty);
-      } catch (
-          @SuppressWarnings("unused")
-          Exception e) {
+        split = Boolean.parseBoolean(splitProperty);
+      } catch (Exception _) {
         // ignore
       }
     }
@@ -126,7 +124,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
         long startIndex = System.nanoTime();
         IndexWriter indexWriter = new IndexWriter(directory, new IndexWriterConfig(analyzer));
 
-        Path indexDir = Paths.get(INDEX_DIR);
+        Path indexDir = createTempDir("Test20NewsgroupsClassification");
         int docsIndexed = buildIndex(indexDir, indexWriter);
 
         long endIndex = System.nanoTime();
@@ -330,22 +328,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
       service.shutdown();
 
     } finally {
-      if (reader != null) {
-        reader.close();
-      }
-      directory.close();
-      if (testReader != null) {
-        testReader.close();
-      }
-      if (test != null) {
-        test.close();
-      }
-      if (train != null) {
-        train.close();
-      }
-      if (cv != null) {
-        cv.close();
-      }
+      IOUtils.close(reader, directory, testReader, test, train, cv);
 
       for (Classifier<BytesRef> c : classifiers) {
         if (c instanceof Closeable) {
@@ -447,14 +430,12 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
         }
       }
       return new NewsPost(body.toString(), subject, groupName);
-    } catch (
-        @SuppressWarnings("unused")
-        Throwable e) {
+    } catch (Throwable _) {
       return null;
     }
   }
 
-  private class NewsPost {
+  private static class NewsPost {
     private final String body;
     private final String subject;
     private final String group;

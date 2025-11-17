@@ -31,6 +31,7 @@ public abstract class Lambda {
 
   /** Computes the lambda parameter. */
   public abstract float lambda(BasicStats stats);
+
   /** Explains the lambda parameter. */
   public abstract Explanation explain(BasicStats stats);
 

@@ -18,6 +18,7 @@ package org.apache.lucene.facet.range;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.facet.FacetCountsWithFilterQuery;
 import org.apache.lucene.facet.FacetResult;
@@ -39,8 +40,8 @@ abstract class RangeFacetCounts extends FacetCountsWithFilterQuery {
   /** Ranges passed to constructor. */
   protected final Range[] ranges;
 
-  /** Counts, initialized in by subclass. */
-  protected final int[] counts;
+  /** Counts. */
+  protected int[] counts;
 
   /** Our field name. */
   protected final String field;
@@ -53,13 +54,18 @@ abstract class RangeFacetCounts extends FacetCountsWithFilterQuery {
     super(fastMatchQuery);
     this.field = field;
     this.ranges = ranges;
-    counts = new int[ranges.length];
   }
 
   protected abstract LongRange[] getLongRanges();
 
   protected long mapDocValue(long l) {
     return l;
+  }
+
+  protected LongRangeCounter setupCounter() {
+    assert counts == null;
+    counts = new int[ranges.length];
+    return LongRangeCounter.create(getLongRanges(), counts);
   }
 
   /** Counts from the provided field. */
@@ -69,15 +75,21 @@ abstract class RangeFacetCounts extends FacetCountsWithFilterQuery {
     // load doc values for all segments up front and keep track of whether-or-not we found any that
     // were actually multi-valued. this allows us to optimize the case where all segments contain
     // single-values.
-    SortedNumericDocValues[] multiValuedDocVals = new SortedNumericDocValues[matchingDocs.size()];
+    SortedNumericDocValues[] multiValuedDocVals = null;
     NumericDocValues[] singleValuedDocVals = null;
     boolean foundMultiValued = false;
 
     for (int i = 0; i < matchingDocs.size(); i++) {
-
       FacetsCollector.MatchingDocs hits = matchingDocs.get(i);
+      if (hits.totalHits() == 0) {
+        continue;
+      }
 
-      SortedNumericDocValues multiValues = DocValues.getSortedNumeric(hits.context.reader(), field);
+      SortedNumericDocValues multiValues =
+          DocValues.getSortedNumeric(hits.context().reader(), field);
+      if (multiValuedDocVals == null) {
+        multiValuedDocVals = new SortedNumericDocValues[matchingDocs.size()];
+      }
       multiValuedDocVals[i] = multiValues;
 
       // only bother trying to unwrap a singleton if we haven't yet seen any true multi-valued cases
@@ -94,6 +106,11 @@ abstract class RangeFacetCounts extends FacetCountsWithFilterQuery {
       }
     }
 
+    if (multiValuedDocVals == null) {
+      // no hits or no doc values in all segments. nothing to count:
+      return;
+    }
+
     // we only need to keep around one or the other at this point
     if (foundMultiValued) {
       singleValuedDocVals = null;
@@ -101,7 +118,7 @@ abstract class RangeFacetCounts extends FacetCountsWithFilterQuery {
       multiValuedDocVals = null;
     }
 
-    LongRangeCounter counter = LongRangeCounter.create(getLongRanges(), counts);
+    LongRangeCounter counter = setupCounter();
 
     int missingCount = 0;
 
@@ -120,7 +137,7 @@ abstract class RangeFacetCounts extends FacetCountsWithFilterQuery {
         assert singleValuedDocVals != null;
         NumericDocValues singleValues = singleValuedDocVals[i];
 
-        totCount += hits.totalHits;
+        totCount += hits.totalHits();
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
           if (singleValues.advanceExact(doc)) {
             counter.addSingleValued(mapDocValue(singleValues.longValue()));
@@ -183,9 +200,15 @@ abstract class RangeFacetCounts extends FacetCountsWithFilterQuery {
   @Override
   public FacetResult getAllChildren(String dim, String... path) throws IOException {
     validateDimAndPathForGetChildren(dim, path);
-    LabelAndValue[] labelValues = new LabelAndValue[counts.length];
-    for (int i = 0; i < counts.length; i++) {
-      labelValues[i] = new LabelAndValue(ranges[i].label, counts[i]);
+    LabelAndValue[] labelValues = new LabelAndValue[ranges.length];
+    if (counts == null) {
+      for (int i = 0; i < ranges.length; i++) {
+        labelValues[i] = new LabelAndValue(ranges[i].label, 0);
+      }
+    } else {
+      for (int i = 0; i < ranges.length; i++) {
+        labelValues[i] = new LabelAndValue(ranges[i].label, counts[i]);
+      }
     }
     return new FacetResult(dim, path, totCount, labelValues, labelValues.length);
   }
@@ -195,17 +218,16 @@ abstract class RangeFacetCounts extends FacetCountsWithFilterQuery {
     validateTopN(topN);
     validateDimAndPathForGetChildren(dim, path);
 
+    if (counts == null) {
+      assert totCount == 0;
+      return new FacetResult(dim, path, totCount, new LabelAndValue[0], 0);
+    }
+
     PriorityQueue<Entry> pq =
-        new PriorityQueue<>(Math.min(topN, counts.length)) {
-          @Override
-          protected boolean lessThan(Entry a, Entry b) {
-            int cmp = Integer.compare(a.count, b.count);
-            if (cmp == 0) {
-              cmp = b.label.compareTo(a.label);
-            }
-            return cmp < 0;
-          }
-        };
+        PriorityQueue.usingComparator(
+            Math.min(topN, counts.length),
+            Comparator.<Entry>comparingInt(e -> e.count)
+                .thenComparing(e -> e.label, Comparator.reverseOrder()));
 
     int childCount = 0;
     Entry e = null;
@@ -251,7 +273,7 @@ abstract class RangeFacetCounts extends FacetCountsWithFilterQuery {
       b.append("  ");
       b.append(ranges[i].label);
       b.append(" -> count=");
-      b.append(counts[i]);
+      b.append(counts != null ? counts[i] : 0);
       b.append('\n');
     }
     return b.toString();

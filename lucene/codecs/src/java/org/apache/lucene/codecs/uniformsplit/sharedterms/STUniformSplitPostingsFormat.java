@@ -44,6 +44,7 @@ public class STUniformSplitPostingsFormat extends UniformSplitPostingsFormat {
 
   /** Extension of the file containing the terms dictionary (the FST "trie"). */
   public static final String TERMS_DICTIONARY_EXTENSION = "stustd";
+
   /** Extension of the file containing the terms blocks for each field and the fields metadata. */
   public static final String TERMS_BLOCKS_EXTENSION = "stustb";
 

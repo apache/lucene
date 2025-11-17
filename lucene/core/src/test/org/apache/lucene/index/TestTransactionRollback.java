@@ -177,18 +177,18 @@ public class TestTransactionRollback extends LuceneTestCase {
           // This code reads the last id ("30" in this example) and deletes it
           // if it is after the desired rollback point
           String x = userData.get("index");
-          String lastVal = x.substring(x.lastIndexOf("-") + 1);
+          String lastVal = x.substring(x.lastIndexOf('-') + 1);
           int last = Integer.parseInt(lastVal);
           if (last > rollbackPoint) {
             /*
-            System.out.print("\tRolling back commit point:" +
-                             " UserData="+commit.getUserData() +")  ("+(commits.size()-1)+" commit points left) files=");
-            Collection files = commit.getFileNames();
-            for (Iterator iterator2 = files.iterator(); iterator2.hasNext();) {
-              System.out.print(" "+iterator2.next());
-            }
-            System.out.println();
-            */
+             * System.out.print("\tRolling back commit point:" +
+             *                 " UserData="+commit.getUserData() +")  ("+(commits.size()-1)+" commit points left) files=");
+             * Collection files = commit.getFileNames();
+             * for (Iterator iterator2 = files.iterator(); iterator2.hasNext();) {
+             *   System.out.print(" "+iterator2.next());
+             * }
+             * System.out.println();
+             */
 
             commit.delete();
           }

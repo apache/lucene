@@ -97,6 +97,11 @@ final class EndiannessReverserIndexInput extends FilterIndexInput {
     }
 
     @Override
+    public long length() {
+      return in.length();
+    }
+
+    @Override
     public byte readByte(long pos) throws IOException {
       return in.readByte(pos);
     }

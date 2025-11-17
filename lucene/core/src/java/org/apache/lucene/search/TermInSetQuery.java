@@ -17,11 +17,9 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.io.UncheckedIOException;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.SortedSet;
 import org.apache.lucene.index.FilteredTermsEnum;
 import org.apache.lucene.index.PrefixCodedTerms;
@@ -30,16 +28,16 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.BytesRefComparator;
+import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.StringSorter;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
-import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.automaton.Operations;
 
 /**
  * Specialization for a disjunction over many terms that, by default, behaves like a {@link
@@ -85,10 +83,6 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     this(field, packTerms(field, terms));
   }
 
-  public TermInSetQuery(String field, BytesRef... terms) {
-    this(field, packTerms(field, Arrays.asList(terms)));
-  }
-
   /** Creates a new {@link TermInSetQuery} from the given collection of terms. */
   public TermInSetQuery(RewriteMethod rewriteMethod, String field, Collection<BytesRef> terms) {
     super(field, rewriteMethod);
@@ -97,13 +91,30 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     termDataHashCode = termData.hashCode();
   }
 
-  /** Creates a new {@link TermInSetQuery} from the given array of terms. */
-  public TermInSetQuery(RewriteMethod rewriteMethod, String field, BytesRef... terms) {
-    this(rewriteMethod, field, Arrays.asList(terms));
+  /**
+   * Creates a new {@link IndexOrDocValuesQuery} combining two {@link TermInSetQuery} with the same
+   * terms allowing to pack them only once that's faster. Doc Values query always uses {@link
+   * MultiTermQuery#DOC_VALUES_REWRITE}.
+   *
+   * @param field field name for indexed and doc values queries.
+   * @param indexRewriteMethod rewrite method used for indexed query.
+   * @param terms collection of {@link BytesRef}. Note: passing {@link SortedSet} with default
+   *     comparator let to bypass terms sorting.
+   */
+  public static IndexOrDocValuesQuery newIndexOrDocValuesQuery(
+      RewriteMethod indexRewriteMethod, String field, Collection<BytesRef> terms) {
+    PrefixCodedTerms packed = packTerms(field, terms);
+    Query indexQuery = new TermInSetQuery(indexRewriteMethod, field, packed);
+    Query dvQuery = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, field, packed);
+    return new IndexOrDocValuesQuery(indexQuery, dvQuery);
   }
 
   private TermInSetQuery(String field, PrefixCodedTerms termData) {
-    super(field, MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
+    this(MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE, field, termData);
+  }
+
+  private TermInSetQuery(RewriteMethod rewrite, String field, PrefixCodedTerms termData) {
+    super(field, rewrite);
     this.field = field;
     this.termData = termData;
     termDataHashCode = termData.hashCode();
@@ -115,7 +126,23 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     boolean sorted =
         terms instanceof SortedSet && ((SortedSet<BytesRef>) terms).comparator() == null;
     if (sorted == false) {
-      ArrayUtil.timSort(sortedTerms);
+      new StringSorter(BytesRefComparator.NATURAL) {
+
+        @Override
+        protected void get(BytesRefBuilder builder, BytesRef result, int i) {
+          BytesRef term = sortedTerms[i];
+          result.length = term.length;
+          result.offset = term.offset;
+          result.bytes = term.bytes;
+        }
+
+        @Override
+        protected void swap(int i, int j) {
+          BytesRef b = sortedTerms[i];
+          sortedTerms[i] = sortedTerms[j];
+          sortedTerms[j] = b;
+        }
+      }.sort(0, sortedTerms.length);
     }
     PrefixCodedTerms.Builder builder = new PrefixCodedTerms.Builder();
     BytesRefBuilder previous = null;
@@ -133,8 +160,18 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
   }
 
   @Override
-  public long getTermsCount() throws IOException {
+  public long getTermsCount() {
     return termData.size();
+  }
+
+  /**
+   * Get an iterator over the encoded terms for query inspection.
+   *
+   * @lucene.experimental
+   */
+  public BytesRefIterator getBytesRefIterator() {
+    final TermIterator iterator = this.termData.iterator();
+    return () -> iterator.next();
   }
 
   @Override
@@ -150,17 +187,17 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     }
   }
 
-  // TODO: this is extremely slow. we should not be doing this.
+  // TODO: This is pretty heavy-weight. If we have TermInSetQuery directly extend AutomatonQuery
+  // we won't have to do this (see GH#12176).
   private ByteRunAutomaton asByteRunAutomaton() {
-    TermIterator iterator = termData.iterator();
-    List<Automaton> automata = new ArrayList<>();
-    for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
-      automata.add(Automata.makeBinary(term));
+    try {
+      Automaton a = Automata.makeBinaryStringUnion(termData.iterator());
+      return new ByteRunAutomaton(a, true);
+    } catch (IOException e) {
+      // Shouldn't happen since termData.iterator() provides an interator implementation that
+      // never throws:
+      throw new UncheckedIOException(e);
     }
-    Automaton automaton =
-        Operations.determinize(
-            Operations.union(automata), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-    return new CompiledAutomaton(automaton).runAutomaton;
   }
 
   @Override

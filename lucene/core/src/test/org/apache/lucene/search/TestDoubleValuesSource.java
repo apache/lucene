@@ -136,6 +136,7 @@ public class TestDoubleValuesSource extends LuceneTestCase {
         new Sort(new SortField("double", SortField.Type.DOUBLE, random().nextBoolean())));
   }
 
+  @SuppressWarnings("SelfAssertion")
   public void testHashCodeAndEquals() {
     DoubleValuesSource vs1 = DoubleValuesSource.fromDoubleField("double");
     DoubleValuesSource vs2 = DoubleValuesSource.fromDoubleField("double");
@@ -225,7 +226,7 @@ public class TestDoubleValuesSource extends LuceneTestCase {
 
     CheckHits.checkEqual(query, expected.scoreDocs, actual.scoreDocs);
 
-    if (size < actual.totalHits.value) {
+    if (size < actual.totalHits.value()) {
       expected = searcher.searchAfter(expected.scoreDocs[size - 1], query, size, sort);
       actual = searcher.searchAfter(actual.scoreDocs[size - 1], query, size, mutatedSort);
       CheckHits.checkEqual(query, expected.scoreDocs, actual.scoreDocs);

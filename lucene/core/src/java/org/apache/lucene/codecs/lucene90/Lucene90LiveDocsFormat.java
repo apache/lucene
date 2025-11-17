@@ -101,9 +101,7 @@ public final class Lucene90LiveDocsFormat extends LiveDocsFormat {
 
   private FixedBitSet readFixedBitSet(IndexInput input, int length) throws IOException {
     long[] data = new long[FixedBitSet.bits2words(length)];
-    for (int i = 0; i < data.length; i++) {
-      data[i] = input.readLong();
-    }
+    input.readLongs(data, 0, data.length);
     return new FixedBitSet(data, length);
   }
 
@@ -140,18 +138,23 @@ public final class Lucene90LiveDocsFormat extends LiveDocsFormat {
   }
 
   private int writeBits(IndexOutput output, Bits bits) throws IOException {
-    int delCount = 0;
-    final int longCount = FixedBitSet.bits2words(bits.length());
-    for (int i = 0; i < longCount; ++i) {
-      long currentBits = 0;
-      for (int j = i << 6, end = Math.min(j + 63, bits.length() - 1); j <= end; ++j) {
-        if (bits.get(j)) {
-          currentBits |= 1L << j; // mod 64
-        } else {
-          delCount += 1;
-        }
+    int delCount = bits.length();
+    // Copy bits in batches of 1024 bits at once using Bits#applyMask, which is faster than checking
+    // bits one by one.
+    FixedBitSet copy = new FixedBitSet(1024);
+    for (int offset = 0; offset < bits.length(); offset += copy.length()) {
+      int numBitsToCopy = Math.min(bits.length() - offset, copy.length());
+      copy.set(0, copy.length());
+      if (numBitsToCopy < copy.length()) {
+        // Clear ghost bits
+        copy.clear(numBitsToCopy, copy.length());
       }
-      output.writeLong(currentBits);
+      bits.applyMask(copy, offset);
+      delCount -= copy.cardinality();
+      int longCount = FixedBitSet.bits2words(numBitsToCopy);
+      for (int i = 0; i < longCount; ++i) {
+        output.writeLong(copy.getBits()[i]);
+      }
     }
     return delCount;
   }

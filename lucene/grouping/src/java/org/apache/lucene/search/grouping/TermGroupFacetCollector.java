@@ -141,10 +141,6 @@ public abstract class TermGroupFacetCollector extends GroupFacetCollector {
 
     @Override
     protected void doSetNextReader(LeafReaderContext context) throws IOException {
-      if (segmentFacetCounts != null) {
-        segmentResults.add(createSegmentResult());
-      }
-
       groupFieldTermsIndex = DocValues.getSorted(context.reader(), groupField);
       facetFieldTermsIndex = DocValues.getSorted(context.reader(), facetField);
 
@@ -321,10 +317,6 @@ public abstract class TermGroupFacetCollector extends GroupFacetCollector {
 
     @Override
     protected void doSetNextReader(LeafReaderContext context) throws IOException {
-      if (segmentFacetCounts != null) {
-        segmentResults.add(createSegmentResult());
-      }
-
       groupFieldTermsIndex = DocValues.getSorted(context.reader(), groupField);
       facetFieldDocTermOrds = DocValues.getSortedSet(context.reader(), facetField);
       facetFieldNumTerms = (int) facetFieldDocTermOrds.getValueCount();
@@ -439,14 +431,5 @@ public abstract class TermGroupFacetCollector extends GroupFacetCollector {
     }
   }
 
-  private static class GroupedFacetHit {
-
-    final BytesRef groupValue;
-    final BytesRef facetValue;
-
-    GroupedFacetHit(BytesRef groupValue, BytesRef facetValue) {
-      this.groupValue = groupValue;
-      this.facetValue = facetValue;
-    }
-  }
+  private record GroupedFacetHit(BytesRef groupValue, BytesRef facetValue) {}
 }

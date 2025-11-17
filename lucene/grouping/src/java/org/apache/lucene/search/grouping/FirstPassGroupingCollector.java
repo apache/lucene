@@ -25,6 +25,7 @@ import java.util.TreeSet;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
@@ -43,6 +44,7 @@ import org.apache.lucene.util.CollectionUtil;
 public class FirstPassGroupingCollector<T> extends SimpleCollector {
 
   private final GroupSelector<T> groupSelector;
+  private final boolean ignoreDocsWithoutGroupField;
 
   private final FieldComparator<?>[] comparators;
   private final LeafFieldComparator[] leafComparators;
@@ -70,10 +72,30 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
    *     must be non-null, ie, if you want to groupSort by relevance use Sort.RELEVANCE.
    * @param topNGroups How many top groups to keep.
    */
-  @SuppressWarnings({"unchecked", "rawtypes"})
   public FirstPassGroupingCollector(
       GroupSelector<T> groupSelector, Sort groupSort, int topNGroups) {
+    this(groupSelector, groupSort, topNGroups, false);
+  }
+
+  /**
+   * Create the first pass collector with ignoreDocsWithoutGroupField
+   *
+   * @param groupSelector a GroupSelector used to defined groups
+   * @param groupSort The {@link Sort} used to sort the groups. The top sorted document within each
+   *     group according to groupSort, determines how that group sorts against other groups. This
+   *     must be non-null, ie, if you want to groupSort by relevance use Sort.RELEVANCE.
+   * @param topNGroups How many top groups to keep.
+   * @param ignoreDocsWithoutGroupField if true, ignore documents that don't have the group field
+   *     instead of putting them in a null group
+   */
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  public FirstPassGroupingCollector(
+      GroupSelector<T> groupSelector,
+      Sort groupSort,
+      int topNGroups,
+      boolean ignoreDocsWithoutGroupField) {
     this.groupSelector = groupSelector;
+    this.ignoreDocsWithoutGroupField = ignoreDocsWithoutGroupField;
     if (topNGroups < 1) {
       throw new IllegalArgumentException("topNGroups must be >= 1 (got " + topNGroups + ")");
     }
@@ -84,7 +106,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
     this.topNGroups = topNGroups;
     this.needsScores = groupSort.needsScores();
     final SortField[] sortFields = groupSort.getSort();
-    comparators = new FieldComparator[sortFields.length];
+    comparators = new FieldComparator<?>[sortFields.length];
     leafComparators = new LeafFieldComparator[sortFields.length];
     compIDXEnd = comparators.length - 1;
     reversed = new int[sortFields.length];
@@ -93,7 +115,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
 
       // use topNGroups + 1 so we have a spare slot to use for comparing (tracked by
       // this.spareSlot):
-      comparators[i] = sortField.getComparator(topNGroups + 1, false);
+      comparators[i] = sortField.getComparator(topNGroups + 1, Pruning.NONE);
       reversed[i] = sortField.getReverse() ? -1 : 1;
     }
 
@@ -130,7 +152,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       buildSortedSet();
     }
 
-    final Collection<SearchGroup<T>> result = new ArrayList<>();
+    final Collection<SearchGroup<T>> result = new ArrayList<>(orderedGroups.size() - groupOffset);
     int upto = 0;
     final int sortFieldCount = comparators.length;
     for (CollectedSearchGroup<T> group : orderedGroups) {
@@ -197,48 +219,55 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       return;
     }
 
-    // TODO: should we add option to mean "ignore docs that
-    // don't have the group field" (instead of stuffing them
-    // under null group)?
-    groupSelector.advanceTo(doc);
+    GroupSelector.State state = groupSelector.advanceTo(doc);
     T groupValue = groupSelector.currentValue();
+
+    // Skip documents without group field if option is enabled
+    if (ignoreDocsWithoutGroupField && state == GroupSelector.State.SKIP) {
+      return;
+    }
 
     final CollectedSearchGroup<T> group = groupMap.get(groupValue);
 
     if (group == null) {
+      collectNewGroup(doc);
+    } else {
+      collectExistingGroup(doc, group);
+    }
+  }
 
-      // First time we are seeing this group, or, we've seen
-      // it before but it fell out of the top N and is now
-      // coming back
+  private void collectNewGroup(final int doc) throws IOException {
+    // First time we are seeing this group, or, we've seen
+    // it before but it fell out of the top N and is now
+    // coming back
 
-      if (groupMap.size() < topNGroups) {
+    if (isGroupMapFull() == false) {
 
-        // Still in startup transient: we have not
-        // seen enough unique groups to start pruning them;
-        // just keep collecting them
+      // Still in startup transient: we have not
+      // seen enough unique groups to start pruning them;
+      // just keep collecting them
 
-        // Add a new CollectedSearchGroup:
-        CollectedSearchGroup<T> sg = new CollectedSearchGroup<>();
-        sg.groupValue = groupSelector.copyValue();
-        sg.comparatorSlot = groupMap.size();
-        sg.topDoc = docBase + doc;
-        for (LeafFieldComparator fc : leafComparators) {
-          fc.copy(sg.comparatorSlot, doc);
-        }
-        groupMap.put(sg.groupValue, sg);
+      // Add a new CollectedSearchGroup:
+      CollectedSearchGroup<T> sg = new CollectedSearchGroup<>();
+      sg.groupValue = groupSelector.copyValue();
+      sg.comparatorSlot = groupMap.size();
+      sg.topDoc = docBase + doc;
+      for (LeafFieldComparator fc : leafComparators) {
+        fc.copy(sg.comparatorSlot, doc);
+      }
+      groupMap.put(sg.groupValue, sg);
 
-        if (groupMap.size() == topNGroups) {
-          // End of startup transient: we now have max
-          // number of groups; from here on we will drop
-          // bottom group when we insert new one:
-          buildSortedSet();
-        }
-
-        return;
+      if (isGroupMapFull() == true) {
+        // End of startup transient: we now have max
+        // number of groups; from here on we will drop
+        // bottom group when we insert new one:
+        buildSortedSet();
       }
 
+    } else {
       // We already tested that the document is competitive, so replace
       // the bottom group with this new group.
+
       final CollectedSearchGroup<T> bottomGroup = orderedGroups.pollLast();
       assert orderedGroups.size() == topNGroups - 1;
 
@@ -260,10 +289,11 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       for (LeafFieldComparator fc : leafComparators) {
         fc.setBottom(lastComparatorSlot);
       }
-
-      return;
     }
+  }
 
+  private void collectExistingGroup(final int doc, final CollectedSearchGroup<T> group)
+      throws IOException {
     // Update existing group:
     for (int compIDX = 0; ; compIDX++) {
       leafComparators[compIDX].copy(spareSlot, doc);
@@ -323,7 +353,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
 
   private void buildSortedSet() throws IOException {
     final Comparator<CollectedSearchGroup<?>> comparator =
-        new Comparator<CollectedSearchGroup<?>>() {
+        new Comparator<>() {
           @Override
           public int compare(CollectedSearchGroup<?> o1, CollectedSearchGroup<?> o2) {
             for (int compIDX = 0; ; compIDX++) {
@@ -361,5 +391,9 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
    */
   public GroupSelector<T> getGroupSelector() {
     return groupSelector;
+  }
+
+  private boolean isGroupMapFull() {
+    return groupMap.size() >= topNGroups;
   }
 }

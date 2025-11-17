@@ -67,7 +67,7 @@ public final class IrishLowerCaseFilter extends TokenFilter {
       case 'I':
       case 'O':
       case 'U':
-        // vowels with acute accent (fada)
+      // vowels with acute accent (fada)
       case '\u00c1':
       case '\u00c9':
       case '\u00cd':

@@ -31,12 +31,12 @@ import org.apache.lucene.util.IOUtils;
 
 public class TestTransactions extends LuceneTestCase {
 
-  private static volatile boolean doFail;
+  private volatile boolean doFail;
 
   private class RandomFailure extends MockDirectoryWrapper.Failure {
     @Override
     public void eval(MockDirectoryWrapper dir) throws IOException {
-      if (TestTransactions.doFail && random().nextInt(10) <= 3) {
+      if (TestTransactions.this.doFail && random().nextInt(10) <= 3) {
         if (VERBOSE) {
           System.out.println(Thread.currentThread().getName() + " TEST: now fail on purpose");
           new Throwable().printStackTrace(System.out);
@@ -48,8 +48,8 @@ public class TestTransactions extends LuceneTestCase {
 
   private abstract static class TimedThread extends Thread {
     volatile boolean failed;
-    private static int MAX_ITERATIONS = atLeast(100);
-    private TimedThread[] allThreads;
+    private static final int MAX_ITERATIONS = atLeast(100);
+    private final TimedThread[] allThreads;
 
     public abstract void doWork() throws Throwable;
 
@@ -74,8 +74,9 @@ public class TestTransactions extends LuceneTestCase {
     }
 
     private boolean anyErrors() {
-      for (int i = 0; i < allThreads.length; i++)
-        if (allThreads[i] != null && allThreads[i].failed) return true;
+      for (TimedThread thread : allThreads) {
+        if (thread != null && thread.failed) return true;
+      }
       return false;
     }
   }
@@ -119,46 +120,34 @@ public class TestTransactions extends LuceneTestCase {
       update(writer1);
       update(writer2);
 
-      TestTransactions.doFail = true;
+      doFail = true;
       try {
         synchronized (lock) {
           try {
             writer1.prepareCommit();
-          } catch (
-              @SuppressWarnings("unused")
-              Throwable t) {
+          } catch (Throwable _) {
             // release resources
             try {
               writer1.rollback();
-            } catch (
-                @SuppressWarnings("unused")
-                Throwable ignore) {
+            } catch (Throwable _) {
             }
             try {
               writer2.rollback();
-            } catch (
-                @SuppressWarnings("unused")
-                Throwable ignore) {
+            } catch (Throwable _) {
             }
             return;
           }
           try {
             writer2.prepareCommit();
-          } catch (
-              @SuppressWarnings("unused")
-              Throwable t) {
+          } catch (Throwable _) {
             // release resources
             try {
               writer1.rollback();
-            } catch (
-                @SuppressWarnings("unused")
-                Throwable ignore) {
+            } catch (Throwable _) {
             }
             try {
               writer2.rollback();
-            } catch (
-                @SuppressWarnings("unused")
-                Throwable ignore) {
+            } catch (Throwable _) {
             }
             return;
           }
@@ -167,7 +156,7 @@ public class TestTransactions extends LuceneTestCase {
           writer2.commit();
         }
       } finally {
-        TestTransactions.doFail = false;
+        doFail = false;
       }
 
       writer1.close();
@@ -242,6 +231,8 @@ public class TestTransactions extends LuceneTestCase {
     writer.close();
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testTransactions() throws Throwable {
     // we cant use non-ramdir on windows, because this test needs to double-write.
     MockDirectoryWrapper dir1 = new MockDirectoryWrapper(random(), new ByteBuffersDirectory());

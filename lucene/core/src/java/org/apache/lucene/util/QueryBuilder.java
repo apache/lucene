@@ -62,6 +62,19 @@ public class QueryBuilder {
   protected boolean enableGraphQueries = true;
   protected boolean autoGenerateMultiTermSynonymsPhraseQuery = false;
 
+  /**
+   * Wraps a term and boost
+   *
+   * @param term the term
+   * @param boost the boost
+   */
+  public record TermAndBoost(BytesRef term, float boost) {
+    /** Creates a new TermAndBoost */
+    public TermAndBoost {
+      term = BytesRef.deepCopyOf(term);
+    }
+  }
+
   /** Creates a new QueryBuilder using the given analyzer. */
   public QueryBuilder(Analyzer analyzer) {
     this.analyzer = analyzer;
@@ -609,7 +622,7 @@ public class QueryBuilder {
     }
     BooleanQuery bq = builder.build();
     if (bq.clauses().size() == 1) {
-      return bq.clauses().get(0).getQuery();
+      return bq.clauses().get(0).query();
     }
     return bq;
   }

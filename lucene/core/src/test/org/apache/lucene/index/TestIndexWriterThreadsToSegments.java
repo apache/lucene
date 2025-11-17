@@ -38,6 +38,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
 
 @LuceneTestCase.SuppressCodecs({"SimpleText", "Direct"})
@@ -250,12 +251,14 @@ public class TestIndexWriterThreadsToSegments extends LuceneTestCase {
     IOUtils.close(checker, w, dir);
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testManyThreadsClose() throws Exception {
     Directory dir = newDirectory();
     Random r = random();
     IndexWriterConfig iwc = newIndexWriterConfig(r, new MockAnalyzer(r));
     iwc.setCommitOnClose(false);
     final RandomIndexWriter w = new RandomIndexWriter(r, dir, iwc);
+    TestUtil.reduceOpenFiles(w.w);
     w.setDoRandomForceMerge(false);
     Thread[] threads = new Thread[TestUtil.nextInt(random(), 4, 30)];
     final CountDownLatch startingGun = new CountDownLatch(1);
@@ -275,9 +278,7 @@ public class TestIndexWriterThreadsToSegments extends LuceneTestCase {
                 for (int j = 0; j < 1000; j++) {
                   w.addDocument(doc);
                 }
-              } catch (
-                  @SuppressWarnings("unused")
-                  AlreadyClosedException ace) {
+              } catch (AlreadyClosedException _) {
                 // ok
               } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -292,9 +293,7 @@ public class TestIndexWriterThreadsToSegments extends LuceneTestCase {
     Thread.sleep(100);
     try {
       w.close();
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException ise) {
+    } catch (IllegalStateException _) {
       // OK but not required
     }
     for (Thread t : threads) {

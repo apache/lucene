@@ -39,7 +39,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Simple tests for {@link org.apache.lucene.document.ShapeDocValuesField} */
 public class TestShapeDocValues extends LuceneTestCase {
-  private static double TOLERANCE = 1E-7;
+  private static final double TOLERANCE = 1E-7;
 
   private static final String FIELD_NAME = "field";
 
@@ -49,19 +49,21 @@ public class TestShapeDocValues extends LuceneTestCase {
     assertEquals(
         dv.relate(LatLonGeometry.create(new Rectangle(-0.25, -0.24, -3.8, -3.7))),
         PointValues.Relation.CELL_OUTSIDE_QUERY);
-    assertNotEquals(
+    assertEquals(
         dv.relate(LatLonGeometry.create(new Rectangle(-1.2, 1.2, -1.5, 1.7))),
         PointValues.Relation.CELL_CROSSES_QUERY);
   }
 
   public void testLatLonPolygonBBox() {
     Polygon p = GeoTestUtil.nextPolygon();
-    Rectangle expected = (Rectangle) computeBoundingBox(p);
-    LatLonShapeDocValuesField dv = LatLonShape.createDocValueField(FIELD_NAME, p);
-    assertEquals(expected.minLat, dv.getBoundingBox().minLat, TOLERANCE);
-    assertEquals(expected.maxLat, dv.getBoundingBox().maxLat, TOLERANCE);
-    assertEquals(expected.minLon, dv.getBoundingBox().minLon, TOLERANCE);
-    assertEquals(expected.maxLon, dv.getBoundingBox().maxLon, TOLERANCE);
+    if (area(p) != 0) {
+      Rectangle expected = (Rectangle) computeBoundingBox(p);
+      LatLonShapeDocValuesField dv = LatLonShape.createDocValueField(FIELD_NAME, p);
+      assertEquals(expected.minLat, dv.getBoundingBox().minLat, TOLERANCE);
+      assertEquals(expected.maxLat, dv.getBoundingBox().maxLat, TOLERANCE);
+      assertEquals(expected.minLon, dv.getBoundingBox().minLon, TOLERANCE);
+      assertEquals(expected.maxLon, dv.getBoundingBox().maxLon, TOLERANCE);
+    }
   }
 
   public void testXYPolygonBBox() {
@@ -212,15 +214,14 @@ public class TestShapeDocValues extends LuceneTestCase {
   }
 
   private Polygon getTestPolygonWithHole() {
-    Polygon poly = GeoTestUtil.createRegularPolygon(0.0, 0.0, 100000, 7);
+    Polygon poly = GeoTestUtil.createRegularPolygon(0.0, 0.0, 500000, 7);
     Polygon inner =
         new Polygon(
             new double[] {-1.0, -1.0, 0.5, 1.0, 1.0, 0.5, -1.0},
             new double[] {1.0, -1.0, -0.5, -1.0, 1.0, 0.5, 1.0});
     Polygon inner2 =
         new Polygon(
-            new double[] {-1.0, -1.0, 0.5, 1.0, 1.0, 0.5, -1.0},
-            new double[] {-2.0, -4.0, -3.5, -4.0, -2.0, -2.5, -2.0});
+            new double[] {-1.0, -1.0, 1.0, 1.0, -1.0}, new double[] {-2.0, -4.0, -4.0, -2.0, -2.0});
 
     return new Polygon(poly.getPolyLats(), poly.getPolyLons(), inner, inner2);
   }
@@ -254,5 +255,10 @@ public class TestShapeDocValues extends LuceneTestCase {
       tess.add(d);
     }
     return tess;
+  }
+
+  /** Compute signed area of rectangle */
+  private static double area(Polygon p) {
+    return (p.maxLon - p.minLon) * (p.maxLat - p.minLat);
   }
 }

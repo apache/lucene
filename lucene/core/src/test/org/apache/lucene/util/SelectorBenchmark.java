@@ -36,7 +36,7 @@ public class SelectorBenchmark {
   private enum SelectorFactory {
     INTRO_SELECTOR(
         "IntroSelector",
-        (arr, s) -> {
+        (arr, _) -> {
           return new IntroSelector() {
 
             Entry pivot;
@@ -58,6 +58,7 @@ public class SelectorBenchmark {
           };
         }),
     ;
+
     final String name;
     final Builder builder;
 

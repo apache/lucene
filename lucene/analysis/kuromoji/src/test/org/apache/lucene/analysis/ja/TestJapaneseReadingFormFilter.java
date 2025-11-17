@@ -88,6 +88,11 @@ public class TestJapaneseReadingFormFilter extends BaseTokenStreamTestCase {
     a.close();
   }
 
+  public void testKatakanaReadingsHiragana() throws IOException {
+    assertAnalyzesTo(
+        katakanaAnalyzer, "が ぎ ぐ げ ご ぁ ゔ", new String[] {"ガ", "ギ", "グ", "ゲ", "ゴ", "ァ", "ヴ"});
+  }
+
   public void testRomajiReadings() throws IOException {
     assertAnalyzesTo(
         romajiAnalyzer,
@@ -113,6 +118,11 @@ public class TestJapaneseReadingFormFilter extends BaseTokenStreamTestCase {
         "今夜はﾛﾊﾞｰﾄ先生と話した",
         new String[] {"kon'ya", "ha", "robato", "sensei", "to", "hanashi", "ta"});
     a.close();
+  }
+
+  public void testRomajiReadingsHiragana() throws IOException {
+    assertAnalyzesTo(
+        romajiAnalyzer, "が ぎ ぐ げ ご ぁ ゔ", new String[] {"ga", "gi", "gu", "ge", "go", "a", "v"});
   }
 
   public void testRandomData() throws IOException {

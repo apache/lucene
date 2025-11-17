@@ -17,42 +17,18 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Objects;
+import org.apache.lucene.util.Bits;
 
 /**
  * Expert: Common scoring functionality for different types of queries.
  *
  * <p>A <code>Scorer</code> exposes an {@link #iterator()} over documents matching a query in
- * increasing order of doc Id.
- *
- * <p>Document scores are computed using a given <code>Similarity</code> implementation.
- *
- * <p><b>NOTE</b>: The values Float.Nan, Float.NEGATIVE_INFINITY and Float.POSITIVE_INFINITY are not
- * valid scores. Certain collectors (eg {@link TopScoreDocCollector}) will not properly collect hits
- * with these scores.
+ * increasing order of doc id.
  */
 public abstract class Scorer extends Scorable {
 
-  /** the Scorer's parent Weight */
-  protected final Weight weight;
-
-  /**
-   * Constructs a Scorer
-   *
-   * @param weight The scorers <code>Weight</code>.
-   */
-  protected Scorer(Weight weight) {
-    this.weight = Objects.requireNonNull(weight);
-  }
-
-  /**
-   * returns parent Weight
-   *
-   * @lucene.experimental
-   */
-  public Weight getWeight() {
-    return weight;
-  }
+  /** Returns the doc ID that is currently being scored. */
+  public abstract int docID();
 
   /**
    * Return a {@link DocIdSetIterator} over matching documents.
@@ -101,4 +77,57 @@ public abstract class Scorer extends Scorable {
    * {@link #advanceShallow(int) shallow-advanced} to included and {@code upTo} included.
    */
   public abstract float getMaxScore(int upTo) throws IOException;
+
+  /**
+   * Return a new batch of doc IDs and scores, starting at the current doc ID, and ending before
+   * {@code upTo}. Because it starts on the current doc ID, it is illegal to call this method if the
+   * {@link #docID() current doc ID} is {@code -1}.
+   *
+   * <p>An empty return value indicates that there are no postings left between the current doc ID
+   * and {@code upTo}.
+   *
+   * <p>Implementations should ideally fill the buffer with a number of entries comprised between 8
+   * and a couple hundreds, to keep heap requirements contained, while still being large enough to
+   * enable operations on the buffer to auto-vectorize efficiently.
+   *
+   * <p>The default implementation is provided below:
+   *
+   * <pre class="prettyprint">
+   * int batchSize = 64; // arbitrary
+   * buffer.growNoCopy(batchSize);
+   * int size = 0;
+   * DocIdSetIterator iterator = iterator();
+   * for (int doc = docID(); doc &lt; upTo &amp;&amp; size &lt; batchSize; doc = iterator.nextDoc()) {
+   *   if (liveDocs == null || liveDocs.get(doc)) {
+   *     buffer.docs[size] = doc;
+   *     buffer.scores[size] = score();
+   *     ++size;
+   *   }
+   * }
+   * buffer.size = size;
+   * </pre>
+   *
+   * <p><b>NOTE</b>: The provided {@link DocAndFloatFeatureBuffer} should not hold references to
+   * internal data structures.
+   *
+   * <p><b>NOTE</b>: In case this {@link Scorer} exposes a {@link #twoPhaseIterator()
+   * TwoPhaseIterator}, it should be positioned on a matching document before this method is called.
+   *
+   * @lucene.internal
+   */
+  public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
+      throws IOException {
+    int batchSize = 64; // arbitrary
+    buffer.growNoCopy(batchSize);
+    int size = 0;
+    DocIdSetIterator iterator = iterator();
+    for (int doc = docID(); doc < upTo && size < batchSize; doc = iterator.nextDoc()) {
+      if (liveDocs == null || liveDocs.get(doc)) {
+        buffer.docs[size] = doc;
+        buffer.features[size] = score();
+        ++size;
+      }
+    }
+    buffer.size = size;
+  }
 }

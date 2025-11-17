@@ -1,0 +1,42 @@
+name: "Generate project activity report"
+
+permissions: {}
+
+on:
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "Since date (x months ago, yyyy-mm-dd)"
+        type: string
+        required: true
+        default: "3 months ago"
+
+      until:
+        description: "Until date (now, x months ago, yyyy-mm-dd)"
+        type: string
+        required: true
+        default: "now"
+
+jobs:
+  generate:
+    name: Project Activity
+    timeout-minutes: 15
+    permissions:
+      issues: read # inspects issues and reports on them
+      pull-requests: read # inspects PRs and reports on them
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Generate report
+        run: |
+          bash ./.github/workflows/activity-report.sh >> "$GITHUB_STEP_SUMMARY"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SINCE: ${{ inputs.since }}
+          UNTIL: ${{ inputs.until }}

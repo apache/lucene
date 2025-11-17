@@ -129,7 +129,6 @@ public class FSTTermsWriter extends FieldsConsumer {
     this.out = state.directory.createOutput(termsFileName, state.context);
     this.maxDoc = state.segmentInfo.maxDoc();
 
-    boolean success = false;
     try {
       CodecUtil.writeIndexHeader(
           out,
@@ -139,11 +138,9 @@ public class FSTTermsWriter extends FieldsConsumer {
           state.segmentSuffix);
 
       this.postingsWriter.init(out, state);
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(out);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, out);
+      throw t;
     }
   }
 
@@ -188,8 +185,8 @@ public class FSTTermsWriter extends FieldsConsumer {
   @Override
   public void close() throws IOException {
     if (out != null) {
-      boolean success = false;
-      try {
+      try (IndexOutput _ = out;
+          postingsWriter) {
         // write field summary
         final long dirStart = out.getFilePointer();
 
@@ -206,13 +203,7 @@ public class FSTTermsWriter extends FieldsConsumer {
         }
         writeTrailer(out, dirStart);
         CodecUtil.writeFooter(out);
-        success = true;
       } finally {
-        if (success) {
-          IOUtils.close(out, postingsWriter);
-        } else {
-          IOUtils.closeWhileHandlingException(out, postingsWriter);
-        }
         out = null;
       }
     }
@@ -251,12 +242,12 @@ public class FSTTermsWriter extends FieldsConsumer {
     private final IntsRefBuilder scratchTerm = new IntsRefBuilder();
     private final ByteBuffersDataOutput metaWriter = ByteBuffersDataOutput.newResettableInstance();
 
-    TermsWriter(FieldInfo fieldInfo) {
+    TermsWriter(FieldInfo fieldInfo) throws IOException {
       this.numTerms = 0;
       this.fieldInfo = fieldInfo;
       postingsWriter.setField(fieldInfo);
       this.outputs = new FSTTermOutputs(fieldInfo);
-      this.fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+      this.fstCompiler = new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
     }
 
     public void finishTerm(BytesRef text, BlockTermState state) throws IOException {
@@ -277,7 +268,8 @@ public class FSTTermsWriter extends FieldsConsumer {
     public void finish(long sumTotalTermFreq, long sumDocFreq, int docCount) throws IOException {
       // save FST dict
       if (numTerms > 0) {
-        final FST<FSTTermOutputs.TermData> fst = fstCompiler.compile();
+        final FST<FSTTermOutputs.TermData> fst =
+            FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
         fields.add(
             new FieldMetaData(fieldInfo, numTerms, sumTotalTermFreq, sumDocFreq, docCount, fst));
       }

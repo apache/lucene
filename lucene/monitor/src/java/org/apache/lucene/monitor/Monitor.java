@@ -34,8 +34,6 @@ import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.MatchesIterator;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.Weight;
 
 /**
  * A Monitor contains a set of {@link Query} objects with associated IDs, and efficiently matches
@@ -118,24 +116,14 @@ public class Monitor implements Closeable {
         queryIndex.numDocs(), queryIndex.cacheSize(), queryIndex.getLastPurged());
   }
 
-  /** Statistics for the query cache and query index */
-  public static class QueryCacheStats {
-
-    /** Total number of queries in the query index */
-    public final int queries;
-
-    /** Total number of queries int the query cache */
-    public final int cachedQueries;
-
-    /** Time the query cache was last purged */
-    public final long lastPurged;
-
-    public QueryCacheStats(int queries, int cachedQueries, long lastPurged) {
-      this.queries = queries;
-      this.cachedQueries = cachedQueries;
-      this.lastPurged = lastPurged;
-    }
-  }
+  /**
+   * Statistics for the query cache and query index
+   *
+   * @param queries Total number of queries in the query index
+   * @param cachedQueries Total number of queries int the query cache
+   * @param lastPurged Time the query cache was last purged
+   */
+  public record QueryCacheStats(int queries, int cachedQueries, long lastPurged) {}
 
   /**
    * Remove unused queries from the query cache.
@@ -287,7 +275,7 @@ public class Monitor implements Closeable {
    */
   public Set<String> getQueryIds() throws IOException {
     final Set<String> ids = new HashSet<>();
-    queryIndex.scan((id, query, dataValues) -> ids.add(id));
+    queryIndex.scan((id, _, _) -> ids.add(id));
     return ids;
   }
 
@@ -377,13 +365,12 @@ public class Monitor implements Closeable {
     @Override
     public void matchQuery(final String id, QueryCacheEntry query, QueryIndex.DataValues dataValues)
         throws IOException {
-      Weight w = ((Scorer) dataValues.scorer).getWeight();
-      Matches matches = w.matches(dataValues.ctx, dataValues.scorer.docID());
+      Matches matches = dataValues.weight.matches(dataValues.ctx, dataValues.docID);
       for (String field : matches) {
         MatchesIterator mi = matches.getMatches(field);
         while (mi.next()) {
           matchingTerms
-              .computeIfAbsent(id, i -> new StringBuilder())
+              .computeIfAbsent(id, _ -> new StringBuilder())
               .append(" ")
               .append(mi.getQuery());
         }

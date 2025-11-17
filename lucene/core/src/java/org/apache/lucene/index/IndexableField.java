@@ -34,10 +34,10 @@ import org.apache.lucene.util.BytesRef;
 public interface IndexableField {
 
   /** Field name */
-  public String name();
+  String name();
 
   /** {@link IndexableFieldType} describing the properties of this field. */
-  public IndexableFieldType fieldType();
+  IndexableFieldType fieldType();
 
   /**
    * Creates the TokenStream used for indexing this field. If appropriate, implementations should
@@ -52,13 +52,13 @@ public interface IndexableField {
    * @return TokenStream value for indexing the document. Should always return a non-null value if
    *     the field is to be indexed
    */
-  public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse);
+  TokenStream tokenStream(Analyzer analyzer, TokenStream reuse);
 
   /** Non-null if this field has a binary value */
-  public BytesRef binaryValue();
+  BytesRef binaryValue();
 
   /** Non-null if this field has a string value */
-  public String stringValue();
+  String stringValue();
 
   /** Non-null if this field has a string value */
   default CharSequence getCharSequenceValue() {
@@ -66,20 +66,20 @@ public interface IndexableField {
   }
 
   /** Non-null if this field has a Reader value */
-  public Reader readerValue();
+  Reader readerValue();
 
   /** Non-null if this field has a numeric value */
-  public Number numericValue();
+  Number numericValue();
 
   /**
    * Stored value. This method is called to populate stored fields and must return a non-null value
    * if the field stored.
    */
-  public StoredValue storedValue();
+  StoredValue storedValue();
 
   /**
    * Describes how this field should be inverted. This must return a non-null value if the field
    * indexes terms and postings.
    */
-  public InvertableType invertableType();
+  InvertableType invertableType();
 }

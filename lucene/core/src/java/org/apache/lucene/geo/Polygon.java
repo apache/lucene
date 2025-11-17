@@ -47,12 +47,16 @@ public final class Polygon extends LatLonGeometry {
 
   /** minimum latitude of this polygon's bounding box area */
   public final double minLat;
+
   /** maximum latitude of this polygon's bounding box area */
   public final double maxLat;
+
   /** minimum longitude of this polygon's bounding box area */
   public final double minLon;
+
   /** maximum longitude of this polygon's bounding box area */
   public final double maxLon;
+
   /** winding order of the vertices */
   private final WindingOrder windingOrder;
 
@@ -204,6 +208,7 @@ public final class Polygon extends LatLonGeometry {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
+    sb.append("Polygon");
     for (int i = 0; i < polyLats.length; i++) {
       sb.append("[").append(polyLats[i]).append(", ").append(polyLons[i]).append("] ");
     }

@@ -42,7 +42,7 @@ public class FacetField extends Field {
   /** Path for this field. */
   public final String[] path;
 
-  /** Creates the this from {@code dim} and {@code path}. */
+  /** Creates this from {@code dim} and {@code path}. */
   public FacetField(String dim, String... path) {
     super("dummy", TYPE);
     verifyLabel(dim);

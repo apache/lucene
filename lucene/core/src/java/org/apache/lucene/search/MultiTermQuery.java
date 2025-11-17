@@ -57,6 +57,7 @@ public abstract class MultiTermQuery extends Query {
   public abstract static class RewriteMethod {
     public abstract Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query)
         throws IOException;
+
     /**
      * Returns the {@link MultiTermQuery}s {@link TermsEnum}
      *
@@ -312,7 +313,7 @@ public abstract class MultiTermQuery extends Query {
    * Return the number of unique terms contained in this query, if known up-front. If not known, -1
    * will be returned.
    */
-  public long getTermsCount() throws IOException {
+  public long getTermsCount() {
     return -1;
   }
 

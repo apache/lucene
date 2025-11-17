@@ -259,7 +259,7 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
     }
 
     try (IndexInput metaIn = EndiannessReverserUtil.openInput(dir, "meta", IOContext.READONCE);
-        IndexInput dataIn = EndiannessReverserUtil.openInput(dir, "data", IOContext.READ)) {
+        IndexInput dataIn = EndiannessReverserUtil.openInput(dir, "data", IOContext.DEFAULT)) {
       LegacyDirectMonotonicReader.Meta meta =
           LegacyDirectMonotonicReader.loadMeta(metaIn, array.length, blockShift);
       LegacyDirectMonotonicReader reader =

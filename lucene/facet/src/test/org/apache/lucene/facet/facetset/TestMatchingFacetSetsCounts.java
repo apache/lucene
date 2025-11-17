@@ -69,6 +69,8 @@ public class TestMatchingFacetSetsCounts extends FacetTestCase {
   }
 
   public void testInconsistentNumOfIndexedDimensions() throws IOException {
+    assumeTrue("Test designed to work only with assertions enabled.", TEST_ASSERTS_ENABLED);
+
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
 

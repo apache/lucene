@@ -17,6 +17,7 @@
 
 package org.apache.lucene.document;
 
+import java.util.Objects;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -45,10 +46,6 @@ public class KnnFloatVectorField extends Field {
     int dimension = v.length;
     if (dimension == 0) {
       throw new IllegalArgumentException("cannot index an empty vector");
-    }
-    if (dimension > FloatVectorValues.MAX_DIMENSIONS) {
-      throw new IllegalArgumentException(
-          "cannot index vectors with dimension greater than " + FloatVectorValues.MAX_DIMENSIONS);
     }
     if (similarityFunction == null) {
       throw new IllegalArgumentException("similarity function must not be null");
@@ -101,7 +98,7 @@ public class KnnFloatVectorField extends Field {
   public KnnFloatVectorField(
       String name, float[] vector, VectorSimilarityFunction similarityFunction) {
     super(name, createType(vector, similarityFunction));
-    fieldsData = vector;
+    fieldsData = VectorUtil.checkFinite(vector); // null check done above
   }
 
   /**
@@ -137,7 +134,12 @@ public class KnnFloatVectorField extends Field {
               + " using float[] but the field encoding is "
               + fieldType.vectorEncoding());
     }
-    fieldsData = vector;
+    Objects.requireNonNull(vector, "vector value must not be null");
+    if (vector.length != fieldType.vectorDimension()) {
+      throw new IllegalArgumentException(
+          "The number of vector dimensions does not match the field type");
+    }
+    fieldsData = VectorUtil.checkFinite(vector);
   }
 
   /** Return the vector value of this field */
