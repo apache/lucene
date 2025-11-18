@@ -31,8 +31,14 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -1233,6 +1239,113 @@ public class TestDirectoryReader extends LuceneTestCase {
         });
 
     dir.close();
+  }
+
+  public void testExecutorServicePartialFailure() throws IOException {
+    Directory dir = newDirectory();
+    createMultiSegmentIndex(dir, 3);
+
+    // Create an executor that fails on the second task but succeeds on others
+    ExecutorService executor = createExecutorServiceThatFailsOneTask();
+
+    try {
+      expectThrows(
+          RuntimeException.class,
+          () -> {
+            DirectoryReader.open(dir, executor);
+          });
+    } finally {
+      executor.shutdown();
+      dir.close();
+    }
+  }
+
+  private ExecutorService createExecutorServiceThatFailsOneTask() {
+    return new ExecutorService() {
+      private int taskCount = 0;
+      private final ExecutorService delegate =
+          Executors.newFixedThreadPool(2, new NamedThreadFactory("TestDirectoryReader"));
+
+      @Override
+      public <T> Future<T> submit(Callable<T> task) {
+        taskCount++;
+        if (taskCount == 2) {
+          // Second task fails
+          CompletableFuture<T> future = new CompletableFuture<>();
+          future.completeExceptionally(
+              new RuntimeException(new IOException("Simulated failure on segment")));
+          return future;
+        } else {
+          // Other tasks succeed normally
+          return delegate.submit(task);
+        }
+      }
+
+      @Override
+      public void shutdown() {
+        delegate.shutdown();
+      }
+
+      @Override
+      public List<Runnable> shutdownNow() {
+        return delegate.shutdownNow();
+      }
+
+      @Override
+      public boolean isShutdown() {
+        return delegate.isShutdown();
+      }
+
+      @Override
+      public boolean isTerminated() {
+        return delegate.isTerminated();
+      }
+
+      @Override
+      public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+        return delegate.awaitTermination(timeout, unit);
+      }
+
+      @Override
+      public Future<?> submit(Runnable task) {
+        return delegate.submit(task);
+      }
+
+      @Override
+      public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks)
+          throws InterruptedException {
+        return delegate.invokeAll(tasks);
+      }
+
+      @Override
+      public <T> List<Future<T>> invokeAll(
+          Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
+          throws InterruptedException {
+        return delegate.invokeAll(tasks, timeout, unit);
+      }
+
+      @Override
+      public <T> T invokeAny(Collection<? extends Callable<T>> tasks)
+          throws InterruptedException, ExecutionException {
+        return delegate.invokeAny(tasks);
+      }
+
+      @Override
+      public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
+          throws InterruptedException, ExecutionException, TimeoutException {
+        return delegate.invokeAny(tasks, timeout, unit);
+      }
+
+      @Override
+      public <T> Future<T> submit(Runnable task, T result) {
+        return delegate.submit(task, result);
+      }
+
+      @Override
+      public void execute(Runnable command) {
+        delegate.execute(command);
+      }
+    };
   }
 
   private void createMultiSegmentIndex(Directory dir, int numSegments) throws IOException {
