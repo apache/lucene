@@ -29,7 +29,6 @@ import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredField;
@@ -42,21 +41,16 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LogDocMergePolicy;
-import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.hnsw.HnswGraph;
-
-import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_NUM_MERGE_WORKER;
 
 /** Tests reordering vector values using Binary Partitioning */
 public class TestBpVectorReorderer extends LuceneTestCase {
@@ -330,7 +324,9 @@ public class TestBpVectorReorderer extends LuceneTestCase {
   // Disable skipping HNSW graph creation for small segments and pass through reordering flag.
   private IndexWriterConfig createIndexWriterConfig(boolean enableReorder) {
     IndexWriterConfig cfg = new IndexWriterConfig();
-    cfg.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(8, 32, 1, null, 0, enableReorder)));
+    cfg.setCodec(
+        TestUtil.alwaysKnnVectorsFormat(
+            new Lucene99HnswVectorsFormat(8, 32, 1, null, 0, enableReorder)));
     cfg.setMergePolicy(new LogDocMergePolicy());
     cfg.setMergeScheduler(new SerialMergeScheduler());
     return cfg;
@@ -489,25 +485,26 @@ public class TestBpVectorReorderer extends LuceneTestCase {
 
     // compute the expected ordering
     Sorter.DocMap expected =
-      reorderer.computeValueMap(
-        FloatVectorValues.fromFloats(vectors, 2), VectorSimilarityFunction.EUCLIDEAN, null);
+        reorderer.computeValueMap(
+            FloatVectorValues.fromFloats(vectors, 2), VectorSimilarityFunction.EUCLIDEAN, null);
     // use identity
-    expected = new Sorter.DocMap() {
-      @Override
-      public int oldToNew(int docID) {
-        return docID;
-      }
+    expected =
+        new Sorter.DocMap() {
+          @Override
+          public int oldToNew(int docID) {
+            return docID;
+          }
 
-      @Override
-      public int newToOld(int docID) {
-        return docID;
-      }
+          @Override
+          public int newToOld(int docID) {
+            return docID;
+          }
 
-      @Override
-      public int size() {
-        return vectors.size();
-      }
-    };
+          @Override
+          public int size() {
+            return vectors.size();
+          }
+        };
 
     // index without reordering in order to get the expected HNSW graph
     Path tmpdir = createTempDir();
@@ -518,7 +515,8 @@ public class TestBpVectorReorderer extends LuceneTestCase {
       }
       try (IndexReader reader = DirectoryReader.open(dir)) {
         LeafReader leafReader = getOnlyLeafReader(reader);
-        HnswGraph hnsw = ((HnswGraphProvider) ((CodecReader) leafReader).getVectorReader()).getGraph("f");
+        HnswGraph hnsw =
+            ((HnswGraphProvider) ((CodecReader) leafReader).getVectorReader()).getGraph("f");
         for (int ord = 0; ord < hnsw.size(); ord++) {
           List<Integer> neighbors = new ArrayList<>();
           hnsw.seek(0, ord);
@@ -567,7 +565,8 @@ public class TestBpVectorReorderer extends LuceneTestCase {
               0);
         }
         // Verify that we produce the same graph, numbered according to the reordering.
-        HnswGraph hnsw = ((HnswGraphProvider) ((CodecReader) leafReader).getVectorReader()).getGraph("f");
+        HnswGraph hnsw =
+            ((HnswGraphProvider) ((CodecReader) leafReader).getVectorReader()).getGraph("f");
         assertEquals(expectedGraph.size(), hnsw.size());
         for (int newOrd = 0; newOrd < hnsw.size(); newOrd++) {
           hnsw.seek(0, newOrd);
@@ -579,8 +578,10 @@ public class TestBpVectorReorderer extends LuceneTestCase {
           }
           // we may now get nodes out of order
           Collections.sort(neighbors);
-          assertEquals("neighbors of " + newOrd + " (was " + expected.newToOld(newOrd) + ")",
-              expectedGraph.get(expected.newToOld(newOrd)), neighbors);
+          assertEquals(
+              "neighbors of " + newOrd + " (was " + expected.newToOld(newOrd) + ")",
+              expectedGraph.get(expected.newToOld(newOrd)),
+              neighbors);
         }
       }
     }

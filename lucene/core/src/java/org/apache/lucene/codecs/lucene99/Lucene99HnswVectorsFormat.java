@@ -51,7 +51,8 @@ import org.apache.lucene.util.hnsw.HnswGraphBuilder;
  *               <li><b>[vint]</b> the number of neighbor nodes
  *               <li><b>array[vint]</b> the delta encoded neighbor ordinals
  *             </ul>
- *       </ul>re
+ *       </ul>
+ *       re
  *   <li>After all levels are encoded, memory offsets for each node's neighbor nodes are appended to
  *       the end of the file. The offsets are encoded by {@link
  *       org.apache.lucene.util.packed.DirectMonotonicWriter}.
@@ -150,7 +151,9 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
   private final int beamWidth;
 
   /** The format for storing, reading, and merging vectors on disk. */
-  private static final FlatVectorsScorer DEFAULT_FLAT_VECTORS_SCORER = FlatVectorScorerUtil.getLucene99FlatVectorsScorer();
+  private static final FlatVectorsScorer DEFAULT_FLAT_VECTORS_SCORER =
+      FlatVectorScorerUtil.getLucene99FlatVectorsScorer();
+
   private static final FlatVectorsFormat DEFAULT_FLAT_VECTORS_FORMAT =
       new Lucene99FlatVectorsFormat(DEFAULT_FLAT_VECTORS_SCORER, false);
   private static final FlatVectorsFormat REORDERING_FLAT_VECTORS_FORMAT =
@@ -197,7 +200,14 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    * @param beamWidth the size of the queue maintained during graph construction.
    */
   public Lucene99HnswVectorsFormat(int maxConn, int beamWidth) {
-    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, HNSW_GRAPH_THRESHOLD, false, VERSION_CURRENT);
+    this(
+        maxConn,
+        beamWidth,
+        DEFAULT_NUM_MERGE_WORKER,
+        null,
+        HNSW_GRAPH_THRESHOLD,
+        false,
+        VERSION_CURRENT);
   }
 
   /**
@@ -210,7 +220,13 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    */
   public Lucene99HnswVectorsFormat(int maxConn, int beamWidth, int tinySegmentsThreshold) {
     this(
-        maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, tinySegmentsThreshold, false, VERSION_CURRENT);
+        maxConn,
+        beamWidth,
+        DEFAULT_NUM_MERGE_WORKER,
+        null,
+        tinySegmentsThreshold,
+        false,
+        VERSION_CURRENT);
   }
 
   /**
@@ -226,9 +242,15 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    */
   public Lucene99HnswVectorsFormat(
       int maxConn, int beamWidth, int numMergeWorkers, ExecutorService mergeExec) {
-    this(maxConn, beamWidth, numMergeWorkers, mergeExec, HNSW_GRAPH_THRESHOLD, false, VERSION_CURRENT);
+    this(
+        maxConn,
+        beamWidth,
+        numMergeWorkers,
+        mergeExec,
+        HNSW_GRAPH_THRESHOLD,
+        false,
+        VERSION_CURRENT);
   }
-
 
   /**
    * Constructs a format using the given graph construction parameters. (This is a Test-Only
@@ -250,7 +272,14 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
       int numMergeWorkers,
       ExecutorService mergeExec,
       int tinySegmentsThreshold) {
-    this(maxConn, beamWidth, numMergeWorkers, mergeExec, tinySegmentsThreshold, false, VERSION_CURRENT);
+    this(
+        maxConn,
+        beamWidth,
+        numMergeWorkers,
+        mergeExec,
+        tinySegmentsThreshold,
+        false,
+        VERSION_CURRENT);
   }
 
   /**
@@ -266,7 +295,8 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    *     MergeScheduler#getIntraMergeExecutor(MergePolicy.OneMerge)} is used.
    * @param tinySegmentsThreshold the expected number of vector operations to return k nearest
    *     neighbors of the current graph size
-   * @param enableReorder if true, BpVectorReorderer is used to sort vector nodes when merging. TODO: better explanation
+   * @param enableReorder if true, BpVectorReorderer is used to sort vector nodes when merging.
+   *     TODO: better explanation
    */
   public Lucene99HnswVectorsFormat(
       int maxConn,
@@ -275,7 +305,14 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
       ExecutorService mergeExec,
       int tinySegmentsThreshold,
       boolean enableReorder) {
-    this(maxConn, beamWidth, numMergeWorkers, mergeExec, tinySegmentsThreshold, enableReorder, VERSION_CURRENT);
+    this(
+        maxConn,
+        beamWidth,
+        numMergeWorkers,
+        mergeExec,
+        tinySegmentsThreshold,
+        enableReorder,
+        VERSION_CURRENT);
   }
 
   /**
@@ -290,7 +327,8 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    *     MergeScheduler#getIntraMergeExecutor(MergePolicy.OneMerge)} is used.
    * @param tinySegmentsThreshold the expected number of vector operations to return k nearest
    *     neighbors of the current graph size
-   * @param enableReorder if true, BpVectorReorderer is used to sort vector nodes when merging. TODO: better explanation
+   * @param enableReorder if true, BpVectorReorderer is used to sort vector nodes when merging.
+   *     TODO: better explanation
    * @param writeVersion the version used for the writer to encode docID's (VarInt=0, GroupVarInt=1)
    */
   Lucene99HnswVectorsFormat(

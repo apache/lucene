@@ -364,7 +364,8 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
       out.writeInt(0);
 
       // Write configuration
-      OrdToDocDISIReaderConfiguration.writeStoredMeta(DIRECT_MONOTONIC_BLOCK_SHIFT, out, null, 0, 0, null, null);
+      OrdToDocDISIReaderConfiguration.writeStoredMeta(
+          DIRECT_MONOTONIC_BLOCK_SHIFT, out, null, 0, 0, null, null);
 
       // Mark end of fields and write footer
       out.writeInt(-1);

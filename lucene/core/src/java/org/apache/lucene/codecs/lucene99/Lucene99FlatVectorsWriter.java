@@ -313,7 +313,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
           reorderVectors(docsWithField);
         } else {
           // copy the temporary file vectors to the actual data file in docid order
-          vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
+          vectorData.copyBytes(
+              vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
         }
 
         CodecUtil.retrieveChecksum(vectorDataInput);
@@ -603,7 +604,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     private final Sorter.DocMap sortMap;
 
     FlatCloseableRandomVectorScorerSupplier(
-        Closeable onClose, int numVectors, RandomVectorScorerSupplier supplier, Sorter.DocMap sortMap) {
+        Closeable onClose,
+        int numVectors,
+        RandomVectorScorerSupplier supplier,
+        Sorter.DocMap sortMap) {
       this.onClose = onClose;
       this.supplier = supplier;
       this.numVectors = numVectors;

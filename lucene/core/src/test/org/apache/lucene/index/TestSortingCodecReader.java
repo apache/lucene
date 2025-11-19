@@ -225,8 +225,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
                       new SortField("sorted_binary_sort_field", SortField.Type.STRING, false),
                       new SortField("alt_id", SortField.Type.INT))));
       IndexWriterConfig cfg = newIndexWriterConfig();
-      cfg.setCodec(
-          TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(8, 32)));
+      cfg.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(8, 32)));
       cfg.setIndexSort(indexSort);
       try (Directory sortDir = newDirectory()) {
         try (IndexWriter writer = new IndexWriter(sortDir, cfg)) {

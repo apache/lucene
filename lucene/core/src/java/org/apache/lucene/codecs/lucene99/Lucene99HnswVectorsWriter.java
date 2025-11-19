@@ -61,7 +61,6 @@ import org.apache.lucene.util.hnsw.HnswGraphMerger;
 import org.apache.lucene.util.hnsw.IncrementalHnswGraphMerger;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
-import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
@@ -259,7 +258,9 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     long vectorIndexOffset = vectorIndex.getFilePointer();
     OnHeapHnswGraph graph = fieldData.getGraph();
     int[][] graphLevelNodeOffsets = graph == null ? new int[0][] : new int[graph.numLevels()][];
-    HnswGraph mockGraph = reconstructAndWriteGraph(graph, BpVectorReorderer.sortMapOf(oldOrdMap, ordMap), graphLevelNodeOffsets);
+    HnswGraph mockGraph =
+        reconstructAndWriteGraph(
+            graph, BpVectorReorderer.sortMapOf(oldOrdMap, ordMap), graphLevelNodeOffsets);
     long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
 
     writeMeta(
@@ -282,8 +283,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
    * @return The graph
    * @throws IOException if writing to vectorIndex fails
    */
-  private HnswGraph reconstructAndWriteGraph(OnHeapHnswGraph graph, Sorter.DocMap sortMap, int[][] levelNodeOffsets)
-      throws IOException {
+  private HnswGraph reconstructAndWriteGraph(
+      OnHeapHnswGraph graph, Sorter.DocMap sortMap, int[][] levelNodeOffsets) throws IOException {
     if (graph == null) return null;
 
     List<int[]> nodesByLevel = new ArrayList<>(graph.numLevels());
@@ -367,7 +368,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   private void reconstructAndWriteNeighbours(
-      NeighborArray neighbors, Sorter.DocMap sortMap, int[] scratch, int maxOrd) throws IOException {
+      NeighborArray neighbors, Sorter.DocMap sortMap, int[] scratch, int maxOrd)
+      throws IOException {
     int size = neighbors.size();
     // Destructively modify; it's ok we are discarding it after this
     int[] nnodes = neighbors.nodes();
@@ -451,7 +453,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           graphToWrite = graph;
         } else {
           vectorIndexNodeOffsets = new int[graph.numLevels()][];
-          graphToWrite = reconstructAndWriteGraph(graph, scorerSupplier.sortMap(), vectorIndexNodeOffsets);
+          graphToWrite =
+              reconstructAndWriteGraph(graph, scorerSupplier.sortMap(), vectorIndexNodeOffsets);
         }
       }
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
