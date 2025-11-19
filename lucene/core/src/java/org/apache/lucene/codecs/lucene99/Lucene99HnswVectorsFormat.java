@@ -24,6 +24,7 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104FlatVectorsFormat;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeScheduler;
 import org.apache.lucene.index.SegmentReadState;
@@ -150,7 +151,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
 
   /** The format for storing, reading, and merging vectors on disk. */
   private static final FlatVectorsFormat flatVectorsFormat =
-      new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
+      new Lucene104FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   private final int numMergeWorkers;
   private final TaskExecutor mergeExec;

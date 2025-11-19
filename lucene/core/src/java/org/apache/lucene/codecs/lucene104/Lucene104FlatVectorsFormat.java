@@ -29,39 +29,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexOutput;
 
 /**
- * Lucene 9.9 flat vector format, which encodes numeric vector values
- *
- * <h2>.vec (vector data) file</h2>
- *
- * <p>For each field:
- *
- * <ul>
- *   <li>Vector data ordered by field, document ordinal, and vector dimension. When the
- *       vectorEncoding is BYTE, each sample is stored as a single byte. When it is FLOAT32, each
- *       sample is stored as an IEEE float in little-endian byte order.
- *   <li>DocIds encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)},
- *       note that only in sparse case
- *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
- *       that only in sparse case
- * </ul>
- *
- * <h2>.vemf (vector metadata) file</h2>
- *
- * <p>For each field:
- *
- * <ul>
- *   <li><b>[int32]</b> field number
- *   <li><b>[int32]</b> vector similarity function ordinal
- *   <li><b>[vlong]</b> offset to this field's vectors in the .vec file
- *   <li><b>[vlong]</b> length of this field's vectors, in bytes
- *   <li><b>[vint]</b> dimension of this field's vectors
- *   <li><b>[int]</b> the number of documents having values for this field
- *   <li><b>[int8]</b> if equals to -2, empty - no vector values. If equals to -1, dense – all
- *       documents have values for a field. If equals to 0, sparse – some documents missing values.
- *   <li>DocIds were encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)}
- *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
- *       that only in sparse case
- * </ul>
+ * Lucene 10.4 flat vector format, details TBD.
  *
  * @lucene.experimental
  */

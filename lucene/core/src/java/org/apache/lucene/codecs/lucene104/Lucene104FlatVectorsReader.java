@@ -17,6 +17,9 @@
 
 package org.apache.lucene.codecs.lucene104;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
+
 import java.io.IOException;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
@@ -164,8 +167,7 @@ public final class Lucene104FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
-    final FieldEntry entry = getFieldEntryOrThrow(fieldInfo.name);
-    return Map.of(Lucene104FlatVectorsFormat.VECTOR_DATA_EXTENSION, entry.vectorDataLength());
+    return Map.of(Lucene104FlatVectorsFormat.VECTOR_DATA_EXTENSION, 0L);
   }
 
   @Override
@@ -214,7 +216,8 @@ public final class Lucene104FlatVectorsReader extends FlatVectorsReader {
         fieldEntry.dimension,
         fieldEntry.vectorDataOffset,
         fieldEntry.vectorDataLength,
-        vectorData);
+        vectorData,
+        fieldEntry.offsets);
   }
 
   @Override
@@ -228,7 +231,8 @@ public final class Lucene104FlatVectorsReader extends FlatVectorsReader {
         fieldEntry.dimension,
         fieldEntry.vectorDataOffset,
         fieldEntry.vectorDataLength,
-        vectorData);
+        vectorData,
+        fieldEntry.offsets);
   }
 
   @Override
@@ -244,7 +248,8 @@ public final class Lucene104FlatVectorsReader extends FlatVectorsReader {
             fieldEntry.dimension,
             fieldEntry.vectorDataOffset,
             fieldEntry.vectorDataLength,
-            vectorData),
+            vectorData,
+            fieldEntry.offsets),
         target);
   }
 
@@ -261,7 +266,8 @@ public final class Lucene104FlatVectorsReader extends FlatVectorsReader {
             fieldEntry.dimension,
             fieldEntry.vectorDataOffset,
             fieldEntry.vectorDataLength,
-            vectorData),
+            vectorData,
+            fieldEntry.offsets),
         target);
   }
 
@@ -285,7 +291,8 @@ public final class Lucene104FlatVectorsReader extends FlatVectorsReader {
       int dimension,
       int size,
       OrdToDocDISIReaderConfiguration ordToDoc,
-      FieldInfo info) {
+      FieldInfo info,
+      long[] offsets) {
 
     FieldEntry {
       if (similarityFunction != info.getVectorSimilarityFunction()) {
@@ -307,35 +314,18 @@ public final class Lucene104FlatVectorsReader extends FlatVectorsReader {
                 + " != "
                 + dimension);
       }
-
-      int byteSize =
-          switch (info.getVectorEncoding()) {
-            case BYTE -> Byte.BYTES;
-            case FLOAT32 -> Float.BYTES;
-          };
-      long vectorBytes = Math.multiplyExact((long) infoVectorDimension, byteSize);
-      long numBytes = Math.multiplyExact(vectorBytes, size);
-      if (numBytes != vectorDataLength) {
-        throw new IllegalStateException(
-            "Vector data length "
-                + vectorDataLength
-                + " not matching size="
-                + size
-                + " * dim="
-                + dimension
-                + " * byteSize="
-                + byteSize
-                + " = "
-                + numBytes);
-      }
     }
 
     static FieldEntry create(IndexInput input, FieldInfo info) throws IOException {
       final VectorEncoding vectorEncoding = readVectorEncoding(input);
       final VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
+      final var dimension = input.readVInt();
       final var vectorDataOffset = input.readVLong();
       final var vectorDataLength = input.readVLong();
-      final var dimension = input.readVInt();
+
+      final var offsets = new long[input.readInt()];
+      input.readLongs(offsets, 0, offsets.length);
+
       final var size = input.readInt();
       final var ordToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
       return new FieldEntry(
@@ -346,7 +336,8 @@ public final class Lucene104FlatVectorsReader extends FlatVectorsReader {
           dimension,
           size,
           ordToDoc,
-          info);
+          info,
+          offsets);
     }
   }
 }
