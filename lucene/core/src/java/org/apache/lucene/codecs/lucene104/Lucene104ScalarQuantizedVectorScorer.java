@@ -263,7 +263,9 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
           queryCorrections.additionalCorrection()
               + indexCorrections.additionalCorrection()
               - 2 * score;
-      return Math.max(1 / (1f + score), 0);
+      // Ensure that 'score' (the squared euclidean distance) is non-negative. The computed value
+      // may be negative as a result of quantization loss.
+      return 1 / (1f + Math.max(score, 0f));
     } else {
       // For cosine and max inner product, we need to apply the additional correction, which is
       // assumed to be the non-centered dot-product between the vector and the centroid
@@ -274,7 +276,10 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       if (similarityFunction == MAXIMUM_INNER_PRODUCT) {
         return VectorUtil.scaleMaxInnerProductScore(score);
       }
-      return Math.max((1f + score) / 2f, 0);
+      // Ensure that 'score' (a normalized dot product) is in [-1,1]. The computed value may be out
+      // of bounds as a result of quantization loss.
+      score = Math.clamp(score, -1, 1);
+      return (1f + score) / 2f;
     }
   }
 }

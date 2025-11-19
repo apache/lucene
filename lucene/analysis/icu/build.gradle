@@ -107,7 +107,7 @@ tasks.register("regenerateUtr30DataFiles", {
       ignoreExitValue = false
       workingDir utr30DataDir
       args = [
-        "release-${icu4jVersion.replace(".", "-")}"
+        "release-${icu4jVersion}"
       ]
     }
 
@@ -171,7 +171,7 @@ tasks.register("compileIcuWindows", {
       icuBuildDir.mkdirs()
 
       // Download binaries matching icu4j version in version.props
-      def src = URI.create("https://github.com/unicode-org/icu/releases/download/release-${v.replace(".", "-")}/icu4c-${v.replace(".", "_")}-Win64-MSVC2019.zip")
+      def src = URI.create("https://github.com/unicode-org/icu/releases/download/release-${v}/icu4c-${v}-Win64-MSVC2022.zip")
 
       logger.lifecycle("Trying to download binary ICU version: ${v} from:\n  ${src}")
       Files.write(icuBinZip.toPath(), src.toURL().openStream().bytes)
@@ -193,12 +193,12 @@ tasks.register("compileIcuLinux", {
     }
 
     def v = icu4jVersion
-    def icuSrcTgz = file("${icuBuildDir}/icu4c-${v.replace(".", "_")}-src.tgz")
+    def icuSrcTgz = file("${icuBuildDir}/icu4c-${v}-sources.tgz")
 
     // Download sources for version matching icu4j version in version.props
     if (!icuSrcTgz.exists()) {
       icuBuildDir.mkdirs()
-      def src = URI.create("https://github.com/unicode-org/icu/releases/download/release-${v.replace(".", "-")}/icu4c-${v.replace(".", "_")}-src.tgz")
+      def src = URI.create("https://github.com/unicode-org/icu/releases/download/release-${v}/icu4c-${v}-sources.tgz")
       logger.lifecycle("Trying to download and compile ICU version: ${v} from:\n  ${src}")
       Files.write(icuSrcTgz.toPath(), src.toURL().openStream().bytes)
       logger.lifecycle("Downloaded ${icuSrcTgz.size()} bytes.")
