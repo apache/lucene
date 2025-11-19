@@ -113,7 +113,7 @@ public final class Lucene90LiveDocsFormat extends LiveDocsFormat {
     if (deletionRate <= SPARSE_DENSE_THRESHOLD) {
       SparseFixedBitSet sparse = readSparseFixedBitSet(input, maxDoc);
       actualDelCount = sparse.cardinality();
-      liveDocs = new SparseLiveDocs(sparse, maxDoc);
+      liveDocs = new SparseLiveDocs(sparse, maxDoc, actualDelCount);
     } else {
       FixedBitSet dense = readFixedBitSet(input, maxDoc);
       actualDelCount = maxDoc - dense.cardinality();

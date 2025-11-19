@@ -68,14 +68,37 @@ public final class SparseLiveDocs implements LiveDocs {
   /**
    * Creates a SparseLiveDocs wrapping an existing SparseFixedBitSet of deleted documents.
    *
+   * <p>This constructor computes the cardinality of the deleted docs bitset. For better
+   * performance when the cardinality is already known, use {@link #SparseLiveDocs(SparseFixedBitSet, int, int)}.
+   *
    * @param deletedDocs bit set where set bits represent DELETED documents
    * @param maxDoc the maximum document ID (exclusive)
    */
   public SparseLiveDocs(final SparseFixedBitSet deletedDocs, int maxDoc) {
+    this(deletedDocs, maxDoc, deletedDocs.cardinality());
+  }
+
+  /**
+   * Creates a SparseLiveDocs wrapping an existing SparseFixedBitSet of deleted documents with a
+   * pre-computed deleted count.
+   *
+   * <p>This constructor is useful when the caller has already computed the cardinality for
+   * validation or other purposes, avoiding redundant O(n) cardinality computation.
+   *
+   * @param deletedDocs bit set where set bits represent DELETED documents
+   * @param maxDoc the maximum document ID (exclusive)
+   * @param deletedCount the number of deleted documents (must equal deletedDocs.cardinality())
+   */
+  public SparseLiveDocs(final SparseFixedBitSet deletedDocs, int maxDoc, int deletedCount) {
     assert deletedDocs.length >= maxDoc;
+    assert deletedCount == deletedDocs.cardinality()
+        : "deletedCount="
+            + deletedCount
+            + " does not match deletedDocs.cardinality()="
+            + deletedDocs.cardinality();
     this.maxDoc = maxDoc;
     this.deletedDocs = deletedDocs;
-    this.deletedCount = this.deletedDocs.cardinality();
+    this.deletedCount = deletedCount;
   }
 
   @Override

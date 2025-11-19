@@ -92,7 +92,7 @@ public final class DenseLiveDocs implements LiveDocs {
 
   @Override
   public DocIdSetIterator liveDocsIterator() {
-    return new BitSetIterator(liveDocs, liveDocs.cardinality());
+    return new BitSetIterator(liveDocs, maxDoc - deletedCount);
   }
 
   @Override
