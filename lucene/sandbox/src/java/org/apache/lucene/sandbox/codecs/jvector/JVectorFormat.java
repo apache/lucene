@@ -18,8 +18,6 @@
 package org.apache.lucene.sandbox.codecs.jvector;
 
 import java.io.IOException;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.function.IntUnaryOperator;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -44,10 +42,6 @@ public class JVectorFormat extends KnnVectorsFormat {
   public static final float DEFAULT_NEIGHBOR_OVERFLOW = 2f;
   public static final float DEFAULT_ALPHA = 2f;
   public static final boolean DEFAULT_HIERARCHY_ENABLED = true;
-  // Unfortunately, this can't be managed yet by the OpenSearch ThreadPool because it's not
-  // supporting {@link ForkJoinPool} types
-  public static final ForkJoinPool SIMD_POOL_MERGE = getPhysicalCoreExecutor();
-  public static final ForkJoinPool SIMD_POOL_FLUSH = getPhysicalCoreExecutor();
 
   private final int maxConn;
   private final int beamWidth;
@@ -186,24 +180,5 @@ public class JVectorFormat extends KnnVectorsFormat {
       compressedBytes = (int) (originalDimension * 0.125);
     }
     return compressedBytes;
-  }
-
-  public static ForkJoinPool getPhysicalCoreExecutor() {
-    final int estimatedPhysicalCoreCount =
-        Integer.getInteger(
-            "jvector.physical_core_count",
-            Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
-    assert estimatedPhysicalCoreCount > 0
-            && estimatedPhysicalCoreCount <= Runtime.getRuntime().availableProcessors()
-        : "Invalid core count: " + estimatedPhysicalCoreCount;
-    final ForkJoinPool.ForkJoinWorkerThreadFactory factory =
-        pool -> {
-          ForkJoinWorkerThread thread =
-              ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
-          thread.setPriority(Thread.NORM_PRIORITY - 2);
-          return thread;
-        };
-
-    return new ForkJoinPool(estimatedPhysicalCoreCount, factory, null, true);
   }
 }

@@ -17,10 +17,7 @@
 
 package org.apache.lucene.sandbox.codecs.jvector;
 
-import static io.github.jbellis.jvector.quantization.KMeansPlusPlusClusterer.UNWEIGHTED;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
-import static org.apache.lucene.sandbox.codecs.jvector.JVectorFormat.SIMD_POOL_FLUSH;
-import static org.apache.lucene.sandbox.codecs.jvector.JVectorFormat.SIMD_POOL_MERGE;
 
 import io.github.jbellis.jvector.graph.GraphIndexBuilder;
 import io.github.jbellis.jvector.graph.ListRandomAccessVectorValues;
@@ -43,7 +40,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.function.IntUnaryOperator;
 import java.util.stream.IntStream;
 import org.apache.lucene.codecs.CodecUtil;
@@ -242,7 +240,7 @@ public class JVectorWriter extends KnnVectorsWriter {
               randomAccessVectorValues,
               fieldInfo,
               segmentWriteState.segmentInfo.name,
-              SIMD_POOL_FLUSH);
+              Runnable::run);
       writeField(field.fieldInfo, randomAccessVectorValues, pqVectors, graphNodeIdToDocMap, graph);
     }
   }
@@ -356,17 +354,15 @@ public class JVectorWriter extends KnnVectorsWriter {
     final var numberOfClustersPerSubspace =
         Math.min(256, randomAccessVectorValues.size()); // number of centroids per
     // subspace
+
     ProductQuantization pq =
         ProductQuantization.compute(
             randomAccessVectorValues,
-            M, // number of subspaces
-            numberOfClustersPerSubspace, // number of centroids per subspace
-            vectorSimilarityFunction == VectorSimilarityFunction.EUCLIDEAN, // center the dataset
-            UNWEIGHTED,
-            SIMD_POOL_MERGE,
-            ForkJoinPool.commonPool());
+            M,
+            numberOfClustersPerSubspace,
+            vectorSimilarityFunction == VectorSimilarityFunction.EUCLIDEAN);
 
-    return pq.encodeAll(randomAccessVectorValues, SIMD_POOL_MERGE);
+    return (PQVectors) pq.encodeAll(randomAccessVectorValues);
   }
 
   /// Metadata about the index to be persisted on disk
@@ -642,7 +638,7 @@ public class JVectorWriter extends KnnVectorsWriter {
             new RandomAccessVectorValuesOverVectorValues(values);
         newPq = newPq.refine(randomAccessVectorValues);
       }
-      pqVectors = newPq.encodeAll(ravv, SIMD_POOL_MERGE);
+      pqVectors = (PQVectors) newPq.encodeAll(ravv);
     } else if (ravv.size() >= minimumBatchSizeForQuantization) {
       // No pre-existing codebooks, check if we have enough vectors to trigger quantization
       pqVectors = getPQVectors(ravv, fieldInfo);
@@ -668,7 +664,7 @@ public class JVectorWriter extends KnnVectorsWriter {
             ravv,
             fieldInfo,
             segmentWriteState.segmentInfo.name,
-            SIMD_POOL_MERGE);
+            mergeState.intraMergeTaskExecutor);
     writeField(fieldInfo, ravv, pqVectors, graphNodeIdToDocMap, graph);
   }
 
@@ -786,7 +782,7 @@ public class JVectorWriter extends KnnVectorsWriter {
       RandomAccessVectorValues randomAccessVectorValues,
       FieldInfo fieldInfo,
       String segmentName,
-      ForkJoinPool SIMD_POOL) {
+      Executor executor) {
     final GraphIndexBuilder graphIndexBuilder =
         new GraphIndexBuilder(
             buildScoreProvider,
@@ -804,17 +800,17 @@ public class JVectorWriter extends KnnVectorsWriter {
      * This is the case when we are merging segments and we might have more documents than vectors.
      */
     final OnHeapGraphIndex graphIndex;
-    var vv = randomAccessVectorValues.threadLocalSupplier();
+    final var vv = randomAccessVectorValues.threadLocalSupplier();
 
     // parallel graph construction from the merge documents Ids
     final int size = randomAccessVectorValues.size();
-    SIMD_POOL
-        .submit(
-            () ->
-                IntStream.range(0, size)
-                    .parallel()
-                    .forEach(ord -> graphIndexBuilder.addGraphNode(ord, vv.get().getVector(ord))))
-        .join();
+    IntStream.range(0, size)
+        .mapToObj(
+            ord ->
+                CompletableFuture.runAsync(
+                    () -> graphIndexBuilder.addGraphNode(ord, vv.get().getVector(ord)), executor))
+        .reduce((a, b) -> a.runAfterBoth(b, () -> {}))
+        .ifPresent(CompletableFuture::join);
     graphIndexBuilder.cleanup();
     graphIndex = (OnHeapGraphIndex) graphIndexBuilder.getGraph();
 
