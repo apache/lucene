@@ -765,6 +765,67 @@ public class TestDirectoryReader extends LuceneTestCase {
     d.close();
   }
 
+  public void testGetIndexCommitWithExecutorService() throws IOException {
+
+    Directory d = newDirectory();
+    ExecutorService executorService =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReader"));
+
+    try {
+      // set up writer
+      IndexWriter writer =
+          new IndexWriter(
+              d,
+              newIndexWriterConfig(new MockAnalyzer(random()))
+                  .setMaxBufferedDocs(2)
+                  .setMergePolicy(newLogMergePolicy(10)));
+      for (int i = 0; i < 27; i++) addDocumentWithFields(writer);
+      writer.close();
+
+      SegmentInfos sis = SegmentInfos.readLatestCommit(d);
+      DirectoryReader r = DirectoryReader.open(d);
+      IndexCommit c = r.getIndexCommit();
+
+      assertEquals(sis.getSegmentsFileName(), c.getSegmentsFileName());
+
+      assertEquals(c, r.getIndexCommit());
+
+      // Change the index
+      writer =
+          new IndexWriter(
+              d,
+              newIndexWriterConfig(new MockAnalyzer(random()))
+                  .setOpenMode(OpenMode.APPEND)
+                  .setMaxBufferedDocs(2)
+                  .setMergePolicy(newLogMergePolicy(10)));
+      for (int i = 0; i < 7; i++) addDocumentWithFields(writer);
+      writer.close();
+
+      DirectoryReader r2 = DirectoryReader.openIfChanged(r, executorService);
+      assertNotNull(r2);
+      assertNotEquals(c, r2.getIndexCommit());
+      assertNotEquals(1, r2.getIndexCommit().getSegmentCount());
+      r2.close();
+
+      writer =
+          new IndexWriter(
+              d, newIndexWriterConfig(new MockAnalyzer(random())).setOpenMode(OpenMode.APPEND));
+      writer.forceMerge(1);
+      writer.close();
+
+      r2 = DirectoryReader.openIfChanged(r, executorService);
+      assertNotNull(r2);
+      assertNull(DirectoryReader.openIfChanged(r2, executorService));
+      assertEquals(1, r2.getIndexCommit().getSegmentCount());
+
+      r.close();
+      r2.close();
+    } finally {
+      executorService.shutdown();
+      d.close();
+    }
+  }
+
   static Document createDocument(String id) {
     Document doc = new Document();
     FieldType customType = new FieldType(TextField.TYPE_STORED);
@@ -783,6 +844,19 @@ public class TestDirectoryReader extends LuceneTestCase {
     Directory dir = newFSDirectory(tempDir);
     expectThrows(IndexNotFoundException.class, () -> DirectoryReader.open(dir));
     dir.close();
+  }
+
+  public void testNoDirWithExecutor() throws Throwable {
+    Path tempDir = createTempDir("doesnotexist");
+    Directory dir = newFSDirectory(tempDir);
+    ExecutorService executorService =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReader"));
+    try {
+      expectThrows(IndexNotFoundException.class, () -> DirectoryReader.open(dir, executorService));
+    } finally {
+      dir.close();
+      executorService.shutdown();
+    }
   }
 
   // LUCENE-1509

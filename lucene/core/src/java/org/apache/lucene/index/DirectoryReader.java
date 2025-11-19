@@ -246,6 +246,31 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
   }
 
   /**
+   * If the index has changed since the provided reader was opened, open and return a new reader;
+   * else, return null. The new reader, if not null, will be the same type of reader as the previous
+   * one, ie an NRT reader will open a new NRT reader etc.
+   *
+   * <p>This method is typically far less costly than opening a fully new <code>DirectoryReader
+   * </code> as it shares resources (for example sub-readers) with the provided <code>
+   * DirectoryReader</code>, when possible.
+   *
+   * <p>The provided reader is not closed (you are responsible for doing so); if a new reader is
+   * returned you also must eventually close it. Be sure to never close a reader while other threads
+   * are still using it; see {@link SearcherManager} to simplify managing this.
+   *
+   * @throws CorruptIndexException if the index is corrupt
+   * @throws IOException if there is a low-level IO error
+   * @return null if there are no changes; else, a new DirectoryReader instance which you must
+   *     eventually close
+   */
+  public static DirectoryReader openIfChanged(
+      DirectoryReader oldReader, ExecutorService executorService) throws IOException {
+    final DirectoryReader newReader = oldReader.doOpenIfChanged(executorService);
+    assert newReader != oldReader;
+    return newReader;
+  }
+
+  /**
    * If the IndexCommit differs from what the provided reader is searching, open and return a new
    * reader; else, return null.
    *
@@ -254,6 +279,20 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
   public static DirectoryReader openIfChanged(DirectoryReader oldReader, IndexCommit commit)
       throws IOException {
     final DirectoryReader newReader = oldReader.doOpenIfChanged(commit);
+    assert newReader != oldReader;
+    return newReader;
+  }
+
+  /**
+   * If the IndexCommit differs from what the provided reader is searching, open and return a new
+   * reader; else, return null. Executor service provides intra-open concurrency.
+   *
+   * @see #openIfChanged(DirectoryReader)
+   */
+  public static DirectoryReader openIfChanged(
+      DirectoryReader oldReader, IndexCommit commit, ExecutorService executorService)
+      throws IOException {
+    final DirectoryReader newReader = oldReader.doOpenIfChanged(commit, executorService);
     assert newReader != oldReader;
     return newReader;
   }
@@ -301,6 +340,50 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
   }
 
   /**
+   * Expert: If there changes (committed or not) in the {@link IndexWriter} versus what the provided
+   * reader is searching, then open and return a new IndexReader searching both committed and
+   * uncommitted changes from the writer; else, return null (though, the current implementation
+   * never returns null).
+   *
+   * <p>This provides "near real-time" searching, in that changes made during an {@link IndexWriter}
+   * session can be quickly made available for searching without closing the writer or calling
+   * {@link IndexWriter#commit}.
+   *
+   * <p>It's <i>near</i> real-time because there is no hard guarantee on how quickly you can get a
+   * new reader after making changes with IndexWriter. You'll have to experiment in your situation
+   * to determine if it's fast enough. As this is a new and experimental feature, please report back
+   * on your findings so we can learn, improve and iterate.
+   *
+   * <p>The very first time this method is called, this writer instance will make every effort to
+   * pool the readers that it opens for doing merges, applying deletes, etc. This means additional
+   * resources (RAM, file descriptors, CPU time) will be consumed.
+   *
+   * <p>For lower latency on reopening a reader, you should call {@link
+   * IndexWriterConfig#setMergedSegmentWarmer} to pre-warm a newly merged segment before it's
+   * committed to the index. This is important for minimizing index-to-search delay after a large
+   * merge.
+   *
+   * <p>If an addIndexes* call is running in another thread, then this reader will only search those
+   * segments from the foreign index that have been successfully copied over, so far.
+   *
+   * <p><b>NOTE</b>: Once the writer is closed, any outstanding readers may continue to be used.
+   * However, if you attempt to reopen any of those readers, you'll hit an {@link
+   * org.apache.lucene.store.AlreadyClosedException}.
+   *
+   * @return DirectoryReader that covers entire index plus all changes made so far by this
+   *     IndexWriter instance, or null if there are no new changes
+   * @param writer The IndexWriter to open from
+   * @param executorService Provides intra-open concurrency
+   * @throws IOException if there is a low-level IO error
+   * @lucene.experimental
+   */
+  public static DirectoryReader openIfChanged(
+      DirectoryReader oldReader, IndexWriter writer, ExecutorService executorService)
+      throws IOException {
+    return openIfChanged(oldReader, writer, true, executorService);
+  }
+
+  /**
    * Expert: Opens a new reader, if there are any changes, controlling whether past deletions should
    * be applied.
    *
@@ -317,6 +400,33 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
   public static DirectoryReader openIfChanged(
       DirectoryReader oldReader, IndexWriter writer, boolean applyAllDeletes) throws IOException {
     final DirectoryReader newReader = oldReader.doOpenIfChanged(writer, applyAllDeletes);
+    assert newReader != oldReader;
+    return newReader;
+  }
+
+  /**
+   * Expert: Opens a new reader, if there are any changes, controlling whether past deletions should
+   * be applied.
+   *
+   * @see #openIfChanged(DirectoryReader,IndexWriter)
+   * @param writer The IndexWriter to open from
+   * @param applyAllDeletes If true, all buffered deletes will be applied (made visible) in the
+   *     returned reader. If false, the deletes are not applied but remain buffered (in IndexWriter)
+   *     so that they will be applied in the future. Applying deletes can be costly, so if your app
+   *     can tolerate deleted documents being returned you might gain some performance by passing
+   *     false.
+   * @param executorService Provides intra-open concurrency
+   * @throws IOException if there is a low-level IO error
+   * @lucene.experimental
+   */
+  public static DirectoryReader openIfChanged(
+      DirectoryReader oldReader,
+      IndexWriter writer,
+      boolean applyAllDeletes,
+      ExecutorService executorService)
+      throws IOException {
+    final DirectoryReader newReader =
+        oldReader.doOpenIfChanged(writer, applyAllDeletes, executorService);
     assert newReader != oldReader;
     return newReader;
   }
@@ -446,6 +556,18 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
   protected abstract DirectoryReader doOpenIfChanged() throws IOException;
 
   /**
+   * Implement this method to support {@link #openIfChanged(DirectoryReader)}. If this reader does
+   * not support reopen, return {@code null}, so client code is happy. This should be consistent
+   * with {@link #isCurrent} (should always return {@code true}) if reopen is not supported.
+   * ExecutorService provides intra-opening concurrency.
+   *
+   * @throws IOException if there is a low-level IO error
+   * @return null if there are no changes; else, a new DirectoryReader instance.
+   */
+  protected abstract DirectoryReader doOpenIfChanged(ExecutorService executorService)
+      throws IOException;
+
+  /**
    * Implement this method to support {@link #openIfChanged(DirectoryReader,IndexCommit)}. If this
    * reader does not support reopen from a specific {@link IndexCommit}, throw {@link
    * UnsupportedOperationException}.
@@ -456,6 +578,17 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
   protected abstract DirectoryReader doOpenIfChanged(final IndexCommit commit) throws IOException;
 
   /**
+   * Implement this method to support {@link #openIfChanged(DirectoryReader,IndexCommit)}. If this
+   * reader does not support reopen from a specific {@link IndexCommit}, throw {@link
+   * UnsupportedOperationException}. ExecutorService provides intra-opening concurrency.
+   *
+   * @throws IOException if there is a low-level IO error
+   * @return null if there are no changes; else, a new DirectoryReader instance.
+   */
+  protected abstract DirectoryReader doOpenIfChanged(
+      final IndexCommit commit, ExecutorService executorService) throws IOException;
+
+  /**
    * Implement this method to support {@link #openIfChanged(DirectoryReader,IndexWriter,boolean)}.
    * If this reader does not support reopen from {@link IndexWriter}, throw {@link
    * UnsupportedOperationException}.
@@ -464,6 +597,18 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
    * @return null if there are no changes; else, a new DirectoryReader instance.
    */
   protected abstract DirectoryReader doOpenIfChanged(IndexWriter writer, boolean applyAllDeletes)
+      throws IOException;
+
+  /**
+   * Implement this method to support {@link #openIfChanged(DirectoryReader,IndexWriter,boolean)}.
+   * If this reader does not support reopen from {@link IndexWriter}, throw {@link
+   * UnsupportedOperationException}. ExecutorService provides intra-opening concurrency.
+   *
+   * @throws IOException if there is a low-level IO error
+   * @return null if there are no changes; else, a new DirectoryReader instance.
+   */
+  protected abstract DirectoryReader doOpenIfChanged(
+      IndexWriter writer, boolean applyAllDeletes, ExecutorService executorService)
       throws IOException;
 
   /**
