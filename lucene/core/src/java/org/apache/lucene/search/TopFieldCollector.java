@@ -217,6 +217,11 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
 
       return collector;
     }
+
+    @Override
+    public Comparator<LeafReaderContext> getLeafReaderComparator() {
+      return this.sort.getLeafReaderComparator();
+    }
   }
 
   /*

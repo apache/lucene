@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Comparator;
 import org.apache.lucene.index.LeafReaderContext;
 
 /**
@@ -61,4 +62,12 @@ public interface Collector {
    * Collector#getLeafCollector}.
    */
   default void setWeight(Weight weight) {}
+
+  /**
+   * Returns a Comparator that can be used to order LeafReaderContexts such that segments that are
+   * more likely to be skipped in non-exhaustive ScoreModes are searched later.
+   */
+  default Comparator<LeafReaderContext> getLeafReaderComparator() {
+    return null;
+  }
 }
