@@ -153,27 +153,18 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     return total;
   }
 
-  private static long alignOutput(IndexOutput output, VectorEncoding encoding, int dimension)
-      throws IOException {
+  private static long alignOutput(IndexOutput output, VectorEncoding encoding) throws IOException {
     return output.alignFilePointer(
         switch (encoding) {
           case BYTE -> Float.BYTES;
-          case FLOAT32 -> {
-            if (dimension % 16 == 0) {
-              yield 64; // optimal alignment for Arm Neoverse machines.
-            }
-            // vector dimension is such that 64 byte alignment will not hold for all subsequent
-            // vectors, use next best alignment that will hold.
-            yield Float.BYTES;
-          }
+          case FLOAT32 -> 64; // optimal alignment for Arm Neoverse machines.
         });
   }
 
   private void writeField(FieldWriter<?> fieldData, int maxDoc) throws IOException {
     // write vector values
     VectorEncoding encoding = fieldData.fieldInfo.getVectorEncoding();
-    int dimension = fieldData.fieldInfo.getVectorDimension();
-    long vectorDataOffset = alignOutput(vectorData, encoding, dimension);
+    long vectorDataOffset = alignOutput(vectorData, encoding);
     switch (encoding) {
       case BYTE -> writeByteVectors(fieldData);
       case FLOAT32 -> writeFloat32Vectors(fieldData);
@@ -209,8 +200,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
     // write vector values
     VectorEncoding encoding = fieldData.fieldInfo.getVectorEncoding();
-    int dimension = fieldData.fieldInfo.getVectorDimension();
-    long vectorDataOffset = alignOutput(vectorData, encoding, dimension);
+    long vectorDataOffset = alignOutput(vectorData, encoding);
     switch (encoding) {
       case BYTE -> writeSortedByteVectors(fieldData, ordMap);
       case FLOAT32 -> writeSortedFloat32Vectors(fieldData, ordMap);
@@ -243,8 +233,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     // Since we know we will not be searching for additional indexing, we can just write the
     // the vectors directly to the new segment.
     VectorEncoding encoding = fieldInfo.getVectorEncoding();
-    int dimension = fieldInfo.getVectorDimension();
-    long vectorDataOffset = alignOutput(vectorData, encoding, dimension);
+    long vectorDataOffset = alignOutput(vectorData, encoding);
     // No need to use temporary file as we don't have to re-open for reading
     DocsWithFieldSet docsWithField =
         switch (encoding) {
@@ -271,8 +260,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   public CloseableRandomVectorScorerSupplier mergeOneFieldToIndex(
       FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     VectorEncoding encoding = fieldInfo.getVectorEncoding();
-    int dimension = fieldInfo.getVectorDimension();
-    long vectorDataOffset = alignOutput(vectorData, encoding, dimension);
+    long vectorDataOffset = alignOutput(vectorData, encoding);
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
             vectorData.getName(), "temp", segmentWriteState.context);

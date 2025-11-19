@@ -71,8 +71,8 @@ public class VectorScorerBenchmark {
   @Param({"1", "128", "207", "256", "300", "512", "702", "1024"})
   public int size;
 
-  @Param({"0", "1", "2", "4", "6", "8", "16", "20", "32", "50", "64", "100", "128", "255", "256"})
-  public int padBytes;
+  @Param({"0", "1", "4", "64"})
+  public int padBytes; // capture performance impact of byte alignment in the index
 
   Directory dir;
   IndexInput bytesIn;
