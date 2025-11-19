@@ -28,7 +28,9 @@ import java.util.concurrent.ForkJoinWorkerThread;
 import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FloatVectorValues;
@@ -37,10 +39,14 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LogDocMergePolicy;
+import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -220,6 +226,10 @@ public class TestBpVectorReorderer extends LuceneTestCase {
 
   private static List<float[]> randomLinearVectors() {
     int n = random().nextInt(100) + 10;
+    return randomLinearVectors(n);
+  }
+
+  private static List<float[]> randomLinearVectors(int n) {
     List<float[]> vectors = new ArrayList<>();
     float b = random().nextFloat();
     float m = random().nextFloat();
@@ -313,16 +323,22 @@ public class TestBpVectorReorderer extends LuceneTestCase {
                 && angularDifference(t1min, t1max) < angularDifference(t1min, t0max)));
   }
 
-  // nocommit disable reordering in the codec for all of these tests
+  // Disable skipping HNSW graph creation for small segments and pass through reordering flag.
+  private IndexWriterConfig createIndexWriterConfig(boolean enableReorder) {
+    IndexWriterConfig cfg = newIndexWriterConfig();
+    cfg.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(8, 32, 1, null, 0, enableReorder)));
+    cfg.setMergePolicy(new LogDocMergePolicy());
+    cfg.setMergeScheduler(new SerialMergeScheduler());
+    return cfg;
+  }
+
   public void testIndexReorderDense() throws Exception {
     List<float[]> vectors = shuffleVectors(randomLinearVectors());
 
     Path tmpdir = createTempDir();
     try (Directory dir = newFSDirectory(tmpdir)) {
       // create an index with a single leaf
-      IndexWriterConfig cfg = newIndexWriterConfig();
-      cfg.setCodec(
-          TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(8, 32)));
+      IndexWriterConfig cfg = createIndexWriterConfig(false);
       try (IndexWriter writer = new IndexWriter(dir, cfg)) {
         int id = 0;
         for (float[] vector : vectors) {
@@ -391,6 +407,7 @@ public class TestBpVectorReorderer extends LuceneTestCase {
     }
   }
 
+  // test the reordering utility (BpVectorReorderer.main)
   public void testIndexReorderSparse() throws Exception {
     List<float[]> vectors = shuffleVectors(randomLinearVectors());
     // compute the expected ordering
@@ -401,7 +418,8 @@ public class TestBpVectorReorderer extends LuceneTestCase {
     int maxDoc = 0;
     try (Directory dir = newFSDirectory(tmpdir)) {
       // create an index with a single leaf
-      try (IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig())) {
+      IndexWriterConfig cfg = createIndexWriterConfig(false);
+      try (IndexWriter writer = new IndexWriter(dir, cfg)) {
         for (float[] vector : vectors) {
           Document doc = new Document();
           if (random().nextBoolean()) {
@@ -434,6 +452,75 @@ public class TestBpVectorReorderer extends LuceneTestCase {
         }
         // docs with no vectors sort at the end
         assertEquals(vectors.size() - 1, lastDocID);
+      }
+    }
+  }
+
+  // TODO: testReorderSparseCodec
+  // TODO: enable reordering with index sort
+
+  // test when reordering is enabled in the codec
+  public void testReorderDenseCodec() throws Exception {
+    // must be big enough to trigger some reordering
+    int numVectors = BpVectorReorderer.DEFAULT_MIN_PARTITION_SIZE * 4 + random().nextInt(32);
+    List<float[]> vectors = shuffleVectors(randomLinearVectors(numVectors));
+    int halfPoint = vectors.size() / 2;
+    // use default settings to match codec
+    reorderer = new BpVectorReorderer();
+
+    // compute the expected ordering
+    Sorter.DocMap expected =
+      reorderer.computeValueMap(
+        FloatVectorValues.fromFloats(vectors, 2), VectorSimilarityFunction.EUCLIDEAN, null);
+
+    // System.out.println("Now create index");
+    Path tmpdir = createTempDir();
+    try (Directory dir = newFSDirectory(tmpdir)) {
+      // create an index with a single leaf
+      IndexWriterConfig cfg = createIndexWriterConfig(true);
+      // set an index sort to fix the docid ordering
+      // cfg.setIndexSort(new Sort(new SortField("id", SortField.Type.INT)));
+      // But is this disabling vector reordering?? I think we maybe didn't plumb this through
+      try (IndexWriter writer = new IndexWriter(dir, cfg)) {
+        int id = 0;
+        for (float[] vector : vectors) {
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField("f", vector, VectorSimilarityFunction.EUCLIDEAN));
+          doc.add(new NumericDocValuesField("id", id));
+          doc.add(new StoredField("id", id));
+          writer.addDocument(doc);
+          if (id++ == halfPoint) {
+            // make multiple segments to induce a merge
+            writer.commit();
+          }
+        }
+        writer.forceMerge(1);
+      }
+
+      // verify the ordering produced when merging is the same,
+      // that the values iterator returns the correct vector values
+      // and TODO that the ordToDoc and docToOrd mappings are correct
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        LeafReader leafReader = getOnlyLeafReader(reader);
+        FloatVectorValues values = leafReader.getFloatVectorValues("f");
+        StoredFields storedFields = reader.storedFields();
+        KnnVectorValues.DocIndexIterator it = values.iterator();
+        while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+          int docId = it.docID();
+          int oldOrd = Integer.parseInt(storedFields.document(docId).get("id"));
+          int newOrd = it.index();
+          assertEquals(expected.oldToNew(oldOrd), newOrd);
+          assertEquals(expected.newToOld(newOrd), oldOrd);
+          assertEquals(docId, values.ordToDoc(newOrd));
+          float[] actualVector = values.vectorValue(newOrd);
+          float[] expectedVector = vectors.get(oldOrd);
+          assertArrayEquals(
+              "values differ at index " + oldOrd + "->" + newOrd + " docid=" + docId,
+              expectedVector,
+              actualVector,
+              0);
+        }
       }
     }
   }

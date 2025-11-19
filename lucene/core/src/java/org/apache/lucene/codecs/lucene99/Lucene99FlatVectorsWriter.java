@@ -368,12 +368,13 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       int vectorDimension = fieldInfo.getVectorDimension();
       int byteSize = fieldInfo.getVectorEncoding().byteSize;
       int vectorCount = docsWithField.cardinality();
+      int vectorByteSize = vectorDimension * byteSize;
       FloatVectorValues vectorValues =
           new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
               vectorDimension,
               vectorCount,
               vectorDataInput,
-              byteSize,
+              vectorByteSize,
               DefaultFlatVectorScorer.INSTANCE,
               fieldInfo.getVectorSimilarityFunction());
       BpVectorReorderer vectorReorderer = new BpVectorReorderer();
@@ -383,7 +384,6 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
               vectorValues, fieldInfo.getVectorSimilarityFunction(), null);
       // copy the temporary file vectors to yet another temp file after reordering
       IndexOutput tempReorderVectorData = openOutput(vectorData.getName(), "tempReorder");
-      int vectorByteSize = vectorDimension * byteSize;
       for (int ord = 0; ord < vectorCount; ord++) {
         int oldOrd = ordMap.newToOld(ord);
         vectorDataInput.seek((long) oldOrd * vectorByteSize);
