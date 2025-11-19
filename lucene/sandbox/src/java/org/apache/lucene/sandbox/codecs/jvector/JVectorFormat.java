@@ -181,4 +181,24 @@ public class JVectorFormat extends KnnVectorsFormat {
     }
     return compressedBytes;
   }
+
+  static io.github.jbellis.jvector.vector.VectorSimilarityFunction toJVectorSimilarity(
+      final org.apache.lucene.index.VectorSimilarityFunction luceneFunction) {
+    return switch (luceneFunction) {
+      case COSINE -> io.github.jbellis.jvector.vector.VectorSimilarityFunction.COSINE;
+      case DOT_PRODUCT -> io.github.jbellis.jvector.vector.VectorSimilarityFunction.DOT_PRODUCT;
+      case EUCLIDEAN -> io.github.jbellis.jvector.vector.VectorSimilarityFunction.EUCLIDEAN;
+      case MAXIMUM_INNER_PRODUCT ->
+          throw new UnsupportedOperationException("JVector does not support MAXIMUM_INNER_PRODUCT");
+    };
+  }
+
+  static org.apache.lucene.index.VectorSimilarityFunction toLuceneSimilarity(
+      final io.github.jbellis.jvector.vector.VectorSimilarityFunction jVectorFunction) {
+    return switch (jVectorFunction) {
+      case COSINE -> org.apache.lucene.index.VectorSimilarityFunction.COSINE;
+      case DOT_PRODUCT -> org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
+      case EUCLIDEAN -> org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
+    };
+  }
 }

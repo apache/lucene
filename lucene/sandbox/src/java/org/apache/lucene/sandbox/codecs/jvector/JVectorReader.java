@@ -33,7 +33,6 @@ import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.lucene.codecs.CodecUtil;
@@ -264,9 +263,7 @@ public class JVectorReader extends KnnVectorsReader {
     public FieldEntry(
         FieldInfo fieldInfo, JVectorWriter.VectorIndexFieldMetadata vectorIndexFieldMetadata)
         throws IOException {
-      this.similarityFunction =
-          VectorSimilarityMapper.ordToDistFunc(
-              vectorIndexFieldMetadata.vectorSimilarityFunction.ordinal());
+      this.similarityFunction = vectorIndexFieldMetadata.vectorSimilarityFunction;
       this.vectorDimension = vectorIndexFieldMetadata.vectorDimension;
       this.vectorIndexOffset = vectorIndexFieldMetadata.vectorIndexOffset;
       this.vectorIndexLength = vectorIndexFieldMetadata.vectorIndexLength;
@@ -323,58 +320,6 @@ public class JVectorReader extends KnnVectorsReader {
       if (pqCodebooksReaderSupplier != null) {
         IOUtils.close(pqCodebooksReaderSupplier::close);
       }
-    }
-  }
-
-  /** Utility class to map between Lucene and jVector similarity functions and metadata ordinals. */
-  public static class VectorSimilarityMapper {
-    /**
-     * List of vector similarity functions supported by <a
-     * href="https://github.com/jbellis/jvector">jVector library</a> The similarity functions orders
-     * matter in this list because it is later used to resolve the similarity function by ordinal.
-     */
-    public static final List<VectorSimilarityFunction> JVECTOR_SUPPORTED_SIMILARITY_FUNCTIONS =
-        List.of(
-            VectorSimilarityFunction.EUCLIDEAN,
-            VectorSimilarityFunction.DOT_PRODUCT,
-            VectorSimilarityFunction.COSINE);
-
-    public static final Map<
-            org.apache.lucene.index.VectorSimilarityFunction, VectorSimilarityFunction>
-        LUCENE_TO_JVECTOR_MAP =
-            Map.of(
-                org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN,
-                VectorSimilarityFunction.EUCLIDEAN,
-                org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT,
-                VectorSimilarityFunction.DOT_PRODUCT,
-                org.apache.lucene.index.VectorSimilarityFunction.COSINE,
-                VectorSimilarityFunction.COSINE);
-
-    public static int distFuncToOrd(org.apache.lucene.index.VectorSimilarityFunction func) {
-      if (LUCENE_TO_JVECTOR_MAP.containsKey(func)) {
-        return JVECTOR_SUPPORTED_SIMILARITY_FUNCTIONS.indexOf(LUCENE_TO_JVECTOR_MAP.get(func));
-      }
-
-      throw new IllegalArgumentException("invalid distance function: " + func);
-    }
-
-    public static VectorSimilarityFunction ordToDistFunc(int ord) {
-      return JVECTOR_SUPPORTED_SIMILARITY_FUNCTIONS.get(ord);
-    }
-
-    public static org.apache.lucene.index.VectorSimilarityFunction ordToLuceneDistFunc(int ord) {
-      if (ord < 0 || ord >= JVECTOR_SUPPORTED_SIMILARITY_FUNCTIONS.size()) {
-        throw new IllegalArgumentException("Invalid ordinal: " + ord);
-      }
-      VectorSimilarityFunction jvectorFunc = JVECTOR_SUPPORTED_SIMILARITY_FUNCTIONS.get(ord);
-      for (Map.Entry<org.apache.lucene.index.VectorSimilarityFunction, VectorSimilarityFunction>
-          entry : LUCENE_TO_JVECTOR_MAP.entrySet()) {
-        if (entry.getValue().equals(jvectorFunc)) {
-          return entry.getKey();
-        }
-      }
-      throw new IllegalStateException(
-          "No matching Lucene VectorSimilarityFunction found for ordinal: " + ord);
     }
   }
 }

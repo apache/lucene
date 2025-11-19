@@ -30,6 +30,7 @@ import io.github.jbellis.jvector.graph.disk.feature.InlineVectors;
 import io.github.jbellis.jvector.graph.similarity.BuildScoreProvider;
 import io.github.jbellis.jvector.quantization.PQVectors;
 import io.github.jbellis.jvector.quantization.ProductQuantization;
+import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import io.github.jbellis.jvector.vector.VectorizationProvider;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
 import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
@@ -57,7 +58,6 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
@@ -224,13 +224,15 @@ public class JVectorWriter extends KnnVectorsWriter {
         pqVectors = getPQVectors(randomAccessVectorValues, fieldInfo);
         buildScoreProvider =
             BuildScoreProvider.pqBuildScoreProvider(
-                getVectorSimilarityFunction(fieldInfo), pqVectors);
+                JVectorFormat.toJVectorSimilarity(fieldInfo.getVectorSimilarityFunction()),
+                pqVectors);
       } else {
         // Not enough vectors for quantization; use full precision vectors instead
         pqVectors = null;
         buildScoreProvider =
             BuildScoreProvider.randomAccessScoreProvider(
-                randomAccessVectorValues, getVectorSimilarityFunction(fieldInfo));
+                randomAccessVectorValues,
+                JVectorFormat.toJVectorSimilarity(fieldInfo.getVectorSimilarityFunction()));
       }
 
       final GraphNodeIdToDocMap graphNodeIdToDocMap = field.createGraphNodeIdToDocMap();
@@ -295,7 +297,7 @@ public class JVectorWriter extends KnnVectorsWriter {
         return new VectorIndexFieldMetadata(
             fieldInfo.number,
             fieldInfo.getVectorEncoding(),
-            fieldInfo.getVectorSimilarityFunction(),
+            JVectorFormat.toJVectorSimilarity(fieldInfo.getVectorSimilarityFunction()),
             randomAccessVectorValues.dimension(),
             0,
             0,
@@ -333,7 +335,7 @@ public class JVectorWriter extends KnnVectorsWriter {
         return new VectorIndexFieldMetadata(
             fieldInfo.number,
             fieldInfo.getVectorEncoding(),
-            fieldInfo.getVectorSimilarityFunction(),
+            JVectorFormat.toJVectorSimilarity(fieldInfo.getVectorSimilarityFunction()),
             randomAccessVectorValues.dimension(),
             startOffset,
             endGraphOffset - startOffset,
@@ -347,8 +349,11 @@ public class JVectorWriter extends KnnVectorsWriter {
 
   private PQVectors getPQVectors(
       RandomAccessVectorValues randomAccessVectorValues, FieldInfo fieldInfo) throws IOException {
-    final VectorSimilarityFunction vectorSimilarityFunction =
-        fieldInfo.getVectorSimilarityFunction();
+    final boolean globallyCenter =
+        switch (fieldInfo.getVectorSimilarityFunction()) {
+          case EUCLIDEAN -> true;
+          case COSINE, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT -> false;
+        };
     final int M =
         numberOfSubspacesPerVectorSupplier.applyAsInt(randomAccessVectorValues.dimension());
     final var numberOfClustersPerSubspace =
@@ -357,10 +362,7 @@ public class JVectorWriter extends KnnVectorsWriter {
 
     ProductQuantization pq =
         ProductQuantization.compute(
-            randomAccessVectorValues,
-            M,
-            numberOfClustersPerSubspace,
-            vectorSimilarityFunction == VectorSimilarityFunction.EUCLIDEAN);
+            randomAccessVectorValues, M, numberOfClustersPerSubspace, globallyCenter);
 
     return (PQVectors) pq.encodeAll(randomAccessVectorValues);
   }
@@ -404,7 +406,7 @@ public class JVectorWriter extends KnnVectorsWriter {
     public void toOutput(IndexOutput out) throws IOException {
       out.writeInt(fieldNumber);
       out.writeInt(vectorEncoding.ordinal());
-      out.writeInt(JVectorReader.VectorSimilarityMapper.distFuncToOrd(vectorSimilarityFunction));
+      out.writeInt(vectorSimilarityFunction.ordinal());
       out.writeVInt(vectorDimension);
       out.writeVLong(vectorIndexOffset);
       out.writeVLong(vectorIndexLength);
@@ -417,8 +419,7 @@ public class JVectorWriter extends KnnVectorsWriter {
     public VectorIndexFieldMetadata(IndexInput in) throws IOException {
       this.fieldNumber = in.readInt();
       this.vectorEncoding = readVectorEncoding(in);
-      this.vectorSimilarityFunction =
-          JVectorReader.VectorSimilarityMapper.ordToLuceneDistFunc(in.readInt());
+      this.vectorSimilarityFunction = VectorSimilarityFunction.values()[in.readInt()];
       this.vectorDimension = in.readVInt();
       this.vectorIndexOffset = in.readVLong();
       this.vectorIndexLength = in.readVLong();
@@ -540,19 +541,6 @@ public class JVectorWriter extends KnnVectorsWriter {
     }
   }
 
-  static io.github.jbellis.jvector.vector.VectorSimilarityFunction getVectorSimilarityFunction(
-      FieldInfo fieldInfo) {
-    return switch (fieldInfo.getVectorSimilarityFunction()) {
-      case EUCLIDEAN -> io.github.jbellis.jvector.vector.VectorSimilarityFunction.EUCLIDEAN;
-      case COSINE -> io.github.jbellis.jvector.vector.VectorSimilarityFunction.COSINE;
-      case DOT_PRODUCT -> io.github.jbellis.jvector.vector.VectorSimilarityFunction.DOT_PRODUCT;
-      // $CASES-OMITTED$
-      default ->
-          throw new IllegalArgumentException(
-              "Unsupported similarity function: " + fieldInfo.getVectorSimilarityFunction());
-    };
-  }
-
   private void mergeAndWriteField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     assert fieldInfo.hasVectorValues();
     final int dimension = fieldInfo.getVectorDimension();
@@ -647,7 +635,8 @@ public class JVectorWriter extends KnnVectorsWriter {
     }
 
     final BuildScoreProvider buildScoreProvider;
-    final var similarityFunction = getVectorSimilarityFunction(fieldInfo);
+    final var similarityFunction =
+        JVectorFormat.toJVectorSimilarity(fieldInfo.getVectorSimilarityFunction());
     if (pqVectors != null) {
       // Re-use PQ codebooks to build a new graph from scratch
       buildScoreProvider = BuildScoreProvider.pqBuildScoreProvider(similarityFunction, pqVectors);
