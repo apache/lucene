@@ -222,7 +222,9 @@ Optimizations
 
 * GITHUB#15397: NumericComparator: immediately check whether a segment is competitive with the recorded bottom (Martijn van Groningen)
 
-# GITHUB#15303: Speed up NumericUtils#{add,subtract} by operating on integers instead of bytes. (Kaival Parikh)
+* GITHUB#15303: Speed up NumericUtils#{add,subtract} by operating on integers instead of bytes. (Kaival Parikh)
+
+* GITHUB#15436: Allow Comparators to re-order segments at query time to help result pruning. (Alan Woodward)
 
 Bug Fixes
 ---------------------
