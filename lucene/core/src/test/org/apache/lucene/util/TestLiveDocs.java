@@ -35,7 +35,7 @@ public class TestLiveDocs extends LuceneTestCase {
     sparseSet.set(100);
 
     // WHEN
-    SparseLiveDocs liveDocs = new SparseLiveDocs(sparseSet, maxDoc);
+    SparseLiveDocs liveDocs = SparseLiveDocs.builder(sparseSet, maxDoc).build();
 
     // THEN
     assertEquals(3, liveDocs.deletedCount());
@@ -56,7 +56,7 @@ public class TestLiveDocs extends LuceneTestCase {
     fixedSet.clear(100);
 
     // WHEN
-    DenseLiveDocs liveDocs = new DenseLiveDocs(fixedSet, maxDoc);
+    DenseLiveDocs liveDocs = DenseLiveDocs.builder(fixedSet, maxDoc).build();
 
     // THEN
     assertEquals(3, liveDocs.deletedCount());
@@ -75,7 +75,7 @@ public class TestLiveDocs extends LuceneTestCase {
     for (int doc : deletedDocs) {
       sparseSet.set(doc);
     }
-    SparseLiveDocs liveDocs = new SparseLiveDocs(sparseSet, maxDoc);
+    SparseLiveDocs liveDocs = SparseLiveDocs.builder(sparseSet, maxDoc).build();
 
     // WHEN
     DocIdSetIterator it = liveDocs.deletedDocsIterator();
@@ -103,7 +103,7 @@ public class TestLiveDocs extends LuceneTestCase {
     for (int doc : deletedDocs) {
       fixedSet.clear(doc);
     }
-    DenseLiveDocs liveDocs = new DenseLiveDocs(fixedSet, maxDoc);
+    DenseLiveDocs liveDocs = DenseLiveDocs.builder(fixedSet, maxDoc).build();
 
     // WHEN
     DocIdSetIterator it = liveDocs.deletedDocsIterator();
@@ -135,8 +135,8 @@ public class TestLiveDocs extends LuceneTestCase {
     }
 
     // WHEN
-    SparseLiveDocs sparse = new SparseLiveDocs(sparseSet, maxDoc);
-    DenseLiveDocs dense = new DenseLiveDocs(fixedSet, maxDoc);
+    SparseLiveDocs sparse = SparseLiveDocs.builder(sparseSet, maxDoc).build();
+    DenseLiveDocs dense = DenseLiveDocs.builder(fixedSet, maxDoc).build();
     DocIdSetIterator sparseIt = sparse.deletedDocsIterator();
     DocIdSetIterator denseIt = dense.deletedDocsIterator();
 
@@ -160,8 +160,8 @@ public class TestLiveDocs extends LuceneTestCase {
     SparseFixedBitSet sparseSet = new SparseFixedBitSet(maxDoc);
     FixedBitSet fixedSet = new FixedBitSet(maxDoc);
     fixedSet.set(0, maxDoc);
-    SparseLiveDocs sparse = new SparseLiveDocs(sparseSet, maxDoc);
-    DenseLiveDocs dense = new DenseLiveDocs(fixedSet, maxDoc);
+    SparseLiveDocs sparse = SparseLiveDocs.builder(sparseSet, maxDoc).build();
+    DenseLiveDocs dense = DenseLiveDocs.builder(fixedSet, maxDoc).build();
 
     // WHEN
     DocIdSetIterator sparseIt = sparse.deletedDocsIterator();
@@ -180,7 +180,7 @@ public class TestLiveDocs extends LuceneTestCase {
     for (int i = 10; i <= 50; i += 10) {
       fixedSet.clear(i);
     }
-    DenseLiveDocs liveDocs = new DenseLiveDocs(fixedSet, maxDoc);
+    DenseLiveDocs liveDocs = DenseLiveDocs.builder(fixedSet, maxDoc).build();
 
     // WHEN
     DocIdSetIterator it = liveDocs.deletedDocsIterator();
@@ -209,8 +209,8 @@ public class TestLiveDocs extends LuceneTestCase {
     }
 
     // WHEN
-    SparseLiveDocs sparse = new SparseLiveDocs(sparseSet, maxDoc);
-    DenseLiveDocs dense = new DenseLiveDocs(fixedSet, maxDoc);
+    SparseLiveDocs sparse = SparseLiveDocs.builder(sparseSet, maxDoc).build();
+    DenseLiveDocs dense = DenseLiveDocs.builder(fixedSet, maxDoc).build();
     List<Integer> sparseDeleted = collectDocs(sparse.deletedDocsIterator());
     List<Integer> denseDeleted = collectDocs(dense.deletedDocsIterator());
 
@@ -240,8 +240,8 @@ public class TestLiveDocs extends LuceneTestCase {
     }
 
     // WHEN
-    SparseLiveDocs sparse = new SparseLiveDocs(sparseSet, maxDoc);
-    DenseLiveDocs dense = new DenseLiveDocs(fixedSet, maxDoc);
+    SparseLiveDocs sparse = SparseLiveDocs.builder(sparseSet, maxDoc).build();
+    DenseLiveDocs dense = DenseLiveDocs.builder(fixedSet, maxDoc).build();
     long sparseBytes = sparse.ramBytesUsed();
     long denseBytes = dense.ramBytesUsed();
 
@@ -276,8 +276,8 @@ public class TestLiveDocs extends LuceneTestCase {
     liveSet.clear(100);
 
     // WHEN
-    SparseLiveDocs sparse = new SparseLiveDocs(sparseDeleted, maxDoc);
-    DenseLiveDocs dense = new DenseLiveDocs(liveSet, maxDoc);
+    SparseLiveDocs sparse = SparseLiveDocs.builder(sparseDeleted, maxDoc).build();
+    DenseLiveDocs dense = DenseLiveDocs.builder(liveSet, maxDoc).build();
 
     // THEN
     assertEquals(3, sparse.deletedCount());
@@ -298,7 +298,7 @@ public class TestLiveDocs extends LuceneTestCase {
     for (int doc : deletedDocs) {
       sparseSet.set(doc);
     }
-    SparseLiveDocs liveDocs = new SparseLiveDocs(sparseSet, maxDoc);
+    SparseLiveDocs liveDocs = SparseLiveDocs.builder(sparseSet, maxDoc).build();
 
     // WHEN
     DocIdSetIterator it = liveDocs.liveDocsIterator();
@@ -330,7 +330,7 @@ public class TestLiveDocs extends LuceneTestCase {
     for (int doc : deletedDocs) {
       fixedSet.clear(doc);
     }
-    DenseLiveDocs liveDocs = new DenseLiveDocs(fixedSet, maxDoc);
+    DenseLiveDocs liveDocs = DenseLiveDocs.builder(fixedSet, maxDoc).build();
 
     // WHEN
     DocIdSetIterator it = liveDocs.liveDocsIterator();
@@ -364,8 +364,8 @@ public class TestLiveDocs extends LuceneTestCase {
       sparseSet.set(doc);
       fixedSet.clear(doc);
     }
-    SparseLiveDocs sparse = new SparseLiveDocs(sparseSet, maxDoc);
-    DenseLiveDocs dense = new DenseLiveDocs(fixedSet, maxDoc);
+    SparseLiveDocs sparse = SparseLiveDocs.builder(sparseSet, maxDoc).build();
+    DenseLiveDocs dense = DenseLiveDocs.builder(fixedSet, maxDoc).build();
 
     // WHEN
     DocIdSetIterator sparseIt = sparse.liveDocsIterator();
@@ -386,8 +386,8 @@ public class TestLiveDocs extends LuceneTestCase {
     SparseFixedBitSet sparseSet = new SparseFixedBitSet(maxDoc);
     FixedBitSet fixedSet = new FixedBitSet(maxDoc);
     fixedSet.set(0, maxDoc);
-    SparseLiveDocs sparse = new SparseLiveDocs(sparseSet, maxDoc);
-    DenseLiveDocs dense = new DenseLiveDocs(fixedSet, maxDoc);
+    SparseLiveDocs sparse = SparseLiveDocs.builder(sparseSet, maxDoc).build();
+    DenseLiveDocs dense = DenseLiveDocs.builder(fixedSet, maxDoc).build();
 
     // WHEN
     DocIdSetIterator sparseIt = sparse.liveDocsIterator();
@@ -412,7 +412,7 @@ public class TestLiveDocs extends LuceneTestCase {
     for (int i = 10; i <= 50; i += 10) {
       fixedSet.clear(i);
     }
-    DenseLiveDocs liveDocs = new DenseLiveDocs(fixedSet, maxDoc);
+    DenseLiveDocs liveDocs = DenseLiveDocs.builder(fixedSet, maxDoc).build();
 
     // WHEN
     DocIdSetIterator it = liveDocs.liveDocsIterator();
@@ -443,8 +443,8 @@ public class TestLiveDocs extends LuceneTestCase {
     }
 
     // WHEN
-    SparseLiveDocs sparse = new SparseLiveDocs(sparseSet, maxDoc);
-    DenseLiveDocs dense = new DenseLiveDocs(fixedSet, maxDoc);
+    SparseLiveDocs sparse = SparseLiveDocs.builder(sparseSet, maxDoc).build();
+    DenseLiveDocs dense = DenseLiveDocs.builder(fixedSet, maxDoc).build();
     List<Integer> sparseLive = collectDocs(sparse.liveDocsIterator());
     List<Integer> denseLive = collectDocs(dense.liveDocsIterator());
 
@@ -471,8 +471,8 @@ public class TestLiveDocs extends LuceneTestCase {
     fixedSet.clear(0);
 
     // WHEN
-    SparseLiveDocs sparse = new SparseLiveDocs(sparseSet, maxDoc);
-    DenseLiveDocs dense = new DenseLiveDocs(fixedSet, maxDoc);
+    SparseLiveDocs sparse = SparseLiveDocs.builder(sparseSet, maxDoc).build();
+    DenseLiveDocs dense = DenseLiveDocs.builder(fixedSet, maxDoc).build();
     List<Integer> sparseDeleted = collectDocs(sparse.deletedDocsIterator());
     List<Integer> denseDeleted = collectDocs(dense.deletedDocsIterator());
     List<Integer> sparseLive = collectDocs(sparse.liveDocsIterator());
@@ -501,8 +501,8 @@ public class TestLiveDocs extends LuceneTestCase {
     }
 
     // WHEN
-    SparseLiveDocs sparse = new SparseLiveDocs(sparseSet, maxDoc);
-    DenseLiveDocs dense = new DenseLiveDocs(fixedSet, maxDoc);
+    SparseLiveDocs sparse = SparseLiveDocs.builder(sparseSet, maxDoc).build();
+    DenseLiveDocs dense = DenseLiveDocs.builder(fixedSet, maxDoc).build();
     List<Integer> sparseDeleted = collectDocs(sparse.deletedDocsIterator());
     List<Integer> denseDeleted = collectDocs(dense.deletedDocsIterator());
     List<Integer> sparseLive = collectDocs(sparse.liveDocsIterator());
@@ -537,8 +537,8 @@ public class TestLiveDocs extends LuceneTestCase {
     }
 
     // WHEN
-    SparseLiveDocs sparse = new SparseLiveDocs(sparseSet, maxDoc);
-    DenseLiveDocs dense = new DenseLiveDocs(fixedSet, maxDoc);
+    SparseLiveDocs sparse = SparseLiveDocs.builder(sparseSet, maxDoc).build();
+    DenseLiveDocs dense = DenseLiveDocs.builder(fixedSet, maxDoc).build();
     DocIdSetIterator sparseIt = sparse.deletedDocsIterator();
     long sparseBytes = sparse.ramBytesUsed();
     long denseBytes = dense.ramBytesUsed();
@@ -575,8 +575,8 @@ public class TestLiveDocs extends LuceneTestCase {
     fixedSet.clear(maxDoc - 1);
 
     // WHEN
-    SparseLiveDocs sparse = new SparseLiveDocs(sparseSet, maxDoc);
-    DenseLiveDocs dense = new DenseLiveDocs(fixedSet, maxDoc);
+    SparseLiveDocs sparse = SparseLiveDocs.builder(sparseSet, maxDoc).build();
+    DenseLiveDocs dense = DenseLiveDocs.builder(fixedSet, maxDoc).build();
     List<Integer> sparseDeleted = collectDocs(sparse.deletedDocsIterator());
     List<Integer> denseDeleted = collectDocs(dense.deletedDocsIterator());
     List<Integer> sparseLive = collectDocs(sparse.liveDocsIterator());

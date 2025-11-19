@@ -42,7 +42,7 @@ import org.apache.lucene.search.DocIdSetIterator;
  * </ul>
  *
  * <p><b>Immutability:</b> This class is immutable once constructed. Instances are typically created
- * by wrapping an existing {@link SparseFixedBitSet} read from disk during segment loading.
+ * using the {@link Builder} via {@link #builder(SparseFixedBitSet, int)}.
  *
  * @lucene.experimental
  */
@@ -55,47 +55,64 @@ public final class SparseLiveDocs implements LiveDocs {
   private final int deletedCount;
 
   /**
-   * Creates a new SparseLiveDocs with no deletions.
-   *
-   * @param maxDoc the maximum document ID (exclusive)
-   */
-  public SparseLiveDocs(int maxDoc) {
-    this.maxDoc = maxDoc;
-    this.deletedDocs = new SparseFixedBitSet(maxDoc);
-    this.deletedCount = this.deletedDocs.cardinality();
-  }
-
-  /**
-   * Creates a SparseLiveDocs wrapping an existing SparseFixedBitSet of deleted documents.
-   *
-   * <p>This constructor computes the cardinality of the deleted docs bitset. For better
-   * performance when the cardinality is already known, use {@link #SparseLiveDocs(SparseFixedBitSet, int, int)}.
+   * Creates a builder for constructing SparseLiveDocs instances.
    *
    * @param deletedDocs bit set where set bits represent DELETED documents
    * @param maxDoc the maximum document ID (exclusive)
+   * @return a new builder instance
    */
-  public SparseLiveDocs(final SparseFixedBitSet deletedDocs, int maxDoc) {
-    this(deletedDocs, maxDoc, deletedDocs.cardinality());
+  public static Builder builder(SparseFixedBitSet deletedDocs, int maxDoc) {
+    return new Builder(deletedDocs, maxDoc);
   }
 
-  /**
-   * Creates a SparseLiveDocs wrapping an existing SparseFixedBitSet of deleted documents with a
-   * pre-computed deleted count.
-   *
-   * <p>This constructor is useful when the caller has already computed the cardinality for
-   * validation or other purposes, avoiding redundant O(n) cardinality computation.
-   *
-   * @param deletedDocs bit set where set bits represent DELETED documents
-   * @param maxDoc the maximum document ID (exclusive)
-   * @param deletedCount the number of deleted documents (must equal deletedDocs.cardinality())
-   */
-  public SparseLiveDocs(final SparseFixedBitSet deletedDocs, int maxDoc, int deletedCount) {
+  /** Builder for creating SparseLiveDocs instances with optional pre-computed deleted count. */
+  public static final class Builder {
+    private final SparseFixedBitSet deletedDocs;
+    private final int maxDoc;
+    private Integer deletedCount;
+
+    private Builder(SparseFixedBitSet deletedDocs, int maxDoc) {
+      this.deletedDocs = deletedDocs;
+      this.maxDoc = maxDoc;
+    }
+
+    /**
+     * Sets the pre-computed deleted document count, avoiding cardinality computation.
+     *
+     * @param deletedCount the number of deleted documents
+     * @return this builder
+     */
+    public Builder withDeletedCount(int deletedCount) {
+      this.deletedCount = deletedCount;
+      return this;
+    }
+
+    /**
+     * Builds the SparseLiveDocs instance.
+     *
+     * @return a new SparseLiveDocs instance
+     * @throws IllegalArgumentException if deletedCount is outside valid range [0, maxDoc]
+     */
+    public SparseLiveDocs build() {
+      int count = deletedCount != null ? deletedCount : deletedDocs.cardinality();
+
+      if (count < 0 || count > maxDoc) {
+        throw new IllegalArgumentException(
+            "deletedCount=" + count + " is outside valid range [0, " + maxDoc + "]");
+      }
+
+      assert count == deletedDocs.cardinality()
+          : "deletedCount="
+              + count
+              + " does not match deletedDocs.cardinality()="
+              + deletedDocs.cardinality();
+
+      return new SparseLiveDocs(deletedDocs, maxDoc, count);
+    }
+  }
+
+  private SparseLiveDocs(final SparseFixedBitSet deletedDocs, int maxDoc, int deletedCount) {
     assert deletedDocs.length >= maxDoc;
-    assert deletedCount == deletedDocs.cardinality()
-        : "deletedCount="
-            + deletedCount
-            + " does not match deletedDocs.cardinality()="
-            + deletedDocs.cardinality();
     this.maxDoc = maxDoc;
     this.deletedDocs = deletedDocs;
     this.deletedCount = deletedCount;

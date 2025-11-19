@@ -157,8 +157,8 @@ public class LiveDocsPathologicalBenchmark {
       }
     }
 
-    sparseLiveDocs = new SparseLiveDocs(sparseSet, maxDoc);
-    denseLiveDocs = new DenseLiveDocs(fixedSet, maxDoc);
+    sparseLiveDocs = SparseLiveDocs.builder(sparseSet, maxDoc).build();
+    denseLiveDocs = DenseLiveDocs.builder(fixedSet, maxDoc).build();
   }
 
   /**

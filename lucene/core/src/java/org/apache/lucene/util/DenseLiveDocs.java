@@ -43,7 +43,7 @@ import org.apache.lucene.search.DocIdSetIterator;
  * </ul>
  *
  * <p><b>Immutability:</b> This class is immutable once constructed. Instances are typically created
- * by wrapping an existing {@link FixedBitSet} read from disk during segment loading.
+ * using the {@link Builder} via {@link #builder(FixedBitSet, int)}.
  *
  * @lucene.experimental
  */
@@ -56,28 +56,67 @@ public final class DenseLiveDocs implements LiveDocs {
   private final int deletedCount;
 
   /**
-   * Creates a new DenseLiveDocs with no deletions (all documents live).
-   *
-   * @param maxDoc the maximum document ID (exclusive)
-   */
-  public DenseLiveDocs(int maxDoc) {
-    this.maxDoc = maxDoc;
-    this.liveDocs = new FixedBitSet(maxDoc);
-    liveDocs.set(0, maxDoc);
-    this.deletedCount = 0;
-  }
-
-  /**
-   * Creates a DenseLiveDocs wrapping an existing FixedBitSet of live documents.
+   * Creates a builder for constructing DenseLiveDocs instances.
    *
    * @param liveDocs bit set where set bits represent LIVE documents
    * @param maxDoc the maximum document ID (exclusive)
+   * @return a new builder instance
    */
-  public DenseLiveDocs(final FixedBitSet liveDocs, int maxDoc) {
+  public static Builder builder(FixedBitSet liveDocs, int maxDoc) {
+    return new Builder(liveDocs, maxDoc);
+  }
+
+  /** Builder for creating DenseLiveDocs instances with optional pre-computed deleted count. */
+  public static final class Builder {
+    private final FixedBitSet liveDocs;
+    private final int maxDoc;
+    private Integer deletedCount;
+
+    private Builder(FixedBitSet liveDocs, int maxDoc) {
+      this.liveDocs = liveDocs;
+      this.maxDoc = maxDoc;
+    }
+
+    /**
+     * Sets the pre-computed deleted document count, avoiding cardinality computation.
+     *
+     * @param deletedCount the number of deleted documents
+     * @return this builder
+     */
+    public Builder withDeletedCount(int deletedCount) {
+      this.deletedCount = deletedCount;
+      return this;
+    }
+
+    /**
+     * Builds the DenseLiveDocs instance.
+     *
+     * @return a new DenseLiveDocs instance
+     * @throws IllegalArgumentException if deletedCount is outside valid range [0, maxDoc]
+     */
+    public DenseLiveDocs build() {
+      int count = deletedCount != null ? deletedCount : (maxDoc - liveDocs.cardinality());
+
+      if (count < 0 || count > maxDoc) {
+        throw new IllegalArgumentException(
+            "deletedCount=" + count + " is outside valid range [0, " + maxDoc + "]");
+      }
+
+      assert count == (maxDoc - liveDocs.cardinality())
+          : "deletedCount="
+              + count
+              + " does not match maxDoc - liveDocs.cardinality()="
+              + (maxDoc - liveDocs.cardinality());
+
+      return new DenseLiveDocs(liveDocs, maxDoc, count);
+    }
+  }
+
+  private DenseLiveDocs(final FixedBitSet liveDocs, int maxDoc, int deletedCount) {
     assert liveDocs.length() >= maxDoc;
     this.maxDoc = maxDoc;
     this.liveDocs = liveDocs;
-    this.deletedCount = maxDoc - liveDocs.cardinality();
+    this.deletedCount = deletedCount;
   }
 
   @Override

@@ -222,8 +222,8 @@ public class LiveDocsBenchmark {
         break;
     }
 
-    sparseLiveDocs = new SparseLiveDocs(sparseSet, maxDoc);
-    denseLiveDocs = new DenseLiveDocs(fixedSet, maxDoc);
+    sparseLiveDocs = SparseLiveDocs.builder(sparseSet, maxDoc).build();
+    denseLiveDocs = DenseLiveDocs.builder(fixedSet, maxDoc).build();
 
     sparseBytes = sparseLiveDocs.ramBytesUsed();
     denseBytes = denseLiveDocs.ramBytesUsed();
