@@ -180,6 +180,16 @@ public class LiveDocsBenchmark {
     Random random = new Random(42);
     int numDeleted = (int) (maxDoc * deletionRate);
 
+    if (numDeleted == 0) {
+      throw new IllegalStateException(
+          "Benchmark requires at least one deletion. "
+              + "Current parameters: maxDoc="
+              + maxDoc
+              + ", deletionRate="
+              + deletionRate
+              + " result in zero deletions.");
+    }
+
     SparseFixedBitSet sparseSet = new SparseFixedBitSet(maxDoc);
     FixedBitSet fixedSet = new FixedBitSet(maxDoc);
     fixedSet.set(0, maxDoc);
