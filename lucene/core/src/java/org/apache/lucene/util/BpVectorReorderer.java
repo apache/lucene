@@ -123,7 +123,12 @@ public class BpVectorReorderer extends AbstractBPReorderer {
     private final int[] newToOld;
     private final int[] oldToNew;
 
-    public DocMap(int[] newToOld) {
+    DocMap(int[] oldToNew, int[] newToOld) {
+      this.oldToNew = oldToNew;
+      this.newToOld = newToOld;
+    }
+
+    DocMap(int[] newToOld) {
       this.newToOld = newToOld;
       oldToNew = new int[newToOld.length];
       for (int i = 0; i < newToOld.length; ++i) {
@@ -145,6 +150,10 @@ public class BpVectorReorderer extends AbstractBPReorderer {
     public int newToOld(int docID) {
       return newToOld[docID];
     }
+  }
+
+  public static Sorter.DocMap sortMapOf(int[] oldToNew, int[] newToOld) {
+    return new DocMap(oldToNew, newToOld);
   }
 
   private abstract class BaseRecursiveAction extends RecursiveAction {
