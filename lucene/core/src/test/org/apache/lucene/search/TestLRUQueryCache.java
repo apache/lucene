@@ -1445,6 +1445,12 @@ public class TestLRUQueryCache extends LuceneTestCase {
         }
       };
     }
+
+    @Override
+    public ScorerSupplier scorerSupplier(IndexSearcher.LeafReaderContextPartition partition)
+        throws IOException {
+      return scorerSupplier(partition.ctx);
+    }
   }
 
   public void testPropagateBulkScorer() throws IOException {
