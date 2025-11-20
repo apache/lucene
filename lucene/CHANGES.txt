@@ -98,6 +98,9 @@ Bug Fixes
 
 * GITHUB#15125: Handle inconsistent schema on flush with index sorts (Nhat Nguyen)
 
+* GITHUB#10309: Do not merge term queries with different docFreq. Fixes wrong scores in some queries that included
+  term query and fuzzy query. (Rafał Harabień)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
