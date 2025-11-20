@@ -34,7 +34,6 @@ import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.BitDocIdSet;
-import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IntsRef;
@@ -75,10 +74,10 @@ public abstract class PointRangeQuery extends Query {
     }
     if (lowerPoint.length != upperPoint.length) {
       throw new IllegalArgumentException(
-              "lowerPoint has length="
-                      + lowerPoint.length
-                      + " but upperPoint has different length="
-                      + upperPoint.length);
+          "lowerPoint has length="
+              + lowerPoint.length
+              + " but upperPoint has different length="
+              + upperPoint.length);
     }
     this.numDims = numDims;
     this.bytesPerDim = lowerPoint.length / numDims;
@@ -110,15 +109,15 @@ public abstract class PointRangeQuery extends Query {
 
   @Override
   public final Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-          throws IOException {
+      throws IOException {
 
     return new ConstantScoreWeight(this, boost) {
 
       // Cache to share DocIdSet computation across partitions of the same segment
       // Key: LeafReaderContext (identifies the segment)
       // Value: Lazily-initialized DocIdSet for the entire segment
-      private final ConcurrentHashMap<LeafReaderContext, SegmentDocIdSetSupplier>
-              segmentCache = new ConcurrentHashMap<>();
+      private final ConcurrentHashMap<LeafReaderContext, SegmentDocIdSetSupplier> segmentCache =
+          new ConcurrentHashMap<>();
 
       private boolean matches(byte[] packedValue) {
         int offset = 0;
@@ -233,8 +232,8 @@ public abstract class PointRangeQuery extends Query {
       }
 
       /**
-       * Helper class that lazily builds and caches a DocIdSet for an entire segment.
-       * This allows multiple partitions of the same segment to share the BKD traversal work.
+       * Helper class that lazily builds and caches a DocIdSet for an entire segment. This allows
+       * multiple partitions of the same segment to share the BKD traversal work.
        */
       private class SegmentDocIdSetSupplier {
         private final LeafReaderContext context;
@@ -248,8 +247,8 @@ public abstract class PointRangeQuery extends Query {
         }
 
         /**
-         * Get or build the DocIdSet for the entire segment.
-         * Thread-safe: first thread builds, others wait and reuse.
+         * Get or build the DocIdSet for the entire segment. Thread-safe: first thread builds,
+         * others wait and reuse.
          */
         DocIdSet getOrBuild() throws IOException {
           DocIdSet result = cachedDocIdSet;
@@ -270,8 +269,8 @@ public abstract class PointRangeQuery extends Query {
 
           // Check if we should use inverse intersection optimization
           if (values.getDocCount() == reader.maxDoc()
-                  && values.getDocCount() == values.size()
-                  && estimateCost() > reader.maxDoc() / 2) {
+              && values.getDocCount() == values.size()
+              && estimateCost() > reader.maxDoc() / 2) {
 
             // Build inverse bitset (docs that DON'T match)
             final FixedBitSet result = new FixedBitSet(reader.maxDoc());
@@ -301,7 +300,7 @@ public abstract class PointRangeQuery extends Query {
 
       @Override
       public ScorerSupplier scorerSupplier(IndexSearcher.LeafReaderContextPartition partition)
-              throws IOException {
+          throws IOException {
         LeafReader reader = partition.ctx.reader();
 
         PointValues values = reader.getPointValues(field);
@@ -317,7 +316,7 @@ public abstract class PointRangeQuery extends Query {
           for (int i = 0; i < numDims; ++i) {
             int offset = i * bytesPerDim;
             if (comparator.compare(lowerPoint, offset, fieldPackedUpper, offset) > 0
-                    || comparator.compare(upperPoint, offset, fieldPackedLower, offset) < 0) {
+                || comparator.compare(upperPoint, offset, fieldPackedLower, offset) < 0) {
               return null;
             }
           }
@@ -331,7 +330,7 @@ public abstract class PointRangeQuery extends Query {
           for (int i = 0; i < numDims; ++i) {
             int offset = i * bytesPerDim;
             if (comparator.compare(lowerPoint, offset, fieldPackedLower, offset) > 0
-                    || comparator.compare(upperPoint, offset, fieldPackedUpper, offset) < 0) {
+                || comparator.compare(upperPoint, offset, fieldPackedUpper, offset) < 0) {
               allDocsMatch = false;
               break;
             }
@@ -344,24 +343,16 @@ public abstract class PointRangeQuery extends Query {
           return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, reader.maxDoc());
         } else {
           // Get or create the cached supplier for this segment
-          SegmentDocIdSetSupplier segmentSupplier = segmentCache.computeIfAbsent(
-                  partition.ctx,
-                  ctx -> new SegmentDocIdSetSupplier(ctx, values)
-          );
+          SegmentDocIdSetSupplier segmentSupplier =
+              segmentCache.computeIfAbsent(
+                  partition.ctx, ctx -> new SegmentDocIdSetSupplier(ctx, values));
 
           return new PartitionScorerSupplier(
-                  segmentSupplier,
-                  partition.minDocId,
-                  partition.maxDocId,
-                  score(),
-                  scoreMode
-          );
+              segmentSupplier, partition.minDocId, partition.maxDocId, score(), scoreMode);
         }
       }
 
-      /**
-       * ScorerSupplier for a partition that filters results from the shared segment DocIdSet.
-       */
+      /** ScorerSupplier for a partition that filters results from the shared segment DocIdSet. */
       private class PartitionScorerSupplier extends ScorerSupplier {
         private final SegmentDocIdSetSupplier segmentSupplier;
         private final int minDocId;
@@ -370,11 +361,11 @@ public abstract class PointRangeQuery extends Query {
         private final ScoreMode scoreMode;
 
         PartitionScorerSupplier(
-                SegmentDocIdSetSupplier segmentSupplier,
-                int minDocId,
-                int maxDocId,
-                float score,
-                ScoreMode scoreMode) {
+            SegmentDocIdSetSupplier segmentSupplier,
+            int minDocId,
+            int maxDocId,
+            float score,
+            ScoreMode scoreMode) {
           this.segmentSupplier = segmentSupplier;
           this.minDocId = minDocId;
           this.maxDocId = maxDocId;
@@ -401,8 +392,7 @@ public abstract class PointRangeQuery extends Query {
           }
 
           // Check if this is a full segment (no partition filtering needed)
-          boolean isFullSegment =
-                  (minDocId == 0 && maxDocId == DocIdSetIterator.NO_MORE_DOCS);
+          boolean isFullSegment = (minDocId == 0 && maxDocId == DocIdSetIterator.NO_MORE_DOCS);
 
           if (isFullSegment) {
             return fullIterator;
@@ -419,8 +409,7 @@ public abstract class PointRangeQuery extends Query {
             long totalCost = docIdSet.iterator().cost();
 
             // Estimate cost for this partition proportionally
-            boolean isFullSegment =
-                    (minDocId == 0 && maxDocId == DocIdSetIterator.NO_MORE_DOCS);
+            boolean isFullSegment = (minDocId == 0 && maxDocId == DocIdSetIterator.NO_MORE_DOCS);
 
             if (isFullSegment) {
               return totalCost;
@@ -457,10 +446,7 @@ public abstract class PointRangeQuery extends Query {
         private final int maxDocId;
         private int doc = -1;
 
-        PartitionFilteredDocIdSetIterator(
-                DocIdSetIterator delegate,
-                int minDocId,
-                int maxDocId) {
+        PartitionFilteredDocIdSetIterator(DocIdSetIterator delegate, int minDocId, int maxDocId) {
           this.delegate = delegate;
           this.minDocId = minDocId;
           this.maxDocId = maxDocId;
@@ -515,7 +501,7 @@ public abstract class PointRangeQuery extends Query {
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         return scorerSupplier(
-                IndexSearcher.LeafReaderContextPartition.createForEntireSegment(context));
+            IndexSearcher.LeafReaderContextPartition.createForEntireSegment(context));
       }
 
       @Override
@@ -529,53 +515,53 @@ public abstract class PointRangeQuery extends Query {
 
         if (reader.hasDeletions() == false) {
           if (relate(values.getMinPackedValue(), values.getMaxPackedValue())
-                  == Relation.CELL_INSIDE_QUERY) {
+              == Relation.CELL_INSIDE_QUERY) {
             return values.getDocCount();
           }
           if (numDims == 1 && values.getDocCount() == values.size()) {
             return (int)
-                    pointCount(values.getPointTree(), PointRangeQuery.this::relate, this::matches);
+                pointCount(values.getPointTree(), PointRangeQuery.this::relate, this::matches);
           }
         }
         return super.count(context);
       }
 
       private long pointCount(
-              PointValues.PointTree pointTree,
-              BiFunction<byte[], byte[], Relation> nodeComparator,
-              Predicate<byte[]> leafComparator)
-              throws IOException {
+          PointValues.PointTree pointTree,
+          BiFunction<byte[], byte[], Relation> nodeComparator,
+          Predicate<byte[]> leafComparator)
+          throws IOException {
         final long[] matchingNodeCount = {0};
         final IntersectVisitor visitor =
-                new IntersectVisitor() {
-                  @Override
-                  public void visit(int docID) {
-                    throw new UnsupportedOperationException(
-                            "This IntersectVisitor does not perform any actions on a "
-                                    + "docID="
-                                    + docID
-                                    + " node being visited");
-                  }
+            new IntersectVisitor() {
+              @Override
+              public void visit(int docID) {
+                throw new UnsupportedOperationException(
+                    "This IntersectVisitor does not perform any actions on a "
+                        + "docID="
+                        + docID
+                        + " node being visited");
+              }
 
-                  @Override
-                  public void visit(int docID, byte[] packedValue) {
-                    if (leafComparator.test(packedValue)) {
-                      matchingNodeCount[0]++;
-                    }
-                  }
+              @Override
+              public void visit(int docID, byte[] packedValue) {
+                if (leafComparator.test(packedValue)) {
+                  matchingNodeCount[0]++;
+                }
+              }
 
-                  @Override
-                  public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-                    return nodeComparator.apply(minPackedValue, maxPackedValue);
-                  }
-                };
+              @Override
+              public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+                return nodeComparator.apply(minPackedValue, maxPackedValue);
+              }
+            };
         pointCount(visitor, pointTree, matchingNodeCount);
         return matchingNodeCount[0];
       }
 
       private void pointCount(
-              IntersectVisitor visitor, PointValues.PointTree pointTree, long[] matchingNodeCount)
-              throws IOException {
+          IntersectVisitor visitor, PointValues.PointTree pointTree, long[] matchingNodeCount)
+          throws IOException {
         Relation r = visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
         switch (r) {
           case CELL_OUTSIDE_QUERY:
@@ -643,10 +629,10 @@ public abstract class PointRangeQuery extends Query {
 
   private boolean equalsTo(PointRangeQuery other) {
     return Objects.equals(field, other.field)
-            && numDims == other.numDims
-            && bytesPerDim == other.bytesPerDim
-            && Arrays.equals(lowerPoint, other.lowerPoint)
-            && Arrays.equals(upperPoint, other.upperPoint);
+        && numDims == other.numDims
+        && bytesPerDim == other.bytesPerDim
+        && Arrays.equals(lowerPoint, other.lowerPoint)
+        && Arrays.equals(upperPoint, other.upperPoint);
   }
 
   @Override
@@ -666,12 +652,12 @@ public abstract class PointRangeQuery extends Query {
 
       sb.append('[');
       sb.append(
-              toString(
-                      i, ArrayUtil.copyOfSubArray(lowerPoint, startOffset, startOffset + bytesPerDim)));
+          toString(
+              i, ArrayUtil.copyOfSubArray(lowerPoint, startOffset, startOffset + bytesPerDim)));
       sb.append(" TO ");
       sb.append(
-              toString(
-                      i, ArrayUtil.copyOfSubArray(upperPoint, startOffset, startOffset + bytesPerDim)));
+          toString(
+              i, ArrayUtil.copyOfSubArray(upperPoint, startOffset, startOffset + bytesPerDim)));
       sb.append(']');
     }
 
@@ -728,9 +714,9 @@ public abstract class PointRangeQuery extends Query {
       FieldInfo info = leaf.reader().getFieldInfos().fieldInfo(field);
 
       if (info != null
-              && info.getDocValuesType() == DocValuesType.NONE
-              && !info.hasNorms()
-              && info.getVectorDimension() == 0) {
+          && info.getDocValuesType() == DocValuesType.NONE
+          && !info.hasNorms()
+          && info.getVectorDimension() == 0) {
         return false;
       }
     }
@@ -745,14 +731,14 @@ public abstract class PointRangeQuery extends Query {
     for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
 
       if (comparator.compare(minPackedValue, offset, upperPoint, offset) > 0
-              || comparator.compare(maxPackedValue, offset, lowerPoint, offset) < 0) {
+          || comparator.compare(maxPackedValue, offset, lowerPoint, offset) < 0) {
         return Relation.CELL_OUTSIDE_QUERY;
       }
 
       if (crosses == false) {
         crosses =
-                comparator.compare(minPackedValue, offset, lowerPoint, offset) < 0
-                        || comparator.compare(maxPackedValue, offset, upperPoint, offset) > 0;
+            comparator.compare(minPackedValue, offset, lowerPoint, offset) < 0
+                || comparator.compare(maxPackedValue, offset, upperPoint, offset) > 0;
       }
     }
 
@@ -770,21 +756,21 @@ public abstract class PointRangeQuery extends Query {
 
     if (values.getNumIndexDimensions() != numDims) {
       throw new IllegalArgumentException(
-              "field=\""
-                      + field
-                      + "\" was indexed with numIndexDimensions="
-                      + values.getNumIndexDimensions()
-                      + " but this query has numDims="
-                      + numDims);
+          "field=\""
+              + field
+              + "\" was indexed with numIndexDimensions="
+              + values.getNumIndexDimensions()
+              + " but this query has numDims="
+              + numDims);
     }
     if (bytesPerDim != values.getBytesPerDimension()) {
       throw new IllegalArgumentException(
-              "field=\""
-                      + field
-                      + "\" was indexed with bytesPerDim="
-                      + values.getBytesPerDimension()
-                      + " but this query has bytesPerDim="
-                      + bytesPerDim);
+          "field=\""
+              + field
+              + "\" was indexed with bytesPerDim="
+              + values.getBytesPerDimension()
+              + " but this query has bytesPerDim="
+              + bytesPerDim);
     }
     return true;
   }

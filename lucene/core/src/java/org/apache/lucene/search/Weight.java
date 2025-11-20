@@ -169,7 +169,8 @@ public abstract class Weight implements SegmentCacheable {
    * @see IndexSearcher.LeafReaderContextPartition
    * @since 10.1
    */
-  public ScorerSupplier scorerSupplier(IndexSearcher.LeafReaderContextPartition partition) throws IOException {
+  public ScorerSupplier scorerSupplier(IndexSearcher.LeafReaderContextPartition partition)
+      throws IOException {
     return scorerSupplier(partition.ctx);
   }
 
