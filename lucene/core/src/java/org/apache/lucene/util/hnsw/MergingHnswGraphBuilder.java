@@ -144,7 +144,8 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
     int size = gS.size();
     IntHashSet j = UpdateGraphsUtils.computeJoinSet(gS);
 
-    // for nodes that in the join set, add them directly to the graph
+    // add nodes in the join set directly to the graph
+    // sort for stability
     int[] nodes = j.toArray();
     Arrays.sort(nodes);
     for (int node : nodes) {
