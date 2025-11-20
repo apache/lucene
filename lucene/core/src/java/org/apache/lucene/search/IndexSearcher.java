@@ -242,7 +242,7 @@ public class IndexSearcher {
     this(context, null);
   }
 
-  /** Copies everything except the executor */
+  /** Reuses everything except the executor */
   public IndexSearcher(IndexSearcher searcher) {
     this(searcher.getTopReaderContext());
     this.similarity = searcher.getSimilarity();
