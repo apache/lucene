@@ -664,6 +664,14 @@ public abstract class PointRangeQuery extends Query {
     return sb.toString();
   }
 
+  /**
+   * Returns a string of a single value in a human-readable format for debugging. This is used by
+   * {@link #toString()}.
+   *
+   * @param dimension dimension of the particular value
+   * @param value single value, never null
+   * @return human readable value for debugging
+   */
   protected abstract String toString(int dimension, byte[] value);
 
   @Override
