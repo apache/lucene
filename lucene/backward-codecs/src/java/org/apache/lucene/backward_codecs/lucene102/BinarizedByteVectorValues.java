@@ -79,6 +79,6 @@ abstract class BinarizedByteVectorValues extends ByteVectorValues {
   float getCentroidDP() throws IOException {
     // this only gets executed on-merge
     float[] centroid = getCentroid();
-    return VectorUtil.dotProduct(centroid, centroid);
+    return VectorUtil.dotProductFloats(centroid, centroid);
   }
 }

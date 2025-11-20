@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.internal.vectorization;
+package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
@@ -25,6 +25,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MemorySegmentAccessInput;
+import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 
@@ -41,7 +42,7 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
    * Return an optional whose value, if present, is the scorer supplier. Otherwise, an empty
    * optional is returned.
    */
-  static Optional<RandomVectorScorerSupplier> create(
+  public static Optional<RandomVectorScorerSupplier> create(
       VectorSimilarityFunction type, IndexInput input, KnnVectorValues values) {
     assert values instanceof ByteVectorValues;
     input = FilterIndexInput.unwrapOnlyTest(input);
@@ -117,8 +118,7 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
         @Override
         public float score(int node) throws IOException {
           checkOrdinal(node);
-          float raw =
-              PanamaVectorUtilSupport.cosine(getFirstSegment(queryOrd), getSecondSegment(node));
+          float raw = VectorUtil.cosineBytes(getFirstSegment(queryOrd), getSecondSegment(node));
           return (1 + raw) / 2;
         }
 
@@ -151,8 +151,7 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
         public float score(int node) throws IOException {
           checkOrdinal(node);
           // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
-          float raw =
-              PanamaVectorUtilSupport.dotProduct(getFirstSegment(queryOrd), getSecondSegment(node));
+          float raw = VectorUtil.dotProductBytes(getFirstSegment(queryOrd), getSecondSegment(node));
           return 0.5f + raw / (float) (values.dimension() * (1 << 15));
         }
 
@@ -185,8 +184,7 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
         public float score(int node) throws IOException {
           checkOrdinal(node);
           float raw =
-              PanamaVectorUtilSupport.squareDistance(
-                  getFirstSegment(queryOrd), getSecondSegment(node));
+              VectorUtil.squareDistanceBytes(getFirstSegment(queryOrd), getSecondSegment(node));
           return 1 / (1f + raw);
         }
 
@@ -218,8 +216,7 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
         @Override
         public float score(int node) throws IOException {
           checkOrdinal(node);
-          float raw =
-              PanamaVectorUtilSupport.dotProduct(getFirstSegment(queryOrd), getSecondSegment(node));
+          float raw = VectorUtil.dotProductBytes(getFirstSegment(queryOrd), getSecondSegment(node));
           if (raw < 0) {
             return 1 / (1 + -1 * raw);
           }

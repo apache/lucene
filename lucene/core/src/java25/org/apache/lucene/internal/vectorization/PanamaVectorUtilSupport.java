@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.internal.vectorization;
 
-import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 import static java.nio.ByteOrder.LITTLE_ENDIAN;
 import static jdk.incubator.vector.VectorOperators.ADD;
 import static jdk.incubator.vector.VectorOperators.B2I;
@@ -54,7 +53,9 @@ import org.apache.lucene.util.SuppressForbidden;
  *
  * Setting these properties will make this code run EXTREMELY slow!
  */
-final class PanamaVectorUtilSupport implements VectorUtilSupport {
+final class PanamaVectorUtilSupport
+    implements VectorUtilSupport<
+        PanamaVectorUtilSupport.IByteVector, PanamaVectorUtilSupport.IFloatVector> {
 
   // preferred vector sizes, which can be altered for testing
   private static final VectorSpecies<Float> FLOAT_SPECIES;
@@ -86,6 +87,62 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
   }
 
+  interface IByteVector extends DefaultVectorUtilSupport.IByteVector {
+    ByteVector get(VectorSpecies<Byte> species, int index); // additional vectorized impl
+  }
+
+  static class ArrayByteVector extends DefaultVectorUtilSupport.ArrayByteVector
+      implements IByteVector {
+    ArrayByteVector(byte[] array) {
+      super(array);
+    }
+
+    @Override
+    public final ByteVector get(VectorSpecies<Byte> species, int index) {
+      return ByteVector.fromArray(species, array, index);
+    }
+  }
+
+  static class MemorySegmentByteVector extends DefaultVectorUtilSupport.MemorySegmentByteVector
+      implements IByteVector {
+    MemorySegmentByteVector(MemorySegment segment) {
+      super(segment);
+    }
+
+    @Override
+    public final ByteVector get(VectorSpecies<Byte> species, int index) {
+      return ByteVector.fromMemorySegment(species, segment, index, LITTLE_ENDIAN);
+    }
+  }
+
+  interface IFloatVector extends DefaultVectorUtilSupport.IFloatVector {
+    FloatVector get(VectorSpecies<Float> species, int index); // additional vectorized impl
+  }
+
+  static class ArrayFloatVector extends DefaultVectorUtilSupport.ArrayFloatVector
+      implements IFloatVector {
+    ArrayFloatVector(float[] array) {
+      super(array);
+    }
+
+    @Override
+    public final FloatVector get(VectorSpecies<Float> species, int index) {
+      return FloatVector.fromArray(species, array, index);
+    }
+  }
+
+  static class MemorySegmentFloatVector extends DefaultVectorUtilSupport.MemorySegmentFloatVector
+      implements IFloatVector {
+    MemorySegmentFloatVector(MemorySegment segment) {
+      super(segment);
+    }
+
+    @Override
+    public final FloatVector get(VectorSpecies<Float> species, int index) {
+      return FloatVector.fromMemorySegment(species, segment, index, LITTLE_ENDIAN);
+    }
+  }
+
   // the way FMA should work! if available use it, otherwise fall back to mul/add
   @SuppressForbidden(reason = "Uses FMA only where fast and carefully contained")
   static FloatVector fma(FloatVector a, FloatVector b, FloatVector c) {
@@ -106,25 +163,46 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public float dotProduct(float[] a, float[] b) {
+  public IByteVector bytesFromArray(byte[] array) {
+    return new ArrayByteVector(array);
+  }
+
+  @Override
+  public IByteVector bytesFromMemorySegment(MemorySegment segment) {
+    return new MemorySegmentByteVector(segment);
+  }
+
+  @Override
+  public IFloatVector floatsFromArray(float[] array) {
+    return new ArrayFloatVector(array);
+  }
+
+  @Override
+  public IFloatVector floatsFromMemorySegment(MemorySegment segment) {
+    return new MemorySegmentFloatVector(segment);
+  }
+
+  @Override
+  public float dotProductFloats(IFloatVector a, IFloatVector b) {
     int i = 0;
     float res = 0;
+    int length = a.length();
 
     // if the array size is large (> 2x platform vector size), it's worth the overhead to vectorize
-    if (a.length > 2 * FLOAT_SPECIES.length()) {
-      i += FLOAT_SPECIES.loopBound(a.length);
+    if (length > 2 * FLOAT_SPECIES.length()) {
+      i += FLOAT_SPECIES.loopBound(length);
       res += dotProductBody(a, b, i);
     }
 
     // scalar tail
-    for (; i < a.length; i++) {
-      res = fma(a[i], b[i], res);
+    for (; i < length; i++) {
+      res = fma(a.get(i), b.get(i), res);
     }
     return res;
   }
 
   /** vectorized float dot product body */
-  private float dotProductBody(float[] a, float[] b, int limit) {
+  private float dotProductBody(IFloatVector a, IFloatVector b, int limit) {
     int i = 0;
     // vector loop is unrolled 4x (4 accumulators in parallel)
     // we don't know how many the cpu can do at once, some can do 2, some 4
@@ -135,29 +213,29 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     int unrolledLimit = limit - 3 * FLOAT_SPECIES.length();
     for (; i < unrolledLimit; i += 4 * FLOAT_SPECIES.length()) {
       // one
-      FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, i);
-      FloatVector vb = FloatVector.fromArray(FLOAT_SPECIES, b, i);
+      FloatVector va = a.get(FLOAT_SPECIES, i);
+      FloatVector vb = b.get(FLOAT_SPECIES, i);
       acc1 = fma(va, vb, acc1);
 
       // two
-      FloatVector vc = FloatVector.fromArray(FLOAT_SPECIES, a, i + FLOAT_SPECIES.length());
-      FloatVector vd = FloatVector.fromArray(FLOAT_SPECIES, b, i + FLOAT_SPECIES.length());
+      FloatVector vc = a.get(FLOAT_SPECIES, i + FLOAT_SPECIES.length());
+      FloatVector vd = b.get(FLOAT_SPECIES, i + FLOAT_SPECIES.length());
       acc2 = fma(vc, vd, acc2);
 
       // three
-      FloatVector ve = FloatVector.fromArray(FLOAT_SPECIES, a, i + 2 * FLOAT_SPECIES.length());
-      FloatVector vf = FloatVector.fromArray(FLOAT_SPECIES, b, i + 2 * FLOAT_SPECIES.length());
+      FloatVector ve = a.get(FLOAT_SPECIES, i + 2 * FLOAT_SPECIES.length());
+      FloatVector vf = b.get(FLOAT_SPECIES, i + 2 * FLOAT_SPECIES.length());
       acc3 = fma(ve, vf, acc3);
 
       // four
-      FloatVector vg = FloatVector.fromArray(FLOAT_SPECIES, a, i + 3 * FLOAT_SPECIES.length());
-      FloatVector vh = FloatVector.fromArray(FLOAT_SPECIES, b, i + 3 * FLOAT_SPECIES.length());
+      FloatVector vg = a.get(FLOAT_SPECIES, i + 3 * FLOAT_SPECIES.length());
+      FloatVector vh = b.get(FLOAT_SPECIES, i + 3 * FLOAT_SPECIES.length());
       acc4 = fma(vg, vh, acc4);
     }
     // vector tail: less scalar computations for unaligned sizes, esp with big vector sizes
     for (; i < limit; i += FLOAT_SPECIES.length()) {
-      FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, i);
-      FloatVector vb = FloatVector.fromArray(FLOAT_SPECIES, b, i);
+      FloatVector va = a.get(FLOAT_SPECIES, i);
+      FloatVector vb = b.get(FLOAT_SPECIES, i);
       acc1 = fma(va, vb, acc1);
     }
     // reduce
@@ -167,15 +245,16 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public float cosine(float[] a, float[] b) {
+  public float cosineFloats(IFloatVector a, IFloatVector b) {
     int i = 0;
     float sum = 0;
     float norm1 = 0;
     float norm2 = 0;
+    int length = a.length();
 
     // if the array size is large (> 2x platform vector size), it's worth the overhead to vectorize
-    if (a.length > 2 * FLOAT_SPECIES.length()) {
-      i += FLOAT_SPECIES.loopBound(a.length);
+    if (length > 2 * FLOAT_SPECIES.length()) {
+      i += FLOAT_SPECIES.loopBound(length);
       float[] ret = cosineBody(a, b, i);
       sum += ret[0];
       norm1 += ret[1];
@@ -183,16 +262,16 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
 
     // scalar tail
-    for (; i < a.length; i++) {
-      sum = fma(a[i], b[i], sum);
-      norm1 = fma(a[i], a[i], norm1);
-      norm2 = fma(b[i], b[i], norm2);
+    for (; i < length; i++) {
+      sum = fma(a.get(i), b.get(i), sum);
+      norm1 = fma(a.get(i), a.get(i), norm1);
+      norm2 = fma(b.get(i), b.get(i), norm2);
     }
     return (float) (sum / Math.sqrt((double) norm1 * (double) norm2));
   }
 
   /** vectorized cosine body */
-  private float[] cosineBody(float[] a, float[] b, int limit) {
+  private float[] cosineBody(IFloatVector a, IFloatVector b, int limit) {
     int i = 0;
     // vector loop is unrolled 2x (2 accumulators in parallel)
     // each iteration has 3 FMAs, so its a lot already, no need to unroll more
@@ -205,23 +284,23 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     int unrolledLimit = limit - FLOAT_SPECIES.length();
     for (; i < unrolledLimit; i += 2 * FLOAT_SPECIES.length()) {
       // one
-      FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, i);
-      FloatVector vb = FloatVector.fromArray(FLOAT_SPECIES, b, i);
+      FloatVector va = a.get(FLOAT_SPECIES, i);
+      FloatVector vb = b.get(FLOAT_SPECIES, i);
       sum1 = fma(va, vb, sum1);
       norm1_1 = fma(va, va, norm1_1);
       norm2_1 = fma(vb, vb, norm2_1);
 
       // two
-      FloatVector vc = FloatVector.fromArray(FLOAT_SPECIES, a, i + FLOAT_SPECIES.length());
-      FloatVector vd = FloatVector.fromArray(FLOAT_SPECIES, b, i + FLOAT_SPECIES.length());
+      FloatVector vc = a.get(FLOAT_SPECIES, i + FLOAT_SPECIES.length());
+      FloatVector vd = b.get(FLOAT_SPECIES, i + FLOAT_SPECIES.length());
       sum2 = fma(vc, vd, sum2);
       norm1_2 = fma(vc, vc, norm1_2);
       norm2_2 = fma(vd, vd, norm2_2);
     }
     // vector tail: less scalar computations for unaligned sizes, esp with big vector sizes
     for (; i < limit; i += FLOAT_SPECIES.length()) {
-      FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, i);
-      FloatVector vb = FloatVector.fromArray(FLOAT_SPECIES, b, i);
+      FloatVector va = a.get(FLOAT_SPECIES, i);
+      FloatVector vb = b.get(FLOAT_SPECIES, i);
       sum1 = fma(va, vb, sum1);
       norm1_1 = fma(va, va, norm1_1);
       norm2_1 = fma(vb, vb, norm2_1);
@@ -234,26 +313,27 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public float squareDistance(float[] a, float[] b) {
+  public float squareDistanceFloats(IFloatVector a, IFloatVector b) {
     int i = 0;
     float res = 0;
+    int length = a.length();
 
     // if the array size is large (> 2x platform vector size), it's worth the overhead to vectorize
-    if (a.length > 2 * FLOAT_SPECIES.length()) {
-      i += FLOAT_SPECIES.loopBound(a.length);
+    if (length > 2 * FLOAT_SPECIES.length()) {
+      i += FLOAT_SPECIES.loopBound(length);
       res += squareDistanceBody(a, b, i);
     }
 
     // scalar tail
-    for (; i < a.length; i++) {
-      float diff = a[i] - b[i];
+    for (; i < length; i++) {
+      float diff = a.get(i) - b.get(i);
       res = fma(diff, diff, res);
     }
     return res;
   }
 
   /** vectorized square distance body */
-  private float squareDistanceBody(float[] a, float[] b, int limit) {
+  private float squareDistanceBody(IFloatVector a, IFloatVector b, int limit) {
     int i = 0;
     // vector loop is unrolled 4x (4 accumulators in parallel)
     // we don't know how many the cpu can do at once, some can do 2, some 4
@@ -264,33 +344,33 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     int unrolledLimit = limit - 3 * FLOAT_SPECIES.length();
     for (; i < unrolledLimit; i += 4 * FLOAT_SPECIES.length()) {
       // one
-      FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, i);
-      FloatVector vb = FloatVector.fromArray(FLOAT_SPECIES, b, i);
+      FloatVector va = a.get(FLOAT_SPECIES, i);
+      FloatVector vb = b.get(FLOAT_SPECIES, i);
       FloatVector diff1 = va.sub(vb);
       acc1 = fma(diff1, diff1, acc1);
 
       // two
-      FloatVector vc = FloatVector.fromArray(FLOAT_SPECIES, a, i + FLOAT_SPECIES.length());
-      FloatVector vd = FloatVector.fromArray(FLOAT_SPECIES, b, i + FLOAT_SPECIES.length());
+      FloatVector vc = a.get(FLOAT_SPECIES, i + FLOAT_SPECIES.length());
+      FloatVector vd = b.get(FLOAT_SPECIES, i + FLOAT_SPECIES.length());
       FloatVector diff2 = vc.sub(vd);
       acc2 = fma(diff2, diff2, acc2);
 
       // three
-      FloatVector ve = FloatVector.fromArray(FLOAT_SPECIES, a, i + 2 * FLOAT_SPECIES.length());
-      FloatVector vf = FloatVector.fromArray(FLOAT_SPECIES, b, i + 2 * FLOAT_SPECIES.length());
+      FloatVector ve = a.get(FLOAT_SPECIES, i + 2 * FLOAT_SPECIES.length());
+      FloatVector vf = b.get(FLOAT_SPECIES, i + 2 * FLOAT_SPECIES.length());
       FloatVector diff3 = ve.sub(vf);
       acc3 = fma(diff3, diff3, acc3);
 
       // four
-      FloatVector vg = FloatVector.fromArray(FLOAT_SPECIES, a, i + 3 * FLOAT_SPECIES.length());
-      FloatVector vh = FloatVector.fromArray(FLOAT_SPECIES, b, i + 3 * FLOAT_SPECIES.length());
+      FloatVector vg = a.get(FLOAT_SPECIES, i + 3 * FLOAT_SPECIES.length());
+      FloatVector vh = b.get(FLOAT_SPECIES, i + 3 * FLOAT_SPECIES.length());
       FloatVector diff4 = vg.sub(vh);
       acc4 = fma(diff4, diff4, acc4);
     }
     // vector tail: less scalar computations for unaligned sizes, esp with big vector sizes
     for (; i < limit; i += FLOAT_SPECIES.length()) {
-      FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, i);
-      FloatVector vb = FloatVector.fromArray(FLOAT_SPECIES, b, i);
+      FloatVector va = a.get(FLOAT_SPECIES, i);
+      FloatVector vb = b.get(FLOAT_SPECIES, i);
       FloatVector diff = va.sub(vb);
       acc1 = fma(diff, diff, acc1);
     }
@@ -312,121 +392,59 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   // We also support 128 bit vectors, going 32 bits at a time.
   // This is slower but still faster than not vectorizing at all.
 
-  private interface ByteVectorLoader {
-    int length();
-
-    ByteVector load(VectorSpecies<Byte> species, int index);
-
-    byte tail(int index);
-  }
-
-  private record ArrayLoader(byte[] arr) implements ByteVectorLoader {
-    @Override
-    public int length() {
-      return arr.length;
-    }
-
-    @Override
-    public ByteVector load(VectorSpecies<Byte> species, int index) {
-      assert index + species.length() <= length();
-      return ByteVector.fromArray(species, arr, index);
-    }
-
-    @Override
-    public byte tail(int index) {
-      assert index <= length();
-      return arr[index];
-    }
-  }
-
-  private record MemorySegmentLoader(MemorySegment segment) implements ByteVectorLoader {
-    @Override
-    public int length() {
-      return Math.toIntExact(segment.byteSize());
-    }
-
-    @Override
-    public ByteVector load(VectorSpecies<Byte> species, int index) {
-      assert index + species.length() <= length();
-      return ByteVector.fromMemorySegment(species, segment, index, LITTLE_ENDIAN);
-    }
-
-    @Override
-    public byte tail(int index) {
-      assert index <= length();
-      return segment.get(JAVA_BYTE, index);
-    }
+  @Override
+  public int dotProductBytes(IByteVector a, IByteVector b) {
+    return dotProductBody(a, b, true);
   }
 
   @Override
-  public int dotProduct(byte[] a, byte[] b) {
-    return dotProductBody(new ArrayLoader(a), new ArrayLoader(b), true);
+  public int uint8DotProduct(IByteVector a, IByteVector b) {
+    return dotProductBody(a, b, false);
   }
 
-  @Override
-  public int uint8DotProduct(byte[] a, byte[] b) {
-    return dotProductBody(new ArrayLoader(a), new ArrayLoader(b), false);
-  }
-
-  public static int dotProduct(byte[] a, MemorySegment b) {
-    return dotProductBody(new ArrayLoader(a), new MemorySegmentLoader(b), true);
-  }
-
-  public static int dotProduct(MemorySegment a, MemorySegment b) {
-    return dotProductBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b), true);
-  }
-
-  public static int uint8DotProduct(byte[] a, MemorySegment b) {
-    return dotProductBody(new ArrayLoader(a), new MemorySegmentLoader(b), false);
-  }
-
-  public static int uint8DotProduct(MemorySegment a, MemorySegment b) {
-    return dotProductBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b), false);
-  }
-
-  private static int dotProductBody(ByteVectorLoader a, ByteVectorLoader b, boolean signed) {
+  private static int dotProductBody(IByteVector a, IByteVector b, boolean signed) {
     assert a.length() == b.length();
     int i = 0;
     int res = 0;
+    int length = a.length();
 
     // only vectorize if we'll at least enter the loop a single time
-    if (a.length() >= 16) {
+    if (length >= 16) {
       // compute vectorized dot product consistent with VPDPBUSD instruction
       if (VECTOR_BITSIZE >= 512) {
-        i += BYTE_SPECIES.loopBound(a.length());
+        i += BYTE_SPECIES.loopBound(length);
         res += dotProductBody512(a, b, i, signed);
       } else if (VECTOR_BITSIZE == 256) {
-        i += BYTE_SPECIES.loopBound(a.length());
+        i += BYTE_SPECIES.loopBound(length);
         res += dotProductBody256(a, b, i, signed);
       } else {
         // tricky: we don't have SPECIES_32, so we workaround with "overlapping read"
-        i += ByteVector.SPECIES_64.loopBound(a.length() - ByteVector.SPECIES_64.length());
+        i += ByteVector.SPECIES_64.loopBound(length - ByteVector.SPECIES_64.length());
         res += dotProductBody128(a, b, i, signed);
       }
     }
 
     // scalar tail
     if (signed) {
-      for (; i < a.length(); i++) {
-        res += a.tail(i) * b.tail(i);
+      for (; i < length; i++) {
+        res += a.get(i) * b.get(i);
       }
     } else {
-      for (; i < a.length(); i++) {
-        res += Byte.toUnsignedInt(a.tail(i)) * Byte.toUnsignedInt(b.tail(i));
+      for (; i < length; i++) {
+        res += Byte.toUnsignedInt(a.get(i)) * Byte.toUnsignedInt(b.get(i));
       }
     }
     return res;
   }
 
   /** vectorized dot product body (512 bit vectors) */
-  private static int dotProductBody512(
-      ByteVectorLoader a, ByteVectorLoader b, int limit, boolean signed) {
+  private static int dotProductBody512(IByteVector a, IByteVector b, int limit, boolean signed) {
     IntVector acc = IntVector.zero(INT_SPECIES);
     var conversion_short = signed ? B2S : ZERO_EXTEND_B2S;
     var conversion_int = signed ? S2I : ZERO_EXTEND_S2I;
     for (int i = 0; i < limit; i += BYTE_SPECIES.length()) {
-      ByteVector va8 = a.load(BYTE_SPECIES, i);
-      ByteVector vb8 = b.load(BYTE_SPECIES, i);
+      ByteVector va8 = a.get(BYTE_SPECIES, i);
+      ByteVector vb8 = b.get(BYTE_SPECIES, i);
 
       // 16-bit multiply: avoid AVX-512 heavy multiply on zmm
       Vector<Short> va16 = va8.convertShape(conversion_short, SHORT_SPECIES, 0);
@@ -442,13 +460,12 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized dot product body (256 bit vectors) */
-  private static int dotProductBody256(
-      ByteVectorLoader a, ByteVectorLoader b, int limit, boolean signed) {
+  private static int dotProductBody256(IByteVector a, IByteVector b, int limit, boolean signed) {
     IntVector acc = IntVector.zero(IntVector.SPECIES_256);
     var conversion = signed ? B2I : ZERO_EXTEND_B2I;
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length()) {
-      ByteVector va8 = a.load(ByteVector.SPECIES_64, i);
-      ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
+      ByteVector va8 = a.get(ByteVector.SPECIES_64, i);
+      ByteVector vb8 = b.get(ByteVector.SPECIES_64, i);
 
       // 32-bit multiply and add into accumulator
       Vector<Integer> va32 = va8.convertShape(conversion, IntVector.SPECIES_256, 0);
@@ -460,16 +477,15 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized dot product body (128 bit vectors) */
-  private static int dotProductBody128(
-      ByteVectorLoader a, ByteVectorLoader b, int limit, boolean signed) {
+  private static int dotProductBody128(IByteVector a, IByteVector b, int limit, boolean signed) {
     IntVector acc = IntVector.zero(IntVector.SPECIES_128);
     var conversion_short = signed ? B2S : ZERO_EXTEND_B2S;
     var conversion_int = signed ? S2I : ZERO_EXTEND_S2I;
     // 4 bytes at a time (re-loading half the vector each time!)
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length() >> 1) {
       // load 8 bytes
-      ByteVector va8 = a.load(ByteVector.SPECIES_64, i);
-      ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
+      ByteVector va8 = a.get(ByteVector.SPECIES_64, i);
+      ByteVector vb8 = b.get(ByteVector.SPECIES_64, i);
 
       // process first "half" only: 16-bit multiply
       Vector<Short> va16 = va8.convert(conversion_short, 0);
@@ -506,33 +522,27 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public int int4DotProduct(byte[] a, byte[] b) {
-    return int4DotProductBody(new ArrayLoader(a), new ArrayLoader(b));
+  public int int4DotProduct(IByteVector a, IByteVector b) {
+    return int4DotProductBody(a, b);
   }
 
-  public static int int4DotProduct(byte[] a, MemorySegment b) {
-    return int4DotProductBody(new ArrayLoader(a), new MemorySegmentLoader(b));
-  }
-
-  public static int int4DotProduct(MemorySegment a, MemorySegment b) {
-    return int4DotProductBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
-  }
-
-  private static int int4DotProductBody(ByteVectorLoader a, ByteVectorLoader b) {
+  private static int int4DotProductBody(IByteVector a, IByteVector b) {
     int i = 0;
     int res = 0;
-    if (a.length() >= 32) {
-      i += Int4Constants.BYTE_SPECIES.loopBound(a.length());
+    int length = a.length();
+
+    if (length >= 32) {
+      i += Int4Constants.BYTE_SPECIES.loopBound(length);
       res += int4DotProductBody(a, b, i);
     }
     // scalar tail
-    for (; i < a.length(); i++) {
-      res += a.tail(i) * b.tail(i);
+    for (; i < length; i++) {
+      res += a.get(i) * b.get(i);
     }
     return res;
   }
 
-  private static int int4DotProductBody(ByteVectorLoader a, ByteVectorLoader b, int limit) {
+  private static int int4DotProductBody(IByteVector a, IByteVector b, int limit) {
     int sum = 0;
     // iterate in chunks to ensure we don't overflow the short accumulator
     for (int i = 0; i < limit; i += Int4Constants.CHUNK) {
@@ -540,11 +550,11 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       int innerLimit = Math.min(limit - i, Int4Constants.CHUNK);
       for (int j = 0; j < innerLimit; j += Int4Constants.BYTE_SPECIES.length()) {
         // unpacked
-        ByteVector vb8 = b.load(Int4Constants.BYTE_SPECIES, i + j);
+        ByteVector vb8 = b.get(Int4Constants.BYTE_SPECIES, i + j);
         Vector<Short> vb16 = vb8.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
 
         // unpacked
-        ByteVector va8 = a.load(Int4Constants.BYTE_SPECIES, i + j);
+        ByteVector va8 = a.get(Int4Constants.BYTE_SPECIES, i + j);
         Vector<Short> va16 = va8.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
 
         acc = acc.add(vb16.mul(va16));
@@ -557,28 +567,24 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public int int4DotProductSinglePacked(byte[] unpacked, byte[] packed) {
-    return int4DotProductSinglePackedBody(new ArrayLoader(unpacked), new ArrayLoader(packed));
+  public int int4DotProductSinglePacked(IByteVector unpacked, IByteVector packed) {
+    return int4DotProductSinglePackedBody(unpacked, packed);
   }
 
-  public static int int4DotProductSinglePacked(byte[] unpacked, MemorySegment packed) {
-    return int4DotProductSinglePackedBody(
-        new ArrayLoader(unpacked), new MemorySegmentLoader(packed));
-  }
-
-  private static int int4DotProductSinglePackedBody(
-      ByteVectorLoader unpacked, ByteVectorLoader packed) {
+  private static int int4DotProductSinglePackedBody(IByteVector unpacked, IByteVector packed) {
     int i = 0;
     int res = 0;
-    if (packed.length() >= 32) {
-      i += Int4Constants.BYTE_SPECIES.loopBound(packed.length());
+    int length = packed.length();
+
+    if (length >= 32) {
+      i += Int4Constants.BYTE_SPECIES.loopBound(length);
       res += int4DotProductSinglePackedBody(unpacked, packed, i);
     }
     // scalar tail
-    for (; i < packed.length(); i++) {
-      byte packedByte = packed.tail(i);
-      byte unpacked1 = unpacked.tail(i);
-      byte unpacked2 = unpacked.tail(i + packed.length());
+    for (; i < length; i++) {
+      byte packedByte = packed.get(i);
+      byte unpacked1 = unpacked.get(i);
+      byte unpacked2 = unpacked.get(i + length);
       res += (packedByte & 0x0F) * unpacked2;
       res += ((packedByte & 0xFF) >> 4) * unpacked1;
     }
@@ -586,7 +592,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   private static int int4DotProductSinglePackedBody(
-      ByteVectorLoader unpacked, ByteVectorLoader packed, int limit) {
+      IByteVector unpacked, IByteVector packed, int limit) {
     int sum = 0;
     // iterate in chunks to ensure we don't overflow the short accumulator
     for (int i = 0; i < limit; i += Int4Constants.CHUNK) {
@@ -595,16 +601,16 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       int innerLimit = Math.min(limit - i, Int4Constants.CHUNK);
       for (int j = 0; j < innerLimit; j += Int4Constants.BYTE_SPECIES.length()) {
         // packed
-        ByteVector vb8 = packed.load(Int4Constants.BYTE_SPECIES, i + j);
+        ByteVector vb8 = packed.get(Int4Constants.BYTE_SPECIES, i + j);
 
         // upper
-        ByteVector va8 = unpacked.load(Int4Constants.BYTE_SPECIES, i + j + packed.length());
+        ByteVector va8 = unpacked.get(Int4Constants.BYTE_SPECIES, i + j + packed.length());
         ByteVector prod8 = vb8.and((byte) 0x0F).mul(va8);
         Vector<Short> prod16 = prod8.convertShape(ZERO_EXTEND_B2S, Int4Constants.SHORT_SPECIES, 0);
         acc0 = acc0.add(prod16);
 
         // lower
-        ByteVector vc8 = unpacked.load(Int4Constants.BYTE_SPECIES, i + j);
+        ByteVector vc8 = unpacked.get(Int4Constants.BYTE_SPECIES, i + j);
         ByteVector prod8a = vb8.lanewise(LSHR, 4).mul(vc8);
         Vector<Short> prod16a =
             prod8a.convertShape(ZERO_EXTEND_B2S, Int4Constants.SHORT_SPECIES, 0);
@@ -620,33 +626,30 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public int int4DotProductBothPacked(byte[] a, byte[] b) {
-    return int4DotProductBothPackedBody(new ArrayLoader(a), new ArrayLoader(b));
+  public int int4DotProductBothPacked(IByteVector a, IByteVector b) {
+    return int4DotProductBothPackedBody(a, b);
   }
 
-  public static int int4DotProductBothPacked(MemorySegment a, MemorySegment b) {
-    return int4DotProductBothPackedBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
-  }
-
-  private static int int4DotProductBothPackedBody(ByteVectorLoader a, ByteVectorLoader b) {
+  private static int int4DotProductBothPackedBody(IByteVector a, IByteVector b) {
     int i = 0;
     int res = 0;
-    if (a.length() >= 32) {
-      i += Int4Constants.BYTE_SPECIES.loopBound(a.length());
+    int length = a.length();
+
+    if (length >= 32) {
+      i += Int4Constants.BYTE_SPECIES.loopBound(length);
       res += int4DotProductBothPackedBody(a, b, i);
     }
     // scalar tail
-    for (; i < a.length(); i++) {
-      byte aByte = a.tail(i);
-      byte bByte = b.tail(i);
+    for (; i < length; i++) {
+      byte aByte = a.get(i);
+      byte bByte = b.get(i);
       res += (aByte & 0x0F) * (bByte & 0x0F);
       res += ((aByte & 0xFF) >> 4) * ((bByte & 0xFF) >> 4);
     }
     return res;
   }
 
-  private static int int4DotProductBothPackedBody(
-      ByteVectorLoader a, ByteVectorLoader b, int limit) {
+  private static int int4DotProductBothPackedBody(IByteVector a, IByteVector b, int limit) {
     int sum = 0;
     // iterate in chunks to ensure we don't overflow the short accumulator
     for (int i = 0; i < limit; i += Int4Constants.CHUNK) {
@@ -655,9 +658,9 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       int innerLimit = Math.min(limit - i, Int4Constants.CHUNK);
       for (int j = 0; j < innerLimit; j += Int4Constants.BYTE_SPECIES.length()) {
         // packed
-        var vb8 = b.load(Int4Constants.BYTE_SPECIES, i + j);
+        var vb8 = b.get(Int4Constants.BYTE_SPECIES, i + j);
         // packed
-        var va8 = a.load(Int4Constants.BYTE_SPECIES, i + j);
+        var va8 = a.get(Int4Constants.BYTE_SPECIES, i + j);
 
         // upper
         ByteVector prod8 = vb8.and((byte) 0x0F).mul(va8.and((byte) 0x0F));
@@ -680,36 +683,29 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public float cosine(byte[] a, byte[] b) {
-    return cosineBody(new ArrayLoader(a), new ArrayLoader(b));
+  public float cosineBytes(IByteVector a, IByteVector b) {
+    return cosineBody(a, b);
   }
 
-  public static float cosine(MemorySegment a, MemorySegment b) {
-    return cosineBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
-  }
-
-  public static float cosine(byte[] a, MemorySegment b) {
-    return cosineBody(new ArrayLoader(a), new MemorySegmentLoader(b));
-  }
-
-  private static float cosineBody(ByteVectorLoader a, ByteVectorLoader b) {
+  private static float cosineBody(IByteVector a, IByteVector b) {
     int i = 0;
     int sum = 0;
     int norm1 = 0;
     int norm2 = 0;
+    int length = a.length();
 
     // only vectorize if we'll at least enter the loop a single time
-    if (a.length() >= 16) {
+    if (length >= 16) {
       final int[] ret;
       if (VECTOR_BITSIZE >= 512) {
-        i += BYTE_SPECIES.loopBound(a.length());
+        i += BYTE_SPECIES.loopBound(length);
         ret = cosineBody512(a, b, i);
       } else if (VECTOR_BITSIZE == 256) {
-        i += BYTE_SPECIES.loopBound(a.length());
+        i += BYTE_SPECIES.loopBound(length);
         ret = cosineBody256(a, b, i);
       } else {
         // tricky: we don't have SPECIES_32, so we workaround with "overlapping read"
-        i += ByteVector.SPECIES_64.loopBound(a.length() - ByteVector.SPECIES_64.length());
+        i += ByteVector.SPECIES_64.loopBound(length - ByteVector.SPECIES_64.length());
         ret = cosineBody128(a, b, i);
       }
       sum += ret[0];
@@ -718,9 +714,9 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
 
     // scalar tail
-    for (; i < a.length(); i++) {
-      byte elem1 = a.tail(i);
-      byte elem2 = b.tail(i);
+    for (; i < length; i++) {
+      byte elem1 = a.get(i);
+      byte elem2 = b.get(i);
       sum += elem1 * elem2;
       norm1 += elem1 * elem1;
       norm2 += elem2 * elem2;
@@ -729,13 +725,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized cosine body (512 bit vectors) */
-  private static int[] cosineBody512(ByteVectorLoader a, ByteVectorLoader b, int limit) {
+  private static int[] cosineBody512(IByteVector a, IByteVector b, int limit) {
     IntVector accSum = IntVector.zero(INT_SPECIES);
     IntVector accNorm1 = IntVector.zero(INT_SPECIES);
     IntVector accNorm2 = IntVector.zero(INT_SPECIES);
     for (int i = 0; i < limit; i += BYTE_SPECIES.length()) {
-      ByteVector va8 = a.load(BYTE_SPECIES, i);
-      ByteVector vb8 = b.load(BYTE_SPECIES, i);
+      ByteVector va8 = a.get(BYTE_SPECIES, i);
+      ByteVector vb8 = b.get(BYTE_SPECIES, i);
 
       // 16-bit multiply: avoid AVX-512 heavy multiply on zmm
       Vector<Short> va16 = va8.convertShape(B2S, SHORT_SPECIES, 0);
@@ -759,13 +755,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized cosine body (256 bit vectors) */
-  private static int[] cosineBody256(ByteVectorLoader a, ByteVectorLoader b, int limit) {
+  private static int[] cosineBody256(IByteVector a, IByteVector b, int limit) {
     IntVector accSum = IntVector.zero(IntVector.SPECIES_256);
     IntVector accNorm1 = IntVector.zero(IntVector.SPECIES_256);
     IntVector accNorm2 = IntVector.zero(IntVector.SPECIES_256);
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length()) {
-      ByteVector va8 = a.load(ByteVector.SPECIES_64, i);
-      ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
+      ByteVector va8 = a.get(ByteVector.SPECIES_64, i);
+      ByteVector vb8 = b.get(ByteVector.SPECIES_64, i);
 
       // 16-bit multiply, and add into accumulators
       Vector<Integer> va32 = va8.convertShape(B2I, IntVector.SPECIES_256, 0);
@@ -784,13 +780,13 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized cosine body (128 bit vectors) */
-  private static int[] cosineBody128(ByteVectorLoader a, ByteVectorLoader b, int limit) {
+  private static int[] cosineBody128(IByteVector a, IByteVector b, int limit) {
     IntVector accSum = IntVector.zero(IntVector.SPECIES_128);
     IntVector accNorm1 = IntVector.zero(IntVector.SPECIES_128);
     IntVector accNorm2 = IntVector.zero(IntVector.SPECIES_128);
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length() >> 1) {
-      ByteVector va8 = a.load(ByteVector.SPECIES_64, i);
-      ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
+      ByteVector va8 = a.get(ByteVector.SPECIES_64, i);
+      ByteVector vb8 = b.get(ByteVector.SPECIES_64, i);
 
       // process first half only: 16-bit multiply
       Vector<Short> va16 = va8.convert(B2S, 0);
@@ -811,56 +807,41 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public int squareDistance(byte[] a, byte[] b) {
-    return squareDistanceBody(new ArrayLoader(a), new ArrayLoader(b), true);
+  public int squareDistanceBytes(IByteVector a, IByteVector b) {
+    return squareDistanceBody(a, b, true);
   }
 
   @Override
-  public int uint8SquareDistance(byte[] a, byte[] b) {
-    return squareDistanceBody(new ArrayLoader(a), new ArrayLoader(b), false);
+  public int uint8SquareDistance(IByteVector a, IByteVector b) {
+    return squareDistanceBody(a, b, false);
   }
 
-  public static int squareDistance(MemorySegment a, MemorySegment b) {
-    return squareDistanceBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b), true);
-  }
-
-  public static int squareDistance(byte[] a, MemorySegment b) {
-    return squareDistanceBody(new ArrayLoader(a), new MemorySegmentLoader(b), true);
-  }
-
-  public static int uint8SquareDistance(MemorySegment a, MemorySegment b) {
-    return squareDistanceBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b), false);
-  }
-
-  public static int uint8SquareDistance(byte[] a, MemorySegment b) {
-    return squareDistanceBody(new ArrayLoader(a), new MemorySegmentLoader(b), false);
-  }
-
-  private static int squareDistanceBody(ByteVectorLoader a, ByteVectorLoader b, boolean signed) {
+  private static int squareDistanceBody(IByteVector a, IByteVector b, boolean signed) {
     assert a.length() == b.length();
     int i = 0;
     int res = 0;
+    int length = a.length();
 
     // only vectorize if we'll at least enter the loop a single time
-    if (a.length() >= 16) {
+    if (length >= 16) {
       if (VECTOR_BITSIZE >= 256) {
-        i += BYTE_SPECIES.loopBound(a.length());
+        i += BYTE_SPECIES.loopBound(length);
         res += squareDistanceBody256(a, b, i, signed);
       } else {
-        i += ByteVector.SPECIES_64.loopBound(a.length());
+        i += ByteVector.SPECIES_64.loopBound(length);
         res += squareDistanceBody128(a, b, i, signed);
       }
     }
 
     // scalar tail
     if (signed) {
-      for (; i < a.length(); i++) {
-        int diff = a.tail(i) - b.tail(i);
+      for (; i < length; i++) {
+        int diff = a.get(i) - b.get(i);
         res += diff * diff;
       }
     } else {
-      for (; i < a.length(); i++) {
-        int diff = Byte.toUnsignedInt(a.tail(i)) - Byte.toUnsignedInt(b.tail(i));
+      for (; i < length; i++) {
+        int diff = Byte.toUnsignedInt(a.get(i)) - Byte.toUnsignedInt(b.get(i));
         res += diff * diff;
       }
     }
@@ -869,12 +850,12 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   /** vectorized square distance body (256+ bit vectors) */
   private static int squareDistanceBody256(
-      ByteVectorLoader a, ByteVectorLoader b, int limit, boolean signed) {
+      IByteVector a, IByteVector b, int limit, boolean signed) {
     IntVector acc = IntVector.zero(INT_SPECIES);
     var conversion = signed ? B2I : ZERO_EXTEND_B2I;
     for (int i = 0; i < limit; i += BYTE_SPECIES.length()) {
-      ByteVector va8 = a.load(BYTE_SPECIES, i);
-      ByteVector vb8 = b.load(BYTE_SPECIES, i);
+      ByteVector va8 = a.get(BYTE_SPECIES, i);
+      ByteVector vb8 = b.get(BYTE_SPECIES, i);
 
       // 32-bit sub, multiply, and add into accumulators
       // TODO: uses AVX-512 heavy multiply on zmm, should we just use 256-bit vectors on AVX-512?
@@ -889,15 +870,15 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   /** vectorized square distance body (128 bit vectors) */
   private static int squareDistanceBody128(
-      ByteVectorLoader a, ByteVectorLoader b, int limit, boolean signed) {
+      IByteVector a, IByteVector b, int limit, boolean signed) {
     // 128-bit implementation, which must "split up" vectors due to widening conversions
     // it doesn't help to do the overlapping read trick, due to 32-bit multiply in the formula
     IntVector acc1 = IntVector.zero(IntVector.SPECIES_128);
     IntVector acc2 = IntVector.zero(IntVector.SPECIES_128);
     var conversion_short = signed ? B2S : ZERO_EXTEND_B2S;
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length()) {
-      ByteVector va8 = a.load(ByteVector.SPECIES_64, i);
-      ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
+      ByteVector va8 = a.get(ByteVector.SPECIES_64, i);
+      ByteVector vb8 = b.get(ByteVector.SPECIES_64, i);
 
       // 16-bit sub
       Vector<Short> va16 = va8.convertShape(conversion_short, ShortVector.SPECIES_128, 0);
@@ -915,34 +896,28 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public int int4SquareDistance(byte[] a, byte[] b) {
-    return int4SquareDistanceBody(new ArrayLoader(a), new ArrayLoader(b));
+  public int int4SquareDistance(IByteVector a, IByteVector b) {
+    return int4SquareDistanceBody(a, b);
   }
 
-  public static int int4SquareDistance(byte[] a, MemorySegment b) {
-    return int4SquareDistanceBody(new ArrayLoader(a), new MemorySegmentLoader(b));
-  }
-
-  public static int int4SquareDistance(MemorySegment a, MemorySegment b) {
-    return int4SquareDistanceBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
-  }
-
-  private static int int4SquareDistanceBody(ByteVectorLoader a, ByteVectorLoader b) {
+  private static int int4SquareDistanceBody(IByteVector a, IByteVector b) {
     int i = 0;
     int res = 0;
-    if (a.length() >= 32) {
-      i += Int4Constants.BYTE_SPECIES.loopBound(a.length());
+    int length = a.length();
+
+    if (length >= 32) {
+      i += Int4Constants.BYTE_SPECIES.loopBound(length);
       res += int4SquareDistanceBody(a, b, i);
     }
     // scalar tail
-    for (; i < a.length(); i++) {
-      int diff = a.tail(i) - b.tail(i);
+    for (; i < length; i++) {
+      int diff = a.get(i) - b.get(i);
       res += diff * diff;
     }
     return res;
   }
 
-  private static int int4SquareDistanceBody(ByteVectorLoader a, ByteVectorLoader b, int limit) {
+  private static int int4SquareDistanceBody(IByteVector a, IByteVector b, int limit) {
     int sum = 0;
     // iterate in chunks to ensure we don't overflow the short accumulator
     for (int i = 0; i < limit; i += Int4Constants.CHUNK) {
@@ -950,9 +925,9 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       int innerLimit = Math.min(limit - i, Int4Constants.CHUNK);
       for (int j = 0; j < innerLimit; j += Int4Constants.BYTE_SPECIES.length()) {
         // unpacked
-        var vb8 = b.load(Int4Constants.BYTE_SPECIES, i + j);
+        var vb8 = b.get(Int4Constants.BYTE_SPECIES, i + j);
         // unpacked
-        var va8 = a.load(Int4Constants.BYTE_SPECIES, i + j);
+        var va8 = a.get(Int4Constants.BYTE_SPECIES, i + j);
 
         ByteVector diff8 = vb8.sub(va8);
         Vector<Short> diff16 = diff8.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
@@ -966,27 +941,24 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public int int4SquareDistanceSinglePacked(byte[] a, byte[] b) {
-    return int4SquareDistanceSinglePackedBody(new ArrayLoader(a), new ArrayLoader(b));
+  public int int4SquareDistanceSinglePacked(IByteVector a, IByteVector b) {
+    return int4SquareDistanceSinglePackedBody(a, b);
   }
 
-  public static int int4SquareDistanceSinglePacked(byte[] a, MemorySegment b) {
-    return int4SquareDistanceSinglePackedBody(new ArrayLoader(a), new MemorySegmentLoader(b));
-  }
-
-  private static int int4SquareDistanceSinglePackedBody(
-      ByteVectorLoader unpacked, ByteVectorLoader packed) {
+  private static int int4SquareDistanceSinglePackedBody(IByteVector unpacked, IByteVector packed) {
     int i = 0;
     int res = 0;
-    if (packed.length() >= 32) {
-      i += Int4Constants.BYTE_SPECIES.loopBound(packed.length());
+    int length = packed.length();
+
+    if (length >= 32) {
+      i += Int4Constants.BYTE_SPECIES.loopBound(length);
       res += int4SquareDistanceSinglePackedBody(unpacked, packed, i);
     }
     // scalar tail
-    for (; i < packed.length(); i++) {
-      byte packedByte = packed.tail(i);
-      byte unpacked1 = unpacked.tail(i);
-      byte unpacked2 = unpacked.tail(i + packed.length());
+    for (; i < length; i++) {
+      byte packedByte = packed.get(i);
+      byte unpacked1 = unpacked.get(i);
+      byte unpacked2 = unpacked.get(i + length);
 
       int diff1 = (packedByte & 0x0F) - unpacked2;
       int diff2 = ((packedByte & 0xFF) >> 4) - unpacked1;
@@ -997,7 +969,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   private static int int4SquareDistanceSinglePackedBody(
-      ByteVectorLoader unpacked, ByteVectorLoader packed, int limit) {
+      IByteVector unpacked, IByteVector packed, int limit) {
     int sum = 0;
     // iterate in chunks to ensure we don't overflow the short accumulator
     for (int i = 0; i < limit; i += Int4Constants.CHUNK) {
@@ -1006,16 +978,16 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       int innerLimit = Math.min(limit - i, Int4Constants.CHUNK);
       for (int j = 0; j < innerLimit; j += Int4Constants.BYTE_SPECIES.length()) {
         // packed
-        ByteVector vb8 = packed.load(Int4Constants.BYTE_SPECIES, i + j);
+        ByteVector vb8 = packed.get(Int4Constants.BYTE_SPECIES, i + j);
 
         // upper
-        ByteVector va8 = unpacked.load(Int4Constants.BYTE_SPECIES, i + j + packed.length());
+        ByteVector va8 = unpacked.get(Int4Constants.BYTE_SPECIES, i + j + packed.length());
         ByteVector diff8 = vb8.and((byte) 0x0F).sub(va8);
         Vector<Short> diff16 = diff8.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
         acc0 = acc0.add(diff16.mul(diff16));
 
         // lower
-        ByteVector vc8 = unpacked.load(Int4Constants.BYTE_SPECIES, i + j);
+        ByteVector vc8 = unpacked.get(Int4Constants.BYTE_SPECIES, i + j);
         ByteVector diff8a = vb8.lanewise(LSHR, 4).sub(vc8);
         Vector<Short> diff16a = diff8a.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
         acc1 = acc1.add(diff16a.mul(diff16a));
@@ -1030,25 +1002,23 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public int int4SquareDistanceBothPacked(byte[] a, byte[] b) {
-    return int4SquareDistanceBothPackedBody(new ArrayLoader(a), new ArrayLoader(b));
+  public int int4SquareDistanceBothPacked(IByteVector a, IByteVector b) {
+    return int4SquareDistanceBothPackedBody(a, b);
   }
 
-  public static int int4SquareDistanceBothPacked(MemorySegment a, MemorySegment b) {
-    return int4SquareDistanceBothPackedBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b));
-  }
-
-  private static int int4SquareDistanceBothPackedBody(ByteVectorLoader a, ByteVectorLoader b) {
+  private static int int4SquareDistanceBothPackedBody(IByteVector a, IByteVector b) {
     int i = 0;
     int res = 0;
-    if (a.length() >= 32) {
-      i += Int4Constants.BYTE_SPECIES.loopBound(a.length());
+    int length = a.length();
+
+    if (length >= 32) {
+      i += Int4Constants.BYTE_SPECIES.loopBound(length);
       res += int4SquareDistanceBothPackedBody(a, b, i);
     }
     // scalar tail
-    for (; i < a.length(); i++) {
-      byte aByte = a.tail(i);
-      byte bByte = b.tail(i);
+    for (; i < length; i++) {
+      byte aByte = a.get(i);
+      byte bByte = b.get(i);
 
       int diff1 = (aByte & 0x0F) - (bByte & 0x0F);
       int diff2 = ((aByte & 0xFF) >> 4) - ((bByte & 0xFF) >> 4);
@@ -1058,8 +1028,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return res;
   }
 
-  private static int int4SquareDistanceBothPackedBody(
-      ByteVectorLoader a, ByteVectorLoader b, int limit) {
+  private static int int4SquareDistanceBothPackedBody(IByteVector a, IByteVector b, int limit) {
     int sum = 0;
     // iterate in chunks to ensure we don't overflow the short accumulator
     for (int i = 0; i < limit; i += Int4Constants.CHUNK) {
@@ -1068,9 +1037,9 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       int innerLimit = Math.min(limit - i, Int4Constants.CHUNK);
       for (int j = 0; j < innerLimit; j += Int4Constants.BYTE_SPECIES.length()) {
         // packed
-        var vb8 = b.load(Int4Constants.BYTE_SPECIES, i + j);
+        var vb8 = b.get(Int4Constants.BYTE_SPECIES, i + j);
         // packed
-        var va8 = a.load(Int4Constants.BYTE_SPECIES, i + j);
+        var va8 = a.get(Int4Constants.BYTE_SPECIES, i + j);
 
         // upper
         ByteVector diff8 = vb8.and((byte) 0x0F).sub(va8.and((byte) 0x0F));
@@ -1119,10 +1088,10 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public long int4BitDotProduct(byte[] q, byte[] d) {
-    assert q.length == d.length * 4;
+  public long int4BitDotProduct(IByteVector q, IByteVector d) {
+    assert q.length() == d.length() * 4;
     // 128 / 8 == 16
-    if (d.length >= 16) {
+    if (d.length() >= 16) {
       if (VECTOR_BITSIZE >= 256) {
         return int4BitDotProduct256(q, d);
       } else if (VECTOR_BITSIZE == 128) {
@@ -1132,25 +1101,26 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return DefaultVectorUtilSupport.int4BitDotProductImpl(q, d);
   }
 
-  static long int4BitDotProduct256(byte[] q, byte[] d) {
+  static long int4BitDotProduct256(IByteVector q, IByteVector d) {
     long subRet0 = 0;
     long subRet1 = 0;
     long subRet2 = 0;
     long subRet3 = 0;
     int i = 0;
+    int length = d.length();
 
-    if (d.length >= ByteVector.SPECIES_256.vectorByteSize() * 2) {
-      int limit = ByteVector.SPECIES_256.loopBound(d.length);
+    if (length >= ByteVector.SPECIES_256.vectorByteSize() * 2) {
+      int limit = ByteVector.SPECIES_256.loopBound(length);
       var sum0 = LongVector.zero(LongVector.SPECIES_256);
       var sum1 = LongVector.zero(LongVector.SPECIES_256);
       var sum2 = LongVector.zero(LongVector.SPECIES_256);
       var sum3 = LongVector.zero(LongVector.SPECIES_256);
       for (; i < limit; i += ByteVector.SPECIES_256.length()) {
-        var vq0 = ByteVector.fromArray(BYTE_SPECIES_256, q, i).reinterpretAsLongs();
-        var vq1 = ByteVector.fromArray(BYTE_SPECIES_256, q, i + d.length).reinterpretAsLongs();
-        var vq2 = ByteVector.fromArray(BYTE_SPECIES_256, q, i + d.length * 2).reinterpretAsLongs();
-        var vq3 = ByteVector.fromArray(BYTE_SPECIES_256, q, i + d.length * 3).reinterpretAsLongs();
-        var vd = ByteVector.fromArray(BYTE_SPECIES_256, d, i).reinterpretAsLongs();
+        var vq0 = q.get(BYTE_SPECIES_256, i).reinterpretAsLongs();
+        var vq1 = q.get(BYTE_SPECIES_256, i + length).reinterpretAsLongs();
+        var vq2 = q.get(BYTE_SPECIES_256, i + length * 2).reinterpretAsLongs();
+        var vq3 = q.get(BYTE_SPECIES_256, i + length * 3).reinterpretAsLongs();
+        var vd = d.get(BYTE_SPECIES_256, i).reinterpretAsLongs();
         sum0 = sum0.add(vq0.and(vd).lanewise(VectorOperators.BIT_COUNT));
         sum1 = sum1.add(vq1.and(vd).lanewise(VectorOperators.BIT_COUNT));
         sum2 = sum2.add(vq2.and(vd).lanewise(VectorOperators.BIT_COUNT));
@@ -1162,18 +1132,18 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       subRet3 += sum3.reduceLanes(VectorOperators.ADD);
     }
 
-    if (d.length - i >= ByteVector.SPECIES_128.vectorByteSize()) {
+    if (length - i >= ByteVector.SPECIES_128.vectorByteSize()) {
       var sum0 = LongVector.zero(LongVector.SPECIES_128);
       var sum1 = LongVector.zero(LongVector.SPECIES_128);
       var sum2 = LongVector.zero(LongVector.SPECIES_128);
       var sum3 = LongVector.zero(LongVector.SPECIES_128);
-      int limit = ByteVector.SPECIES_128.loopBound(d.length);
+      int limit = ByteVector.SPECIES_128.loopBound(length);
       for (; i < limit; i += ByteVector.SPECIES_128.length()) {
-        var vq0 = ByteVector.fromArray(BYTE_SPECIES_128, q, i).reinterpretAsLongs();
-        var vq1 = ByteVector.fromArray(BYTE_SPECIES_128, q, i + d.length).reinterpretAsLongs();
-        var vq2 = ByteVector.fromArray(BYTE_SPECIES_128, q, i + d.length * 2).reinterpretAsLongs();
-        var vq3 = ByteVector.fromArray(BYTE_SPECIES_128, q, i + d.length * 3).reinterpretAsLongs();
-        var vd = ByteVector.fromArray(BYTE_SPECIES_128, d, i).reinterpretAsLongs();
+        var vq0 = q.get(BYTE_SPECIES_128, i).reinterpretAsLongs();
+        var vq1 = q.get(BYTE_SPECIES_128, i + length).reinterpretAsLongs();
+        var vq2 = q.get(BYTE_SPECIES_128, i + length * 2).reinterpretAsLongs();
+        var vq3 = q.get(BYTE_SPECIES_128, i + length * 3).reinterpretAsLongs();
+        var vd = d.get(BYTE_SPECIES_128, i).reinterpretAsLongs();
         sum0 = sum0.add(vq0.and(vd).lanewise(VectorOperators.BIT_COUNT));
         sum1 = sum1.add(vq1.and(vd).lanewise(VectorOperators.BIT_COUNT));
         sum2 = sum2.add(vq2.and(vd).lanewise(VectorOperators.BIT_COUNT));
@@ -1185,33 +1155,34 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       subRet3 += sum3.reduceLanes(VectorOperators.ADD);
     }
     // tail as bytes
-    for (; i < d.length; i++) {
-      subRet0 += Integer.bitCount((q[i] & d[i]) & 0xFF);
-      subRet1 += Integer.bitCount((q[i + d.length] & d[i]) & 0xFF);
-      subRet2 += Integer.bitCount((q[i + 2 * d.length] & d[i]) & 0xFF);
-      subRet3 += Integer.bitCount((q[i + 3 * d.length] & d[i]) & 0xFF);
+    for (; i < length; i++) {
+      subRet0 += Integer.bitCount((q.get(i) & d.get(i)) & 0xFF);
+      subRet1 += Integer.bitCount((q.get(i + length) & d.get(i)) & 0xFF);
+      subRet2 += Integer.bitCount((q.get(i + 2 * length) & d.get(i)) & 0xFF);
+      subRet3 += Integer.bitCount((q.get(i + 3 * length) & d.get(i)) & 0xFF);
     }
     return subRet0 + (subRet1 << 1) + (subRet2 << 2) + (subRet3 << 3);
   }
 
-  public static long int4BitDotProduct128(byte[] q, byte[] d) {
+  public static long int4BitDotProduct128(IByteVector q, IByteVector d) {
     long subRet0 = 0;
     long subRet1 = 0;
     long subRet2 = 0;
     long subRet3 = 0;
     int i = 0;
+    int length = d.length();
 
     var sum0 = IntVector.zero(IntVector.SPECIES_128);
     var sum1 = IntVector.zero(IntVector.SPECIES_128);
     var sum2 = IntVector.zero(IntVector.SPECIES_128);
     var sum3 = IntVector.zero(IntVector.SPECIES_128);
-    int limit = ByteVector.SPECIES_128.loopBound(d.length);
+    int limit = ByteVector.SPECIES_128.loopBound(length);
     for (; i < limit; i += ByteVector.SPECIES_128.length()) {
-      var vd = ByteVector.fromArray(BYTE_SPECIES_128, d, i).reinterpretAsInts();
-      var vq0 = ByteVector.fromArray(BYTE_SPECIES_128, q, i).reinterpretAsInts();
-      var vq1 = ByteVector.fromArray(BYTE_SPECIES_128, q, i + d.length).reinterpretAsInts();
-      var vq2 = ByteVector.fromArray(BYTE_SPECIES_128, q, i + d.length * 2).reinterpretAsInts();
-      var vq3 = ByteVector.fromArray(BYTE_SPECIES_128, q, i + d.length * 3).reinterpretAsInts();
+      var vd = d.get(BYTE_SPECIES_128, i).reinterpretAsInts();
+      var vq0 = q.get(BYTE_SPECIES_128, i).reinterpretAsInts();
+      var vq1 = q.get(BYTE_SPECIES_128, i + length).reinterpretAsInts();
+      var vq2 = q.get(BYTE_SPECIES_128, i + length * 2).reinterpretAsInts();
+      var vq3 = q.get(BYTE_SPECIES_128, i + length * 3).reinterpretAsInts();
       sum0 = sum0.add(vd.and(vq0).lanewise(VectorOperators.BIT_COUNT));
       sum1 = sum1.add(vd.and(vq1).lanewise(VectorOperators.BIT_COUNT));
       sum2 = sum2.add(vd.and(vq2).lanewise(VectorOperators.BIT_COUNT));
@@ -1222,12 +1193,12 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     subRet2 += sum2.reduceLanes(VectorOperators.ADD);
     subRet3 += sum3.reduceLanes(VectorOperators.ADD);
     // tail as bytes
-    for (; i < d.length; i++) {
-      int dValue = d[i];
-      subRet0 += Integer.bitCount((dValue & q[i]) & 0xFF);
-      subRet1 += Integer.bitCount((dValue & q[i + d.length]) & 0xFF);
-      subRet2 += Integer.bitCount((dValue & q[i + 2 * d.length]) & 0xFF);
-      subRet3 += Integer.bitCount((dValue & q[i + 3 * d.length]) & 0xFF);
+    for (; i < length; i++) {
+      int dValue = d.get(i);
+      subRet0 += Integer.bitCount((dValue & q.get(i)) & 0xFF);
+      subRet1 += Integer.bitCount((dValue & q.get(i + length)) & 0xFF);
+      subRet2 += Integer.bitCount((dValue & q.get(i + 2 * length)) & 0xFF);
+      subRet3 += Integer.bitCount((dValue & q.get(i + 3 * length)) & 0xFF);
     }
     return subRet0 + (subRet1 << 1) + (subRet2 << 2) + (subRet3 << 3);
   }
@@ -1360,7 +1331,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public float[] l2normalize(float[] v, boolean throwOnZero) {
-    double l1norm = this.dotProduct(v, v);
+    double l1norm = this.dotProductFloats(v, v);
     if (l1norm == 0) {
       if (throwOnZero) {
         throw new IllegalArgumentException("Cannot normalize a zero-length vector");

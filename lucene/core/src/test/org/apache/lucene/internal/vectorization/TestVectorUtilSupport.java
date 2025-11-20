@@ -54,9 +54,9 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
       a[i] = random().nextFloat();
       b[i] = random().nextFloat();
     }
-    assertFloatReturningProviders(p -> p.dotProduct(a, b));
-    assertFloatReturningProviders(p -> p.squareDistance(a, b));
-    assertFloatReturningProviders(p -> p.cosine(a, b));
+    assertFloatReturningProviders(p -> p.dotProductFloats(a, b));
+    assertFloatReturningProviders(p -> p.squareDistanceFloats(a, b));
+    assertFloatReturningProviders(p -> p.cosineFloats(a, b));
   }
 
   public void testBinaryVectors() {
@@ -64,9 +64,9 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     var b = new byte[size];
     random().nextBytes(a);
     random().nextBytes(b);
-    assertIntReturningProviders(p -> p.dotProduct(a, b));
-    assertIntReturningProviders(p -> p.squareDistance(a, b));
-    assertFloatReturningProviders(p -> p.cosine(a, b));
+    assertIntReturningProviders(p -> p.dotProductBytes(a, b));
+    assertIntReturningProviders(p -> p.squareDistanceBytes(a, b));
+    assertFloatReturningProviders(p -> p.cosineBytes(a, b));
   }
 
   public void testBinaryVectorsBoundaries() {
@@ -75,27 +75,27 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
 
     Arrays.fill(a, Byte.MIN_VALUE);
     Arrays.fill(b, Byte.MIN_VALUE);
-    assertIntReturningProviders(p -> p.dotProduct(a, b));
-    assertIntReturningProviders(p -> p.squareDistance(a, b));
-    assertFloatReturningProviders(p -> p.cosine(a, b));
+    assertIntReturningProviders(p -> p.dotProductBytes(a, b));
+    assertIntReturningProviders(p -> p.squareDistanceBytes(a, b));
+    assertFloatReturningProviders(p -> p.cosineBytes(a, b));
 
     Arrays.fill(a, Byte.MAX_VALUE);
     Arrays.fill(b, Byte.MAX_VALUE);
-    assertIntReturningProviders(p -> p.dotProduct(a, b));
-    assertIntReturningProviders(p -> p.squareDistance(a, b));
-    assertFloatReturningProviders(p -> p.cosine(a, b));
+    assertIntReturningProviders(p -> p.dotProductBytes(a, b));
+    assertIntReturningProviders(p -> p.squareDistanceBytes(a, b));
+    assertFloatReturningProviders(p -> p.cosineBytes(a, b));
 
     Arrays.fill(a, Byte.MIN_VALUE);
     Arrays.fill(b, Byte.MAX_VALUE);
-    assertIntReturningProviders(p -> p.dotProduct(a, b));
-    assertIntReturningProviders(p -> p.squareDistance(a, b));
-    assertFloatReturningProviders(p -> p.cosine(a, b));
+    assertIntReturningProviders(p -> p.dotProductBytes(a, b));
+    assertIntReturningProviders(p -> p.squareDistanceBytes(a, b));
+    assertFloatReturningProviders(p -> p.cosineBytes(a, b));
 
     Arrays.fill(a, Byte.MAX_VALUE);
     Arrays.fill(b, Byte.MIN_VALUE);
-    assertIntReturningProviders(p -> p.dotProduct(a, b));
-    assertIntReturningProviders(p -> p.squareDistance(a, b));
-    assertFloatReturningProviders(p -> p.cosine(a, b));
+    assertIntReturningProviders(p -> p.dotProductBytes(a, b));
+    assertIntReturningProviders(p -> p.squareDistanceBytes(a, b));
+    assertFloatReturningProviders(p -> p.cosineBytes(a, b));
   }
 
   public void testInt4DotProduct() {
@@ -113,16 +113,16 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertIntReturningProviders(p -> p.int4DotProductBothPacked(pack(a), pack(b)));
 
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProductBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4DotProduct(a, b));
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProductBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductSinglePacked(a, pack(b)));
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProductBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductSinglePacked(b, pack(a)));
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProductBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductBothPacked(pack(a), pack(b)));
   }
 
@@ -141,16 +141,16 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertIntReturningProviders(p -> p.int4DotProductBothPacked(pack(a), pack(b)));
 
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProductBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4DotProduct(a, b));
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProductBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductSinglePacked(a, pack(b)));
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProductBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductSinglePacked(b, pack(a)));
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProductBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductBothPacked(pack(a), pack(b)));
 
     byte MIN_VALUE = 0;
@@ -163,16 +163,16 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertIntReturningProviders(p -> p.int4DotProductBothPacked(pack(a), pack(b)));
 
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProductBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4DotProduct(a, b));
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProductBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductSinglePacked(a, pack(b)));
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProductBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductSinglePacked(b, pack(a)));
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProductBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductBothPacked(pack(a), pack(b)));
   }
 
@@ -191,16 +191,16 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertIntReturningProviders(p -> p.int4SquareDistanceBothPacked(pack(a), pack(b)));
 
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().squareDistance(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().squareDistanceBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4SquareDistance(a, b));
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().squareDistance(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().squareDistanceBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4SquareDistanceSinglePacked(a, pack(b)));
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().squareDistance(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().squareDistanceBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4SquareDistanceSinglePacked(b, pack(a)));
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().squareDistance(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().squareDistanceBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4SquareDistanceBothPacked(pack(a), pack(b)));
   }
 
@@ -223,16 +223,16 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertIntReturningProviders(p -> p.int4DotProductBothPacked(pack(a), pack(b)));
 
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProductBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4DotProduct(a, b));
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProductBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductSinglePacked(a, pack(b)));
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProductBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductSinglePacked(b, pack(a)));
     assertEquals(
-        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProductBytes(a, b),
         PANAMA_PROVIDER.getVectorUtilSupport().int4DotProductBothPacked(pack(a), pack(b)));
   }
 
@@ -305,20 +305,20 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
                 outputs.getFirst(), alpha, min, newScale, newAlpha, newMin, newMax));
   }
 
-  private void assertFloatReturningProviders(ToDoubleFunction<VectorUtilSupport> func) {
+  private void assertFloatReturningProviders(ToDoubleFunction<VectorUtilSupport<?, ?>> func) {
     assertEquals(
         func.applyAsDouble(LUCENE_PROVIDER.getVectorUtilSupport()),
         func.applyAsDouble(PANAMA_PROVIDER.getVectorUtilSupport()),
         delta);
   }
 
-  private void assertIntReturningProviders(ToIntFunction<VectorUtilSupport> func) {
+  private void assertIntReturningProviders(ToIntFunction<VectorUtilSupport<?, ?>> func) {
     assertEquals(
         func.applyAsInt(LUCENE_PROVIDER.getVectorUtilSupport()),
         func.applyAsInt(PANAMA_PROVIDER.getVectorUtilSupport()));
   }
 
-  private void assertLongReturningProviders(ToLongFunction<VectorUtilSupport> func) {
+  private void assertLongReturningProviders(ToLongFunction<VectorUtilSupport<?, ?>> func) {
     assertEquals(
         func.applyAsLong(LUCENE_PROVIDER.getVectorUtilSupport()),
         func.applyAsLong(PANAMA_PROVIDER.getVectorUtilSupport()));

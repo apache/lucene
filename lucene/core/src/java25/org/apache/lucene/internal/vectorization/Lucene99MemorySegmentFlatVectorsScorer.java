@@ -20,6 +20,8 @@ import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.HasIndexSlice;
+import org.apache.lucene.codecs.lucene99.Lucene99MemorySegmentByteVectorScorer;
+import org.apache.lucene.codecs.lucene99.Lucene99MemorySegmentByteVectorScorerSupplier;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;

@@ -34,7 +34,7 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   // would get called before we have a chance to perform sanity checks around the vector API in the
   // constructor of this class. Put them in PanamaVectorConstants instead.
 
-  private final VectorUtilSupport vectorUtilSupport;
+  private final VectorUtilSupport<?, ?> vectorUtilSupport;
 
   PanamaVectorizationProvider() {
     // hack to work around for JDK-8309727:
@@ -69,7 +69,7 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   }
 
   @Override
-  public VectorUtilSupport getVectorUtilSupport() {
+  public VectorUtilSupport<?, ?> getVectorUtilSupport() {
     return vectorUtilSupport;
   }
 
