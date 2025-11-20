@@ -60,6 +60,7 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 
@@ -807,8 +808,6 @@ public class JVectorWriter extends KnnVectorsWriter {
   }
 
   static class RandomAccessVectorValuesOverVectorValues implements RandomAccessVectorValues {
-    private final VectorTypeSupport VECTOR_TYPE_SUPPORT =
-        VectorizationProvider.getInstance().getVectorTypeSupport();
     private final FloatVectorValues values;
 
     public RandomAccessVectorValuesOverVectorValues(FloatVectorValues values) {
@@ -828,26 +827,26 @@ public class JVectorWriter extends KnnVectorsWriter {
     @Override
     public VectorFloat<?> getVector(int nodeId) {
       try {
-        // Access to float values is not thread safe
-        synchronized (this) {
-          final float[] vector = values.vectorValue(nodeId);
-          final float[] copy = new float[vector.length];
-          System.arraycopy(vector, 0, copy, 0, vector.length);
-          return VECTOR_TYPE_SUPPORT.createFloatVector(copy);
-        }
+        final float[] vector = values.vectorValue(nodeId);
+        return VECTOR_TYPE_SUPPORT.createFloatVector(ArrayUtil.copyArray(vector));
       } catch (IOException e) {
-        throw new RuntimeException(e);
+        throw new UncheckedIOException(e);
       }
     }
 
     @Override
     public boolean isValueShared() {
-      return false;
+      // Access to float values is not thread safe
+      return true;
     }
 
     @Override
     public RandomAccessVectorValues copy() {
-      throw new UnsupportedOperationException("Copy not supported");
+      try {
+        return new RandomAccessVectorValuesOverVectorValues(values.copy());
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
     }
   }
 }
