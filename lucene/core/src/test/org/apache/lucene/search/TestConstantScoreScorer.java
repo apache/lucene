@@ -178,10 +178,13 @@ public class TestConstantScoreScorer extends LuceneTestCase {
 
       writer =
           new RandomIndexWriter(
-              random(),
-              directory,
-              newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
-
+              random(), directory, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+      writer
+          .w
+          .getConfig()
+          .getCodec()
+          .compoundFormat()
+          .setShouldUseCompoundFile(random().nextBoolean());
       for (String VALUE : VALUES) {
         Document doc = new Document();
         doc.add(newTextField(FIELD, VALUE, Field.Store.YES));

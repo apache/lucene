@@ -1333,6 +1333,16 @@ public final class TestUtil {
   }
 
   /**
+   * Returns the actual default codec (e.g. LuceneMNCodec) for this version of Lucene. This may be
+   * different from {@link Codec#getDefault()} because that is randomized.
+   */
+  public static Codec getDefaultCodec(boolean shouldUseCfs) {
+    Codec codec = getDefaultCodec();
+    codec.compoundFormat().setShouldUseCompoundFile(shouldUseCfs);
+    return codec;
+  }
+
+  /**
    * Returns the actual default postings format (e.g. LuceneMNPostingsFormat) for this version of
    * Lucene.
    */
@@ -1442,7 +1452,7 @@ public final class TestUtil {
   public static void reduceOpenFiles(IndexWriter w) {
     // keep number of open files lowish
     MergePolicy mp = w.getConfig().getMergePolicy();
-    mp.setNoCFSRatio(1.0);
+    w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(true);
     if (mp instanceof LogMergePolicy lmp) {
       lmp.setMergeFactor(Math.min(5, lmp.getMergeFactor()));
     } else if (mp instanceof TieredMergePolicy tmp) {

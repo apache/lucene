@@ -47,8 +47,9 @@ public class TestDefaultCodecParallelizesIO extends LuceneTestCase {
                 bbDir,
                 new IndexWriterConfig()
                     .setUseCompoundFile(false)
-                    .setMergePolicy(newLogMergePolicy(false))
+                    .setMergePolicy(newLogMergePolicy())
                     .setCodec(TestUtil.getDefaultCodec()))) {
+      w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
       final int numDocs = atLeast(10_000);
       for (int d = 0; d < numDocs; ++d) {
         Document doc = docs.nextDoc();

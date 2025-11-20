@@ -43,14 +43,14 @@ public class TestIndexSplitter extends LuceneTestCase {
     }
 
     MergePolicy mergePolicy = new LogByteSizeMergePolicy();
-    mergePolicy.setNoCFSRatio(1.0);
-    mergePolicy.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     IndexWriter iw =
         new IndexWriter(
             fsDir,
             new IndexWriterConfig(new MockAnalyzer(random()))
                 .setOpenMode(OpenMode.CREATE)
                 .setMergePolicy(mergePolicy));
+    iw.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(true);
+    iw.getConfig().getCodec().compoundFormat().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     for (int x = 0; x < 100; x++) {
       Document doc = DocHelper.createDocument(x, "index", 5);
       iw.addDocument(doc);
