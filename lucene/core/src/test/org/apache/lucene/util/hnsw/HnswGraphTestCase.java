@@ -1043,7 +1043,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   }
 
   /*
-   * A very basic test ensure the concurrent merge does not throw exceptions, it by no means guarantees the
+   * A very basic test ensuring the concurrent merge does not throw exceptions, it by no means guarantees the
    * true correctness of the concurrent merge and that must be checked manually by running a KNN benchmark
    * and comparing the recall
    */
@@ -1057,7 +1057,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     HnswGraphBuilder.randSeed = random().nextLong();
     HnswConcurrentMergeBuilder builder =
         new HnswConcurrentMergeBuilder(
-            taskExecutor, 4, scorerSupplier, 30, new OnHeapHnswGraph(10, size), null);
+            taskExecutor, 4, scorerSupplier, 30, 10, new GraphMergeContext(null, null, size, null));
     builder.setBatchSize(100);
     builder.build(size);
     exec.shutdownNow();
