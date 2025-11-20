@@ -48,6 +48,7 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.BpVectorReorderer;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -257,7 +258,9 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     long vectorIndexOffset = vectorIndex.getFilePointer();
     OnHeapHnswGraph graph = fieldData.getGraph();
     int[][] graphLevelNodeOffsets = graph == null ? new int[0][] : new int[graph.numLevels()][];
-    HnswGraph mockGraph = reconstructAndWriteGraph(graph, ordMap, oldOrdMap, graphLevelNodeOffsets);
+    HnswGraph mockGraph =
+        reconstructAndWriteGraph(
+            graph, BpVectorReorderer.sortMapOf(oldOrdMap, ordMap), graphLevelNodeOffsets);
     long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
 
     writeMeta(
@@ -275,15 +278,13 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
    * <p>Additionally, the graph node connections are written to the vectorIndex.
    *
    * @param graph The current on heap graph
-   * @param newToOldMap the new node ids indexed to the old node ids
-   * @param oldToNewMap the old node ids indexed to the new node ids
+   * @param sortMap the new node ids mapped to (and from) the old node ids
    * @param levelNodeOffsets where to place the new offsets for the nodes in the vector index.
    * @return The graph
    * @throws IOException if writing to vectorIndex fails
    */
   private HnswGraph reconstructAndWriteGraph(
-      OnHeapHnswGraph graph, int[] newToOldMap, int[] oldToNewMap, int[][] levelNodeOffsets)
-      throws IOException {
+      OnHeapHnswGraph graph, Sorter.DocMap sortMap, int[][] levelNodeOffsets) throws IOException {
     if (graph == null) return null;
 
     List<int[]> nodesByLevel = new ArrayList<>(graph.numLevels());
@@ -295,9 +296,9 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     levelNodeOffsets[0] = new int[nodesOnLevel0.size()];
     while (nodesOnLevel0.hasNext()) {
       int node = nodesOnLevel0.nextInt();
-      NeighborArray neighbors = graph.getNeighbors(0, newToOldMap[node]);
+      NeighborArray neighbors = graph.getNeighbors(0, sortMap.newToOld(node));
       long offset = vectorIndex.getFilePointer();
-      reconstructAndWriteNeighbours(neighbors, oldToNewMap, scratch, maxOrd);
+      reconstructAndWriteNeighbours(neighbors, sortMap, scratch, maxOrd);
       levelNodeOffsets[0][node] = Math.toIntExact(vectorIndex.getFilePointer() - offset);
     }
 
@@ -305,16 +306,16 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
       int[] newNodes = new int[nodesOnLevel.size()];
       for (int n = 0; nodesOnLevel.hasNext(); n++) {
-        newNodes[n] = oldToNewMap[nodesOnLevel.nextInt()];
+        newNodes[n] = sortMap.oldToNew(nodesOnLevel.nextInt());
       }
       Arrays.sort(newNodes);
       nodesByLevel.add(newNodes);
       levelNodeOffsets[level] = new int[newNodes.length];
       int nodeOffsetIndex = 0;
       for (int node : newNodes) {
-        NeighborArray neighbors = graph.getNeighbors(level, newToOldMap[node]);
+        NeighborArray neighbors = graph.getNeighbors(level, sortMap.newToOld(node));
         long offset = vectorIndex.getFilePointer();
-        reconstructAndWriteNeighbours(neighbors, oldToNewMap, scratch, maxOrd);
+        reconstructAndWriteNeighbours(neighbors, sortMap, scratch, maxOrd);
         levelNodeOffsets[level][nodeOffsetIndex++] =
             Math.toIntExact(vectorIndex.getFilePointer() - offset);
       }
@@ -367,12 +368,13 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   private void reconstructAndWriteNeighbours(
-      NeighborArray neighbors, int[] oldToNewMap, int[] scratch, int maxOrd) throws IOException {
+      NeighborArray neighbors, Sorter.DocMap sortMap, int[] scratch, int maxOrd)
+      throws IOException {
     int size = neighbors.size();
     // Destructively modify; it's ok we are discarding it after this
     int[] nnodes = neighbors.nodes();
     for (int i = 0; i < size; i++) {
-      nnodes[i] = oldToNewMap[nnodes[i]];
+      nnodes[i] = sortMap.oldToNew(nnodes[i]);
     }
     Arrays.sort(nnodes, 0, size);
     int actualSize = 0;
@@ -410,6 +412,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       // we use Lucene99HnswVectorsReader.DenseOffHeapVectorValues for the graph construction
       // doesn't need to know docIds
       OnHeapHnswGraph graph = null;
+      HnswGraph graphToWrite = null;
       int[][] vectorIndexNodeOffsets = null;
       // Check if we should bypass graph building for tiny segments
       boolean makeHnswGraph =
@@ -445,7 +448,14 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 mergedVectorValues,
                 segmentWriteState.infoStream,
                 scorerSupplier.totalVectorCount());
-        vectorIndexNodeOffsets = writeGraph(graph);
+        if (scorerSupplier.sortMap() == null) {
+          vectorIndexNodeOffsets = writeGraph(graph);
+          graphToWrite = graph;
+        } else {
+          vectorIndexNodeOffsets = new int[graph.numLevels()][];
+          graphToWrite =
+              reconstructAndWriteGraph(graph, scorerSupplier.sortMap(), vectorIndexNodeOffsets);
+        }
       }
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
       writeMeta(
@@ -453,7 +463,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           vectorIndexOffset,
           vectorIndexLength,
           scorerSupplier.totalVectorCount(),
-          graph,
+          graphToWrite,
           vectorIndexNodeOffsets);
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, scorerSupplier);
@@ -464,11 +474,14 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
   /**
    * @param graph Write the graph in a compressed format
+   * @param sortMap if not null, used to map the node ordinals (old to new) while rewriting
    * @return The non-cumulative offsets for the nodes. Should be used to create cumulative offsets.
    * @throws IOException if writing to vectorIndex fails
    */
   private int[][] writeGraph(OnHeapHnswGraph graph) throws IOException {
-    if (graph == null) return new int[0][0];
+    if (graph == null) {
+      return new int[0][0];
+    }
     // write vectors' neighbours on each level into the vectorIndex file
     int countOnLevel0 = graph.size();
     int[][] offsets = new int[graph.numLevels()][];
@@ -478,7 +491,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       offsets[level] = new int[sortedNodes.size()];
       int nodeOffsetId = 0;
       while (sortedNodes.hasNext()) {
-        NeighborArray neighbors = graph.getNeighbors(level, sortedNodes.next());
+        int node = sortedNodes.next();
+        NeighborArray neighbors = graph.getNeighbors(level, node);
         int size = neighbors.size();
         // Write size in VInt as the neighbors list is typically small
         long offsetStart = vectorIndex.getFilePointer();
@@ -513,6 +527,70 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       }
     }
     return offsets;
+  }
+
+  private static HnswGraph withReorderedNodes(HnswGraph inner, Sorter.DocMap sortMap) {
+    return new HnswGraph() {
+      @Override
+      public void seek(int level, int target) throws IOException {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public int neighborCount() {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public int size() {
+        return inner.size();
+      }
+
+      @Override
+      public int nextNeighbor() throws IOException {
+        return sortMap.oldToNew(inner.nextNeighbor());
+      }
+
+      @Override
+      public int numLevels() throws IOException {
+        return inner.numLevels();
+      }
+
+      @Override
+      public int maxConn() {
+        return inner.maxConn();
+      }
+
+      @Override
+      public int entryNode() throws IOException {
+        return sortMap.oldToNew(inner.entryNode());
+      }
+
+      @Override
+      public NodesIterator getNodesOnLevel(int level) throws IOException {
+        NodesIterator innerIter = inner.getNodesOnLevel(level);
+        return new NodesIterator(innerIter.size()) {
+          @Override
+          public int consume(int[] dest) {
+            int result = innerIter.consume(dest);
+            for (int i = 0; i < result; i++) {
+              dest[i] = sortMap.oldToNew(dest[i]);
+            }
+            return result;
+          }
+
+          @Override
+          public int nextInt() {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public boolean hasNext() {
+            throw new UnsupportedOperationException();
+          }
+        };
+      }
+    };
   }
 
   private void writeMeta(

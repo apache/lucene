@@ -27,8 +27,9 @@ import org.apache.lucene.index.MergeTrigger;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.index.Sorter;
-import org.apache.lucene.misc.index.AbstractBPReorderer.NotEnoughRAMException;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.AbstractBPReorderer.NotEnoughRAMException;
+import org.apache.lucene.util.IndexReorderer;
 import org.apache.lucene.util.SetOnce;
 
 /**

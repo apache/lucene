@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.misc.index;
+package org.apache.lucene.util;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
@@ -28,6 +28,7 @@ import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.RecursiveAction;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
@@ -42,15 +43,11 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.util.CloseableThreadLocal;
-import org.apache.lucene.util.IntroSelector;
-import org.apache.lucene.util.IntsRef;
-import org.apache.lucene.util.VectorUtil;
 
 /**
  * Implementation of "recursive graph bisection", also called "bipartite graph partitioning" and
  * often abbreviated BP, an approach to doc ID assignment that aims at reducing the sum of the log
- * gap between consecutive neighbor node ids. See {@link BPIndexReorderer}.
+ * gap between consecutive neighbor node ids. See also BPIndexReorderer.
  */
 public class BpVectorReorderer extends AbstractBPReorderer {
 
@@ -89,10 +86,14 @@ public class BpVectorReorderer extends AbstractBPReorderer {
 
   private final String partitionField;
 
+  public BpVectorReorderer() {
+    this(null);
+  }
+
   /** Constructor. */
   public BpVectorReorderer(String partitionField) {
-    setMinPartitionSize(DEFAULT_MIN_PARTITION_SIZE);
-    setMaxIters(DEFAULT_MAX_ITERS);
+    setMinPartitionSize(AbstractBPReorderer.DEFAULT_MIN_PARTITION_SIZE);
+    setMaxIters(AbstractBPReorderer.DEFAULT_MAX_ITERS);
     // 10% of the available heap size by default
     setRAMBudgetMB(Runtime.getRuntime().totalMemory() / 1024d / 1024d / 10d);
     this.partitionField = partitionField;
@@ -122,7 +123,12 @@ public class BpVectorReorderer extends AbstractBPReorderer {
     private final int[] newToOld;
     private final int[] oldToNew;
 
-    public DocMap(int[] newToOld) {
+    DocMap(int[] oldToNew, int[] newToOld) {
+      this.oldToNew = oldToNew;
+      this.newToOld = newToOld;
+    }
+
+    DocMap(int[] newToOld) {
       this.newToOld = newToOld;
       oldToNew = new int[newToOld.length];
       for (int i = 0; i < newToOld.length; ++i) {
@@ -144,6 +150,10 @@ public class BpVectorReorderer extends AbstractBPReorderer {
     public int newToOld(int docID) {
       return newToOld[docID];
     }
+  }
+
+  public static Sorter.DocMap sortMapOf(int[] oldToNew, int[] newToOld) {
+    return new DocMap(oldToNew, newToOld);
   }
 
   private abstract class BaseRecursiveAction extends RecursiveAction {
@@ -577,6 +587,10 @@ public class BpVectorReorderer extends AbstractBPReorderer {
   @Override
   public Sorter.DocMap computeDocMap(CodecReader reader, Directory tempDir, Executor executor)
       throws IOException {
+    if (partitionField == null) {
+      throw new IllegalStateException(
+          "initialized with null field name; cannot partition using a reader");
+    }
     TaskExecutor taskExecutor;
     if (executor == null) {
       taskExecutor = null;
@@ -588,12 +602,15 @@ public class BpVectorReorderer extends AbstractBPReorderer {
       return null;
     }
     FloatVectorValues floats = reader.getFloatVectorValues(partitionField);
+    if (floats == null) {
+      return null;
+    }
     Sorter.DocMap valueMap = computeValueMap(floats, vectorScore, taskExecutor);
     return valueMapToDocMap(valueMap, floats, reader.maxDoc());
   }
 
   /** Expert: Compute the {@link DocMap} that holds the new vector ordinal numbering. */
-  Sorter.DocMap computeValueMap(
+  public Sorter.DocMap computeValueMap(
       FloatVectorValues vectors, VectorSimilarityFunction vectorScore, TaskExecutor executor) {
     if (docRAMRequirements(vectors.size()) >= ramBudgetMB * 1024 * 1024) {
       throw new NotEnoughRAMException(
@@ -611,9 +628,9 @@ public class BpVectorReorderer extends AbstractBPReorderer {
    */
   private int[] computePermutation(
       FloatVectorValues vectors, VectorSimilarityFunction vectorScore, TaskExecutor executor) {
-    final int size = vectors.size();
+    int size = vectors.size();
     int[] sortedIds = new int[size];
-    for (int i = 0; i < size; ++i) {
+    for (int i = 0; i < size; i++) {
       sortedIds[i] = i;
     }
     try (CloseableThreadLocal<PerThreadState> threadLocal =
@@ -623,7 +640,7 @@ public class BpVectorReorderer extends AbstractBPReorderer {
             return new PerThreadState(vectors);
           }
         }) {
-      IntsRef ids = new IntsRef(sortedIds, 0, sortedIds.length);
+      IntsRef ids = new IntsRef(sortedIds, 0, size);
       new ReorderTask(ids, new float[size], threadLocal, executor, 0, vectorScore).compute();
     }
     return sortedIds;
@@ -784,6 +801,42 @@ public class BpVectorReorderer extends AbstractBPReorderer {
       @Override
       public int newToOld(int docID) {
         return newToOld[docID];
+      }
+    };
+  }
+
+  public static Sorter.DocMap ordToDocFromValueMap(
+      Sorter.DocMap valueMap, DocsWithFieldSet docsWithField) throws IOException {
+    // valueMap maps old/new ords; values maps old docs/old ords
+    // we want old docs/new ords map.  docs with no value map to -1
+    int[] newToOld = new int[valueMap.size()];
+    int[] oldToNew = new int[valueMap.size()];
+    DocIdSetIterator it = docsWithField.iterator();
+    for (int ord = 0, nextDoc = it.nextDoc();
+        nextDoc != NO_MORE_DOCS;
+        nextDoc = it.nextDoc(), ord++) {
+      int newOrd = valueMap.oldToNew(ord);
+      newToOld[newOrd] = nextDoc;
+      // this will hold ords in docid order, but it is not doc->ord because there may be gaps in the
+      // doc sequence
+      oldToNew[ord] = newOrd;
+    }
+
+    return new Sorter.DocMap() {
+
+      @Override
+      public int size() {
+        return newToOld.length;
+      }
+
+      @Override
+      public int oldToNew(int oldOrd) {
+        return oldToNew[oldOrd];
+      }
+
+      @Override
+      public int newToOld(int newOrd) {
+        return newToOld[newOrd];
       }
     };
   }

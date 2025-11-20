@@ -99,12 +99,33 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
       long vectorDataLength,
       IndexInput vectorData)
       throws IOException {
-    if (configuration.docsWithFieldOffset == -2 || vectorEncoding != VectorEncoding.FLOAT32) {
+    if (configuration.isEmpty() || vectorEncoding != VectorEncoding.FLOAT32) {
       return new EmptyOffHeapVectorValues(dimension, flatVectorsScorer, vectorSimilarityFunction);
     }
     IndexInput bytesSlice = vectorData.slice("vector-data", vectorDataOffset, vectorDataLength);
     int byteSize = dimension * Float.BYTES;
-    if (configuration.docsWithFieldOffset == -1) {
+    if (configuration.isReordered()) {
+      if (configuration.isDense()) {
+        return new ReorderedDenseVectorValues(
+            configuration.size,
+            configuration.getOrdToDocReader(vectorData, configuration.size),
+            bytesSlice,
+            dimension,
+            byteSize,
+            flatVectorsScorer,
+            vectorSimilarityFunction);
+      } else {
+        return new ReorderedSparseVectorValues(
+            configuration,
+            null,
+            vectorData,
+            bytesSlice,
+            dimension,
+            byteSize,
+            flatVectorsScorer,
+            vectorSimilarityFunction);
+      }
+    } else if (configuration.isDense()) {
       return new DenseOffHeapVectorValues(
           dimension,
           configuration.size,
@@ -144,11 +165,6 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     public DenseOffHeapVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(
           dimension, size, slice.clone(), byteSize, flatVectorsScorer, similarityFunction);
-    }
-
-    @Override
-    public int ordToDoc(int ord) {
-      return ord;
     }
 
     @Override
@@ -205,10 +221,106 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     }
   }
 
+  /** Dense vector values that are stored off-heap with reordered nodes. */
+  public static class ReorderedDenseVectorValues extends OffHeapFloatVectorValues {
+    private final OrdToDocDISIReaderConfiguration.OrdToDocReader ordToDoc;
+
+    public ReorderedDenseVectorValues(
+        int size,
+        OrdToDocDISIReaderConfiguration.OrdToDocReader ordToDoc,
+        IndexInput bytesSlice,
+        int dimension,
+        int byteSize,
+        FlatVectorsScorer flatVectorsScorer,
+        VectorSimilarityFunction similarityFunction)
+        throws IOException {
+      super(dimension, size, bytesSlice, byteSize, flatVectorsScorer, similarityFunction);
+      this.ordToDoc = ordToDoc;
+    }
+
+    @Override
+    public ReorderedDenseVectorValues copy() throws IOException {
+      return new ReorderedDenseVectorValues(
+          size,
+          ordToDoc,
+          slice.clone(),
+          dimension,
+          byteSize,
+          flatVectorsScorer,
+          similarityFunction);
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return ordToDoc.ordToDoc(ord);
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return ordToDoc.iterator();
+    }
+
+    @Override
+    public VectorScorer scorer(float[] query) throws IOException {
+      ReorderedDenseVectorValues copy = copy();
+      DocIndexIterator iterator = copy.iterator();
+      RandomVectorScorer randomVectorScorer =
+          flatVectorsScorer.getRandomVectorScorer(similarityFunction, copy, query);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return randomVectorScorer.score(iterator.docID());
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return iterator;
+        }
+
+        @Override
+        public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
+          return new Bulk() {
+            final DocIdSetIterator matches =
+                matchingDocs == null
+                    ? iterator
+                    : ConjunctionUtils.createConjunction(
+                        List.of(matchingDocs, iterator), List.of());
+            int[] docIds = new int[0];
+
+            @Override
+            public float nextDocsAndScores(
+                int nextCount, Bits liveDocs, DocAndFloatFeatureBuffer buffer) throws IOException {
+              if (matches.docID() == -1) {
+                matches.nextDoc();
+              }
+              buffer.growNoCopy(nextCount);
+              docIds = ArrayUtil.growNoCopy(docIds, nextCount);
+              int size = 0;
+              for (int doc = matches.docID();
+                  doc != DocIdSetIterator.NO_MORE_DOCS && size < nextCount;
+                  doc = matches.nextDoc()) {
+                if (liveDocs == null || liveDocs.get(doc)) {
+                  buffer.docs[size] = iterator.index();
+                  docIds[size] = doc;
+                  ++size;
+                }
+              }
+              buffer.size = size;
+              float maxScore = randomVectorScorer.bulkScore(buffer.docs, buffer.features, size);
+              // copy back the real doc IDs
+              System.arraycopy(docIds, 0, buffer.docs, 0, size);
+              return maxScore;
+            }
+          };
+        }
+      };
+    }
+  }
+
   private static class SparseOffHeapVectorValues extends OffHeapFloatVectorValues {
     private final DirectMonotonicReader ordToDoc;
     private final IndexedDISI disi;
-    // dataIn was used to init a new IndexedDIS for #randomAccess()
+    // dataIn was used to init a new IndexedDISI for #randomAccess()
     private final IndexInput dataIn;
     private final OrdToDocDISIReaderConfiguration configuration;
 
@@ -281,6 +393,132 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
       SparseOffHeapVectorValues copy = copy();
+      DocIndexIterator iterator = copy.iterator();
+      RandomVectorScorer randomVectorScorer =
+          flatVectorsScorer.getRandomVectorScorer(similarityFunction, copy, query);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return randomVectorScorer.score(iterator.index());
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return iterator;
+        }
+
+        @Override
+        public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
+          return new Bulk() {
+            final DocIdSetIterator matches =
+                matchingDocs == null
+                    ? iterator
+                    : ConjunctionUtils.createConjunction(
+                        List.of(matchingDocs, iterator), List.of());
+            int[] docIds = new int[0];
+
+            @Override
+            public float nextDocsAndScores(
+                int nextCount, Bits liveDocs, DocAndFloatFeatureBuffer buffer) throws IOException {
+              if (matches.docID() == -1) {
+                matches.nextDoc();
+              }
+              buffer.growNoCopy(nextCount);
+              docIds = ArrayUtil.growNoCopy(docIds, nextCount);
+              int size = 0;
+              for (int doc = matches.docID();
+                  doc != DocIdSetIterator.NO_MORE_DOCS && size < nextCount;
+                  doc = matches.nextDoc()) {
+                if (liveDocs == null || liveDocs.get(doc)) {
+                  buffer.docs[size] = iterator.index();
+                  docIds[size] = doc;
+                  ++size;
+                }
+              }
+              buffer.size = size;
+              float maxScore = randomVectorScorer.bulkScore(buffer.docs, buffer.features, size);
+              // copy back the real doc IDs
+              System.arraycopy(docIds, 0, buffer.docs, 0, size);
+              return maxScore;
+            }
+          };
+        }
+      };
+    }
+  }
+
+  // this is sparse
+  private static class ReorderedSparseVectorValues extends OffHeapFloatVectorValues {
+    private final IndexInput dataIn;
+    private final OrdToDocDISIReaderConfiguration configuration;
+    private final OrdToDocDISIReaderConfiguration.OrdToDocReader ordToDoc;
+
+    public ReorderedSparseVectorValues(
+        OrdToDocDISIReaderConfiguration configuration,
+        OrdToDocDISIReaderConfiguration.OrdToDocReader ordToDoc,
+        IndexInput dataIn,
+        IndexInput slice,
+        int dimension,
+        int byteSize,
+        FlatVectorsScorer flatVectorsScorer,
+        VectorSimilarityFunction similarityFunction)
+        throws IOException {
+
+      super(dimension, configuration.size, slice, byteSize, flatVectorsScorer, similarityFunction);
+      this.configuration = configuration;
+      if (ordToDoc == null) {
+        this.ordToDoc = configuration.getOrdToDocReader(dataIn, configuration.size);
+      } else {
+        this.ordToDoc = ordToDoc;
+      }
+      dataIn.seek(configuration.addressesOffset);
+      this.dataIn = dataIn;
+    }
+
+    @Override
+    public ReorderedSparseVectorValues copy() throws IOException {
+      return new ReorderedSparseVectorValues(
+          configuration,
+          ordToDoc,
+          dataIn,
+          slice.clone(),
+          dimension,
+          byteSize,
+          flatVectorsScorer,
+          similarityFunction);
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return ordToDoc.ordToDoc(ord);
+    }
+
+    @Override
+    public Bits getAcceptOrds(Bits acceptDocs) {
+      if (acceptDocs == null) {
+        return null;
+      }
+      return new Bits() {
+        @Override
+        public boolean get(int index) {
+          return acceptDocs.get(ordToDoc(index));
+        }
+
+        @Override
+        public int length() {
+          return size;
+        }
+      };
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return ordToDoc.iterator();
+    }
+
+    @Override
+    public VectorScorer scorer(float[] query) throws IOException {
+      ReorderedSparseVectorValues copy = copy();
       DocIndexIterator iterator = copy.iterator();
       RandomVectorScorer randomVectorScorer =
           flatVectorsScorer.getRandomVectorScorer(similarityFunction, copy, query);

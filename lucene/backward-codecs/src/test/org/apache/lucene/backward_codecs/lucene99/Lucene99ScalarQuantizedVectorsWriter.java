@@ -364,7 +364,13 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
     // write docIDs
     OrdToDocDISIReaderConfiguration.writeStoredMeta(
-        DIRECT_MONOTONIC_BLOCK_SHIFT, meta, quantizedVectorData, count, maxDoc, docsWithField);
+        DIRECT_MONOTONIC_BLOCK_SHIFT,
+        meta,
+        quantizedVectorData,
+        count,
+        maxDoc,
+        docsWithField,
+        null);
   }
 
   private void writeQuantizedVectors(FieldWriter fieldData, ScalarQuantizer scalarQuantizer)

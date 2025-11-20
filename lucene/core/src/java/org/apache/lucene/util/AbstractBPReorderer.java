@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.misc.index;
+package org.apache.lucene.util;
 
 /** Base class for docid-reorderers implemented using binary partitioning (BP). */
 public abstract class AbstractBPReorderer implements IndexReorderer {
@@ -71,7 +71,7 @@ public abstract class AbstractBPReorderer implements IndexReorderer {
 
   /** Exception that is thrown when not enough RAM is available. */
   public static class NotEnoughRAMException extends RuntimeException {
-    NotEnoughRAMException(String message) {
+    public NotEnoughRAMException(String message) {
       super(message);
     }
   }

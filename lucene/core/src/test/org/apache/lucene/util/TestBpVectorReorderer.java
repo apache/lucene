@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.misc.index;
+package org.apache.lucene.util;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -25,10 +25,14 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredField;
+import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
@@ -36,6 +40,8 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LogDocMergePolicy;
+import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -44,7 +50,7 @@ import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.hnsw.HnswGraph;
 
 /** Tests reordering vector values using Binary Partitioning */
 public class TestBpVectorReorderer extends LuceneTestCase {
@@ -126,6 +132,7 @@ public class TestBpVectorReorderer extends LuceneTestCase {
   }
 
   public void testQuantizedIndex() throws Exception {
+    // FIXME test with an executor sometimes
     doTestQuantizedIndex(null);
   }
 
@@ -217,6 +224,10 @@ public class TestBpVectorReorderer extends LuceneTestCase {
 
   private static List<float[]> randomLinearVectors() {
     int n = random().nextInt(100) + 10;
+    return randomLinearVectors(n);
+  }
+
+  private static List<float[]> randomLinearVectors(int n) {
     List<float[]> vectors = new ArrayList<>();
     float b = random().nextFloat();
     float m = random().nextFloat();
@@ -310,13 +321,25 @@ public class TestBpVectorReorderer extends LuceneTestCase {
                 && angularDifference(t1min, t1max) < angularDifference(t1min, t0max)));
   }
 
+  // Disable skipping HNSW graph creation for small segments and pass through reordering flag.
+  private IndexWriterConfig createIndexWriterConfig(boolean enableReorder) {
+    IndexWriterConfig cfg = new IndexWriterConfig();
+    cfg.setCodec(
+        TestUtil.alwaysKnnVectorsFormat(
+            new Lucene99HnswVectorsFormat(8, 32, 1, null, 0, enableReorder)));
+    cfg.setMergePolicy(new LogDocMergePolicy());
+    cfg.setMergeScheduler(new SerialMergeScheduler());
+    return cfg;
+  }
+
   public void testIndexReorderDense() throws Exception {
     List<float[]> vectors = shuffleVectors(randomLinearVectors());
 
     Path tmpdir = createTempDir();
     try (Directory dir = newFSDirectory(tmpdir)) {
       // create an index with a single leaf
-      try (IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig())) {
+      IndexWriterConfig cfg = createIndexWriterConfig(false);
+      try (IndexWriter writer = new IndexWriter(dir, cfg)) {
         int id = 0;
         for (float[] vector : vectors) {
           Document doc = new Document();
@@ -384,6 +407,7 @@ public class TestBpVectorReorderer extends LuceneTestCase {
     }
   }
 
+  // test the reordering utility (BpVectorReorderer.main)
   public void testIndexReorderSparse() throws Exception {
     List<float[]> vectors = shuffleVectors(randomLinearVectors());
     // compute the expected ordering
@@ -394,7 +418,8 @@ public class TestBpVectorReorderer extends LuceneTestCase {
     int maxDoc = 0;
     try (Directory dir = newFSDirectory(tmpdir)) {
       // create an index with a single leaf
-      try (IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig())) {
+      IndexWriterConfig cfg = createIndexWriterConfig(false);
+      try (IndexWriter writer = new IndexWriter(dir, cfg)) {
         for (float[] vector : vectors) {
           Document doc = new Document();
           if (random().nextBoolean()) {
@@ -427,6 +452,137 @@ public class TestBpVectorReorderer extends LuceneTestCase {
         }
         // docs with no vectors sort at the end
         assertEquals(vectors.size() - 1, lastDocID);
+      }
+    }
+  }
+
+  // TODO: testReorderSparseCodec
+  // TODO: enable reordering with index sort
+
+  private void addDocuments(List<float[]> vectors, IndexWriter writer) throws IOException {
+    int id = 0;
+    for (float[] vector : vectors) {
+      Document doc = new Document();
+      doc.add(new KnnFloatVectorField("f", vector, VectorSimilarityFunction.EUCLIDEAN));
+      doc.add(new NumericDocValuesField("id", id));
+      doc.add(new StoredField("id", id));
+      writer.addDocument(doc);
+      if (id++ == vectors.size() / 2 + 1) {
+        // make multiple segments to induce a merge
+        writer.commit();
+      }
+    }
+    writer.forceMerge(1);
+  }
+
+  // test when reordering is enabled in the codec
+  public void testReorderDenseCodec() throws Exception {
+    // must be big enough to trigger some reordering
+    int numVectors = BpVectorReorderer.DEFAULT_MIN_PARTITION_SIZE * 4 + random().nextInt(32);
+    List<float[]> vectors = shuffleVectors(randomLinearVectors(numVectors));
+    // use default settings to match codec
+    reorderer = new BpVectorReorderer();
+
+    // compute the expected ordering
+    Sorter.DocMap expected =
+        reorderer.computeValueMap(
+            FloatVectorValues.fromFloats(vectors, 2), VectorSimilarityFunction.EUCLIDEAN, null);
+    // use identity
+    expected =
+        new Sorter.DocMap() {
+          @Override
+          public int oldToNew(int docID) {
+            return docID;
+          }
+
+          @Override
+          public int newToOld(int docID) {
+            return docID;
+          }
+
+          @Override
+          public int size() {
+            return vectors.size();
+          }
+        };
+
+    // index without reordering in order to get the expected HNSW graph
+    Path tmpdir = createTempDir();
+    List<List<Integer>> expectedGraph = new ArrayList<>();
+    try (Directory dir = newFSDirectory(tmpdir)) {
+      try (IndexWriter writer = new IndexWriter(dir, createIndexWriterConfig(false))) {
+        addDocuments(vectors, writer);
+      }
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        LeafReader leafReader = getOnlyLeafReader(reader);
+        HnswGraph hnsw =
+            ((HnswGraphProvider) ((CodecReader) leafReader).getVectorReader()).getGraph("f");
+        for (int ord = 0; ord < hnsw.size(); ord++) {
+          List<Integer> neighbors = new ArrayList<>();
+          hnsw.seek(0, ord);
+          int nbr;
+          while ((nbr = hnsw.nextNeighbor()) != DocIdSetIterator.NO_MORE_DOCS) {
+            neighbors.add(nbr);
+          }
+          expectedGraph.add(neighbors);
+        }
+      }
+    }
+
+    tmpdir = createTempDir();
+    try (Directory dir = newFSDirectory(tmpdir)) {
+      // create an index with a single leaf
+      IndexWriterConfig cfg = createIndexWriterConfig(false);
+      // TODO: also try to configure an index sort
+      // cfg.setIndexSort(new Sort(new SortField("id", SortField.Type.INT)));
+      // But is this disabling vector reordering?? I think we maybe didn't plumb this through
+      try (IndexWriter writer = new IndexWriter(dir, cfg)) {
+        addDocuments(vectors, writer);
+      }
+
+      // Verify the ordering produced when merging is the same,
+      // that the values iterator returns the correct vector values
+      // and that the ordToDoc mapping is correct
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        LeafReader leafReader = getOnlyLeafReader(reader);
+        FloatVectorValues values = leafReader.getFloatVectorValues("f");
+        StoredFields storedFields = reader.storedFields();
+        KnnVectorValues.DocIndexIterator it = values.iterator();
+        while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+          int docId = it.docID();
+          int oldOrd = Integer.parseInt(storedFields.document(docId).get("id"));
+          int newOrd = it.index();
+          assertEquals(expected.oldToNew(oldOrd), newOrd);
+          assertEquals(expected.newToOld(newOrd), oldOrd);
+          assertEquals(docId, values.ordToDoc(newOrd));
+          float[] actualVector = values.vectorValue(newOrd);
+          float[] expectedVector = vectors.get(oldOrd);
+          assertArrayEquals(
+              "values differ at index " + oldOrd + "->" + newOrd + " docid=" + docId,
+              expectedVector,
+              actualVector,
+              0);
+        }
+        // Verify that we produce the same graph, numbered according to the reordering.
+        HnswGraph hnsw =
+            ((HnswGraphProvider) ((CodecReader) leafReader).getVectorReader()).getGraph("f");
+        assertEquals(expectedGraph.size(), hnsw.size());
+        for (int newOrd = 0; newOrd < hnsw.size(); newOrd++) {
+          hnsw.seek(0, newOrd);
+          List<Integer> neighbors = new ArrayList<>();
+          int nbr;
+          while ((nbr = hnsw.nextNeighbor()) != DocIdSetIterator.NO_MORE_DOCS) {
+            // map neighbor ords back to original ords
+            neighbors.add(expected.newToOld(nbr));
+          }
+          // we may now get nodes out of order
+          Collections.sort(neighbors);
+          assertEquals(
+              "neighbors of " + newOrd + " (was " + expected.newToOld(newOrd) + ")",
+              expectedGraph.get(expected.newToOld(newOrd)),
+              neighbors);
+        }
       }
     }
   }

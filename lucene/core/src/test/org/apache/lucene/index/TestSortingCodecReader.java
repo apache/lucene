@@ -28,6 +28,7 @@ import java.util.Locale;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -53,6 +54,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph;
@@ -222,9 +224,11 @@ public class TestSortingCodecReader extends LuceneTestCase {
                   new Sort(
                       new SortField("sorted_binary_sort_field", SortField.Type.STRING, false),
                       new SortField("alt_id", SortField.Type.INT))));
+      IndexWriterConfig cfg = newIndexWriterConfig();
+      cfg.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(8, 32)));
+      cfg.setIndexSort(indexSort);
       try (Directory sortDir = newDirectory()) {
-        try (IndexWriter writer =
-            new IndexWriter(sortDir, newIndexWriterConfig().setIndexSort(indexSort))) {
+        try (IndexWriter writer = new IndexWriter(sortDir, cfg)) {
           try (DirectoryReader reader = DirectoryReader.open(dir)) {
             List<CodecReader> readers = new ArrayList<>();
             for (LeafReaderContext ctx : reader.leaves()) {
