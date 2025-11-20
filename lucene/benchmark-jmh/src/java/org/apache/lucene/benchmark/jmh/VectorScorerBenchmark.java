@@ -19,12 +19,16 @@ package org.apache.lucene.benchmark.jmh;
 import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.file.Files;
+import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
+import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
@@ -62,57 +66,140 @@ import org.openjdk.jmh.annotations.Warmup;
     value = 3,
     jvmArgsAppend = {"-Xmx2g", "-Xms2g", "-XX:+AlwaysPreTouch"})
 public class VectorScorerBenchmark {
+  private static final float EPSILON = 1e-4f;
 
   @Param({"1", "128", "207", "256", "300", "512", "702", "1024"})
   public int size;
 
+  @Param({"0", "1", "4", "64"})
+  public int padBytes; // capture performance impact of byte alignment in the index
+
   Directory dir;
-  IndexInput in;
-  KnnVectorValues vectorValues;
+  IndexInput bytesIn;
+  IndexInput floatsIn;
+  KnnVectorValues byteVectorValues;
+  KnnVectorValues floatVectorValues;
   byte[] vec1, vec2;
-  UpdateableRandomVectorScorer scorer;
+  float[] floatsA, floatsB;
+  float expectedBytes, expectedFloats;
+  UpdateableRandomVectorScorer byteScorer;
+  UpdateableRandomVectorScorer floatScorer;
 
   @Setup(Level.Iteration)
   public void init() throws IOException {
+    Random random = ThreadLocalRandom.current();
+
     vec1 = new byte[size];
     vec2 = new byte[size];
-    ThreadLocalRandom.current().nextBytes(vec1);
-    ThreadLocalRandom.current().nextBytes(vec2);
+    random.nextBytes(vec1);
+    random.nextBytes(vec2);
+    expectedBytes = DOT_PRODUCT.compare(vec1, vec2);
+
+    // random float arrays for float methods
+    floatsA = new float[size];
+    floatsB = new float[size];
+    for (int i = 0; i < size; ++i) {
+      floatsA[i] = random.nextFloat();
+      floatsB[i] = random.nextFloat();
+    }
+    expectedFloats = DOT_PRODUCT.compare(floatsA, floatsB);
 
     dir = new MMapDirectory(Files.createTempDirectory("VectorScorerBenchmark"));
-    try (IndexOutput out = dir.createOutput("vector.data", IOContext.DEFAULT)) {
+    try (IndexOutput out = dir.createOutput("byteVector.data", IOContext.DEFAULT)) {
+      out.writeBytes(new byte[padBytes], 0, padBytes);
+
       out.writeBytes(vec1, 0, vec1.length);
       out.writeBytes(vec2, 0, vec2.length);
     }
-    in = dir.openInput("vector.data", IOContext.DEFAULT);
-    vectorValues = vectorValues(size, 2, in, DOT_PRODUCT);
-    scorer =
+    try (IndexOutput out = dir.createOutput("floatVector.data", IOContext.DEFAULT)) {
+      out.writeBytes(new byte[padBytes], 0, padBytes);
+
+      byte[] buffer = new byte[size * Float.BYTES];
+      ByteBuffer.wrap(buffer).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().put(floatsA);
+      out.writeBytes(buffer, 0, buffer.length);
+      ByteBuffer.wrap(buffer).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().put(floatsB);
+      out.writeBytes(buffer, 0, buffer.length);
+    }
+
+    bytesIn = dir.openInput("byteVector.data", IOContext.DEFAULT);
+    byteVectorValues = byteVectorValues(DOT_PRODUCT);
+    byteScorer =
         FlatVectorScorerUtil.getLucene99FlatVectorsScorer()
-            .getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValues)
+            .getRandomVectorScorerSupplier(DOT_PRODUCT, byteVectorValues)
             .scorer();
-    scorer.setScoringOrdinal(0);
+    byteScorer.setScoringOrdinal(0);
+
+    floatsIn = dir.openInput("floatVector.data", IOContext.DEFAULT);
+    floatVectorValues = floatVectorValues(DOT_PRODUCT);
+    floatScorer =
+        FlatVectorScorerUtil.getLucene99FlatVectorsScorer()
+            .getRandomVectorScorerSupplier(DOT_PRODUCT, floatVectorValues)
+            .scorer();
+    floatScorer.setScoringOrdinal(0);
   }
 
   @TearDown
   public void teardown() throws IOException {
-    IOUtils.close(dir, in);
+    IOUtils.close(dir, bytesIn);
   }
 
   @Benchmark
   public float binaryDotProductDefault() throws IOException {
-    return scorer.score(1);
+    float result = byteScorer.score(1);
+    if (Math.abs(result - expectedBytes) > EPSILON) {
+      throw new RuntimeException("Expected " + result + " but got " + expectedBytes);
+    }
+    return result;
   }
 
   @Benchmark
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public float binaryDotProductMemSeg() throws IOException {
-    return scorer.score(1);
+    float result = byteScorer.score(1);
+    if (Math.abs(result - expectedBytes) > EPSILON) {
+      throw new RuntimeException("Expected " + result + " but got " + expectedBytes);
+    }
+    return result;
   }
 
-  static KnnVectorValues vectorValues(
-      int dims, int size, IndexInput in, VectorSimilarityFunction sim) throws IOException {
+  @Benchmark
+  public float floatDotProductDefault() throws IOException {
+    float result = floatScorer.score(1);
+    if (Math.abs(result - expectedFloats) > EPSILON) {
+      throw new RuntimeException("Expected " + result + " but got " + expectedFloats);
+    }
+    return result;
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public float floatDotProductMemSeg() throws IOException {
+    float result = floatScorer.score(1);
+    if (Math.abs(result - expectedFloats) > EPSILON) {
+      throw new RuntimeException("Expected " + result + " but got " + expectedFloats);
+    }
+    return result;
+  }
+
+  KnnVectorValues byteVectorValues(VectorSimilarityFunction sim) throws IOException {
     return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
-        dims, size, in.slice("test", 0, in.length()), dims, new ThrowingFlatVectorScorer(), sim);
+        size,
+        2,
+        bytesIn.slice("test", padBytes, size * 2L),
+        size,
+        new ThrowingFlatVectorScorer(),
+        sim);
+  }
+
+  KnnVectorValues floatVectorValues(VectorSimilarityFunction sim) throws IOException {
+    int byteSize = size * Float.BYTES;
+    return new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
+        size,
+        2,
+        floatsIn.slice("test", padBytes, byteSize * 2L),
+        byteSize,
+        new ThrowingFlatVectorScorer(),
+        sim);
   }
 
   static final class ThrowingFlatVectorScorer implements FlatVectorsScorer {
