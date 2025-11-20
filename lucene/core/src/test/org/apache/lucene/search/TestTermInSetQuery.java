@@ -62,7 +62,8 @@ public class TestTermInSetQuery extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
     // Use few enough terms to trigger the BooleanQuery rewrite logic (≤ threshold)
-    final int numTerms = AbstractMultiTermQueryConstantScoreWrapper.BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD;
+    final int numTerms =
+        AbstractMultiTermQueryConstantScoreWrapper.BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD;
     List<BytesRef> terms = new ArrayList<>();
     for (int i = 0; i < numTerms; ++i) {
       String term = "term" + i;
@@ -78,18 +79,19 @@ public class TestTermInSetQuery extends LuceneTestCase {
 
     final AtomicInteger onUseCount = new AtomicInteger(0);
     final Set<Query> seenQueries = new HashSet<>();
-    QueryCachingPolicy policy = new QueryCachingPolicy() {
-      @Override
-      public void onUse(Query query) {
-        onUseCount.incrementAndGet();
-        seenQueries.add(query);
-      }
+    QueryCachingPolicy policy =
+        new QueryCachingPolicy() {
+          @Override
+          public void onUse(Query query) {
+            onUseCount.incrementAndGet();
+            seenQueries.add(query);
+          }
 
-      @Override
-      public boolean shouldCache(Query query) throws IOException {
-        return true;
-      }
-    };
+          @Override
+          public boolean shouldCache(Query query) throws IOException {
+            return true;
+          }
+        };
 
     searcher.setQueryCache(new LRUQueryCache(100, 10000));
     searcher.setQueryCachingPolicy(policy);
@@ -111,8 +113,9 @@ public class TestTermInSetQuery extends LuceneTestCase {
         "ConstantScoreQuery wrapping BooleanQuery should not be tracked",
         seenQueries.stream()
             .anyMatch(
-                q -> q instanceof ConstantScoreQuery
-                    && ((ConstantScoreQuery) q).getQuery() instanceof BooleanQuery));
+                q ->
+                    q instanceof ConstantScoreQuery
+                        && ((ConstantScoreQuery) q).getQuery() instanceof BooleanQuery));
     // The TermInSetQuery itself should be tracked
     assertTrue("TermInSetQuery should be tracked", seenQueries.contains(query));
 

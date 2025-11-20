@@ -242,8 +242,9 @@ public class IndexSearcher {
     this(context, null);
   }
 
+  /** Copies everything except the executor */
   public IndexSearcher(IndexSearcher searcher) {
-    this(searcher.getTopReaderContext(), searcher.getExecutor());
+    this(searcher.getTopReaderContext());
     this.similarity = searcher.getSimilarity();
     this.queryCache = searcher.getQueryCache();
     this.queryCachingPolicy = searcher.getQueryCachingPolicy();

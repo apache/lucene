@@ -164,7 +164,8 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
         bq.add(new TermQuery(new Term(q.field, t.term), termStates), BooleanClause.Occur.SHOULD);
       }
       Query q = new ConstantScoreQuery(bq.build());
-      final Weight weight = nonCachingSearcher.rewrite(q).createWeight(nonCachingSearcher, scoreMode, score());
+      final Weight weight =
+          nonCachingSearcher.rewrite(q).createWeight(nonCachingSearcher, scoreMode, score());
       return new WeightOrDocIdSetIterator(weight);
     }
 
