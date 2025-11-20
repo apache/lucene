@@ -242,6 +242,14 @@ public class IndexSearcher {
     this(context, null);
   }
 
+  public IndexSearcher(IndexSearcher searcher) {
+    this(searcher.getTopReaderContext(), searcher.getExecutor());
+    this.similarity = searcher.getSimilarity();
+    this.queryCache = searcher.getQueryCache();
+    this.queryCachingPolicy = searcher.getQueryCachingPolicy();
+    this.queryTimeout = searcher.getTimeout();
+  }
+
   /**
    * Return the maximum number of clauses permitted, 1024 by default. Attempts to add more than the
    * permitted number of clauses cause {@link TooManyClauses} to be thrown.

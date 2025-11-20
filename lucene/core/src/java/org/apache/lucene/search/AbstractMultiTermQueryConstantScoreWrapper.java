@@ -126,14 +126,15 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
   protected abstract static class RewritingWeight extends ConstantScoreWeight {
     private final MultiTermQuery q;
     private final ScoreMode scoreMode;
-    private final IndexSearcher searcher;
+    private final IndexSearcher nonCachingSearcher;
 
     protected RewritingWeight(
         MultiTermQuery q, float boost, ScoreMode scoreMode, IndexSearcher searcher) {
       super(q, boost);
       this.q = q;
       this.scoreMode = scoreMode;
-      this.searcher = searcher;
+      this.nonCachingSearcher = new IndexSearcher(searcher);
+      this.nonCachingSearcher.setQueryCache(null);
     }
 
     /**
@@ -158,12 +159,12 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
         LeafReaderContext context, List<TermAndState> collectedTerms) throws IOException {
       BooleanQuery.Builder bq = new BooleanQuery.Builder();
       for (TermAndState t : collectedTerms) {
-        final TermStates termStates = new TermStates(searcher.getTopReaderContext());
+        final TermStates termStates = new TermStates(nonCachingSearcher.getTopReaderContext());
         termStates.register(t.state, context.ord, t.docFreq, t.totalTermFreq);
         bq.add(new TermQuery(new Term(q.field, t.term), termStates), BooleanClause.Occur.SHOULD);
       }
       Query q = new ConstantScoreQuery(bq.build());
-      final Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
+      final Weight weight = nonCachingSearcher.rewrite(q).createWeight(nonCachingSearcher, scoreMode, score());
       return new WeightOrDocIdSetIterator(weight);
     }
 
