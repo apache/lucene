@@ -981,7 +981,7 @@ public abstract class LuceneTestCase extends Assert {
   public static IndexWriterConfig newIndexWriterConfig(Random r, Analyzer a) {
     IndexWriterConfig c = new IndexWriterConfig(a);
     c.setSimilarity(classEnvRule.similarity);
-    if (VERBOSE) {
+    if (INFOSTREAM) {
       // Even though TestRuleSetupAndRestoreClassEnv calls
       // InfoStream.setDefault, we do it again here so that
       // the PrintStreamInfoStream.messageID increments so
