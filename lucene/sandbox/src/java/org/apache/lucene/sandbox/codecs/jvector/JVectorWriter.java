@@ -24,6 +24,7 @@ import io.github.jbellis.jvector.graph.ListRandomAccessVectorValues;
 import io.github.jbellis.jvector.graph.OnHeapGraphIndex;
 import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
 import io.github.jbellis.jvector.graph.disk.OnDiskSequentialGraphIndexWriter;
+import io.github.jbellis.jvector.graph.disk.OrdinalMapper;
 import io.github.jbellis.jvector.graph.disk.feature.Feature;
 import io.github.jbellis.jvector.graph.disk.feature.FeatureId;
 import io.github.jbellis.jvector.graph.disk.feature.InlineVectors;
@@ -39,7 +40,6 @@ import java.io.UncheckedIOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -93,8 +93,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  * jVector ordinals and the new Lucene document IDs. This is achieved by keeping checkpoints of the
  * {@link GraphNodeIdToDocMap} class in the index metadata and allowing us to update the mapping as
  * needed across merges by constructing a new mapping from the previous mapping and the {@link
- * org.apache.lucene.index.MergeState.DocMap} provided in the {@link MergeState}. And across sorts
- * with {@link FieldWriter#applySort(Sorter.DocMap)} during flushes.
+ * org.apache.lucene.index.MergeState.DocMap} provided in the {@link MergeState}.
  */
 public class JVectorWriter extends KnnVectorsWriter {
   private static final VectorTypeSupport VECTOR_TYPE_SUPPORT =
@@ -214,8 +213,19 @@ public class JVectorWriter extends KnnVectorsWriter {
   @Override
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
     for (FieldWriter field : fields) {
+      final DocsWithFieldSet newDocIds;
+      final OrdinalMapper ordinalMapper;
       if (sortMap != null) {
-        field.applySort(sortMap);
+        assert field.docIds.cardinality() <= sortMap.size();
+        final int size = field.docIds.cardinality();
+        final int[] oldToNew = new int[size];
+        final int[] newToOld = new int[size];
+        newDocIds = new DocsWithFieldSet();
+        KnnVectorsWriter.mapOldOrdToNewOrd(field.docIds, sortMap, oldToNew, newToOld, newDocIds);
+        ordinalMapper = new ArrayOrdinalMapper(size - 1, oldToNew, newToOld);
+      } else {
+        newDocIds = field.docIds;
+        ordinalMapper = null;
       }
       final RandomAccessVectorValues randomAccessVectorValues = field.toRandomAccessVectorValues();
       final BuildScoreProvider buildScoreProvider;
@@ -236,7 +246,7 @@ public class JVectorWriter extends KnnVectorsWriter {
                 JVectorFormat.toJVectorSimilarity(fieldInfo.getVectorSimilarityFunction()));
       }
 
-      final GraphNodeIdToDocMap graphNodeIdToDocMap = field.createGraphNodeIdToDocMap();
+      final GraphNodeIdToDocMap graphNodeIdToDocMap = new GraphNodeIdToDocMap(newDocIds);
       OnHeapGraphIndex graph =
           getGraph(
               buildScoreProvider,
@@ -244,7 +254,31 @@ public class JVectorWriter extends KnnVectorsWriter {
               fieldInfo,
               segmentWriteState.segmentInfo.name,
               Runnable::run);
-      writeField(field.fieldInfo, randomAccessVectorValues, pqVectors, graphNodeIdToDocMap, graph);
+      writeField(
+          field.fieldInfo,
+          randomAccessVectorValues,
+          pqVectors,
+          ordinalMapper,
+          graphNodeIdToDocMap,
+          graph);
+    }
+  }
+
+  private record ArrayOrdinalMapper(int maxOrdinal, int[] oldToNew, int[] newToOld)
+      implements OrdinalMapper {
+    @Override
+    public int maxOrdinal() {
+      return maxOrdinal;
+    }
+
+    @Override
+    public int oldToNew(int oldOrdinal) {
+      return oldToNew[oldOrdinal];
+    }
+
+    @Override
+    public int newToOld(int newOrdinal) {
+      return newToOld[newOrdinal];
     }
   }
 
@@ -252,11 +286,18 @@ public class JVectorWriter extends KnnVectorsWriter {
       FieldInfo fieldInfo,
       RandomAccessVectorValues randomAccessVectorValues,
       PQVectors pqVectors,
+      OrdinalMapper ordinalMapper,
       GraphNodeIdToDocMap graphNodeIdToDocMap,
       OnHeapGraphIndex graph)
       throws IOException {
     final var vectorIndexFieldMetadata =
-        writeGraph(graph, randomAccessVectorValues, fieldInfo, pqVectors, graphNodeIdToDocMap);
+        writeGraph(
+            graph,
+            randomAccessVectorValues,
+            fieldInfo,
+            pqVectors,
+            ordinalMapper,
+            graphNodeIdToDocMap);
     meta.writeInt(fieldInfo.number);
     vectorIndexFieldMetadata.toOutput(meta);
   }
@@ -275,6 +316,7 @@ public class JVectorWriter extends KnnVectorsWriter {
       RandomAccessVectorValues randomAccessVectorValues,
       FieldInfo fieldInfo,
       PQVectors pqVectors,
+      OrdinalMapper ordinalMapper,
       GraphNodeIdToDocMap graphNodeIdToDocMap)
       throws IOException {
     // field data file, which contains the graph
@@ -307,10 +349,13 @@ public class JVectorWriter extends KnnVectorsWriter {
             degreeOverflow,
             graphNodeIdToDocMap);
       }
-      try (var writer =
+      final var writerBuilder =
           new OnDiskSequentialGraphIndexWriter.Builder(graph, jVectorIndexWriter)
-              .with(new InlineVectors(randomAccessVectorValues.dimension()))
-              .build()) {
+              .with(new InlineVectors(randomAccessVectorValues.dimension()));
+      if (ordinalMapper != null) {
+        writerBuilder.withMapper(ordinalMapper);
+      }
+      try (var writer = writerBuilder.build()) {
         var suppliers =
             Feature.singleStateFactory(
                 FeatureId.INLINE_VECTORS,
@@ -500,38 +545,8 @@ public class JVectorWriter extends KnnVectorsWriter {
       return vectorValue.clone();
     }
 
-    public void applySort(Sorter.DocMap sortMap) throws IOException {
-      // Ensure that all existing docs can be sorted
-      final int[] oldToNewOrd = new int[vectors.size()];
-      final DocsWithFieldSet oldDocIds = docIds;
-      docIds = new DocsWithFieldSet();
-      mapOldOrdToNewOrd(oldDocIds, sortMap, oldToNewOrd, null, docIds);
-
-      // Swap vectors into their new ordinals
-      for (int oldOrd = 0; oldOrd < vectors.size(); ++oldOrd) {
-        final int newOrd = oldToNewOrd[oldOrd];
-        if (oldOrd == newOrd) {
-          continue;
-        }
-
-        // Swap the element at oldOrd into its position at newOrd and update the index mapping
-        Collections.swap(vectors, oldOrd, newOrd);
-        oldToNewOrd[oldOrd] = oldToNewOrd[newOrd];
-        oldToNewOrd[newOrd] = newOrd;
-
-        // The element at oldOrd may be displaced and need to be swapped again
-        if (oldToNewOrd[oldOrd] != oldOrd) {
-          oldOrd -= 1;
-        }
-      }
-    }
-
     public RandomAccessVectorValues toRandomAccessVectorValues() {
       return new ListRandomAccessVectorValues(vectors, fieldInfo.getVectorDimension());
-    }
-
-    public GraphNodeIdToDocMap createGraphNodeIdToDocMap() {
-      return new GraphNodeIdToDocMap(docIds);
     }
 
     @Override
@@ -655,7 +670,7 @@ public class JVectorWriter extends KnnVectorsWriter {
             fieldInfo,
             segmentWriteState.segmentInfo.name,
             mergeState.intraMergeTaskExecutor);
-    writeField(fieldInfo, ravv, pqVectors, graphNodeIdToDocMap, graph);
+    writeField(fieldInfo, ravv, pqVectors, null, graphNodeIdToDocMap, graph);
   }
 
   private static final class SubFloatVectors extends DocIDMerger.Sub {
