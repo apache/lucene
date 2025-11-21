@@ -220,6 +220,9 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
 
     @Override
     public Comparator<LeafReaderContext> getLeafReaderComparator() {
+      if (scoreMode.isExhaustive()) {
+        return null;
+      }
       return this.sort.getLeafReaderComparator();
     }
   }

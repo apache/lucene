@@ -799,14 +799,12 @@ public class IndexSearcher {
 
     collector.setWeight(weight);
 
-    if (collector.scoreMode().isExhaustive() == false) {
-      Comparator<LeafReaderContext> leafComparator = collector.getLeafReaderComparator();
-      if (leafComparator != null) {
-        // copy the partitions list so that the original doesn't get mutated by sorting
-        LeafReaderContextPartition[] sortedPartitions = partitions.clone();
-        Arrays.sort(sortedPartitions, (o1, o2) -> leafComparator.compare(o1.ctx, o2.ctx));
-        partitions = sortedPartitions;
-      }
+    Comparator<LeafReaderContext> leafComparator = collector.getLeafReaderComparator();
+    if (leafComparator != null) {
+      // copy the partitions list so that the original doesn't get mutated by sorting
+      LeafReaderContextPartition[] sortedPartitions = partitions.clone();
+      Arrays.sort(sortedPartitions, (o1, o2) -> leafComparator.compare(o1.ctx, o2.ctx));
+      partitions = sortedPartitions;
     }
 
     for (LeafReaderContextPartition partition : partitions) { // search each subreader partition

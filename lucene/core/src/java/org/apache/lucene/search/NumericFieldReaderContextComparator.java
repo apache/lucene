@@ -27,6 +27,10 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PointValues;
 
+/**
+ * Given a sort field, compares segments by the range of values in that field such that documents in
+ * better comparing segments are more likely to appear higher in search results.
+ */
 class NumericFieldReaderContextComparator implements Comparator<LeafReaderContext> {
 
   private final Map<Integer, Long> cachedSortValues = new HashMap<>();
@@ -35,7 +39,7 @@ class NumericFieldReaderContextComparator implements Comparator<LeafReaderContex
   private final Long missingValue;
   private final ToLongFunction<byte[]> pointDecoder;
 
-  public NumericFieldReaderContextComparator(
+  NumericFieldReaderContextComparator(
       String field, Long missingValue, boolean reverse, ToLongFunction<byte[]> pointDecoder) {
     this.field = field;
     this.missingValue = missingValue;
@@ -87,6 +91,8 @@ class NumericFieldReaderContextComparator implements Comparator<LeafReaderContex
         }
       }
     } catch (IOException _) {
+      // We can't rethrow exceptions from inside a Comparator, so we instead
+      // return as if there are no index structures to read values from.
       return reverse ? Long.MAX_VALUE : Long.MIN_VALUE;
     }
     return reverse ? Long.MAX_VALUE : Long.MIN_VALUE;

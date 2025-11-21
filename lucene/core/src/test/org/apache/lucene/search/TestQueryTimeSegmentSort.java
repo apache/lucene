@@ -356,7 +356,7 @@ public class TestQueryTimeSegmentSort extends LuceneTestCase {
 
     @Override
     public Comparator<LeafReaderContext> getLeafReaderComparator() {
-      return sort.getSort()[0].getLeafReaderComparator();
+      return collectAll ? null : sort.getLeafReaderComparator();
     }
   }
 
