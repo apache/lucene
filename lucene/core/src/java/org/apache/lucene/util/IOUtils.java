@@ -135,6 +135,48 @@ public final class IOUtils {
     }
   }
 
+    /**
+     * Closes all given <code>Closeable</code>s, suppressing all thrown Throwables in {@code ex}. Some
+     * of the <code>
+     * Closeable</code>s may be null, they are ignored.
+     *
+     * @param objects objects to call <code>close()</code> on
+     */
+    public static void closeWhileSuppressingExceptions(Throwable ex, Closeable... objects) {
+        closeWhileSuppressingExceptions(ex, Arrays.asList(objects));
+    }
+
+    /**
+     * Closes all given <code>Closeable</code>s, suppressing all thrown Throwables in {@code ex}. Even
+     * if a {@link Error} is thrown all given closeable are closed.
+     *
+     * @see #closeWhileHandlingException(Closeable...)
+     */
+    public static void closeWhileSuppressingExceptions(
+            Throwable ex, Iterable<? extends Closeable> objects) {
+        Error firstError = ex instanceof Error err ? err : null;
+
+        for (Closeable object : objects) {
+            try {
+                if (object != null) {
+                    object.close();
+                }
+            } catch (Throwable e) {
+                if (firstError == null && e instanceof Error err) {
+                    // don't try and suppress it - this Error should be the thing that is thrown
+                    firstError = err;
+                    firstError.addSuppressed(ex);
+                } else {
+                    ex.addSuppressed(e);
+                }
+            }
+        }
+
+        if (firstError != null) {
+            throw firstError;
+        }
+    }
+
   /**
    * Wrapping the given {@link InputStream} in a reader using a {@link CharsetDecoder}. Unlike
    * Java's defaults this reader will throw an exception if your it detects the read charset doesn't
