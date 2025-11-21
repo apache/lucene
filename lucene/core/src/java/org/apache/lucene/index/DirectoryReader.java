@@ -65,7 +65,7 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
    * Returns a IndexReader reading the index in the given Directory
    *
    * @param directory the index directory
-   * @param executorService an executor service for processing the creation of segment readers
+   * @param executorService used to open segment readers in parallel
    * @throws IOException if there is a low-level IO error
    */
   public static DirectoryReader open(final Directory directory, ExecutorService executorService)
@@ -100,8 +100,7 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
    *     leafSorter} should sort leaves according to this sort criteria. Providing leafSorter allows
    *     to speed up this particular type of sort queries by early terminating while iterating
    *     through segments and segments' documents.
-   * @param executorService provies an executor service that will be utilized to intialize segment
-   *     readers. Providing an executor is useful to parallelize
+   * @param executorService used to open segment readers in parallel
    * @throws IOException if there is a low-level IO error
    */
   public static DirectoryReader open(
@@ -159,7 +158,7 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
    * Expert: returns an IndexReader reading the index in the given {@link IndexCommit}.
    *
    * @param commit the commit point to open
-   * @param executorService executor provided for intra-open parallelization
+   * @param executorService used to open segment readers in parallel
    * @throws IOException if there is a low-level IO error
    */
   public static DirectoryReader open(final IndexCommit commit, ExecutorService executorService)
@@ -208,7 +207,7 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
    *     leafSorter} should sort leaves according to this sort criteria. Providing leafSorter allows
    *     to speed up this particular type of sort queries by early terminating while iterating
    *     through segments and segments' documents
-   * @param executorService executor provided for intra-open parallelization
+   * @param executorService used to open segment readers in parallel
    * @throws IOException if there is a low-level IO error
    */
   public static DirectoryReader open(
@@ -285,7 +284,7 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
 
   /**
    * If the IndexCommit differs from what the provided reader is searching, open and return a new
-   * reader; else, return null. Executor service provides intra-open concurrency.
+   * reader; else, return null. Executor service used to open segment readers in parallel.
    *
    * @see #openIfChanged(DirectoryReader)
    */
@@ -373,7 +372,7 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
    * @return DirectoryReader that covers entire index plus all changes made so far by this
    *     IndexWriter instance, or null if there are no new changes
    * @param writer The IndexWriter to open from
-   * @param executorService Provides intra-open concurrency
+   * @param executorService used to open segment readers in parallel
    * @throws IOException if there is a low-level IO error
    * @lucene.experimental
    */
@@ -415,7 +414,7 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
    *     so that they will be applied in the future. Applying deletes can be costly, so if your app
    *     can tolerate deleted documents being returned you might gain some performance by passing
    *     false.
-   * @param executorService Provides intra-open concurrency
+   * @param executorService used to open segment readers in parallel
    * @throws IOException if there is a low-level IO error
    * @lucene.experimental
    */
@@ -602,7 +601,7 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
   /**
    * Implement this method to support {@link #openIfChanged(DirectoryReader,IndexWriter,boolean)}.
    * If this reader does not support reopen from {@link IndexWriter}, throw {@link
-   * UnsupportedOperationException}. ExecutorService provides intra-opening concurrency.
+   * UnsupportedOperationException}. ExecutorService used to open segment readers in parallel.
    *
    * @throws IOException if there is a low-level IO error
    * @return null if there are no changes; else, a new DirectoryReader instance.

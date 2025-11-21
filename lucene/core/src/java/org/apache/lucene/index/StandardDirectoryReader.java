@@ -93,15 +93,13 @@ public final class StandardDirectoryReader extends DirectoryReader {
         }
         SegmentInfos sis =
             SegmentInfos.readCommit(directory, segmentFileName, minSupportedMajorVersion);
-        SegmentReader[] readers = new SegmentReader[sis.size()];
+        SegmentReader[] readers = createSegmentReaders(sis, null, executor);
         try {
-          readers = createSegmentReaders(sis, null, executor);
           // This may throw CorruptIndexException if there are too many docs, so
           // it must be inside try clause so we close readers in that case:
           return new StandardDirectoryReader(
               directory, readers, null, sis, leafSorter, false, false);
         } catch (Throwable t) {
-          // If createSegmentReaders throws the exception this will be a no-op
           IOUtils.closeWhileSuppressingExceptions(t, readers);
           throw t;
         }
@@ -291,8 +289,6 @@ public final class StandardDirectoryReader extends DirectoryReader {
   private static SegmentReader createOrReuseSegmentReader(
       SegmentCommitInfo commitInfo, SegmentReader oldReader, int indexCreatedVersionMajor)
       throws IOException {
-    // Make a best effort to detect when the app illegally "rm -rf" their
-    // index while a reader was open, and then called openIfChanged:
 
     SegmentReader newReader;
     if (oldReader == null
