@@ -267,16 +267,17 @@ public class JVectorReader extends KnnVectorsReader {
       final long graphLength = vectorIndexFieldMetadata.vectorIndexLength;
       assert graphLength > 0 : "Read empty JVector graph";
       this.data = directory.openInput(vectorIndexFieldDataFileName, state.context);
-      // For the slice we would like to include the Lucene header, unfortunately, we have to do
-      // this because jVector use global offsets instead of local offsets
-      final long sliceLength =
-          graphLength
-              + CodecUtil.indexHeaderLength(
-                  JVectorFormat.VECTOR_INDEX_CODEC_NAME, state.segmentSuffix);
+      CodecUtil.checkIndexHeader(
+          this.data,
+          JVectorFormat.VECTOR_INDEX_CODEC_NAME,
+          JVectorFormat.VERSION_START,
+          JVectorFormat.VERSION_CURRENT,
+          state.segmentInfo.getId(),
+          state.segmentSuffix);
       // Load the graph index from cloned slices of data (no need to close)
       final var indexReaderSupplier =
-          new JVectorRandomAccessReader.Supplier(data.slice("graph", 0, sliceLength));
-      this.index = OnDiskGraphIndex.load(indexReaderSupplier, graphOffset);
+          new JVectorRandomAccessReader.Supplier(data.slice("graph", graphOffset, graphLength));
+      this.index = OnDiskGraphIndex.load(indexReaderSupplier);
 
       // If quantized load the compressed product quantized vectors with their codebooks
       final long pqOffset = vectorIndexFieldMetadata.pqCodebooksAndVectorsOffset;

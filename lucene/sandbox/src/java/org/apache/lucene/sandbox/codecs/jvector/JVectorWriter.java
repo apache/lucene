@@ -325,8 +325,7 @@ public class JVectorWriter extends KnnVectorsWriter {
 
     try (IndexOutput indexOutput =
             segmentWriteState.directory.createOutput(
-                vectorIndexFieldFileName, segmentWriteState.context);
-        final var jVectorIndexWriter = new JVectorIndexWriter(indexOutput)) {
+                vectorIndexFieldFileName, segmentWriteState.context)) {
       // Header for the field data file
       CodecUtil.writeIndexHeader(
           indexOutput,
@@ -334,6 +333,7 @@ public class JVectorWriter extends KnnVectorsWriter {
           JVectorFormat.VERSION_CURRENT,
           segmentWriteState.segmentInfo.getId(),
           segmentWriteState.segmentSuffix);
+      final var jVectorIndexWriter = new JVectorIndexWriter(indexOutput);
       final long startOffset = indexOutput.getFilePointer();
       final var writerBuilder =
           new OnDiskSequentialGraphIndexWriter.Builder(graph, jVectorIndexWriter)
@@ -347,7 +347,7 @@ public class JVectorWriter extends KnnVectorsWriter {
                 FeatureId.INLINE_VECTORS,
                 nodeId -> new InlineVectors.State(randomAccessVectorValues.getVector(nodeId)));
         writer.write(suppliers);
-        final long endGraphOffset = jVectorIndexWriter.position();
+        final long endGraphOffset = indexOutput.getFilePointer();
 
         // If PQ is enabled and we have enough vectors, write the PQ codebooks and compressed
         // vectors
@@ -357,7 +357,7 @@ public class JVectorWriter extends KnnVectorsWriter {
           pqOffset = endGraphOffset;
           // write the compressed vectors and codebooks to disk
           pqVectors.write(jVectorIndexWriter);
-          pqLength = jVectorIndexWriter.position() - endGraphOffset;
+          pqLength = indexOutput.getFilePointer() - endGraphOffset;
         } else {
           pqOffset = 0;
           pqLength = 0;

@@ -27,19 +27,23 @@ import org.apache.lucene.store.IndexOutput;
  */
 public class JVectorIndexWriter implements IndexWriter {
   private final IndexOutput indexOutputDelegate;
+  /// Initial offset of the writer, which will be subtracted from [position()][#position()] to trick
+  /// JVector into using offsets that work for slices used by the readers.
+  private final long offset;
 
   public JVectorIndexWriter(IndexOutput indexOutputDelegate) {
     this.indexOutputDelegate = indexOutputDelegate;
+    this.offset = indexOutputDelegate.getFilePointer();
   }
 
   @Override
   public long position() throws IOException {
-    return indexOutputDelegate.getFilePointer();
+    return indexOutputDelegate.getFilePointer() - offset;
   }
 
   @Override
   public void close() throws IOException {
-    indexOutputDelegate.close();
+    // Let the user close the delegate
   }
 
   @Override
