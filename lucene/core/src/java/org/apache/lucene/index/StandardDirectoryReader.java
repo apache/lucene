@@ -97,12 +97,13 @@ public final class StandardDirectoryReader extends DirectoryReader {
         try {
           // This may throw CorruptIndexException if there are too many docs, so
           // it must be inside try clause so we close readers in that case:
-            return new StandardDirectoryReader(directory, readers, null, sis, leafSorter, false, false);
+          return new StandardDirectoryReader(
+              directory, readers, null, sis, leafSorter, false, false);
 
         } catch (Throwable t) {
-            IOUtils.closeWhileSuppressingExceptions(t, readers);
-            throw t;
-          }
+          IOUtils.closeWhileSuppressingExceptions(t, readers);
+          throw t;
+        }
       }
     }.run(commit);
   }
@@ -363,17 +364,17 @@ public final class StandardDirectoryReader extends DirectoryReader {
   }
 
   // TODO: move somewhere shared if it's useful elsewhere
-    private static void decRefWhileSuppressingException(Throwable t, SegmentReader[] readers) {
-        for (SegmentReader reader : readers) {
-            if (reader != null) {
-                try {
-                    reader.decRef();
-                } catch (Throwable rt) {
-                    t.addSuppressed(rt);
-                }
-            }
+  private static void decRefWhileSuppressingException(Throwable t, SegmentReader[] readers) {
+    for (SegmentReader reader : readers) {
+      if (reader != null) {
+        try {
+          reader.decRef();
+        } catch (Throwable rt) {
+          t.addSuppressed(rt);
         }
+      }
     }
+  }
 
   @Override
   public String toString() {
