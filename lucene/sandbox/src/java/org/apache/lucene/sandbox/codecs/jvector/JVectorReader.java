@@ -255,6 +255,7 @@ public class JVectorReader extends KnnVectorsReader {
     private final long pqCodebooksAndVectorsOffset;
     private final String vectorIndexFieldDataFileName;
     private final GraphNodeIdToDocMap graphNodeIdToDocMap;
+    private final IndexInput data;
     private final ReaderSupplier indexReaderSupplier;
     private final ReaderSupplier pqCodebooksReaderSupplier;
     private final OnDiskGraphIndex index;
@@ -275,6 +276,7 @@ public class JVectorReader extends KnnVectorsReader {
           baseDataFileName + "_" + fieldInfo.name + "." + JVectorFormat.VECTOR_INDEX_EXTENSION;
 
       assert vectorIndexLength > 0 : "Read empty JVector graph";
+      this.data = directory.openInput(vectorIndexFieldDataFileName, state.context);
       // For the slice we would like to include the Lucene header, unfortunately, we have to do
       // this because jVector use global offsets instead of local offsets
       final long sliceLength =
@@ -283,8 +285,7 @@ public class JVectorReader extends KnnVectorsReader {
                   JVectorFormat.VECTOR_INDEX_CODEC_NAME, state.segmentSuffix);
       // Load the graph index
       this.indexReaderSupplier =
-          new JVectorRandomAccessReader.Supplier(
-              directory.openInput(vectorIndexFieldDataFileName, state.context), 0, sliceLength);
+          new JVectorRandomAccessReader.Supplier(data.slice("graph", 0, sliceLength));
       this.index = OnDiskGraphIndex.load(indexReaderSupplier, vectorIndexOffset);
 
       // If quantized load the compressed product quantized vectors with their codebooks
@@ -296,9 +297,7 @@ public class JVectorReader extends KnnVectorsReader {
         }
         this.pqCodebooksReaderSupplier =
             new JVectorRandomAccessReader.Supplier(
-                directory.openInput(vectorIndexFieldDataFileName, IOContext.READONCE),
-                pqCodebooksAndVectorsOffset,
-                pqCodebooksAndVectorsLength);
+              data.slice("pq", pqCodebooksAndVectorsOffset, pqCodebooksAndVectorsLength));
         try (final var randomAccessReader = pqCodebooksReaderSupplier.get()) {
           this.pqVectors = PQVectors.load(randomAccessReader);
         }
@@ -310,6 +309,7 @@ public class JVectorReader extends KnnVectorsReader {
 
     @Override
     public void close() throws IOException {
+      IOUtils.close(data);
       if (indexReaderSupplier != null) {
         IOUtils.close(indexReaderSupplier::close);
       }

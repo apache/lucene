@@ -136,53 +136,20 @@ public class JVectorRandomAccessReader implements RandomAccessReader {
    * io.github.jbellis.jvector.graph.disk.OnDiskGraphIndex#load(ReaderSupplier, long)}
    */
   public static class Supplier implements ReaderSupplier {
-    private final AtomicInteger readerCount = new AtomicInteger(0);
-    private final IndexInput currentInput;
-    private final long sliceStartOffset;
-    private final long sliceLength;
-    private final ConcurrentHashMap<Integer, RandomAccessReader> readers =
-        new ConcurrentHashMap<>();
+    private final IndexInput input;
 
-    public Supplier(IndexInput indexInput) throws IOException {
-      this(
-          indexInput,
-          indexInput.getFilePointer(),
-          indexInput.length() - indexInput.getFilePointer());
-    }
-
-    public Supplier(IndexInput indexInput, long sliceStartOffset, long sliceLength)
-        throws IOException {
-      this.currentInput = indexInput;
-      this.sliceStartOffset = sliceStartOffset;
-      this.sliceLength = sliceLength;
+    public Supplier(IndexInput input) {
+      this.input = input;
     }
 
     @Override
-    public RandomAccessReader get() throws IOException {
-      synchronized (this) {
-        final IndexInput input =
-            currentInput
-                .slice("Input Slice for the jVector graph or PQ", sliceStartOffset, sliceLength)
-                .clone();
-
-        var reader = new JVectorRandomAccessReader(input);
-        int readerId = readerCount.getAndIncrement();
-        readers.put(readerId, reader);
-        return reader;
-      }
+    public synchronized RandomAccessReader get() throws IOException {
+      return new JVectorRandomAccessReader(input.clone());
     }
 
     @Override
     public void close() throws IOException {
-      // Close source of all cloned inputs
-      IOUtils.closeWhileHandlingException(currentInput);
-
-      // Close all readers
-      for (RandomAccessReader reader : readers.values()) {
-        IOUtils.closeWhileHandlingException(reader::close);
-      }
-      readers.clear();
-      readerCount.set(0);
+      // Cloned inputs do not need to be closed
     }
   }
 }
