@@ -247,13 +247,8 @@ public class JVectorWriter extends KnnVectorsWriter {
       }
 
       final GraphNodeIdToDocMap graphNodeIdToDocMap = new GraphNodeIdToDocMap(newDocIds);
-      OnHeapGraphIndex graph =
-          getGraph(
-              buildScoreProvider,
-              randomAccessVectorValues,
-              fieldInfo,
-              segmentWriteState.segmentInfo.name,
-              Runnable::run);
+      final var graph =
+          getGraph(buildScoreProvider, randomAccessVectorValues, fieldInfo, Runnable::run);
       writeField(
           field.fieldInfo,
           randomAccessVectorValues,
@@ -655,12 +650,7 @@ public class JVectorWriter extends KnnVectorsWriter {
     }
     final var graphNodeIdToDocMap = new GraphNodeIdToDocMap(docIds);
     final var graph =
-        getGraph(
-            buildScoreProvider,
-            ravv,
-            fieldInfo,
-            segmentWriteState.segmentInfo.name,
-            mergeState.intraMergeTaskExecutor);
+        getGraph(buildScoreProvider, ravv, fieldInfo, mergeState.intraMergeTaskExecutor);
     writeField(fieldInfo, ravv, pqVectors, null, graphNodeIdToDocMap, graph);
   }
 
@@ -777,7 +767,6 @@ public class JVectorWriter extends KnnVectorsWriter {
       BuildScoreProvider buildScoreProvider,
       RandomAccessVectorValues randomAccessVectorValues,
       FieldInfo fieldInfo,
-      String segmentName,
       Executor executor) {
     assert randomAccessVectorValues.size() > 0 : "Cannot build empty graph";
     final GraphIndexBuilder graphIndexBuilder =
