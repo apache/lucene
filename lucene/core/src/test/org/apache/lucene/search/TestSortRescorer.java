@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.stream.Stream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -213,11 +214,8 @@ public class TestSortRescorer extends LuceneTestCase {
           }
         });
 
-    boolean fail = false;
-    for (int i = 0; i < numHits; i++) {
-      fail |= expected[i].intValue() != hits2.scoreDocs[i].doc;
-    }
-    assertFalse(fail);
+    Integer[] rescored = Stream.of(hits2.scoreDocs).map(d -> d.doc).toArray(Integer[]::new);
+    assertArrayEquals(expected, rescored);
 
     r.close();
     dir.close();
