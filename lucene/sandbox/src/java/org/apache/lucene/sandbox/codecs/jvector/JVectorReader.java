@@ -96,7 +96,7 @@ public class JVectorReader extends KnnVectorsReader {
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     final FieldEntry fieldEntry = fieldEntryMap.get(field);
-    if (fieldEntry == null || fieldEntry.index == null) {
+    if (fieldEntry == null) {
       return new FloatVectorValues() {
         @Override
         public float[] vectorValue(int ord) throws IOException {
@@ -110,7 +110,7 @@ public class JVectorReader extends KnnVectorsReader {
 
         @Override
         public int dimension() {
-          return fieldEntry.vectorDimension;
+          return 0;
         }
 
         @Override
@@ -146,11 +146,6 @@ public class JVectorReader extends KnnVectorsReader {
     }
 
     return Optional.of(fieldEntry.pqVectors.getCompressor());
-  }
-
-  public boolean hasIndex(String field) {
-    final var fieldEntry = fieldEntryMap.get(field);
-    return fieldEntry != null && fieldEntry.index != null;
   }
 
   @Override
