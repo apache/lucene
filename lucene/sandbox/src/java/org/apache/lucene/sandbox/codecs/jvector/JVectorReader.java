@@ -31,7 +31,9 @@ import io.github.jbellis.jvector.vector.types.VectorFloat;
 import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.lucene.codecs.CodecUtil;
@@ -49,48 +51,64 @@ public class JVectorReader extends KnnVectorsReader {
   private static final VectorTypeSupport VECTOR_TYPE_SUPPORT =
       VectorizationProvider.getInstance().getVectorTypeSupport();
 
-  private final String baseDataFileName;
+  private final IndexInput data;
   // Maps field name to field entries
-  private final Map<String, FieldEntry> fieldEntryMap = new HashMap<>(1);
-  private final Directory directory;
-  private final SegmentReadState state;
+  private final Map<String, FieldEntry> fieldEntryMap;
 
   public JVectorReader(SegmentReadState state) throws IOException {
-    this.state = state;
-    this.baseDataFileName = state.segmentInfo.name + "_" + state.segmentSuffix;
+    final List<JVectorWriter.VectorIndexFieldMetadata> fieldMetaList = new ArrayList<>();
     final String metaFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, JVectorFormat.META_EXTENSION);
-    this.directory = state.directory;
-    boolean success = false;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
-      CodecUtil.checkIndexHeader(
-          meta,
-          JVectorFormat.META_CODEC_NAME,
-          JVectorFormat.VERSION_START,
-          JVectorFormat.VERSION_CURRENT,
-          state.segmentInfo.getId(),
-          state.segmentSuffix);
-      readFields(meta, state.fieldInfos);
-      CodecUtil.checkFooter(meta);
+      Throwable priorE = null;
+      try {
+        CodecUtil.checkIndexHeader(
+            meta,
+            JVectorFormat.META_CODEC_NAME,
+            JVectorFormat.VERSION_START,
+            JVectorFormat.VERSION_CURRENT,
+            state.segmentInfo.getId(),
+            state.segmentSuffix);
 
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this);
+        JVectorWriter.VectorIndexFieldMetadata fieldMeta;
+        while ((fieldMeta = parseNextField(meta, state.fieldInfos)) != null) {
+          fieldMetaList.add(fieldMeta);
+        }
+      } catch (Throwable t) {
+        priorE = t;
+      } finally {
+        CodecUtil.checkFooter(meta, priorE);
+      }
+
+      final String dataFileName =
+          IndexFileNames.segmentFileName(
+              state.segmentInfo.name, state.segmentSuffix, JVectorFormat.VECTOR_INDEX_EXTENSION);
+      this.data =
+          state.directory.openInput(
+              dataFileName, state.context.withHints(FileTypeHint.DATA, DataAccessHint.RANDOM));
+
+      CodecUtil.checkHeader(
+          data,
+          JVectorFormat.VECTOR_INDEX_CODEC_NAME,
+          JVectorFormat.VERSION_START,
+          JVectorFormat.VERSION_CURRENT);
+      CodecUtil.retrieveChecksum(data);
+
+      this.fieldEntryMap = new HashMap<>(fieldMetaList.size());
+      for (var fieldMeta : fieldMetaList) {
+        final FieldInfo fieldInfo = state.fieldInfos.fieldInfo(fieldMeta.fieldNumber);
+        if (fieldEntryMap.containsKey(fieldInfo.name)) {
+          throw new CorruptIndexException("Duplicate field: " + fieldInfo.name, meta);
+        }
+        fieldEntryMap.put(fieldInfo.name, new FieldEntry(data, fieldMeta));
       }
     }
   }
 
   @Override
   public void checkIntegrity() throws IOException {
-    for (FieldEntry fieldEntry : fieldEntryMap.values()) {
-      // Verify the vector index file
-      try (var indexInput =
-          state.directory.openInput(fieldEntry.vectorIndexFieldDataFileName, IOContext.READONCE)) {
-        CodecUtil.checksumEntireFile(indexInput);
-      }
-    }
+    CodecUtil.checksumEntireFile(data);
   }
 
   @Override
@@ -226,47 +244,39 @@ public class JVectorReader extends KnnVectorsReader {
       IOUtils.close(fieldEntry);
     }
     fieldEntryMap.clear();
+    IOUtils.close(data);
   }
 
-  private void readFields(ChecksumIndexInput meta, FieldInfos fieldInfos) throws IOException {
-    for (int fieldNumber = meta.readInt(); fieldNumber != -1; fieldNumber = meta.readInt()) {
-      final FieldInfo fieldInfo = fieldInfos.fieldInfo(fieldNumber); // read field number
-      JVectorWriter.VectorIndexFieldMetadata vectorIndexFieldMetadata =
-          new JVectorWriter.VectorIndexFieldMetadata(meta);
-      assert fieldInfo.number == vectorIndexFieldMetadata.fieldNumber;
-      fieldEntryMap.put(fieldInfo.name, new FieldEntry(fieldInfo, vectorIndexFieldMetadata));
+  private static JVectorWriter.VectorIndexFieldMetadata parseNextField(
+      IndexInput meta, FieldInfos fieldInfos) throws IOException {
+    final int fieldNumber = meta.readInt();
+    if (fieldNumber == -1) {
+      return null;
     }
+
+    final FieldInfo fieldInfo = fieldInfos.fieldInfo(fieldNumber);
+    if (fieldInfo == null) {
+      throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
+    }
+
+    return new JVectorWriter.VectorIndexFieldMetadata(meta);
   }
 
   class FieldEntry implements Closeable {
     private final VectorSimilarityFunction similarityFunction;
-    private final int vectorDimension;
-    private final String vectorIndexFieldDataFileName;
     private final GraphNodeIdToDocMap graphNodeIdToDocMap;
-    private final IndexInput data;
     private final OnDiskGraphIndex index;
     private final PQVectors pqVectors; // The product quantized vectors with their codebooks
 
     public FieldEntry(
-        FieldInfo fieldInfo, JVectorWriter.VectorIndexFieldMetadata vectorIndexFieldMetadata)
+        IndexInput data, JVectorWriter.VectorIndexFieldMetadata vectorIndexFieldMetadata)
         throws IOException {
       this.similarityFunction = vectorIndexFieldMetadata.vectorSimilarityFunction;
-      this.vectorDimension = vectorIndexFieldMetadata.vectorDimension;
       this.graphNodeIdToDocMap = vectorIndexFieldMetadata.graphNodeIdToDocMap;
-      this.vectorIndexFieldDataFileName =
-          baseDataFileName + "_" + fieldInfo.name + "." + JVectorFormat.VECTOR_INDEX_EXTENSION;
 
       final long graphOffset = vectorIndexFieldMetadata.vectorIndexOffset;
       final long graphLength = vectorIndexFieldMetadata.vectorIndexLength;
       assert graphLength > 0 : "Read empty JVector graph";
-      this.data = directory.openInput(vectorIndexFieldDataFileName, state.context);
-      CodecUtil.checkIndexHeader(
-          this.data,
-          JVectorFormat.VECTOR_INDEX_CODEC_NAME,
-          JVectorFormat.VERSION_START,
-          JVectorFormat.VERSION_CURRENT,
-          state.segmentInfo.getId(),
-          state.segmentSuffix);
       // Load the graph index from cloned slices of data (no need to close)
       final var indexReaderSupplier =
           new JVectorRandomAccessReader.Supplier(data.slice("graph", graphOffset, graphLength));
@@ -291,7 +301,7 @@ public class JVectorReader extends KnnVectorsReader {
 
     @Override
     public void close() throws IOException {
-      IOUtils.close(data);
+      index.close();
     }
   }
 }

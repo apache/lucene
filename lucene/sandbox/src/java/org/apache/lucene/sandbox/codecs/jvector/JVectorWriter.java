@@ -105,8 +105,6 @@ public class JVectorWriter extends KnnVectorsWriter {
 
   private final IndexOutput meta;
   private final IndexOutput data;
-  private final String baseDataFileName;
-  private final SegmentWriteState segmentWriteState;
   private final int maxConn;
   private final int beamWidth;
   private final float degreeOverflow;
@@ -130,7 +128,6 @@ public class JVectorWriter extends KnnVectorsWriter {
       int minimumBatchSizeForQuantization,
       boolean hierarchyEnabled)
       throws IOException {
-    this.segmentWriteState = segmentWriteState;
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
     this.degreeOverflow = degreeOverflow;
@@ -138,8 +135,6 @@ public class JVectorWriter extends KnnVectorsWriter {
     this.numberOfSubspacesPerVectorSupplier = numberOfSubspacesPerVectorSupplier;
     this.minimumBatchSizeForQuantization = minimumBatchSizeForQuantization;
     this.hierarchyEnabled = hierarchyEnabled;
-    this.baseDataFileName =
-        segmentWriteState.segmentInfo.name + "_" + segmentWriteState.segmentSuffix;
 
     try {
       final String metaFileName =
@@ -307,22 +302,8 @@ public class JVectorWriter extends KnnVectorsWriter {
       OrdinalMapper ordinalMapper,
       GraphNodeIdToDocMap graphNodeIdToDocMap)
       throws IOException {
-    // field data file, which contains the graph
-    final String vectorIndexFieldFileName =
-        baseDataFileName + "_" + fieldInfo.name + "." + JVectorFormat.VECTOR_INDEX_EXTENSION;
-
-    try (IndexOutput indexOutput =
-            segmentWriteState.directory.createOutput(
-                vectorIndexFieldFileName, segmentWriteState.context)) {
-      // Header for the field data file
-      CodecUtil.writeIndexHeader(
-          indexOutput,
-          JVectorFormat.VECTOR_INDEX_CODEC_NAME,
-          JVectorFormat.VERSION_CURRENT,
-          segmentWriteState.segmentInfo.getId(),
-          segmentWriteState.segmentSuffix);
-      final var jVectorIndexWriter = new JVectorIndexWriter(indexOutput);
-      final long startOffset = indexOutput.getFilePointer();
+    try (final var jVectorIndexWriter = new JVectorIndexWriter(data)) {
+      final long startOffset = data.getFilePointer();
       final var writerBuilder =
           new OnDiskSequentialGraphIndexWriter.Builder(graph, jVectorIndexWriter)
               .with(new InlineVectors(randomAccessVectorValues.dimension()));
@@ -335,7 +316,7 @@ public class JVectorWriter extends KnnVectorsWriter {
                 FeatureId.INLINE_VECTORS,
                 nodeId -> new InlineVectors.State(randomAccessVectorValues.getVector(nodeId)));
         writer.write(suppliers);
-        final long endGraphOffset = indexOutput.getFilePointer();
+        final long endGraphOffset = data.getFilePointer();
 
         // If PQ is enabled and we have enough vectors, write the PQ codebooks and compressed
         // vectors
@@ -345,12 +326,11 @@ public class JVectorWriter extends KnnVectorsWriter {
           pqOffset = endGraphOffset;
           // write the compressed vectors and codebooks to disk
           pqVectors.write(jVectorIndexWriter);
-          pqLength = indexOutput.getFilePointer() - endGraphOffset;
+          pqLength = data.getFilePointer() - endGraphOffset;
         } else {
           pqOffset = 0;
           pqLength = 0;
         }
-        CodecUtil.writeFooter(indexOutput);
 
         return new VectorIndexFieldMetadata(
             fieldInfo.number,
