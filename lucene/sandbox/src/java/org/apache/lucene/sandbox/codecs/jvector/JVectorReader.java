@@ -257,7 +257,6 @@ public class JVectorReader extends KnnVectorsReader {
     private final GraphNodeIdToDocMap graphNodeIdToDocMap;
     private final IndexInput data;
     private final ReaderSupplier indexReaderSupplier;
-    private final ReaderSupplier pqCodebooksReaderSupplier;
     private final OnDiskGraphIndex index;
     private final PQVectors pqVectors; // The product quantized vectors with their codebooks
 
@@ -295,14 +294,12 @@ public class JVectorReader extends KnnVectorsReader {
           throw new IllegalArgumentException(
               "pqCodebooksAndVectorsOffset must be greater than vectorIndexOffset");
         }
-        this.pqCodebooksReaderSupplier =
-            new JVectorRandomAccessReader.Supplier(
-              data.slice("pq", pqCodebooksAndVectorsOffset, pqCodebooksAndVectorsLength));
-        try (final var randomAccessReader = pqCodebooksReaderSupplier.get()) {
+        final var pqSlice =
+            data.slice("pq", pqCodebooksAndVectorsOffset, pqCodebooksAndVectorsLength);
+        try (final var randomAccessReader = new JVectorRandomAccessReader(pqSlice)) {
           this.pqVectors = PQVectors.load(randomAccessReader);
         }
       } else {
-        this.pqCodebooksReaderSupplier = null;
         this.pqVectors = null;
       }
     }
@@ -312,9 +309,6 @@ public class JVectorReader extends KnnVectorsReader {
       IOUtils.close(data);
       if (indexReaderSupplier != null) {
         IOUtils.close(indexReaderSupplier::close);
-      }
-      if (pqCodebooksReaderSupplier != null) {
-        IOUtils.close(pqCodebooksReaderSupplier::close);
       }
     }
   }
