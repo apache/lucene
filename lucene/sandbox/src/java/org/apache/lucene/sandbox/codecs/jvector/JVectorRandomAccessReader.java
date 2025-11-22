@@ -23,10 +23,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.IOUtils;
 
 /// Implements JVector reader capabilities over a Lucene IndexInput
 public class JVectorRandomAccessReader implements RandomAccessReader {
