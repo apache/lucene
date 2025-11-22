@@ -104,8 +104,7 @@ public class JVectorWriter extends KnnVectorsWriter {
   private final List<FieldWriter> fields = new ArrayList<>();
 
   private final IndexOutput meta;
-  private final IndexOutput vectorIndex;
-  private final String indexDataFileName;
+  private final IndexOutput data;
   private final String baseDataFileName;
   private final SegmentWriteState segmentWriteState;
   private final int maxConn;
@@ -139,25 +138,16 @@ public class JVectorWriter extends KnnVectorsWriter {
     this.numberOfSubspacesPerVectorSupplier = numberOfSubspacesPerVectorSupplier;
     this.minimumBatchSizeForQuantization = minimumBatchSizeForQuantization;
     this.hierarchyEnabled = hierarchyEnabled;
-    String metaFileName =
-        IndexFileNames.segmentFileName(
-            segmentWriteState.segmentInfo.name,
-            segmentWriteState.segmentSuffix,
-            JVectorFormat.META_EXTENSION);
-
-    this.indexDataFileName =
-        IndexFileNames.segmentFileName(
-            segmentWriteState.segmentInfo.name,
-            segmentWriteState.segmentSuffix,
-            JVectorFormat.VECTOR_INDEX_EXTENSION);
     this.baseDataFileName =
         segmentWriteState.segmentInfo.name + "_" + segmentWriteState.segmentSuffix;
 
-    boolean success = false;
     try {
+      final String metaFileName =
+          IndexFileNames.segmentFileName(
+              segmentWriteState.segmentInfo.name,
+              segmentWriteState.segmentSuffix,
+              JVectorFormat.META_EXTENSION);
       meta = segmentWriteState.directory.createOutput(metaFileName, segmentWriteState.context);
-      vectorIndex =
-          segmentWriteState.directory.createOutput(indexDataFileName, segmentWriteState.context);
       CodecUtil.writeIndexHeader(
           meta,
           JVectorFormat.META_CODEC_NAME,
@@ -165,18 +155,21 @@ public class JVectorWriter extends KnnVectorsWriter {
           segmentWriteState.segmentInfo.getId(),
           segmentWriteState.segmentSuffix);
 
+      final String dataFileName =
+          IndexFileNames.segmentFileName(
+              segmentWriteState.segmentInfo.name,
+              segmentWriteState.segmentSuffix,
+              JVectorFormat.VECTOR_INDEX_EXTENSION);
+      data = segmentWriteState.directory.createOutput(dataFileName, segmentWriteState.context);
       CodecUtil.writeIndexHeader(
-          vectorIndex,
+          data,
           JVectorFormat.VECTOR_INDEX_CODEC_NAME,
           JVectorFormat.VERSION_CURRENT,
           segmentWriteState.segmentInfo.getId(),
           segmentWriteState.segmentSuffix);
-
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -464,20 +457,15 @@ public class JVectorWriter extends KnnVectorsWriter {
     }
     finished = true;
 
-    if (meta != null) {
-      // write end of fields marker
-      meta.writeInt(-1);
-      CodecUtil.writeFooter(meta);
-    }
-
-    if (vectorIndex != null) {
-      CodecUtil.writeFooter(vectorIndex);
-    }
+    // write end of fields marker
+    meta.writeInt(-1);
+    CodecUtil.writeFooter(meta);
+    CodecUtil.writeFooter(data);
   }
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(meta, vectorIndex);
+    IOUtils.close(meta, data);
   }
 
   @Override
