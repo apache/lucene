@@ -17,7 +17,6 @@
 
 package org.apache.lucene.sandbox.codecs.jvector;
 
-import io.github.jbellis.jvector.disk.ReaderSupplier;
 import io.github.jbellis.jvector.graph.GraphSearcher;
 import io.github.jbellis.jvector.graph.SearchResult;
 import io.github.jbellis.jvector.graph.disk.OnDiskGraphIndex;
@@ -256,7 +255,6 @@ public class JVectorReader extends KnnVectorsReader {
     private final String vectorIndexFieldDataFileName;
     private final GraphNodeIdToDocMap graphNodeIdToDocMap;
     private final IndexInput data;
-    private final ReaderSupplier indexReaderSupplier;
     private final OnDiskGraphIndex index;
     private final PQVectors pqVectors; // The product quantized vectors with their codebooks
 
@@ -282,8 +280,8 @@ public class JVectorReader extends KnnVectorsReader {
           vectorIndexLength
               + CodecUtil.indexHeaderLength(
                   JVectorFormat.VECTOR_INDEX_CODEC_NAME, state.segmentSuffix);
-      // Load the graph index
-      this.indexReaderSupplier =
+      // Load the graph index from cloned slices of data (no need to close)
+      final var indexReaderSupplier =
           new JVectorRandomAccessReader.Supplier(data.slice("graph", 0, sliceLength));
       this.index = OnDiskGraphIndex.load(indexReaderSupplier, vectorIndexOffset);
 
@@ -307,9 +305,6 @@ public class JVectorReader extends KnnVectorsReader {
     @Override
     public void close() throws IOException {
       IOUtils.close(data);
-      if (indexReaderSupplier != null) {
-        IOUtils.close(indexReaderSupplier::close);
-      }
     }
   }
 }
