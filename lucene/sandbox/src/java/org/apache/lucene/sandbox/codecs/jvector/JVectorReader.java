@@ -248,10 +248,6 @@ public class JVectorReader extends KnnVectorsReader {
   class FieldEntry implements Closeable {
     private final VectorSimilarityFunction similarityFunction;
     private final int vectorDimension;
-    private final long vectorIndexOffset;
-    private final long vectorIndexLength;
-    private final long pqCodebooksAndVectorsLength;
-    private final long pqCodebooksAndVectorsOffset;
     private final String vectorIndexFieldDataFileName;
     private final GraphNodeIdToDocMap graphNodeIdToDocMap;
     private final IndexInput data;
@@ -263,37 +259,34 @@ public class JVectorReader extends KnnVectorsReader {
         throws IOException {
       this.similarityFunction = vectorIndexFieldMetadata.vectorSimilarityFunction;
       this.vectorDimension = vectorIndexFieldMetadata.vectorDimension;
-      this.vectorIndexOffset = vectorIndexFieldMetadata.vectorIndexOffset;
-      this.vectorIndexLength = vectorIndexFieldMetadata.vectorIndexLength;
-      this.pqCodebooksAndVectorsLength = vectorIndexFieldMetadata.pqCodebooksAndVectorsLength;
-      this.pqCodebooksAndVectorsOffset = vectorIndexFieldMetadata.pqCodebooksAndVectorsOffset;
       this.graphNodeIdToDocMap = vectorIndexFieldMetadata.graphNodeIdToDocMap;
-
       this.vectorIndexFieldDataFileName =
           baseDataFileName + "_" + fieldInfo.name + "." + JVectorFormat.VECTOR_INDEX_EXTENSION;
 
-      assert vectorIndexLength > 0 : "Read empty JVector graph";
+      final long graphOffset = vectorIndexFieldMetadata.vectorIndexOffset;
+      final long graphLength = vectorIndexFieldMetadata.vectorIndexLength;
+      assert graphLength > 0 : "Read empty JVector graph";
       this.data = directory.openInput(vectorIndexFieldDataFileName, state.context);
       // For the slice we would like to include the Lucene header, unfortunately, we have to do
       // this because jVector use global offsets instead of local offsets
       final long sliceLength =
-          vectorIndexLength
+          graphLength
               + CodecUtil.indexHeaderLength(
                   JVectorFormat.VECTOR_INDEX_CODEC_NAME, state.segmentSuffix);
       // Load the graph index from cloned slices of data (no need to close)
       final var indexReaderSupplier =
           new JVectorRandomAccessReader.Supplier(data.slice("graph", 0, sliceLength));
-      this.index = OnDiskGraphIndex.load(indexReaderSupplier, vectorIndexOffset);
+      this.index = OnDiskGraphIndex.load(indexReaderSupplier, graphOffset);
 
       // If quantized load the compressed product quantized vectors with their codebooks
-      if (pqCodebooksAndVectorsLength > 0) {
-        assert pqCodebooksAndVectorsOffset > 0;
-        if (pqCodebooksAndVectorsOffset < vectorIndexOffset) {
-          throw new IllegalArgumentException(
-              "pqCodebooksAndVectorsOffset must be greater than vectorIndexOffset");
+      final long pqOffset = vectorIndexFieldMetadata.pqCodebooksAndVectorsOffset;
+      final long pqLength = vectorIndexFieldMetadata.pqCodebooksAndVectorsLength;
+      if (pqLength > 0) {
+        assert pqOffset > 0;
+        if (pqOffset < graphOffset) {
+          throw new IllegalArgumentException("pqOffset must be greater than vectorIndexOffset");
         }
-        final var pqSlice =
-            data.slice("pq", pqCodebooksAndVectorsOffset, pqCodebooksAndVectorsLength);
+        final var pqSlice = data.slice("pq", pqOffset, pqLength);
         try (final var randomAccessReader = new JVectorRandomAccessReader(pqSlice)) {
           this.pqVectors = PQVectors.load(randomAccessReader);
         }
