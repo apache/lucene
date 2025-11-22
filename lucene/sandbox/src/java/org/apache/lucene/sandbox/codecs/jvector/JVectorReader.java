@@ -49,7 +49,6 @@ public class JVectorReader extends KnnVectorsReader {
   private static final VectorTypeSupport VECTOR_TYPE_SUPPORT =
       VectorizationProvider.getInstance().getVectorTypeSupport();
 
-  private final FieldInfos fieldInfos;
   private final String baseDataFileName;
   // Maps field name to field entries
   private final Map<String, FieldEntry> fieldEntryMap = new HashMap<>(1);
@@ -58,7 +57,6 @@ public class JVectorReader extends KnnVectorsReader {
 
   public JVectorReader(SegmentReadState state) throws IOException {
     this.state = state;
-    this.fieldInfos = state.fieldInfos;
     this.baseDataFileName = state.segmentInfo.name + "_" + state.segmentSuffix;
     final String metaFileName =
         IndexFileNames.segmentFileName(
@@ -73,7 +71,7 @@ public class JVectorReader extends KnnVectorsReader {
           JVectorFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
-      readFields(meta);
+      readFields(meta, state.fieldInfos);
       CodecUtil.checkFooter(meta);
 
       success = true;
@@ -235,7 +233,7 @@ public class JVectorReader extends KnnVectorsReader {
     fieldEntryMap.clear();
   }
 
-  private void readFields(ChecksumIndexInput meta) throws IOException {
+  private void readFields(ChecksumIndexInput meta, FieldInfos fieldInfos) throws IOException {
     for (int fieldNumber = meta.readInt(); fieldNumber != -1; fieldNumber = meta.readInt()) {
       final FieldInfo fieldInfo = fieldInfos.fieldInfo(fieldNumber); // read field number
       JVectorWriter.VectorIndexFieldMetadata vectorIndexFieldMetadata =
