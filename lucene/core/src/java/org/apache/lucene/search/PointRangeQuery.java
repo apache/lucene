@@ -60,6 +60,16 @@ public abstract class PointRangeQuery extends Query {
   final byte[] upperPoint;
   final ByteArrayComparator comparator;
 
+  /**
+   * Expert: create a multidimensional range query for point values.
+   *
+   * @param field field name. must not be {@code null}.
+   * @param lowerPoint lower portion of the range (inclusive).
+   * @param upperPoint upper portion of the range (inclusive).
+   * @param numDims number of dimensions.
+   * @throws IllegalArgumentException if {@code field} is null, or if {@code lowerValue.length !=
+   *     upperValue.length}
+   */
   protected PointRangeQuery(String field, byte[] lowerPoint, byte[] upperPoint, int numDims) {
     checkArgs(field, lowerPoint, upperPoint);
     this.field = field;
@@ -88,6 +98,12 @@ public abstract class PointRangeQuery extends Query {
     this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
   }
 
+  /**
+   * Check preconditions for all factory methods
+   *
+   * @throws IllegalArgumentException if {@code field}, {@code lowerPoint} or {@code upperPoint} are
+   *     null.
+   */
   public static void checkArgs(String field, Object lowerPoint, Object upperPoint) {
     if (field == null) {
       throw new IllegalArgumentException("field must not be null");
@@ -111,6 +127,9 @@ public abstract class PointRangeQuery extends Query {
   public final Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
 
+    // We don't use RandomAccessWeight here: it's no good to approximate with "match all docs".
+    // This is an inverted structure and should be used in the first pass:
+
     return new ConstantScoreWeight(this, boost) {
 
       // Cache to share DocIdSet computation across partitions of the same segment
@@ -123,9 +142,11 @@ public abstract class PointRangeQuery extends Query {
         int offset = 0;
         for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
           if (comparator.compare(packedValue, offset, lowerPoint, offset) < 0) {
+            // Doc's value is too low, in this dimension
             return false;
           }
           if (comparator.compare(packedValue, offset, upperPoint, offset) > 0) {
+            // Doc's value is too high, in this dimension
             return false;
           }
         }
@@ -178,6 +199,7 @@ public abstract class PointRangeQuery extends Query {
         };
       }
 
+      /** Create a visitor that sets documents that do NOT match the range. */
       private IntersectVisitor getInverseIntersectVisitor(FixedBitSet result, long[] cost) {
         return new IntersectVisitor() {
 
@@ -240,10 +262,13 @@ public abstract class PointRangeQuery extends Query {
         private final PointValues values;
         private volatile DocIdSet cachedDocIdSet = null;
         private final Object buildLock = new Object();
+        private final long instanceId = System.nanoTime();
 
         SegmentDocIdSetSupplier(LeafReaderContext context, PointValues values) {
           this.context = context;
           this.values = values;
+          System.err.println("[SUPPLIER_CREATED] SegmentDocIdSetSupplier #" + instanceId +
+              " for segment " + context.ord);
         }
 
         /**
@@ -251,15 +276,29 @@ public abstract class PointRangeQuery extends Query {
          * others wait and reuse.
          */
         DocIdSet getOrBuild() throws IOException {
+          System.err.println("[GET_OR_BUILD] Called on supplier #" + instanceId +
+              " for segment " + context.ord +
+              " on thread " + Thread.currentThread().getId());
           DocIdSet result = cachedDocIdSet;
           if (result == null) {
+            System.err.println("[BUILD_CHECK] cachedDocIdSet is null, entering synchronized block");
             synchronized (buildLock) {
               result = cachedDocIdSet;
               if (result == null) {
+                System.err.println("[BUILD_START] Building DocIdSet for segment " + context.ord +
+                    " on thread " + Thread.currentThread().getId());
+                long start = System.nanoTime();
                 result = buildDocIdSet();
+                long elapsed = (System.nanoTime() - start) / 1_000_000;
+                System.err.println("[BUILD_COMPLETE] Built DocIdSet for segment " + context.ord +
+                    " in " + elapsed + "ms");
                 cachedDocIdSet = result;
+              } else {
+                System.err.println("[BUILD_SKIP] Another thread already built DocIdSet");
               }
             }
+          } else {
+            System.err.println("[CACHE_HIT] Reusing cached DocIdSet for segment " + context.ord);
           }
           return result;
         }
@@ -301,6 +340,13 @@ public abstract class PointRangeQuery extends Query {
       @Override
       public ScorerSupplier scorerSupplier(IndexSearcher.LeafReaderContextPartition partition)
           throws IOException {
+
+        System.err.println("[SCORER_SUPPLIER] Called for segment " + partition.ctx.ord +
+            " partition [" + partition.minDocId + ", " + partition.maxDocId + ") " +
+            "on thread " + Thread.currentThread().getId() +
+            " ctx identity: " + System.identityHashCode(partition.ctx));
+
+
         LeafReader reader = partition.ctx.reader();
 
         PointValues values = reader.getPointValues(field);
@@ -317,6 +363,10 @@ public abstract class PointRangeQuery extends Query {
             int offset = i * bytesPerDim;
             if (comparator.compare(lowerPoint, offset, fieldPackedUpper, offset) > 0
                 || comparator.compare(upperPoint, offset, fieldPackedLower, offset) < 0) {
+              // If this query is a required clause of a boolean query, then returning null here
+              // will help make sure that we don't call ScorerSupplier#get on other required clauses
+              // of the same boolean query, which is an expensive operation for some queries (e.g.
+              // multi-term queries).
               return null;
             }
           }
@@ -340,12 +390,22 @@ public abstract class PointRangeQuery extends Query {
         }
 
         if (allDocsMatch) {
+          // all docs have a value and all points are within bounds, so everything matches
           return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, reader.maxDoc());
         } else {
+          System.err.println("[CACHE_LOOKUP] Before computeIfAbsent, cache size: " + segmentCache.size());
           // Get or create the cached supplier for this segment
-          SegmentDocIdSetSupplier segmentSupplier =
-              segmentCache.computeIfAbsent(
-                  partition.ctx, ctx -> new SegmentDocIdSetSupplier(ctx, values));
+          SegmentDocIdSetSupplier segmentSupplier = segmentCache.computeIfAbsent(
+              partition.ctx,
+              ctx -> {
+                System.err.println("[CACHE_MISS] CREATING new SegmentDocIdSetSupplier for segment " + ctx.ord +
+                    " on thread " + Thread.currentThread().getId());
+                return new SegmentDocIdSetSupplier(ctx, values);
+              }
+          );
+
+          System.err.println("[CACHE_RESULT] After computeIfAbsent, cache size: " + segmentCache.size() +
+              ", supplier identity: " + System.identityHashCode(segmentSupplier));
 
           return new PartitionScorerSupplier(
               segmentSupplier, partition.minDocId, partition.maxDocId, score(), scoreMode);
@@ -518,6 +578,10 @@ public abstract class PointRangeQuery extends Query {
               == Relation.CELL_INSIDE_QUERY) {
             return values.getDocCount();
           }
+          // only 1D: we have the guarantee that it will actually run fast since there are at most 2
+          // crossing leaves.
+          // docCount == size : counting according number of points in leaf node, so must be
+          // single-valued.
           if (numDims == 1 && values.getDocCount() == values.size()) {
             return (int)
                 pointCount(values.getPointTree(), PointRangeQuery.this::relate, this::matches);
@@ -526,16 +590,31 @@ public abstract class PointRangeQuery extends Query {
         return super.count(context);
       }
 
+      /**
+       * Finds the number of points matching the provided range conditions. Using this method is
+       * faster than calling {@link PointValues#intersect(IntersectVisitor)} to get the count of
+       * intersecting points. This method does not enforce live documents, therefore it should only
+       * be used when there are no deleted documents.
+       *
+       * @param pointTree start node of the count operation
+       * @param nodeComparator comparator to be used for checking whether the internal node is
+       *     inside the range
+       * @param leafComparator comparator to be used for checking whether the leaf node is inside
+       *     the range
+       * @return count of points that match the range
+       */
       private long pointCount(
           PointValues.PointTree pointTree,
           BiFunction<byte[], byte[], Relation> nodeComparator,
           Predicate<byte[]> leafComparator)
           throws IOException {
         final long[] matchingNodeCount = {0};
+        // create a custom IntersectVisitor that records the number of leafNodes that matched
         final IntersectVisitor visitor =
             new IntersectVisitor() {
               @Override
               public void visit(int docID) {
+                // this branch should be unreachable
                 throw new UnsupportedOperationException(
                     "This IntersectVisitor does not perform any actions on a "
                         + "docID="
@@ -565,18 +644,27 @@ public abstract class PointRangeQuery extends Query {
         Relation r = visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
         switch (r) {
           case CELL_OUTSIDE_QUERY:
+            // This cell is fully outside the query shape: return 0 as the count of its nodes
             return;
           case CELL_INSIDE_QUERY:
+            // This cell is fully inside the query shape: return the size of the entire node as the
+            // count
             matchingNodeCount[0] += pointTree.size();
             return;
           case CELL_CROSSES_QUERY:
+            /*
+            The cell crosses the shape boundary, or the cell fully contains the query, so we fall
+            through and do full counting.
+            */
             if (pointTree.moveToChild()) {
               do {
                 pointCount(visitor, pointTree, matchingNodeCount);
               } while (pointTree.moveToSibling());
               pointTree.moveToParent();
             } else {
+              // we have reached a leaf node here.
               pointTree.visitDocValues(visitor);
+              // leaf node count is saved in the matchingNodeCount array by the visitor
             }
             return;
           default:
@@ -643,6 +731,7 @@ public abstract class PointRangeQuery extends Query {
       sb.append(':');
     }
 
+    // print ourselves as "range per dimension"
     for (int i = 0; i < numDims; i++) {
       if (i > 0) {
         sb.append(',');
@@ -682,6 +771,7 @@ public abstract class PointRangeQuery extends Query {
       checkValidPointValues(leaf.reader().getPointValues(field));
     }
 
+    // fetch the global min/max packed values across all segments
     byte[] globalMinPacked = PointValues.getMinPackedValue(reader, getField());
     byte[] globalMaxPacked = PointValues.getMaxPackedValue(reader, getField());
 
@@ -725,6 +815,7 @@ public abstract class PointRangeQuery extends Query {
           && info.getDocValuesType() == DocValuesType.NONE
           && !info.hasNorms()
           && info.getVectorDimension() == 0) {
+        // Can't use a FieldExistsQuery on this segment, so return false
         return false;
       }
     }
@@ -743,6 +834,8 @@ public abstract class PointRangeQuery extends Query {
         return Relation.CELL_OUTSIDE_QUERY;
       }
 
+      // Evaluate crosses only when false. Still need to iterate through
+      // all the dimensions to ensure, none of them is completely outside
       if (crosses == false) {
         crosses =
             comparator.compare(minPackedValue, offset, lowerPoint, offset) < 0
@@ -759,6 +852,7 @@ public abstract class PointRangeQuery extends Query {
 
   private boolean checkValidPointValues(PointValues values) throws IOException {
     if (values == null) {
+      // No docs in this segment/field indexed any points
       return false;
     }
 
