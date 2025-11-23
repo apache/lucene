@@ -242,8 +242,10 @@ public abstract class PointRangeQuery extends Query {
             Relation relation = relate(minPackedValue, maxPackedValue);
             switch (relation) {
               case CELL_INSIDE_QUERY:
+                // all points match, skip this subtree
                 return Relation.CELL_OUTSIDE_QUERY;
               case CELL_OUTSIDE_QUERY:
+                // none of the points match, clear all documents
                 return Relation.CELL_INSIDE_QUERY;
               case CELL_CROSSES_QUERY:
               default:
@@ -257,18 +259,21 @@ public abstract class PointRangeQuery extends Query {
        * Helper class that lazily builds and caches a DocIdSet for an entire segment. This allows
        * multiple partitions of the same segment to share the BKD traversal work.
        */
-      private class SegmentDocIdSetSupplier {
+      final class SegmentDocIdSetSupplier {
         private final LeafReaderContext context;
-        private final PointValues values;
         private volatile DocIdSet cachedDocIdSet = null;
         private final Object buildLock = new Object();
+
         private final long instanceId = System.nanoTime();
 
-        SegmentDocIdSetSupplier(LeafReaderContext context, PointValues values) {
+        SegmentDocIdSetSupplier(LeafReaderContext context) {
           this.context = context;
-          this.values = values;
-          System.err.println("[SUPPLIER_CREATED] SegmentDocIdSetSupplier #" + instanceId +
-              " for segment " + context.ord);
+
+          System.err.println(
+          "[SUPPLIER_CREATED] SegmentDocIdSetSupplier #"
+              + instanceId
+              + " for segment "
+              + context.ord);
         }
 
         /**
@@ -276,40 +281,64 @@ public abstract class PointRangeQuery extends Query {
          * others wait and reuse.
          */
         DocIdSet getOrBuild() throws IOException {
-          System.err.println("[GET_OR_BUILD] Called on supplier #" + instanceId +
-              " for segment " + context.ord +
-              " on thread " + Thread.currentThread().getId());
+
+          System.err.println(
+          "[GET_OR_BUILD] Called on supplier #"
+              + instanceId
+              + " for segment "
+              + context.ord
+              + " on thread "
+              + Thread.currentThread().getId());
+
           DocIdSet result = cachedDocIdSet;
           if (result == null) {
+
             System.err.println("[BUILD_CHECK] cachedDocIdSet is null, entering synchronized block");
+
             synchronized (buildLock) {
               result = cachedDocIdSet;
               if (result == null) {
-                System.err.println("[BUILD_START] Building DocIdSet for segment " + context.ord +
-                    " on thread " + Thread.currentThread().getId());
+
+                System.err.println(
+                "[BUILD_START] Building DocIdSet for segment "
+                    + context.ord
+                    + " on thread "
+                    + Thread.currentThread().getId());
+
                 long start = System.nanoTime();
+
                 result = buildDocIdSet();
+
                 long elapsed = (System.nanoTime() - start) / 1_000_000;
-                System.err.println("[BUILD_COMPLETE] Built DocIdSet for segment " + context.ord +
-                    " in " + elapsed + "ms");
+
+                System.err.println(
+                "[BUILD_COMPLETE] Built DocIdSet for segment "
+                    + context.ord
+                    + " in "
+                    + elapsed
+                    + "ms");
+
                 cachedDocIdSet = result;
               } else {
+
                 System.err.println("[BUILD_SKIP] Another thread already built DocIdSet");
               }
             }
           } else {
+
             System.err.println("[CACHE_HIT] Reusing cached DocIdSet for segment " + context.ord);
           }
           return result;
         }
 
         private DocIdSet buildDocIdSet() throws IOException {
+          PointValues values = context.reader().getPointValues(field);
           LeafReader reader = context.reader();
 
           // Check if we should use inverse intersection optimization
           if (values.getDocCount() == reader.maxDoc()
               && values.getDocCount() == values.size()
-              && estimateCost() > reader.maxDoc() / 2) {
+              && estimateCost(values) > reader.maxDoc() / 2) {
 
             // Build inverse bitset (docs that DON'T match)
             final FixedBitSet result = new FixedBitSet(reader.maxDoc());
@@ -330,7 +359,7 @@ public abstract class PointRangeQuery extends Query {
           }
         }
 
-        private long estimateCost() throws IOException {
+        private long estimateCost(PointValues values) throws IOException {
           DocIdSetBuilder builder = new DocIdSetBuilder(context.reader().maxDoc(), values);
           IntersectVisitor visitor = getIntersectVisitor(builder);
           return values.estimateDocCount(visitor);
@@ -341,11 +370,18 @@ public abstract class PointRangeQuery extends Query {
       public ScorerSupplier scorerSupplier(IndexSearcher.LeafReaderContextPartition partition)
           throws IOException {
 
-        System.err.println("[SCORER_SUPPLIER] Called for segment " + partition.ctx.ord +
-            " partition [" + partition.minDocId + ", " + partition.maxDocId + ") " +
-            "on thread " + Thread.currentThread().getId() +
-            " ctx identity: " + System.identityHashCode(partition.ctx));
-
+        System.err.println(
+        "[SCORER_SUPPLIER] Called for segment "
+            + partition.ctx.ord
+            + " partition ["
+            + partition.minDocId
+            + ", "
+            + partition.maxDocId
+            + ") "
+            + "on thread "
+            + Thread.currentThread().getId()
+            + " ctx identity: "
+            + System.identityHashCode(partition.ctx));
 
         LeafReader reader = partition.ctx.reader();
 
@@ -393,27 +429,41 @@ public abstract class PointRangeQuery extends Query {
           // all docs have a value and all points are within bounds, so everything matches
           return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, reader.maxDoc());
         } else {
-          System.err.println("[CACHE_LOOKUP] Before computeIfAbsent, cache size: " + segmentCache.size());
+
+          System.err.println(
+          "[CACHE_LOOKUP] Before computeIfAbsent, cache size: " + segmentCache.size());
+
           // Get or create the cached supplier for this segment
-          SegmentDocIdSetSupplier segmentSupplier = segmentCache.computeIfAbsent(
-              partition.ctx,
-              ctx -> {
-                System.err.println("[CACHE_MISS] CREATING new SegmentDocIdSetSupplier for segment " + ctx.ord +
-                    " on thread " + Thread.currentThread().getId());
-                return new SegmentDocIdSetSupplier(ctx, values);
-              }
-          );
+          SegmentDocIdSetSupplier segmentSupplier =
+              segmentCache.computeIfAbsent(
+                  partition.ctx,
+                  ctx -> {
 
-          System.err.println("[CACHE_RESULT] After computeIfAbsent, cache size: " + segmentCache.size() +
-              ", supplier identity: " + System.identityHashCode(segmentSupplier));
+                    System.err.println(
+                    "[CACHE_MISS] CREATING new SegmentDocIdSetSupplier for segment "
+                        + ctx.ord
+                        + " on thread "
+                        + Thread.currentThread().getId());
 
+                    return new SegmentDocIdSetSupplier(ctx);
+                  });
+
+          System.err.println(
+          "[CACHE_RESULT] After computeIfAbsent, cache size: "
+              + segmentCache.size()
+              + ", supplier identity: "
+              + System.identityHashCode(segmentSupplier));
+
+          // Each call creates a new PartitionScorerSupplier and But all partitions share the same
+          // SegmentDocIdSetSupplier
+          // ConstantScoreScorerSupplier is designed for immediate execution:
           return new PartitionScorerSupplier(
               segmentSupplier, partition.minDocId, partition.maxDocId, score(), scoreMode);
         }
       }
 
       /** ScorerSupplier for a partition that filters results from the shared segment DocIdSet. */
-      private class PartitionScorerSupplier extends ScorerSupplier {
+      final class PartitionScorerSupplier extends ScorerSupplier {
         private final SegmentDocIdSetSupplier segmentSupplier;
         private final int minDocId;
         private final int maxDocId;
@@ -468,20 +518,18 @@ public abstract class PointRangeQuery extends Query {
             DocIdSet docIdSet = segmentSupplier.getOrBuild();
             long totalCost = docIdSet.iterator().cost();
 
-            // Estimate cost for this partition proportionally
             boolean isFullSegment = (minDocId == 0 && maxDocId == DocIdSetIterator.NO_MORE_DOCS);
 
             if (isFullSegment) {
               return totalCost;
             }
 
-            // Proportional estimate based on partition size
             int segmentSize = segmentSupplier.context.reader().maxDoc();
             int partitionSize = maxDocId - minDocId;
             return (totalCost * partitionSize) / segmentSize;
           } catch (IOException e) {
-            // If we can't get the cost, return a conservative estimate
-            return maxDocId - minDocId;
+            // Wrap in RuntimeException since cost() doesn't throw checked exceptions
+            throw new RuntimeException("Failed to compute cost", e);
           }
         }
 
@@ -500,7 +548,7 @@ public abstract class PointRangeQuery extends Query {
        * Reading from a FixedBitSet is thread-safe (just reading from long[]), so multiple
        * partitions can read from the same underlying DocIdSet concurrently.
        */
-      private static class PartitionFilteredDocIdSetIterator extends DocIdSetIterator {
+      static final class PartitionFilteredDocIdSetIterator extends DocIdSetIterator {
         private final DocIdSetIterator delegate;
         private final int minDocId;
         private final int maxDocId;
