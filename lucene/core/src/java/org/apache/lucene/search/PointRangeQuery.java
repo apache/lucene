@@ -264,16 +264,8 @@ public abstract class PointRangeQuery extends Query {
         private volatile DocIdSet cachedDocIdSet = null;
         private final Object buildLock = new Object();
 
-        private final long instanceId = System.nanoTime();
-
         SegmentDocIdSetSupplier(LeafReaderContext context) {
           this.context = context;
-
-          System.err.println(
-          "[SUPPLIER_CREATED] SegmentDocIdSetSupplier #"
-              + instanceId
-              + " for segment "
-              + context.ord);
         }
 
         /**
@@ -281,52 +273,15 @@ public abstract class PointRangeQuery extends Query {
          * others wait and reuse.
          */
         DocIdSet getOrBuild() throws IOException {
-
-          System.err.println(
-          "[GET_OR_BUILD] Called on supplier #"
-              + instanceId
-              + " for segment "
-              + context.ord
-              + " on thread "
-              + Thread.currentThread().getId());
-
           DocIdSet result = cachedDocIdSet;
           if (result == null) {
-
-            System.err.println("[BUILD_CHECK] cachedDocIdSet is null, entering synchronized block");
-
             synchronized (buildLock) {
               result = cachedDocIdSet;
               if (result == null) {
-
-                System.err.println(
-                "[BUILD_START] Building DocIdSet for segment "
-                    + context.ord
-                    + " on thread "
-                    + Thread.currentThread().getId());
-
-                long start = System.nanoTime();
-
                 result = buildDocIdSet();
-
-                long elapsed = (System.nanoTime() - start) / 1_000_000;
-
-                System.err.println(
-                "[BUILD_COMPLETE] Built DocIdSet for segment "
-                    + context.ord
-                    + " in "
-                    + elapsed
-                    + "ms");
-
                 cachedDocIdSet = result;
-              } else {
-
-                System.err.println("[BUILD_SKIP] Another thread already built DocIdSet");
               }
             }
-          } else {
-
-            System.err.println("[CACHE_HIT] Reusing cached DocIdSet for segment " + context.ord);
           }
           return result;
         }
@@ -334,21 +289,17 @@ public abstract class PointRangeQuery extends Query {
         private DocIdSet buildDocIdSet() throws IOException {
           PointValues values = context.reader().getPointValues(field);
           LeafReader reader = context.reader();
-
           // Check if we should use inverse intersection optimization
           if (values.getDocCount() == reader.maxDoc()
               && values.getDocCount() == values.size()
               && estimateCost(values) > reader.maxDoc() / 2) {
-
             // Build inverse bitset (docs that DON'T match)
             final FixedBitSet result = new FixedBitSet(reader.maxDoc());
             long[] cost = new long[1];
             values.intersect(getInverseIntersectVisitor(result, cost));
-
             // Flip to get docs that DO match
             result.flip(0, reader.maxDoc());
             cost[0] = Math.max(0, reader.maxDoc() - cost[0]);
-
             return new BitDocIdSet(result, cost[0]);
           } else {
             // Normal path: build DocIdSet from matching docs
@@ -369,27 +320,11 @@ public abstract class PointRangeQuery extends Query {
       @Override
       public ScorerSupplier scorerSupplier(IndexSearcher.LeafReaderContextPartition partition)
           throws IOException {
-
-        System.err.println(
-        "[SCORER_SUPPLIER] Called for segment "
-            + partition.ctx.ord
-            + " partition ["
-            + partition.minDocId
-            + ", "
-            + partition.maxDocId
-            + ") "
-            + "on thread "
-            + Thread.currentThread().getId()
-            + " ctx identity: "
-            + System.identityHashCode(partition.ctx));
-
         LeafReader reader = partition.ctx.reader();
-
         PointValues values = reader.getPointValues(field);
         if (checkValidPointValues(values) == false) {
           return null;
         }
-
         if (values.getDocCount() == 0) {
           return null;
         } else {
@@ -407,7 +342,6 @@ public abstract class PointRangeQuery extends Query {
             }
           }
         }
-
         boolean allDocsMatch;
         if (values.getDocCount() == reader.maxDoc()) {
           final byte[] fieldPackedLower = values.getMinPackedValue();
@@ -424,39 +358,16 @@ public abstract class PointRangeQuery extends Query {
         } else {
           allDocsMatch = false;
         }
-
         if (allDocsMatch) {
           // all docs have a value and all points are within bounds, so everything matches
           return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, reader.maxDoc());
         } else {
-
-          System.err.println(
-          "[CACHE_LOOKUP] Before computeIfAbsent, cache size: " + segmentCache.size());
-
           // Get or create the cached supplier for this segment
           SegmentDocIdSetSupplier segmentSupplier =
               segmentCache.computeIfAbsent(
                   partition.ctx,
-                  ctx -> {
-
-                    System.err.println(
-                    "[CACHE_MISS] CREATING new SegmentDocIdSetSupplier for segment "
-                        + ctx.ord
-                        + " on thread "
-                        + Thread.currentThread().getId());
-
-                    return new SegmentDocIdSetSupplier(ctx);
-                  });
-
-          System.err.println(
-          "[CACHE_RESULT] After computeIfAbsent, cache size: "
-              + segmentCache.size()
-              + ", supplier identity: "
-              + System.identityHashCode(segmentSupplier));
-
-          // Each call creates a new PartitionScorerSupplier and But all partitions share the same
-          // SegmentDocIdSetSupplier
-          // ConstantScoreScorerSupplier is designed for immediate execution:
+                  ctx -> new SegmentDocIdSetSupplier(ctx));
+          // Each call creates a new PartitionScorerSupplier and all partitions share the same SegmentDocIdSetSupplier
           return new PartitionScorerSupplier(
               segmentSupplier, partition.minDocId, partition.maxDocId, score(), scoreMode);
         }
@@ -496,41 +407,34 @@ public abstract class PointRangeQuery extends Query {
           // Get the shared DocIdSet (built once per segment)
           DocIdSet docIdSet = segmentSupplier.getOrBuild();
           DocIdSetIterator fullIterator = docIdSet.iterator();
-
           if (fullIterator == null) {
             return null;
           }
-
           // Check if this is a full segment (no partition filtering needed)
           boolean isFullSegment = (minDocId == 0 && maxDocId == DocIdSetIterator.NO_MORE_DOCS);
-
           if (isFullSegment) {
             return fullIterator;
           }
-
           // Wrap iterator to filter to partition range
           return new PartitionFilteredDocIdSetIterator(fullIterator, minDocId, maxDocId);
         }
 
         @Override
         public long cost() {
+          DocIdSet docIdSet;
           try {
-            DocIdSet docIdSet = segmentSupplier.getOrBuild();
-            long totalCost = docIdSet.iterator().cost();
-
-            boolean isFullSegment = (minDocId == 0 && maxDocId == DocIdSetIterator.NO_MORE_DOCS);
-
-            if (isFullSegment) {
-              return totalCost;
-            }
-
-            int segmentSize = segmentSupplier.context.reader().maxDoc();
-            int partitionSize = maxDocId - minDocId;
-            return (totalCost * partitionSize) / segmentSize;
+            docIdSet = segmentSupplier.getOrBuild();
           } catch (IOException e) {
-            // Wrap in RuntimeException since cost() doesn't throw checked exceptions
-            throw new RuntimeException("Failed to compute cost", e);
+            throw new RuntimeException(e);
           }
+          long totalCost = docIdSet.iterator().cost();
+          boolean isFullSegment = (minDocId == 0 && maxDocId == DocIdSetIterator.NO_MORE_DOCS);
+          if (isFullSegment) {
+            return totalCost;
+          }
+          int segmentSize = segmentSupplier.context.reader().maxDoc();
+          int partitionSize = maxDocId - minDocId;
+          return (totalCost * partitionSize) / segmentSize;
         }
 
         @Override
@@ -573,12 +477,10 @@ public abstract class PointRangeQuery extends Query {
           } else {
             doc = delegate.nextDoc();
           }
-
           // Stop if we've exceeded the partition range
           if (doc >= maxDocId) {
             doc = NO_MORE_DOCS;
           }
-
           return doc;
         }
 
@@ -587,15 +489,12 @@ public abstract class PointRangeQuery extends Query {
           if (target >= maxDocId) {
             return doc = NO_MORE_DOCS;
           }
-
           // Ensure target is at least minDocId
           target = Math.max(target, minDocId);
           doc = delegate.advance(target);
-
           if (doc >= maxDocId) {
             doc = NO_MORE_DOCS;
           }
-
           return doc;
         }
 
