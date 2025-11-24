@@ -689,12 +689,12 @@ public abstract class BaseLucene80DocValuesFormatTestCase
     if (VERBOSE) {
       System.out.println("index created " + (System.nanoTime() - start) / 1e9 + " s");
     }
-    start = System.currentTimeMillis();
+    start = System.nanoTime();
     assertDVIterate(dir, 16);
     if (VERBOSE) {
       System.out.println("assertDVIterate " + (System.nanoTime() - start) / 1e9 + " s");
     }
-    start = System.currentTimeMillis();
+    start = System.nanoTime();
     assertDVAdvance(
         dir, rarely() ? 1 : 7); // 1 is heavy (~20 s), so we do it rarely. 7 is a lot faster (8 s)
     if (VERBOSE) {
