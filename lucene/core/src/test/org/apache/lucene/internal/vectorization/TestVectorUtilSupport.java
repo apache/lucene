@@ -39,7 +39,7 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
   public TestVectorUtilSupport(int size) {
     this.size = size;
     // scale the delta with the size
-    this.delta = 1e-4 * size;
+    this.delta = 1e-5 * size;
   }
 
   @ParametersFactory
@@ -306,10 +306,10 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
   }
 
   private void assertFloatReturningProviders(ToDoubleFunction<VectorUtilSupport> func) {
-    assertEquals(
-        func.applyAsDouble(LUCENE_PROVIDER.getVectorUtilSupport()),
-        func.applyAsDouble(PANAMA_PROVIDER.getVectorUtilSupport()),
-        delta);
+    double luceneProviderResults = func.applyAsDouble(LUCENE_PROVIDER.getVectorUtilSupport());
+    double panamaProviderResults = func.applyAsDouble(PANAMA_PROVIDER.getVectorUtilSupport());
+    double delta = Math.max(this.delta, this.delta * Math.max(luceneProviderResults, panamaProviderResults));
+    assertEquals(luceneProviderResults, panamaProviderResults, Math.max(delta, this.delta));
   }
 
   private void assertIntReturningProviders(ToIntFunction<VectorUtilSupport> func) {
