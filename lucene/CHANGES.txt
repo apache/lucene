@@ -153,6 +153,11 @@ API Changes
   (with optional timeout) or asynchronously via CompletableFuture. Backward compatible -
   existing code that ignores the return value works unchanged. (Salvatore Campagna)
 
+* GITHUB#15422: Add a new method in DirectWriter to compute how many bytes are written for encoding a number of values using a number of
+  bits per value. (Ignacio Vera)
+
+* GITHUB##15428: Add support for ExecutorServices to be passed into DirectoryReader.open() and DirectoryReader.openIfChanged() APIs (Bryce Kane)
+
 New Features
 ---------------------
 * GITHUB#15328: VectorSimilarityFunction.getValues() now implements doubleVal allowing its

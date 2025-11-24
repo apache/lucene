@@ -20,7 +20,7 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import org.apache.lucene.internal.hppc.IntCursor;
+import java.util.Arrays;
 import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.util.BitSet;
 
@@ -144,9 +144,12 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
     int size = gS.size();
     IntHashSet j = UpdateGraphsUtils.computeJoinSet(gS);
 
-    // for nodes that in the join set, add them directly to the graph
-    for (IntCursor node : j) {
-      addGraphNode(ordMapS[node.value]);
+    // add nodes in the join set directly to the graph
+    // sort for stability
+    int[] nodes = j.toArray();
+    Arrays.sort(nodes);
+    for (int node : nodes) {
+      addGraphNode(ordMapS[node]);
     }
 
     // for each node outside of j set:
