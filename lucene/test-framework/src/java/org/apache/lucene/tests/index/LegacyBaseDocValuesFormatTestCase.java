@@ -1410,7 +1410,8 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
           docValues.nextDoc();
         }
         if (random().nextInt(10) == 3) {
-          // Sometimes skip ahead. We used to exhaustively check every doc, but it is too time-consuming
+          // Sometimes skip ahead. We used to exhaustively check every doc, but it is too
+          // time-consuming
           int skipAmount = skip * (r.maxDoc() - i) / 10;
           if (skipAmount > 0) {
             i += random().nextInt(skipAmount);
