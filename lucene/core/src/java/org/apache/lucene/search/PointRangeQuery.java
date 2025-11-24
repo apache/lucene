@@ -404,6 +404,8 @@ public abstract class PointRangeQuery extends Query {
 
         private DocIdSetIterator getIterator() throws IOException {
           // Get the shared DocIdSet (built once per segment)
+          // The underlying FixedBitSet/int[] buffer is shared across all partitions,
+          // but each partition gets its own iterator with its own position state.
           DocIdSet docIdSet = segmentSupplier.getOrBuild();
           DocIdSetIterator fullIterator = docIdSet.iterator();
           if (fullIterator == null) {
@@ -447,9 +449,8 @@ public abstract class PointRangeQuery extends Query {
       }
 
       /**
-       * Iterator that filters another iterator to only return docs within a partition range.
-       * Reading from a FixedBitSet is thread-safe (just reading from long[]), so multiple
-       * partitions can read from the same underlying DocIdSet concurrently.
+       * Iterator that filters a delegate iterator to only return docs within a partition range.
+       * Used to restrict a full-segment DocIdSetIterator to a specific partition's boundaries.
        */
       static final class PartitionFilteredDocIdSetIterator extends DocIdSetIterator {
         private final DocIdSetIterator delegate;
