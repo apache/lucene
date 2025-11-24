@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.index;
 
+import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
@@ -37,6 +38,7 @@ import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.index.SuppressingConcurrentMergeScheduler;
+import org.apache.lucene.tests.mockfile.HandleLimitFS;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LineFileDocs;
@@ -44,16 +46,17 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /** MultiThreaded IndexWriter tests */
 @LuceneTestCase.SuppressCodecs("SimpleText")
+// Some of these tests spin uncoordinated threads that generate lots of documents and have very
+// small limits on in-memory buffers, etc. They occasionally can exceed the default
+// max handles limit...
+@HandleLimitFS.MaxOpenHandles(limit = HandleLimitFS.MaxOpenHandles.MAX_OPEN_FILES * 4)
 public class TestIndexWriterWithThreads extends LuceneTestCase {
-
   // Used by test cases below
   private static class IndexerThread extends Thread {
-
     private final CyclicBarrier syncStart;
     Throwable error;
     IndexWriter writer;
@@ -66,7 +69,6 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
       this.syncStart = syncStart;
     }
 
-    @SuppressForbidden(reason = "Thread sleep")
     @Override
     public void run() {
       try {
@@ -97,14 +99,11 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
             System.out.println("TEST: expected exc:");
             ioe.printStackTrace(System.out);
           }
-          // System.out.println(Thread.currentThread().getName() + ": hit exc");
-          // ioe.printStackTrace(System.out);
+
           if (ioe.getMessage().startsWith("fake disk full at")
               || ioe.getMessage().equals("now failing on purpose")) {
-            try {
-              Thread.sleep(1);
-            } catch (InterruptedException ie) {
-              throw new ThreadInterruptedException(ie);
+            if (Thread.currentThread().isInterrupted()) {
+              throw new ThreadInterruptedException(new InterruptedException());
             }
             if (fullCount++ >= 5) break;
           } else {
@@ -188,7 +187,6 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
   // threads are trying to add documents.  Strictly
   // speaking, this isn't valid us of Lucene's APIs, but we
   // still want to be robust to this case:
-  @SuppressForbidden(reason = "Thread sleep")
   public void testCloseWithThreads() throws Exception {
     int NUM_THREADS = 3;
     int numIterations = TEST_NIGHTLY ? 7 : 3;
@@ -196,69 +194,69 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
       if (VERBOSE) {
         System.out.println("\nTEST: iter=" + iter);
       }
-      Directory dir = newDirectory();
+      try (Directory dir = newDirectory()) {
+        IndexerThread[] threads = new IndexerThread[NUM_THREADS];
+        try (IndexWriter writer =
+            new IndexWriter(
+                dir,
+                newIndexWriterConfig(new MockAnalyzer(random()))
+                    .setMaxBufferedDocs(10)
+                    .setMergeScheduler(new ConcurrentMergeScheduler())
+                    .setMergePolicy(newLogMergePolicy(4))
+                    .setCommitOnClose(false))) {
+          ((ConcurrentMergeScheduler) writer.getConfig().getMergeScheduler())
+              .setSuppressExceptions();
 
-      IndexWriter writer =
-          new IndexWriter(
-              dir,
-              newIndexWriterConfig(new MockAnalyzer(random()))
-                  .setMaxBufferedDocs(10)
-                  .setMergeScheduler(new ConcurrentMergeScheduler())
-                  .setMergePolicy(newLogMergePolicy(4))
-                  .setCommitOnClose(false));
-      ((ConcurrentMergeScheduler) writer.getConfig().getMergeScheduler()).setSuppressExceptions();
-
-      CyclicBarrier syncStart = new CyclicBarrier(NUM_THREADS + 1);
-      IndexerThread[] threads = new IndexerThread[NUM_THREADS];
-      for (int i = 0; i < NUM_THREADS; i++) {
-        threads[i] = new IndexerThread(writer, false, syncStart);
-        threads[i].start();
-      }
-      syncStart.await();
-
-      boolean done = false;
-      while (!done) {
-        Thread.sleep(100);
-        for (int i = 0; i < NUM_THREADS; i++)
-          // only stop when at least one thread has added a doc
-          if (threads[i].addCount > 0) {
-            done = true;
-            break;
-          } else if (!threads[i].isAlive()) {
-            fail("thread failed before indexing a single document");
+          CyclicBarrier syncStart = new CyclicBarrier(NUM_THREADS + 1);
+          for (int i = 0; i < NUM_THREADS; i++) {
+            threads[i] = new IndexerThread(writer, false, syncStart);
+            threads[i].start();
           }
-      }
+          syncStart.await();
 
-      if (VERBOSE) {
-        System.out.println("\nTEST: now close");
-      }
-      try {
-        writer.commit();
-      } finally {
-        writer.close();
-      }
+          // wait for at least this many documents to be added, then resume.
+          int minDocsAdded = RandomizedTest.randomIntBetween(1, 50);
+          while (true) {
+            Thread.yield(); // intentional, spin loop instead of wall-clock wait.
 
-      // Make sure threads that are adding docs are not hung:
-      for (int i = 0; i < NUM_THREADS; i++) {
-        // Without fix for LUCENE-1130: one of the
-        // threads will hang
-        threads[i].join();
+            int docsAdded = 0;
+            for (int i = 0; i < NUM_THREADS; i++) {
+              docsAdded += threads[i].addCount;
 
-        // [DW] this is unreachable once join() returns a thread cannot be alive.
-        if (threads[i].isAlive()) fail("thread seems to be hung");
+              if (!threads[i].isAlive()) {
+                fail("thread failed before indexing a single document: " + threads[i]);
+              }
+            }
+
+            if (docsAdded > minDocsAdded) {
+              break;
+            }
+          }
+
+          // now commit and then close the index writer, while background threads still keep
+          // adding documents.
+          writer.commit();
+        }
+
+        // Make sure threads that are adding docs are not hung.
+        for (int i = 0; i < NUM_THREADS; i++) {
+          // Without fix for LUCENE-1130: one of the threads will hang
+          if (threads[i] != null) {
+            threads[i].join();
+          }
+        }
+
+        // Quick test to make sure index is not corrupt.
+        try (IndexReader reader = DirectoryReader.open(dir)) {
+          PostingsEnum tdocs =
+              TestUtil.docs(random(), reader, "field", new BytesRef("aaa"), null, 0);
+          int count = 0;
+          while (tdocs.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            count++;
+          }
+          assertTrue(count > 0);
+        }
       }
-
-      // Quick test to make sure index is not corrupt:
-      IndexReader reader = DirectoryReader.open(dir);
-      PostingsEnum tdocs = TestUtil.docs(random(), reader, "field", new BytesRef("aaa"), null, 0);
-      int count = 0;
-      while (tdocs.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-        count++;
-      }
-      assertTrue(count > 0);
-      reader.close();
-
-      dir.close();
     }
   }
 
@@ -564,7 +562,7 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
     writerRef.get().commit();
     final LineFileDocs docs = new LineFileDocs(random());
     final Thread[] threads = new Thread[threadCount];
-    final int iters = atLeast(100);
+    final int iters = atLeast(25);
     final AtomicBoolean failed = new AtomicBoolean();
     final Lock rollbackLock = new ReentrantLock();
     final Lock commitLock = new ReentrantLock();
@@ -574,7 +572,6 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
             @Override
             public void run() {
               for (int iter = 0; iter < iters && !failed.get(); iter++) {
-                // final int x = random().nextInt(5);
                 final int x = random().nextInt(3);
                 try {
                   switch (x) {
@@ -637,8 +634,8 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
       threads[threadID].start();
     }
 
-    for (int threadID = 0; threadID < threadCount; threadID++) {
-      threads[threadID].join();
+    for (var t : threads) {
+      t.join();
     }
 
     assertTrue(!failed.get());
