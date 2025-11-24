@@ -65,6 +65,7 @@ public abstract class Node {
   long floorDataFp = -1;
   int floorDataLen;
   int childrenDeltaFpBytes;
+  long childrenDeltaFpStart;
 
   // The latest child that have been saved. null means no child has been saved.
   int savedChildPos = -1;
@@ -303,7 +304,7 @@ public abstract class Node {
       writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
     }
 
-    // Write children's delta fps from the first one.
+    // Write children's delta fps from first one.
     nextPos = Node.ILLEGAL_IDX;
     while ((nextPos = getNextLargerPos(nextPos)) != Node.ILLEGAL_IDX) {
       child = getChild(nextPos);
@@ -364,16 +365,25 @@ public abstract class Node {
 
     node.fp = fp;
     node.prefix = prefix;
-    node.childrenCount = childrenCount;
 
     // 3 bit encodedOutputFpBytes - 1, 1 bit has output, 3bit childrenFpBytes
     int header = access.readByte(fp + offset);
     offset += 1;
+
+    // Read children delta fp bytes and children delta fp start(for loading child).
+    // TODO: If we want calculate child's delta fp with childrenDeltaFpStart, childrenDeltaFpBytes.
+    // children's pos must saved
+    // without gap(node4, node16, node48), we should resolve gap issue for node256.
+    node.childrenDeltaFpBytes = (header & 0x07) + 1;
+    node.childrenDeltaFpStart = fp + offset;
+
     if ((header & NON_LEAF_NODE_HAS_OUTPUT) != 0) {
       int encodedOutputFpBytes = ((header >>> 4) & 0x07) + 1;
       // TODO: impl readLongFromNBytes.
       long encodedOutputFp = access.readLong(fp + offset);
       offset += encodedOutputFpBytes;
+      // Refresh childrenDeltaFpStart;
+      node.childrenDeltaFpStart = fp + offset;
       if (encodedOutputFpBytes < 8) {
         encodedOutputFp = encodedOutputFp & BYTES_MINUS_1_MASK[encodedOutputFpBytes - 1];
       }
@@ -382,7 +392,6 @@ public abstract class Node {
       node.hasTerms = (encodedOutputFp & NON_LEAF_NODE_HAS_TERMS) != 0;
       // Read floor.
       if ((encodedOutputFp & NON_LEAF_NODE_HAS_FLOOR) != 0) {
-        node.childrenDeltaFpBytes = (header & 0x07) + 1;
         // Skip children delta fp bytes.
         offset += childrenCount * node.childrenDeltaFpBytes;
         node.floorDataLen = access.readInt(fp + offset);

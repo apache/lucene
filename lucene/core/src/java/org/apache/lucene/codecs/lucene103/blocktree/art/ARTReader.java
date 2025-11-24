@@ -174,68 +174,69 @@ public class ARTReader {
   }
 
   /**
-   * Find the next node from a cached (searched) one, this is useful when seeking in
+   * Find the next parent from a cached (searched) one, this is useful when seeking in
    * SegmentTermsEnum.
    */
-  public Node lookupChild(BytesRef target, Node node, Node child) {
-    assert node != null;
+  public Node lookupChild(BytesRef target, Node parent, Node child) {
+    assert parent != null;
 
     // TODO: Target length is 0 may never happen, when we search step by step?
     if (target.length == 0) {
       // We may search "";
-      if (node.nodeType == NodeType.LEAF_NODE && node.key == null) {
-        // Match, Use this node's output.
+      if (parent.nodeType == NodeType.LEAF_NODE && parent.key == null) {
+        // Match, Use this parent's output.
         return null;
-      } else if (node.prefixLength == 0) {
-        // Match, Use this node's output.
+      } else if (parent.prefixLength == 0) {
+        // Match, Use this parent's output.
         return null;
       } else {
-        // Not match, keep in this node.
-        return node;
+        // Not match, keep in this parent.
+        return parent;
       }
     }
 
-    if (node.nodeType.equals(NodeType.LEAF_NODE)) {
-      if (node.key.equals(target)) {
-        // Match, Use this node's output.
+    if (parent.nodeType.equals(NodeType.LEAF_NODE)) {
+      if (parent.key.equals(target)) {
+        // Match, Use this parent's output.
         return null;
       } else {
-        // Not match, keep in this node.
-        return node;
+        // Not match, keep in this parent.
+        return parent;
       }
     } else {
-      if (node.prefixLength > 0) {
+      if (parent.prefixLength > 0) {
         int commonLength =
             ARTUtil.commonPrefixLength(
                 target.bytes,
                 target.offset,
                 target.offset + target.length,
-                node.prefix,
+                parent.prefix,
                 0,
-                node.prefixLength);
-        if (commonLength != node.prefixLength) {
-          // Not match, keep in this node.
-          return node;
+                parent.prefixLength);
+        if (commonLength != parent.prefixLength) {
+          // Not match, keep in this parent.
+          return parent;
         }
         // common prefix is the same, then increase the offset.
-        target.offset += node.prefixLength;
-        target.length -= node.prefixLength;
+        target.offset += parent.prefixLength;
+        target.length -= parent.prefixLength;
         // Work end, match.
         if (target.length == 0) {
-          // Match, Use this node's output.
+          // Match, Use this parent's output.
           return null;
         }
       }
 
       // Get child.
-      int childPos = node.getChildPos(target.bytes[target.offset]);
+      int childPos = parent.getChildPos(target.bytes[target.offset]);
       target.offset++;
       target.length--;
       if (childPos != Node.ILLEGAL_IDX) {
-        return node.getChild(childPos);
+        // TODO: load child.
+        return parent.getChild(childPos);
       } else {
-        // Not match, keep in this node.
-        return node;
+        // Not match, keep in this parent.
+        return parent;
       }
     }
   }
