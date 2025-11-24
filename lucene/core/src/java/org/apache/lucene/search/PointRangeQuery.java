@@ -364,10 +364,9 @@ public abstract class PointRangeQuery extends Query {
         } else {
           // Get or create the cached supplier for this segment
           SegmentDocIdSetSupplier segmentSupplier =
-              segmentCache.computeIfAbsent(
-                  partition.ctx,
-                  ctx -> new SegmentDocIdSetSupplier(ctx));
-          // Each call creates a new PartitionScorerSupplier and all partitions share the same SegmentDocIdSetSupplier
+              segmentCache.computeIfAbsent(partition.ctx, ctx -> new SegmentDocIdSetSupplier(ctx));
+          // Each call creates a new PartitionScorerSupplier and all partitions share the same
+          // SegmentDocIdSetSupplier
           return new PartitionScorerSupplier(
               segmentSupplier, partition.minDocId, partition.maxDocId, score(), scoreMode);
         }
