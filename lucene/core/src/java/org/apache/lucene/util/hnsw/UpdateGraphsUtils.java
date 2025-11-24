@@ -18,11 +18,13 @@
 package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.util.hnsw.HnswGraphBuilder.HNSW_COMPONENT;
 
 import java.io.IOException;
 
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntHashSet;
+import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.LongHeap;
 
 /**
@@ -115,69 +117,92 @@ public class UpdateGraphsUtils {
     return (int) (encoded & 0xFFFFFFFFL);
   }
 
-    /**
-     * <p> This method uses a smart algorithm to merge multiple graphs into a single graph. The
-     * algorithm is based on the idea that if we know where we want to insert a node, we have a good
-     * idea of where we want to insert its neighbors.
-     *
-     * <p>The algorithm is based on the following steps:
-     *
-     * <ul>
-     *   <li>Get all graphs that don't have deletions and sort them by size desc.
-     *   <li>Copy the largest graph to the new graph (gL).
-     *   <li>For each remaining small graph (gS):
-     *       <ul>
-     *         <li>Find the nodes that best cover gS: join set `j`. These nodes will be inserted into gL
-     *             as usual: by searching gL to find the best candidates `w` to which connect the nodes.
-     *         <li>For each remaining node in gS:
-     *             <ul>
-     *               <li>We provide eps to search in gL. We form `eps` by the union of the node's
-     *                   neighbors in gS and the node's neighbors' neighbors in gL. We also limit
-     *                   beamWidth (efConstruction to M*3)
-     *             </ul>
-     *       </ul>
-     * </ul>
-     *
-     * <p>We expect the size of join set `j` to be small, around 1/5 to 1/2 of the size of gS. For the
-     * rest of the nodes in gS, we expect savings by performing lighter searches in gL.
-     *
-     * Thread-safety: the thread safety is provided by the {@code graphSearcher} and {@code graphBuilder}, if both
-     * are thread-safe. Then the whole operation is thread-safe, providing no other thread is working on the same
-     * segment
-     */
-    public static void joinSetGraphMerge(HnswGraph sourceGraph, HnswGraph destGraph, HnswGraphSearcher graphSearcher ,int[] oldToNewOrd, HnswBuilder graphBuilder) throws IOException {
-      int size = sourceGraph.size();
-      IntHashSet j = computeJoinSet(sourceGraph);
+  /**
+   * <p> This method uses a smart algorithm to merge multiple graphs into a single graph. The
+   * algorithm is based on the idea that if we know where we want to insert a node, we have a good
+   * idea of where we want to insert its neighbors.
+   *
+   * <p>The algorithm is based on the following steps:
+   *
+   * <ul>
+   *   <li>Get all graphs that don't have deletions and sort them by size desc.
+   *   <li>Copy the largest graph to the new graph (gL).
+   *   <li>For each remaining small graph (gS):
+   *       <ul>
+   *         <li>Find the nodes that best cover gS: join set `j`. These nodes will be inserted into gL
+   *             as usual: by searching gL to find the best candidates `w` to which connect the nodes.
+   *         <li>For each remaining node in gS:
+   *             <ul>
+   *               <li>We provide eps to search in gL. We form `eps` by the union of the node's
+   *                   neighbors in gS and the node's neighbors' neighbors in gL. We also limit
+   *                   beamWidth (efConstruction to M*3)
+   *             </ul>
+   *       </ul>
+   * </ul>
+   *
+   * <p>We expect the size of join set `j` to be small, around 1/5 to 1/2 of the size of gS. For the
+   * rest of the nodes in gS, we expect savings by performing lighter searches in gL.
+   *
+   * Thread-safety: the thread safety is provided by the {@code graphSearcher} and {@code graphBuilder}, if both
+   * are thread-safe. Then the whole operation is thread-safe, providing no other thread is working on the same
+   * segment
+   */
+  public static void joinSetGraphMerge(HnswGraph sourceGraph, HnswGraph destGraph, HnswGraphSearcher graphSearcher ,int[] oldToNewOrd, HnswBuilder graphBuilder, InfoStream infoStream, int graphId) throws IOException {
+    int size = sourceGraph.size();
+    IntHashSet j = computeJoinSet(sourceGraph);
 
-      // for nodes that in the join set, add them directly to the graph
-      for (IntCursor node : j) {
-        graphBuilder.addGraphNode(oldToNewOrd[node.value]);
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      infoStream.message(
+          HNSW_COMPONENT,
+          "Done join set computation for graph " + graphId);
+    }
+
+    // for nodes that in the join set, add them directly to the graph
+    for (IntCursor node : j) {
+      graphBuilder.addGraphNode(oldToNewOrd[node.value]);
+    }
+
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      infoStream.message(
+          HNSW_COMPONENT,
+          "Done adding join set nodes for graph " + graphId);
+    }
+
+    // for each node outside of j set:
+    // form the entry points set for the node
+    // by joining the node's neighbours in gS with
+    // the node's neighbours' neighbours in gL
+    for (int u = 0; u < size; u++) {
+      if (j.contains(u)) {
+        continue;
       }
-
-      // for each node outside of j set:
-      // form the entry points set for the node
-      // by joining the node's neighbours in gS with
-      // the node's neighbours' neighbours in gL
-      for (int u = 0; u < size; u++) {
-        if (j.contains(u)) {
-          continue;
-        }
-        IntHashSet eps = new IntHashSet();
-        sourceGraph.seek(0, u);
-        for (int v = sourceGraph.nextNeighbor(); v != NO_MORE_DOCS; v = sourceGraph.nextNeighbor()) {
-          // if u's neighbour v is in the join set, or already added to gL (v < u),
-          // then we add v's neighbours from gL to the candidate list
-          if (v < u || j.contains(v)) {
-            int newv = oldToNewOrd[v];
-            eps.add(newv);
-            graphSearcher.graphSeek(destGraph, 0, newv);
-            int friendOrd;
-            while ((friendOrd = graphSearcher.graphNextNeighbor(destGraph)) != NO_MORE_DOCS) {
-              eps.add(friendOrd);
-            }
+      IntHashSet eps = new IntHashSet();
+      sourceGraph.seek(0, u);
+      for (int v = sourceGraph.nextNeighbor(); v != NO_MORE_DOCS; v = sourceGraph.nextNeighbor()) {
+        // if u's neighbour v is in the join set, or already added to gL (v < u),
+        // then we add v's neighbours from gL to the candidate list
+        if (v < u || j.contains(v)) {
+          int newv = oldToNewOrd[v];
+          eps.add(newv);
+          graphSearcher.graphSeek(destGraph, 0, newv);
+          int friendOrd;
+          while ((friendOrd = graphSearcher.graphNextNeighbor(destGraph)) != NO_MORE_DOCS) {
+            eps.add(friendOrd);
           }
         }
-        graphBuilder.addGraphNode(oldToNewOrd[u], eps);
       }
+      graphBuilder.addGraphNode(oldToNewOrd[u], eps);
     }
+
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      infoStream.message(
+          HNSW_COMPONENT,
+          "Done adding rest of nodes for graph " + graphId);
+    }
+  }
+
+  public static void joinSetGraphMerge(HnswGraph sourceGraph, HnswGraph destGraph, HnswGraphSearcher graphSearcher ,int[] oldToNewOrd, HnswBuilder graphBuilder)
+      throws IOException {
+      joinSetGraphMerge(sourceGraph, destGraph, graphSearcher, oldToNewOrd, graphBuilder, InfoStream.NO_OUTPUT, -1);
+  }
 }
