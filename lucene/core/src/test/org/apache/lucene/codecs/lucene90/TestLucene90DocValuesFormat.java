@@ -601,7 +601,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     iw.commit();
     iw.close();
 
-    assertDVIterate(dir);
+    assertDVIterate(dir, 4);
     assertDVAdvance(
         dir, rarely() ? 1 : 7); // 1 is heavy (~20 s), so we do it rarely. 7 is a lot faster (8 s)
 
@@ -740,7 +740,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     writer.close();
 
     // compare
-    assertDVIterate(dir);
+    assertDVIterate(dir, 4);
     assertDVAdvance(
         dir, 1); // Tests all jump-lengths from 1 to maxDoc (quite slow ~= 1 minute for 200K docs)
 
