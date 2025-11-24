@@ -660,7 +660,7 @@ public abstract class BaseLucene80DocValuesFormatTestCase
     // IndexedDISI block skipping only activated if target >= current+2, so we need at least 5
     // blocks to trigger consecutive block skips
     final int maxDoc = atLeast(5 * 65536);
-    long start = System.currentTimeMillis();
+    long start = System.nanoTime();
     BaseDirectoryWrapper dir = newDirectory();
     dir.setCheckIndexOnClose(false);
     IndexWriter iw = createFastIndexWriter(dir, maxDoc);
@@ -687,18 +687,18 @@ public abstract class BaseLucene80DocValuesFormatTestCase
     iw.commit();
     iw.close();
     if (VERBOSE) {
-      System.out.println("index created " + (System.currentTimeMillis() - start) / 1000f + " s");
+      System.out.println("index created " + (System.nanoTime() - start) / 1e9 + " s");
     }
     start = System.currentTimeMillis();
     assertDVIterate(dir, 16);
     if (VERBOSE) {
-      System.out.println("assertDVIterate " + (System.currentTimeMillis() - start) / 1000f + " s");
+      System.out.println("assertDVIterate " + (System.nanoTime() - start) / 1e9 + " s");
     }
     start = System.currentTimeMillis();
     assertDVAdvance(
         dir, rarely() ? 1 : 7); // 1 is heavy (~20 s), so we do it rarely. 7 is a lot faster (8 s)
     if (VERBOSE) {
-      System.out.println("assertDVAdvance " + (System.currentTimeMillis() - start) / 1000f + " s");
+      System.out.println("assertDVAdvance " + (System.nanoTime() - start) / 1e9 + " s");
     }
     dir.close();
   }
