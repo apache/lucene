@@ -45,7 +45,6 @@ import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.Version;
 
 public class TestAncientIndicesCompatibility extends LuceneTestCase {
   static final Set<String> UNSUPPORTED_INDEXES;
@@ -199,7 +198,7 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
       checker.setInfoStream(new PrintStream(bos, false, UTF_8));
       checker.setLevel(CheckIndex.Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS);
       CheckIndex.Status indexStatus = checker.checkIndex();
-      if (getVersion(version).onOrAfter(Version.fromBits(8, 6, 0))) {
+      if (version.startsWith("8.")) {
         assertTrue(indexStatus.clean);
       } else {
         assertFalse(indexStatus.clean);
@@ -215,18 +214,6 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
 
       dir.close();
     }
-  }
-
-  private Version getVersion(String version) {
-    if (version.startsWith("5x")) {
-      // couple of indices in unsupported_indices.txt start with "5x'
-      return Version.fromBits(5, 0, 0);
-    }
-    String[] versionBitsStr = version.split("[.\\-]");
-    return Version.fromBits(
-        Integer.parseInt(versionBitsStr[0]),
-        Integer.parseInt(versionBitsStr[1]),
-        Integer.parseInt(versionBitsStr[2]));
   }
 
   // #12895: test on a carefully crafted 9.8.0 index (from a small contiguous subset
