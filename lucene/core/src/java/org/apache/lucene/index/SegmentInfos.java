@@ -535,9 +535,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
                 + name
                 + "'. "
                 + e.getMessage()
-                + ". This Lucene version only supports indexes with major version "
-                + Version.MIN_SUPPORTED_MAJOR
-                + " or later. Or did you forget to add lucene-backward-codecs.jar?");
+                + ". Did you forget to add lucene-backward-codecs.jar?");
       }
       throw e;
     }
