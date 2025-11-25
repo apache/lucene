@@ -132,6 +132,7 @@ Other
 * GITHUB#14817: Refactor some complex uses of PriorityQueue to use Comparators. (Simon Cooper)
 
 * GITHUB#14607: Index open performs version check on each segment, ignores indexCreatedVersionMajor (Rahul Goswami)
+* GITHUB#15454: Restore binary readability for 8.x indexes like previously and throw IndexFormatTooOldException for an older default codec not found on classpath (Rahul Goswami) 
 
 ======================= Lucene 10.4.0 =======================
 
