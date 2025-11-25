@@ -97,6 +97,9 @@ class ScorerUtil {
       return acceptDocs;
     } else if (acceptDocs.getClass() == DEFAULT_ACCEPT_DOCS_CLASS) {
       return acceptDocs;
+    } else if (acceptDocs instanceof org.apache.lucene.util.SparseLiveDocs
+        || acceptDocs instanceof org.apache.lucene.util.DenseLiveDocs) {
+      return acceptDocs;
     } else {
       return new FilterBits(acceptDocs);
     }
