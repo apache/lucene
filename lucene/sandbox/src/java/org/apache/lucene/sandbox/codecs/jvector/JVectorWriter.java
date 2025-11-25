@@ -687,10 +687,19 @@ public class JVectorWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public VectorFloat<?> getVector(int nodeId) {
-      final var vector = VECTOR_TYPE_SUPPORT.createFloatVector(dimension);
-      getVectorInto(nodeId, vector, 0);
-      return vector;
+    public VectorFloat<?> getVector(int node) {
+      final FloatVectorValues values = vectors[ordToReader.applyAsInt(node)];
+      final int ord = ordToReaderOrd.applyAsInt(node);
+
+      if (values instanceof JVectorFloatVectorValues jVectorValues) {
+        return jVectorValues.vectorFloatValue(ord);
+      }
+
+      try {
+        return VECTOR_TYPE_SUPPORT.createFloatVector(values.vectorValue(ord));
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
     }
 
     @Override
@@ -702,16 +711,14 @@ public class JVectorWriter extends KnnVectorsWriter {
         jVectorValues.getVectorInto(ord, destinationVector, offset);
       }
 
-      final float[] srcVector;
+      final VectorFloat<?> srcVector;
       try {
-        srcVector = values.vectorValue(ord);
+        srcVector = VECTOR_TYPE_SUPPORT.createFloatVector(values.vectorValue(ord));
       } catch (IOException e) {
         throw new UncheckedIOException(e);
       }
 
-      for (int i = 0; i < srcVector.length; ++i) {
-        destinationVector.set(i + offset, srcVector[i]);
-      }
+      destinationVector.copyFrom(srcVector, 0, offset, srcVector.length());
     }
 
     @Override
