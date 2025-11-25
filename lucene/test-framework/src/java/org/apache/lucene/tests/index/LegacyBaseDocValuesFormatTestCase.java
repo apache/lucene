@@ -1386,12 +1386,13 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
 
     writer.close();
     // compare
-    assertDVIterate(dir);
+    int skip = minDocs < 1000 ? 0 : minDocs < 10000 ? 1 : 2;
+    assertDVIterate(dir, skip);
     dir.close();
   }
 
   // Asserts equality of stored value vs. DocValue by iterating DocValues one at a time
-  protected void assertDVIterate(Directory dir) throws IOException {
+  protected void assertDVIterate(Directory dir, int skip) throws IOException {
     DirectoryReader ir = maybeWrapWithMergingReader(DirectoryReader.open(dir));
     TestUtil.checkReader(ir);
     for (LeafReaderContext context : ir.leaves()) {
@@ -1407,6 +1408,15 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
           assertEquals(i, docValues.docID());
           assertEquals(Long.parseLong(storedValue), docValues.longValue());
           docValues.nextDoc();
+        }
+        if (random().nextInt(10) == 3) {
+          // Sometimes skip ahead. We used to exhaustively check every doc, but it is too
+          // time-consuming
+          int skipAmount = skip * (r.maxDoc() - i) / 10;
+          if (skipAmount > 0) {
+            i += random().nextInt(skipAmount);
+            docValues.advance(i + 1);
+          }
         }
       }
       assertEquals(DocIdSetIterator.NO_MORE_DOCS, docValues.docID());
