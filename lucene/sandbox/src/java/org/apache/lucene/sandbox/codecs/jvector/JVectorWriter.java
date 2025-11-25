@@ -469,7 +469,7 @@ public class JVectorWriter extends KnnVectorsWriter {
     // The ordering of docIds matches the ordering of vectors, the index in this list corresponds to
     // the jVector ordinal
     private final List<VectorFloat<?>> vectors = new ArrayList<>();
-    private DocsWithFieldSet docIds;
+    private final DocsWithFieldSet docIds;
 
     FieldWriter(FieldInfo fieldInfo) {
       /** For creating a new field from a flat field vectors writer. */
