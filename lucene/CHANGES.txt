@@ -122,7 +122,7 @@ Other
   Applications using SecurityManager now need to grant SerializablePermission("serialFilter")
   to the analysis-smartcn module. (Uwe Schindler, Isaac David)
 
-* GITHUB#15431: Index open performs version check on each segment, ignores indexCreatedVersionMajor (Rahul Goswami)
+* GITHUB#15431: Index open performs version check on each segment, ignores indexCreatedVersionMajor (Rahul Goswami, Mike Sokolov)
 
 Build
 ---------------------
