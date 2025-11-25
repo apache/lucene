@@ -29,6 +29,7 @@ import io.github.jbellis.jvector.graph.disk.feature.Feature;
 import io.github.jbellis.jvector.graph.disk.feature.FeatureId;
 import io.github.jbellis.jvector.graph.disk.feature.InlineVectors;
 import io.github.jbellis.jvector.graph.similarity.BuildScoreProvider;
+import io.github.jbellis.jvector.quantization.MutablePQVectors;
 import io.github.jbellis.jvector.quantization.PQVectors;
 import io.github.jbellis.jvector.quantization.ProductQuantization;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
@@ -177,7 +178,8 @@ public class JVectorWriter extends KnnVectorsWriter {
               + "This can provides much greater savings in storage and memory";
       throw new UnsupportedOperationException(errorMessage);
     }
-    FieldWriter newField = new FieldWriter(fieldInfo);
+    final int M = numberOfSubspacesPerVectorSupplier.applyAsInt(fieldInfo.getVectorDimension());
+    final FieldWriter newField = new FieldWriter(fieldInfo, minimumBatchSizeForQuantization, M);
 
     fields.add(newField);
     return newField;
@@ -217,17 +219,15 @@ public class JVectorWriter extends KnnVectorsWriter {
       }
       final RandomAccessVectorValues randomAccessVectorValues = field.toRandomAccessVectorValues();
       final BuildScoreProvider buildScoreProvider;
-      final PQVectors pqVectors;
+      final PQVectors pqVectors = field.getCompressedVectors();
       final FieldInfo fieldInfo = field.fieldInfo;
-      if (randomAccessVectorValues.size() >= minimumBatchSizeForQuantization) {
-        pqVectors = getPQVectors(randomAccessVectorValues, fieldInfo);
+      if (pqVectors != null) {
         buildScoreProvider =
             BuildScoreProvider.pqBuildScoreProvider(
                 JVectorFormat.toJVectorSimilarity(fieldInfo.getVectorSimilarityFunction()),
                 pqVectors);
       } else {
         // Not enough vectors for quantization; use full precision vectors instead
-        pqVectors = null;
         buildScoreProvider =
             BuildScoreProvider.randomAccessScoreProvider(
                 randomAccessVectorValues,
@@ -347,26 +347,6 @@ public class JVectorWriter extends KnnVectorsWriter {
     }
   }
 
-  private PQVectors getPQVectors(
-      RandomAccessVectorValues randomAccessVectorValues, FieldInfo fieldInfo) throws IOException {
-    final boolean globallyCenter =
-        switch (fieldInfo.getVectorSimilarityFunction()) {
-          case EUCLIDEAN -> true;
-          case COSINE, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT -> false;
-        };
-    final int M =
-        numberOfSubspacesPerVectorSupplier.applyAsInt(randomAccessVectorValues.dimension());
-    final var numberOfClustersPerSubspace =
-        Math.min(256, randomAccessVectorValues.size()); // number of centroids per
-    // subspace
-
-    ProductQuantization pq =
-        ProductQuantization.compute(
-            randomAccessVectorValues, M, numberOfClustersPerSubspace, globallyCenter);
-
-    return (PQVectors) pq.encodeAll(randomAccessVectorValues);
-  }
-
   /// Metadata about the index to be persisted on disk
   public static class VectorIndexFieldMetadata {
     final int fieldNumber;
@@ -471,10 +451,18 @@ public class JVectorWriter extends KnnVectorsWriter {
     private final List<VectorFloat<?>> vectors = new ArrayList<>();
     private final DocsWithFieldSet docIds;
 
-    FieldWriter(FieldInfo fieldInfo) {
+    // PQ fields
+    private final int pqThreshold;
+    private final int pqSubspaceCount;
+    private MutablePQVectors pqVectors;
+
+    FieldWriter(FieldInfo fieldInfo, int pqThreshold, int pqSubspaceCount) {
       /** For creating a new field from a flat field vectors writer. */
       this.fieldInfo = fieldInfo;
       this.docIds = new DocsWithFieldSet();
+      this.pqThreshold = pqThreshold;
+      this.pqSubspaceCount = pqSubspaceCount;
+      this.pqVectors = null;
     }
 
     @Override
@@ -486,7 +474,22 @@ public class JVectorWriter extends KnnVectorsWriter {
                 + "\" appears more than once in this document (only one value is allowed per field)");
       }
       docIds.add(docID);
-      vectors.add(VECTOR_TYPE_SUPPORT.createFloatVector(copyValue(vectorValue)));
+      final var vector = VECTOR_TYPE_SUPPORT.createFloatVector(copyValue(vectorValue));
+      vectors.add(vector);
+
+      if (pqVectors != null) {
+        pqVectors.encodeAndSet(vectors.size() - 1, vector);
+      } else if (vectors.size() >= pqThreshold) {
+        final ProductQuantization pq =
+            trainPQ(
+                toRandomAccessVectorValues(),
+                pqSubspaceCount,
+                fieldInfo.getVectorSimilarityFunction());
+        pqVectors = new MutablePQVectors(pq);
+        for (int i = 0; i < vectors.size(); ++i) {
+          pqVectors.encodeAndSet(i, vectors.get(i));
+        }
+      }
     }
 
     @Override
@@ -496,6 +499,10 @@ public class JVectorWriter extends KnnVectorsWriter {
 
     public RandomAccessVectorValues toRandomAccessVectorValues() {
       return new ListRandomAccessVectorValues(vectors, fieldInfo.getVectorDimension());
+    }
+
+    public PQVectors getCompressedVectors() {
+      return pqVectors;
     }
 
     @Override
@@ -598,8 +605,9 @@ public class JVectorWriter extends KnnVectorsWriter {
       }
       pqVectors = (PQVectors) newPq.encodeAll(ravv);
     } else if (ravv.size() >= minimumBatchSizeForQuantization) {
-      // No pre-existing codebooks, check if we have enough vectors to trigger quantization
-      pqVectors = getPQVectors(ravv, fieldInfo);
+      final int M = numberOfSubspacesPerVectorSupplier.applyAsInt(ravv.dimension());
+      final ProductQuantization newPQ = trainPQ(ravv, M, fieldInfo.getVectorSimilarityFunction());
+      pqVectors = (PQVectors) newPQ.encodeAll(ravv);
     } else {
       pqVectors = null;
     }
@@ -776,6 +784,20 @@ public class JVectorWriter extends KnnVectorsWriter {
     graphIndex = (OnHeapGraphIndex) graphIndexBuilder.getGraph();
 
     return graphIndex;
+  }
+
+  private static ProductQuantization trainPQ(
+      RandomAccessVectorValues vectors,
+      int M,
+      org.apache.lucene.index.VectorSimilarityFunction similarityFunction) {
+    final boolean globallyCenter =
+        switch (similarityFunction) {
+          case EUCLIDEAN -> true;
+          case COSINE, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT -> false;
+        };
+    final int numberOfClustersPerSubspace = Math.min(256, vectors.size());
+    // This extracts a random minimal subset of the vectors for training the PQ codebooks
+    return ProductQuantization.compute(vectors, M, numberOfClustersPerSubspace, globallyCenter);
   }
 
   static class RandomAccessVectorValuesOverVectorValues implements RandomAccessVectorValues {
