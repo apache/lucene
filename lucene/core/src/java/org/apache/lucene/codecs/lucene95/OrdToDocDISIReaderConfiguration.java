@@ -63,6 +63,7 @@ public class OrdToDocDISIReaderConfiguration {
    *   <li><b>[int64]</b>offset to OrdToDoc encoded using DirectWriter (addressesOffset)
    *   <li><b>[vint]</b> 0 (blockShift)
    *   <li><b>[int64]</b>length of OrdToDoc (addressesLength)
+   *   <li><b>[byte]</b> bits used for DirectWriter encoding of ordToDoc
    *   <li><b>[int64]</b>length of DocToOrd encoded using GroupVint (docToOrdLength)
    * </ul>
    *
@@ -132,13 +133,14 @@ public class OrdToDocDISIReaderConfiguration {
   private static void writeRandomOrdToDoc(
       IndexOutput outputMeta, IndexOutput vectorData, int maxDoc, Sorter.DocMap ordToDocMap)
       throws IOException {
+    int bitsRequired = DirectWriter.bitsRequired(maxDoc);
     long start = vectorData.getFilePointer();
     outputMeta.writeLong(start);
     outputMeta.writeVInt(0); // blockShift = 0
     // iterate over the vector ordinals and write the docs they are in, in a format that supports
     // random access
     DirectWriter ordToDocWriter =
-        DirectWriter.getInstance(vectorData, ordToDocMap.size(), DirectWriter.bitsRequired(maxDoc));
+        DirectWriter.getInstance(vectorData, ordToDocMap.size(), bitsRequired);
     for (int ord = 0; ord < ordToDocMap.size(); ord++) {
       ordToDocWriter.add(ordToDocMap.newToOld(ord));
       ;
@@ -146,17 +148,19 @@ public class OrdToDocDISIReaderConfiguration {
     ordToDocWriter.finish();
     long startOrds = vectorData.getFilePointer();
     outputMeta.writeLong(startOrds - start);
+    outputMeta.writeByte((byte) bitsRequired);
     // for docToOrd we do not require random access; this only needs to support forward iteration
     // write the ordinals in docid order using GroupVarInt encoding
     // first invert the ordToDoc mapping
-    // TODO: it's dumb that we must copy this array
+    // TODO: it's dumb that we must copy this array - we could just reference the array inside the
+    // DocMap
     int[] ordsInDocIdOrder = new int[ordToDocMap.size()];
     for (int ord = 0; ord < ordToDocMap.size(); ord++) {
       // note we don't need to encode the actual docids or gaps here since we will iterate to docs
       // having values
       // using docsWithField bitset while advancing through this array of ords
-      int doc = ordToDocMap.oldToNew(ord);
-      ordsInDocIdOrder[ord] = doc;
+      int newOrd = ordToDocMap.oldToNew(ord);
+      ordsInDocIdOrder[ord] = newOrd;
     }
     GroupVIntUtil.writeGroupVInts(
         vectorData,
@@ -210,6 +214,7 @@ public class OrdToDocDISIReaderConfiguration {
     DirectMonotonicReader.Meta meta = null;
     long addressesLength = 0;
     long docToOrdLength = 0;
+    byte bitsRequired = 0;
     if (docsWithFieldOffset == -3) {
       addressesOffset = inputMeta.readLong();
       blockShift = inputMeta.readVInt();
@@ -224,6 +229,7 @@ public class OrdToDocDISIReaderConfiguration {
       }
       addressesLength = inputMeta.readLong();
       if (blockShift == 0) {
+        bitsRequired = inputMeta.readByte();
         docToOrdLength = inputMeta.readLong();
       }
     }
@@ -236,6 +242,7 @@ public class OrdToDocDISIReaderConfiguration {
         docsWithFieldOffset,
         docsWithFieldLength,
         denseRankPower,
+        bitsRequired,
         meta);
   }
 
@@ -248,6 +255,7 @@ public class OrdToDocDISIReaderConfiguration {
   final short jumpTableEntryCount;
   final long docsWithFieldOffset, docsWithFieldLength;
   final byte denseRankPower;
+  final byte bitsRequired;
 
   // the following variables used to read ordToDoc are encoded either by DirectMonotonicWriter, in
   // the sparse non-reordered case, or DirectWriter in the reordered case.  Reordered case is
@@ -267,6 +275,7 @@ public class OrdToDocDISIReaderConfiguration {
       long docsWithFieldOffset,
       long docsWithFieldLength,
       byte denseRankPower,
+      byte bitsRequired,
       DirectMonotonicReader.Meta meta) {
     this.size = size;
     this.jumpTableEntryCount = jumpTableEntryCount;
@@ -276,6 +285,7 @@ public class OrdToDocDISIReaderConfiguration {
     this.docsWithFieldLength = docsWithFieldLength;
     this.docToOrdLength = docToOrdLength;
     this.denseRankPower = denseRankPower;
+    this.bitsRequired = bitsRequired;
     this.meta = meta;
   }
 
@@ -348,8 +358,7 @@ public class OrdToDocDISIReaderConfiguration {
       this.dataIn = dataIn;
       ordToDoc =
           DirectReader.getInstance(
-              dataIn.randomAccessSlice(addressesOffset, addressesLength),
-              DirectWriter.bitsRequired(size));
+              dataIn.randomAccessSlice(addressesOffset, addressesLength), bitsRequired);
       docToOrdSlice =
           dataIn.slice("OrdToDocReader", addressesOffset + addressesLength, docToOrdLength);
       if (isDense()) {

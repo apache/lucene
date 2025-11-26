@@ -805,6 +805,8 @@ public class BpVectorReorderer extends AbstractBPReorderer {
     };
   }
 
+  // returns a map where new->old maps ord->doc and
+  // old->new maps old ords (which are in doc order) to new ords
   public static Sorter.DocMap ordToDocFromValueMap(
       Sorter.DocMap valueMap, DocsWithFieldSet docsWithField) throws IOException {
     // valueMap maps old/new ords; values maps old docs/old ords
