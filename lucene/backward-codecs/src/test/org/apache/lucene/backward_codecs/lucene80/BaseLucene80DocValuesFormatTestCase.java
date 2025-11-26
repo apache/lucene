@@ -66,7 +66,6 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.LegacyBaseDocValuesFormatTestCase;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -658,11 +657,11 @@ public abstract class BaseLucene80DocValuesFormatTestCase
   @Nightly
   public void testNumericFieldJumpTables() throws Exception {
     // IndexedDISI block skipping only activated if target >= current+2, so we need at least 5
-    // blocks to trigger consecutive block skips
+    // blocks to
+    // trigger consecutive block skips
     final int maxDoc = atLeast(5 * 65536);
-    long start = System.nanoTime();
-    BaseDirectoryWrapper dir = newDirectory();
-    dir.setCheckIndexOnClose(false);
+
+    Directory dir = newDirectory();
     IndexWriter iw = createFastIndexWriter(dir, maxDoc);
 
     Field idField = newStringField("id", "", Field.Store.NO);
@@ -686,20 +685,11 @@ public abstract class BaseLucene80DocValuesFormatTestCase
     iw.forceMerge(1, true); // Single segment to force large enough structures
     iw.commit();
     iw.close();
-    if (VERBOSE) {
-      System.out.println("index created " + (System.nanoTime() - start) / 1e9 + " s");
-    }
-    start = System.nanoTime();
-    assertDVIterate(dir, 16);
-    if (VERBOSE) {
-      System.out.println("assertDVIterate " + (System.nanoTime() - start) / 1e9 + " s");
-    }
-    start = System.nanoTime();
+
+    assertDVIterate(dir);
     assertDVAdvance(
         dir, rarely() ? 1 : 7); // 1 is heavy (~20 s), so we do it rarely. 7 is a lot faster (8 s)
-    if (VERBOSE) {
-      System.out.println("assertDVAdvance " + (System.nanoTime() - start) / 1e9 + " s");
-    }
+
     dir.close();
   }
 
@@ -833,7 +823,7 @@ public abstract class BaseLucene80DocValuesFormatTestCase
     writer.close();
 
     // compare
-    assertDVIterate(dir, 1);
+    assertDVIterate(dir);
     assertDVAdvance(
         dir, 1); // Tests all jump-lengths from 1 to maxDoc (quite slow ~= 1 minute for 200K docs)
 
@@ -848,7 +838,7 @@ public abstract class BaseLucene80DocValuesFormatTestCase
       LeafReader r = context.reader();
       StoredFields storedFields = r.storedFields();
 
-      for (int jump = jumpStep; jump < r.maxDoc(); jump += jumpStep * random().nextInt(1, 10)) {
+      for (int jump = jumpStep; jump < r.maxDoc(); jump += jumpStep) {
         // Create a new instance each time to ensure jumps from the beginning
         NumericDocValues docValues = DocValues.getNumeric(r, "dv");
         for (int docID = 0; docID < r.maxDoc(); docID += jump) {
@@ -870,13 +860,6 @@ public abstract class BaseLucene80DocValuesFormatTestCase
                 "The doc value should be correct for " + base,
                 Long.parseLong(storedValue),
                 docValues.longValue());
-          }
-          if (random().nextInt(10) == 3) {
-            // sometimes skip more
-            int skip = (r.maxDoc() - docID) / 3;
-            if (skip > 0) {
-              docID += random().nextInt(skip);
-            }
           }
         }
       }
