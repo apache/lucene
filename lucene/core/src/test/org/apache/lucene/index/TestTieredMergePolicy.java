@@ -792,25 +792,6 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
         () -> {
           tmp.setFloorSegmentMB(-2.0);
         });
-
-    tmp.setMaxCFSSegmentSizeMB(2.0);
-    assertEquals(2.0, tmp.getMaxCFSSegmentSizeMB(), EPSILON);
-
-    tmp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
-    assertEquals(
-        Long.MAX_VALUE / 1024. / 1024., tmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
-
-    tmp.setMaxCFSSegmentSizeMB(Long.MAX_VALUE / 1024. / 1024.);
-    assertEquals(
-        Long.MAX_VALUE / 1024. / 1024., tmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
-
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          tmp.setMaxCFSSegmentSizeMB(-2.0);
-        });
-
-    // TODO: Add more checks for other non-double setters!
   }
 
   // LUCENE-5668

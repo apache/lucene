@@ -74,14 +74,6 @@ import java.util.Set;
 //     maybe CMS should do so)
 
 public class TieredMergePolicy extends MergePolicy {
-  /**
-   * Default noCFSRatio. If a merge's size is {@code >= 10%} of the index, then we disable compound
-   * file for it.
-   *
-   * @see MergePolicy#setNoCFSRatio
-   */
-  public static final double DEFAULT_NO_CFS_RATIO = 0.1;
-
   private long maxMergedSegmentBytes = 5 * 1024 * 1024 * 1024L;
 
   private long floorSegmentBytes = 16 * 1024 * 1024L;
@@ -91,9 +83,7 @@ public class TieredMergePolicy extends MergePolicy {
   private int targetSearchConcurrency = 1;
 
   /** Sole constructor, setting all settings to their defaults. */
-  public TieredMergePolicy() {
-    super(DEFAULT_NO_CFS_RATIO, MergePolicy.DEFAULT_MAX_CFS_SEGMENT_SIZE);
-  }
+  public TieredMergePolicy() {}
 
   private enum MERGE_TYPE {
     NATURAL,
@@ -1002,8 +992,6 @@ public class TieredMergePolicy extends MergePolicy {
     sb.append("floorSegmentMB=").append(floorSegmentBytes / 1024. / 1024.).append(", ");
     sb.append("forceMergeDeletesPctAllowed=").append(forceMergeDeletesPctAllowed).append(", ");
     sb.append("segmentsPerTier=").append(segsPerTier).append(", ");
-    sb.append("maxCFSSegmentSizeMB=").append(getMaxCFSSegmentSizeMB()).append(", ");
-    sb.append("noCFSRatio=").append(noCFSRatio).append(", ");
     sb.append("deletesPctAllowed=").append(deletesPctAllowed).append(", ");
     sb.append("targetSearchConcurrency=").append(targetSearchConcurrency);
     return sb.toString();

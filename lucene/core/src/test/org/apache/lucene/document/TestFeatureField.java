@@ -62,9 +62,13 @@ public class TestFeatureField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer =
         new RandomIndexWriter(
-            random(),
-            dir,
-            newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+            random(), dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    writer
+        .w
+        .getConfig()
+        .getCodec()
+        .compoundFormat()
+        .setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     FeatureField pagerank = new FeatureField("features", "pagerank", 1);
     FeatureField urlLength = new FeatureField("features", "urlLen", 1);
@@ -197,9 +201,13 @@ public class TestFeatureField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer =
         new RandomIndexWriter(
-            random(),
-            dir,
-            newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+            random(), dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    writer
+        .w
+        .getConfig()
+        .getCodec()
+        .compoundFormat()
+        .setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     FeatureField pagerank = new FeatureField("features", "pagerank", 1);
     doc.add(pagerank);
@@ -323,9 +331,13 @@ public class TestFeatureField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer =
         new RandomIndexWriter(
-            random(),
-            dir,
-            newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+            random(), dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    writer
+        .w
+        .getConfig()
+        .getCodec()
+        .compoundFormat()
+        .setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     FeatureField pagerank = new FeatureField("features", "pagerank", 1);
     doc.add(pagerank);
@@ -379,9 +391,13 @@ public class TestFeatureField extends LuceneTestCase {
       DirectoryReader reader;
       try (RandomIndexWriter writer =
           new RandomIndexWriter(
-              random(),
-              dir,
-              newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())))) {
+              random(), dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+        writer
+            .w
+            .getConfig()
+            .getCodec()
+            .compoundFormat()
+            .setShouldUseCompoundFile(random().nextBoolean());
         Document doc = new Document();
         FeatureField pagerank = new FeatureField("features", "pagerank", 1);
         FeatureField urlLength = new FeatureField("features", "urlLen", 1);
@@ -462,9 +478,13 @@ public class TestFeatureField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer =
         new RandomIndexWriter(
-            random(),
-            dir,
-            newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+            random(), dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    writer
+        .w
+        .getConfig()
+        .getCodec()
+        .compoundFormat()
+        .setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     FeatureField pagerank = new FeatureField("features", "pagerank", 1, true);
     FeatureField urlLength = new FeatureField("features", "urlLen", 1, true);
