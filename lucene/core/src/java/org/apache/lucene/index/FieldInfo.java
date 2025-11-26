@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -113,7 +112,7 @@ public final class FieldInfo {
       this.omitNorms = false;
     }
     this.dvGen = dvGen;
-    this.attributes = Objects.requireNonNull(attributes);
+    this.attributes = Map.copyOf(Objects.requireNonNull(attributes));
     this.pointDimensionCount = pointDimensionCount;
     this.pointIndexDimensionCount = pointIndexDimensionCount;
     this.pointNumBytes = pointNumBytes;
@@ -675,7 +674,7 @@ public final class FieldInfo {
     String oldValue = newMap.put(key, value);
     // This needs to be thread-safe as multiple threads may be updating (different) attributes
     // concurrently due to concurrent merging.
-    attributes = Collections.unmodifiableMap(newMap);
+    attributes = Map.copyOf(newMap);
     return oldValue;
   }
 
