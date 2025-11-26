@@ -305,6 +305,9 @@ public abstract class Node {
     }
 
     // Write children's delta fps from first one.
+    // TODO: For node48, we should write fps by iterate children[], because its getNextLargerPos
+    // returns next byte,
+    // We can use getChildIndex(nextPos) to calculate real index in children when load child.
     nextPos = Node.ILLEGAL_IDX;
     while ((nextPos = getNextLargerPos(nextPos)) != Node.ILLEGAL_IDX) {
       child = getChild(nextPos);

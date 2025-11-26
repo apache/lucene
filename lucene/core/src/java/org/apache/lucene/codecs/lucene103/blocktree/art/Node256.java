@@ -32,6 +32,8 @@ public class Node256 extends Node {
   // a helper utility field
   long[] bitmapMask = new long[4];
   private static final long LONG_MASK = 0xffffffffffffffffL;
+  // Cache number of zeros for the first 3 bit mask.
+  int[] cache = new int[] {-1, -1, -1};
 
   public Node256(int compressedPrefixSize) {
     super(NodeType.NODE256, compressedPrefixSize);
@@ -82,6 +84,43 @@ public class Node256 extends Node {
       }
       longVal = bitmapMask[longPos];
     }
+  }
+
+  // Returns the number of null child from 0 to this pos. this is useful when we need to calculate
+  // child's delta fp position to load child.
+  public int numberOfNullChildren(int pos) {
+    int longPos = pos >> 6;
+    if (longPos >= 4) {
+      return ILLEGAL_IDX;
+    }
+
+    int numberOfZeros = 0;
+    for (int i = 0; i < longPos; i++) {
+      if (cache[i] == -1) {
+        // calculate the whole long bits' number of zero.
+        long wholeMask = bitmapMask[i];
+        int x = numberOfZeros((int) (wholeMask >>> 32)) + numberOfZeros((int) wholeMask);
+        cache[i] = x;
+      }
+      numberOfZeros += cache[i];
+    }
+
+    long currentMask = bitmapMask[longPos] | (LONG_MASK << pos);
+    numberOfZeros += numberOfZeros((int) (currentMask >>> 32)) + numberOfZeros((int) currentMask);
+    return numberOfZeros;
+  }
+
+  // Returns the number of zero bits of i.
+  // https://www.baeldung.com/cs/integer-bitcount
+  public int numberOfZeros(int i) {
+    // i equals 0 is more than unusual for long's low 32 bits.
+    if (i == 0) return 32;
+    i = (i & 0x55555555) + ((i >> 1) & 0x55555555);
+    i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
+    i = (i & 0x0F0F0F0F) + ((i >> 4) & 0x0F0F0F0F);
+    i = (i & 0x00FF00FF) + ((i >> 8) & 0x00FF00FF);
+    i = (i & 0x0000FFFF) + ((i >> 16) & 0x0000FFFF);
+    return 32 - i;
   }
 
   @Override

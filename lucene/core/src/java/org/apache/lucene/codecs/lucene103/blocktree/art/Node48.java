@@ -36,11 +36,12 @@ public class Node48 extends Node {
     Arrays.fill(childIndex, INIT_LONG_VALUE);
   }
 
+  // Return the original byte, we will calculate the real index in getChild.
   @Override
   public int getChildPos(byte k) {
     // Different with other type's node, this pos is a position value(byte value) to calculate the
-    // position
-    // (long position and byte position) in childIndex, the value in this position is the index in
+    // position (long position and byte position) in childIndex, the value in this position is the
+    // index in
     // children.
     int unsignedIdx = Byte.toUnsignedInt(k);
     int childIdx = childrenIdx(unsignedIdx, childIndex);
@@ -72,6 +73,8 @@ public class Node48 extends Node {
     children[(int) idx] = freshOne;
   }
 
+  // For Node48, this return the next key byte, we can use this key to calculate real index with
+  // #getChildIndex
   @Override
   public int getNextLargerPos(int pos) {
     if (pos == ILLEGAL_IDX) {

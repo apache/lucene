@@ -8,8 +8,8 @@ public class TestNode4 extends LuceneTestCase {
 
   public void setUp() throws Exception {
     super.setUp();
-    //    int childrenCount = random().nextInt(1,5);
-    int childrenCount = 4;
+    int childrenCount = random().nextInt(1, 5);
+    //    int childrenCount = 4;
     for (int i = 0; i < childrenCount; i++) {
       byte b = (byte) random().nextInt();
       Node4.insert(node, new LeafNode(new BytesRef(new byte[] {b}), null), b);
