@@ -242,7 +242,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       IndexWriterConfig iwc =
           new IndexWriterConfig()
               .setCodec(
-                  TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(M, beamWidth)));
+                  TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(M, beamWidth, 0)));
       try (IndexWriter iw = new IndexWriter(dir, iwc)) {
         KnnVectorValues.DocIndexIterator it2 = v2.iterator();
         while (it2.nextDoc() != NO_MORE_DOCS) {
@@ -271,9 +271,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               ((Lucene99HnswVectorsReader)
                       ((CodecReader) ctx.reader()).getVectorReader().unwrapReaderForField("field"))
                   .getGraph("field");
-          if (graphValues.size() > 0) {
-            assertGraphEqual(hnsw, graphValues);
-          }
+          assertGraphEqual(hnsw, graphValues);
         }
       }
     }
