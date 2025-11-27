@@ -362,7 +362,7 @@ public final class SegmentInfo {
     // This needs to be thread-safe because multiple threads may be updating (different) attributes
     // at the same time due to concurrent merging, plus some threads may be calling toString() on
     // segment info while other threads are updating attributes.
-    attributes = Collections.unmodifiableMap(newMap);
+    attributes = Map.copyOf(newMap);
     return oldValue;
   }
 
