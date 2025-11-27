@@ -19,12 +19,14 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.Objects;
+import java.util.function.ToIntFunction;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexSorter;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortFieldProvider;
 import org.apache.lucene.search.comparators.DocComparator;
 import org.apache.lucene.search.comparators.DoubleComparator;
@@ -560,6 +562,52 @@ public class SortField {
       fieldComparator.disableSkipping();
     }
     return fieldComparator;
+  }
+
+  /**
+   * Returns a Comparator that will order segments based on whether they are likely to return
+   * documents that sort higher in a result set, allowing uncompetitive segments to be skipped
+   * entirely if the top-k queue is already populated by earlier competitive segments. If the
+   * SortType does not support ordering in this way, returns {@code null}
+   */
+  public Comparator<LeafReaderContext> getLeafReaderComparator() {
+    return switch (type) {
+      case DOC ->
+          reverse
+              ? Comparator.comparingInt((ToIntFunction<LeafReaderContext>) value -> value.docBase)
+                  .reversed()
+              : Comparator.comparingInt((ToIntFunction<LeafReaderContext>) value -> value.docBase);
+      case INT ->
+          new NumericFieldReaderContextComparator(
+              field,
+              missingValue == null ? null : ((Integer) missingValue).longValue(),
+              reverse,
+              b -> NumericUtils.sortableBytesToInt(b, 0));
+      case LONG ->
+          new NumericFieldReaderContextComparator(
+              field,
+              missingValue == null ? null : (Long) missingValue,
+              reverse,
+              b -> NumericUtils.sortableBytesToLong(b, 0));
+      case FLOAT ->
+          new NumericFieldReaderContextComparator(
+              field,
+              missingValue == null
+                  ? null
+                  : (long) NumericUtils.floatToSortableInt((float) missingValue),
+              reverse,
+              b -> NumericUtils.sortableBytesToInt(b, 0));
+      case DOUBLE ->
+          new NumericFieldReaderContextComparator(
+              field,
+              missingValue == null
+                  ? null
+                  : NumericUtils.doubleToSortableLong((double) missingValue),
+              reverse,
+              b -> NumericUtils.sortableBytesToLong(b, 0));
+      // $CASES-OMITTED$
+      default -> null;
+    };
   }
 
   /**
