@@ -193,7 +193,6 @@ public final class TermStates {
         this.states[ctx.ord] = EMPTY_TERMSTATE;
         return null;
       }
-      return () -> {
         if (this.states[ctx.ord] == null) {
           TermState state = null;
           if (termExistsSupplier.get()) {
@@ -207,8 +206,7 @@ public final class TermStates {
         if (state == EMPTY_TERMSTATE) {
           return null;
         }
-        return state;
-      };
+        return () -> state;
     }
     TermState state = this.states[ctx.ord];
     if (state == EMPTY_TERMSTATE) {
