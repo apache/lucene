@@ -16,7 +16,10 @@
  */
 package org.apache.lucene.misc.store;
 
-import com.carrotsearch.randomizedtesting.RandomizedTest;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
+import static org.apache.lucene.misc.store.DirectIODirectory.DEFAULT_MERGE_BUFFER_SIZE;
+import static org.apache.lucene.misc.store.DirectIODirectory.DEFAULT_MIN_BYTES_DIRECT;
+
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -58,7 +61,11 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
   }
 
   private static DirectIODirectory open(Path path) throws IOException {
-    return new DirectIODirectory(FSDirectory.open(path)) {
+    return new DirectIODirectory(
+        FSDirectory.open(path),
+        DEFAULT_MERGE_BUFFER_SIZE,
+        DEFAULT_MIN_BYTES_DIRECT,
+        randomIntBetween(0, 32)) {
       @Override
       protected boolean useDirectIO(String name, IOContext context, OptionalLong fileLength) {
         return true;
@@ -102,8 +109,7 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
       i.seek(fileSize);
 
       // Seeking past EOF should always throw EOFException
-      expectThrows(
-          EOFException.class, () -> i.seek(fileSize + RandomizedTest.randomIntBetween(1, 2048)));
+      expectThrows(EOFException.class, () -> i.seek(fileSize + randomIntBetween(1, 2048)));
 
       // Reading immediately after seeking past EOF should throw EOFException
       expectThrows(EOFException.class, () -> i.readByte());
@@ -126,8 +132,7 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
       }
 
       try (IndexInput i = dir.openInput("out", newIOContext(random()))) {
-        expectThrows(
-            EOFException.class, () -> i.seek(fileSize + RandomizedTest.randomIntBetween(1, 2048)));
+        expectThrows(EOFException.class, () -> i.seek(fileSize + randomIntBetween(1, 2048)));
         expectThrows(EOFException.class, () -> i.readByte());
         expectThrows(EOFException.class, () -> i.readBytes(new byte[1], 0, 1));
       }
@@ -153,8 +158,7 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
 
       try (IndexInput i = dir.openInput("out", newIOContext(random()))) {
         // Seeking past EOF should always throw EOFException
-        expectThrows(
-            EOFException.class, () -> i.seek(len + RandomizedTest.randomIntBetween(1, 2048)));
+        expectThrows(EOFException.class, () -> i.seek(len + randomIntBetween(1, 2048)));
 
         // Reading immediately after seeking past EOF should throw EOFException
         expectThrows(EOFException.class, () -> i.readByte());
@@ -165,9 +169,8 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
   public void testUseDirectIODefaults() throws Exception {
     Path path = createTempDir("testUseDirectIODefaults");
     try (DirectIODirectory dir = new DirectIODirectory(FSDirectory.open(path))) {
-      long largeSize = DirectIODirectory.DEFAULT_MIN_BYTES_DIRECT + random().nextInt(10_000);
-      long smallSize =
-          random().nextInt(Math.toIntExact(DirectIODirectory.DEFAULT_MIN_BYTES_DIRECT));
+      long largeSize = DEFAULT_MIN_BYTES_DIRECT + random().nextInt(10_000);
+      long smallSize = random().nextInt(Math.toIntExact(DEFAULT_MIN_BYTES_DIRECT));
       int numDocs = random().nextInt(1000);
 
       assertFalse(dir.useDirectIO("dummy", IOContext.DEFAULT, OptionalLong.empty()));
@@ -240,6 +243,69 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
           in.seek(0);
           assertEquals(0, in.readByte());
         }
+      }
+    }
+  }
+
+  public void testPrefetchEdgeCase() throws IOException {
+    byte[] bytes = new byte[8192 * 32 + randomIntBetween(1, 8192)];
+    int offset = 84;
+    float[] vectorActual = new float[768];
+    int[] toSeek = new int[] {1, 2, 3, 5, 6, 9, 11, 14, 15, 16, 18, 23, 24, 25, 26, 29, 30, 31};
+    int byteSize = 768 * 4;
+    Path path = createTempDir("testDirectIODirectory");
+    random().nextBytes(bytes);
+    try (Directory dir =
+        new DirectIODirectory(FSDirectory.open(path), 8192, 8192) {
+          @Override
+          protected boolean useDirectIO(String name, IOContext context, OptionalLong fileLength) {
+            return true;
+          }
+        }) {
+      try (var output = dir.createOutput("test", org.apache.lucene.store.IOContext.DEFAULT)) {
+        output.writeBytes(bytes, bytes.length);
+      }
+      try (var input = dir.openInput("test", org.apache.lucene.store.IOContext.DEFAULT)) {
+        IndexInput actualSlice = input.slice("vectors", offset, bytes.length - offset);
+        for (int seek : toSeek) {
+          actualSlice.prefetch(seek * byteSize, byteSize);
+        }
+        for (int seek : toSeek) {
+          actualSlice.seek(seek * byteSize);
+          actualSlice.readFloats(vectorActual, 0, vectorActual.length);
+          assertEquals(
+              "mismatch at seek: " + seek, (seek + 1) * byteSize, actualSlice.getFilePointer());
+        }
+      }
+    }
+  }
+
+  public void testLargePrefetch() throws IOException {
+    byte[] bytes = new byte[8192 * 10 + randomIntBetween(1, 8192)];
+    int offset = randomIntBetween(1, 8192);
+    int numBytes = randomIntBetween(8192 + 1, 8192 * 8);
+    random().nextBytes(bytes);
+    byte[] trueBytes = new byte[numBytes];
+    System.arraycopy(bytes, offset, trueBytes, 0, numBytes);
+
+    Path path = createTempDir("testDirectIODirectory");
+    try (Directory dir =
+        new DirectIODirectory(FSDirectory.open(path), 8192, 8192) {
+          @Override
+          protected boolean useDirectIO(String name, IOContext context, OptionalLong fileLength) {
+            return true;
+          }
+        }) {
+      try (var output = dir.createOutput("test", org.apache.lucene.store.IOContext.DEFAULT)) {
+        output.writeBytes(bytes, bytes.length);
+      }
+      try (var input = dir.openInput("test", org.apache.lucene.store.IOContext.DEFAULT)) {
+        byte[] actualBytes = new byte[numBytes];
+        // prefetch everything at once
+        input.prefetch(offset, numBytes);
+        input.seek(offset);
+        input.readBytes(actualBytes, 0, actualBytes.length);
+        assertArrayEquals(trueBytes, actualBytes);
       }
     }
   }
