@@ -104,7 +104,7 @@ public abstract class VectorizationProvider {
    * Returns a singleton (stateless) {@link VectorUtilSupport} to support SIMD usage in {@link
    * VectorUtil}.
    */
-  public abstract VectorUtilSupport getVectorUtilSupport();
+  public abstract VectorUtilSupport<?, ?> getVectorUtilSupport();
 
   /** Returns a FlatVectorsScorer that supports the Lucene99 format. */
   public abstract FlatVectorsScorer getLucene99FlatVectorsScorer();

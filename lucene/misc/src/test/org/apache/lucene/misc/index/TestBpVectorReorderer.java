@@ -110,7 +110,7 @@ public class TestBpVectorReorderer extends LuceneTestCase {
         if (j == i) {
           continue;
         }
-        double distance = VectorUtil.squareDistance(points.get(i), points.get(j));
+        double distance = VectorUtil.squareDistanceFloats(points.get(i), points.get(j));
         if (distance < closeness) {
           closest = j;
           closeness = distance;

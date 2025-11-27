@@ -108,24 +108,24 @@ public class VectorUtilBenchmark {
 
   @Benchmark
   public float binaryCosineScalar() {
-    return VectorUtil.cosine(bytesA, bytesB);
+    return VectorUtil.cosineBytes(bytesA, bytesB);
   }
 
   @Benchmark
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public float binaryCosineVector() {
-    return VectorUtil.cosine(bytesA, bytesB);
+    return VectorUtil.cosineBytes(bytesA, bytesB);
   }
 
   @Benchmark
   public int binarySquareScalar() {
-    return VectorUtil.squareDistance(bytesA, bytesB);
+    return VectorUtil.squareDistanceBytes(bytesA, bytesB);
   }
 
   @Benchmark
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public int binarySquareVector() {
-    return VectorUtil.squareDistance(bytesA, bytesB);
+    return VectorUtil.squareDistanceBytes(bytesA, bytesB);
   }
 
   @Benchmark
@@ -187,13 +187,13 @@ public class VectorUtilBenchmark {
 
   @Benchmark
   public int binaryDotProductScalar() {
-    return VectorUtil.dotProduct(bytesA, bytesB);
+    return VectorUtil.dotProductBytes(bytesA, bytesB);
   }
 
   @Benchmark
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public int binaryDotProductVector() {
-    return VectorUtil.dotProduct(bytesA, bytesB);
+    return VectorUtil.dotProductBytes(bytesA, bytesB);
   }
 
   @Benchmark
@@ -277,7 +277,7 @@ public class VectorUtilBenchmark {
 
   @Benchmark
   public float floatCosineScalar() {
-    return VectorUtil.cosine(floatsA, floatsB);
+    return VectorUtil.cosineFloats(floatsA, floatsB);
   }
 
   @Benchmark
@@ -290,7 +290,7 @@ public class VectorUtilBenchmark {
       value = 15,
       jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public float floatCosineVector() {
-    return VectorUtil.cosine(floatsA, floatsB);
+    return VectorUtil.cosineFloats(floatsA, floatsB);
   }
 
   @Benchmark
@@ -303,7 +303,7 @@ public class VectorUtilBenchmark {
 
   @Benchmark
   public float floatDotProductScalar() {
-    return VectorUtil.dotProduct(floatsA, floatsB);
+    return VectorUtil.dotProductFloats(floatsA, floatsB);
   }
 
   @Benchmark
@@ -311,12 +311,12 @@ public class VectorUtilBenchmark {
       value = 15,
       jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public float floatDotProductVector() {
-    return VectorUtil.dotProduct(floatsA, floatsB);
+    return VectorUtil.dotProductFloats(floatsA, floatsB);
   }
 
   @Benchmark
   public float floatSquareScalar() {
-    return VectorUtil.squareDistance(floatsA, floatsB);
+    return VectorUtil.squareDistanceFloats(floatsA, floatsB);
   }
 
   @Benchmark
@@ -324,6 +324,6 @@ public class VectorUtilBenchmark {
       value = 15,
       jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public float floatSquareVector() {
-    return VectorUtil.squareDistance(floatsA, floatsB);
+    return VectorUtil.squareDistanceFloats(floatsA, floatsB);
   }
 }

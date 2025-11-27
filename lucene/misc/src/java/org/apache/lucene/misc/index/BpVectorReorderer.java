@@ -278,7 +278,7 @@ public class BpVectorReorderer extends AbstractBPReorderer {
         case EUCLIDEAN, MAXIMUM_INNER_PRODUCT -> vectorScalarMul(1 / (float) ids.length, centroid);
         case DOT_PRODUCT, COSINE ->
             vectorScalarMul(
-                1 / (float) Math.sqrt(VectorUtil.dotProduct(centroid, centroid)), centroid);
+                1 / (float) Math.sqrt(VectorUtil.dotProductFloats(centroid, centroid)), centroid);
       }
     }
 
@@ -312,7 +312,7 @@ public class BpVectorReorderer extends AbstractBPReorderer {
               vectorScore)
           .compute();
       vectorSubtract(leftCentroid, rightCentroid, scratch);
-      float scale = (float) Math.sqrt(VectorUtil.dotProduct(scratch, scratch));
+      float scale = (float) Math.sqrt(VectorUtil.dotProductFloats(scratch, scratch));
       float maxLeftBias = Float.NEGATIVE_INFINITY;
       for (int i = ids.offset; i < midPoint; ++i) {
         maxLeftBias = Math.max(maxLeftBias, biases[i]);
@@ -564,11 +564,11 @@ public class BpVectorReorderer extends AbstractBPReorderer {
     private float computeBias(float[] vector, float[] leftCentroid, float[] rightCentroid) {
       return switch (vectorScore) {
         case EUCLIDEAN ->
-            VectorUtil.squareDistance(vector, leftCentroid)
-                - VectorUtil.squareDistance(vector, rightCentroid);
+            VectorUtil.squareDistanceFloats(vector, leftCentroid)
+                - VectorUtil.squareDistanceFloats(vector, rightCentroid);
         case MAXIMUM_INNER_PRODUCT, COSINE, DOT_PRODUCT ->
-            VectorUtil.dotProduct(vector, rightCentroid)
-                - VectorUtil.dotProduct(vector, leftCentroid);
+            VectorUtil.dotProductFloats(vector, rightCentroid)
+                - VectorUtil.dotProductFloats(vector, leftCentroid);
         default -> throw new IllegalStateException("unsupported vector score: " + vectorScore);
       };
     }
