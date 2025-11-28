@@ -208,47 +208,80 @@ public class TestPriorityQueue extends LuceneTestCase {
         () -> pq.addAll(list));
   }
 
-  /** Randomly add and remove elements, comparing against the reference java.util.PriorityQueue. */
-  public void testRemovalsAndInsertions() {
+  /** Randomly remove elements, comparing against the reference java.util.PriorityQueue by value. */
+  public void testRemovals() {
     int maxElement = RandomNumbers.randomIntBetween(random(), 1, 10_000);
     int size = maxElement / 2 + 1;
-
     var reference = new java.util.PriorityQueue<Integer>();
     var pq = new IntegerQueue(size);
-
     Random localRandom = nonAssertingRandom(random());
-
-    // Lucene's PriorityQueue.remove uses reference equality, not .equals to determine which
-    // elements
-    // to remove (!).
     HashMap<Integer, Integer> ints = new HashMap<>();
+    // Fill both queues with up to maxSize elements
+    for (int i = 0; i < size; i++) {
+      Integer element = ints.computeIfAbsent(localRandom.nextInt(maxElement), k -> k);
+      pq.add(element);
+      reference.add(element);
+    }
+    // Perform random removals and compare by value
+    for (int i = 0; i < size; i++) {
+      Integer element = ints.computeIfAbsent(localRandom.nextInt(maxElement), k -> k);
+      int pqCount = 0, refCount = 0;
+      for (Integer val : pq) if (val.equals(element)) pqCount++;
+      for (Integer val : reference) if (val.equals(element)) refCount++;
+      boolean pqRemoved = pq.remove(element);
+      boolean refRemoved = reference.remove(element);
+      assertEquals("remove() should return true if value was present", refCount > 0, pqRemoved);
+      assertEquals("remove() should return true if value was present", refCount > 0, refRemoved);
+      int pqCountAfter = 0, refCountAfter = 0;
+      for (Integer val : pq) if (val.equals(element)) pqCountAfter++;
+      for (Integer val : reference) if (val.equals(element)) refCountAfter++;
+      assertEquals("Should remove only one instance (value)", Math.max(0, refCount - 1), refCountAfter);
+      assertEquals("Should remove only one instance (value)", Math.max(0, pqCount - 1), pqCountAfter);
+      assertEquals("pq and reference should match counts after removal", refCountAfter, pqCountAfter);
+      assertEquals("size after removal should match", reference.size(), pq.size());
+      Integer pqTop = pq.top();
+      Integer refTop = reference.peek();
+      if (pqTop != null && refTop != null) {
+        assertEquals("top() value difference after removal?", refTop.intValue(), pqTop.intValue());
+      } else {
+        assertEquals("top() value difference after removal?", refTop, pqTop);
+      }
+    }
+    pq.checkValidity();
+  }
 
+  /** Randomly add elements, comparing against the reference java.util.PriorityQueue by value. */
+  public void testInsertions() {
+    int maxElement = RandomNumbers.randomIntBetween(random(), 1, 10_000);
+    int size = maxElement / 2 + 1;
+    var reference = new java.util.PriorityQueue<Integer>();
+    var pq = new IntegerQueue(size);
+    Random localRandom = nonAssertingRandom(random());
+    HashMap<Integer, Integer> ints = new HashMap<>();
     for (int i = 0, iters = size * 2; i < iters; i++) {
       Integer element = ints.computeIfAbsent(localRandom.nextInt(maxElement), k -> k);
-
-      var action = localRandom.nextInt(100);
-      if (action < 25) {
-        // removals, possibly misses.
-        assertEquals("remove() difference: " + i, reference.remove(element), pq.remove(element));
+      var dropped = pq.insertWithOverflow(element);
+      reference.add(element);
+      Integer droppedReference;
+      if (reference.size() > size) {
+        droppedReference = reference.remove();
       } else {
-        // additions.
-        var dropped = pq.insertWithOverflow(element);
-
-        reference.add(element);
-        Integer droppedReference;
-        if (reference.size() > size) {
-          droppedReference = reference.remove();
-        } else {
-          droppedReference = null;
-        }
-
-        assertEquals("insertWithOverflow() difference.", dropped, droppedReference);
+        droppedReference = null;
       }
-
+      if (dropped != null && droppedReference != null) {
+        assertEquals("insertWithOverflow() dropped value difference.", dropped.intValue(), droppedReference.intValue());
+      } else {
+        assertEquals("insertWithOverflow() dropped value difference.", droppedReference, dropped);
+      }
       assertEquals("insertWithOverflow() size difference?", reference.size(), pq.size());
-      assertEquals("top() difference?", reference.peek(), pq.top());
+      Integer pqTop = pq.top();
+      Integer refTop = reference.peek();
+      if (pqTop != null && refTop != null) {
+        assertEquals("top() value difference?", refTop.intValue(), pqTop.intValue());
+      } else {
+        assertEquals("top() value difference?", refTop, pqTop);
+      }
     }
-
     pq.checkValidity();
   }
 
