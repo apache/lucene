@@ -29,6 +29,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.RunnableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.util.IOUtils;
@@ -65,6 +67,72 @@ public final class TaskExecutor {
             r.run();
           }
         };
+  }
+
+  /**
+   * Invoke all but do not block and the calling thread won't do any works
+   */
+  public <T> Future<List<T>> asyncInvokeAll(Collection<Callable<T>> callables) throws IOException {
+    List<RunnableFuture<T>> futures = new ArrayList<>(callables.size());
+    for (Callable<T> callable : callables) {
+      futures.add(new Task<>(callable, futures));
+    }
+    final int count = futures.size();
+    // taskId provides the first index of an un-executed task in #futures
+    final AtomicInteger taskId = new AtomicInteger(0);
+    // we fork execution count - 1 tasks to execute at least one task on the current thread to
+    // minimize needless forking and blocking of the current thread
+    final Runnable work =
+        () -> {
+          int id = taskId.getAndIncrement();
+          if (id < count) {
+            futures.get(id).run();
+          }
+        };
+    for (int j = 0; j < count; j++) {
+      executor.execute(work);
+    }
+
+    return new Future<List<T>>() {
+      boolean cancelled = false;
+      @Override
+      public boolean cancel(boolean mayInterruptIfRunning) {
+        assert mayInterruptIfRunning == false : "cancelling tasks that are running is not supported";
+        cancelAll(futures);
+        cancelled = true;
+        return true;
+      }
+
+      @Override
+      public boolean isCancelled() {
+        return cancelled;
+      }
+
+      @Override
+      public boolean isDone() {
+        for (RunnableFuture<T> future : futures) {
+          if (future.isDone() == false) {
+            return false;
+          }
+        }
+        return true;
+      }
+
+      @Override
+      public List<T> get() throws InterruptedException, ExecutionException {
+        try {
+          return collectResults(futures);
+        } catch (IOException e) {
+          throw new ExecutionException(e);
+        }
+      }
+
+      @Override
+      public List<T> get(long l, TimeUnit timeUnit)
+          throws InterruptedException, ExecutionException, TimeoutException {
+        throw new UnsupportedOperationException("Not supported");
+      }
+    };
   }
 
   /**

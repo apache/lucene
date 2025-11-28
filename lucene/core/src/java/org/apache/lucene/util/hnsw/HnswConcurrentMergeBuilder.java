@@ -22,9 +22,14 @@ import static org.apache.lucene.util.hnsw.HnswGraphBuilder.HNSW_COMPONENT;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
+import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.BitSet;
@@ -37,12 +42,17 @@ import org.apache.lucene.util.InfoStream;
  */
 public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
-  private static final int DEFAULT_BATCH_SIZE =
-      2048; // number of vectors the worker handles sequentially at one batch
+  private static final int QUEUE_SIZE = 10000;
 
   private final TaskExecutor taskExecutor;
   private final ConcurrentMergeWorker[] workers;
+  private final ConcurrentMergeWorker localWorker;
+  private final ArrayBlockingQueue<AddNodeRequest> workQueue;
+  private final AtomicBoolean finished;
   private final HnswLock hnswLock;
+  private final GraphMergeContext graphMergeContext;
+  private final OnHeapHnswGraph hnsw;
+  private final int beamWidth;
   private InfoStream infoStream = InfoStream.getDefault();
   private boolean frozen;
 
@@ -51,12 +61,16 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       int numWorker,
       RandomVectorScorerSupplier scorerSupplier,
       int beamWidth,
-      OnHeapHnswGraph hnsw,
-      BitSet initializedNodes)
+      int M,
+      GraphMergeContext graphMergeContext)
       throws IOException {
+    hnsw = initGraph(M, graphMergeContext);
+    this.beamWidth = beamWidth;
     this.taskExecutor = taskExecutor;
-    AtomicInteger workProgress = new AtomicInteger(0);
     workers = new ConcurrentMergeWorker[numWorker];
+    workQueue = new ArrayBlockingQueue<>(QUEUE_SIZE);
+    finished = new AtomicBoolean(false);
+    this.graphMergeContext = graphMergeContext;
     hnswLock = new HnswLock();
     for (int i = 0; i < numWorker; i++) {
       workers[i] =
@@ -66,9 +80,26 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               HnswGraphBuilder.randSeed,
               hnsw,
               hnswLock,
-              initializedNodes,
-              workProgress);
+              workQueue,
+              finished
+          );
     }
+    localWorker = new ConcurrentMergeWorker(
+        scorerSupplier.copy(),
+        beamWidth,
+        HnswGraphBuilder.randSeed,
+        hnsw,
+        hnswLock,
+        workQueue,
+        finished
+    );
+  }
+
+  private static OnHeapHnswGraph initGraph(int M, GraphMergeContext graphMergeContext) throws IOException {
+    if (graphMergeContext.initGraphs() == null || graphMergeContext.initGraphs().length == 0) {
+      return new OnHeapHnswGraph(M, graphMergeContext.maxOrd());
+    }
+    return InitializedHnswGraphBuilder.initGraph(graphMergeContext.initGraphs()[0], graphMergeContext.oldToNewOrdinalMaps()[0], graphMergeContext.maxOrd());
   }
 
   @Override
@@ -86,22 +117,132 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       int finalI = i;
       futures.add(
           () -> {
-            workers[finalI].run(maxOrd);
+            workers[finalI].run();
             return null;
           });
     }
-    taskExecutor.invokeAll(futures);
+    Future<List<Void>> future = taskExecutor.asyncInvokeAll(futures);
+
+    HnswGraphSearcher graphSearcher = new MergeSearcher(
+        new NeighborQueue(beamWidth, true), hnswLock, new FixedBitSet(hnsw.maxNodeId() + 1));
+
+    if (graphMergeContext.initGraphs() != null) {
+      for (int graphToWork = 1; graphToWork < graphMergeContext.initGraphs().length; graphToWork++) {
+        if (infoStream.isEnabled(HNSW_COMPONENT)) {
+          infoStream.message(
+              HNSW_COMPONENT,
+              "Starting join set merge for graph " + graphToWork);
+        }
+
+        HnswGraph sourceGraph = graphMergeContext.initGraphs()[graphToWork];
+        int[] oldToNewOrd = graphMergeContext.oldToNewOrdinalMaps()[graphToWork];
+        int size = sourceGraph.size();
+        IntHashSet j = UpdateGraphsUtils.computeJoinSet(sourceGraph);
+
+        if (infoStream.isEnabled(HNSW_COMPONENT)) {
+          infoStream.message(
+              HNSW_COMPONENT,
+              "Done join set computation for graph " + graphToWork);
+        }
+
+        // for nodes that in the join set, add them directly to the graph
+        for (IntCursor node : j) {
+          addGraphNode(oldToNewOrd[node.value]);
+        }
+
+        if (infoStream.isEnabled(HNSW_COMPONENT)) {
+          infoStream.message(
+              HNSW_COMPONENT,
+              "Done adding join set nodes for graph " + graphToWork + ", draining work queue");
+        }
+
+        drainWorkQueue();
+
+        if (infoStream.isEnabled(HNSW_COMPONENT)) {
+          infoStream.message(
+              HNSW_COMPONENT,
+              "Done draining work queue for graph " + graphToWork);
+        }
+
+        // for each node outside of j set:
+        // form the entry points set for the node
+        // by joining the node's neighbours in gS with
+        // the node's neighbours' neighbours in gL
+        for (int u = 0; u < size; u++) {
+          if (j.contains(u)) {
+            continue;
+          }
+          IntHashSet eps = new IntHashSet();
+          sourceGraph.seek(0, u);
+          for (int v = sourceGraph.nextNeighbor(); v != NO_MORE_DOCS; v = sourceGraph.nextNeighbor()) {
+            // if u's neighbour v is in the join set
+            // then we add v's neighbours from gL to the candidate list
+            if (j.contains(v)) {
+              int newv = oldToNewOrd[v];
+              eps.add(newv);
+              graphSearcher.graphSeek(hnsw, 0, newv);
+              int friendOrd;
+              while ((friendOrd = graphSearcher.graphNextNeighbor(hnsw)) != NO_MORE_DOCS) {
+                eps.add(friendOrd);
+              }
+            }
+          }
+          addGraphNode(oldToNewOrd[u], eps);
+        }
+
+        // finished
+
+        if (infoStream.isEnabled(HNSW_COMPONENT)) {
+          infoStream.message(
+              HNSW_COMPONENT,
+              "Done join set merge for graph " + graphToWork);
+        }
+      }
+    }
+
+    if (graphMergeContext.allInitialized() == false) {
+      for (int node = 0; node < maxOrd; node++) {
+        if (graphMergeContext.initializedNodes() == null || graphMergeContext.initializedNodes().get(node) == false) {
+          addGraphNode(node);
+        }
+      }
+    }
+
+    drainWorkQueue();
+    finished.set(true);
+    try {
+      future.get();
+    } catch (InterruptedException | ExecutionException e) {
+      throw new RuntimeException(e);
+    }
+
     return getCompletedGraph();
   }
 
   @Override
   public void addGraphNode(int node) throws IOException {
-    throw new UnsupportedOperationException("This builder is for merge only");
+    AddNodeRequest req = new AddNodeRequest(node, null);
+    if (workQueue.offer(req) == false) {
+      // queue full, then handle using the main thread
+      localWorker.handleAddNodeRequest(req);
+    }
   }
 
   @Override
   public void addGraphNode(int node, IntHashSet eps) throws IOException {
-    throw new UnsupportedOperationException("This builder is for merge only");
+    AddNodeRequest req = new AddNodeRequest(node, eps);
+    if (workQueue.offer(req) == false) {
+      // queue full, then handle using the main thread
+      localWorker.handleAddNodeRequest(req);
+    }
+  }
+
+  private void drainWorkQueue() throws IOException {
+    AddNodeRequest req = workQueue.poll();
+    while (req != null) {
+      localWorker.handleAddNodeRequest(req);
+      req = workQueue.poll();
+    }
   }
 
   @Override
@@ -128,26 +269,13 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
   @Override
   public OnHeapHnswGraph getGraph() {
-    return workers[0].getGraph();
-  }
-
-  /* test only for now */
-  void setBatchSize(int newSize) {
-    for (ConcurrentMergeWorker worker : workers) {
-      worker.batchSize = newSize;
-    }
+    return hnsw;
   }
 
   private static final class ConcurrentMergeWorker extends HnswGraphBuilder {
 
-    /**
-     * A common AtomicInteger shared among all workers, used for tracking what's the next vector to
-     * be added to the graph.
-     */
-    private final AtomicInteger workProgress;
-
-    private final BitSet initializedNodes;
-    private int batchSize = DEFAULT_BATCH_SIZE;
+    private final ArrayBlockingQueue<AddNodeRequest> workingQueue;
+    private final AtomicBoolean finished;
 
     private ConcurrentMergeWorker(
         RandomVectorScorerSupplier scorerSupplier,
@@ -155,8 +283,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
         long seed,
         OnHeapHnswGraph hnsw,
         HnswLock hnswLock,
-        BitSet initializedNodes,
-        AtomicInteger workProgress)
+        ArrayBlockingQueue<AddNodeRequest> workingQueue,
+        AtomicBoolean finished
+        )
         throws IOException {
       super(
           scorerSupplier,
@@ -166,42 +295,34 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           hnswLock,
           new MergeSearcher(
               new NeighborQueue(beamWidth, true), hnswLock, new FixedBitSet(hnsw.maxNodeId() + 1)));
-      this.workProgress = workProgress;
-      this.initializedNodes = initializedNodes;
+      this.finished = finished;
+      this.workingQueue = workingQueue;
+    }
+
+    private void handleAddNodeRequest(AddNodeRequest req) throws IOException {
+      if (req.eps == null) {
+        addGraphNode(req.ord);
+      } else {
+        addGraphNode(req.ord, req.eps);
+      }
     }
 
     /**
-     * This method first try to "reserve" part of work by calling {@link #getStartPos(int)} and then
-     * calling {@link #addVectors(int, int)} to actually add the nodes to the graph. By doing this
-     * we are able to dynamically allocate the work to multiple workers and try to make all of them
-     * finishing around the same time.
+     * TODO: add javadoc
      */
-    private void run(int maxOrd) throws IOException {
-      int start = getStartPos(maxOrd);
-      int end;
-      while (start != -1) {
-        end = Math.min(maxOrd, start + batchSize);
-        addVectors(start, end);
-        start = getStartPos(maxOrd);
-      }
-    }
+    private void run() throws IOException {
+      while (finished.get() == false) {
+        try {
+          AddNodeRequest req = workingQueue.poll(1, TimeUnit.SECONDS);
+          while (req != null) {
+            handleAddNodeRequest(req);
+            req = workingQueue.poll(1, TimeUnit.SECONDS);
+          }
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
 
-    /** Reserve the work by atomically increment the {@link #workProgress} */
-    private int getStartPos(int maxOrd) {
-      int start = workProgress.getAndAdd(batchSize);
-      if (start < maxOrd) {
-        return start;
-      } else {
-        return -1;
       }
-    }
-
-    @Override
-    public void addGraphNode(int node) throws IOException {
-      if (initializedNodes != null && initializedNodes.get(node)) {
-        return;
-      }
-      super.addGraphNode(node);
     }
   }
 
@@ -244,4 +365,6 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       return NO_MORE_DOCS;
     }
   }
+
+  private record AddNodeRequest(int ord, IntHashSet eps){}
 }
