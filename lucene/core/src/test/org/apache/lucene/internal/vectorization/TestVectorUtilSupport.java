@@ -310,7 +310,7 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     double panamaProviderResults = func.applyAsDouble(PANAMA_PROVIDER.getVectorUtilSupport());
     double delta =
         Math.max(this.delta, this.delta * Math.max(luceneProviderResults, panamaProviderResults));
-    assertEquals(luceneProviderResults, panamaProviderResults, Math.max(delta, this.delta));
+    assertEquals(luceneProviderResults, panamaProviderResults, delta);
   }
 
   private void assertIntReturningProviders(ToIntFunction<VectorUtilSupport> func) {
