@@ -231,6 +231,8 @@ Optimizations
 
 # GITHUB#15303: Speed up NumericUtils#{add,subtract} by operating on integers instead of bytes. (Kaival Parikh)
 
+* GITHUB#15003: Avoid reconstructing HNSW graph during merging (Pulkit Gupta)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
