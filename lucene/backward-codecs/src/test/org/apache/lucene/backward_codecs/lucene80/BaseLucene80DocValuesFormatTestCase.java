@@ -697,7 +697,8 @@ public abstract class BaseLucene80DocValuesFormatTestCase
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
     conf.setMaxBufferedDocs(maxBufferedDocs);
     conf.setRAMBufferSizeMB(-1);
-    conf.setMergePolicy(newLogMergePolicy(random().nextBoolean()));
+    conf.setMergePolicy(newLogMergePolicy());
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     return new IndexWriter(dir, conf);
   }
 
@@ -727,7 +728,8 @@ public abstract class BaseLucene80DocValuesFormatTestCase
     conf.setMaxBufferedDocs(atLeast(Lucene80DocValuesFormat.NUMERIC_BLOCK_SIZE));
     conf.setRAMBufferSizeMB(-1);
     // so Lucene docids are predictable / stay in order
-    conf.setMergePolicy(newLogMergePolicy(random().nextBoolean()));
+    conf.setMergePolicy(newLogMergePolicy());
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     IndexWriter writer = new IndexWriter(dir, conf);
 
     final int numDocs = atLeast(Lucene80DocValuesFormat.NUMERIC_BLOCK_SIZE * 3);
@@ -797,7 +799,8 @@ public abstract class BaseLucene80DocValuesFormatTestCase
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
     conf.setMaxBufferedDocs(atLeast(Lucene80DocValuesFormat.NUMERIC_BLOCK_SIZE));
     conf.setRAMBufferSizeMB(-1);
-    conf.setMergePolicy(newLogMergePolicy(random().nextBoolean()));
+    conf.setMergePolicy(newLogMergePolicy());
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     IndexWriter writer = new IndexWriter(dir, conf);
     Document doc = new Document();
     Field storedField = newStringField("stored", "", Field.Store.YES);
