@@ -20,7 +20,9 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.not;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -915,8 +917,9 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           noTimeoutManager.newCollector(Integer.MAX_VALUE, null, searcher.leafContexts.get(0));
 
       // Check that a normal collector is created without timeout
-      assertFalse(
-          noTimeoutCollector instanceof TimeLimitingKnnCollectorManager.TimeLimitingKnnCollector);
+      assertThat(
+          noTimeoutCollector,
+          not(instanceOf(TimeLimitingKnnCollectorManager.TimeLimitingKnnCollector.class)));
       noTimeoutCollector.collect(0, 0);
       assertFalse(noTimeoutCollector.earlyTerminated());
 
@@ -932,7 +935,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           timeoutManager.newCollector(Integer.MAX_VALUE, null, searcher.leafContexts.get(0));
 
       // Check that a time limiting collector is created, which returns partial results
-      assertFalse(timeoutCollector instanceof TopKnnCollector);
+      assertThat(timeoutCollector, not(instanceOf(TopKnnCollector.class)));
       timeoutCollector.collect(0, 0);
       assertTrue(timeoutCollector.earlyTerminated());
 

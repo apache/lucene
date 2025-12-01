@@ -55,7 +55,7 @@ public class TestBoostQuery extends LuceneTestCase {
     }
     BoostQuery q3 = new BoostQuery(new MatchAllDocsQuery(), boost2);
     assertFalse(q1.equals(q3));
-    assertFalse(q1.hashCode() == q3.hashCode());
+    assertNotEquals(q3.hashCode(), q1.hashCode());
   }
 
   public void testToString() {
