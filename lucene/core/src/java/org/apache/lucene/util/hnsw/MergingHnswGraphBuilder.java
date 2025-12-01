@@ -101,7 +101,8 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
       BitSet initializedNodes)
       throws IOException {
     OnHeapHnswGraph graph =
-        InitializedHnswGraphBuilder.initGraph(M, graphs[0], ordMaps[0], totalNumberOfVectors);
+        InitializedHnswGraphBuilder.initGraph(
+            graphs[0], ordMaps[0], totalNumberOfVectors, beamWidth, scorerSupplier);
     return new MergingHnswGraphBuilder(
         scorerSupplier, M, beamWidth, seed, graph, graphs, ordMaps, initializedNodes);
   }
