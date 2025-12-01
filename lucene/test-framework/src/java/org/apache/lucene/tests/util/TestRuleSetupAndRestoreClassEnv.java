@@ -51,6 +51,7 @@ import org.apache.lucene.tests.index.RandomCodec;
 import org.apache.lucene.tests.search.similarities.AssertingSimilarity;
 import org.apache.lucene.tests.search.similarities.RandomSimilarity;
 import org.apache.lucene.tests.util.LuceneTestCase.LiveIWCFlushMode;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressAssertingFormats;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.PrintStreamInfoStream;
@@ -125,6 +126,14 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
     if (targetClass.isAnnotationPresent(SuppressCodecs.class)) {
       SuppressCodecs a = targetClass.getAnnotation(SuppressCodecs.class);
       avoidCodecs.addAll(Arrays.asList(a.value()));
+    }
+
+    // Process SuppressAssertingFormats annotation
+    if (targetClass.isAnnotationPresent(SuppressAssertingFormats.class)) {
+      SuppressAssertingFormats a = targetClass.getAnnotation(SuppressAssertingFormats.class);
+      AssertingCodec.setSuppressedFormats(new HashSet<>(Arrays.asList(a.value())));
+    } else {
+      AssertingCodec.clearSuppressedFormats();
     }
 
     savedCodec = Codec.getDefault();

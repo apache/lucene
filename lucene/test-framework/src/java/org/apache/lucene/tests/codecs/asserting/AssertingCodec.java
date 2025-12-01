@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.tests.codecs.asserting;
 
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -32,6 +35,22 @@ import org.apache.lucene.tests.util.TestUtil;
 
 /** Acts like the default codec but with additional asserts. */
 public class AssertingCodec extends FilterCodec {
+
+  private static volatile Set<String> suppressedFormats = Collections.emptySet();
+
+  /** Set the formats to suppress. Use simple class names like "AssertingStoredFieldsFormat". */
+  public static void setSuppressedFormats(Set<String> formats) {
+    suppressedFormats = new HashSet<>(formats);
+  }
+
+  /** Clear all suppressed formats. */
+  public static void clearSuppressedFormats() {
+    suppressedFormats = Collections.emptySet();
+  }
+
+  private static boolean isSuppressed(String formatName) {
+    return suppressedFormats.contains(formatName);
+  }
 
   static void assertThread(String object, Thread creationThread) {
     if (creationThread != Thread.currentThread()) {
@@ -90,12 +109,12 @@ public class AssertingCodec extends FilterCodec {
 
   @Override
   public TermVectorsFormat termVectorsFormat() {
-    return vectors;
+    return isSuppressed("AssertingTermVectorsFormat") ? delegate.termVectorsFormat() : vectors;
   }
 
   @Override
   public StoredFieldsFormat storedFieldsFormat() {
-    return storedFields;
+    return isSuppressed("AssertingStoredFieldsFormat") ? delegate.storedFieldsFormat() : storedFields;
   }
 
   @Override
@@ -105,22 +124,22 @@ public class AssertingCodec extends FilterCodec {
 
   @Override
   public NormsFormat normsFormat() {
-    return norms;
+    return isSuppressed("AssertingNormsFormat") ? delegate.normsFormat() : norms;
   }
 
   @Override
   public LiveDocsFormat liveDocsFormat() {
-    return liveDocs;
+    return isSuppressed("AssertingLiveDocsFormat") ? delegate.liveDocsFormat() : liveDocs;
   }
 
   @Override
   public PointsFormat pointsFormat() {
-    return pointsFormat;
+    return isSuppressed("AssertingPointsFormat") ? delegate.pointsFormat() : pointsFormat;
   }
 
   @Override
   public KnnVectorsFormat knnVectorsFormat() {
-    return knnVectorsFormat;
+    return isSuppressed("AssertingKnnVectorsFormat") ? delegate.knnVectorsFormat() : knnVectorsFormat;
   }
 
   @Override

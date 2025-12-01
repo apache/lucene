@@ -351,6 +351,20 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /**
+   * Annotation for test classes that should avoid specific asserting formats within the Asserting
+   * codec (e.g., AssertingStoredFieldsFormat) while keeping other asserting formats active.
+   *
+   * <p>Use the simple class name of the format to suppress, e.g., "AssertingStoredFieldsFormat".
+   */
+  @Documented
+  @Inherited
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target(ElementType.TYPE)
+  public @interface SuppressAssertingFormats {
+    String[] value();
+  }
+
+  /**
    * Annotation for test classes that should avoid mock filesystem types (because they test a bug
    * that only happens on linux, for example).
    *
