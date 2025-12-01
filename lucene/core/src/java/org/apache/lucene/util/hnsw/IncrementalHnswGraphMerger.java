@@ -47,7 +47,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
   protected final int M;
   protected final int beamWidth;
 
-  protected List<GraphReader> graphReaders = new ArrayList<>();
+  protected List<GraphReader> initGraphReaders = new ArrayList<>();
   private int numReaders = 0;
 
   /** Represents a vector reader that contains graph info. */
@@ -98,7 +98,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
         candidateVectorCount = vectorValues.size();
       }
     }
-    graphReaders.add(new GraphReader(reader, docMap, candidateVectorCount));
+    initGraphReaders.add(new GraphReader(reader, docMap, candidateVectorCount));
     return this;
   }
 
@@ -112,57 +112,49 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
    */
   protected HnswBuilder createBuilder(KnnVectorValues mergedVectorValues, int maxOrd)
       throws IOException {
-    if (graphReaders.size() == 0) {
+    GraphMergeContext mergeContext = prepareGraphMerge(mergedVectorValues, maxOrd);
+    if (mergeContext.initGraphs() == null || mergeContext.initGraphs().length == 0) {
       return HnswGraphBuilder.create(
-          scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, maxOrd);
-    }
-    graphReaders.sort(Comparator.comparingInt(GraphReader::graphSize).reversed());
-
-    final BitSet initializedNodes =
-        graphReaders.size() == numReaders ? null : new FixedBitSet(maxOrd);
-    int[][] ordMaps = getNewOrdMapping(mergedVectorValues, initializedNodes);
-    HnswGraph[] graphs = new HnswGraph[graphReaders.size()];
-    for (int i = 0; i < graphReaders.size(); i++) {
-      HnswGraph graph = ((HnswGraphProvider) graphReaders.get(i).reader).getGraph(fieldInfo.name);
-      if (graph.size() == 0) {
-        throw new IllegalStateException("Graph should not be empty");
-      }
-      graphs[i] = graph;
+          scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, mergeContext.maxOrd());
     }
 
     return MergingHnswGraphBuilder.fromGraphs(
         scorerSupplier,
         beamWidth,
         HnswGraphBuilder.randSeed,
-        graphs,
-        ordMaps,
-        maxOrd,
-        initializedNodes);
+        mergeContext.initGraphs(),
+        mergeContext.oldToNewOrdinalMaps(),
+        mergeContext.maxOrd(),
+        mergeContext.initializedNodes());
   }
 
-  protected final int[][] getNewOrdMapping(
+  /**
+   * Get old -> new ordinal mapping for all graphs that are participated in initialization.
+   * A.k.a for all graphs has been added to {@link #initGraphReaders}
+   */
+  protected final int[][] getOldToNewOrdMapping(
       KnnVectorValues mergedVectorValues, BitSet initializedNodes) throws IOException {
-    final int numGraphs = graphReaders.size();
+    final int numGraphs = initGraphReaders.size();
     IntIntHashMap[] newDocIdToOldOrdinals = new IntIntHashMap[numGraphs];
     final int[][] oldToNewOrdinalMap = new int[numGraphs][];
     for (int i = 0; i < numGraphs; i++) {
       KnnVectorValues.DocIndexIterator vectorsIter = null;
       switch (fieldInfo.getVectorEncoding()) {
         case BYTE ->
-            vectorsIter = graphReaders.get(i).reader.getByteVectorValues(fieldInfo.name).iterator();
+            vectorsIter = initGraphReaders.get(i).reader.getByteVectorValues(fieldInfo.name).iterator();
         case FLOAT32 ->
             vectorsIter =
-                graphReaders.get(i).reader.getFloatVectorValues(fieldInfo.name).iterator();
+                initGraphReaders.get(i).reader.getFloatVectorValues(fieldInfo.name).iterator();
       }
-      newDocIdToOldOrdinals[i] = new IntIntHashMap(graphReaders.get(i).graphSize);
-      MergeState.DocMap docMap = graphReaders.get(i).initDocMap();
+      newDocIdToOldOrdinals[i] = new IntIntHashMap(initGraphReaders.get(i).graphSize);
+      MergeState.DocMap docMap = initGraphReaders.get(i).initDocMap();
       for (int docId = vectorsIter.nextDoc();
           docId != NO_MORE_DOCS;
           docId = vectorsIter.nextDoc()) {
         int newDocId = docMap.get(docId);
         newDocIdToOldOrdinals[i].put(newDocId, vectorsIter.index());
       }
-      oldToNewOrdinalMap[i] = new int[graphReaders.get(i).graphSize];
+      oldToNewOrdinalMap[i] = new int[initGraphReaders.get(i).graphSize];
     }
 
     KnnVectorValues.DocIndexIterator mergedVectorIterator = mergedVectorValues.iterator();
@@ -182,6 +174,31 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
       }
     }
     return oldToNewOrdinalMap;
+  }
+
+  /**
+   * Prepare the context for merging graphs.
+   * It sorts on {@link #initGraphReaders} by reverse size such that we will use the first one as the base graph, then
+   * prepare everything we need into {@link GraphMergeContext}
+   */
+  protected GraphMergeContext prepareGraphMerge(KnnVectorValues mergedVectorValues, int maxOrd) throws IOException {
+    if (initGraphReaders.size() == 0) {
+      return new GraphMergeContext(null, null, maxOrd, null);
+    }
+    initGraphReaders.sort(Comparator.comparingInt(GraphReader::graphSize).reversed());
+
+    final BitSet initializedNodes =
+        initGraphReaders.size() == numReaders ? null : new FixedBitSet(maxOrd);
+    int[][] ordMaps = getOldToNewOrdMapping(mergedVectorValues, initializedNodes);
+    HnswGraph[] graphs = new HnswGraph[initGraphReaders.size()];
+    for (int i = 0; i < initGraphReaders.size(); i++) {
+      HnswGraph graph = ((HnswGraphProvider) initGraphReaders.get(i).reader).getGraph(fieldInfo.name);
+      if (graph.size() == 0) {
+        throw new IllegalStateException("Graph should not be empty");
+      }
+      graphs[i] = graph;
+    }
+    return new GraphMergeContext(graphs, ordMaps, maxOrd, initializedNodes);
   }
 
   @Override
@@ -204,4 +221,5 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     }
     return false;
   }
+
 }
