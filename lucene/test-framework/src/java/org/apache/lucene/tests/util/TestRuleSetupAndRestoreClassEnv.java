@@ -77,6 +77,11 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
    */
   HashSet<String> avoidCodecs;
 
+  /**
+   * @see SuppressAssertingFormats
+   */
+  HashSet<String> avoidAssertingFormats;
+
   static class ThreadNameFixingPrintStreamInfoStream extends PrintStreamInfoStream {
     public ThreadNameFixingPrintStreamInfoStream(PrintStream out) {
       super(out);
@@ -128,13 +133,14 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
       avoidCodecs.addAll(Arrays.asList(a.value()));
     }
 
-    // Process SuppressAssertingFormats annotation
+    avoidAssertingFormats = new HashSet<>();
     if (targetClass.isAnnotationPresent(SuppressAssertingFormats.class)) {
       SuppressAssertingFormats a = targetClass.getAnnotation(SuppressAssertingFormats.class);
-      AssertingCodec.setSuppressedFormats(new HashSet<>(Arrays.asList(a.value())));
-    } else {
-      AssertingCodec.clearSuppressedFormats();
+      avoidAssertingFormats.addAll(Arrays.asList(a.value()));
     }
+
+    // Set suppressed asserting formats before codec creation
+    AssertingCodec.setSuppressedFormats(avoidAssertingFormats);
 
     savedCodec = Codec.getDefault();
     int randomVal = random.nextInt(11);

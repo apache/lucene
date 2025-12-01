@@ -40,12 +40,9 @@ public class AssertingCodec extends FilterCodec {
 
   /** Set the formats to suppress. Use simple class names like "AssertingStoredFieldsFormat". */
   public static void setSuppressedFormats(Set<String> formats) {
-    suppressedFormats = new HashSet<>(formats);
-  }
-
-  /** Clear all suppressed formats. */
-  public static void clearSuppressedFormats() {
-    suppressedFormats = Collections.emptySet();
+    suppressedFormats = formats == null || formats.isEmpty() 
+        ? Collections.emptySet() 
+        : new HashSet<>(formats);
   }
 
   private static boolean isSuppressed(String formatName) {
