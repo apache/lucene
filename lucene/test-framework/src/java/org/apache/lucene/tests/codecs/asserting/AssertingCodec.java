@@ -40,9 +40,8 @@ public class AssertingCodec extends FilterCodec {
 
   /** Set the formats to suppress. Use simple class names like "AssertingStoredFieldsFormat". */
   public static void setSuppressedFormats(Set<String> formats) {
-    suppressedFormats = formats == null || formats.isEmpty() 
-        ? Collections.emptySet() 
-        : new HashSet<>(formats);
+    suppressedFormats =
+        formats == null || formats.isEmpty() ? Collections.emptySet() : new HashSet<>(formats);
   }
 
   private static boolean isSuppressed(String formatName) {
@@ -111,7 +110,9 @@ public class AssertingCodec extends FilterCodec {
 
   @Override
   public StoredFieldsFormat storedFieldsFormat() {
-    return isSuppressed("AssertingStoredFieldsFormat") ? delegate.storedFieldsFormat() : storedFields;
+    return isSuppressed("AssertingStoredFieldsFormat")
+        ? delegate.storedFieldsFormat()
+        : storedFields;
   }
 
   @Override
@@ -136,7 +137,9 @@ public class AssertingCodec extends FilterCodec {
 
   @Override
   public KnnVectorsFormat knnVectorsFormat() {
-    return isSuppressed("AssertingKnnVectorsFormat") ? delegate.knnVectorsFormat() : knnVectorsFormat;
+    return isSuppressed("AssertingKnnVectorsFormat")
+        ? delegate.knnVectorsFormat()
+        : knnVectorsFormat;
   }
 
   @Override
