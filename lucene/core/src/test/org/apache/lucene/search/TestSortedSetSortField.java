@@ -84,6 +84,12 @@ public class TestSortedSetSortField extends LuceneTestCase {
     assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
     assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
+    td = searcher.search(new MatchAllDocsQuery(), 10, sort.inverse());
+    assertEquals(2, td.totalHits.value());
+    // inverse of normal order is reverse order
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
+
     ir.close();
     dir.close();
   }
@@ -112,6 +118,12 @@ public class TestSortedSetSortField extends LuceneTestCase {
     // 'bar' comes before 'baz'
     assertEquals("2", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
     assertEquals("1", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
+
+    td = searcher.search(new MatchAllDocsQuery(), 10, sort.inverse());
+    assertEquals(2, td.totalHits.value());
+    // inverse of reverse order is normal order
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -148,6 +160,15 @@ public class TestSortedSetSortField extends LuceneTestCase {
     assertEquals("1", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
     assertEquals("2", searcher.storedFields().document(td.scoreDocs[2].doc).get("id"));
 
+    td = searcher.search(new MatchAllDocsQuery(), 10, sort.inverse());
+    assertEquals(3, td.totalHits.value());
+    // When the sort is in inverse order:
+    // 'baz' comes before 'bar'
+    // null comes last
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
+    assertEquals("3", searcher.storedFields().document(td.scoreDocs[2].doc).get("id"));
+
     ir.close();
     dir.close();
   }
@@ -183,6 +204,15 @@ public class TestSortedSetSortField extends LuceneTestCase {
     // null comes last
     assertEquals("3", searcher.storedFields().document(td.scoreDocs[2].doc).get("id"));
 
+    td = searcher.search(new MatchAllDocsQuery(), 10, sort.inverse());
+    assertEquals(3, td.totalHits.value());
+    // When the sort is in inverse order:
+    // 'baz' comes before 'bar'
+    // null comes first
+    assertEquals("3", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[2].doc).get("id"));
+
     ir.close();
     dir.close();
   }
@@ -209,6 +239,12 @@ public class TestSortedSetSortField extends LuceneTestCase {
     // 'bar' comes before 'baz'
     assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
     assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
+
+    td = searcher.search(new MatchAllDocsQuery(), 10, sort.inverse());
+    assertEquals(2, td.totalHits.value());
+    // inverse order
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();

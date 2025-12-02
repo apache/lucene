@@ -36,6 +36,11 @@ final class XYPointSortField extends SortField {
   }
 
   @Override
+  public SortField inverseSort() {
+    throw new UnsupportedOperationException("Inverse sort not supported on XYPointSortField");
+  }
+
+  @Override
   public FieldComparator<?> getComparator(int numHits, Pruning pruning) {
     return new XYPointDistanceComparator(getField(), x, y, numHits);
   }

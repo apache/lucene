@@ -520,6 +520,15 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
     }
 
     @Override
+    public SortField inverseSort() {
+      DoubleValuesSortField inverse = new DoubleValuesSortField(producer, !reverse);
+      if (missingValue != null) {
+        inverse.setMissingValue(missingValue);
+      }
+      return inverse;
+    }
+
+    @Override
     public void setMissingValue(Object missingValue) {
       if (missingValue instanceof Number) {
         this.missingValue = missingValue;

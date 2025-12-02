@@ -97,6 +97,10 @@ public class TestLongValuesSource extends LuceneTestCase {
     FieldDoc first = (FieldDoc) results.scoreDocs[0];
     assertEquals(LEAST_LONG_VALUE, first.fields[0]);
 
+    results = searcher.search(new MatchAllDocsQuery(), 1, new Sort(oneFieldSort).inverse());
+    first = (FieldDoc) results.scoreDocs[0];
+    assertEquals(Long.MIN_VALUE, first.fields[0]);
+
     // sort increasing, missing last
     oneFieldSort = onefield.getSortField(false);
     oneFieldSort.setMissingValue(Long.MAX_VALUE);
@@ -104,6 +108,10 @@ public class TestLongValuesSource extends LuceneTestCase {
     results = searcher.search(new MatchAllDocsQuery(), 1, new Sort(oneFieldSort));
     first = (FieldDoc) results.scoreDocs[0];
     assertEquals(LEAST_LONG_VALUE, first.fields[0]);
+
+    results = searcher.search(new MatchAllDocsQuery(), 1, new Sort(oneFieldSort).inverse());
+    first = (FieldDoc) results.scoreDocs[0];
+    assertEquals(Long.MAX_VALUE, first.fields[0]);
   }
 
   public void testSimpleFieldEquivalences() throws Exception {
@@ -191,6 +199,12 @@ public class TestLongValuesSource extends LuceneTestCase {
     TopDocs expected = searcher.search(query, size, sort, random().nextBoolean());
 
     CheckHits.checkEqual(query, expected.scoreDocs, actual.scoreDocs);
+
+    TopDocs actualInverse =
+        searcher.search(query, size, mutatedSort.inverse(), random().nextBoolean());
+    TopDocs expectedInverse = searcher.search(query, size, sort.inverse(), random().nextBoolean());
+
+    CheckHits.checkEqual(query, expectedInverse.scoreDocs, actualInverse.scoreDocs);
 
     if (size < actual.totalHits.value()) {
       expected = searcher.searchAfter(expected.scoreDocs[size - 1], query, size, sort);

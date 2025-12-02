@@ -94,6 +94,16 @@ public class SortedNumericSortField extends SortField {
     this.type = type;
   }
 
+  @Override
+  public SortField inverseSort() {
+    SortedNumericSortField inverse =
+        new SortedNumericSortField(getField(), type, !reverse, selector);
+    if (missingValue != null) {
+      inverse.setMissingValue(missingValue);
+    }
+    return inverse;
+  }
+
   /** A SortFieldProvider for this sort field */
   public static final class Provider extends SortFieldProvider {
 

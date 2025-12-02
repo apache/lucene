@@ -352,6 +352,25 @@ public class SortField {
     this.comparatorSource = comparator;
   }
 
+  /**
+   * Duplicates this SortField, but with the inverse ordering. So reverse if this sort is
+   * non-reverse, and non-reverse if this sort is reverse.
+   *
+   * @return An identical sort, but with reverse flipped.
+   */
+  public SortField inverseSort() {
+    SortField inverse;
+    if (type == Type.CUSTOM) {
+      inverse = new SortField(field, comparatorSource, !reverse);
+    } else {
+      inverse = new SortField(field, type, !reverse);
+    }
+    if (missingValue != null) {
+      inverse.setMissingValue(missingValue);
+    }
+    return inverse;
+  }
+
   // Sets field & type, and ensures field is not NULL unless
   // type is SCORE or DOC
   private void initFieldType(String field, Type type) {
