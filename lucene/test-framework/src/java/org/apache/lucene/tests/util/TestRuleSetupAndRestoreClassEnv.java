@@ -138,7 +138,6 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
       SuppressAssertingFormats a = targetClass.getAnnotation(SuppressAssertingFormats.class);
       avoidAssertingFormats.addAll(Arrays.asList(a.value()));
     }
-
     AssertingCodec.setSuppressedFormats(avoidAssertingFormats);
 
     savedCodec = Codec.getDefault();
