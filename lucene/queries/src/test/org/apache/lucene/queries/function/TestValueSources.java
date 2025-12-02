@@ -740,6 +740,16 @@ public class TestValueSources extends LuceneTestCase {
     }
   }
 
+  public void testReWrappingAsDoubleValues() throws Exception {
+    final ValueSource original = new DoubleFieldSource("double");
+    assertSame(original, ValueSource.fromDoubleValuesSource(original.asDoubleValuesSource()));
+  }
+
+  public void testUnWrappingDoubleValues() throws Exception {
+    final DoubleValuesSource original = DoubleValuesSource.fromDoubleField("double");
+    assertSame(original, ValueSource.fromDoubleValuesSource(original).asDoubleValuesSource());
+  }
+
   public void testWrappingAsDoubleValues() throws Exception {
 
     class AssertScoreComputedOnceQuery extends Query {

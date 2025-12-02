@@ -103,6 +103,8 @@ Optimizations
 
 * GITHUB#15003: Avoid reconstructing HNSW graph during merging (Pulkit Gupta)
 
+* GITHUB#15406: Improve round trip conversion of ValueSource <-> DoublesValueSource (hossman)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
