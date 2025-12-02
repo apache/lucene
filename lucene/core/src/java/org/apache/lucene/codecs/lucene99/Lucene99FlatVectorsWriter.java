@@ -45,6 +45,7 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
@@ -379,10 +380,11 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
               DefaultFlatVectorScorer.INSTANCE,
               fieldInfo.getVectorSimilarityFunction());
       BpVectorReorderer vectorReorderer = new BpVectorReorderer();
-      // nocommit use mergeState.intraTaskExecutor
+      vectorReorderer.setMaxIters(10);
+      TaskExecutor exec = new TaskExecutor(mergeState.intraMergeTaskExecutor);
       ordMap =
           vectorReorderer.computeValueMap(
-              vectorValues, fieldInfo.getVectorSimilarityFunction(), null);
+              vectorValues, fieldInfo.getVectorSimilarityFunction(), exec);
       // copy the temporary file vectors to yet another temp file after reordering
       IndexOutput tempReorderVectorData = openOutput(vectorData.getName(), "tempReorder");
       for (int ord = 0; ord < vectorCount; ord++) {
