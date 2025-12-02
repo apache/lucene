@@ -277,7 +277,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     IndexInput vectorDataInput;
     String tempFileName;
     Sorter.DocMap ordMap;
-    Sorter.DocMap ordToDocMap;
+    BpVectorReorderer.DocMap ordToDocMap;
 
     FieldMerger(FieldInfo fieldInfo, MergeState mergeState) {
       this.fieldInfo = fieldInfo;
@@ -444,7 +444,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       long vectorDataOffset,
       long vectorDataLength,
       DocsWithFieldSet docsWithField,
-      Sorter.DocMap sortMap)
+      BpVectorReorderer.DocMap sortMap)
       throws IOException {
     meta.writeInt(field.number);
     meta.writeInt(field.getVectorEncoding().ordinal());

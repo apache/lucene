@@ -23,11 +23,11 @@ import java.io.IOException;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.KnnVectorValues.DocIndexIterator;
-import org.apache.lucene.index.Sorter;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
+import org.apache.lucene.util.BpVectorReorderer;
 import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
@@ -93,7 +93,7 @@ public class OrdToDocDISIReaderConfiguration {
       int count,
       int maxDoc,
       DocsWithFieldSet docsWithField,
-      Sorter.DocMap sortMap)
+      BpVectorReorderer.DocMap sortMap)
       throws IOException {
     if (count == 0) {
       outputMeta.writeLong(-2); // docsWithFieldOffset
@@ -131,7 +131,7 @@ public class OrdToDocDISIReaderConfiguration {
   }
 
   private static void writeRandomOrdToDoc(
-      IndexOutput outputMeta, IndexOutput vectorData, int maxDoc, Sorter.DocMap ordToDocMap)
+      IndexOutput outputMeta, IndexOutput vectorData, int maxDoc, BpVectorReorderer.DocMap ordToDocMap)
       throws IOException {
     int bitsRequired = DirectWriter.bitsRequired(maxDoc);
     long start = vectorData.getFilePointer();
@@ -149,24 +149,15 @@ public class OrdToDocDISIReaderConfiguration {
     long startOrds = vectorData.getFilePointer();
     outputMeta.writeLong(startOrds - start);
     outputMeta.writeByte((byte) bitsRequired);
-    // for docToOrd we do not require random access; this only needs to support forward iteration
-    // write the ordinals in docid order using GroupVarInt encoding
-    // first invert the ordToDoc mapping
-    // TODO: it's dumb that we must copy this array - we could just reference the array inside the
-    // DocMap
-    int[] ordsInDocIdOrder = new int[ordToDocMap.size()];
-    for (int ord = 0; ord < ordToDocMap.size(); ord++) {
-      // note we don't need to encode the actual docids or gaps here since we will iterate to docs
-      // having values
-      // using docsWithField bitset while advancing through this array of ords
-      int newOrd = ordToDocMap.oldToNew(ord);
-      ordsInDocIdOrder[ord] = newOrd;
-    }
+    // For docToOrd we do not require random access; this only needs to support forward iteration.
+    // Write the ordinals in docid order using GroupVarInt encoding:
+    // Note we don't need to encode the actual docids or gaps here since we will iterate to docs
+    // having values using docsWithField bitset while advancing through this array of ords
     GroupVIntUtil.writeGroupVInts(
         vectorData,
         new byte[GroupVIntUtil.MAX_LENGTH_PER_GROUP],
-        ordsInDocIdOrder,
-        ordsInDocIdOrder.length);
+        ordToDocMap.oldToNew,
+        ordToDocMap.oldToNew.length);
     // write length of ordinals
     outputMeta.writeLong(vectorData.getFilePointer() - startOrds);
   }
@@ -198,7 +189,7 @@ public class OrdToDocDISIReaderConfiguration {
    * DirectMonotonicReader} and {@link IndexedDISI}.
    *
    * @param inputMeta the inputMeta, previously written to via {@link #writeStoredMeta(int,
-   *     IndexOutput, IndexOutput, int, int, DocsWithFieldSet, Sorter.DocMap)}
+   *     IndexOutput, IndexOutput, int, int, DocsWithFieldSet, BpVectorReorderer.DocMap)}
    * @param size The number of vectors
    * @return the configuration required to read sparse vectors
    * @throws IOException thrown when reading data fails

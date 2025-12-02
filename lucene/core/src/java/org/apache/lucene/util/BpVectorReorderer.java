@@ -118,12 +118,12 @@ public class BpVectorReorderer extends AbstractBPReorderer {
     }
   }
 
-  private static class DocMap extends Sorter.DocMap {
+  public static final class DocMap extends Sorter.DocMap {
 
-    private final int[] newToOld;
-    private final int[] oldToNew;
+    public final int[] oldToNew;
+    public final int[] newToOld;
 
-    DocMap(int[] oldToNew, int[] newToOld) {
+    public DocMap(int[] oldToNew, int[] newToOld) {
       this.oldToNew = oldToNew;
       this.newToOld = newToOld;
     }
@@ -785,29 +785,12 @@ public class BpVectorReorderer extends AbstractBPReorderer {
       ++docid;
       ++nextNullDoc;
     }
-
-    return new Sorter.DocMap() {
-
-      @Override
-      public int size() {
-        return newToOld.length;
-      }
-
-      @Override
-      public int oldToNew(int docID) {
-        return oldToNew[docID];
-      }
-
-      @Override
-      public int newToOld(int docID) {
-        return newToOld[docID];
-      }
-    };
+    return new DocMap(oldToNew, newToOld);
   }
 
   // returns a map where new->old maps ord->doc and
   // old->new maps old ords (which are in doc order) to new ords
-  public static Sorter.DocMap ordToDocFromValueMap(
+  public static DocMap ordToDocFromValueMap(
       Sorter.DocMap valueMap, DocsWithFieldSet docsWithField) throws IOException {
     // valueMap maps old/new ords; values maps old docs/old ords
     // we want old docs/new ords map.  docs with no value map to -1
@@ -823,23 +806,6 @@ public class BpVectorReorderer extends AbstractBPReorderer {
       // doc sequence
       oldToNew[ord] = newOrd;
     }
-
-    return new Sorter.DocMap() {
-
-      @Override
-      public int size() {
-        return newToOld.length;
-      }
-
-      @Override
-      public int oldToNew(int oldOrd) {
-        return oldToNew[oldOrd];
-      }
-
-      @Override
-      public int newToOld(int newOrd) {
-        return newToOld[newOrd];
-      }
-    };
+    return new DocMap(oldToNew, newToOld);
   }
 }
