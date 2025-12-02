@@ -200,29 +200,43 @@ public class OrdToDocDISIReaderConfiguration {
     long docsWithFieldLength = inputMeta.readLong();
     short jumpTableEntryCount = inputMeta.readShort();
     byte denseRankPower = inputMeta.readByte();
-    long addressesOffset = 0;
-    int blockShift = 0;
-    DirectMonotonicReader.Meta meta = null;
-    long addressesLength = 0;
-    long docToOrdLength = 0;
-    byte bitsRequired = 0;
+    long addressesOffset;
+    int blockShift;
+    DirectMonotonicReader.Meta meta;
+    long addressesLength;
+    long docToOrdLength;
+    byte bitsRequired;
     if (docsWithFieldOffset == -3) {
       addressesOffset = inputMeta.readLong();
       blockShift = inputMeta.readVInt();
       assert blockShift == 0;
       addressesLength = inputMeta.readLong();
+      bitsRequired = inputMeta.readByte();
       docToOrdLength = inputMeta.readLong();
+      meta = null;
     } else if (docsWithFieldOffset > -1) {
       addressesOffset = inputMeta.readLong();
       blockShift = inputMeta.readVInt();
       if (blockShift > 0) {
         meta = DirectMonotonicReader.loadMeta(inputMeta, size, blockShift);
+      } else {
+        meta = null;
       }
       addressesLength = inputMeta.readLong();
       if (blockShift == 0) {
         bitsRequired = inputMeta.readByte();
         docToOrdLength = inputMeta.readLong();
+      } else {
+        bitsRequired = 0;
+        docToOrdLength = 0;
       }
+    } else {
+      // unused when dense and not reordered
+      addressesOffset = -1;
+      addressesLength = -1;
+      docToOrdLength = -1;
+      bitsRequired = -1;
+      meta = null;
     }
     return new OrdToDocDISIReaderConfiguration(
         size,

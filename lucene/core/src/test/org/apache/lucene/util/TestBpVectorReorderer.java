@@ -47,6 +47,8 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -457,7 +459,14 @@ public class TestBpVectorReorderer extends LuceneTestCase {
     }
   }
 
-  // TODO: enable reordering with index sort
+  // Tests of reordering in the codec
+  public void testReorderDenseCodec() throws Exception {
+    doTestReorderCodec(false);
+  }
+
+  public void testReorderSparseCodec() throws Exception {
+    doTestReorderCodec(true);
+  }
 
   private void addDocuments(List<float[]> vectors, boolean indexIsSparse, long seed, IndexWriter writer) throws IOException {
     int id = 0;
@@ -488,16 +497,6 @@ public class TestBpVectorReorderer extends LuceneTestCase {
     writer.forceMerge(1);
   }
 
-  // test when reordering is enabled in the codec
-  public void testReorderDenseCodec() throws Exception {
-    doTestReorderCodec(false);
-  }
-
-  // test when reordering is enabled in the codec
-  public void testReorderSparseCodec() throws Exception {
-    doTestReorderCodec(true);
-  }
-
   private void doTestReorderCodec(boolean indexIsSparse) throws Exception {
     // must be big enough to trigger some reordering
     int numVectors = BpVectorReorderer.DEFAULT_MIN_PARTITION_SIZE * 4 + random().nextInt(32);
@@ -509,24 +508,6 @@ public class TestBpVectorReorderer extends LuceneTestCase {
     Sorter.DocMap expected =
         reorderer.computeValueMap(
             FloatVectorValues.fromFloats(vectors, 2), VectorSimilarityFunction.EUCLIDEAN, null);
-    // use identity
-    expected =
-        new Sorter.DocMap() {
-          @Override
-          public int oldToNew(int docID) {
-            return docID;
-          }
-
-          @Override
-          public int newToOld(int docID) {
-            return docID;
-          }
-
-          @Override
-          public int size() {
-            return vectors.size();
-          }
-        };
 
     // index without reordering in order to get the expected HNSW graph
     // record a seed so we can re-generate the same index below
@@ -555,11 +536,11 @@ public class TestBpVectorReorderer extends LuceneTestCase {
 
     tmpdir = createTempDir();
     try (Directory dir = newFSDirectory(tmpdir)) {
-      // create an index with a single leaf
-      IndexWriterConfig cfg = createIndexWriterConfig(false);
-      // TODO: also try to configure an index sort
-      // cfg.setIndexSort(new Sort(new SortField("id", SortField.Type.INT)));
-      // But is this disabling vector reordering?? I think we maybe didn't plumb this through
+      IndexWriterConfig cfg = createIndexWriterConfig(true);
+      // Configure an index sort sometimes
+      if (random().nextBoolean()) {
+        cfg.setIndexSort(new Sort(new SortField("id", SortField.Type.INT)));
+      }
       try (IndexWriter writer = new IndexWriter(dir, cfg)) {
         addDocuments(vectors, indexIsSparse, seed, writer);
       }
