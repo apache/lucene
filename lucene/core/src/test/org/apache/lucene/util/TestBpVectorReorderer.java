@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
@@ -456,19 +457,31 @@ public class TestBpVectorReorderer extends LuceneTestCase {
     }
   }
 
-  // TODO: testReorderSparseCodec
   // TODO: enable reordering with index sort
 
-  private void addDocuments(List<float[]> vectors, IndexWriter writer) throws IOException {
+  private void addDocuments(List<float[]> vectors, boolean indexIsSparse, long seed, IndexWriter writer) throws IOException {
     int id = 0;
+    boolean didCommit = false;
+    Random random = new Random(seed);
     for (float[] vector : vectors) {
       Document doc = new Document();
       doc.add(new KnnFloatVectorField("f", vector, VectorSimilarityFunction.EUCLIDEAN));
       doc.add(new NumericDocValuesField("id", id));
       doc.add(new StoredField("id", id));
       writer.addDocument(doc);
-      if (id++ == vectors.size() / 2 + 1) {
-        // make multiple segments to induce a merge
+      if (indexIsSparse && random.nextBoolean()) {
+        for (int i = 0; i < random.nextInt(3); i++) {
+          // insert some gaps -- docs with no vectors
+          // give them the same numeric id as their "neighbor" so that
+          // they sort together
+          Document gapDoc = new Document();
+          gapDoc.add(new NumericDocValuesField("id", id));
+          writer.addDocument(gapDoc);
+        }
+      }
+      ++id;
+      if (didCommit == false && id > vectors.size() / 2) {
+        // make two segments to induce a merge
         writer.commit();
       }
     }
@@ -477,6 +490,15 @@ public class TestBpVectorReorderer extends LuceneTestCase {
 
   // test when reordering is enabled in the codec
   public void testReorderDenseCodec() throws Exception {
+    doTestReorderCodec(false);
+  }
+
+  // test when reordering is enabled in the codec
+  public void testReorderSparseCodec() throws Exception {
+    doTestReorderCodec(true);
+  }
+
+  private void doTestReorderCodec(boolean indexIsSparse) throws Exception {
     // must be big enough to trigger some reordering
     int numVectors = BpVectorReorderer.DEFAULT_MIN_PARTITION_SIZE * 4 + random().nextInt(32);
     List<float[]> vectors = shuffleVectors(randomLinearVectors(numVectors));
@@ -507,11 +529,13 @@ public class TestBpVectorReorderer extends LuceneTestCase {
         };
 
     // index without reordering in order to get the expected HNSW graph
+    // record a seed so we can re-generate the same index below
+    long seed = random().nextLong();
     Path tmpdir = createTempDir();
     List<List<Integer>> expectedGraph = new ArrayList<>();
     try (Directory dir = newFSDirectory(tmpdir)) {
       try (IndexWriter writer = new IndexWriter(dir, createIndexWriterConfig(false))) {
-        addDocuments(vectors, writer);
+        addDocuments(vectors, indexIsSparse, seed, writer);
       }
       try (IndexReader reader = DirectoryReader.open(dir)) {
         LeafReader leafReader = getOnlyLeafReader(reader);
@@ -537,7 +561,7 @@ public class TestBpVectorReorderer extends LuceneTestCase {
       // cfg.setIndexSort(new Sort(new SortField("id", SortField.Type.INT)));
       // But is this disabling vector reordering?? I think we maybe didn't plumb this through
       try (IndexWriter writer = new IndexWriter(dir, cfg)) {
-        addDocuments(vectors, writer);
+        addDocuments(vectors, indexIsSparse, seed, writer);
       }
 
       // Verify the ordering produced when merging is the same,

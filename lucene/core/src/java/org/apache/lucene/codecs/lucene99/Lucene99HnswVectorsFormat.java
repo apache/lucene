@@ -296,7 +296,6 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    * @param tinySegmentsThreshold the expected number of vector operations to return k nearest
    *     neighbors of the current graph size
    * @param enableReorder if true, BpVectorReorderer is used to sort vector nodes when merging.
-   *     TODO: better explanation
    */
   public Lucene99HnswVectorsFormat(
       int maxConn,
@@ -328,7 +327,6 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    * @param tinySegmentsThreshold the expected number of vector operations to return k nearest
    *     neighbors of the current graph size
    * @param enableReorder if true, BpVectorReorderer is used to sort vector nodes when merging.
-   *     TODO: better explanation
    * @param writeVersion the version used for the writer to encode docID's (VarInt=0, GroupVarInt=1)
    */
   Lucene99HnswVectorsFormat(
