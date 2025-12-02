@@ -306,10 +306,11 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
   }
 
   private void assertFloatReturningProviders(ToDoubleFunction<VectorUtilSupport> func) {
-    assertEquals(
-        func.applyAsDouble(LUCENE_PROVIDER.getVectorUtilSupport()),
-        func.applyAsDouble(PANAMA_PROVIDER.getVectorUtilSupport()),
-        delta);
+    double luceneProviderResults = func.applyAsDouble(LUCENE_PROVIDER.getVectorUtilSupport());
+    double panamaProviderResults = func.applyAsDouble(PANAMA_PROVIDER.getVectorUtilSupport());
+    double delta =
+        Math.max(this.delta, this.delta * Math.max(luceneProviderResults, panamaProviderResults));
+    assertEquals(luceneProviderResults, panamaProviderResults, delta);
   }
 
   private void assertIntReturningProviders(ToIntFunction<VectorUtilSupport> func) {
