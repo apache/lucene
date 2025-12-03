@@ -383,7 +383,8 @@ public class HnswGraphBuilder implements HnswBuilder {
       int node,
       NeighborArray candidates,
       UpdateableRandomVectorScorer scorer,
-      boolean outOfOrderInsertion) throws IOException {
+      boolean outOfOrderInsertion)
+      throws IOException {
     /* For each of the beamWidth nearest candidates (going from best to worst), select it only if it
      * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
      * since the node is new and has no prior neighbors).
