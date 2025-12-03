@@ -1312,7 +1312,7 @@ def main():
 
   state.save()
 
-  # Smoketester requires JAVA11_HOME to point to Java11
+  # Smoketester requires JAVA_HOME to point to the minimum Java required to build the project.
   os.environ["JAVA_HOME"] = state.get_java_home()
   os.environ["JAVACMD"] = state.get_java_cmd()
 

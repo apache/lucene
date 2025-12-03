@@ -49,12 +49,6 @@ public class EcjLintPlugin extends LuceneGradlePlugin {
   public static final String TASK_PREFIX = "ecjLint";
   public static final String ECJ_LINT_PREFS_PATH = "validation/ecj-lint/ecj.javadocs.prefs";
 
-  /*
-   * Using an explicit dependency means we can't be as flexible in using interim "drops" of ecj,
-   * as previously implemented in lucene.validation.ecj-lint.gradle. Defer the solution
-   * until it really becomes a problem.
-   */
-
   @Override
   public void apply(Project project) {
     requiresAppliedPlugin(project, JavaPlugin.class);
@@ -129,8 +123,11 @@ public class EcjLintPlugin extends LuceneGradlePlugin {
     args.addAll(List.of("-properties", javadocPrefsPath.toAbsolutePath().toString()));
 
     // We depend on modular paths.
-    ModularPathsExtensionApi modularPaths =
-        (ModularPathsExtensionApi) sourceSet.getExtensions().getByName("modularPathsForEcj");
+    ModularPathsExtension modularPaths =
+        (ModularPathsExtension)
+            sourceSet
+                .getExtensions()
+                .getByName(ModularPathsPlugin.MODULAR_PATHS_EXTENSION_ECJ_NAME);
     task.dependsOn(modularPaths);
 
     // Collect modular dependencies and their transitive dependencies to module path.

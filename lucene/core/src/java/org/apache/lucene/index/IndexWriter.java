@@ -2221,8 +2221,10 @@ public class IndexWriter
    * Just like {@link #forceMergeDeletes()}, except you can specify whether the call should block
    * until the operation completes. This is only meaningful with a {@link MergeScheduler} that is
    * able to run merges in background threads.
+   *
+   * @return a {@link MergePolicy.MergeObserver} to monitor merge progress and wait for completion
    */
-  public void forceMergeDeletes(boolean doWait) throws IOException {
+  public MergePolicy.MergeObserver forceMergeDeletes(boolean doWait) throws IOException {
     ensureOpen();
 
     flush(true, true);
@@ -2282,6 +2284,7 @@ public class IndexWriter
     // NOTE: in the ConcurrentMergeScheduler case, when
     // doWait is false, we can return immediately while
     // background threads accomplish the merging
+    return new MergePolicy.MergeObserver(spec);
   }
 
   /**
@@ -2296,9 +2299,12 @@ public class IndexWriter
    *
    * <p><b>NOTE</b>: this method first flushes a new segment (if there are indexed documents), and
    * applies all buffered deletes.
+   *
+   * @return a {@link MergePolicy.MergeObserver} to monitor merge progress. Since this method blocks
+   *     until completion, merges will already be complete when it returns.
    */
-  public void forceMergeDeletes() throws IOException {
-    forceMergeDeletes(true);
+  public MergePolicy.MergeObserver forceMergeDeletes() throws IOException {
+    return forceMergeDeletes(true);
   }
 
   /**
@@ -3447,23 +3453,26 @@ public class IndexWriter
             globalFieldNumberMap,
             context,
             intraMergeExecutor);
-
-    if (!merger.shouldMerge()) {
-      return;
-    }
-
-    merge.checkAborted();
-    synchronized (this) {
-      runningAddIndexesMerges.add(merger);
-    }
-    merge.mergeStartNS = System.nanoTime();
     try {
-      merger.merge(); // merge 'em
-    } finally {
-      synchronized (this) {
-        runningAddIndexesMerges.remove(merger);
-        notifyAll();
+      if (!merger.shouldMerge()) {
+        return;
       }
+
+      merge.checkAborted();
+      synchronized (this) {
+        runningAddIndexesMerges.add(merger);
+      }
+      merge.mergeStartNS = System.nanoTime();
+      try {
+        merger.merge(); // merge 'em
+      } finally {
+        synchronized (this) {
+          runningAddIndexesMerges.remove(merger);
+          notifyAll();
+        }
+      }
+    } finally {
+      merger.cleanupMerge();
     }
 
     merge.setMergeInfo(
@@ -5238,32 +5247,36 @@ public class IndexWriter
               globalFieldNumberMap,
               context,
               intraMergeExecutor);
-      merge.info.setSoftDelCount(Math.toIntExact(softDeleteCount.get()));
-      merge.checkAborted();
-
       MergeState mergeState = merger.mergeState;
       MergeState.DocMap[] docMaps;
-      if (reorderDocMaps == null) {
-        docMaps = mergeState.docMaps;
-      } else {
-        // Since the reader was reordered, we passed a merged view to MergeState and from its
-        // perspective there is a single input segment to the merge and the
-        // SlowCompositeCodecReaderWrapper is effectively doing the merge.
-        assert mergeState.docMaps.length == 1
-            : "Got " + mergeState.docMaps.length + " docMaps, but expected 1";
-        MergeState.DocMap compactionDocMap = mergeState.docMaps[0];
-        docMaps = new MergeState.DocMap[reorderDocMaps.length];
-        for (int i = 0; i < docMaps.length; ++i) {
-          MergeState.DocMap reorderDocMap = reorderDocMaps[i];
-          docMaps[i] = docID -> compactionDocMap.get(reorderDocMap.get(docID));
+      try {
+        merge.info.setSoftDelCount(Math.toIntExact(softDeleteCount.get()));
+        merge.checkAborted();
+
+        if (reorderDocMaps == null) {
+          docMaps = mergeState.docMaps;
+        } else {
+          // Since the reader was reordered, we passed a merged view to MergeState and from its
+          // perspective there is a single input segment to the merge and the
+          // SlowCompositeCodecReaderWrapper is effectively doing the merge.
+          assert mergeState.docMaps.length == 1
+              : "Got " + mergeState.docMaps.length + " docMaps, but expected 1";
+          MergeState.DocMap compactionDocMap = mergeState.docMaps[0];
+          docMaps = new MergeState.DocMap[reorderDocMaps.length];
+          for (int i = 0; i < docMaps.length; ++i) {
+            MergeState.DocMap reorderDocMap = reorderDocMaps[i];
+            docMaps[i] = docID -> compactionDocMap.get(reorderDocMap.get(docID));
+          }
         }
-      }
 
-      merge.mergeStartNS = System.nanoTime();
+        merge.mergeStartNS = System.nanoTime();
 
-      // This is where all the work happens:
-      if (merger.shouldMerge()) {
-        merger.merge();
+        // This is where all the work happens:
+        if (merger.shouldMerge()) {
+          merger.merge();
+        }
+      } finally {
+        merger.cleanupMerge();
       }
 
       assert mergeState.segmentInfo == merge.info.info;

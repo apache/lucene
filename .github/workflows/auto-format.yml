@@ -4,83 +4,88 @@ on:
   issue_comment:
     types: [created]
 
-env:
-  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
-  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+permissions: {}
 
 jobs:
   format-check:
+    name: Run format check
     # Only run on pull requests when the bot is mentioned
-    if: |
-      github.event.issue.pull_request &&
-      contains(github.event.comment.body, '/format-fix apply')
+    if: ${{ github.event.issue.pull_request && contains(github.event.comment.body, '/format-fix apply') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_ACTOR: ${{ github.actor }}
+      BASE_REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.issue.number }}
+      COMMENT_ID: ${{ github.event.comment.id }}
+      COMMENT_URL: ${{ github.event.comment.html_url }}
 
     permissions:
-      contents: write
-      pull-requests: write
-      issues: write
+      contents: write # pushes branch
+      pull-requests: write # creates/modifies pull requests
+      issues: write # may be unnecessary
 
     steps:
       - name: Check permissions
         run: |
-          PR_AUTHOR=$(gh pr view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json author --jq '.author.login')
+          PR_AUTHOR=$(gh pr view "${PR_NUMBER}" --repo "${BASE_REPO}" --json author --jq '.author.login')
 
-          PERMISSION=$(gh api repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission --jq '.permission' 2>/dev/null || echo "none")
+          PERMISSION=$(gh api "repos/${BASE_REPO}/collaborators/${GH_ACTOR}/permission" --jq '.permission' 2>/dev/null || echo "none")
 
           # only allow if user is PR author OR has admin/write repository access
-          if [[ "${{ github.actor }}" == "$PR_AUTHOR" ]] || [[ "$PERMISSION" == "admin" ]] || [[ "$PERMISSION" == "write" ]]; then
-            echo "Permission granted: User @${{ github.actor }} can run the format bot"
-            if [[ "${{ github.actor }}" == "$PR_AUTHOR" ]]; then
+          if [[ "${GH_ACTOR}" == "$PR_AUTHOR" ]] || [[ "$PERMISSION" == "admin" ]] || [[ "$PERMISSION" == "write" ]]; then
+            echo "Permission granted: User @${GH_ACTOR} can run the format bot"
+            if [[ "${GH_ACTOR}" == "$PR_AUTHOR" ]]; then
               echo "  - Reason: PR author"
             fi
             if [[ "$PERMISSION" == "admin" ]] || [[ "$PERMISSION" == "write" ]]; then
               echo "  - Reason: Repository $PERMISSION access"
             fi
           else
-            echo "Error: User @${{ github.actor }} does not have permission to run the format bot."
+            echo "Error: User @${GH_ACTOR} does not have permission to run the format bot."
             echo "Required: Be the PR author OR have admin/write repository access."
             exit 1
           fi
 
       - name: Add workflow started reaction
         run: |
-          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+          gh api "repos/${BASE_REPO}/issues/comments/${COMMENT_ID}/reactions" \
             --method POST \
             --input - <<< '{"content":"eyes"}'
 
       - name: Get PR details and checkout
         run: |
           # Get PR details
-          PR_DATA=$(gh pr view ${{ github.event.issue.number }} --repo ${{ github.repository }} --json headRefName,headRepository,headRepositoryOwner)
+          PR_DATA=$(gh pr view "${PR_NUMBER}" --repo "${BASE_REPO}" --json headRefName,headRepository,headRepositoryOwner)
           HEAD_REF=$(echo "$PR_DATA" | jq -r '.headRefName')
           HEAD_REPO=$(echo "$PR_DATA" | jq -r '.headRepository.name')
           HEAD_OWNER=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login')
 
-          echo "head_ref=$HEAD_REF" >> $GITHUB_ENV
-          echo "head_repo_full=$HEAD_OWNER/$HEAD_REPO" >> $GITHUB_ENV
+          echo "head_ref=$HEAD_REF" >> "$GITHUB_ENV"
+          echo "head_repo_full=$HEAD_OWNER/$HEAD_REPO" >> "$GITHUB_ENV"
 
       - name: Detect if PR is from fork
         run: |
-          HEAD_OWNER=$(echo "${{ env.head_repo_full }}" | cut -d'/' -f1)
-          REPO_OWNER="${{ github.repository_owner }}"
+          HEAD_OWNER=$(echo "${head_repo_full}" | cut -d'/' -f1)
 
           if [[ "$HEAD_OWNER" != "$REPO_OWNER" ]]; then
-            echo "is_fork=true" >> $GITHUB_ENV
-            echo "PR is from fork: ${{ env.head_repo_full }}"
+            echo "is_fork=true" >> "$GITHUB_ENV"
+            echo "PR is from fork: ${head_repo_full}"
           else
-            echo "is_fork=false" >> $GITHUB_ENV
+            echo "is_fork=false" >> "$GITHUB_ENV"
             echo "PR is from same repository"
           fi
 
       - name: Checkout PR code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.0
         with:
           repository: ${{ env.head_repo_full }}
           ref: ${{ env.head_ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: ./.github/actions/prepare-for-build
 
@@ -88,9 +93,9 @@ jobs:
       - name: Get changed files
         id: changed-files
         run: |
-          echo "Getting changed files for PR #${{ github.event.issue.number }}..."
+          echo "Getting changed files for PR #${PR_NUMBER}..."
 
-          ALL_FILES=$(gh pr diff ${{ github.event.issue.number }} --name-only --repo ${{ github.repository }})
+          ALL_FILES=$(gh pr diff "${PR_NUMBER}" --name-only --repo "${BASE_REPO}")
 
           FILTERED_FILES=$(echo "$ALL_FILES" | grep -E '\.(java|gradle|groovy|md|properties|xml|py|sh|bat|cmd)$' || true)
 
@@ -100,13 +105,13 @@ jobs:
           echo "Filtered files for formatting check:"
           echo "$FILTERED_FILES"
 
-          echo "all<<EOF" >> $GITHUB_OUTPUT
-          echo "$ALL_FILES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "all<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$ALL_FILES" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
-          echo "filtered<<EOF" >> $GITHUB_OUTPUT
-          echo "$FILTERED_FILES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "filtered<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$FILTERED_FILES" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Initial validation
         id: initial-validation
@@ -116,34 +121,34 @@ jobs:
           ./gradlew check -x test
 
       - name: Fix formatting issues
-        if: steps.initial-validation.outcome == 'failure'
+        if: ${{ steps.initial-validation.outcome == 'failure' }}
         run: |
           echo "Fixing formatting issues and updating lock file..."
-          ./gradlew tidy writeLocks updateLicenses
+          ./gradlew tidy writeLocks writeChecksums
 
       - name: Check if formatting fixes were made
-        if: steps.initial-validation.outcome == 'failure'
+        if: ${{ steps.initial-validation.outcome == 'failure' }}
         id: check_changes
         run: |
           git add .
           if git diff --staged --quiet; then
             echo "No formatting changes were made"
-            echo "changes_made=false" >> $GITHUB_OUTPUT
+            echo "changes_made=false" >> "$GITHUB_OUTPUT"
           else
             echo "Formatting changes were made"
-            echo "changes_made=true" >> $GITHUB_OUTPUT
+            echo "changes_made=true" >> "$GITHUB_OUTPUT"
             echo "Changed files:"
             git diff --staged --name-only
           fi
 
       - name: Create fix branch and commit (same-repo)
-        if: steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true' && env.is_fork == 'false'
+        if: ${{ steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true' && env.is_fork == 'false' }}
         id: create_fix_branch
         run: |
           # Create a new branch for the fixes
-          fix_branch="format-fixes-${{ env.head_ref }}-$(date +%s)"
-          echo "fix_branch=$fix_branch" >> $GITHUB_OUTPUT
-          echo "fix_branch=$fix_branch" >> $GITHUB_ENV
+          fix_branch="format-fixes-${head_ref}-$(date +%s)"
+          echo "fix_branch=$fix_branch" >> "$GITHUB_OUTPUT"
+          echo "fix_branch=$fix_branch" >> "$GITHUB_ENV"
 
           git config --local user.email "action@github.com"
           git config --local user.name "Auto Format Bot"
@@ -152,9 +157,9 @@ jobs:
           git commit -m "Apply automatic formatting fixes
 
           Fixes applied by @auto-format-bot in response to:
-          ${{ github.event.comment.html_url }}
+          ${COMMENT_URL}
 
-          Original PR: #${{ github.event.issue.number }}
+          Original PR: #${PR_NUMBER}
 
           Changes applied:
           $(git diff --name-only HEAD~1)"
@@ -162,7 +167,7 @@ jobs:
           git push origin "$fix_branch"
 
       - name: Commit directly to fork PR
-        if: steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true' && env.is_fork == 'true'
+        if: ${{ steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true' && env.is_fork == 'true' }}
         id: commit_to_fork
         run: |
           git config --local user.email "action@github.com"
@@ -171,14 +176,14 @@ jobs:
           git commit -m "Apply automatic formatting fixes
 
           Fixes applied by @auto-format-bot in response to:
-          ${{ github.event.comment.html_url }}
+          ${COMMENT_URL}
 
-          Original PR: #${{ github.event.issue.number }}
+          Original PR: #${PR_NUMBER}
 
           Changes applied:
           $(git diff --name-only HEAD~1)"
 
-          git push origin "${{ env.head_ref }}"
+          git push origin "${head_ref}"
 
       - name: Final validation
         run: |
@@ -186,17 +191,17 @@ jobs:
           ./gradlew check -x test
 
       - name: Create PR for fixes (same-repo only)
-        if: steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true' && env.is_fork == 'false'
+        if: ${{ steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true' && env.is_fork == 'false' }}
         id: create_pr
         run: |
           PR_BODY="## Automatic Formatting Fixes
 
-          This PR applies automatic formatting fixes to address validation failures in #${{ github.event.issue.number }}.
+          This PR applies automatic formatting fixes to address validation failures in #${PR_NUMBER}.
 
           ### 📝 Details
-          - **Triggered by**: ${{ github.event.comment.html_url }}
-          - **Original PR**: #${{ github.event.issue.number }}
-          - **Fix branch**: \`${{ env.fix_branch }}\`
+          - **Triggered by**: ${COMMENT_URL}
+          - **Original PR**: #${PR_NUMBER}
+          - **Fix branch**: \`${fix_branch}\`
 
           ### 🚀 Next Steps
           Review and merge this PR to apply the formatting fixes to the original branch.
@@ -205,64 +210,66 @@ jobs:
           *This PR was created automatically by the Auto Format Bot*"
 
           PR_URL=$(gh pr create \
-            --repo ${{ github.repository }} \
-            --title "Apply formatting fixes to #${{ github.event.issue.number }}" \
+            --repo "${BASE_REPO}" \
+            --title "Apply formatting fixes to #${PR_NUMBER}" \
             --body "$PR_BODY" \
-            --base "${{ env.head_ref }}" \
-            --head "${{ env.fix_branch }}")
+            --base "${head_ref}" \
+            --head "${fix_branch}")
 
-          PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
-          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
-          echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+          NEW_PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]*$')
+          echo "pr_number=$NEW_PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
 
       - name: Add success reaction
         if: success()
         run: |
           # Add success reaction
-          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+          gh api "repos/${BASE_REPO}/issues/comments/${COMMENT_ID}/reactions" \
             --method POST \
             --input - <<< '{"content":"+1"}'
 
       - name: Comment on PR with success (fixes applied to same-repo)
-        if: success() && steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true' && env.is_fork == 'false'
+        if: ${{ success() && steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true' && env.is_fork == 'false' }}
         run: |
-          gh pr comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "## Formatting Fixes Applied
+          gh pr comment "${PR_NUMBER}" --repo "${BASE_REPO}" --body "## Formatting Fixes Applied
 
           The formatting bot has successfully created a PR with formatting fixes!
 
           ### 📝 Details
-          - **Triggered by**: ${{ github.event.comment.html_url }}
-          - **Fix PR**: #${{ steps.create_pr.outputs.pr_number }}
+          - **Triggered by**: ${COMMENT_URL}
+          - **Fix PR**: #${NEW_PR_NUMBER}
 
           ### 🚀 Next Steps
-          Review and merge PR #${{ steps.create_pr.outputs.pr_number }} to apply the formatting fixes to this branch.
+          Review and merge PR #${NEW_PR_NUMBER} to apply the formatting fixes to this branch.
 
           ---
           *This was performed automatically by the Auto Format Bot*"
+        env:
+          NEW_PR_NUMBER: ${{ steps.create_pr.outputs.pr_number }}
 
       - name: Comment on PR with success (fixes applied to fork)
-        if: success() && steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true' && env.is_fork == 'true'
+        if: ${{ success() && steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'true' && env.is_fork == 'true' }}
         run: |
-          gh pr comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "## Formatting Fixes Applied
+          gh pr comment "${PR_NUMBER}" --repo "${BASE_REPO}" --body "## Formatting Fixes Applied
 
           The formatting bot has commited the formatting fixes to this PR!
 
           ### 📝 Details
-          - **Triggered by**: ${{ github.event.comment.html_url }}
+          - **Triggered by**: ${COMMENT_URL}
           - **Action taken**: Direct commit to this PR branch
 
           ---
           *This was performed automatically by the Auto Format Bot*"
 
       - name: Comment on PR with success (no fixes needed)
-        if: success() && steps.initial-validation.outcome == 'success'
+        if: ${{ success() && steps.initial-validation.outcome == 'success' }}
         run: |
-          gh pr comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "## No Formatting Issues Found
+          gh pr comment "${PR_NUMBER}" --repo "${BASE_REPO}" --body "## No Formatting Issues Found
 
           The formatting bot has validated this PR and found no issues!
 
           ### 📝 Details
-          - **Triggered by**: ${{ github.event.comment.html_url }}
+          - **Triggered by**: ${COMMENT_URL}
 
           The PR is ready for review!
 
@@ -270,14 +277,14 @@ jobs:
           *This was performed automatically by the Auto Format Bot*"
 
       - name: Comment on PR with success (fixes made but no changes)
-        if: success() && steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'false'
+        if: ${{ success() && steps.initial-validation.outcome == 'failure' && steps.check_changes.outputs.changes_made == 'false' }}
         run: |
-          gh pr comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "## Formatting Issues Detected (No Auto-fixes Available)
+          gh pr comment "${PR_NUMBER}" --repo "${BASE_REPO}" --body "## Formatting Issues Detected (No Auto-fixes Available)
 
           The formatting bot found issues but was unable to automatically fix them.
 
           ### 📝 Details
-          - **Triggered by**: ${{ github.event.comment.html_url }}
+          - **Triggered by**: ${COMMENT_URL}
 
           **Recommendation**: Review the validation failures manually and apply fixes as needed.
 
@@ -285,17 +292,17 @@ jobs:
           *This was performed automatically by the Auto Format Bot*"
 
       - name: Add failure reaction
-        if: failure()
+        if: ${{ failure() }}
         run: |
           # Add failure reaction
-          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+          gh api "repos/${BASE_REPO}/issues/comments/${COMMENT_ID}/reactions" \
             --method POST \
             --input - <<< '{"content":"-1"}'
 
       - name: Comment on PR with failure
-        if: failure()
+        if: ${{ failure() }}
         run: |
-          gh pr comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "## Formatting Failed
+          gh pr comment "${PR_NUMBER}" --repo "${BASE_REPO}" --body "## Formatting Failed
 
           The formatting bot encountered issues while processing this PR.
 
@@ -305,8 +312,10 @@ jobs:
           3. Re-trigger the bot with \`/format-fix apply\`
 
           ### 📝 Details
-          - **Triggered by**: ${{ github.event.comment.html_url }}
-          - **Files processed**: ${{ steps.changed-files.outputs.all || 'None detected' }}
+          - **Triggered by**: ${COMMENT_URL}
+          - **Files processed**: ${FILES_PROCESSED}
 
           ---
           *This was performed automatically by the Auto Format Bot*"
+        env:
+          FILES_PROCESSED: ${{ steps.changed-files.outputs.all || 'None detected' }}

@@ -69,7 +69,8 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
               .addAll(
                   List.of("jdk-unsafe", "jdk-deprecated", "jdk-non-portable", "jdk-reflection"));
 
-          task.getSuppressAnnotations().add("**.SuppressForbidden");
+          task.getSuppressAnnotations()
+              .addAll(List.of("**.SuppressForbidden", "**.*$SuppressForbidden"));
 
           // apply logger restrictions to all modules except Luke.
           if (!project.getPath().equals(":lucene:luke")) {
@@ -90,7 +91,7 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
 
               String ruleGroup =
                   switch (project.getPath()) {
-                    case ":lucene:build-tools:build-infra-shadow" -> "main-build-infra";
+                    case ":build-tools:build-infra-shadow" -> "main-build-infra";
                     default -> "main";
                   };
 
@@ -134,7 +135,7 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
     var forbiddenApisMainTask = allForbiddenApisTasks.named("forbiddenApisMain");
 
     switch (project.getPath()) {
-      case ":lucene:build-tools:missing-doclet", ":lucene:build-tools:build-infra-shadow":
+      case ":build-tools:missing-doclet", ":build-tools:build-infra-shadow":
         forbiddenApisMainTask.configure(
             task -> {
               task.getBundledSignatures().removeAll(Set.of("jdk-non-portable", "jdk-system-out"));

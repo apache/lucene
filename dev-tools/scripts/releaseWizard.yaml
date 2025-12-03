@@ -300,6 +300,42 @@ groups:
     user_input: !UserInput
       prompt: Enter end date of feature freeze (YYYY-MM-DD)
       name: feature_freeze_date
+  - !Todo
+    id: evaluate_min_supported_major
+    title: Evaluate MIN_SUPPORTED_MAJOR policy
+    types:
+    - major
+    description: |
+      For major releases, evaluate whether MIN_SUPPORTED_MAJOR in Version.java should be bumped.
+      This constant controls the relaxed index upgrade policy - when format-breaking changes occur,
+      it should be updated to the new minimum supported version.
+
+      **Evaluation Checklist:**
+
+      1. **Review index format changes**: Have any format-breaking changes been introduced since the current MIN_SUPPORTED_MAJOR?
+         - Codec version changes that break backward compatibility
+         - SegmentInfo format changes
+         - New mandatory index structures
+         - Changes to core file formats
+
+      2. **Check compatibility span**:
+         - Current MIN_SUPPORTED_MAJOR: Review Version.java
+         - Proposed new value (if changes occurred): Should match the oldest version that can still be opened
+
+      3. **Update if needed**:
+         - Modify Version.MIN_SUPPORTED_MAJOR constant in lucene/core/src/java/org/apache/lucene/util/Version.java
+         - Update test expectations in backward compatibility tests
+         - Document the change in CHANGES.txt with clear reasoning
+
+      4. **Validate the change**:
+         - Run backward compatibility tests: `./gradlew -p lucene/backward-codecs test`
+         - Ensure error messages are clear and actionable
+         - Verify no unintended version restrictions
+      **Note**: If no format-breaking changes occurred, leave MIN_SUPPORTED_MAJOR unchanged to
+      maintain the widest possible upgrade span for users.
+    links:
+    - https://github.com/apache/lucene/blob/main/lucene/core/src/java/org/apache/lucene/util/Version.java
+    - https://github.com/apache/lucene/issues/13797
 - !TodoGroup
   id: branching_versions
   title: Create branch (if needed) and update versions
@@ -933,7 +969,7 @@ groups:
       commands_text: In the source checkout do the following (note that this step will prompt you for your Apache LDAP credentials)
       commands:
         - !Command
-          cmd: java dev-tools/scripts/StageArtifacts.java --user {{ gpg.apache_id }} --description "{{ 'Apache Lucene ', release_version, ' (commit ', git_sha, ')' }}" "{{ [dist_file_path, dist_folder, 'lucene', 'maven'] | path_join }}"
+          cmd: java build-tools/build-infra/src/main/java/org/apache/lucene/scripts/StageArtifacts.java --user {{ gpg.apache_id }} --description "{{ 'Apache Lucene ', release_version, ' (commit ', git_sha, ')' }}" "{{ [dist_file_path, dist_folder, 'lucene', 'maven'] | path_join }}"
           tee: true
           logfile: publish_lucene_maven.log
     post_description: The artifacts are not published yet, please proceed with the next step to actually publish!

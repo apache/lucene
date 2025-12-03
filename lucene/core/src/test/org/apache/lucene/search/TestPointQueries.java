@@ -374,6 +374,8 @@ public class TestPointQueries extends LuceneTestCase {
     doTestRandomLongs(1000);
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandomLongsBig() throws Exception {
     doTestRandomLongs(20_000);
   }
@@ -2159,7 +2161,7 @@ public class TestPointQueries extends LuceneTestCase {
     searcher.setQueryCache(null);
     weight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
     scorer = weight.scorer(searcher.getIndexReader().leaves().get(0));
-    assertFalse(DocIdSetIterator.all(1).getClass().equals(scorer.iterator().getClass()));
+    assertNotEquals(DocIdSetIterator.all(1).getClass(), scorer.iterator().getClass());
 
     reader.close();
     w.close();

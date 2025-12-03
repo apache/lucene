@@ -9,20 +9,27 @@
 name: "Pull Request Labeler"
 run-name: Labelling pull request with module tags based on changed files in the PR
 on:
+  # see labeler docs for explanation
+  # zizmor: ignore[dangerous-triggers]
   - pull_request_target
+
+permissions: {}
 
 jobs:
   labeler:
+    name: Label PRs
     # only run on the main Lucene repository.
     if: (github.repository == 'apache/lucene')
 
     permissions:
-      contents: read
-      pull-requests: write
+      contents: read # likely not needed for public repository
+      pull-requests: write # manipulate existing labels
 
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
-      - uses: actions/labeler@8558fd74291d67161a8a78ce36a881fa63b766a9 # v5.0.0
+      - name: Run Labeler action
+        uses: actions/labeler@634933edcd8ababfe52f92936142cc22ac488b1b # v6.0.1
         with:
           sync-labels: true

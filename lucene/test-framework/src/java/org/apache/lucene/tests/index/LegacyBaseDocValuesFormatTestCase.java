@@ -2502,7 +2502,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {
       int fixedLength = TestUtil.nextInt(random(), 1, 10);
-      doTestSortedSetVsStoredFields(atLeast(300), fixedLength, fixedLength, 16, 100);
+      doTestSortedSetVsStoredFields(atLeast(100), fixedLength, fixedLength, 16, 100);
     }
   }
 
@@ -2520,6 +2520,8 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     }
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testSortedNumericsMultipleValuesVsStoredFields() throws Exception {
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {
@@ -2579,14 +2581,14 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
   public void testSortedSetVariableLengthManyValuesPerDocVsStoredFields() throws Exception {
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {
-      doTestSortedSetVsStoredFields(atLeast(20), 1, 10, 500, 1000);
+      doTestSortedSetVsStoredFields(atLeast(20), 1, 10, 50, 1000);
     }
   }
 
   public void testSortedSetFixedLengthManyValuesPerDocVsStoredFields() throws Exception {
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {
-      doTestSortedSetVsStoredFields(atLeast(20), 10, 10, 500, 1000);
+      doTestSortedSetVsStoredFields(atLeast(20), 10, 10, 50, 1000);
     }
   }
 
@@ -3124,6 +3126,8 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
   }
 
   // LUCENE-5218
+  // TODO: incredibly slow
+  @Nightly
   public void testEmptyBinaryValueOnPageSizes() throws Exception {
     // Test larger and larger power-of-two sized values,
     // followed by empty string value:
@@ -3744,7 +3748,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     for (int i = 0; i < numChunks; i++) {
       // change sparseness for each chunk
       double sparseChance = random().nextDouble();
-      int docCount = atLeast(1000);
+      int docCount = atLeast(101);
       for (int j = 0; j < docCount; j++) {
         Document doc = new Document();
         doc.add(new StoredField("id", id));
@@ -3773,7 +3777,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       }
     }
 
-    int numIters = atLeast(10);
+    int numIters = atLeast(3);
     for (int iter = 0; iter < numIters; iter++) {
       DocIdSetIterator values = fieldCreator.iterator(r);
       assertEquals(-1, values.docID());

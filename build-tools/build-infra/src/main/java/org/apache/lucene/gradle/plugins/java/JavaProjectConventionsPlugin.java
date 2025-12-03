@@ -18,6 +18,7 @@ package org.apache.lucene.gradle.plugins.java;
 
 import java.util.stream.Stream;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
+import org.apache.lucene.gradle.plugins.misc.PyLuceneHelperPlugin;
 import org.apache.lucene.gradle.plugins.spotless.GoogleJavaFormatPlugin;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaLibraryPlugin;
@@ -45,6 +46,7 @@ public class JavaProjectConventionsPlugin extends LuceneGradlePlugin {
     plugins.apply(JavaFolderLayoutPlugin.class);
     plugins.apply(JavacConfigurationPlugin.class);
     plugins.apply(JarManifestConfigurationPlugin.class);
+    plugins.apply(ModularPathsPlugin.class);
     plugins.apply(TestsAndRandomizationPlugin.class);
     plugins.apply(TestsBeastingPlugin.class);
     plugins.apply(TestsSummaryPlugin.class);
@@ -54,5 +56,10 @@ public class JavaProjectConventionsPlugin extends LuceneGradlePlugin {
     plugins.apply(CodeProfilingPlugin.class);
     plugins.apply(FailOnNoMatchingFilteredTestsPlugin.class);
     plugins.apply(CodeCoveragePlugin.class);
+    plugins.apply(ShowSlowestTestsAtEndPlugin.class);
+    plugins.apply(ShowFailedTestsAtEndPlugin.class);
+    plugins.apply(ErrorPronePlugin.class);
+    plugins.apply(RenderJavadocPlugin.class);
+    plugins.apply(PyLuceneHelperPlugin.class);
   }
 }

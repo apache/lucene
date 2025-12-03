@@ -21,13 +21,10 @@ import static org.apache.lucene.backward_index.TestBasicBackwardsCompatibility.a
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.lucene103.Lucene103Codec;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -69,14 +66,10 @@ public class TestInt7HnswBackwardsCompatibility extends BackwardsCompatibilityTe
   }
 
   protected Codec getCodec() {
-    return new Lucene103Codec() {
-      @Override
-      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-        return new Lucene99HnswScalarQuantizedVectorsFormat(
+    return TestUtil.alwaysKnnVectorsFormat(
+        new Lucene104HnswScalarQuantizedVectorsFormat(
             Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
-            Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
-      }
-    };
+            Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH));
   }
 
   @Override
@@ -157,13 +150,10 @@ public class TestInt7HnswBackwardsCompatibility extends BackwardsCompatibilityTe
     try (DirectoryReader reader = DirectoryReader.open(directory)) {
       for (LeafReaderContext leafContext : reader.leaves()) {
         KnnVectorsReader knnVectorsReader = ((CodecReader) leafContext.reader()).getVectorReader();
-        assertTrue(
-            "expected PerFieldKnnVectorsFormat.FieldsReader but got: " + knnVectorsReader,
-            knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader);
 
-        KnnVectorsReader forField =
-            ((PerFieldKnnVectorsFormat.FieldsReader) knnVectorsReader)
-                .getFieldReader(KNN_VECTOR_FIELD);
+        KnnVectorsReader forField = knnVectorsReader.unwrapReaderForField(KNN_VECTOR_FIELD);
+        assertNotSame(
+            "Expected unwrapped field but got: " + knnVectorsReader, knnVectorsReader, forField);
 
         assertTrue(forField instanceof Lucene99HnswVectorsReader);
 

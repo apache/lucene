@@ -1,3 +1,6 @@
+import org.apache.lucene.gradle.plugins.LuceneGradlePlugin
+import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -24,53 +27,38 @@ repositories {
   gradlePluginPortal()
 }
 
-// Convert a plugin dependency to a regular dependency so that we can
-// use [plugins] section in the top-level toml but declare regular
-// project dependencies here.
-static Provider<String> plugin(Provider<PluginDependency> plugin) {
-  return plugin.map {
-    if (it.pluginId == "de.thetaphi.forbiddenapis") {
-      // Uwe's forbiddenapis is on Maven Central, directly.
-      return "de.thetaphi:forbiddenapis:${it.version}".toString()
-    } else {
-      // maven artifact pattern for gradle's plugin repositories.
-      return "${it.pluginId}:${it.pluginId}.gradle.plugin:${it.version}".toString()
-    }
-  }
-}
+apply from: rootProject.file("build-tools/build-infra/ecj-source.gradle")
+apply from: rootProject.file("build-tools/build-infra/declare-dependencies.gradle")
 
 dependencies {
-  implementation gradleApi()
-  implementation localGroovy()
-  implementation deps.commons.codec
-  implementation deps.randomizedtesting.runner
-  implementation deps.rat
-  implementation deps.zstd
-
-  implementation deps.gjf
-  implementation deps.jgit
-  implementation deps.ecj
-
-  implementation plugin(deps.plugins.carrotsearch.buildopts)
-  implementation plugin(deps.plugins.carrotsearch.dependencychecks)
-  implementation plugin(deps.plugins.forbiddenapis)
-  implementation plugin(deps.plugins.spotless)
-  implementation plugin(deps.plugins.undercouch.download)
-  implementation plugin(deps.plugins.jacocolog)
+  // seems to be required by gradle apis, otherwise compilation fails even though
+  // we don't use it.
+  compileOnly ("com.google.code.findbugs:findbugs-annotations:3.0.1")
 }
 
 tasks.matching {
   it.name in [
     "renderSiteJavadoc",
     "renderJavadoc",
-    "validateJarChecksums",
-    "validateJarLicenses",
-    "collectJarInfos",
-    // we do need to compile the sources so that forbidden apis are applied (?)
-    // "compileJava",
+    // "compileJava", we do need to compile the sources so that forbidden apis are applied.
     "compileTestJava",
     "assemble"
   ]
 }.configureEach {
   enabled = false
+}
+
+
+// This redirects build-infra-shadow's main sources at build-infra sources so that we can
+// reapply the build plugin to ourselves (chicken and egg problem - you can't apply a plugin
+// to itself).
+def buildGlobals = getExtensions().getByType(LuceneBuildGlobalsExtension.class)
+if (!buildGlobals.getIntellijIdea().get().isIdea()) {
+  sourceSets.named("main").configure {
+    java.setSrcDirs([
+      LuceneGradlePlugin.getProjectRootPath(project)
+      .resolve("build-tools/build-infra/src/main/java")
+      .toFile()
+    ])
+  }
 }

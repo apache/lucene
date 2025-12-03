@@ -1,6 +1,3 @@
-import org.apache.lucene.gradle.plugins.misc.CheckEnvironmentPlugin
-import org.apache.lucene.gradle.plugins.spotless.GoogleJavaFormatPlugin
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -19,48 +16,8 @@ import org.apache.lucene.gradle.plugins.spotless.GoogleJavaFormatPlugin
  */
 
 plugins {
-  // Apply build plugins from the composite build-infra project.
-  // The order of plugins does matter (most of the time).
-  id "lucene.root-project.check-environment"
-
   id "base"
   id "lucene.root-project.setup"
-  id "lucene.java-projects.conventions"
-
-  id "lucene.java.slowest-tests-at-end"
-  id "lucene.java.show-failed-tests-at-end"
-  id "lucene.java.modules"
-
-  id "lucene.validation.gradle-versions-cleanup"
-  id "lucene.validation.error-prone"
-  id "lucene.validation.jar-checks"
-  id "lucene.validation.rat-sources"
-  id "lucene.validation.owasp"
-
-  id "lucene.publications.maven"
-  id "lucene.publications.maven-to-nexus-releases"
-  id "lucene.publications.maven-to-nexus-snapshots"
-
-  id "lucene.misc.pylucene"
-
-  id "lucene.datasets.external-datasets"
-
-  id "lucene.documentation"
-  id "lucene.documentation.changes-to-html"
-  id "lucene.documentation.markdown"
-  id "lucene.documentation.render-javadoc"
-
-  id "lucene.regenerate"
-  id "lucene.regenerate.jflex"
-  id "lucene.regenerate.forUtil"
-  id "lucene.regenerate.moman"
-  id "lucene.regenerate.kuromoji"
-  id "lucene.regenerate.nori"
-  id "lucene.regenerate.icu"
-  id "lucene.regenerate.javacc"
-  id "lucene.regenerate.antlr"
-  id "lucene.regenerate.unicode-test-classes"
-  id "lucene.regenerate.snowball"
 }
 
 description = 'Grandparent project for Apache Lucene Core'

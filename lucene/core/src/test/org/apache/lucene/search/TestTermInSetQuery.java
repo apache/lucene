@@ -109,6 +109,8 @@ public class TestTermInSetQuery extends LuceneTestCase {
     dir.close();
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testDuel() throws IOException {
     final int iters = atLeast(2);
     final String field = "f";
@@ -317,12 +319,12 @@ public class TestTermInSetQuery extends LuceneTestCase {
 
     TermInSetQuery tq1 = new TermInSetQuery("thing", List.of(newBytesRef("apple")));
     TermInSetQuery tq2 = new TermInSetQuery("thing", List.of(newBytesRef("orange")));
-    assertFalse(tq1.hashCode() == tq2.hashCode());
+    assertNotEquals(tq1.hashCode(), tq2.hashCode());
 
     // different fields with the same term should have differing hashcodes
     tq1 = new TermInSetQuery("thing", List.of(newBytesRef("apple")));
     tq2 = new TermInSetQuery("thing2", List.of(newBytesRef("apple")));
-    assertFalse(tq1.hashCode() == tq2.hashCode());
+    assertNotEquals(tq1.hashCode(), tq2.hashCode());
   }
 
   public void testSimpleEquals() {

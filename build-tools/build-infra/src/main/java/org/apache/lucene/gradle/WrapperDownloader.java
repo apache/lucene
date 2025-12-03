@@ -21,6 +21,10 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
@@ -41,6 +45,18 @@ import java.util.logging.Logger;
  * <p>Ensure this class has no dependencies outside of standard java libraries as it's used direct
  */
 public class WrapperDownloader {
+  /**
+   * Copied to keep the class isolated from any other classes.
+   *
+   * @see "https://github.com/apache/lucene/issues/15399"
+   */
+  @Retention(RetentionPolicy.CLASS)
+  @Target({ElementType.CONSTRUCTOR, ElementType.FIELD, ElementType.METHOD, ElementType.TYPE})
+  private @interface SuppressForbidden {
+    /** A reason for suppressing should always be given. */
+    String reason();
+  }
+
   public static void main(String[] args) {
     if (args.length != 1) {
       System.err.println("Usage: java WrapperDownloader.java <destination>");
@@ -58,8 +74,8 @@ public class WrapperDownloader {
 
   public static void checkVersion() {
     int major = Runtime.version().feature();
-    if (major != 24) {
-      throw new IllegalStateException("java version must be 24, your version: " + major);
+    if (major != 25) {
+      throw new IllegalStateException("java version must be 25, your version: " + major);
     }
   }
 

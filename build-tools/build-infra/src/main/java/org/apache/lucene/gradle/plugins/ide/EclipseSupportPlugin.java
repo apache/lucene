@@ -32,11 +32,12 @@ import org.apache.lucene.gradle.plugins.java.EcjLintPlugin;
 import org.apache.tools.ant.filters.ReplaceTokens;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.VersionCatalog;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.Delete;
 import org.gradle.api.tasks.Sync;
 import org.gradle.plugins.ide.eclipse.EclipsePlugin;
 import org.gradle.plugins.ide.eclipse.GenerateEclipseClasspath;
@@ -44,7 +45,6 @@ import org.gradle.plugins.ide.eclipse.GenerateEclipseJdt;
 import org.gradle.plugins.ide.eclipse.model.AbstractClasspathEntry;
 import org.gradle.plugins.ide.eclipse.model.Classpath;
 import org.gradle.plugins.ide.eclipse.model.ClasspathEntry;
-import org.gradle.plugins.ide.eclipse.model.EclipseClasspath;
 import org.gradle.plugins.ide.eclipse.model.EclipseModel;
 import org.gradle.plugins.ide.eclipse.model.SourceFolder;
 
@@ -81,24 +81,6 @@ public class EclipseSupportPlugin extends LuceneGradlePlugin {
 
     var eclipse = project.getExtensions().getByType(EclipseModel.class);
     eclipse.getProject().setName("Apache Lucene " + project.getVersion());
-    var classpath = eclipse.getClasspath();
-    classpath.setDefaultOutputDir(project.file("build/eclipse"));
-    classpath.setDownloadJavadoc(false);
-    classpath.setDownloadSources(true);
-
-    project
-        .getAllprojects()
-        .forEach(
-            p -> {
-              p.getPlugins()
-                  .withType(JavaPlugin.class)
-                  .configureEach(_ -> addDependencyConfigurations(p, classpath));
-            });
-
-    classpath
-        .getFile()
-        .whenMerged(
-            cp -> configureClasspath(project, (org.gradle.plugins.ide.eclipse.model.Classpath) cp));
 
     var jdt = eclipse.getJdt();
     jdt.setSourceCompatibility(eclipseJavaVersion);
@@ -172,21 +154,66 @@ public class EclipseSupportPlugin extends LuceneGradlePlugin {
               task.dependsOn(luceneEclipseJdt);
             });
 
+    var wipePreviousConfiguration =
+        tasks.register(
+            "wipePreviousConfiguration",
+            Delete.class,
+            task -> {
+              Path rootDir = getProjectRootPath(project);
+              task.delete(rootDir.resolve(".classpath"), rootDir.resolve(".project"));
+            });
+
+    // Add gradle plugin portal to the source repository list and
+    // apply any ecj source repository hackery the same way as everywhere.
+    project.getRepositories().gradlePluginPortal();
+    project.apply(conf -> conf.from(project.file("build-tools/build-infra/ecj-source.gradle")));
+
     tasks
         .withType(GenerateEclipseClasspath.class)
         .named("eclipseClasspath")
         .configure(
             task -> {
+              task.dependsOn(wipePreviousConfiguration);
+
+              var classpath = task.getClasspath();
+              classpath.setDefaultOutputDir(project.file("build/eclipse"));
+              classpath.setDownloadJavadoc(false);
+              classpath.setDownloadSources(true);
+
+              // Collect dependencies from selected configurations
+              // and copy them over to a local configuration.
+              List<Dependency> subdependencies = new ArrayList<>();
+              project
+                  .getAllprojects()
+                  .forEach(
+                      p -> {
+                        if (p.getPlugins().hasPlugin(JavaPlugin.class)) {
+                          subdependencies.addAll(
+                              p.getConfigurations()
+                                  .getByName("compileClasspath")
+                                  .getAllDependencies());
+                          subdependencies.addAll(
+                              p.getConfigurations()
+                                  .getByName("testCompileClasspath")
+                                  .getAllDependencies());
+                        }
+                      });
+
+              var subconf =
+                  project
+                      .getConfigurations()
+                      .detachedConfiguration(subdependencies.toArray(Dependency[]::new));
+              classpath.setPlusConfigurations(List.of(subconf));
+
+              classpath
+                  .getFile()
+                  .whenMerged(
+                      cp ->
+                          configureClasspath(
+                              project, (org.gradle.plugins.ide.eclipse.model.Classpath) cp));
+
               task.getInputs().property("eclipseJavaVersion", eclipseJavaVersion);
             });
-  }
-
-  private static void addDependencyConfigurations(Project p, EclipseClasspath classpath) {
-    List<Configuration> newConfigurations = new ArrayList<>(classpath.getPlusConfigurations());
-    var conf = p.getConfigurations();
-    newConfigurations.add(conf.getByName("compileClasspath"));
-    newConfigurations.add(conf.getByName("testCompileClasspath"));
-    classpath.setPlusConfigurations(newConfigurations);
   }
 
   private void configureClasspath(Project project, Classpath cp) {

@@ -863,7 +863,10 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
             () -> StandardDirectoryReader.open(commit, Version.LATEST.major, null));
     assertTrue(
         ex.getMessage()
-            .contains("only supports reading from version " + Version.LATEST.major + " upwards."));
+            .contains(
+                "This Lucene version only supports indexes with major version "
+                    + Version.LATEST.major
+                    + " or later"));
     // now open with allowed min version
     StandardDirectoryReader.open(commit, Version.MIN_SUPPORTED_MAJOR, null).close();
   }

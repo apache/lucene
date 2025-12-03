@@ -35,7 +35,7 @@ import org.gradle.process.ExecResult;
  * An {@link org.gradle.api.tasks.Exec} task that does not emit any output unless the executed
  * command fails.
  */
-public class QuietExec extends Exec {
+public abstract class QuietExec extends Exec {
   public QuietExec() {
     super.setIgnoreExitValue(true);
   }

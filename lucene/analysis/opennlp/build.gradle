@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 
-
-
 description = 'OpenNLP Library Integration'
 
 dependencies {
@@ -51,7 +49,7 @@ tasks.register('trainTestModels') {
 }
 
 def trainModel(String command, String lang, String data, String model, List extraArgs = []) {
-  javaexec {
+  buildGlobals.execOps.javaexec {
     classpath = sourceSets.main.compileClasspath
     mainClass = 'opennlp.tools.cmdline.CLI'
     workingDir = testModelDataDir

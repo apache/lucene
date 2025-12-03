@@ -1,0 +1,12 @@
+{
+    "lucene/analysis/nori/src/resources/org/apache/lucene/analysis/ko/dict/CharacterDefinition.dat": "e66dc434cd85167d1cfc0faee799a24ea42f926d",
+    "lucene/analysis/nori/src/resources/org/apache/lucene/analysis/ko/dict/ConnectionCosts.dat": "cd741245da955049bfe44f77f5fbaf69a150a7fb",
+    "lucene/analysis/nori/src/resources/org/apache/lucene/analysis/ko/dict/TokenInfoDictionary$buffer.dat": "60d471bb061fff21ea26456f152c07c6342326ee",
+    "lucene/analysis/nori/src/resources/org/apache/lucene/analysis/ko/dict/TokenInfoDictionary$fst.dat": "05a86a9bf787c4a98f98b468ff1ff7d092c3057e",
+    "lucene/analysis/nori/src/resources/org/apache/lucene/analysis/ko/dict/TokenInfoDictionary$posDict.dat": "d443ab71bdd979f179b685ebbc5807a25f909887",
+    "lucene/analysis/nori/src/resources/org/apache/lucene/analysis/ko/dict/TokenInfoDictionary$targetMap.dat": "f04691d6d4f82d76ca1362323d2b2f33311e5359",
+    "lucene/analysis/nori/src/resources/org/apache/lucene/analysis/ko/dict/UnknownDictionary$buffer.dat": "1810b5b4456664d4be387ef76ffb2f59d50cc484",
+    "lucene/analysis/nori/src/resources/org/apache/lucene/analysis/ko/dict/UnknownDictionary$posDict.dat": "e92965a30eebca1f9e811d26ed9336a6f89952a7",
+    "lucene/analysis/nori/src/resources/org/apache/lucene/analysis/ko/dict/UnknownDictionary$targetMap.dat": "f1660882133a21533f23099b761d401a1c59cf9b",
+    "property:dictionarySource": "https://s3.amazonaws.com/lucene-testdata/mecab/mecab-ko-dic-2.1.1-20180720.tar.gz"
+}
