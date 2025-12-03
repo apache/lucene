@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.index;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -674,8 +675,22 @@ public final class FieldInfo {
     String oldValue = newMap.put(key, value);
     // This needs to be thread-safe as multiple threads may be updating (different) attributes
     // concurrently due to concurrent merging.
-    attributes = Map.copyOf(newMap);
+    attributes = Collections.unmodifiableMap(newMap);
     return oldValue;
+  }
+
+  /**
+   * Puts some codec attribute values.
+   *
+   * <p>If multiples attributes need to be added {@code putAttributes} is more efficient than
+   * calling {@code putAttribute} multiple times as it avoid unnecessary copies and synchronisation.
+   */
+  public synchronized void putAttributes(Map<String, String> map) {
+    HashMap<String, String> newMap = new HashMap<>(attributes);
+    newMap.putAll(map);
+    // This needs to be thread-safe as multiple threads may be updating (different) attributes
+    // concurrently due to concurrent merging.
+    attributes = Collections.unmodifiableMap(newMap);
   }
 
   /** Returns internal codec attributes map. */

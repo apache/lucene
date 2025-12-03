@@ -245,8 +245,12 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
 
         groupBuilder.addField(field);
 
-        fieldInfo.putAttribute(PER_FIELD_FORMAT_KEY, formatName);
-        fieldInfo.putAttribute(PER_FIELD_SUFFIX_KEY, Integer.toString(groupBuilder.suffix));
+        fieldInfo.putAttributes(
+            Map.of(
+                PER_FIELD_FORMAT_KEY,
+                formatName,
+                PER_FIELD_SUFFIX_KEY,
+                Integer.toString(groupBuilder.suffix)));
       }
 
       Map<PostingsFormat, FieldsGroup> formatToGroups =
