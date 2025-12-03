@@ -351,15 +351,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       UpdateableRandomVectorScorer scorer,
       boolean outOfOrderInsertion)
       throws IOException {
-    /* For each of the beamWidth nearest candidates (going from best to worst), select it only if it
-     * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
-     * since the node is new and has no prior neighbors).
-     */
-    NeighborArray neighbors = hnsw.getNeighbors(level, node);
-    int maxConnOnLevel = level == 0 ? M * 2 : M;
-    boolean[] mask =
-        selectAndLinkDiverse(
-            node, neighbors, candidates, maxConnOnLevel, scorer, outOfOrderInsertion);
+    boolean[] mask = addDiverseForward(level, node, candidates, scorer, outOfOrderInsertion);
 
     // Link the selected nodes to the new node, and the new node to the selected nodes (again
     // applying diversity heuristic)
@@ -384,6 +376,24 @@ public class HnswGraphBuilder implements HnswBuilder {
         nbrsOfNbr.addAndEnsureDiversity(node, candidates.getScores(i), nbr, scorer);
       }
     }
+  }
+
+  boolean[] addDiverseForward(
+      int level,
+      int node,
+      NeighborArray candidates,
+      UpdateableRandomVectorScorer scorer,
+      boolean outOfOrderInsertion) throws IOException {
+    /* For each of the beamWidth nearest candidates (going from best to worst), select it only if it
+     * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
+     * since the node is new and has no prior neighbors).
+     */
+    NeighborArray neighbors = hnsw.getNeighbors(level, node);
+    int maxConnOnLevel = level == 0 ? M * 2 : M;
+    boolean[] mask =
+        selectAndLinkDiverse(
+            node, neighbors, candidates, maxConnOnLevel, scorer, outOfOrderInsertion);
+    return mask;
   }
 
   /**
