@@ -177,7 +177,7 @@ public class TestQueryProfilerWeight extends LuceneTestCase {
     Weight fakeWeight = new FakeWeight(query);
     QueryProfilerBreakdown profile = new QueryProfilerBreakdown();
     QueryProfilerWeight profileWeight = new QueryProfilerWeight(fakeWeight, profile);
-    ScorerSupplier scorerSupplier = profileWeight.scorerSupplier(null);
+    ScorerSupplier scorerSupplier = profileWeight.scorerSupplier((LeafReaderContext) null);
     scorerSupplier.setTopLevelScoringClause();
     assertEquals(42, scorerSupplier.cost());
   }
