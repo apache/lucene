@@ -317,14 +317,19 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       }
     }
 
-    // Remove before updating the group since lookup is done via comparators
-    // TODO: optimize this
-
     final CollectedSearchGroup<T> prevLast;
+    boolean skipHeavyOps = false;
+
     if (orderedGroups != null) {
       prevLast = orderedGroups.last();
-      orderedGroups.remove(group);
-      assert orderedGroups.size() == topNGroups - 1;
+
+      // Skip remove/add for first group
+      if (group == orderedGroups.first()) {
+        skipHeavyOps = true;
+      } else {
+        orderedGroups.remove(group);
+        assert orderedGroups.size() == topNGroups - 1;
+      }
     } else {
       prevLast = null;
     }
@@ -336,9 +341,11 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
     spareSlot = group.comparatorSlot;
     group.comparatorSlot = tmp;
 
-    // Re-add the changed group
+    // Re-add only if we removed it
     if (orderedGroups != null) {
-      orderedGroups.add(group);
+      if (!skipHeavyOps) {
+        orderedGroups.add(group);
+      }
       assert orderedGroups.size() == topNGroups;
       final CollectedSearchGroup<?> newLast = orderedGroups.last();
       // If we changed the value of the last group, or changed which group was last, then update
