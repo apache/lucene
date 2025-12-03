@@ -55,7 +55,7 @@ public abstract class IndexOutput extends DataOutput implements Closeable {
    * {@link Directory#createTempOutput}.
    */
   // TODO: can we somehow use this as the default resource description or something?
-  public String getName() {
+  public final String getName() {
     return name;
   }
 

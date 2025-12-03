@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
 /** Delegates all methods to a wrapped {@link SortedDocValues}. */
@@ -86,5 +87,15 @@ public abstract class FilterSortedDocValues extends SortedDocValues {
   @Override
   public long cost() {
     return in.cost();
+  }
+
+  @Override
+  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+    in.intoBitSet(upTo, bitSet, offset);
+  }
+
+  @Override
+  public int docIDRunEnd() throws IOException {
+    return in.docIDRunEnd();
   }
 }

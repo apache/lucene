@@ -17,8 +17,7 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
+import java.util.Set;
 import org.junit.Test;
 
 public class TestFilterIndexOutput extends BaseDataOutputTestCase<FilterIndexOutput> {
@@ -38,20 +37,7 @@ public class TestFilterIndexOutput extends BaseDataOutputTestCase<FilterIndexOut
 
   @Test
   public void testOverrides() {
-    for (Method m : FilterIndexOutput.class.getMethods()) {
-      if (m.getDeclaringClass() == FilterIndexOutput.class) {
-        // verify that only abstract methods are overridden
-        Method indexOutputMethod;
-        try {
-          indexOutputMethod = IndexOutput.class.getMethod(m.getName(), m.getParameterTypes());
-          assertTrue(
-              "Non-abstract method " + m.getName() + " is overridden",
-              Modifier.isAbstract(indexOutputMethod.getModifiers()));
-        } catch (Exception e) {
-          assertTrue(e instanceof NoSuchMethodException);
-        }
-      }
-    }
+    assertDelegatorOverridesAllRequiredMethods(FilterIndexOutput.class, Set.of());
   }
 
   public void testUnwrap() throws IOException {

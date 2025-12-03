@@ -14,16 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.index;
 
 import java.util.Set;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
-public class TestFilterWeight extends LuceneTestCase {
+public class TestFilterSortedSetDocValues extends LuceneTestCase {
 
   @Test
   public void testDeclaredMethodsOverridden() {
-    assertDelegatorOverridesAllRequiredMethods(FilterWeight.class, Set.of());
+    assertDelegatorOverridesAllRequiredMethods(FilterSortedSetDocValues.class, Set.of());
   }
 }

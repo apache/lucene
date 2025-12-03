@@ -428,12 +428,12 @@ final class BooleanScorerSupplier extends ScorerSupplier {
           conjunctionScorer =
               new FilterScorer(inner) {
                 @Override
-                public float score() throws IOException {
+                public float score() {
                   return 0f;
                 }
 
                 @Override
-                public float getMaxScore(int upTo) throws IOException {
+                public float getMaxScore(int upTo) {
                   return 0f;
                 }
               };
@@ -482,13 +482,18 @@ final class BooleanScorerSupplier extends ScorerSupplier {
         // to prevent score() from being propagated
         return new FilterScorer(req) {
           @Override
-          public float score() throws IOException {
+          public float score() {
             return 0f;
           }
 
           @Override
-          public float getMaxScore(int upTo) throws IOException {
+          public float getMaxScore(int upTo) {
             return 0f;
+          }
+
+          @Override
+          public int advanceShallow(int target) {
+            return DocIdSetIterator.NO_MORE_DOCS;
           }
         };
       }

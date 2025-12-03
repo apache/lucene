@@ -17,8 +17,8 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
+import java.util.Set;
+import java.util.function.Consumer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -180,39 +180,16 @@ public class TestFilterLeafReader extends LuceneTestCase {
     target.close();
   }
 
-  private static void checkOverrideMethods(Class<?> clazz)
-      throws NoSuchMethodException, SecurityException {
-    final Class<?> superClazz = clazz.getSuperclass();
-    for (Method m : superClazz.getMethods()) {
-      final int mods = m.getModifiers();
-      if (Modifier.isStatic(mods)
-          || Modifier.isAbstract(mods)
-          || Modifier.isFinal(mods)
-          || m.isSynthetic()
-          || m.getName().equals("attributes")
-          || m.getName().equals("getStats")) {
-        continue;
-      }
-      // The point of these checks is to ensure that methods that have a default
-      // impl through other methods are not overridden. This makes the number of
-      // methods to override to have a working impl minimal and prevents from some
-      // traps: for example, think about having getCoreCacheKey delegate to the
-      // filtered impl by default
-      final Method subM = clazz.getMethod(m.getName(), m.getParameterTypes());
-      if (subM.getDeclaringClass() == clazz
-          && m.getDeclaringClass() != Object.class
-          && m.getDeclaringClass() != subM.getDeclaringClass()) {
-        fail(clazz + " overrides " + m + " although it has a default impl");
-      }
-    }
-  }
-
   public void testOverrideMethods() throws Exception {
-    checkOverrideMethods(FilterLeafReader.class);
-    checkOverrideMethods(FilterLeafReader.FilterFields.class);
-    checkOverrideMethods(FilterLeafReader.FilterTerms.class);
-    checkOverrideMethods(FilterLeafReader.FilterTermsEnum.class);
-    checkOverrideMethods(FilterLeafReader.FilterPostingsEnum.class);
+    assertDelegatorOverridesAllRequiredMethods(FilterLeafReader.class, Set.of());
+    assertDelegatorOverridesAllRequiredMethods(
+        FilterLeafReader.FilterFields.class,
+        Set.of(
+            Iterable.class.getMethod("forEach", Consumer.class),
+            Iterable.class.getMethod("spliterator")));
+    assertDelegatorOverridesAllRequiredMethods(FilterLeafReader.FilterTerms.class, Set.of());
+    assertDelegatorOverridesAllRequiredMethods(FilterLeafReader.FilterTermsEnum.class, Set.of());
+    assertDelegatorOverridesAllRequiredMethods(FilterLeafReader.FilterPostingsEnum.class, Set.of());
   }
 
   public void testUnwrap() throws IOException {

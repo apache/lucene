@@ -20,10 +20,10 @@ import java.util.Set;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
-public class TestFilterWeight extends LuceneTestCase {
+public class TestFilterScorer extends LuceneTestCase {
 
   @Test
   public void testDeclaredMethodsOverridden() {
-    assertDelegatorOverridesAllRequiredMethods(FilterWeight.class, Set.of());
+    assertDelegatorOverridesAllRequiredMethods(FilterScorer.class, Set.of());
   }
 }
