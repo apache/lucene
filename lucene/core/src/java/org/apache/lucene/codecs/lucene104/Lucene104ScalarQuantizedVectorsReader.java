@@ -262,7 +262,6 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     if (knnCollector.k() == 0) return;
     final RandomVectorScorer scorer = getRandomVectorScorer(field, target);
     if (scorer == null) return;
-    knnCollector = new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
     Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs.bits());
     // if k is larger than the number of vectors we expect to visit in an HNSW search,
     // we can just iterate over all vectors and collect them.
