@@ -22,7 +22,6 @@ import io.github.jbellis.jvector.disk.ReaderSupplier;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.FloatBuffer;
 import org.apache.lucene.store.IndexInput;
 
 /// Implements JVector reader capabilities over a Lucene IndexInput
@@ -92,24 +91,17 @@ public class JVectorRandomAccessReader implements RandomAccessReader {
 
   @Override
   public void readFully(long[] vector) throws IOException {
-    for (int i = 0; i < vector.length; i++) {
-      vector[i] = readLong();
-    }
+    indexInputDelegate.readLongs(vector, 0, vector.length);
   }
 
   @Override
   public void read(int[] ints, int offset, int count) throws IOException {
-    for (int i = 0; i < count; i++) {
-      ints[offset + i] = readInt();
-    }
+    indexInputDelegate.readInts(ints, offset, count);
   }
 
   @Override
   public void read(float[] floats, int offset, int count) throws IOException {
-    final ByteBuffer byteBuffer = ByteBuffer.allocate(Float.BYTES * count);
-    indexInputDelegate.readBytes(byteBuffer.array(), offset, Float.BYTES * count);
-    FloatBuffer buffer = byteBuffer.asFloatBuffer();
-    buffer.get(floats, offset, count);
+    indexInputDelegate.readFloats(floats, offset, count);
   }
 
   @Override

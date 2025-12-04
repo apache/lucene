@@ -19,6 +19,9 @@ package org.apache.lucene.sandbox.codecs.jvector;
 
 import io.github.jbellis.jvector.disk.IndexWriter;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
 import org.apache.lucene.store.IndexOutput;
 
 /**
@@ -95,6 +98,13 @@ public class JVectorIndexWriter implements IndexWriter {
   @Override
   public void writeFloat(float v) throws IOException {
     indexOutputDelegate.writeInt(Float.floatToIntBits(v));
+  }
+
+  @Override
+  public void writeFloats(float[] floats, int offset, int count) throws IOException {
+    final ByteBuffer buf = ByteBuffer.allocate(count * Float.BYTES);
+    buf.order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().put(floats, offset, count);
+    write(buf.array());
   }
 
   @Override
