@@ -40,6 +40,7 @@ import org.gradle.api.tasks.TaskAction;
 import org.gradle.process.ExecOperations;
 import org.gradle.process.ExecResult;
 
+/** Convert {@code CHANGES.txt} into html using plenty of perl hackery. */
 public abstract class ChangesToHtmlTask extends DefaultTask {
   @Input
   public abstract Property<String> getProductName();

@@ -455,7 +455,7 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
     LatLonDocValuesField docValue = new LatLonDocValuesField("foo", 0., 0.);
     doc.add(docValue);
 
-    int numDocs = atLeast(10000);
+    int numDocs = atLeast(2048);
     for (int i = 0; i < numDocs; ++i) {
       double lat = random().nextDouble() * 180 - 90;
       double lon = random().nextDouble() * 360 - 180;

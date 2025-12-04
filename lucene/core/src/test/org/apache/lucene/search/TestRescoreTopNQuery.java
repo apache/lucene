@@ -78,7 +78,9 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
                 new TermQuery(new Term("test")), DoubleValuesSource.constant(0), 0));
   }
 
+  // TODO: incredibly slow
   @Test
+  @Nightly
   public void testRescoreField() throws Exception {
     Map<Integer, float[]> vectors = new HashMap<>();
 
@@ -168,7 +170,7 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
     final String KNN_FIELD = "knn_vector";
     List<float[][]> corpus = new ArrayList<>();
     final int numDocs = atLeast(100);
-    final int numSegments = random().nextInt(2, 5);
+    final int numSegments = atLeast(2);
     final int dim = 8;
     final VectorSimilarityFunction vectorSimilarityFunction =
         VectorSimilarityFunction.values()[

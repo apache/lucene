@@ -281,6 +281,8 @@ public class TestBooleanScorerSupplier extends LuceneTestCase {
 
   // test the tester...
   public void testFakeScorerSupplier() {
+    assumeTrue("Test designed to work only with assertions enabled.", TEST_ASSERTS_ENABLED);
+
     FakeScorerSupplier randomAccessSupplier =
         new FakeScorerSupplier(TestUtil.nextInt(random(), 31, 100), 30);
     expectThrows(AssertionError.class, () -> randomAccessSupplier.get(70));

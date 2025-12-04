@@ -16,29 +16,21 @@
  */
 package org.apache.lucene.util.quantization;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomFloat;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.MINIMUM_MSE_GRID;
+import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.deQuantize;
+import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.packAsBinary;
+import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.unpackBinary;
 
+import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
 
 public class TestOptimizedScalarQuantizer extends LuceneTestCase {
   static final byte[] ALL_BITS = new byte[] {1, 2, 3, 4, 5, 6, 7, 8};
-
-  static float[] deQuantize(byte[] quantized, byte bits, float[] interval, float[] centroid) {
-    float[] dequantized = new float[quantized.length];
-    float a = interval[0];
-    float b = interval[1];
-    int nSteps = (1 << bits) - 1;
-    double step = (b - a) / nSteps;
-    for (int h = 0; h < quantized.length; h++) {
-      double xi = (double) (quantized[h] & 0xFF) * step + a;
-      dequantized[h] = (float) (xi + centroid[h]);
-    }
-    return dequantized;
-  }
 
   public void testQuantizationQuality() {
     int dims = 16;
@@ -69,12 +61,14 @@ public class TestOptimizedScalarQuantizer extends LuceneTestCase {
         assertValidResults(result);
         assertValidQuantizedRange(destination, bit);
 
-        float[] dequantized =
-            deQuantize(
-                destination,
-                bit,
-                new float[] {result.lowerInterval(), result.upperInterval()},
-                centroid);
+        float[] dequantized = new float[dims];
+        deQuantize(
+            destination,
+            dequantized,
+            bit,
+            result.lowerInterval(),
+            result.upperInterval(),
+            centroid);
         float mae = 0;
         for (int k = 0; k < dims; ++k) {
           mae += Math.abs(dequantized[k] - vectors[i][k]);
@@ -184,6 +178,20 @@ public class TestOptimizedScalarQuantizer extends LuceneTestCase {
         assertValidQuantizedRange(destination, bit);
       }
     }
+  }
+
+  public void testUnpackBinary() {
+    int dim = randomIntBetween(1, 4096);
+    ScalarEncoding encoding = ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE;
+    byte[] scratch = new byte[encoding.getDiscreteDimensions(dim)];
+    for (int i = 0; i < scratch.length; i++) {
+      scratch[i] = randomBoolean() ? (byte) 1 : (byte) 0;
+    }
+    byte[] packed = new byte[encoding.getDocPackedLength(scratch.length)];
+    byte[] unpacked = new byte[scratch.length];
+    packAsBinary(scratch, packed);
+    unpackBinary(packed, unpacked);
+    assertArrayEquals(scratch, unpacked);
   }
 
   static void assertValidQuantizedRange(byte[] quantized, byte bits) {

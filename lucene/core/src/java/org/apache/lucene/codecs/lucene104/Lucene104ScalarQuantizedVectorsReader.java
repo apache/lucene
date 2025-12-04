@@ -57,7 +57,7 @@ import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /** Reader for scalar quantized vectors in the Lucene 10.4 format. */
-class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
+public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     implements QuantizedVectorsReader {
 
   private static final long SHALLOW_SIZE =
@@ -68,7 +68,8 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private final FlatVectorsReader rawVectorsReader;
   private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
 
-  Lucene104ScalarQuantizedVectorsReader(
+  /** Sole constructor */
+  public Lucene104ScalarQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,
       Lucene104ScalarQuantizedVectorScorer vectorsScorer)
@@ -209,6 +210,23 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               + " expected: "
               + VectorEncoding.FLOAT32);
     }
+
+    FloatVectorValues rawFloatVectorValues = rawVectorsReader.getFloatVectorValues(field);
+
+    if (rawFloatVectorValues.size() == 0) {
+      return OffHeapScalarQuantizedFloatVectorValues.load(
+          fi.ordToDocDISIReaderConfiguration,
+          fi.dimension,
+          fi.size,
+          fi.scalarEncoding,
+          fi.similarityFunction,
+          vectorScorer,
+          fi.centroid,
+          fi.vectorDataOffset,
+          fi.vectorDataLength,
+          quantizedVectorData);
+    }
+
     OffHeapScalarQuantizedVectorValues sqvv =
         OffHeapScalarQuantizedVectorValues.load(
             fi.ordToDocDISIReaderConfiguration,
@@ -223,7 +241,7 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
             fi.vectorDataOffset,
             fi.vectorDataLength,
             quantizedVectorData);
-    return new ScalarQuantizedVectorValues(rawVectorsReader.getFloatVectorValues(field), sqvv);
+    return new ScalarQuantizedVectorValues(rawFloatVectorValues, sqvv);
   }
 
   @Override
