@@ -327,7 +327,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
         // Add diverse neighbors using HNSW heuristic (prunes similar neighbors)
         addDiverseForward(level, node, scratchArray, scorer, true);
       } else {
-        // Node has no nighbors, add connections from scratch
+        // Node has no neighbors, add connections from scratch
         addConnections(node, level, scorer);
       }
 
@@ -441,7 +441,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
     popToScratch(candidates, scratchArray);
 
     // Add diverse neighbors and establish bidirectional connections
-    addDiverseForward(targetLevel, node, scratchArray, scorer, true);
+    addDiverseNeighbors(targetLevel, node, scratchArray, scorer, true);
   }
 
   @Override
