@@ -234,7 +234,7 @@ public class MultiCollector implements Collector {
         final LeafCollector collector = collectors[i];
         if (collector != null) {
           try {
-              collector.collectRange(min, max);
+            collector.collectRange(min, max);
           } catch (
               @SuppressWarnings("unused")
               CollectionTerminatedException e) {

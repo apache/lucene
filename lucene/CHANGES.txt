@@ -235,6 +235,8 @@ Optimizations
 
 * GITHUB#15406: Improve round trip conversion of ValueSource <-> DoublesValueSource (hossman)
 
+* GITHUB#15475: Enabling wrapped collectors in MultiCollector to collectRange (Ankit Jain)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
