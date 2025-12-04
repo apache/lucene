@@ -50,7 +50,6 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
