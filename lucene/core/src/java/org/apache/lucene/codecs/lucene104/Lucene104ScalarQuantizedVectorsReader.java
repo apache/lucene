@@ -67,6 +67,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
   private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
+  public static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
   /** Sole constructor */
   public Lucene104ScalarQuantizedVectorsReader(
@@ -261,13 +262,38 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     if (knnCollector.k() == 0) return;
     final RandomVectorScorer scorer = getRandomVectorScorer(field, target);
     if (scorer == null) return;
-    OrdinalTranslatedKnnCollector collector =
-        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
+    knnCollector = new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
     Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs.bits());
-    for (int i = 0; i < scorer.maxOrd(); i++) {
+    // if k is larger than the number of vectors we expect to visit in an HNSW search,
+    // we can just iterate over all vectors and collect them.
+    int[] ords = new int[EXHAUSTIVE_BULK_SCORE_ORDS];
+    float[] scores = new float[EXHAUSTIVE_BULK_SCORE_ORDS];
+    int numOrds = 0;
+    int numVectors = scorer.maxOrd();
+    for (int i = 0; i < numVectors; i++) {
       if (acceptedOrds == null || acceptedOrds.get(i)) {
-        collector.collect(i, scorer.score(i));
-        collector.incVisitedCount(1);
+        if (knnCollector.earlyTerminated()) {
+          break;
+        }
+        ords[numOrds++] = i;
+        if (numOrds == ords.length) {
+          knnCollector.incVisitedCount(numOrds);
+          if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCompetitiveSimilarity()) {
+            for (int j = 0; j < numOrds; j++) {
+              knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
+            }
+          }
+          numOrds = 0;
+        }
+      }
+    }
+
+    if (numOrds > 0) {
+      knnCollector.incVisitedCount(numOrds);
+      if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCompetitiveSimilarity()) {
+        for (int j = 0; j < numOrds; j++) {
+          knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
+        }
       }
     }
   }
