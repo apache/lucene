@@ -18,6 +18,7 @@
 package org.apache.lucene.sandbox.codecs.jvector;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.function.IntUnaryOperator;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -43,7 +44,7 @@ public class JVectorFormat extends KnnVectorsFormat {
   public static final float DEFAULT_ALPHA = 2f;
   public static final boolean DEFAULT_HIERARCHY_ENABLED = true;
 
-  private final int maxConn;
+  private final List<Integer> maxDegrees;
   private final int beamWidth;
   // As a function of the original dimension
   private final IntUnaryOperator numberOfSubspacesPerVectorSupplier;
@@ -104,8 +105,28 @@ public class JVectorFormat extends KnnVectorsFormat {
       IntUnaryOperator numberOfSubspacesPerVectorSupplier,
       int minBatchSizeForQuantization,
       boolean hierarchyEnabled) {
+    this(
+        name,
+        hierarchyEnabled ? List.of(maxConn * 2, maxConn) : List.of(maxConn),
+        beamWidth,
+        neighborOverflow,
+        alpha,
+        numberOfSubspacesPerVectorSupplier,
+        minBatchSizeForQuantization,
+        hierarchyEnabled);
+  }
+
+  public JVectorFormat(
+      String name,
+      List<Integer> maxDegrees,
+      int beamWidth,
+      float neighborOverflow,
+      float alpha,
+      IntUnaryOperator numberOfSubspacesPerVectorSupplier,
+      int minBatchSizeForQuantization,
+      boolean hierarchyEnabled) {
     super(name);
-    this.maxConn = maxConn;
+    this.maxDegrees = maxDegrees;
     this.beamWidth = beamWidth;
     this.numberOfSubspacesPerVectorSupplier = numberOfSubspacesPerVectorSupplier;
     this.minBatchSizeForQuantization = minBatchSizeForQuantization;
@@ -118,7 +139,7 @@ public class JVectorFormat extends KnnVectorsFormat {
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new JVectorWriter(
         state,
-        maxConn,
+        maxDegrees,
         beamWidth,
         neighborOverflow,
         alpha,

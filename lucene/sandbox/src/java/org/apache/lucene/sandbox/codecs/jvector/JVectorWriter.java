@@ -109,7 +109,7 @@ public class JVectorWriter extends KnnVectorsWriter {
 
   private final IndexOutput meta;
   private final IndexOutput data;
-  private final int maxConn;
+  private final List<Integer> maxDegrees;
   private final int beamWidth;
   private final float degreeOverflow;
   private final float alpha;
@@ -124,7 +124,7 @@ public class JVectorWriter extends KnnVectorsWriter {
 
   public JVectorWriter(
       SegmentWriteState segmentWriteState,
-      int maxConn,
+      List<Integer> maxDegrees,
       int beamWidth,
       float degreeOverflow,
       float alpha,
@@ -132,7 +132,7 @@ public class JVectorWriter extends KnnVectorsWriter {
       int minimumBatchSizeForQuantization,
       boolean hierarchyEnabled)
       throws IOException {
-    this.maxConn = maxConn;
+    this.maxDegrees = maxDegrees;
     this.beamWidth = beamWidth;
     this.degreeOverflow = degreeOverflow;
     this.alpha = alpha;
@@ -185,7 +185,7 @@ public class JVectorWriter extends KnnVectorsWriter {
     final FieldWriter newField =
         new FieldWriter(
             fieldInfo,
-            maxConn,
+            maxDegrees,
             beamWidth,
             degreeOverflow,
             alpha,
@@ -457,7 +457,7 @@ public class JVectorWriter extends KnnVectorsWriter {
 
     FieldWriter(
         FieldInfo fieldInfo,
-        int maxConn,
+        List<Integer> maxDegrees,
         int beamWidth,
         float degreeOverflow,
         float alpha,
@@ -479,11 +479,12 @@ public class JVectorWriter extends KnnVectorsWriter {
           new GraphIndexBuilder(
               buildScoreProvider,
               fieldInfo.getVectorDimension(),
-              maxConn,
+              maxDegrees,
               beamWidth,
               degreeOverflow,
               alpha,
-              hierarchyEnabled);
+              hierarchyEnabled,
+              true);
 
       this.pqThreshold = pqThreshold;
       this.pqSubspaceCount = pqSubspaceCount;
@@ -832,11 +833,12 @@ public class JVectorWriter extends KnnVectorsWriter {
         new GraphIndexBuilder(
             buildScoreProvider,
             fieldInfo.getVectorDimension(),
-            maxConn,
+            maxDegrees,
             beamWidth,
             degreeOverflow,
             alpha,
-            hierarchyEnabled);
+            hierarchyEnabled,
+            true);
 
     /*
      * We cannot always use randomAccessVectorValues for the graph building
