@@ -373,7 +373,6 @@ public class HnswGraphBuilder implements HnswBuilder {
       if (hnswLock != null) {
         Lock lock = hnswLock.write(level, nbr);
         try {
-          // Check for duplicates only during link repair
           updateNeighbor(
               getGraph().getNeighbors(level, nbr),
               node,
