@@ -125,9 +125,9 @@ public class SortField {
   /** Represents sorting by document number (index order). */
   public static final SortField FIELD_DOC = new SortField(null, Type.DOC);
 
-  private String field;
-  private Type type; // defaults to determining type dynamically
-  boolean reverse = false; // defaults to natural order
+  private final String field;
+  private final Type type; // defaults to determining type dynamically
+  protected final boolean reverse; // defaults to natural order
 
   // Used for CUSTOM sort
   private FieldComparatorSource comparatorSource;
@@ -146,7 +146,7 @@ public class SortField {
    * @param type Type of values in the terms.
    */
   public SortField(String field, Type type) {
-    initFieldType(field, type);
+    this(field, type, false);
   }
 
   /**
@@ -159,8 +159,35 @@ public class SortField {
    * @param reverse True if natural order should be reversed.
    */
   public SortField(String field, Type type, boolean reverse) {
-    initFieldType(field, type);
+    this.field = field;
+    this.type = type;
     this.reverse = reverse;
+    validateField(field, type);
+  }
+
+  /**
+   * Creates a sort with a custom comparison function.
+   *
+   * @param field Name of field to sort by; cannot be <code>null</code>.
+   * @param comparator Returns a comparator for sorting hits.
+   */
+  public SortField(String field, FieldComparatorSource comparator) {
+    this(field, comparator, false);
+  }
+
+  /**
+   * Creates a sort, possibly in reverse, with a custom comparison function.
+   *
+   * @param field Name of field to sort by; cannot be <code>null</code>.
+   * @param comparator Returns a comparator for sorting hits.
+   * @param reverse True if natural order should be reversed.
+   */
+  public SortField(String field, FieldComparatorSource comparator, boolean reverse) {
+    this.field = field;
+    this.type = Type.CUSTOM;
+    this.reverse = reverse;
+    this.comparatorSource = comparator;
+    validateField(field, type);
   }
 
   /** A SortFieldProvider for field sorts */
@@ -328,40 +355,13 @@ public class SortField {
     this.missingValue = missingValue;
   }
 
-  /**
-   * Creates a sort with a custom comparison function.
-   *
-   * @param field Name of field to sort by; cannot be <code>null</code>.
-   * @param comparator Returns a comparator for sorting hits.
-   */
-  public SortField(String field, FieldComparatorSource comparator) {
-    initFieldType(field, Type.CUSTOM);
-    this.comparatorSource = comparator;
-  }
-
-  /**
-   * Creates a sort, possibly in reverse, with a custom comparison function.
-   *
-   * @param field Name of field to sort by; cannot be <code>null</code>.
-   * @param comparator Returns a comparator for sorting hits.
-   * @param reverse True if natural order should be reversed.
-   */
-  public SortField(String field, FieldComparatorSource comparator, boolean reverse) {
-    initFieldType(field, Type.CUSTOM);
-    this.reverse = reverse;
-    this.comparatorSource = comparator;
-  }
-
   // Sets field & type, and ensures field is not NULL unless
   // type is SCORE or DOC
-  private void initFieldType(String field, Type type) {
-    this.type = type;
+  private void validateField(String field, Type type) {
     if (field == null) {
       if (type != Type.SCORE && type != Type.DOC) {
         throw new IllegalArgumentException("field can only be null when type is SCORE or DOC");
       }
-    } else {
-      this.field = field;
     }
   }
 
