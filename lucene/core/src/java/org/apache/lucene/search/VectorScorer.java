@@ -18,7 +18,10 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
 /**
  * Computes the similarity score between a given query vector and different document vectors. This
@@ -99,5 +102,69 @@ public interface VectorScorer {
      */
     float nextDocsAndScores(int nextCount, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
         throws IOException;
+
+    static Bulk fromRandomScorerDense(
+        RandomVectorScorer scorer,
+        KnnVectorValues.DocIndexIterator iterator,
+        DocIdSetIterator matchingDocs) {
+      final DocIdSetIterator matches =
+          matchingDocs == null
+              ? iterator
+              : ConjunctionUtils.createConjunction(List.of(matchingDocs, iterator), List.of());
+      return (nextCount, liveDocs, buffer) -> {
+        if (matches.docID() == -1) {
+          matches.nextDoc();
+        }
+        buffer.growNoCopy(nextCount);
+        int size = 0;
+        for (int doc = matches.docID();
+            doc != DocIdSetIterator.NO_MORE_DOCS && size < nextCount;
+            doc = matches.nextDoc()) {
+          if (liveDocs == null || liveDocs.get(doc)) {
+            buffer.docs[size++] = doc;
+          }
+        }
+        buffer.size = size;
+        return scorer.bulkScore(buffer.docs, buffer.features, size);
+      };
+    }
+
+    static Bulk fromRandomScorerSparse(
+        RandomVectorScorer scorer,
+        KnnVectorValues.DocIndexIterator iterator,
+        DocIdSetIterator matchingDocs) {
+      return new Bulk() {
+        final DocIdSetIterator matches =
+            matchingDocs == null
+                ? iterator
+                : ConjunctionUtils.createConjunction(List.of(matchingDocs, iterator), List.of());
+        int[] docIds = new int[0];
+
+        @Override
+        public float nextDocsAndScores(
+            int nextCount, Bits liveDocs, DocAndFloatFeatureBuffer buffer) throws IOException {
+          if (matches.docID() == -1) {
+            matches.nextDoc();
+          }
+          buffer.growNoCopy(nextCount);
+          docIds = ArrayUtil.growNoCopy(docIds, nextCount);
+          int size = 0;
+          for (int doc = matches.docID();
+              doc != DocIdSetIterator.NO_MORE_DOCS && size < nextCount;
+              doc = matches.nextDoc()) {
+            if (liveDocs == null || liveDocs.get(doc)) {
+              buffer.docs[size] = iterator.index();
+              docIds[size] = doc;
+              ++size;
+            }
+          }
+          buffer.size = size;
+          float maxScore = scorer.bulkScore(buffer.docs, buffer.features, size);
+          // copy back the real doc IDs
+          System.arraycopy(docIds, 0, buffer.docs, 0, size);
+          return maxScore;
+        }
+      };
+    }
   }
 }

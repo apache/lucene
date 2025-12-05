@@ -235,6 +235,9 @@ Optimizations
 
 * GITHUB#15406: Improve round trip conversion of ValueSource <-> DoublesValueSource (hossman)
 
+* GITHUB#15474: Use bulk scoring provided by RandomVectorScorers for new scalar quantized formats provided through
+    Lucene104ScalarQuantizedVectorsFormat and Lucene104HnswScalarQuantizedVectorsFormat (Ben Trent)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
