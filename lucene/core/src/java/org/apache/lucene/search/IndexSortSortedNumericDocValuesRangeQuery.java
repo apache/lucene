@@ -623,7 +623,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
     int compare(int docID) throws IOException;
   }
 
-  private static ValueComparator  loadComparator(
+  private static ValueComparator loadComparator(
       SortField sortField, SortField.Type type, long topValue, LeafReaderContext context)
       throws IOException {
     @SuppressWarnings("unchecked")

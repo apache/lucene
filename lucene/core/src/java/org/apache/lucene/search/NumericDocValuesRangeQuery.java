@@ -19,9 +19,7 @@ package org.apache.lucene.search;
 
 import java.util.Objects;
 
-/**
- * A Query over a range of long values
- */
+/** A Query over a range of long values */
 public abstract class NumericDocValuesRangeQuery extends Query {
 
   protected final String field;
@@ -54,5 +52,4 @@ public abstract class NumericDocValuesRangeQuery extends Query {
   public final long upperValue() {
     return upperValue;
   }
-
 }
