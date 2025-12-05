@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.document.Document;
@@ -27,6 +28,7 @@ import org.apache.lucene.index.FilterDirectoryReader.SubReaderWrapper;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
+import org.junit.Test;
 
 public class TestFilterDirectoryReader extends LuceneTestCase {
 
@@ -196,5 +198,10 @@ public class TestFilterDirectoryReader extends LuceneTestCase {
 
     w.close();
     dir.close();
+  }
+
+  @Test
+  public void testOverrides() throws Exception {
+    assertDelegatorOverridesAllRequiredMethods(FilterDirectoryReader.class, Set.of());
   }
 }
