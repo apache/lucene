@@ -340,4 +340,9 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
       return 32;
     }
   }
+
+  @Override
+  protected boolean isScalarQuantizedVectorsFormat() {
+    return false;
+  }
 }
