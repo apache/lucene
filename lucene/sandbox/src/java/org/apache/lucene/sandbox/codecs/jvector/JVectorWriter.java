@@ -20,6 +20,7 @@ package org.apache.lucene.sandbox.codecs.jvector;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 
 import io.github.jbellis.jvector.graph.GraphIndexBuilder;
+import io.github.jbellis.jvector.graph.ImmutableGraphIndex;
 import io.github.jbellis.jvector.graph.ListRandomAccessVectorValues;
 import io.github.jbellis.jvector.graph.OnHeapGraphIndex;
 import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
@@ -261,7 +262,7 @@ public class JVectorWriter extends KnnVectorsWriter {
       PQVectors pqVectors,
       OrdinalMapper ordinalMapper,
       GraphNodeIdToDocMap graphNodeIdToDocMap,
-      OnHeapGraphIndex graph)
+      ImmutableGraphIndex graph)
       throws IOException {
     final var vectorIndexFieldMetadata =
         writeGraph(
@@ -285,7 +286,7 @@ public class JVectorWriter extends KnnVectorsWriter {
    * @throws IOException IOException
    */
   private VectorIndexFieldMetadata writeGraph(
-      OnHeapGraphIndex graph,
+      ImmutableGraphIndex graph,
       RandomAccessVectorValues randomAccessVectorValues,
       FieldInfo fieldInfo,
       PQVectors pqVectors,
