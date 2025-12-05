@@ -29,6 +29,7 @@ import io.github.jbellis.jvector.graph.disk.feature.Feature;
 import io.github.jbellis.jvector.graph.disk.feature.FeatureId;
 import io.github.jbellis.jvector.graph.disk.feature.InlineVectors;
 import io.github.jbellis.jvector.graph.similarity.BuildScoreProvider;
+import io.github.jbellis.jvector.graph.similarity.SearchScoreProvider;
 import io.github.jbellis.jvector.quantization.MutablePQVectors;
 import io.github.jbellis.jvector.quantization.PQVectors;
 import io.github.jbellis.jvector.quantization.ProductQuantization;
@@ -42,6 +43,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.IntUnaryOperator;
@@ -218,21 +220,9 @@ public class JVectorWriter extends KnnVectorsWriter {
         ordinalMapper = null;
       }
       final RandomAccessVectorValues randomAccessVectorValues = field.toRandomAccessVectorValues();
-      final BuildScoreProvider buildScoreProvider;
+      final BuildScoreProvider buildScoreProvider = field.buildScoreProvider;
       final PQVectors pqVectors = field.getCompressedVectors();
       final FieldInfo fieldInfo = field.fieldInfo;
-      if (pqVectors != null) {
-        buildScoreProvider =
-            BuildScoreProvider.pqBuildScoreProvider(
-                JVectorFormat.toJVectorSimilarity(fieldInfo.getVectorSimilarityFunction()),
-                pqVectors);
-      } else {
-        // Not enough vectors for quantization; use full precision vectors instead
-        buildScoreProvider =
-            BuildScoreProvider.randomAccessScoreProvider(
-                randomAccessVectorValues,
-                JVectorFormat.toJVectorSimilarity(fieldInfo.getVectorSimilarityFunction()));
-      }
 
       final GraphNodeIdToDocMap graphNodeIdToDocMap = new GraphNodeIdToDocMap(newDocIds);
       final var graph =
@@ -448,8 +438,10 @@ public class JVectorWriter extends KnnVectorsWriter {
     private final FieldInfo fieldInfo;
     // The ordering of docIds matches the ordering of vectors, the index in this list corresponds to
     // the jVector ordinal
-    private final List<VectorFloat<?>> vectors = new ArrayList<>();
+    private final List<VectorFloat<?>> vectors;
     private final DocsWithFieldSet docIds;
+
+    private final DelegatingBuildScoreProvider buildScoreProvider;
 
     // PQ fields
     private final int pqThreshold;
@@ -459,7 +451,16 @@ public class JVectorWriter extends KnnVectorsWriter {
     FieldWriter(FieldInfo fieldInfo, int pqThreshold, int pqSubspaceCount) {
       /** For creating a new field from a flat field vectors writer. */
       this.fieldInfo = fieldInfo;
+      this.vectors = new ArrayList<>();
       this.docIds = new DocsWithFieldSet();
+
+      final var similarityFunction =
+          JVectorFormat.toJVectorSimilarity(fieldInfo.getVectorSimilarityFunction());
+      this.buildScoreProvider =
+          new DelegatingBuildScoreProvider(
+              BuildScoreProvider.randomAccessScoreProvider(
+                  toRandomAccessVectorValues(), similarityFunction));
+
       this.pqThreshold = pqThreshold;
       this.pqSubspaceCount = pqSubspaceCount;
       this.pqVectors = null;
@@ -489,6 +490,11 @@ public class JVectorWriter extends KnnVectorsWriter {
         for (int i = 0; i < vectors.size(); ++i) {
           pqVectors.encodeAndSet(i, vectors.get(i));
         }
+
+        final var similarityFunction =
+            JVectorFormat.toJVectorSimilarity(fieldInfo.getVectorSimilarityFunction());
+        buildScoreProvider.setDelegate(
+            BuildScoreProvider.pqBuildScoreProvider(similarityFunction, pqVectors));
       }
     }
 
@@ -510,6 +516,43 @@ public class JVectorWriter extends KnnVectorsWriter {
       return SHALLOW_SIZE
           + (long) vectors.size() * fieldInfo.getVectorDimension() * Float.BYTES
           + docIds.ramBytesUsed();
+    }
+  }
+
+  static final class DelegatingBuildScoreProvider implements BuildScoreProvider {
+    BuildScoreProvider delegate;
+
+    DelegatingBuildScoreProvider(BuildScoreProvider delegate) {
+      this.delegate = Objects.requireNonNull(delegate);
+    }
+
+    public void setDelegate(BuildScoreProvider delegate) {
+      this.delegate = Objects.requireNonNull(delegate);
+    }
+
+    @Override
+    public boolean isExact() {
+      return delegate.isExact();
+    }
+
+    @Override
+    public VectorFloat<?> approximateCentroid() {
+      return delegate.approximateCentroid();
+    }
+
+    @Override
+    public SearchScoreProvider searchProviderFor(VectorFloat<?> vector) {
+      return delegate.searchProviderFor(vector);
+    }
+
+    @Override
+    public SearchScoreProvider searchProviderFor(int node1) {
+      return delegate.searchProviderFor(node1);
+    }
+
+    @Override
+    public SearchScoreProvider diversityProviderFor(int node1) {
+      return delegate.diversityProviderFor(node1);
     }
   }
 
