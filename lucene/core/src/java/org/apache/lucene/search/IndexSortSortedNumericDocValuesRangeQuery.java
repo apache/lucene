@@ -66,11 +66,8 @@ import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
  *
  * @lucene.experimental
  */
-public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
+public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery {
 
-  private final String field;
-  private final long lowerValue;
-  private final long upperValue;
   private final Query fallbackQuery;
 
   /**
@@ -83,9 +80,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
    */
   public IndexSortSortedNumericDocValuesRangeQuery(
       String field, long lowerValue, long upperValue, Query fallbackQuery) {
-    this.field = Objects.requireNonNull(field);
-    this.lowerValue = lowerValue;
-    this.upperValue = upperValue;
+    super(field, lowerValue, upperValue);
     this.fallbackQuery = fallbackQuery;
   }
 
@@ -628,7 +623,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     int compare(int docID) throws IOException;
   }
 
-  private static ValueComparator loadComparator(
+  private static ValueComparator  loadComparator(
       SortField sortField, SortField.Type type, long topValue, LeafReaderContext context)
       throws IOException {
     @SuppressWarnings("unchecked")
