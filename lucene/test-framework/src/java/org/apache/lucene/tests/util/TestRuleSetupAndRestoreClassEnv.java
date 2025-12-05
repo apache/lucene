@@ -51,6 +51,7 @@ import org.apache.lucene.tests.index.RandomCodec;
 import org.apache.lucene.tests.search.similarities.AssertingSimilarity;
 import org.apache.lucene.tests.search.similarities.RandomSimilarity;
 import org.apache.lucene.tests.util.LuceneTestCase.LiveIWCFlushMode;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressAssertingFormats;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.PrintStreamInfoStream;
@@ -75,6 +76,11 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
    * @see SuppressCodecs
    */
   HashSet<String> avoidCodecs;
+
+  /**
+   * @see SuppressAssertingFormats
+   */
+  HashSet<String> avoidAssertingFormats;
 
   static class ThreadNameFixingPrintStreamInfoStream extends PrintStreamInfoStream {
     public ThreadNameFixingPrintStreamInfoStream(PrintStream out) {
@@ -126,6 +132,13 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
       SuppressCodecs a = targetClass.getAnnotation(SuppressCodecs.class);
       avoidCodecs.addAll(Arrays.asList(a.value()));
     }
+
+    avoidAssertingFormats = new HashSet<>();
+    if (targetClass.isAnnotationPresent(SuppressAssertingFormats.class)) {
+      SuppressAssertingFormats a = targetClass.getAnnotation(SuppressAssertingFormats.class);
+      avoidAssertingFormats.addAll(Arrays.asList(a.value()));
+    }
+    AssertingCodec.setSuppressedFormats(avoidAssertingFormats);
 
     savedCodec = Codec.getDefault();
     int randomVal = random.nextInt(11);
