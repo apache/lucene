@@ -255,6 +255,8 @@ Bug Fixes
 * GITHUB#15380: Fix potential EOF introduced by optimized filter iterations in MaxScoreBulkScorer. The
   approximation and the match verification could get out of sync, resulting in an EOFException. (Ben Trent)
 
+* GITHUB#15478: Fix duplicate neighbor issue by checking node existence before making reverse link. (Pulkit Gupta)
+
 Other
 ---------------------
 * GITHUB#15237: Fix SmartChinese to only deserialize dictionary data from classpath with a native array
