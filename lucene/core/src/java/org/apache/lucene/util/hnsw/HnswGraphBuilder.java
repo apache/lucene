@@ -374,16 +374,21 @@ public class HnswGraphBuilder implements HnswBuilder {
       if (hnswLock != null) {
         Lock lock = hnswLock.write(level, nbr);
         try {
-          NeighborArray nbrsOfNbr = getGraph().getNeighbors(level, nbr);
-          nbrsOfNbr.addAndEnsureDiversity(node, candidates.getScores(i), nbr, scorer);
+          updateNeighbor(getGraph().getNeighbors(level, nbr), node, candidates.getScores(i), nbr, scorer);
         } finally {
           lock.unlock();
         }
       } else {
-        NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
-        nbrsOfNbr.addAndEnsureDiversity(node, candidates.getScores(i), nbr, scorer);
+        updateNeighbor(hnsw.getNeighbors(level, nbr), node, candidates.getScores(i), nbr, scorer);
       }
     }
+  }
+
+  private void updateNeighbor(NeighborArray nbrsOfNbr, int node, float score, int nbr, UpdateableRandomVectorScorer scorer) throws IOException{
+    for (int j = 0; j < nbrsOfNbr.size(); j++) {
+      if (nbrsOfNbr.nodes()[j] == node) return;
+    }
+    nbrsOfNbr.addAndEnsureDiversity(node, score, nbr, scorer);
   }
 
   /**
