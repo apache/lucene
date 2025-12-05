@@ -294,6 +294,19 @@ public class Highlighter {
       // return the most relevant fragments
       TextFragment[] frag = fragQueue.drainToArrayHighestFirst(TextFragment[]::new);
 
+      // Filter out zero-scored fragments BEFORE merging so that non-matching
+      // text cannot be merged into matching fragments and "inherit" a positive score.
+      // This prevents large zero-content blocks from polluting the highlights.
+      if (frag.length > 0) {
+        ArrayList<TextFragment> positive = new ArrayList<>(frag.length);
+        for (TextFragment f : frag) {
+          if (f != null && f.getScore() > 0.0f) {
+            positive.add(f);
+          }
+        }
+        frag = positive.toArray(new TextFragment[0]);
+      }
+
       // merge any contiguous fragments to improve readability
       if (mergeContiguousFragments) {
         mergeContiguousFragments(frag);
