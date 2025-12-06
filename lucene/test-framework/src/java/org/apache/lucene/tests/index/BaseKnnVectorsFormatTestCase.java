@@ -26,6 +26,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,12 +37,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
+import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsReader;
@@ -93,7 +96,11 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.codecs.asserting.AssertingKnnVectorsFormat;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -117,10 +124,22 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   private VectorEncoding vectorEncoding;
   private VectorSimilarityFunction similarityFunction;
 
+  final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
+
   @Before
   public void init() {
     vectorEncoding = randomVectorEncoding();
     similarityFunction = randomSimilarity();
+  }
+
+  protected abstract boolean isScalarQuantizedVectorsFormat();
+
+  protected int getQuantizationBits() {
+    return 8; // Default value, override in subclasses if needed
+  }
+
+  protected Codec getCodecForQuantizedTest() {
+    return getCodec(); // Default implementation
   }
 
   @Override
@@ -1907,6 +1926,163 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         assertEquals(fieldSumDocIDs, sumDocIds);
         assertEquals(fieldSumDocIDs, sumOrdToDocIds);
       }
+    }
+  }
+
+  private List<float[]> getRandomFloatVector(int numVectors, int dim, boolean normalize) {
+    List<float[]> vectors = new ArrayList<>(numVectors);
+    for (int i = 0; i < numVectors; i++) {
+      float[] vec = randomVector(dim);
+      if (normalize) {
+        float[] copy = new float[vec.length];
+        System.arraycopy(vec, 0, copy, 0, copy.length);
+        VectorUtil.l2normalize(copy);
+        vec = copy;
+      }
+      vectors.add(vec);
+    }
+    return vectors;
+  }
+
+  /**
+   * Tests reading quantized vectors when raw vector data is empty. Verifies that scalar quantized
+   * formats can properly dequantize vectors and maintain accuracy within expected error bounds even
+   * when the original raw vector file is empty or corrupted.
+   */
+  public void testReadQuantizedVectorWithEmptyRawVectors() throws Exception {
+    assumeTrue("Test only applies to scalar quantized formats", isScalarQuantizedVectorsFormat());
+
+    String vectorFieldName = "vec1";
+    int numVectors = 1 + random().nextInt(50);
+    int dim = random().nextInt(64) + 1;
+    if (dim % 2 == 1) {
+      dim++;
+    }
+    float eps = (1f / (float) (1 << getQuantizationBits()));
+    VectorSimilarityFunction similarityFunction = randomSimilarity();
+    List<float[]> vectors =
+        getRandomFloatVector(
+            numVectors, dim, similarityFunction == VectorSimilarityFunction.COSINE);
+
+    try (BaseDirectoryWrapper dir = newDirectory();
+        IndexWriter w =
+            new IndexWriter(
+                dir,
+                new IndexWriterConfig()
+                    .setMaxBufferedDocs(numVectors + 1)
+                    .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+                    .setMergePolicy(NoMergePolicy.INSTANCE)
+                    .setUseCompoundFile(false)
+                    .setCodec(getCodecForQuantizedTest()))) {
+      dir.setCheckIndexOnClose(false);
+
+      for (int i = 0; i < numVectors; i++) {
+        Document doc = new Document();
+        doc.add(new KnnFloatVectorField(vectorFieldName, vectors.get(i), similarityFunction));
+        w.addDocument(doc);
+      }
+      w.commit();
+
+      simulateEmptyRawVectors(dir);
+
+      try (IndexReader reader = DirectoryReader.open(w)) {
+        LeafReader r = getOnlyLeafReader(reader);
+        if (r instanceof CodecReader codecReader) {
+          KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
+          knnVectorsReader = knnVectorsReader.unwrapReaderForField(vectorFieldName);
+          FloatVectorValues floatVectorValues =
+              knnVectorsReader.getFloatVectorValues(vectorFieldName);
+          if (floatVectorValues.size() > 0) {
+            KnnVectorValues.DocIndexIterator iter = floatVectorValues.iterator();
+            for (int docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {
+              float[] dequantizedVector = floatVectorValues.vectorValue(iter.index());
+              float mae = 0;
+              for (int i = 0; i < dim; i++) {
+                mae += Math.abs(dequantizedVector[i] - vectors.get(docId)[i]);
+              }
+              mae /= dim;
+              assertTrue(
+                  "bits: " + getQuantizationBits() + " mae: " + mae + " > eps: " + eps, mae <= eps);
+            }
+          } else {
+            fail("floatVectorValues size should be non zero");
+          }
+        } else {
+          fail("reader is not CodecReader");
+        }
+      }
+    }
+  }
+
+  /** Simulates empty raw vectors by modifying index files. */
+  private void simulateEmptyRawVectors(Directory dir) throws Exception {
+    final String[] indexFiles = dir.listAll();
+    final String RAW_VECTOR_EXTENSION = "vec";
+    final String VECTOR_META_EXTENSION = "vemf";
+
+    for (String file : indexFiles) {
+      if (file.endsWith("." + RAW_VECTOR_EXTENSION)) {
+        replaceWithEmptyVectorFile(dir, file);
+      } else if (file.endsWith("." + VECTOR_META_EXTENSION)) {
+        updateVectorMetadataFile(dir, file);
+      }
+    }
+  }
+
+  /** Replaces a raw vector file with an empty one that has valid header/footer. */
+  private void replaceWithEmptyVectorFile(Directory dir, String fileName) throws Exception {
+    byte[] indexHeader;
+    try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+      indexHeader = CodecUtil.readIndexHeader(in);
+    }
+    dir.deleteFile(fileName);
+    try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+      // Write header
+      out.writeBytes(indexHeader, 0, indexHeader.length);
+      // Write footer (no content in between)
+      CodecUtil.writeFooter(out);
+    }
+  }
+
+  /** Updates vector metadata file to indicate zero vector length. */
+  private void updateVectorMetadataFile(Directory dir, String fileName) throws Exception {
+    // Read original metadata
+    byte[] indexHeader;
+    int fieldNumber, vectorEncoding, vectorSimilarityFunction, dimension;
+    long vectorStartPos;
+
+    try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+      indexHeader = CodecUtil.readIndexHeader(in);
+      fieldNumber = in.readInt();
+      vectorEncoding = in.readInt();
+      vectorSimilarityFunction = in.readInt();
+      vectorStartPos = in.readVLong();
+      in.readVLong(); // Skip original vector length
+      dimension = in.readVInt();
+    }
+
+    // Create updated metadata file
+    dir.deleteFile(fileName);
+    try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+      // Write header
+      out.writeBytes(indexHeader, 0, indexHeader.length);
+
+      // Write metadata with zero vector length
+      out.writeInt(fieldNumber);
+      out.writeInt(vectorEncoding);
+      out.writeInt(vectorSimilarityFunction);
+      out.writeVLong(vectorStartPos);
+      out.writeVLong(0); // Set vector length to 0
+      out.writeVInt(dimension);
+      out.writeInt(0);
+
+      // Write configuration
+      OrdToDocDISIReaderConfiguration.writeStoredMeta(
+          DIRECT_MONOTONIC_BLOCK_SHIFT, out, null, 0, 0, null);
+
+      // Mark end of fields and write footer
+      out.writeInt(-1);
+      CodecUtil.writeFooter(out);
     }
   }
 
