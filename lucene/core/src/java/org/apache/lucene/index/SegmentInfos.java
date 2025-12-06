@@ -328,7 +328,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
         throw new IndexFormatTooOldException(
             input, magic, CodecUtil.CODEC_MAGIC, CodecUtil.CODEC_MAGIC);
       }
-      format = CodecUtil.checkHeaderNoMagic(input, "segments", VERSION_86, VERSION_CURRENT);
+      format = CodecUtil.checkHeaderNoMagic(input, "segments", VERSION_74, VERSION_CURRENT);
       byte[] id = new byte[StringHelper.ID_LENGTH];
       input.readBytes(id, 0, id.length);
       CodecUtil.checkIndexHeaderSuffix(input, Long.toString(generation, Character.MAX_RADIX));
@@ -529,11 +529,13 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     } catch (IllegalArgumentException e) {
       // maybe it's an old default codec that moved
       if (name.startsWith("Lucene")) {
-        throw new IllegalArgumentException(
+        throw new IndexFormatTooOldException(
+            input,
             "Could not load codec '"
                 + name
-                + "'. Did you forget to add lucene-backward-codecs.jar?",
-            e);
+                + "'. "
+                + e.getMessage()
+                + ". Did you forget to add lucene-backward-codecs.jar?");
       }
       throw e;
     }
