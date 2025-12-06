@@ -1,0 +1,4 @@
+This product includes software developed by the SnakeYAML project.
+https://bitbucket.org/snakeyaml/snakeyaml
+
+Licensed under the Apache License, Version 2.0.
