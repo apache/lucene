@@ -269,6 +269,9 @@ Other
   Applications using SecurityManager now need to grant SerializablePermission("serialFilter")
   to the analysis-smartcn module. (Uwe Schindler, Isaac David)
 
+* GITHUB#15481: The `reverse` field of SortField is now final. If you have subclassed SortField,
+  you should set `reverse` in the super constructor. (Alan Woodward)
+
 Build
 ---------------------
 * Upgrade forbiddenapis to version 3.10.  (Uwe Schindler)
