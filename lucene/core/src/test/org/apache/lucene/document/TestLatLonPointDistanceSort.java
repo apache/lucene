@@ -238,7 +238,6 @@ public class TestLatLonPointDistanceSort extends LuceneTestCase {
       int topN = TestUtil.nextInt(random(), 1, reader.maxDoc());
       // sort by distance, then ID
       SortField distanceSort = LatLonDocValuesField.newDistanceSort("field", lat, lon);
-      distanceSort.setMissingValue(missingValue);
       Sort sort = new Sort(distanceSort, new SortField("id", SortField.Type.INT));
 
       TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), topN, sort);
