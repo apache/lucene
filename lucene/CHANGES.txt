@@ -69,6 +69,8 @@ Improvements
 
 * GITHUB#15124: Use RamUsageEstimator to calculate size for non-accountable queries. (Sagar Upadhyaya)
 
+* GITHUB#15453: Avoid unnecessary sorting and instantiations in readMapOfStrings. (Benjamin Lerer)
+
 Optimizations
 ---------------------
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
@@ -196,6 +198,8 @@ Improvements
 
 * GITHUB#15425: Refactoring internal HnswGraph.NodesIterator to avoid unneeded copying and sorting (Mike Sokolov)
 
+* GITHUB#15479: Add NumericDocValueRangeQuery base class to add accessor methods for field, lower and upper values (Alan Woodward)
+
 Optimizations
 ---------------------
 * GITHUB#15140: Optimize TopScoreDocCollector with TernaryLongHeap for improved performance over Binary-LongHeap. (Ramakrishna Chilaka)
@@ -208,6 +212,8 @@ Optimizations
 
 * GITHUB#15151: Use `SimScorer#score` bulk API to compute impact scores per
   block of postings. (Adrien Grand)
+
+* GITHUB#15128: Skip heavy TreeSet opts for the first group in FirstPassGroupingCollector (Binlong Gao)
 
 * GITHUB#15167: FirstPassGroupingCollector supports ignoring docs without group field (Binlong Gao)
 
@@ -234,6 +240,8 @@ Optimizations
 * GITHUB#15003: Avoid reconstructing HNSW graph during merging (Pulkit Gupta)
 
 * GITHUB#15406: Improve round trip conversion of ValueSource <-> DoublesValueSource (hossman)
+
+* GITHUB#15475: Enabling wrapped collectors in MultiCollector to collectRange (Ankit Jain)
 
 * GITHUB#15474: Use bulk scoring provided by RandomVectorScorers for new scalar quantized formats provided through
     Lucene104ScalarQuantizedVectorsFormat and Lucene104HnswScalarQuantizedVectorsFormat (Ben Trent)
@@ -265,6 +273,9 @@ Other
   filter factory that disallows any unprotected deserialization while running tests.
   Applications using SecurityManager now need to grant SerializablePermission("serialFilter")
   to the analysis-smartcn module. (Uwe Schindler, Isaac David)
+
+* GITHUB#15481: The `reverse` field of SortField is now final. If you have subclassed SortField,
+  you should set `reverse` in the super constructor. (Alan Woodward)
 
 Build
 ---------------------
