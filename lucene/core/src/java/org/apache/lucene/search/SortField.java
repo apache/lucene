@@ -174,7 +174,7 @@ public class SortField {
     this.type = type;
     this.reverse = reverse;
     this.missingValue = missingValue;
-    validateField(field, type);
+    validateField(field, type, missingValue);
   }
 
   /**
@@ -200,7 +200,7 @@ public class SortField {
     this.reverse = reverse;
     this.comparatorSource = comparator;
     this.missingValue = null; // missingValue factored into comparator source
-    validateField(field, type);
+    validateField(field, type, null);
   }
 
   /** A SortFieldProvider for field sorts */
@@ -370,10 +370,16 @@ public class SortField {
 
   // Sets field & type, and ensures field is not NULL unless
   // type is SCORE or DOC
-  private void validateField(String field, Type type) {
+  private void validateField(String field, Type type, Object missingValue) {
     if (field == null) {
       if (type != Type.SCORE && type != Type.DOC) {
         throw new IllegalArgumentException("field can only be null when type is SCORE or DOC");
+      }
+    }
+    if (type == Type.STRING) {
+      if (missingValue != null && missingValue != STRING_FIRST && missingValue != STRING_LAST) {
+        throw new IllegalArgumentException(
+            "For Type.STRING, missing value must be either STRING_FIRST or STRING_LAST");
       }
     }
   }
