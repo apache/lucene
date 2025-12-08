@@ -237,7 +237,6 @@ public class TestXYPointDistanceSort extends LuceneTestCase {
       int topN = TestUtil.nextInt(random(), 1, reader.maxDoc());
       // sort by distance, then ID
       SortField distanceSort = XYDocValuesField.newDistanceSort("field", x, y);
-      distanceSort.setMissingValue(missingValue);
       Sort sort = new Sort(distanceSort, new SortField("id", SortField.Type.INT));
 
       TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), topN, sort);

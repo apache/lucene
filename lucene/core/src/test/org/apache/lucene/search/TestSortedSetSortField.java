@@ -136,8 +136,8 @@ public class TestSortedSetSortField extends LuceneTestCase {
     writer.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    SortField sortField = new SortedSetSortField("value", false);
-    sortField.setMissingValue(SortField.STRING_FIRST);
+    SortField sortField =
+        new SortedSetSortField("value", false, SortedSetSelector.Type.MIN, SortField.STRING_FIRST);
     Sort sort = new Sort(sortField);
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
@@ -171,8 +171,8 @@ public class TestSortedSetSortField extends LuceneTestCase {
     writer.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    SortField sortField = new SortedSetSortField("value", false);
-    sortField.setMissingValue(SortField.STRING_LAST);
+    SortField sortField =
+        new SortedSetSortField("value", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
     Sort sort = new Sort(sortField);
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);

@@ -146,7 +146,18 @@ public class SortField {
    * @param type Type of values in the terms.
    */
   public SortField(String field, Type type) {
-    this(field, type, false);
+    this(field, type, false, null);
+  }
+
+  /**
+   * Creates a sort by terms in the given field with the type of term values explicitly given.
+   *
+   * @param field Name of field to sort by. Can be <code>null</code> if <code>type</code> is SCORE
+   *     or DOC.
+   * @param type Type of values in the terms.
+   */
+  public SortField(String field, Type type, boolean reverse) {
+    this(field, type, reverse, null);
   }
 
   /**
@@ -158,11 +169,12 @@ public class SortField {
    * @param type Type of values in the terms.
    * @param reverse True if natural order should be reversed.
    */
-  public SortField(String field, Type type, boolean reverse) {
+  public SortField(String field, Type type, boolean reverse, Object missingValue) {
     this.field = field;
     this.type = type;
     this.reverse = reverse;
-    validateField(field, type);
+    this.missingValue = missingValue;
+    validateField(field, type, missingValue);
   }
 
   /**
@@ -187,7 +199,8 @@ public class SortField {
     this.type = Type.CUSTOM;
     this.reverse = reverse;
     this.comparatorSource = comparator;
-    validateField(field, type);
+    this.missingValue = null; // missingValue factored into comparator source
+    validateField(field, type, null);
   }
 
   /** A SortFieldProvider for field sorts */
@@ -203,40 +216,39 @@ public class SortField {
 
     @Override
     public SortField readSortField(DataInput in) throws IOException {
-      SortField sf = new SortField(in.readString(), readType(in), in.readInt() == 1);
+      String field = in.readString();
+      Type type = readType(in);
+      boolean reverse = in.readInt() == 1;
       if (in.readInt() == 1) {
         // missing object
-        switch (sf.type) {
+        switch (type) {
           case STRING:
             int missingString = in.readInt();
             if (missingString == 1) {
-              sf.setMissingValue(STRING_FIRST);
+              return new SortField(field, type, reverse, STRING_FIRST);
             } else {
-              sf.setMissingValue(STRING_LAST);
+              return new SortField(field, type, reverse, STRING_LAST);
             }
-            break;
           case INT:
-            sf.setMissingValue(in.readInt());
-            break;
+            return new SortField(field, type, reverse, in.readInt());
           case LONG:
-            sf.setMissingValue(in.readLong());
-            break;
+            return new SortField(field, type, reverse, in.readLong());
           case FLOAT:
-            sf.setMissingValue(NumericUtils.sortableIntToFloat(in.readInt()));
-            break;
+            return new SortField(
+                field, type, reverse, NumericUtils.sortableIntToFloat(in.readInt()));
           case DOUBLE:
-            sf.setMissingValue(NumericUtils.sortableLongToDouble(in.readLong()));
-            break;
+            return new SortField(
+                field, type, reverse, NumericUtils.sortableLongToDouble(in.readLong()));
           case CUSTOM:
           case DOC:
           case REWRITEABLE:
           case STRING_VAL:
           case SCORE:
           default:
-            throw new IllegalArgumentException("Cannot deserialize sort of type " + sf.type);
+            throw new IllegalArgumentException("Cannot deserialize sort of type " + type);
         }
       }
-      return sf;
+      return new SortField(field, type, reverse, null);
     }
 
     @Override
@@ -323,6 +335,7 @@ public class SortField {
   }
 
   /** Set the value to use for documents that don't have a value. */
+  @Deprecated
   public void setMissingValue(Object missingValue) {
     if (type == Type.STRING || type == Type.STRING_VAL) {
       if (missingValue != STRING_FIRST && missingValue != STRING_LAST) {
@@ -357,10 +370,16 @@ public class SortField {
 
   // Sets field & type, and ensures field is not NULL unless
   // type is SCORE or DOC
-  private void validateField(String field, Type type) {
+  private void validateField(String field, Type type, Object missingValue) {
     if (field == null) {
       if (type != Type.SCORE && type != Type.DOC) {
         throw new IllegalArgumentException("field can only be null when type is SCORE or DOC");
+      }
+    }
+    if (type == Type.STRING) {
+      if (missingValue != null && missingValue != STRING_FIRST && missingValue != STRING_LAST) {
+        throw new IllegalArgumentException(
+            "For Type.STRING, missing value must be either STRING_FIRST or STRING_LAST");
       }
     }
   }

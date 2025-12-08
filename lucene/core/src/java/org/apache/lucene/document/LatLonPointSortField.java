@@ -27,7 +27,7 @@ final class LatLonPointSortField extends SortField {
   final double longitude;
 
   LatLonPointSortField(String field, double latitude, double longitude) {
-    super(field, SortField.Type.CUSTOM);
+    super(field, SortField.Type.CUSTOM, false, Double.POSITIVE_INFINITY);
     if (field == null) {
       throw new IllegalArgumentException("field must not be null");
     }
@@ -35,7 +35,6 @@ final class LatLonPointSortField extends SortField {
     GeoUtils.checkLongitude(longitude);
     this.latitude = latitude;
     this.longitude = longitude;
-    setMissingValue(Double.POSITIVE_INFINITY);
   }
 
   @Override
