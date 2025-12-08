@@ -133,7 +133,7 @@ public class SortField {
   private FieldComparatorSource comparatorSource;
 
   // Used for 'sortMissingFirst/Last'
-  protected Object missingValue = null;
+  protected final Object missingValue;
 
   // Indicates if sort should be optimized with indexed data. Set to true by default.
   @Deprecated private boolean optimizeSortWithIndexedData = true;
@@ -308,7 +308,7 @@ public class SortField {
     }
   }
 
-  /** Pass this to {@link #setMissingValue} to have missing string values sort first. */
+  /** Pass this as a missingValue constructor parameter to have missing string values sort first. */
   public static final Object STRING_FIRST =
       new Object() {
         @Override
@@ -317,7 +317,7 @@ public class SortField {
         }
       };
 
-  /** Pass this to {@link #setMissingValue} to have missing string values sort last. */
+  /** Pass this as a missingValue constructor parameter to have missing string values sort last. */
   public static final Object STRING_LAST =
       new Object() {
         @Override
@@ -332,40 +332,6 @@ public class SortField {
    */
   public Object getMissingValue() {
     return missingValue;
-  }
-
-  /** Set the value to use for documents that don't have a value. */
-  @Deprecated
-  public void setMissingValue(Object missingValue) {
-    if (type == Type.STRING || type == Type.STRING_VAL) {
-      if (missingValue != STRING_FIRST && missingValue != STRING_LAST) {
-        throw new IllegalArgumentException(
-            "For STRING type, missing value must be either STRING_FIRST or STRING_LAST");
-      }
-    } else if (type == Type.INT) {
-      if (missingValue != null && missingValue.getClass() != Integer.class)
-        throw new IllegalArgumentException(
-            "Missing values for Type.INT can only be of type java.lang.Integer, but got "
-                + missingValue.getClass());
-    } else if (type == Type.LONG) {
-      if (missingValue != null && missingValue.getClass() != Long.class)
-        throw new IllegalArgumentException(
-            "Missing values for Type.LONG can only be of type java.lang.Long, but got "
-                + missingValue.getClass());
-    } else if (type == Type.FLOAT) {
-      if (missingValue != null && missingValue.getClass() != Float.class)
-        throw new IllegalArgumentException(
-            "Missing values for Type.FLOAT can only be of type java.lang.Float, but got "
-                + missingValue.getClass());
-    } else if (type == Type.DOUBLE) {
-      if (missingValue != null && missingValue.getClass() != Double.class)
-        throw new IllegalArgumentException(
-            "Missing values for Type.DOUBLE can only be of type java.lang.Double, but got "
-                + missingValue.getClass());
-    } else {
-      throw new IllegalArgumentException("Missing value only works for numeric or STRING types");
-    }
-    this.missingValue = missingValue;
   }
 
   // Sets field & type, and ensures field is not NULL unless

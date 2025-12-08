@@ -48,16 +48,6 @@ final class LatLonPointSortField extends SortField {
   }
 
   @Override
-  public void setMissingValue(Object missingValue) {
-    if (Double.valueOf(Double.POSITIVE_INFINITY).equals(missingValue) == false) {
-      throw new IllegalArgumentException(
-          "Missing value can only be Double.POSITIVE_INFINITY (missing values last), but got "
-              + missingValue);
-    }
-    this.missingValue = missingValue;
-  }
-
-  @Override
   public int hashCode() {
     final int prime = 31;
     int result = super.hashCode();
