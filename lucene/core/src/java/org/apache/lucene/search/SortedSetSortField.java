@@ -54,7 +54,11 @@ public class SortedSetSortField extends SortField {
    * @param reverse True if natural order should be reversed.
    */
   public SortedSetSortField(String field, boolean reverse) {
-    this(field, reverse, SortedSetSelector.Type.MIN);
+    this(field, reverse, SortedSetSelector.Type.MIN, null);
+  }
+
+  public SortedSetSortField(String field, boolean reverse, SortedSetSelector.Type selector) {
+    this(field, reverse, selector, null);
   }
 
   /**
@@ -67,8 +71,9 @@ public class SortedSetSortField extends SortField {
    *     <p>NOTE: selectors other than {@link SortedSetSelector.Type#MIN} require optional codec
    *     support.
    */
-  public SortedSetSortField(String field, boolean reverse, SortedSetSelector.Type selector) {
-    super(field, SortField.Type.CUSTOM, reverse);
+  public SortedSetSortField(
+      String field, boolean reverse, SortedSetSelector.Type selector, Object missingValue) {
+    super(field, SortField.Type.CUSTOM, reverse, missingValue);
     if (selector == null) {
       throw new NullPointerException();
     }
@@ -88,15 +93,16 @@ public class SortedSetSortField extends SortField {
 
     @Override
     public SortField readSortField(DataInput in) throws IOException {
-      SortField sf =
-          new SortedSetSortField(in.readString(), in.readInt() == 1, readSelectorType(in));
+      String field = in.readString();
+      boolean reverse = in.readInt() == 1;
+      SortedSetSelector.Type type = readSelectorType(in);
       int missingValue = in.readInt();
       if (missingValue == 1) {
-        sf.setMissingValue(SortField.STRING_FIRST);
+        return new SortedSetSortField(field, reverse, type, SortField.STRING_FIRST);
       } else if (missingValue == 2) {
-        sf.setMissingValue(SortField.STRING_LAST);
+        return new SortedSetSortField(field, reverse, type, SortField.STRING_LAST);
       }
-      return sf;
+      return new SortedSetSortField(field, reverse, type, null);
     }
 
     @Override
