@@ -246,6 +246,9 @@ Optimizations
 
 * GITHUB#15475: Enabling wrapped collectors in MultiCollector to collectRange (Ankit Jain)
 
+* GITHUB#15474: Use bulk scoring provided by RandomVectorScorers for new scalar quantized formats provided through
+    Lucene104ScalarQuantizedVectorsFormat and Lucene104HnswScalarQuantizedVectorsFormat (Ben Trent)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
