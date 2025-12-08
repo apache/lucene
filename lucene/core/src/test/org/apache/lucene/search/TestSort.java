@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.equalTo;
+
 import java.io.IOException;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
@@ -38,9 +40,6 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
-
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.equalTo;
 
 /*
  * Very simple tests of sorting.
@@ -93,11 +92,15 @@ public class TestSort extends LuceneTestCase {
   }
 
   public void testStringMissingValues() {
-    Exception e = expectThrows(
-        IllegalArgumentException.class, () -> {
-          new Sort(new SortField("foo", SortField.Type.STRING, false, "invalid value"));
-        });
-    assertThat(e.getMessage(), equalTo("For Type.STRING, missing value must be either STRING_FIRST or STRING_LAST"));
+    Exception e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              new Sort(new SortField("foo", SortField.Type.STRING, false, "invalid value"));
+            });
+    assertThat(
+        e.getMessage(),
+        equalTo("For Type.STRING, missing value must be either STRING_FIRST or STRING_LAST"));
   }
 
   /** Tests sorting on type string */
