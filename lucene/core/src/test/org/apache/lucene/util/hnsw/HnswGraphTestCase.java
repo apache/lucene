@@ -215,7 +215,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     int M = 4;
     int beamWidth = 20;
     String vectorFieldName = "vec1";
-    int numVectors = random().nextInt(1000);
+    int numVectors = random().nextInt(1000) + 1;
     int deletionProbaility = random().nextInt(100);
     int dim = random().nextInt(64) + 1;
     if (dim % 2 == 1) {
