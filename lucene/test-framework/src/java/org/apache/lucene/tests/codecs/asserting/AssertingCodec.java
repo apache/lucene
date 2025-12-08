@@ -17,7 +17,7 @@
 package org.apache.lucene.tests.codecs.asserting;
 
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.EnumSet;
 import java.util.Set;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.FilterCodec;
@@ -36,16 +36,26 @@ import org.apache.lucene.tests.util.TestUtil;
 /** Acts like the default codec but with additional asserts. */
 public class AssertingCodec extends FilterCodec {
 
-  private static volatile Set<String> suppressedFormats = Collections.emptySet();
-
-  /** Set the formats to suppress. Use simple class names like "AssertingStoredFieldsFormat". */
-  public static void setSuppressedFormats(Set<String> formats) {
-    suppressedFormats =
-        formats == null || formats.isEmpty() ? Collections.emptySet() : new HashSet<>(formats);
+  /** Enum representing asserting format types that can be suppressed. */
+  public enum Format {
+    STORED_FIELDS,
+    TERM_VECTORS,
+    NORMS,
+    LIVE_DOCS,
+    POINTS,
+    KNN_VECTORS
   }
 
-  private static boolean isSuppressed(String formatName) {
-    return suppressedFormats.contains(formatName);
+  private static volatile Set<Format> suppressedFormats = Collections.emptySet();
+
+  /** Set the formats to suppress. */
+  public static void setSuppressedFormats(Set<Format> formats) {
+    suppressedFormats =
+        formats == null || formats.isEmpty() ? Collections.emptySet() : EnumSet.copyOf(formats);
+  }
+
+  private static boolean isSuppressed(Format format) {
+    return suppressedFormats.contains(format);
   }
 
   static void assertThread(String object, Thread creationThread) {
@@ -105,14 +115,12 @@ public class AssertingCodec extends FilterCodec {
 
   @Override
   public TermVectorsFormat termVectorsFormat() {
-    return isSuppressed("AssertingTermVectorsFormat") ? delegate.termVectorsFormat() : vectors;
+    return isSuppressed(Format.TERM_VECTORS) ? delegate.termVectorsFormat() : vectors;
   }
 
   @Override
   public StoredFieldsFormat storedFieldsFormat() {
-    return isSuppressed("AssertingStoredFieldsFormat")
-        ? delegate.storedFieldsFormat()
-        : storedFields;
+    return isSuppressed(Format.STORED_FIELDS) ? delegate.storedFieldsFormat() : storedFields;
   }
 
   @Override
@@ -122,24 +130,22 @@ public class AssertingCodec extends FilterCodec {
 
   @Override
   public NormsFormat normsFormat() {
-    return isSuppressed("AssertingNormsFormat") ? delegate.normsFormat() : norms;
+    return isSuppressed(Format.NORMS) ? delegate.normsFormat() : norms;
   }
 
   @Override
   public LiveDocsFormat liveDocsFormat() {
-    return isSuppressed("AssertingLiveDocsFormat") ? delegate.liveDocsFormat() : liveDocs;
+    return isSuppressed(Format.LIVE_DOCS) ? delegate.liveDocsFormat() : liveDocs;
   }
 
   @Override
   public PointsFormat pointsFormat() {
-    return isSuppressed("AssertingPointsFormat") ? delegate.pointsFormat() : pointsFormat;
+    return isSuppressed(Format.POINTS) ? delegate.pointsFormat() : pointsFormat;
   }
 
   @Override
   public KnnVectorsFormat knnVectorsFormat() {
-    return isSuppressed("AssertingKnnVectorsFormat")
-        ? delegate.knnVectorsFormat()
-        : knnVectorsFormat;
+    return isSuppressed(Format.KNN_VECTORS) ? delegate.knnVectorsFormat() : knnVectorsFormat;
   }
 
   @Override

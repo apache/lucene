@@ -31,6 +31,7 @@ import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.PrintStream;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Random;
@@ -80,7 +81,7 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
   /**
    * @see SuppressAssertingFormats
    */
-  HashSet<String> avoidAssertingFormats;
+  EnumSet<AssertingCodec.Format> avoidAssertingFormats;
 
   static class ThreadNameFixingPrintStreamInfoStream extends PrintStreamInfoStream {
     public ThreadNameFixingPrintStreamInfoStream(PrintStream out) {
@@ -133,7 +134,7 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
       avoidCodecs.addAll(Arrays.asList(a.value()));
     }
 
-    avoidAssertingFormats = new HashSet<>();
+    avoidAssertingFormats = EnumSet.noneOf(AssertingCodec.Format.class);
     if (targetClass.isAnnotationPresent(SuppressAssertingFormats.class)) {
       SuppressAssertingFormats a = targetClass.getAnnotation(SuppressAssertingFormats.class);
       avoidAssertingFormats.addAll(Arrays.asList(a.value()));
