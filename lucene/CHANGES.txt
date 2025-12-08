@@ -79,6 +79,8 @@ Optimizations
 * GITHUB#15151: Use `SimScorer#score` bulk API to compute impact scores per
   block of postings. (Adrien Grand)
 
+* GITHUB#15128: Skip heavy TreeSet opts for the first group in FirstPassGroupingCollector (Binlong Gao)
+
 * GITHUB#15167: FirstPassGroupingCollector supports ignoring docs without group field (Binlong Gao)
 
 * GITHUB#15160: Increased the size used for blocks of postings from 128 to 256.
