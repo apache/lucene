@@ -75,7 +75,17 @@ public abstract class LongValuesSource implements SegmentCacheable {
    * @param reverse true if the sort should be decreasing
    */
   public SortField getSortField(boolean reverse) {
-    return new LongValuesSortField(this, reverse);
+    return new LongValuesSortField(this, reverse, 0);
+  }
+
+  /**
+   * Create a sort field based on the value of this producer
+   *
+   * @param reverse true if the sort should be decreasing
+   * @param missingValue a placeholder to use for documents with no value
+   */
+  public SortField getSortField(boolean reverse, long missingValue) {
+    return new LongValuesSortField(this, reverse, missingValue);
   }
 
   /** Convert to a DoubleValuesSource by casting long values to doubles */
@@ -275,8 +285,8 @@ public abstract class LongValuesSource implements SegmentCacheable {
 
     final LongValuesSource producer;
 
-    public LongValuesSortField(LongValuesSource producer, boolean reverse) {
-      super(producer.toString(), new LongValuesComparatorSource(producer), reverse);
+    public LongValuesSortField(LongValuesSource producer, boolean reverse, long missingValue) {
+      super(producer.toString(), new LongValuesComparatorSource(producer, missingValue), reverse);
       this.producer = producer;
     }
 
@@ -310,11 +320,10 @@ public abstract class LongValuesSource implements SegmentCacheable {
       if (producer == rewrittenSource) {
         return this;
       }
-      LongValuesSortField rewritten = new LongValuesSortField(rewrittenSource, reverse);
-      if (missingValue != null) {
-        rewritten.setMissingValue(missingValue);
-      }
-      return rewritten;
+      return new LongValuesSortField(
+          rewrittenSource,
+          reverse,
+          ((LongValuesComparatorSource) getComparatorSource()).missingValue);
     }
   }
 
@@ -326,9 +335,9 @@ public abstract class LongValuesSource implements SegmentCacheable {
     private final LongValuesSource producer;
     private long missingValue;
 
-    public LongValuesComparatorSource(LongValuesSource producer) {
+    public LongValuesComparatorSource(LongValuesSource producer, long missingValue) {
       this.producer = producer;
-      this.missingValue = 0L;
+      this.missingValue = missingValue;
     }
 
     void setMissingValue(long missingValue) {

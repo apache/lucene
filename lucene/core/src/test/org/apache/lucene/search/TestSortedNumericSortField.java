@@ -153,8 +153,9 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     writer.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    SortField sortField = new SortedNumericSortField("value", SortField.Type.INT);
-    sortField.setMissingValue(Integer.MIN_VALUE);
+    SortField sortField =
+        new SortedNumericSortField(
+            "value", SortField.Type.INT, false, SortedNumericSelector.Type.MIN, Integer.MIN_VALUE);
     Sort sort = new Sort(sortField);
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
@@ -188,8 +189,9 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     writer.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    SortField sortField = new SortedNumericSortField("value", SortField.Type.INT);
-    sortField.setMissingValue(Integer.MAX_VALUE);
+    SortField sortField =
+        new SortedNumericSortField(
+            "value", SortField.Type.INT, false, SortedNumericSelector.Type.MIN, Integer.MAX_VALUE);
     Sort sort = new Sort(sortField);
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);

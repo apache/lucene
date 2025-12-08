@@ -26,13 +26,12 @@ final class XYPointSortField extends SortField {
   final float y;
 
   XYPointSortField(String field, float x, float y) {
-    super(field, Type.CUSTOM);
+    super(field, Type.CUSTOM, false, Double.POSITIVE_INFINITY);
     if (field == null) {
       throw new IllegalArgumentException("field must not be null");
     }
     this.x = x;
     this.y = y;
-    setMissingValue(Double.POSITIVE_INFINITY);
   }
 
   @Override

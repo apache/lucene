@@ -158,7 +158,10 @@ API Changes
 * GITHUB#15422: Add a new method in DirectWriter to compute how many bytes are written for encoding a number of values using a number of
   bits per value. (Ignacio Vera)
 
-* GITHUB##15428: Add support for ExecutorServices to be passed into DirectoryReader.open() and DirectoryReader.openIfChanged() APIs (Bryce Kane)
+* GITHUB#15428: Add support for ExecutorServices to be passed into DirectoryReader.open() and DirectoryReader.openIfChanged() APIs (Bryce Kane)
+
+* GITHUB#15483: Deprecate SortField.setMissingValue() in preparation for making SortField immutable
+  in Lucene 11.0. Missing values can be set as constructor parameters.  (Alan Woodward)
 
 New Features
 ---------------------
@@ -265,6 +268,8 @@ Bug Fixes
 
 * GITHUB#15380: Fix potential EOF introduced by optimized filter iterations in MaxScoreBulkScorer. The
   approximation and the match verification could get out of sync, resulting in an EOFException. (Ben Trent)
+
+* GITHUB#15478: Fix duplicate neighbor issue by checking node existence before making reverse link. (Pulkit Gupta)
 
 Other
 ---------------------
