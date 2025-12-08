@@ -618,7 +618,6 @@ public class JVectorWriter extends KnnVectorsWriter {
 
     // These arrays may be larger than strictly necessary if there are deleted docs/missing fields
     final int totalMaxDocs = Arrays.stream(mergeState.maxDocs).reduce(0, Math::addExact);
-    final int[] liveDocCounts = new int[mergeCount];
     final DocsWithFieldSet docIds = new DocsWithFieldSet();
     final int[] ordToReaderIndex = new int[totalMaxDocs];
     final int[] ordToReaderOrd = new int[totalMaxDocs];
@@ -627,8 +626,6 @@ public class JVectorWriter extends KnnVectorsWriter {
     int ord = 0;
     final var docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
     for (var sub = docIdMerger.next(); sub != null; sub = docIdMerger.next()) {
-      final int readerIndex = sub.readerIndex;
-      liveDocCounts[readerIndex] += 1;
       docIds.add(sub.mappedDocID);
       ordToReaderIndex[ord] = sub.readerIndex;
       ordToReaderOrd[ord] = sub.index();
@@ -650,42 +647,9 @@ public class JVectorWriter extends KnnVectorsWriter {
             i -> ordToReaderIndex[i],
             i -> ordToReaderOrd[i]);
 
-    // Find the largest quantized reader to re-use its PQ codebook, if possible
-    int largestQuantizedReaderIndex = -1;
-    ProductQuantization pq = null;
-    for (int i = 0; i < liveDocCounts.length; ++i) {
-      if (liveDocCounts[i] == 0) {
-        continue;
-      }
-      final var knnReader = mergeState.knnVectorsReaders[i].unwrapReaderForField(fieldInfo.name);
-      if (knnReader instanceof JVectorReader jVectorReader) {
-        if (pq == null || liveDocCounts[i] > liveDocCounts[largestQuantizedReaderIndex]) {
-          final var maybeNewPq = jVectorReader.getProductQuantizationForField(fieldInfo.name);
-          if (maybeNewPq.isPresent()) {
-            largestQuantizedReaderIndex = i;
-            pq = maybeNewPq.get();
-          }
-        }
-      }
-    }
-
     // Perform PQ if applicable
     final PQVectors pqVectors;
-    if (pq != null) {
-      // Refine the leadingCompressor with the remaining vectors in the merge
-      ProductQuantization newPq = pq;
-      for (int i = 0; i < mergeCount; i++) {
-        if (i == largestQuantizedReaderIndex || vectors[i] == null) {
-          // Skip the reader associated with the re-used PQ codebook
-          continue;
-        }
-        final FloatVectorValues values = vectors[i];
-        final RandomAccessVectorValues randomAccessVectorValues =
-            new RandomAccessVectorValuesOverVectorValues(values);
-        newPq = newPq.refine(randomAccessVectorValues);
-      }
-      pqVectors = (PQVectors) newPq.encodeAll(ravv);
-    } else if (ravv.size() >= minimumBatchSizeForQuantization) {
+    if (ravv.size() >= minimumBatchSizeForQuantization) {
       final int M = numberOfSubspacesPerVectorSupplier.applyAsInt(ravv.dimension());
       final ProductQuantization newPQ = trainPQ(ravv, M, fieldInfo.getVectorSimilarityFunction());
       pqVectors = (PQVectors) newPQ.encodeAll(ravv);
