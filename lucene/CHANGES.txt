@@ -66,6 +66,8 @@ Improvements
 
 * GITHUB#15425: Refactoring internal HnswGraph.NodesIterator to avoid unneeded copying and sorting (Mike Sokolov)
 
+* GITHUB#15479: Add NumericDocValueRangeQuery base class to add accessor methods for field, lower and upper values (Alan Woodward)
+
 Optimizations
 ---------------------
 * GITHUB#15140: Optimize TopScoreDocCollector with TernaryLongHeap for improved performance over Binary-LongHeap. (Ramakrishna Chilaka)
