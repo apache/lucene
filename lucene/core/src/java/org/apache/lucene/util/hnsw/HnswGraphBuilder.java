@@ -370,7 +370,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       int node,
       NeighborArray candidates,
       UpdateableRandomVectorScorer scorer,
-      boolean outOfOrderInsertion)
+      boolean isLinkRepair)
       throws IOException {
     /* For each of the beamWidth nearest candidates (going from best to worst), select it only if it
      * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
@@ -379,8 +379,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     NeighborArray neighbors = hnsw.getNeighbors(level, node);
     int maxConnOnLevel = level == 0 ? M * 2 : M;
     boolean[] mask =
-        selectAndLinkDiverse(
-            node, neighbors, candidates, maxConnOnLevel, scorer, outOfOrderInsertion);
+        selectAndLinkDiverse(node, neighbors, candidates, maxConnOnLevel, scorer, isLinkRepair);
 
     // Link the selected nodes to the new node, and the new node to the selected nodes (again
     // applying diversity heuristic)
@@ -395,16 +394,44 @@ public class HnswGraphBuilder implements HnswBuilder {
       if (hnswLock != null) {
         Lock lock = hnswLock.write(level, nbr);
         try {
-          NeighborArray nbrsOfNbr = getGraph().getNeighbors(level, nbr);
-          nbrsOfNbr.addAndEnsureDiversity(node, candidates.getScores(i), nbr, scorer);
+          updateNeighbor(
+              getGraph().getNeighbors(level, nbr),
+              node,
+              candidates.getScores(i),
+              nbr,
+              scorer,
+              isLinkRepair);
         } finally {
           lock.unlock();
         }
       } else {
-        NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
-        nbrsOfNbr.addAndEnsureDiversity(node, candidates.getScores(i), nbr, scorer);
+        updateNeighbor(
+            hnsw.getNeighbors(level, nbr),
+            node,
+            candidates.getScores(i),
+            nbr,
+            scorer,
+            isLinkRepair);
       }
     }
+  }
+
+  private void updateNeighbor(
+      NeighborArray nbrsOfNbr,
+      int node,
+      float score,
+      int nbr,
+      UpdateableRandomVectorScorer scorer,
+      boolean isLinkRepair)
+      throws IOException {
+    // Only check for duplicates during link repair to avoid performance overhead during normal
+    // construction
+    if (isLinkRepair) {
+      for (int j = 0; j < nbrsOfNbr.size(); j++) {
+        if (nbrsOfNbr.nodes()[j] == node) return;
+      }
+    }
+    nbrsOfNbr.addAndEnsureDiversity(node, score, nbr, scorer);
   }
 
   /**
@@ -417,7 +444,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       NeighborArray candidates,
       int maxConnOnLevel,
       UpdateableRandomVectorScorer scorer,
-      boolean outOfOrderInsertion)
+      boolean isLinkRepair)
       throws IOException {
     boolean[] mask = new boolean[candidates.size()];
     // Select the best maxConnOnLevel neighbors of the new node, applying the diversity heuristic
@@ -435,7 +462,7 @@ public class HnswGraphBuilder implements HnswBuilder {
         mask[i] = true;
         // here we don't need to lock, because there's no incoming link so no others is able to
         // discover this node such that no others will modify this neighbor array as well
-        if (outOfOrderInsertion) {
+        if (isLinkRepair) {
           neighbors.addOutOfOrder(cNode, cScore);
         } else {
           neighbors.addInOrder(cNode, cScore);
