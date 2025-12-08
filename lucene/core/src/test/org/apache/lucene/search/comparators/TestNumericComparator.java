@@ -64,8 +64,8 @@ public class TestNumericComparator extends LuceneTestCase {
           doc.add(new NumericDocValuesField("double_field_2", i));
 
           writer.addDocument(doc);
-          writer.forceMerge(1);
         }
+        writer.forceMerge(1);
         try (var reader = DirectoryReader.open(writer)) {
           assertEquals(1, reader.leaves().size());
           var leafContext = reader.leaves().get(0);
