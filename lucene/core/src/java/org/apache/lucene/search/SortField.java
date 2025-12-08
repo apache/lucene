@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Comparator;
 import java.util.Objects;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.FloatPoint;
@@ -34,7 +33,6 @@ import org.apache.lucene.search.comparators.LongComparator;
 import org.apache.lucene.search.comparators.TermOrdValComparator;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NumericUtils;
 
 /**
@@ -502,16 +500,6 @@ public class SortField {
   @Override
   public int hashCode() {
     return Objects.hash(field, type, reverse, comparatorSource, missingValue);
-  }
-
-  private Comparator<BytesRef> bytesComparator = Comparator.naturalOrder();
-
-  public void setBytesComparator(Comparator<BytesRef> b) {
-    bytesComparator = b;
-  }
-
-  public Comparator<BytesRef> getBytesComparator() {
-    return bytesComparator;
   }
 
   /**
