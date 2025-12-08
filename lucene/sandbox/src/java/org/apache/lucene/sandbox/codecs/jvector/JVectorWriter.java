@@ -647,28 +647,25 @@ public class JVectorWriter extends KnnVectorsWriter {
             i -> ordToReaderIndex[i],
             i -> ordToReaderOrd[i]);
 
+    final BuildScoreProvider buildScoreProvider;
+    final var similarityFunction =
+        JVectorFormat.toJVectorSimilarity(fieldInfo.getVectorSimilarityFunction());
+
     // Perform PQ if applicable
     final PQVectors pqVectors;
     if (ravv.size() >= minimumBatchSizeForQuantization) {
       final int M = numberOfSubspacesPerVectorSupplier.applyAsInt(ravv.dimension());
       final ProductQuantization newPQ = trainPQ(ravv, M, fieldInfo.getVectorSimilarityFunction());
       pqVectors = (PQVectors) newPQ.encodeAll(ravv);
-    } else {
-      pqVectors = null;
-    }
-
-    final BuildScoreProvider buildScoreProvider;
-    final var similarityFunction =
-        JVectorFormat.toJVectorSimilarity(fieldInfo.getVectorSimilarityFunction());
-    if (pqVectors != null) {
-      // Re-use PQ codebooks to build a new graph from scratch
       buildScoreProvider = BuildScoreProvider.pqBuildScoreProvider(similarityFunction, pqVectors);
       // Pre-init the diversity provider here to avoid doing it lazily (as it could block the SIMD
       // threads)
       buildScoreProvider.diversityProviderFor(0);
     } else {
+      pqVectors = null;
       buildScoreProvider = BuildScoreProvider.randomAccessScoreProvider(ravv, similarityFunction);
     }
+
     final var graphNodeIdToDocMap = new GraphNodeIdToDocMap(docIds);
     final var graph =
         getGraph(buildScoreProvider, ravv, fieldInfo, mergeState.intraMergeTaskExecutor);
