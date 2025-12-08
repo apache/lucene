@@ -651,11 +651,15 @@ public class JVectorWriter extends KnnVectorsWriter {
             i -> ordToReaderOrd[i]);
 
     // Find the largest quantized reader to re-use its PQ codebook, if possible
-    int largestQuantizedReaderIndex = 0;
+    int largestQuantizedReaderIndex = -1;
     ProductQuantization pq = null;
     for (int i = 0; i < liveDocCounts.length; ++i) {
-      if (liveDocCounts[i] > liveDocCounts[largestQuantizedReaderIndex]) {
-        if (mergeState.knnVectorsReaders[i] instanceof JVectorReader jVectorReader) {
+      if (liveDocCounts[i] == 0) {
+        continue;
+      }
+      final var knnReader = mergeState.knnVectorsReaders[i].unwrapReaderForField(fieldInfo.name);
+      if (knnReader instanceof JVectorReader jVectorReader) {
+        if (pq == null || liveDocCounts[i] > liveDocCounts[largestQuantizedReaderIndex]) {
           final var maybeNewPq = jVectorReader.getProductQuantizationForField(fieldInfo.name);
           if (maybeNewPq.isPresent()) {
             largestQuantizedReaderIndex = i;
