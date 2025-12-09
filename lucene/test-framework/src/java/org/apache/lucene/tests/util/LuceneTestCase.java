@@ -367,8 +367,10 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /**
-   * Annotation for test classes that should avoid specific asserting formats within the Asserting
-   * codec (e.g., AssertingStoredFieldsFormat) while keeping other asserting formats active.
+   * Annotation for test classes that should avoid specific asserting formats within the {@link
+   * AssertingCodec} while keeping other asserting formats active.
+   *
+   * @see org.apache.lucene.tests.codecs.asserting.AssertingCodec.Format
    */
   @Documented
   @Inherited

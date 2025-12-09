@@ -16,9 +16,10 @@
  */
 package org.apache.lucene.tests.codecs.asserting;
 
-import java.util.Collections;
+import com.carrotsearch.randomizedtesting.RandomizedContext;
+import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -31,6 +32,7 @@ import org.apache.lucene.codecs.TermVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 /** Acts like the default codec but with additional asserts. */
@@ -46,16 +48,9 @@ public class AssertingCodec extends FilterCodec {
     KNN_VECTORS
   }
 
-  @SuppressWarnings("NonFinalStaticField")
-  private static volatile Set<Format> suppressedFormats = Collections.emptySet();
+  private final EnumSet<Format> suppressedFormats;
 
-  /** Set the formats to suppress. */
-  public static void setSuppressedFormats(Set<Format> formats) {
-    suppressedFormats =
-        formats == null || formats.isEmpty() ? Collections.emptySet() : EnumSet.copyOf(formats);
-  }
-
-  private static boolean isSuppressed(Format format) {
+  private boolean isSuppressed(Format format) {
     return suppressedFormats.contains(format);
   }
 
@@ -107,6 +102,24 @@ public class AssertingCodec extends FilterCodec {
 
   public AssertingCodec() {
     super("Asserting", TestUtil.getDefaultCodec());
+
+    var suppressedFormats = EnumSet.noneOf(AssertingCodec.Format.class);
+    Class<?> targetClass;
+    try {
+      targetClass = RandomizedContext.current().getTargetClass();
+    } catch (IllegalStateException _) {
+      // Not under any randomized context.
+      targetClass = null;
+    }
+
+    if (targetClass != null
+        && targetClass.isAnnotationPresent(LuceneTestCase.SuppressAssertingFormats.class)) {
+      suppressedFormats.addAll(
+          Arrays.asList(
+              targetClass.getAnnotation(LuceneTestCase.SuppressAssertingFormats.class).value()));
+    }
+
+    this.suppressedFormats = suppressedFormats;
   }
 
   @Override
@@ -151,7 +164,13 @@ public class AssertingCodec extends FilterCodec {
 
   @Override
   public String toString() {
-    return "Asserting(" + delegate + ")";
+    return "Asserting("
+        + delegate
+        + (suppressedFormats.isEmpty()
+            ? ""
+            : ", suppressed: "
+                + suppressedFormats.stream().map(Enum::toString).collect(Collectors.joining(", ")))
+        + ")";
   }
 
   /**
