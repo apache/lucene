@@ -171,6 +171,7 @@ import org.apache.lucene.store.MergeInfo;
 import org.apache.lucene.store.NRTCachingDirectory;
 import org.apache.lucene.store.ReadOnceHint;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.AlcoholicMergePolicy;
 import org.apache.lucene.tests.index.AssertingDirectoryReader;
 import org.apache.lucene.tests.index.AssertingLeafReader;
@@ -363,6 +364,18 @@ public abstract class LuceneTestCase extends Assert {
   @Target(ElementType.TYPE)
   public @interface SuppressFileSystems {
     String[] value();
+  }
+
+  /**
+   * Annotation for test classes that should avoid specific asserting formats within the Asserting
+   * codec (e.g., AssertingStoredFieldsFormat) while keeping other asserting formats active.
+   */
+  @Documented
+  @Inherited
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target(ElementType.TYPE)
+  public @interface SuppressAssertingFormats {
+    AssertingCodec.Format[] value();
   }
 
   /**
