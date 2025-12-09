@@ -140,7 +140,7 @@ public class TestFaissKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
   }
 
   @Override
-  protected boolean isScalarQuantizedVectorsFormat() {
+  protected boolean supportsFloatVectorFallback() {
     return false;
   }
 }

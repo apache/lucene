@@ -66,7 +66,7 @@ public class TestLucene99HnswScalarQuantizedVectorsFormat extends BaseKnnVectors
   }
 
   @Override
-  protected boolean isScalarQuantizedVectorsFormat() {
+  protected boolean supportsFloatVectorFallback() {
     return false;
   }
 }

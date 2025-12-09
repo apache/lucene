@@ -43,7 +43,7 @@ public class TestSimpleTextKnnVectorsFormat extends BaseKnnVectorsFormatTestCase
   }
 
   @Override
-  protected boolean isScalarQuantizedVectorsFormat() {
+  protected boolean supportsFloatVectorFallback() {
     return false;
   }
 }

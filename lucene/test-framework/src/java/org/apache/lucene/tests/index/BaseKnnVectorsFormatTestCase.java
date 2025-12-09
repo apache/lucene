@@ -132,7 +132,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     similarityFunction = randomSimilarity();
   }
 
-  protected abstract boolean isScalarQuantizedVectorsFormat();
+  protected abstract boolean supportsFloatVectorFallback();
 
   protected int getQuantizationBits() {
     return 8; // Default value, override in subclasses if needed
@@ -1950,7 +1950,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
    * when the original raw vector file is empty or corrupted.
    */
   public void testReadQuantizedVectorWithEmptyRawVectors() throws Exception {
-    assumeTrue("Test only applies to scalar quantized formats", isScalarQuantizedVectorsFormat());
+    assumeTrue("Test only applies to scalar quantized formats", supportsFloatVectorFallback());
 
     String vectorFieldName = "vec1";
     int numVectors = 1 + random().nextInt(50);
