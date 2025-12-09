@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.equalTo;
+
 import java.io.IOException;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
@@ -79,8 +81,7 @@ public class TestSort extends LuceneTestCase {
     sortField2 = new SortField("foo", SortField.Type.LONG);
     assertDifferent(new Sort(sortField1), new Sort(sortField2));
 
-    sortField2 = new SortField("foo", SortField.Type.STRING);
-    sortField2.setMissingValue(SortField.STRING_FIRST);
+    sortField2 = new SortField("foo", SortField.Type.STRING, false, SortField.STRING_FIRST);
     assertDifferent(new Sort(sortField1), new Sort(sortField2));
 
     sortField2 = new SortField("foo", SortField.Type.STRING, false);
@@ -88,6 +89,18 @@ public class TestSort extends LuceneTestCase {
 
     sortField2 = new SortField("foo", SortField.Type.STRING, true);
     assertDifferent(new Sort(sortField1), new Sort(sortField2));
+  }
+
+  public void testStringMissingValues() {
+    Exception e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              new Sort(new SortField("foo", SortField.Type.STRING, false, "invalid value"));
+            });
+    assertThat(
+        e.getMessage(),
+        equalTo("For Type.STRING, missing value must be either STRING_FIRST or STRING_LAST"));
   }
 
   /** Tests sorting on type string */
@@ -319,8 +332,7 @@ public class TestSort extends LuceneTestCase {
     writer.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    SortField sortField = new SortField("value", SortField.Type.INT);
-    sortField.setMissingValue(Integer.MAX_VALUE);
+    SortField sortField = new SortField("value", SortField.Type.INT, false, Integer.MAX_VALUE);
     Sort sort = new Sort(sortField);
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
@@ -451,8 +463,7 @@ public class TestSort extends LuceneTestCase {
     writer.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    SortField sortField = new SortField("value", SortField.Type.LONG);
-    sortField.setMissingValue(Long.MAX_VALUE);
+    SortField sortField = new SortField("value", SortField.Type.LONG, false, Long.MAX_VALUE);
     Sort sort = new Sort(sortField);
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
@@ -583,8 +594,7 @@ public class TestSort extends LuceneTestCase {
     writer.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    SortField sortField = new SortField("value", SortField.Type.FLOAT);
-    sortField.setMissingValue(Float.MAX_VALUE);
+    SortField sortField = new SortField("value", SortField.Type.FLOAT, false, Float.MAX_VALUE);
     Sort sort = new Sort(sortField);
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
@@ -770,8 +780,7 @@ public class TestSort extends LuceneTestCase {
     writer.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    SortField sortField = new SortField("value", SortField.Type.DOUBLE);
-    sortField.setMissingValue(Double.MAX_VALUE);
+    SortField sortField = new SortField("value", SortField.Type.DOUBLE, false, Double.MAX_VALUE);
     Sort sort = new Sort(sortField);
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);

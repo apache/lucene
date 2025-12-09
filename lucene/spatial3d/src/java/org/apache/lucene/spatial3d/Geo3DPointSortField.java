@@ -29,7 +29,7 @@ final class Geo3DPointSortField extends SortField {
 
   Geo3DPointSortField(
       final String field, final PlanetModel planetModel, final GeoDistanceShape distanceShape) {
-    super(field, SortField.Type.CUSTOM);
+    super(field, SortField.Type.CUSTOM, false, Double.POSITIVE_INFINITY);
     if (field == null) {
       throw new IllegalArgumentException("field must not be null");
     }
@@ -38,7 +38,6 @@ final class Geo3DPointSortField extends SortField {
     }
     this.distanceShape = distanceShape;
     this.planetModel = planetModel;
-    setMissingValue(Double.POSITIVE_INFINITY);
   }
 
   @Override

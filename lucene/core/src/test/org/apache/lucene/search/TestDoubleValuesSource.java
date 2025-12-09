@@ -105,16 +105,14 @@ public class TestDoubleValuesSource extends LuceneTestCase {
     DoubleValuesSource onefield = DoubleValuesSource.fromDoubleField("onefield");
 
     // sort decreasing, missing last
-    SortField oneFieldSort = onefield.getSortField(true);
-    oneFieldSort.setMissingValue(Double.MIN_VALUE);
+    SortField oneFieldSort = onefield.getSortField(true, Double.MIN_VALUE);
 
     TopDocs results = searcher.search(new MatchAllDocsQuery(), 1, new Sort(oneFieldSort));
     FieldDoc first = (FieldDoc) results.scoreDocs[0];
     assertEquals(LEAST_DOUBLE_VALUE, first.fields[0]);
 
     // sort increasing, missing last
-    oneFieldSort = onefield.getSortField(false);
-    oneFieldSort.setMissingValue(Double.MAX_VALUE);
+    oneFieldSort = onefield.getSortField(false, Double.MAX_VALUE);
 
     results = searcher.search(new MatchAllDocsQuery(), 1, new Sort(oneFieldSort));
     first = (FieldDoc) results.scoreDocs[0];
