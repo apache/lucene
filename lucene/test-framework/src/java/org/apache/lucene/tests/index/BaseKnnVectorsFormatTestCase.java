@@ -134,11 +134,15 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
   protected abstract boolean supportsFloatVectorFallback();
 
+  /**
+   * Returns the number of bits used for quantization to compute epsilon tolerance of float
+   * quantization errors in test cases. Default is 8 bits, override in subclasses if needed
+   */
   protected int getQuantizationBits() {
-    return 8; // Default value, override in subclasses if needed
+    return 8;
   }
 
-  protected Codec getCodecForQuantizedTest() {
+  protected Codec getCodecForFloatVectorFallbackTest() {
     return getCodec(); // Default implementation
   }
 
@@ -1934,10 +1938,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     for (int i = 0; i < numVectors; i++) {
       float[] vec = randomVector(dim);
       if (normalize) {
-        float[] copy = new float[vec.length];
-        System.arraycopy(vec, 0, copy, 0, copy.length);
-        VectorUtil.l2normalize(copy);
-        vec = copy;
+        VectorUtil.l2normalize(vec);
       }
       vectors.add(vec);
     }
@@ -1973,7 +1974,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                     .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
                     .setMergePolicy(NoMergePolicy.INSTANCE)
                     .setUseCompoundFile(false)
-                    .setCodec(getCodecForQuantizedTest()))) {
+                    .setCodec(getCodecForFloatVectorFallbackTest()))) {
       dir.setCheckIndexOnClose(false);
 
       for (int i = 0; i < numVectors; i++) {

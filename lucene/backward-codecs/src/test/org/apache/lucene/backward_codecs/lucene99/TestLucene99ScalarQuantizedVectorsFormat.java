@@ -257,7 +257,7 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
   }
 
   @Override
-  protected Codec getCodecForQuantizedTest() {
+  protected Codec getCodecForFloatVectorFallbackTest() {
     return getCodec(1f);
   }
 }
