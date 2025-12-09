@@ -77,11 +77,6 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
    */
   HashSet<String> avoidCodecs;
 
-  /**
-   * @see LuceneTestCase.SuppressAssertingFormats
-   */
-  EnumSet<AssertingCodec.Format> avoidAssertingFormats;
-
   static class ThreadNameFixingPrintStreamInfoStream extends PrintStreamInfoStream {
     public ThreadNameFixingPrintStreamInfoStream(PrintStream out) {
       super(out);
