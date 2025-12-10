@@ -222,13 +222,13 @@ public class TestTopFieldCollector extends LuceneTestCase {
 
         scorer.score = 3;
         if (totalHitsThreshold < 3) {
-          expectThrows(CollectionTerminatedException.class, () -> leafCollector2.collect(1));
+          expectThrows(CollectionTerminatedException.class, () -> leafCollector2.collect(0));
           TopDocs topDocs = collector.topDocs();
           assertEquals(
               new TotalHits(3, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO), topDocs.totalHits);
           continue;
         } else {
-          leafCollector2.collect(1);
+          leafCollector2.collect(0);
         }
 
         scorer.score = 4;
@@ -271,7 +271,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
     IndexWriter w =
         new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE));
     Document doc = new Document();
-    w.addDocuments(Arrays.asList(doc, doc, doc, doc));
+    w.addDocuments(Arrays.asList(doc, doc, doc, doc, doc));
     w.flush();
     w.addDocuments(Arrays.asList(doc, doc));
     w.flush();
