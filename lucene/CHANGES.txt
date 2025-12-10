@@ -253,6 +253,8 @@ Optimizations
 * GITHUB#15474: Use bulk scoring provided by RandomVectorScorers for new scalar quantized formats provided through
     Lucene104ScalarQuantizedVectorsFormat and Lucene104HnswScalarQuantizedVectorsFormat (Ben Trent)
 
+* GITHUB#15494: Set minimum competitive score in FirstPassGroupingCollector (Binlong Gao)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
