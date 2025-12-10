@@ -107,7 +107,9 @@ public class AssertingCodec extends FilterCodec {
     Class<?> targetClass;
     try {
       targetClass = RandomizedContext.current().getTargetClass();
-    } catch (IllegalStateException _) {
+    } catch (
+        @SuppressWarnings("unused")
+        IllegalStateException ignored) {
       // Not under any randomized context.
       targetClass = null;
     }
