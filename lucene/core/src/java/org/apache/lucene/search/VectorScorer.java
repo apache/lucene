@@ -83,7 +83,7 @@ public interface VectorScorer {
     @Override
     public float nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
         throws IOException {
-      assert upTo > 0 && upTo <= DocIdSetIterator.NO_MORE_DOCS;
+      assert upTo > 0;
       buffer.growNoCopy(DEFAULT_BULK_BATCH_SIZE);
       int size = 0;
       float maxScore = Float.NEGATIVE_INFINITY;
@@ -130,7 +130,7 @@ public interface VectorScorer {
               ? iterator
               : ConjunctionUtils.createConjunction(List.of(matchingDocs, iterator), List.of());
       return (upTo, liveDocs, buffer) -> {
-        assert upTo > 0 && upTo <= DocIdSetIterator.NO_MORE_DOCS;
+        assert upTo > 0;
         if (matches.docID() == -1) {
           matches.nextDoc();
         }
@@ -162,7 +162,7 @@ public interface VectorScorer {
         @Override
         public float nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
             throws IOException {
-          assert upTo > 0 && upTo <= DocIdSetIterator.NO_MORE_DOCS;
+          assert upTo > 0;
           if (matches.docID() == -1) {
             matches.nextDoc();
           }
