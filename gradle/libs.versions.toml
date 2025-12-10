@@ -11,7 +11,7 @@ commons-compress = "1.28.0"
 # See ecj-lint.gradle (used for more linting).
 ecj = "I20250926-1800"
 # java linting
-errorprone = "2.44.0"
+errorprone = "2.45.0"
 # markdown documentation generation
 flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
