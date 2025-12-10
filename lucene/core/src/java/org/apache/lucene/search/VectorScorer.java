@@ -59,30 +59,14 @@ public interface VectorScorer {
    * @lucene.experimental
    */
   default Bulk bulk(DocIdSetIterator matchingDocs) throws IOException {
-    return new DefaultBulkScorer(matchingDocs, this);
-  }
-
-  class DefaultBulkScorer implements Bulk {
-    private final VectorScorer vectorScorer;
-    private final DocIdSetIterator iterator;
-
-    public DefaultBulkScorer(DocIdSetIterator matchingDocs, VectorScorer vectorScorer)
-        throws IOException {
-      final DocIdSetIterator iterator =
-          matchingDocs == null
-              ? vectorScorer.iterator()
-              : ConjunctionUtils.createConjunction(
-                  List.of(matchingDocs, vectorScorer.iterator()), List.of());
-      if (iterator.docID() == -1) {
-        iterator.nextDoc();
-      }
-      this.vectorScorer = vectorScorer;
-      this.iterator = iterator;
+    final DocIdSetIterator iterator =
+        matchingDocs == null
+            ? iterator()
+            : ConjunctionUtils.createConjunction(List.of(matchingDocs, iterator()), List.of());
+    if (iterator.docID() == -1) {
+      iterator.nextDoc();
     }
-
-    @Override
-    public float nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
-        throws IOException {
+    return (upTo, liveDocs, buffer) -> {
       assert upTo > 0;
       buffer.growNoCopy(DEFAULT_BULK_BATCH_SIZE);
       int size = 0;
@@ -92,14 +76,14 @@ public interface VectorScorer {
           doc = iterator.nextDoc()) {
         if (liveDocs == null || liveDocs.get(doc)) {
           buffer.docs[size] = doc;
-          buffer.features[size] = vectorScorer.score();
+          buffer.features[size] = score();
           maxScore = Math.max(maxScore, buffer.features[size]);
           ++size;
         }
       }
       buffer.size = size;
       return maxScore;
-    }
+    };
   }
 
   /**
