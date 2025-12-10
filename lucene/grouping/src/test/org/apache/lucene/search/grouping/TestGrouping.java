@@ -278,7 +278,8 @@ public class TestGrouping extends LuceneTestCase {
 
   public void testTotalHitsThreshold() throws Exception {
     Directory dir = newDirectory();
-    RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig(new MockAnalyzer(random())));
+    RandomIndexWriter w =
+        new RandomIndexWriter(random(), dir, newIndexWriterConfig(new MockAnalyzer(random())));
 
     // Add documents with and without group field
     Document doc = new Document();
@@ -300,8 +301,9 @@ public class TestGrouping extends LuceneTestCase {
     w.close();
 
     // Test ignoreDocsWithoutGroupField = true
-    FirstPassGroupingCollector<BytesRef> collector1 = new FirstPassGroupingCollector<>(
-        new TermGroupSelector("group"), Sort.RELEVANCE, 10, true, Integer.MAX_VALUE);
+    FirstPassGroupingCollector<BytesRef> collector1 =
+        new FirstPassGroupingCollector<>(
+            new TermGroupSelector("group"), Sort.RELEVANCE, 10, true, Integer.MAX_VALUE);
     searcher.search(new TermQuery(new Term("content", "test")), collector1);
 
     Collection<SearchGroup<BytesRef>> groups1 = collector1.getTopGroups(0);
@@ -310,8 +312,9 @@ public class TestGrouping extends LuceneTestCase {
     assertEquals(TotalHits.Relation.EQUAL_TO, collector1.getTotalHitsRelation());
 
     // Test ignoreDocsWithoutGroupField = false
-    FirstPassGroupingCollector<BytesRef> collector2 = new FirstPassGroupingCollector<>(
-        new TermGroupSelector("group"), Sort.RELEVANCE, 10, false, Integer.MAX_VALUE);
+    FirstPassGroupingCollector<BytesRef> collector2 =
+        new FirstPassGroupingCollector<>(
+            new TermGroupSelector("group"), Sort.RELEVANCE, 10, false, Integer.MAX_VALUE);
     searcher.search(new TermQuery(new Term("content", "test")), collector2);
 
     Collection<SearchGroup<BytesRef>> groups2 = collector2.getTopGroups(0);
@@ -319,12 +322,14 @@ public class TestGrouping extends LuceneTestCase {
     assertEquals(3, collector2.getTotalHitCount());
 
     // Test totalHitsThreshold with score-based sorting
-    FirstPassGroupingCollector<BytesRef> collector3 = new FirstPassGroupingCollector<>(
-        new TermGroupSelector("group"), Sort.RELEVANCE, 10, false, 1);
+    FirstPassGroupingCollector<BytesRef> collector3 =
+        new FirstPassGroupingCollector<>(
+            new TermGroupSelector("group"), Sort.RELEVANCE, 10, false, 1);
     searcher.search(new TermQuery(new Term("content", "test")), collector3);
 
     assertEquals(ScoreMode.TOP_SCORES, collector3.scoreMode());
-    assertTrue(collector3.getTotalHitCount() <= 3); // May skip some docs due to min competitive score
+    assertTrue(
+        collector3.getTotalHitCount() <= 3); // May skip some docs due to min competitive score
 
     searcher.getIndexReader().close();
     dir.close();
@@ -347,7 +352,8 @@ public class TestGrouping extends LuceneTestCase {
 
   public void testSetMinCompetitiveScore() throws Exception {
     Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    IndexWriter w =
+        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
 
     // Add documents with different scores
     Document doc = new Document();
@@ -386,8 +392,9 @@ public class TestGrouping extends LuceneTestCase {
     w.close();
 
     // Test with score-based sorting and low totalHitsThreshold to enable min competitive score
-    FirstPassGroupingCollector<BytesRef> collector = new FirstPassGroupingCollector<>(
-        new TermGroupSelector("group"), Sort.RELEVANCE, 2, false, 2);
+    FirstPassGroupingCollector<BytesRef> collector =
+        new FirstPassGroupingCollector<>(
+            new TermGroupSelector("group"), Sort.RELEVANCE, 2, false, 2);
 
     TestScorer scorer = new TestScorer();
     LeafCollector leafCollector = collector.getLeafCollector(reader.leaves().get(0));

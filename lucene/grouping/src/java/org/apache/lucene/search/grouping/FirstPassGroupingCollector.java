@@ -119,10 +119,10 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
    * @param topNGroups How many top groups to keep.
    * @param ignoreDocsWithoutGroupField if true, ignore documents that don't have the group field
    *     instead of putting them in a null group
-   * @param totalHitsThreshold totalHitsThreshold the number of hits to collect accurately. If the number of hits is
-   *     greater than threshold, hits beyond the threshold will be collected as well, but the
-   *     accuracy of the total hits will be reduced. This is used to reduce the memory footprint of
-   *     the collector when collecting hits beyond the threshold. If set to {@link
+   * @param totalHitsThreshold totalHitsThreshold the number of hits to collect accurately. If the
+   *     number of hits is greater than threshold, hits beyond the threshold will be collected as
+   *     well, but the accuracy of the total hits will be reduced. This is used to reduce the memory
+   *     footprint of the collector when collecting hits beyond the threshold. If set to {@link
    *     Integer#MAX_VALUE}, total hits is calculated precisely.
    */
   @SuppressWarnings({"unchecked", "rawtypes"})
@@ -130,7 +130,8 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       GroupSelector<T> groupSelector,
       Sort groupSort,
       int topNGroups,
-      boolean ignoreDocsWithoutGroupField, int totalHitsThreshold) {
+      boolean ignoreDocsWithoutGroupField,
+      int totalHitsThreshold) {
     this.groupSelector = groupSelector;
     this.ignoreDocsWithoutGroupField = ignoreDocsWithoutGroupField;
     if (topNGroups < 1) {
@@ -458,7 +459,10 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
   }
 
   private void updateMinCompetitiveScore() throws IOException {
-    if (canSetMinScore && orderedGroups != null && scorer != null && totalHitCount > totalHitsThreshold) {
+    if (canSetMinScore
+        && orderedGroups != null
+        && scorer != null
+        && totalHitCount > totalHitsThreshold) {
       // Get the score of the bottom group
       CollectedSearchGroup<T> bottomGroup = orderedGroups.last();
       float bottomScore = (float) comparators[0].value(bottomGroup.comparatorSlot);
