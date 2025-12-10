@@ -22,6 +22,7 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVe
 import io.github.jbellis.jvector.graph.GraphIndexBuilder;
 import io.github.jbellis.jvector.graph.ImmutableGraphIndex;
 import io.github.jbellis.jvector.graph.ListRandomAccessVectorValues;
+import io.github.jbellis.jvector.graph.NodeArray;
 import io.github.jbellis.jvector.graph.OnHeapGraphIndex;
 import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
 import io.github.jbellis.jvector.graph.disk.OnDiskSequentialGraphIndexWriter;
@@ -30,6 +31,7 @@ import io.github.jbellis.jvector.graph.disk.feature.Feature;
 import io.github.jbellis.jvector.graph.disk.feature.FeatureId;
 import io.github.jbellis.jvector.graph.disk.feature.InlineVectors;
 import io.github.jbellis.jvector.graph.similarity.BuildScoreProvider;
+import io.github.jbellis.jvector.graph.similarity.ScoreFunction;
 import io.github.jbellis.jvector.graph.similarity.SearchScoreProvider;
 import io.github.jbellis.jvector.quantization.MutablePQVectors;
 import io.github.jbellis.jvector.quantization.PQVectors;
@@ -45,10 +47,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.OptionalInt;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.function.IntFunction;
 import java.util.function.IntUnaryOperator;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -65,6 +73,7 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 
@@ -617,6 +626,7 @@ public class JVectorWriter extends KnnVectorsWriter {
     }
 
     // These arrays may be larger than strictly necessary if there are deleted docs/missing fields
+    final int[] liveDocCounts = new int[mergeCount];
     final int totalMaxDocs = Arrays.stream(mergeState.maxDocs).reduce(0, Math::addExact);
     final DocsWithFieldSet docIds = new DocsWithFieldSet();
     final int[] ordToReaderIndex = new int[totalMaxDocs];
@@ -627,6 +637,7 @@ public class JVectorWriter extends KnnVectorsWriter {
     final var docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
     for (var sub = docIdMerger.next(); sub != null; sub = docIdMerger.next()) {
       docIds.add(sub.mappedDocID);
+      liveDocCounts[sub.readerIndex] += 1;
       ordToReaderIndex[ord] = sub.readerIndex;
       ordToReaderOrd[ord] = sub.index();
       ord += 1;
@@ -637,6 +648,21 @@ public class JVectorWriter extends KnnVectorsWriter {
       // Avoid writing an empty graph
       return;
     }
+
+    JVectorReader largestReader = null;
+    int largestGraphLiveCount = 0;
+    int largestGraphIndexSoFar = -1;
+    for (int i = 0; i < mergeCount; ++i) {
+      if (liveDocCounts[i] <= largestGraphLiveCount) {
+        continue;
+      } else if (mergeState.knnVectorsReaders[i].unwrapReaderForField(fieldInfo.name)
+          instanceof JVectorReader jVectorReader) {
+        largestGraphIndexSoFar = i;
+        largestGraphLiveCount = liveDocCounts[i];
+        largestReader = jVectorReader;
+      }
+    }
+    final int largestGraphIndex = largestGraphIndexSoFar;
 
     // Make a RandomAccessVectorValues instance using the new graph ordinals
     final var ravv =
@@ -667,9 +693,164 @@ public class JVectorWriter extends KnnVectorsWriter {
     }
 
     final var graphNodeIdToDocMap = new GraphNodeIdToDocMap(docIds);
-    final var graph =
-        getGraph(buildScoreProvider, ravv, fieldInfo, mergeState.intraMergeTaskExecutor);
+    final GraphIndexBuilder graphIndexBuilder;
+    if (largestReader != null) {
+      final ImmutableGraphIndex largestGraph = largestReader.getIndex(fieldInfo.name);
+      final GraphNodeIdToDocMap largestGraphDocIdMap = largestReader.getDocIdMap(fieldInfo.name);
+      final var maxDocs = mergeState.maxDocs[largestGraphIndex];
+      final Bits liveDocs =
+          mergeState.liveDocs[largestGraphIndex] != null
+              ? mergeState.liveDocs[largestGraphIndex]
+              : new Bits.MatchAllBits(maxDocs);
+      assert liveDocs.length() == maxDocs
+          : "maxDocs=" + maxDocs + " but liveDocs=" + liveDocs.length();
+
+      final IntFunction<OptionalInt> ordMapper =
+          oldOrd -> {
+            Objects.checkIndex(oldOrd, largestGraphDocIdMap.getMaxOrd() + 1);
+            final int oldDocId = largestGraphDocIdMap.getLuceneDocId(oldOrd);
+
+            Objects.checkIndex(oldDocId, liveDocs.length());
+            if (false == liveDocs.get(oldDocId)) {
+              return OptionalInt.empty();
+            }
+
+            final int newDocId = mergeState.docMaps[largestGraphIndex].get(oldDocId);
+            Objects.checkIndex(newDocId, graphNodeIdToDocMap.getMaxDocId() + 1);
+
+            final int newOrd = graphNodeIdToDocMap.getJVectorNodeId(newDocId);
+            Objects.checkIndex(newOrd, totalLiveDocsCount);
+
+            assert ordToReaderIndex[newOrd] == largestGraphIndex;
+            assert ordToReaderOrd[newOrd] == oldOrd;
+            return OptionalInt.of(newOrd);
+          };
+      graphIndexBuilder =
+          createGraphIndexBuilderFromExisting(
+              largestGraph,
+              ordMapper,
+              totalLiveDocsCount,
+              buildScoreProvider,
+              mergeState.intraMergeTaskExecutor);
+    } else {
+      graphIndexBuilder =
+          new GraphIndexBuilder(
+              buildScoreProvider,
+              dimension,
+              maxDegrees,
+              beamWidth,
+              degreeOverflow,
+              alpha,
+              hierarchyEnabled,
+              true);
+    }
+
+    // parallel graph construction from the merge documents Ids
+    final var vv = ravv.threadLocalSupplier();
+    IntStream.range(0, ravv.size())
+        .filter(o -> ordToReaderIndex[o] != largestGraphIndex)
+        .mapToObj(
+            o ->
+                CompletableFuture.runAsync(
+                    () -> graphIndexBuilder.addGraphNode(o, vv.get().getVector(o)),
+                    mergeState.intraMergeTaskExecutor))
+        .reduce((a, b) -> a.runAfterBoth(b, () -> {}))
+        .ifPresent(CompletableFuture::join);
+    graphIndexBuilder.cleanup();
+
+    final ImmutableGraphIndex graph = graphIndexBuilder.getGraph();
+    assert graph.getView().entryNode() != null;
     writeField(fieldInfo, ravv, pqVectors, null, graphNodeIdToDocMap, graph);
+  }
+
+  private GraphIndexBuilder createGraphIndexBuilderFromExisting(
+      ImmutableGraphIndex src,
+      IntFunction<OptionalInt> ordMapper,
+      int fakeOrd,
+      BuildScoreProvider scoreProvider,
+      Executor executor) {
+    final var builder =
+        new GraphIndexBuilder(
+            scoreProvider,
+            src.getDimension(),
+            maxDegrees,
+            beamWidth,
+            degreeOverflow,
+            alpha,
+            hierarchyEnabled,
+            true);
+
+    final var dst = (OnHeapGraphIndex) builder.getGraph();
+    final int maxLevel = hierarchyEnabled ? src.getMaxLevel() : 0;
+
+    final var oldEntryNode = src.getView().entryNode();
+    final int entryNewOrd = ordMapper.apply(oldEntryNode.node).orElse(fakeOrd + oldEntryNode.node);
+    final int entryNewLevel = Math.min(oldEntryNode.level, maxLevel);
+    final var newEntryNode = new ImmutableGraphIndex.NodeAtLevel(entryNewLevel, entryNewOrd);
+    dst.updateEntryNode(newEntryNode);
+
+    for (int l = 0; l <= maxLevel; ++l) {
+      streamNodesInLevel(maxLevel - l, src)
+          .map(
+              old ->
+                  CompletableFuture.runAsync(
+                      () -> {
+                        final int newNode = ordMapper.apply(old.node).orElse(fakeOrd + old.node);
+                        final ScoreFunction scoreFunction;
+                        if (newNode < fakeOrd) {
+                          scoreFunction = scoreProvider.searchProviderFor(newNode).scoreFunction();
+                        } else {
+                          // Deleted nodes aren't in the new RAVV and can't be scored
+                          // But adjacent edges are discarded so a fake score function is fine
+                          scoreFunction = (ScoreFunction.ApproximateScoreFunction) _ -> 0f;
+                        }
+
+                        final var oldNeighbors =
+                            src.getView().getNeighborsIterator(old.level, old.node);
+                        final var newNeighbors = new NodeArray(oldNeighbors.size());
+                        while (oldNeighbors.hasNext()) {
+                          final int oldNeighbor = oldNeighbors.nextInt();
+                          final int newNeighbor =
+                              ordMapper.apply(oldNeighbor).orElse(fakeOrd + oldNeighbor);
+                          final float newScore;
+                          if (newNeighbor < fakeOrd) {
+                            newScore = scoreFunction.similarityTo(newNeighbor);
+                          } else {
+                            // Neighbor deleted; so scoreFunction (on new RAVV) won't know about it
+                            // As above, edge to neighbor will be discarded so fake score works
+                            newScore = 0;
+                          }
+
+                          newNeighbors.insertSorted(newNeighbor, newScore);
+                        }
+
+                        dst.connectNode(old.level, newNode, newNeighbors);
+                        if (old.level == 0) {
+                          final int newLevel = dst.getMaxLevelForNode(newNode);
+                          dst.markComplete(new ImmutableGraphIndex.NodeAtLevel(newLevel, newNode));
+                          if (newNode >= fakeOrd) {
+                            dst.markDeleted(newNode);
+                          }
+                        }
+                      },
+                      executor))
+          .reduce((a, b) -> a.runAfterBoth(b, () -> {}))
+          .ifPresent(CompletableFuture::join);
+    }
+
+    builder.removeDeletedNodes();
+    assert dst.entryNode() != null;
+    assert dst.contains(dst.entryNode());
+    return builder;
+  }
+
+  private static Stream<ImmutableGraphIndex.NodeAtLevel> streamNodesInLevel(
+      int level, ImmutableGraphIndex graph) {
+    final var spliterator =
+        Spliterators.spliterator(
+            graph.getNodes(level), graph.size(level), Spliterator.DISTINCT | Spliterator.IMMUTABLE);
+    return StreamSupport.intStream(spliterator, false)
+        .mapToObj(node -> new ImmutableGraphIndex.NodeAtLevel(level, node));
   }
 
   private static final class SubFloatVectors extends DocIDMerger.Sub {
@@ -781,52 +962,6 @@ public class JVectorWriter extends KnnVectorsWriter {
     public int size() {
       return size;
     }
-  }
-
-  /**
-   * This method will return the graph index for the field
-   *
-   * @return OnHeapGraphIndex
-   */
-  public OnHeapGraphIndex getGraph(
-      BuildScoreProvider buildScoreProvider,
-      RandomAccessVectorValues randomAccessVectorValues,
-      FieldInfo fieldInfo,
-      Executor executor) {
-    assert randomAccessVectorValues.size() > 0 : "Cannot build empty graph";
-    final GraphIndexBuilder graphIndexBuilder =
-        new GraphIndexBuilder(
-            buildScoreProvider,
-            fieldInfo.getVectorDimension(),
-            maxDegrees,
-            beamWidth,
-            degreeOverflow,
-            alpha,
-            hierarchyEnabled,
-            true);
-
-    /*
-     * We cannot always use randomAccessVectorValues for the graph building
-     * because it's size will not always correspond to the document count.
-     * To have the right mapping from docId to vector ordinal we need to use the mergedFloatVector.
-     * This is the case when we are merging segments and we might have more documents than vectors.
-     */
-    final OnHeapGraphIndex graphIndex;
-    final var vv = randomAccessVectorValues.threadLocalSupplier();
-
-    // parallel graph construction from the merge documents Ids
-    final int size = randomAccessVectorValues.size();
-    IntStream.range(0, size)
-        .mapToObj(
-            ord ->
-                CompletableFuture.runAsync(
-                    () -> graphIndexBuilder.addGraphNode(ord, vv.get().getVector(ord)), executor))
-        .reduce((a, b) -> a.runAfterBoth(b, () -> {}))
-        .ifPresent(CompletableFuture::join);
-    graphIndexBuilder.cleanup();
-    graphIndex = (OnHeapGraphIndex) graphIndexBuilder.getGraph();
-
-    return graphIndex;
   }
 
   private static ProductQuantization trainPQ(

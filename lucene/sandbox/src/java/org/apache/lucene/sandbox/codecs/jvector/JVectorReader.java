@@ -247,6 +247,24 @@ public class JVectorReader extends KnnVectorsReader {
     IOUtils.close(data);
   }
 
+  public OnDiskGraphIndex getIndex(final String field) {
+    final var fieldEntry = fieldEntryMap.get(field);
+    if (fieldEntry == null) {
+      return null;
+    }
+
+    return fieldEntry.index;
+  }
+
+  public GraphNodeIdToDocMap getDocIdMap(final String field) {
+    final var fieldEntry = fieldEntryMap.get(field);
+    if (fieldEntry == null) {
+      return null;
+    }
+
+    return fieldEntry.graphNodeIdToDocMap;
+  }
+
   private static JVectorWriter.VectorIndexFieldMetadata parseNextField(
       IndexInput meta, FieldInfos fieldInfos) throws IOException {
     final int fieldNumber = meta.readInt();
