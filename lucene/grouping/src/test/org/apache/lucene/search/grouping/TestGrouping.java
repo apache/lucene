@@ -36,7 +36,9 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
@@ -49,9 +51,11 @@ import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MultiCollector;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Sort;
@@ -267,6 +271,170 @@ public class TestGrouping extends LuceneTestCase {
     Collection<SearchGroup<BytesRef>> groups = collector.getTopGroups(0);
 
     assertNull(groups); // Should return null when no groups found
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testTotalHitsThreshold() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w =
+        new RandomIndexWriter(random(), dir, newIndexWriterConfig(new MockAnalyzer(random())));
+
+    // Add documents with and without group field
+    Document doc = new Document();
+    addGroupField(doc, "group", "group1");
+    doc.add(new TextField("content", "test", Field.Store.YES));
+    w.addDocument(doc);
+
+    doc = new Document();
+    addGroupField(doc, "group", "group2");
+    doc.add(new TextField("content", "test", Field.Store.YES));
+    w.addDocument(doc);
+
+    // Document without group field
+    doc = new Document();
+    doc.add(new TextField("content", "test", Field.Store.YES));
+    w.addDocument(doc);
+
+    IndexSearcher searcher = newSearcher(w.getReader());
+    w.close();
+
+    // Test ignoreDocsWithoutGroupField = true
+    FirstPassGroupingCollector<BytesRef> collector1 =
+        new FirstPassGroupingCollector<>(
+            new TermGroupSelector("group"), Sort.RELEVANCE, 10, true, Integer.MAX_VALUE);
+    searcher.search(new TermQuery(new Term("content", "test")), collector1);
+
+    Collection<SearchGroup<BytesRef>> groups1 = collector1.getTopGroups(0);
+    assertEquals(2, groups1.size()); // Should ignore null group
+    assertEquals(3, collector1.getTotalHitCount());
+    assertEquals(TotalHits.Relation.EQUAL_TO, collector1.getTotalHitsRelation());
+
+    // Test ignoreDocsWithoutGroupField = false
+    FirstPassGroupingCollector<BytesRef> collector2 =
+        new FirstPassGroupingCollector<>(
+            new TermGroupSelector("group"), Sort.RELEVANCE, 10, false, Integer.MAX_VALUE);
+    searcher.search(new TermQuery(new Term("content", "test")), collector2);
+
+    Collection<SearchGroup<BytesRef>> groups2 = collector2.getTopGroups(0);
+    assertEquals(3, groups2.size()); // Should include null group
+    assertEquals(3, collector2.getTotalHitCount());
+
+    // Test totalHitsThreshold with score-based sorting
+    FirstPassGroupingCollector<BytesRef> collector3 =
+        new FirstPassGroupingCollector<>(
+            new TermGroupSelector("group"), Sort.RELEVANCE, 10, false, 1);
+    searcher.search(new TermQuery(new Term("content", "test")), collector3);
+
+    assertEquals(ScoreMode.TOP_SCORES, collector3.scoreMode());
+    assertTrue(
+        collector3.getTotalHitCount() <= 3); // May skip some docs due to min competitive score
+
+    searcher.getIndexReader().close();
+    dir.close();
+  }
+
+  private static class TestScorer extends Scorable {
+    float score;
+    Float minCompetitiveScore = null;
+
+    @Override
+    public void setMinCompetitiveScore(float minCompetitiveScore) {
+      this.minCompetitiveScore = minCompetitiveScore;
+    }
+
+    @Override
+    public float score() throws IOException {
+      return score;
+    }
+  }
+
+  public void testSetMinCompetitiveScore() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter w =
+        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+
+    // Add documents with different scores
+    Document doc = new Document();
+    addGroupField(doc, "group", "group1");
+    doc.add(new TextField("content", "test", Field.Store.YES));
+    w.addDocument(doc);
+
+    doc = new Document();
+    addGroupField(doc, "group", "group2");
+    doc.add(new TextField("content", "test", Field.Store.YES));
+    w.addDocument(doc);
+
+    doc = new Document();
+    addGroupField(doc, "group", "group3");
+    doc.add(new TextField("content", "test", Field.Store.YES));
+    w.addDocument(doc);
+
+    doc = new Document();
+    addGroupField(doc, "group", "group4");
+    doc.add(new TextField("content", "test", Field.Store.YES));
+    w.addDocument(doc);
+
+    doc = new Document();
+    addGroupField(doc, "group", "group5");
+    doc.add(new TextField("content", "test", Field.Store.YES));
+    w.addDocument(doc);
+
+    w.flush();
+
+    doc = new Document();
+    addGroupField(doc, "group", "group4");
+    doc.add(new TextField("content", "test", Field.Store.YES));
+    w.addDocument(doc);
+
+    IndexReader reader = DirectoryReader.open(w);
+    w.close();
+
+    // Test with score-based sorting and low totalHitsThreshold to enable min competitive score
+    FirstPassGroupingCollector<BytesRef> collector =
+        new FirstPassGroupingCollector<>(
+            new TermGroupSelector("group"), Sort.RELEVANCE, 2, false, 2);
+
+    TestScorer scorer = new TestScorer();
+    LeafCollector leafCollector = collector.getLeafCollector(reader.leaves().get(0));
+    leafCollector.setScorer(scorer);
+    assertNull(scorer.minCompetitiveScore);
+
+    scorer.score = 1.0f;
+    leafCollector.collect(0);
+    assertNull(scorer.minCompetitiveScore); // Not set yet, need more groups
+
+    scorer.score = 2.0f;
+    leafCollector.collect(1);
+    assertNull(scorer.minCompetitiveScore); // Still building up groups
+
+    scorer.score = 3.0f;
+    leafCollector.collect(2);
+    assertNotNull(scorer.minCompetitiveScore);
+    assertTrue(scorer.minCompetitiveScore > 0);
+
+    // Test that low-scoring document doesn't update min competitive score
+    scorer.score = 0.5f;
+    scorer.minCompetitiveScore = Float.NaN;
+    leafCollector.collect(3); // This should be skipped due to isCompetitive check
+    assertTrue(Float.isNaN(scorer.minCompetitiveScore));
+
+    // Test higher score updates min competitive score
+    scorer.score = 4.0f;
+    leafCollector.collect(4);
+    assertNotNull(scorer.minCompetitiveScore);
+    assertTrue(scorer.minCompetitiveScore >= 2.0f);
+
+    // Test that min competitive score is set on new leaf collectors
+    if (reader.leaves().size() > 1) {
+      TestScorer newScorer = new TestScorer();
+      LeafCollector newLeafCollector = collector.getLeafCollector(reader.leaves().get(1));
+      newLeafCollector.setScorer(newScorer);
+      // Min competitive score should be propagated to new scorer
+      assertNotNull(newScorer.minCompetitiveScore);
+      assertTrue(newScorer.minCompetitiveScore > 0);
+    }
 
     reader.close();
     dir.close();
