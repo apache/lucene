@@ -242,18 +242,35 @@ public class ToParentBlockJoinQuery extends Query {
 
     @Override
     public int advance(int target) throws IOException {
-      if (target >= parentBits.length()) {
-        return doc = NO_MORE_DOCS;
-      }
-      final int firstChildTarget = target == 0 ? 0 : parentBits.prevSetBit(target - 1) + 1;
+      // Look backwards to see if the current child doc matches the previous parent
+      final int prevParent =
+          target == 0 ? -1 : parentBits.prevSetBit(Math.min(target, parentBits.length()) - 1);
+
       int childDoc = childApproximation.docID();
-      if (childDoc < firstChildTarget) {
-        childDoc = childApproximation.advance(firstChildTarget);
+      if (childDoc < prevParent) {
+        childDoc = childApproximation.advance(prevParent);
+      } else if (childDoc == -1) {
+        childDoc = childApproximation.nextDoc();
       }
-      if (childDoc >= parentBits.length() - 1) {
+
+      if (childDoc == prevParent) {
+        throw new IllegalStateException(
+            "Child query must not match same docs with parent filter. "
+                + "Combine them as must clauses (+) to find a problem doc. "
+                + "docId="
+                + childDoc
+                + ", "
+                + this.getClass());
+      }
+
+      if (childDoc >= parentBits.length()) {
         return doc = NO_MORE_DOCS;
       }
-      return doc = parentBits.nextSetBit(childDoc + 1);
+
+      // Get the current parent, starting at the current child doc. We do this to handle the case
+      // where the current child doc is also the current parent. When advance is next called, this
+      // will be detected and an exception will be thrown.
+      return doc = parentBits.nextSetBit(childDoc);
     }
 
     @Override
@@ -429,20 +446,6 @@ public class ToParentBlockJoinQuery extends Query {
         }
 
         score = parentScore.score();
-      }
-
-      // TODO: When score mode is None, this check is broken because the child approximation is not
-      // advanced and will therefore never match the parent approximation at this point in
-      // execution. Fix this error check when score mode is None.
-      if (childApproximation.docID() == parentApproximation.docID()
-          && (childTwoPhase == null || childTwoPhase.matches())) {
-        throw new IllegalStateException(
-            "Child query must not match same docs with parent filter. "
-                + "Combine them as must clauses (+) to find a problem doc. "
-                + "docId="
-                + parentApproximation.docID()
-                + ", "
-                + childScorer.getClass());
       }
 
       return score;
