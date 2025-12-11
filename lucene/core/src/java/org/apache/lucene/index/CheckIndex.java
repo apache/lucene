@@ -3194,7 +3194,7 @@ public final class CheckIndex implements Closeable {
    *
    * @lucene.internal
    */
-  public static class VerifyPointsVisitor implements PointValues.IntersectVisitor {
+  public static class VerifyPointsVisitor implements IntersectVisitor {
     private long pointCountSeen;
     private int lastDocID = -1;
     private final FixedBitSet docsSeen;
