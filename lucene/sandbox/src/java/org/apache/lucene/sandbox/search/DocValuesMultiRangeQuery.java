@@ -137,7 +137,7 @@ public final class DocValuesMultiRangeQuery {
 
     public Query build() {
       if (clauses.isEmpty()) {
-        return new MatchNoDocsQuery();
+        return MatchNoDocsQuery.INSTANCE;
       }
       if (clauses.size() == 1) {
         ByteRange theOnlyOne = clauses.getFirst();
@@ -172,7 +172,7 @@ public final class DocValuesMultiRangeQuery {
 
     public Query build() {
       if (clauses.isEmpty()) {
-        return new MatchNoDocsQuery();
+        return MatchNoDocsQuery.INSTANCE;
       }
       if (clauses.size() == 1) {
         LongRange theOnlyOne = clauses.getFirst();

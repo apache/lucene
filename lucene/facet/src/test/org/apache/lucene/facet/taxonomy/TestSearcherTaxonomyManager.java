@@ -195,7 +195,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
         try {
           // System.out.println("search maxOrd=" + pair.taxonomyReader.getSize());
           FacetsCollector sfc =
-              pair.searcher().search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+              pair.searcher().search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
           Facets facets = getTaxonomyFacetCounts(pair.taxonomyReader(), config, sfc);
           FacetResult result = facets.getTopChildren(10, "field");
           if (pair.searcher().getIndexReader().numDocs() > 0) {
@@ -250,7 +250,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
         try {
           // System.out.println("search maxOrd=" + pair.taxonomyReader.getSize());
           FacetsCollector sfc =
-              pair.searcher().search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+              pair.searcher().search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
           Facets facets = getTaxonomyFacetCounts(pair.taxonomyReader(), config, sfc);
           FacetResult result = facets.getTopChildren(10, "field");
           if (pair.searcher().getIndexReader().numDocs() > 0) {

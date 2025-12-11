@@ -85,7 +85,7 @@ public class TestFacetOrchestrators extends SandboxFacetTestCase {
     // NRT open
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    Query query = new MatchAllDocsQuery();
+    Query query = MatchAllDocsQuery.INSTANCE;
 
     FacetBuilder authorTop0Builder =
         new TaxonomyFacetBuilder(config, taxoReader, "Author").withTopN(0);
@@ -272,7 +272,7 @@ public class TestFacetOrchestrators extends SandboxFacetTestCase {
         .addBuilder(taxonomyFacetBuilder)
         .addBuilder(longRangeFacetBuilder)
         .addBuilder(doubleRangeFacetBuilder)
-        .collect(new MatchAllDocsQuery(), s);
+        .collect(MatchAllDocsQuery.INSTANCE, s);
     assertEquals(
         "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
         taxonomyFacetBuilder.getResult().toString());
@@ -424,7 +424,7 @@ public class TestFacetOrchestrators extends SandboxFacetTestCase {
         .addBuilder(allChildrenSortByValue)
         .addBuilder(allChildrenSortByCount)
         .addBuilder(topChildrenSortByCount)
-        .collect(new MatchAllDocsQuery(), s);
+        .collect(MatchAllDocsQuery.INSTANCE, s);
 
     assertEquals(
         "dim=field path=[] value=-1 childCount=6\n"

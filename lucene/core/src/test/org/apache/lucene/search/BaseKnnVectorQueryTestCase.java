@@ -255,7 +255,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
       // make sure we don't drop to exact search, even though the filter matches fewer than k docs
       Query kvq =
-          getThrowingKnnVectorQuery("field", new float[] {0, 0}, 10, new MatchAllDocsQuery());
+          getThrowingKnnVectorQuery("field", new float[] {0, 0}, 10, MatchAllDocsQuery.INSTANCE);
       TopDocs topDocs = searcher.search(kvq, 3);
       assertEquals(3, topDocs.totalHits.value());
     }
@@ -794,7 +794,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       }
       w.commit();
 
-      w.deleteDocuments(new MatchAllDocsQuery());
+      w.deleteDocuments(MatchAllDocsQuery.INSTANCE);
       w.commit();
 
       try (IndexReader reader = DirectoryReader.open(dir)) {
@@ -955,7 +955,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
       AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 2);
       AbstractKnnVectorQuery exactQuery =
-          getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10, new MatchAllDocsQuery());
+          getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10, MatchAllDocsQuery.INSTANCE);
 
       assertEquals(2, searcher.count(query)); // Expect some results without timeout
       assertEquals(3, searcher.count(exactQuery)); // Same for exact search

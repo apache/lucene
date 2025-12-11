@@ -1071,7 +1071,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
   private static Query buildRandomQuery(int level) {
     if (level == 10) {
       // at most 10 levels
-      return new MatchAllDocsQuery();
+      return MatchAllDocsQuery.INSTANCE;
     }
     switch (random().nextInt(6)) {
       case 0:
@@ -1095,7 +1095,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
         PhraseQuery pq = new PhraseQuery(random().nextInt(2), t1.field(), t1.bytes(), t2.bytes());
         return pq;
       case 3:
-        return new MatchAllDocsQuery();
+        return MatchAllDocsQuery.INSTANCE;
       case 4:
         return new ConstantScoreQuery(buildRandomQuery(level + 1));
       case 5:
@@ -1237,7 +1237,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
     try {
       // trigger an eviction
-      searcher.search(new MatchAllDocsQuery(), DummyTotalHitCountCollector.createManager());
+      searcher.search(MatchAllDocsQuery.INSTANCE, DummyTotalHitCountCollector.createManager());
       fail();
     } catch (
         @SuppressWarnings("unused")
@@ -1268,7 +1268,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     searcher.setQueryCache(queryCache);
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
 
-    searcher.count(new MatchAllDocsQuery());
+    searcher.count(MatchAllDocsQuery.INSTANCE);
     assertEquals(0, queryCache.getCacheCount());
     assertEquals(0, queryCache.getEvictionCount());
 
@@ -1405,7 +1405,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
         new LRUQueryCache(1, Long.MAX_VALUE, context -> true, Float.POSITIVE_INFINITY);
 
     // test that the bulk scorer is propagated when a scorer should not be cached
-    Weight weight = searcher.createWeight(new MatchAllDocsQuery(), ScoreMode.COMPLETE_NO_SCORES, 1);
+    Weight weight =
+        searcher.createWeight(MatchAllDocsQuery.INSTANCE, ScoreMode.COMPLETE_NO_SCORES, 1);
     weight = new WeightWrapper(weight, scorerCalled, bulkScorerCalled);
     weight = cache.doCache(weight, NEVER_CACHE);
     weight.bulkScorer(leaf);

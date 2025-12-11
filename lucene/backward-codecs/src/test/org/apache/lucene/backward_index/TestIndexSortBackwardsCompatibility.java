@@ -218,7 +218,7 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
     assertTrue(topDocs.totalHits.value() > 0);
     topDocs =
         searcher.search(
-            new MatchAllDocsQuery(), 5, new Sort(new SortField("dateDV", SortField.Type.LONG)));
+            MatchAllDocsQuery.INSTANCE, 5, new Sort(new SortField("dateDV", SortField.Type.LONG)));
     assertEquals(50, topDocs.totalHits.value());
     assertEquals(5, topDocs.scoreDocs.length);
     long firstDate = (Long) ((FieldDoc) topDocs.scoreDocs[0]).fields[0];

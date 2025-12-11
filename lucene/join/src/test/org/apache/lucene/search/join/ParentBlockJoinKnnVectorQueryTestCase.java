@@ -124,7 +124,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
         // Test with match_all filter and large k to test exact search
         query =
             getParentJoinKnnQuery(
-                "field", new float[] {2, 2}, new MatchAllDocsQuery(), 10, parentFilter);
+                "field", new float[] {2, 2}, MatchAllDocsQuery.INSTANCE, 10, parentFilter);
         topDocs = searcher.search(query, 3);
         assertEquals(0, topDocs.totalHits.value());
         assertEquals(0, topDocs.scoreDocs.length);
@@ -165,7 +165,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
         // Test with match_all filter and large k to test exact search
         query =
             getParentJoinKnnQuery(
-                "field", new float[] {2, 2}, new MatchAllDocsQuery(), 10, parentFilter);
+                "field", new float[] {2, 2}, MatchAllDocsQuery.INSTANCE, 10, parentFilter);
         topDocs = searcher.search(query, 3);
         assertEquals(0, topDocs.totalHits.value());
         assertEquals(0, topDocs.scoreDocs.length);
@@ -225,13 +225,13 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
             searcher, query, new float[] {1f / 3f, 1f / 3f}, new String[] {"5", "7"}, 2);
         query =
             getParentJoinKnnQuery(
-                "field", new float[] {6, 6}, new MatchAllDocsQuery(), 20, parentFilter);
+                "field", new float[] {6, 6}, MatchAllDocsQuery.INSTANCE, 20, parentFilter);
         assertScorerResults(
             searcher, query, new float[] {1f / 3f, 1f / 3f}, new String[] {"5", "7"}, 2);
 
         query =
             getParentJoinKnnQuery(
-                "field", new float[] {6, 6}, new MatchAllDocsQuery(), 1, parentFilter);
+                "field", new float[] {6, 6}, MatchAllDocsQuery.INSTANCE, 1, parentFilter);
         assertScorerResults(
             searcher, query, new float[] {1f / 3f, 1f / 3f}, new String[] {"5", "7"}, 1);
       }
@@ -300,7 +300,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
       Query query = getParentJoinKnnQuery("field", new float[] {1, 2}, null, 2, parentFilter);
       Query exactQuery =
           getParentJoinKnnQuery(
-              "field", new float[] {1, 2}, new MatchAllDocsQuery(), 10, parentFilter);
+              "field", new float[] {1, 2}, MatchAllDocsQuery.INSTANCE, 10, parentFilter);
 
       assertEquals(2, searcher.count(query)); // Expect some results without timeout
       assertEquals(3, searcher.count(exactQuery)); // Same for exact search

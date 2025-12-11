@@ -147,7 +147,7 @@ abstract class AbstractKnnVectorQuery extends Query {
       topK = runSearchTasks(tasks, taskExecutor, perLeafResults, leafReaderContexts);
     }
     if (topK.scoreDocs.length == 0) {
-      return new MatchNoDocsQuery();
+      return MatchNoDocsQuery.INSTANCE;
     }
     return DocAndScoreQuery.createDocAndScoreQuery(reader, topK);
   }

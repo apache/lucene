@@ -64,7 +64,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(indexWriter)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         LongDocValuesStats stats = new LongDocValuesStats("foo");
-        searcher.search(new MatchAllDocsQuery(), new DocValuesStatsCollector(stats));
+        searcher.search(MatchAllDocsQuery.INSTANCE, new DocValuesStatsCollector(stats));
 
         assertEquals(0, stats.count());
         assertEquals(numDocs, stats.missing());
@@ -84,7 +84,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(indexWriter)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         LongDocValuesStats stats = new LongDocValuesStats(field);
-        searcher.search(new MatchAllDocsQuery(), new DocValuesStatsCollector(stats));
+        searcher.search(MatchAllDocsQuery.INSTANCE, new DocValuesStatsCollector(stats));
 
         assertEquals(1, stats.count());
         assertEquals(0, stats.missing());
@@ -129,7 +129,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(indexWriter)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         LongDocValuesStats stats = new LongDocValuesStats(field);
-        searcher.search(new MatchAllDocsQuery(), new DocValuesStatsCollector(stats));
+        searcher.search(MatchAllDocsQuery.INSTANCE, new DocValuesStatsCollector(stats));
 
         int expCount = (int) Arrays.stream(docValues).filter(v -> v > 0).count();
         assertEquals(expCount, stats.count());
@@ -180,7 +180,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(indexWriter)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         DoubleDocValuesStats stats = new DoubleDocValuesStats(field);
-        searcher.search(new MatchAllDocsQuery(), new DocValuesStatsCollector(stats));
+        searcher.search(MatchAllDocsQuery.INSTANCE, new DocValuesStatsCollector(stats));
 
         int expCount = (int) Arrays.stream(docValues).filter(v -> v > 0).count();
         assertEquals(expCount, stats.count());
@@ -235,7 +235,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(indexWriter)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         SortedLongDocValuesStats stats = new SortedLongDocValuesStats(field);
-        searcher.search(new MatchAllDocsQuery(), new DocValuesStatsCollector(stats));
+        searcher.search(MatchAllDocsQuery.INSTANCE, new DocValuesStatsCollector(stats));
 
         assertEquals(nonNull(docValues).count(), stats.count());
         int numDocsWithoutField = (int) isNull(docValues).count();
@@ -293,7 +293,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(indexWriter)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         SortedDoubleDocValuesStats stats = new SortedDoubleDocValuesStats(field);
-        searcher.search(new MatchAllDocsQuery(), new DocValuesStatsCollector(stats));
+        searcher.search(MatchAllDocsQuery.INSTANCE, new DocValuesStatsCollector(stats));
 
         assertEquals(nonNull(docValues).count(), stats.count());
         int numDocsWithoutField = (int) isNull(docValues).count();
@@ -346,7 +346,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(indexWriter)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         SortedDocValuesStats stats = new SortedDocValuesStats(field);
-        searcher.search(new MatchAllDocsQuery(), new DocValuesStatsCollector(stats));
+        searcher.search(MatchAllDocsQuery.INSTANCE, new DocValuesStatsCollector(stats));
 
         int expCount = (int) nonNull(docValues).count();
         assertEquals(expCount, stats.count());
@@ -395,7 +395,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
         IndexSearcher searcher = new IndexSearcher(reader);
         SortedSetDocValuesStats stats = new SortedSetDocValuesStats(field);
 
-        searcher.search(new MatchAllDocsQuery(), new DocValuesStatsCollector(stats));
+        searcher.search(MatchAllDocsQuery.INSTANCE, new DocValuesStatsCollector(stats));
 
         int expCount = (int) nonNull(docValues).count();
         assertEquals(expCount, stats.count());

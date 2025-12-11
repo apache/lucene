@@ -65,7 +65,7 @@ public class PhraseHelper {
 
   public static final PhraseHelper NONE =
       new PhraseHelper(
-          new MatchAllDocsQuery(),
+          MatchAllDocsQuery.INSTANCE,
           "_ignored_",
           (s) -> false,
           spanQuery -> null,

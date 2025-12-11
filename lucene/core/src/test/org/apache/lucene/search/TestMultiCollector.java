@@ -113,7 +113,7 @@ public class TestMultiCollector extends LuceneTestCase {
         collectors.add(new TerminateAfterCollector(collector, terminateAfter));
       }
       searcher.search(
-          new MatchAllDocsQuery(),
+          MatchAllDocsQuery.INSTANCE,
           new CollectorManager<Collector, Void>() {
             @Override
             public Collector newCollector() {

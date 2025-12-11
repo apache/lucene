@@ -2463,7 +2463,7 @@ public class TestIndexWriter extends LuceneTestCase {
         evilWriter.commit();
       }
     }
-    evilWriter.deleteDocuments(new MatchAllDocsQuery());
+    evilWriter.deleteDocuments(MatchAllDocsQuery.INSTANCE);
     evilWriter.forceMerge(1);
     evilWriter.close();
     dir.close();

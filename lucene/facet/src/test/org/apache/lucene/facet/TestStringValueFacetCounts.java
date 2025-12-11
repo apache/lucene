@@ -100,7 +100,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     writer.close();
 
     FacetsCollector facetsCollector =
-        searcher.search(new MatchNoDocsQuery(), new FacetsCollectorManager());
+        searcher.search(MatchNoDocsQuery.INSTANCE, new FacetsCollectorManager());
     StringDocValuesReaderState state =
         new StringDocValuesReaderState(searcher.getIndexReader(), "field");
 
@@ -335,7 +335,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     IndexSearcher searcher = newSearcher(writer.getReader());
     writer.close();
 
-    FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector c = searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     // using a stale state
     expectThrows(IllegalStateException.class, () -> new StringValueFacetCounts(state, c));
@@ -415,7 +415,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
       int... topNs)
       throws IOException {
 
-    FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector c = searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     for (int topN : topNs) {
 
@@ -518,7 +518,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
       StringDocValuesReaderState state)
       throws IOException {
 
-    FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector c = searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     StringValueFacetCounts facets;
     // should get the same result whether-or-not we provide a FacetsCollector since it's doing

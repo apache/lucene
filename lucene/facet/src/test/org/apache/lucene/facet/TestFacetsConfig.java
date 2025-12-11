@@ -73,7 +73,7 @@ public class TestFacetsConfig extends FacetTestCase {
     DirectoryReader indexReader = DirectoryReader.open(indexDir);
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
     IndexSearcher searcher = newSearcher(indexReader);
-    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector fc = searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     Facets facets = getTaxonomyFacetCounts(taxoReader, facetsConfig, fc);
     FacetResult res = facets.getTopChildren(10, "a");

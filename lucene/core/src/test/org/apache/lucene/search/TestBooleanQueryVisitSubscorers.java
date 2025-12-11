@@ -245,7 +245,7 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
     query.add(new TermQuery(new Term(F2, "web")), Occur.SHOULD);
     query.add(new TermQuery(new Term(F2, "crawler")), Occur.SHOULD);
     query.setMinimumNumberShouldMatch(2);
-    query.add(new MatchAllDocsQuery(), Occur.MUST);
+    query.add(MatchAllDocsQuery.INSTANCE, Occur.MUST);
     ScoreSummary scoreSummary =
         searcher.search(query.build(), new ScorerSummarizingCollectorManager());
     assertEquals(1, scoreSummary.numHits.get());

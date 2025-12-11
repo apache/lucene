@@ -428,7 +428,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
     IndexSortSortedNumericDocValuesRangeQuery rangeQuery =
         (IndexSortSortedNumericDocValuesRangeQuery) rewrittenQuery;
-    assertEquals(new MatchNoDocsQuery(), rangeQuery.getFallbackQuery());
+    assertEquals(MatchNoDocsQuery.INSTANCE, rangeQuery.getFallbackQuery());
 
     writer.close();
     reader.close();
@@ -536,7 +536,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     IndexSearcher searcher = newSearcher(reader);
 
     // we use an unrealistic query that exposes its own Weight#count
-    Query fallbackQuery = new MatchNoDocsQuery();
+    Query fallbackQuery = MatchNoDocsQuery.INSTANCE;
     // the index is not sorted on this field, the fallback query is used
     Query query = new IndexSortSortedNumericDocValuesRangeQuery("another", 1, 42, fallbackQuery);
     Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);

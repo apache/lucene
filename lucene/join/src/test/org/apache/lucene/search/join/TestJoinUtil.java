@@ -719,8 +719,8 @@ public class TestJoinUtil extends LuceneTestCase {
       Query joinQuery =
           JoinUtil.createJoinQuery(
               "join_field",
-              new MatchNoDocsQuery(),
-              new MatchNoDocsQuery(),
+              MatchNoDocsQuery.INSTANCE,
+              MatchNoDocsQuery.INSTANCE,
               searcher,
               RandomPicks.randomFrom(random(), ScoreMode.values()),
               ordMap,
@@ -732,8 +732,8 @@ public class TestJoinUtil extends LuceneTestCase {
       Query joinQuery =
           JoinUtil.createJoinQuery(
               "join_field",
-              new MatchNoDocsQuery(),
-              new MatchNoDocsQuery(),
+              MatchNoDocsQuery.INSTANCE,
+              MatchNoDocsQuery.INSTANCE,
               searcher,
               ScoreMode.None,
               ordMap,
@@ -1234,7 +1234,7 @@ public class TestJoinUtil extends LuceneTestCase {
               JoinUtil.createJoinQuery(
                   joinField,
                   new TermQuery(new Term("name", "name5")),
-                  new MatchAllDocsQuery(),
+                  MatchAllDocsQuery.INSTANCE,
                   indexSearcher,
                   scoreMode1,
                   ordinalMap);
@@ -1244,7 +1244,7 @@ public class TestJoinUtil extends LuceneTestCase {
               JoinUtil.createJoinQuery(
                   joinField,
                   new TermQuery(new Term("name", "name5")),
-                  new MatchAllDocsQuery(),
+                  MatchAllDocsQuery.INSTANCE,
                   indexSearcher,
                   scoreMode1,
                   ordinalMap));
@@ -1255,7 +1255,7 @@ public class TestJoinUtil extends LuceneTestCase {
                   JoinUtil.createJoinQuery(
                       joinField,
                       new TermQuery(new Term("name", "name5")),
-                      new MatchAllDocsQuery(),
+                      MatchAllDocsQuery.INSTANCE,
                       indexSearcher,
                       scoreMode2,
                       ordinalMap)));
@@ -1265,7 +1265,7 @@ public class TestJoinUtil extends LuceneTestCase {
                   JoinUtil.createJoinQuery(
                       joinField,
                       new TermQuery(new Term("name", "name6")),
-                      new MatchAllDocsQuery(),
+                      MatchAllDocsQuery.INSTANCE,
                       indexSearcher,
                       scoreMode1,
                       ordinalMap)));
@@ -1292,7 +1292,7 @@ public class TestJoinUtil extends LuceneTestCase {
                   JoinUtil.createJoinQuery(
                       joinField,
                       new TermQuery(new Term("name", "name5")),
-                      new MatchAllDocsQuery(),
+                      MatchAllDocsQuery.INSTANCE,
                       indexSearcher,
                       scoreMode1,
                       ordinalMap)));
@@ -1887,7 +1887,7 @@ public class TestJoinUtil extends LuceneTestCase {
         }
       } else {
         searcher.search(
-            new MatchAllDocsQuery(),
+            MatchAllDocsQuery.INSTANCE,
             new SimpleCollector() {
 
               private SortedDocValues terms;

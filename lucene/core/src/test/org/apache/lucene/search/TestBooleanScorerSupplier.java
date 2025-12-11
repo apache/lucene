@@ -33,7 +33,7 @@ public class TestBooleanScorerSupplier extends LuceneTestCase {
   private static class FakeWeight extends Weight {
 
     FakeWeight() {
-      super(new MatchNoDocsQuery());
+      super(MatchNoDocsQuery.INSTANCE);
     }
 
     @Override

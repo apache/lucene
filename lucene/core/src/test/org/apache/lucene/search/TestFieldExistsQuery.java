@@ -101,7 +101,8 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     final IndexReader reader = iw.getReader();
     iw.close();
 
-    assertEquals(new MatchAllDocsQuery(), new FieldExistsQuery("dim").rewrite(newSearcher(reader)));
+    assertEquals(
+        MatchAllDocsQuery.INSTANCE, new FieldExistsQuery("dim").rewrite(newSearcher(reader)));
     reader.close();
     dir.close();
   }

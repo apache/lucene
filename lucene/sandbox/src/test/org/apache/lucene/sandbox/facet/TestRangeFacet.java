@@ -105,7 +105,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -173,7 +173,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -195,7 +195,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     countRecorder = new CountFacetRecorder();
 
     collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -220,7 +220,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     countRecorder = new CountFacetRecorder();
 
     collectorManager = new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -283,7 +283,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -330,7 +330,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -375,7 +375,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -412,7 +412,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -452,7 +452,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -618,7 +618,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(doubleRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -664,7 +664,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(doubleRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -722,7 +722,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(doubleRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -866,7 +866,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
       FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
           new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-      s.search(new MatchAllDocsQuery(), collectorManager);
+      s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
 
       OrdToLabel ordToLabel = new RangeOrdToLabel(ranges);
       FacetResult result =
@@ -1029,7 +1029,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
       FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
           new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-      s.search(new MatchAllDocsQuery(), collectorManager);
+      s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
 
       OrdToLabel ordToLabel = new RangeOrdToLabel(ranges);
       FacetResult result =
@@ -1190,7 +1190,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
       FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
           new FacetFieldCollectorManager<>(doubleRangeFacetCutter, countRecorder);
-      s.search(new MatchAllDocsQuery(), collectorManager);
+      s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
 
       OrdToLabel ordToLabel = new RangeOrdToLabel(ranges);
       FacetResult result =
@@ -1346,7 +1346,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
       CountFacetRecorder countRecorder = new CountFacetRecorder();
       FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
           new FacetFieldCollectorManager<>(doubleRangeFacetCutter, countRecorder);
-      s.search(new MatchAllDocsQuery(), collectorManager);
+      s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
 
       OrdToLabel ordToLabel = new RangeOrdToLabel(ranges);
       FacetResult result =
@@ -1417,7 +1417,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -1468,7 +1468,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(inputRanges);
 
     assertEquals(
@@ -1576,7 +1576,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     final AtomicBoolean filterWasUsed = new AtomicBoolean();
     if (random().nextBoolean()) {
       // Sort of silly:
-      final Query in = new MatchAllDocsQuery();
+      final Query in = MatchAllDocsQuery.INSTANCE;
       fastMatchFilter = new UsedQuery(in, filterWasUsed);
     } else {
       fastMatchFilter = null;
@@ -1593,7 +1593,7 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(doubleRangeFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     OrdToLabel ordToLabel = new RangeOrdToLabel(ranges);
 
     assertEquals(

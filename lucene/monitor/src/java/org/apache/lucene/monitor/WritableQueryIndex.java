@@ -138,7 +138,7 @@ class WritableQueryIndex extends QueryIndex {
       // No query serialization happening here - check that the cache is empty
       IndexSearcher searcher = manager.acquire();
       try {
-        if (searcher.count(new MatchAllDocsQuery()) != 0) {
+        if (searcher.count(MatchAllDocsQuery.INSTANCE) != 0) {
           throw new IllegalStateException(
               "Attempting to open a non-empty monitor query index with no MonitorQuerySerializer");
         }

@@ -225,7 +225,7 @@ public class TestGrouping extends LuceneTestCase {
     // Test default behavior (include null group)
     FirstPassGroupingCollector<BytesRef> collector1 =
         new FirstPassGroupingCollector<>(new TermGroupSelector(groupField), Sort.RELEVANCE, 10);
-    searcher.search(new MatchAllDocsQuery(), collector1);
+    searcher.search(MatchAllDocsQuery.INSTANCE, collector1);
     Collection<SearchGroup<BytesRef>> groups1 = collector1.getTopGroups(0);
 
     assertEquals(3, groups1.size()); // Should include null group
@@ -234,7 +234,7 @@ public class TestGrouping extends LuceneTestCase {
     FirstPassGroupingCollector<BytesRef> collector2 =
         new FirstPassGroupingCollector<>(
             new TermGroupSelector(groupField), Sort.RELEVANCE, 10, true);
-    searcher.search(new MatchAllDocsQuery(), collector2);
+    searcher.search(MatchAllDocsQuery.INSTANCE, collector2);
     Collection<SearchGroup<BytesRef>> groups2 = collector2.getTopGroups(0);
 
     assertEquals(2, groups2.size()); // Should exclude null group
@@ -263,7 +263,7 @@ public class TestGrouping extends LuceneTestCase {
     // Test ignoring docs without group field when all docs lack the field
     FirstPassGroupingCollector<BytesRef> collector =
         new FirstPassGroupingCollector<>(new TermGroupSelector("group"), Sort.RELEVANCE, 10, true);
-    searcher.search(new MatchAllDocsQuery(), collector);
+    searcher.search(MatchAllDocsQuery.INSTANCE, collector);
     Collection<SearchGroup<BytesRef>> groups = collector.getTopGroups(0);
 
     assertNull(groups); // Should return null when no groups found

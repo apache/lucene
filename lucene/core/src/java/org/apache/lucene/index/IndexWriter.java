@@ -2626,12 +2626,12 @@ public class IndexWriter
    * This change will not be visible until a {@link #commit()} has been called. This method can be
    * rolled back using {@link #rollback()}.
    *
-   * <p>NOTE: this method is much faster than using deleteDocuments( new MatchAllDocsQuery() ). Yet,
-   * this method also has different semantics compared to {@link #deleteDocuments(Query...)} since
-   * internal data-structures are cleared as well as all segment information is forcefully dropped
-   * anti-viral semantics like omitting norms are reset or doc value types are cleared. Essentially
-   * a call to {@link #deleteAll()} is equivalent to creating a new {@link IndexWriter} with {@link
-   * OpenMode#CREATE} which a delete query only marks documents as deleted.
+   * <p>NOTE: this method is much faster than using deleteDocuments( MatchAllDocsQuery.INSTANCE ).
+   * Yet, this method also has different semantics compared to {@link #deleteDocuments(Query...)}
+   * since internal data-structures are cleared as well as all segment information is forcefully
+   * dropped anti-viral semantics like omitting norms are reset or doc value types are cleared.
+   * Essentially a call to {@link #deleteAll()} is equivalent to creating a new {@link IndexWriter}
+   * with {@link OpenMode#CREATE} which a delete query only marks documents as deleted.
    *
    * <p>NOTE: this method will forcefully abort all merges in progress. If other threads are running
    * {@link #forceMerge}, {@link #addIndexes(CodecReader[])} or {@link #forceMergeDeletes} methods,
