@@ -127,7 +127,8 @@ public class CustomFacetSetExample {
       // MatchAllDocsQuery is for "browsing" (counts facets
       // for all non-deleted docs in the index); normally
       // you'd use a "normal" query:
-      FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+      FacetsCollector fc =
+          searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
       // Count both "May 2022, 100 degrees" and "July 2022, 120 degrees" dimensions
       Facets facets =
@@ -159,7 +160,8 @@ public class CustomFacetSetExample {
       // MatchAllDocsQuery is for "browsing" (counts facets
       // for all non-deleted docs in the index); normally
       // you'd use a "normal" query:
-      FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+      FacetsCollector fc =
+          searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
       // Match documents whose "day" field is either "May 2022" or "July 2022"
       Query dateQuery =
@@ -209,7 +211,8 @@ public class CustomFacetSetExample {
       // MatchAllDocsQuery is for "browsing" (counts facets
       // for all non-deleted docs in the index); normally
       // you'd use a "normal" query:
-      FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+      FacetsCollector fc =
+          searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
       // Count 80-100 degrees
       Facets facets =
@@ -239,7 +242,8 @@ public class CustomFacetSetExample {
       // MatchAllDocsQuery is for "browsing" (counts facets
       // for all non-deleted docs in the index); normally
       // you'd use a "normal" query:
-      FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+      FacetsCollector fc =
+          searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
       // Count 80-100 degrees
       Facets facets =

@@ -105,7 +105,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
     // fillFields to true.
     Sort[] sort = new Sort[] {new Sort(SortField.FIELD_DOC), new Sort()};
     for (int i = 0; i < sort.length; i++) {
-      Query q = new MatchAllDocsQuery();
+      Query q = MatchAllDocsQuery.INSTANCE;
       TopFieldCollectorManager collectorManager =
           new TopFieldCollectorManager(sort[i], 10, Integer.MAX_VALUE);
 
@@ -121,7 +121,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
     // Two Sort criteria to instantiate the multi/single comparators.
     Sort[] sort = new Sort[] {new Sort(SortField.FIELD_DOC), new Sort()};
     for (int i = 0; i < sort.length; i++) {
-      Query q = new MatchAllDocsQuery();
+      Query q = MatchAllDocsQuery.INSTANCE;
       TopFieldCollectorManager tdc =
           new TopFieldCollectorManager(sort[i], 10, null, Integer.MAX_VALUE);
       TopDocs td = is.search(q, tdc);
@@ -139,7 +139,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
     // Two Sort criteria to instantiate the multi/single comparators.
     Sort[] sort = new Sort[] {new Sort(SortField.FIELD_DOC), new Sort()};
     for (int i = 0; i < sort.length; i++) {
-      Query q = new MatchAllDocsQuery();
+      Query q = MatchAllDocsQuery.INSTANCE;
       TopFieldCollectorManager tdc = new TopFieldCollectorManager(sort[i], 10, Integer.MAX_VALUE);
       TopDocs td = singleThreadedSearcher.search(q, tdc);
 
@@ -158,7 +158,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
   public void testSortWithoutTotalHitTracking() throws Exception {
     Sort sort = new Sort(SortField.FIELD_DOC);
     for (int i = 0; i < 2; i++) {
-      Query q = new MatchAllDocsQuery();
+      Query q = MatchAllDocsQuery.INSTANCE;
       // check that setting trackTotalHits to false does not throw an NPE because
       // the index is not sorted
       TopFieldCollectorManager manager;

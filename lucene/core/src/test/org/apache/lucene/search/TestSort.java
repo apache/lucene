@@ -121,7 +121,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.STRING));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(2, td.totalHits.value());
     // 'bar' comes before 'foo'
     assertEquals("bar", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -149,7 +149,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.STRING, true));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(2, td.totalHits.value());
     // 'foo' comes after 'bar' in reverse order
     assertEquals("foo", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -177,7 +177,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.STRING_VAL));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(2, td.totalHits.value());
     // 'bar' comes before 'foo'
     assertEquals("bar", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -205,7 +205,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.STRING_VAL, true));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(2, td.totalHits.value());
     // 'foo' comes after 'bar' in reverse order
     assertEquals("foo", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -237,7 +237,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.INT));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(3, td.totalHits.value());
     // numeric order
     assertEquals("-1", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -270,7 +270,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.INT, true));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(3, td.totalHits.value());
     // reverse numeric order
     assertEquals("300000", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -301,7 +301,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.INT));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(3, td.totalHits.value());
     // null is treated as a 0
     assertEquals("-1", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -335,7 +335,7 @@ public class TestSort extends LuceneTestCase {
     SortField sortField = new SortField("value", SortField.Type.INT, false, Integer.MAX_VALUE);
     Sort sort = new Sort(sortField);
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(3, td.totalHits.value());
     // null is treated as a Integer.MAX_VALUE
     assertEquals("-1", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -368,7 +368,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.LONG));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(3, td.totalHits.value());
     // numeric order
     assertEquals("-1", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -401,7 +401,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.LONG, true));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(3, td.totalHits.value());
     // reverse numeric order
     assertEquals("3000000000", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -432,7 +432,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.LONG));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(3, td.totalHits.value());
     // null is treated as 0
     assertEquals("-1", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -466,7 +466,7 @@ public class TestSort extends LuceneTestCase {
     SortField sortField = new SortField("value", SortField.Type.LONG, false, Long.MAX_VALUE);
     Sort sort = new Sort(sortField);
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(3, td.totalHits.value());
     // null is treated as Long.MAX_VALUE
     assertEquals("-1", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -499,7 +499,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.FLOAT));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(3, td.totalHits.value());
     // numeric order
     assertEquals("-1.3", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -532,7 +532,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.FLOAT, true));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(3, td.totalHits.value());
     // reverse numeric order
     assertEquals("30.1", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -563,7 +563,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.FLOAT));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(3, td.totalHits.value());
     // null is treated as 0
     assertEquals("-1.3", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -597,7 +597,7 @@ public class TestSort extends LuceneTestCase {
     SortField sortField = new SortField("value", SortField.Type.FLOAT, false, Float.MAX_VALUE);
     Sort sort = new Sort(sortField);
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(3, td.totalHits.value());
     // null is treated as Float.MAX_VALUE
     assertEquals("-1.3", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -634,7 +634,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.DOUBLE));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(4, td.totalHits.value());
     // numeric order
     assertEquals("-1.3", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -667,7 +667,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.DOUBLE));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(2, td.totalHits.value());
     // numeric order
     assertEquals("-0", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -703,7 +703,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.DOUBLE, true));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(4, td.totalHits.value());
     // numeric order
     assertEquals("30.1", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -741,7 +741,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.DOUBLE));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(4, td.totalHits.value());
     // null treated as a 0
     assertEquals("-1.3", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -783,7 +783,7 @@ public class TestSort extends LuceneTestCase {
     SortField sortField = new SortField("value", SortField.Type.DOUBLE, false, Double.MAX_VALUE);
     Sort sort = new Sort(sortField);
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(4, td.totalHits.value());
     // null treated as Double.MAX_VALUE
     assertEquals("-1.3", searcher.storedFields().document(td.scoreDocs[0].doc).get("value"));
@@ -834,7 +834,7 @@ public class TestSort extends LuceneTestCase {
             new SortField("value1", SortField.Type.STRING),
             new SortField("value2", SortField.Type.LONG));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(4, td.totalHits.value());
     // 'bar' comes before 'foo'
     assertEquals("bar", searcher.storedFields().document(td.scoreDocs[0].doc).get("value1"));
@@ -848,7 +848,7 @@ public class TestSort extends LuceneTestCase {
     assertEquals("1", searcher.storedFields().document(td.scoreDocs[3].doc).get("value2"));
 
     // Now with overflow
-    td = searcher.search(new MatchAllDocsQuery(), 1, sort);
+    td = searcher.search(MatchAllDocsQuery.INSTANCE, 1, sort);
     assertEquals(4, td.totalHits.value());
     assertEquals("bar", searcher.storedFields().document(td.scoreDocs[0].doc).get("value1"));
     assertEquals("0", searcher.storedFields().document(td.scoreDocs[0].doc).get("value2"));
@@ -904,7 +904,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.STRING));
 
-    TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopFieldDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(2, td.totalHits.value());
     assertNull(((FieldDoc) td.scoreDocs[0]).fields[0]);
     assertNull(((FieldDoc) td.scoreDocs[1]).fields[0]);
@@ -940,7 +940,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.INT));
 
-    TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopFieldDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(2, td.totalHits.value());
     assertEquals(0, ((FieldDoc) td.scoreDocs[0]).fields[0]);
     assertEquals(0, ((FieldDoc) td.scoreDocs[1]).fields[0]);
@@ -976,7 +976,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.LONG));
 
-    TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopFieldDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(2, td.totalHits.value());
     assertEquals(0L, ((FieldDoc) td.scoreDocs[0]).fields[0]);
     assertEquals(0L, ((FieldDoc) td.scoreDocs[1]).fields[0]);
@@ -1012,7 +1012,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.DOUBLE));
 
-    TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopFieldDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(2, td.totalHits.value());
     assertEquals(0.0, ((FieldDoc) td.scoreDocs[0]).fields[0]);
     assertEquals(0.0, ((FieldDoc) td.scoreDocs[1]).fields[0]);
@@ -1048,7 +1048,7 @@ public class TestSort extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortField("value", SortField.Type.FLOAT));
 
-    TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopFieldDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(2, td.totalHits.value());
     assertEquals(0.0f, ((FieldDoc) td.scoreDocs[0]).fields[0]);
     assertEquals(0.0f, ((FieldDoc) td.scoreDocs[1]).fields[0]);
