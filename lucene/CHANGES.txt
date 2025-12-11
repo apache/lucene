@@ -7,6 +7,8 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#15497: Singleton for MatchAllDocsQuery & MatchNoDocsQuery. (hossman)
+
 * GITHUB#15215: Switch to Java 25 as the minimum required platform. Upgrade to gradle 9.1.0.
   (Robert Muir, Kaival Parikh, Dawid Weiss)
 
