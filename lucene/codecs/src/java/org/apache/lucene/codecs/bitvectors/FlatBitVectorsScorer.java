@@ -24,6 +24,7 @@ import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.hnsw.HasKnnVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
@@ -57,7 +58,7 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
     throw new IllegalArgumentException("vectorValues must be an instance of ByteVectorValues");
   }
 
-  static class BitRandomVectorScorer implements UpdateableRandomVectorScorer {
+  static class BitRandomVectorScorer implements UpdateableRandomVectorScorer, HasKnnVectorValues {
     private final ByteVectorValues vectorValues;
     private final int bitDimensions;
     private final byte[] query;
@@ -92,6 +93,11 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
       return vectorValues.getAcceptOrds(acceptDocs);
+    }
+
+    @Override
+    public KnnVectorValues values() {
+      return vectorValues;
     }
   }
 
