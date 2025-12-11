@@ -295,6 +295,9 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       return;
     }
     scoreEntryPoints(results, scorer, visited, eps, acceptOrds, candidates, bulkScores);
+    if (results.earlyTerminated()) {
+      return;
+    }
 
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.

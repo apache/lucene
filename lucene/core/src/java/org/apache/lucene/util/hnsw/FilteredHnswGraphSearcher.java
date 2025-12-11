@@ -122,6 +122,9 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
       return;
     }
     scoreEntryPoints(results, scorer, visited, eps, acceptOrds, candidates, bulkScores);
+    if (results.earlyTerminated()) {
+      return;
+    }
     // Collect the vectors to score and potentially add as candidates
     IntArrayQueue toScore = new IntArrayQueue(graph.maxConn() * 2 * maxExplorationMultiplier);
     IntArrayQueue toExplore = new IntArrayQueue(graph.maxConn() * 2 * maxExplorationMultiplier);
