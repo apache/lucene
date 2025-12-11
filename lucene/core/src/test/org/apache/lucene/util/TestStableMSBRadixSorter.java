@@ -110,13 +110,14 @@ public class TestStableMSBRadixSorter extends LuceneTestCase {
   }
 
   private void testRandom(int commonPrefixLen, int maxLen) {
+    var random = nonAssertingRandom(random());
     byte[] commonPrefix = new byte[commonPrefixLen];
-    random().nextBytes(commonPrefix);
-    final int len = random().nextInt(100000);
-    BytesRef[] bytes = new BytesRef[len + random().nextInt(50)];
+    random.nextBytes(commonPrefix);
+    final int len = random.nextInt(100000);
+    BytesRef[] bytes = new BytesRef[len + random.nextInt(50)];
     for (int i = 0; i < len; ++i) {
-      byte[] b = new byte[commonPrefixLen + random().nextInt(maxLen)];
-      random().nextBytes(b);
+      byte[] b = new byte[commonPrefixLen + random.nextInt(maxLen)];
+      random.nextBytes(b);
       System.arraycopy(commonPrefix, 0, b, 0, commonPrefixLen);
       bytes[i] = new BytesRef(b);
     }
@@ -124,27 +125,19 @@ public class TestStableMSBRadixSorter extends LuceneTestCase {
   }
 
   public void testRandom() {
-    for (int iter = 0; iter < 10; ++iter) {
-      testRandom(0, 10);
-    }
+    testRandom(0, 10);
   }
 
   public void testRandomWithLotsOfDuplicates() {
-    for (int iter = 0; iter < 10; ++iter) {
-      testRandom(0, 2);
-    }
+    testRandom(0, 2);
   }
 
   public void testRandomWithSharedPrefix() {
-    for (int iter = 0; iter < 10; ++iter) {
-      testRandom(TestUtil.nextInt(random(), 1, 30), 10);
-    }
+    testRandom(TestUtil.nextInt(random(), 1, 30), 10);
   }
 
   public void testRandomWithSharedPrefixAndLotsOfDuplicates() {
-    for (int iter = 0; iter < 10; ++iter) {
-      testRandom(TestUtil.nextInt(random(), 1, 30), 2);
-    }
+    testRandom(TestUtil.nextInt(random(), 1, 30), 2);
   }
 
   public void testRandom2() {

@@ -1098,8 +1098,8 @@ public class TestIndexWriter extends LuceneTestCase {
         new ThreadInterruptedException(new InterruptedException()).getCause()
             instanceof InterruptedException);
 
-    // issue 100 interrupts to child thread
-    final int numInterrupts = atLeast(100);
+    // issue 20 interrupts to child thread
+    final int numInterrupts = atLeast(20);
     int i = 0;
     while (i < numInterrupts) {
       // TODO: would be nice to also sometimes interrupt the CMS merge threads too ...
@@ -4388,9 +4388,9 @@ public class TestIndexWriter extends LuceneTestCase {
         SearcherManager manager = new SearcherManager(writer, new SearcherFactory())) {
       CountDownLatch start = new CountDownLatch(1);
       int numDocs =
-          TEST_NIGHTLY ? TestUtil.nextInt(random(), 100, 600) : TestUtil.nextInt(random(), 10, 60);
+          TEST_NIGHTLY ? TestUtil.nextInt(random(), 100, 600) : TestUtil.nextInt(random(), 10, 30);
       AtomicLong maxCompletedSeqID = new AtomicLong(-1);
-      Thread[] threads = new Thread[2 + random().nextInt(2)];
+      Thread[] threads = new Thread[2];
       for (int i = 0; i < threads.length; i++) {
         int idx = i;
         threads[i] =

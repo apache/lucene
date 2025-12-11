@@ -33,14 +33,6 @@ public class TestOnHeapHnswGraph extends LuceneTestCase {
     expectThrows(IllegalStateException.class, () -> graph.addNode(1, 100));
   }
 
-  /* AssertionError will be thrown if we add a node not from top most level,
-  (likely NPE will be thrown in prod) */
-  public void testAddLevelOutOfOrder() {
-    OnHeapHnswGraph graph = new OnHeapHnswGraph(10, -1);
-    graph.addNode(0, 0);
-    expectThrows(AssertionError.class, () -> graph.addNode(1, 0));
-  }
-
   /* assert exception will be thrown when we call getNodeOnLevel for an incomplete graph */
   public void testIncompleteGraphThrow() {
     OnHeapHnswGraph graph = new OnHeapHnswGraph(10, -1);

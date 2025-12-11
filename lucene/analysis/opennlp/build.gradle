@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 
-import org.apache.lucene.gradle.plugins.help.ExecOperationsProvider
-
 description = 'OpenNLP Library Integration'
 
 dependencies {
@@ -51,8 +49,7 @@ tasks.register('trainTestModels') {
 }
 
 def trainModel(String command, String lang, String data, String model, List extraArgs = []) {
-  def execOps = objects.newInstance(ExecOperationsProvider).execOperations
-  execOps.javaexec {
+  buildGlobals.execOps.javaexec {
     classpath = sourceSets.main.compileClasspath
     mainClass = 'opennlp.tools.cmdline.CLI'
     workingDir = testModelDataDir

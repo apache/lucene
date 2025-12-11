@@ -151,13 +151,15 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       graph = ArrayUtil.grow(graph, node + 1);
     }
 
-    assert graph[node] == null || graph[node].length > level
-        : "node must be inserted from the top level";
+    assert graph[node] == null || graph[node].length >= level
+        : "node must be inserted from the top level: ";
     if (graph[node] == null) {
-      graph[node] =
-          new NeighborArray[level + 1]; // assumption: we always call this function from top level
+      graph[node] = new NeighborArray[level + 1];
       size.incrementAndGet();
+    } else if (graph[node].length <= level) {
+      graph[node] = ArrayUtil.growExact(graph[node], level + 1);
     }
+
     if (level == 0) {
       graph[node][level] =
           new NeighborArray(
@@ -214,6 +216,10 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   @Override
   public int maxConn() {
     return nsize - 1;
+  }
+
+  public boolean nodeExistAtLevel(int level, int node) {
+    return graph[node] != null && graph[node].length > level;
   }
 
   /**
@@ -276,7 +282,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
           "graph build not complete, size=" + size() + " maxNodeId=" + maxNodeId());
     }
     if (level == 0) {
-      return new ArrayNodesIterator(size());
+      return new DenseNodesIterator(size());
     } else {
       generateLevelToNodes();
       return new CollectionNodesIterator(levelToNodes[level]);

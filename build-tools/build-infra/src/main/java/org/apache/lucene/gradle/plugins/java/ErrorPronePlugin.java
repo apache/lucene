@@ -103,9 +103,9 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
             skipReason = "skipped explicitly on a CI build it seems";
           } else {
             skipReason =
-                "skipped on builds not running inside CI environments, pass -P"
-                    + OPT_VALIDATION_ERRORPRONE
-                    + "=true to enable";
+                "skipped on non-CI environments, pass "
+                    + ("-P" + OPT_VALIDATION_ERRORPRONE + "=true")
+                    + " to enable";
           }
         }
       }
@@ -116,6 +116,15 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
             .register(
                 TASK_ERROR_PRONE_SKIPPED,
                 task -> {
+                  boolean hasCheckTask =
+                      project.getGradle().getStartParameter().getTaskNames().contains("check");
+
+                  task.onlyIf(
+                      _ -> {
+                        // Only complain if we're running a 'check'.
+                        return hasCheckTask;
+                      });
+
                   task.doFirst(
                       t -> {
                         t.getLogger().warn("Errorprone linting turned off ({})", skipReason);
@@ -256,7 +265,6 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "AlwaysThrows:OFF", // we don't use guava
     "AmbiguousMethodReference:OFF",
     "AndroidInjectionBeforeSuper:OFF", // we don't use android
-    "AndroidJdkLibsChecker:OFF", // TODO: new, not checked if applicable to Lucene
     "AnnotateFormatMethod:OFF", // we don't use this annotation
     "AnnotationMirrorToString:OFF", // TODO: new, not checked if applicable to Lucene
     "AnnotationPosition:OFF", // TODO: new, not checked if applicable to Lucene
@@ -273,6 +281,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "AssertFalse:OFF", // TODO: new, not checked if applicable to Lucene
     "AssertThrowsMultipleStatements:WARN",
     "AssertionFailureIgnored:OFF", // TODO: there are problems
+    "AssertSameIncompatible:WARN",
     "AssignmentExpression:OFF", // TODO: there are problems
     "AssistedInjectAndInjectOnConstructors:OFF", // TODO: new, not checked if applicable to Lucene
     "AssistedInjectAndInjectOnSameConstructor:OFF", // we don't use this annotation
@@ -432,6 +441,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "ForEachIterable:OFF", // TODO: new, not checked if applicable to Lucene
     "ForOverride:OFF", // we don't use this annotation
     "FormatString:ERROR",
+    "FormatStringShouldUsePlaceholders:ERROR",
     "FormatStringAnnotation:OFF", // we don't use this annotation
     "FragmentInjection:OFF", // we don't use android
     "FragmentNotInstantiable:OFF", // we don't use android
@@ -638,6 +648,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "NonRuntimeAnnotation:ERROR",
     "NotJavadoc:WARN",
     "NullArgumentForNonNullParameter:OFF", // we don't use this annotation
+    "NullNeedsCastForVarargs:ERROR",
     "NullOptional:WARN",
     "NullTernary:ERROR",
     "NullableConstructor:OFF", // we don't use this annotation
@@ -703,6 +714,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "ReachabilityFenceUsage:WARN",
     "RectIntersectReturnValueIgnored:OFF", // we don't use android
     "RedundantControlFlow:OFF", // stylistic
+    "RedundantNullCheck:ERROR",
     "RedundantOverride:OFF", // TODO: new, not checked if applicable to Lucene
     "RedundantSetterCall:OFF", // we don't use protobuf
     "RedundantThrows:OFF", // TODO: new, not checked if applicable to Lucene

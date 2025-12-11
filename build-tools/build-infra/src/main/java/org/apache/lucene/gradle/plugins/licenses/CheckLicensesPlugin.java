@@ -27,6 +27,8 @@ import org.gradle.api.specs.Spec;
 
 /** This configures ASL and other license checks. */
 public class CheckLicensesPlugin extends LuceneGradlePlugin {
+  public static final String CHECK_LICENSES_TASK = "checkLicenses";
+
   @Override
   public void apply(Project project) {
     applicableToRootProjectOnly(project);
@@ -36,7 +38,7 @@ public class CheckLicensesPlugin extends LuceneGradlePlugin {
     var checkLicensesTask =
         project
             .getTasks()
-            .register("checkLicenses", CheckLicensesTask.class, this::configureCheckLicenses);
+            .register(CHECK_LICENSES_TASK, CheckLicensesTask.class, this::configureCheckLicenses);
 
     // Link any 'check' task from any subproject to this top-level task.
     project.subprojects(
@@ -80,6 +82,9 @@ public class CheckLicensesPlugin extends LuceneGradlePlugin {
                 "**/*.svg",
                 "**/*.xls",
                 "**/*.zip",
+
+                // JSON doesn't support comments
+                "**/*.json",
 
                 // Ignore build infrastructure and misc utility files.
                 ".asf.yaml",

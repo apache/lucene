@@ -775,7 +775,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       if (curFi != null) {
         curFi.verifySameSchema(fi);
         if (fi.attributes() != null) {
-          fi.attributes().forEach((k, v) -> curFi.putAttribute(k, v));
+          curFi.putAttributes(fi.attributes());
         }
         if (fi.hasPayloads()) {
           curFi.setStorePayloads();

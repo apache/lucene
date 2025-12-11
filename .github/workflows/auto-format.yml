@@ -79,7 +79,7 @@ jobs:
           fi
 
       - name: Checkout PR code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6.0.0
         with:
           repository: ${{ env.head_repo_full }}
           ref: ${{ env.head_ref }}
@@ -124,7 +124,7 @@ jobs:
         if: ${{ steps.initial-validation.outcome == 'failure' }}
         run: |
           echo "Fixing formatting issues and updating lock file..."
-          ./gradlew tidy writeLocks updateLicenses
+          ./gradlew tidy writeLocks writeChecksums
 
       - name: Check if formatting fixes were made
         if: ${{ steps.initial-validation.outcome == 'failure' }}

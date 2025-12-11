@@ -113,8 +113,8 @@ public class TestSortedSetSelector extends LuceneTestCase {
     // slow wrapper does not support random access ordinals (there is no need for that!)
     IndexSearcher searcher = newSearcher(ir, false);
 
-    SortField sortField = new SortedSetSortField("value", false, SortedSetSelector.Type.MAX);
-    sortField.setMissingValue(SortField.STRING_FIRST);
+    SortField sortField =
+        new SortedSetSortField("value", false, SortedSetSelector.Type.MAX, SortField.STRING_FIRST);
     Sort sort = new Sort(sortField);
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
@@ -150,8 +150,8 @@ public class TestSortedSetSelector extends LuceneTestCase {
     // slow wrapper does not support random access ordinals (there is no need for that!)
     IndexSearcher searcher = newSearcher(ir, false);
 
-    SortField sortField = new SortedSetSortField("value", false, SortedSetSelector.Type.MAX);
-    sortField.setMissingValue(SortField.STRING_LAST);
+    SortField sortField =
+        new SortedSetSortField("value", false, SortedSetSelector.Type.MAX, SortField.STRING_LAST);
     Sort sort = new Sort(sortField);
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
@@ -278,8 +278,9 @@ public class TestSortedSetSelector extends LuceneTestCase {
 
     // slow wrapper does not support random access ordinals (there is no need for that!)
     IndexSearcher searcher = newSearcher(ir, false);
-    SortField sortField = new SortedSetSortField("value", false, SortedSetSelector.Type.MIDDLE_MIN);
-    sortField.setMissingValue(SortField.STRING_FIRST);
+    SortField sortField =
+        new SortedSetSortField(
+            "value", false, SortedSetSelector.Type.MIDDLE_MIN, SortField.STRING_FIRST);
     Sort sort = new Sort(sortField);
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
@@ -316,8 +317,9 @@ public class TestSortedSetSelector extends LuceneTestCase {
 
     // slow wrapper does not support random access ordinals (there is no need for that!)
     IndexSearcher searcher = newSearcher(ir, false);
-    SortField sortField = new SortedSetSortField("value", false, SortedSetSelector.Type.MIDDLE_MIN);
-    sortField.setMissingValue(SortField.STRING_LAST);
+    SortField sortField =
+        new SortedSetSortField(
+            "value", false, SortedSetSelector.Type.MIDDLE_MIN, SortField.STRING_LAST);
     Sort sort = new Sort(sortField);
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
@@ -444,8 +446,9 @@ public class TestSortedSetSelector extends LuceneTestCase {
 
     // slow wrapper does not support random access ordinals (there is no need for that!)
     IndexSearcher searcher = newSearcher(ir, false);
-    SortField sortField = new SortedSetSortField("value", false, SortedSetSelector.Type.MIDDLE_MAX);
-    sortField.setMissingValue(SortField.STRING_FIRST);
+    SortField sortField =
+        new SortedSetSortField(
+            "value", false, SortedSetSelector.Type.MIDDLE_MAX, SortField.STRING_FIRST);
     Sort sort = new Sort(sortField);
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
@@ -482,8 +485,9 @@ public class TestSortedSetSelector extends LuceneTestCase {
 
     // slow wrapper does not support random access ordinals (there is no need for that!)
     IndexSearcher searcher = newSearcher(ir, false);
-    SortField sortField = new SortedSetSortField("value", false, SortedSetSelector.Type.MIDDLE_MAX);
-    sortField.setMissingValue(SortField.STRING_LAST);
+    SortField sortField =
+        new SortedSetSortField(
+            "value", false, SortedSetSelector.Type.MIDDLE_MAX, SortField.STRING_LAST);
     Sort sort = new Sort(sortField);
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);

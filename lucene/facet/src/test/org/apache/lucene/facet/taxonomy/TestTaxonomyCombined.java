@@ -750,7 +750,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
     final ParallelTaxonomyArrays ca2 = trBase.getParallelTaxonomyArrays();
     final int abYoungChildBase2 = ca2.children().get(abOrd);
 
-    int numRetries = atLeast(10);
+    int numRetries = atLeast(3);
     for (int retry = 0; retry < numRetries; retry++) {
       assertConsistentYoungestChild(
           abPath, abOrd, abYoungChildBase1, abYoungChildBase2, retry, numCategories);

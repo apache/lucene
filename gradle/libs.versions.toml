@@ -1,27 +1,27 @@
-# Run "gradlew writeLocks" and "gradlew updateLicenses" after modifying this file!
+# Run "gradlew writeLocks writeChecksums" after modifying this file!
 [versions]
 # expressions/ grammars
 antlr = "4.13.2"
 # test assertions
 assertj = "3.27.6"
 # analysis/phonetic/ algorithms, gradle build checksums
-commons-codec = "1.19.0"
+commons-codec = "1.20.0"
 # benchmark/ bzip2 compression
 commons-compress = "1.28.0"
 # See ecj-lint.gradle (used for more linting).
 ecj = "I20250926-1800"
 # java linting
-errorprone = "2.42.0"
+errorprone = "2.45.0"
 # markdown documentation generation
 flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
-googleJavaFormat = "1.29.0"
+googleJavaFormat = "1.32.0"
 # gradle build support
-groovy = "5.0.1"
+groovy = "5.0.3"
 # test assertions
 hamcrest = "3.0"
 # analysis/icu/, gradle regeneration unicode support
-icu4j = "77.1"
+icu4j = "78.1"
 # queryparsers/ grammars
 javacc = "7.0.13"
 # analysis/ tokenizer grammars
@@ -45,7 +45,7 @@ morfologik-ukrainian = "4.9.1"
 # benchmark/ html parsing
 nekohtml = "1.9.22"
 # analysis/opennlp/ support
-opennlp = "2.5.5"
+opennlp = "2.5.6.1"
 # distribution.tests/ process management
 procfork = "1.0.6"
 # unit tests
@@ -57,7 +57,7 @@ spatial4j = "0.8"
 # benchmark/ XML parsing
 xerces = "2.12.2"
 # external datasets decompression
-zstd = "1.5.7-5"
+zstd = "1.5.7-6"
 
 [libraries]
 antlr-core = { module = "org.antlr:antlr4", version.ref = "antlr" }
@@ -103,6 +103,6 @@ errorprone = "net.ltgt.errorprone:4.3.0"
 forbiddenapis = "de.thetaphi.forbiddenapis:3.10"
 jacocolog = "org.barfuin.gradle.jacocolog:3.1.0"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
-spotless = "com.diffplug.spotless:8.0.0"
+spotless = "com.diffplug.spotless:8.1.0"
 undercouch-download = "de.undercouch.download:5.6.0"
 versionCatalogUpdate = "nl.littlerobots.version-catalog-update:1.0.1"
