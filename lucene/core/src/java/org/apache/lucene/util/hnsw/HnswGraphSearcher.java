@@ -288,25 +288,13 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     int size = getGraphSize(graph);
 
     prepareScratchState(size, graph.maxConn() * 2);
-
-    if (bulkNodes == null || bulkNodes.length < graph.maxConn() * 2) {
-      bulkNodes = new int[graph.maxConn() * 2];
-      bulkScores = new float[graph.maxConn() * 2];
+    if (bulkScores == null || bulkScores.length < eps.length) {
+      bulkScores = new float[eps.length];
     }
-
-    for (int ep : eps) {
-      if (visited.getAndSet(ep) == false) {
-        if (results.earlyTerminated()) {
-          break;
-        }
-        float score = scorer.score(ep);
-        results.incVisitedCount(1);
-        candidates.add(ep, score);
-        if (acceptOrds == null || acceptOrds.get(ep)) {
-          results.collect(ep, score);
-        }
-      }
+    if (results.earlyTerminated()) {
+      return;
     }
+    scoreEntryPoints(results, scorer, visited, eps, acceptOrds, candidates, bulkScores);
 
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
