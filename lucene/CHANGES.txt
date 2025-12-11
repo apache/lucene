@@ -144,6 +144,8 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#15497: Singleton for MatchAllDocsQuery & MatchNoDocsQuery. (hossman)
+
 * GITHUB#15149: Introduce NumericDocValues#longValues to help speed up the
   retrieval of many doc values at once. (Adrien Grand)
 

@@ -188,21 +188,21 @@ public class TestIndexReaderFunctions extends LuceneTestCase {
   }
 
   void assertCacheable(DoubleValuesSource vs, boolean expected) throws Exception {
-    Query q = new FunctionScoreQuery(new MatchAllDocsQuery(), vs);
+    Query q = new FunctionScoreQuery(MatchAllDocsQuery.INSTANCE, vs);
     Weight w = searcher.createWeight(q, ScoreMode.COMPLETE, 1);
     LeafReaderContext ctx = reader.leaves().get(0);
     assertEquals(expected, w.isCacheable(ctx));
   }
 
   void assertCacheable(LongValuesSource vs, boolean expected) throws Exception {
-    Query q = new FunctionScoreQuery(new MatchAllDocsQuery(), vs.toDoubleValuesSource());
+    Query q = new FunctionScoreQuery(MatchAllDocsQuery.INSTANCE, vs.toDoubleValuesSource());
     Weight w = searcher.createWeight(q, ScoreMode.COMPLETE, 1);
     LeafReaderContext ctx = reader.leaves().get(0);
     assertEquals(expected, w.isCacheable(ctx));
   }
 
   void assertHits(DoubleValuesSource vs, float[] scores) throws Exception {
-    Query q = new FunctionScoreQuery(new MatchAllDocsQuery(), vs);
+    Query q = new FunctionScoreQuery(MatchAllDocsQuery.INSTANCE, vs);
     ScoreDoc[] expected = new ScoreDoc[scores.length];
     int[] expectedDocs = new int[scores.length];
     for (int i = 0; i < expected.length; i++) {
@@ -228,7 +228,7 @@ public class TestIndexReaderFunctions extends LuceneTestCase {
     }
     TopDocs docs =
         searcher.search(
-            new MatchAllDocsQuery(), expected.length, new Sort(vs.getSortField(reversed)));
-    CheckHits.checkHitsQuery(new MatchAllDocsQuery(), expected, docs.scoreDocs, expectedDocs);
+            MatchAllDocsQuery.INSTANCE, expected.length, new Sort(vs.getSortField(reversed)));
+    CheckHits.checkHitsQuery(MatchAllDocsQuery.INSTANCE, expected, docs.scoreDocs, expectedDocs);
   }
 }

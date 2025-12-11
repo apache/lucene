@@ -88,7 +88,8 @@ public class TestIndexSearcher extends LuceneTestCase {
 
     IndexSearcher[] searchers =
         new IndexSearcher[] {new IndexSearcher(reader), new IndexSearcher(reader, service)};
-    Query[] queries = new Query[] {new MatchAllDocsQuery(), new TermQuery(new Term("field", "1"))};
+    Query[] queries =
+        new Query[] {MatchAllDocsQuery.INSTANCE, new TermQuery(new Term("field", "1"))};
     Sort[] sorts = new Sort[] {null, new Sort(new SortField("field2", SortField.Type.STRING))};
     ScoreDoc[] afters =
         new ScoreDoc[] {null, new FieldDoc(0, 0f, new Object[] {newBytesRef("boo!")})};
@@ -127,7 +128,7 @@ public class TestIndexSearcher extends LuceneTestCase {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          s.searchAfter(new ScoreDoc(r.maxDoc(), 0.54f), new MatchAllDocsQuery(), 10);
+          s.searchAfter(new ScoreDoc(r.maxDoc(), 0.54f), MatchAllDocsQuery.INSTANCE, 10);
         });
 
     IOUtils.close(r, dir);
@@ -159,8 +160,8 @@ public class TestIndexSearcher extends LuceneTestCase {
       // Test multiple queries, some of them are optimized by IndexSearcher.count()
       for (Query query :
           Arrays.asList(
-              new MatchAllDocsQuery(),
-              new MatchNoDocsQuery(),
+              MatchAllDocsQuery.INSTANCE,
+              MatchNoDocsQuery.INSTANCE,
               new TermQuery(new Term("foo", "bar")),
               new ConstantScoreQuery(new TermQuery(new Term("foo", "baz"))),
               new BooleanQuery.Builder()
@@ -289,7 +290,7 @@ public class TestIndexSearcher extends LuceneTestCase {
             return slices.toArray(new LeafSlice[0]);
           }
         };
-    searcher.search(new MatchAllDocsQuery(), 10);
+    searcher.search(MatchAllDocsQuery.INSTANCE, 10);
     assertEquals(leaves.size() - 1, numExecutions.get());
   }
 

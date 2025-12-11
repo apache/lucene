@@ -2687,10 +2687,10 @@ public class TestIndexSorting extends LuceneTestCase {
 
       TopDocs hits1 =
           s1.search(
-              new MatchAllDocsQuery(),
+              MatchAllDocsQuery.INSTANCE,
               new TopFieldCollectorManager(sort, numHits, Integer.MAX_VALUE));
       TopDocs hits2 =
-          s2.search(new MatchAllDocsQuery(), new TopFieldCollectorManager(sort, numHits, 1));
+          s2.search(MatchAllDocsQuery.INSTANCE, new TopFieldCollectorManager(sort, numHits, 1));
 
       if (VERBOSE) {
         System.out.println("  topDocs query-time sort: totalHits=" + hits1.totalHits.value());

@@ -151,7 +151,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
   private IndexReader reader;
 
   private TopDocsCollector<ScoreDoc> doSearch(int numResults) throws IOException {
-    Query q = new MatchAllDocsQuery();
+    Query q = MatchAllDocsQuery.INSTANCE;
     IndexSearcher searcher = newSearcher(reader);
     return searcher.search(q, new MyTopDocsCollectorMananger(numResults));
   }
@@ -378,7 +378,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
   }
 
   public void testSharedCountCollectorManager() throws Exception {
-    Query q = new MatchAllDocsQuery();
+    Query q = MatchAllDocsQuery.INSTANCE;
     Directory dir = newDirectory();
     IndexWriter w =
         new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE));
