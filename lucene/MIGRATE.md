@@ -104,7 +104,7 @@ Missing values should be configured in SortField constructor methods, as they ar
 
 ### MatchAllDocs and MatchNoDocs are singletons
 
-MatchAllDocs and MatchNoDocs queries should use SINGLETON final field instead of creating
+MatchAllDocs and MatchNoDocs queries should use the INSTANCE final field instead of creating
 new objects. The constructors will be removed in the future.
 
 ## Migration from Lucene 9.x to Lucene 10.0
