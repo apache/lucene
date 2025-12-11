@@ -256,6 +256,8 @@ Optimizations
 * GITHUB#15474: Use bulk scoring provided by RandomVectorScorers for new scalar quantized formats provided through
     Lucene104ScalarQuantizedVectorsFormat and Lucene104HnswScalarQuantizedVectorsFormat (Ben Trent)
 
+* GITHUB#15498: ExitableDirectoryReader keeps singleton SortedSetDocValues or SortedNumericDocValues as singletons. (Houston Putman)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
