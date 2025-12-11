@@ -190,17 +190,29 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
         }
       }
       // Score the vectors and add them to the candidate list
-      int toScoreOrd;
-      while ((toScoreOrd = toScore.poll()) != NO_MORE_DOCS) {
-        float friendSimilarity = scorer.score(toScoreOrd);
-        results.incVisitedCount(1);
-        if (friendSimilarity > minAcceptedSimilarity) {
-          candidates.add(toScoreOrd, friendSimilarity);
-          if (results.collect(toScoreOrd, friendSimilarity)) {
-            minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
+      if (bulkScores == null || bulkScores.length < toScore.count()) {
+        bulkScores = new float[toScore.count()];
+      }
+      assert toScore.upto == 0;
+      float maxScore =
+          toScore.count() > 0
+              ? scorer.bulkScore(toScore.nodes, bulkScores, toScore.size)
+              : Float.NEGATIVE_INFINITY;
+      results.incVisitedCount(toScore.count());
+      if (maxScore > minAcceptedSimilarity) {
+        for (int i = 0; i < toScore.count(); i++) {
+          int idx = i + toScore.upto;
+          float friendSimilarity = bulkScores[idx];
+          if (friendSimilarity > minAcceptedSimilarity) {
+            int ord = toScore.nodes[idx];
+            candidates.add(ord, friendSimilarity);
+            if (results.collect(ord, friendSimilarity)) {
+              minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
+            }
           }
         }
       }
+      toScore.upto = toScore.size; // all scored
       if (results.getSearchStrategy() != null) {
         results.getSearchStrategy().nextVectorsBlock();
       }

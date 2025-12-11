@@ -226,7 +226,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       return new int[] {currentEp};
     }
     int size = getGraphSize(graph);
-    prepareScratchState(size);
+    prepareScratchState(size, graph.maxConn() * 2);
     float currentScore = scorer.score(currentEp);
     collector.incVisitedCount(1);
     boolean foundBetter;
@@ -238,6 +238,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
         foundBetter = false;
         graphSeek(graph, level, currentEp);
         int friendOrd;
+        int numNodes = 0;
         while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
           assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
           if (visited.getAndSet(friendOrd)) {
@@ -246,12 +247,21 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
           if (collector.earlyTerminated()) {
             return new int[] {UNK_EP};
           }
-          float friendSimilarity = scorer.score(friendOrd);
-          collector.incVisitedCount(1);
-          if (friendSimilarity > currentScore) {
-            currentScore = friendSimilarity;
-            currentEp = friendOrd;
-            foundBetter = true;
+          bulkNodes[numNodes++] = friendOrd;
+        }
+        float maxScore =
+            numNodes > 0
+                ? scorer.bulkScore(bulkNodes, bulkScores, numNodes)
+                : Float.NEGATIVE_INFINITY;
+        collector.incVisitedCount(numNodes);
+        if (maxScore > currentScore) {
+          for (int i = 0; i < numNodes; i++) {
+            float score = bulkScores[i];
+            if (score > currentScore) {
+              currentScore = score;
+              currentEp = bulkNodes[i];
+              foundBetter = true;
+            }
           }
         }
       }
@@ -277,7 +287,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
 
     int size = getGraphSize(graph);
 
-    prepareScratchState(size);
+    prepareScratchState(size, graph.maxConn() * 2);
 
     if (bulkNodes == null || bulkNodes.length < graph.maxConn() * 2) {
       bulkNodes = new int[graph.maxConn() * 2];
@@ -335,7 +345,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
         bulkNodes[numNodes++] = friendOrd;
       }
 
-      numNodes = (int) Math.min((long) numNodes, results.visitLimit() - results.visitedCount());
+      numNodes = (int) Math.min(numNodes, results.visitLimit() - results.visitedCount());
       results.incVisitedCount(numNodes);
       if (numNodes > 0
           && scorer.bulkScore(bulkNodes, bulkScores, numNodes)
@@ -365,12 +375,16 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     }
   }
 
-  private void prepareScratchState(int capacity) {
+  private void prepareScratchState(int capacity, int bulkScoreSize) {
     candidates.clear();
     if (visited.length() < capacity) {
       visited = FixedBitSet.ensureCapacity((FixedBitSet) visited, capacity);
     }
     visited.clear();
+    if (bulkNodes == null || bulkNodes.length < bulkScoreSize) {
+      bulkNodes = new int[bulkScoreSize];
+      bulkScores = new float[bulkScoreSize];
+    }
   }
 
   /**
