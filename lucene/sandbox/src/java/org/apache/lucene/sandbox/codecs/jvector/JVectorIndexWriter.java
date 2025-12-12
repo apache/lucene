@@ -21,7 +21,6 @@ import io.github.jbellis.jvector.disk.IndexWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-
 import org.apache.lucene.store.IndexOutput;
 
 /**
