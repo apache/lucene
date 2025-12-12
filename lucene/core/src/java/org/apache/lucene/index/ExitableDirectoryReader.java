@@ -109,7 +109,10 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
 
     @Override
     public NumericDocValues getNumericDocValues(String field) throws IOException {
-      final NumericDocValues numericDocValues = super.getNumericDocValues(field);
+      return wrapNumericDocValues(super.getNumericDocValues(field));
+    }
+
+    private NumericDocValues wrapNumericDocValues(final NumericDocValues numericDocValues) {
       if (numericDocValues == null) {
         return null;
       }
@@ -191,7 +194,10 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
 
     @Override
     public SortedDocValues getSortedDocValues(String field) throws IOException {
-      final SortedDocValues sortedDocValues = super.getSortedDocValues(field);
+      return wrapSortedDocValues(super.getSortedDocValues(field));
+    }
+
+    private SortedDocValues wrapSortedDocValues(final SortedDocValues sortedDocValues) {
       if (sortedDocValues == null) {
         return null;
       }
@@ -234,6 +240,10 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     @Override
     public SortedNumericDocValues getSortedNumericDocValues(String field) throws IOException {
       final SortedNumericDocValues sortedNumericDocValues = super.getSortedNumericDocValues(field);
+      final NumericDocValues numericDocValues = DocValues.unwrapSingleton(sortedNumericDocValues);
+      if (numericDocValues != null) {
+        return DocValues.singleton(wrapNumericDocValues(numericDocValues));
+      }
       if (sortedNumericDocValues == null) {
         return null;
       }
@@ -278,6 +288,10 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       final SortedSetDocValues sortedSetDocValues = super.getSortedSetDocValues(field);
       if (sortedSetDocValues == null) {
         return null;
+      }
+      final SortedDocValues sortedDocValues = DocValues.unwrapSingleton(sortedSetDocValues);
+      if (sortedDocValues != null) {
+        return DocValues.singleton(wrapSortedDocValues(sortedDocValues));
       }
       return new FilterSortedSetDocValues(sortedSetDocValues) {
 
