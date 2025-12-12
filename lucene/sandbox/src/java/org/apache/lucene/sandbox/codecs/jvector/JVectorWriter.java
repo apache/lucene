@@ -742,7 +742,7 @@ public class JVectorWriter extends KnnVectorsWriter {
               degreeOverflow,
               alpha,
               hierarchyEnabled,
-              true);
+              false);
     }
 
     // parallel graph construction from the merge documents Ids
@@ -778,7 +778,7 @@ public class JVectorWriter extends KnnVectorsWriter {
             degreeOverflow,
             alpha,
             hierarchyEnabled,
-            true);
+            false);
 
     final var dst = (OnHeapGraphIndex) builder.getGraph();
     final int maxLevel = hierarchyEnabled ? src.getMaxLevel() : 0;
