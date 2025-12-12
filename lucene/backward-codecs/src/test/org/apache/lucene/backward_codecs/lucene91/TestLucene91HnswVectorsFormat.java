@@ -87,4 +87,9 @@ public class TestLucene91HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
   public void testMismatchedFields() throws Exception {
     // requires byte support
   }
+
+  @Override
+  protected boolean supportsFloatVectorFallback() {
+    return false;
+  }
 }
