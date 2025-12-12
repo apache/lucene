@@ -650,6 +650,7 @@ public class JVectorWriter extends KnnVectorsWriter {
     }
 
     JVectorReader largestReader = null;
+    ProductQuantization largestPQ = null;
     int largestGraphLiveCount = 0;
     int largestGraphIndexSoFar = -1;
     for (int i = 0; i < mergeCount; ++i) {
@@ -660,6 +661,7 @@ public class JVectorWriter extends KnnVectorsWriter {
         largestGraphIndexSoFar = i;
         largestGraphLiveCount = liveDocCounts[i];
         largestReader = jVectorReader;
+        largestPQ = jVectorReader.getProductQuantizationForField(fieldInfo.name).orElse(largestPQ);
       }
     }
     final int largestGraphIndex = largestGraphIndexSoFar;
@@ -679,7 +681,11 @@ public class JVectorWriter extends KnnVectorsWriter {
 
     // Perform PQ if applicable
     final PQVectors pqVectors;
-    if (ravv.size() >= minimumBatchSizeForQuantization) {
+    if (largestPQ != null) {
+      final ProductQuantization newPQ = largestPQ.refine(ravv);
+      pqVectors = (PQVectors) newPQ.encodeAll(ravv);
+      buildScoreProvider = BuildScoreProvider.pqBuildScoreProvider(similarityFunction, pqVectors);
+    } else if (ravv.size() >= minimumBatchSizeForQuantization) {
       final int M = numberOfSubspacesPerVectorSupplier.applyAsInt(ravv.dimension());
       final ProductQuantization newPQ = trainPQ(ravv, M, fieldInfo.getVectorSimilarityFunction());
       pqVectors = (PQVectors) newPQ.encodeAll(ravv);
