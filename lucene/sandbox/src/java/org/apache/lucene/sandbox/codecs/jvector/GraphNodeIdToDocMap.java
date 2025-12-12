@@ -114,6 +114,14 @@ public class GraphNodeIdToDocMap {
     return graphNodeIdsToDocIds[graphNodeId];
   }
 
+  public int getMaxDocId() {
+    return docIdsToGraphNodeIds.length - 1;
+  }
+
+  public int getMaxOrd() {
+    return graphNodeIdsToDocIds.length - 1;
+  }
+
   /**
    * Writes the mapping to the index output
    *
