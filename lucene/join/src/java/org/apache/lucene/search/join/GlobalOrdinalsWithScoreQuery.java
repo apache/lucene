@@ -234,6 +234,12 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
     }
 
     @Override
+    public ScorerSupplier scorerSupplier(IndexSearcher.LeafReaderContextPartition partition)
+        throws IOException {
+      return scorerSupplier(partition.ctx);
+    }
+
+    @Override
     public boolean isCacheable(LeafReaderContext ctx) {
       // disable caching because this query relies on a top reader context
       // and holds a bitset of matching ordinals that cannot be accounted in

@@ -128,5 +128,11 @@ public class TestBaseExplanationTestCase extends BaseExplanationTestCase {
       }
       return new DefaultScorerSupplier(scorer);
     }
+
+    @Override
+    public ScorerSupplier scorerSupplier(IndexSearcher.LeafReaderContextPartition partition)
+        throws IOException {
+      return scorerSupplier(partition.ctx);
+    }
   }
 }
