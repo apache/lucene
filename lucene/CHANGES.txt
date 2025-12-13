@@ -33,6 +33,8 @@ API Changes
 * GITHUB#15483: Deprecate SortField.setMissingValue() in preparation for making SortField immutable
   in Lucene 11.0. Missing values can be set as constructor parameters.  (Alan Woodward)
 
+* GITHUB#15501: Introduce optional access to backing vector values from the scorer  (Chris Hegarty)
+
 New Features
 ---------------------
 * GITHUB#15328: VectorSimilarityFunction.getValues() now implements doubleVal allowing its
