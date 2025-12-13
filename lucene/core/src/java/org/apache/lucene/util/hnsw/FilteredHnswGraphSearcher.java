@@ -28,8 +28,9 @@ import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
  * Searches an HNSW graph to find nearest neighbors to a query vector. This particular
- * implementation is optimized for a filtered search, inspired by the ACORN-1 algorithm.
- * https://arxiv.org/abs/2403.04871 However, this implementation is augmented in some ways, mainly:
+ * implementation is optimized for a filtered search, inspired by the <a
+ * href="https://arxiv.org/abs/2403.04871">ACORN-1 algorithm</a>. However, this implementation is
+ * augmented in some ways, mainly:
  *
  * <ul>
  *   <li>It dynamically determines when the optimized filter step should occur based on some
@@ -114,18 +115,15 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
 
     prepareScratchState();
 
-    for (int ep : eps) {
-      if (visited.getAndSet(ep) == false) {
-        if (results.earlyTerminated()) {
-          return;
-        }
-        float score = scorer.score(ep);
-        results.incVisitedCount(1);
-        candidates.add(ep, score);
-        if (acceptOrds.get(ep)) {
-          results.collect(ep, score);
-        }
-      }
+    if (bulkScores == null || bulkScores.length < eps.length) {
+      bulkScores = new float[eps.length];
+    }
+    if (results.earlyTerminated()) {
+      return;
+    }
+    scoreEntryPoints(results, scorer, visited, eps, acceptOrds, candidates, bulkScores);
+    if (results.earlyTerminated()) {
+      return;
     }
     // Collect the vectors to score and potentially add as candidates
     IntArrayQueue toScore = new IntArrayQueue(graph.maxConn() * 2 * maxExplorationMultiplier);
@@ -190,17 +188,29 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
         }
       }
       // Score the vectors and add them to the candidate list
-      int toScoreOrd;
-      while ((toScoreOrd = toScore.poll()) != NO_MORE_DOCS) {
-        float friendSimilarity = scorer.score(toScoreOrd);
-        results.incVisitedCount(1);
-        if (friendSimilarity > minAcceptedSimilarity) {
-          candidates.add(toScoreOrd, friendSimilarity);
-          if (results.collect(toScoreOrd, friendSimilarity)) {
-            minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
+      if (bulkScores == null || bulkScores.length < toScore.count()) {
+        bulkScores = new float[toScore.count()];
+      }
+      assert toScore.upto == 0;
+      float maxScore =
+          toScore.count() > 0
+              ? scorer.bulkScore(toScore.nodes, bulkScores, toScore.size)
+              : Float.NEGATIVE_INFINITY;
+      results.incVisitedCount(toScore.count());
+      if (maxScore > minAcceptedSimilarity) {
+        for (int i = 0; i < toScore.count(); i++) {
+          int idx = i + toScore.upto;
+          float friendSimilarity = bulkScores[idx];
+          if (friendSimilarity > minAcceptedSimilarity) {
+            int ord = toScore.nodes[idx];
+            candidates.add(ord, friendSimilarity);
+            if (results.collect(ord, friendSimilarity)) {
+              minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
+            }
           }
         }
       }
+      toScore.upto = toScore.size; // all scored
       if (results.getSearchStrategy() != null) {
         results.getSearchStrategy().nextVectorsBlock();
       }
@@ -213,7 +223,7 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
   }
 
   private static class IntArrayQueue {
-    private int[] nodes;
+    private final int[] nodes;
     private int upto;
     private int size;
 

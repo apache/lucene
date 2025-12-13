@@ -1503,10 +1503,13 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                       visitedLimit);
           assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, results.totalHits.relation());
           int size = Lucene99HnswVectorsReader.EXHAUSTIVE_BULK_SCORE_ORDS;
+          // visit limit is a "best effort" limit given our bulk scoring logic; assert that we are
+          // within
+          // reasonable bounds
           assertTrue(
-              visitedLimit == results.totalHits.value()
-                  || ((visitedLimit + size - 1) / size) * ((long) size)
-                      == results.totalHits.value());
+              results.totalHits.value() == visitedLimit
+                  || results.totalHits.value()
+                      <= ((visitedLimit + size - 1) / size) * ((long) size));
 
           // check the limit is not hit when it clearly exceeds the number of vectors
           k = vectorValues.size();
