@@ -54,7 +54,7 @@ import org.apache.lucene.util.SuppressForbidden;
  *
  * Setting these properties will make this code run EXTREMELY slow!
  */
-final class PanamaVectorUtilSupport implements VectorUtilSupport {
+public final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   // preferred vector sizes, which can be altered for testing
   private static final VectorSpecies<Float> FLOAT_SPECIES;
@@ -358,29 +358,73 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
   }
 
+  /**
+   * Only used in JMH benchmarks. Helpful for benchmarking the performance of compiler
+   * auto-vectorized method (NativeMethodHandles.SIMPLE_DOT_PRODUCT_IMPL) vs manually unrolled and
+   * vectorized implementation (NativeMethodHandles.DOT_PRODUCT_IMPL)
+   *
+   * @param a MemorySegment of vector a
+   * @param b MemorySegment of vector b
+   * @return int dot-product score
+   */
+  public static int dotProductSimpleNative(byte[] a, byte[] b) {
+    assert a.length == b.length;
+    try {
+      int limit = a.length;
+      return (int)
+          NativeMethodHandles.SIMPLE_DOT_PRODUCT_IMPL.invokeExact(
+              MemorySegment.ofArray(a), MemorySegment.ofArray(b), limit);
+    } catch (Throwable ex$) {
+      throw new AssertionError("should not reach here", ex$);
+    }
+  }
+
   @Override
   public int dotProduct(byte[] a, byte[] b) {
+    if (Constants.NATIVE_DOT_PRODUCT_ENABLED) {
+      return dotProduct(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
+    }
     return dotProductBody(new ArrayLoader(a), new ArrayLoader(b), true);
   }
 
   @Override
   public int uint8DotProduct(byte[] a, byte[] b) {
+    if (Constants.NATIVE_DOT_PRODUCT_ENABLED) {
+      return dotProduct(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
+    }
     return dotProductBody(new ArrayLoader(a), new ArrayLoader(b), false);
   }
 
   public static int dotProduct(byte[] a, MemorySegment b) {
+    if (Constants.NATIVE_DOT_PRODUCT_ENABLED) {
+      return dotProduct(MemorySegment.ofArray(a), b);
+    }
     return dotProductBody(new ArrayLoader(a), new MemorySegmentLoader(b), true);
   }
 
   public static int dotProduct(MemorySegment a, MemorySegment b) {
+    if (Constants.NATIVE_DOT_PRODUCT_ENABLED) {
+      try {
+        int limit = (int) a.byteSize();
+        return (int) NativeMethodHandles.DOT_PRODUCT_IMPL.invokeExact(a, b, limit);
+      } catch (Throwable ex$) {
+        throw new AssertionError("should not reach here", ex$);
+      }
+    }
     return dotProductBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b), true);
   }
 
   public static int uint8DotProduct(byte[] a, MemorySegment b) {
+    if (Constants.NATIVE_DOT_PRODUCT_ENABLED) {
+      return dotProduct(MemorySegment.ofArray(a), b);
+    }
     return dotProductBody(new ArrayLoader(a), new MemorySegmentLoader(b), false);
   }
 
   public static int uint8DotProduct(MemorySegment a, MemorySegment b) {
+    if (Constants.NATIVE_DOT_PRODUCT_ENABLED) {
+      return dotProduct(a, b);
+    }
     return dotProductBody(new MemorySegmentLoader(a), new MemorySegmentLoader(b), false);
   }
 

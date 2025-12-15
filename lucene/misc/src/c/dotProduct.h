@@ -15,10 +15,7 @@
  * limitations under the License.
  */
 
-plugins {
-  id "base"
-  id "lucene.root-project.setup"
-  id "c"
-}
-
-description = 'Grandparent project for Apache Lucene Core'
+int32_t vdot8s_sve(int8_t vec1[], int8_t vec2[], int32_t limit);
+int32_t vdot8s_neon(int8_t vec1[], int8_t vec2[], int32_t limit);
+int32_t dot8s_scalar(int8_t vec1[], int8_t vec2[], int32_t limit);
+int32_t dot8s(int8_t vec1[], int8_t vec2[], int32_t limit);
