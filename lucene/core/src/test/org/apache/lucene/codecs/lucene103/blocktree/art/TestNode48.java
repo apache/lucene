@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
+import java.util.HashSet;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
@@ -25,8 +26,14 @@ public class TestNode48 extends LuceneTestCase {
   public void setUp() throws Exception {
     super.setUp();
     int childrenCount = random().nextInt(17, 49);
+    HashSet<Byte> bytes = new HashSet<>();
     for (int i = 0; i < childrenCount; i++) {
       byte b = (byte) random().nextInt();
+      // Use unique byte to insert.
+      while (bytes.contains(b)) {
+        b = (byte) random().nextInt();
+      }
+      bytes.add(b);
       Node48.insert(node, new LeafNode(new BytesRef(new byte[] {b}), null), b);
     }
   }
@@ -34,29 +41,11 @@ public class TestNode48 extends LuceneTestCase {
   // For Node48, position is the key byte, we can use this key to calculate child index with
   // #getChildIndex
   public void testPosition() {
-    int currentPos = Node.ILLEGAL_IDX;
-    int nextPos;
-    while ((nextPos = node.getNextLargerPos(currentPos)) != Node.ILLEGAL_IDX) {
-      //      assert node.getChildIndex((byte) nextPos) - node.getChildIndex((byte) currentPos) ==
-      // 1;
-      System.out.println(
-          "nextPos: "
-              + nextPos
-              + ", childPos: "
-              + node.getChildIndex((byte) nextPos)
-              + ", "
-              + node.getChild(nextPos).key.bytes[0]);
-      currentPos = nextPos;
-    }
-
     for (int i = 0; i < node.childrenCount; i++) {
       Node child = node.children[i];
       // For this test case, we set child's key equals the insert key, so we can use this key as a
       // key byte to get child.
       byte keyByte = child.key.bytes[0];
-
-      Node child1 = node.getChild(keyByte);
-
       assert node.getChildIndex(keyByte) == i
           : "child index: " + node.getChildIndex(keyByte) + ", real index: " + i;
     }
