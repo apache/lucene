@@ -94,25 +94,15 @@ abstract class AbstractHnswGraphSearcher {
       throws IOException {
     assert eps != null && eps.length > 0;
     assert scores != null && scores.length >= eps.length;
-    if (eps.length == 1) {
-      visited.set(eps[0]);
-      float score = scorer.score(eps[0]);
-      results.incVisitedCount(1);
-      candidates.add(eps[0], score);
-      if (acceptOrds == null || acceptOrds.get(eps[0])) {
-        results.collect(eps[0], score);
-      }
-    } else {
-      scorer.bulkScore(eps, scores, eps.length);
-      results.incVisitedCount(eps.length);
-      for (int i = 0; i < eps.length; i++) {
-        float score = scores[i];
-        int ep = eps[i];
-        visited.set(ep);
-        candidates.add(ep, score);
-        if (acceptOrds == null || acceptOrds.get(ep)) {
-          results.collect(ep, score);
-        }
+    scorer.bulkScore(eps, scores, eps.length);
+    results.incVisitedCount(eps.length);
+    for (int i = 0; i < eps.length; i++) {
+      float score = scores[i];
+      int ep = eps[i];
+      visited.set(ep);
+      candidates.add(ep, score);
+      if (acceptOrds == null || acceptOrds.get(ep)) {
+        results.collect(ep, score);
       }
     }
   }
