@@ -123,6 +123,9 @@ Optimizations
 * GITHUB#15474: Use bulk scoring provided by RandomVectorScorers for new scalar quantized formats provided through
     Lucene104ScalarQuantizedVectorsFormat and Lucene104HnswScalarQuantizedVectorsFormat (Ben Trent)
 
+* GITHUB#15500: Use bulk scoring for filtered HNSW search and for entry-point scoring in the graph. This should
+  provide speed improvements when using vector scorers that satisfy the bulk scoring interface. (Ben Trent)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
