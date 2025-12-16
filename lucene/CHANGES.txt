@@ -144,6 +144,8 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#15497: Singleton for MatchAllDocsQuery & MatchNoDocsQuery. (hossman)
+
 * GITHUB#15149: Introduce NumericDocValues#longValues to help speed up the
   retrieval of many doc values at once. (Adrien Grand)
 
@@ -168,6 +170,8 @@ API Changes
 * GITHUB#15483: Deprecate SortField.setMissingValue() in preparation for making SortField immutable
   in Lucene 11.0. Missing values can be set as constructor parameters.  (Alan Woodward)
 
+* GITHUB#15501: Introduce optional access to backing vector values from the scorer  (Chris Hegarty)
+
 New Features
 ---------------------
 * GITHUB#15328: VectorSimilarityFunction.getValues() now implements doubleVal allowing its
@@ -176,7 +180,7 @@ New Features
 * GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
   along with limiting number of child documents to retrieve per parent. (Jinny Wang)
 
-* GITHUB#15171: Add `VectorScorer.Bulk` for bulk iteration and scoring of vectors. This new interface is now
+* GITHUB#15171, GITHUB#15496: Add `VectorScorer.Bulk` for bulk iteration and scoring of vectors. This new interface is now
   used in AbstractKnnVectorQuery to make exact matches faster. (Ben Trent)
 
 * GITHUB#15176: Add `[Float|Byte]VectorValues#rescorer(element[])` interface to allow optimized rescoring of vectors.
@@ -255,6 +259,9 @@ Optimizations
 
 * GITHUB#15474: Use bulk scoring provided by RandomVectorScorers for new scalar quantized formats provided through
     Lucene104ScalarQuantizedVectorsFormat and Lucene104HnswScalarQuantizedVectorsFormat (Ben Trent)
+
+* GITHUB#15500: Use bulk scoring for filtered HNSW search and for entry-point scoring in the graph. This should
+  provide speed improvements when using vector scorers that satisfy the bulk scoring interface. (Ben Trent)
 
 * GITHUB#15498: ExitableDirectoryReader keeps singleton SortedSetDocValues or SortedNumericDocValues as singletons. (Houston Putman)
 

@@ -91,18 +91,18 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
       return new FieldExistsQuery(field);
     }
     if (lowerValue > upperValue) {
-      return new MatchNoDocsQuery();
+      return MatchNoDocsQuery.INSTANCE;
     }
     long globalMin = DocValuesSkipper.globalMinValue(indexSearcher, field);
     long globalMax = DocValuesSkipper.globalMaxValue(indexSearcher, field);
     if (lowerValue > globalMax || upperValue < globalMin) {
-      return new MatchNoDocsQuery();
+      return MatchNoDocsQuery.INSTANCE;
     }
     if (lowerValue <= globalMin
         && upperValue >= globalMax
         && DocValuesSkipper.globalDocCount(indexSearcher, field)
             == indexSearcher.getIndexReader().maxDoc()) {
-      return new MatchAllDocsQuery();
+      return MatchAllDocsQuery.INSTANCE;
     }
     return super.rewrite(indexSearcher);
   }

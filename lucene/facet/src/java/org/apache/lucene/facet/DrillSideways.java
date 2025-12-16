@@ -456,7 +456,7 @@ public class DrillSideways {
     if (baseQuery == null) {
       // TODO: we could optimize this pure-browse case by
       // making a custom scorer instead:
-      baseQuery = new MatchAllDocsQuery();
+      baseQuery = MatchAllDocsQuery.INSTANCE;
     }
     Query[] drillDownQueries = query.getDrillDownQueries();
 

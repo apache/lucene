@@ -134,7 +134,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
 
     Query rewrittenFallback = fallbackQuery.rewrite(indexSearcher);
     if (rewrittenFallback.getClass() == MatchAllDocsQuery.class) {
-      return new MatchAllDocsQuery();
+      return MatchAllDocsQuery.INSTANCE;
     }
     if (rewrittenFallback == fallbackQuery) {
       return this;

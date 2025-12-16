@@ -14,19 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queryparser.xml.builders;
 
-import org.apache.lucene.queryparser.xml.ParserException;
-import org.apache.lucene.queryparser.xml.QueryBuilder;
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.Query;
-import org.w3c.dom.Element;
+package org.apache.lucene.util.hnsw;
 
-/** Builder for {@link MatchAllDocsQuery} */
-public class MatchAllDocsQueryBuilder implements QueryBuilder {
+import org.apache.lucene.index.KnnVectorValues;
 
-  @Override
-  public Query getQuery(Element e) throws ParserException {
-    return MatchAllDocsQuery.INSTANCE;
-  }
+/**
+ * Implementors can return the KnnVectorValues from which their scorers read.
+ *
+ * @lucene.experimental
+ */
+public interface HasKnnVectorValues {
+
+  /** Returns the backing vector values, or null. */
+  KnnVectorValues values();
 }

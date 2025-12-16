@@ -790,26 +790,26 @@ public class TestSortOptimization extends LuceneTestCase {
     SortField longSortOnIntField = new SortField("intField", SortField.Type.LONG);
     assertThrows(
         IllegalArgumentException.class,
-        () -> searcher.search(new MatchAllDocsQuery(), 1, new Sort(longSortOnIntField)));
+        () -> searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(longSortOnIntField)));
     // assert that when sort optimization is disabled we can use LONG sort on int field
     longSortOnIntField.setOptimizeSortWithIndexedData(false);
-    searcher.search(new MatchAllDocsQuery(), 1, new Sort(longSortOnIntField));
+    searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(longSortOnIntField));
 
     SortField intSortOnLongField = new SortField("longField", SortField.Type.INT);
     assertThrows(
         IllegalArgumentException.class,
-        () -> searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnLongField)));
+        () -> searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(intSortOnLongField)));
     // assert that when sort optimization is disabled we can use INT sort on long field
     intSortOnLongField.setOptimizeSortWithIndexedData(false);
-    searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnLongField));
+    searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(intSortOnLongField));
 
     SortField intSortOnIntRangeField = new SortField("intRange", SortField.Type.INT);
     assertThrows(
         IllegalArgumentException.class,
-        () -> searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnIntRangeField)));
+        () -> searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(intSortOnIntRangeField)));
     // assert that when sort optimization is disabled we can use INT sort on intRange field
     intSortOnIntRangeField.setOptimizeSortWithIndexedData(false);
-    searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnIntRangeField));
+    searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(intSortOnIntRangeField));
 
     reader.close();
     dir.close();
@@ -897,7 +897,7 @@ public class TestSortOptimization extends LuceneTestCase {
       int batch = 1 + random().nextInt(100);
       Query query =
           random().nextBoolean()
-              ? new MatchAllDocsQuery()
+              ? MatchAllDocsQuery.INSTANCE
               : LongPoint.newRangeQuery("seq_no", 0, Long.MAX_VALUE);
       TopDocs topDocs = assertSearchHits(reader, query, new Sort(sortField), batch, after);
       int expectedHits = Math.min(seqNos.size() - visitedHits, batch);
@@ -1181,7 +1181,7 @@ public class TestSortOptimization extends LuceneTestCase {
 
   private TopFieldDocs assertSearchHits(DirectoryReader reader, Sort sort, int n, FieldDoc after)
       throws IOException {
-    return assertSearchHits(reader, new MatchAllDocsQuery(), sort, n, after);
+    return assertSearchHits(reader, MatchAllDocsQuery.INSTANCE, sort, n, after);
   }
 
   private TopFieldDocs assertSearchHits(

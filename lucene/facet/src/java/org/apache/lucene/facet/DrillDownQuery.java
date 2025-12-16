@@ -78,7 +78,7 @@ public final class DrillDownQuery extends Query {
   DrillDownQuery(FacetsConfig config, Query filter, DrillDownQuery other) {
     this.baseQuery =
         new BooleanQuery.Builder()
-            .add(other.baseQuery == null ? new MatchAllDocsQuery() : other.baseQuery, Occur.MUST)
+            .add(other.baseQuery == null ? MatchAllDocsQuery.INSTANCE : other.baseQuery, Occur.MUST)
             .add(filter, Occur.FILTER)
             .build();
     this.dimQueries.addAll(other.dimQueries);
@@ -159,7 +159,7 @@ public final class DrillDownQuery extends Query {
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     BooleanQuery rewritten = getBooleanQuery();
     if (rewritten.clauses().isEmpty()) {
-      return new MatchAllDocsQuery();
+      return MatchAllDocsQuery.INSTANCE;
     }
     return rewritten;
   }
