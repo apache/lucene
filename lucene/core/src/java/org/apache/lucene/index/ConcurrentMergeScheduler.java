@@ -670,7 +670,8 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     return thread;
   }
 
-  protected synchronized void runOnMergeFinished(MergeSource mergeSource, OneMerge merge, MergeRateLimiter rateLimiter) {
+  protected synchronized void runOnMergeFinished(
+      MergeSource mergeSource, OneMerge merge, MergeRateLimiter rateLimiter) {
     // the merge call as well as the merge thread handling in the finally
     // block must be sync'd on CMS otherwise stalling decisions might cause
     // us to miss pending merges
