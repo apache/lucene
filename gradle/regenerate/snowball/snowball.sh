@@ -33,7 +33,7 @@ set -eEuo pipefail
 # and likely fail. so only ask for our specific target.
 (cd ${SRCDIR} && make dist_libstemmer_java)
 
-for file in "SnowballStemmer.java" "Among.java" "SnowballProgram.java"; do
+for file in "SnowballStemmer.java" "Among.java" "SnowballProgram.java" "CharArraySequence.java"; do
   # add license header to files since they have none, otherwise rat will flip the fuck out
   echo "/*" > ${DESTDIR}/${file}
   cat ${SRCDIR}/COPYING >> ${DESTDIR}/${file}
