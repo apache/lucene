@@ -103,13 +103,26 @@ public class ARTBuilder {
 
       // If there are any children have not been saved, push the first one into stack and continue.
       // We want to ensure saving children before parent.
-      int nextChildPos = node.getNextLargerPos(node.savedChildPos);
-      if (nextChildPos != Node.ILLEGAL_IDX) {
-        Node child = node.getChild(nextChildPos);
-        assert child != null;
-        stack.push(child);
-        node.savedChildPos = nextChildPos;
-        continue;
+      // TODO: For node48, its position is the key byte, we save children in index order, so we can
+      // calculate child fp when loading.
+      if (node.nodeType.equals(NodeType.NODE48)) {
+        int nextChildPos = node.savedChildPos + 1;
+        if (nextChildPos < node.childrenCount) {
+          Node child = node.getChildren()[nextChildPos];
+          assert child != null;
+          stack.push(child);
+          node.savedChildPos = nextChildPos;
+          continue;
+        }
+      } else {
+        int nextChildPos = node.getNextLargerPos(node.savedChildPos);
+        if (nextChildPos != Node.ILLEGAL_IDX) {
+          Node child = node.getChild(nextChildPos);
+          assert child != null;
+          stack.push(child);
+          node.savedChildPos = nextChildPos;
+          continue;
+        }
       }
 
       // All children have been written(saved), now it's time to write the parent!

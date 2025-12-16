@@ -283,8 +283,13 @@ public abstract class Node {
 
     // Get first child to compute max delta fp between parent and children.
     // Children fps are in order, so the first child's fp is min, then delta is max.
-    int nextPos = getNextLargerPos(Node.ILLEGAL_IDX);
-    Node child = getChild(nextPos);
+    // TODO: For node48, its position is the key byte, we use the first child in children.
+    Node child;
+    if (nodeType.equals(NodeType.NODE48)) {
+      child = getChildren()[0];
+    } else {
+      child = getChild(getNextLargerPos(Node.ILLEGAL_IDX));
+    }
     assert child.fp > -1 : "child should written before parent";
     long maxChildDeltaFp = fp - child.fp;
     assert maxChildDeltaFp > 0 : "parent always written after all children";
@@ -308,12 +313,22 @@ public abstract class Node {
     // TODO: For node48, we should write fps by iterate children[], because its getNextLargerPos
     // returns next byte,
     // We can use getChildIndex(nextPos) to calculate real index in children when load child.
-    nextPos = Node.ILLEGAL_IDX;
-    while ((nextPos = getNextLargerPos(nextPos)) != Node.ILLEGAL_IDX) {
-      child = getChild(nextPos);
-      assert child != null;
-      assert fp > child.fp : "parent always written after all children";
-      writeLongNBytes(fp - child.fp, childrenFpBytes, index);
+    if (nodeType.equals(NodeType.NODE48)) {
+      Node[] children = getChildren();
+      for (int i = 0; i < childrenCount; i++) {
+        child = children[i];
+        assert child != null;
+        assert fp > child.fp : "parent always written after all children";
+        writeLongNBytes(fp - child.fp, childrenFpBytes, index);
+      }
+    } else {
+      int nextPos = Node.ILLEGAL_IDX;
+      while ((nextPos = getNextLargerPos(nextPos)) != Node.ILLEGAL_IDX) {
+        child = getChild(nextPos);
+        assert child != null;
+        assert fp > child.fp : "parent always written after all children";
+        writeLongNBytes(fp - child.fp, childrenFpBytes, index);
+      }
     }
 
     // write floor data
@@ -339,8 +354,8 @@ public abstract class Node {
       return LeafNode.load(access, fp);
     }
     // Children count.
-    // TODO: improve fp + n + n style
     short childrenCount = Short.reverseBytes(access.readShort(fp + offset));
+    assert childrenCount > 0;
     offset += 2;
     // Prefix.
     int prefixLength = access.readInt(fp + offset);
@@ -368,6 +383,7 @@ public abstract class Node {
 
     node.fp = fp;
     node.prefix = prefix;
+    node.childrenCount = childrenCount;
 
     // 3 bit encodedOutputFpBytes - 1, 1 bit has output, 3bit childrenFpBytes
     int header = access.readByte(fp + offset);

@@ -17,6 +17,7 @@ public class TestNode4 extends LuceneTestCase {
   }
 
   public void testPosition() {
+    assert node.getNextLargerPos(Node.ILLEGAL_IDX) == 0;
     int currentPos = Node.ILLEGAL_IDX;
     int nextPos;
     while ((nextPos = node.getNextLargerPos(currentPos)) != Node.ILLEGAL_IDX) {

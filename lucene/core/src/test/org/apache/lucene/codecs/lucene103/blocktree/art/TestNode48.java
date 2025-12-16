@@ -43,6 +43,7 @@ public class TestNode48 extends LuceneTestCase {
   public void testPosition() {
     for (int i = 0; i < node.childrenCount; i++) {
       Node child = node.children[i];
+      assert child != null;
       // For this test case, we set child's key equals the insert key, so we can use this key as a
       // key byte to get child.
       byte keyByte = child.key.bytes[0];
