@@ -17,8 +17,11 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FilteredTermsEnum;
 import org.apache.lucene.index.IndexReader;
@@ -32,6 +35,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -131,8 +135,10 @@ public class TestMultiTermQueryRewrites extends LuceneTestCase {
       System.out.println("multi segment with duplicates: " + q3);
     }
     assertEquals("The multi-segment case must produce same rewritten query", q1, q2);
-    assertEquals(
-        "The multi-segment case with duplicates must produce same rewritten query", q1, q3);
+    assertNotEquals(
+        "The multi-segment case with duplicates must produce rewritten query with different term freqs",
+        q1,
+        q3);
     checkBooleanQueryOrder(q1);
     checkBooleanQueryOrder(q2);
     checkBooleanQueryOrder(q3);
@@ -269,5 +275,47 @@ public class TestMultiTermQueryRewrites extends LuceneTestCase {
     checkNoMaxClauseLimitation(MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
     checkNoMaxClauseLimitation(new MultiTermQuery.TopTermsScoringBooleanQueryRewrite(1024));
     checkNoMaxClauseLimitation(new MultiTermQuery.TopTermsBoostOnlyBooleanQueryRewrite(1024));
+  }
+
+  public void testDocFreqAfterTermAndFuzzyRewrite() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    for (String s : new String[] {"aaaa", "aaab", "aaab"}) {
+      Document doc = new Document();
+      doc.add(new StringField("text", s, Field.Store.NO));
+      w.addDocument(doc);
+    }
+
+    DirectoryReader reader = w.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    BooleanQuery bq =
+        new BooleanQuery.Builder()
+            .add(
+                new BoostQuery(new TermQuery(new Term("text", "aaaa")), 2.0f),
+                BooleanClause.Occur.SHOULD)
+            .add(new FuzzyQuery(new Term("text", "aaaa"), 1), BooleanClause.Occur.SHOULD)
+            .build();
+
+    BooleanQuery rewritten = (BooleanQuery) searcher.rewrite(bq);
+    List<TermQuery> termQueries = extractTermQueries(rewritten, new ArrayList<>());
+    // check if "aaaa" term query was kept and not merged with blended term query
+    // with wrong docFreq produced from fuzzy query
+    boolean found =
+        termQueries.stream()
+            .anyMatch(q -> q.getTerm().text().equals("aaaa") && q.getTermStates() == null);
+    assertTrue(found);
+
+    IOUtils.close(reader, w, dir);
+  }
+
+  private List<TermQuery> extractTermQueries(Query query, List<TermQuery> result) {
+    if (query instanceof BooleanQuery) {
+      ((BooleanQuery) query).clauses().forEach(c -> extractTermQueries(c.query(), result));
+    } else if (query instanceof BoostQuery) {
+      extractTermQueries(((BoostQuery) query).getQuery(), result);
+    } else if (query instanceof TermQuery) {
+      result.add((TermQuery) query);
+    }
+    return result;
   }
 }
