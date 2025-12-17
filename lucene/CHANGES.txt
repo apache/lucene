@@ -59,6 +59,8 @@ New Features
 
 * GITHUB#14792: Introduced OffHeapQuantizedFloatVectorValues class to access float vectors when only quantized byte vectors are available in the index. (Pulkit Gupta)
 
+* GITHUB#15508: Use native dot product in Lucene. (Shubham Chaudhary)
+
 Improvements
 ---------------------
 

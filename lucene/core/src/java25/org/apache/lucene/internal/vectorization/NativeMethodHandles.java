@@ -57,6 +57,8 @@ public final class NativeMethodHandles {
 
   private static final Linker LINKER = Linker.nativeLinker();
   private static final SymbolLookup SYMBOL_LOOKUP;
+
+  @SuppressWarnings("NonFinalStaticField")
   private static boolean isLibraryLoaded;
 
   static {
