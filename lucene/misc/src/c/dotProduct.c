@@ -202,8 +202,15 @@ static void* resolve_dot8s(void) {
 }
 
 // dot8s will dispatch based on runtime capabilities
+#if defined(__aarch64__) && defined(__linux__)
 __attribute__((ifunc("resolve_dot8s")))
 int32_t dot8s(int8_t vec1[], int8_t vec2[], int32_t limit);
+#else
+// Fallback implementation for non-Linux platforms
+int32_t dot8s(int8_t vec1[], int8_t vec2[], int32_t limit) {
+    return dot8s_scalar(vec1, vec2, limit);
+}
+#endif
 
 /*
 int main(int argc, const char* args[]) {
