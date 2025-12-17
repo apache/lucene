@@ -670,6 +670,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     return thread;
   }
 
+  /** Called when a merge thread finishes. */
   protected synchronized void runOnMergeFinished(
       MergeSource mergeSource, OneMerge merge, MergeRateLimiter rateLimiter) {
     // the merge call as well as the merge thread handling in the finally
