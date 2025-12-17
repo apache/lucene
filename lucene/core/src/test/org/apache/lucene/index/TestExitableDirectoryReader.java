@@ -44,6 +44,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.TestVectorUtil;
+import org.hamcrest.Matchers;
 
 /**
  * Test that uses a default/lucene Implementation of {@link QueryTimeout} to exit out long running
@@ -341,71 +342,88 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
   }
 
   public void testDocValues() throws IOException {
-    Directory directory = newDirectory();
-    IndexWriter writer =
-        new IndexWriter(directory, newIndexWriterConfig(new MockAnalyzer(random())));
+    try (Directory directory = newDirectory()) {
+      IndexWriter writer =
+          new IndexWriter(directory, newIndexWriterConfig(new MockAnalyzer(random())));
 
-    Document d1 = new Document();
-    addDVs(d1, 10);
-    writer.addDocument(d1);
+      Document d1 = new Document();
+      addDVs(d1, 10);
+      writer.addDocument(d1);
 
-    Document d2 = new Document();
-    addDVs(d2, 100);
-    writer.addDocument(d2);
+      Document d2 = new Document();
+      addDVs(d2, 100);
+      writer.addDocument(d2);
 
-    Document d3 = new Document();
-    addDVs(d3, 1000);
-    writer.addDocument(d3);
+      Document d3 = new Document();
+      addDVs(d3, 1000);
+      writer.addDocument(d3);
 
-    writer.forceMerge(1);
-    writer.commit();
-    writer.close();
+      writer.forceMerge(1);
+      writer.commit();
+      writer.close();
 
-    DirectoryReader directoryReader;
-    DirectoryReader exitableDirectoryReader;
+      DirectoryReader directoryReader;
+      DirectoryReader exitableDirectoryReader;
 
-    for (DvFactory dvFactory :
-        Arrays.<DvFactory>asList(
-            (r) -> r.getSortedDocValues("sorted"),
-            (r) -> r.getSortedSetDocValues("sortedset"),
-            (r) -> r.getSortedNumericDocValues("sortednumeric"),
-            (r) -> r.getNumericDocValues("numeric"),
-            (r) -> r.getBinaryDocValues("binary"))) {
-      directoryReader = DirectoryReader.open(directory);
-      exitableDirectoryReader =
-          new ExitableDirectoryReader(directoryReader, immediateQueryTimeout());
+      for (DvFactory dvFactory :
+          Arrays.<DvFactory>asList(
+              (r) -> r.getSortedDocValues("sorted"),
+              (r) -> r.getSortedSetDocValues("sortedset"),
+              (r) -> r.getSortedNumericDocValues("sortednumeric"),
+              (r) -> r.getNumericDocValues("numeric"),
+              (r) -> r.getBinaryDocValues("binary"))) {
+        directoryReader = DirectoryReader.open(directory);
+        exitableDirectoryReader =
+            new ExitableDirectoryReader(directoryReader, immediateQueryTimeout());
 
-      {
-        IndexReader reader = new TestReader(getOnlyLeafReader(exitableDirectoryReader));
+        try (IndexReader reader = new TestReader(getOnlyLeafReader(exitableDirectoryReader))) {
+          expectThrows(
+              ExitingReaderException.class,
+              () -> {
+                LeafReader leaf = reader.leaves().get(0).reader();
+                DocValuesIterator iter = dvFactory.create(leaf);
+                scan(leaf, iter);
+              });
+        }
 
-        expectThrows(
-            ExitingReaderException.class,
-            () -> {
-              LeafReader leaf = reader.leaves().get(0).reader();
-              DocValuesIterator iter = dvFactory.create(leaf);
-              scan(leaf, iter);
-            });
-        reader.close();
+        directoryReader = DirectoryReader.open(directory);
+        exitableDirectoryReader =
+            new ExitableDirectoryReader(directoryReader, infiniteQueryTimeout());
+        try (IndexReader reader = new TestReader(getOnlyLeafReader(exitableDirectoryReader))) {
+          final LeafReader leaf = reader.leaves().get(0).reader();
+          scan(leaf, dvFactory.create(leaf));
+          assertNull(leaf.getNumericDocValues("absent"));
+          assertNull(leaf.getBinaryDocValues("absent"));
+          assertNull(leaf.getSortedDocValues("absent"));
+          assertNull(leaf.getSortedNumericDocValues("absent"));
+          assertNull(leaf.getSortedSetDocValues("absent"));
+        }
       }
 
+      // Test that singleton docValues stay as singleton docValues after filtering
       directoryReader = DirectoryReader.open(directory);
+      try (IndexReader reader = new TestReader(getOnlyLeafReader(directoryReader))) {
+        LeafReader leafReader = reader.leaves().getFirst().reader();
+        assertThat(
+            leafReader.getSortedSetDocValues("sortedset"),
+            Matchers.instanceOf(SingletonSortedSetDocValues.class));
+        assertThat(
+            leafReader.getSortedNumericDocValues("sortednumeric"),
+            Matchers.instanceOf(SingletonSortedNumericDocValues.class));
+      }
       exitableDirectoryReader =
-          new ExitableDirectoryReader(directoryReader, infiniteQueryTimeout());
-      {
-        IndexReader reader = new TestReader(getOnlyLeafReader(exitableDirectoryReader));
-        final LeafReader leaf = reader.leaves().get(0).reader();
-        scan(leaf, dvFactory.create(leaf));
-        assertNull(leaf.getNumericDocValues("absent"));
-        assertNull(leaf.getBinaryDocValues("absent"));
-        assertNull(leaf.getSortedDocValues("absent"));
-        assertNull(leaf.getSortedNumericDocValues("absent"));
-        assertNull(leaf.getSortedSetDocValues("absent"));
-
-        reader.close();
+          new ExitableDirectoryReader(DirectoryReader.open(directory), infiniteQueryTimeout());
+      try (IndexReader extitableReader =
+          new TestReader(getOnlyLeafReader(exitableDirectoryReader))) {
+        LeafReader exitableLeafReader = extitableReader.leaves().getFirst().reader();
+        assertThat(
+            exitableLeafReader.getSortedSetDocValues("sortedset"),
+            Matchers.instanceOf(SingletonSortedSetDocValues.class));
+        assertThat(
+            exitableLeafReader.getSortedNumericDocValues("sortednumeric"),
+            Matchers.instanceOf(SingletonSortedNumericDocValues.class));
       }
     }
-
-    directory.close();
   }
 
   public void testFloatVectorValues() throws IOException {
