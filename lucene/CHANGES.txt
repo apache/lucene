@@ -263,6 +263,8 @@ Optimizations
 * GITHUB#15500: Use bulk scoring for filtered HNSW search and for entry-point scoring in the graph. This should
   provide speed improvements when using vector scorers that satisfy the bulk scoring interface. (Ben Trent)
 
+* GITHUB#15498: ExitableDirectoryReader keeps singleton SortedSetDocValues or SortedNumericDocValues as singletons. (Houston Putman)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
