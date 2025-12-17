@@ -25,8 +25,8 @@ dependencies {
 }
 
 def os = OperatingSystem.current()
-def sharedLibExt = os.isMacOsX() ? "dylib" : "so"
-def sharedLibName = "libdotProduct.${sharedLibExt}"
+def sharedLibExt = os.isMacOsX() ? "dylib" : (os.isWindows() ? "dll" : "so")
+def sharedLibName = os.isWindows() ? "dotProduct.${sharedLibExt}" : "libdotProduct.${sharedLibExt}"
 def cc = System.getenv("CC") ?: "gcc"
 def osArch = System.getProperty("os.arch")
 
