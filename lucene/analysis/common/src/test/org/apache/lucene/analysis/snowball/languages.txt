@@ -3,8 +3,8 @@ Armenian
 Basque
 Catalan
 Danish
-Dutch
 Dutch_porter
+Dutch
 English
 Esperanto
 Estonian

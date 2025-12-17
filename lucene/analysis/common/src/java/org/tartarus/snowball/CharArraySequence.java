@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.tartarus.snowball;
 
 /** Internal class used by Snowball stemmers */
+@SuppressWarnings("all")
 public class CharArraySequence implements CharSequence {
   public CharArraySequence(char[] a, int len) {
     this.a = a;
