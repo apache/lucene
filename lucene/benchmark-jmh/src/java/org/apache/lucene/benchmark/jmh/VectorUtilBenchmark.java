@@ -59,7 +59,7 @@ public class VectorUtilBenchmark {
    * method above will use a native C implementation of dotProduct if it is enabled via {@link
    * org.apache.lucene.util.Constants#NATIVE_DOT_PRODUCT_ENABLED}.
    *
-   * @return MethodHandle PanamaVectorUtilSupport.DotProduct(byte[] a, byte[] b)
+   * @return MethodHandle PanamaVectorUtilSupport.dotProduct(byte[] a, byte[] b)
    */
   private static MethodHandle nativeDotProductHandle(String methodName) {
     if (Runtime.version().feature() <= 21) {

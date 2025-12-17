@@ -25,7 +25,6 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.logging.Logger;
-import org.apache.lucene.store.MMapDirectory;
 
 /**
  * Native method handles for optimized vector operations using Foreign Function and Memory API
@@ -45,8 +44,8 @@ import org.apache.lucene.store.MMapDirectory;
  * {@link PanamaVectorUtilSupport#dotProduct} use this Native C implementation for dot product
  * calculation if system property <b>lucene.useNativeDotProduct=true</b> is passed
  *
- * <p>It Uses <code>Linker.Option.critical(true)</code> for optimal performance to avoid extra
- * copying of MemorySegment(s) to off heap.
+ * <p>It Uses <code>Linker.Option.critical(true)</code> for optimal performance by eliminating the
+ * overhead of ensuring MemorySegments are allocated off-heap before native calls.
  */
 @SuppressWarnings("restricted")
 public final class NativeMethodHandles {
@@ -69,7 +68,7 @@ public final class NativeMethodHandles {
     } catch (UnsatisfiedLinkError e) {
       // If the library loading fails, set the flag to false
       isLibraryLoaded = false;
-      Logger.getLogger(MMapDirectory.class.getName())
+      Logger.getLogger(NativeMethodHandles.class.getName())
           .severe("Failed to load the native library: dotProduct");
     }
     SymbolLookup loaderLookup = SymbolLookup.loaderLookup();
@@ -103,12 +102,12 @@ public final class NativeMethodHandles {
     if (dot8sMH != null) {
       DOT_PRODUCT_IMPL = dot8sMH;
     } else {
-      throw new RuntimeException("c code was not linked!");
+      throw new RuntimeException("C code for dot8s was not linked!");
     }
     if (simpleDot8sMH != null) {
       SIMPLE_DOT_PRODUCT_IMPL = simpleDot8sMH;
     } else {
-      throw new RuntimeException("c code was not linked!");
+      throw new RuntimeException("C code for dot8s_scalar was not linked!");
     }
   }
 }
