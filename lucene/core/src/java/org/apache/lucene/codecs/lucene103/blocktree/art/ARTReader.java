@@ -238,24 +238,27 @@ public class ARTReader {
         // For Node 256, there is gap in children, we need minus the number of null child from 0 to
         // this pos.
         // For Node 48, childPos is the key byte, we need use the read index in children.
-        long childFpStart;
+        long childDeltaFpStart;
         if (parent.nodeType.equals(NodeType.NODE48)) {
           int childIndex = ((Node48) parent).getChildIndex(key);
-          childFpStart =
+          childDeltaFpStart =
               parent.childrenDeltaFpStart + (long) childIndex * parent.childrenDeltaFpBytes;
         } else if (parent.nodeType.equals(NodeType.NODE256)) {
           int numberOfNullChildren = ((Node256) parent).numberOfNullChildren(childPos);
-          childFpStart =
+          childDeltaFpStart =
               parent.childrenDeltaFpStart
                   + (long) (childPos - numberOfNullChildren) * parent.childrenDeltaFpBytes;
         } else {
-          childFpStart =
+          childDeltaFpStart =
               parent.childrenDeltaFpStart + (long) childPos * parent.childrenDeltaFpBytes;
         }
-        long childFp = access.readLong(childFpStart);
+        long childDeltaFp = access.readLong(childDeltaFpStart);
         if (parent.childrenDeltaFpBytes < 8) {
-          childFp = childFp & BYTES_MINUS_1_MASK[parent.childrenDeltaFpBytes - 1];
+          childDeltaFp = childDeltaFp & BYTES_MINUS_1_MASK[parent.childrenDeltaFpBytes - 1];
         }
+
+        long childFp = parent.fp - childDeltaFp;
+        assert childFp > 0 && childFp < parent.fp : "child fp should less than parent fp";
         return Node.load(access, childFp);
       } else {
         // Not match, keep in this parent.

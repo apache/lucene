@@ -348,6 +348,9 @@ public abstract class Node {
     // Node type.
     int offset = 0;
     int nodeTypeOrdinal = access.readByte(fp + offset);
+
+    assert nodeTypeOrdinal >= 0 && nodeTypeOrdinal <= 4 : "Wrong nodeTypeOrdinal.";
+
     offset += 1;
     if (nodeTypeOrdinal == NodeType.LEAF_NODE.ordinal()) {
       // TODO: adjust this call architecture.
@@ -417,6 +420,9 @@ public abstract class Node {
         offset += 4;
         node.floorDataFp = fp + offset;
       }
+    } else {
+      // Skip children delta fp bytes.
+      offset += childrenCount * node.childrenDeltaFpBytes;
     }
 
     node.readChildIndex(access, fp + offset + node.floorDataLen);
