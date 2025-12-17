@@ -1,19 +1,19 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+  * Licensed to the Apache Software Foundation (ASF) under one or more
+  * contributor license agreements.  See the NOTICE file distributed with
+  * this work for additional information regarding copyright ownership.
+  * The ASF licenses this file to You under the Apache License, Version 2.0
+  * (the "License"); you may not use this file except in compliance with
+  * the License.  You may obtain a copy of the License at
+  *
+  *     http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,19 +41,19 @@ void dump(int8_t vec[], int N) {
   printf("]\n");
 }
 
-/*
- * Unrolled and vectorized int8 dotProduct implementation using SVE instructions
- * NOTE: Clang 15.0 compiler on Apple M3 Max compiles the code below successfully
- * with '-march=native+sve' option but throws "Illegal Hardware Instruction" error
- * Looks like Apple M3 does not implement SVE and Apple's official documentation
- * is not explicit about this or at least I could not find it.
- *
- */
+  /*
+  * Unrolled and vectorized int8 dotProduct implementation using SVE instructions
+  * NOTE: Clang 15.0 compiler on Apple M3 Max compiles the code below successfully
+  * with '-march=native+sve' option but throws "Illegal Hardware Instruction" error
+  * Looks like Apple M3 does not implement SVE and Apple's official documentation
+  * is not explicit about this or at least I could not find it.
+  *
+  */
 // === Using SVE intrinsics ===
 __attribute__((target("arch=armv8.2-a+sve")))
 int32_t vdot8s_sve(int8_t vec1[], int8_t vec2[], int32_t limit) {
-   // printf("Vector1: "); dump(vec1, limit);
-   // printf("Vector2: "); dump(vec2, limit);
+  // printf("Vector1: "); dump(vec1, limit);
+  // printf("Vector2: "); dump(vec2, limit);
     int32_t result = 0;
     int32_t i = 0;
     // Vectors of 8-bit signed integers
@@ -70,10 +70,10 @@ int32_t vdot8s_sve(int8_t vec1[], int8_t vec2[], int32_t limit) {
 
     // Manually unroll the loop
     for (i = 0; i + 4 * vec_length <= limit; i += 4 * vec_length) {
-	// Load vectors into the Z registers which can range from 128-bit to 2048-bit wide
-	// The predicate register - P determines which bytes are active
-	// svptrue_b8() returns a predicate in which every element is true
-	    va1 = svld1_s8(svptrue_b8(), &vec1[i]);
+  // Load vectors into the Z registers which can range from 128-bit to 2048-bit wide
+  // The predicate register - P determines which bytes are active
+  // svptrue_b8() returns a predicate in which every element is true
+      va1 = svld1_s8(svptrue_b8(), &vec1[i]);
         vb1 = svld1_s8(svptrue_b8(), &vec2[i]);
 
         va2 = svld1_s8(svptrue_b8(), &vec1[i + vec_length]);
@@ -85,7 +85,7 @@ int32_t vdot8s_sve(int8_t vec1[], int8_t vec2[], int32_t limit) {
         va4 = svld1_s8(svptrue_b8(), &vec1[i + 3 * vec_length]);
         vb4 = svld1_s8(svptrue_b8(), &vec2[i + 3 * vec_length]);
 
-	    // Dot product using SDOT instruction on Z vectors
+      // Dot product using SDOT instruction on Z vectors
         acc1 = svdot_s32(acc1, va1, vb1);
         acc2 = svdot_s32(acc2, va2, vb2);
         acc3 = svdot_s32(acc3, va3, vb3);
@@ -144,8 +144,8 @@ int32_t vdot8s_neon(int8_t vec1[], int8_t vec2[], int32_t limit) {
         va4 = vld1q_s8(&vec1[i + 48]);
         vb4 = vld1q_s8(&vec2[i + 48]);
 
-	    // Dot product using SDOT instruction
-	    // GCC 7.3 does not define the intrinsic below so we get compile time error.
+      // Dot product using SDOT instruction
+      // GCC 7.3 does not define the intrinsic below so we get compile time error.
         acc1 = vdotq_s32(acc1, va1, vb1);
         acc2 = vdotq_s32(acc2, va2, vb2);
         acc3 = vdotq_s32(acc3, va3, vb3);
