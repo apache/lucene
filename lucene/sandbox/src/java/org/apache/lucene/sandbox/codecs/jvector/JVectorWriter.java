@@ -352,39 +352,17 @@ public class JVectorWriter extends KnnVectorsWriter {
   }
 
   /// Metadata about the index to be persisted on disk
-  public static class VectorIndexFieldMetadata {
-    final int fieldNumber;
-    final VectorEncoding vectorEncoding;
-    final VectorSimilarityFunction vectorSimilarityFunction;
-    final int vectorDimension;
-    final long vectorIndexOffset;
-    final long vectorIndexLength;
-    final long pqCodebooksAndVectorsOffset;
-    final long pqCodebooksAndVectorsLength;
-    final GraphNodeIdToDocMap graphNodeIdToDocMap;
-
-    public VectorIndexFieldMetadata(
-        int fieldNumber,
-        VectorEncoding vectorEncoding,
-        VectorSimilarityFunction vectorSimilarityFunction,
-        int vectorDimension,
-        long vectorIndexOffset,
-        long vectorIndexLength,
-        long pqCodebooksAndVectorsOffset,
-        long pqCodebooksAndVectorsLength,
-        GraphNodeIdToDocMap graphNodeIdToDocMap) {
-      this.fieldNumber = fieldNumber;
-      this.vectorEncoding = vectorEncoding;
-      this.vectorSimilarityFunction = vectorSimilarityFunction;
-      this.vectorDimension = vectorDimension;
-      this.vectorIndexOffset = vectorIndexOffset;
-      this.vectorIndexLength = vectorIndexLength;
-      this.pqCodebooksAndVectorsOffset = pqCodebooksAndVectorsOffset;
-      this.pqCodebooksAndVectorsLength = pqCodebooksAndVectorsLength;
-      this.graphNodeIdToDocMap = graphNodeIdToDocMap;
-    }
-
-    public void toOutput(IndexOutput out) throws IOException {
+  record VectorIndexFieldMetadata(
+      int fieldNumber,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction vectorSimilarityFunction,
+      int vectorDimension,
+      long vectorIndexOffset,
+      long vectorIndexLength,
+      long pqCodebooksAndVectorsOffset,
+      long pqCodebooksAndVectorsLength,
+      GraphNodeIdToDocMap graphNodeIdToDocMap) {
+    void toOutput(IndexOutput out) throws IOException {
       out.writeInt(fieldNumber);
       out.writeInt(vectorEncoding.ordinal());
       out.writeInt(vectorSimilarityFunction.ordinal());
@@ -396,16 +374,17 @@ public class JVectorWriter extends KnnVectorsWriter {
       graphNodeIdToDocMap.toOutput(out);
     }
 
-    public VectorIndexFieldMetadata(IndexInput in) throws IOException {
-      this.fieldNumber = in.readInt();
-      this.vectorEncoding = readVectorEncoding(in);
-      this.vectorSimilarityFunction = VectorSimilarityFunction.values()[in.readInt()];
-      this.vectorDimension = in.readVInt();
-      this.vectorIndexOffset = in.readVLong();
-      this.vectorIndexLength = in.readVLong();
-      this.pqCodebooksAndVectorsOffset = in.readVLong();
-      this.pqCodebooksAndVectorsLength = in.readVLong();
-      this.graphNodeIdToDocMap = new GraphNodeIdToDocMap(in);
+    static VectorIndexFieldMetadata read(IndexInput in) throws IOException {
+      return new VectorIndexFieldMetadata(
+          in.readInt(),
+          readVectorEncoding(in),
+          VectorSimilarityFunction.values()[in.readInt()],
+          in.readVInt(),
+          in.readVLong(),
+          in.readVLong(),
+          in.readVLong(),
+          in.readVLong(),
+          new GraphNodeIdToDocMap(in));
     }
   }
 

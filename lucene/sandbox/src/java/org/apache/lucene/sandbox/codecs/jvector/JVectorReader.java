@@ -99,7 +99,7 @@ public class JVectorReader extends KnnVectorsReader {
 
       this.fieldEntryMap = new HashMap<>(fieldMetaList.size());
       for (var fieldMeta : fieldMetaList) {
-        final FieldInfo fieldInfo = state.fieldInfos.fieldInfo(fieldMeta.fieldNumber);
+        final FieldInfo fieldInfo = state.fieldInfos.fieldInfo(fieldMeta.fieldNumber());
         if (fieldEntryMap.containsKey(fieldInfo.name)) {
           throw new CorruptIndexException("Duplicate field: " + fieldInfo.name, meta);
         }
@@ -280,7 +280,7 @@ public class JVectorReader extends KnnVectorsReader {
       throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
     }
 
-    return new JVectorWriter.VectorIndexFieldMetadata(meta);
+    return JVectorWriter.VectorIndexFieldMetadata.read(meta);
   }
 
   class FieldEntry implements Closeable {
@@ -293,11 +293,11 @@ public class JVectorReader extends KnnVectorsReader {
     public FieldEntry(
         IndexInput data, JVectorWriter.VectorIndexFieldMetadata vectorIndexFieldMetadata)
         throws IOException {
-      this.similarityFunction = vectorIndexFieldMetadata.vectorSimilarityFunction;
-      this.graphNodeIdToDocMap = vectorIndexFieldMetadata.graphNodeIdToDocMap;
+      this.similarityFunction = vectorIndexFieldMetadata.vectorSimilarityFunction();
+      this.graphNodeIdToDocMap = vectorIndexFieldMetadata.graphNodeIdToDocMap();
 
-      final long graphOffset = vectorIndexFieldMetadata.vectorIndexOffset;
-      final long graphLength = vectorIndexFieldMetadata.vectorIndexLength;
+      final long graphOffset = vectorIndexFieldMetadata.vectorIndexOffset();
+      final long graphLength = vectorIndexFieldMetadata.vectorIndexLength();
       assert graphLength > 0 : "Read empty JVector graph";
       // Load the graph index from cloned slices of data (no need to close)
       final var indexReaderSupplier =
@@ -306,8 +306,8 @@ public class JVectorReader extends KnnVectorsReader {
       this.searchers = ExplicitThreadLocal.withInitial(() -> new GraphSearcher(index));
 
       // If quantized load the compressed product quantized vectors with their codebooks
-      final long pqOffset = vectorIndexFieldMetadata.pqCodebooksAndVectorsOffset;
-      final long pqLength = vectorIndexFieldMetadata.pqCodebooksAndVectorsLength;
+      final long pqOffset = vectorIndexFieldMetadata.pqCodebooksAndVectorsOffset();
+      final long pqLength = vectorIndexFieldMetadata.pqCodebooksAndVectorsLength();
       if (pqLength > 0) {
         assert pqOffset > 0;
         if (pqOffset < graphOffset) {
