@@ -25,6 +25,7 @@ import io.github.jbellis.jvector.graph.similarity.SearchScoreProvider;
 import io.github.jbellis.jvector.quantization.PQVectors;
 import io.github.jbellis.jvector.quantization.ProductQuantization;
 import io.github.jbellis.jvector.util.Bits;
+import io.github.jbellis.jvector.util.ExplicitThreadLocal;
 import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
 import io.github.jbellis.jvector.vector.VectorizationProvider;
 import io.github.jbellis.jvector.vector.types.VectorFloat;
@@ -170,11 +171,7 @@ public class JVectorReader extends KnnVectorsReader {
   public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     final var fieldEntry = fieldEntryMap.get(field);
-    final OnDiskGraphIndex index = fieldEntry.index;
-    if (index == null) {
-      // Skip search when the graph is empty
-      return;
-    }
+    assert fieldEntry != null;
 
     final JVectorSearchStrategy searchStrategy;
     if (knnCollector.getSearchStrategy() instanceof JVectorSearchStrategy strategy) {
@@ -186,49 +183,49 @@ public class JVectorReader extends KnnVectorsReader {
 
     // search for a random vector using a GraphSearcher and SearchScoreProvider
     VectorFloat<?> q = VECTOR_TYPE_SUPPORT.createFloatVector(target);
+
+    // Get a thread-local GraphSearcher
+    final var searcher = fieldEntry.searchers.get();
+    final OnDiskGraphIndex.View view = (OnDiskGraphIndex.View) searcher.getView();
+
     final SearchScoreProvider ssp;
+    if (fieldEntry.pqVectors != null) { // Quantized, use the precomputed score function
+      final PQVectors pqVectors = fieldEntry.pqVectors;
+      // SearchScoreProvider that does a first pass with the loaded-in-memory PQVectors,
+      // then reranks with the exact vectors that are stored on disk in the index
+      final var asf = pqVectors.precomputedScoreFunctionFor(q, fieldEntry.similarityFunction);
+      final var reranker = view.rerankerFor(q, fieldEntry.similarityFunction);
+      ssp = new DefaultSearchScoreProvider(asf, reranker);
+    } else { // Not quantized, used typical searcher
+      ssp = DefaultSearchScoreProvider.exact(q, fieldEntry.similarityFunction, view);
+    }
 
-    try (var view = index.getView()) {
-      if (fieldEntry.pqVectors != null) { // Quantized, use the precomputed score function
-        final PQVectors pqVectors = fieldEntry.pqVectors;
-        // SearchScoreProvider that does a first pass with the loaded-in-memory PQVectors,
-        // then reranks with the exact vectors that are stored on disk in the index
-        final var asf = pqVectors.precomputedScoreFunctionFor(q, fieldEntry.similarityFunction);
-        final var reranker = view.rerankerFor(q, fieldEntry.similarityFunction);
-        ssp = new DefaultSearchScoreProvider(asf, reranker);
-      } else { // Not quantized, used typical searcher
-        ssp = DefaultSearchScoreProvider.exact(q, fieldEntry.similarityFunction, view);
-      }
-      final GraphNodeIdToDocMap jvectorLuceneDocMap = fieldEntry.graphNodeIdToDocMap;
-      // Convert the acceptDocs bitmap from Lucene to jVector ordinal bitmap filter
-      // Logic works as follows: if acceptDocs is null, we accept all ordinals. Otherwise, we check
-      // if the jVector ordinal has a
-      // corresponding Lucene doc ID accepted by acceptDocs filter.
+    // Convert the acceptDocs bitmap from Lucene to jVector ordinal bitmap filter
+    // Logic works as follows: if acceptDocs is null, we accept all ordinals. Otherwise, we check
+    // if the jVector ordinal has a
+    // corresponding Lucene doc ID accepted by acceptDocs filter.
 
-      Bits compatibleBits = Bits.ALL;
-      if (acceptDocs != null) {
-        final var luceneBits = acceptDocs.bits();
-        if (luceneBits != null) {
-          compatibleBits = ord -> luceneBits.get(jvectorLuceneDocMap.getLuceneDocId(ord));
-        }
-      }
-
-      try (var graphSearcher = new GraphSearcher(index)) {
-        final var searchResults =
-            graphSearcher.search(
-                ssp,
-                knnCollector.k(),
-                knnCollector.k() * searchStrategy.overQueryFactor,
-                searchStrategy.threshold,
-                searchStrategy.rerankFloor,
-                compatibleBits);
-        for (SearchResult.NodeScore ns : searchResults.getNodes()) {
-          knnCollector.collect(jvectorLuceneDocMap.getLuceneDocId(ns.node), ns.score);
-        }
-        // JVector does not seem to count the entry-point as visited
-        knnCollector.incVisitedCount(1 + searchResults.getVisitedCount());
+    Bits compatibleBits = Bits.ALL;
+    if (acceptDocs != null) {
+      final var luceneBits = acceptDocs.bits();
+      if (luceneBits != null) {
+        compatibleBits = ord -> luceneBits.get(fieldEntry.graphNodeIdToDocMap.getLuceneDocId(ord));
       }
     }
+
+    final var searchResults =
+        searcher.search(
+            ssp,
+            knnCollector.k(),
+            knnCollector.k() * searchStrategy.overQueryFactor,
+            searchStrategy.threshold,
+            searchStrategy.rerankFloor,
+            compatibleBits);
+    for (SearchResult.NodeScore ns : searchResults.getNodes()) {
+      knnCollector.collect(fieldEntry.graphNodeIdToDocMap.getLuceneDocId(ns.node), ns.score);
+    }
+    // JVector does not seem to count the entry-point as visited
+    knnCollector.incVisitedCount(1 + searchResults.getVisitedCount());
   }
 
   @Override
@@ -284,6 +281,7 @@ public class JVectorReader extends KnnVectorsReader {
     private final VectorSimilarityFunction similarityFunction;
     private final GraphNodeIdToDocMap graphNodeIdToDocMap;
     private final OnDiskGraphIndex index;
+    private final ExplicitThreadLocal<GraphSearcher> searchers;
     private final PQVectors pqVectors; // The product quantized vectors with their codebooks
 
     public FieldEntry(
@@ -299,6 +297,7 @@ public class JVectorReader extends KnnVectorsReader {
       final var indexReaderSupplier =
           new JVectorRandomAccessReader.Supplier(data.slice("graph", graphOffset, graphLength));
       this.index = OnDiskGraphIndex.load(indexReaderSupplier);
+      this.searchers = ExplicitThreadLocal.withInitial(() -> new GraphSearcher(index));
 
       // If quantized load the compressed product quantized vectors with their codebooks
       final long pqOffset = vectorIndexFieldMetadata.pqCodebooksAndVectorsOffset;
@@ -319,6 +318,11 @@ public class JVectorReader extends KnnVectorsReader {
 
     @Override
     public void close() throws IOException {
+      try {
+        searchers.close();
+      } catch (Exception e) {
+        throw new IOException("Fail to close searchers", e);
+      }
       index.close();
     }
   }
