@@ -90,11 +90,13 @@ public class JVectorReader extends KnnVectorsReader {
           state.directory.openInput(
               dataFileName, state.context.withHints(FileTypeHint.DATA, DataAccessHint.RANDOM));
 
-      CodecUtil.checkHeader(
+      CodecUtil.checkIndexHeader(
           data,
           JVectorFormat.VECTOR_INDEX_CODEC_NAME,
           JVectorFormat.VERSION_START,
-          JVectorFormat.VERSION_CURRENT);
+          JVectorFormat.VERSION_CURRENT,
+          state.segmentInfo.getId(),
+          state.segmentSuffix);
       CodecUtil.retrieveChecksum(data);
 
       this.fieldEntryMap = new HashMap<>(fieldMetaList.size());
