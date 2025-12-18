@@ -111,6 +111,7 @@ public class LeafNode extends Node {
     assert this.output != null : "leaf nodes should have output.";
     Output output = this.output;
     int outputFpBytes = bytesRequiredVLong(this.output.fp());
+    // TODO: save floor data length.
     int header =
         (outputFpBytes - 1)
             | (output.hasTerms() ? LEAF_NODE_HAS_TERMS : 0)
@@ -129,19 +130,24 @@ public class LeafNode extends Node {
     // has terms,
     // 3 bit outputFpBytes - 1), n bytes outputFp, n bytes floorData
     // TODO: compress nodeType, header to 1 byte or keyLength.
-    int keyLength = access.readInt(fp + 1);
+    // We read node type in Node.
+    int offset = 1;
+    int keyLength = access.readInt(fp + offset);
+    offset += 4;
     BytesRef key = null;
     if (keyLength > 0) {
       byte[] keyBytes = new byte[keyLength];
-      access.readBytes(fp + 1 + 4, keyBytes, 0, keyLength);
+      access.readBytes(fp + offset, keyBytes, 0, keyLength);
+      offset += keyLength;
       key = new BytesRef(keyBytes);
     }
 
-    // TODO: improve fp + n + n style
-    int header = access.readByte(fp + 1 + 4 + keyLength);
-    int outputFpBytes = header & 0x07 + 1;
+    int header = access.readByte(fp + offset);
+    offset += 1;
+    int outputFpBytes = (header & 0x07) + 1;
     // TODO: If EOF, we can readLongFromNBytes.
-    long outputFP = access.readLong(fp + 1 + 4 + keyLength + 1);
+    long outputFP = access.readLong(fp + offset);
+    offset += outputFpBytes;
     if (outputFpBytes < 8) {
       outputFP = outputFP & BYTES_MINUS_1_MASK[outputFpBytes - 1];
     }
@@ -150,7 +156,7 @@ public class LeafNode extends Node {
     leafNode.hasTerms = (header & LEAF_NODE_HAS_TERMS) != 0;
     leafNode.outputFp = outputFP;
     if ((header & LEAF_NODE_HAS_FLOOR) != 0) {
-      leafNode.floorDataFp = fp + 1 + 4 + keyLength + 1 + outputFpBytes;
+      leafNode.floorDataFp = fp + offset;
     } else {
       leafNode.floorDataFp = NO_FLOOR_DATA;
     }

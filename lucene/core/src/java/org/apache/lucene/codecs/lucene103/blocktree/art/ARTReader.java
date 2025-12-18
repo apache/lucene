@@ -258,7 +258,7 @@ public class ARTReader {
         }
 
         long childFp = parent.fp - childDeltaFp;
-        assert childFp > 0 && childFp < parent.fp : "child fp should less than parent fp";
+        assert childFp >= 0 && childFp < parent.fp : "child fp should less than parent fp";
         return Node.load(access, childFp);
       } else {
         // Not match, keep in this parent.
