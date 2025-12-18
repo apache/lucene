@@ -53,6 +53,10 @@ API Changes
 
 New Features
 ---------------------
+
+* GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
+  PolishSnowballAnalyzer in the stempel package) (Justas Sakalauskas, Dawid Weiss)
+
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
 
 * GITHUB#14178: Add a Faiss-based vector format in the sandbox module. (Kaival Parikh)
