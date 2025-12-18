@@ -118,7 +118,37 @@ public class JVectorReader extends KnnVectorsReader {
           if (fieldEntryMap.containsKey(fieldInfo.name)) {
             throw new CorruptIndexException("Duplicate field: " + fieldInfo.name, meta);
           }
-          fieldEntryMap.put(fieldInfo.name, new FieldEntry(data, quant, fieldMeta));
+
+          final long graphOffset = fieldMeta.vectorIndexOffset();
+          final long graphLength = fieldMeta.vectorIndexLength();
+          assert graphLength > 0 : "Read empty JVector graph";
+          // Load the graph index from cloned slices of data (no need to close)
+          final var graphSlice = data.slice(fieldInfo.name + "-graph", graphOffset, graphLength);
+          final var indexReaderSupplier = new JVectorRandomAccessReader.Supplier(graphSlice);
+          final var index = OnDiskGraphIndex.load(indexReaderSupplier);
+
+          // If quantized load the compressed product quantized vectors with their codebooks
+          final long pqOffset = fieldMeta.pqCodebooksAndVectorsOffset();
+          final long pqLength = fieldMeta.pqCodebooksAndVectorsLength();
+          assert quant.getFilePointer() == pqOffset;
+
+          final PQVectors pqVectors;
+          if (pqLength > 0) {
+            try (final var randomAccessReader = new JVectorRandomAccessReader(quant)) {
+              pqVectors = PQVectors.load(randomAccessReader);
+            }
+          } else {
+            pqVectors = null;
+          }
+          assert quant.getFilePointer() == pqOffset + pqLength;
+
+          final var fieldEntry =
+              new FieldEntry(
+                  fieldMeta.vectorSimilarityFunction(),
+                  fieldMeta.graphNodeIdToDocMap(),
+                  index,
+                  pqVectors);
+          fieldEntryMap.put(fieldInfo.name, fieldEntry);
         }
       } catch (Throwable t) {
         priorE = t;
@@ -311,33 +341,15 @@ public class JVectorReader extends KnnVectorsReader {
     private final PQVectors pqVectors; // The product quantized vectors with their codebooks
 
     public FieldEntry(
-      IndexInput data,
-      IndexInput quant,
-      JVectorWriter.VectorIndexFieldMetadata vectorIndexFieldMetadata) throws IOException {
-      this.similarityFunction = vectorIndexFieldMetadata.vectorSimilarityFunction();
-      this.graphNodeIdToDocMap = vectorIndexFieldMetadata.graphNodeIdToDocMap();
-
-      final long graphOffset = vectorIndexFieldMetadata.vectorIndexOffset();
-      final long graphLength = vectorIndexFieldMetadata.vectorIndexLength();
-      assert graphLength > 0 : "Read empty JVector graph";
-      // Load the graph index from cloned slices of data (no need to close)
-      final var indexReaderSupplier =
-          new JVectorRandomAccessReader.Supplier(data.slice("graph", graphOffset, graphLength));
-      this.index = OnDiskGraphIndex.load(indexReaderSupplier);
+        VectorSimilarityFunction similarityFunction,
+        GraphNodeIdToDocMap graphNodeIdToDocMap,
+        OnDiskGraphIndex index,
+        PQVectors pqVectors) {
+      this.similarityFunction = similarityFunction;
+      this.graphNodeIdToDocMap = graphNodeIdToDocMap;
+      this.index = index;
       this.searchers = ExplicitThreadLocal.withInitial(() -> new GraphSearcher(index));
-
-      // If quantized load the compressed product quantized vectors with their codebooks
-      final long pqOffset = vectorIndexFieldMetadata.pqCodebooksAndVectorsOffset();
-      final long pqLength = vectorIndexFieldMetadata.pqCodebooksAndVectorsLength();
-      assert quant.getFilePointer() == pqOffset;
-      if (pqLength > 0) {
-        try (final var randomAccessReader = new JVectorRandomAccessReader(quant)) {
-          this.pqVectors = PQVectors.load(randomAccessReader);
-        }
-      } else {
-        this.pqVectors = null;
-      }
-      assert quant.getFilePointer() == pqOffset + pqLength;
+      this.pqVectors = pqVectors;
     }
 
     @Override
