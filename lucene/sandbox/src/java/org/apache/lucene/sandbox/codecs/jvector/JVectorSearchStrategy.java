@@ -26,7 +26,7 @@ import org.apache.lucene.search.knn.KnnSearchStrategy;
 public class JVectorSearchStrategy extends KnnSearchStrategy {
   static final float DEFAULT_QUERY_SIMILARITY_THRESHOLD = 0f;
   static final float DEFAULT_QUERY_RERANK_FLOOR = 0f;
-  static final int DEFAULT_OVER_QUERY_FACTOR = 3;
+  static final int DEFAULT_OVER_QUERY_FACTOR = 5;
   static final boolean DEFAULT_QUERY_USE_PRUNING = false;
 
   public static final JVectorSearchStrategy DEFAULT =

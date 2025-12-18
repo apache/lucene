@@ -40,9 +40,9 @@ public class JVectorFormat extends KnnVectorsFormat {
   public static final int DEFAULT_MAX_CONN = 32;
   public static final int DEFAULT_BEAM_WIDTH = 100;
   public static final int DEFAULT_MINIMUM_BATCH_SIZE_FOR_QUANTIZATION = 1024;
-  public static final float DEFAULT_NEIGHBOR_OVERFLOW = 2f;
-  public static final float DEFAULT_ALPHA = 2f;
-  public static final boolean DEFAULT_HIERARCHY_ENABLED = true;
+  public static final float DEFAULT_NEIGHBOR_OVERFLOW = 1.2f;
+  public static final float DEFAULT_ALPHA = 1.2f;
+  public static final boolean DEFAULT_HIERARCHY_ENABLED = false;
 
   private final List<Integer> maxDegrees;
   private final int beamWidth;
