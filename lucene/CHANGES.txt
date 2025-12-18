@@ -172,7 +172,7 @@ API Changes
 
 * GITHUB#15501: Introduce optional access to backing vector values from the scorer  (Chris Hegarty)
 
-* GITHUB#15502: Add `count()` to `FilterWeight`  (Prudhvi Godithi)
+* GITHUB#15502: Add `count()` method to `FilterWeight`  (Prudhvi Godithi)
 
 New Features
 ---------------------
