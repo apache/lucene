@@ -29,11 +29,10 @@ import org.apache.lucene.index.SegmentWriteState;
 /// Implements K-NN search using JVector library for indexing
 public class JVectorFormat extends KnnVectorsFormat {
   public static final String NAME = "JVectorFormat";
-  public static final String META_CODEC_NAME = "JVectorVectorsFormatMeta";
-  public static final String VECTOR_INDEX_CODEC_NAME = "JVectorVectorsFormatIndex";
-  public static final String JVECTOR_FILES_SUFFIX = "jvector";
-  public static final String META_EXTENSION = "meta-" + JVECTOR_FILES_SUFFIX;
-  public static final String VECTOR_INDEX_EXTENSION = "data-" + JVECTOR_FILES_SUFFIX;
+  public static final String META_CODEC_NAME = NAME + "Meta";
+  public static final String VECTOR_INDEX_CODEC_NAME = NAME + "Index";
+  public static final String META_EXTENSION = "jvem";
+  public static final String VECTOR_INDEX_EXTENSION = "jvecx";
 
   public static final int VERSION_START = 0;
   public static final int VERSION_CURRENT = VERSION_START;
