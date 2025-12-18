@@ -346,7 +346,6 @@ public class JVectorWriter extends KnnVectorsWriter {
             endGraphOffset - startOffset,
             pqOffset,
             pqLength,
-            degreeOverflow,
             graphNodeIdToDocMap);
       }
     }
@@ -362,7 +361,6 @@ public class JVectorWriter extends KnnVectorsWriter {
     final long vectorIndexLength;
     final long pqCodebooksAndVectorsOffset;
     final long pqCodebooksAndVectorsLength;
-    final float degreeOverflow; // important when leveraging cache
     final GraphNodeIdToDocMap graphNodeIdToDocMap;
 
     public VectorIndexFieldMetadata(
@@ -374,7 +372,6 @@ public class JVectorWriter extends KnnVectorsWriter {
         long vectorIndexLength,
         long pqCodebooksAndVectorsOffset,
         long pqCodebooksAndVectorsLength,
-        float degreeOverflow,
         GraphNodeIdToDocMap graphNodeIdToDocMap) {
       this.fieldNumber = fieldNumber;
       this.vectorEncoding = vectorEncoding;
@@ -384,7 +381,6 @@ public class JVectorWriter extends KnnVectorsWriter {
       this.vectorIndexLength = vectorIndexLength;
       this.pqCodebooksAndVectorsOffset = pqCodebooksAndVectorsOffset;
       this.pqCodebooksAndVectorsLength = pqCodebooksAndVectorsLength;
-      this.degreeOverflow = degreeOverflow;
       this.graphNodeIdToDocMap = graphNodeIdToDocMap;
     }
 
@@ -397,7 +393,6 @@ public class JVectorWriter extends KnnVectorsWriter {
       out.writeVLong(vectorIndexLength);
       out.writeVLong(pqCodebooksAndVectorsOffset);
       out.writeVLong(pqCodebooksAndVectorsLength);
-      out.writeInt(Float.floatToIntBits(degreeOverflow));
       graphNodeIdToDocMap.toOutput(out);
     }
 
@@ -410,7 +405,6 @@ public class JVectorWriter extends KnnVectorsWriter {
       this.vectorIndexLength = in.readVLong();
       this.pqCodebooksAndVectorsOffset = in.readVLong();
       this.pqCodebooksAndVectorsLength = in.readVLong();
-      this.degreeOverflow = Float.intBitsToFloat(in.readInt());
       this.graphNodeIdToDocMap = new GraphNodeIdToDocMap(in);
     }
   }
