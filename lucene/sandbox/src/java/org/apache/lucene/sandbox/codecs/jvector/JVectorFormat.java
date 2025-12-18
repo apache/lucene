@@ -31,8 +31,10 @@ public class JVectorFormat extends KnnVectorsFormat {
   public static final String NAME = "JVectorFormat";
   public static final String META_CODEC_NAME = NAME + "Meta";
   public static final String VECTOR_INDEX_CODEC_NAME = NAME + "Index";
+  public static final String QUANTIZED_CODEC_NAME = NAME + "Quantized";
   public static final String META_EXTENSION = "jvem";
   public static final String VECTOR_INDEX_EXTENSION = "jvecx";
+  public static final String QUANTIZED_EXTENSION = "jveq";
 
   public static final int VERSION_START = 0;
   public static final int VERSION_CURRENT = VERSION_START;

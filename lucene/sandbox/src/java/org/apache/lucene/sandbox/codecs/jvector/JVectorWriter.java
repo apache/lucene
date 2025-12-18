@@ -118,6 +118,7 @@ public class JVectorWriter extends KnnVectorsWriter {
 
   private final IndexOutput meta;
   private final IndexOutput data;
+  private final IndexOutput quant;
   private final List<Integer> maxDegrees;
   private final int beamWidth;
   private final float degreeOverflow;
@@ -172,6 +173,18 @@ public class JVectorWriter extends KnnVectorsWriter {
       CodecUtil.writeIndexHeader(
           data,
           JVectorFormat.VECTOR_INDEX_CODEC_NAME,
+          JVectorFormat.VERSION_CURRENT,
+          segmentWriteState.segmentInfo.getId(),
+          segmentWriteState.segmentSuffix);
+      final String quantFileName =
+          IndexFileNames.segmentFileName(
+              segmentWriteState.segmentInfo.name,
+              segmentWriteState.segmentSuffix,
+              JVectorFormat.QUANTIZED_EXTENSION);
+      quant = segmentWriteState.directory.createOutput(quantFileName, segmentWriteState.context);
+      CodecUtil.writeIndexHeader(
+          quant,
+          JVectorFormat.QUANTIZED_CODEC_NAME,
           JVectorFormat.VERSION_CURRENT,
           segmentWriteState.segmentInfo.getId(),
           segmentWriteState.segmentSuffix);
@@ -307,48 +320,53 @@ public class JVectorWriter extends KnnVectorsWriter {
       OrdinalMapper ordinalMapper,
       GraphNodeIdToDocMap graphNodeIdToDocMap)
       throws IOException {
-    try (final var jVectorIndexWriter = new JVectorIndexWriter(data)) {
-      final long startOffset = data.getFilePointer();
-      final var writerBuilder =
-          new OnDiskSequentialGraphIndexWriter.Builder(graph, jVectorIndexWriter)
+    final long graphOffset = data.getFilePointer();
+    final long graphLength;
+    try (final var jVectorWriter = new JVectorIndexWriter(data)) {
+      // Trick the writer to ensure offsets relative to the current file pointer
+      assert jVectorWriter.position() == 0;
+      final var graphWriterBuilder =
+          new OnDiskSequentialGraphIndexWriter.Builder(graph, jVectorWriter)
               .with(new InlineVectors(randomAccessVectorValues.dimension()));
       if (ordinalMapper != null) {
-        writerBuilder.withMapper(ordinalMapper);
+        graphWriterBuilder.withMapper(ordinalMapper);
       }
-      try (var writer = writerBuilder.build()) {
+      try (var graphWriter = graphWriterBuilder.build()) {
         var suppliers =
             Feature.singleStateFactory(
                 FeatureId.INLINE_VECTORS,
                 nodeId -> new InlineVectors.State(randomAccessVectorValues.getVector(nodeId)));
-        writer.write(suppliers);
-        final long endGraphOffset = data.getFilePointer();
-
-        // If PQ is enabled and we have enough vectors, write the PQ codebooks and compressed
-        // vectors
-        final long pqOffset;
-        final long pqLength;
-        if (pqVectors != null) {
-          pqOffset = endGraphOffset;
-          // write the compressed vectors and codebooks to disk
-          pqVectors.write(jVectorIndexWriter);
-          pqLength = data.getFilePointer() - endGraphOffset;
-        } else {
-          pqOffset = 0;
-          pqLength = 0;
-        }
-
-        return new VectorIndexFieldMetadata(
-            fieldInfo.number,
-            fieldInfo.getVectorEncoding(),
-            JVectorFormat.toJVectorSimilarity(fieldInfo.getVectorSimilarityFunction()),
-            randomAccessVectorValues.dimension(),
-            startOffset,
-            endGraphOffset - startOffset,
-            pqOffset,
-            pqLength,
-            graphNodeIdToDocMap);
+        graphWriter.write(suppliers);
+        // Position is already relative to graphOffset, as above
+        graphLength = jVectorWriter.position();
       }
     }
+
+    final long pqOffset = quant.getFilePointer();
+    final long pqLength;
+    if (null == pqVectors) {
+      pqLength = 0;
+    } else {
+      try (final var jVectorWriter = new JVectorIndexWriter(quant)) {
+        // The writer tricks JVector to ensure offsets are relative to the current file pointer
+        assert jVectorWriter.position() == 0;
+        // write the compressed vectors and codebooks to disk
+        pqVectors.write(jVectorWriter);
+        // Position is already relative to pqOffset, as above
+        pqLength = jVectorWriter.position();
+      }
+    }
+
+    return new VectorIndexFieldMetadata(
+        fieldInfo.number,
+        fieldInfo.getVectorEncoding(),
+        JVectorFormat.toJVectorSimilarity(fieldInfo.getVectorSimilarityFunction()),
+        randomAccessVectorValues.dimension(),
+        graphOffset,
+        graphLength,
+        pqOffset,
+        pqLength,
+        graphNodeIdToDocMap);
   }
 
   /// Metadata about the index to be persisted on disk
@@ -399,11 +417,12 @@ public class JVectorWriter extends KnnVectorsWriter {
     meta.writeInt(-1);
     CodecUtil.writeFooter(meta);
     CodecUtil.writeFooter(data);
+    CodecUtil.writeFooter(quant);
   }
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(meta, data);
+    IOUtils.close(meta, data, quant);
   }
 
   @Override

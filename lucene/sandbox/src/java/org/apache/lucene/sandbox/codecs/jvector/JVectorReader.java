@@ -62,7 +62,11 @@ public class JVectorReader extends KnnVectorsReader {
     final String metaFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, JVectorFormat.META_EXTENSION);
-    try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
+    final String quantFileName =
+        IndexFileNames.segmentFileName(
+            state.segmentInfo.name, state.segmentSuffix, JVectorFormat.QUANTIZED_EXTENSION);
+    try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName);
+        ChecksumIndexInput quant = state.directory.openChecksumInput(quantFileName)) {
       Throwable priorE = null;
       try {
         CodecUtil.checkIndexHeader(
@@ -100,12 +104,26 @@ public class JVectorReader extends KnnVectorsReader {
       CodecUtil.retrieveChecksum(data);
 
       this.fieldEntryMap = new HashMap<>(fieldMetaList.size());
-      for (var fieldMeta : fieldMetaList) {
-        final FieldInfo fieldInfo = state.fieldInfos.fieldInfo(fieldMeta.fieldNumber());
-        if (fieldEntryMap.containsKey(fieldInfo.name)) {
-          throw new CorruptIndexException("Duplicate field: " + fieldInfo.name, meta);
+      try {
+        CodecUtil.checkIndexHeader(
+            quant,
+            JVectorFormat.QUANTIZED_CODEC_NAME,
+            JVectorFormat.VERSION_START,
+            JVectorFormat.VERSION_CURRENT,
+            state.segmentInfo.getId(),
+            state.segmentSuffix);
+
+        for (var fieldMeta : fieldMetaList) {
+          final FieldInfo fieldInfo = state.fieldInfos.fieldInfo(fieldMeta.fieldNumber());
+          if (fieldEntryMap.containsKey(fieldInfo.name)) {
+            throw new CorruptIndexException("Duplicate field: " + fieldInfo.name, meta);
+          }
+          fieldEntryMap.put(fieldInfo.name, new FieldEntry(data, quant, fieldMeta));
         }
-        fieldEntryMap.put(fieldInfo.name, new FieldEntry(data, fieldMeta));
+      } catch (Throwable t) {
+        priorE = t;
+      } finally {
+        CodecUtil.checkFooter(quant, priorE);
       }
     }
   }
@@ -293,8 +311,9 @@ public class JVectorReader extends KnnVectorsReader {
     private final PQVectors pqVectors; // The product quantized vectors with their codebooks
 
     public FieldEntry(
-        IndexInput data, JVectorWriter.VectorIndexFieldMetadata vectorIndexFieldMetadata)
-        throws IOException {
+      IndexInput data,
+      IndexInput quant,
+      JVectorWriter.VectorIndexFieldMetadata vectorIndexFieldMetadata) throws IOException {
       this.similarityFunction = vectorIndexFieldMetadata.vectorSimilarityFunction();
       this.graphNodeIdToDocMap = vectorIndexFieldMetadata.graphNodeIdToDocMap();
 
@@ -310,18 +329,15 @@ public class JVectorReader extends KnnVectorsReader {
       // If quantized load the compressed product quantized vectors with their codebooks
       final long pqOffset = vectorIndexFieldMetadata.pqCodebooksAndVectorsOffset();
       final long pqLength = vectorIndexFieldMetadata.pqCodebooksAndVectorsLength();
+      assert quant.getFilePointer() == pqOffset;
       if (pqLength > 0) {
-        assert pqOffset > 0;
-        if (pqOffset < graphOffset) {
-          throw new IllegalArgumentException("pqOffset must be greater than vectorIndexOffset");
-        }
-        final var pqSlice = data.slice("pq", pqOffset, pqLength);
-        try (final var randomAccessReader = new JVectorRandomAccessReader(pqSlice)) {
+        try (final var randomAccessReader = new JVectorRandomAccessReader(quant)) {
           this.pqVectors = PQVectors.load(randomAccessReader);
         }
       } else {
         this.pqVectors = null;
       }
+      assert quant.getFilePointer() == pqOffset + pqLength;
     }
 
     @Override
