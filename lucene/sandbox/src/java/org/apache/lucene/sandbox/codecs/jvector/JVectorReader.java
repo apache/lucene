@@ -21,6 +21,7 @@ import io.github.jbellis.jvector.graph.GraphSearcher;
 import io.github.jbellis.jvector.graph.SearchResult;
 import io.github.jbellis.jvector.graph.disk.OnDiskGraphIndex;
 import io.github.jbellis.jvector.graph.similarity.DefaultSearchScoreProvider;
+import io.github.jbellis.jvector.graph.similarity.ScoreFunction.ExactScoreFunction;
 import io.github.jbellis.jvector.graph.similarity.SearchScoreProvider;
 import io.github.jbellis.jvector.quantization.PQVectors;
 import io.github.jbellis.jvector.quantization.ProductQuantization;
@@ -194,7 +195,12 @@ public class JVectorReader extends KnnVectorsReader {
       // SearchScoreProvider that does a first pass with the loaded-in-memory PQVectors,
       // then reranks with the exact vectors that are stored on disk in the index
       final var asf = pqVectors.precomputedScoreFunctionFor(q, fieldEntry.similarityFunction);
-      final var reranker = view.rerankerFor(q, fieldEntry.similarityFunction);
+      final ExactScoreFunction reranker;
+      if (searchStrategy.overQueryFactor > 1) {
+        reranker = view.rerankerFor(q, fieldEntry.similarityFunction);
+      } else {
+        reranker = null;
+      }
       ssp = new DefaultSearchScoreProvider(asf, reranker);
     } else { // Not quantized, used typical searcher
       ssp = DefaultSearchScoreProvider.exact(q, fieldEntry.similarityFunction, view);
