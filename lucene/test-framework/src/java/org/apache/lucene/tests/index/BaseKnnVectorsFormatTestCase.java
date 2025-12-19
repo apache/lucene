@@ -119,8 +119,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   private VectorEncoding vectorEncoding;
   private VectorSimilarityFunction similarityFunction;
 
-  final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
-
   @Before
   public void init() {
     vectorEncoding = randomVectorEncoding();
