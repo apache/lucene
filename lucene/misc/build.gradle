@@ -15,73 +15,11 @@
  * limitations under the License.
  */
 
-import org.gradle.internal.os.OperatingSystem
+
 
 description = 'Index tools and other miscellaneous code'
 
 dependencies {
   moduleApi project(':lucene:core')
   moduleTestImplementation project(':lucene:test-framework')
-}
-
-def os = OperatingSystem.current()
-def sharedLibExt = os.isMacOsX() ? "dylib" : (os.isWindows() ? "dll" : "so")
-def sharedLibName = os.isWindows() ? "dotProduct.${sharedLibExt}" : "libdotProduct.${sharedLibExt}"
-def cc = System.getenv("CC") ?: "gcc"
-def osArch = System.getProperty("os.arch")
-
-// Native build task
-tasks.register("buildNative", Exec) {
-  group = "build"
-
-  def outputDir = file("$buildDir/libs/dotProduct/shared")
-  def outputFile = new File(outputDir, sharedLibName)
-
-  inputs.files fileTree("src/c") { include("**/*.c") }
-  outputs.file outputFile
-
-  println "OSArch"
-  println osArch
-
-  doFirst {
-    outputDir.mkdirs()
-  }
-
-
-  def srcFiles = fileTree("src/c") {
-    include("**/*.c")
-  }.files*.path
-
-  commandLine = [cc, "-shared", "-O3", "-fPIC", "-march=native", "-funroll-loops", "-o", outputFile.absolutePath] + srcFiles
-
-  doLast {
-    def targetDir = rootProject.file("build/lib")
-    // Copy the built shared library to the target directory
-    println "Copying $sharedLibName to $targetDir"
-    copy {
-      from outputDir
-      into targetDir
-      include sharedLibName
-    }
-  }
-}
-
-tasks.register("debugInfo", Exec) {
-    commandLine 'gcc', '--version'
-    doFirst {
-        println "Printing GCC version..."
-    }
-    // Print output to console
-    standardOutput = System.out
-}
-
-
-
-tasks.register("buildNativeLib") {
-  dependsOn "debugInfo"
-  dependsOn tasks.named("buildNative")
-}
-
-tasks.named("assemble").configure {
-  dependsOn tasks.named("buildNativeLib")
 }

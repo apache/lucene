@@ -16,13 +16,8 @@
  */
 package org.apache.lucene.benchmark.jmh;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
-import org.apache.lucene.internal.vectorization.VectorUtilSupport;
-import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.util.VectorUtil;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -49,35 +44,6 @@ import org.openjdk.jmh.annotations.Warmup;
     value = 3,
     jvmArgsAppend = {"-Xmx2g", "-Xms2g", "-XX:+AlwaysPreTouch"})
 public class VectorUtilBenchmark {
-
-  static final MethodHandles.Lookup lookup = MethodHandles.lookup();
-  private static final MethodHandle SIMPLE_NATIVE_DOT_PRODUCT =
-      nativeDotProductHandle("dotProductSimpleNative");
-
-  /**
-   * Used to get a MethodHandle of PanamaVectorUtilSupport.dotProduct(byte[] a, byte[] b). The
-   * method above will use a native C implementation of dotProduct if it is enabled via {@link
-   * org.apache.lucene.util.Constants#NATIVE_DOT_PRODUCT_ENABLED}.
-   *
-   * @return MethodHandle PanamaVectorUtilSupport.dotProduct(byte[] a, byte[] b)
-   */
-  private static MethodHandle nativeDotProductHandle(String methodName) {
-    if (Runtime.version().feature() <= 21) {
-      return null;
-    }
-    try {
-      final VectorUtilSupport vectorUtilSupport =
-          VectorizationProvider.getInstance().getVectorUtilSupport();
-      if (vectorUtilSupport.getClass().getName().endsWith("PanamaVectorUtilSupport")) {
-        final var methodType = MethodType.methodType(int.class, byte[].class, byte[].class);
-        return lookup.findStatic(vectorUtilSupport.getClass(), methodName, methodType);
-      }
-    } catch (IllegalAccessException | NoSuchMethodException e) {
-      throw new RuntimeException(e);
-    }
-    return null;
-  }
-
   static void compressBytes(byte[] raw, byte[] compressed) {
     for (int i = 0; i < compressed.length; ++i) {
       int v = (raw[i] << 4) | raw[compressed.length + i];
@@ -145,19 +111,6 @@ public class VectorUtilBenchmark {
       jvmArgsPrepend = {"--add-modules=jdk.incubator.vector", "-Dlucene.useNativeDotProduct=true"})
   public int dot8sNative() {
     return VectorUtil.dotProduct(bytesA, bytesB);
-  }
-
-  @Benchmark
-  @Fork(
-      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector", "-Dlucene.useNativeDotProduct=true"})
-  public int dot8sNativeSimple() {
-    try {
-      return (int) SIMPLE_NATIVE_DOT_PRODUCT.invokeExact(bytesA, bytesB);
-    } catch (RuntimeException | Error e) {
-      throw e;
-    } catch (Throwable e) {
-      throw new AssertionError(e);
-    }
   }
 
   @Benchmark

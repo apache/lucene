@@ -84,8 +84,6 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
   // Method handles
   private static final MethodHandle dotProduct$MH;
 
-  private static final MethodHandle simpleDotProduct$MH;
-
   public static boolean isLibraryLoaded() {
     return isLibraryLoaded;
   }
@@ -97,13 +95,11 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
 
       // Method handles for native functions
       dotProduct$MH = getMethodHandle("dot8s", dot8sDesc);
-      simpleDotProduct$MH = getMethodHandle("dot8s_scalar", dot8sDesc);
     } else if (Constants.NATIVE_DOT_PRODUCT_ENABLED) {
       throw new RuntimeException("Native library dotProduct missing!");
     } else {
       SYMBOL_LOOKUP = null;
       dotProduct$MH = null;
-      simpleDotProduct$MH = null;
     }
   }
 
@@ -123,27 +119,6 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
     try {
       int limit = (int) a.byteSize();
       return (int) mh.invokeExact(a, b, limit);
-    } catch (Throwable ex$) {
-      throw new AssertionError("should not reach here", ex$);
-    }
-  }
-
-  /**
-   * Only used in JMH benchmarks. Helpful for benchmarking the performance of compiler
-   * auto-vectorized method (NativeMethodHandles.SIMPLE_DOT_PRODUCT_IMPL) vs manually unrolled and
-   * vectorized implementation (NativeMethodHandles.DOT_PRODUCT_IMPL)
-   *
-   * @param a MemorySegment of vector a
-   * @param b MemorySegment of vector b
-   * @return int dot-product score
-   */
-  public static int dotProductSimpleNative(byte[] a, byte[] b) {
-    assert a.length == b.length;
-    try {
-      int limit = a.length;
-      return (int)
-          simpleDotProduct$MH.invokeExact(
-              MemorySegment.ofArray(a), MemorySegment.ofArray(b), limit);
     } catch (Throwable ex$) {
       throw new AssertionError("should not reach here", ex$);
     }

@@ -596,17 +596,7 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
         "tests.vectorsize",
         "Sets preferred vector size in bits.",
         project.provider(() -> defaultVectorizationOption.get() ? "default" : randomVectorSize));
-    //    var altJvmExt =
-    //        project
-    //            .getRootProject()
-    //            .getExtensions()
-    //            .getByType(AlternativeJdkSupportPlugin.AltJvmExtension.class);
-    //    JavaVersion runtimeJava = altJvmExt.getCompilationJvmVersion().get();
-    //    boolean incubatorJavaVersion =
-    //        Set.of("22", "23", "24", "25").contains(runtimeJava.getMajorVersion());
     buildOptions.addBooleanOption("test.native.dotProduct", "Native dot product.", false);
-    //        project.provider(() -> defaultVectorizationOption.get() ? false :
-    // incubatorJavaVersion));
 
     optionsInheritedAsProperties.add("tests.vectorsize");
     optionsInheritedAsProperties.add("test.native.dotProduct");

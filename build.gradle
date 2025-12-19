@@ -18,7 +18,6 @@
 plugins {
   id "base"
   id "lucene.root-project.setup"
-  id "c"
 }
 
 description = 'Grandparent project for Apache Lucene Core'
