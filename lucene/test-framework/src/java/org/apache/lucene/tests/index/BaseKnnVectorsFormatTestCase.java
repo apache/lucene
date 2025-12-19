@@ -37,12 +37,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
+import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsReader;
@@ -94,6 +96,9 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.codecs.asserting.AssertingKnnVectorsFormat;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.TestUtil;
@@ -2010,13 +2015,76 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
-  /**
-   * Simulates empty raw vectors by modifying index files. Override in codecs that support
-   * FloatVector fallback.
-   */
+  /** Simulates empty raw vectors by modifying index files. */
   protected void simulateEmptyRawVectors(Directory dir) throws Exception {
-    throw new Exception(
-        "simulateEmptyRawVectors must be implemented by codecs that support FloatVector fallback");
+    final String[] indexFiles = dir.listAll();
+    final String RAW_VECTOR_EXTENSION = "vec";
+    final String VECTOR_META_EXTENSION = "vemf";
+
+    for (String file : indexFiles) {
+      if (file.endsWith("." + RAW_VECTOR_EXTENSION)) {
+        replaceWithEmptyVectorFile(dir, file);
+      } else if (file.endsWith("." + VECTOR_META_EXTENSION)) {
+        updateVectorMetadataFile(dir, file);
+      }
+    }
+  }
+
+  /** Replaces a raw vector file with an empty one that has valid header/footer. */
+  protected void replaceWithEmptyVectorFile(Directory dir, String fileName) throws Exception {
+    byte[] indexHeader;
+    try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+      indexHeader = CodecUtil.readIndexHeader(in);
+    }
+    dir.deleteFile(fileName);
+    try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+      // Write header
+      out.writeBytes(indexHeader, 0, indexHeader.length);
+      // Write footer (no content in between)
+      CodecUtil.writeFooter(out);
+    }
+  }
+
+  /** Updates vector metadata file to indicate zero vector length. */
+  protected void updateVectorMetadataFile(Directory dir, String fileName) throws Exception {
+    // Read original metadata
+    byte[] indexHeader;
+    int fieldNumber, vectorEncoding, vectorSimilarityFunction, dimension;
+    long vectorStartPos;
+
+    try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+      indexHeader = CodecUtil.readIndexHeader(in);
+      fieldNumber = in.readInt();
+      vectorEncoding = in.readInt();
+      vectorSimilarityFunction = in.readInt();
+      vectorStartPos = in.readVLong();
+      in.readVLong(); // Skip original vector length
+      dimension = in.readVInt();
+    }
+
+    // Create updated metadata file
+    dir.deleteFile(fileName);
+    try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+      // Write header
+      out.writeBytes(indexHeader, 0, indexHeader.length);
+
+      // Write metadata with zero vector length
+      out.writeInt(fieldNumber);
+      out.writeInt(vectorEncoding);
+      out.writeInt(vectorSimilarityFunction);
+      out.writeVLong(vectorStartPos);
+      out.writeVLong(0); // Set vector length to 0
+      out.writeVInt(dimension);
+      out.writeInt(0);
+
+      // Write configuration
+      OrdToDocDISIReaderConfiguration.writeStoredMeta(
+          DIRECT_MONOTONIC_BLOCK_SHIFT, out, null, 0, 0, null);
+
+      // Mark end of fields and write footer
+      out.writeInt(-1);
+      CodecUtil.writeFooter(out);
+    }
   }
 
   public void testMismatchedFields() throws Exception {
