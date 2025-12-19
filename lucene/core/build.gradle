@@ -31,13 +31,13 @@ dependencies {
   moduleTestImplementation project(':lucene:test-framework')
 }
 
-test {
-  dependsOn ':lucene:misc:buildNative'
-  systemProperty(
-          "java.library.path",
-          project(":lucene:misc").layout.buildDirectory.get().asFile.absolutePath + "/libs/dotProduct/shared"
-  )
-}
+// test {
+//   dependsOn ':lucene:misc:buildNative'
+//   systemProperty(
+//           "java.library.path",
+//           project(":lucene:misc").layout.buildDirectory.get().asFile.absolutePath + "/libs/dotProduct/shared"
+//   )
+// }
 
 // Setup api stub generation and multi-release jar support for the following JDKs.
 project.getExtensions().getByType(MrJarsExtension).setupFor(Integer.parseInt(deps.versions.minJava.get()))

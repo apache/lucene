@@ -41,8 +41,8 @@ import java.util.logging.Logger;
  *       auto-vectorization
  * </ul>
  *
- * {@link PanamaVectorUtilSupport#dotProduct} use this Native C implementation for dot product
- * calculation if system property <b>lucene.useNativeDotProduct=true</b> is passed
+ * PanamaVectorUtilSupport#dotProduct use this Native C implementation for dot product calculation
+ * if system property <b>lucene.useNativeDotProduct=true</b> is passed
  *
  * <p>It Uses <code>Linker.Option.critical(true)</code> for optimal performance by eliminating the
  * overhead of ensuring MemorySegments are allocated off-heap before native calls.
@@ -65,7 +65,7 @@ public final class NativeMethodHandles {
       // Attempt to load the library
       System.loadLibrary("dotProduct");
       isLibraryLoaded = true; // If successful, set the flag to true
-    } catch (UnsatisfiedLinkError e) {
+    } catch (UnsatisfiedLinkError _) {
       // If the library loading fails, set the flag to false
       isLibraryLoaded = false;
       Logger.getLogger(NativeMethodHandles.class.getName())
