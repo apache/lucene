@@ -283,7 +283,8 @@ public abstract class Node {
 
     // Get first child to compute max delta fp between parent and children.
     // Children fps are in order, so the first child's fp is min, then delta is max.
-    // TODO: For node48, its position is the key byte, we use the first child in children.
+
+    // For node48, its position is the key byte, we use the first child in children.
     Node child;
     if (nodeType.equals(NodeType.NODE48)) {
       child = getChildren()[0];
@@ -310,7 +311,7 @@ public abstract class Node {
     }
 
     // Write children's delta fps from first one.
-    // TODO: For node48, we should write fps by iterate children[], because its getNextLargerPos
+    // For node48, we should write fps by iterate children[], because its getNextLargerPos
     // returns next byte,
     // We can use getChildIndex(nextPos) to calculate real index in children when load child.
     if (nodeType.equals(NodeType.NODE48)) {
