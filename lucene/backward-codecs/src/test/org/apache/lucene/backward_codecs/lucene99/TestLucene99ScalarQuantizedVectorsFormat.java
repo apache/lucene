@@ -284,7 +284,7 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
   }
 
   /** Replaces a raw vector file with an empty one that has valid header/footer. */
-  protected void replaceWithEmptyVectorFile(Directory dir, String fileName) throws Exception {
+  private void replaceWithEmptyVectorFile(Directory dir, String fileName) throws Exception {
     byte[] indexHeader;
     try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
       indexHeader = CodecUtil.readIndexHeader(in);
@@ -299,7 +299,7 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
   }
 
   /** Updates vector metadata file to indicate zero vector length. */
-  protected void updateVectorMetadataFile(Directory dir, String fileName) throws Exception {
+  private void updateVectorMetadataFile(Directory dir, String fileName) throws Exception {
     // Read original metadata
     byte[] indexHeader;
     int fieldNumber, vectorEncoding, vectorSimilarityFunction, dimension;
