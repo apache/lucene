@@ -413,10 +413,11 @@ public abstract class Node {
 
       node.outputFp = encodedOutputFp >>> 2;
       node.hasTerms = (encodedOutputFp & NON_LEAF_NODE_HAS_TERMS) != 0;
+      // Skip children delta fp bytes even if no floor.
+      offset += childrenCount * node.childrenDeltaFpBytes;
+
       // Read floor.
       if ((encodedOutputFp & NON_LEAF_NODE_HAS_FLOOR) != 0) {
-        // Skip children delta fp bytes.
-        offset += childrenCount * node.childrenDeltaFpBytes;
         node.floorDataLen = access.readInt(fp + offset);
         offset += 4;
         node.floorDataFp = fp + offset;
