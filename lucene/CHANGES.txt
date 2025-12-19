@@ -51,6 +51,12 @@ API Changes
 
 * GITHUB#15486: Remove deprecated SortField.setMissingValue() method (Alan Woodward)
 
+* GITHUB#15507: Expose MergeRateLimiter in ConcurrentMergeScheduler.runOnMergeFinished hook.
+  The runOnMergeFinished method signature now includes OneMerge and MergeRateLimiter parameters,
+  enabling applications to monitor merge performance metrics like pause time, throttling behavior,
+  and throughput. This provides visibility into Lucene's merge backpressure mechanisms that can
+  stall indexing when merge debt accumulates. (Zihan Xu)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
