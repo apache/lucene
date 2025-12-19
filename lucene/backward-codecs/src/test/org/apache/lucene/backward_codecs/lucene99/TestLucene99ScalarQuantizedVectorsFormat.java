@@ -17,6 +17,7 @@
 package org.apache.lucene.backward_codecs.lucene99;
 
 import static java.lang.String.format;
+import static org.apache.lucene.backward_codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
@@ -25,9 +26,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.CodecReader;
@@ -40,6 +43,9 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.VectorUtil;
@@ -259,5 +265,78 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
   @Override
   protected Codec getCodecForFloatVectorFallbackTest() {
     return getCodec(1f);
+  }
+
+  /** Simulates empty raw vectors by modifying index files. */
+  @Override
+  protected void simulateEmptyRawVectors(Directory dir) throws Exception {
+    final String[] indexFiles = dir.listAll();
+    final String RAW_VECTOR_EXTENSION = "vec";
+    final String VECTOR_META_EXTENSION = "vemf";
+
+    for (String file : indexFiles) {
+      if (file.endsWith("." + RAW_VECTOR_EXTENSION)) {
+        replaceWithEmptyVectorFile(dir, file);
+      } else if (file.endsWith("." + VECTOR_META_EXTENSION)) {
+        updateVectorMetadataFile(dir, file);
+      }
+    }
+  }
+
+  /** Replaces a raw vector file with an empty one that has valid header/footer. */
+  protected void replaceWithEmptyVectorFile(Directory dir, String fileName) throws Exception {
+    byte[] indexHeader;
+    try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+      indexHeader = CodecUtil.readIndexHeader(in);
+    }
+    dir.deleteFile(fileName);
+    try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+      // Write header
+      out.writeBytes(indexHeader, 0, indexHeader.length);
+      // Write footer (no content in between)
+      CodecUtil.writeFooter(out);
+    }
+  }
+
+  /** Updates vector metadata file to indicate zero vector length. */
+  protected void updateVectorMetadataFile(Directory dir, String fileName) throws Exception {
+    // Read original metadata
+    byte[] indexHeader;
+    int fieldNumber, vectorEncoding, vectorSimilarityFunction, dimension;
+    long vectorStartPos;
+
+    try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+      indexHeader = CodecUtil.readIndexHeader(in);
+      fieldNumber = in.readInt();
+      vectorEncoding = in.readInt();
+      vectorSimilarityFunction = in.readInt();
+      vectorStartPos = in.readVLong();
+      in.readVLong(); // Skip original vector length
+      dimension = in.readVInt();
+    }
+
+    // Create updated metadata file
+    dir.deleteFile(fileName);
+    try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+      // Write header
+      out.writeBytes(indexHeader, 0, indexHeader.length);
+
+      // Write metadata with zero vector length
+      out.writeInt(fieldNumber);
+      out.writeInt(vectorEncoding);
+      out.writeInt(vectorSimilarityFunction);
+      out.writeVLong(vectorStartPos);
+      out.writeVLong(0); // Set vector length to 0
+      out.writeVInt(dimension);
+      out.writeInt(0);
+
+      // Write configuration
+      OrdToDocDISIReaderConfiguration.writeStoredMeta(
+          DIRECT_MONOTONIC_BLOCK_SHIFT, out, null, 0, 0, null);
+
+      // Mark end of fields and write footer
+      out.writeInt(-1);
+      CodecUtil.writeFooter(out);
+    }
   }
 }
