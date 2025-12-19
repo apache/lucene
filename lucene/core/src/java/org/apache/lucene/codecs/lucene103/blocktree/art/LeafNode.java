@@ -111,7 +111,7 @@ public class LeafNode extends Node {
     assert this.output != null : "leaf nodes should have output.";
     Output output = this.output;
     int outputFpBytes = bytesRequiredVLong(this.output.fp());
-    // TODO: save floor data length.
+    // 3 bits outputFpBytes, 1 bit has term, 1 bit has floor.
     int header =
         (outputFpBytes - 1)
             | (output.hasTerms() ? LEAF_NODE_HAS_TERMS : 0)
@@ -119,6 +119,7 @@ public class LeafNode extends Node {
     index.writeByte(((byte) header));
     writeLongNBytes(output.fp(), outputFpBytes, index);
     if (output.floorData() != null) {
+      index.writeInt(output.floorData().length);
       index.writeBytes(
           output.floorData().bytes, output.floorData().offset, output.floorData().length);
     }
@@ -156,6 +157,8 @@ public class LeafNode extends Node {
     leafNode.hasTerms = (header & LEAF_NODE_HAS_TERMS) != 0;
     leafNode.outputFp = outputFP;
     if ((header & LEAF_NODE_HAS_FLOOR) != 0) {
+      leafNode.floorDataLen = access.readInt(fp + offset);
+      offset += 4;
       leafNode.floorDataFp = fp + offset;
     } else {
       leafNode.floorDataFp = NO_FLOOR_DATA;
