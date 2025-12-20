@@ -246,7 +246,7 @@ public class JVectorReader extends KnnVectorsReader {
       // then reranks with the exact vectors that are stored on disk in the index
       final var asf = pqVectors.precomputedScoreFunctionFor(q, fieldEntry.similarityFunction);
       final ExactScoreFunction reranker;
-      if (searchStrategy.overQueryFactor > 1) {
+      if (searchStrategy.useReranking) {
         reranker = view.rerankerFor(q, fieldEntry.similarityFunction);
       } else {
         reranker = null;

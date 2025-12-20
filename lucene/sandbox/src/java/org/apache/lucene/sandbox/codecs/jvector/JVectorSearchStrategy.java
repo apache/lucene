@@ -28,25 +28,33 @@ public class JVectorSearchStrategy extends KnnSearchStrategy {
   static final float DEFAULT_QUERY_RERANK_FLOOR = 0f;
   static final int DEFAULT_OVER_QUERY_FACTOR = 5;
   static final boolean DEFAULT_QUERY_USE_PRUNING = false;
+  static final boolean DEFAULT_QUERY_USE_RERANKING = false;
 
   public static final JVectorSearchStrategy DEFAULT =
       new JVectorSearchStrategy(
           DEFAULT_QUERY_SIMILARITY_THRESHOLD,
           DEFAULT_QUERY_RERANK_FLOOR,
           DEFAULT_OVER_QUERY_FACTOR,
-          DEFAULT_QUERY_USE_PRUNING);
+          DEFAULT_QUERY_USE_PRUNING,
+          DEFAULT_QUERY_USE_RERANKING);
 
   final float threshold;
   final float rerankFloor;
   final int overQueryFactor;
   final boolean usePruning;
+  final boolean useReranking;
 
   private JVectorSearchStrategy(
-      float threshold, float rerankFloor, int overQueryFactor, boolean usePruning) {
+      float threshold,
+      float rerankFloor,
+      int overQueryFactor,
+      boolean usePruning,
+      boolean useReranking) {
     this.threshold = threshold;
     this.rerankFloor = rerankFloor;
     this.overQueryFactor = overQueryFactor;
     this.usePruning = usePruning;
+    this.useReranking = useReranking;
   }
 
   @Override
@@ -69,7 +77,8 @@ public class JVectorSearchStrategy extends KnnSearchStrategy {
       return this.threshold == other.threshold
           && this.rerankFloor == other.rerankFloor
           && this.overQueryFactor == other.overQueryFactor
-          && this.usePruning == other.usePruning;
+          && this.usePruning == other.usePruning
+          && this.useReranking == other.useReranking;
     } else return false;
   }
 
@@ -91,6 +100,7 @@ public class JVectorSearchStrategy extends KnnSearchStrategy {
     private float rerankFloor = DEFAULT_QUERY_RERANK_FLOOR;
     private int overQueryFactor = DEFAULT_OVER_QUERY_FACTOR;
     private boolean usePruning = DEFAULT_QUERY_USE_PRUNING;
+    private boolean useReranking = DEFAULT_QUERY_USE_RERANKING;
 
     private Builder() {}
 
@@ -114,8 +124,14 @@ public class JVectorSearchStrategy extends KnnSearchStrategy {
       return this;
     }
 
+    public Builder withUseReranking(boolean useReranking) {
+      this.useReranking = useReranking;
+      return this;
+    }
+
     public JVectorSearchStrategy build() {
-      return new JVectorSearchStrategy(threshold, rerankFloor, overQueryFactor, usePruning);
+      return new JVectorSearchStrategy(
+          threshold, rerankFloor, overQueryFactor, usePruning, useReranking);
     }
   }
 }
