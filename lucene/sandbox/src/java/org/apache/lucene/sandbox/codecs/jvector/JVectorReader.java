@@ -273,7 +273,7 @@ public class JVectorReader extends KnnVectorsReader {
         searcher.search(
             ssp,
             knnCollector.k(),
-            knnCollector.k() * searchStrategy.overQueryFactor,
+            (int) (knnCollector.k() * searchStrategy.overQueryFactor),
             searchStrategy.threshold,
             searchStrategy.rerankFloor,
             compatibleBits);

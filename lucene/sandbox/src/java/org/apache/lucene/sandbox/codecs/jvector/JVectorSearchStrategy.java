@@ -26,7 +26,7 @@ import org.apache.lucene.search.knn.KnnSearchStrategy;
 public class JVectorSearchStrategy extends KnnSearchStrategy {
   static final float DEFAULT_QUERY_SIMILARITY_THRESHOLD = 0f;
   static final float DEFAULT_QUERY_RERANK_FLOOR = 0f;
-  static final int DEFAULT_OVER_QUERY_FACTOR = 5;
+  static final float DEFAULT_OVER_QUERY_FACTOR = 5f;
   static final boolean DEFAULT_QUERY_USE_PRUNING = false;
   static final boolean DEFAULT_QUERY_USE_RERANKING = false;
 
@@ -40,14 +40,14 @@ public class JVectorSearchStrategy extends KnnSearchStrategy {
 
   final float threshold;
   final float rerankFloor;
-  final int overQueryFactor;
+  final float overQueryFactor;
   final boolean usePruning;
   final boolean useReranking;
 
   private JVectorSearchStrategy(
       float threshold,
       float rerankFloor,
-      int overQueryFactor,
+      float overQueryFactor,
       boolean usePruning,
       boolean useReranking) {
     this.threshold = threshold;
@@ -98,7 +98,7 @@ public class JVectorSearchStrategy extends KnnSearchStrategy {
   public static class Builder {
     private float threshold = DEFAULT_QUERY_SIMILARITY_THRESHOLD;
     private float rerankFloor = DEFAULT_QUERY_RERANK_FLOOR;
-    private int overQueryFactor = DEFAULT_OVER_QUERY_FACTOR;
+    private float overQueryFactor = DEFAULT_OVER_QUERY_FACTOR;
     private boolean usePruning = DEFAULT_QUERY_USE_PRUNING;
     private boolean useReranking = DEFAULT_QUERY_USE_RERANKING;
 
@@ -114,7 +114,7 @@ public class JVectorSearchStrategy extends KnnSearchStrategy {
       return this;
     }
 
-    public Builder withOverQueryFactor(int overQueryFactor) {
+    public Builder withOverQueryFactor(float overQueryFactor) {
       this.overQueryFactor = overQueryFactor;
       return this;
     }
