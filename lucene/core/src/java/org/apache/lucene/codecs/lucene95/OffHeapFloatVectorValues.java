@@ -119,6 +119,10 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     }
     IndexInput bytesSlice = vectorData.slice("vector-data", vectorDataOffset, vectorDataLength);
     int byteSize = dimension * Float.BYTES;
+    if (vectorEncoding == VectorEncoding.FLOAT16) {
+      byteSize = dimension * Short.BYTES;
+    }
+
     if (configuration.docsWithFieldOffset == -1) {
       return new DenseOffHeapVectorValues(
           dimension,
