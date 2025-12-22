@@ -129,6 +129,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       case BYTE -> doc.add(new KnnByteVectorField("v2", randomVector8(30), similarityFunction));
       case FLOAT32 ->
           doc.add(new KnnFloatVectorField("v2", randomNormalizedVector(30), similarityFunction));
+      case FLOAT16 ->
+          doc.add(
+              new KnnFloatVectorField("v2", randomNormalizedFloat16Vector(30), similarityFunction));
     }
   }
 
@@ -894,7 +897,16 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               }
               case FLOAT32 -> {
                 float[] v = randomNormalizedVector(fieldDims[field]);
-                doc.add(new KnnFloatVectorField(fieldName, v, fieldSimilarityFunctions[field]));
+                doc.add(
+                    new KnnFloatVectorField(
+                        fieldName, v, fieldSimilarityFunctions[field], VectorEncoding.FLOAT32));
+                fieldTotals[field] += v[0];
+              }
+              case FLOAT16 -> {
+                float[] v = randomNormalizedFloat16Vector(fieldDims[field]);
+                doc.add(
+                    new KnnFloatVectorField(
+                        fieldName, v, fieldSimilarityFunctions[field], VectorEncoding.FLOAT16));
                 fieldTotals[field] += v[0];
               }
             }
@@ -922,7 +934,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                 }
               }
             }
-            case FLOAT32 -> {
+            case FLOAT32, FLOAT16 -> {
               for (LeafReaderContext ctx : r.leaves()) {
                 FloatVectorValues vectorValues = ctx.reader().getFloatVectorValues(fieldName);
                 if (vectorValues != null) {
@@ -1697,6 +1709,31 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     return v;
   }
 
+  public static float[] randomFloat16Vector(int dim) {
+    assert dim > 0;
+    float[] v = new float[dim];
+    double squareSum = 0.0;
+    // keep generating until we don't get a zero-length vector
+    while (squareSum == 0.0) {
+      squareSum = 0.0;
+      for (int i = 0; i < dim; i++) {
+        v[i] = Float.float16ToFloat(Float.floatToFloat16(random().nextFloat()));
+        squareSum += v[i] * v[i];
+      }
+    }
+    return v;
+  }
+
+  public static float[] randomNormalizedFloat16Vector(int dim) {
+    float[] v = randomVector(dim);
+    VectorUtil.l2normalize(v);
+    for (int i = 0; i < v.length; i++) {
+      v[i] = Float.float16ToFloat(Float.floatToFloat16(v[i]));
+    }
+    return v;
+
+  }
+
   public static float[] randomNormalizedVector(int dim) {
     float[] v = randomVector(dim);
     VectorUtil.l2normalize(v);
@@ -1839,7 +1876,16 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             case FLOAT32 -> {
               float[] v = randomNormalizedVector(dim);
               fieldValuesCheckSum += v[0];
-              doc.add(new KnnFloatVectorField("knn_vector", v, similarityFunction));
+              doc.add(
+                  new KnnFloatVectorField(
+                      "knn_vector", v, similarityFunction, VectorEncoding.FLOAT32));
+            }
+            case FLOAT16 -> {
+              float[] v = randomNormalizedFloat16Vector(dim);
+              fieldValuesCheckSum += v[0];
+              doc.add(
+                  new KnnFloatVectorField(
+                      "knn_vector", v, similarityFunction, VectorEncoding.FLOAT16));
             }
           }
           fieldDocCount++;
@@ -1880,7 +1926,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               }
             }
           }
-          case FLOAT32 -> {
+          case FLOAT32, FLOAT16 -> {
             for (LeafReaderContext ctx : r.leaves()) {
               FloatVectorValues vectorValues = ctx.reader().getFloatVectorValues("knn_vector");
               if (vectorValues != null) {

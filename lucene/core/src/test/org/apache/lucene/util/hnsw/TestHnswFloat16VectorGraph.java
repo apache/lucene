@@ -36,7 +36,7 @@ import org.apache.lucene.util.FixedBitSet;
 import org.junit.Before;
 
 /** Tests HNSW KNN graphs */
-public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
+public class TestHnswFloat16VectorGraph extends HnswGraphTestCase<float[]> {
 
   @Before
   public void setup() {
@@ -45,7 +45,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
 
   @Override
   VectorEncoding getVectorEncoding() {
-    return VectorEncoding.FLOAT32;
+    return VectorEncoding.FLOAT16;
   }
 
   @Override
@@ -55,12 +55,12 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
 
   @Override
   float[] randomVector(int dim) {
-    return randomVector(random(), dim);
+    return randomFloat16Vector(random(), dim);
   }
 
   @Override
   MockVectorValues vectorValues(int size, int dimension) {
-    return MockVectorValues.fromValues(createRandomFloatVectors(size, dimension, random()));
+    return MockVectorValues.fromValues(createRandomFloat16Vectors(size, dimension, random()));
   }
 
   @Override
@@ -85,7 +85,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
     MockVectorValues pvv = (MockVectorValues) pregeneratedVectorValues;
     float[][] vectors = new float[size][];
     float[][] randomVectors =
-        createRandomFloatVectors(size - pvv.values.length, dimension, random());
+        createRandomFloat16Vectors(size - pvv.values.length, dimension, random());
 
     for (int i = 0; i < pregeneratedOffset; i++) {
       vectors[i] = randomVectors[i];
@@ -104,12 +104,12 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
 
   @Override
   Field knnVectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction) {
-    return new KnnFloatVectorField(name, vector, similarityFunction, VectorEncoding.FLOAT32);
+    return new KnnFloatVectorField(name, vector, similarityFunction, VectorEncoding.FLOAT16);
   }
 
   @Override
-  CircularFloatVectorValues circularVectorValues(int nDoc) {
-    return new CircularFloatVectorValues(nDoc);
+  CircularFloat16VectorValues circularVectorValues(int nDoc) {
+    return new CircularFloat16VectorValues(nDoc);
   }
 
   @Override

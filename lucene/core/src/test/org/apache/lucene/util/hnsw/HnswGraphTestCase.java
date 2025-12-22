@@ -175,7 +175,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                         (T) ((ByteVectorValues) vectors).vectorValue(ord),
                         similarityFunction));
               }
-              case FLOAT32 -> {
+              case FLOAT32, FLOAT16 -> {
                 doc.add(
                     knnVectorField(
                         "field",
@@ -240,7 +240,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                       (T) ((ByteVectorValues) vectors).vectorValue(i),
                       similarityFunction));
             }
-            case FLOAT32 -> {
+            case FLOAT32, FLOAT16 -> {
               doc.add(
                   knnVectorField(
                       vectorFieldName,
@@ -1255,6 +1255,71 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   }
 
   /** Returns vectors evenly distributed around the upper unit semicircle. */
+  static class CircularFloat16VectorValues extends FloatVectorValues {
+    private final int size;
+    private final float[] value;
+
+    int doc = -1;
+
+    CircularFloat16VectorValues(int size) {
+      this.size = size;
+      value = new float[2];
+    }
+
+    @Override
+    public CircularFloat16VectorValues copy() {
+      return new CircularFloat16VectorValues(size);
+    }
+
+    @Override
+    public int dimension() {
+      return 2;
+    }
+
+    @Override
+    public int size() {
+      return size;
+    }
+
+    public float[] vectorValue() {
+      return vectorValue(doc);
+    }
+
+    public int docID() {
+      return doc;
+    }
+
+    public int nextDoc() {
+      return advance(doc + 1);
+    }
+
+    public int advance(int target) {
+      if (target >= 0 && target < size) {
+        doc = target;
+      } else {
+        doc = NO_MORE_DOCS;
+      }
+      return doc;
+    }
+
+    @Override
+    public float[] vectorValue(int ord) {
+      return unitVector2d(ord / (double) size, value);
+    }
+
+    private static float[] unitVector2d(double piRadians, float[] value) {
+      value[0] = Float.float16ToFloat(Float.floatToFloat16((float) Math.cos(Math.PI * piRadians)));
+      value[1] = Float.float16ToFloat(Float.floatToFloat16((float) Math.sin(Math.PI * piRadians)));
+      return value;
+    }
+
+    @Override
+    public VectorScorer scorer(float[] target) {
+      throw new UnsupportedOperationException();
+    }
+  }
+
+  /** Returns vectors evenly distributed around the upper unit semicircle. */
   static class CircularByteVectorValues extends ByteVectorValues {
     private final int size;
     private final float[] value;
@@ -1371,6 +1436,14 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     return vectors;
   }
 
+  static float[][] createRandomFloat16Vectors(int size, int dimension, Random random) {
+    float[][] vectors = new float[size][];
+    for (int offset = 0; offset < size; offset++) {
+      vectors[offset] = randomFloat16Vector(random, dimension);
+    }
+    return vectors;
+  }
+
   static byte[][] createRandomByteVectors(int size, int dimension, Random random) {
     byte[][] vectors = new byte[size][];
     for (int offset = 0; offset < size; offset++) {
@@ -1402,6 +1475,18 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     float[] vec = new float[dim];
     for (int i = 0; i < dim; i++) {
       vec[i] = random.nextFloat();
+      if (random.nextBoolean()) {
+        vec[i] = -vec[i];
+      }
+    }
+    VectorUtil.l2normalize(vec);
+    return vec;
+  }
+
+  static float[] randomFloat16Vector(Random random, int dim) {
+    float[] vec = new float[dim];
+    for (int i = 0; i < dim; i++) {
+      vec[i] = Float.float16ToFloat(Float.floatToFloat16(random.nextFloat()));
       if (random.nextBoolean()) {
         vec[i] = -vec[i];
       }
