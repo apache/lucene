@@ -95,6 +95,7 @@ public class LeafNode extends Node {
   }
 
   /** Write leaf node to output. Save like trie. */
+  @Override
   public void saveNode(IndexOutput index) throws IOException {
     // Node type.
     index.writeByte((byte) this.nodeType.ordinal());

@@ -86,27 +86,6 @@ public class ARTReader {
     }
   }
 
-  // TODO: read/set childrenFps. then we find pos, get fet pos' fp.
-  private Node read2(IndexInput dataInput) throws IOException {
-    // TODO: Read specify node by node's fp like trie.
-    Node node = Node.read(dataInput);
-
-    if (node.nodeType == NodeType.LEAF_NODE) {
-      return node;
-    } else {
-      // Children count.
-      Node[] children = new Node[node.childrenCount];
-      // Read all not null children.
-      //      System.out.println(node);
-      for (int i = 0; i < node.childrenCount; i++) {
-        Node child = read(dataInput);
-        children[i] = child;
-      }
-      node.setChildren(children);
-      return node;
-    }
-  }
-
   /**
    * Find the next node from a cached (searched) one, this is useful when seeking in
    * SegmentTermsEnum.
