@@ -1484,14 +1484,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   }
 
   static float[] randomFloat16Vector(Random random, int dim) {
-    float[] vec = new float[dim];
+    float[] vec = randomVector(random, dim);
     for (int i = 0; i < dim; i++) {
-      vec[i] = Float.float16ToFloat(Float.floatToFloat16(random.nextFloat()));
-      if (random.nextBoolean()) {
-        vec[i] = -vec[i];
-      }
+      vec[i] = Float.float16ToFloat(Float.floatToFloat16(vec[i]));
     }
-    VectorUtil.l2normalize(vec);
     return vec;
   }
 
