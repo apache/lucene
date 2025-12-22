@@ -42,11 +42,23 @@ public class Node256 extends Node {
   @Override
   public int getChildPos(byte k) {
     int pos = Byte.toUnsignedInt(k);
-    if (children[pos] != null) {
+    int longIdx = pos >> 6;
+
+    final long longVal = bitmapMask[longIdx];
+    if (((longVal >> pos) & 1) == 1L) {
       return pos;
     }
     return ILLEGAL_IDX;
   }
+
+  //  @Override
+  //  public int getChildPos(byte k) {
+  //    int pos = Byte.toUnsignedInt(k);
+  //    if (children[pos] != null) {
+  //      return pos;
+  //    }
+  //    return ILLEGAL_IDX;
+  //  }
 
   @Override
   public byte getChildKey(int pos) {

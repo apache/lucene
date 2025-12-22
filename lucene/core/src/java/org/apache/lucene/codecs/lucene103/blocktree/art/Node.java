@@ -350,7 +350,8 @@ public abstract class Node {
     int offset = 0;
     int nodeTypeOrdinal = access.readByte(fp + offset);
 
-    assert nodeTypeOrdinal >= 0 && nodeTypeOrdinal <= 4 : "Wrong nodeTypeOrdinal.";
+    assert nodeTypeOrdinal >= 0 && nodeTypeOrdinal <= 4
+        : "Wrong nodeTypeOrdinal: " + nodeTypeOrdinal;
 
     offset += 1;
     if (nodeTypeOrdinal == NodeType.LEAF_NODE.ordinal()) {

@@ -41,6 +41,8 @@ public class TestNode48 extends LuceneTestCase {
   // For Node48, position is the key byte, we can use this key to calculate child index with
   // #getChildIndex
   public void testPosition() {
+    assert node.nodeType.equals(NodeType.NODE48);
+
     for (int i = 0; i < node.childrenCount; i++) {
       Node child = node.children[i];
       assert child != null;

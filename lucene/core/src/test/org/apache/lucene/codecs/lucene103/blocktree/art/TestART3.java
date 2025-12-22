@@ -27,7 +27,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
-/** Test ART for fp version. */
+/** Test ART for save/load node, output, floor data by fp version. */
 public class TestART3 extends LuceneTestCase {
 
   public void testRandomTerms() throws Exception {
@@ -48,6 +48,7 @@ public class TestART3 extends LuceneTestCase {
     testARTLookup(supplier, 5);
   }
 
+  // Node48, Node256 is unusual, testRandomTerms almost can't test them, but this one can.
   public void testOneByteTerms() throws Exception {
     // heavily test single byte terms to generate various label distribution.
     Supplier<byte[]> supplier = () -> new byte[] {(byte) random().nextInt()};
@@ -117,6 +118,7 @@ public class TestART3 extends LuceneTestCase {
       ARTBuilder artBuilder = new ARTBuilder();
 
       artBuilder.insert(new BytesRef(""), new Output(0L, false, new BytesRef("emptyOutput")));
+
       for (var entry : kvs.entrySet()) {
         if (entry.getKey().equals(new BytesRef(""))) {
           continue;

@@ -116,6 +116,7 @@ public class ARTBuilder {
         }
       } else {
         int nextChildPos = node.getNextLargerPos(node.savedChildPos);
+
         if (nextChildPos != Node.ILLEGAL_IDX) {
           Node child = node.getChild(nextChildPos);
           assert child != null;
