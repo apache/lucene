@@ -134,7 +134,8 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
-          && fi.getVectorEncoding() == VectorEncoding.FLOAT32;
+          && (fi.getVectorEncoding() == VectorEncoding.FLOAT32
+              || fi.getVectorEncoding() == VectorEncoding.FLOAT16);
       FloatVectorValues floatValues = delegate.getFloatVectorValues(field);
       assert floatValues != null;
       assert floatValues.iterator().docID() == -1;
@@ -164,7 +165,8 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
-          && fi.getVectorEncoding() == VectorEncoding.FLOAT32;
+          && (fi.getVectorEncoding() == VectorEncoding.FLOAT32
+              || fi.getVectorEncoding() == VectorEncoding.FLOAT16);
       acceptDocs = AssertingAcceptDocs.wrap(acceptDocs);
       delegate.search(field, target, knnCollector, acceptDocs);
     }
