@@ -813,7 +813,7 @@ public class MemoryIndex {
                 + vectorField.name()
                 + "] is not a byte vector field, but the field info is configured for byte vectors");
       }
-      case FLOAT32 -> {
+      case FLOAT32, FLOAT16 -> {
         if (vectorField instanceof KnnFloatVectorField floatVectorField) {
           if (info.floatVectorCount == 1) {
             throw new IllegalArgumentException(
