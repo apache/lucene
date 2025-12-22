@@ -93,6 +93,9 @@ module org.apache.lucene.core {
       org.apache.lucene.search.SortField.Provider,
       org.apache.lucene.search.SortedNumericSortField.Provider,
       org.apache.lucene.search.SortedSetSortField.Provider;
+  provides org.apache.lucene.internal.vectorization.VectorizationProviderService with
+      org.apache.lucene.internal.vectorization.DefaultVectorizationProviderService,
+      org.apache.lucene.internal.vectorization.PanamaVectorizationProviderService;
 
   uses org.apache.lucene.analysis.CharFilterFactory;
   uses org.apache.lucene.analysis.TokenFilterFactory;
@@ -102,4 +105,5 @@ module org.apache.lucene.core {
   uses org.apache.lucene.codecs.KnnVectorsFormat;
   uses org.apache.lucene.codecs.PostingsFormat;
   uses org.apache.lucene.index.SortFieldProvider;
+  uses org.apache.lucene.internal.vectorization.VectorizationProviderService;
 }

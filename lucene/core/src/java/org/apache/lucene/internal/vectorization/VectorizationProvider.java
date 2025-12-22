@@ -19,18 +19,19 @@ package org.apache.lucene.internal.vectorization;
 
 import java.io.IOException;
 import java.lang.StackWalker.StackFrame;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
+import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.Predicate;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.VectorUtil;
 
 /**
@@ -45,7 +46,7 @@ import org.apache.lucene.util.VectorUtil;
  */
 public abstract class VectorizationProvider {
 
-  static final OptionalInt TESTS_VECTOR_SIZE;
+  public static final OptionalInt TESTS_VECTOR_SIZE;
   static final int UPPER_JAVA_FEATURE_VERSION = getUpperJavaFeatureVersion();
 
   static {
@@ -96,7 +97,7 @@ public abstract class VectorizationProvider {
         Holder.INSTANCE, "call to getInstance() from subclass of VectorizationProvider");
   }
 
-  VectorizationProvider() {
+  protected VectorizationProvider() {
     // no instance/subclass except from this package
   }
 
@@ -121,83 +122,40 @@ public abstract class VectorizationProvider {
 
   // visible for tests
   static VectorizationProvider lookup(boolean testMode) {
-    final int runtimeVersion = Runtime.version().feature();
-    assert runtimeVersion >= 21;
-    if (runtimeVersion <= UPPER_JAVA_FEATURE_VERSION) {
-      // only use vector module with Hotspot VM
-      if (!Constants.IS_HOTSPOT_VM) {
-        LOG.warning(
-            "Java runtime is not using Hotspot VM; Java vector incubator API can't be enabled.");
-        return new DefaultVectorizationProvider();
-      }
-      // don't use vector module with JVMCI (it does not work)
-      if (Constants.IS_JVMCI_VM) {
-        LOG.warning(
-            "Java runtime is using JVMCI Compiler; Java vector incubator API can't be enabled.");
-        return new DefaultVectorizationProvider();
-      }
-      // is the incubator module present and readable (JVM providers may to exclude them or it is
-      // build with jlink)
-      final var vectorMod = lookupVectorModule();
-      if (vectorMod.isEmpty()) {
-        LOG.warning(
-            "Java vector incubator module is not readable. For optimal vector performance, pass '--add-modules jdk.incubator.vector' to enable Vector API.");
-        return new DefaultVectorizationProvider();
-      }
-      vectorMod.ifPresent(VectorizationProvider.class.getModule()::addReads);
-      // check for testMode and otherwise fallback to default if slowness could happen
-      if (!testMode) {
-        if (TESTS_VECTOR_SIZE.isPresent()) {
-          LOG.warning(
-              "Vector bitsize enforcement; using default vectorization provider outside of testMode");
-          return new DefaultVectorizationProvider();
-        }
-        if (Constants.IS_CLIENT_VM) {
-          LOG.warning("C2 compiler is disabled; Java vector incubator API can't be enabled");
-          return new DefaultVectorizationProvider();
-        }
-      }
-      try {
-        // we use method handles with lookup, so we do not need to deal with setAccessible as we
-        // have private access through the lookup:
-        final var lookup = MethodHandles.lookup();
-        final var cls =
-            lookup.findClass(
-                "org.apache.lucene.internal.vectorization.NativeVectorizationProvider");
-        final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
-        try {
-          return (VectorizationProvider) constr.invoke();
-        } catch (UnsupportedOperationException uoe) {
-          // not supported because preferred vector size too small or similar
-          LOG.warning("Java vector incubator API was not enabled. " + uoe.getMessage());
-          return new DefaultVectorizationProvider();
-        } catch (RuntimeException | Error e) {
-          throw e;
-        } catch (Throwable th) {
-          throw new AssertionError(th);
-        }
-      } catch (NoSuchMethodException | IllegalAccessException e) {
-        throw new LinkageError(
-            "NativeVectorizationProvider is missing correctly typed constructor", e);
-      } catch (ClassNotFoundException cnfe) {
-        throw new LinkageError("NativeVectorizationProvider is missing in Lucene JAR file", cnfe);
-      }
-    } else {
-      LOG.warning(
-          "You are running with unsupported Java "
-              + runtimeVersion
-              + ". To make full use of the Vector API, please update Apache Lucene.");
-    }
-    return new DefaultVectorizationProvider();
-  }
+    var implementations =
+        ServiceLoader.load(VectorizationProviderService.class).stream()
+            .map(ServiceLoader.Provider::get)
+            .collect(Collectors.toMap(e -> e.name(), e -> e));
 
-  /**
-   * Looks up the vector module from Lucene's {@link ModuleLayer} or the root layer (if unnamed).
-   */
-  private static Optional<Module> lookupVectorModule() {
-    return Optional.ofNullable(VectorizationProvider.class.getModule().getLayer())
-        .orElse(ModuleLayer.boot())
-        .findModule("jdk.incubator.vector");
+    implementations = new TreeMap<>(implementations);
+
+    ArrayDeque<VectorizationProviderService> inReversePreferenceOrder = new ArrayDeque<>();
+
+    // force a specific implementation here or give order of preference.
+    String preference = System.getProperty("lucene.vectorization.impl", "*,panama,default");
+    var options = Arrays.asList(preference.split(",")).reversed().iterator();
+
+    while (options.hasNext()) {
+      var s = options.next();
+      if (s.equals("*")) {
+        implementations.values().forEach(inReversePreferenceOrder::addFirst);
+        break;
+      } else {
+        var impl = implementations.remove(s);
+        if (impl != null) {
+          inReversePreferenceOrder.addFirst(impl);
+        }
+      }
+    }
+
+    while (!inReversePreferenceOrder.isEmpty()) {
+      var impl = inReversePreferenceOrder.removeFirst();
+      if (impl.isUsable()) {
+        return impl.newInstance();
+      }
+    }
+
+    throw new RuntimeException("No vectorization provider matches this preference: " + preference);
   }
 
   // add all possible callers here as FQCN:

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.internal.vectorization;
+package org.apache.lucene.internal.vectorization.panama;
 
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
@@ -22,6 +22,7 @@ import java.nio.ByteOrder;
 import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
+import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.store.IndexInput;
 
 final class MemorySegmentPostingDecodingUtil extends PostingDecodingUtil {
