@@ -1731,7 +1731,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       v[i] = Float.float16ToFloat(Float.floatToFloat16(v[i]));
     }
     return v;
-
   }
 
   public static float[] randomNormalizedVector(int dim) {
