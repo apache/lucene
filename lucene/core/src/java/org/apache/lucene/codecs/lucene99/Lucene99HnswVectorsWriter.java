@@ -436,7 +436,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           case BYTE ->
               mergedVectorValues =
                   KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
-          case FLOAT32 ->
+          case FLOAT32, FLOAT16 ->
               mergedVectorValues =
                   KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
         }
@@ -655,7 +655,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 beamWidth,
                 infoStream,
                 tinySegmentsThreshold);
-        case FLOAT32 ->
+        case FLOAT32, FLOAT16 ->
             new FieldWriter<>(
                 scorer,
                 (FlatFieldVectorsWriter<float[]>) flatFieldVectorsWriter,
@@ -691,7 +691,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                     ByteVectorValues.fromBytes(
                         (List<byte[]>) flatFieldVectorsWriter.getVectors(),
                         fieldInfo.getVectorDimension()));
-            case FLOAT32 ->
+            case FLOAT32, FLOAT16 ->
                 scorer.getRandomVectorScorerSupplier(
                     fieldInfo.getVectorSimilarityFunction(),
                     FloatVectorValues.fromFloats(

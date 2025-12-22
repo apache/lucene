@@ -86,6 +86,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
         switch (fieldEntry.vectorEncoding()) {
           case BYTE -> fieldEntry.dimension();
           case FLOAT32 -> fieldEntry.dimension() * Float.BYTES;
+          case FLOAT16 -> fieldEntry.dimension() * Short.BYTES;
         };
     if (fieldEntry.docsWithFieldOffset() == -1) {
       return new DenseOffHeapVectorValues(

@@ -201,14 +201,17 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     if (fi == null) {
       return null;
     }
-    if (fi.vectorEncoding != VectorEncoding.FLOAT32) {
+    if (fi.vectorEncoding != VectorEncoding.FLOAT32
+        && fi.vectorEncoding != VectorEncoding.FLOAT16) {
       throw new IllegalArgumentException(
           "field=\""
               + field
               + "\" is encoded as: "
               + fi.vectorEncoding
               + " expected: "
-              + VectorEncoding.FLOAT32);
+              + VectorEncoding.FLOAT32
+              + " or "
+              + VectorEncoding.FLOAT16);
     }
 
     FloatVectorValues rawFloatVectorValues = rawVectorsReader.getFloatVectorValues(field);
@@ -391,14 +394,17 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     if (fi == null) {
       return null;
     }
-    if (fi.vectorEncoding != VectorEncoding.FLOAT32) {
+    if (fi.vectorEncoding != VectorEncoding.FLOAT32
+        && fi.vectorEncoding != VectorEncoding.FLOAT16) {
       throw new IllegalArgumentException(
           "field=\""
               + field
               + "\" is encoded as: "
               + fi.vectorEncoding
               + " expected: "
-              + VectorEncoding.FLOAT32);
+              + VectorEncoding.FLOAT32
+              + " or "
+              + VectorEncoding.FLOAT16);
     }
     var qv =
         OffHeapScalarQuantizedVectorValues.load(

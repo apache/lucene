@@ -2182,7 +2182,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   static int getNumVectors(KnnVectorsReader reader, FieldInfo fieldInfo) throws IOException {
     return switch (fieldInfo.getVectorEncoding()) {
       case BYTE -> reader.getByteVectorValues(fieldInfo.getName()).size();
-      case FLOAT32 -> reader.getFloatVectorValues(fieldInfo.getName()).size();
+      case FLOAT32, FLOAT16 -> reader.getFloatVectorValues(fieldInfo.getName()).size();
     };
   }
 

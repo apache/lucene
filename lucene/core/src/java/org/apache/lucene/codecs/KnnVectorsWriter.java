@@ -66,7 +66,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           byteWriter.addValue(doc, mergedBytes.vectorValue(iter.index()));
         }
       }
-      case FLOAT32 -> {
+      case FLOAT32, FLOAT16 -> {
         KnnFieldVectorsWriter<float[]> floatWriter =
             (KnnFieldVectorsWriter<float[]>) addField(fieldInfo);
         FloatVectorValues mergedFloats =
@@ -215,13 +215,19 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   public static final class MergedVectorValues {
     private MergedVectorValues() {}
 
-    private static void validateFieldEncoding(FieldInfo fieldInfo, VectorEncoding expected) {
+    private static void validateFieldEncoding(FieldInfo fieldInfo, VectorEncoding... expected) {
       assert fieldInfo != null && fieldInfo.hasVectorValues();
       VectorEncoding fieldEncoding = fieldInfo.getVectorEncoding();
-      if (fieldEncoding != expected) {
-        throw new UnsupportedOperationException(
-            "Cannot merge vectors encoded as [" + fieldEncoding + "] as " + expected);
+      for (VectorEncoding exp : expected) {
+        if (fieldEncoding == exp) {
+          return;
+        }
       }
+      throw new UnsupportedOperationException(
+          "Cannot merge vectors encoded as ["
+              + fieldEncoding
+              + "] as "
+              + Arrays.toString(expected));
     }
 
     /**
@@ -267,8 +273,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     /** Returns a merged view over all the segment's {@link FloatVectorValues}. */
     public static FloatVectorValues mergeFloatVectorValues(
         FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-      validateFieldEncoding(fieldInfo, VectorEncoding.FLOAT32);
-      return new MergedFloat32VectorValues(
+      validateFieldEncoding(fieldInfo, VectorEncoding.FLOAT32, VectorEncoding.FLOAT16);
+      return new MergedFloatVectorValues(
           mergeVectorValues(
               mergeState.knnVectorsReaders,
               mergeState.docMaps,
@@ -294,7 +300,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           mergeState);
     }
 
-    static class MergedFloat32VectorValues extends FloatVectorValues {
+    static class MergedFloatVectorValues extends FloatVectorValues {
       private final List<FloatVectorValuesSub> subs;
       private final DocIDMerger<FloatVectorValuesSub> docIdMerger;
       private final int size;
@@ -302,7 +308,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       private int lastOrd = -1;
       FloatVectorValuesSub current;
 
-      private MergedFloat32VectorValues(List<FloatVectorValuesSub> subs, MergeState mergeState)
+      private MergedFloatVectorValues(List<FloatVectorValuesSub> subs, MergeState mergeState)
           throws IOException {
         this.subs = subs;
         docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);

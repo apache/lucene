@@ -56,6 +56,33 @@ public class KnnFloatVectorField extends Field {
     return type;
   }
 
+  private static FieldType createType(
+      float[] v, VectorSimilarityFunction similarityFunction, VectorEncoding vectorEncoding) {
+    if (v == null) {
+      throw new IllegalArgumentException("vector value must not be null");
+    }
+    int dimension = v.length;
+    if (dimension == 0) {
+      throw new IllegalArgumentException("cannot index an empty vector");
+    }
+    if (similarityFunction == null) {
+      throw new IllegalArgumentException("similarity function must not be null");
+    }
+
+    if (vectorEncoding == null) {
+      throw new IllegalArgumentException("Vector encoding must not be null");
+    }
+
+    if (vectorEncoding != VectorEncoding.FLOAT16 && vectorEncoding != VectorEncoding.FLOAT32) {
+      throw new IllegalArgumentException("Vector encoding must be FLOAT16 or FLOAT32");
+    }
+
+    FieldType type = new FieldType();
+    type.setVectorAttributes(dimension, vectorEncoding, similarityFunction);
+    type.freeze();
+    return type;
+  }
+
   /**
    * A convenience method for creating a vector field type.
    *
@@ -98,6 +125,24 @@ public class KnnFloatVectorField extends Field {
   public KnnFloatVectorField(
       String name, float[] vector, VectorSimilarityFunction similarityFunction) {
     super(name, createType(vector, similarityFunction));
+    fieldsData = VectorUtil.checkFinite(vector); // null check done above
+  }
+
+  /**
+   * Creates a new KnnFloatVectorField with the specified name, vector, similarity function, and
+   * encoding.
+   *
+   * @param name the field name
+   * @param vector the float vector value
+   * @param similarityFunction the similarity function to use for vector comparisons
+   * @param vectorEncoding the encoding format for the vector
+   */
+  public KnnFloatVectorField(
+      String name,
+      float[] vector,
+      VectorSimilarityFunction similarityFunction,
+      VectorEncoding vectorEncoding) {
+    super(name, createType(vector, similarityFunction, vectorEncoding));
     fieldsData = VectorUtil.checkFinite(vector); // null check done above
   }
 

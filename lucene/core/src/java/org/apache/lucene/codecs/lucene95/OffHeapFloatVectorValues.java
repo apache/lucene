@@ -42,6 +42,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
   protected final float[] value;
   protected final VectorSimilarityFunction similarityFunction;
   protected final FlatVectorsScorer flatVectorsScorer;
+  protected final VectorEncoding vectorEncoding;
 
   OffHeapFloatVectorValues(
       int dimension,
@@ -49,7 +50,8 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
       IndexInput slice,
       int byteSize,
       FlatVectorsScorer flatVectorsScorer,
-      VectorSimilarityFunction similarityFunction) {
+      VectorSimilarityFunction similarityFunction,
+      VectorEncoding vectorEncoding) {
     this.dimension = dimension;
     this.size = size;
     this.slice = slice;
@@ -57,6 +59,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     this.similarityFunction = similarityFunction;
     this.flatVectorsScorer = flatVectorsScorer;
     value = new float[dimension];
+    this.vectorEncoding = vectorEncoding;
   }
 
   @Override
@@ -80,9 +83,23 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
       return value;
     }
     slice.seek((long) targetOrd * byteSize);
-    slice.readFloats(value, 0, value.length);
+
+    if (vectorEncoding == VectorEncoding.FLOAT16) {
+      short[] shortValues = new short[dimension];
+      slice.readShorts(shortValues, 0, dimension);
+      for (int i = 0; i < dimension; i++) {
+        value[i] = Float.float16ToFloat(shortValues[i]);
+      }
+    } else {
+      slice.readFloats(value, 0, value.length);
+    }
     lastOrd = targetOrd;
     return value;
+  }
+
+  @Override
+  public VectorEncoding getEncoding() {
+    return vectorEncoding;
   }
 
   public static OffHeapFloatVectorValues load(
@@ -95,8 +112,10 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
       long vectorDataLength,
       IndexInput vectorData)
       throws IOException {
-    if (configuration.docsWithFieldOffset == -2 || vectorEncoding != VectorEncoding.FLOAT32) {
-      return new EmptyOffHeapVectorValues(dimension, flatVectorsScorer, vectorSimilarityFunction);
+    if (configuration.docsWithFieldOffset == -2
+        || (vectorEncoding != VectorEncoding.FLOAT32 && vectorEncoding != VectorEncoding.FLOAT16)) {
+      return new EmptyOffHeapVectorValues(
+          dimension, flatVectorsScorer, vectorSimilarityFunction, vectorEncoding);
     }
     IndexInput bytesSlice = vectorData.slice("vector-data", vectorDataOffset, vectorDataLength);
     int byteSize = dimension * Float.BYTES;
@@ -107,7 +126,8 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
           bytesSlice,
           byteSize,
           flatVectorsScorer,
-          vectorSimilarityFunction);
+          vectorSimilarityFunction,
+          vectorEncoding);
     } else {
       return new SparseOffHeapVectorValues(
           configuration,
@@ -116,7 +136,8 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
           dimension,
           byteSize,
           flatVectorsScorer,
-          vectorSimilarityFunction);
+          vectorSimilarityFunction,
+          vectorEncoding);
     }
   }
 
@@ -132,14 +153,22 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
         IndexInput slice,
         int byteSize,
         FlatVectorsScorer flatVectorsScorer,
-        VectorSimilarityFunction similarityFunction) {
-      super(dimension, size, slice, byteSize, flatVectorsScorer, similarityFunction);
+        VectorSimilarityFunction similarityFunction,
+        VectorEncoding vectorEncoding) {
+      super(
+          dimension, size, slice, byteSize, flatVectorsScorer, similarityFunction, vectorEncoding);
     }
 
     @Override
     public DenseOffHeapVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(
-          dimension, size, slice.clone(), byteSize, flatVectorsScorer, similarityFunction);
+          dimension,
+          size,
+          slice.clone(),
+          byteSize,
+          flatVectorsScorer,
+          similarityFunction,
+          vectorEncoding);
     }
 
     @Override
@@ -196,10 +225,18 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
         int dimension,
         int byteSize,
         FlatVectorsScorer flatVectorsScorer,
-        VectorSimilarityFunction similarityFunction)
+        VectorSimilarityFunction similarityFunction,
+        VectorEncoding vectorEncoding)
         throws IOException {
 
-      super(dimension, configuration.size, slice, byteSize, flatVectorsScorer, similarityFunction);
+      super(
+          dimension,
+          configuration.size,
+          slice,
+          byteSize,
+          flatVectorsScorer,
+          similarityFunction,
+          vectorEncoding);
       this.configuration = configuration;
       final RandomAccessInput addressesData =
           dataIn.randomAccessSlice(configuration.addressesOffset, configuration.addressesLength);
@@ -224,7 +261,8 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
           dimension,
           byteSize,
           flatVectorsScorer,
-          similarityFunction);
+          similarityFunction,
+          vectorEncoding);
     }
 
     @Override
@@ -285,8 +323,9 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     public EmptyOffHeapVectorValues(
         int dimension,
         FlatVectorsScorer flatVectorsScorer,
-        VectorSimilarityFunction similarityFunction) {
-      super(dimension, 0, null, 0, flatVectorsScorer, similarityFunction);
+        VectorSimilarityFunction similarityFunction,
+        VectorEncoding vectorEncoding) {
+      super(dimension, 0, null, 0, flatVectorsScorer, similarityFunction, vectorEncoding);
     }
 
     @Override

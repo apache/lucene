@@ -284,24 +284,27 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     return entry;
   }
 
-  private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
+  private FieldEntry getFieldEntry(String field, VectorEncoding... expectedEncoding) {
     final FieldEntry fieldEntry = getFieldEntryOrThrow(field);
-    if (fieldEntry.vectorEncoding != expectedEncoding) {
-      throw new IllegalArgumentException(
-          "field=\""
-              + field
-              + "\" is encoded as: "
-              + fieldEntry.vectorEncoding
-              + " expected: "
-              + expectedEncoding);
+    for (VectorEncoding expected : expectedEncoding) {
+      if (fieldEntry.vectorEncoding == expected) {
+        return fieldEntry;
+      }
     }
-    return fieldEntry;
+    throw new IllegalArgumentException(
+        "field=\""
+            + field
+            + "\" is encoded as: "
+            + fieldEntry.vectorEncoding
+            + " expected: "
+            + Arrays.toString(expectedEncoding));
   }
 
   @Override
   public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
-    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
+    final FieldEntry fieldEntry =
+        getFieldEntry(field, VectorEncoding.FLOAT32, VectorEncoding.FLOAT16);
     search(
         fieldEntry,
         knnCollector,
