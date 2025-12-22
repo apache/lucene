@@ -413,7 +413,13 @@ public class TestVectorScorer extends LuceneTestCase {
   KnnVectorValues floatVectorValues(int dims, int size, IndexInput in, VectorSimilarityFunction sim)
       throws IOException {
     return new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
-        dims, size, in.slice("floatValues", 0, in.length()), dims, MEMSEG_SCORER, sim, VectorEncoding.FLOAT32);
+        dims,
+        size,
+        in.slice("floatValues", 0, in.length()),
+        dims,
+        MEMSEG_SCORER,
+        sim,
+        VectorEncoding.FLOAT32);
   }
 
   // creates the vector based on the given ordinal, which is reproducible given the ord and dims

@@ -38,6 +38,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
@@ -185,5 +186,10 @@ public class TestLucene102BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
         }
       }
     }
+  }
+
+  @Override
+  protected VectorEncoding randomVectorEncoding() {
+    return random().nextBoolean() ? VectorEncoding.BYTE : VectorEncoding.FLOAT32;
   }
 }

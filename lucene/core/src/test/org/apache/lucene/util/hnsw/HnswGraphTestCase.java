@@ -123,7 +123,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     return switch (getVectorEncoding()) {
       case BYTE ->
           flatVectorScorer.getRandomVectorScorer(similarityFunction, vectorsCopy, (byte[]) query);
-      case FLOAT32 ->
+      case FLOAT32, FLOAT16 ->
           flatVectorScorer.getRandomVectorScorer(similarityFunction, vectorsCopy, (float[]) query);
     };
   }
@@ -283,7 +283,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       case BYTE -> {
         return (T) ((ByteVectorValues) vectors).vectorValue(ord);
       }
-      case FLOAT32 -> {
+      case FLOAT32, FLOAT16 -> {
         return (T) ((FloatVectorValues) vectors).vectorValue(ord);
       }
     }
@@ -809,7 +809,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
             case BYTE ->
                 similarityFunction.compare(
                     ((ByteVectorValues) vectorValues).vectorValue(i), (byte[]) target);
-            case FLOAT32 ->
+            case FLOAT32, FLOAT16 ->
                 similarityFunction.compare(
                     ((FloatVectorValues) vectorValues).vectorValue(i), (float[]) target);
           };
@@ -1351,7 +1351,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                 "vectors do not match for doc=" + uDoc,
                 (byte[]) vectorValue(u, ord),
                 (byte[]) vectorValue(v, ord));
-        case FLOAT32 ->
+        case FLOAT32, FLOAT16 ->
             assertArrayEquals(
                 "vectors do not match for doc=" + uDoc,
                 (float[]) vectorValue(u, ord),

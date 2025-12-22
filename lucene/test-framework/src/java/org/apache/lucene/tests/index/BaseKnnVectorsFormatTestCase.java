@@ -1759,7 +1759,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     // enumerators
     assertEquals(0, VectorEncoding.BYTE.ordinal());
     assertEquals(1, VectorEncoding.FLOAT32.ordinal());
-    assertEquals(2, VectorEncoding.values().length);
+    assertEquals(2, VectorEncoding.FLOAT16.ordinal());
+    assertEquals(3, VectorEncoding.values().length);
   }
 
   public void testAdvance() throws Exception {
