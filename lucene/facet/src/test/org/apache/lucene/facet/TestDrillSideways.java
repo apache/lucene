@@ -29,6 +29,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -102,6 +104,11 @@ public class TestDrillSideways extends FacetTestCase {
   protected DrillSideways getNewDrillSideways(
       IndexSearcher searcher, FacetsConfig config, TaxonomyReader taxoReader) {
     return new DrillSideways(searcher, config, taxoReader);
+  }
+
+  protected DrillSideways getNewDrillSidewaysWithEarlyTermination(
+      IndexSearcher searcher, FacetsConfig config, TaxonomyReader taxoReader) {
+    return new DrillSideways(searcher, config, taxoReader, null, null, true);
   }
 
   protected DrillSideways getNewDrillSidewaysScoreSubdocsAtOnce(
@@ -975,6 +982,89 @@ public class TestDrillSideways extends FacetTestCase {
     assertEquals(
         "dim=dim path=[a] value=3 childCount=3\n  x (1)\n  y (1)\n  z (1)\n",
         r.facets.getTopChildren(10, "dim", "a").toString());
+
+    writer.close();
+    IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
+  }
+
+  public void testEarlyTermination() throws Exception {
+    Directory dir = newDirectory();
+    Directory taxoDir = newDirectory();
+
+    // Writes facet ords to a separate directory from the
+    // main index:
+    DirectoryTaxonomyWriter taxoWriter =
+        new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
+
+    FacetsConfig config = new FacetsConfig();
+
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+
+    Document doc = new Document();
+    doc.add(new FacetField("Author", "Bob"));
+    doc.add(new FacetField("Publisher", "foo"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    for (int i = 0; i < 5; i++) {
+      doc = new Document();
+      doc.add(new FacetField("Author", "Lisa"));
+      doc.add(new FacetField("Publisher", "foo"));
+      writer.addDocument(config.build(taxoWriter, doc));
+    }
+
+    // NRT open
+    IndexSearcher searcher = getNewSearcher(writer.getReader());
+
+    // NRT open
+    TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
+
+    // Run all the basic test cases with a standard DrillSideways implementation:
+    DrillSideways ds = getNewDrillSidewaysWithEarlyTermination(searcher, config, taxoReader);
+    DrillDownQuery ddq = new DrillDownQuery(config);
+    ddq.add("Publisher", "foo");
+    AtomicInteger docsCollected = new AtomicInteger(0);
+    AtomicBoolean earlyTerminated = new AtomicBoolean(false);
+    int maxDocsForEarlyTermination = 3;
+    AtomicInteger canCollectDocs = new AtomicInteger(maxDocsForEarlyTermination);
+    DrillSidewaysResult result =
+        ds.search(
+            ddq,
+            new SimpleCollectorManager(2, Comparator.comparing(cr -> cr.docAndScore.doc)) {
+              @Override
+              public SimpleCollector newCollector() {
+                return new SimpleCollector(ScoreMode.COMPLETE_NO_SCORES) {
+                  @Override
+                  public LeafCollector getLeafCollector(LeafReaderContext context)
+                      throws IOException {
+                    return new SimpleLeafCollector() {
+                      @Override
+                      public void setScorer(Scorable scorer) {
+                        super.scorer = scorer;
+                      }
+
+                      @Override
+                      public void collect(int doc) throws IOException {
+                        if (canCollectDocs.decrementAndGet() < 0) {
+                          earlyTerminated.set(true);
+                          throw new CollectionTerminatedException();
+                        }
+                        docsCollected.incrementAndGet();
+                      }
+                    };
+                  }
+                };
+              }
+            });
+    // sanity check that the hits collector early terminated at 3
+    assertTrue("Expecting early termination", earlyTerminated.get());
+    assertEquals(
+        "Expecting num docs collected to be 3", maxDocsForEarlyTermination, docsCollected.get());
+
+    // Facets should have early terminated
+    assertEquals(
+        "Early termination didn't stop facet collection",
+        maxDocsForEarlyTermination,
+        result.facets.getTopChildren(10, "Publisher").value);
 
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
