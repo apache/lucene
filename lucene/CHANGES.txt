@@ -305,6 +305,8 @@ Other
 
 * GITHUB#15476: Enforce fallback support for float vector retrieval in quantized KNN vector formats. (Pulkit Gupta)
 
+* GITHUB#15513: Update documentation in DefaultBloomFilterFactory to reflect changes made in GITHUB#11900 (Greg Miller)
+
 Build
 ---------------------
 * Upgrade forbiddenapis to version 3.10.  (Uwe Schindler)
