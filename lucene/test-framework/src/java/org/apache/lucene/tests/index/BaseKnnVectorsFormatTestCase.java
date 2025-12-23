@@ -1958,28 +1958,27 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         getRandomFloatVector(
             numVectors, dim, similarityFunction == VectorSimilarityFunction.COSINE);
 
-    try (BaseDirectoryWrapper dir = newDirectory();
-        IndexWriter w =
-            new IndexWriter(
-                dir,
-                new IndexWriterConfig()
-                    .setMaxBufferedDocs(numVectors + 1)
-                    .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
-                    .setMergePolicy(NoMergePolicy.INSTANCE)
-                    .setUseCompoundFile(false)
-                    .setCodec(getCodecForFloatVectorFallbackTest()))) {
+    try (BaseDirectoryWrapper dir = newDirectory()) {
       dir.setCheckIndexOnClose(false);
 
-      for (int i = 0; i < numVectors; i++) {
-        Document doc = new Document();
-        doc.add(new KnnFloatVectorField(vectorFieldName, vectors.get(i), similarityFunction));
-        w.addDocument(doc);
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              new IndexWriterConfig()
+                  .setMaxBufferedDocs(numVectors + 1)
+                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+                  .setMergePolicy(NoMergePolicy.INSTANCE)
+                  .setUseCompoundFile(false)
+                  .setCodec(getCodecForFloatVectorFallbackTest()))) {
+        for (int i = 0; i < numVectors; i++) {
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField(vectorFieldName, vectors.get(i), similarityFunction));
+          w.addDocument(doc);
+        }
       }
-      w.commit();
-
       simulateEmptyRawVectors(dir);
 
-      try (IndexReader reader = DirectoryReader.open(w)) {
+      try (IndexReader reader = DirectoryReader.open(dir)) {
         LeafReader r = getOnlyLeafReader(reader);
         if (r instanceof CodecReader codecReader) {
           KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
