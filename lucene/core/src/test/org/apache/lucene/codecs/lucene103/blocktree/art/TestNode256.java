@@ -22,6 +22,7 @@ import org.apache.lucene.util.BytesRef;
 public class TestNode256 extends LuceneTestCase {
   Node256 node = new Node256(0);
 
+  @Override
   public void setUp() throws Exception {
     super.setUp();
     int childrenCount = random().nextInt(49, 256);

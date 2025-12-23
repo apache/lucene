@@ -22,6 +22,7 @@ import org.apache.lucene.util.BytesRef;
 public class TestNode16 extends LuceneTestCase {
   Node16 node = new Node16(0);
 
+  @Override
   public void setUp() throws Exception {
     super.setUp();
     int childrenCount = random().nextInt(5, 17);
