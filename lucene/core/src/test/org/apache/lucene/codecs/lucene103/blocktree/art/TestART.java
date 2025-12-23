@@ -24,12 +24,12 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
-/** Test ART. */
+/** Test ART. Test the save/load the whole art one time version. */
 public class TestART extends LuceneTestCase {
 
   public void testNode4() throws IOException {
     // Build.
-    ARTBuilder artBuilder = new ARTBuilder();
+    ARTBuilderPre artBuilder = new ARTBuilderPre();
     // Add a null child.
     artBuilder.insert(new BytesRef(("abc")), new Output(0, false, new BytesRef(("abc"))));
     artBuilder.insert(new BytesRef("abc1"), new Output(0, false, new BytesRef("abc1")));
@@ -43,7 +43,7 @@ public class TestART extends LuceneTestCase {
     assertEquals(NodeType.NODE4, artBuilder.root.nodeType);
 
     // Search.
-    ARTReader artReader = new ARTReader(artBuilder.root);
+    ARTReaderPre artReader = new ARTReaderPre(artBuilder.root);
     assertEquals(new Output(0, false, new BytesRef("abc")), artReader.find(new BytesRef("abc")));
     assertEquals(new Output(0, false, new BytesRef("abc1")), artReader.find(new BytesRef("abc1")));
     assertEquals(
@@ -67,7 +67,7 @@ public class TestART extends LuceneTestCase {
           IndexInput metaIn = directory.openInput("meta", IOContext.DEFAULT)) {
         long start = metaIn.readVLong();
         long end = metaIn.readVLong();
-        ARTReader artReader1 = new ARTReader(indexIn.slice("outputs", start, end - start));
+        ARTReaderPre artReader1 = new ARTReaderPre(indexIn.slice("outputs", start, end - start));
         assertEquals(artReader.getRoot(), artReader1.getRoot());
       }
     }
@@ -75,7 +75,7 @@ public class TestART extends LuceneTestCase {
 
   public void testNode16() throws IOException {
     // Build.
-    ARTBuilder artBuilder = new ARTBuilder();
+    ARTBuilderPre artBuilder = new ARTBuilderPre();
     // Add a null child.
     artBuilder.insert(new BytesRef(("abc")), new Output(0, false, new BytesRef(("abc"))));
     for (int i = 0; i < 10; i++) {
@@ -84,7 +84,7 @@ public class TestART extends LuceneTestCase {
     assertEquals(NodeType.NODE16, artBuilder.root.nodeType);
 
     // Search.
-    ARTReader artReader = new ARTReader(artBuilder.root);
+    ARTReaderPre artReader = new ARTReaderPre(artBuilder.root);
     assertEquals(new Output(0, false, new BytesRef("abc")), artReader.find(new BytesRef("abc")));
     for (int i = 0; i < 10; i++) {
       assertEquals(
@@ -102,7 +102,7 @@ public class TestART extends LuceneTestCase {
           IndexInput metaIn = directory.openInput("meta", IOContext.DEFAULT)) {
         long start = metaIn.readVLong();
         long end = metaIn.readVLong();
-        ARTReader artReader1 = new ARTReader(indexIn.slice("outputs", start, end - start));
+        ARTReaderPre artReader1 = new ARTReaderPre(indexIn.slice("outputs", start, end - start));
         assertEquals(artReader.getRoot(), artReader1.getRoot());
       }
     }
@@ -110,7 +110,7 @@ public class TestART extends LuceneTestCase {
 
   public void testNode48() throws IOException {
     // Build.
-    ARTBuilder artBuilder = new ARTBuilder();
+    ARTBuilderPre artBuilder = new ARTBuilderPre();
     // Add a null child.
     artBuilder.insert(new BytesRef(("abc")), new Output(0, false, new BytesRef(("abc"))));
     for (byte i = 65; i < 91; i++) {
@@ -120,7 +120,7 @@ public class TestART extends LuceneTestCase {
     assertEquals(NodeType.NODE48, artBuilder.root.nodeType);
 
     // Search.
-    ARTReader artReader = new ARTReader(artBuilder.root);
+    ARTReaderPre artReader = new ARTReaderPre(artBuilder.root);
     assertEquals(new Output(0, false, new BytesRef("abc")), artReader.find(new BytesRef("abc")));
     for (byte i = 65; i < 91; i++) {
       byte[] bytes = {97, 98, 99, i};
@@ -138,7 +138,7 @@ public class TestART extends LuceneTestCase {
           IndexInput metaIn = directory.openInput("meta", IOContext.DEFAULT)) {
         long start = metaIn.readVLong();
         long end = metaIn.readVLong();
-        ARTReader artReader1 = new ARTReader(indexIn.slice("outputs", start, end - start));
+        ARTReaderPre artReader1 = new ARTReaderPre(indexIn.slice("outputs", start, end - start));
         assertEquals(artReader.getRoot(), artReader1.getRoot());
       }
     }
@@ -146,7 +146,7 @@ public class TestART extends LuceneTestCase {
 
   public void testNode256() throws IOException {
     // Build.
-    ARTBuilder artBuilder = new ARTBuilder();
+    ARTBuilderPre artBuilder = new ARTBuilderPre();
     // Add a null child.
     artBuilder.insert(new BytesRef(("abc")), new Output(0, false, new BytesRef(("abc"))));
     for (int i = -128; i <= 127; i++) {
@@ -156,7 +156,7 @@ public class TestART extends LuceneTestCase {
     assertEquals(NodeType.NODE256, artBuilder.root.nodeType);
 
     // Search.
-    ARTReader artReader = new ARTReader(artBuilder.root);
+    ARTReaderPre artReader = new ARTReaderPre(artBuilder.root);
     assertEquals(new Output(0, false, new BytesRef("abc")), artReader.find(new BytesRef("abc")));
     for (int i = -128; i <= 127; i++) {
       byte[] bytes = {97, 98, 99, (byte) i};
@@ -174,7 +174,7 @@ public class TestART extends LuceneTestCase {
           IndexInput metaIn = directory.openInput("meta", IOContext.DEFAULT)) {
         long start = metaIn.readVLong();
         long end = metaIn.readVLong();
-        ARTReader artReader1 = new ARTReader(indexIn.slice("outputs", start, end - start));
+        ARTReaderPre artReader1 = new ARTReaderPre(indexIn.slice("outputs", start, end - start));
         assertEquals(artReader.getRoot(), artReader1.getRoot());
       }
     }

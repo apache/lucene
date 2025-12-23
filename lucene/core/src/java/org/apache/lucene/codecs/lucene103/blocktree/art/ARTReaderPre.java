@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
-import static org.apache.lucene.codecs.lucene103.blocktree.art.Node.BYTES_MINUS_1_MASK;
-
 import java.io.IOException;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -25,10 +23,10 @@ import org.apache.lucene.util.BytesRef;
 
 /**
  * Visit or find(search) terms. We can read an ART from disk, or from root node directly(similar to
- * the usage of fst in org.apache.lucene.analysis.charfilter.NormalizeCharMap). This version save
- * node, output, floor data's fp, and load node by these fp.
+ * the usage of fst in org.apache.lucene.analysis.charfilter.NormalizeCharMap). This version
+ * save/load the whole art one time, without FP.
  */
-public class ARTReader {
+public class ARTReaderPre {
 
   final RandomAccessInput access;
   final IndexInput input;
@@ -39,108 +37,104 @@ public class ARTReader {
     return root;
   }
 
-  /** Just read root node. */
-  public ARTReader(IndexInput input, long rootFP) throws IOException {
-    this.access = input.randomAccessSlice(0, input.length());
-    this.input = input;
-    this.root = load(rootFP);
+  // For testing.
+  public ARTReaderPre(Node root) {
+    this.access = null;
+    this.input = null;
+    this.root = root;
   }
 
-  /** Read one node from access with specify fp. */
-  private Node load(long fp) throws IOException {
-    Node node = Node.load(access, fp);
-    node.fp = fp;
-    return node;
+  public ARTReaderPre(IndexInput input) throws IOException {
+    this.access = null;
+    this.input = input;
+    this.root = read(input);
+  }
+
+  // Read whole art into heap.
+  private Node read(IndexInput dataInput) throws IOException {
+    // TODO: Read specify node by node's fp like trie.
+    Node node = Node.read(dataInput);
+
+    if (node.nodeType == NodeType.LEAF_NODE) {
+      return node;
+    } else {
+      // Children count.
+      Node[] children = new Node[node.childrenCount];
+      // Read all not null children.
+      //      System.out.println(node);
+      for (int i = 0; i < node.childrenCount; i++) {
+        Node child = read(dataInput);
+        children[i] = child;
+      }
+      node.setChildren(children);
+      return node;
+    }
   }
 
   /**
-   * Find the next parent from a cached (searched) one, this is useful when seeking in
+   * Find the next node from a cached (searched) one, this is useful when seeking in
    * SegmentTermsEnum.
    */
-  public Node lookupChild(BytesRef target, Node parent, Node child) throws IOException {
-    assert parent != null;
+  // TODO: Assign child if need.
+  public Node findTargetNode(Node node, BytesRef target, Node child) {
+    assert node != null;
 
     // TODO: Target length is 0 may never happen, when we search step by step?
     if (target.length == 0) {
       // We may search "";
-      if (parent.nodeType == NodeType.LEAF_NODE && parent.key == null) {
-        // Match, Use this parent's output.
+      if (node.nodeType == NodeType.LEAF_NODE && node.key == null) {
+        // Match, Use this node's output.
         return null;
-      } else if (parent.prefixLength == 0) {
-        // Match, Use this parent's output.
+      } else if (node.prefixLength == 0) {
+        // Match, Use this node's output.
         return null;
       } else {
-        // Not match, keep in this parent.
-        return parent;
+        // Not match, keep in this node.
+        return node;
       }
     }
 
-    if (parent.nodeType.equals(NodeType.LEAF_NODE)) {
-      if (parent.key.equals(target)) {
-        // Match, Use this parent's output.
+    if (node.nodeType.equals(NodeType.LEAF_NODE)) {
+      if (node.key.equals(target)) {
+        // Match, Use this node's output.
         return null;
       } else {
-        // Not match, keep in this parent.
-        return parent;
+        // Not match, keep in this node.
+        return node;
       }
     } else {
-      if (parent.prefixLength > 0) {
+      if (node.prefixLength > 0) {
         int commonLength =
             ARTUtil.commonPrefixLength(
                 target.bytes,
                 target.offset,
                 target.offset + target.length,
-                parent.prefix,
+                node.prefix,
                 0,
-                parent.prefixLength);
-        if (commonLength != parent.prefixLength) {
-          // Not match, keep in this parent.
-          return parent;
+                node.prefixLength);
+        if (commonLength != node.prefixLength) {
+          // Not match, keep in this node.
+          return node;
         }
         // common prefix is the same, then increase the offset.
-        target.offset += parent.prefixLength;
-        target.length -= parent.prefixLength;
+        target.offset += node.prefixLength;
+        target.length -= node.prefixLength;
         // Work end, match.
         if (target.length == 0) {
-          // Match, Use this parent's output.
+          // Match, Use this node's output.
           return null;
         }
       }
 
       // Get child.
-      byte key = target.bytes[target.offset];
-      int childPos = parent.getChildPos(target.bytes[target.offset]);
+      int childPos = node.getChildPos(target.bytes[target.offset]);
       target.offset++;
       target.length--;
       if (childPos != Node.ILLEGAL_IDX) {
-        // For Node 256, there is gap in children, we need minus the number of null child from 0 to
-        // this pos.
-        // For Node 48, childPos is the key byte, we need use the read index in children.
-        long childDeltaFpStart;
-        if (parent.nodeType.equals(NodeType.NODE48)) {
-          int childIndex = ((Node48) parent).getChildIndex(key);
-          childDeltaFpStart =
-              parent.childrenDeltaFpStart + (long) childIndex * parent.childrenDeltaFpBytes;
-        } else if (parent.nodeType.equals(NodeType.NODE256)) {
-          int numberOfNullChildren = ((Node256) parent).numberOfNullChildren(childPos);
-          childDeltaFpStart =
-              parent.childrenDeltaFpStart
-                  + (long) (childPos - numberOfNullChildren) * parent.childrenDeltaFpBytes;
-        } else {
-          childDeltaFpStart =
-              parent.childrenDeltaFpStart + (long) childPos * parent.childrenDeltaFpBytes;
-        }
-        long childDeltaFp = access.readLong(childDeltaFpStart);
-        if (parent.childrenDeltaFpBytes < 8) {
-          childDeltaFp = childDeltaFp & BYTES_MINUS_1_MASK[parent.childrenDeltaFpBytes - 1];
-        }
-
-        long childFp = parent.fp - childDeltaFp;
-        assert childFp >= 0 && childFp < parent.fp : "child fp should less than parent fp";
-        return Node.load(access, childFp);
+        return node.getChild(childPos);
       } else {
-        // Not match, keep in this parent.
-        return parent;
+        // Not match, keep in this node.
+        return node;
       }
     }
   }

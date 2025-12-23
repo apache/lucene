@@ -27,12 +27,12 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
-/** Test ART for findTargetNode. */
+/** Test ART for findTargetNode. Test the save/load the whole art one time version. */
 public class TestART2 extends LuceneTestCase {
 
   public void testRandomTerms() throws Exception {
     Supplier<byte[]> supplier = TestART2::randomBytes;
-    testARTBuilder(supplier, atLeast(1000));
+    testARTBuilderPre(supplier, atLeast(1000));
     testARTLookup(supplier, 12);
   }
 
@@ -57,9 +57,10 @@ public class TestART2 extends LuceneTestCase {
     }
   }
 
-  private void testARTBuilder(Supplier<byte[]> randomBytesSupplier, int count) {
+  private void testARTBuilderPre(Supplier<byte[]> randomBytesSupplier, int count) {
     Map<BytesRef, Output> kvs = new TreeMap<>();
-    // Since we modify bytes when inserting (by ARTBuilder#updateNodeBytes), expected is a copy for
+    // Since we modify bytes when inserting (by ARTBuilderPre#updateNodeBytes), expected is a copy
+    // for
     // original bytes.
     Map<BytesRef, Output> expected = new TreeMap<>();
     kvs.put(new BytesRef(""), new Output(0L, false, new BytesRef("emptyOutput")));
@@ -76,7 +77,7 @@ public class TestART2 extends LuceneTestCase {
     }
 
     // Build.
-    ARTBuilder artBuilder = new ARTBuilder();
+    ARTBuilderPre artBuilder = new ARTBuilderPre();
     artBuilder.insert(new BytesRef(""), new Output(0L, false, new BytesRef("emptyOutput")));
     for (var entry : kvs.entrySet()) {
       if (entry.getKey().equals(new BytesRef(""))) {
@@ -95,7 +96,7 @@ public class TestART2 extends LuceneTestCase {
   private void testARTLookup(Supplier<byte[]> randomBytesSupplier, int round) throws IOException {
     for (int iter = 1; iter <= round; iter++) {
       Map<BytesRef, Output> kvs = new TreeMap<>();
-      // Since we modify bytes when inserting (by ARTBuilder#updateNodeBytes), expected is a copy
+      // Since we modify bytes when inserting (by ARTBuilderPre#updateNodeBytes), expected is a copy
       // for
       // original bytes.
       Map<BytesRef, Output> expected = new TreeMap<>();
@@ -114,7 +115,7 @@ public class TestART2 extends LuceneTestCase {
       }
 
       // Build.
-      ARTBuilder artBuilder = new ARTBuilder();
+      ARTBuilderPre artBuilder = new ARTBuilderPre();
 
       artBuilder.insert(new BytesRef(""), new Output(0L, false, new BytesRef("emptyOutput")));
       for (var entry : kvs.entrySet()) {
@@ -135,7 +136,7 @@ public class TestART2 extends LuceneTestCase {
           long start = metaIn.readVLong();
           long end = metaIn.readVLong();
 
-          ARTReader artReader = new ARTReader(indexIn.slice("outputs", start, end - start));
+          ARTReaderPre artReader = new ARTReaderPre(indexIn.slice("outputs", start, end - start));
 
           for (Map.Entry<BytesRef, Output> entry : expected.entrySet()) {
             assertResult(artReader, new BytesRef(entry.getKey().bytes), entry.getValue());
@@ -147,13 +148,13 @@ public class TestART2 extends LuceneTestCase {
     }
   }
 
-  private static void assertResult(ARTReader reader, BytesRef term, Output expected)
+  private static void assertResult(ARTReaderPre reader, BytesRef term, Output expected)
       throws IOException {
     Output output = reader.find(term);
     assertEquals(expected, output);
   }
 
-  private static void assertResultStepByNode(ARTReader reader, BytesRef term, Output expected)
+  private static void assertResultStepByNode(ARTReaderPre reader, BytesRef term, Output expected)
       throws IOException {
     Node node = reader.getRoot();
     Node targetNode = null;

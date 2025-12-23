@@ -17,11 +17,7 @@
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
 import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.Deque;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.function.BiConsumer;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
@@ -31,12 +27,12 @@ import org.apache.lucene.util.BytesRefBuilder;
 
 /**
  * Builds an ART from pre-sorted terms with outputs. We can save built ART to disk and read it by
- * {@link ARTBuilder}. This version save node, output, floor data's fp, and load node by these fp.
+ * {@link ARTBuilderPre}. This version save/load the whole art one time, without FP.
  */
-public class ARTBuilder {
+public class ARTBuilderPre {
   public Node root;
 
-  public ARTBuilder() {
+  public ARTBuilderPre() {
     root = null;
   }
 
@@ -44,65 +40,30 @@ public class ARTBuilder {
     return root == null;
   }
 
-  /** 1 Save node's Fp, outputFP, floorDataFp for reader like trie. 2 No recursion */
-  public void saveFP(DataOutput meta, IndexOutput index) throws IOException {
+  public void save(DataOutput meta, IndexOutput data) throws IOException {
     // start FP.
-    meta.writeVLong(index.getFilePointer());
-    saveNodes(index);
-    meta.writeVLong(root.fp);
-    index.writeLong(0L); // additional 8 bytes for over-reading (write long N bytes, read long)
+    meta.writeVLong(data.getFilePointer());
+    save(root, data);
     // end FP.
-    meta.writeVLong(index.getFilePointer());
+    meta.writeVLong(data.getFilePointer());
   }
 
-  /** No recursion . */
-  private void saveNodes(IndexOutput index) throws IOException {
-    final long startFP = index.getFilePointer();
-    Deque<Node> stack = new ArrayDeque<>();
-    stack.push(root);
-
-    // Visit and save nodes of this trie in a post-order depth-first traversal.
-    while (stack.isEmpty() == false) {
-      Node node = stack.peek();
-      assert node.fp == -1;
-
-      if (node.nodeType == NodeType.LEAF_NODE) {
-        node.fp = index.getFilePointer() - startFP;
-        stack.pop();
-        node.saveNode(index);
-        continue;
+  private void save(Node node, IndexOutput data) throws IOException {
+    if (node.nodeType != NodeType.LEAF_NODE) {
+      // Save node.
+      node.save(data);
+      // Save children.
+      int nextPos = node.getNextLargerPos(Node.ILLEGAL_IDX);
+      while (nextPos != Node.ILLEGAL_IDX) {
+        Node child = node.getChild(nextPos);
+        assert child != null;
+        // TODO: Use stack to eliminate this recursion.
+        save(child, data);
+        nextPos = node.getNextLargerPos(nextPos);
       }
-
-      // If there are any children have not been saved, push the first one into stack and continue.
-      // We want to ensure saving children before parent.
-      // TODO: For node48, its position is the key byte, we save children in index order, so we can
-      // calculate child fp when loading.
-      if (node.nodeType.equals(NodeType.NODE48)) {
-        int nextChildPos = node.savedChildPos + 1;
-        if (nextChildPos < node.childrenCount) {
-          Node child = node.getChildren()[nextChildPos];
-          assert child != null;
-          stack.push(child);
-          node.savedChildPos = nextChildPos;
-          continue;
-        }
-      } else {
-        int nextChildPos = node.getNextLargerPos(node.savedChildPos);
-
-        if (nextChildPos != Node.ILLEGAL_IDX) {
-          Node child = node.getChild(nextChildPos);
-          assert child != null;
-          stack.push(child);
-          node.savedChildPos = nextChildPos;
-          continue;
-        }
-      }
-
-      // All children have been written(saved), now it's time to write the parent!
-      node.fp = index.getFilePointer() - startFP;
-      stack.pop();
-      // TODO: Enhance meta data like trie.
-      node.saveNode(index);
+    } else {
+      // Save leaf Node
+      node.save(data);
     }
   }
 
@@ -115,7 +76,7 @@ public class ARTBuilder {
   }
 
   /** Append an art builder to this. */
-  public void append(ARTBuilder artBuilder) {
+  public void append(ARTBuilderPre artBuilder) {
     // TODO: Improve this , or store kvs instead of tmp compiled art in PendingBlock#subIndices, and
     // compile it once in/before save ?.
     Map<BytesRef, Output> kvs = new TreeMap<>();
