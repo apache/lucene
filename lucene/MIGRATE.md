@@ -19,6 +19,62 @@
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### Relaxed Index Upgrade Policy (GITHUB#13797)
+
+Starting with Lucene 11.0.0, the index upgrade policy has been relaxed to allow safe upgrades across multiple major version numbers without reindexing when no format breaks occur.
+
+#### Key Changes
+
+- `Version.MIN_SUPPORTED_MAJOR` is now manually maintained instead of auto-computed as `LATEST.major-1`
+- Set to 10 for Lucene 11.0.0, allowing indexes created with Lucene 10.x to be opened directly
+- Will only be bumped when actual incompatible format changes are introduced
+
+#### Two-Tier Version Policy
+
+1. **Index opening policy**: An index can be opened if its creation version >= `MIN_SUPPORTED_MAJOR`
+2. **Codec reader policy**: Segments can only be read directly if written by current or previous major version number
+
+#### Upgrade Scenarios
+
+**Scenario 1: No format breaks (wider upgrade span)**
+- Index created with Lucene 10.x can be opened directly in Lucene 11.x, 12.x, 13.x, 14.x (as long as MIN_SUPPORTED_MAJOR stays ≤ 10)
+- Simply open the index with the new version; segments will be upgraded gradually through normal merging
+- Optional: Call `forceMerge()` or use `UpgradeIndexMergePolicy` to upgrade segment formats immediately
+- **Important**: You still only get one upgrade per index lifetime. Once MIN_SUPPORTED_MAJOR is bumped above 10, the index becomes unopenable and must be reindexed.
+
+**Scenario 2: Format breaks occur**
+- If a major version introduces incompatible format changes, `MIN_SUPPORTED_MAJOR` will be bumped
+- Indexes created before the new minimum will throw `IndexFormatTooOldException`
+- Full reindexing is required for such indexes
+
+**Scenario 3: After using your upgrade**
+- Index created with Lucene 10.x, successfully opened with Lucene 14.x
+- The index's creation version is still 10 (this never changes)
+- When Lucene 15+ bumps MIN_SUPPORTED_MAJOR above 10, this index becomes unopenable
+- Must reindex to continue using newer Lucene versions
+
+#### Upgrade Example
+
+```java
+// Opening an index created with Lucene 10.x in Lucene 11.x+
+try (Directory dir = FSDirectory.open(indexPath)) {
+    // This will now succeed (if MIN_SUPPORTED_MAJOR <= 10)
+    try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        // Index can be read normally
+    }
+    // Optional: Upgrade segment formats
+    try (IndexWriter writer = new IndexWriter(dir, config)) {
+        writer.forceMerge(1); // Rewrites all segments to latest format
+    }
+}
+```
+
+#### Error Handling
+
+Enhanced error messages will clearly indicate:
+- Whether the index creation version is below `MIN_SUPPORTED_MAJOR` (reindex required)
+- Whether segments are too old to read directly (sequential upgrade required)
+
 ### TieredMergePolicy#setMaxMergeAtOnce removed
 
 This parameter has no replacement, TieredMergePolicy no longer bounds the
@@ -34,6 +90,22 @@ int maxCachedQueries = 1_000;
 long maxRamBytesUsed = 50 * 1024 * 1024; // 50MB
 IndexSearcher.setDefaultQueryCache(new LRUQueryCache(maxCachedQueries, maxRamBytesUsed));
 ```
+
+### Possibility to optimize `readGroupVInt()` in `DataInput` subclasses removed (GITHUB#15116)
+
+Any subclass of `DataInput` that have implemented `readGroupVInt()` need to remove that implementation.
+
+Instead make sure that subclasses of `IndexInput` implement `RandomAccessInput`.
+Pure `DataInput` subclasses cannot be optimized anymore as they cannot offer random access and seeking.`
+
+### SortField.setMissingValue() has been removed
+
+Missing values should be configured in SortField constructor methods, as they are now final.
+
+### MatchAllDocs and MatchNoDocs are singletons
+
+MatchAllDocs and MatchNoDocs queries should use the INSTANCE final field instead of creating
+new objects. The constructors will be removed in the future.
 
 ## Migration from Lucene 9.x to Lucene 10.0
 

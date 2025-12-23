@@ -269,7 +269,7 @@ public abstract class BaseFragmentsBuilder implements FragmentsBuilder {
       List<WeightedFragInfo> fragInfos, Field[] fields) {
     Map<String, List<WeightedFragInfo>> fieldNameToFragInfos = new HashMap<>();
     for (Field field : fields) {
-      fieldNameToFragInfos.put(field.name(), new ArrayList<WeightedFragInfo>());
+      fieldNameToFragInfos.put(field.name(), new ArrayList<>());
     }
 
     fragInfos:

@@ -20,6 +20,9 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.not;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -247,6 +250,20 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       Query kvq = getKnnVectorQuery("field", new float[] {0, 0}, 10, filter);
       TopDocs topDocs = searcher.search(kvq, 3);
       assertEquals(0, topDocs.totalHits.value());
+    }
+  }
+
+  public void testMatchAllFilter() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+
+      // make sure we don't drop to exact search, even though the filter matches fewer than k docs
+      Query kvq =
+          getThrowingKnnVectorQuery("field", new float[] {0, 0}, 10, MatchAllDocsQuery.INSTANCE);
+      TopDocs topDocs = searcher.search(kvq, 3);
+      assertEquals(3, topDocs.totalHits.value());
     }
   }
 
@@ -777,7 +794,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       }
       w.commit();
 
-      w.deleteDocuments(new MatchAllDocsQuery());
+      w.deleteDocuments(MatchAllDocsQuery.INSTANCE);
       w.commit();
 
       try (IndexReader reader = DirectoryReader.open(dir)) {
@@ -900,8 +917,9 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           noTimeoutManager.newCollector(Integer.MAX_VALUE, null, searcher.leafContexts.get(0));
 
       // Check that a normal collector is created without timeout
-      assertFalse(
-          noTimeoutCollector instanceof TimeLimitingKnnCollectorManager.TimeLimitingKnnCollector);
+      assertThat(
+          noTimeoutCollector,
+          not(instanceOf(TimeLimitingKnnCollectorManager.TimeLimitingKnnCollector.class)));
       noTimeoutCollector.collect(0, 0);
       assertFalse(noTimeoutCollector.earlyTerminated());
 
@@ -917,7 +935,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           timeoutManager.newCollector(Integer.MAX_VALUE, null, searcher.leafContexts.get(0));
 
       // Check that a time limiting collector is created, which returns partial results
-      assertFalse(timeoutCollector instanceof TopKnnCollector);
+      assertThat(timeoutCollector, not(instanceOf(TopKnnCollector.class)));
       timeoutCollector.collect(0, 0);
       assertTrue(timeoutCollector.earlyTerminated());
 
@@ -938,7 +956,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
       AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 2);
       AbstractKnnVectorQuery exactQuery =
-          getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10, new MatchAllDocsQuery());
+          getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10, MatchAllDocsQuery.INSTANCE);
 
       assertEquals(2, searcher.count(query)); // Expect some results without timeout
       assertEquals(3, searcher.count(exactQuery)); // Same for exact search
@@ -950,10 +968,10 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 doc
       // Note: We get partial results when the HNSW graph has 1 layer, but no results for > 1 layer
       // because the timeout is exhausted while finding the best entry node for the last level
-      assertTrue(searcher.count(query) <= 1); // Expect at most 1 result
+      assertThat(searcher.count(query), lessThanOrEqualTo(1));
 
       searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 doc
-      assertEquals(1, searcher.count(exactQuery)); // Expect only 1 result
+      assertThat(searcher.count(exactQuery), lessThanOrEqualTo(1));
     }
   }
 

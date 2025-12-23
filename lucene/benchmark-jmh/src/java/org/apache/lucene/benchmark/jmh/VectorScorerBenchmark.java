@@ -64,7 +64,7 @@ import org.openjdk.jmh.annotations.Warmup;
 public class VectorScorerBenchmark {
 
   @Param({"1", "128", "207", "256", "300", "512", "702", "1024"})
-  int size;
+  public int size;
 
   Directory dir;
   IndexInput in;

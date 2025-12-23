@@ -34,6 +34,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.RandomApproximationQuery;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -110,7 +111,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
 
     BooleanQuery bq =
         new BooleanQuery.Builder()
-            .add(new MatchAllDocsQuery(), Occur.MUST)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.MUST)
             .add(new TermQuery(new Term("foo", "bar")), Occur.FILTER)
             .build();
     assertEquals(
@@ -118,7 +119,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
 
     bq =
         new BooleanQuery.Builder()
-            .add(new BoostQuery(new MatchAllDocsQuery(), 42), Occur.MUST)
+            .add(new BoostQuery(MatchAllDocsQuery.INSTANCE, 42), Occur.MUST)
             .add(new TermQuery(new Term("foo", "bar")), Occur.FILTER)
             .build();
     assertEquals(
@@ -127,35 +128,35 @@ public class TestBooleanRewrites extends LuceneTestCase {
 
     bq =
         new BooleanQuery.Builder()
-            .add(new MatchAllDocsQuery(), Occur.MUST)
-            .add(new MatchAllDocsQuery(), Occur.FILTER)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.MUST)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.FILTER)
             .build();
-    assertEquals(new MatchAllDocsQuery(), searcher.rewrite(bq));
+    assertEquals(MatchAllDocsQuery.INSTANCE, searcher.rewrite(bq));
 
     bq =
         new BooleanQuery.Builder()
-            .add(new BoostQuery(new MatchAllDocsQuery(), 42), Occur.MUST)
-            .add(new MatchAllDocsQuery(), Occur.FILTER)
+            .add(new BoostQuery(MatchAllDocsQuery.INSTANCE, 42), Occur.MUST)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.FILTER)
             .build();
-    assertEquals(new BoostQuery(new MatchAllDocsQuery(), 42), searcher.rewrite(bq));
+    assertEquals(new BoostQuery(MatchAllDocsQuery.INSTANCE, 42), searcher.rewrite(bq));
 
     bq =
         new BooleanQuery.Builder()
-            .add(new MatchAllDocsQuery(), Occur.MUST)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.MUST)
             .add(new TermQuery(new Term("foo", "bar")), Occur.MUST_NOT)
             .build();
     assertEquals(bq, searcher.rewrite(bq));
 
     bq =
         new BooleanQuery.Builder()
-            .add(new MatchAllDocsQuery(), Occur.MUST)
-            .add(new MatchAllDocsQuery(), Occur.FILTER)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.MUST)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.FILTER)
             .build();
-    assertEquals(new MatchAllDocsQuery(), searcher.rewrite(bq));
+    assertEquals(MatchAllDocsQuery.INSTANCE, searcher.rewrite(bq));
 
     bq =
         new BooleanQuery.Builder()
-            .add(new MatchAllDocsQuery(), Occur.MUST)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.MUST)
             .add(new TermQuery(new Term("foo", "bar")), Occur.FILTER)
             .add(new TermQuery(new Term("foo", "baz")), Occur.FILTER)
             .build();
@@ -168,7 +169,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
 
     bq =
         new BooleanQuery.Builder()
-            .add(new MatchAllDocsQuery(), Occur.MUST)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.MUST)
             .add(new TermQuery(new Term("foo", "bar")), Occur.FILTER)
             .add(new TermQuery(new Term("foo", "baz")), Occur.MUST_NOT)
             .build();
@@ -181,7 +182,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
 
     bq =
         new BooleanQuery.Builder()
-            .add(new MatchAllDocsQuery(), Occur.MUST)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.MUST)
             .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
             .build();
     assertEquals(bq, searcher.rewrite(bq));
@@ -192,7 +193,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
 
     BooleanQuery bq =
         new BooleanQuery.Builder()
-            .add(new MatchAllDocsQuery(), Occur.MUST)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.MUST)
             .add(new TermQuery(new Term("foo", "bar")), Occur.FILTER)
             .add(new TermQuery(new Term("foo", "baz")), Occur.SHOULD)
             .add(new TermQuery(new Term("foo", "quux")), Occur.SHOULD)
@@ -277,7 +278,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
             .add(new TermQuery(new Term("foo", "bar")), Occur.MUST_NOT)
             .build();
 
-    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(bq));
+    assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(bq));
 
     // Test Filter with MustNot
     BooleanQuery bq2 =
@@ -290,7 +291,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
             .add(new TermQuery(new Term("foo", "bar")), Occur.MUST_NOT)
             .build();
 
-    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(bq2));
+    assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(bq2));
   }
 
   // MatchAllQuery as MUST_NOT clause cannot return anything
@@ -304,10 +305,10 @@ public class TestBooleanRewrites extends LuceneTestCase {
             .add(new TermQuery(new Term("foo", "baz")), Occur.FILTER)
             .add(new TermQuery(new Term("foo", "bad")), Occur.SHOULD)
             //
-            .add(new MatchAllDocsQuery(), Occur.MUST_NOT)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.MUST_NOT)
             .build();
 
-    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(bq));
+    assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(bq));
 
     // Test Must with MatchAll MustNot and other MustNot
     BooleanQuery bq2 =
@@ -317,10 +318,10 @@ public class TestBooleanRewrites extends LuceneTestCase {
             .add(new TermQuery(new Term("foo", "bad")), Occur.SHOULD)
             //
             .add(new TermQuery(new Term("foo", "bor")), Occur.MUST_NOT)
-            .add(new MatchAllDocsQuery(), Occur.MUST_NOT)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.MUST_NOT)
             .build();
 
-    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(bq2));
+    assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(bq2));
   }
 
   public void testDeeplyNestedBooleanRewriteShouldClauses() throws IOException {
@@ -395,7 +396,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
     BooleanQuery bq =
         new BooleanQuery.Builder()
             .add(new TermQuery(new Term("foo", "bar")), Occur.MUST)
-            .add(new MatchAllDocsQuery(), Occur.FILTER)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.FILTER)
             .build();
     assertEquals(new TermQuery(new Term("foo", "bar")), searcher.rewrite(bq));
 
@@ -403,7 +404,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
         new BooleanQuery.Builder()
             .add(new TermQuery(new Term("foo", "bar")), Occur.MUST)
             .add(new TermQuery(new Term("foo", "baz")), Occur.MUST)
-            .add(new MatchAllDocsQuery(), Occur.FILTER)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.FILTER)
             .build();
     Query expected =
         new BooleanQuery.Builder()
@@ -415,17 +416,17 @@ public class TestBooleanRewrites extends LuceneTestCase {
     bq =
         new BooleanQuery.Builder()
             .add(new TermQuery(new Term("foo", "bar")), Occur.FILTER)
-            .add(new MatchAllDocsQuery(), Occur.FILTER)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.FILTER)
             .build();
     expected = new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "bar"))), 0.0f);
     assertEquals(expected, searcher.rewrite(bq));
 
     bq =
         new BooleanQuery.Builder()
-            .add(new MatchAllDocsQuery(), Occur.FILTER)
-            .add(new MatchAllDocsQuery(), Occur.FILTER)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.FILTER)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.FILTER)
             .build();
-    expected = new BoostQuery(new ConstantScoreQuery(new MatchAllDocsQuery()), 0.0f);
+    expected = new BoostQuery(new ConstantScoreQuery(MatchAllDocsQuery.INSTANCE), 0.0f);
     assertEquals(expected, searcher.rewrite(bq));
   }
 
@@ -518,11 +519,13 @@ public class TestBooleanRewrites extends LuceneTestCase {
   }
 
   private Query randomWrapper(Random random, Query query) {
-    switch (random.nextInt(2)) {
+    switch (random.nextInt(3)) {
       case 0:
         return new BoostQuery(query, TestUtil.nextInt(random, 0, 4));
       case 1:
         return new ConstantScoreQuery(query);
+      case 2:
+        return new RandomApproximationQuery(query, random);
       default:
         throw new AssertionError();
     }
@@ -534,7 +537,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
     }
     switch (random().nextInt(6)) {
       case 0:
-        return new MatchAllDocsQuery();
+        return MatchAllDocsQuery.INSTANCE;
       case 1:
         return new TermQuery(new Term("body", "a"));
       case 2:
@@ -684,7 +687,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
             .add(inner, Occur.SHOULD)
             .add(new TermQuery(new Term("foo", "baz")), Occur.MUST)
             .build();
-    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+    assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(query));
 
     inner =
         new BooleanQuery.Builder()
@@ -910,7 +913,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
     BooleanQuery query =
         new BooleanQuery.Builder()
             .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
-            .add(new MatchNoDocsQuery(), Occur.SHOULD)
+            .add(MatchNoDocsQuery.INSTANCE, Occur.SHOULD)
             .build();
     assertEquals(new TermQuery(new Term("foo", "bar")), searcher.rewrite(query));
   }
@@ -921,7 +924,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
     BooleanQuery query =
         new BooleanQuery.Builder()
             .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
-            .add(new MatchNoDocsQuery(), Occur.MUST_NOT)
+            .add(MatchNoDocsQuery.INSTANCE, Occur.MUST_NOT)
             .build();
     assertEquals(new TermQuery(new Term("foo", "bar")), searcher.rewrite(query));
   }
@@ -932,9 +935,9 @@ public class TestBooleanRewrites extends LuceneTestCase {
     BooleanQuery query =
         new BooleanQuery.Builder()
             .add(new TermQuery(new Term("foo", "bar")), Occur.MUST)
-            .add(new MatchNoDocsQuery(), Occur.MUST)
+            .add(MatchNoDocsQuery.INSTANCE, Occur.MUST)
             .build();
-    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+    assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(query));
   }
 
   public void testFilterMatchNoDocsQuery() throws IOException {
@@ -943,15 +946,15 @@ public class TestBooleanRewrites extends LuceneTestCase {
     BooleanQuery query =
         new BooleanQuery.Builder()
             .add(new TermQuery(new Term("foo", "bar")), Occur.MUST)
-            .add(new MatchNoDocsQuery(), Occur.FILTER)
+            .add(MatchNoDocsQuery.INSTANCE, Occur.FILTER)
             .build();
-    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+    assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(query));
   }
 
   public void testEmptyBoolean() throws IOException {
     IndexSearcher searcher = newSearcher(new MultiReader());
     BooleanQuery query = new BooleanQuery.Builder().build();
-    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+    assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(query));
   }
 
   public void testSimplifyFilterClauses() throws IOException {
@@ -1022,13 +1025,13 @@ public class TestBooleanRewrites extends LuceneTestCase {
             .add(new PhraseQuery.Builder().build(), Occur.SHOULD)
             .setMinimumNumberShouldMatch(1)
             .build();
-    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+    assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(query));
     query =
         new BooleanQuery.Builder()
             .add(new PhraseQuery.Builder().build(), Occur.SHOULD)
             .setMinimumNumberShouldMatch(0)
             .build();
-    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+    assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(query));
 
     // Meaningful SHOULD clause count is less than MinimumNumberShouldMatch
     query =
@@ -1037,7 +1040,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
             .add(new PhraseQuery.Builder().add(new Term("field", "a")).build(), Occur.SHOULD)
             .setMinimumNumberShouldMatch(2)
             .build();
-    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+    assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(query));
 
     // Meaningful SHOULD clause count is equal to MinimumNumberShouldMatch
     query =
@@ -1091,7 +1094,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
             .add(new PhraseQuery.Builder().add(new Term("field", "b")).build(), Occur.SHOULD)
             .setMinimumNumberShouldMatch(2)
             .build();
-    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+    assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(query));
   }
 
   // Test query to count number of rewrites for its lifetime.

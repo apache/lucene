@@ -53,9 +53,7 @@ public class DateRecognizerFilter extends FilteringTokenFilter {
       // We don't care about the date, just that the term can be parsed to one.
       dateFormat.parse(termAtt.toString());
       return true;
-    } catch (
-        @SuppressWarnings("unused")
-        ParseException e) {
+    } catch (ParseException _) {
       // This term is not a date.
     }
 

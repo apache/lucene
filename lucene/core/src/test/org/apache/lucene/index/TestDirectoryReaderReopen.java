@@ -26,6 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.document.Field;
@@ -45,6 +47,7 @@ import org.apache.lucene.tests.store.MockDirectoryWrapper.FakeIOException;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.NamedThreadFactory;
 
 public class TestDirectoryReaderReopen extends LuceneTestCase {
 
@@ -1137,5 +1140,882 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
     assertEquals(3, reader.maxDoc());
     assertEquals(0, reader.numDeletedDocs());
     IOUtils.close(reader, writer, dir);
+  }
+
+  public void testReopenWithExecutor() throws Exception {
+    final Directory dir1 = newDirectory();
+    final ExecutorService executorService1 =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReaderReopen"));
+    try {
+      createIndex(random(), dir1, false);
+      performDefaultTests(
+          new TestReopen() {
+
+            @Override
+            protected void modifyIndex(int i) throws IOException {
+              TestDirectoryReaderReopen.modifyIndex(i, dir1);
+            }
+
+            @Override
+            protected DirectoryReader openReader() throws IOException {
+              return DirectoryReader.open(dir1, executorService1);
+            }
+          });
+    } finally {
+      executorService1.shutdown();
+    }
+    dir1.close();
+
+    final Directory dir2 = newDirectory();
+    final ExecutorService executorService2 =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReaderReopen"));
+    try {
+      createIndex(random(), dir2, true);
+      performDefaultTests(
+          new TestReopen() {
+
+            @Override
+            protected void modifyIndex(int i) throws IOException {
+              TestDirectoryReaderReopen.modifyIndex(i, dir2);
+            }
+
+            @Override
+            protected DirectoryReader openReader() throws IOException {
+              return DirectoryReader.open(dir2, executorService2);
+            }
+          });
+    } finally {
+      executorService2.shutdown();
+    }
+    dir2.close();
+  }
+
+  public void testCommitReopenWithExecutor() throws IOException {
+    Directory dir = newDirectory();
+    final ExecutorService executorService =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReaderReopen"));
+    try {
+      doTestReopenWithCommit(random(), dir, true, executorService);
+    } finally {
+      executorService.shutdown();
+    }
+    dir.close();
+  }
+
+  private void doTestReopenWithCommit(
+      Random random, Directory dir, boolean withReopen, ExecutorService executorService)
+      throws IOException {
+    IndexWriter iwriter =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random))
+                .setOpenMode(OpenMode.CREATE)
+                .setMergeScheduler(new SerialMergeScheduler())
+                .setMergePolicy(newLogMergePolicy()));
+    iwriter.commit();
+    DirectoryReader reader = DirectoryReader.open(dir, executorService);
+
+    try {
+      int M = 3;
+      FieldType customType = new FieldType(TextField.TYPE_STORED);
+      customType.setTokenized(false);
+      FieldType customType2 = new FieldType(TextField.TYPE_STORED);
+      customType2.setTokenized(false);
+      customType2.setOmitNorms(true);
+      FieldType customType3 = new FieldType();
+      customType3.setStored(true);
+      for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < M; j++) {
+          Document doc = new Document();
+          doc.add(newField("id", i + "_" + j, customType));
+          doc.add(newField("id2", i + "_" + j, customType2));
+          doc.add(newField("id3", i + "_" + j, customType3));
+
+          if (i > 0) {
+            int k = i - 1;
+            int n = j + k * M;
+            Document prevItereationDoc = reader.storedFields().document(n);
+            assertNotNull(prevItereationDoc);
+            String id = prevItereationDoc.get("id");
+            assertEquals(k + "_" + j, id);
+          }
+
+          iwriter.addDocument(doc);
+        }
+        iwriter.commit();
+        if (withReopen) {
+          DirectoryReader r2 = DirectoryReader.openIfChanged(reader, executorService);
+          if (r2 != null) {
+            reader.close();
+            reader = r2;
+          }
+        } else {
+          reader.close();
+          reader = DirectoryReader.open(dir, executorService);
+        }
+      }
+    } finally {
+      iwriter.close();
+      reader.close();
+    }
+  }
+
+  public void testCommitRecreateWithExecutor() throws IOException {
+    Directory dir = newDirectory();
+    final ExecutorService executorService =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReaderReopen"));
+    try {
+      doTestReopenWithCommit(random(), dir, false, executorService);
+    } finally {
+      executorService.shutdown();
+    }
+    dir.close();
+  }
+
+  public void testThreadSafetyWithExecutor() throws Exception {
+    final Directory dir = newDirectory();
+    // NOTE: this also controls the number of threads!
+    final int n = TestUtil.nextInt(random(), 20, 40);
+    final ExecutorService executorService =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReaderReopen"));
+    try {
+
+      IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+      for (int i = 0; i < n; i++) {
+        writer.addDocument(createDocument(i, 3));
+      }
+      writer.forceMerge(1);
+      writer.close();
+
+      final TestReopen test =
+          new TestReopen() {
+            @Override
+            protected void modifyIndex(int i) throws IOException {
+              IndexWriter modifier =
+                  new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+              modifier.addDocument(createDocument(n + i, 6));
+              modifier.close();
+            }
+
+            @Override
+            protected DirectoryReader openReader() throws IOException {
+              return DirectoryReader.open(dir, executorService);
+            }
+          };
+
+      final List<ReaderCouple> readers =
+          Collections.synchronizedList(new ArrayList<ReaderCouple>());
+      DirectoryReader firstReader = DirectoryReader.open(dir, executorService);
+      DirectoryReader reader = firstReader;
+
+      ReaderThread[] threads = new ReaderThread[n];
+      final Set<DirectoryReader> readersToClose =
+          Collections.synchronizedSet(new HashSet<DirectoryReader>());
+
+      for (int i = 0; i < n; i++) {
+        if (i % 2 == 0) {
+          DirectoryReader refreshed = DirectoryReader.openIfChanged(reader, executorService);
+          if (refreshed != null) {
+            readersToClose.add(reader);
+            reader = refreshed;
+          }
+        }
+        final DirectoryReader r = reader;
+
+        final int index = i;
+
+        ReaderThreadTask task;
+
+        if (i < 4 || (i >= 10 && i < 14) || i > 18) {
+          task =
+              new ReaderThreadTask() {
+
+                @Override
+                public void run() throws Exception {
+                  Random rnd = LuceneTestCase.random();
+                  while (!stopped) {
+                    if (index % 2 == 0) {
+                      // refresh reader synchronized
+                      ReaderCouple c = (refreshReader(r, test, index, true));
+                      readersToClose.add(c.newReader);
+                      readersToClose.add(c.refreshedReader);
+                      readers.add(c);
+                      // prevent too many readers
+                      break;
+                    } else {
+                      // not synchronized
+                      DirectoryReader refreshed = DirectoryReader.openIfChanged(r, executorService);
+                      if (refreshed == null) {
+                        refreshed = r;
+                      }
+
+                      IndexSearcher searcher = newSearcher(refreshed);
+                      ScoreDoc[] hits =
+                          searcher.search(
+                                  new TermQuery(
+                                      new Term("field1", "a" + rnd.nextInt(refreshed.maxDoc()))),
+                                  1000)
+                              .scoreDocs;
+                      if (hits.length > 0) {
+                        searcher.storedFields().document(hits[0].doc);
+                      }
+                      if (refreshed != r) {
+                        refreshed.close();
+                      }
+                    }
+                    synchronized (this) {
+                      wait(TestUtil.nextInt(random(), 1, 100));
+                    }
+                  }
+                }
+              };
+        } else {
+          task =
+              new ReaderThreadTask() {
+                @Override
+                public void run() throws Exception {
+                  Random rnd = LuceneTestCase.random();
+                  while (!stopped) {
+                    int numReaders = readers.size();
+                    if (numReaders > 0) {
+                      ReaderCouple c = readers.get(rnd.nextInt(numReaders));
+                      TestDirectoryReader.assertIndexEquals(c.newReader, c.refreshedReader);
+                    }
+
+                    synchronized (this) {
+                      wait(TestUtil.nextInt(random(), 1, 100));
+                    }
+                  }
+                }
+              };
+        }
+
+        threads[i] = new ReaderThread(task);
+        threads[i].start();
+      }
+
+      synchronized (this) {
+        wait(1000);
+      }
+
+      for (int i = 0; i < n; i++) {
+        if (threads[i] != null) {
+          threads[i].stopThread();
+        }
+      }
+
+      for (int i = 0; i < n; i++) {
+        if (threads[i] != null) {
+          threads[i].join();
+          if (threads[i].error != null) {
+            String msg =
+                "Error occurred in thread "
+                    + threads[i].getName()
+                    + ":\n"
+                    + threads[i].error.getMessage();
+            fail(msg);
+          }
+        }
+      }
+
+      for (final DirectoryReader readerToClose : readersToClose) {
+        readerToClose.close();
+      }
+
+      firstReader.close();
+      reader.close();
+
+      for (final DirectoryReader readerToClose : readersToClose) {
+        assertReaderClosed(readerToClose, true);
+      }
+
+      assertReaderClosed(reader, true);
+      assertReaderClosed(firstReader, true);
+
+      dir.close();
+    } finally {
+      executorService.shutdown();
+    }
+  }
+
+  public void testReopenOnCommitWithExecutor() throws Throwable {
+    Directory dir = newDirectory();
+    final ExecutorService executorService =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReaderReopen"));
+    try {
+      IndexWriter writer =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig(new MockAnalyzer(random()))
+                  .setIndexDeletionPolicy(new KeepAllCommits())
+                  .setMaxBufferedDocs(-1)
+                  .setMergePolicy(newLogMergePolicy(10)));
+      for (int i = 0; i < 4; i++) {
+        Document doc = new Document();
+        doc.add(newStringField("id", "" + i, Field.Store.NO));
+        writer.addDocument(doc);
+        Map<String, String> data = new HashMap<>();
+        data.put("index", i + "");
+        writer.setLiveCommitData(data.entrySet());
+        writer.commit();
+      }
+      for (int i = 0; i < 4; i++) {
+        writer.deleteDocuments(new Term("id", "" + i));
+        Map<String, String> data = new HashMap<>();
+        data.put("index", (4 + i) + "");
+        writer.setLiveCommitData(data.entrySet());
+        writer.commit();
+      }
+      writer.close();
+
+      DirectoryReader r = DirectoryReader.open(dir, executorService);
+      assertEquals(0, r.numDocs());
+
+      Collection<IndexCommit> commits = DirectoryReader.listCommits(dir);
+      for (final IndexCommit commit : commits) {
+        DirectoryReader r2 = DirectoryReader.openIfChanged(r, commit);
+        assertNotNull(r2);
+        assertTrue(r2 != r);
+
+        final Map<String, String> s = commit.getUserData();
+        final int v;
+        if (s.size() == 0) {
+          v = -1;
+        } else {
+          v = Integer.parseInt(s.get("index"));
+        }
+        if (v < 4) {
+          assertEquals(1 + v, r2.numDocs());
+        } else {
+          assertEquals(7 - v, r2.numDocs());
+        }
+        r.close();
+        r = r2;
+      }
+      r.close();
+      dir.close();
+    } finally {
+      executorService.shutdown();
+    }
+  }
+
+  public void testOpenIfChangedNRTToCommitWithExecutor() throws Exception {
+    Directory dir = newDirectory();
+    final ExecutorService executorService =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReaderReopen"));
+    try {
+      IndexWriter w = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+      Document doc = new Document();
+      doc.add(newStringField("field", "value", Field.Store.NO));
+      w.addDocument(doc);
+      w.commit();
+      List<IndexCommit> commits = DirectoryReader.listCommits(dir);
+      assertEquals(1, commits.size());
+      w.addDocument(doc);
+      DirectoryReader r = DirectoryReader.open(w);
+
+      assertEquals(2, r.numDocs());
+      IndexReader r2 = DirectoryReader.openIfChanged(r, commits.get(0), executorService);
+      assertNotNull(r2);
+      r.close();
+      assertEquals(1, r2.numDocs());
+      w.close();
+      r2.close();
+      dir.close();
+    } finally {
+      executorService.shutdown();
+    }
+  }
+
+  public void testOverDecRefDuringReopenWithExecutor() throws Exception {
+    MockDirectoryWrapper dir = newMockDirectory();
+    final ExecutorService executorService =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReaderReopen"));
+    try {
+      IndexWriterConfig iwc =
+          new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(NoMergePolicy.INSTANCE);
+      iwc.setCodec(TestUtil.getDefaultCodec());
+      IndexWriter w = new IndexWriter(dir, iwc);
+      Document doc = new Document();
+      doc.add(newStringField("id", "id", Field.Store.NO));
+      w.addDocument(doc);
+      doc = new Document();
+      doc.add(newStringField("id", "id2", Field.Store.NO));
+      w.addDocument(doc);
+      w.commit();
+
+      DirectoryReader r = DirectoryReader.open(dir, executorService);
+
+      w.deleteDocuments(new Term("id", "id"));
+      w.commit();
+
+      dir.failOn(
+          new MockDirectoryWrapper.Failure() {
+
+            boolean failed;
+
+            @Override
+            public void eval(MockDirectoryWrapper dir) throws IOException {
+              if (failed) {
+                return;
+              }
+              if (callStackContainsAnyOf("readLiveDocs")) {
+                if (VERBOSE) {
+                  System.out.println("TEST: now fail; exc:");
+                  new Throwable().printStackTrace(System.out);
+                }
+                failed = true;
+                throw new FakeIOException();
+              }
+            }
+          });
+
+      expectThrows(
+          FakeIOException.class,
+          () -> {
+            DirectoryReader.openIfChanged(r, executorService);
+          });
+
+      IndexSearcher s = newSearcher(r);
+      assertEquals(1, s.count(new TermQuery(new Term("id", "id"))));
+
+      r.close();
+      w.close();
+      dir.close();
+    } finally {
+      executorService.shutdown();
+    }
+  }
+
+  public void testNPEAfterInvalidReindex1WithExecutor() throws Exception {
+    Directory dir = new ByteBuffersDirectory();
+    final ExecutorService executorService =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReaderReopen"));
+    try {
+      IndexWriter w =
+          new IndexWriter(
+              dir,
+              new IndexWriterConfig(new MockAnalyzer(random()))
+                  .setMergePolicy(NoMergePolicy.INSTANCE));
+      Document doc = new Document();
+      doc.add(newStringField("id", "id", Field.Store.NO));
+      w.addDocument(doc);
+      doc = new Document();
+      doc.add(newStringField("id", "id2", Field.Store.NO));
+      w.addDocument(doc);
+      w.deleteDocuments(new Term("id", "id"));
+      w.commit();
+      w.close();
+
+      DirectoryReader r = DirectoryReader.open(dir, executorService);
+
+      for (String fileName : dir.listAll()) {
+        dir.deleteFile(fileName);
+      }
+
+      w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+      doc = new Document();
+      doc.add(newStringField("id", "id", Field.Store.NO));
+      doc.add(new NumericDocValuesField("ndv", 13));
+      w.addDocument(doc);
+      doc = new Document();
+      doc.add(newStringField("id", "id2", Field.Store.NO));
+      w.addDocument(doc);
+      w.commit();
+      doc = new Document();
+      doc.add(newStringField("id", "id2", Field.Store.NO));
+      w.addDocument(doc);
+      w.updateNumericDocValue(new Term("id", "id"), "ndv", 17L);
+      w.commit();
+      w.close();
+
+      expectThrows(
+          IllegalStateException.class,
+          () -> {
+            DirectoryReader.openIfChanged(r, executorService);
+          });
+
+      r.close();
+      dir.close();
+    } finally {
+      executorService.shutdown();
+    }
+  }
+
+  public void testNPEAfterInvalidReindex2WithExecutor() throws Exception {
+    Directory dir = new ByteBuffersDirectory();
+    final ExecutorService executorService =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReaderReopen"));
+    try {
+      IndexWriter w =
+          new IndexWriter(
+              dir,
+              new IndexWriterConfig(new MockAnalyzer(random()))
+                  .setMergePolicy(NoMergePolicy.INSTANCE));
+      Document doc = new Document();
+      doc.add(newStringField("id", "id", Field.Store.NO));
+      w.addDocument(doc);
+      doc = new Document();
+      doc.add(newStringField("id", "id2", Field.Store.NO));
+      w.addDocument(doc);
+      w.deleteDocuments(new Term("id", "id"));
+      w.commit();
+      w.close();
+
+      DirectoryReader r = DirectoryReader.open(dir, executorService);
+
+      for (String name : dir.listAll()) {
+        dir.deleteFile(name);
+      }
+
+      w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+      doc = new Document();
+      doc.add(newStringField("id", "id", Field.Store.NO));
+      doc.add(new NumericDocValuesField("ndv", 13));
+      w.addDocument(doc);
+      w.commit();
+      doc = new Document();
+      doc.add(newStringField("id", "id2", Field.Store.NO));
+      w.addDocument(doc);
+      w.commit();
+      w.close();
+
+      expectThrows(
+          IllegalStateException.class,
+          () -> {
+            DirectoryReader.openIfChanged(r, executorService);
+          });
+
+      r.close();
+      dir.close();
+    } finally {
+      executorService.shutdown();
+    }
+  }
+
+  public void testNRTMdeletesWithExecutor() throws Exception {
+    Directory dir = newDirectory();
+    final ExecutorService executorService =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReaderReopen"));
+    try {
+      IndexWriterConfig iwc =
+          new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(NoMergePolicy.INSTANCE);
+      SnapshotDeletionPolicy snapshotter =
+          new SnapshotDeletionPolicy(new KeepOnlyLastCommitDeletionPolicy());
+      iwc.setIndexDeletionPolicy(snapshotter);
+      IndexWriter writer = new IndexWriter(dir, iwc);
+      writer.commit();
+
+      Document doc = new Document();
+      doc.add(new StringField("key", "value1", Field.Store.YES));
+      writer.addDocument(doc);
+
+      doc = new Document();
+      doc.add(new StringField("key", "value2", Field.Store.YES));
+      writer.addDocument(doc);
+
+      writer.commit();
+
+      IndexCommit ic1 = snapshotter.snapshot();
+
+      doc = new Document();
+      doc.add(new StringField("key", "value3", Field.Store.YES));
+      writer.updateDocument(new Term("key", "value1"), doc);
+
+      writer.commit();
+
+      IndexCommit ic2 = snapshotter.snapshot();
+      DirectoryReader latest = DirectoryReader.open(ic2, executorService);
+      assertEquals(2, latest.leaves().size());
+
+      DirectoryReader oldest = DirectoryReader.openIfChanged(latest, ic1, executorService);
+      assertEquals(1, oldest.leaves().size());
+
+      assertSame(
+          latest.leaves().get(0).reader().getCoreCacheHelper().getKey(),
+          oldest.leaves().get(0).reader().getCoreCacheHelper().getKey());
+
+      latest.close();
+      oldest.close();
+
+      snapshotter.release(ic1);
+      snapshotter.release(ic2);
+      writer.close();
+      dir.close();
+    } finally {
+      executorService.shutdown();
+    }
+  }
+
+  public void testNRTMdeletes2WithExecutor() throws Exception {
+    Directory dir = newDirectory();
+    final ExecutorService executorService =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReaderReopen"));
+    try {
+      IndexWriterConfig iwc =
+          new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(NoMergePolicy.INSTANCE);
+      SnapshotDeletionPolicy snapshotter =
+          new SnapshotDeletionPolicy(new KeepOnlyLastCommitDeletionPolicy());
+      iwc.setIndexDeletionPolicy(snapshotter);
+      IndexWriter writer = new IndexWriter(dir, iwc);
+      writer.commit();
+
+      Document doc = new Document();
+      doc.add(new StringField("key", "value1", Field.Store.YES));
+      writer.addDocument(doc);
+
+      doc = new Document();
+      doc.add(new StringField("key", "value2", Field.Store.YES));
+      writer.addDocument(doc);
+
+      writer.commit();
+
+      IndexCommit ic1 = snapshotter.snapshot();
+
+      doc = new Document();
+      doc.add(new StringField("key", "value3", Field.Store.YES));
+      writer.updateDocument(new Term("key", "value1"), doc);
+
+      DirectoryReader latest = DirectoryReader.open(writer);
+      assertEquals(2, latest.leaves().size());
+
+      DirectoryReader oldest = DirectoryReader.openIfChanged(latest, ic1, executorService);
+
+      assertEquals(2, oldest.numDocs());
+      assertFalse(oldest.hasDeletions());
+
+      snapshotter.release(ic1);
+      assertEquals(1, oldest.leaves().size());
+
+      assertSame(
+          latest.leaves().get(0).reader().getCoreCacheHelper().getKey(),
+          oldest.leaves().get(0).reader().getCoreCacheHelper().getKey());
+
+      latest.close();
+      oldest.close();
+      writer.close();
+      dir.close();
+    } finally {
+      executorService.shutdown();
+    }
+  }
+
+  public void testNRTMupdatesWithExecutor() throws Exception {
+    Directory dir = newDirectory();
+    final ExecutorService executorService =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReaderReopen"));
+    try {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      SnapshotDeletionPolicy snapshotter =
+          new SnapshotDeletionPolicy(new KeepOnlyLastCommitDeletionPolicy());
+      iwc.setIndexDeletionPolicy(snapshotter);
+      IndexWriter writer = new IndexWriter(dir, iwc);
+      writer.commit();
+
+      Document doc = new Document();
+      doc.add(new StringField("key", "value1", Field.Store.YES));
+      doc.add(new NumericDocValuesField("dv", 1));
+      writer.addDocument(doc);
+
+      writer.commit();
+
+      IndexCommit ic1 = snapshotter.snapshot();
+
+      writer.updateNumericDocValue(new Term("key", "value1"), "dv", 2);
+
+      writer.commit();
+
+      IndexCommit ic2 = snapshotter.snapshot();
+      DirectoryReader latest = DirectoryReader.open(ic2, executorService);
+      assertEquals(1, latest.leaves().size());
+
+      DirectoryReader oldest = DirectoryReader.openIfChanged(latest, ic1, executorService);
+      assertEquals(1, oldest.leaves().size());
+
+      assertSame(
+          latest.leaves().get(0).reader().getCoreCacheHelper().getKey(),
+          oldest.leaves().get(0).reader().getCoreCacheHelper().getKey());
+
+      NumericDocValues values = getOnlyLeafReader(oldest).getNumericDocValues("dv");
+      assertEquals(0, values.nextDoc());
+      assertEquals(1, values.longValue());
+
+      values = getOnlyLeafReader(latest).getNumericDocValues("dv");
+      assertEquals(0, values.nextDoc());
+      assertEquals(2, values.longValue());
+
+      latest.close();
+      oldest.close();
+
+      snapshotter.release(ic1);
+      snapshotter.release(ic2);
+      writer.close();
+      dir.close();
+    } finally {
+      executorService.shutdown();
+    }
+  }
+
+  public void testNRTMupdates2WithExecutor() throws Exception {
+    Directory dir = newDirectory();
+    final ExecutorService executorService =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReaderReopen"));
+    try {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      SnapshotDeletionPolicy snapshotter =
+          new SnapshotDeletionPolicy(new KeepOnlyLastCommitDeletionPolicy());
+      iwc.setIndexDeletionPolicy(snapshotter);
+      IndexWriter writer = new IndexWriter(dir, iwc);
+      writer.commit();
+
+      Document doc = new Document();
+      doc.add(new StringField("key", "value1", Field.Store.YES));
+      doc.add(new NumericDocValuesField("dv", 1));
+      writer.addDocument(doc);
+
+      writer.commit();
+
+      IndexCommit ic1 = snapshotter.snapshot();
+
+      writer.updateNumericDocValue(new Term("key", "value1"), "dv", 2);
+
+      DirectoryReader latest = DirectoryReader.open(writer);
+      assertEquals(1, latest.leaves().size());
+
+      DirectoryReader oldest = DirectoryReader.openIfChanged(latest, ic1, executorService);
+      assertEquals(1, oldest.leaves().size());
+
+      assertSame(
+          latest.leaves().get(0).reader().getCoreCacheHelper().getKey(),
+          oldest.leaves().get(0).reader().getCoreCacheHelper().getKey());
+
+      NumericDocValues values = getOnlyLeafReader(oldest).getNumericDocValues("dv");
+      assertEquals(0, values.nextDoc());
+      assertEquals(1, values.longValue());
+
+      values = getOnlyLeafReader(latest).getNumericDocValues("dv");
+      assertEquals(0, values.nextDoc());
+      assertEquals(2, values.longValue());
+
+      latest.close();
+      oldest.close();
+
+      snapshotter.release(ic1);
+      writer.close();
+      dir.close();
+    } finally {
+      executorService.shutdown();
+    }
+  }
+
+  public void testDeleteIndexFilesWhileReaderStillOpenWithExecutor() throws Exception {
+    Directory dir = new ByteBuffersDirectory();
+    final ExecutorService executorService =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReaderReopen"));
+    try {
+      IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+      Document doc = new Document();
+      doc.add(newStringField("field", "value", Field.Store.NO));
+      w.addDocument(doc);
+      w.close();
+
+      DirectoryReader r = DirectoryReader.open(dir, executorService);
+
+      for (String file : dir.listAll()) {
+        dir.deleteFile(file);
+      }
+
+      w =
+          new IndexWriter(
+              dir,
+              new IndexWriterConfig(new MockAnalyzer(random()))
+                  .setMergePolicy(NoMergePolicy.INSTANCE));
+      doc = new Document();
+      doc.add(newStringField("field", "value", Field.Store.NO));
+      w.addDocument(doc);
+
+      doc = new Document();
+      doc.add(newStringField("field", "value2", Field.Store.NO));
+      w.addDocument(doc);
+
+      w.commit();
+
+      w.deleteDocuments(new Term("field", "value2"));
+
+      w.addDocument(doc);
+
+      w.close();
+
+      expectThrows(
+          IllegalStateException.class,
+          () -> {
+            DirectoryReader.openIfChanged(r, executorService);
+          });
+
+      r.close();
+      dir.close();
+    } finally {
+      executorService.shutdown();
+    }
+  }
+
+  public void testReuseUnchangedLeafReaderOnDVUpdateWithExecutor() throws IOException {
+    Directory dir = newDirectory();
+    final ExecutorService executorService =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReaderReopen"));
+    try {
+      IndexWriterConfig indexWriterConfig = newIndexWriterConfig();
+      indexWriterConfig.setMergePolicy(NoMergePolicy.INSTANCE);
+      IndexWriter writer = new IndexWriter(dir, indexWriterConfig);
+
+      Document doc = new Document();
+      doc.add(new StringField("id", "1", Field.Store.YES));
+      doc.add(new StringField("version", "1", Field.Store.YES));
+      doc.add(new NumericDocValuesField("some_docvalue", 2));
+      writer.addDocument(doc);
+      doc = new Document();
+      doc.add(new StringField("id", "2", Field.Store.YES));
+      doc.add(new StringField("version", "1", Field.Store.YES));
+      writer.addDocument(doc);
+      writer.commit();
+      DirectoryReader reader = DirectoryReader.open(dir, executorService);
+      assertEquals(2, reader.numDocs());
+      assertEquals(2, reader.maxDoc());
+      assertEquals(0, reader.numDeletedDocs());
+
+      doc = new Document();
+      doc.add(new StringField("id", "1", Field.Store.YES));
+      doc.add(new StringField("version", "2", Field.Store.YES));
+      writer.updateDocValues(new Term("id", "1"), new NumericDocValuesField("some_docvalue", 1));
+      writer.commit();
+      DirectoryReader newReader = DirectoryReader.openIfChanged(reader, executorService);
+      assertNotSame(newReader, reader);
+      reader.close();
+      reader = newReader;
+      assertEquals(2, reader.numDocs());
+      assertEquals(2, reader.maxDoc());
+      assertEquals(0, reader.numDeletedDocs());
+
+      doc = new Document();
+      doc.add(new StringField("id", "3", Field.Store.YES));
+      doc.add(new StringField("version", "3", Field.Store.YES));
+      writer.updateDocument(new Term("id", "3"), doc);
+      writer.commit();
+
+      newReader = DirectoryReader.openIfChanged(reader, executorService);
+      assertNotSame(newReader, reader);
+      assertEquals(2, newReader.getSequentialSubReaders().size());
+      assertEquals(1, reader.getSequentialSubReaders().size());
+      assertSame(
+          reader.getSequentialSubReaders().get(0), newReader.getSequentialSubReaders().get(0));
+      reader.close();
+      reader = newReader;
+      assertEquals(3, reader.numDocs());
+      assertEquals(3, reader.maxDoc());
+      assertEquals(0, reader.numDeletedDocs());
+      IOUtils.close(reader, writer, dir);
+    } finally {
+      executorService.shutdown();
+    }
   }
 }

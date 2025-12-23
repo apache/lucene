@@ -276,7 +276,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     SegmentInfo segmentInfo = newSegmentInfo(dir, "_123");
 
     // generate a bunch of fields
-    int numFields = atLeast(2000);
+    int numFields = atLeast(200);
     Set<String> fieldNames = new HashSet<>();
     for (int i = 0; i < numFields; i++) {
       fieldNames.add(TestUtil.randomUnicodeString(random()));

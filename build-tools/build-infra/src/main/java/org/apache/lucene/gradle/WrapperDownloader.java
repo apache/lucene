@@ -40,11 +40,23 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
- * Standalone class that can be used to download a gradle-wrapper.jar
+ * Standalone class used to download the {@code gradle-wrapper.jar}.
  *
- * <p>Has no dependencies outside of standard java libraries
+ * <p>Ensure this class has no dependencies outside of standard java libraries as it's used direct
  */
 public class WrapperDownloader {
+  /**
+   * Copied to keep the class isolated from any other classes.
+   *
+   * @see "https://github.com/apache/lucene/issues/15399"
+   */
+  @Retention(RetentionPolicy.CLASS)
+  @Target({ElementType.CONSTRUCTOR, ElementType.FIELD, ElementType.METHOD, ElementType.TYPE})
+  private @interface SuppressForbidden {
+    /** A reason for suppressing should always be given. */
+    String reason();
+  }
+
   public static void main(String[] args) {
     if (args.length != 1) {
       System.err.println("Usage: java WrapperDownloader.java <destination>");
@@ -62,8 +74,8 @@ public class WrapperDownloader {
 
   public static void checkVersion() {
     int major = Runtime.version().feature();
-    if (major != 24) {
-      throw new IllegalStateException("java version must be 24, your version: " + major);
+    if (major != 25) {
+      throw new IllegalStateException("java version must be 25, your version: " + major);
     }
   }
 
@@ -213,7 +225,7 @@ public class WrapperDownloader {
     }
   }
 
-  @SuppressForbidden(reason = "Correct use of thread.sleep.")
+  @SuppressForbidden(reason = "Valid use of thread.sleep.")
   private static void sleep(long millis) throws InterruptedException {
     Thread.sleep(millis);
   }
@@ -231,12 +243,5 @@ public class WrapperDownloader {
       throw new IOException(
           "Could not compute digest of file: " + path + " (" + e.getMessage() + ")");
     }
-  }
-
-  @Retention(RetentionPolicy.CLASS)
-  @Target({ElementType.CONSTRUCTOR, ElementType.FIELD, ElementType.METHOD, ElementType.TYPE})
-  public @interface SuppressForbidden {
-    /** A reason for suppressing should always be given. */
-    String reason();
   }
 }

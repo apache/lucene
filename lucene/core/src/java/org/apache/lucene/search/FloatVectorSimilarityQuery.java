@@ -24,7 +24,6 @@ import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.knn.KnnCollectorManager;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
 
 /**
@@ -111,7 +110,7 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
   @SuppressWarnings("resource")
   protected TopDocs approximateSearch(
       LeafReaderContext context,
-      Bits acceptDocs,
+      AcceptDocs acceptDocs,
       int visitLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {

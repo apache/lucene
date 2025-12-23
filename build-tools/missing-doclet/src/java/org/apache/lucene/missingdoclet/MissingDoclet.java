@@ -278,7 +278,7 @@ public class MissingDoclet extends StandardDoclet {
    * elements. UweSays: It should not happen but it happens!
    */
   private boolean isSyntheticMethod(Element element) {
-    // exclude all not explicitely declared methods
+    // exclude all not explicitly declared methods
     if (elementUtils.getOrigin(element) != Origin.EXPLICIT) {
       return true;
     }

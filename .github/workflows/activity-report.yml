@@ -1,5 +1,7 @@
 name: "Generate project activity report"
 
+permissions: {}
+
 on:
   workflow_dispatch:
     inputs:
@@ -17,16 +19,24 @@ on:
 
 jobs:
   generate:
+    name: Project Activity
     timeout-minutes: 15
+    permissions:
+      issues: read # inspects issues and reports on them
+      pull-requests: read # inspects PRs and reports on them
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: generate report
+      - name: Generate report
+        run: |
+          bash ./.github/workflows/activity-report.sh >> "$GITHUB_STEP_SUMMARY"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          SINCE="${{ inputs.since }}" UNTIL="${{ inputs.until }}" bash ./.github/workflows/activity-report.sh >> $GITHUB_STEP_SUMMARY
+          SINCE: ${{ inputs.since }}
+          UNTIL: ${{ inputs.until }}

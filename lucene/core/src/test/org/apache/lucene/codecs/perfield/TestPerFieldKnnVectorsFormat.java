@@ -44,6 +44,7 @@ import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
@@ -94,12 +95,16 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
                 "missing_field",
                 new float[] {1, 2, 3},
                 10,
-                reader.getLiveDocs(),
+                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxDoc()),
                 Integer.MAX_VALUE);
         assertEquals(0, hits.scoreDocs.length);
         hits =
             reader.searchNearestVectors(
-                "id", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
+                "id",
+                new float[] {1, 2, 3},
+                10,
+                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxDoc()),
+                Integer.MAX_VALUE);
         assertEquals(0, hits.scoreDocs.length);
       }
     }
@@ -146,12 +151,20 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         LeafReader reader = ireader.leaves().get(0).reader();
         TopDocs hits1 =
             reader.searchNearestVectors(
-                "field1", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
+                "field1",
+                new float[] {1, 2, 3},
+                10,
+                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxDoc()),
+                Integer.MAX_VALUE);
         assertEquals(1, hits1.scoreDocs.length);
 
         TopDocs hits2 =
             reader.searchNearestVectors(
-                "field2", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
+                "field2",
+                new float[] {1, 2, 3},
+                10,
+                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxDoc()),
+                Integer.MAX_VALUE);
         assertEquals(1, hits2.scoreDocs.length);
       }
     }

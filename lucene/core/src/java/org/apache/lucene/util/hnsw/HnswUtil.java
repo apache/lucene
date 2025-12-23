@@ -25,7 +25,6 @@ import java.util.Deque;
 import java.util.List;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
@@ -91,7 +90,7 @@ public class HnswUtil {
     HnswGraph.NodesIterator entryPoints;
     // System.out.println("components level=" + level);
     if (level == hnsw.numLevels() - 1) {
-      entryPoints = new HnswGraph.ArrayNodesIterator(new int[] {hnsw.entryNode()}, 1);
+      entryPoints = new HnswGraph.ArrayNodesIterator(new int[] {hnsw.entryNode()});
     } else {
       entryPoints = hnsw.getNodesOnLevel(level + 1);
     }
@@ -236,8 +235,7 @@ public class HnswUtil {
     for (LeafReaderContext ctx : reader.leaves()) {
       CodecReader codecReader = (CodecReader) FilterLeafReader.unwrap(ctx.reader());
       KnnVectorsReader vectorsReader =
-          ((PerFieldKnnVectorsFormat.FieldsReader) codecReader.getVectorReader())
-              .getFieldReader(vectorField);
+          codecReader.getVectorReader().unwrapReaderForField(vectorField);
       if (vectorsReader instanceof HnswGraphProvider) {
         HnswGraph graph = ((HnswGraphProvider) vectorsReader).getGraph(vectorField);
         if (isRooted(graph) == false) {

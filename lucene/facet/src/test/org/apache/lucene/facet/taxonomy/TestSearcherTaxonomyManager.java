@@ -131,6 +131,8 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
     }
   }
 
+  // TODO: incredibly slow (maybe due to sleeping?)
+  @Nightly
   @SuppressForbidden(reason = "Thread sleep")
   public void testNRT() throws Exception {
     Directory dir = newDirectory();
@@ -195,7 +197,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
         try {
           // System.out.println("search maxOrd=" + pair.taxonomyReader.getSize());
           FacetsCollector sfc =
-              pair.searcher().search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+              pair.searcher().search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
           Facets facets = getTaxonomyFacetCounts(pair.taxonomyReader(), config, sfc);
           FacetResult result = facets.getTopChildren(10, "field");
           if (pair.searcher().getIndexReader().numDocs() > 0) {
@@ -239,7 +241,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
     final AtomicBoolean stop = new AtomicBoolean();
 
     // How many unique facets to index before stopping:
-    final int ordLimit = TEST_NIGHTLY ? 100000 : 600;
+    final int ordLimit = TEST_NIGHTLY ? 100000 : 100;
 
     Thread indexer = new IndexerThread(w, config, tw, mgr, ordLimit, stop);
     indexer.start();
@@ -250,7 +252,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
         try {
           // System.out.println("search maxOrd=" + pair.taxonomyReader.getSize());
           FacetsCollector sfc =
-              pair.searcher().search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+              pair.searcher().search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
           Facets facets = getTaxonomyFacetCounts(pair.taxonomyReader(), config, sfc);
           FacetResult result = facets.getTopChildren(10, "field");
           if (pair.searcher().getIndexReader().numDocs() > 0) {

@@ -346,25 +346,12 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
             input);
       }
 
-      if (indexCreatedVersion < minSupportedMajorVersion) {
-        throw new IndexFormatTooOldException(
-            input,
-            "This index was initially created with Lucene "
-                + indexCreatedVersion
-                + ".x while the current version is "
-                + Version.LATEST
-                + " and Lucene only supports reading"
-                + (minSupportedMajorVersion == Version.MIN_SUPPORTED_MAJOR
-                    ? " the current and previous major versions"
-                    : " from version " + minSupportedMajorVersion + " upwards"));
-      }
-
       SegmentInfos infos = new SegmentInfos(indexCreatedVersion);
       infos.id = id;
       infos.generation = generation;
       infos.lastGeneration = generation;
       infos.luceneVersion = luceneVersion;
-      parseSegmentInfos(directory, input, infos, format);
+      parseSegmentInfos(directory, input, infos, format, minSupportedMajorVersion);
       return infos;
 
     } catch (Throwable t) {
@@ -380,7 +367,12 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   }
 
   private static void parseSegmentInfos(
-      Directory directory, DataInput input, SegmentInfos infos, int format) throws IOException {
+      Directory directory,
+      DataInput input,
+      SegmentInfos infos,
+      int format,
+      int minSupportedMajorVersion)
+      throws IOException {
     infos.version = CodecUtil.readBELong(input);
     // System.out.println("READ sis version=" + infos.version);
     infos.counter = input.readVLong();
@@ -397,13 +389,14 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     }
 
     long totalDocs = 0;
+
     for (int seg = 0; seg < numSegments; seg++) {
       String segName = input.readString();
       byte[] segmentID = new byte[StringHelper.ID_LENGTH];
       input.readBytes(segmentID, 0, segmentID.length);
       Codec codec = readCodec(input);
       SegmentInfo info =
-          codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.DEFAULT);
+          codec.segmentInfoFormat().read(directory, segName, segmentID, IOContext.READONCE);
       info.setCodec(codec);
       totalDocs += info.maxDoc();
       long delGen = CodecUtil.readBELong(input);
@@ -490,6 +483,30 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
                 + infos.indexCreatedVersionMajor,
             input);
       }
+
+      int createdOrSegmentMinVersion =
+          info.getMinVersion() == null
+              ? infos.indexCreatedVersionMajor
+              : info.getMinVersion().major;
+
+      // version >=7 are expected to record minVersion
+      if (info.getMinVersion() == null || info.getMinVersion().major < minSupportedMajorVersion) {
+        throw new IndexFormatTooOldException(
+            input,
+            "Index has segments derived from Lucene version "
+                + createdOrSegmentMinVersion
+                + ".x and is not supported by Lucene "
+                + Version.LATEST
+                + ". This Lucene version only supports indexes with major version "
+                + minSupportedMajorVersion
+                + " or later (found: "
+                + createdOrSegmentMinVersion
+                + ", minimum supported: "
+                + minSupportedMajorVersion
+                + "). To resolve this issue re-index your data using Lucene "
+                + minSupportedMajorVersion
+                + ".x or later.");
+      }
     }
 
     infos.userData = input.readMapOfStrings();
@@ -512,11 +529,13 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     } catch (IllegalArgumentException e) {
       // maybe it's an old default codec that moved
       if (name.startsWith("Lucene")) {
-        throw new IllegalArgumentException(
+        throw new IndexFormatTooOldException(
+            input,
             "Could not load codec '"
                 + name
-                + "'. Did you forget to add lucene-backward-codecs.jar?",
-            e);
+                + "'. "
+                + e.getMessage()
+                + ". Did you forget to add lucene-backward-codecs.jar?");
       }
       throw e;
     }
@@ -557,25 +576,20 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     generation = nextGeneration;
 
     IndexOutput segnOutput = null;
-    boolean success = false;
 
     try {
       segnOutput = directory.createOutput(segmentFileName, IOContext.DEFAULT);
       write(segnOutput);
       segnOutput.close();
       directory.sync(Collections.singleton(segmentFileName));
-      success = true;
-    } finally {
-      if (success) {
-        pendingCommit = true;
-      } else {
-        // We hit an exception above; try to close the file
-        // but suppress any exception:
-        IOUtils.closeWhileHandlingException(segnOutput);
-        // Try not to leave a truncated segments_N file in
-        // the index:
-        IOUtils.deleteFilesIgnoringExceptions(directory, segmentFileName);
-      }
+      pendingCommit = true;
+    } catch (Throwable t) {
+      // try to close the file but suppress any exception:
+      IOUtils.closeWhileSuppressingExceptions(t, segnOutput);
+      // Try not to leave a truncated segments_N file in
+      // the index:
+      IOUtils.deleteFilesSuppressingExceptions(t, directory, segmentFileName);
+      throw t;
     }
   }
 
@@ -933,7 +947,6 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     if (pendingCommit == false) {
       throw new IllegalStateException("prepareCommit was not called");
     }
-    boolean successRenameAndSync = false;
     final String dest;
     try {
       final String src =
@@ -942,20 +955,16 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       dir.rename(src, dest);
       try {
         dir.syncMetaData();
-        successRenameAndSync = true;
-      } finally {
-        if (successRenameAndSync == false) {
-          // at this point we already created the file but missed to sync directory let's also
-          // remove the
-          // renamed file
-          IOUtils.deleteFilesIgnoringExceptions(dir, dest);
-        }
+      } catch (Throwable t) {
+        // at this point we already created the file but missed to sync directory let's also
+        // remove the renamed file
+        IOUtils.deleteFilesSuppressingExceptions(t, dir, dest);
+        throw t;
       }
-    } finally {
-      if (successRenameAndSync == false) {
-        // deletes pending_segments_N:
-        rollbackCommit(dir);
-      }
+    } catch (Throwable t) {
+      // deletes pending_segments_N:
+      rollbackCommit(dir);
+      throw t;
     }
 
     pendingCommit = false;

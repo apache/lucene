@@ -36,13 +36,14 @@ import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.invocation.Gradle;
-import org.gradle.api.plugins.ExtraPropertiesExtension;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.Delete;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
+import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.testing.Test;
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat;
@@ -92,12 +93,14 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                           BuildOptionsPlugin.LOCAL_BUILD_OPTIONS_FILE + " file";
                     };
 
+                var seedValueProvider = testsSeedOption.asStringProvider();
+
                 task.doFirst(
                     t -> {
                       t.getLogger()
                           .lifecycle(
                               "Running tests with root randomization seed tests.seed="
-                                  + testsSeedOption.asStringProvider().get()
+                                  + seedValueProvider.get()
                                   + ", source: "
                                   + seedSource);
                     });
@@ -166,11 +169,14 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
             "tests.verbose",
             "Enables verbose test output mode (emits full test outputs immediately).",
             false);
+    optionsInheritedAsProperties.add("tests.verbose");
+
     Provider<Boolean> haltOnFailureOption =
         buildOptions.addBooleanOption(
-            "tests.haltonfailure", "Halt processing early on test failure.", false);
+            "tests.haltonfailure", "Stop processing on test failures.", true);
     Provider<Boolean> failFastOption =
-        buildOptions.addBooleanOption("tests.failfast", "Stop the build early on failure.", false);
+        buildOptions.addBooleanOption(
+            "tests.failfast", "Stop the build on the first failed test.", false);
     Provider<Boolean> rerunOption =
         buildOptions.addBooleanOption(
             "tests.rerun",
@@ -186,9 +192,7 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                 .getProviders()
                 .provider(
                     () -> {
-                      return ((int)
-                          Math.max(
-                              1, Math.min(Runtime.getRuntime().availableProcessors() / 2.0, 4.0)));
+                      return Math.min(12, Runtime.getRuntime().availableProcessors());
                     }));
 
     // GITHUB#13986: Allow easier configuration of the Panama Vectorization provider with newer Java
@@ -221,9 +225,24 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
     buildOptions.addIntOption("tests.timeoutSuite", "Timeout (in millis) for an entire suite.");
     optionsInheritedAsProperties.add("tests.timeoutSuite");
 
+    buildOptions.addIntOption(
+        "tests.random.maxcalls",
+        "Max number of calls to Randoms returned by LuceneTestCase.random()");
+    optionsInheritedAsProperties.add("tests.random.maxcalls");
+
+    buildOptions.addIntOption(
+        "tests.random.maxacquires", "Max number of per-test calls to LuceneTestCase.random()");
+    optionsInheritedAsProperties.add("tests.random.maxacquires");
+
     Provider<Boolean> assertsOption =
         buildOptions.addBooleanOption(
-            "tests.asserts", "Enables or disables assertions mode.", true);
+            "tests.asserts",
+            "Enables or disables assertions mode.",
+            project.provider(
+                () -> {
+                  // Run with assertions for ~75% of all seeds.
+                  return new Random(buildGlobals.getProjectSeedAsLong().get()).nextInt(100) > 25;
+                }));
     optionsInheritedAsProperties.add("tests.asserts");
 
     buildOptions.addBooleanOption(
@@ -336,10 +355,11 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
     boolean incubatorJavaVersion =
         Set.of("21", "22", "23", "24", "25").contains(runtimeJava.getMajorVersion());
 
+    TaskContainer tasks = project.getTasks();
+
     // if the vector module is in incubator, pass lint flags to suppress excessive warnings.
     if (incubatorJavaVersion) {
-      project
-          .getTasks()
+      tasks
           .withType(JavaCompile.class)
           .configureEach(
               task -> {
@@ -347,13 +367,32 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
               });
     }
 
-    project
-        .getTasks()
+    var wipeOutputsTask =
+        tasks.register(
+            "cleanTestOutputs",
+            Delete.class,
+            t -> {
+              for (var testTask : tasks.withType(Test.class)) {
+                t.delete(
+                    testTask
+                        .getReports()
+                        .getJunitXml()
+                        .getOutputLocation()
+                        .dir("outputs")
+                        .get()
+                        .getAsFile());
+              }
+            });
+
+    tasks
         .withType(Test.class)
         .configureEach(
             task -> {
               // Running any test task should first display the root randomization seed.
               task.dependsOn(":showTestsSeed");
+
+              // Wipe any existing outputs before we run.
+              task.dependsOn(wipeOutputsTask);
 
               File testOutputsDir =
                   task.getReports()
@@ -364,8 +403,9 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                       .getAsFile();
 
               task.getExtensions()
-                  .getByType(ExtraPropertiesExtension.class)
-                  .set("testOutputsDir", testOutputsDir);
+                  .create("testOutputsExtension", TestOutputsExtension.class)
+                  .getTestOutputsDir()
+                  .set(testOutputsDir);
 
               // LUCENE-9660: Make it possible to always rerun tests, even if they're incrementally
               // up-to-date.
@@ -431,14 +471,23 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
 
               var loggingFileProvider =
                   project.getObjects().newInstance(LoggingFileArgumentProvider.class);
-              Path loggingConfigFile =
-                  super.gradlePluginResource(project, "testing/logging.properties");
+              Path loggingConfigFile = gradlePluginResource(project, "testing/logging.properties");
               loggingFileProvider.getLoggingConfigFile().set(loggingConfigFile.toFile());
               loggingFileProvider.getTempDir().set(tmpDirOption.get());
               task.getJvmArgumentProviders().add(loggingFileProvider);
 
               task.systemProperty("java.awt.headless", "true");
               task.systemProperty("jdk.map.althashing.threshold", "0");
+
+              // disallow any Java serialization without a filter
+              if (project.getPath().endsWith(".tests")) {
+                // LUCENE-10301: for now, do not use the serialization filter for modular tests
+                // (test framework is not available).
+              } else if (project.getPath().startsWith(":lucene")) {
+                task.systemProperty(
+                    "jdk.serialFilterFactory",
+                    "org.apache.lucene.tests.util.TestObjectInputFilterFactory");
+              }
 
               if (!Os.isFamily(Os.FAMILY_WINDOWS)) {
                 task.systemProperty("java.security.egd", "file:/dev/./urandom");
@@ -482,17 +531,11 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
 
               // Disable automatic test class detection, rely on class names only. This is needed
               // for testing
-              // against JDKs where the bytecode is unparseable by Gradle, for example.
+              // against JDKs where the bytecode is unparsable by Gradle, for example.
               // We require all tests to start with Test*, this simplifies include patterns greatly.
               task.setScanForTestClasses(false);
               task.include("**/Test*.class");
               task.exclude("**/*$*");
-
-              // Set up custom test output handler.
-              task.doFirst(
-                  _ -> {
-                    project.delete(testOutputsDir);
-                  });
 
               var spillDir = task.getTemporaryDir().toPath();
               var listener =
@@ -511,6 +554,10 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                             testsTmpDir);
                   });
             });
+  }
+
+  public abstract static class TestOutputsExtension {
+    abstract DirectoryProperty getTestOutputsDir();
   }
 
   public abstract static class LoggingFileArgumentProvider implements CommandLineArgumentProvider {
@@ -543,20 +590,14 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
     Provider<Boolean> defaultVectorizationOption =
         buildOptions.addBooleanOption(
             "tests.defaultvectorization",
-            "Uses defaults for running tests with correct JVM settings to test Panama vectorization (tests.jvmargs, tests.vectorsize, tests.forceintegervectors).",
+            "Uses defaults for running tests with correct JVM settings to test Panama vectorization (tests.jvmargs, tests.vectorsize).",
             false);
     buildOptions.addOption(
         "tests.vectorsize",
         "Sets preferred vector size in bits.",
         project.provider(() -> defaultVectorizationOption.get() ? "default" : randomVectorSize));
 
-    buildOptions.addBooleanOption(
-        "tests.forceintegervectors",
-        "Forces use of integer vectors even when slow.",
-        project.provider(
-            () -> defaultVectorizationOption.get() ? false : (randomVectorSize != "default")));
-
-    optionsInheritedAsProperties.addAll(List.of("tests.vectorsize", "tests.forceintegervectors"));
+    optionsInheritedAsProperties.add("tests.vectorsize");
 
     return defaultVectorizationOption.get();
   }

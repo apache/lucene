@@ -313,9 +313,7 @@ public class Highlighter {
         try {
           tokenStream.end();
           tokenStream.close();
-        } catch (
-            @SuppressWarnings("unused")
-            Exception e) {
+        } catch (Exception _) {
         }
       }
     }

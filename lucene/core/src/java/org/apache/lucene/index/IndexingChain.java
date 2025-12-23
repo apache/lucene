@@ -153,7 +153,7 @@ final class IndexingChain implements Accountable {
       @Override
       public NumericDocValues getNumericDocValues(String field) {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.NUMERIC) {
@@ -165,7 +165,7 @@ final class IndexingChain implements Accountable {
       @Override
       public BinaryDocValues getBinaryDocValues(String field) {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.BINARY) {
@@ -177,7 +177,7 @@ final class IndexingChain implements Accountable {
       @Override
       public SortedDocValues getSortedDocValues(String field) throws IOException {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.SORTED) {
@@ -189,7 +189,7 @@ final class IndexingChain implements Accountable {
       @Override
       public SortedNumericDocValues getSortedNumericDocValues(String field) throws IOException {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.SORTED_NUMERIC) {
@@ -201,7 +201,7 @@ final class IndexingChain implements Accountable {
       @Override
       public SortedSetDocValues getSortedSetDocValues(String field) throws IOException {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.SORTED_SET) {
@@ -320,8 +320,7 @@ final class IndexingChain implements Accountable {
 
     t0 = System.nanoTime();
     Map<String, TermsHashPerField> fieldsToFlush = new HashMap<>();
-    for (int i = 0; i < fieldHash.length; i++) {
-      PerField perField = fieldHash[i];
+    for (PerField perField : fieldHash) {
       while (perField != null) {
         if (perField.invertState != null) {
           fieldsToFlush.put(perField.fieldInfo.name, perField.termsHashPerField);
@@ -368,7 +367,6 @@ final class IndexingChain implements Accountable {
   /** Writes all buffered points. */
   private void writePoints(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
     PointsWriter pointsWriter = null;
-    boolean success = false;
     try {
       for (int i = 0; i < fieldHash.length; i++) {
         PerField perField = fieldHash[i];
@@ -396,21 +394,17 @@ final class IndexingChain implements Accountable {
       }
       if (pointsWriter != null) {
         pointsWriter.finish();
+        pointsWriter.close();
       }
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(pointsWriter);
-      } else {
-        IOUtils.closeWhileHandlingException(pointsWriter);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, pointsWriter);
+      throw t;
     }
   }
 
   /** Writes all buffered doc values (called from {@link #flush}). */
   private void writeDocValues(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
     DocValuesConsumer dvConsumer = null;
-    boolean success = false;
     try {
       for (int i = 0; i < fieldHash.length; i++) {
         PerField perField = fieldHash[i];
@@ -450,13 +444,12 @@ final class IndexingChain implements Accountable {
       // null/"" depending on how docs landed in segments?
       // but we can't detect all cases, and we should leave
       // this behavior undefined. dv is not "schemaless": it's column-stride.
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(dvConsumer);
-      } else {
-        IOUtils.closeWhileHandlingException(dvConsumer);
+      if (dvConsumer != null) {
+        dvConsumer.close();
       }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, dvConsumer);
+      throw t;
     }
 
     if (state.fieldInfos.hasDocValues() == false) {
@@ -473,7 +466,6 @@ final class IndexingChain implements Accountable {
   }
 
   private void writeNorms(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
-    boolean success = false;
     NormsConsumer normsConsumer = null;
     try {
       if (state.fieldInfos.hasNorms()) {
@@ -494,13 +486,12 @@ final class IndexingChain implements Accountable {
           }
         }
       }
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(normsConsumer);
-      } else {
-        IOUtils.closeWhileHandlingException(normsConsumer);
+      if (normsConsumer != null) {
+        normsConsumer.close();
       }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, normsConsumer);
+      throw t;
     }
   }
 
@@ -1582,7 +1573,7 @@ final class IndexingChain implements Accountable {
    */
   <T extends IndexableField> ReservedField<T> markAsReserved(T field) {
     getOrAddPerField(field.name(), true);
-    return new ReservedField<T>(field);
+    return new ReservedField<>(field);
   }
 
   static final class ReservedField<T extends IndexableField> implements IndexableField {

@@ -48,7 +48,7 @@ import org.apache.lucene.internal.vectorization.VectorizationProvider;
  */
 public final class VectorUtil {
 
-  private static final float EPSILON = 1e-4f;
+  public static final float EPSILON = 1e-4f;
 
   private static final VectorUtilSupport IMPL =
       VectorizationProvider.getInstance().getVectorUtilSupport();
@@ -65,7 +65,14 @@ public final class VectorUtil {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
     float r = IMPL.dotProduct(a, b);
-    assert Float.isFinite(r);
+    assert Float.isFinite(r)
+        : "not finite: "
+            + r
+            + " from <"
+            + java.util.Arrays.toString(a)
+            + ","
+            + java.util.Arrays.toString(b)
+            + ">";
     return r;
   }
 
@@ -113,6 +120,45 @@ public final class VectorUtil {
     return IMPL.squareDistance(a, b);
   }
 
+  /** Returns the sum of squared differences between two uint4 (values between [0,15]) vectors. */
+  public static int int4SquareDistance(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.int4SquareDistance(a, b);
+  }
+
+  /**
+   * Returns the sum of squared differences between two uint4 (values between [0,15]) vectors. The
+   * second vector is considered "packed" (i.e. every byte representing two values).
+   */
+  public static int int4SquareDistanceSinglePacked(byte[] unpacked, byte[] packed) {
+    if (packed.length != ((unpacked.length + 1) >> 1)) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + unpacked.length + "!= 2 * " + packed.length);
+    }
+    return IMPL.int4SquareDistanceSinglePacked(unpacked, packed);
+  }
+
+  /**
+   * Returns the sum of squared differences between two uint4 (values between [0,15]) vectors. Both
+   * vectors are considered "packed" (i.e. every byte representing two values).
+   */
+  public static int int4SquareDistanceBothPacked(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.int4SquareDistanceBothPacked(a, b);
+  }
+
+  /** Returns the sum of squared differences of the two vectors where each byte is unsigned */
+  public static int uint8SquareDistance(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.uint8SquareDistance(a, b);
+  }
+
   /**
    * Modifies the argument to be unit length, dividing by its l2-norm. IllegalArgumentException is
    * thrown for zero vectors.
@@ -138,23 +184,7 @@ public final class VectorUtil {
    * @throws IllegalArgumentException when the vector is all zero and throwOnZero is true
    */
   public static float[] l2normalize(float[] v, boolean throwOnZero) {
-    double l1norm = IMPL.dotProduct(v, v);
-    if (l1norm == 0) {
-      if (throwOnZero) {
-        throw new IllegalArgumentException("Cannot normalize a zero-length vector");
-      } else {
-        return v;
-      }
-    }
-    if (Math.abs(l1norm - 1.0d) <= EPSILON) {
-      return v;
-    }
-    int dim = v.length;
-    double l2norm = Math.sqrt(l1norm);
-    for (int i = 0; i < dim; i++) {
-      v[i] /= (float) l2norm;
-    }
-    return v;
+    return IMPL.l2normalize(v, throwOnZero);
   }
 
   /**
@@ -183,15 +213,36 @@ public final class VectorUtil {
     return IMPL.dotProduct(a, b);
   }
 
+  /**
+   * Dot product over bytes assuming that the values are actually unsigned.
+   *
+   * @param a uint8 byte vector
+   * @param b another uint8 byte vector of the same dimension
+   * @return the value of the dot product of the two vectors
+   */
+  public static int uint8DotProduct(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.uint8DotProduct(a, b);
+  }
+
+  /**
+   * Dot product computed over uint4 (values between [0,15]) bytes.
+   *
+   * @param a bytes containing a vector
+   * @param b bytes containing another vector, of the same dimension
+   * @return the value of the dot product of the two vectors
+   */
   public static int int4DotProduct(byte[] a, byte[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return IMPL.int4DotProduct(a, false, b, false);
+    return IMPL.int4DotProduct(a, b);
   }
 
   /**
-   * Dot product computed over int4 (values between [0,15]) bytes. The second vector is considered
+   * Dot product computed over uint4 (values between [0,15]) bytes. The second vector is considered
    * "packed" (i.e. every byte representing two values). The following packing is assumed:
    *
    * <pre class="prettyprint lang-java">
@@ -205,12 +256,28 @@ public final class VectorUtil {
    * @param packed the packed vector, of length {@code (unpacked.length + 1) / 2}
    * @return the value of the dot product of the two vectors
    */
-  public static int int4DotProductPacked(byte[] unpacked, byte[] packed) {
+  public static int int4DotProductSinglePacked(byte[] unpacked, byte[] packed) {
     if (packed.length != ((unpacked.length + 1) >> 1)) {
       throw new IllegalArgumentException(
-          "vector dimensions differ: " + unpacked.length + "!= 2 * " + packed.length);
+          "vector dimensions differ: " + unpacked.length + " != 2 * " + packed.length);
     }
-    return IMPL.int4DotProduct(unpacked, false, packed, true);
+    return IMPL.int4DotProductSinglePacked(unpacked, packed);
+  }
+
+  /**
+   * Dot product computed over uint4 (values between [0,15]) bytes. Both vectors are considered
+   * "packed" (i.e. every byte representing two values).
+   *
+   * @param a bytes containing a packed vector
+   * @param b bytes containing another packed vector, of the same dimension
+   * @return the value of the dot product of the two vectors
+   */
+  public static int int4DotProductBothPacked(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + a.length + " != " + b.length);
+    }
+    return IMPL.int4DotProductBothPacked(a, b);
   }
 
   /**
@@ -309,6 +376,33 @@ public final class VectorUtil {
   }
 
   /**
+   * Converts a dot product or cosine similarity value to a normalized score in the [0, 1] range.
+   *
+   * <p>This transformation is necessary when consistent non-negative scores are required. It maps
+   * input values from [-1, 1] to [0, 1] using the formula: (1 + value) / 2. Any result below 0 is
+   * clamped to 0 for numerical safety.
+   *
+   * @param value the similarity value (dot product or cosine), typically in the range [-1, 1]
+   * @return a normalized score between 0 and 1
+   */
+  public static float normalizeToUnitInterval(float value) {
+    return Math.max((1 + value) / 2, 0);
+  }
+
+  /**
+   * Maps a non-negative squared distance to a similarity score in the range (0, 1].
+   *
+   * <p>Uses the transformation: {@code similarity = 1 / (1 + squaredDistance)}. Smaller distances
+   * yield scores closer to 1; larger distances approach 0.
+   *
+   * @param squaredDistance squared Euclidean distance (must be ≥ 0)
+   * @return similarity score in (0, 1]
+   */
+  public static float normalizeDistanceToUnitInterval(float squaredDistance) {
+    return 1.0f / (1.0f + squaredDistance);
+  }
+
+  /**
    * Checks if a float vector only has finite components.
    *
    * @param v bytes containing a vector
@@ -375,5 +469,36 @@ public final class VectorUtil {
       float maxQuantile) {
     return IMPL.recalculateScalarQuantizationOffset(
         vector, oldAlpha, oldMinQuantile, scale, alpha, minQuantile, maxQuantile);
+  }
+
+  /**
+   * filter both {@code docBuffer} and {@code scoreBuffer} with {@code minScoreInclusive}, each
+   * {@code docBuffer} and {@code scoreBuffer} of the same index forms a pair, pairs with score not
+   * greater than or equal to {@code minScoreInclusive} will be filtered out from the array.
+   *
+   * @param docBuffer doc buffer contains docs (or some other value forms a pair with {@code
+   *     scoreBuffer})
+   * @param scoreBuffer score buffer contains scores to be compared with {@code minScoreInclusive}
+   * @param minScoreInclusive minimal required score to not be filtered out
+   * @param upTo where the filter should end
+   * @return how many pairs left after filter
+   */
+  public static int filterByScore(
+      int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
+    if (docBuffer.length != scoreBuffer.length || docBuffer.length < upTo) {
+      throw new IllegalArgumentException(
+          "docBuffer and scoreBuffer should keep same length and at least as long as upTo");
+    }
+    return IMPL.filterByScore(docBuffer, scoreBuffer, minScoreInclusive, upTo);
+  }
+
+  /**
+   * Expands 64 integers in-place into a 256-element array by extracting individual bytes. Each
+   * 32-bit integer is split into 4 bytes. Only works on arrays with 256 length.
+   *
+   * @param arr the array to expand in-place
+   */
+  public static void expand8(int[] arr) {
+    IMPL.expand8(arr);
   }
 }

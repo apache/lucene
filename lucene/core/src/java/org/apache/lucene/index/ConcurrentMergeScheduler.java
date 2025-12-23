@@ -37,6 +37,7 @@ import org.apache.lucene.store.RateLimitedIndexOutput;
 import org.apache.lucene.store.RateLimiter;
 import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
@@ -176,9 +177,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         if (value != null) {
           coreCount = Integer.parseInt(value);
         }
-      } catch (
-          @SuppressWarnings("unused")
-          Throwable ignored) {
+      } catch (Throwable _) {
       }
 
       // If you are indexing at full throttle, how many merge threads do you need to keep up? It
@@ -497,9 +496,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         if (toSync != null) {
           try {
             toSync.join();
-          } catch (
-              @SuppressWarnings("unused")
-              InterruptedException ie) {
+          } catch (InterruptedException _) {
             // ignore this Exception, we will retry until all threads are dead
             interrupted = true;
           }
@@ -578,7 +575,6 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         return;
       }
 
-      boolean success = false;
       try {
         // OK to spawn a new merge thread to handle this
         // merge:
@@ -593,12 +589,9 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
         newMergeThread.start();
         updateMergeThreads();
-
-        success = true;
-      } finally {
-        if (!success) {
-          mergeSource.onMergeFinished(merge);
-        }
+      } catch (Throwable t) {
+        mergeSource.onMergeFinished(merge);
+        throw t;
       }
     }
   }
@@ -685,9 +678,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     // Let CMS run new merges if necessary:
     try {
       merge(mergeSource, MergeTrigger.MERGE_FINISHED);
-    } catch (
-        @SuppressWarnings("unused")
-        AlreadyClosedException ace) {
+    } catch (AlreadyClosedException _) {
       // OK
     } catch (IOException ioe) {
       throw new UncheckedIOException(ioe);
@@ -952,7 +943,13 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
     public CachedExecutor() {
       this.executor =
-          new ThreadPoolExecutor(0, 1024, 1L, TimeUnit.MINUTES, new SynchronousQueue<>());
+          new ThreadPoolExecutor(
+              0,
+              1024,
+              1L,
+              TimeUnit.MINUTES,
+              new SynchronousQueue<>(),
+              new NamedThreadFactory("CachedExecutor"));
     }
 
     void shutdown() {

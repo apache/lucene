@@ -21,17 +21,22 @@ import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin;
 import com.carrotsearch.randomizedtesting.SeedUtils;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.gradle.api.GradleException;
+import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.provider.Provider;
 
 /** Registers global build constants and extensions. */
 public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
-  private static Pattern VERSION_PATTERN =
+  private static final Pattern VERSION_PATTERN =
       Pattern.compile("^(?<baseVersion>(?<majorVersion>\\d+)\\.\\d+\\.\\d+)(-(.+))?");
 
   @Override
@@ -43,9 +48,9 @@ public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
     project.setVersion(luceneVersion);
 
     var tstamp = ZonedDateTime.now();
-    String buildDate = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(tstamp);
-    String buildTime = DateTimeFormatter.ofPattern("HH:mm:ss").format(tstamp);
-    String buildYear = DateTimeFormatter.ofPattern("yyyy").format(tstamp);
+    String buildDate = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ROOT).format(tstamp);
+    String buildTime = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.ROOT).format(tstamp);
+    String buildYear = DateTimeFormatter.ofPattern("yyyy", Locale.ROOT).format(tstamp);
 
     String baseVersion = getBaseVersion(luceneVersion);
     String majorVersion = getMajorVersion(luceneVersion);
@@ -54,17 +59,65 @@ public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
         System.getenv().keySet().stream()
             .anyMatch(key -> key.matches("(?i)((JENKINS|HUDSON)(_\\w+)?|CI)"));
 
+    // Set up build options for external tools.
+    var buildOptions = getBuildOptions(project);
+    buildOptions.addOption(
+        "lucene.tool.python3", "External python3 executable (path or name)", "python3");
+    buildOptions.addOption("lucene.tool.perl", "External perl executable (path or name)", "perl");
+    buildOptions.addOption("lucene.tool.git", "External git executable (path or name)", "git");
+
     // Pick the "root" seed from which everything else that is randomized is derived.
     Provider<String> rootSeedOption =
         getBuildOptions(project)
             .addOption(
                 "tests.seed",
                 "The \"root\" randomization seed for options and test parameters.",
-                project.provider(() -> String.format("%08X", new Random().nextLong())));
+                project.provider(
+                    () -> String.format(Locale.ROOT, "%08X", new Random().nextLong())));
     String rootSeed = rootSeedOption.get();
 
     // We take just the root seed, ignoring any chained sub-seeds.
     long rootSeedLong = SeedUtils.parseSeedChain(rootSeed)[0];
+
+    // Parse the minimum Java version required to run Lucene.
+    JavaVersion minJavaVersion =
+        JavaVersion.toVersion(getVersionCatalog(project).findVersion("minJava").get().toString());
+
+    boolean isIdea = Boolean.parseBoolean(System.getProperty("idea.active", "false"));
+    boolean isIdeaSync = Boolean.parseBoolean(System.getProperty("idea.sync.active", "false"));
+    boolean isIdeaBuild = (isIdea && !isIdeaSync);
+
+    // Determine the set of projects whose artifacts are published to maven central.
+    LinkedHashSet<Project> publishedProjects =
+        project.project(":lucene").getSubprojects().stream()
+            .filter(
+                subproject -> {
+                  // Exclude all modular-test projects.
+                  if (subproject.getPath().endsWith(".tests")) {
+                    return false;
+                  }
+
+                  // Exclude build tools.
+                  if (subproject.getPath().startsWith(":build-tools:")) {
+                    return false;
+                  }
+
+                  // Exclude these explicitly.
+                  return switch (subproject.getPath()) {
+                    // Exclude distribution assembly, tests & documentation.
+                    case ":lucene:distribution", ":lucene:documentation" -> false;
+                    // Exclude the parent container project for analysis modules (no artifacts).
+                    case ":lucene:analysis" -> false;
+                    // Exclude other misc modules: native, test and benchmarks.
+                    case ":lucene:misc:native",
+                        ":lucene:spatial-test-fixtures",
+                        ":lucene:benchmarks-jmh" ->
+                        false;
+                    default -> true;
+                  };
+                })
+            .sorted(Comparator.comparing(Project::getPath))
+            .collect(Collectors.toCollection(LinkedHashSet::new));
 
     project.allprojects(
         p -> {
@@ -78,11 +131,17 @@ public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
           globals.buildTime = buildTime;
           globals.buildYear = buildYear;
           globals.isCIBuild = isCIBuild;
+          globals.publishedProjects = publishedProjects;
           globals.getRootSeed().set(rootSeed);
           globals.getRootSeedAsLong().set(rootSeedLong);
           globals
               .getProjectSeedAsLong()
               .convention(rootSeedLong ^ p.getPath().hashCode())
+              .finalizeValue();
+          globals.getMinJavaVersion().convention(minJavaVersion).finalizeValue();
+          globals
+              .getIntellijIdea()
+              .convention(new IntellijIdea(isIdea, isIdeaSync, isIdeaBuild))
               .finalizeValue();
         });
   }

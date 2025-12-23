@@ -71,6 +71,27 @@ public final class Version {
   @Deprecated public static final Version LUCENE_10_3_0 = new Version(10, 3, 0);
 
   /**
+   * Match settings and bugs in Lucene's 10.3.1 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_10_3_1 = new Version(10, 3, 1);
+
+  /**
+   * Match settings and bugs in Lucene's 10.3.2 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_10_3_2 = new Version(10, 3, 2);
+
+  /**
+   * Match settings and bugs in Lucene's 10.4.0 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_10_4_0 = new Version(10, 4, 0);
+
+  /**
    * Match settings and bugs in Lucene's 11.0.0 release.
    *
    * <p>Use this to get the latest &amp; greatest settings, bug fixes, etc, for Lucene.
@@ -101,10 +122,57 @@ public final class Version {
   @Deprecated public static final Version LUCENE_CURRENT = LATEST;
 
   /**
-   * Constant for the minimal supported major version of an index. This version is defined by the
-   * version that initially created the index.
+   * Constant for the minimal supported major version number of an index. This version is defined by
+   * the major version number that initially created the index.
+   *
+   * <p>This constant is manually controlled and should only be bumped when format changes make it
+   * impossible to safely read older indexes. Examples include:
+   *
+   * <ul>
+   *   <li>Lossy encoding changes (e.g., norms format changes that cannot be recovered)
+   *   <li>Index-level format changes that prevent reading (e.g., segments_N file format)
+   *   <li>Critical corruption bugs that make older indexes potentially invalid
+   * </ul>
+   *
+   * <p>This constant should NOT be bumped automatically with major version number releases. The
+   * goal is to allow users to upgrade across multiple major version numbers when safe to do so.
+   *
+   * <p><b>Two-tier version policy:</b>
+   *
+   * <ul>
+   *   <li><b>Index opening policy:</b> An index can be opened if its {@code
+   *       indexCreatedVersionMajor} is >= this constant, regardless of how many major version
+   *       numbers have been released since.
+   *   <li><b>Codec reader policy:</b> Segment codecs are only shipped for the current major version
+   *       number and the immediately previous major version number. When no format breaks occur
+   *       between consecutive major version numbers, the previous major version number reader can
+   *       read segments from older major version numbers that use the same format.
+   * </ul>
+   *
+   * <p><b>When to bump this constant:</b>
+   *
+   * <ul>
+   *   <li>When introducing an incompatible on-disk format change
+   *   <li>When fixing a critical bug that makes older indexes potentially corrupt
+   *   <li>When the maintenance burden of supporting older creation versions becomes too high
+   * </ul>
+   *
+   * <p><b>How to bump this constant:</b>
+   *
+   * <ol>
+   *   <li>Set the value to the last major version number before the breaking change
+   *   <li>Update tests to reflect the new minimum
+   *   <li>Update CHANGES.txt and MIGRATE.md with upgrade instructions
+   *   <li>Ensure IndexFormatTooOldException messages reference the new minimum
+   * </ol>
+   *
+   * <p><b>Example:</b> If a breaking change is introduced in version 15.0.0, set this constant to
+   * 14, which will prevent indexes created with major version numbers 13 and earlier from being
+   * opened.
+   *
+   * @since 11.0.0
    */
-  public static final int MIN_SUPPORTED_MAJOR = Version.LATEST.major - 1;
+  public static final int MIN_SUPPORTED_MAJOR = 10;
 
   /**
    * @see #getPackageImplementationVersion()

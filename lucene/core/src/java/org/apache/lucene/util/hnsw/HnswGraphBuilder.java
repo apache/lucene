@@ -39,6 +39,10 @@ import org.apache.lucene.util.hnsw.HnswUtil.Component;
 /**
  * Builder for HNSW graph. See {@link HnswGraph} for a gloss on the algorithm and the meaning of the
  * hyper-parameters.
+ *
+ * <p>Thread-safety: This class is NOT thread safe, it cannot be shared across threads, however, it
+ * IS safe for multiple HnswGraphBuilder to build the same graph, if the graph's size is known in
+ * the beginning (like when doing merge)
  */
 public class HnswGraphBuilder implements HnswBuilder {
 
@@ -60,14 +64,14 @@ public class HnswGraphBuilder implements HnswBuilder {
   @SuppressWarnings("NonFinalStaticField")
   public static long randSeed = DEFAULT_RAND_SEED;
 
-  private final int M; // max number of connections on upper layers
+  protected final int M; // max number of connections on upper layers
   private final double ml;
 
   private final SplittableRandom random;
-  protected final RandomVectorScorerSupplier scorerSupplier;
-  private final HnswGraphSearcher graphSearcher;
+  protected final UpdateableRandomVectorScorer scorer;
+  protected final HnswGraphSearcher graphSearcher;
   private final GraphBuilderKnnCollector entryCandidates; // for upper levels of graph search
-  private final GraphBuilderKnnCollector
+  protected final GraphBuilderKnnCollector
       beamCandidates; // for levels of graph where we add the node
   private final GraphBuilderKnnCollector beamCandidates0;
 
@@ -144,8 +148,8 @@ public class HnswGraphBuilder implements HnswBuilder {
       throw new IllegalArgumentException("beamWidth must be positive");
     }
     this.M = hnsw.maxConn();
-    this.scorerSupplier =
-        Objects.requireNonNull(scorerSupplier, "scorer supplier must not be null");
+    this.scorer =
+        Objects.requireNonNull(scorerSupplier, "scorer supplier must not be null").scorer();
     // normalization factor for level generation; currently not configurable
     this.ml = M == 1 ? 1 : 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
@@ -196,10 +200,8 @@ public class HnswGraphBuilder implements HnswBuilder {
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(HNSW_COMPONENT, "addVectors [" + minOrd + " " + maxOrd + ")");
     }
-    UpdateableRandomVectorScorer scorer = scorerSupplier.scorer();
     for (int node = minOrd; node < maxOrd; node++) {
-      scorer.setScoringOrdinal(node);
-      addGraphNode(node, scorer);
+      addGraphNode(node);
       if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
         t = printGraphBuildStatus(node, start, t);
       }
@@ -210,10 +212,24 @@ public class HnswGraphBuilder implements HnswBuilder {
     addVectors(0, maxOrd);
   }
 
-  public void addGraphNode(int node, UpdateableRandomVectorScorer scorer) throws IOException {
-    addGraphNodeInternal(node, scorer, null);
-  }
-
+  /**
+   * Note: this implementation is thread safe when the graph size is fixed (e.g. when merging) The
+   * process of adding a node is roughly: 1. Add the node to all levels from top to the bottom, but
+   * do not connect it to any other node, nor try to promote itself to an entry node before the
+   * connection is done. (Unless the graph is empty and this is the first node, in that case we set
+   * the entry node and return) 2. Do the search from top to bottom, remember all the possible
+   * neighbours on each level the node is on. 3. Add the neighbor to the node from bottom to top
+   * level. When adding the neighbour, we always add all the outgoing links first before adding an
+   * incoming link such that when a search visits this node, it can always find a way out 4. If the
+   * node has a level that is less or equal to the graph's max level, then we're done here. If the
+   * node has a level larger than the graph's max level, then we need to promote the node as the
+   * entry node. If, while we add the node to the graph, the entry node has changed (which means the
+   * graph level has changed as well), we need to reinsert the node to the newly introduced levels
+   * (repeating step 2,3 for new levels) and again try to promote the node to entry node.
+   *
+   * @param eps0 If specified, we will use it as the entry points of search on level 0, is useful
+   *     when you have some prior knowledge, e.g. in {@link MergingHnswGraphBuilder}
+   */
   private void addGraphNodeInternal(int node, UpdateableRandomVectorScorer scorer, IntHashSet eps0)
       throws IOException {
     if (frozen) {
@@ -224,7 +240,8 @@ public class HnswGraphBuilder implements HnswBuilder {
     for (int level = nodeLevel; level >= 0; level--) {
       hnsw.addNode(level, node);
     }
-    // then promote itself as entry node if entry node is not set
+    // then promote itself as entry node if entry node is not set (this is the first ever node of
+    // the graph)
     if (hnsw.trySetNewEntryNode(node, nodeLevel)) {
       return;
     }
@@ -235,8 +252,12 @@ public class HnswGraphBuilder implements HnswBuilder {
     int curMaxLevel;
     do {
       curMaxLevel = hnsw.numLevels() - 1;
-      // NOTE: the entry node and max level may not be paired, but because we get the level first
+      // NOTE: the entry node and max level are not retrieved synchronously, which could lead to a
+      // situation where
+      //  the entry node's level is different from the graph's max level, but because we get the
+      // level first,
       // we ensure that the entry node we get later will always exist on the curMaxLevel
+      // e.g., curMaxLevel <= entryNode.level
       int[] eps = new int[] {hnsw.entryNode()};
 
       // we first do the search from top to bottom
@@ -267,19 +288,25 @@ public class HnswGraphBuilder implements HnswBuilder {
 
       // then do connections from bottom up
       for (int i = 0; i < scratchPerLevel.length; i++) {
-        addDiverseNeighbors(i + lowestUnsetLevel, node, scratchPerLevel[i], scorer);
+        addDiverseNeighbors(i + lowestUnsetLevel, node, scratchPerLevel[i], scorer, false);
       }
       lowestUnsetLevel += scratchPerLevel.length;
       assert lowestUnsetLevel == Math.min(nodeLevel, curMaxLevel) + 1;
-      if (lowestUnsetLevel > nodeLevel) {
+      if (lowestUnsetLevel == nodeLevel + 1) {
+        // we have already set all the levels we need for this node
         return;
       }
       assert lowestUnsetLevel == curMaxLevel + 1 && nodeLevel > curMaxLevel;
+      // The node's level is higher than the graph's max level, so we need to
+      // try to promote this node as the graph's entry node
       if (hnsw.tryPromoteNewEntryNode(node, nodeLevel, curMaxLevel)) {
         return;
       }
+      // If we're not able to promote, it means the graph must have already changed
+      // and has a new max level and some other entry node
       if (hnsw.numLevels() == curMaxLevel + 1) {
-        // This should never happen if all the calculations are correct
+        // This is an impossible situation, if happens, then something above is
+        // not hold
         throw new IllegalStateException(
             "We're not able to promote node "
                 + node
@@ -294,31 +321,12 @@ public class HnswGraphBuilder implements HnswBuilder {
 
   @Override
   public void addGraphNode(int node) throws IOException {
-    /*
-     * Note: this implementation is thread safe when graph size is fixed (e.g. when merging)
-     * The process of adding a node is roughly:
-     * 1. Add the node to all level from top to the bottom, but do not connect it to any other node,
-     *    nor try to promote itself to an entry node before the connection is done. (Unless the graph is empty
-     *    and this is the first node, in that case we set the entry node and return)
-     * 2. Do the search from top to bottom, remember all the possible neighbours on each level the node
-     *    is on.
-     * 3. Add the neighbor to the node from bottom to top level, when adding the neighbour,
-     *    we always add all the outgoing links first before adding incoming link such that
-     *    when a search visits this node, it can always find a way out
-     * 4. If the node has level that is less or equal to graph level, then we're done here.
-     *    If the node has level larger than graph level, then we need to promote the node
-     *    as the entry node. If, while we add the node to the graph, the entry node has changed
-     *    (which means the graph level has changed as well), we need to reinsert the node
-     *    to the newly introduced levels (repeating step 2,3 for new levels) and again try to
-     *    promote the node to entry node.
-     */
-    UpdateableRandomVectorScorer scorer = scorerSupplier.scorer();
     scorer.setScoringOrdinal(node);
     addGraphNodeInternal(node, scorer, null);
   }
 
-  public void addGraphNodeWithEps(int node, IntHashSet eps0) throws IOException {
-    UpdateableRandomVectorScorer scorer = scorerSupplier.scorer();
+  @Override
+  public void addGraphNode(int node, IntHashSet eps0) throws IOException {
     scorer.setScoringOrdinal(node);
     addGraphNodeInternal(node, scorer, eps0);
   }
@@ -336,17 +344,21 @@ public class HnswGraphBuilder implements HnswBuilder {
     return now;
   }
 
-  private void addDiverseNeighbors(
-      int level, int node, NeighborArray candidates, UpdateableRandomVectorScorer scorer)
+  void addDiverseNeighbors(
+      int level,
+      int node,
+      NeighborArray candidates,
+      UpdateableRandomVectorScorer scorer,
+      boolean isLinkRepair)
       throws IOException {
     /* For each of the beamWidth nearest candidates (going from best to worst), select it only if it
      * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
      * since the node is new and has no prior neighbors).
      */
     NeighborArray neighbors = hnsw.getNeighbors(level, node);
-    assert neighbors.size() == 0; // new node
     int maxConnOnLevel = level == 0 ? M * 2 : M;
-    boolean[] mask = selectAndLinkDiverse(neighbors, candidates, maxConnOnLevel, scorer);
+    boolean[] mask =
+        selectAndLinkDiverse(node, neighbors, candidates, maxConnOnLevel, scorer, isLinkRepair);
 
     // Link the selected nodes to the new node, and the new node to the selected nodes (again
     // applying diversity heuristic)
@@ -361,16 +373,44 @@ public class HnswGraphBuilder implements HnswBuilder {
       if (hnswLock != null) {
         Lock lock = hnswLock.write(level, nbr);
         try {
-          NeighborArray nbrsOfNbr = getGraph().getNeighbors(level, nbr);
-          nbrsOfNbr.addAndEnsureDiversity(node, candidates.getScores(i), nbr, scorer);
+          updateNeighbor(
+              getGraph().getNeighbors(level, nbr),
+              node,
+              candidates.getScores(i),
+              nbr,
+              scorer,
+              isLinkRepair);
         } finally {
           lock.unlock();
         }
       } else {
-        NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
-        nbrsOfNbr.addAndEnsureDiversity(node, candidates.getScores(i), nbr, scorer);
+        updateNeighbor(
+            hnsw.getNeighbors(level, nbr),
+            node,
+            candidates.getScores(i),
+            nbr,
+            scorer,
+            isLinkRepair);
       }
     }
+  }
+
+  private void updateNeighbor(
+      NeighborArray nbrsOfNbr,
+      int node,
+      float score,
+      int nbr,
+      UpdateableRandomVectorScorer scorer,
+      boolean isLinkRepair)
+      throws IOException {
+    // Only check for duplicates during link repair to avoid performance overhead during normal
+    // construction
+    if (isLinkRepair) {
+      for (int j = 0; j < nbrsOfNbr.size(); j++) {
+        if (nbrsOfNbr.nodes()[j] == node) return;
+      }
+    }
+    nbrsOfNbr.addAndEnsureDiversity(node, score, nbr, scorer);
   }
 
   /**
@@ -378,10 +418,12 @@ public class HnswGraphBuilder implements HnswBuilder {
    * are selected
    */
   private boolean[] selectAndLinkDiverse(
+      int node,
       NeighborArray neighbors,
       NeighborArray candidates,
       int maxConnOnLevel,
-      UpdateableRandomVectorScorer scorer)
+      UpdateableRandomVectorScorer scorer,
+      boolean isLinkRepair)
       throws IOException {
     boolean[] mask = new boolean[candidates.size()];
     // Select the best maxConnOnLevel neighbors of the new node, applying the diversity heuristic
@@ -389,6 +431,9 @@ public class HnswGraphBuilder implements HnswBuilder {
       // compare each neighbor (in distance order) against the closer neighbors selected so far,
       // only adding it if it is closer to the target than to any of the other selected neighbors
       int cNode = candidates.nodes()[i];
+      if (node == cNode) {
+        continue;
+      }
       float cScore = candidates.getScores(i);
       assert cNode <= hnsw.maxNodeId();
       scorer.setScoringOrdinal(cNode);
@@ -396,13 +441,17 @@ public class HnswGraphBuilder implements HnswBuilder {
         mask[i] = true;
         // here we don't need to lock, because there's no incoming link so no others is able to
         // discover this node such that no others will modify this neighbor array as well
-        neighbors.addInOrder(cNode, cScore);
+        if (isLinkRepair) {
+          neighbors.addOutOfOrder(cNode, cScore);
+        } else {
+          neighbors.addInOrder(cNode, cScore);
+        }
       }
     }
     return mask;
   }
 
-  private static void popToScratch(GraphBuilderKnnCollector candidates, NeighborArray scratch) {
+  static void popToScratch(GraphBuilderKnnCollector candidates, NeighborArray scratch) {
     scratch.clear();
     int candidateCount = candidates.size();
     // extract all the Neighbors from the queue into an array; these will now be
@@ -486,7 +535,6 @@ public class HnswGraphBuilder implements HnswBuilder {
       // while linking
       GraphBuilderKnnCollector beam = new GraphBuilderKnnCollector(2);
       int[] eps = new int[1];
-      UpdateableRandomVectorScorer scorer = scorerSupplier.scorer();
       for (Component c : components) {
         if (c != c0) {
           if (c.start() == NO_MORE_DOCS) {

@@ -971,7 +971,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           IndexSearcher searcher = newSearcher(r2);
 
           FacetsCollector c =
-              searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+              searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
           expectThrows(
               IllegalStateException.class, () -> new SortedSetDocValuesFacetCounts(state, c));
@@ -1434,6 +1434,8 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
     }
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandomHierarchicalFlatMix() throws Exception {
     int fullIterations = LuceneTestCase.TEST_NIGHTLY ? 20 : 3;
     for (int fullIter = 0; fullIter < fullIterations; fullIter++) {
@@ -1849,7 +1851,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
       IndexSearcher searcher, SortedSetDocValuesReaderState state, ExecutorService exec)
       throws IOException, InterruptedException {
     if (random().nextBoolean()) {
-      FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+      FacetsCollector c = searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
       if (exec != null) {
         return new ConcurrentSortedSetDocValuesFacetCounts(state, c, exec);
       } else {

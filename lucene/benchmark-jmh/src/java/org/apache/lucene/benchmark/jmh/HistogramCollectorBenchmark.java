@@ -75,6 +75,8 @@ public class HistogramCollectorBenchmark {
       if (params.pointEnabled) {
         // Adding indexed point field to verify multi range collector
         doc.add(new LongPoint("f", value));
+        // Doc values need to be enabled for histogram collection
+        doc.add(NumericDocValuesField.indexedField("f", value));
       } else {
         doc.add(NumericDocValuesField.indexedField("f", value));
       }
@@ -127,7 +129,7 @@ public class HistogramCollectorBenchmark {
   public void matchAllQueryHistogram(BenchmarkParams params) throws IOException {
     IndexSearcher searcher = new IndexSearcher(reader);
     searcher.search(
-        new MatchAllDocsQuery(), new HistogramCollectorManager("f", params.bucketWidth, 10000));
+        MatchAllDocsQuery.INSTANCE, new HistogramCollectorManager("f", params.bucketWidth, 10000));
   }
 
   @Benchmark

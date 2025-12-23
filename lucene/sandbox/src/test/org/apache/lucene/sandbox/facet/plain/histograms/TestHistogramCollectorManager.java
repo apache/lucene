@@ -62,7 +62,7 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
     w.close();
     IndexSearcher searcher = newSearcher(reader);
     LongIntHashMap actualCounts =
-        searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 4));
+        searcher.search(MatchAllDocsQuery.INSTANCE, new HistogramCollectorManager("f", 4));
     LongIntHashMap expectedCounts = new LongIntHashMap();
     expectedCounts.put(0, 1);
     expectedCounts.put(1, 2);
@@ -70,7 +70,8 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
 
     expectThrows(
         IllegalStateException.class,
-        () -> searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 4, 1)));
+        () ->
+            searcher.search(MatchAllDocsQuery.INSTANCE, new HistogramCollectorManager("f", 4, 1)));
 
     reader.close();
     dir.close();
@@ -92,7 +93,7 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
     w.close();
     IndexSearcher searcher = newSearcher(reader);
     LongIntHashMap actualCounts =
-        searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 4));
+        searcher.search(MatchAllDocsQuery.INSTANCE, new HistogramCollectorManager("f", 4));
     LongIntHashMap expectedCounts = new LongIntHashMap();
     expectedCounts.put(0, 1);
     expectedCounts.put(1, 1);
@@ -101,7 +102,8 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
 
     expectThrows(
         IllegalStateException.class,
-        () -> searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 4, 1)));
+        () ->
+            searcher.search(MatchAllDocsQuery.INSTANCE, new HistogramCollectorManager("f", 4, 1)));
 
     reader.close();
     dir.close();
@@ -125,28 +127,13 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
 
   public void testMultiRangePointTreeCollector() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
-
-    long[] values = new long[5000];
-
-    for (int i = 0; i < values.length; i++) {
-      values[i] = random().nextInt(0, 5000); // Generates a random integer
-    }
-
-    for (long value : values) {
-      Document doc = new Document();
-      // Adding indexed point field to verify multi range collector
-      doc.add(new LongPoint("f", value));
-      w.addDocument(doc);
-    }
-
-    DirectoryReader reader = DirectoryReader.open(w);
-    w.close();
+    long[] values = generateRandomData(5000);
+    DirectoryReader reader = indexNumericData(dir, values, true);
     IndexSearcher searcher = newSearcher(reader);
 
     // Validate the MATCH_ALL case
     LongIntHashMap actualCounts =
-        searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 1000));
+        searcher.search(MatchAllDocsQuery.INSTANCE, new HistogramCollectorManager("f", 1000));
     LongIntHashMap expectedCounts = new LongIntHashMap();
     for (long value : values) {
       expectedCounts.addTo(Math.floorDiv(value, 1000), 1);
@@ -222,6 +209,51 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
     dir.close();
   }
 
+  public void testHistogramCollectorExceptionWithoutDocValues() throws IOException {
+    Directory dir = newDirectory();
+    long[] values = generateRandomData(5000);
+    DirectoryReader reader = indexNumericData(dir, values, false);
+    IndexSearcher searcher = newSearcher(reader);
+
+    // Validate that exception is thrown when doc values is disabled on numeric field
+    expectThrows(
+        IllegalStateException.class,
+        () ->
+            searcher.search(MatchAllDocsQuery.INSTANCE, new HistogramCollectorManager("f", 1000)));
+
+    reader.close();
+    dir.close();
+  }
+
+  private long[] generateRandomData(int bound) {
+    long[] values = new long[bound];
+    for (int i = 0; i < values.length; i++) {
+      values[i] = random().nextInt(0, bound); // Generates a random integer
+    }
+    return values;
+  }
+
+  private DirectoryReader indexNumericData(Directory dir, long[] values, boolean docValueEnabled)
+      throws IOException {
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
+
+    for (long value : values) {
+      Document doc = new Document();
+      // Adding indexed point field to verify multi range collector
+      doc.add(new LongPoint("f", value));
+      if (docValueEnabled) {
+        // Doc values need to be enabled for histogram collection
+        doc.add(new NumericDocValuesField("f", value));
+      }
+      w.addDocument(doc);
+    }
+
+    DirectoryReader reader = DirectoryReader.open(w);
+    w.close();
+
+    return reader;
+  }
+
   private void doTestSkipIndex(IndexWriterConfig cfg) throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, cfg);
@@ -236,7 +268,7 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
     w.close();
     IndexSearcher searcher = newSearcher(reader);
     LongIntHashMap actualCounts =
-        searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 4));
+        searcher.search(MatchAllDocsQuery.INSTANCE, new HistogramCollectorManager("f", 4));
     LongIntHashMap expectedCounts = new LongIntHashMap();
     for (long value : values) {
       expectedCounts.addTo(Math.floorDiv(value, 4), 1);
@@ -245,7 +277,8 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
 
     expectThrows(
         IllegalStateException.class,
-        () -> searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 4, 1)));
+        () ->
+            searcher.search(MatchAllDocsQuery.INSTANCE, new HistogramCollectorManager("f", 4, 1)));
 
     // Create a query so that bucket "1" (values from 4 to 8), which is in the middle of the range,
     // doesn't match any docs. HistogramCollector should not add an entry with a count of 0 in this

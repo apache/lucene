@@ -144,7 +144,7 @@ public class TestTaskExecutor extends LuceneTestCase {
             };
 
         searcher.search(
-            new MatchAllDocsQuery(),
+            MatchAllDocsQuery.INSTANCE,
             new CollectorManager<Collector, Void>() {
               @Override
               public Collector newCollector() {
@@ -218,7 +218,7 @@ public class TestTaskExecutor extends LuceneTestCase {
             };
 
         searcher.search(
-            new MatchAllDocsQuery(),
+            MatchAllDocsQuery.INSTANCE,
             new CollectorManager<Collector, Void>() {
               @Override
               public Collector newCollector() {
@@ -373,7 +373,13 @@ public class TestTaskExecutor extends LuceneTestCase {
 
   public void testTaskRejectionDoesNotFailExecution() throws Exception {
     try (ThreadPoolExecutor threadPoolExecutor =
-        new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(1))) {
+        new ThreadPoolExecutor(
+            1,
+            1,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new ArrayBlockingQueue<>(1),
+            new NamedThreadFactory("TestTaskExecutor"))) {
       final int taskCount = 1000; // enough tasks to cause queuing and rejections on the executor
       final ArrayList<Callable<Void>> callables = new ArrayList<>(taskCount);
       final AtomicInteger executedTasks = new AtomicInteger(0);

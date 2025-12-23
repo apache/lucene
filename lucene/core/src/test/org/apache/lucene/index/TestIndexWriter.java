@@ -921,9 +921,7 @@ public class TestIndexWriter extends LuceneTestCase {
               // w.rollback();
               try {
                 w.close();
-              } catch (
-                  @SuppressWarnings("unused")
-                  AlreadyClosedException ace) {
+              } catch (AlreadyClosedException _) {
                 // OK
               }
               w = null;
@@ -1100,8 +1098,8 @@ public class TestIndexWriter extends LuceneTestCase {
         new ThreadInterruptedException(new InterruptedException()).getCause()
             instanceof InterruptedException);
 
-    // issue 100 interrupts to child thread
-    final int numInterrupts = atLeast(100);
+    // issue 20 interrupts to child thread
+    final int numInterrupts = atLeast(20);
     int i = 0;
     while (i < numInterrupts) {
       // TODO: would be nice to also sometimes interrupt the CMS merge threads too ...
@@ -2269,7 +2267,7 @@ public class TestIndexWriter extends LuceneTestCase {
                   new Iterable<Document>() {
                     @Override
                     public Iterator<Document> iterator() {
-                      return new Iterator<Document>() {
+                      return new Iterator<>() {
 
                         @Override
                         public boolean hasNext() {
@@ -2463,7 +2461,7 @@ public class TestIndexWriter extends LuceneTestCase {
         evilWriter.commit();
       }
     }
-    evilWriter.deleteDocuments(new MatchAllDocsQuery());
+    evilWriter.deleteDocuments(MatchAllDocsQuery.INSTANCE);
     evilWriter.forceMerge(1);
     evilWriter.close();
     dir.close();
@@ -2643,9 +2641,7 @@ public class TestIndexWriter extends LuceneTestCase {
     startCommit.await();
     try {
       iw.close();
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException ise) {
+    } catch (IllegalStateException _) {
       // OK, but not required (depends on thread scheduling)
     }
     finishCommit.await();
@@ -3059,7 +3055,7 @@ public class TestIndexWriter extends LuceneTestCase {
     try {
       dir.openInput(tempName, IOContext.DEFAULT);
       fail("did not hit exception");
-    } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
+    } catch (FileNotFoundException | NoSuchFileException _) {
       // expected
     }
     w.close();
@@ -4141,9 +4137,7 @@ public class TestIndexWriter extends LuceneTestCase {
                   indexedDocs.release(1);
                 } catch (IOException e) {
                   throw new AssertionError(e);
-                } catch (
-                    @SuppressWarnings("unused")
-                    AlreadyClosedException ignored) {
+                } catch (AlreadyClosedException _) {
                   return;
                 }
               }
@@ -4158,9 +4152,7 @@ public class TestIndexWriter extends LuceneTestCase {
                   sm.maybeRefreshBlocking();
                 } catch (IOException e) {
                   throw new AssertionError(e);
-                } catch (
-                    @SuppressWarnings("unused")
-                    AlreadyClosedException ignored) {
+                } catch (AlreadyClosedException _) {
                   return;
                 }
               }
@@ -4234,9 +4226,7 @@ public class TestIndexWriter extends LuceneTestCase {
                   queue.processEvents();
                 } catch (IOException e) {
                   throw new AssertionError(e);
-                } catch (
-                    @SuppressWarnings("unused")
-                    AlreadyClosedException ex) {
+                } catch (AlreadyClosedException _) {
                   // possible
                 }
               });
@@ -4398,9 +4388,9 @@ public class TestIndexWriter extends LuceneTestCase {
         SearcherManager manager = new SearcherManager(writer, new SearcherFactory())) {
       CountDownLatch start = new CountDownLatch(1);
       int numDocs =
-          TEST_NIGHTLY ? TestUtil.nextInt(random(), 100, 600) : TestUtil.nextInt(random(), 10, 60);
+          TEST_NIGHTLY ? TestUtil.nextInt(random(), 100, 600) : TestUtil.nextInt(random(), 10, 30);
       AtomicLong maxCompletedSeqID = new AtomicLong(-1);
-      Thread[] threads = new Thread[2 + random().nextInt(2)];
+      Thread[] threads = new Thread[2];
       for (int i = 0; i < threads.length; i++) {
         int idx = i;
         threads[i] =

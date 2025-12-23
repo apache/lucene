@@ -221,20 +221,17 @@ public class TestSortOptimization extends LuceneTestCase {
     final int numHits = 3;
 
     { // test that optimization is run when missing value setting of SortField is competitive with
-      // Puring.GREATER_THAN_OR_EQUAL_TO
-      final SortField sortField = new SortField("my_field", SortField.Type.LONG);
-      sortField.setMissingValue(0L); // set a competitive missing value
+      // Pruning.GREATER_THAN_OR_EQUAL_TO
+      final SortField sortField = new SortField("my_field", SortField.Type.LONG, false, 0L);
       final Sort sort = new Sort(sortField);
       TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
       assertEquals(topDocs.scoreDocs.length, numHits);
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
     }
     { // test that optimization is not run when missing value setting of SortField is competitive
-      // with Puring.SKIP
-      final SortField sortField1 = new SortField("my_field1", SortField.Type.LONG);
-      final SortField sortField2 = new SortField("my_field2", SortField.Type.LONG);
-      sortField1.setMissingValue(0L); // set a competitive missing value
-      sortField2.setMissingValue(0L); // set a competitive missing value
+      // with Pruning.SKIP
+      final SortField sortField1 = new SortField("my_field1", SortField.Type.LONG, false, 0L);
+      final SortField sortField2 = new SortField("my_field2", SortField.Type.LONG, false, 0L);
       final Sort sort = new Sort(sortField1, sortField2);
       TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
       assertEquals(topDocs.scoreDocs.length, numHits);
@@ -243,8 +240,7 @@ public class TestSortOptimization extends LuceneTestCase {
           numDocs); // assert that all documents were collected => optimization was not run
     }
     { // test that optimization is run when missing value setting of SortField is NOT competitive
-      final SortField sortField = new SortField("my_field", SortField.Type.LONG);
-      sortField.setMissingValue(100L); // set a NON competitive missing value
+      final SortField sortField = new SortField("my_field", SortField.Type.LONG, false, 100L);
       final Sort sort = new Sort(sortField);
       TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
       assertEquals(topDocs.scoreDocs.length, numHits);
@@ -256,8 +252,8 @@ public class TestSortOptimization extends LuceneTestCase {
       final long afterValue = Long.MAX_VALUE;
       final int afterDocID = 10 + random().nextInt(1000);
       FieldDoc after = new FieldDoc(afterDocID, Float.NaN, new Long[] {afterValue});
-      final SortField sortField = new SortField("my_field", SortField.Type.LONG);
-      sortField.setMissingValue(Long.MAX_VALUE); // set a competitive missing value
+      final SortField sortField =
+          new SortField("my_field", SortField.Type.LONG, false, Long.MAX_VALUE);
       final Sort sort = new Sort(sortField);
       TopDocs topDocs = assertSearchHits(reader, sort, numHits, after);
       assertEquals(topDocs.scoreDocs.length, numHits);
@@ -269,8 +265,8 @@ public class TestSortOptimization extends LuceneTestCase {
       final long afterValue = Long.MAX_VALUE;
       final int afterDocID = 10 + random().nextInt(1000);
       FieldDoc after = new FieldDoc(afterDocID, Float.NaN, new Long[] {afterValue});
-      final SortField sortField = new SortField("my_field", SortField.Type.LONG, true);
-      sortField.setMissingValue(Long.MAX_VALUE); // set a competitive missing value
+      final SortField sortField =
+          new SortField("my_field", SortField.Type.LONG, true, Long.MAX_VALUE);
       final Sort sort = new Sort(sortField);
       TopDocs topDocs = assertSearchHits(reader, sort, numHits, after);
       assertEquals(topDocs.scoreDocs.length, numHits);
@@ -282,8 +278,7 @@ public class TestSortOptimization extends LuceneTestCase {
       // with after on asc order
       long afterValue = 3L;
       FieldDoc after = new FieldDoc(3, Float.NaN, new Long[] {afterValue});
-      final SortField sortField = new SortField("my_field", SortField.Type.LONG);
-      sortField.setMissingValue(2L);
+      final SortField sortField = new SortField("my_field", SortField.Type.LONG, false, 2L);
       final Sort sort = new Sort(sortField);
       TopDocs topDocs = assertSearchHits(reader, sort, numHits, after);
       assertEquals(topDocs.scoreDocs.length, numHits);
@@ -336,16 +331,14 @@ public class TestSortOptimization extends LuceneTestCase {
     TopDocs topDocs2;
 
     { // Test that optimization is run with NumericDocValues when missing value is NOT competitive
-      final SortField sortField = new SortField("my_field", SortField.Type.LONG, true);
-      sortField.setMissingValue(0L); // missing value is not competitive
+      final SortField sortField = new SortField("my_field", SortField.Type.LONG, true, 0L);
       final Sort sort = new Sort(sortField);
       topDocs1 = assertSearchHits(reader, sort, numHits, null);
       assertNonCompetitiveHitsAreSkipped(topDocs1.totalHits.value(), numDocs);
     }
     { // Test that sort on sorted numeric field without sort optimization and with sort optimization
       // produce the same results
-      final SortField sortField = new SortField("my_field", SortField.Type.LONG, true);
-      sortField.setMissingValue(0L); // missing value is not competitive
+      final SortField sortField = new SortField("my_field", SortField.Type.LONG, true, 0L);
       final Sort sort = new Sort(sortField);
       sortField.setOptimizeSortWithPoints(false);
       topDocs2 = assertSearchHits(reader, sort, numHits, null);
@@ -364,10 +357,9 @@ public class TestSortOptimization extends LuceneTestCase {
     }
 
     { // Test that we can't do optimization via NumericDocValues when there are multiple comparators
-      final SortField sortField1 = new SortField("my_field", SortField.Type.LONG, true);
-      final SortField sortField2 = new SortField("other", SortField.Type.LONG, true);
-      sortField1.setMissingValue(0L); // missing value is not competitive
-      sortField2.setMissingValue(0L); // missing value is not competitive
+      // missing values are not competitive
+      final SortField sortField1 = new SortField("my_field", SortField.Type.LONG, true, 0L);
+      final SortField sortField2 = new SortField("other", SortField.Type.LONG, true, 0L);
       final Sort multiSorts = new Sort(new SortField[] {sortField1, sortField2});
       TopDocs topDocs = assertSearchHits(reader, multiSorts, numHits, null);
       // can't optimization with NumericDocValues when there are multiple comparators
@@ -798,26 +790,26 @@ public class TestSortOptimization extends LuceneTestCase {
     SortField longSortOnIntField = new SortField("intField", SortField.Type.LONG);
     assertThrows(
         IllegalArgumentException.class,
-        () -> searcher.search(new MatchAllDocsQuery(), 1, new Sort(longSortOnIntField)));
+        () -> searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(longSortOnIntField)));
     // assert that when sort optimization is disabled we can use LONG sort on int field
     longSortOnIntField.setOptimizeSortWithIndexedData(false);
-    searcher.search(new MatchAllDocsQuery(), 1, new Sort(longSortOnIntField));
+    searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(longSortOnIntField));
 
     SortField intSortOnLongField = new SortField("longField", SortField.Type.INT);
     assertThrows(
         IllegalArgumentException.class,
-        () -> searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnLongField)));
+        () -> searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(intSortOnLongField)));
     // assert that when sort optimization is disabled we can use INT sort on long field
     intSortOnLongField.setOptimizeSortWithIndexedData(false);
-    searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnLongField));
+    searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(intSortOnLongField));
 
     SortField intSortOnIntRangeField = new SortField("intRange", SortField.Type.INT);
     assertThrows(
         IllegalArgumentException.class,
-        () -> searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnIntRangeField)));
+        () -> searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(intSortOnIntRangeField)));
     // assert that when sort optimization is disabled we can use INT sort on intRange field
     intSortOnIntRangeField.setOptimizeSortWithIndexedData(false);
-    searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnIntRangeField));
+    searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(intSortOnIntRangeField));
 
     reader.close();
     dir.close();
@@ -905,7 +897,7 @@ public class TestSortOptimization extends LuceneTestCase {
       int batch = 1 + random().nextInt(100);
       Query query =
           random().nextBoolean()
-              ? new MatchAllDocsQuery()
+              ? MatchAllDocsQuery.INSTANCE
               : LongPoint.newRangeQuery("seq_no", 0, Long.MAX_VALUE);
       TopDocs topDocs = assertSearchHits(reader, query, new Sort(sortField), batch, after);
       int expectedHits = Math.min(seqNos.size() - visitedHits, batch);
@@ -1059,16 +1051,17 @@ public class TestSortOptimization extends LuceneTestCase {
 
     { // simple ascending sort
       SortField sortField =
-          KeywordField.newSortField("my_field", false, SortedSetSelector.Type.MIN);
-      sortField.setMissingValue(SortField.STRING_LAST);
+          KeywordField.newSortField(
+              "my_field", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
       Sort sort = new Sort(sortField);
       TopDocs topDocs = assertSort(reader, sort, numHits, null);
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
     }
 
     { // simple descending sort
-      SortField sortField = KeywordField.newSortField("my_field", true, SortedSetSelector.Type.MIN);
-      sortField.setMissingValue(SortField.STRING_FIRST);
+      SortField sortField =
+          KeywordField.newSortField(
+              "my_field", true, SortedSetSelector.Type.MIN, SortField.STRING_FIRST);
       Sort sort = new Sort(sortField);
       TopDocs topDocs = assertSort(reader, sort, numHits, null);
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
@@ -1076,23 +1069,24 @@ public class TestSortOptimization extends LuceneTestCase {
 
     { // ascending sort that returns missing values first
       SortField sortField =
-          KeywordField.newSortField("my_field", false, SortedSetSelector.Type.MIN);
-      sortField.setMissingValue(SortField.STRING_FIRST);
+          KeywordField.newSortField(
+              "my_field", false, SortedSetSelector.Type.MIN, SortField.STRING_FIRST);
       Sort sort = new Sort(sortField);
       assertSort(reader, sort, numHits, null);
     }
 
     { // descending sort that returns missing values last
-      SortField sortField = KeywordField.newSortField("my_field", true, SortedSetSelector.Type.MIN);
-      sortField.setMissingValue(SortField.STRING_LAST);
+      SortField sortField =
+          KeywordField.newSortField(
+              "my_field", true, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
       Sort sort = new Sort(sortField);
       assertSort(reader, sort, numHits, null);
     }
 
     { // paging ascending sort with after
       SortField sortField =
-          KeywordField.newSortField("my_field", false, SortedSetSelector.Type.MIN);
-      sortField.setMissingValue(SortField.STRING_LAST);
+          KeywordField.newSortField(
+              "my_field", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
       Sort sort = new Sort(sortField);
       BytesRef afterValue = new BytesRef(random().nextBoolean() ? "23" : "230000000");
       FieldDoc after = new FieldDoc(2, Float.NaN, new Object[] {afterValue});
@@ -1101,8 +1095,9 @@ public class TestSortOptimization extends LuceneTestCase {
     }
 
     { // paging descending sort with after
-      SortField sortField = KeywordField.newSortField("my_field", true, SortedSetSelector.Type.MIN);
-      sortField.setMissingValue(SortField.STRING_FIRST);
+      SortField sortField =
+          KeywordField.newSortField(
+              "my_field", true, SortedSetSelector.Type.MIN, SortField.STRING_FIRST);
       Sort sort = new Sort(sortField);
       BytesRef afterValue = new BytesRef(random().nextBoolean() ? "17" : "170000000");
       FieldDoc after = new FieldDoc(2, Float.NaN, new Object[] {afterValue});
@@ -1112,8 +1107,8 @@ public class TestSortOptimization extends LuceneTestCase {
 
     { // paging ascending sort with after that returns missing values first
       SortField sortField =
-          KeywordField.newSortField("my_field", false, SortedSetSelector.Type.MIN);
-      sortField.setMissingValue(SortField.STRING_FIRST);
+          KeywordField.newSortField(
+              "my_field", false, SortedSetSelector.Type.MIN, SortField.STRING_FIRST);
       Sort sort = new Sort(sortField);
       BytesRef afterValue = new BytesRef(random().nextBoolean() ? "23" : "230000000");
       FieldDoc after = new FieldDoc(2, Float.NaN, new Object[] {afterValue});
@@ -1122,8 +1117,9 @@ public class TestSortOptimization extends LuceneTestCase {
     }
 
     { // paging descending sort with after that returns missing values first
-      SortField sortField = KeywordField.newSortField("my_field", true, SortedSetSelector.Type.MIN);
-      sortField.setMissingValue(SortField.STRING_LAST);
+      SortField sortField =
+          KeywordField.newSortField(
+              "my_field", true, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
       Sort sort = new Sort(sortField);
       BytesRef afterValue = new BytesRef(random().nextBoolean() ? "17" : "170000000");
       FieldDoc after = new FieldDoc(2, Float.NaN, new Object[] {afterValue});
@@ -1133,8 +1129,8 @@ public class TestSortOptimization extends LuceneTestCase {
 
     { // test that if there is the secondary sort on _score, hits are still skipped
       SortField sortField =
-          KeywordField.newSortField("my_field", false, SortedSetSelector.Type.MIN);
-      sortField.setMissingValue(SortField.STRING_LAST);
+          KeywordField.newSortField(
+              "my_field", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
       Sort sort = new Sort(sortField, FIELD_SCORE);
       TopDocs topDocs = assertSort(reader, sort, numHits, null);
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
@@ -1142,8 +1138,8 @@ public class TestSortOptimization extends LuceneTestCase {
 
     { // test that if string field is a secondary sort, no optimization is run
       SortField sortField =
-          KeywordField.newSortField("my_field", false, SortedSetSelector.Type.MIN);
-      sortField.setMissingValue(SortField.STRING_LAST);
+          KeywordField.newSortField(
+              "my_field", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
       Sort sort = new Sort(FIELD_SCORE, sortField);
       TopDocs topDocs = assertSort(reader, sort, numHits, null);
       assertEquals(
@@ -1153,8 +1149,9 @@ public class TestSortOptimization extends LuceneTestCase {
   }
 
   public void doTestStringSortOptimizationDisabled(DirectoryReader reader) throws IOException {
-    SortField sortField = KeywordField.newSortField("my_field", false, SortedSetSelector.Type.MIN);
-    sortField.setMissingValue(SortField.STRING_LAST);
+    SortField sortField =
+        KeywordField.newSortField(
+            "my_field", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
     sortField.setOptimizeSortWithIndexedData(false);
 
     Sort sort = new Sort(sortField);
@@ -1184,7 +1181,7 @@ public class TestSortOptimization extends LuceneTestCase {
 
   private TopFieldDocs assertSearchHits(DirectoryReader reader, Sort sort, int n, FieldDoc after)
       throws IOException {
-    return assertSearchHits(reader, new MatchAllDocsQuery(), sort, n, after);
+    return assertSearchHits(reader, MatchAllDocsQuery.INSTANCE, sort, n, after);
   }
 
   private TopFieldDocs assertSearchHits(

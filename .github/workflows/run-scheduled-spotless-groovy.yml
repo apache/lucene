@@ -7,6 +7,8 @@ on:
     # 3:13 on Mondays
     - cron: '13 4 * * 1'
 
+permissions: {}
+
 env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
@@ -14,14 +16,19 @@ jobs:
   test:
     name: Check groovy/gradle script formatting compliance
     timeout-minutes: 15
-
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: ./.github/actions/prepare-for-build
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
 
-      - run: >
+      - name: Configure tools
+        uses: ./.github/actions/prepare-for-build
+
+      - name: Run formatter check
+        run: >
           ./gradlew
           -Plucene.spotlessGradleScripts=true
           spotlessGradleScriptsCheck

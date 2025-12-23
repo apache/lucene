@@ -53,10 +53,6 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   // levelToNodes
   private final AtomicInteger size =
       new AtomicInteger(0); // graph size, which is number of nodes in level 0
-  private final AtomicInteger nonZeroLevelSize =
-      new AtomicInteger(
-          0); // total number of NeighborArrays created that is not on level 0, for now it
-  // is only used to account memory usage
   private final AtomicInteger maxNodeId = new AtomicInteger(-1);
   private final int nsize; // neighbour array size at non-zero level
   private final int nsize0; // neighbour array size at zero level
@@ -155,13 +151,15 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       graph = ArrayUtil.grow(graph, node + 1);
     }
 
-    assert graph[node] == null || graph[node].length > level
-        : "node must be inserted from the top level";
+    assert graph[node] == null || graph[node].length >= level
+        : "node must be inserted from the top level: ";
     if (graph[node] == null) {
-      graph[node] =
-          new NeighborArray[level + 1]; // assumption: we always call this function from top level
+      graph[node] = new NeighborArray[level + 1];
       size.incrementAndGet();
+    } else if (graph[node].length <= level) {
+      graph[node] = ArrayUtil.growExact(graph[node], level + 1);
     }
+
     if (level == 0) {
       graph[node][level] =
           new NeighborArray(
@@ -182,7 +180,6 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
                 long bytesUsed = graphRamBytesUsed;
                 graphRamBytesUsed = bytesUsed + l;
               });
-      nonZeroLevelSize.incrementAndGet();
     }
     maxNodeId.accumulateAndGet(node, Math::max);
   }
@@ -219,6 +216,10 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   @Override
   public int maxConn() {
     return nsize - 1;
+  }
+
+  public boolean nodeExistAtLevel(int level, int node) {
+    return graph[node] != null && graph[node].length > level;
   }
 
   /**
@@ -281,7 +282,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
           "graph build not complete, size=" + size() + " maxNodeId=" + maxNodeId());
     }
     if (level == 0) {
-      return new ArrayNodesIterator(size());
+      return new DenseNodesIterator(size());
     } else {
       generateLevelToNodes();
       return new CollectionNodesIterator(levelToNodes[level]);

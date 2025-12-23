@@ -1,68 +1,65 @@
 name: "Change Log Entry Verifier and Milestone Setter"
 run-name: Change log entry verifier and milestone setter
 on:
-  - pull_request_target
+  - pull_request_target # zizmor: ignore[dangerous-triggers]
 
-env:
-  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  ISSUE: ${{ github.event.issue.html_url }}
-  BASE_REPO: ${{ github.repository }}
-  SKIP_CHANGELOG_LABEL: ${{ '"skip-changelog"' }}
-  CHANGE_LOG_FILE: ${{ 'lucene/CHANGES.txt' }}
+permissions: {}
 
 jobs:
   changelog-verifier-and-milestone-setter:
     name: Verify Change Log Entry and Set Milestone
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
+    permissions:
+      pull-requests: write # edits PR milestones, adds comments
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: false
 
       - name: ChangeLog Entry Verifier and Milestone Setter
         run: |
           echo "################## STEP 1 ##################"
-          echo "Get all labels from PR #${{ github.event.number }}"
+          echo "Get all labels from PR #$PR_NUMBER"
           # Use the BASE_REPO variable to ensure it expands correctly
-          mapfile -t labels < <(gh pr view ${{ github.event.number }} --repo "$BASE_REPO" --json labels -q '.labels[].name')
+          mapfile -t labels < <(gh pr view "$PR_NUMBER" --repo "$BASE_REPO" --json labels -q '.labels[].name')
           IFS=','; echo "${labels[*]}"
           for label in "${labels[@]}"; do
-            if [[ $label == ${{ env.SKIP_CHANGELOG_LABEL }} ]]; then
+            if [[ "$label" == "$SKIP_CHANGELOG_LABEL" ]]; then
               echo "Skipping github action workflow as label: ${SKIP_CHANGELOG_LABEL} is found in the PR."
               exit 0
             fi
           done
-          echo "${{ env.SKIP_CHANGELOG_LABEL }} not found in the PR. Proceeding with next steps."
+          echo "$SKIP_CHANGELOG_LABEL not found in the PR. Proceeding with next steps."
 
           echo -e "\n"
           echo "################## STEP 2 ##################"
-          echo "Checking for change log entry in ${{ env.CHANGE_LOG_FILE }}"
-          git remote add upstream https://github.com/${{ github.repository }}.git
+          echo "Checking for change log entry in $CHANGE_LOG_FILE"
+          git remote add upstream "https://github.com/${BASE_REPO}.git"
 
           # Add and fetch full history of the base branch
-          BASE_BRANCH=${{ github.event.pull_request.base.ref }}
           # We need this to ensure we will be able to find the merge base
-          git fetch upstream $BASE_BRANCH --unshallow
+          git fetch upstream "$BASE_BRANCH" --unshallow
 
           # Find merge base commit to diff against
-          BASE_COMMIT=$(git merge-base HEAD upstream/$BASE_BRANCH)
+          BASE_COMMIT=$(git merge-base HEAD "upstream/$BASE_BRANCH")
           echo "Using merge base for comparison: $BASE_COMMIT"
           echo "Last 3 commits up to merge base:"
-          git log --oneline -n 3 $BASE_COMMIT
+          git log --oneline -n 3 "$BASE_COMMIT"
           echo "Last 3 commits up to PR head:"
           git log --oneline -n 3 HEAD
 
           echo "Diff:"
-          if git diff --exit-code --name-only $BASE_COMMIT HEAD -- ${{ env.CHANGE_LOG_FILE }}; then
-            echo "Change log file:${{ env.CHANGE_LOG_FILE }} does not contains an entry corresponding to changes introduced in PR. Please add a changelog entry."
-            gh pr comment ${{ github.event.number }} --body "This PR does not have an entry in lucene/CHANGES.txt. Consider adding one. If the PR doesn't need a changelog entry, then add the skip-changelog label to it and you will stop receiving this reminder on future updates to the PR."
-            exit 0
+          if git diff --exit-code --name-only "$BASE_COMMIT" HEAD -- "$CHANGE_LOG_FILE"; then
+            echo "::error ::Change log file:$CHANGE_LOG_FILE does not contains an entry corresponding to changes introduced in PR. Please add a changelog entry."
+            exit 1
           else
-            echo "${{ env.CHANGE_LOG_FILE }} contains change log entry. Proceeding with next steps."
+            echo "$CHANGE_LOG_FILE contains change log entry. Proceeding with next steps."
           fi
 
 
@@ -72,8 +69,8 @@ jobs:
           # git diff header pattern -> "@@ -15,0 +16,4 @@"
           # try to extract the line number at which new entry is added, here it's line number 16
           echo "Diff:"
-          git diff --unified=0 $BASE_COMMIT HEAD -- ${{ env.CHANGE_LOG_FILE }}
-          diff=$(git diff --unified=0 $BASE_COMMIT HEAD -- ${{ env.CHANGE_LOG_FILE }})
+          git diff --unified=0 "$BASE_COMMIT" HEAD -- "$CHANGE_LOG_FILE"
+          diff=$(git diff --unified=0 "$BASE_COMMIT" HEAD -- "$CHANGE_LOG_FILE")
           lucene_version=""
           diff_header_pattern="@@ -[0-9]+,?[0-9]* \+([0-9]*),?[0-9]* @@"
           if [[ $diff =~ $diff_header_pattern ]]; then
@@ -88,17 +85,17 @@ jobs:
                   lucene_version="${BASH_REMATCH[1]}"
                 fi
                 if [[ $current_line_number -ge $new_entry_line_number ]]; then
-                  echo "Reached the line number at which new entry is added in ${{ env.CHANGE_LOG_FILE }}"
+                  echo "Reached the line number at which new entry is added in $CHANGE_LOG_FILE"
                   break
                 fi
-            done < ${{ env.CHANGE_LOG_FILE }}
+            done < "$CHANGE_LOG_FILE"
             if [[ -z $lucene_version ]]; then
               echo "Could not find Lucene version in the change log entry. Please add the Lucene version in the change log entry."
               exit 0
             fi
             echo "Found corresponding Lucene version: ${lucene_version} based on change log entry. Proceeding with next steps."
           else
-            echo "Could not find the line number at which new entry is added in ${{ env.CHANGE_LOG_FILE }}"
+            echo "Could not find the line number at which new entry is added in $CHANGE_LOG_FILE"
             exit 0
           fi
 
@@ -120,4 +117,12 @@ jobs:
             exit 0
           fi
           echo "Adding/Updating milestone for the PR to:${lucene_version}"
-          gh pr edit ${{ github.event.number }} --milestone "${lucene_version}"
+          gh pr edit "$PR_NUMBER" --milestone "${lucene_version}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ github.event.issue.html_url }}
+          PR_NUMBER: ${{ github.event.number }}
+          BASE_REPO: ${{ github.repository }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          SKIP_CHANGELOG_LABEL: skip-changelog
+          CHANGE_LOG_FILE: lucene/CHANGES.txt

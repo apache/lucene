@@ -38,7 +38,7 @@ import java.util.TimeZone;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.PostingsFormat;
-import org.apache.lucene.codecs.lucene103.Lucene103Codec;
+import org.apache.lucene.codecs.lucene104.Lucene104Codec;
 import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
@@ -166,7 +166,7 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
 
             @Override
             public String toString() {
-              return super.toString() + ": " + format.toString() + ", " + dvFormat.toString();
+              return super.toString() + ": " + format + ", " + dvFormat;
             }
           };
     } else if ("SimpleText".equals(TEST_CODEC)
@@ -188,9 +188,9 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
     } else if ("Compressing".equals(TEST_CODEC)
         || ("random".equals(TEST_CODEC) && randomVal == 6 && !shouldAvoidCodec("Compressing"))) {
       codec = CompressingCodec.randomInstance(random);
-    } else if ("Lucene100".equals(TEST_CODEC)
-        || ("random".equals(TEST_CODEC) && randomVal == 5 && !shouldAvoidCodec("Lucene100"))) {
-      codec = new Lucene103Codec(RandomPicks.randomFrom(random, Lucene103Codec.Mode.values()));
+    } else if ("Lucene104".equals(TEST_CODEC)
+        || ("random".equals(TEST_CODEC) && randomVal == 5 && !shouldAvoidCodec("Lucene104"))) {
+      codec = new Lucene104Codec(RandomPicks.randomFrom(random, Lucene104Codec.Mode.values()));
     } else if (!"random".equals(TEST_CODEC)) {
       codec = Codec.forName(TEST_CODEC);
     } else if ("random".equals(TEST_POSTINGSFORMAT)) {

@@ -8,9 +8,13 @@ on:
   schedule:
     - cron: '4 2 * * *'
 
+permissions: {}
+
 jobs:
   smokeTestRelease:
     name: "Smoke test release on jdk ${{ matrix.java-version }}, ${{ matrix.os }}"
+    permissions:
+      contents: write # may work with contents:read
 
     # only run on schedule in the main Lucene repo (not in forks).
     if: (github.event_name == 'schedule' && github.repository == 'apache/lucene') || (github.event_name != 'schedule')
@@ -18,18 +22,23 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest ]
-        java-version: [ '24' ]
+        java-version: [ '25' ]
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     env:
       LUCENE_RELEASE_DIR: /tmp/lucene-release-dir
       TMP_DIR: /tmp/lucene-tmp-dir
 
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+      - name: Setup java
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5.0.0
         with:
           distribution: 'temurin'
           java-package: jdk
@@ -37,7 +46,7 @@ jobs:
           # This intentionally lists two versions, the last one is used as the system default (for running gradle).
           java-version: |
             ${{ matrix.java-version }}
-            24
+            25
 
       - name: Echo diagnostic paths and locations
         run: |
@@ -45,29 +54,33 @@ jobs:
           set | grep "JAVA"
 
           echo "Gradle's 'RUNTIME_JAVA_HOME' JDK:"
-          RUNTIME_JAVA_HOME_VAR=JAVA_HOME_`echo ${{ matrix.java-version }} | egrep --only "[0-9]+"`_X64
-          echo ${RUNTIME_JAVA_HOME_VAR} points at ${!RUNTIME_JAVA_HOME_VAR}
+          RUNTIME_JAVA_HOME_VAR=JAVA_HOME_$(echo "$JAVA_VERSION" | grep -E --only "[0-9]+")_X64
+          echo "${RUNTIME_JAVA_HOME_VAR}" points at "${!RUNTIME_JAVA_HOME_VAR}"
 
           # This sets the environment variable and makes it available for subsequent job steps.
           # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-an-environment-variable
           echo "RUNTIME_JAVA_HOME=${!RUNTIME_JAVA_HOME_VAR}" >> "$GITHUB_ENV"
+        env:
+          JAVA_VERSION: ${{ matrix.java-version }}
 
       - name: "Run buildAndPushRelease.py (--dev-mode)"
         run: |
           # Assemble an unsigned release, in dev mode, publish locally.
-          python3 ./dev-tools/scripts/buildAndPushRelease.py --dev-mode --push-local ${{ env.LUCENE_RELEASE_DIR }}
+          python3 ./dev-tools/scripts/buildAndPushRelease.py --dev-mode --push-local "$LUCENE_RELEASE_DIR"
 
       - name: "Run smokeTestRelease.py (runtime java: ${{ matrix.java-version }})"
         run: |
+          subfolder=$(compgen -G "$LUCENE_RELEASE_DIR/lucene*")
+          subfolder=$(realpath "$subfolder")
           python3 -u dev-tools/scripts/smokeTestRelease.py \
             --not-signed \
-            --tmp-dir ${{ env.TMP_DIR }} \
-            file://`realpath ${{ env.LUCENE_RELEASE_DIR }}/lucene*` \
+            --tmp-dir "$TMP_DIR" \
+            "file://$subfolder" \
             -Ptests.filter="@skipall"
 
       - name: "Store smoke tester logs"
         if: ${{ always() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: smoke-tester-logs-jdk-${{ matrix.java-version }}
           path: |

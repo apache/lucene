@@ -18,7 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.util.LongHeap;
+import org.apache.lucene.util.TernaryLongHeap;
 
 /**
  * A {@link Collector} implementation that collects the top-scoring hits, returning them as a {@link
@@ -33,7 +33,7 @@ import org.apache.lucene.util.LongHeap;
 public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
   private final ScoreDoc after;
-  private final LongHeap heap;
+  private final TernaryLongHeap heap;
   final int totalHitsThreshold;
   final MaxScoreAccumulator minScoreAcc;
 
@@ -41,7 +41,7 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
   TopScoreDocCollector(
       int numHits, ScoreDoc after, int totalHitsThreshold, MaxScoreAccumulator minScoreAcc) {
     super(null);
-    this.heap = new LongHeap(numHits, DocScoreEncoder.LEAST_COMPETITIVE_CODE);
+    this.heap = new TernaryLongHeap(numHits, DocScoreEncoder.LEAST_COMPETITIVE_CODE);
     this.after = after;
     this.totalHitsThreshold = totalHitsThreshold;
     this.minScoreAcc = minScoreAcc;

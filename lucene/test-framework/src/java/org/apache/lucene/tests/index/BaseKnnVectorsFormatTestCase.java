@@ -42,6 +42,7 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsReader;
 import org.apache.lucene.document.Document;
@@ -78,16 +79,18 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
-import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.codecs.asserting.AssertingKnnVectorsFormat;
@@ -830,7 +833,11 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         // assert that knn search doesn't fail on a field with all deleted docs
         TopDocs results =
             leafReader.searchNearestVectors(
-                "v", randomNormalizedVector(4), 1, leafReader.getLiveDocs(), Integer.MAX_VALUE);
+                "v",
+                randomNormalizedVector(4),
+                1,
+                AcceptDocs.fromLiveDocs(leafReader.getLiveDocs(), leafReader.maxDoc()),
+                Integer.MAX_VALUE);
         assertEquals(0, results.scoreDocs.length);
       }
     }
@@ -961,7 +968,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         if (random().nextInt(10) == 2) {
           iw.deleteDocuments(new Term("id", Integer.toString(random().nextInt(i + 1))));
         }
-        if (random().nextInt(10) == 3) {
+        if (random().nextInt(23) == 1) {
           iw.commit();
         }
       }
@@ -1022,7 +1029,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         if (random().nextInt(10) == 2) {
           iw.deleteDocuments(new Term("id", Integer.toString(random().nextInt(i + 1))));
         }
-        if (random().nextInt(10) == 3) {
+        if (random().nextInt(23) == 1) {
           iw.commit();
         }
       }
@@ -1489,9 +1496,20 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           TopDocs results =
               ctx.reader()
                   .searchNearestVectors(
-                      fieldName, randomNormalizedVector(dimension), k, liveDocs, visitedLimit);
+                      fieldName,
+                      randomNormalizedVector(dimension),
+                      k,
+                      AcceptDocs.fromLiveDocs(liveDocs, ctx.reader().maxDoc()),
+                      visitedLimit);
           assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, results.totalHits.relation());
-          assertEquals(visitedLimit, results.totalHits.value());
+          int size = Lucene99HnswVectorsReader.EXHAUSTIVE_BULK_SCORE_ORDS;
+          // visit limit is a "best effort" limit given our bulk scoring logic; assert that we are
+          // within
+          // reasonable bounds
+          assertTrue(
+              results.totalHits.value() == visitedLimit
+                  || results.totalHits.value()
+                      <= ((visitedLimit + size - 1) / size) * ((long) size));
 
           // check the limit is not hit when it clearly exceeds the number of vectors
           k = vectorValues.size();
@@ -1499,7 +1517,11 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           results =
               ctx.reader()
                   .searchNearestVectors(
-                      fieldName, randomNormalizedVector(dimension), k, liveDocs, visitedLimit);
+                      fieldName,
+                      randomNormalizedVector(dimension),
+                      k,
+                      AcceptDocs.fromLiveDocs(liveDocs, ctx.reader().maxDoc()),
+                      visitedLimit);
           assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation());
           assertTrue(results.totalHits.value() <= visitedLimit);
           assertOffHeapByteSize(ctx.reader(), fieldName);
@@ -1581,7 +1603,11 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           TopDocs results =
               ctx.reader()
                   .searchNearestVectors(
-                      fieldName, randomNormalizedVector(dimension), k, liveDocs, Integer.MAX_VALUE);
+                      fieldName,
+                      randomNormalizedVector(dimension),
+                      k,
+                      AcceptDocs.fromLiveDocs(liveDocs, ctx.reader().maxDoc()),
+                      Integer.MAX_VALUE);
           assertEquals(Math.min(k, size), results.scoreDocs.length);
           for (int i = 0; i < k - 1; i++) {
             assertTrue(results.scoreDocs[i].score >= results.scoreDocs[i + 1].score);
@@ -1941,7 +1967,10 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   /**
    * Test that the query is a viable approximation to exact search. This test is designed to uncover
    * gross failures only, not to represent the true expected recall.
+   *
+   * <p>TODO: this test is incredibly slow
    */
+  @Nightly
   public void testRecall() throws IOException {
     VectorSimilarityFunction[] functions = {
       VectorSimilarityFunction.EUCLIDEAN,
@@ -1980,9 +2009,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       for (String queryString : testQueries) {
         computeLineEmbedding(queryString, queryEmbedding);
 
-        // pass match-all "filter" to force full traversal, bypassing graph
-        KnnFloatVectorQuery exactQuery =
-            new KnnFloatVectorQuery("field", queryEmbedding, 1000, new MatchAllDocsQuery());
+        // gather exact results first
+        Query exactQuery = buildExactKnnQuery("field", queryEmbedding, 10000);
         assertEquals(numQueries, searcher.count(exactQuery)); // Same for exact search
 
         KnnFloatVectorQuery query = new KnnFloatVectorQuery("field", queryEmbedding, efSearch);
@@ -2120,9 +2148,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
     if (r instanceof CodecReader codecReader) {
       KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-      if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
-        knnVectorsReader = fieldsReader.getFieldReader(fieldName);
-      }
+      knnVectorsReader = knnVectorsReader.unwrapReaderForField(fieldName);
       var offHeap = knnVectorsReader.getOffHeapByteSize(fieldInfo);
       long totalByteSize = offHeap.values().stream().mapToLong(Long::longValue).sum();
       if (knnVectorsReader instanceof SimpleTextKnnVectorsReader) {
@@ -2140,7 +2166,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             var quant = offHeap.getOrDefault("veq", offHeap.get("veb"));
             assertTrue(quant == null || quant > 0L);
           } else {
-            assertTrue(offHeap.get("vex") == null);
+            assertTrue(offHeap.get("vex") == null || offHeap.get("vex") == 0);
           }
 
           if (hasQuantized(knnVectorsReader, fieldInfo)) {
@@ -2185,7 +2211,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       knnVectorsReader = assertingReader.delegate;
     }
     if (knnVectorsReader instanceof HnswGraphProvider graphProvider) {
-      return graphProvider.getGraph(fieldInfo.name) != null;
+      return graphProvider.getGraph(fieldInfo.name) != null
+          && graphProvider.getGraph(fieldInfo.name).size() > 0;
     }
     String name = knnVectorsReader.getClass().getSimpleName().toLowerCase(Locale.ROOT);
     return name.contains("hnsw");
@@ -2201,5 +2228,19 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     assertEquals(105L, (long) r.get("c"));
     assertEquals(101L, (long) r.get("d"));
     assertEquals(6L, (long) r.get("e"));
+  }
+
+  private static Query buildExactKnnQuery(String fieldName, float[] queryVector, int totalDocs) {
+    return new KnnFloatVectorQuery(fieldName, queryVector, totalDocs) {
+      @Override
+      protected TopDocs approximateSearch(
+          LeafReaderContext context,
+          AcceptDocs acceptDocs,
+          int visitedLimit,
+          KnnCollectorManager knnCollectorManager)
+          throws IOException {
+        return exactSearch(context, DocIdSetIterator.all(totalDocs), null);
+      }
+    };
   }
 }

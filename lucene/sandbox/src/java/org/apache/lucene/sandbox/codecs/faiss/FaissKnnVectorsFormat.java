@@ -31,7 +31,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
 /**
- * A Faiss-based format to create and search vector indexes, using {@link LibFaissC} to interact
+ * A Faiss-based format to create and search vector indexes, using {@link FaissLibrary} to interact
  * with the native library.
  *
  * <p>The Faiss index is configured using its flexible <a
