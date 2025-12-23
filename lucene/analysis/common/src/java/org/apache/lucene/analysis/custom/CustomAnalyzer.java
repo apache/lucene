@@ -606,7 +606,7 @@ public final class CustomAnalyzer extends Analyzer {
         throw new IllegalArgumentException(
             "Key-value pairs expected, so the number of params must be even.");
       }
-      final Map<String, String> map = CollectionUtil.newHashMap(params.length);
+      final Map<String, String> map = CollectionUtil.newHashMap(params.length / 2);
       for (int i = 0; i < params.length; i += 2) {
         Objects.requireNonNull(params[i], "Key of param may not be null.");
         map.put(params[i], params[i + 1]);
