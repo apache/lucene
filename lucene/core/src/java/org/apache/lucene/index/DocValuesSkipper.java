@@ -127,7 +127,7 @@ public abstract class DocValuesSkipper {
    * Returns the minimum value for a field across all segments, or {@link Long#MIN_VALUE} if not
    * available
    *
-   * @param reader the index reader to be stated
+   * @param reader the index reader to be queried
    * @param field the field to retrieve values for
    */
   public static long globalMinValue(IndexReader reader, String field) throws IOException {
@@ -151,7 +151,7 @@ public abstract class DocValuesSkipper {
    * Returns the maximum value for a field across all segments, or {@link Long#MIN_VALUE} if not
    * available
    *
-   * @param reader the index reader to be stated
+   * @param reader the index reader to be queried
    * @param field the field to retrieve values for
    */
   public static long globalMaxValue(IndexReader reader, String field) throws IOException {
@@ -174,7 +174,7 @@ public abstract class DocValuesSkipper {
   /**
    * Returns the total skipper document count for a field across all segments
    *
-   * @param reader the index reader to be stated
+   * @param reader the index reader to be queried
    * @param field the field to retrieve values for
    */
   public static int globalDocCount(IndexReader reader, String field) throws IOException {
