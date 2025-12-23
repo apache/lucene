@@ -434,25 +434,31 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           return null;
         }
 
-        if (prefetch) {
-          currentFrame.prefetchBlock();
-        }
+        boolean doDefer = maybePrefetch(prefetch);
 
-        return () -> {
-          currentFrame.loadBlock();
+        return new IOBooleanSupplier() {
+          @Override
+          public boolean get() throws IOException {
+            currentFrame.loadBlock();
 
-          final SeekStatus result = currentFrame.scanToTerm(target, true);
-          if (result == SeekStatus.FOUND) {
-            // if (DEBUG) {
-            //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
-            // }
-            return true;
-          } else {
-            // if (DEBUG) {
-            //   System.out.println("  got " + result + "; return NOT_FOUND term=" +
-            // ToStringUtils.bytesRefToString(term));
-            // }
-            return false;
+            final SeekStatus result = currentFrame.scanToTerm(target, true);
+            if (result == SeekStatus.FOUND) {
+              // if (DEBUG) {
+              //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
+              // }
+              return true;
+            } else {
+              // if (DEBUG) {
+              //   System.out.println("  got " + result + "; return NOT_FOUND term=" +
+              // ToStringUtils.bytesRefToString(term));
+              // }
+              return false;
+            }
+          }
+
+          @Override
+          public boolean doDefer() {
+            return doDefer;
           }
         };
       } else {
@@ -491,33 +497,60 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       return null;
     }
 
-    if (prefetch) {
-      currentFrame.prefetchBlock();
-    }
+    boolean doDefer = maybePrefetch(prefetch);
 
-    return () -> {
-      currentFrame.loadBlock();
+    return new IOBooleanSupplier() {
+      @Override
+      public boolean get() throws IOException {
+        currentFrame.loadBlock();
 
-      final SeekStatus result = currentFrame.scanToTerm(target, true);
-      if (result == SeekStatus.FOUND) {
-        // if (DEBUG) {
-        //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
-        // }
-        return true;
-      } else {
-        // if (DEBUG) {
-        //   System.out.println("  got result " + result + "; return NOT_FOUND term=" +
-        // term.utf8ToString());
-        // }
+        final SeekStatus result = currentFrame.scanToTerm(target, true);
+        if (result == SeekStatus.FOUND) {
+          // if (DEBUG) {
+          //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
+          // }
+          return true;
+        } else {
+          // if (DEBUG) {
+          //   System.out.println("  got result " + result + "; return NOT_FOUND term=" +
+          // term.utf8ToString());
+          // }
 
-        return false;
+          return false;
+        }
+      }
+
+      @Override
+      public boolean doDefer() {
+        return doDefer;
       }
     };
   }
 
+  private boolean maybePrefetch(boolean prefetch) throws IOException {
+    boolean doDefer;
+    if (prefetch) {
+      doDefer = currentFrame.prefetchBlock();
+      if (doDefer) {
+        hotCounter = 0;
+      } else {
+        hotCounter++;
+      }
+    } else {
+      doDefer = false;
+    }
+    return doDefer;
+  }
+
   @Override
   public IOBooleanSupplier prepareSeekExact(BytesRef target) throws IOException {
-    return prepareSeekExact(target, true);
+    return prepareSeekExact(target, likelyCold());
+  }
+
+  private short hotCounter = 0;
+
+  private boolean likelyCold() {
+    return hotCounter < 1000; // TODO: constant/param/heurisitcs?
   }
 
   @Override

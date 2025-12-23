@@ -345,8 +345,9 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
       }
 
       @Override
-      public void prefetch(long offset, long length) throws IOException {
+      public boolean prefetch(long offset, long length) throws IOException {
         // Not delegating to the wrapped instance on purpose. This is only used for merging.
+        return false;
       }
     };
   }
