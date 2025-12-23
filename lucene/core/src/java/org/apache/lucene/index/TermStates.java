@@ -193,7 +193,25 @@ public final class TermStates {
         this.states[ctx.ord] = EMPTY_TERMSTATE;
         return null;
       }
-      return () -> {
+      if (termExistsSupplier.doDefer()) {
+        return () -> {
+          if (this.states[ctx.ord] == null) {
+            TermState state = null;
+            if (termExistsSupplier.get()) {
+              state = termsEnum.termState();
+              this.states[ctx.ord] = state;
+            } else {
+              this.states[ctx.ord] = EMPTY_TERMSTATE;
+            }
+          }
+          TermState state = this.states[ctx.ord];
+          if (state == EMPTY_TERMSTATE) {
+            return null;
+          }
+          return state;
+        };
+      } else {
+        // TODO: dedup? also, do we need this second == null check for both defer/not defer?
         if (this.states[ctx.ord] == null) {
           TermState state = null;
           if (termExistsSupplier.get()) {
@@ -207,8 +225,8 @@ public final class TermStates {
         if (state == EMPTY_TERMSTATE) {
           return null;
         }
-        return state;
-      };
+        return () -> state;
+      }
     }
     TermState state = this.states[ctx.ord];
     if (state == EMPTY_TERMSTATE) {

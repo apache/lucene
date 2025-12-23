@@ -133,10 +133,10 @@ final class SegmentTermsEnumFrame {
     loadBlock();
   }
 
-  void prefetchBlock() throws IOException {
+  boolean prefetchBlock() throws IOException {
     if (nextEnt != -1) {
       // Already loaded
-      return;
+      return false;
     }
 
     // Clone the IndexInput lazily, so that consumers
@@ -145,7 +145,7 @@ final class SegmentTermsEnumFrame {
     ste.initIndexInput();
 
     // TODO: Could we know the number of bytes to prefetch?
-    ste.in.prefetch(fp, 1);
+    return ste.in.prefetch(fp, 1);
   }
 
   /* Does initial decode of next block of terms; this

@@ -126,7 +126,7 @@ public class SerialIOCountingDirectory extends FilterDirectory {
     }
 
     @Override
-    public void prefetch(long offset, long length) throws IOException {
+    public boolean prefetch(long offset, long length) throws IOException {
       final long firstPage = (sliceOffset + offset) >> PAGE_SHIFT;
       final long lastPage = (sliceOffset + offset + length - 1) >> PAGE_SHIFT;
 
@@ -152,6 +152,8 @@ public class SerialIOCountingDirectory extends FilterDirectory {
       for (long page = firstPage; page <= lastPage; ++page) {
         pendingPages.add(page);
       }
+
+      return true; // TODO: looks like the right thing to do for this class?
     }
 
     @Override
