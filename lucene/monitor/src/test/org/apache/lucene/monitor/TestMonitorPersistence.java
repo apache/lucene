@@ -71,7 +71,7 @@ public class TestMonitorPersistence extends MonitorTestBase {
               () ->
                   monitor.register(
                       new MonitorQuery(
-                          "5", new MatchAllDocsQuery(), null, Collections.emptyMap())));
+                          "5", MatchAllDocsQuery.INSTANCE, null, Collections.emptyMap())));
       assertEquals(
           "Cannot add a MonitorQuery with a null string representation to a non-ephemeral Monitor",
           e.getMessage());

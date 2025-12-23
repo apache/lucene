@@ -288,7 +288,7 @@ public class Lucene70SegmentInfoFormat extends SegmentInfoFormat {
               new SortedNumericSortField(
                   fieldName, sortType, reverse, sortedNumericSelector, missingValue);
         } else {
-          sortFields[i] = new SortField(fieldName, sortType, reverse);
+          sortFields[i] = new SortField(fieldName, sortType, reverse, missingValue);
         }
       }
       indexSort = new Sort(sortFields);

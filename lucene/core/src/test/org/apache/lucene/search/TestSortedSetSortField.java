@@ -78,7 +78,7 @@ public class TestSortedSetSortField extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortedSetSortField("value", false));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(2, td.totalHits.value());
     // 'bar' comes before 'baz'
     assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
@@ -107,7 +107,7 @@ public class TestSortedSetSortField extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortedSetSortField("value", true));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(2, td.totalHits.value());
     // 'bar' comes before 'baz'
     assertEquals("2", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
@@ -140,7 +140,7 @@ public class TestSortedSetSortField extends LuceneTestCase {
         new SortedSetSortField("value", false, SortedSetSelector.Type.MIN, SortField.STRING_FIRST);
     Sort sort = new Sort(sortField);
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(3, td.totalHits.value());
     // 'bar' comes before 'baz'
     // null comes first
@@ -175,7 +175,7 @@ public class TestSortedSetSortField extends LuceneTestCase {
         new SortedSetSortField("value", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
     Sort sort = new Sort(sortField);
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(3, td.totalHits.value());
     // 'bar' comes before 'baz'
     assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
@@ -204,7 +204,7 @@ public class TestSortedSetSortField extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortedSetSortField("value", false));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(2, td.totalHits.value());
     // 'bar' comes before 'baz'
     assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));

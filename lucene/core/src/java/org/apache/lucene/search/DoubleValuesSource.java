@@ -530,17 +530,6 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
     }
 
     @Override
-    public void setMissingValue(Object missingValue) {
-      if (missingValue instanceof Number) {
-        this.missingValue = missingValue;
-        ((DoubleValuesComparatorSource) getComparatorSource())
-            .setMissingValue(((Number) missingValue).doubleValue());
-      } else {
-        super.setMissingValue(missingValue);
-      }
-    }
-
-    @Override
     public boolean needsScores() {
       return producer.needsScores();
     }
@@ -572,14 +561,10 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
   private static class DoubleValuesComparatorSource extends FieldComparatorSource {
     private final DoubleValuesSource producer;
-    private double missingValue;
+    private final double missingValue;
 
     DoubleValuesComparatorSource(DoubleValuesSource producer, double missingValue) {
       this.producer = producer;
-      this.missingValue = missingValue;
-    }
-
-    void setMissingValue(double missingValue) {
       this.missingValue = missingValue;
     }
 

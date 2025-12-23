@@ -42,7 +42,7 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
   private final Query testQuery =
       new BooleanQuery.Builder()
           .add(new TermQuery(new Term("field", "5")), BooleanClause.Occur.SHOULD)
-          .add(new MatchAllDocsQuery(), BooleanClause.Occur.SHOULD)
+          .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
           .build();
 
   @Override

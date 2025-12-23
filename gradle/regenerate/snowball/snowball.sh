@@ -33,17 +33,17 @@ set -eEuo pipefail
 # and likely fail. so only ask for our specific target.
 (cd ${SRCDIR} && make dist_libstemmer_java)
 
-for file in "SnowballStemmer.java" "Among.java" "SnowballProgram.java"; do
-  # add license header to files since they have none, otherwise rat will flip the fuck out
+for file in "SnowballStemmer.java" "Among.java" "SnowballProgram.java" "CharArraySequence.java"; do
+  # add license header to files since they have none.
   echo "/*" > ${DESTDIR}/${file}
   cat ${SRCDIR}/COPYING >> ${DESTDIR}/${file}
   echo "*/" >> ${DESTDIR}/${file}
-  cat ${SRCDIR}/java/org/tartarus/snowball/${file} >> ${DESTDIR}/${file}
+  cat ${SRCDIR}/java/org/tartarus/snowball/${file} | sed 's/public class CharArraySequence/@SuppressWarnings("all") \0/' >> ${DESTDIR}/${file}
 done
 
 rm ${DESTDIR}/ext/*Stemmer.java
 rm -f ${TESTDSTDIR}/languages.txt
-for file in ${SRCDIR}/java/org/tartarus/snowball/ext/*.java; do
+for file in $(find ${SRCDIR}/java/org/tartarus/snowball/ext/ -name "*.java" | sort); do
   # title-case the classes (fooStemmer -> FooStemmer) so they obey normal java conventions
   base=$(basename $file)
   oldclazz="${base%.*}"

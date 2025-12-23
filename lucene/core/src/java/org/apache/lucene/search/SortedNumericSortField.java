@@ -42,7 +42,7 @@ import org.apache.lucene.util.NumericUtils;
  * customized.
  *
  * <p>Like sorting by string, this also supports sorting missing values as first or last, via {@link
- * #setMissingValue(Object)}.
+ * SortField#STRING_FIRST} or {@link SortField#STRING_LAST}.
  *
  * @see SortedNumericSelector
  */
@@ -252,11 +252,6 @@ public class SortedNumericSortField extends SortField {
     buffer.append(type);
 
     return buffer.toString();
-  }
-
-  @Override
-  public void setMissingValue(Object missingValue) {
-    this.missingValue = missingValue;
   }
 
   @Override

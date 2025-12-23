@@ -291,17 +291,6 @@ public abstract class LongValuesSource implements SegmentCacheable {
     }
 
     @Override
-    public void setMissingValue(Object missingValue) {
-      if (missingValue instanceof Number) {
-        this.missingValue = missingValue;
-        ((LongValuesComparatorSource) getComparatorSource())
-            .setMissingValue(((Number) missingValue).longValue());
-      } else {
-        super.setMissingValue(missingValue);
-      }
-    }
-
-    @Override
     public boolean needsScores() {
       return producer.needsScores();
     }
@@ -333,14 +322,10 @@ public abstract class LongValuesSource implements SegmentCacheable {
 
   private static class LongValuesComparatorSource extends FieldComparatorSource {
     private final LongValuesSource producer;
-    private long missingValue;
+    private final long missingValue;
 
     public LongValuesComparatorSource(LongValuesSource producer, long missingValue) {
       this.producer = producer;
-      this.missingValue = missingValue;
-    }
-
-    void setMissingValue(long missingValue) {
       this.missingValue = missingValue;
     }
 

@@ -81,7 +81,7 @@ public class TestBlockJoinScorer extends LuceneTestCase {
         new QueryBitSetProducer(new TermQuery(new Term("docType", "parent")));
     CheckJoinIndex.check(reader, parentsFilter);
 
-    Query childQuery = new MatchAllDocsQuery();
+    Query childQuery = MatchAllDocsQuery.INSTANCE;
     ToParentBlockJoinQuery query =
         new ToParentBlockJoinQuery(childQuery, parentsFilter, ScoreMode.None);
 
