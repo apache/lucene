@@ -7,6 +7,9 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#15517: Remove newHashMap, newHashSet from CollectionUtil, and use HashMap.newHashMap, HashSet.newHashSet
+  directly. (Zhou Hui)
+
 * GITHUB#15309: PriorityQueue.remove method has been removed entirely. If you need remove(), implement
   it yourself in a subclass (heap access and size, upHeap and downHeap are protected members of PQ). (Dawid Weiss)
 

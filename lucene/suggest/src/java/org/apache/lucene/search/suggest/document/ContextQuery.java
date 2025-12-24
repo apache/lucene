@@ -31,7 +31,6 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -202,7 +201,7 @@ public class ContextQuery extends CompletionQuery implements Accountable {
     contextsAutomaton =
         Operations.determinize(contextsAutomaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
 
-    final Map<IntsRef, Float> contextMap = CollectionUtil.newHashMap(contexts.size());
+    final Map<IntsRef, Float> contextMap = HashMap.newHashMap(contexts.size());
     final IntHashSet contextLengths = new IntHashSet();
     for (Map.Entry<IntsRef, ContextMetaData> entry : contexts.entrySet()) {
       ContextMetaData contextMetaData = entry.getValue();

@@ -18,8 +18,6 @@ package org.apache.lucene.util;
 
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.RandomAccess;
 
@@ -33,22 +31,6 @@ import java.util.RandomAccess;
 public final class CollectionUtil {
 
   private CollectionUtil() {} // no instance
-
-  /**
-   * Returns a new {@link HashMap} sized to contain {@code size} items without resizing the internal
-   * array.
-   */
-  public static <K, V> HashMap<K, V> newHashMap(int size) {
-    return HashMap.newHashMap(size);
-  }
-
-  /**
-   * Returns a new {@link HashSet} sized to contain {@code size} items without resizing the internal
-   * array.
-   */
-  public static <E> HashSet<E> newHashSet(int size) {
-    return HashSet.newHashSet(size);
-  }
 
   private static final class ListIntroSorter<T> extends IntroSorter {
 
