@@ -27,7 +27,6 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Predicate;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -39,15 +38,11 @@ import org.apache.lucene.util.VectorUtil;
  * vectorization modules in the Java runtime this class provides optimized implementations (using
  * SIMD) of several algorithms used throughout Apache Lucene.
  *
- * <p>Expert: set the {@value #UPPER_JAVA_FEATURE_VERSION_SYSPROP} system property to increase the
- * set of Java versions this class will provide optimized implementations for.
- *
  * @lucene.internal
  */
 public abstract class VectorizationProvider {
 
   public static final OptionalInt TESTS_VECTOR_SIZE;
-  static final int UPPER_JAVA_FEATURE_VERSION = getUpperJavaFeatureVersion();
 
   static {
     var vs = OptionalInt.empty();
@@ -61,27 +56,6 @@ public abstract class VectorizationProvider {
       // ignored
     }
     TESTS_VECTOR_SIZE = vs;
-  }
-
-  private static final String UPPER_JAVA_FEATURE_VERSION_SYSPROP =
-      "org.apache.lucene.vectorization.upperJavaFeatureVersion";
-  private static final int DEFAULT_UPPER_JAVA_FEATURE_VERSION = 25;
-
-  private static int getUpperJavaFeatureVersion() {
-    int runtimeVersion = DEFAULT_UPPER_JAVA_FEATURE_VERSION;
-    try {
-      String str = System.getProperty(UPPER_JAVA_FEATURE_VERSION_SYSPROP);
-      if (str != null) {
-        runtimeVersion = Math.max(Integer.parseInt(str), runtimeVersion);
-      }
-    } catch (NumberFormatException | SecurityException _) {
-      Logger.getLogger(VectorizationProvider.class.getName())
-          .warning(
-              "Cannot read sysprop "
-                  + UPPER_JAVA_FEATURE_VERSION_SYSPROP
-                  + ", so the default value will be used.");
-    }
-    return runtimeVersion;
   }
 
   /**
@@ -115,10 +89,6 @@ public abstract class VectorizationProvider {
 
   /** Create a new {@link PostingDecodingUtil} for the given {@link IndexInput}. */
   public abstract PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException;
-
-  // *** Lookup mechanism: ***
-
-  private static final Logger LOG = Logger.getLogger(VectorizationProvider.class.getName());
 
   // visible for tests
   static VectorizationProvider lookup(boolean testMode) {

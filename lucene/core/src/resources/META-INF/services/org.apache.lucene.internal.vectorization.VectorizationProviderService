@@ -17,3 +17,4 @@
 
 org.apache.lucene.internal.vectorization.DefaultVectorizationProviderService
 org.apache.lucene.internal.vectorization.PanamaVectorizationProviderService
+org.apache.lucene.internal.vectorization.NativeVectorizationProviderService

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.internal.vectorization;
+package org.apache.lucene.internal.vectorization.panama;
 
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 
@@ -27,6 +27,7 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.logging.Logger;
 import jdk.incubator.vector.FloatVector;
+import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.util.Constants;
 
 /**
@@ -146,7 +147,6 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
 
   public static int dotProduct(MemorySegment a, MemorySegment b) {
     if (dotProduct$MH != null) {
-      // throw new RuntimeException("issue in native");
       return invokedMethodHandle(dotProduct$MH, a, b);
     }
     return PanamaVectorUtilSupport.dotProduct(a, b);

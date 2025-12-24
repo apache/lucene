@@ -25,7 +25,7 @@ import org.apache.lucene.util.Constants;
 
 // this should live in a separate module, really. but for now - since we use
 // mr-jars, we have to look up the class by reflection (it isn't visible from this module).
-public class PanamaVectorizationProviderService implements VectorizationProviderService {
+public class NativeVectorizationProviderService implements VectorizationProviderService {
   /**
    * Looks up the vector module from Lucene's {@link ModuleLayer} or the root layer (if unnamed).
    */
@@ -38,7 +38,9 @@ public class PanamaVectorizationProviderService implements VectorizationProvider
   @Override
   public boolean isUsable() {
     final int runtimeVersion = Runtime.version().feature();
-    assert runtimeVersion >= 21;
+    assert runtimeVersion >= 25;
+    Logger.getLogger(NativeVectorizationProviderService.class.getName())
+        .warning("Runtime version: " + runtimeVersion);
 
     // only use vector module with Hotspot VM
     if (!Constants.IS_HOTSPOT_VM) {
@@ -50,12 +52,16 @@ public class PanamaVectorizationProviderService implements VectorizationProvider
       return false;
     }
 
+    Logger.getLogger(NativeVectorizationProviderService.class.getName()).warning("starting:");
     // is the incubator module present and readable (JVM providers may to exclude them or it is
     // build with jlink)
     final var vectorMod = lookupVectorModule();
     if (vectorMod.isEmpty()) {
+      Logger.getLogger(NativeVectorizationProviderService.class.getName())
+          .warning("empty vector module:");
       return false;
     }
+    Logger.getLogger(NativeVectorizationProviderService.class.getName()).warning("im here:");
     vectorMod.ifPresent(VectorizationProvider.class.getModule()::addReads);
 
     // TODO: check for testMode and otherwise fallback to default if slowness could happen
@@ -63,15 +69,15 @@ public class PanamaVectorizationProviderService implements VectorizationProvider
     try {
       return newInstance() != null;
     } catch (Throwable t) {
-      Logger.getLogger(PanamaVectorizationProviderService.class.getName())
-          .warning("exception here: " + t.getMessage());
+      Logger.getLogger(NativeVectorizationProviderService.class.getName())
+          .warning("something happened:" + t.getMessage());
       return false;
     }
   }
 
   @Override
   public String name() {
-    return "panama";
+    return "native";
   }
 
   @Override
@@ -80,11 +86,13 @@ public class PanamaVectorizationProviderService implements VectorizationProvider
       final var lookup = MethodHandles.lookup();
       final var cls =
           lookup.findClass(
-              "org.apache.lucene.internal.vectorization.panama.PanamaVectorizationProvider");
+              "org.apache.lucene.internal.vectorization.panama.NativeVectorizationProvider");
       final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
       return (VectorizationProvider) constr.invoke();
     } catch (Throwable t) {
       // TODO: we should probably check what happened more thoroughly...
+      Logger.getLogger(NativeVectorizationProviderService.class.getName())
+          .warning("exception here: " + t.getMessage());
       throw new RuntimeException(t);
     }
   }

@@ -15,21 +15,28 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.internal.vectorization;
+package org.apache.lucene.internal.vectorization.panama;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
+import org.apache.lucene.internal.vectorization.VectorUtilSupport;
+import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.store.IndexInput;
 
 /** Native provider returning native implemented implementations. */
-final class NativeVectorizationProvider extends VectorizationProvider {
+public final class NativeVectorizationProvider extends VectorizationProvider {
 
   private final VectorizationProvider delegateVectorUtilProvider =
-      new DefaultVectorizationProvider();
+      new PanamaVectorizationProvider();
 
   private final VectorUtilSupport vectorUtilSupport;
 
-  NativeVectorizationProvider() {
+  public NativeVectorizationProvider() {
+    if (NativeVectorUtilSupport.isLibraryLoaded() == false) {
+      throw new UnsupportedOperationException(
+          "Native library is not loaded, cannot instantiate NativeVectorizationProvider");
+    }
     vectorUtilSupport =
         new NativeVectorUtilSupport(delegateVectorUtilProvider.getVectorUtilSupport());
   }

@@ -95,7 +95,8 @@ module org.apache.lucene.core {
       org.apache.lucene.search.SortedSetSortField.Provider;
   provides org.apache.lucene.internal.vectorization.VectorizationProviderService with
       org.apache.lucene.internal.vectorization.DefaultVectorizationProviderService,
-      org.apache.lucene.internal.vectorization.PanamaVectorizationProviderService;
+      org.apache.lucene.internal.vectorization.PanamaVectorizationProviderService,
+      org.apache.lucene.internal.vectorization.NativeVectorizationProviderService;
 
   uses org.apache.lucene.analysis.CharFilterFactory;
   uses org.apache.lucene.analysis.TokenFilterFactory;
