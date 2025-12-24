@@ -27,7 +27,8 @@ import org.apache.lucene.util.BytesRefBuilder;
 
 /**
  * Builds an ART from pre-sorted terms with outputs. We can save built ART to disk and read it by
- * {@link ARTBuilderPre}. This version save/load the whole art one time, without FP.
+ * {@link ARTBuilderPre}. This version save/load the whole art one time, without FP. This can be
+ * used in NormalizeCharMap.
  */
 public class ARTBuilderPre {
   public Node root;

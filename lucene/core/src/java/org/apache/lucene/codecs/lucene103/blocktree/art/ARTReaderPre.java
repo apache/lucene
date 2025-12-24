@@ -24,7 +24,7 @@ import org.apache.lucene.util.BytesRef;
 /**
  * Visit or find(search) terms. We can read an ART from disk, or from root node directly(similar to
  * the usage of fst in org.apache.lucene.analysis.charfilter.NormalizeCharMap). This version
- * save/load the whole art one time, without FP.
+ * save/load the whole art one time, without FP. This can be used in NormalizeCharMap.
  */
 public class ARTReaderPre {
 

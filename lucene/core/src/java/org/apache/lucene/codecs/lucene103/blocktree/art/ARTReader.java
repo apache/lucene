@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
-import static org.apache.lucene.codecs.lucene103.blocktree.art.Node.BYTES_MINUS_1_MASK;
-
 import java.io.IOException;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -132,7 +130,7 @@ public class ARTReader {
         }
         long childDeltaFp = access.readLong(childDeltaFpStart);
         if (parent.childrenDeltaFpBytes < 8) {
-          childDeltaFp = childDeltaFp & BYTES_MINUS_1_MASK[parent.childrenDeltaFpBytes - 1];
+          childDeltaFp = childDeltaFp & Node.BYTES_MINUS_1_MASK[parent.childrenDeltaFpBytes - 1];
         }
 
         long childFp = parent.fp - childDeltaFp;

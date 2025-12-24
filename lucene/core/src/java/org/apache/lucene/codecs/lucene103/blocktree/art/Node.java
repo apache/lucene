@@ -29,12 +29,6 @@ import org.apache.lucene.util.BytesRef;
  * (allow null) + childIndex. LeafNode: key (allow null).
  */
 public abstract class Node {
-  // we save one byte for node type, this sign is needless.
-  static final int SIGN_NO_CHILDREN = 0x00;
-  static final int SIGN_SINGLE_CHILD_WITH_OUTPUT = 0x01;
-  static final int SIGN_SINGLE_CHILD_WITHOUT_OUTPUT = 0x02;
-  static final int SIGN_MULTI_CHILDREN = 0x03;
-
   static final int LEAF_NODE_HAS_TERMS = 1 << 3;
   static final int LEAF_NODE_HAS_FLOOR = 1 << 4;
   static final int NON_LEAF_NODE_HAS_OUTPUT = 1 << 3;

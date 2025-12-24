@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
-import static java.lang.Long.numberOfTrailingZeros;
-
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.store.IndexInput;
@@ -211,7 +209,7 @@ public class Node256 extends Node {
     for (long longv : bitmapMask) {
       int w = Long.bitCount(longv);
       for (int i = 0; i < w; i++) {
-        int pos = x * 64 + numberOfTrailingZeros(longv);
+        int pos = x * 64 + Long.numberOfTrailingZeros(longv);
         this.children[pos] = children[offset + i];
         longv &= (longv - 1);
       }
