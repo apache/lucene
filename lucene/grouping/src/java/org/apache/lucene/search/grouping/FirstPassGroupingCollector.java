@@ -31,7 +31,6 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.util.CollectionUtil;
 
 /**
  * FirstPassGroupingCollector is the first of two passes necessary to collect grouped hits. This
@@ -120,7 +119,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
     }
 
     spareSlot = topNGroups;
-    groupMap = CollectionUtil.newHashMap(topNGroups);
+    groupMap = HashMap.newHashMap(topNGroups);
   }
 
   @Override

@@ -18,6 +18,7 @@ package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.lucene.document.IntPoint;
@@ -31,7 +32,6 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.Constants;
 
 public class TestDocIdsWriter extends LuceneTestCase {
@@ -96,7 +96,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       for (int iter = 0; iter < numIters; ++iter) {
         int size = 1 + random().nextInt(5000);
-        Set<Integer> set = CollectionUtil.newHashSet(size);
+        Set<Integer> set = HashSet.newHashSet(size);
         int small = random().nextInt(1000);
         while (set.size() < size) {
           set.add(small + random().nextInt(size * 16));
