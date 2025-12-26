@@ -163,7 +163,7 @@ public abstract class VectorizationProvider {
         final var lookup = MethodHandles.lookup();
         final var cls =
             lookup.findClass(
-                "org.apache.lucene.internal.vectorization.PanamaVectorizationProvider");
+                "org.apache.lucene.internal.vectorization.NativeVectorizationProvider");
         final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
         try {
           return (VectorizationProvider) constr.invoke();
@@ -178,9 +178,9 @@ public abstract class VectorizationProvider {
         }
       } catch (NoSuchMethodException | IllegalAccessException e) {
         throw new LinkageError(
-            "PanamaVectorizationProvider is missing correctly typed constructor", e);
+            "NativeVectorizationProvider is missing correctly typed constructor", e);
       } catch (ClassNotFoundException cnfe) {
-        throw new LinkageError("PanamaVectorizationProvider is missing in Lucene JAR file", cnfe);
+        throw new LinkageError("NativeVectorizationProvider is missing in Lucene JAR file", cnfe);
       }
     } else {
       LOG.warning(
@@ -203,6 +203,7 @@ public abstract class VectorizationProvider {
   // add all possible callers here as FQCN:
   private static final Set<String> VALID_CALLERS =
       Set.of(
+          "org.apache.lucene.benchmark.jmh.VectorUtilBenchmark",
           "org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil",
           "org.apache.lucene.util.VectorUtil",
           "org.apache.lucene.codecs.lucene104.Lucene104PostingsReader",
