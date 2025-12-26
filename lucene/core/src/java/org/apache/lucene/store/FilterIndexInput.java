@@ -17,6 +17,9 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.apache.lucene.internal.tests.TestSecrets;
 
@@ -105,5 +108,106 @@ public class FilterIndexInput extends IndexInput {
   @Override
   public void readBytes(byte[] b, int offset, int len) throws IOException {
     in.readBytes(b, offset, len);
+  }
+
+  @Override
+  public Set<String> readSetOfStrings() throws IOException {
+    return in.readSetOfStrings();
+  }
+
+  @Override
+  public Map<String, String> readMapOfStrings() throws IOException {
+    return in.readMapOfStrings();
+  }
+
+  @Override
+  public String readString() throws IOException {
+    return in.readString();
+  }
+
+  @Override
+  public long readZLong() throws IOException {
+    return in.readZLong();
+  }
+
+  @Override
+  public long readVLong() throws IOException {
+    return in.readVLong();
+  }
+
+  @Override
+  public void readFloats(float[] floats, int offset, int len) throws IOException {
+    in.readFloats(floats, offset, len);
+  }
+
+  @Override
+  public void readInts(int[] dst, int offset, int length) throws IOException {
+    in.readInts(dst, offset, length);
+  }
+
+  @Override
+  public void readLongs(long[] dst, int offset, int length) throws IOException {
+    in.readLongs(dst, offset, length);
+  }
+
+  @Override
+  public long readLong() throws IOException {
+    return in.readLong();
+  }
+
+  @Override
+  public int readZInt() throws IOException {
+    return in.readZInt();
+  }
+
+  @Override
+  public int readVInt() throws IOException {
+    return in.readVInt();
+  }
+
+  @Override
+  public int readInt() throws IOException {
+    return in.readInt();
+  }
+
+  @Override
+  public short readShort() throws IOException {
+    return in.readShort();
+  }
+
+  @Override
+  public void readBytes(byte[] b, int offset, int len, boolean useBuffer) throws IOException {
+    in.readBytes(b, offset, len, useBuffer);
+  }
+
+  @Override
+  public void prefetch(long offset, long length) throws IOException {
+    in.prefetch(offset, length);
+  }
+
+  @Override
+  public RandomAccessInput randomAccessSlice(long offset, long length) throws IOException {
+    return in.randomAccessSlice(offset, length);
+  }
+
+  @Override
+  public void updateIOContext(IOContext context) throws IOException {
+    in.updateIOContext(context);
+  }
+
+  @Override
+  public Optional<Boolean> isLoaded() {
+    return in.isLoaded();
+  }
+
+  @Override
+  public IndexInput slice(String sliceDescription, long offset, long length, IOContext context)
+      throws IOException {
+    return super.slice(sliceDescription, offset, length, context);
+  }
+
+  @Override
+  public void skipBytes(long numBytes) throws IOException {
+    in.skipBytes(numBytes);
   }
 }
