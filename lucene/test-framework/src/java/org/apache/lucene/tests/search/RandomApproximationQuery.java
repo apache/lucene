@@ -100,6 +100,12 @@ public class RandomApproximationQuery extends Query {
       }
       return new DefaultScorerSupplier(scorer);
     }
+
+    @Override
+    public ScorerSupplier scorerSupplier(IndexSearcher.LeafReaderContextPartition partition)
+        throws IOException {
+      return scorerSupplier(partition.ctx);
+    }
   }
 
   private static class RandomApproximationScorer extends Scorer {
