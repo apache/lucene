@@ -27,7 +27,7 @@ javacc = "7.0.13"
 # analysis/ tokenizer grammars
 jflex = "1.9.1"
 # build infra only (diff of changes from google java format tasks)
-jgit = "7.4.0.202509020913-r"
+jgit = "7.5.0.202512021534-r"
 # benchmark-jmh/ microbenchmarks
 jmh = "1.37"
 # spatial-extras/ support
