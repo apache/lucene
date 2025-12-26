@@ -77,6 +77,7 @@ public class PhraseQuery extends Query {
     private int maxTerms;
     private final List<Term> terms;
     private final IntArrayList positions;
+    private TermStates[] termStates;
 
     /** Sole constructor. */
     public Builder() {
@@ -154,10 +155,32 @@ public class PhraseQuery extends Query {
       return this;
     }
 
+    /**
+     * Expert: Set pre-computed TermStates for each term to avoid term statistics lookup during
+     * search. This is an optimization that allows providing term statistics directly instead of
+     * computing them during search time.
+     *
+     * @param termStates array of TermStates, one for each term. The array length must exactly match
+     *     the number of terms that will be added to this builder.
+     * @throws IllegalArgumentException if termStates is null or if the length doesn't match the
+     *     number of terms when build() is called
+     */
+    public Builder setTermStates(TermStates[] termStates) {
+      this.termStates = Objects.requireNonNull(termStates, "termStates cannot be null");
+      return this;
+    }
+
     /** Build a phrase query based on the terms that have been added. */
     public PhraseQuery build() {
       Term[] terms = this.terms.toArray(new Term[0]);
-      return new PhraseQuery(slop, terms, positions.toArray());
+      if (termStates != null) {
+        if (termStates.length != terms.length) {
+          throw new IllegalArgumentException("Must have as many termStates as terms");
+        }
+        return new PhraseQuery(slop, terms, positions.toArray(), termStates);
+      } else {
+        return new PhraseQuery(slop, terms, positions.toArray());
+      }
     }
   }
 
@@ -165,10 +188,18 @@ public class PhraseQuery extends Query {
   private final String field;
   private final Term[] terms;
   private final int[] positions;
+  private final TermStates[] termStates;
 
   private PhraseQuery(int slop, Term[] terms, int[] positions) {
+    this(slop, terms, positions, null);
+  }
+
+  private PhraseQuery(int slop, Term[] terms, int[] positions, TermStates[] termStates) {
     if (terms.length != positions.length) {
       throw new IllegalArgumentException("Must have as many terms as positions");
+    }
+    if (termStates != null && terms.length != termStates.length) {
+      throw new IllegalArgumentException("Must have as many terms as termStates");
     }
     if (slop < 0) {
       throw new IllegalArgumentException("Slop must be >= 0, got " + slop);
@@ -198,6 +229,7 @@ public class PhraseQuery extends Query {
     this.slop = slop;
     this.terms = terms;
     this.positions = positions;
+    this.termStates = termStates;
     this.field = terms.length == 0 ? null : terms[0].field();
   }
 
@@ -468,17 +500,23 @@ public class PhraseQuery extends Query {
           throw new IllegalStateException(
               "PhraseWeight requires that the first position is 0, call rewrite first");
         }
-        states = new TermStates[terms.length];
+        if (termStates != null) {
+          states = termStates;
+        } else {
+          states = new TermStates[terms.length];
+          for (int i = 0; i < terms.length; i++) {
+            final Term term = terms[i];
+            states[i] = TermStates.build(searcher, term, scoreMode.needsScores());
+          }
+        }
         TermStatistics[] termStats = new TermStatistics[terms.length];
         int termUpTo = 0;
         for (int i = 0; i < terms.length; i++) {
-          final Term term = terms[i];
-          states[i] = TermStates.build(searcher, term, scoreMode.needsScores());
           if (scoreMode.needsScores()) {
             TermStates ts = states[i];
             if (ts.docFreq() > 0) {
               termStats[termUpTo++] =
-                  searcher.termStatistics(term, ts.docFreq(), ts.totalTermFreq());
+                  searcher.termStatistics(terms[i], ts.docFreq(), ts.totalTermFreq());
             }
           }
         }
