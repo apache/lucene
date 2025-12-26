@@ -93,14 +93,14 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
     if (lowerValue > upperValue) {
       return MatchNoDocsQuery.INSTANCE;
     }
-    long globalMin = DocValuesSkipper.globalMinValue(indexSearcher, field);
-    long globalMax = DocValuesSkipper.globalMaxValue(indexSearcher, field);
+    long globalMin = DocValuesSkipper.globalMinValue(indexSearcher.getIndexReader(), field);
+    long globalMax = DocValuesSkipper.globalMaxValue(indexSearcher.getIndexReader(), field);
     if (lowerValue > globalMax || upperValue < globalMin) {
       return MatchNoDocsQuery.INSTANCE;
     }
     if (lowerValue <= globalMin
         && upperValue >= globalMax
-        && DocValuesSkipper.globalDocCount(indexSearcher, field)
+        && DocValuesSkipper.globalDocCount(indexSearcher.getIndexReader(), field)
             == indexSearcher.getIndexReader().maxDoc()) {
       return MatchAllDocsQuery.INSTANCE;
     }
