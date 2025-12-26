@@ -31,7 +31,6 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
     extends RandomVectorScorer.AbstractRandomVectorScorer {
 
   final FloatVectorValues values;
-  final int vectorByteSize;
   final MemorySegment seg;
   final float[] query;
   final float[] scratchScores = new float[4];
@@ -63,7 +62,6 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
     super(values);
     this.values = values;
     this.seg = seg;
-    this.vectorByteSize = values.getVectorByteLength();
     this.query = query;
   }
 
@@ -85,10 +83,10 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
     final int limit = numNodes & ~3;
     float maxScore = Float.NEGATIVE_INFINITY;
     for (; i < limit; i += 4) {
-      long offset1 = (long) nodes[i] * vectorByteSize;
-      long offset2 = (long) nodes[i + 1] * vectorByteSize;
-      long offset3 = (long) nodes[i + 2] * vectorByteSize;
-      long offset4 = (long) nodes[i + 3] * vectorByteSize;
+      long offset1 = values.address(nodes[i]);
+      long offset2 = values.address(nodes[i + 1]);
+      long offset3 = values.address(nodes[i + 2]);
+      long offset4 = values.address(nodes[i + 3]);
       vectorOp(seg, scratchScores, offset1, offset2, offset3, offset4, query.length);
       scores[i + 0] = normalizeRawScore(scratchScores[0]);
       maxScore = Math.max(maxScore, scores[i + 0]);
@@ -102,9 +100,9 @@ abstract sealed class Lucene99MemorySegmentFloatVectorScorer
     // Handle remaining 1–3 nodes in bulk (if any)
     int remaining = numNodes - i;
     if (remaining > 0) {
-      long addr1 = (long) nodes[i] * vectorByteSize;
-      long addr2 = (remaining > 1) ? (long) nodes[i + 1] * vectorByteSize : addr1;
-      long addr3 = (remaining > 2) ? (long) nodes[i + 2] * vectorByteSize : addr1;
+      long addr1 = values.address(nodes[i]);
+      long addr2 = (remaining > 1) ? values.address(nodes[i + 1]) : addr1;
+      long addr3 = (remaining > 2) ? values.address(nodes[i + 2]) : addr1;
       vectorOp(seg, scratchScores, addr1, addr2, addr3, addr3, query.length);
       scores[i] = normalizeRawScore(scratchScores[0]);
       maxScore = Math.max(maxScore, scores[i]);
