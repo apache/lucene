@@ -112,6 +112,10 @@ Bug Fixes
 
 * GITHUB#15125: Handle inconsistent schema on flush with index sorts (Nhat Nguyen)
 
+* GITHUB#15333: Highlighter: prevent zero-scored fragments from being merged with
+  adjacent fragments. This avoids producing merged passages that include content with
+  no matches. A regression test was added (TestZeroScoreMerging).
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
