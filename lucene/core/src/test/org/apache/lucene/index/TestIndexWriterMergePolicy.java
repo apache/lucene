@@ -418,7 +418,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
     try (IndexReader reader = DirectoryReader.open(writerWithMergePolicy)) {
       IndexSearcher searcher = new IndexSearcher(reader);
       assertEquals(5, reader.numDocs());
-      assertEquals(5, searcher.count(new MatchAllDocsQuery()));
+      assertEquals(5, searcher.count(MatchAllDocsQuery.INSTANCE));
     }
 
     writerWithMergePolicy.close();

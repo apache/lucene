@@ -71,7 +71,6 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.CollectionUtil;
 
 /** Tests Lucene90DocValuesFormat */
 public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatTestCase {
@@ -786,7 +785,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
 
   public void testReseekAfterSkipDecompression() throws IOException {
     final int CARDINALITY = (Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SIZE << 1) + 11;
-    Set<String> valueSet = CollectionUtil.newHashSet(CARDINALITY);
+    Set<String> valueSet = HashSet.newHashSet(CARDINALITY);
     for (int i = 0; i < CARDINALITY; i++) {
       valueSet.add(TestUtil.randomSimpleString(random(), 64));
     }

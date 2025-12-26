@@ -7,6 +7,12 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#15517: Remove newHashMap, newHashSet from CollectionUtil, and use HashMap.newHashMap, HashSet.newHashSet
+  directly. (Zhou Hui)
+
+* GITHUB#15309: PriorityQueue.remove method has been removed entirely. If you need remove(), implement
+  it yourself in a subclass (heap access and size, upHeap and downHeap are protected members of PQ). (Dawid Weiss)
+
 * GITHUB#15215: Switch to Java 25 as the minimum required platform. Upgrade to gradle 9.1.0.
   (Robert Muir, Kaival Parikh, Dawid Weiss)
 
@@ -50,6 +56,10 @@ API Changes
 
 New Features
 ---------------------
+
+* GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
+  PolishSnowballAnalyzer in the stempel package) (Justas Sakalauskas, Dawid Weiss)
+
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
 
 * GITHUB#14178: Add a Faiss-based vector format in the sandbox module. (Kaival Parikh)
@@ -136,11 +146,14 @@ Other
 * GITHUB#14817: Refactor some complex uses of PriorityQueue to use Comparators. (Simon Cooper)
 
 * GITHUB#14607: Index open performs version check on each segment, ignores indexCreatedVersionMajor (Rahul Goswami)
+* GITHUB#15454: Restore binary readability for 8.x indexes like previously and throw IndexFormatTooOldException for an older default codec not found on classpath (Rahul Goswami)
 
 ======================= Lucene 10.4.0 =======================
 
 API Changes
 ---------------------
+* GITHUB#15497: Singleton for MatchAllDocsQuery & MatchNoDocsQuery. (hossman)
+
 * GITHUB#15149: Introduce NumericDocValues#longValues to help speed up the
   retrieval of many doc values at once. (Adrien Grand)
 
@@ -165,6 +178,8 @@ API Changes
 * GITHUB#15483: Deprecate SortField.setMissingValue() in preparation for making SortField immutable
   in Lucene 11.0. Missing values can be set as constructor parameters.  (Alan Woodward)
 
+* GITHUB#15501: Introduce optional access to backing vector values from the scorer  (Chris Hegarty)
+
 New Features
 ---------------------
 * GITHUB#15328: VectorSimilarityFunction.getValues() now implements doubleVal allowing its
@@ -173,7 +188,7 @@ New Features
 * GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
   along with limiting number of child documents to retrieve per parent. (Jinny Wang)
 
-* GITHUB#15171: Add `VectorScorer.Bulk` for bulk iteration and scoring of vectors. This new interface is now
+* GITHUB#15171, GITHUB#15496: Add `VectorScorer.Bulk` for bulk iteration and scoring of vectors. This new interface is now
   used in AbstractKnnVectorQuery to make exact matches faster. (Ben Trent)
 
 * GITHUB#15176: Add `[Float|Byte]VectorValues#rescorer(element[])` interface to allow optimized rescoring of vectors.
@@ -255,6 +270,11 @@ Optimizations
 
 * GITHUB#15494: Set minimum competitive score in FirstPassGroupingCollector (Binlong Gao)
 
+* GITHUB#15500: Use bulk scoring for filtered HNSW search and for entry-point scoring in the graph. This should
+  provide speed improvements when using vector scorers that satisfy the bulk scoring interface. (Ben Trent)
+
+* GITHUB#15498: ExitableDirectoryReader keeps singleton SortedSetDocValues or SortedNumericDocValues as singletons. (Houston Putman)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
@@ -287,6 +307,8 @@ Other
 
 * GITHUB#15481: The `reverse` field of SortField is now final. If you have subclassed SortField,
   you should set `reverse` in the super constructor. (Alan Woodward)
+
+* GITHUB#15513: Update documentation in DefaultBloomFilterFactory to reflect changes made in GITHUB#11900 (Greg Miller)
 
 Build
 ---------------------

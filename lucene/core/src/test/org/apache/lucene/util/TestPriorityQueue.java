@@ -208,9 +208,9 @@ public class TestPriorityQueue extends LuceneTestCase {
         () -> pq.addAll(list));
   }
 
-  /** Randomly add and remove elements, comparing against the reference java.util.PriorityQueue. */
-  public void testRemovalsAndInsertions() {
-    int maxElement = RandomNumbers.randomIntBetween(random(), 1, 10_000);
+  /** Randomly add some elements, comparing against the reference java.util.PriorityQueue. */
+  public void testRandomAdditionsAgainstJavaPq() {
+    int maxElement = RandomNumbers.randomIntBetween(random(), 1, 500);
     int size = maxElement / 2 + 1;
 
     var reference = new java.util.PriorityQueue<Integer>();
@@ -226,25 +226,18 @@ public class TestPriorityQueue extends LuceneTestCase {
     for (int i = 0, iters = size * 2; i < iters; i++) {
       Integer element = ints.computeIfAbsent(localRandom.nextInt(maxElement), k -> k);
 
-      var action = localRandom.nextInt(100);
-      if (action < 25) {
-        // removals, possibly misses.
-        assertEquals("remove() difference: " + i, reference.remove(element), pq.remove(element));
+      // additions.
+      var dropped = pq.insertWithOverflow(element);
+
+      reference.add(element);
+      Integer droppedReference;
+      if (reference.size() > size) {
+        droppedReference = reference.remove();
       } else {
-        // additions.
-        var dropped = pq.insertWithOverflow(element);
-
-        reference.add(element);
-        Integer droppedReference;
-        if (reference.size() > size) {
-          droppedReference = reference.remove();
-        } else {
-          droppedReference = null;
-        }
-
-        assertEquals("insertWithOverflow() difference.", dropped, droppedReference);
+        droppedReference = null;
       }
 
+      assertEquals("insertWithOverflow() difference.", dropped, droppedReference);
       assertEquals("insertWithOverflow() size difference?", reference.size(), pq.size());
       assertEquals("top() difference?", reference.peek(), pq.top());
     }

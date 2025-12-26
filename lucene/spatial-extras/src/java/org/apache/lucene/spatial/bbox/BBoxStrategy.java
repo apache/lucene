@@ -495,7 +495,7 @@ public class BBoxStrategy extends SpatialStrategy {
 
     // Query qDisjoint = makeDisjoint();
     // BooleanQuery qNotDisjoint = new BooleanQuery();
-    // qNotDisjoint.add(new MatchAllDocsQuery(),BooleanClause.Occur.SHOULD);
+    // qNotDisjoint.add(MatchAllDocsQuery.INSTANCE,BooleanClause.Occur.SHOULD);
     // qNotDisjoint.add(qDisjoint,BooleanClause.Occur.MUST_NOT);
     return qNotDisjoint.build();
   }

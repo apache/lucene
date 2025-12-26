@@ -332,7 +332,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
     try (Directory dir = getIndexStore(getRandomVectors(numDocs, dim));
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       // Delete all documents
-      w.deleteDocuments(new MatchAllDocsQuery());
+      w.deleteDocuments(MatchAllDocsQuery.INSTANCE);
       w.commit();
 
       try (IndexReader reader = DirectoryReader.open(dir)) {
