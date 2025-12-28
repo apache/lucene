@@ -257,4 +257,14 @@ public final class TermStates {
 
     return sb.toString();
   }
+
+  @Override
+  public boolean equals(Object obj) {
+    return obj instanceof TermStates && ((TermStates) obj).docFreq == docFreq;
+  }
+
+  @Override
+  public int hashCode() {
+    return Integer.hashCode(docFreq);
+  }
 }
