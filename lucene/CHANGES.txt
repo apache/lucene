@@ -299,6 +299,8 @@ Bug Fixes
 
 * GITHUB#15478: Fix duplicate neighbor issue by checking node existence before making reverse link. (Pulkit Gupta)
 
+* GITHUB#15523: Updating createMultiSegmentIndex to utilize an explicit NoMergePolicy (Bryce Kane)
+
 Other
 ---------------------
 * GITHUB#15237: Fix SmartChinese to only deserialize dictionary data from classpath with a native array
