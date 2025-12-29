@@ -40,7 +40,7 @@ runs:
     # This includes "smart" caching of gradle dependencies.
     - name: Set up Gradle
       if: ${{ fromJSON(inputs.use-cache) }}
-      uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6c972d7336334ccaf61c96 # v4.4.1
+      uses: gradle/actions/setup-gradle@4d9f0ba0025fe599b4ebab900eb7f3a1d93ef4c2 # v5.0.0
       with:
         # increase expiry time for the temp. develocity token.
         # https://github.com/gradle/actions/blob/main/docs/setup-gradle.md#increasing-the-expiry-time-for-develocity-access-tokens
