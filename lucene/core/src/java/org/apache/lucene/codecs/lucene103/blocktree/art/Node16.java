@@ -143,6 +143,56 @@ public class Node16 extends Node {
     }
   }
 
+  /**
+   * insert the child node into this with the key byte
+   *
+   * @param childNode the child node
+   * @param key the key byte
+   * @return the input node4 or an adaptive generated node16
+   */
+  @Override
+  public Node insert(Node childNode, byte key) {
+    if (this.childrenCount < 8) {
+      // first
+      byte[] bytes = LongUtils.toBDBytes(this.firstChildIndex);
+      bytes[this.childrenCount] = key;
+      this.firstChildIndex = LongUtils.fromBDBytes(bytes);
+      this.children[this.childrenCount] = childNode;
+      this.childrenCount++;
+      return this;
+    } else if (this.childrenCount < 16) {
+      // second
+      byte[] bytes = LongUtils.toBDBytes(this.secondChildIndex);
+      bytes[this.childrenCount - 8] = key;
+      this.secondChildIndex = LongUtils.fromBDBytes(bytes);
+      this.children[this.childrenCount] = childNode;
+      this.childrenCount++;
+      return this;
+    } else {
+      Node48 node48 = new Node48(this.prefixLength);
+      byte[] firstBytes = LongUtils.toBDBytes(this.firstChildIndex);
+      for (int i = 0; i < 8; i++) {
+        byte v = firstBytes[i];
+        int unsignedIdx = Byte.toUnsignedInt(v);
+        // i won't be beyond 48
+        Node48.setOneByte(unsignedIdx, (byte) i, node48.childIndex);
+        node48.children[i] = this.children[i];
+      }
+      byte[] secondBytes = LongUtils.toBDBytes(this.secondChildIndex);
+      for (int i = 8; i < this.childrenCount; i++) {
+        byte v = secondBytes[i - 8];
+        int unsignedIdx = Byte.toUnsignedInt(v);
+        // i won't be beyond 48
+        Node48.setOneByte(unsignedIdx, (byte) i, node48.childIndex);
+        node48.children[i] = this.children[i];
+      }
+      copyNode(this, node48);
+      node48.childrenCount = this.childrenCount;
+      Node freshOne = Node48.insert(node48, this, key);
+      return freshOne;
+    }
+  }
+
   @Override
   public void saveChildIndex(IndexOutput dataOutput) throws IOException {
     // little endian

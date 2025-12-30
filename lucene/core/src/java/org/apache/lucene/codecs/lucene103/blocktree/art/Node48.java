@@ -166,6 +166,45 @@ public class Node48 extends Node {
     }
   }
 
+  /**
+   * insert the child node into this with the key byte
+   *
+   * @param child the child node
+   * @param key the key byte
+   * @return the input node4 or an adaptive generated node16
+   */
+  @Override
+  public Node insert(Node child, byte key) {
+    if (this.childrenCount < 48) {
+      // insert leaf node into current node
+      int pos = this.childrenCount;
+      assert this.children[pos] == null;
+      this.children[pos] = child;
+      int unsignedByte = Byte.toUnsignedInt(key);
+      int longPosition = unsignedByte >>> 3;
+      int bytePosition = unsignedByte & (8 - 1);
+      long original = this.childIndex[longPosition];
+      byte[] bytes = LongUtils.toBDBytes(original);
+      bytes[bytePosition] = (byte) pos;
+      this.childIndex[longPosition] = LongUtils.fromBDBytes(bytes);
+      this.childrenCount++;
+      return this;
+    } else {
+      // grow to Node256
+      Node256 node256 = new Node256(this.prefixLength);
+      int currentPos = ILLEGAL_IDX;
+      while ((currentPos = this.getNextLargerPos(currentPos)) != ILLEGAL_IDX) {
+        Node childNode = this.getChild(currentPos);
+        node256.children[currentPos] = childNode;
+        Node256.setBit((byte) currentPos, node256.bitmapMask);
+      }
+      node256.childrenCount = this.childrenCount;
+      copyNode(this, node256);
+      Node freshOne = Node256.insert(node256, child, key);
+      return freshOne;
+    }
+  }
+
   private static byte childrenIdx(int pos, long[] childIndex) {
     int longPos = pos >>> 3;
     int bytePos = pos & (8 - 1);

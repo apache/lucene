@@ -129,7 +129,7 @@ public class TestART3 extends LuceneTestCase {
       try (Directory directory = newDirectory()) {
         try (IndexOutput index = directory.createOutput("index", IOContext.DEFAULT);
             IndexOutput meta = directory.createOutput("meta", IOContext.DEFAULT)) {
-          artBuilder.saveFP(meta, index);
+          artBuilder.save(meta, index);
         }
 
         try (IndexInput indexIn = directory.openInput("index", IOContext.DEFAULT);

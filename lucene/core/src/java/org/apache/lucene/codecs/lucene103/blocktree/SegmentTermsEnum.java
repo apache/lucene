@@ -32,7 +32,7 @@ import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /** Iterates through terms in this field. */
-final class SegmentTermsEnum extends BaseTermsEnum {
+public final class SegmentTermsEnum extends BaseTermsEnum {
 
   // Lazy init:
   IndexInput in;

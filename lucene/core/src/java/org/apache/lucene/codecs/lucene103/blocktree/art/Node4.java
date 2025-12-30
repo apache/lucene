@@ -103,6 +103,32 @@ public class Node4 extends Node {
     }
   }
 
+  /**
+   * insert the child node into this with the key byte
+   *
+   * @param childNode the child node
+   * @param key the key byte
+   * @return the input node4 or an adaptive generated node16
+   */
+  public Node insert(Node childNode, byte key) {
+    if (this.childrenCount < 4) {
+      // insert leaf into current node
+      this.childIndex = IntegerUtil.setByte(this.childIndex, key, this.childrenCount);
+      this.children[this.childrenCount] = childNode;
+      this.childrenCount++;
+      return this;
+    } else {
+      // grow to Node16
+      Node16 node16 = new Node16(this.prefixLength);
+      node16.childrenCount = 4;
+      node16.firstChildIndex = LongUtils.initWithFirst4Byte(this.childIndex);
+      System.arraycopy(this.children, 0, node16.children, 0, 4);
+      copyNode(this, node16);
+      Node freshOne = Node16.insert(node16, childNode, key);
+      return freshOne;
+    }
+  }
+
   @Override
   public void saveChildIndex(IndexOutput dataOutput) throws IOException {
     dataOutput.writeInt(childIndex);

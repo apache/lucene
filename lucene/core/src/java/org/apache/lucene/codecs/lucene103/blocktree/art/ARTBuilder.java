@@ -45,7 +45,7 @@ public class ARTBuilder {
   }
 
   /** 1 Save node's Fp, outputFP, floorDataFp for reader like trie. 2 No recursion */
-  public void saveFP(DataOutput meta, IndexOutput index) throws IOException {
+  public void save(DataOutput meta, IndexOutput index) throws IOException {
     // start FP.
     meta.writeVLong(index.getFilePointer());
     saveNodes(index);
@@ -114,15 +114,34 @@ public class ARTBuilder {
     }
   }
 
-  /** Append an art builder to this. */
+  /**
+   * Append an art builder to this.
+   *
+   * @deprecated Use insert(ARTBuilder) instead of this method.
+   */
   public void append(ARTBuilder artBuilder) {
-    // TODO: Improve this , or store kvs instead of tmp compiled art in PendingBlock#subIndices, and
-    // compile it once in/before save ?.
     Map<BytesRef, Output> kvs = new TreeMap<>();
     visit(artBuilder.root, new BytesRefBuilder(), kvs::put);
 
     for (var entry : kvs.entrySet()) {
       insert(entry.getKey(), entry.getValue());
+    }
+  }
+
+  /** Insert an art builder into this one, this should called by append. */
+  public void insert(ARTBuilder artBuilder) {
+    if (artBuilder.root.nodeType.equals(NodeType.LEAF_NODE)) {
+      insert(artBuilder.root.key, artBuilder.root.output);
+    } else {
+      BytesRef key = this.root.key;
+      // Finally, we will append all sub blocks to an empty block.
+      if (key == null) {
+        this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[0]);
+        updateNodePrefix(artBuilder.root, 1);
+      } else {
+        this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[key.length]);
+        updateNodePrefix(artBuilder.root, key.length + 1);
+      }
     }
   }
 
@@ -182,6 +201,7 @@ public class ARTBuilder {
   }
 
   /** Set remaining suffix to prefix. */
+  // TODO: Maybe called in insert.
   private void updateNodePrefix(Node node, int from) {
     if (from < node.prefix.length) {
       node.prefix = ArrayUtil.copyOfSubArray(node.prefix, from, node.prefix.length);

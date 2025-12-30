@@ -165,6 +165,22 @@ public class Node256 extends Node {
     return node256;
   }
 
+  /**
+   * insert the child node into this with the key byte
+   *
+   * @param child the child node
+   * @param key the key byte
+   * @return the input node4 or an adaptive generated node16
+   */
+  @Override
+  public Node insert(Node child, byte key) {
+    this.childrenCount++;
+    int i = Byte.toUnsignedInt(key);
+    this.children[i] = child;
+    setBit(key, this.bitmapMask);
+    return this;
+  }
+
   static void setBit(byte key, long[] bitmapMask) {
     int i = Byte.toUnsignedInt(key);
     int longIdx = i >>> 6;

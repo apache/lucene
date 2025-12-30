@@ -22,6 +22,7 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -462,6 +463,15 @@ public abstract class Node {
   }
 
   /**
+   * insert the child node into this with the key byte
+   *
+   * @param childNode the child node
+   * @param key the key byte
+   * @return the input node4 or an adaptive generated node16
+   */
+  public abstract Node insert(Node childNode, byte key);
+
+  /**
    * insert the LeafNode as a child of the current internal node
    *
    * @param current current internal node
@@ -483,6 +493,16 @@ public abstract class Node {
       case DUMMY_ROOT:
       default:
         throw new IllegalArgumentException("Not supported node type!");
+    }
+  }
+
+  protected void updateNodePrefix(Node node, int from) {
+    if (from < node.prefix.length) {
+      node.prefix = ArrayUtil.copyOfSubArray(node.prefix, from, node.prefix.length);
+      node.prefixLength = node.prefix.length;
+    } else {
+      node.prefix = null;
+      node.prefixLength = 0;
     }
   }
 

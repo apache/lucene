@@ -38,6 +38,35 @@ public class LeafNode extends Node {
     this.output = output;
   }
 
+  /**
+   * insert the child node into this with the key byte
+   *
+   * @param childNode the child node
+   * @param key the key byte
+   * @return the input node4 or an adaptive generated node16
+   */
+  @Override
+  public Node insert(Node childNode, byte key) {
+    // This happens at final, we will append all sub blocks to an empty block.
+    if (this.key == null) {
+      Node4 node4 = new Node4(0);
+      node4.output = this.output;
+      node4.insert(childNode, key);
+      return node4;
+    } else {
+      // This case childNode's prefix/key must start with this node's key, e.g.: insert 're' into
+      // 'r'.
+      // TODO: Maybe we cloud ignore the above condition, and use this method replace similar part
+      // in ARTBuilder#insert.
+      Node4 node4 = new Node4(this.key.length);
+      node4.output = this.output;
+      // TODO: check key's offset, length.
+      node4.prefix = this.key.bytes;
+      node4.insert(childNode, key);
+      return node4;
+    }
+  }
+
   @Override
   public int getChildPos(byte k) {
     throw new UnsupportedOperationException();
