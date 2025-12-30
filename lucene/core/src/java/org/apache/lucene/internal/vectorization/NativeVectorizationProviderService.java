@@ -20,9 +20,12 @@ package org.apache.lucene.internal.vectorization;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.Optional;
-import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 
+/**
+ * Service that provides native vectorization provider. Only available when Panama is usable and
+ * required native binary is present.
+ */
 // this should live in a separate module, really. but for now - since we use
 // mr-jars, we have to look up the class by reflection (it isn't visible from this module).
 public class NativeVectorizationProviderService implements VectorizationProviderService {
@@ -39,8 +42,6 @@ public class NativeVectorizationProviderService implements VectorizationProvider
   public boolean isUsable() {
     final int runtimeVersion = Runtime.version().feature();
     assert runtimeVersion >= 25;
-    Logger.getLogger(NativeVectorizationProviderService.class.getName())
-        .warning("Runtime version: " + runtimeVersion);
 
     // only use vector module with Hotspot VM
     if (!Constants.IS_HOTSPOT_VM) {
@@ -52,25 +53,19 @@ public class NativeVectorizationProviderService implements VectorizationProvider
       return false;
     }
 
-    Logger.getLogger(NativeVectorizationProviderService.class.getName()).warning("starting:");
     // is the incubator module present and readable (JVM providers may to exclude them or it is
     // build with jlink)
     final var vectorMod = lookupVectorModule();
     if (vectorMod.isEmpty()) {
-      Logger.getLogger(NativeVectorizationProviderService.class.getName())
-          .warning("empty vector module:");
       return false;
     }
-    Logger.getLogger(NativeVectorizationProviderService.class.getName()).warning("im here:");
     vectorMod.ifPresent(VectorizationProvider.class.getModule()::addReads);
 
     // TODO: check for testMode and otherwise fallback to default if slowness could happen
 
     try {
       return newInstance() != null;
-    } catch (Throwable t) {
-      Logger.getLogger(NativeVectorizationProviderService.class.getName())
-          .warning("something happened:" + t.getMessage());
+    } catch (Throwable _) {
       return false;
     }
   }
@@ -91,8 +86,6 @@ public class NativeVectorizationProviderService implements VectorizationProvider
       return (VectorizationProvider) constr.invoke();
     } catch (Throwable t) {
       // TODO: we should probably check what happened more thoroughly...
-      Logger.getLogger(NativeVectorizationProviderService.class.getName())
-          .warning("exception here: " + t.getMessage());
       throw new RuntimeException(t);
     }
   }

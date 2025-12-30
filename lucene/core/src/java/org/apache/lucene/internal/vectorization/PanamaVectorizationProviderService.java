@@ -20,9 +20,11 @@ package org.apache.lucene.internal.vectorization;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.Optional;
-import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 
+/**
+ * Service that provides panama vectorization provider which uses Vector API for SIMD operations.
+ */
 // this should live in a separate module, really. but for now - since we use
 // mr-jars, we have to look up the class by reflection (it isn't visible from this module).
 public class PanamaVectorizationProviderService implements VectorizationProviderService {
@@ -62,9 +64,7 @@ public class PanamaVectorizationProviderService implements VectorizationProvider
 
     try {
       return newInstance() != null;
-    } catch (Throwable t) {
-      Logger.getLogger(PanamaVectorizationProviderService.class.getName())
-          .warning("exception here: " + t.getMessage());
+    } catch (Throwable _) {
       return false;
     }
   }

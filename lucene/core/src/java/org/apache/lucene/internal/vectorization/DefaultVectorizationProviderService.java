@@ -17,6 +17,7 @@
 
 package org.apache.lucene.internal.vectorization;
 
+/** Service that provides the default vectorization provider */
 public class DefaultVectorizationProviderService implements VectorizationProviderService {
   @Override
   public boolean isUsable() {

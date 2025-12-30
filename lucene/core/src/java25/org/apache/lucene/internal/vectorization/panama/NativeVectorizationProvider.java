@@ -24,7 +24,7 @@ import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.store.IndexInput;
 
-/** Native provider returning native implemented implementations. */
+/** Native provider returning native implementations which delegates to Panama implementation. */
 public final class NativeVectorizationProvider extends VectorizationProvider {
 
   private final VectorizationProvider delegateVectorUtilProvider =

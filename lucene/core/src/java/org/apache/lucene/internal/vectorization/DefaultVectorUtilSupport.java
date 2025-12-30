@@ -23,6 +23,7 @@ import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
+/** Default scalar implementation of vector utilities without SIMD optimizations. */
 public final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   DefaultVectorUtilSupport() {}
@@ -323,6 +324,7 @@ public final class DefaultVectorUtilSupport implements VectorUtilSupport {
         .recalculateOffset(vector, 0, oldAlpha, oldMinQuantile);
   }
 
+  /** Scalar quantizer for converting float vectors to byte vectors. */
   public static final class ScalarQuantizer {
     private final float alpha;
     private final float scale;
