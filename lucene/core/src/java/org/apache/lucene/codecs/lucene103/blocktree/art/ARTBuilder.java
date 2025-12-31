@@ -114,11 +114,7 @@ public class ARTBuilder {
     }
   }
 
-  /**
-   * Append an art builder to this.
-   *
-   * @deprecated Use insert(ARTBuilder) instead of this method.
-   */
+  /** Append an art builder to this. */
   public void append(ARTBuilder artBuilder) {
     Map<BytesRef, Output> kvs = new TreeMap<>();
     visit(artBuilder.root, new BytesRefBuilder(), kvs::put);

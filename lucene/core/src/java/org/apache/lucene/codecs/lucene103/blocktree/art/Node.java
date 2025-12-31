@@ -55,8 +55,8 @@ public abstract class Node {
   // The file pointer point to where the node saved. -1 means the node has not been saved.
   // We just need write root node's fp, and children's fps to walk index.
   long fp = -1;
-  long outputFp = -1;
-  boolean hasTerms;
+  public long outputFp = -1;
+  public boolean hasTerms;
   long floorDataFp = -1;
   int floorDataLen;
   int childrenDeltaFpBytes;
@@ -612,6 +612,20 @@ public abstract class Node {
       }
     }
     return true;
+  }
+
+  public boolean hasOutput() {
+    return outputFp != NO_OUTPUT;
+  }
+
+  public boolean isFloor() {
+    return floorDataFp != NO_FLOOR_DATA;
+  }
+
+  public IndexInput floorData(ARTReader r) throws IOException {
+    assert isFloor();
+    r.input.seek(floorDataFp);
+    return r.input;
   }
 
   @Override

@@ -30,7 +30,7 @@ public class ARTReader {
 
   final RandomAccessInput access;
   final IndexInput input;
-  private Node root;
+  public Node root;
 
   // For testing.
   public Node getRoot() {
