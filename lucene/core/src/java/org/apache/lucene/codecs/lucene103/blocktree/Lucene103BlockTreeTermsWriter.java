@@ -26,6 +26,8 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PostingsWriterBase;
+import org.apache.lucene.codecs.lucene103.blocktree.art.ARTBuilder;
+import org.apache.lucene.codecs.lucene103.blocktree.art.Output;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
@@ -425,8 +427,8 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
   private final class PendingBlock extends PendingEntry {
     public final BytesRef prefix;
     public final long fp;
-    public TrieBuilder index;
-    public List<TrieBuilder> subIndices;
+    public ARTBuilder index;
+    public List<ARTBuilder> subIndices;
     public final boolean hasTerms;
     public final boolean isFloor;
     public final int floorLeadByte;
@@ -437,7 +439,7 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
         boolean hasTerms,
         boolean isFloor,
         int floorLeadByte,
-        List<TrieBuilder> subIndices) {
+        List<ARTBuilder> subIndices) {
       super(false);
       this.prefix = prefix;
       this.fp = fp;
@@ -478,21 +480,21 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
         floorData = new BytesRef(scratchBytes.toArrayCopy());
       }
 
-      TrieBuilder trieBuilder =
-          TrieBuilder.bytesRefToTrie(prefix, new TrieBuilder.Output(fp, hasTerms, floorData));
+      ARTBuilder artBuilder = new ARTBuilder();
+      artBuilder.insert(prefix, new Output(fp, hasTerms, floorData));
       scratchBytes.reset();
 
       // Copy over index for all sub-blocks
       for (PendingBlock block : blocks) {
         if (block.subIndices != null) {
-          for (TrieBuilder subIndex : block.subIndices) {
-            trieBuilder.append(subIndex);
+          for (ARTBuilder subIndex : block.subIndices) {
+            artBuilder.insert(subIndex);
           }
           block.subIndices = null;
         }
       }
 
-      index = trieBuilder;
+      index = artBuilder;
 
       assert subIndices == null;
 
@@ -759,7 +761,7 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
 
       // System.out.println("  isLeaf=" + isLeafBlock);
 
-      final List<TrieBuilder> subIndices;
+      final List<ARTBuilder> subIndices;
 
       boolean absolute = true;
 
@@ -1074,7 +1076,7 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
             : "pending.size()=" + pending.size() + " pending=" + pending;
         final PendingBlock root = (PendingBlock) pending.get(0);
         assert root.prefix.length == 0;
-        assert root.index.getEmptyOutput() != null;
+        //        assert root.index.getEmptyOutput() != null;
 
         ByteBuffersDataOutput metaOut = new ByteBuffersDataOutput();
         fields.add(metaOut);

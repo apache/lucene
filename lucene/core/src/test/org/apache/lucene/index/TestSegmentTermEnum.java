@@ -16,7 +16,12 @@
  */
 package org.apache.lucene.index;
 
+import static org.apache.lucene.tests.util.TestUtil.alwaysPostingsFormat;
+import static org.apache.lucene.tests.util.TestUtil.getDefaultPostingsFormat;
+
 import java.io.IOException;
+import org.apache.lucene.codecs.PostingsFormat;
+import org.apache.lucene.codecs.lucene103.blocktree.SegmentTermsEnum;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
@@ -40,6 +45,117 @@ public class TestSegmentTermEnum extends LuceneTestCase {
   public void tearDown() throws Exception {
     dir.close();
     super.tearDown();
+  }
+
+  public void testDeepSubBlock() throws Exception {
+    Directory dir = newDirectory();
+    // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate deep subBlock.
+    PostingsFormat postingsFormat = getDefaultPostingsFormat(2, 3);
+
+    IndexWriter writer =
+        new IndexWriter(dir, newIndexWriterConfig().setCodec(alwaysPostingsFormat(postingsFormat)));
+    String[] categories =
+        new String[] {
+          "regular",
+          "request1",
+          "request2",
+          "request3",
+          "request4",
+          "rest1",
+          "rest2",
+          "rest3",
+          "rest4"
+        };
+
+    for (String category : categories) {
+      Document doc = new Document();
+      doc.add(newStringField("category", category, Field.Store.YES));
+      writer.addDocument(doc);
+    }
+
+    IndexReader reader = DirectoryReader.open(writer);
+    SegmentTermsEnum termsEnum =
+        (SegmentTermsEnum) (getOnlyLeafReader(reader).terms("category").iterator());
+
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("regular")));
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("request1")));
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("request2")));
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("request3")));
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("request4")));
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("rest1")));
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("rest2")));
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("rest3")));
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("rest4")));
+
+    writer.close();
+    reader.close();
+    dir.close();
+  }
+
+  public void testDeepSubBlock2() throws Exception {
+    Directory dir = newDirectory();
+    // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate deep subBlock.
+    PostingsFormat postingsFormat = getDefaultPostingsFormat(2, 3);
+
+    IndexWriter writer =
+        new IndexWriter(dir, newIndexWriterConfig().setCodec(alwaysPostingsFormat(postingsFormat)));
+    String[] categories =
+        new String[] {
+          "request1", "request2", "rest1", "rest2", "room1", "room2", "rose1", "rose2",
+        };
+
+    for (String category : categories) {
+      Document doc = new Document();
+      doc.add(newStringField("category", category, Field.Store.YES));
+      writer.addDocument(doc);
+    }
+
+    IndexReader reader = DirectoryReader.open(writer);
+    SegmentTermsEnum termsEnum =
+        (SegmentTermsEnum) (getOnlyLeafReader(reader).terms("category").iterator());
+
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("regular")));
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("request1")));
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("request2")));
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("request3")));
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("request4")));
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("rest1")));
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("rest2")));
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("rest3")));
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("rest4")));
+
+    writer.close();
+    reader.close();
+    dir.close();
+  }
+
+  public void testMultiSubBlocksToRoot() throws Exception {
+    Directory dir = newDirectory();
+    // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate deep subBlock.
+    PostingsFormat postingsFormat = getDefaultPostingsFormat(2, 3);
+
+    IndexWriter writer =
+        new IndexWriter(dir, newIndexWriterConfig().setCodec(alwaysPostingsFormat(postingsFormat)));
+    String[] categories =
+        new String[] {
+          "cat1", "cat2", "dog1", "dog2", "eat1", "eat2", "request1", "request2", "rest1", "rest2"
+        };
+
+    for (String category : categories) {
+      Document doc = new Document();
+      doc.add(newStringField("category", category, Field.Store.YES));
+      writer.addDocument(doc);
+    }
+
+    IndexReader reader = DirectoryReader.open(writer);
+    SegmentTermsEnum termsEnum =
+        (SegmentTermsEnum) (getOnlyLeafReader(reader).terms("category").iterator());
+
+    assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("cat1")));
+
+    writer.close();
+    reader.close();
+    dir.close();
   }
 
   public void testTermEnum() throws IOException {
