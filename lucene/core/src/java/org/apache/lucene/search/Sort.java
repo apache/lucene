@@ -18,6 +18,8 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Comparator;
+import org.apache.lucene.index.LeafReaderContext;
 
 /**
  * Encapsulates sort criteria for returned hits.
@@ -130,5 +132,12 @@ public final class Sort {
       }
     }
     return false;
+  }
+
+  /**
+   * @return the leaf reader comparator of the first SortField of this Sort
+   */
+  public Comparator<LeafReaderContext> getLeafReaderComparator() {
+    return fields[0].getLeafReaderComparator();
   }
 }
