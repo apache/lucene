@@ -30,6 +30,7 @@ import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -40,11 +41,6 @@ import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.InfoStream;
-
-/*
-  Verify we can read the pre-2.1 file format, do searches
-  against it, and add documents to it.
-*/
 
 public class TestIndexFileDeleter extends LuceneTestCase {
 
@@ -440,7 +436,6 @@ public class TestIndexFileDeleter extends LuceneTestCase {
         });
 
     IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
-    // iwc.setMergeScheduler(new SerialMergeScheduler());
     MergeScheduler ms = iwc.getMergeScheduler();
     if (ms instanceof ConcurrentMergeScheduler) {
       final ConcurrentMergeScheduler suppressFakeFail =
@@ -487,7 +482,12 @@ public class TestIndexFileDeleter extends LuceneTestCase {
       } catch (Throwable t) {
         if (t.toString().contains("fake fail")
             || (t.getCause() != null && t.getCause().toString().contains("fake fail"))) {
-          // ok
+          // ok.
+        } else if (t instanceof AlreadyClosedException) {
+          // This is also ok. This can happen if the injected exception (RuntimeException("fake
+          // fail")) happened
+          // inside the concurrent merges and this closed the index writer's reader pool.
+          throw t;
         } else {
           throw t;
         }
