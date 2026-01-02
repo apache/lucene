@@ -481,13 +481,12 @@ public class TestIndexFileDeleter extends LuceneTestCase {
         }
       } catch (Throwable t) {
         if (t.toString().contains("fake fail")
-            || (t.getCause() != null && t.getCause().toString().contains("fake fail"))) {
-          // ok.
-        } else if (t instanceof AlreadyClosedException) {
-          // This is also ok. This can happen if the injected exception (RuntimeException("fake
-          // fail")) happened
-          // inside the concurrent merges and this closed the index writer's reader pool.
-          throw t;
+            || (t.getCause() != null && t.getCause().toString().contains("fake fail"))
+            || t instanceof AlreadyClosedException) {
+          // All these conditions are fine.
+          // AlreadyClosedException can happen if the injected exception (RuntimeException("fake
+          // fail")) happened inside the concurrent merges and this closed the index writer's
+          // reader pool.
         } else {
           throw t;
         }
