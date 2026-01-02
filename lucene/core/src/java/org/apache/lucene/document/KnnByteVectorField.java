@@ -23,6 +23,7 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnByteVectorQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.util.VectorUtil;
 
 /**
  * A field that contains a single byte numeric vector (or none) for each document. Vectors are dense
@@ -137,6 +138,9 @@ public class KnnByteVectorField extends Field {
     if (vector.length != fieldType.vectorDimension()) {
       throw new IllegalArgumentException(
           "The number of vector dimensions does not match the field type");
+    }
+    if (VectorUtil.isZeroVector(vector) == true) {
+      throw new IllegalArgumentException("zero vector not allowed for vector field value");
     }
     fieldsData = vector;
   }

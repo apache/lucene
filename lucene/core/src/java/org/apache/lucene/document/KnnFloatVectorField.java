@@ -139,6 +139,9 @@ public class KnnFloatVectorField extends Field {
       throw new IllegalArgumentException(
           "The number of vector dimensions does not match the field type");
     }
+    if (VectorUtil.isZeroVector(vector) == true) {
+      throw new IllegalArgumentException("zero vector not allowed for vector field value");
+    }
     fieldsData = VectorUtil.checkFinite(vector);
   }
 
