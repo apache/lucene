@@ -210,9 +210,9 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
               final Set<Integer> mrJarVersions = Set.of(23);
               final Integer baseVersion = 23;
 
-              // the Java 23 PanamaVectorizationProvider must always be in main section of JAR file:
+              // the PanamaVectorizationProvider must always be in main section of JAR file:
               final String panamaClassName =
-                  "org/apache/lucene/internal/vectorization/PanamaVectorizationProvider.class";
+                  "org/apache/lucene/internal/vectorization/panama/PanamaVectorizationProvider.class";
               Assertions.assertThat(loader.getResource(panamaClassName)).isNotNull();
 
               // additional versions must be in MR-JAR part
@@ -351,9 +351,14 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
               if (isInternal && export.source().equals("org.apache.lucene.internal.hppc")) {
                 return true;
               }
-              if (isInternal) {
+              if (export.source().equals("org.apache.lucene.internal.tests")) {
                 Assertions.assertThat(export.targets())
                     .containsExactlyInAnyOrder("org.apache.lucene.test_framework");
+              }
+              // Allow export to JMH benchmarks
+              if (export.source().equals("org.apache.lucene.internal.vectorization")) {
+                Assertions.assertThat(export.targets())
+                    .containsExactlyInAnyOrder("org.apache.lucene.benchmark.jmh");
               }
               return isInternal;
             });
