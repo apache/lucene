@@ -19,6 +19,7 @@ package org.apache.lucene.backward_codecs.lucene99;
 import java.io.IOException;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.GroupVIntUtil;
 
 /** Utility class to encode/decode postings block. */
 final class PostingsUtil {
@@ -35,7 +36,7 @@ final class PostingsUtil {
       boolean indexHasFreq,
       boolean decodeFreq)
       throws IOException {
-    docIn.readGroupVInts(docBuffer, num);
+    GroupVIntUtil.readGroupVInts(docIn, docBuffer, num);
     if (indexHasFreq && decodeFreq) {
       for (int i = 0; i < num; ++i) {
         freqBuffer[i] = docBuffer[i] & 0x01;

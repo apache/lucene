@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.Directory;
@@ -118,11 +119,11 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
 
       @Override
       public void searchNearestVectors(
-          String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+          String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {}
 
       @Override
       public void searchNearestVectors(
-          String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+          String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {}
 
       @Override
       protected void doClose() {}
@@ -393,7 +394,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     IndexReader r = w.getReader();
     w.close();
 
-    IndexSearcher s = new IndexSearcher(r, command -> {});
+    IndexSearcher s = new IndexSearcher(r, _ -> {});
     IndexSearcher.LeafSlice[] slices = s.getSlices();
     assertNotNull(slices);
 
@@ -422,7 +423,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     w.close();
 
     IndexSearcher s =
-        new IndexSearcher(r, command -> {}) {
+        new IndexSearcher(r, _ -> {}) {
           @Override
           protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
             // force partitioning of segment with max docs per slice set to 1: 1 doc per partition.

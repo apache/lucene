@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.emptyArray;
+import static org.hamcrest.Matchers.not;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -56,7 +59,7 @@ public class TestTopDocsMerge extends LuceneTestCase {
 
     public TopDocs search(Weight weight, int topN) throws IOException {
       TopScoreDocCollector collector =
-          new TopScoreDocCollectorManager(topN, null, Integer.MAX_VALUE, false).newCollector();
+          new TopScoreDocCollectorManager(topN, null, Integer.MAX_VALUE).newCollector();
       searchLeaf(ctx, 0, DocIdSetIterator.NO_MORE_DOCS, weight, collector);
       return collector.topDocs();
     }
@@ -124,9 +127,9 @@ public class TestTopDocsMerge extends LuceneTestCase {
     // that we already set, instead of the position of that TopDocs in the array:
     TopDocs merge = TopDocs.merge(from, size, topDocs.toArray(new TopDocs[0]));
 
-    assertTrue(merge.scoreDocs.length > 0);
+    assertThat(merge.scoreDocs, not(emptyArray()));
     for (ScoreDoc scoreDoc : merge.scoreDocs) {
-      assertTrue(scoreDoc.shardIndex != -1);
+      assertNotEquals(-1, scoreDoc.shardIndex);
       TopDocs shardTopDocs = shardResultMapping.get(scoreDoc.shardIndex);
       assertNotNull(shardTopDocs);
       boolean found = false;
@@ -348,8 +351,7 @@ public class TestTopDocsMerge extends LuceneTestCase {
           subHits = subSearcher.search(w, numHits);
         } else {
           final TopFieldCollector c =
-              new TopFieldCollectorManager(sort, numHits, null, Integer.MAX_VALUE, false)
-                  .newCollector();
+              new TopFieldCollectorManager(sort, numHits, null, Integer.MAX_VALUE).newCollector();
           subSearcher.search(w, c);
           subHits = c.topDocs(0, numHits);
         }

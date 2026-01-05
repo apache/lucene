@@ -1,0 +1,44 @@
+name: "Run checks: module lucene/analysis/common (hunspell)"
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - 'main'
+      - 'branch_10x'
+    paths:
+      - '.github/workflows/run-checks-mod-analysis-common.yml'
+      - 'lucene/analysis/common/**'
+
+  push:
+    branches:
+      - 'main'
+      - 'branch_10x'
+    paths:
+      - '.github/workflows/run-checks-mod-analysis-common.yml'
+      - 'lucene/analysis/common/**'
+
+permissions: {}
+
+env:
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+
+jobs:
+  test:
+    name: Extra Hunspell regression tests
+    timeout-minutes: 15
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Configure tools
+        uses: ./.github/actions/prepare-for-build
+
+      - name: Run Hunspell regression tests
+        run: ./gradlew -p lucene/analysis/common -Ptests.hunspell.regressions=true -Ptests.verbose=true test --tests "TestAllDictionaries"

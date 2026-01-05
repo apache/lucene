@@ -95,8 +95,6 @@ public abstract class ReplicaNode extends Node {
           "Directory " + dir + " still has pending deleted files; cannot initialize IndexWriter");
     }
 
-    boolean success = false;
-
     try {
       message("top: init replica dir=" + dir);
 
@@ -106,15 +104,11 @@ public abstract class ReplicaNode extends Node {
 
       state = "init";
       deleter = new ReplicaFileDeleter(this, dir);
-      success = true;
     } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
       message("exc on init:");
       t.printStackTrace(printStream);
       throw t;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
     }
   }
 
@@ -869,7 +863,7 @@ public abstract class ReplicaNode extends Node {
     if (Arrays.equals(destMetaData.header(), srcMetaData.header()) == false
         || Arrays.equals(destMetaData.footer(), srcMetaData.footer()) == false) {
       // Segment name was reused!  This is rare but possible and otherwise devastating:
-      if (Node.VERBOSE_FILES) {
+      if (isVerboseFiles()) {
         message("file " + fileName + ": will copy [header/footer is different]");
       }
       return false;

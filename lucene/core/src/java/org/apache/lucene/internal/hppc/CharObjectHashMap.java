@@ -459,7 +459,7 @@ public class CharObjectHashMap<VType>
     private int slot;
 
     public EntryIterator() {
-      cursor = new CharObjectCursor<VType>();
+      cursor = new CharObjectCursor<>();
       int seed = nextIterationSeed();
       increment = iterationIncrement(seed);
       slot = seed & mask;
@@ -573,15 +573,6 @@ public class CharObjectHashMap<VType>
 
     public int size() {
       return CharObjectHashMap.this.size();
-    }
-
-    public VType[] toArray() {
-      VType[] array = (VType[]) new Object[size()];
-      int i = 0;
-      for (ObjectCursor<VType> cursor : this) {
-        array[i++] = cursor.value;
-      }
-      return array;
     }
   }
 

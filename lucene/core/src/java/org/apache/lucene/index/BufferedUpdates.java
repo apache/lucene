@@ -134,7 +134,7 @@ class BufferedUpdates implements Accountable {
   void addNumericUpdate(NumericDocValuesUpdate update, int docIDUpto) {
     FieldUpdatesBuffer buffer =
         fieldUpdates.computeIfAbsent(
-            update.field, k -> new FieldUpdatesBuffer(fieldUpdatesBytesUsed, update, docIDUpto));
+            update.field, _ -> new FieldUpdatesBuffer(fieldUpdatesBytesUsed, update, docIDUpto));
     if (update.hasValue) {
       buffer.addUpdate(update.term, update.getValue(), docIDUpto);
     } else {
@@ -146,7 +146,7 @@ class BufferedUpdates implements Accountable {
   void addBinaryUpdate(BinaryDocValuesUpdate update, int docIDUpto) {
     FieldUpdatesBuffer buffer =
         fieldUpdates.computeIfAbsent(
-            update.field, k -> new FieldUpdatesBuffer(fieldUpdatesBytesUsed, update, docIDUpto));
+            update.field, _ -> new FieldUpdatesBuffer(fieldUpdatesBytesUsed, update, docIDUpto));
     if (update.hasValue) {
       buffer.addUpdate(update.term, update.getValue(), docIDUpto);
     } else {
@@ -211,7 +211,7 @@ class BufferedUpdates implements Accountable {
       BytesRefIntMap hash =
           deleteTerms.computeIfAbsent(
               term.field,
-              k -> {
+              _ -> {
                 bytesUsed.addAndGet(RamUsageEstimator.sizeOf(term.field));
                 return new BytesRefIntMap(pool, bytesUsed);
               });
@@ -293,8 +293,8 @@ class BufferedUpdates implements Accountable {
   private static class BytesRefIntMap {
 
     private static final long INIT_RAM_BYTES =
-        RamUsageEstimator.shallowSizeOf(BytesRefIntMap.class)
-            + RamUsageEstimator.shallowSizeOf(BytesRefHash.class)
+        RamUsageEstimator.shallowSizeOfInstance(BytesRefIntMap.class)
+            + RamUsageEstimator.shallowSizeOfInstance(BytesRefHash.class)
             + RamUsageEstimator.sizeOf(new int[BytesRefHash.DEFAULT_CAPACITY]);
 
     private final Counter counter;

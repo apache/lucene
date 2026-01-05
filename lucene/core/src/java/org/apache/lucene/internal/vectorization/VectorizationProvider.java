@@ -38,12 +38,15 @@ import org.apache.lucene.util.VectorUtil;
  * vectorization modules in the Java runtime this class provides optimized implementations (using
  * SIMD) of several algorithms used throughout Apache Lucene.
  *
+ * <p>Expert: set the {@value #UPPER_JAVA_FEATURE_VERSION_SYSPROP} system property to increase the
+ * set of Java versions this class will provide optimized implementations for.
+ *
  * @lucene.internal
  */
 public abstract class VectorizationProvider {
 
   static final OptionalInt TESTS_VECTOR_SIZE;
-  static final boolean TESTS_FORCE_INTEGER_VECTORS;
+  static final int UPPER_JAVA_FEATURE_VERSION = getUpperJavaFeatureVersion();
 
   static {
     var vs = OptionalInt.empty();
@@ -53,22 +56,31 @@ public abstract class VectorizationProvider {
               .filter(Predicate.not(Set.of("", "default")::contains))
               .mapToInt(Integer::parseInt)
               .findAny();
-    } catch (
-        @SuppressWarnings("unused")
-        SecurityException se) {
+    } catch (SecurityException _) {
       // ignored
     }
     TESTS_VECTOR_SIZE = vs;
+  }
 
-    boolean enforce = false;
+  private static final String UPPER_JAVA_FEATURE_VERSION_SYSPROP =
+      "org.apache.lucene.vectorization.upperJavaFeatureVersion";
+  private static final int DEFAULT_UPPER_JAVA_FEATURE_VERSION = 25;
+
+  private static int getUpperJavaFeatureVersion() {
+    int runtimeVersion = DEFAULT_UPPER_JAVA_FEATURE_VERSION;
     try {
-      enforce = Boolean.getBoolean("tests.forceintegervectors");
-    } catch (
-        @SuppressWarnings("unused")
-        SecurityException se) {
-      // ignored
+      String str = System.getProperty(UPPER_JAVA_FEATURE_VERSION_SYSPROP);
+      if (str != null) {
+        runtimeVersion = Math.max(Integer.parseInt(str), runtimeVersion);
+      }
+    } catch (NumberFormatException | SecurityException _) {
+      Logger.getLogger(VectorizationProvider.class.getName())
+          .warning(
+              "Cannot read sysprop "
+                  + UPPER_JAVA_FEATURE_VERSION_SYSPROP
+                  + ", so the default value will be used.");
     }
-    TESTS_FORCE_INTEGER_VECTORS = enforce;
+    return runtimeVersion;
   }
 
   /**
@@ -97,6 +109,9 @@ public abstract class VectorizationProvider {
   /** Returns a FlatVectorsScorer that supports the Lucene99 format. */
   public abstract FlatVectorsScorer getLucene99FlatVectorsScorer();
 
+  /** Returns a FlatVectorsScorer that supports the Lucene99 format. */
+  public abstract FlatVectorsScorer getLucene99ScalarQuantizedVectorsScorer();
+
   /** Create a new {@link PostingDecodingUtil} for the given {@link IndexInput}. */
   public abstract PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException;
 
@@ -108,7 +123,7 @@ public abstract class VectorizationProvider {
   static VectorizationProvider lookup(boolean testMode) {
     final int runtimeVersion = Runtime.version().feature();
     assert runtimeVersion >= 21;
-    if (runtimeVersion <= 23) {
+    if (runtimeVersion <= UPPER_JAVA_FEATURE_VERSION) {
       // only use vector module with Hotspot VM
       if (!Constants.IS_HOTSPOT_VM) {
         LOG.warning(
@@ -132,9 +147,9 @@ public abstract class VectorizationProvider {
       vectorMod.ifPresent(VectorizationProvider.class.getModule()::addReads);
       // check for testMode and otherwise fallback to default if slowness could happen
       if (!testMode) {
-        if (TESTS_VECTOR_SIZE.isPresent() || TESTS_FORCE_INTEGER_VECTORS) {
+        if (TESTS_VECTOR_SIZE.isPresent()) {
           LOG.warning(
-              "Vector bitsize and/or integer vectors enforcement; using default vectorization provider outside of testMode");
+              "Vector bitsize enforcement; using default vectorization provider outside of testMode");
           return new DefaultVectorizationProvider();
         }
         if (Constants.IS_CLIENT_VM) {
@@ -190,8 +205,9 @@ public abstract class VectorizationProvider {
       Set.of(
           "org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil",
           "org.apache.lucene.util.VectorUtil",
-          "org.apache.lucene.codecs.lucene912.Lucene912PostingsReader",
-          "org.apache.lucene.codecs.lucene912.PostingIndexInput");
+          "org.apache.lucene.codecs.lucene104.Lucene104PostingsReader",
+          "org.apache.lucene.codecs.lucene104.PostingIndexInput",
+          "org.apache.lucene.tests.util.TestSysoutsLimits");
 
   private static void ensureCaller() {
     final boolean validCaller =

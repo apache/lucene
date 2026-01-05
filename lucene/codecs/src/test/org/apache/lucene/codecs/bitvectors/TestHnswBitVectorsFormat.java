@@ -22,7 +22,6 @@ import java.io.IOException;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene912.Lucene912Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnByteVectorField;
@@ -34,20 +33,17 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseIndexFileFormatTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestHnswBitVectorsFormat extends BaseIndexFileFormatTestCase {
   @Override
   protected Codec getCodec() {
-    return new Lucene912Codec() {
-      @Override
-      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-        return new HnswBitVectorsFormat();
-      }
-    };
+    return TestUtil.alwaysKnnVectorsFormat(new HnswBitVectorsFormat());
   }
 
   @Override
@@ -89,7 +85,8 @@ public class TestHnswBitVectorsFormat extends BaseIndexFileFormatTestCase {
       try (IndexReader reader = DirectoryReader.open(w)) {
         LeafReader r = getOnlyLeafReader(reader);
         TopKnnCollector collector = new TopKnnCollector(3, Integer.MAX_VALUE);
-        r.searchNearestVectors("v1", vectors[0], collector, null);
+        r.searchNearestVectors(
+            "v1", vectors[0], collector, AcceptDocs.fromLiveDocs(null, r.maxDoc()));
         TopDocs topDocs = collector.topDocs();
         assertEquals(3, topDocs.scoreDocs.length);
 

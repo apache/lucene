@@ -29,7 +29,7 @@ public class ExplainingMatch extends QueryMatch {
   /** A MatcherFactory for producing ExplainingMatches */
   public static final MatcherFactory<ExplainingMatch> MATCHER =
       searcher ->
-          new CandidateMatcher<ExplainingMatch>(searcher) {
+          new CandidateMatcher<>(searcher) {
             @Override
             public void matchQuery(String queryId, Query matchQuery, Map<String, String> metadata)
                 throws IOException {

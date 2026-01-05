@@ -50,7 +50,7 @@ public class TestLongRangeGroupSelector extends BaseGroupSelectorTestCase<LongRa
   protected Query filterQuery(LongRange groupValue) {
     if (groupValue == null) {
       return new BooleanQuery.Builder()
-          .add(new MatchAllDocsQuery(), BooleanClause.Occur.FILTER)
+          .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.FILTER)
           .add(new FieldExistsQuery("long"), BooleanClause.Occur.MUST_NOT)
           .build();
     }

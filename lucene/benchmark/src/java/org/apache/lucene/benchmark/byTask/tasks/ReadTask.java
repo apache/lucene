@@ -112,8 +112,7 @@ public abstract class ReadTask extends PerfTask {
             // pulling the Weight ourselves:
             int totalHitsThreshold = withTotalHits() ? Integer.MAX_VALUE : 1;
             TopFieldCollectorManager collectorManager =
-                new TopFieldCollectorManager(
-                    sort, numHits, null, totalHitsThreshold, searcher.getSlices().length > 1);
+                new TopFieldCollectorManager(sort, numHits, null, totalHitsThreshold);
             hits = searcher.search(q, collectorManager);
           } else {
             hits = searcher.search(q, numHits);

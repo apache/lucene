@@ -18,6 +18,8 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.search.similarities.Similarity.SimScorer;
 
 class PhraseScorer extends Scorer {
 
@@ -26,16 +28,19 @@ class PhraseScorer extends Scorer {
   final MaxScoreCache maxScoreCache;
   final PhraseMatcher matcher;
   final ScoreMode scoreMode;
-  private final LeafSimScorer simScorer;
+  private final SimScorer simScorer;
+  private final NumericDocValues norms;
   final float matchCost;
 
   private float minCompetitiveScore = 0;
   private float freq = 0;
 
-  PhraseScorer(PhraseMatcher matcher, ScoreMode scoreMode, LeafSimScorer simScorer) {
+  PhraseScorer(
+      PhraseMatcher matcher, ScoreMode scoreMode, SimScorer simScorer, NumericDocValues norms) {
     this.matcher = matcher;
     this.scoreMode = scoreMode;
     this.simScorer = simScorer;
+    this.norms = norms;
     this.matchCost = matcher.getMatchCost();
     this.approximation = matcher.approximation();
     this.impactsApproximation = matcher.impactsApproximation();
@@ -50,7 +55,11 @@ class PhraseScorer extends Scorer {
         matcher.reset();
         if (scoreMode == ScoreMode.TOP_SCORES && minCompetitiveScore > 0) {
           float maxFreq = matcher.maxFreq();
-          if (simScorer.score(docID(), maxFreq) < minCompetitiveScore) {
+          long norm = 1L;
+          if (norms != null && norms.advanceExact(docID())) {
+            norm = norms.longValue();
+          }
+          if (simScorer.score(maxFreq, norm) < minCompetitiveScore) {
             // The maximum score we could get is less than the min competitive score
             return false;
           }
@@ -79,7 +88,11 @@ class PhraseScorer extends Scorer {
         freq += matcher.sloppyWeight();
       }
     }
-    return simScorer.score(docID(), freq);
+    long norm = 1L;
+    if (norms != null && norms.advanceExact(docID())) {
+      norm = norms.longValue();
+    }
+    return simScorer.score(freq, norm);
   }
 
   @Override

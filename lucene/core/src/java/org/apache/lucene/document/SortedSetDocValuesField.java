@@ -17,6 +17,7 @@
 package org.apache.lucene.document;
 
 import java.util.Collection;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.MultiTermQuery;
@@ -49,13 +50,13 @@ public class SortedSetDocValuesField extends Field {
     TYPE.freeze();
 
     INDEXED_TYPE = new FieldType(TYPE);
-    INDEXED_TYPE.setDocValuesSkipIndex(true);
+    INDEXED_TYPE.setDocValuesSkipIndexType(DocValuesSkipIndexType.RANGE);
     INDEXED_TYPE.freeze();
   }
 
   /**
    * Creates a new {@link SortedSetDocValuesField} with the specified 64-bit long value that also
-   * creates a {@link FieldType#hasDocValuesSkipIndex() skip index}.
+   * creates a {@link FieldType#docValuesSkipIndexType() skip index}.
    *
    * @param name field name
    * @param bytes binary content

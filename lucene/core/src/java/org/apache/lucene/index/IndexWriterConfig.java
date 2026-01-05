@@ -62,7 +62,7 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
     APPEND,
 
     /**
-     * Creates a new index if one does not exist, otherwise it opens the index and documents will be
+     * Creates a new index, if one does not exist, otherwise opens the index and documents will be
      * appended.
      */
     CREATE_OR_APPEND
@@ -509,28 +509,28 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
   }
 
   /**
-   * Sets the soft deletes field. A soft delete field in lucene is a doc-values field that marks a
-   * document as soft-deleted if a document has at least one value in that field. If a document is
-   * marked as soft-deleted the document is treated as if it has been hard-deleted through the
+   * Sets the soft-deletes field. A soft-delete field in Lucene is a doc-values field that marks a
+   * document as soft-deleted, if a document has at least one value in that field. If a document is
+   * marked as soft-deleted, the document is treated as if it has been hard-deleted through the
    * IndexWriter API ({@link IndexWriter#deleteDocuments(Term...)}. Merges will reclaim soft-deleted
-   * as well as hard-deleted documents and index readers obtained from the IndexWriter will reflect
-   * all deleted documents in it's live docs. If soft-deletes are used documents must be indexed via
+   * as well as hard-deleted documents, and index readers obtained from the IndexWriter will reflect
+   * all deleted documents in its live docs. If soft-deletes are used, documents must be indexed via
    * {@link IndexWriter#softUpdateDocument(Term, Iterable, Field...)}. Deletes are applied via
    * {@link IndexWriter#updateDocValues(Term, Field...)}.
    *
    * <p>Soft deletes allow to retain documents across merges if the merge policy modifies the live
    * docs of a merge reader. {@link SoftDeletesRetentionMergePolicy} for instance allows to specify
-   * an arbitrary query to mark all documents that should survive the merge. This can be used to for
-   * example keep all document modifications for a certain time interval or the last N operations if
-   * some kind of sequence ID is available in the index.
+   * an arbitrary query to mark all documents that should survive the merge. This can be used, for
+   * example, to keep all document modifications for a certain time interval or the last N
+   * operations if some kind of sequence ID is available in the index.
    *
-   * <p>Currently there is no API support to un-delete a soft-deleted document. In oder to un-delete
-   * the document must be re-indexed using {@link IndexWriter#softUpdateDocument(Term, Iterable,
-   * Field...)}.
+   * <p>Currently there is no API support to un-delete a soft-deleted document. In order to
+   * un-delete a document, it must be re-indexed using {@link IndexWriter#softUpdateDocument(Term,
+   * Iterable, Field...)}.
    *
-   * <p>The default value for this is <code>null</code> which disables soft-deletes. If soft-deletes
-   * are enabled documents can still be hard-deleted. Hard-deleted documents will won't considered
-   * as soft-deleted even if they have a value in the soft-deletes field.
+   * <p>The default value for this is <code>null</code>, which disables soft-deletes. If
+   * soft-deletes are enabled, documents can still be hard-deleted. Hard-deleted documents won't be
+   * considered as soft-deleted even if they have a value in the soft-deletes field.
    *
    * @see #getSoftDeletesField()
    */

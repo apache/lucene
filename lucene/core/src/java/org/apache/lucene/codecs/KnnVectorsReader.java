@@ -19,13 +19,18 @@ package org.apache.lucene.codecs;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
 
 /** Reads vectors from an index. */
@@ -43,6 +48,14 @@ public abstract class KnnVectorsReader implements Closeable {
    * @lucene.internal
    */
   public abstract void checkIntegrity() throws IOException;
+
+  /**
+   * If this reader wraps another for {@code field}, return the underlying reader, else return
+   * {@code this}
+   */
+  public KnnVectorsReader unwrapReaderForField(String field) {
+    return this;
+  }
 
   /**
    * Returns the {@link FloatVectorValues} for the given {@code field}. The behavior is undefined if
@@ -75,7 +88,7 @@ public abstract class KnnVectorsReader implements Closeable {
    * TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO}.
    *
    * <p>The behavior is undefined if the given field doesn't have KNN vectors enabled on its {@link
-   * FieldInfo}. The return value is never {@code null}.
+   * FieldInfo}.
    *
    * @param field the vector field to search
    * @param target the vector-valued query
@@ -84,7 +97,8 @@ public abstract class KnnVectorsReader implements Closeable {
    *     if they are all allowed to match.
    */
   public abstract void search(
-      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException;
+      String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException;
 
   /**
    * Return the k nearest neighbor documents as determined by comparison of their vector values for
@@ -103,7 +117,7 @@ public abstract class KnnVectorsReader implements Closeable {
    * TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO}.
    *
    * <p>The behavior is undefined if the given field doesn't have KNN vectors enabled on its {@link
-   * FieldInfo}. The return value is never {@code null}.
+   * FieldInfo}.
    *
    * @param field the vector field to search
    * @param target the vector-valued query
@@ -112,7 +126,8 @@ public abstract class KnnVectorsReader implements Closeable {
    *     if they are all allowed to match.
    */
   public abstract void search(
-      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException;
+      String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException;
 
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread
@@ -120,7 +135,62 @@ public abstract class KnnVectorsReader implements Closeable {
    *
    * <p>The default implementation returns {@code this}
    */
-  public KnnVectorsReader getMergeInstance() {
+  public KnnVectorsReader getMergeInstance() throws IOException {
     return this;
+  }
+
+  /**
+   * Optional: reset or close merge resources used in the reader
+   *
+   * <p>The default implementation is empty
+   */
+  public void finishMerge() throws IOException {}
+
+  /**
+   * Returns the desired size of off-heap memory for the given field. This size can be used to help
+   * determine the memory requirements for optimal search performance, which can be greatly affected
+   * by page faults when not enough memory is available.
+   *
+   * <p>For reporting purposes, the size of the off-heap index structures is broken down by their
+   * file extension, which provides a logical categorization of their purpose, e.g. the {@code
+   * Lucene99HnswVectorsFormat} stores the HNSW graph neighbours lists in a file with the "vex"
+   * extension.
+   *
+   * <p>The long value is the size in bytes of the off-heap space needed if the associated index
+   * structure were to be fully loaded in memory. While somewhat analogous to {@link
+   * Accountable#ramBytesUsed()} (which reports actual on-heap memory usage), the sizes reported by
+   * this method are not actual usage but rather the amount of available memory needed to fully load
+   * the index into memory, rather than an actual RAM usage requirement.
+   *
+   * <p>To determine the total desired off-heap memory size for the given field:
+   *
+   * <pre>{@code
+   * getOffHeapByteSize(field).values().stream().mapToLong(Long::longValue).sum();
+   * }</pre>
+   *
+   * <p>The default implementation returns an empty map.
+   *
+   * @param fieldInfo the fieldInfo
+   * @return a map of the desired off-heap memory requirements by category
+   * @lucene.experimental
+   */
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    return Map.of();
+  }
+
+  /**
+   * Merges the maps returned by {@link #getOffHeapByteSize(FieldInfo)}.
+   *
+   * <p>This method is a convenience for aggregating the desired off-heap memory requirements for
+   * several fields. The keys in the returned map are a union of the keys in the given maps. Entries
+   * with the same key are summed.
+   *
+   * @lucene.experimental
+   */
+  public static Map<String, Long> mergeOffHeapByteSizeMaps(
+      Map<String, Long> map1, Map<String, Long> map2) {
+    return Stream.of(map1, map2)
+        .flatMap(map -> map.entrySet().stream())
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, Long::sum));
   }
 }

@@ -20,6 +20,7 @@ package org.apache.lucene.codecs.uniformsplit;
 import java.io.IOException;
 import java.util.Collections;
 import org.apache.lucene.codecs.lucene90.tests.MockTermStateFactory;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
@@ -111,7 +112,7 @@ public class TestBlockWriter extends LuceneTestCase {
         true,
         IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS,
         DocValuesType.NONE,
-        false,
+        DocValuesSkipIndexType.NONE,
         -1,
         Collections.emptyMap(),
         0,

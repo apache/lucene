@@ -38,7 +38,38 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.BaseTermsEnum;
+import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
+import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FieldInvertState;
+import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.IndexableFieldType;
+import org.apache.lucene.index.LeafMetaData;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.OrdTermState;
+import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.SlowImpactsEnum;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.TermState;
+import org.apache.lucene.index.TermVectors;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -736,7 +767,7 @@ public class MemoryIndex {
         storePayloads,
         indexOptions,
         fieldType.docValuesType(),
-        false,
+        fieldType.docValuesSkipIndexType(),
         -1,
         Collections.emptyMap(),
         fieldType.pointDimensionCount(),
@@ -841,7 +872,7 @@ public class MemoryIndex {
               info.fieldInfo.hasPayloads(),
               info.fieldInfo.getIndexOptions(),
               docValuesType,
-              false,
+              DocValuesSkipIndexType.NONE,
               -1,
               info.fieldInfo.attributes(),
               info.fieldInfo.getPointDimensionCount(),
@@ -1338,9 +1369,7 @@ public class MemoryIndex {
     }
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
   // Nested classes:
-  ///////////////////////////////////////////////////////////////////////////////
 
   private static class MemoryDocValuesIterator {
 
@@ -1729,11 +1758,11 @@ public class MemoryIndex {
 
     @Override
     public void searchNearestVectors(
-        String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+        String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {}
 
     @Override
     public void searchNearestVectors(
-        String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+        String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {}
 
     @Override
     public void checkIntegrity() throws IOException {
@@ -2285,7 +2314,6 @@ public class MemoryIndex {
 
   private static final class MemoryFloatVectorValues extends FloatVectorValues {
     private final Info info;
-    private int currentDoc = -1;
 
     MemoryFloatVectorValues(Info info) {
       this.info = info;
@@ -2302,12 +2330,17 @@ public class MemoryIndex {
     }
 
     @Override
-    public float[] vectorValue() {
-      if (currentDoc == 0) {
+    public float[] vectorValue(int ord) {
+      if (ord == 0) {
         return info.floatVectorValues[0];
       } else {
         return null;
       }
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return createDenseIterator();
     }
 
     @Override
@@ -2320,50 +2353,31 @@ public class MemoryIndex {
                 + info.fieldInfo.getVectorDimension());
       }
       MemoryFloatVectorValues vectorValues = new MemoryFloatVectorValues(info);
+      DocIndexIterator iterator = vectorValues.iterator();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
+          assert iterator.docID() == 0;
           return info.fieldInfo
               .getVectorSimilarityFunction()
-              .compare(vectorValues.vectorValue(), query);
+              .compare(vectorValues.vectorValue(0), query);
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return vectorValues;
+          return iterator;
         }
       };
     }
 
     @Override
-    public int docID() {
-      return currentDoc;
-    }
-
-    @Override
-    public int nextDoc() {
-      int doc = ++currentDoc;
-      if (doc == 0) {
-        return doc;
-      } else {
-        return NO_MORE_DOCS;
-      }
-    }
-
-    @Override
-    public int advance(int target) {
-      if (target == 0) {
-        currentDoc = target;
-        return target;
-      } else {
-        return NO_MORE_DOCS;
-      }
+    public MemoryFloatVectorValues copy() {
+      return this;
     }
   }
 
   private static final class MemoryByteVectorValues extends ByteVectorValues {
     private final Info info;
-    private int currentDoc = -1;
 
     MemoryByteVectorValues(Info info) {
       this.info = info;
@@ -2380,12 +2394,17 @@ public class MemoryIndex {
     }
 
     @Override
-    public byte[] vectorValue() {
-      if (currentDoc == 0) {
+    public byte[] vectorValue(int ord) {
+      if (ord == 0) {
         return info.byteVectorValues[0];
       } else {
         return null;
       }
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return createDenseIterator();
     }
 
     @Override
@@ -2398,44 +2417,26 @@ public class MemoryIndex {
                 + info.fieldInfo.getVectorDimension());
       }
       MemoryByteVectorValues vectorValues = new MemoryByteVectorValues(info);
+      DocIndexIterator iterator = vectorValues.iterator();
       return new VectorScorer() {
         @Override
         public float score() {
+          assert iterator.docID() == 0;
           return info.fieldInfo
               .getVectorSimilarityFunction()
-              .compare(vectorValues.vectorValue(), query);
+              .compare(vectorValues.vectorValue(0), query);
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return vectorValues;
+          return iterator;
         }
       };
     }
 
     @Override
-    public int docID() {
-      return currentDoc;
-    }
-
-    @Override
-    public int nextDoc() {
-      int doc = ++currentDoc;
-      if (doc == 0) {
-        return doc;
-      } else {
-        return NO_MORE_DOCS;
-      }
-    }
-
-    @Override
-    public int advance(int target) {
-      if (target == 0) {
-        currentDoc = target;
-        return target;
-      } else {
-        return NO_MORE_DOCS;
-      }
+    public MemoryByteVectorValues copy() {
+      return this;
     }
   }
 }

@@ -24,6 +24,7 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.sandbox.facet.iterators.CandidateSetOrdinalIterator;
 import org.apache.lucene.sandbox.facet.iterators.ComparableSupplier;
 import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
@@ -32,6 +33,8 @@ import org.apache.lucene.sandbox.facet.iterators.TopnOrdinalIterator;
 import org.apache.lucene.sandbox.facet.labels.OrdToLabel;
 import org.apache.lucene.sandbox.facet.labels.TaxonomyOrdLabelBiMap;
 import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
+import org.apache.lucene.sandbox.facet.utils.ComparableUtils;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public abstract class SandboxFacetTestCase extends LuceneTestCase {
@@ -194,5 +197,15 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
       counts[i] = countFacetRecorder.getCount(resultOrds[i]);
     }
     return counts;
+  }
+
+  protected IndexSearcher getNewSearcherForDrillSideways(IndexReader reader) {
+    // Do not wrap with an asserting searcher, since DrillSidewaysQuery doesn't
+    // implement all the required components like Weight#scorer.
+    IndexSearcher searcher = newSearcher(reader, true, false, Concurrency.INTER_SEGMENT);
+    // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
+    // timeouts whose implementation scores one window of doc IDs at a time.
+    searcher.setTimeout(null);
+    return searcher;
   }
 }

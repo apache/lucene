@@ -31,6 +31,7 @@ import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.EmptyDocValuesProducer;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
@@ -77,7 +78,6 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       String metaExtension)
       throws IOException {
     this.termsDictBuffer = new byte[1 << 14];
-    boolean success = false;
     try {
       String dataName =
           IndexFileNames.segmentFileName(
@@ -101,32 +101,29 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
           state.segmentSuffix);
       maxDoc = state.segmentInfo.maxDoc();
       this.skipIndexIntervalSize = skipIndexIntervalSize;
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
   @Override
   public void close() throws IOException {
-    boolean success = false;
     try {
-      if (meta != null) {
-        meta.writeInt(-1); // write EOF marker
-        CodecUtil.writeFooter(meta); // write checksum
+      try {
+        if (meta != null) {
+          meta.writeInt(-1); // write EOF marker
+          CodecUtil.writeFooter(meta); // write checksum
+        }
+        if (data != null) {
+          CodecUtil.writeFooter(data); // write checksum
+        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, data, meta);
+        throw t;
       }
-      if (data != null) {
-        CodecUtil.writeFooter(data); // write checksum
-      }
-      success = true;
+      IOUtils.close(data, meta);
     } finally {
-      if (success) {
-        IOUtils.close(data, meta);
-      } else {
-        IOUtils.closeWhileHandlingException(data, meta);
-      }
       meta = data = null;
     }
   }
@@ -143,7 +140,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
             return DocValues.singleton(valuesProducer.getNumeric(field));
           }
         };
-    if (field.hasDocValuesSkipIndex()) {
+    if (field.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
       writeSkipIndex(field, producer);
     }
     writeValues(field, producer, false);
@@ -248,7 +245,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
 
   private void writeSkipIndex(FieldInfo field, DocValuesProducer valuesProducer)
       throws IOException {
-    assert field.hasDocValuesSkipIndex();
+    assert field.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE;
     final long start = data.getFilePointer();
     final SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
     long globalMaxValue = Long.MIN_VALUE;
@@ -700,7 +697,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
             return DocValues.singleton(sortedOrds);
           }
         };
-    if (field.hasDocValuesSkipIndex()) {
+    if (field.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
       writeSkipIndex(field, producer);
     }
     if (addTypeByte) {
@@ -873,7 +870,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
 
   private void doAddSortedNumericField(
       FieldInfo field, DocValuesProducer valuesProducer, boolean ords) throws IOException {
-    if (field.hasDocValuesSkipIndex()) {
+    if (field.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
       writeSkipIndex(field, valuesProducer);
     }
     if (ords) {

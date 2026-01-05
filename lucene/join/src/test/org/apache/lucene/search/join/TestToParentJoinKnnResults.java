@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BitSet;
@@ -110,21 +110,15 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
     }
   }
 
-  static class IntArrayDocIdSetIterator extends DocIdSetIterator {
+  static class IntArrayDocIdSetIterator extends AbstractDocIdSetIterator {
 
     private final int[] docs;
     private final int length;
     private int i = 0;
-    private int doc = -1;
 
     IntArrayDocIdSetIterator(int[] docs, int length) {
       this.docs = docs;
       this.length = length;
-    }
-
-    @Override
-    public int docID() {
-      return doc;
     }
 
     @Override

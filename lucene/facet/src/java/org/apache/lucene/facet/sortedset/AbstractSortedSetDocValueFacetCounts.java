@@ -40,20 +40,6 @@ import org.apache.lucene.util.PriorityQueue;
 /** Base class for SSDV faceting implementations. */
 abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
 
-  private static final Comparator<FacetResult> FACET_RESULT_COMPARATOR =
-      new Comparator<>() {
-        @Override
-        public int compare(FacetResult a, FacetResult b) {
-          if (a.value.intValue() > b.value.intValue()) {
-            return -1;
-          } else if (b.value.intValue() > a.value.intValue()) {
-            return 1;
-          } else {
-            return a.dim.compareTo(b.dim);
-          }
-        }
-      };
-
   final SortedSetDocValuesReaderState state;
   final FacetsConfig stateConfig;
   final SortedSetDocValues dv;
@@ -140,7 +126,16 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     }
 
     // Sort by highest count:
-    results.sort(FACET_RESULT_COMPARATOR);
+    results.sort(
+        (a, b) -> {
+          if (a.value.intValue() > b.value.intValue()) {
+            return -1;
+          } else if (b.value.intValue() > a.value.intValue()) {
+            return 1;
+          } else {
+            return a.dim.compareTo(b.dim);
+          }
+        });
     return results;
   }
 
@@ -156,18 +151,10 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     // Creates priority queue to store top dimensions and sort by their aggregated values/hits and
     // string values.
     PriorityQueue<DimValue> pq =
-        new PriorityQueue<>(topNDims) {
-          @Override
-          protected boolean lessThan(DimValue a, DimValue b) {
-            if (a.value > b.value) {
-              return false;
-            } else if (a.value < b.value) {
-              return true;
-            } else {
-              return a.dim.compareTo(b.dim) > 0;
-            }
-          }
-        };
+        PriorityQueue.usingComparator(
+            topNDims,
+            Comparator.<DimValue>comparingInt(dv -> dv.value)
+                .thenComparing(dv -> dv.dim, Comparator.reverseOrder()));
 
     // Keep track of intermediate results, if we compute them, so we can reuse them later:
     Map<String, TopChildrenForPath> intermediateResults = null;

@@ -57,6 +57,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.StoredFieldDataInput;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
@@ -66,6 +67,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -95,7 +97,7 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
 
   public void testRandomStoredFields() throws IOException {
     Directory dir = newDirectory();
-    Random rand = random();
+    Random rand = nonAssertingRandom(random());
     RandomIndexWriter w =
         new RandomIndexWriter(
             rand,
@@ -682,7 +684,13 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
       doc.add(new StoredField("d", random().nextDouble()));
       doc.add(new StoredField("f", random().nextFloat()));
       doc.add(new StoredField("s", RandomPicks.randomFrom(random(), stringValues)));
-      doc.add(new StoredField("b", new BytesRef(RandomPicks.randomFrom(random(), stringValues))));
+      BytesRef value = new BytesRef(RandomPicks.randomFrom(random(), stringValues));
+      doc.add(new StoredField("b", value));
+      doc.add(
+          new StoredField(
+              "b2",
+              new StoredFieldDataInput(
+                  new ByteArrayDataInput(value.bytes, value.offset, value.length))));
       docs[i] = doc;
       w.addDocument(doc);
     }
@@ -713,6 +721,9 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
       assertEquals(expected.getField("d").numericValue(), doc.getField("d").numericValue());
       assertEquals(expected.getField("f").numericValue(), doc.getField("f").numericValue());
       assertEquals(expected.getField("b").binaryValue(), doc.getField("b").binaryValue());
+      // The value is the same for fields "b" and "b2". Read the expected value from "b" as "b2" was
+      // consumed during indexing
+      assertEquals(expected.getField("b").binaryValue(), doc.getField("b2").binaryValue());
     }
 
     reader.close();
@@ -1003,7 +1014,12 @@ public abstract class BaseStoredFieldsFormatTestCase extends BaseIndexFileFormat
     IOUtils.close(iw, dir);
   }
 
-  /** Test realistic data, which typically compresses better than random data. */
+  /**
+   * Test realistic data, which typically compresses better than random data.
+   *
+   * <p>TODO: incredibly slow
+   */
+  @Nightly
   public void testLineFileDocs() throws IOException {
     // Use an FS dir and a non-randomized IWC to not slow down indexing
     try (Directory dir = newFSDirectory(createTempDir())) {

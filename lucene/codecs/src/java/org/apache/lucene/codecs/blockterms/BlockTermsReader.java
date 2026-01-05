@@ -107,7 +107,6 @@ public class BlockTermsReader extends FieldsProducer {
             state.segmentInfo.name, state.segmentSuffix, BlockTermsWriter.TERMS_EXTENSION);
     in = state.directory.openInput(filename, state.context);
 
-    boolean success = false;
     try {
       CodecUtil.checkIndexHeader(
           in,
@@ -171,11 +170,9 @@ public class BlockTermsReader extends FieldsProducer {
           throw new CorruptIndexException("duplicate fields: " + fieldInfo.name, in);
         }
       }
-      success = true;
-    } finally {
-      if (!success) {
-        in.close();
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, in);
+      throw t;
     }
 
     this.indexReader = indexReader;
@@ -375,13 +372,13 @@ public class BlockTermsReader extends FieldsProducer {
         // target.utf8ToString() + " " + target + " current=" + term().utf8ToString() + " " + term()
         // + " indexIsCurrent=" + indexIsCurrent + " didIndexNext=" + didIndexNext + " seekPending="
         // + seekPending + " divisor=" + indexReader.getDivisor() + " this="  + this);
-        if (didIndexNext) {
-          if (nextIndexTerm == null) {
-            // System.out.println("  nextIndexTerm=null");
-          } else {
-            // System.out.println("  nextIndexTerm=" + nextIndexTerm.utf8ToString());
-          }
-        }
+        // if (didIndexNext) {
+        //  if (nextIndexTerm == null) {
+        //    // System.out.println("  nextIndexTerm=null");
+        //  } else {
+        //    // System.out.println("  nextIndexTerm=" + nextIndexTerm.utf8ToString());
+        //  }
+        // }
 
         boolean doSeek = true;
 

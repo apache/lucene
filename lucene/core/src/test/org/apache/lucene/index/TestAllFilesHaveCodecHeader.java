@@ -54,7 +54,7 @@ public class TestAllFilesHaveCodecHeader extends LuceneTestCase {
       }
     }
     riw.close();
-    checkHeaders(dir, new HashMap<String, String>());
+    checkHeaders(dir, new HashMap<>());
     dir.close();
   }
 
@@ -70,10 +70,7 @@ public class TestAllFilesHaveCodecHeader extends LuceneTestCase {
       }
       if (si.info.getUseCompoundFile()) {
         try (Directory cfsDir =
-            si.info
-                .getCodec()
-                .compoundFormat()
-                .getCompoundReader(dir, si.info, newIOContext(random()))) {
+            si.info.getCodec().compoundFormat().getCompoundReader(dir, si.info)) {
           for (String cfsFile : cfsDir.listAll()) {
             checkHeader(cfsDir, cfsFile, namesToExtensions, si.info.getId());
           }

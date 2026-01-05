@@ -38,6 +38,7 @@ import org.apache.lucene.sandbox.facet.iterators.ComparableSupplier;
 import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 import org.apache.lucene.sandbox.facet.iterators.TopnOrdinalIterator;
 import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
+import org.apache.lucene.sandbox.facet.utils.ComparableUtils;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.Directory;
@@ -69,7 +70,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
     CountFacetRecorder countRecorder = new CountFacetRecorder();
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longValuesFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
 
     FacetResult result = getAllChildrenSortByValue("field", longValuesFacetCutter, countRecorder);
     assertEquals(
@@ -117,7 +118,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
     CountFacetRecorder countRecorder = new CountFacetRecorder();
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longValuesFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
 
     FacetResult result = getAllChildrenSortByValue("field", longValuesFacetCutter, countRecorder);
 
@@ -220,7 +221,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
       CountFacetRecorder countRecorder = new CountFacetRecorder();
       FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
           new FacetFieldCollectorManager<>(longValuesFacetCutter, countRecorder);
-      s.search(new MatchAllDocsQuery(), collectorManager);
+      s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
       /* TODO: uncomment and adjust when LongValueFacetCutter supports value sources
       if (random().nextBoolean()) {
         if (VERBOSE) {
@@ -496,7 +497,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
       CountFacetRecorder countRecorder = new CountFacetRecorder();
       FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
           new FacetFieldCollectorManager<>(longValuesFacetCutter, countRecorder);
-      s.search(new MatchAllDocsQuery(), collectorManager);
+      s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
       if (VERBOSE) {
         System.out.println("  use doc values");
       }
@@ -726,7 +727,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
     CountFacetRecorder countRecorder = new CountFacetRecorder();
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longValuesFacetCutter, countRecorder);
-    s.search(new MatchAllDocsQuery(), collectorManager);
+    s.search(MatchAllDocsQuery.INSTANCE, collectorManager);
 
     FacetResult fr = getAllChildrenSortByValue("field", longValuesFacetCutter, countRecorder);
     for (LabelAndValue labelAndValue : fr.labelValues) {

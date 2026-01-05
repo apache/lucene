@@ -128,7 +128,7 @@ public final class AnalysisImpl implements Analysis {
       AttributeImpl att = itr.next();
       Map<String, String> attValues = new LinkedHashMap<>();
       att.reflectWith(
-          (attClass, key, value) -> {
+          (_, key, value) -> {
             if (value != null) attValues.put(key, value.toString());
           });
       attributes.add(new TokenAttribute(att.getClass().getSimpleName(), attValues));
@@ -249,18 +249,14 @@ public final class AnalysisImpl implements Analysis {
             new NamedTokens(TokenFilterFactory.findSPIName(tokenFilterFactory.getClass()), tokens));
         try {
           listBasedTokenStream.close();
-        } catch (
-            @SuppressWarnings("unused")
-            IOException e) {
+        } catch (IOException _) {
           // do nothing;
         }
         listBasedTokenStream = new ListBasedTokenStream(listBasedTokenStream, attributeSources);
       }
       try {
         listBasedTokenStream.close();
-      } catch (
-          @SuppressWarnings("unused")
-          IOException e) {
+      } catch (IOException _) {
         // do nothing.
       } finally {
         reader.close();

@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 
@@ -63,9 +64,8 @@ public abstract class PhraseWeight extends Weight {
   public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
     PhraseMatcher matcher = getPhraseMatcher(context, stats, false);
     if (matcher == null) return null;
-    LeafSimScorer simScorer =
-        new LeafSimScorer(stats, context.reader(), field, scoreMode.needsScores());
-    final var scorer = new PhraseScorer(matcher, scoreMode, simScorer);
+    NumericDocValues norms = scoreMode.needsScores() ? context.reader().getNormValues(field) : null;
+    final var scorer = new PhraseScorer(matcher, scoreMode, stats, norms);
     return new DefaultScorerSupplier(scorer);
   }
 
@@ -83,10 +83,13 @@ public abstract class PhraseWeight extends Weight {
     while (matcher.nextMatch()) {
       freq += matcher.sloppyWeight();
     }
-    LeafSimScorer docScorer =
-        new LeafSimScorer(stats, context.reader(), field, scoreMode.needsScores());
     Explanation freqExplanation = Explanation.match(freq, "phraseFreq=" + freq);
-    Explanation scoreExplanation = docScorer.explain(doc, freqExplanation);
+    NumericDocValues norms = scoreMode.needsScores() ? context.reader().getNormValues(field) : null;
+    long norm = 1L;
+    if (norms != null && norms.advanceExact(doc)) {
+      norm = norms.longValue();
+    }
+    Explanation scoreExplanation = stats.explain(freqExplanation, norm);
     return Explanation.match(
         scoreExplanation.getValue(),
         "weight("

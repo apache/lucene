@@ -78,9 +78,7 @@ public final class QueryTermExtractor {
         // IDF algorithm taken from ClassicSimilarity class
         float idf = (float) (Math.log(totalNumDocs / (double) (docFreq + 1)) + 1.0);
         terms[i].weight *= idf;
-      } catch (
-          @SuppressWarnings("unused")
-          IOException e) {
+      } catch (IOException _) {
         // ignore
       }
     }
@@ -97,7 +95,7 @@ public final class QueryTermExtractor {
    */
   public static WeightedTerm[] getTerms(Query query, boolean prohibited, String fieldName) {
     HashSet<WeightedTerm> terms = new HashSet<>();
-    Predicate<String> fieldSelector = fieldName == null ? f -> true : fieldName::equals;
+    Predicate<String> fieldSelector = fieldName == null ? _ -> true : fieldName::equals;
     query.visit(new BoostedTermExtractor(1, terms, prohibited, fieldSelector));
     return terms.toArray(new WeightedTerm[0]);
   }

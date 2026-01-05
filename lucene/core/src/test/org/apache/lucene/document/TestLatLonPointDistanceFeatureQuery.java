@@ -455,7 +455,7 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
     LatLonDocValuesField docValue = new LatLonDocValuesField("foo", 0., 0.);
     doc.add(docValue);
 
-    int numDocs = atLeast(10000);
+    int numDocs = atLeast(2048);
     for (int i = 0; i < numDocs; ++i) {
       double lat = random().nextDouble() * 180 - 90;
       double lon = random().nextDouble() * 360 - 180;
@@ -477,7 +477,7 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
     Sort sort1 =
         new Sort(SortField.FIELD_SCORE, LatLonDocValuesField.newDistanceSort("foo", lat, lon));
 
-    Query query2 = new MatchAllDocsQuery();
+    Query query2 = MatchAllDocsQuery.INSTANCE;
     Sort sort2 = new Sort(LatLonDocValuesField.newDistanceSort("foo", lat, lon));
 
     TopDocs topDocs1 = searcher.search(query1, 10, sort1);

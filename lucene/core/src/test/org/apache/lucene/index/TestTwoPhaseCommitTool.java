@@ -23,7 +23,9 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestTwoPhaseCommitTool extends LuceneTestCase {
 
   private static class TwoPhaseCommitImpl implements TwoPhaseCommit {
+    @SuppressWarnings("NonFinalStaticField")
     static boolean commitCalled = false;
+
     final boolean failOnPrepare;
     final boolean failOnCommit;
     final boolean failOnRollback;
@@ -102,9 +104,7 @@ public class TestTwoPhaseCommitTool extends LuceneTestCase {
     boolean anyFailure = false;
     try {
       TwoPhaseCommitTool.execute(objects);
-    } catch (
-        @SuppressWarnings("unused")
-        Throwable t) {
+    } catch (Throwable _) {
       anyFailure = true;
     }
 

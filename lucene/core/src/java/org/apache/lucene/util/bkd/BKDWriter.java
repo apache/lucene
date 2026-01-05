@@ -20,6 +20,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.IntFunction;
 import org.apache.lucene.codecs.CodecUtil;
@@ -28,7 +29,6 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
-import org.apache.lucene.internal.hppc.LongArrayList;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
@@ -40,11 +40,15 @@ import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.FixedLengthBytesRefArray;
 import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.bkd.BKDUtil.ByteArrayPredicate;
+import org.apache.lucene.util.packed.PackedInts;
+import org.apache.lucene.util.packed.PackedLongValues;
 
 // TODO
 //   - allow variable length byte[] (across docs and dims), but this is quite a bit more hairy
@@ -85,7 +89,8 @@ public class BKDWriter implements Closeable {
   public static final int VERSION_SELECTIVE_INDEXING = 6;
   public static final int VERSION_LOW_CARDINALITY_LEAVES = 7;
   public static final int VERSION_META_FILE = 9;
-  public static final int VERSION_CURRENT = VERSION_META_FILE;
+  public static final int VERSION_VECTORIZE_BPV24_AND_INTRODUCE_BPV21 = 10;
+  public static final int VERSION_CURRENT = VERSION_VECTORIZE_BPV24_AND_INTRODUCE_BPV21;
 
   /** Number of splits before we compute the exact bounding box of an inner node. */
   private static final int SPLITS_BEFORE_EXACT_BOUNDS = 4;
@@ -103,6 +108,7 @@ public class BKDWriter implements Closeable {
   final TrackingDirectoryWrapper tempDir;
   final String tempFileNamePrefix;
   final double maxMBSortInHeap;
+  final int version;
 
   final byte[] scratchDiff;
   final byte[] scratch;
@@ -139,6 +145,29 @@ public class BKDWriter implements Closeable {
       BKDConfig config,
       double maxMBSortInHeap,
       long totalPointCount) {
+    this(
+        maxDoc,
+        tempDir,
+        tempFileNamePrefix,
+        config,
+        maxMBSortInHeap,
+        totalPointCount,
+        BKDWriter.VERSION_CURRENT);
+  }
+
+  /** This ctor should be only used for testing with older versions. */
+  public BKDWriter(
+      int maxDoc,
+      Directory tempDir,
+      String tempFileNamePrefix,
+      BKDConfig config,
+      double maxMBSortInHeap,
+      long totalPointCount,
+      int version) {
+    if (version < VERSION_START || version > VERSION_CURRENT) {
+      throw new IllegalArgumentException("Version out of range: " + version);
+    }
+    this.version = version;
     verifyParams(maxMBSortInHeap, totalPointCount);
     // We use tracking dir to deal with removing files on exception, so each place that
     // creates temp files doesn't need crazy try/finally/sucess logic:
@@ -165,7 +194,7 @@ public class BKDWriter implements Closeable {
 
     // Maximum number of points we hold in memory at any time
     maxPointsSortInHeap = (int) ((maxMBSortInHeap * 1024 * 1024) / (config.bytesPerDoc()));
-    docIdsWriter = new DocIdsWriter(config.maxPointsInLeafNode());
+    docIdsWriter = new DocIdsWriter(config.maxPointsInLeafNode(), version);
     // Finally, we must be able to hold at least the leaf node in heap during build:
     if (maxPointsSortInHeap < config.maxPointsInLeafNode()) {
       throw new IllegalArgumentException(
@@ -368,29 +397,14 @@ public class BKDWriter implements Closeable {
     }
   }
 
-  private static class BKDMergeQueue extends PriorityQueue<MergeReader> {
-    private final ArrayUtil.ByteArrayComparator comparator;
-
-    public BKDMergeQueue(int bytesPerDim, int maxSize) {
-      super(maxSize);
-      this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
-    }
-
-    @Override
-    public boolean lessThan(MergeReader a, MergeReader b) {
-      assert a != b;
-
-      int cmp = comparator.compare(a.packedValue, 0, b.packedValue, 0);
-
-      if (cmp < 0) {
-        return true;
-      } else if (cmp > 0) {
-        return false;
-      }
-
-      // Tie break by sorting smaller docIDs earlier:
-      return a.docID < b.docID;
-    }
+  private static Comparator<MergeReader> mergeComparator(int bytesPerDim) {
+    ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
+    return ((Comparator<MergeReader>)
+            (a, b) -> {
+              assert a != b;
+              return comparator.compare(a.packedValue, 0, b.packedValue, 0);
+            })
+        .thenComparingInt(mr -> mr.docID); // Tie break by sorting smaller docIDs earlier
   }
 
   /** flat representation of a kd-tree */
@@ -556,8 +570,21 @@ public class BKDWriter implements Closeable {
 
     scratchBytesRef1.length = config.bytesPerDim();
     scratchBytesRef1.bytes = splitPackedValues;
+    final LongValues leafFPLongValues =
+        new LongValues() {
+          @Override
+          public long get(long index) {
+            return leafBlockFPs[(int) index];
+          }
+        };
 
-    return makeWriter(metaOut, indexOut, splitDimensionValues, leafBlockFPs, dataStartFP);
+    return makeWriter(
+        metaOut,
+        indexOut,
+        splitDimensionValues,
+        leafFPLongValues,
+        leafBlockFPs.length,
+        dataStartFP);
   }
 
   /* In the 1D case, we can simply sort points in ascending order and use the
@@ -610,7 +637,8 @@ public class BKDWriter implements Closeable {
       throws IOException {
     assert docMaps == null || readers.size() == docMaps.size();
 
-    BKDMergeQueue queue = new BKDMergeQueue(config.bytesPerDim(), readers.size());
+    PriorityQueue<MergeReader> queue =
+        PriorityQueue.usingComparator(readers.size(), mergeComparator(config.bytesPerDim()));
 
     for (int i = 0; i < readers.size(); i++) {
       PointValues pointValues = readers.get(i);
@@ -652,8 +680,10 @@ public class BKDWriter implements Closeable {
 
     final IndexOutput metaOut, indexOut, dataOut;
     final long dataStartFP;
-    final LongArrayList leafBlockFPs = new LongArrayList();
-    final List<byte[]> leafBlockStartValues = new ArrayList<>();
+    private final PackedLongValues.Builder leafBlockFPs =
+        PackedLongValues.monotonicBuilder(PackedInts.COMPACT);
+    final FixedLengthBytesRefArray leafBlockStartValues =
+        new FixedLengthBytesRefArray(config.packedIndexBytesLength());
     final byte[] leafValues = new byte[config.maxPointsInLeafNode() * config.packedBytesLength()];
     final int[] leafDocs = new int[config.maxPointsInLeafNode()];
     private long valueCount;
@@ -681,7 +711,6 @@ public class BKDWriter implements Closeable {
       this.indexOut = indexOut;
       this.dataOut = dataOut;
       this.dataStartFP = dataOut.getFilePointer();
-
       lastPackedValue = new byte[config.packedBytesLength()];
     }
 
@@ -743,20 +772,20 @@ public class BKDWriter implements Closeable {
 
       pointCount = valueCount;
 
-      scratchBytesRef1.length = config.bytesPerDim();
+      scratchBytesRef1.length = config.packedIndexBytesLength();
       scratchBytesRef1.offset = 0;
       assert leafBlockStartValues.size() + 1 == leafBlockFPs.size();
+      final LongValues leafFPLongValues = leafBlockFPs.build();
       BKDTreeLeafNodes leafNodes =
           new BKDTreeLeafNodes() {
             @Override
             public long getLeafLP(int index) {
-              return leafBlockFPs.get(index);
+              return leafFPLongValues.get(index);
             }
 
             @Override
             public BytesRef getSplitValue(int index) {
-              scratchBytesRef1.bytes = leafBlockStartValues.get(index);
-              return scratchBytesRef1;
+              return leafBlockStartValues.get(scratchBytesRef1, index);
             }
 
             @Override
@@ -766,7 +795,7 @@ public class BKDWriter implements Closeable {
 
             @Override
             public int numLeaves() {
-              return leafBlockFPs.size();
+              return Math.toIntExact(leafBlockFPs.size());
             }
           };
       return () -> {
@@ -791,11 +820,13 @@ public class BKDWriter implements Closeable {
       if (leafBlockFPs.size() > 0) {
         // Save the first (minimum) value in each leaf block except the first, to build the split
         // value index in the end:
-        leafBlockStartValues.add(
-            ArrayUtil.copyOfSubArray(leafValues, 0, config.packedBytesLength()));
+        scratchBytesRef1.bytes = leafValues;
+        scratchBytesRef1.offset = 0;
+        scratchBytesRef1.length = config.packedIndexBytesLength();
+        leafBlockStartValues.append(scratchBytesRef1);
       }
       leafBlockFPs.add(dataOut.getFilePointer());
-      checkMaxLeafNodeCount(leafBlockFPs.size());
+      checkMaxLeafNodeCount(Math.toIntExact(leafBlockFPs.size()));
 
       // Find per-dim common prefix:
       commonPrefixLengths[0] =
@@ -927,7 +958,8 @@ public class BKDWriter implements Closeable {
 
     // +1 because leaf count is power of 2 (e.g. 8), and innerNodeCount is power of 2 minus 1 (e.g.
     // 7)
-    long[] leafBlockFPs = new long[numLeaves];
+    final PackedLongValues.Builder leafBlockFPs =
+        PackedLongValues.monotonicBuilder(PackedInts.COMPACT);
 
     // Make sure the math above "worked":
     assert pointCount / numLeaves <= config.maxPointsInLeafNode()
@@ -943,7 +975,6 @@ public class BKDWriter implements Closeable {
         new BKDRadixSelector(config, maxPointsSortInHeap, tempDir, tempFileNamePrefix);
 
     final long dataStartFP = dataOut.getFilePointer();
-    boolean success = false;
     try {
 
       final int[] parentSplits = new int[config.numIndexDims()];
@@ -959,37 +990,44 @@ public class BKDWriter implements Closeable {
           splitPackedValues,
           splitDimensionValues,
           leafBlockFPs,
+          numLeaves,
           new int[config.maxPointsInLeafNode()]);
       assert Arrays.equals(parentSplits, new int[config.numIndexDims()]);
+      assert leafBlockFPs.size() == numLeaves;
 
       // If no exception, we should have cleaned everything up:
       assert tempDir.getCreatedFiles().isEmpty();
       // System.out.println("write time: " + ((System.nanoTime() - t1) / (double)
       //   TimeUnit.SECONDS.toNanos(1)) + " ms");
-
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.deleteFilesIgnoringExceptions(tempDir, tempDir.getCreatedFiles());
-      }
+    } catch (Throwable t) {
+      IOUtils.deleteFilesSuppressingExceptions(t, tempDir, tempDir.getCreatedFiles());
+      throw t;
     }
 
+    LongValues leafBlockLongValues = leafBlockFPs.build();
     scratchBytesRef1.bytes = splitPackedValues;
     scratchBytesRef1.length = config.bytesPerDim();
-    return makeWriter(metaOut, indexOut, splitDimensionValues, leafBlockFPs, dataStartFP);
+    return makeWriter(
+        metaOut,
+        indexOut,
+        splitDimensionValues,
+        leafBlockLongValues,
+        Math.toIntExact(leafBlockFPs.size()),
+        dataStartFP);
   }
 
   private IORunnable makeWriter(
       IndexOutput metaOut,
       IndexOutput indexOut,
       byte[] splitDimensionValues,
-      long[] leafBlockFPs,
+      LongValues leafBlockFPs,
+      int numLeaves,
       long dataStartFP) {
     BKDTreeLeafNodes leafNodes =
         new BKDTreeLeafNodes() {
           @Override
           public long getLeafLP(int index) {
-            return leafBlockFPs[index];
+            return leafBlockFPs.get(index);
           }
 
           @Override
@@ -1005,7 +1043,7 @@ public class BKDWriter implements Closeable {
 
           @Override
           public int numLeaves() {
-            return leafBlockFPs.length;
+            return numLeaves;
           }
         };
 
@@ -1020,7 +1058,7 @@ public class BKDWriter implements Closeable {
    * structure.
    */
   private byte[] packIndex(BKDTreeLeafNodes leafNodes) throws IOException {
-    /** Reused while packing the index */
+    /* Reused while packing the index */
     ByteBuffersDataOutput writeBuffer = ByteBuffersDataOutput.newResettableInstance();
 
     // This is the "file" we append the byte[] to:
@@ -1245,7 +1283,7 @@ public class BKDWriter implements Closeable {
       byte[] packedIndex,
       long dataStartFP)
       throws IOException {
-    CodecUtil.writeHeader(metaOut, CODEC_NAME, VERSION_CURRENT);
+    CodecUtil.writeHeader(metaOut, CODEC_NAME, version);
     metaOut.writeVInt(config.numDims());
     metaOut.writeVInt(config.numIndexDims());
     metaOut.writeVInt(countPerLeaf);
@@ -1875,7 +1913,8 @@ public class BKDWriter implements Closeable {
       int[] parentSplits,
       byte[] splitPackedValues,
       byte[] splitDimensionValues,
-      long[] leafBlockFPs,
+      PackedLongValues.Builder leafBlockFPs,
+      int totalNumLeaves,
       int[] spareDocIds)
       throws IOException {
 
@@ -1933,7 +1972,7 @@ public class BKDWriter implements Closeable {
       int leafCardinality = heapSource.computeCardinality(from, to, commonPrefixLengths);
 
       // Save the block file pointer:
-      leafBlockFPs[leavesOffset] = out.getFilePointer();
+      leafBlockFPs.add(out.getFilePointer());
       // System.out.println("  write leaf block @ fp=" + out.getFilePointer());
 
       // Write docIDs first, as their own chunk, so that at intersect time we can add all docIDs w/o
@@ -1975,7 +2014,7 @@ public class BKDWriter implements Closeable {
         // split dimensions. Because it is an expensive operation, the frequency we recompute the
         // bounds is given
         // by SPLITS_BEFORE_EXACT_BOUNDS.
-        if (numLeaves != leafBlockFPs.length
+        if (numLeaves != totalNumLeaves
             && config.numIndexDims() > 2
             && Arrays.stream(parentSplits).sum() % SPLITS_BEFORE_EXACT_BOUNDS == 0) {
           computePackedValueBounds(points, minPackedValue, maxPackedValue);
@@ -1983,8 +2022,8 @@ public class BKDWriter implements Closeable {
         splitDim = split(minPackedValue, maxPackedValue, parentSplits);
       }
 
-      assert numLeaves <= leafBlockFPs.length
-          : "numLeaves=" + numLeaves + " leafBlockFPs.length=" + leafBlockFPs.length;
+      assert numLeaves <= totalNumLeaves
+          : "numLeaves=" + numLeaves + " totalNumLeaves=" + totalNumLeaves;
 
       // How many leaves will be in the left tree:
       final int numLeftLeafNodes = getNumLeftLeafNodes(numLeaves);
@@ -2050,6 +2089,7 @@ public class BKDWriter implements Closeable {
           splitPackedValues,
           splitDimensionValues,
           leafBlockFPs,
+          totalNumLeaves,
           spareDocIds);
 
       // Recurse on right tree:
@@ -2065,6 +2105,7 @@ public class BKDWriter implements Closeable {
           splitPackedValues,
           splitDimensionValues,
           leafBlockFPs,
+          totalNumLeaves,
           spareDocIds);
 
       parentSplits[splitDim]--;

@@ -206,12 +206,6 @@ public final class ByteBuffersIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
-  protected void readGroupVInt(long[] dst, int offset) throws IOException {
-    ensureOpen();
-    in.readGroupVInt(dst, offset);
-  }
-
-  @Override
   public IndexInput clone() {
     ensureOpen();
     ByteBuffersIndexInput cloned =

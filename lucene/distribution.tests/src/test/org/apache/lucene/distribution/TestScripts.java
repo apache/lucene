@@ -103,7 +103,7 @@ public class TestScripts extends AbstractLuceneDistributionTest {
         .orElseThrow(() -> new AssertionError("No script found for the base path: " + scriptPath));
   }
 
-  private static Supplier<Charset> forkedProcessCharset =
+  private static final Supplier<Charset> forkedProcessCharset =
       () -> {
         // The default charset for a forked java process could be computed for the current
         // platform but it adds more complexity. For now, assume it's just parseable ascii.

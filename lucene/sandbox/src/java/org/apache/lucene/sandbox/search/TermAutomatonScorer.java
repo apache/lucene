@@ -17,11 +17,13 @@
 package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
+import java.util.Comparator;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.sandbox.search.TermAutomatonQuery.EnumAndScorer;
 import org.apache.lucene.sandbox.search.TermAutomatonQuery.TermAutomatonWeight;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -44,7 +46,8 @@ class TermAutomatonScorer extends Scorer {
   // This is -1 if wildcard (null) terms were not used, else it's the id
   // of the wildcard term:
   private final int anyTermID;
-  private final LeafSimScorer docScorer;
+  private final SimScorer scorer;
+  private final NumericDocValues norms;
 
   private int numSubsOnDoc;
 
@@ -61,13 +64,21 @@ class TermAutomatonScorer extends Scorer {
   private final EnumAndScorer[] originalSubsOnDoc;
 
   public TermAutomatonScorer(
-      TermAutomatonWeight weight, EnumAndScorer[] subs, int anyTermID, LeafSimScorer docScorer)
+      TermAutomatonWeight weight,
+      EnumAndScorer[] subs,
+      int anyTermID,
+      SimScorer scorer,
+      NumericDocValues norms)
       throws IOException {
     // System.out.println("  automaton:\n" + weight.automaton.toDot());
     this.runAutomaton = new TermRunAutomaton(weight.automaton, subs.length);
-    this.docScorer = docScorer;
-    this.docIDQueue = new DocIDQueue(subs.length);
-    this.posQueue = new PositionQueue(subs.length);
+    this.scorer = scorer;
+    this.norms = norms;
+    this.docIDQueue =
+        PriorityQueue.usingComparator(
+            subs.length, Comparator.comparingInt(es -> es.posEnum.docID()));
+    this.posQueue =
+        PriorityQueue.usingComparator(subs.length, Comparator.comparingInt(es -> es.pos));
     this.anyTermID = anyTermID;
     this.subsOnDoc = new EnumAndScorer[subs.length];
     this.positions = new PosState[4];
@@ -85,30 +96,6 @@ class TermAutomatonScorer extends Scorer {
       }
     }
     this.cost = cost;
-  }
-
-  /** Sorts by docID so we can quickly pull out all scorers that are on the same (lowest) docID. */
-  private static class DocIDQueue extends PriorityQueue<EnumAndScorer> {
-    public DocIDQueue(int maxSize) {
-      super(maxSize);
-    }
-
-    @Override
-    protected boolean lessThan(EnumAndScorer a, EnumAndScorer b) {
-      return a.posEnum.docID() < b.posEnum.docID();
-    }
-  }
-
-  /** Sorts by position so we can visit all scorers on one doc, by position. */
-  private static class PositionQueue extends PriorityQueue<EnumAndScorer> {
-    public PositionQueue(int maxSize) {
-      super(maxSize);
-    }
-
-    @Override
-    protected boolean lessThan(EnumAndScorer a, EnumAndScorer b) {
-      return a.pos < b.pos;
-    }
   }
 
   /** Pops all enums positioned on the current (minimum) doc */
@@ -356,10 +343,6 @@ class TermAutomatonScorer extends Scorer {
     return originalSubsOnDoc;
   }
 
-  LeafSimScorer getLeafSimScorer() {
-    return docScorer;
-  }
-
   @Override
   public int docID() {
     return docID;
@@ -369,12 +352,16 @@ class TermAutomatonScorer extends Scorer {
   public float score() throws IOException {
     // TODO: we could probably do better here, e.g. look @ freqs of actual terms involved in this
     // doc and score differently
-    return docScorer.score(docID, freq);
+    long norm = 1L;
+    if (norms != null && norms.advanceExact(docID)) {
+      norm = norms.longValue();
+    }
+    return scorer.score(freq, norm);
   }
 
   @Override
   public float getMaxScore(int upTo) throws IOException {
-    return docScorer.getSimScorer().score(Float.MAX_VALUE, 1L);
+    return scorer.score(Float.MAX_VALUE, 1L);
   }
 
   static class TermRunAutomaton extends RunAutomaton {

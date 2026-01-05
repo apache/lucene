@@ -17,9 +17,16 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SlowImpactsEnum;
+import org.apache.lucene.search.similarities.Similarity.BulkSimScorer;
+import org.apache.lucene.search.similarities.Similarity.SimScorer;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.LongsRef;
 
 /**
  * Expert: A <code>Scorer</code> for documents matching a <code>Term</code>.
@@ -29,17 +36,22 @@ import org.apache.lucene.index.SlowImpactsEnum;
 public final class TermScorer extends Scorer {
   private final PostingsEnum postingsEnum;
   private final DocIdSetIterator iterator;
-  private final LeafSimScorer docScorer;
+  private final SimScorer scorer;
+  private final BulkSimScorer bulkScorer;
+  private final NumericDocValues norms;
   private final ImpactsDISI impactsDisi;
   private final MaxScoreCache maxScoreCache;
+  private long[] normValues = LongsRef.EMPTY_LONGS;
 
   /** Construct a {@link TermScorer} that will iterate all documents. */
-  public TermScorer(PostingsEnum postingsEnum, LeafSimScorer docScorer) {
+  public TermScorer(PostingsEnum postingsEnum, SimScorer scorer, NumericDocValues norms) {
     iterator = this.postingsEnum = postingsEnum;
     ImpactsEnum impactsEnum = new SlowImpactsEnum(postingsEnum);
-    maxScoreCache = new MaxScoreCache(impactsEnum, docScorer.getSimScorer());
+    maxScoreCache = new MaxScoreCache(impactsEnum, scorer);
     impactsDisi = null;
-    this.docScorer = docScorer;
+    this.scorer = scorer;
+    this.norms = norms;
+    this.bulkScorer = scorer.asBulkSimScorer();
   }
 
   /**
@@ -47,12 +59,12 @@ public final class TermScorer extends Scorer {
    * documents.
    */
   public TermScorer(
-      Weight weight,
       ImpactsEnum impactsEnum,
-      LeafSimScorer docScorer,
+      SimScorer scorer,
+      NumericDocValues norms,
       boolean topLevelScoringClause) {
     postingsEnum = impactsEnum;
-    maxScoreCache = new MaxScoreCache(impactsEnum, docScorer.getSimScorer());
+    maxScoreCache = new MaxScoreCache(impactsEnum, scorer);
     if (topLevelScoringClause) {
       impactsDisi = new ImpactsDISI(impactsEnum, maxScoreCache);
       iterator = impactsDisi;
@@ -60,7 +72,9 @@ public final class TermScorer extends Scorer {
       impactsDisi = null;
       iterator = impactsEnum;
     }
-    this.docScorer = docScorer;
+    this.scorer = scorer;
+    this.norms = norms;
+    this.bulkScorer = scorer.asBulkSimScorer();
   }
 
   @Override
@@ -80,13 +94,23 @@ public final class TermScorer extends Scorer {
 
   @Override
   public float score() throws IOException {
-    assert docID() != DocIdSetIterator.NO_MORE_DOCS;
-    return docScorer.score(postingsEnum.docID(), postingsEnum.freq());
+    var postingsEnum = this.postingsEnum;
+    var norms = this.norms;
+
+    long norm = 1L;
+    if (norms != null && norms.advanceExact(postingsEnum.docID())) {
+      norm = norms.longValue();
+    }
+    return scorer.score(postingsEnum.freq(), norm);
   }
 
   @Override
   public float smoothingScore(int docId) throws IOException {
-    return docScorer.score(docId, 0);
+    long norm = 1L;
+    if (norms != null && norms.advanceExact(docId)) {
+      norm = norms.longValue();
+    }
+    return scorer.score(0, norm);
   }
 
   @Override
@@ -104,5 +128,41 @@ public final class TermScorer extends Scorer {
     if (impactsDisi != null) {
       impactsDisi.setMinCompetitiveScore(minScore);
     }
+  }
+
+  @Override
+  public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
+      throws IOException {
+    for (; ; ) {
+      if (impactsDisi != null) {
+        impactsDisi.ensureCompetitive();
+      }
+
+      postingsEnum.nextPostings(upTo, buffer);
+      if (liveDocs != null && buffer.size != 0) {
+        // An empty return value indicates that there are no more docs before upTo. We may be
+        // unlucky, and there are docs left, but all docs from the current batch happen to be marked
+        // as deleted. So we need to iterate until we find a batch that has at least one non-deleted
+        // doc.
+        buffer.apply(liveDocs);
+        if (buffer.size == 0) {
+          continue;
+        }
+      }
+      break;
+    }
+
+    int size = buffer.size;
+    if (normValues.length < size) {
+      normValues = new long[ArrayUtil.oversize(size, Long.BYTES)];
+      if (norms == null) {
+        Arrays.fill(normValues, 1L);
+      }
+    }
+    if (norms != null) {
+      norms.longValues(size, buffer.docs, normValues, 1L);
+    }
+
+    bulkScorer.score(buffer.size, buffer.features, normValues, buffer.features);
   }
 }

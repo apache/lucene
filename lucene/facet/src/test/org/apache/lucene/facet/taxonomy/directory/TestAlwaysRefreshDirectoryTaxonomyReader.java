@@ -82,7 +82,7 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
     final FacetsConfig config = new FacetsConfig();
     SearcherTaxonomyManager.SearcherAndTaxonomy pair = mgr.acquire();
     final FacetsCollector sfc = new FacetsCollector();
-    /**
+    /*
      * the call flow here initializes {@link DirectoryTaxonomyReader#taxoArrays}. These reused
      * `taxoArrays` form the basis of the inconsistency *
      */
@@ -167,8 +167,6 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
 
     @Override
     protected DirectoryTaxonomyReader doOpenIfChanged() throws IOException {
-      boolean success = false;
-
       // the getInternalIndexReader() function performs the ensureOpen() check
       final DirectoryReader reader = DirectoryReader.openIfChanged(super.getInternalIndexReader());
       if (reader == null) {
@@ -181,14 +179,10 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
         // Returning a AlwaysRefreshDirectoryTaxonomyReader ensures that the recreated taxonomy
         // reader also uses the overridden doOpenIfChanged
         // method (that always recomputes values).
-        final AlwaysRefreshDirectoryTaxonomyReader newTaxonomyReader =
-            new AlwaysRefreshDirectoryTaxonomyReader(reader);
-        success = true;
-        return newTaxonomyReader;
-      } finally {
-        if (!success) {
-          IOUtils.closeWhileHandlingException(reader);
-        }
+        return new AlwaysRefreshDirectoryTaxonomyReader(reader);
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, reader);
+        throw t;
       }
     }
   }

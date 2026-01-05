@@ -70,7 +70,7 @@ public class ExpressionsBenchmark {
       m.put("mh_identity", MethodHandles.identity(double.class));
       return Collections.unmodifiableMap(m);
     } catch (ReflectiveOperationException e) {
-      throw new AssertionError(e);
+      throw new LinkageError("Couldn't find function", e);
     }
   }
 

@@ -12,7 +12,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License.
+ * limIndexedDISIitations under the License.
  */
 package org.apache.lucene.backward_codecs.lucene90;
 
@@ -82,5 +82,10 @@ public class TestLucene90HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
   @Override
   public void testMergingWithDifferentByteKnnFields() {
     // unimplemented
+  }
+
+  @Override
+  public void testMismatchedFields() throws Exception {
+    // requires byte support
   }
 }

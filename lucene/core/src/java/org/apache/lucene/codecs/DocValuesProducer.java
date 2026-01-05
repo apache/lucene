@@ -19,6 +19,7 @@ package org.apache.lucene.codecs;
 import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -77,7 +78,7 @@ public abstract class DocValuesProducer implements Closeable {
   /**
    * Returns a {@link DocValuesSkipper} for this field. The returned instance need not be
    * thread-safe: it will only be used by a single thread. The return value is undefined if {@link
-   * FieldInfo#hasDocValuesSkipIndex()} doesn't return {@code true}.
+   * FieldInfo#docValuesSkipIndexType()} returns {@link DocValuesSkipIndexType#NONE}.
    */
   public abstract DocValuesSkipper getSkipper(FieldInfo field) throws IOException;
 

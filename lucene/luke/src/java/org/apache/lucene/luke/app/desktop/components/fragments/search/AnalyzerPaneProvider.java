@@ -170,9 +170,7 @@ public final class AnalyzerPaneProvider implements AnalyzerTabOperator {
   public void setAnalyzer(Analyzer analyzer) {
     analyzerNameLbl.setText(analyzer.getClass().getName());
 
-    if (analyzer instanceof CustomAnalyzer) {
-      CustomAnalyzer customAnalyzer = (CustomAnalyzer) analyzer;
-
+    if (analyzer instanceof CustomAnalyzer customAnalyzer) {
       DefaultListModel<String> charFilterListModel = new DefaultListModel<>();
       customAnalyzer.getCharFilterFactories().stream()
           .map(f -> f.getClass().getSimpleName())

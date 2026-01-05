@@ -25,13 +25,15 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.search.ConstantScoreScorer;
+import org.apache.lucene.search.ConstantScoreScorerSupplier;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocValuesRangeIterator;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MatchNoDocsQuery;
+import org.apache.lucene.search.NumericDocValuesRangeQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -40,16 +42,10 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 
-final class SortedNumericDocValuesRangeQuery extends Query {
-
-  private final String field;
-  private final long lowerValue;
-  private final long upperValue;
+final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery {
 
   SortedNumericDocValuesRangeQuery(String field, long lowerValue, long upperValue) {
-    this.field = Objects.requireNonNull(field);
-    this.lowerValue = lowerValue;
-    this.upperValue = upperValue;
+    super(field, lowerValue, upperValue);
   }
 
   @Override
@@ -95,7 +91,18 @@ final class SortedNumericDocValuesRangeQuery extends Query {
       return new FieldExistsQuery(field);
     }
     if (lowerValue > upperValue) {
-      return new MatchNoDocsQuery();
+      return MatchNoDocsQuery.INSTANCE;
+    }
+    long globalMin = DocValuesSkipper.globalMinValue(indexSearcher, field);
+    long globalMax = DocValuesSkipper.globalMaxValue(indexSearcher, field);
+    if (lowerValue > globalMax || upperValue < globalMin) {
+      return MatchNoDocsQuery.INSTANCE;
+    }
+    if (lowerValue <= globalMin
+        && upperValue >= globalMax
+        && DocValuesSkipper.globalDocCount(indexSearcher, field)
+            == indexSearcher.getIndexReader().maxDoc()) {
+      return MatchAllDocsQuery.INSTANCE;
     }
     return super.rewrite(indexSearcher);
   }
@@ -116,31 +123,25 @@ final class SortedNumericDocValuesRangeQuery extends Query {
           return null;
         }
 
-        DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
-        if (skipper != null) {
-          if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
-            return null;
-          }
-          if (skipper.docCount() == context.reader().maxDoc()
-              && skipper.minValue() >= lowerValue
-              && skipper.maxValue() <= upperValue) {
-            final var scorer =
-                new ConstantScoreScorer(
-                    score(), scoreMode, DocIdSetIterator.all(skipper.docCount()));
-            return new DefaultScorerSupplier(scorer);
-          }
+        int maxDoc = context.reader().maxDoc();
+        int count = docCountIgnoringDeletes(context);
+        if (count == 0) {
+          return null;
+        } else if (count == maxDoc) {
+          return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, maxDoc);
         }
 
         SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
         final NumericDocValues singleton = DocValues.unwrapSingleton(values);
+        final DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
         TwoPhaseIterator iterator;
         if (singleton != null) {
           if (skipper != null) {
             final DocIdSetIterator psIterator =
                 getDocIdSetIteratorOrNullForPrimarySort(context.reader(), singleton, skipper);
             if (psIterator != null) {
-              return new DefaultScorerSupplier(
-                  new ConstantScoreScorer(score(), scoreMode, psIterator));
+              return ConstantScoreScorerSupplier.fromIterator(
+                  psIterator, score(), scoreMode, maxDoc);
             }
           }
           iterator =
@@ -182,8 +183,38 @@ final class SortedNumericDocValuesRangeQuery extends Query {
         if (skipper != null) {
           iterator = new DocValuesRangeIterator(iterator, skipper, lowerValue, upperValue, false);
         }
-        final var scorer = new ConstantScoreScorer(score(), scoreMode, iterator);
-        return new DefaultScorerSupplier(scorer);
+        return ConstantScoreScorerSupplier.fromIterator(
+            TwoPhaseIterator.asDocIdSetIterator(iterator), score(), scoreMode, maxDoc);
+      }
+
+      @Override
+      public int count(LeafReaderContext context) throws IOException {
+        int maxDoc = context.reader().maxDoc();
+        int cnt = docCountIgnoringDeletes(context);
+        if (cnt == maxDoc) {
+          // Return LeafReader#numDocs that accounts for deleted documents as well
+          return context.reader().numDocs();
+        }
+        return cnt;
+      }
+
+      /* Returns
+       * # docs within the query range ignoring any deleted documents
+       * -1 if # docs cannot be determined efficiently
+       */
+      private int docCountIgnoringDeletes(LeafReaderContext context) throws IOException {
+        final DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
+        if (skipper != null) {
+          if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
+            return 0;
+          }
+          if (skipper.docCount() == context.reader().maxDoc()
+              && skipper.minValue() >= lowerValue
+              && skipper.maxValue() <= upperValue) {
+            return context.reader().maxDoc();
+          }
+        }
+        return -1;
       }
     };
   }

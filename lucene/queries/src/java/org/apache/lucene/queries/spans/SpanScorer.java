@@ -18,10 +18,11 @@ package org.apache.lucene.queries.spans;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
+import org.apache.lucene.search.similarities.Similarity.SimScorer;
 
 /**
  * A basic {@link Scorer} over {@link Spans}.
@@ -31,7 +32,8 @@ import org.apache.lucene.search.TwoPhaseIterator;
 public class SpanScorer extends Scorer {
 
   protected final Spans spans;
-  protected final LeafSimScorer docScorer;
+  protected final SimScorer scorer;
+  protected final NumericDocValues norms;
 
   /** accumulated sloppy freq (computed in setFreqCurrentDoc) */
   private float freq;
@@ -39,9 +41,10 @@ public class SpanScorer extends Scorer {
   private int lastScoredDoc = -1; // last doc we called setFreqCurrentDoc() for
 
   /** Sole constructor. */
-  public SpanScorer(Spans spans, LeafSimScorer docScorer) {
+  public SpanScorer(Spans spans, SimScorer scorer, NumericDocValues norms) {
     this.spans = Objects.requireNonNull(spans);
-    this.docScorer = docScorer;
+    this.scorer = scorer;
+    this.norms = norms;
   }
 
   /** return the Spans for this Scorer * */
@@ -69,8 +72,12 @@ public class SpanScorer extends Scorer {
    * slop-adjusted {@link #freq}.
    */
   protected float scoreCurrentDoc() throws IOException {
-    assert docScorer != null : getClass() + " has a null docScorer!";
-    return docScorer.score(docID(), freq);
+    assert scorer != null : getClass() + " has a null docScorer!";
+    long norm = 1L;
+    if (norms != null && norms.advanceExact(docID())) {
+      norm = norms.longValue();
+    }
+    return scorer.score(freq, norm);
   }
 
   /**
@@ -98,7 +105,7 @@ public class SpanScorer extends Scorer {
       // assert (startPos != prevStartPos) || (endPos > prevEndPos) : "non increased
       // endPos="+endPos;
       assert (startPos != prevStartPos) || (endPos >= prevEndPos) : "decreased endPos=" + endPos;
-      if (docScorer == null) { // scores not required, break out here
+      if (scorer == null) { // scores not required, break out here
         freq = 1;
         return;
       }

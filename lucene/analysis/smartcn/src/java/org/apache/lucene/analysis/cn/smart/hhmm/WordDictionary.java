@@ -39,6 +39,7 @@ class WordDictionary extends AbstractDictionary {
 
   private WordDictionary() {}
 
+  @SuppressWarnings("NonFinalStaticField")
   private static WordDictionary singleInstance;
 
   /** Large prime number for hash function */
@@ -78,11 +79,21 @@ class WordDictionary extends AbstractDictionary {
       singleInstance = new WordDictionary();
       try {
         singleInstance.load();
-      } catch (
-          @SuppressWarnings("unused")
-          IOException e) {
-        String wordDictRoot = AnalyzerProfile.ANALYSIS_DATA_DIR;
-        singleInstance.load(wordDictRoot);
+      } catch (IOException _) {
+        try {
+          singleInstance.load();
+        } catch (IOException e) {
+          String dictRoot = AnalyzerProfile.ANALYSIS_DATA_DIR;
+          try {
+            singleInstance.load(dictRoot);
+          } catch (IOException ioe) {
+            RuntimeException ex = new RuntimeException(ioe);
+            ex.addSuppressed(e);
+            throw ex;
+          }
+        } catch (ClassNotFoundException e) {
+          throw new RuntimeException(e);
+        }
       } catch (ClassNotFoundException e) {
         throw new RuntimeException(e);
       }
@@ -91,39 +102,29 @@ class WordDictionary extends AbstractDictionary {
   }
 
   /**
-   * Attempt to load dictionary from provided directory, first trying coredict.mem, failing back on
-   * coredict.dct
+   * Attempt to load dictionary from provided path to coredict.dct
    *
    * @param dctFileRoot path to dictionary directory
    */
-  public void load(String dctFileRoot) {
+  public void load(String dctFileRoot) throws IOException {
     String dctFilePath = dctFileRoot + "/coredict.dct";
-    Path serialObj = Paths.get(dctFileRoot + "/coredict.mem");
-
-    if (Files.exists(serialObj) && loadFromObj(serialObj)) {
-
-    } else {
-      try {
-        wordIndexTable = new short[PRIME_INDEX_LENGTH];
-        charIndexTable = new char[PRIME_INDEX_LENGTH];
-        for (int i = 0; i < PRIME_INDEX_LENGTH; i++) {
-          charIndexTable[i] = 0;
-          wordIndexTable[i] = -1;
-        }
-        wordItem_charArrayTable = new char[GB2312_CHAR_NUM][][];
-        wordItem_frequencyTable = new int[GB2312_CHAR_NUM][];
-        // int total =
-        loadMainDataFromFile(dctFilePath);
-        expandDelimiterData();
-        mergeSameWords();
-        sortEachItems();
-        // log.info("load dictionary: " + dctFilePath + " total:" + total);
-      } catch (IOException e) {
-        throw new RuntimeException(e.getMessage());
-      }
-
-      saveToObj(serialObj);
+    wordIndexTable = new short[PRIME_INDEX_LENGTH];
+    charIndexTable = new char[PRIME_INDEX_LENGTH];
+    for (int i = 0; i < PRIME_INDEX_LENGTH; i++) {
+      charIndexTable[i] = 0;
+      wordIndexTable[i] = -1;
     }
+    wordItem_charArrayTable = new char[GB2312_CHAR_NUM][][];
+    wordItem_frequencyTable = new int[GB2312_CHAR_NUM][];
+    // int total =
+    loadMainDataFromFile(dctFilePath);
+    expandDelimiterData();
+    mergeSameWords();
+    sortEachItems();
+    // log.info("load dictionary: " + dctFilePath + " total:" + total);
+
+    /* Enable the following line to regenerate the serialized file: */
+    // saveToObj(Paths.get(dctFileRoot + "/coredict.mem"));
   }
 
   /**
@@ -136,20 +137,12 @@ class WordDictionary extends AbstractDictionary {
     loadFromObjectInputStream(input);
   }
 
-  private boolean loadFromObj(Path serialObj) {
-    try {
-      loadFromObjectInputStream(Files.newInputStream(serialObj));
-      return true;
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   @SuppressForbidden(
       reason = "TODO: fix code to serialize its own dictionary vs. a binary blob in the codebase")
   private void loadFromObjectInputStream(InputStream serialObjectInputStream)
       throws IOException, ClassNotFoundException {
     try (ObjectInputStream input = new ObjectInputStream(serialObjectInputStream)) {
+      input.setObjectInputFilter(this::filterObjectInputStream);
       wordIndexTable = (short[]) input.readObject();
       charIndexTable = (char[]) input.readObject();
       wordItem_charArrayTable = (char[][][]) input.readObject();
@@ -160,17 +153,13 @@ class WordDictionary extends AbstractDictionary {
 
   @SuppressForbidden(
       reason = "TODO: fix code to serialize its own dictionary vs. a binary blob in the codebase")
-  private void saveToObj(Path serialObj) {
+  private void saveToObj(Path serialObj) throws IOException {
     try (ObjectOutputStream output = new ObjectOutputStream(Files.newOutputStream(serialObj))) {
       output.writeObject(wordIndexTable);
       output.writeObject(charIndexTable);
       output.writeObject(wordItem_charArrayTable);
       output.writeObject(wordItem_frequencyTable);
       // log.info("serialize core dict.");
-    } catch (
-        @SuppressWarnings("unused")
-        Exception e) {
-      // log.warn(e.getMessage());
     }
   }
 
@@ -188,57 +177,60 @@ class WordDictionary extends AbstractDictionary {
     int[] buffer = new int[3];
     byte[] intBuffer = new byte[4];
     String tmpword;
-    DataInputStream dctFile = new DataInputStream(Files.newInputStream(Paths.get(dctFilePath)));
+    // Use try-with-resources to ensure the stream is always closed
+    try (DataInputStream dctFile =
+        new DataInputStream(Files.newInputStream(Paths.get(dctFilePath)))) {
 
-    // GB2312 characters 0 - 6768
-    for (i = GB2312_FIRST_CHAR; i < GB2312_FIRST_CHAR + CHAR_NUM_IN_FILE; i++) {
-      // if (i == 5231)
-      // System.out.println(i);
+      // GB2312 characters 0 - 6768
+      for (i = GB2312_FIRST_CHAR; i < GB2312_FIRST_CHAR + CHAR_NUM_IN_FILE; i++) {
+        // if (i == 5231)
+        // System.out.println(i);
 
-      dctFile.read(intBuffer);
-      // the dictionary was developed for C, and byte order must be converted to work with Java
-      cnt = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt();
-      if (cnt <= 0) {
-        wordItem_charArrayTable[i] = null;
-        wordItem_frequencyTable[i] = null;
-        continue;
-      }
-      wordItem_charArrayTable[i] = new char[cnt][];
-      wordItem_frequencyTable[i] = new int[cnt];
-      total += cnt;
-      int j = 0;
-      while (j < cnt) {
-        // wordItemTable[i][j] = new WordItem();
         dctFile.read(intBuffer);
-        buffer[0] = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // frequency
-        dctFile.read(intBuffer);
-        buffer[1] = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // length
-        dctFile.read(intBuffer);
-        buffer[2] = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // handle
-
-        // wordItemTable[i][j].frequency = buffer[0];
-        wordItem_frequencyTable[i][j] = buffer[0];
-
-        length = buffer[1];
-        if (length > 0) {
-          byte[] lchBuffer = new byte[length];
-          dctFile.read(lchBuffer);
-          tmpword = new String(lchBuffer, "GB2312");
-          // indexTable[i].wordItems[j].word = tmpword;
-          // wordItemTable[i][j].charArray = tmpword.toCharArray();
-          wordItem_charArrayTable[i][j] = tmpword.toCharArray();
-        } else {
-          // wordItemTable[i][j].charArray = null;
-          wordItem_charArrayTable[i][j] = null;
+        // the dictionary was developed for C, and byte order must be converted to work with Java
+        cnt = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt();
+        if (cnt <= 0) {
+          wordItem_charArrayTable[i] = null;
+          wordItem_frequencyTable[i] = null;
+          continue;
         }
-        // System.out.println(indexTable[i].wordItems[j]);
-        j++;
-      }
+        wordItem_charArrayTable[i] = new char[cnt][];
+        wordItem_frequencyTable[i] = new int[cnt];
+        total += cnt;
+        int j = 0;
+        while (j < cnt) {
+          // wordItemTable[i][j] = new WordItem();
+          dctFile.read(intBuffer);
+          buffer[0] =
+              ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // frequency
+          dctFile.read(intBuffer);
+          buffer[1] = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // length
+          dctFile.read(intBuffer);
+          buffer[2] = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // handle
 
-      String str = getCCByGB2312Id(i);
-      setTableIndex(str.charAt(0), i);
+          // wordItemTable[i][j].frequency = buffer[0];
+          wordItem_frequencyTable[i][j] = buffer[0];
+
+          length = buffer[1];
+          if (length > 0) {
+            byte[] lchBuffer = new byte[length];
+            dctFile.read(lchBuffer);
+            tmpword = new String(lchBuffer, "GB2312");
+            // indexTable[i].wordItems[j].word = tmpword;
+            // wordItemTable[i][j].charArray = tmpword.toCharArray();
+            wordItem_charArrayTable[i][j] = tmpword.toCharArray();
+          } else {
+            // wordItemTable[i][j].charArray = null;
+            wordItem_charArrayTable[i][j] = null;
+          }
+          // System.out.println(indexTable[i].wordItems[j]);
+          j++;
+        }
+
+        String str = getCCByGB2312Id(i);
+        setTableIndex(str.charAt(0), i);
+      }
     }
-    dctFile.close();
     return total;
   }
 
@@ -359,7 +351,7 @@ class WordDictionary extends AbstractDictionary {
    * then initialize the value of that position in the address table.
    */
   private boolean setTableIndex(char c, int j) {
-    int index = getAvaliableTableIndex(c);
+    int index = getAvailableTableIndex(c);
     if (index != -1) {
       charIndexTable[index] = c;
       wordIndexTable[index] = (short) j;
@@ -367,7 +359,7 @@ class WordDictionary extends AbstractDictionary {
     } else return false;
   }
 
-  private short getAvaliableTableIndex(char c) {
+  private short getAvailableTableIndex(char c) {
     int hash1 = (int) (hash1(c) % PRIME_INDEX_LENGTH);
     int hash2 = hash2(c) % PRIME_INDEX_LENGTH;
     if (hash1 < 0) hash1 = PRIME_INDEX_LENGTH + hash1;

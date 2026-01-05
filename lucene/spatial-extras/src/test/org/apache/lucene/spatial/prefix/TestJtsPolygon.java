@@ -59,7 +59,7 @@ public class TestJtsPolygon extends StrategyTestCase {
   }
 
   @Test
-  /** LUCENE-4464 */
+  /* LUCENE-4464 */
   public void testCloseButNoMatch() throws Exception {
     getAddAndVerifyIndexedDocuments("LUCENE-4464.txt");
     SpatialArgs args =

@@ -20,8 +20,8 @@ package org.apache.lucene.util.hnsw;
 import java.io.Closeable;
 
 /**
- * A supplier that creates {@link RandomVectorScorer} from an ordinal. Caller should be sure to
- * close after use
+ * A supplier that creates {@link UpdateableRandomVectorScorer} from an ordinal. Caller should be
+ * sure to close after use
  *
  * <p>NOTE: the {@link #copy()} returned {@link RandomVectorScorerSupplier} is not necessarily
  * closeable

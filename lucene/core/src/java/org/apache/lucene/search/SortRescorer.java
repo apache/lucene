@@ -46,9 +46,7 @@ public class SortRescorer extends Rescorer {
     List<LeafReaderContext> leaves = searcher.getIndexReader().leaves();
 
     TopFieldCollector collector =
-        new TopFieldCollectorManager(
-                sort, topN, null, Integer.MAX_VALUE, searcher.getSlices().length > 1)
-            .newCollector();
+        new TopFieldCollectorManager(sort, topN, null, Integer.MAX_VALUE).newCollector();
 
     // Now merge sort docIDs from hits, with reader's leaves:
     int hitUpto = 0;
@@ -57,7 +55,7 @@ public class SortRescorer extends Rescorer {
     int docBase = 0;
 
     LeafCollector leafCollector = null;
-    Score score = new Score();
+    SimpleScorable score = new SimpleScorable();
 
     while (hitUpto < hits.length) {
       ScoreDoc hit = hits[hitUpto];

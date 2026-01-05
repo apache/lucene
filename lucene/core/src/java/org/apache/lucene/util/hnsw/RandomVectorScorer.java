@@ -18,9 +18,13 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.util.Bits;
 
-/** A {@link RandomVectorScorer} for scoring random nodes in batches against an abstract query. */
+/**
+ * A {@link RandomVectorScorer} for scoring random nodes in batches against an abstract query. This
+ * class isn't thread-safe and should be used by a single thread.
+ */
 public interface RandomVectorScorer {
   /**
    * Returns the score between the query and the provided node.
@@ -29,6 +33,25 @@ public interface RandomVectorScorer {
    * @return the computed score
    */
   float score(int node) throws IOException;
+
+  /**
+   * Score a list of numNodes and store the results in the scores array.
+   *
+   * <p>This may be more efficient than calling {@link #score(int)} for each node.
+   *
+   * @param nodes array of nodes to score.
+   * @param scores output array of scores corresponding to each node.
+   * @param numNodes number of nodes to score. Must not exceed length of nodes or scores arrays.
+   * @return the maximum scored value of any node, or Float.NEGATIVE_INFINITY if numNodes == 0.
+   */
+  default float bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
+    float max = Float.NEGATIVE_INFINITY;
+    for (int i = 0; i < numNodes; i++) {
+      scores[i] = score(nodes[i]);
+      max = Math.max(max, scores[i]);
+    }
+    return max;
+  }
 
   /**
    * @return the maximum possible ordinal for this scorer
@@ -56,15 +79,15 @@ public interface RandomVectorScorer {
   }
 
   /** Creates a default scorer for random access vectors. */
-  abstract class AbstractRandomVectorScorer implements RandomVectorScorer {
-    private final RandomAccessVectorValues values;
+  abstract class AbstractRandomVectorScorer implements RandomVectorScorer, HasKnnVectorValues {
+    private final KnnVectorValues values;
 
     /**
      * Creates a new scorer for the given vector values.
      *
      * @param values the vector values
      */
-    public AbstractRandomVectorScorer(RandomAccessVectorValues values) {
+    public AbstractRandomVectorScorer(KnnVectorValues values) {
       this.values = values;
     }
 
@@ -81,6 +104,11 @@ public interface RandomVectorScorer {
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
       return values.getAcceptOrds(acceptDocs);
+    }
+
+    @Override
+    public KnnVectorValues values() {
+      return values;
     }
   }
 }

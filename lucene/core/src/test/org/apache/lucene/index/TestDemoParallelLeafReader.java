@@ -337,8 +337,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
 
       @Override
       public boolean equals(Object _other) {
-        if (_other instanceof SegmentIDAndGen) {
-          SegmentIDAndGen other = (SegmentIDAndGen) _other;
+        if (_other instanceof SegmentIDAndGen other) {
           return segID.equals(other.segID) && schemaGen == other.schemaGen;
         } else {
           return false;
@@ -1564,7 +1563,9 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
     // Confirm we can sort by the new DV field:
     TopDocs hits =
         s.search(
-            new MatchAllDocsQuery(), 100, new Sort(new SortField("number", SortField.Type.LONG)));
+            MatchAllDocsQuery.INSTANCE,
+            100,
+            new Sort(new SortField("number", SortField.Type.LONG)));
     StoredFields storedFields = s.storedFields();
     long last = Long.MIN_VALUE;
     for (ScoreDoc scoreDoc : hits.scoreDocs) {

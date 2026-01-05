@@ -119,7 +119,7 @@ public class TestDocValuesRewriteMethod extends LuceneTestCase {
             new Term(fieldName, regexp),
             RegExp.NONE,
             0,
-            name -> null,
+            _ -> null,
             Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
             new DocValuesRewriteMethod());
     RegexpQuery docValuesWithSkip =
@@ -127,7 +127,7 @@ public class TestDocValuesRewriteMethod extends LuceneTestCase {
             new Term(fieldName + "_with-skip", regexp),
             RegExp.NONE,
             0,
-            name -> null,
+            _ -> null,
             Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
             new DocValuesRewriteMethod());
     RegexpQuery inverted = new RegexpQuery(new Term(fieldName, regexp), RegExp.NONE);
@@ -155,7 +155,7 @@ public class TestDocValuesRewriteMethod extends LuceneTestCase {
               new Term(fieldName, "[aA]"),
               RegExp.NONE,
               0,
-              name -> null,
+              _ -> null,
               Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
               new DocValuesRewriteMethod());
       RegexpQuery a2 =
@@ -163,7 +163,7 @@ public class TestDocValuesRewriteMethod extends LuceneTestCase {
               new Term(fieldName, "[aA]"),
               RegExp.NONE,
               0,
-              name -> null,
+              _ -> null,
               Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
               new DocValuesRewriteMethod());
       RegexpQuery b =
@@ -171,7 +171,7 @@ public class TestDocValuesRewriteMethod extends LuceneTestCase {
               new Term(fieldName, "[bB]"),
               RegExp.NONE,
               0,
-              name -> null,
+              _ -> null,
               Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
               new DocValuesRewriteMethod());
       assertEquals(a1, a2);

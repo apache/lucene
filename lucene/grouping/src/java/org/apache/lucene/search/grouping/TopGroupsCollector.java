@@ -129,7 +129,7 @@ public class TopGroupsCollector<T> extends SecondPassGroupingCollector<T> {
             () ->
                 new TopDocsAndMaxScoreCollector(
                     true,
-                    new TopScoreDocCollectorManager(maxDocsPerGroup, null, Integer.MAX_VALUE, false)
+                    new TopScoreDocCollectorManager(maxDocsPerGroup, null, Integer.MAX_VALUE)
                         .newCollector(),
                     null);
       } else {
@@ -137,7 +137,7 @@ public class TopGroupsCollector<T> extends SecondPassGroupingCollector<T> {
             () -> {
               TopFieldCollector topDocsCollector =
                   new TopFieldCollectorManager(
-                          withinGroupSort, maxDocsPerGroup, null, Integer.MAX_VALUE, false)
+                          withinGroupSort, maxDocsPerGroup, null, Integer.MAX_VALUE)
                       .newCollector(); // TODO: disable exact counts?
               MaxScoreCollector maxScoreCollector = getMaxScores ? new MaxScoreCollector() : null;
               return new TopDocsAndMaxScoreCollector(false, topDocsCollector, maxScoreCollector);

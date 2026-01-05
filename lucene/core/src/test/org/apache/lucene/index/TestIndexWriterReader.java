@@ -647,7 +647,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setMaxBufferedDocs(2)
                 .setMaxFullFlushMergeWaitMillis(0)
-                .setMergedSegmentWarmer((leafReader) -> warmCount.incrementAndGet())
+                .setMergedSegmentWarmer((_) -> warmCount.incrementAndGet())
                 .setMergeScheduler(new ConcurrentMergeScheduler())
                 .setMergePolicy(newLogMergePolicy()));
 
@@ -1221,9 +1221,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
                       ASC_SORT ? points.getMinPackedValue() : points.getMaxPackedValue();
                   return LongPoint.decodeDimension(sortValue, 0);
                 }
-              } catch (
-                  @SuppressWarnings("unused")
-                  IOException e) {
+              } catch (IOException _) {
               }
               return MISSING_VALUE;
             });

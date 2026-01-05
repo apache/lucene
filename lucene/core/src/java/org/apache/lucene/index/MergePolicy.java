@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -427,7 +428,7 @@ public abstract class MergePolicy {
         return true;
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
-      } catch (@SuppressWarnings("unused") ExecutionException | TimeoutException e) {
+      } catch (ExecutionException | TimeoutException _) {
         return false;
       }
     }
@@ -494,16 +495,15 @@ public abstract class MergePolicy {
       merges.add(merge);
     }
 
-    // TODO: deprecate me (dir is never used!  and is sometimes difficult to provide!)
-    /** Returns a description of the merges in this specification. */
+    /**
+     * Returns a description of the merges in this specification
+     *
+     * @deprecated Use {@link #toString()} instead. The {@code Directory} parameter is ignored and
+     *     will be removed in a future release.
+     */
+    @Deprecated
     public String segString(Directory dir) {
-      StringBuilder b = new StringBuilder();
-      b.append("MergeSpec:\n");
-      final int count = merges.size();
-      for (int i = 0; i < count; i++) {
-        b.append("  ").append(1 + i).append(": ").append(merges.get(i).segString());
-      }
-      return b.toString();
+      return toString();
     }
 
     @Override
@@ -530,7 +530,7 @@ public abstract class MergePolicy {
         return true;
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
-      } catch (@SuppressWarnings("unused") ExecutionException | CancellationException e) {
+      } catch (ExecutionException | CancellationException _) {
         return false;
       }
     }
@@ -543,7 +543,7 @@ public abstract class MergePolicy {
         return true;
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
-      } catch (@SuppressWarnings("unused") ExecutionException | TimeoutException e) {
+      } catch (ExecutionException | TimeoutException _) {
         return false;
       }
     }
@@ -756,7 +756,7 @@ public abstract class MergePolicy {
 
   /**
    * Return the byte size of the provided {@link SegmentCommitInfo}, prorated by percentage of
-   * non-deleted documents is set.
+   * non-deleted documents.
    */
   protected long size(SegmentCommitInfo info, MergeContext mergeContext) throws IOException {
     long byteSize = info.sizeInBytes();
@@ -838,7 +838,7 @@ public abstract class MergePolicy {
   }
 
   /**
-   * Returns true if the segment represented by the given CodecReader should be keep even if it's
+   * Returns true if the segment represented by the given CodecReader should be kept even if it's
    * fully deleted. This is useful for testing of for instance if the merge policy implements
    * retention policies for soft deletes.
    */
@@ -938,6 +938,96 @@ public abstract class MergePolicy {
       }
       this.codecReader = reader;
       this.hardLiveDocs = hardLiveDocs;
+    }
+  }
+
+  /**
+   * Observer for merge operations returned by {@link IndexWriter#forceMergeDeletes(boolean)}.
+   * Provides methods to query merge status and wait for completion.
+   *
+   * <p>When no merges are needed, {@link #numMerges()} returns 0. In this case, {@link #await()}
+   * returns {@code true} immediately since there is nothing to wait for.
+   *
+   * @lucene.experimental
+   */
+  public static final class MergeObserver {
+    private final MergePolicy.MergeSpecification spec;
+
+    MergeObserver(MergePolicy.MergeSpecification spec) {
+      this.spec = spec;
+    }
+
+    /**
+     * Returns the number of merges in this specification.
+     *
+     * @return number of merges, or 0 if no merges were scheduled
+     */
+    public int numMerges() {
+      return spec == null ? 0 : spec.merges.size();
+    }
+
+    /**
+     * Returns the number of completed merges in this specification. Useful for tracking merge
+     * progress: {@code numCompletedMerges() / numMerges()}.
+     *
+     * @return number of completed merges
+     */
+    public int numCompletedMerges() {
+      if (spec == null) {
+        return 0;
+      }
+      int completed = 0;
+      for (OneMerge merge : spec.merges) {
+        if (merge.mergeCompleted.isDone()) {
+          completed++;
+        }
+      }
+      return completed;
+    }
+
+    /**
+     * Waits for all merges in this specification to complete. Returns immediately if no merges were
+     * scheduled.
+     *
+     * @return {@code true} if all merges completed successfully or no merges were needed, {@code
+     *     false} on error
+     */
+    public boolean await() {
+      return spec == null || spec.await();
+    }
+
+    /**
+     * Waits for all merges in this specification to complete, with timeout. Returns immediately if
+     * no merges were scheduled.
+     *
+     * @param timeout maximum time to wait
+     * @param unit time unit for timeout
+     * @return {@code true} if all merges completed within timeout or no merges were needed, {@code
+     *     false} on timeout or error
+     */
+    public boolean await(long timeout, TimeUnit unit) {
+      return spec == null || spec.await(timeout, unit);
+    }
+
+    /**
+     * Returns a {@link CompletableFuture} that completes when all merges finish. Returns an
+     * already-completed future if no merges were scheduled.
+     *
+     * @return future that completes when merges finish
+     */
+    public CompletableFuture<Void> awaitAsync() {
+      return spec == null
+          ? CompletableFuture.completedFuture(null)
+          : spec.getMergeCompletedFutures();
+    }
+
+    @Override
+    public String toString() {
+      if (spec == null) {
+        return "MergeObserver: no merges";
+      }
+      return String.format(
+          Locale.ROOT, "MergeObserver: %d merges\n%s", numMerges(), spec.toString());
     }
   }
 }

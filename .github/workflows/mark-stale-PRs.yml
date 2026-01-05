@@ -10,15 +10,22 @@ on:
   # Or run on demand
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
   stale:
+    name: Mark stale PRs
     runs-on: ubuntu-latest
 
     permissions:
-      pull-requests: write
+      pull-requests: write # must comment/label PRs
+      actions: write # must manipulate actions cache to split workload across multiple runs
+
+    timeout-minutes: 15
 
     steps:
-      - uses: actions/stale@v5
+      - name: Run stale PR action
+        uses: actions/stale@5f858e3efba33a5ca4407a664cc011ad407f2008 # v10.1.0
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 

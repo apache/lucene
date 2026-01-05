@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.document;
 
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.Query;
@@ -50,13 +51,13 @@ public class SortedNumericDocValuesField extends Field {
     TYPE.freeze();
 
     INDEXED_TYPE = new FieldType(TYPE);
-    INDEXED_TYPE.setDocValuesSkipIndex(true);
+    INDEXED_TYPE.setDocValuesSkipIndexType(DocValuesSkipIndexType.RANGE);
     INDEXED_TYPE.freeze();
   }
 
   /**
    * Creates a new {@link SortedNumericDocValuesField} with the specified 64-bit long value that
-   * also creates a {@link FieldType#hasDocValuesSkipIndex() skip index}.
+   * also creates a {@link FieldType#docValuesSkipIndexType() skip index}.
    *
    * @param name field name
    * @param value 64-bit long value

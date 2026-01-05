@@ -21,17 +21,19 @@ import static java.util.stream.Collectors.toList;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -44,7 +46,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
   @Override
   protected Directory getDirectory(Path path) throws IOException {
     MMapDirectory m = new MMapDirectory(path);
-    m.setPreload((file, context) -> random().nextBoolean());
+    m.setPreload((_, _) -> random().nextBoolean());
     return m;
   }
 
@@ -53,7 +55,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
 
     try (Directory dir = getDirectory(createTempDir("testAceWithThreads"))) {
       try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
-        final Random random = random();
+        final Random random = nonAssertingRandom(random());
         for (int i = 0; i < nInts; i++) {
           out.writeInt(random.nextInt());
         }
@@ -74,9 +76,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
                       clone.seek(0);
                       clone.readBytes(accum, 0, accum.length);
                     }
-                  } catch (
-                      @SuppressWarnings("unused")
-                      AlreadyClosedException ok) {
+                  } catch (AlreadyClosedException _) {
                     // OK
                   } catch (InterruptedException | IOException e) {
                     throw new RuntimeException(e);
@@ -111,19 +111,93 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         MMapDirectory.supportsMadvise());
   }
 
-  // Opens the input with ReadAdvice.NORMAL to ensure basic code path coverage.
+  // RANDOM is the default (see Constants.DEFAULT_READADVICE), so test with NORMAL too
   public void testWithNormal() throws Exception {
     final int size = 8 * 1024;
     byte[] bytes = new byte[size];
     random().nextBytes(bytes);
 
-    try (Directory dir = new MMapDirectory(createTempDir("testWithRandom"))) {
+    try (MMapDirectory dir = new MMapDirectory(createTempDir("testWithRandom"))) {
       try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
         out.writeBytes(bytes, 0, bytes.length);
       }
 
+      dir.setReadAdvice((_, _) -> Optional.of(ReadAdvice.NORMAL));
+      try (final IndexInput in = dir.openInput("test", IOContext.DEFAULT)) {
+        final byte[] readBytes = new byte[size];
+        in.readBytes(readBytes, 0, readBytes.length);
+        assertArrayEquals(bytes, readBytes);
+      }
+    }
+  }
+
+  public void testAdviseByContextFunc() throws IOException {
+    var func = MMapDirectory.ADVISE_BY_CONTEXT;
+    var flush = IOContext.flush(new FlushInfo(1, 2));
+    var merge = IOContext.merge(new MergeInfo(1, 2, true, 4));
+    var random = new DefaultIOContext(DataAccessHint.RANDOM);
+    var sequential = new DefaultIOContext(DataAccessHint.SEQUENTIAL);
+    assertEquals(ReadAdvice.SEQUENTIAL, func.apply("a", merge).get());
+    assertEquals(ReadAdvice.SEQUENTIAL, func.apply("b", flush).get());
+    assertEquals(ReadAdvice.SEQUENTIAL, func.apply("c", sequential).get());
+    assertEquals(ReadAdvice.RANDOM, func.apply("d", random).get());
+
+    // hint types other than DataAccessHint
+    List<IOContext.FileOpenHint> hints = new ArrayList<>();
+    hints.addAll(Arrays.asList(FileDataHint.values()));
+    hints.addAll(Arrays.asList(FileTypeHint.values()));
+    hints.addAll(Arrays.asList(PreloadHint.values()));
+    hints.addAll(Arrays.asList(ReadOnceHint.values()));
+    for (var hint : hints) {
+      var context = new DefaultIOContext(hint);
+      assertEquals(Constants.DEFAULT_READADVICE, func.apply("e", context).get());
+    }
+
+    var l1 = List.of(flush, merge, random, sequential, IOContext.DEFAULT, IOContext.READONCE);
+    var l2 = hints.stream().map(DefaultIOContext::new);
+    testWithAdviseByContext(Stream.concat(l1.stream(), l2).toList());
+  }
+
+  // trivially exercises MMapDirectory.ADVISE_BY_CONTEXT with different contexts
+  void testWithAdviseByContext(List<IOContext> contexts) throws IOException {
+    final int size = 8 * 1024;
+    byte[] bytes = new byte[size];
+    random().nextBytes(bytes);
+
+    try (MMapDirectory dir = new MMapDirectory(createTempDir("testWithAdviseByContext"))) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(bytes, 0, bytes.length);
+      }
+      dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
+
+      for (var context : contexts) {
+        try (final IndexInput in = dir.openInput("test", context)) {
+          final byte[] readBytes = new byte[size];
+          in.readBytes(readBytes, 0, readBytes.length);
+          assertArrayEquals(bytes, readBytes);
+        }
+      }
+    }
+  }
+
+  public void testPreload() throws Exception {
+    assumeTrue("madvise for preloading only works on linux/mac", MMapDirectory.supportsMadvise());
+
+    final int size = 8 * 1024;
+    byte[] bytes = new byte[size];
+    random().nextBytes(bytes);
+
+    try (MMapDirectory dir = new MMapDirectory(createTempDir("testPreload"))) {
+      dir.setPreload(MMapDirectory.PRELOAD_HINT);
+      try (IndexOutput out =
+          dir.createOutput("test", IOContext.DEFAULT.withHints(PreloadHint.INSTANCE))) {
+        out.writeBytes(bytes, 0, bytes.length);
+      }
+
       try (final IndexInput in =
-          dir.openInput("test", IOContext.DEFAULT.withReadAdvice(ReadAdvice.NORMAL))) {
+          dir.openInput("test", IOContext.DEFAULT.withHints(PreloadHint.INSTANCE))) {
+        // the data should be loaded in memory
+        assertTrue(in.isLoaded().orElse(false));
         final byte[] readBytes = new byte[size];
         in.readBytes(readBytes, 0, readBytes.length);
         assertArrayEquals(bytes, readBytes);
@@ -227,10 +301,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         }
       }
 
-      if (!(dir.attachment instanceof ConcurrentHashMap<?, ?> map)) {
-        throw new AssertionError("unexpected attachment: " + dir.attachment);
-      }
-      assertEquals(0, map.size());
+      assertEquals(0, dir.arenas.size());
     }
   }
 
@@ -279,10 +350,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         closeable.close();
       }
 
-      if (!(dir.attachment instanceof ConcurrentHashMap<?, ?> map)) {
-        throw new AssertionError("unexpected attachment: " + dir.attachment);
-      }
-      assertEquals(0, map.size());
+      assertEquals(0, dir.arenas.size());
     }
   }
 
@@ -328,5 +396,43 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     assertFalse(func.apply("_segment.si").isPresent());
     assertFalse(func.apply("segment.si").isPresent());
     assertFalse(func.apply("_51a.si").isPresent());
+  }
+
+  public void testPrefetchWithSingleSegment() throws IOException {
+    testPrefetchWithSegments(64 * 1024);
+  }
+
+  public void testPrefetchWithMultiSegment() throws IOException {
+    testPrefetchWithSegments(16 * 1024);
+  }
+
+  static final Class<IndexOutOfBoundsException> IOOBE = IndexOutOfBoundsException.class;
+
+  // does not verify that the actual segment is prefetched, but rather exercises the code and bounds
+  void testPrefetchWithSegments(int maxChunkSize) throws IOException {
+    byte[] bytes = new byte[(maxChunkSize * 2) + 1];
+    try (Directory dir =
+        new MMapDirectory(createTempDir("testPrefetchWithSegments"), maxChunkSize)) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(bytes, 0, bytes.length);
+      }
+
+      try (var in = dir.openInput("test", IOContext.READONCE)) {
+        in.prefetch(0, in.length());
+        expectThrows(IOOBE, () -> in.prefetch(1, in.length()));
+        expectThrows(IOOBE, () -> in.prefetch(in.length(), 1));
+
+        var slice1 = in.slice("slice-1", 1, in.length() - 1);
+        slice1.prefetch(0, slice1.length());
+        expectThrows(IOOBE, () -> slice1.prefetch(1, slice1.length()));
+        expectThrows(IOOBE, () -> slice1.prefetch(slice1.length(), 1));
+
+        // we sliced off all but one byte from the first complete memory segment
+        var slice2 = in.slice("slice-2", maxChunkSize - 1, in.length() - maxChunkSize + 1);
+        slice2.prefetch(0, slice2.length());
+        expectThrows(IOOBE, () -> slice2.prefetch(1, slice2.length()));
+        expectThrows(IOOBE, () -> slice2.prefetch(slice2.length(), 1));
+      }
+    }
   }
 }

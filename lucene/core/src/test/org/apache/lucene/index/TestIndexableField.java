@@ -96,8 +96,8 @@ public class TestIndexableField extends LuceneTestCase {
           }
 
           @Override
-          public boolean hasDocValuesSkipIndex() {
-            return false;
+          public DocValuesSkipIndexType docValuesSkipIndexType() {
+            return DocValuesSkipIndexType.NONE;
           }
 
           @Override
@@ -238,10 +238,10 @@ public class TestIndexableField extends LuceneTestCase {
       baseCount += fieldCount - 1;
 
       Iterable<IndexableField> d =
-          new Iterable<IndexableField>() {
+          new Iterable<>() {
             @Override
             public Iterator<IndexableField> iterator() {
-              return new Iterator<IndexableField>() {
+              return new Iterator<>() {
                 int fieldUpto;
 
                 @Override

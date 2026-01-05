@@ -63,7 +63,7 @@ public class TestDataSplitter extends LuceneTestCase {
     ft.setStoreTermVectorPositions(true);
 
     Document doc;
-    Random rnd = random();
+    Random rnd = nonAssertingRandom(random());
     int numDocs = atLeast(100);
     for (int i = 0; i < numDocs; i++) {
       doc = new Document();
@@ -144,9 +144,7 @@ public class TestDataSplitter extends LuceneTestCase {
   private static void closeQuietly(IndexReader reader) throws IOException {
     try {
       IOUtils.close(reader);
-    } catch (
-        @SuppressWarnings("unused")
-        Exception e) {
+    } catch (Exception _) {
       // do nothing
     }
   }

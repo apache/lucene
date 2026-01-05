@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.util.Bits;
@@ -196,7 +197,6 @@ public class ParallelLeafReader extends LeafReader {
       if (!closeSubReaders) {
         reader.incRef();
       }
-      reader.registerParentReader(this);
     }
   }
 
@@ -348,15 +348,24 @@ public class ParallelLeafReader extends LeafReader {
       @Override
       public Fields get(int docID) throws IOException {
         ParallelFields fields = null;
-        for (Map.Entry<String, LeafReader> ent : tvFieldToReader.entrySet()) {
-          String fieldName = ent.getKey();
-          TermVectors termVectors = readerToTermVectors.get(ent.getValue());
-          Terms vector = termVectors.get(docID, fieldName);
-          if (vector != null) {
+
+        // Step 2: Fetch all term vectors once per reader
+        for (Map.Entry<LeafReader, TermVectors> entry : readerToTermVectors.entrySet()) {
+          TermVectors termVectors = entry.getValue();
+          Fields docFields = termVectors.get(docID); // Fetch all fields at once
+
+          if (docFields != null) {
             if (fields == null) {
               fields = new ParallelFields();
             }
-            fields.addField(fieldName, vector);
+
+            // Step 3: Aggregate only required fields
+            for (String fieldName : docFields) {
+              Terms vector = docFields.terms(fieldName);
+              if (vector != null) {
+                fields.addField(fieldName, vector);
+              }
+            }
           }
         }
 
@@ -456,7 +465,7 @@ public class ParallelLeafReader extends LeafReader {
 
   @Override
   public void searchNearestVectors(
-      String fieldName, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+      String fieldName, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
@@ -467,7 +476,7 @@ public class ParallelLeafReader extends LeafReader {
 
   @Override
   public void searchNearestVectors(
-      String fieldName, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+      String fieldName, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);

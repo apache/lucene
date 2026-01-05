@@ -136,7 +136,7 @@ public class RAFDirectory extends FSDirectory {
 
     @Override
     public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
-      if (offset < 0 || length < 0 || offset + length > this.length()) {
+      if ((length | offset) < 0 || length > this.length() - offset) {
         throw new IllegalArgumentException(
             "slice() " + sliceDescription + " out of bounds: " + this);
       }

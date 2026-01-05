@@ -228,9 +228,7 @@ public abstract class BaseXYShapeTestCase extends BaseSpatialTestCase {
           try {
             Tessellator.tessellate(p, true);
             return p;
-          } catch (
-              @SuppressWarnings("unused")
-              IllegalArgumentException e) {
+          } catch (IllegalArgumentException _) {
             // if we can't tessellate; then random polygon generator created a malformed shape
           }
         }
@@ -243,11 +241,7 @@ public abstract class BaseXYShapeTestCase extends BaseSpatialTestCase {
       }
     };
 
-    static ShapeType[] subList;
-
-    static {
-      subList = new ShapeType[] {POINT, LINE, POLYGON};
-    }
+    private static final ShapeType[] subList = new ShapeType[] {POINT, LINE, POLYGON};
 
     public abstract Object nextShape();
   }

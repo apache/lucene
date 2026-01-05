@@ -338,6 +338,18 @@ public class TestIntervalQuery extends LuceneTestCase {
     checkHits(q, new int[] {6, 7});
   }
 
+  public void testUnorderedWithNoGap() throws IOException {
+    Query q =
+        new IntervalQuery(
+            field,
+            Intervals.maxgaps(
+                0,
+                Intervals.unordered(
+                    Intervals.term("w3"),
+                    Intervals.unordered(Intervals.term("w1"), Intervals.term("w5")))));
+    checkHits(q, new int[] {0});
+  }
+
   public void testOrderedWithGaps() throws IOException {
     Query q =
         new IntervalQuery(
@@ -358,6 +370,18 @@ public class TestIntervalQuery extends LuceneTestCase {
                 Intervals.ordered(
                     Intervals.term("alice"), Intervals.term("bob"), Intervals.term("carl"))));
     checkHits(q, new int[] {12});
+  }
+
+  public void testOrderedWithNoGap() throws IOException {
+    Query q =
+        new IntervalQuery(
+            field,
+            Intervals.maxgaps(
+                0,
+                Intervals.ordered(
+                    Intervals.ordered(Intervals.term("w1"), Intervals.term("w4")),
+                    Intervals.term("w5"))));
+    checkHits(q, new int[] {0});
   }
 
   public void testNestedOrInContainedBy() throws IOException {

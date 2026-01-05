@@ -1,0 +1,36 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Dependency Submission
+
+"on":
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+  schedule:
+    - cron: '44 4 * * 2'
+
+permissions: {}
+
+jobs:
+  dependency-submission:
+    name: Submit gradle dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # see action's documentation
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
+
+      - name: Configure tools
+        uses: ./.github/actions/prepare-for-build
+
+      - name: Generate and submit dependency graph
+        uses: gradle/actions/dependency-submission@4d9f0ba0025fe599b4ebab900eb7f3a1d93ef4c2 # v5.0.0
+        env:
+          DEPENDENCY_GRAPH_INCLUDE_CONFIGURATIONS: "(?i)(^|:)(compileClasspath|runtimeClasspath|testCompileClasspath|testRuntimeClasspath)$"
+          DEPENDENCY_GRAPH_EXCLUDE_CONFIGURATIONS: "(?i)(^|:)(classpath|.*PluginClasspath|kotlinCompilerClasspath|kaptClasspath|annotationProcessor|detachedConfiguration.*)$"
+          DEPENDENCY_GRAPH_RUNTIME_INCLUDE_CONFIGURATIONS: "(?i)(^|:)runtimeClasspath$"
+          DEPENDENCY_GRAPH_RUNTIME_EXCLUDE_CONFIGURATIONS: "(?i)(^|:)testRuntimeClasspath$"

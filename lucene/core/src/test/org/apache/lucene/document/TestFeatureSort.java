@@ -72,7 +72,7 @@ public class TestFeatureSort extends LuceneTestCase {
     StoredFields storedFields = searcher.storedFields();
     Sort sort = new Sort(FeatureField.newFeatureSort("field", "name"));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(3, td.totalHits.value());
     // numeric order
     assertEquals("30.1", storedFields.document(td.scoreDocs[0].doc).get("value"));
@@ -105,7 +105,7 @@ public class TestFeatureSort extends LuceneTestCase {
     Sort sort = new Sort(FeatureField.newFeatureSort("field", "name"));
     StoredFields storedFields = searcher.storedFields();
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(3, td.totalHits.value());
     // null is treated as 0
     assertEquals("4.2", storedFields.document(td.scoreDocs[0].doc).get("value"));
@@ -139,7 +139,7 @@ public class TestFeatureSort extends LuceneTestCase {
     Sort sort = new Sort(FeatureField.newFeatureSort("field", "name"));
     StoredFields storedFields = searcher.storedFields();
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(3, td.totalHits.value());
     // null is treated as 0
     assertEquals("4.2", storedFields.document(td.scoreDocs[0].doc).get("value"));
@@ -174,7 +174,7 @@ public class TestFeatureSort extends LuceneTestCase {
     Sort sort = new Sort(FeatureField.newFeatureSort("field", "name"));
     StoredFields storedFields = searcher.storedFields();
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(3, td.totalHits.value());
     // null is treated as 0
     assertEquals("4.2", storedFields.document(td.scoreDocs[0].doc).get("value"));
@@ -215,7 +215,7 @@ public class TestFeatureSort extends LuceneTestCase {
     Sort sort = new Sort(FeatureField.newFeatureSort("field", "name"));
     StoredFields storedFields = searcher.storedFields();
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
     assertEquals(7, td.totalHits.value());
     // null is treated as 0
     assertEquals("4.2", storedFields.document(td.scoreDocs[0].doc).get("value"));
@@ -259,30 +259,30 @@ public class TestFeatureSort extends LuceneTestCase {
       if (topDocs == null) {
         topDocs =
             searcher.search(
-                new MatchAllDocsQuery(),
+                MatchAllDocsQuery.INSTANCE,
                 10,
                 new Sort(new SortField("float", SortField.Type.FLOAT, true)));
         featureTopDocs =
             searcher.search(
-                new MatchAllDocsQuery(),
+                MatchAllDocsQuery.INSTANCE,
                 10,
                 new Sort(FeatureField.newFeatureSort("feature", "foo")));
       } else {
         topDocs =
             searcher.searchAfter(
                 topDocs.scoreDocs[topDocs.scoreDocs.length - 1],
-                new MatchAllDocsQuery(),
+                MatchAllDocsQuery.INSTANCE,
                 10,
                 new Sort(new SortField("float", SortField.Type.FLOAT, true)));
         featureTopDocs =
             searcher.searchAfter(
                 featureTopDocs.scoreDocs[featureTopDocs.scoreDocs.length - 1],
-                new MatchAllDocsQuery(),
+                MatchAllDocsQuery.INSTANCE,
                 10,
                 new Sort(FeatureField.newFeatureSort("feature", "foo")));
       }
 
-      CheckHits.checkEqual(new MatchAllDocsQuery(), topDocs.scoreDocs, featureTopDocs.scoreDocs);
+      CheckHits.checkEqual(MatchAllDocsQuery.INSTANCE, topDocs.scoreDocs, featureTopDocs.scoreDocs);
     } while (topDocs.scoreDocs.length > 0);
 
     r.close();

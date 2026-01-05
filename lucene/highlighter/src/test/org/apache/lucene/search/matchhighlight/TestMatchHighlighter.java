@@ -501,7 +501,7 @@ public class TestMatchHighlighter extends LuceneTestCase {
                     new MatchHighlighter(searcher, analyzer)
                         .appendFieldHighlighter(
                             FieldValueHighlighters.highlighted(
-                                80 * 3, 1, new PassageFormatter("...", ">", "<"), fld -> true))
+                                80 * 3, 1, new PassageFormatter("...", ">", "<"), _ -> true))
                         .appendFieldHighlighter(FieldValueHighlighters.skipRemaining());
 
                 StandardQueryParser qp = new StandardQueryParser(analyzer);
@@ -582,7 +582,7 @@ public class TestMatchHighlighter extends LuceneTestCase {
                       .appendFieldHighlighter(FieldValueHighlighters.skipRemaining());
 
               assertHighlights(
-                  toDocList(highlighter.highlight(topDocs, new MatchAllDocsQuery())),
+                  toDocList(highlighter.highlight(topDocs, MatchAllDocsQuery.INSTANCE)),
                   "0. text1: foo bar, bar foo baz, bar baz foo, baz baz baz");
 
               // But this is not exactly what we'd like because we want to limit the display of
@@ -636,7 +636,7 @@ public class TestMatchHighlighter extends LuceneTestCase {
                   toDocList(highlighter.highlight(topDocs, query)),
                   "0. text1: >foo< bar, bar >foo< baz");
               assertHighlights(
-                  toDocList(highlighter.highlight(topDocs, new MatchAllDocsQuery())),
+                  toDocList(highlighter.highlight(topDocs, MatchAllDocsQuery.INSTANCE)),
                   "0. text1: foo bar, bar foo baz, [2 omitted]");
             });
   }
@@ -746,7 +746,7 @@ public class TestMatchHighlighter extends LuceneTestCase {
                       new PassageFormatter(
                           "...",
                           (range) -> "<span class='" + queryToClass.apply(range) + "'>",
-                          (range) -> "</span>");
+                          (_) -> "</span>");
 
                   return passageFormatter.format(contiguousValue, bestPassages, valueRanges);
                 }

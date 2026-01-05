@@ -63,7 +63,7 @@ import org.apache.lucene.util.IntBlockPool;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.Version;
 
-/** Default general purpose indexing chain, which handles indexing all types of fields. */
+/** Default general purpose indexing chain, which handles indexing of all types of fields. */
 final class IndexingChain implements Accountable {
 
   final Counter bytesUsed = Counter.newCounter();
@@ -153,7 +153,7 @@ final class IndexingChain implements Accountable {
       @Override
       public NumericDocValues getNumericDocValues(String field) {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.NUMERIC) {
@@ -165,7 +165,7 @@ final class IndexingChain implements Accountable {
       @Override
       public BinaryDocValues getBinaryDocValues(String field) {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.BINARY) {
@@ -177,7 +177,7 @@ final class IndexingChain implements Accountable {
       @Override
       public SortedDocValues getSortedDocValues(String field) throws IOException {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.SORTED) {
@@ -189,7 +189,7 @@ final class IndexingChain implements Accountable {
       @Override
       public SortedNumericDocValues getSortedNumericDocValues(String field) throws IOException {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.SORTED_NUMERIC) {
@@ -201,7 +201,7 @@ final class IndexingChain implements Accountable {
       @Override
       public SortedSetDocValues getSortedSetDocValues(String field) throws IOException {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.SORTED_SET) {
@@ -320,8 +320,7 @@ final class IndexingChain implements Accountable {
 
     t0 = System.nanoTime();
     Map<String, TermsHashPerField> fieldsToFlush = new HashMap<>();
-    for (int i = 0; i < fieldHash.length; i++) {
-      PerField perField = fieldHash[i];
+    for (PerField perField : fieldHash) {
       while (perField != null) {
         if (perField.invertState != null) {
           fieldsToFlush.put(perField.fieldInfo.name, perField.termsHashPerField);
@@ -368,7 +367,6 @@ final class IndexingChain implements Accountable {
   /** Writes all buffered points. */
   private void writePoints(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
     PointsWriter pointsWriter = null;
-    boolean success = false;
     try {
       for (int i = 0; i < fieldHash.length; i++) {
         PerField perField = fieldHash[i];
@@ -396,21 +394,17 @@ final class IndexingChain implements Accountable {
       }
       if (pointsWriter != null) {
         pointsWriter.finish();
+        pointsWriter.close();
       }
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(pointsWriter);
-      } else {
-        IOUtils.closeWhileHandlingException(pointsWriter);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, pointsWriter);
+      throw t;
     }
   }
 
   /** Writes all buffered doc values (called from {@link #flush}). */
   private void writeDocValues(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
     DocValuesConsumer dvConsumer = null;
-    boolean success = false;
     try {
       for (int i = 0; i < fieldHash.length; i++) {
         PerField perField = fieldHash[i];
@@ -450,13 +444,12 @@ final class IndexingChain implements Accountable {
       // null/"" depending on how docs landed in segments?
       // but we can't detect all cases, and we should leave
       // this behavior undefined. dv is not "schemaless": it's column-stride.
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(dvConsumer);
-      } else {
-        IOUtils.closeWhileHandlingException(dvConsumer);
+      if (dvConsumer != null) {
+        dvConsumer.close();
       }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, dvConsumer);
+      throw t;
     }
 
     if (state.fieldInfos.hasDocValues() == false) {
@@ -473,7 +466,6 @@ final class IndexingChain implements Accountable {
   }
 
   private void writeNorms(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
-    boolean success = false;
     NormsConsumer normsConsumer = null;
     try {
       if (state.fieldInfos.hasNorms()) {
@@ -494,13 +486,12 @@ final class IndexingChain implements Accountable {
           }
         }
       }
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(normsConsumer);
-      } else {
-        IOUtils.closeWhileHandlingException(normsConsumer);
+      if (normsConsumer != null) {
+        normsConsumer.close();
       }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, normsConsumer);
+      throw t;
     }
   }
 
@@ -680,7 +671,7 @@ final class IndexingChain implements Accountable {
                 false,
                 s.indexOptions,
                 s.docValuesType,
-                s.hasDocValuesSkipIndex,
+                s.docValuesSkipIndex,
                 -1,
                 s.attributes,
                 s.pointDimensionCount,
@@ -832,12 +823,14 @@ final class IndexingChain implements Accountable {
       verifyUnIndexedFieldType(fieldName, fieldType);
     }
     if (fieldType.docValuesType() != DocValuesType.NONE) {
-      schema.setDocValues(fieldType.docValuesType(), fieldType.hasDocValuesSkipIndex());
-    } else if (fieldType.hasDocValuesSkipIndex()) {
+      schema.setDocValues(fieldType.docValuesType(), fieldType.docValuesSkipIndexType());
+    } else if (fieldType.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
       throw new IllegalArgumentException(
           "field '"
               + schema.name
-              + "' cannot have docValuesSkipIndex set to true without doc values");
+              + "' cannot have docValuesSkipIndexType="
+              + fieldType.docValuesSkipIndexType()
+              + " without doc values");
     }
     if (fieldType.pointDimensionCount() != 0) {
       schema.setPoints(
@@ -1440,7 +1433,7 @@ final class IndexingChain implements Accountable {
     private boolean storeTermVector = false;
     private IndexOptions indexOptions = IndexOptions.NONE;
     private DocValuesType docValuesType = DocValuesType.NONE;
-    private boolean hasDocValuesSkipIndex = false;
+    private DocValuesSkipIndexType docValuesSkipIndex = DocValuesSkipIndexType.NONE;
     private int pointDimensionCount = 0;
     private int pointIndexDimensionCount = 0;
     private int pointNumBytes = 0;
@@ -1448,7 +1441,7 @@ final class IndexingChain implements Accountable {
     private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
     private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
 
-    private static String errMsg =
+    private static final String errMsg =
         "Inconsistency of field data structures across documents for field ";
 
     FieldSchema(String name) {
@@ -1506,13 +1499,14 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void setDocValues(DocValuesType newDocValuesType, boolean newHasDocValuesSkipIndex) {
+    void setDocValues(
+        DocValuesType newDocValuesType, DocValuesSkipIndexType newDocValuesSkipIndex) {
       if (docValuesType == DocValuesType.NONE) {
         this.docValuesType = newDocValuesType;
-        this.hasDocValuesSkipIndex = newHasDocValuesSkipIndex;
+        this.docValuesSkipIndex = newDocValuesSkipIndex;
       } else {
         assertSame("doc values type", docValuesType, newDocValuesType);
-        assertSame("doc values skip index", hasDocValuesSkipIndex, newHasDocValuesSkipIndex);
+        assertSame("doc values skip index type", docValuesSkipIndex, newDocValuesSkipIndex);
       }
     }
 
@@ -1560,7 +1554,7 @@ final class IndexingChain implements Accountable {
       assertSame("omit norms", fi.omitsNorms(), omitNorms);
       assertSame("store term vector", fi.hasTermVectors(), storeTermVector);
       assertSame("doc values type", fi.getDocValuesType(), docValuesType);
-      assertSame("doc values skip index", fi.hasDocValuesSkipIndex(), hasDocValuesSkipIndex);
+      assertSame("doc values skip index type", fi.docValuesSkipIndexType(), docValuesSkipIndex);
       assertSame(
           "vector similarity function", fi.getVectorSimilarityFunction(), vectorSimilarityFunction);
       assertSame("vector encoding", fi.getVectorEncoding(), vectorEncoding);
@@ -1579,7 +1573,7 @@ final class IndexingChain implements Accountable {
    */
   <T extends IndexableField> ReservedField<T> markAsReserved(T field) {
     getOrAddPerField(field.name(), true);
-    return new ReservedField<T>(field);
+    return new ReservedField<>(field);
   }
 
   static final class ReservedField<T extends IndexableField> implements IndexableField {

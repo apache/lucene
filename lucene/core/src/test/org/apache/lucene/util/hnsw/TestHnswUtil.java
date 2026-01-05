@@ -138,12 +138,6 @@ public class TestHnswUtil extends LuceneTestCase {
         }
       }
       MockGraph graph = new MockGraph(nodes);
-      /**/
-      if (i == 2) {
-        System.out.println("iter " + i);
-        System.out.print(graph.toString());
-      }
-      /**/
       assertEquals(isRooted(nodes), HnswUtil.isRooted(graph));
     }
   }
@@ -272,6 +266,16 @@ public class TestHnswUtil extends LuceneTestCase {
         }
       }
       return buf.toString();
+    }
+
+    @Override
+    public int neighborCount() {
+      return nodes[currentLevel][currentNode].length;
+    }
+
+    @Override
+    public int maxConn() {
+      return UNKNOWN_MAX_CONN;
     }
 
     @Override

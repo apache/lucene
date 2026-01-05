@@ -110,9 +110,9 @@ public class TestMonitor extends MonitorTestBase {
   public void testCanClearTheMonitor() throws IOException {
     try (Monitor monitor = newMonitor()) {
       monitor.register(
-          new MonitorQuery("query1", new MatchAllDocsQuery()),
-          new MonitorQuery("query2", new MatchAllDocsQuery()),
-          new MonitorQuery("query3", new MatchAllDocsQuery()));
+          new MonitorQuery("query1", MatchAllDocsQuery.INSTANCE),
+          new MonitorQuery("query2", MatchAllDocsQuery.INSTANCE),
+          new MonitorQuery("query3", MatchAllDocsQuery.INSTANCE));
       assertEquals(3, monitor.getQueryCount());
 
       monitor.clear();
@@ -176,7 +176,7 @@ public class TestMonitor extends MonitorTestBase {
 
       MatcherFactory<QueryMatch> testMatcherFactory =
           docs ->
-              new CandidateMatcher<QueryMatch>(docs) {
+              new CandidateMatcher<>(docs) {
                 @Override
                 public void matchQuery(
                     String queryId, Query matchQuery, Map<String, String> metadata) {

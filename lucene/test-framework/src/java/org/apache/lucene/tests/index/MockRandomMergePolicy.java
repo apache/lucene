@@ -237,8 +237,7 @@ public class MockRandomMergePolicy extends MergePolicy {
               "NOTE: MockRandomMergePolicy now swaps in a MismatchedLeafReader for merging reader="
                   + reader);
         }
-        return SlowCodecReaderWrapper.wrap(
-            new MismatchedLeafReader(new MergeReaderWrapper(reader), r));
+        return new MismatchedCodecReader(reader, r);
       } else {
         // otherwise, reader is unchanged
         return reader;

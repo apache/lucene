@@ -185,7 +185,6 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
       }
       final String formatName = format.getName();
 
-      field.putAttribute(PER_FIELD_FORMAT_KEY, formatName);
       Integer suffix = null;
 
       ConsumerAndSuffix consumer = formats.get(format);
@@ -229,8 +228,8 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
         assert suffixes.containsKey(formatName);
         suffix = consumer.suffix;
       }
-
-      field.putAttribute(PER_FIELD_SUFFIX_KEY, Integer.toString(suffix));
+      field.putAttributes(
+          Map.of(PER_FIELD_FORMAT_KEY, formatName, PER_FIELD_SUFFIX_KEY, Integer.toString(suffix)));
       // TODO: we should only provide the "slice" of FIS
       // that this DVF actually sees ...
       return consumer.consumer;
@@ -281,7 +280,6 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     public FieldsReader(final SegmentReadState readState) throws IOException {
 
       // Init each unique format:
-      boolean success = false;
       try {
         // Read field name -> format name
         for (FieldInfo fi : readState.fieldInfos) {
@@ -307,11 +305,9 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
             }
           }
         }
-        success = true;
-      } finally {
-        if (!success) {
-          IOUtils.closeWhileHandlingException(formats.values());
-        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, formats.values());
+        throw t;
       }
     }
 

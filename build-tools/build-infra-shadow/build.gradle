@@ -1,0 +1,64 @@
+import org.apache.lucene.gradle.plugins.LuceneGradlePlugin
+import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension
+
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+plugins {
+  id "java-gradle-plugin"
+}
+
+repositories {
+  mavenCentral()
+  gradlePluginPortal()
+}
+
+apply from: rootProject.file("build-tools/build-infra/ecj-source.gradle")
+apply from: rootProject.file("build-tools/build-infra/declare-dependencies.gradle")
+
+dependencies {
+  // seems to be required by gradle apis, otherwise compilation fails even though
+  // we don't use it.
+  compileOnly ("com.google.code.findbugs:findbugs-annotations:3.0.1")
+}
+
+tasks.matching {
+  it.name in [
+    "renderSiteJavadoc",
+    "renderJavadoc",
+    // "compileJava", we do need to compile the sources so that forbidden apis are applied.
+    "compileTestJava",
+    "assemble"
+  ]
+}.configureEach {
+  enabled = false
+}
+
+
+// This redirects build-infra-shadow's main sources at build-infra sources so that we can
+// reapply the build plugin to ourselves (chicken and egg problem - you can't apply a plugin
+// to itself).
+def buildGlobals = getExtensions().getByType(LuceneBuildGlobalsExtension.class)
+if (!buildGlobals.getIntellijIdea().get().isIdea()) {
+  sourceSets.named("main").configure {
+    java.setSrcDirs([
+      LuceneGradlePlugin.getProjectRootPath(project)
+      .resolve("build-tools/build-infra/src/main/java")
+      .toFile()
+    ])
+  }
+}

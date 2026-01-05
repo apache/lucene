@@ -216,7 +216,7 @@ public class TermFilteredPresearcher extends Presearcher {
 
       @Override
       public void addTerm(String field, BytesRef term) {
-        List<BytesRef> t = terms.computeIfAbsent(field, f -> new ArrayList<>());
+        List<BytesRef> t = terms.computeIfAbsent(field, _ -> new ArrayList<>());
         t.add(term);
       }
 
@@ -271,7 +271,7 @@ public class TermFilteredPresearcher extends Presearcher {
     Map<String, BytesRefHash> fieldTerms = new HashMap<>();
     querytree.collectTerms(
         (field, term) -> {
-          BytesRefHash tt = fieldTerms.computeIfAbsent(field, f -> new BytesRefHash());
+          BytesRefHash tt = fieldTerms.computeIfAbsent(field, _ -> new BytesRefHash());
           tt.add(term);
         });
     return fieldTerms;

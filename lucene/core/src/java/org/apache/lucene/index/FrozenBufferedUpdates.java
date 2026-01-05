@@ -33,6 +33,7 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOFunction;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.RamUsageEstimator;
 
@@ -86,7 +87,7 @@ final class FrozenBufferedUpdates {
         : "segment private packet should only have del queries";
 
     PrefixCodedTerms.Builder builder = new PrefixCodedTerms.Builder();
-    updates.deleteTerms.forEachOrdered((term, doc) -> builder.add(term));
+    updates.deleteTerms.forEachOrdered((term, _) -> builder.add(term));
     deleteTerms = builder.finish();
 
     deleteQueries = new Query[updates.deleteQueries.size()];
@@ -500,7 +501,6 @@ final class FrozenBufferedUpdates {
   public void setDelGen(long delGen) {
     assert this.delGen == -1 : "delGen was already previously set to " + this.delGen;
     this.delGen = delGen;
-    deleteTerms.setDelGen(delGen);
   }
 
   public long delGen() {
@@ -541,18 +541,13 @@ final class FrozenBufferedUpdates {
    * passed in sorted order and makes sure terms and postings are reused as much as possible.
    */
   static final class TermDocsIterator {
-    private final TermsProvider provider;
+    private final IOFunction<String, Terms> provider;
     private String field;
     private TermsEnum termsEnum;
     private PostingsEnum postingsEnum;
     private final boolean sortedTerms;
     private BytesRef readerTerm;
     private BytesRef lastTerm; // only set with asserts
-
-    @FunctionalInterface
-    interface TermsProvider {
-      Terms terms(String field) throws IOException;
-    }
 
     TermDocsIterator(Fields fields, boolean sortedTerms) {
       this(fields::terms, sortedTerms);
@@ -562,7 +557,7 @@ final class FrozenBufferedUpdates {
       this(reader::terms, sortedTerms);
     }
 
-    private TermDocsIterator(TermsProvider provider, boolean sortedTerms) {
+    private TermDocsIterator(IOFunction<String, Terms> provider, boolean sortedTerms) {
       this.sortedTerms = sortedTerms;
       this.provider = provider;
     }
@@ -571,7 +566,7 @@ final class FrozenBufferedUpdates {
       if (this.field == null || this.field.equals(field) == false) {
         this.field = field;
 
-        Terms terms = provider.terms(field);
+        Terms terms = provider.apply(field);
         if (terms != null) {
           termsEnum = terms.iterator();
           if (sortedTerms) {

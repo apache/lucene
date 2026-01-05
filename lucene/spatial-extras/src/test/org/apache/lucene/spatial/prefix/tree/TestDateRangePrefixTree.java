@@ -183,6 +183,11 @@ public class TestDateRangePrefixTree extends LuceneTestCase {
   };
 
   private void roundTrip(Calendar calOrig) throws ParseException {
+    if (!TEST_ASSERTS_ENABLED) {
+      // If we're running without assertions, this test won't trigger.
+      return;
+    }
+
     Calendar cal = (Calendar) calOrig.clone();
     while (true) {
       String calString;
@@ -227,7 +232,9 @@ public class TestDateRangePrefixTree extends LuceneTestCase {
       try {
         tree.clearFieldsAfter(cal, prevPrecField);
       } catch (AssertionError e) {
-        if (e.getMessage().equals("Calendar underflow")) return;
+        if (e.getMessage().equals("Calendar underflow")) {
+          return;
+        }
         throw e;
       }
     }

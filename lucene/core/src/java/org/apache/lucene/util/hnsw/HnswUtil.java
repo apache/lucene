@@ -23,12 +23,13 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.util.FixedBitSet;
 
 /** Utilities for use in tests involving HNSW graphs */
@@ -38,13 +39,13 @@ public class HnswUtil {
   private HnswUtil() {}
 
   /*
-   For each level, check rooted components from previous level nodes, which are entry
-   points with the goal that each node should be reachable from *some* entry point.  For each entry
-   point, compute a spanning tree, recording the nodes in a single shared bitset.
-
-   Also record a bitset marking nodes that are not full to be used when reconnecting in order to
-   limit the search to include non-full nodes only.
-  */
+   * For each level, check rooted components from previous level nodes, which are entry
+   * points with the goal that each node should be reachable from *some* entry point.  For each entry
+   * point, compute a spanning tree, recording the nodes in a single shared bitset.
+   *
+   * Also record a bitset marking nodes that are not full to be used when reconnecting in order to
+   * limit the search to include non-full nodes only.
+   */
 
   /** Returns true if every node on every level is reachable from node 0. */
   static boolean isRooted(HnswGraph knnValues) throws IOException {
@@ -89,7 +90,7 @@ public class HnswUtil {
     HnswGraph.NodesIterator entryPoints;
     // System.out.println("components level=" + level);
     if (level == hnsw.numLevels() - 1) {
-      entryPoints = new HnswGraph.ArrayNodesIterator(new int[] {hnsw.entryNode()}, 1);
+      entryPoints = new HnswGraph.ArrayNodesIterator(new int[] {hnsw.entryNode()});
     } else {
       entryPoints = hnsw.getNodesOnLevel(level + 1);
     }
@@ -105,7 +106,9 @@ public class HnswUtil {
     } else {
       entryPoint = connectedNodes.nextSetBit(0);
     }
-    components.add(new Component(entryPoint, total));
+    if (total > 0) {
+      components.add(new Component(entryPoint, total));
+    }
     if (level == 0) {
       int nextClear = nextClearBit(connectedNodes, 0);
       while (nextClear != NO_MORE_DOCS) {
@@ -125,6 +128,7 @@ public class HnswUtil {
         }
         Component component =
             markRooted(hnsw, level, connectedNodes, notFullyConnected, maxConn, nextClear);
+        assert component.start() == nextClear;
         assert component.size() > 0;
         components.add(component);
         total += component.size();
@@ -163,6 +167,10 @@ public class HnswUtil {
       throws IOException {
     // Start at entry point and search all nodes on this level
     // System.out.println("markRooted level=" + level + " entryPoint=" + entryPoint);
+    if (connectedNodes.get(entryPoint)) {
+      return new Component(entryPoint, 0);
+    }
+    IntHashSet nodesInStack = new IntHashSet();
     Deque<Integer> stack = new ArrayDeque<>();
     stack.push(entryPoint);
     int count = 0;
@@ -178,7 +186,10 @@ public class HnswUtil {
       int friendCount = 0;
       while ((friendOrd = hnswGraph.nextNeighbor()) != NO_MORE_DOCS) {
         ++friendCount;
-        stack.push(friendOrd);
+        if (connectedNodes.get(friendOrd) == false && nodesInStack.contains(friendOrd) == false) {
+          stack.push(friendOrd);
+          nodesInStack.add(friendOrd);
+        }
       }
       if (friendCount < maxConn && notFullyConnected != null) {
         notFullyConnected.set(node);
@@ -223,13 +234,15 @@ public class HnswUtil {
   public static boolean graphIsRooted(IndexReader reader, String vectorField) throws IOException {
     for (LeafReaderContext ctx : reader.leaves()) {
       CodecReader codecReader = (CodecReader) FilterLeafReader.unwrap(ctx.reader());
-      HnswGraph graph =
-          ((HnswGraphProvider)
-                  ((PerFieldKnnVectorsFormat.FieldsReader) codecReader.getVectorReader())
-                      .getFieldReader(vectorField))
-              .getGraph(vectorField);
-      if (isRooted(graph) == false) {
-        return false;
+      KnnVectorsReader vectorsReader =
+          codecReader.getVectorReader().unwrapReaderForField(vectorField);
+      if (vectorsReader instanceof HnswGraphProvider) {
+        HnswGraph graph = ((HnswGraphProvider) vectorsReader).getGraph(vectorField);
+        if (isRooted(graph) == false) {
+          return false;
+        }
+      } else {
+        throw new IllegalArgumentException("not a graph: " + vectorsReader);
       }
     }
     return true;

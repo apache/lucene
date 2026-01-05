@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -201,25 +200,6 @@ public final class ByteBuffersDataInput extends DataInput
     } else {
       return super.readLong();
     }
-  }
-
-  @Override
-  protected void readGroupVInt(long[] dst, int offset) throws IOException {
-    final ByteBuffer block = blocks[blockIndex(pos)];
-    final int blockOffset = blockOffset(pos);
-    // We MUST save the return value to local variable, could not use pos += readGroupVInt(...).
-    // because `pos +=` in java will move current value(not address) of pos to register first,
-    // then call the function, but we will update pos value in function via readByte(), then
-    // `pos +=` will use an old pos value plus return value, thereby missing 1 byte.
-    final int len =
-        GroupVIntUtil.readGroupVInt(
-            this,
-            block.limit() - blockOffset,
-            p -> block.getInt((int) p),
-            blockOffset,
-            dst,
-            offset);
-    pos += len;
   }
 
   @Override
@@ -424,7 +404,7 @@ public final class ByteBuffersDataInput extends DataInput
   }
 
   public ByteBuffersDataInput slice(long offset, long length) {
-    if (offset < 0 || length < 0 || offset + length > this.length) {
+    if ((length | offset) < 0 || length > this.length - offset) {
       throw new IllegalArgumentException(
           String.format(
               Locale.ROOT,

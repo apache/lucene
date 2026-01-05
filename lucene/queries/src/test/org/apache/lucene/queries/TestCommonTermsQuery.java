@@ -19,6 +19,7 @@ package org.apache.lucene.queries;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
@@ -194,7 +195,12 @@ public class TestCommonTermsQuery extends LuceneTestCase {
   public void testMinShouldMatch() throws IOException {
     Directory dir = newDirectory();
     MockAnalyzer analyzer = new MockAnalyzer(random());
-    RandomIndexWriter w = new RandomIndexWriter(random(), dir, analyzer);
+    RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(),
+            dir,
+            LuceneTestCase.newIndexWriterConfig(analyzer)
+                .setMergePolicy(LuceneTestCase.newMergePolicy(random(), false)));
     String[] docs =
         new String[] {
           "this is the end of the world right",
@@ -421,22 +427,10 @@ public class TestCommonTermsQuery extends LuceneTestCase {
     LeafReader wrapper = getOnlyLeafReader(reader);
     String field = "body";
     Terms terms = wrapper.terms(field);
+    Comparator<TermAndFreq> compareFreq = Comparator.comparingInt(tf -> tf.freq);
     PriorityQueue<TermAndFreq> lowFreqQueue =
-        new PriorityQueue<TestCommonTermsQuery.TermAndFreq>(5) {
-
-          @Override
-          protected boolean lessThan(TermAndFreq a, TermAndFreq b) {
-            return a.freq > b.freq;
-          }
-        };
-    PriorityQueue<TermAndFreq> highFreqQueue =
-        new PriorityQueue<TestCommonTermsQuery.TermAndFreq>(5) {
-
-          @Override
-          protected boolean lessThan(TermAndFreq a, TermAndFreq b) {
-            return a.freq < b.freq;
-          }
-        };
+        PriorityQueue.usingComparator(5, compareFreq.reversed());
+    PriorityQueue<TermAndFreq> highFreqQueue = PriorityQueue.usingComparator(5, compareFreq);
     try {
       TermsEnum iterator = terms.iterator();
       while (iterator.next() != null) {

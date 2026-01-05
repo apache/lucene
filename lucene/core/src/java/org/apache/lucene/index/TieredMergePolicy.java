@@ -30,9 +30,7 @@ import java.util.Set;
 /**
  * Merges segments of approximately equal size, subject to an allowed number of segments per tier.
  * This is similar to {@link LogByteSizeMergePolicy}, except this merge policy is able to merge
- * non-adjacent segment, and separates how many segments are merged at once ({@link
- * #setMaxMergeAtOnce}) from how many segments are allowed per tier ({@link #setSegmentsPerTier}).
- * This merge policy also does not over-merge (i.e. cascade merges).
+ * non-adjacent segment. This merge policy also does not over-merge (i.e. cascade merges).
  *
  * <p>For normal merging, this policy first computes a "budget" of how many segments are allowed to
  * be in the index. If the index is over-budget, then the policy sorts segments by decreasing size
@@ -58,7 +56,7 @@ import java.util.Set;
  * (1 GB), and you call {@code forceMerge(10)}, the two settings are clearly in conflict. {@code
  * TieredMergePolicy} will choose to break the {@link #setMaxMergedSegmentMB} constraint and try to
  * merge down to at most ten segments, each up to 5 * 1.25 GB in size (since an extra 25% buffer
- * increase in the expected segment size is targetted).
+ * increase in the expected segment size is targeted).
  *
  * <p>findForcedDeletesMerges should never produce segments greater than maxSegmentSize.
  *
@@ -84,13 +82,10 @@ public class TieredMergePolicy extends MergePolicy {
    */
   public static final double DEFAULT_NO_CFS_RATIO = 0.1;
 
-  // User-specified maxMergeAtOnce. In practice we always take the min of its
-  // value and segsPerTier to avoid suboptimal merging.
-  private int maxMergeAtOnce = 10;
   private long maxMergedSegmentBytes = 5 * 1024 * 1024 * 1024L;
 
-  private long floorSegmentBytes = 2 * 1024 * 1024L;
-  private double segsPerTier = 10.0;
+  private long floorSegmentBytes = 16 * 1024 * 1024L;
+  private double segsPerTier = 8.0;
   private double forceMergeDeletesPctAllowed = 10.0;
   private double deletesPctAllowed = 20.0;
   private int targetSearchConcurrency = 1;
@@ -100,28 +95,10 @@ public class TieredMergePolicy extends MergePolicy {
     super(DEFAULT_NO_CFS_RATIO, MergePolicy.DEFAULT_MAX_CFS_SEGMENT_SIZE);
   }
 
-  /** Maximum number of segments to be merged at a time during "normal" merging. Default is 10. */
-  public TieredMergePolicy setMaxMergeAtOnce(int v) {
-    if (v < 2) {
-      throw new IllegalArgumentException("maxMergeAtOnce must be > 1 (got " + v + ")");
-    }
-    maxMergeAtOnce = v;
-    return this;
-  }
-
   private enum MERGE_TYPE {
     NATURAL,
     FORCE_MERGE,
     FORCE_MERGE_DELETES
-  }
-
-  /**
-   * Returns the current maxMergeAtOnce setting.
-   *
-   * @see #setMaxMergeAtOnce
-   */
-  public int getMaxMergeAtOnce() {
-    return maxMergeAtOnce;
   }
 
   // TODO: should addIndexes do explicit merging, too?  And,
@@ -151,19 +128,27 @@ public class TieredMergePolicy extends MergePolicy {
   }
 
   /**
-   * Controls the maximum percentage of deleted documents that is tolerated in the index. Lower
-   * values make the index more space efficient at the expense of increased CPU and I/O activity.
-   * Values must be between 5 and 50. Default value is 20.
+   * Sets the maximum percentage of doc id space taken by deleted docs. The denominator includes
+   * both active and deleted documents. Lower values make the index more space efficient at the
+   * expense of increased CPU and I/O activity. Values must be between 0 and 50. Default value is
+   * 20.
    *
    * <p>When the maximum delete percentage is lowered, the indexing thread will call for merges more
    * often, meaning that write amplification factor will be increased. Write amplification factor
    * measures the number of times each document in the index is written. A higher write
    * amplification factor will lead to higher CPU and I/O activity as indicated above.
+   *
+   * <p>Values below 5% can lead to exceptionally high merge cost where indexing will continuously
+   * merge nearly all segments, and select newly merged segments immediately for merging again,
+   * often forcing degenerate merge selection like singleton merges. If you venture into this dark
+   * forest, consider limiting the maximum number of concurrent merges and threads (see {@link
+   * ConcurrentMergeScheduler#setMaxMergesAndThreads}) as a coarse attempt to bound the otherwise
+   * pathological indexing behavior.
    */
   public TieredMergePolicy setDeletesPctAllowed(double v) {
-    if (v < 5 || v > 50) {
+    if (v <= 0 || v > 50) {
       throw new IllegalArgumentException(
-          "indexPctDeletedTarget must be >= 5.0 and <= 50 (got " + v + ")");
+          "indexPctDeletedTarget must be > 0 and <= 50 (got " + v + ")");
     }
     deletesPctAllowed = v;
     return this;
@@ -188,7 +173,7 @@ public class TieredMergePolicy extends MergePolicy {
    * </ul>
    *
    * In both cases, this helps prevent frequent flushing of tiny segments to create a long tail of
-   * small segments in the index. Default is 2MB.
+   * small segments in the index. Default is 16MB.
    */
   public TieredMergePolicy setFloorSegmentMB(double v) {
     if (v <= 0.0) {
@@ -239,7 +224,7 @@ public class TieredMergePolicy extends MergePolicy {
    * Sets the allowed number of segments per tier. Smaller values mean more merging but fewer
    * segments.
    *
-   * <p>Default is 10.0.
+   * <p>Default is 8.0.
    */
   public TieredMergePolicy setSegmentsPerTier(double v) {
     if (v < 2.0) {
@@ -278,26 +263,26 @@ public class TieredMergePolicy extends MergePolicy {
     return targetSearchConcurrency;
   }
 
-  private static class SegmentSizeAndDocs {
-    private final SegmentCommitInfo segInfo;
-    /// Size of the segment in bytes, pro-rated by the number of live documents.
-    private final long sizeInBytes;
-    private final int delCount;
-    private final int maxDoc;
-    private final String name;
-
-    SegmentSizeAndDocs(SegmentCommitInfo info, final long sizeInBytes, final int segDelCount)
-        throws IOException {
-      segInfo = info;
-      this.name = info.info.name;
-      this.sizeInBytes = sizeInBytes;
-      this.delCount = segDelCount;
-      this.maxDoc = info.info.maxDoc();
+  /**
+   * Segment summary -- size and doc count -- for use when selecting merges.
+   *
+   * @param segInfo segment this wraps
+   * @param sizeInBytes size of all segment files in bytes
+   * @param delCount number of deleted documents in this segment
+   * @param maxDoc maxDoc in this segment
+   * @param name name of the segment
+   */
+  record SegmentSizeAndDocs(
+      SegmentCommitInfo segInfo, long sizeInBytes, int delCount, int maxDoc, String name) {
+    /** Creates a new SegmentSizeAndDocs from an info, the byte size and deleted doc count */
+    public SegmentSizeAndDocs(
+        SegmentCommitInfo info, final long sizeInBytes, final int segDelCount) {
+      this(info, sizeInBytes, segDelCount, info.info.maxDoc(), info.info.name);
     }
   }
 
   /** Holds score and explanation for a single candidate merge. */
-  protected abstract static class MergeScore {
+  abstract static class MergeScore {
     /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
     protected MergeScore() {}
 
@@ -422,7 +407,7 @@ public class TieredMergePolicy extends MergePolicy {
     }
     allowedDelCount = Math.max(0, allowedDelCount);
 
-    final int mergeFactor = (int) Math.min(maxMergeAtOnce, segsPerTier);
+    final int mergeFactor = (int) segsPerTier;
     // Compute max allowed segments for the remainder of the index
     long levelSize = Math.max(minSegmentBytes, floorSegmentBytes);
     long bytesLeft = totIndexBytes;
@@ -438,7 +423,10 @@ public class TieredMergePolicy extends MergePolicy {
     }
     // allowedSegCount may occasionally be less than segsPerTier
     // if segment sizes are below the floor size
-    allowedSegCount = Math.max(allowedSegCount, Math.max(segsPerTier, targetSearchConcurrency));
+    allowedSegCount = Math.max(allowedSegCount, segsPerTier);
+    // No need to merge if the total number of segments (including too big segments) is less than or
+    // equal to the target search concurrency.
+    allowedSegCount = Math.max(allowedSegCount, targetSearchConcurrency - tooBigCount);
     int allowedDocCount = getMaxAllowedDocs(totalMaxDoc, totalDelDocs);
 
     if (verbose(mergeContext) && tooBigCount > 0) {
@@ -554,46 +542,45 @@ public class TieredMergePolicy extends MergePolicy {
 
       for (int startIdx = 0; startIdx < sortedEligible.size(); startIdx++) {
 
-        long totAfterMergeBytes = 0;
-
         final List<SegmentCommitInfo> candidate = new ArrayList<>();
         boolean hitTooLarge = false;
         long bytesThisMerge = 0;
         long docCountThisMerge = 0;
         for (int idx = startIdx;
             idx < sortedEligible.size()
-                && candidate.size() < mergeFactor
+                // We allow merging more than mergeFactor segments together if the merged segment
+                // would be less than the floor segment size. This is important because segments
+                // below the floor segment size are more aggressively merged by this policy, so we
+                // need to grow them as quickly as possible.
+                && (candidate.size() < mergeFactor || bytesThisMerge < floorSegmentBytes)
                 && bytesThisMerge < maxMergedSegmentBytes
                 && (bytesThisMerge < floorSegmentBytes || docCountThisMerge <= allowedDocCount);
             idx++) {
           final SegmentSizeAndDocs segSizeDocs = sortedEligible.get(idx);
           final long segBytes = segSizeDocs.sizeInBytes;
           int segDocCount = segSizeDocs.maxDoc - segSizeDocs.delCount;
-          if (totAfterMergeBytes + segBytes > maxMergedSegmentBytes
-              || (totAfterMergeBytes > floorSegmentBytes
+          if (bytesThisMerge + segBytes > maxMergedSegmentBytes
+              || (bytesThisMerge > floorSegmentBytes
                   && docCountThisMerge + segDocCount > allowedDocCount)) {
             // Only set hitTooLarge when reaching the maximum byte size, as this will create
             // segments of the maximum size which will no longer be eligible for merging for a long
             // time (until they accumulate enough deletes).
-            hitTooLarge |= totAfterMergeBytes + segBytes > maxMergedSegmentBytes;
-            if (candidate.size() == 0) {
-              // We should never have something coming in that _cannot_ be merged, so handle
-              // singleton merges
-              candidate.add(segSizeDocs.segInfo);
-              bytesThisMerge += segBytes;
+            hitTooLarge |= bytesThisMerge + segBytes > maxMergedSegmentBytes;
+            // We should never have something coming in that _cannot_ be merged, so handle
+            // singleton merges
+            if (candidate.size() > 0) {
+              // NOTE: we continue, so that we can try
+              // "packing" smaller segments into this merge
+              // to see if we can get closer to the max
+              // size; this in general is not perfect since
+              // this is really "bin packing" and we'd have
+              // to try different permutations.
+              continue;
             }
-            // NOTE: we continue, so that we can try
-            // "packing" smaller segments into this merge
-            // to see if we can get closer to the max
-            // size; this in general is not perfect since
-            // this is really "bin packing" and we'd have
-            // to try different permutations.
-            continue;
           }
           candidate.add(segSizeDocs.segInfo);
           bytesThisMerge += segBytes;
           docCountThisMerge += segDocCount;
-          totAfterMergeBytes += segBytes;
         }
 
         // We should never see an empty candidate: we iterated over maxMergeAtOnce
@@ -642,7 +629,7 @@ public class TieredMergePolicy extends MergePolicy {
                   + " tooLarge="
                   + hitTooLarge
                   + " size="
-                  + String.format(Locale.ROOT, "%.3f MB", totAfterMergeBytes / 1024. / 1024.),
+                  + String.format(Locale.ROOT, "%.3f MB", bytesThisMerge / 1024. / 1024.),
               mergeContext);
         }
 
@@ -651,7 +638,7 @@ public class TieredMergePolicy extends MergePolicy {
           best = candidate;
           bestScore = score;
           bestTooLarge = hitTooLarge;
-          bestMergeBytes = totAfterMergeBytes;
+          bestMergeBytes = bytesThisMerge;
         }
       }
 
@@ -695,8 +682,8 @@ public class TieredMergePolicy extends MergePolicy {
     }
   }
 
-  /** Expert: scores one merge; subclasses can override. */
-  protected MergeScore score(
+  /** Expert: scores one merge */
+  MergeScore score(
       List<SegmentCommitInfo> candidate,
       boolean hitTooLarge,
       Map<SegmentCommitInfo, SegmentSizeAndDocs> segmentsSizes)
@@ -723,7 +710,7 @@ public class TieredMergePolicy extends MergePolicy {
       // matter in this case because this merge will not
       // "cascade" and so it cannot lead to N^2 merge cost
       // over time:
-      final int mergeFactor = (int) Math.min(maxMergeAtOnce, segsPerTier);
+      int mergeFactor = (int) segsPerTier;
       skew = 1.0 / mergeFactor;
     } else {
       skew =
@@ -1011,7 +998,6 @@ public class TieredMergePolicy extends MergePolicy {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder("[" + getClass().getSimpleName() + ": ");
-    sb.append("maxMergeAtOnce=").append(maxMergeAtOnce).append(", ");
     sb.append("maxMergedSegmentMB=").append(maxMergedSegmentBytes / 1024. / 1024.).append(", ");
     sb.append("floorSegmentMB=").append(floorSegmentBytes / 1024. / 1024.).append(", ");
     sb.append("forceMergeDeletesPctAllowed=").append(forceMergeDeletesPctAllowed).append(", ");

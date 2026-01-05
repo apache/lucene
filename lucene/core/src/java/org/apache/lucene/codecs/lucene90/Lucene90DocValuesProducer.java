@@ -27,6 +27,7 @@ import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -45,10 +46,11 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.compress.LZ4;
@@ -112,11 +114,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
     String dataName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, dataExtension);
-    // Doc-values have a forward-only access pattern, so pass ReadAdvice.NORMAL to perform
-    // readahead.
-    this.data =
-        state.directory.openInput(dataName, state.context.withReadAdvice(ReadAdvice.NORMAL));
-    boolean success = false;
+    // Doc-values have a forward-only access pattern
+    this.data = state.directory.openInput(dataName, state.context.withHints(FileTypeHint.DATA));
     try {
       final int version2 =
           CodecUtil.checkIndexHeader(
@@ -136,12 +135,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       // for FOOTER_MAGIC + algorithmID. This is cheap and can detect some forms of corruption
       // such as file truncation.
       CodecUtil.retrieveChecksum(data);
-
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this.data);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, data);
+      throw t;
     }
   }
 
@@ -191,7 +187,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
       byte type = meta.readByte();
-      if (info.hasDocValuesSkipIndex()) {
+      if (info.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
         skippers.put(info.number, readDocValueSkipperMeta(meta));
       }
       if (type == Lucene90DocValuesFormat.NUMERIC) {
@@ -469,6 +465,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     public long cost() {
       return maxDoc;
     }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return maxDoc;
+    }
   }
 
   private abstract static class SparseNumericDocValues extends NumericDocValues {
@@ -500,8 +501,18 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     }
 
     @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      disi.intoBitSet(upTo, bitSet, offset);
+    }
+
+    @Override
     public long cost() {
       return disi.cost();
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return disi.docIDRunEnd();
     }
   }
 
@@ -746,6 +757,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       doc = target;
       return true;
     }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return maxDoc;
+    }
   }
 
   private abstract static class SparseBinaryDocValues extends BinaryDocValues {
@@ -780,6 +796,16 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     public boolean advanceExact(int target) throws IOException {
       return disi.advanceExact(target);
     }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      disi.intoBitSet(upTo, bitSet, offset);
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return disi.docIDRunEnd();
+    }
   }
 
   @Override
@@ -790,7 +816,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       return DocValues.emptyBinary();
     }
 
-    final IndexInput bytesSlice = data.slice("fixed-binary", entry.dataOffset, entry.dataLength);
+    final RandomAccessInput bytesSlice = data.randomAccessSlice(entry.dataOffset, entry.dataLength);
     // Prefetch the first page of data. Following pages are expected to get prefetched through
     // read-ahead.
     if (bytesSlice.length() > 0) {
@@ -807,8 +833,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
           @Override
           public BytesRef binaryValue() throws IOException {
-            bytesSlice.seek((long) doc * length);
-            bytesSlice.readBytes(bytes.bytes, 0, length);
+            bytesSlice.readBytes((long) doc * length, bytes.bytes, 0, length);
             return bytes;
           }
         };
@@ -830,8 +855,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           public BytesRef binaryValue() throws IOException {
             long startOffset = addresses.get(doc);
             bytes.length = (int) (addresses.get(doc + 1L) - startOffset);
-            bytesSlice.seek(startOffset);
-            bytesSlice.readBytes(bytes.bytes, 0, bytes.length);
+            bytesSlice.readBytes(startOffset, bytes.bytes, 0, bytes.length);
             return bytes;
           }
         };
@@ -854,8 +878,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
           @Override
           public BytesRef binaryValue() throws IOException {
-            bytesSlice.seek((long) disi.index() * length);
-            bytesSlice.readBytes(bytes.bytes, 0, length);
+            bytesSlice.readBytes((long) disi.index() * length, bytes.bytes, 0, length);
             return bytes;
           }
         };
@@ -878,8 +901,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             final int index = disi.index();
             long startOffset = addresses.get(index);
             bytes.length = (int) (addresses.get(index + 1L) - startOffset);
-            bytesSlice.seek(startOffset);
-            bytesSlice.readBytes(bytes.bytes, 0, bytes.length);
+            bytesSlice.readBytes(startOffset, bytes.bytes, 0, bytes.length);
             return bytes;
           }
         };
@@ -952,6 +974,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           public long cost() {
             return maxDoc;
           }
+
+          @Override
+          public int docIDRunEnd() throws IOException {
+            return maxDoc;
+          }
         };
       } else if (ordsEntry.docsWithFieldOffset >= 0) { // sparse but non-empty
         final IndexedDISI disi =
@@ -991,8 +1018,18 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
 
           @Override
+          public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+            disi.intoBitSet(upTo, bitSet, offset);
+          }
+
+          @Override
           public long cost() {
             return disi.cost();
+          }
+
+          @Override
+          public int docIDRunEnd() throws IOException {
+            return disi.docIDRunEnd();
           }
         };
       }
@@ -1029,6 +1066,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       @Override
       public long cost() {
         return ords.cost();
+      }
+
+      @Override
+      public int docIDRunEnd() throws IOException {
+        return ords.docIDRunEnd();
       }
     };
   }
@@ -1123,12 +1165,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     final IndexInput bytes;
     final long blockMask;
     final LongValues indexAddresses;
-    final IndexInput indexBytes;
+    final RandomAccessInput indexBytes;
     final BytesRef term;
+    final BytesRef blockBuffer;
+    final ByteArrayDataInput blockInput;
     long ord = -1;
-
-    BytesRef blockBuffer = null;
-    ByteArrayDataInput blockInput = null;
     long currentCompressedBlockStart = -1;
     long currentCompressedBlockEnd = -1;
 
@@ -1145,13 +1186,14 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       indexAddresses =
           DirectMonotonicReader.getInstance(
               entry.termsIndexAddressesMeta, indexAddressesSlice, merging);
-      indexBytes = data.slice("terms-index", entry.termsIndexOffset, entry.termsIndexLength);
+      indexBytes = data.randomAccessSlice(entry.termsIndexOffset, entry.termsIndexLength);
       term = new BytesRef(entry.maxTermLength);
 
       // add the max term length for the dictionary
       // add 7 padding bytes can help decompression run faster.
       int bufferSize = entry.maxBlockLength + entry.maxTermLength + LZ4_DECOMPRESSOR_PADDING;
       blockBuffer = new BytesRef(new byte[bufferSize], 0, bufferSize);
+      blockInput = new ByteArrayDataInput();
     }
 
     @Override
@@ -1203,8 +1245,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       assert index >= 0 && index <= (entry.termsDictSize - 1) >>> entry.termsDictIndexShift;
       final long start = indexAddresses.get(index);
       term.length = (int) (indexAddresses.get(index + 1) - start);
-      indexBytes.seek(start);
-      indexBytes.readBytes(term.bytes, 0, term.length);
+      indexBytes.readBytes(start, term.bytes, 0, term.length);
       return term;
     }
 
@@ -1328,8 +1369,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         }
 
         // Reset the buffer.
-        blockInput =
-            new ByteArrayDataInput(blockBuffer.bytes, blockBuffer.offset, blockBuffer.length);
+        blockInput.reset(blockBuffer.bytes, blockBuffer.offset, blockBuffer.length);
       }
     }
 
@@ -1439,6 +1479,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         public int docValueCount() {
           return count;
         }
+
+        @Override
+        public int docIDRunEnd() throws IOException {
+          return maxDoc;
+        }
       };
     } else {
       // sparse
@@ -1496,6 +1541,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           return count;
         }
 
+        @Override
+        public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+          set = false;
+          disi.intoBitSet(upTo, bitSet, offset);
+        }
+
         private void set() {
           if (set == false) {
             final int index = disi.index();
@@ -1504,6 +1555,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             count = (int) (end - start);
             set = true;
           }
+        }
+
+        @Override
+        public int docIDRunEnd() throws IOException {
+          return disi.docIDRunEnd();
         }
       };
     }
@@ -1594,6 +1650,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           public long cost() {
             return maxDoc;
           }
+
+          @Override
+          public int docIDRunEnd() throws IOException {
+            return maxDoc;
+          }
         };
       } else if (ordsEntry.docsWithFieldOffset >= 0) { // sparse but non-empty
         final IndexedDISI disi =
@@ -1647,6 +1708,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
 
           @Override
+          public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+            set = false;
+            disi.intoBitSet(upTo, bitSet, offset);
+          }
+
+          @Override
           public long cost() {
             return disi.cost();
           }
@@ -1659,6 +1726,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               count = (int) (end - curr);
               set = true;
             }
+          }
+
+          @Override
+          public int docIDRunEnd() throws IOException {
+            return disi.docIDRunEnd();
           }
         };
       }
@@ -1700,6 +1772,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       @Override
       public long cost() {
         return ords.cost();
+      }
+
+      @Override
+      public int docIDRunEnd() throws IOException {
+        return ords.docIDRunEnd();
       }
     };
   }

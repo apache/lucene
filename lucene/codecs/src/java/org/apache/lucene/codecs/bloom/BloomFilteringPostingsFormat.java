@@ -54,8 +54,9 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
  *
  * <p>A choice of {@link BloomFilterFactory} can be passed to tailor Bloom Filter settings on a
  * per-field basis. The default configuration is {@link DefaultBloomFilterFactory} which allocates a
- * ~8mb bitset and hashes values using {@link MurmurHash64}. This should be suitable for most
- * purposes.
+ * ~8mb bitset and hashes values using {@link
+ * org.apache.lucene.util.StringHelper#murmurhash3_x64_128(BytesRef)}. This should be suitable for
+ * most purposes.
  *
  * <p>The format of the blm file is as follows:
  *
@@ -150,10 +151,8 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       String bloomFileName =
           IndexFileNames.segmentFileName(
               state.segmentInfo.name, state.segmentSuffix, BLOOM_EXTENSION);
-      ChecksumIndexInput bloomIn = null;
-      boolean success = false;
-      try {
-        bloomIn = state.directory.openChecksumInput(bloomFileName);
+
+      try (ChecksumIndexInput bloomIn = state.directory.openChecksumInput(bloomFileName)) {
         CodecUtil.checkIndexHeader(
             bloomIn,
             BLOOM_CODEC_NAME,
@@ -175,12 +174,9 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
           bloomsByFieldName.put(fieldInfo.name, bloom);
         }
         CodecUtil.checkFooter(bloomIn);
-        IOUtils.close(bloomIn);
-        success = true;
-      } finally {
-        if (!success) {
-          IOUtils.closeWhileHandlingException(bloomIn, delegateFieldsProducer);
-        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, delegateFieldsProducer);
+        throw t;
       }
     }
 

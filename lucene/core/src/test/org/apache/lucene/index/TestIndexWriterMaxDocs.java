@@ -67,7 +67,7 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
       assertEquals(IndexWriter.MAX_DOCS, ir.numDocs());
       IndexSearcher searcher = new IndexSearcher(ir);
       TopScoreDocCollectorManager collectorManager =
-          new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE, true);
+          new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE);
       TopDocs hits = searcher.search(new TermQuery(new Term("field", "text")), collectorManager);
       assertEquals(IndexWriter.MAX_DOCS, hits.totalHits.value());
 
@@ -409,9 +409,7 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
     try {
       w.addIndexes(dirs);
       fail("didn't get expected exception");
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalArgumentException expected) {
+    } catch (IllegalArgumentException _) {
       // pass
     } catch (IOException fakeDiskFull) {
       final Exception e;
@@ -461,9 +459,7 @@ public class TestIndexWriterMaxDocs extends LuceneTestCase {
     try {
       w.addIndexes(readers);
       fail("didn't get expected exception");
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalArgumentException expected) {
+    } catch (IllegalArgumentException _) {
       // pass
     } catch (IOException fakeDiskFull) {
       final Exception e;

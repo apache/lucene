@@ -216,7 +216,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
       // we need to commit this under lock but calculate it outside of the lock to minimize the time
       // this lock is held
       // per document. The reason we update this under lock is that we mark DWPTs as pending without
-      // acquiring it's
+      // acquiring its
       // lock in #setFlushPending and this also reads the committed bytes and modifies the
       // flush/activeBytes.
       // In the future we can clean this up to be more intuitive.
@@ -682,9 +682,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
         try {
           documentsWriter.subtractFlushedNumDocs(dwpt.getNumDocsInRAM());
           dwpt.abort();
-        } catch (
-            @SuppressWarnings("unused")
-            Exception ex) {
+        } catch (Exception _) {
           // that's fine we just abort everything here this is best effort
         } finally {
           doAfterFlush(dwpt);
@@ -696,9 +694,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
               blockedFlush); // add the blockedFlushes for correct accounting in doAfterFlush
           documentsWriter.subtractFlushedNumDocs(blockedFlush.getNumDocsInRAM());
           blockedFlush.abort();
-        } catch (
-            @SuppressWarnings("unused")
-            Exception ex) {
+        } catch (Exception _) {
           // that's fine we just abort everything here this is best effort
         } finally {
           doAfterFlush(blockedFlush);

@@ -51,7 +51,7 @@ import org.apache.lucene.util.BytesRef;
 // disk (but, should run successfully).  Best to run w/
 // -Dtests.codec=<current codec>, and w/ plenty of RAM, eg:
 //
-//   ant test -Dtests.monster=true -Dtests.heapsize=8g -Dtests.codec=Lucene62 -Dtestcase=Test2BTerms
+// gradlew test -Ptests.monster=true -Ptests.heapsize=8g -Ptests.codec=Lucene62 --tests Test2BTerms
 //
 @SuppressCodecs({"SimpleText", "Direct"})
 @Monster("very slow, use 5g minimum heap")

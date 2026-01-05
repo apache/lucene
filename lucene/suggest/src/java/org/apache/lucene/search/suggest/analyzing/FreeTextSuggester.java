@@ -251,32 +251,28 @@ public class FreeTextSuggester extends Lookup {
       throw new IllegalArgumentException("this suggester doesn't support contexts");
     }
 
-    String prefix = getClass().getSimpleName();
-    Path tempIndexPath = Files.createTempDirectory(prefix + ".index.");
-
-    Directory dir = FSDirectory.open(tempIndexPath);
-
     IndexWriterConfig iwc = new IndexWriterConfig(indexAnalyzer);
     iwc.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
     iwc.setRAMBufferSizeMB(ramBufferSizeMB);
-    IndexWriter writer = new IndexWriter(dir, iwc);
 
-    FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
-    // TODO: if only we had IndexOptions.TERMS_ONLY...
-    ft.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
-    ft.setOmitNorms(true);
-    ft.freeze();
+    String prefix = getClass().getSimpleName();
+    Path tempIndexPath = Files.createTempDirectory(prefix + ".index.");
+    try (Directory dir = FSDirectory.open(tempIndexPath);
+        IndexWriter writer = new IndexWriter(dir, iwc)) {
 
-    Document doc = new Document();
-    Field field = new Field("body", "", ft);
-    doc.add(field);
+      FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
+      // TODO: if only we had IndexOptions.TERMS_ONLY...
+      ft.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+      ft.setOmitNorms(true);
+      ft.freeze();
 
-    totTokens = 0;
-    IndexReader reader = null;
+      Document doc = new Document();
+      Field field = new Field("body", "", ft);
+      doc.add(field);
 
-    boolean success = false;
-    long newCount = 0;
-    try {
+      totTokens = 0;
+
+      long newCount = 0;
       while (true) {
         BytesRef surfaceForm = iterator.next();
         if (surfaceForm == null) {
@@ -286,73 +282,67 @@ public class FreeTextSuggester extends Lookup {
         writer.addDocument(doc);
         newCount++;
       }
-      reader = DirectoryReader.open(writer);
+      try (IndexReader reader = DirectoryReader.open(writer)) {
 
-      Terms terms = MultiTerms.getTerms(reader, "body");
-      if (terms == null) {
-        throw new IllegalArgumentException("need at least one suggestion");
-      }
-
-      // Move all ngrams into an FST:
-      TermsEnum termsEnum = terms.iterator();
-
-      Outputs<Long> outputs = PositiveIntOutputs.getSingleton();
-      FSTCompiler<Long> fstCompiler =
-          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
-
-      IntsRefBuilder scratchInts = new IntsRefBuilder();
-      while (true) {
-        BytesRef term = termsEnum.next();
-        if (term == null) {
-          break;
-        }
-        int ngramCount = countGrams(term);
-        if (ngramCount > grams) {
-          throw new IllegalArgumentException(
-              "tokens must not contain separator byte; got token="
-                  + term
-                  + " but gramCount="
-                  + ngramCount
-                  + ", which is greater than expected max ngram size="
-                  + grams);
-        }
-        if (ngramCount == 1) {
-          totTokens += termsEnum.totalTermFreq();
+        Terms terms = MultiTerms.getTerms(reader, "body");
+        if (terms == null) {
+          throw new IllegalArgumentException("need at least one suggestion");
         }
 
-        fstCompiler.add(Util.toIntsRef(term, scratchInts), encodeWeight(termsEnum.totalTermFreq()));
+        // Move all ngrams into an FST:
+        TermsEnum termsEnum = terms.iterator();
+
+        Outputs<Long> outputs = PositiveIntOutputs.getSingleton();
+        FSTCompiler<Long> fstCompiler =
+            new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
+
+        IntsRefBuilder scratchInts = new IntsRefBuilder();
+        while (true) {
+          BytesRef term = termsEnum.next();
+          if (term == null) {
+            break;
+          }
+          int ngramCount = countGrams(term);
+          if (ngramCount > grams) {
+            throw new IllegalArgumentException(
+                "tokens must not contain separator byte; got token="
+                    + term
+                    + " but gramCount="
+                    + ngramCount
+                    + ", which is greater than expected max ngram size="
+                    + grams);
+          }
+          if (ngramCount == 1) {
+            totTokens += termsEnum.totalTermFreq();
+          }
+
+          fstCompiler.add(
+              Util.toIntsRef(term, scratchInts), encodeWeight(termsEnum.totalTermFreq()));
+        }
+
+        final FST<Long> newFst =
+            FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
+        if (newFst == null) {
+          throw new IllegalArgumentException("need at least one suggestion");
+        }
+        fst = newFst;
+        count = newCount;
+
+        // System.out.println("FST: " + fst.getNodeCount() + " nodes");
+
+        /*
+        PrintWriter pw = new PrintWriter("/x/tmp/out.dot");
+        Util.toDot(fst, pw, true, true);
+        pw.close();
+        */
+
+        // Writer was only temporary, to count up bigrams,
+        // which we transferred to the FST, so now we
+        // rollback:
+        writer.rollback();
       }
-
-      final FST<Long> newFst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
-      if (newFst == null) {
-        throw new IllegalArgumentException("need at least one suggestion");
-      }
-      fst = newFst;
-      count = newCount;
-
-      // System.out.println("FST: " + fst.getNodeCount() + " nodes");
-
-      /*
-      PrintWriter pw = new PrintWriter("/x/tmp/out.dot");
-      Util.toDot(fst, pw, true, true);
-      pw.close();
-      */
-
-      // Writer was only temporary, to count up bigrams,
-      // which we transferred to the FST, so now we
-      // rollback:
-      writer.rollback();
-      success = true;
     } finally {
-      try {
-        if (success) {
-          IOUtils.close(reader, dir);
-        } else {
-          IOUtils.closeWhileHandlingException(reader, writer, dir);
-        }
-      } finally {
-        IOUtils.rm(tempIndexPath);
-      }
+      IOUtils.rm(tempIndexPath);
     }
   }
 
@@ -615,7 +605,7 @@ public class FreeTextSuggester extends Lookup {
           // Must do num+seen.size() for queue depth because we may
           // reject up to seen.size() paths in acceptResult():
           Util.TopNSearcher<Long> searcher =
-              new Util.TopNSearcher<Long>(fst, num, num + seen.size(), weightComparator) {
+              new Util.TopNSearcher<>(fst, num, num + seen.size(), Comparator.naturalOrder()) {
 
                 BytesRefBuilder scratchBytes = new BytesRefBuilder();
 
@@ -702,19 +692,15 @@ public class FreeTextSuggester extends Lookup {
         backoff *= ALPHA;
       }
 
-      Collections.sort(
-          results,
-          new Comparator<LookupResult>() {
-            @Override
-            public int compare(LookupResult a, LookupResult b) {
-              if (a.value > b.value) {
-                return -1;
-              } else if (a.value < b.value) {
-                return 1;
-              } else {
-                // Tie break by UTF16 sort order:
-                return ((String) a.key).compareTo((String) b.key);
-              }
+      results.sort(
+          (a, b) -> {
+            if (a.value > b.value) {
+              return -1;
+            } else if (a.value < b.value) {
+              return 1;
+            } else {
+              // Tie break by UTF16 sort order:
+              return ((String) a.key).compareTo((String) b.key);
             }
           });
 
@@ -760,14 +746,6 @@ public class FreeTextSuggester extends Lookup {
 
     return output;
   }
-
-  static final Comparator<Long> weightComparator =
-      new Comparator<Long>() {
-        @Override
-        public int compare(Long left, Long right) {
-          return left.compareTo(right);
-        }
-      };
 
   /** Returns the weight associated with an input string, or null if it does not exist. */
   public Object get(CharSequence key) {

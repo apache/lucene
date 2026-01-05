@@ -636,6 +636,31 @@ public abstract class LogMergePolicy extends MergePolicy {
           mergeDocs += segmentDocs;
         }
 
+        if (end - start >= mergeFactor
+            && minMergeSize < maxMergeSize
+            && mergeSize < minMergeSize
+            && anyMerging == false) {
+          // If the merge has mergeFactor segments but is still smaller than the min merged segment
+          // size, keep packing candidate segments.
+          while (end < 1 + upto) {
+            final SegmentInfoAndLevel segLevel = levels.get(end);
+            final SegmentCommitInfo info = segLevel.info;
+            if (mergingSegments.contains(info)) {
+              anyMerging = true;
+              break;
+            }
+            long segmentSize = size(info, mergeContext);
+            long segmentDocs = sizeDocs(info, mergeContext);
+            if (mergeSize + segmentSize > minMergeSize || mergeDocs + segmentDocs > maxMergeDocs) {
+              break;
+            }
+
+            mergeSize += segmentSize;
+            mergeDocs += segmentDocs;
+            end++;
+          }
+        }
+
         if (anyMerging || end - start <= 1) {
           // skip: there is an ongoing merge at the current level or the computed merge has a single
           // segment and this merge policy doesn't do singleton merges

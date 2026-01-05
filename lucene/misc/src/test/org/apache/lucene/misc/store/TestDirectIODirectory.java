@@ -22,12 +22,20 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.OptionalLong;
-import org.apache.lucene.document.*;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PhraseQuery;
-import org.apache.lucene.store.*;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.FlushInfo;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.MergeInfo;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 import org.junit.BeforeClass;
@@ -104,7 +112,7 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
   }
 
   public void testReadPastEOFShouldThrowEOFExceptionWithEmptyFile() throws Exception {
-    // fileSize needs to be 0 to test this condition. Do not randomized.
+    // fileSize needs to be 0 to test this condition. Do not randomize.
     final int fileSize = 0;
     try (Directory dir = getDirectory(createTempDir("testReadPastEOF"))) {
       try (IndexOutput o = dir.createOutput("out", newIOContext(random()))) {
@@ -167,46 +175,72 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
       assertTrue(
           dir.useDirectIO(
               "dummy",
-              new IOContext(new MergeInfo(numDocs, largeSize, true, -1)),
+              IOContext.merge(new MergeInfo(numDocs, largeSize, true, -1)),
               OptionalLong.empty()));
       assertFalse(
           dir.useDirectIO(
               "dummy",
-              new IOContext(new MergeInfo(numDocs, smallSize, true, -1)),
+              IOContext.merge(new MergeInfo(numDocs, smallSize, true, -1)),
               OptionalLong.empty()));
 
       assertTrue(
           dir.useDirectIO(
               "dummy",
-              new IOContext(new MergeInfo(numDocs, largeSize, true, -1)),
+              IOContext.merge(new MergeInfo(numDocs, largeSize, true, -1)),
               OptionalLong.of(largeSize)));
       assertFalse(
           dir.useDirectIO(
               "dummy",
-              new IOContext(new MergeInfo(numDocs, smallSize, true, -1)),
+              IOContext.merge(new MergeInfo(numDocs, smallSize, true, -1)),
               OptionalLong.of(smallSize)));
       assertFalse(
           dir.useDirectIO(
               "dummy",
-              new IOContext(new MergeInfo(numDocs, smallSize, true, -1)),
+              IOContext.merge(new MergeInfo(numDocs, smallSize, true, -1)),
               OptionalLong.of(largeSize)));
       assertFalse(
           dir.useDirectIO(
               "dummy",
-              new IOContext(new MergeInfo(numDocs, largeSize, true, -1)),
+              IOContext.merge(new MergeInfo(numDocs, largeSize, true, -1)),
               OptionalLong.of(smallSize)));
 
       assertFalse(
           dir.useDirectIO(
-              "dummy", new IOContext(new FlushInfo(numDocs, largeSize)), OptionalLong.empty()));
+              "dummy", IOContext.flush(new FlushInfo(numDocs, largeSize)), OptionalLong.empty()));
       assertFalse(
           dir.useDirectIO(
-              "dummy", new IOContext(new FlushInfo(numDocs, smallSize)), OptionalLong.empty()));
+              "dummy", IOContext.flush(new FlushInfo(numDocs, smallSize)), OptionalLong.empty()));
       assertFalse(
           dir.useDirectIO(
               "dummy",
-              new IOContext(new FlushInfo(numDocs, largeSize)),
+              IOContext.flush(new FlushInfo(numDocs, largeSize)),
               OptionalLong.of(largeSize)));
+    }
+  }
+
+  // Ping-pong seeks should be really fast, since the position should be within buffer.
+  // The test should complete within sub-second times, not minutes.
+  public void testSeekSmall() throws IOException {
+    Path tmpDir = createTempDir("testSeekSmall");
+    try (Directory dir = getDirectory(tmpDir)) {
+      int len = atLeast(100);
+      try (IndexOutput o = dir.createOutput("out", newIOContext(random()))) {
+        byte[] b = new byte[len];
+        for (int i = 0; i < len; i++) {
+          b[i] = (byte) i;
+        }
+        o.writeBytes(b, 0, len);
+      }
+      try (IndexInput in = dir.openInput("out", newIOContext(random()))) {
+        for (int i = 0; i < 100_000; i++) {
+          in.seek(2);
+          assertEquals(2, in.readByte());
+          in.seek(1);
+          assertEquals(1, in.readByte());
+          in.seek(0);
+          assertEquals(0, in.readByte());
+        }
+      }
     }
   }
 }

@@ -17,6 +17,7 @@
 package org.apache.lucene.util;
 
 import java.util.Comparator;
+import java.util.Objects;
 
 /**
  * Just like {@link BytesRefArray} except all values have the same length.
@@ -26,7 +27,7 @@ import java.util.Comparator;
  * @lucene.internal
  * @lucene.experimental
  */
-final class FixedLengthBytesRefArray implements SortableBytesRefArray {
+public final class FixedLengthBytesRefArray implements SortableBytesRefArray {
   private final int valueLength;
   private final int valuesPerBlock;
 
@@ -88,6 +89,24 @@ final class FixedLengthBytesRefArray implements SortableBytesRefArray {
     nextEntry++;
 
     return size++;
+  }
+
+  /**
+   * Returns the <i>n'th</i> element of this {@link FixedLengthBytesRefArray}
+   *
+   * @param spare a spare {@link BytesRef} instance. The length of this spare should be equal to the
+   *     fixed length.
+   * @param index the elements index to retrieve
+   * @return the <i>n'th</i> element of this {@link FixedLengthBytesRefArray}
+   */
+  public BytesRef get(BytesRef spare, int index) {
+    Objects.checkIndex(index, size);
+    assert spare.length == valueLength;
+    final int block = index / valuesPerBlock;
+    final int pos = index % valuesPerBlock;
+    spare.bytes = blocks[block];
+    spare.offset = pos * valueLength;
+    return spare;
   }
 
   /**

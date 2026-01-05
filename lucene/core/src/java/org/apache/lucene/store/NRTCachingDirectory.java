@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.store;
 
+import java.io.Closeable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -56,8 +57,8 @@ import org.apache.lucene.util.IOUtils;
  * </pre>
  *
  * <p>This will cache all newly flushed segments, all merges whose expected segment size is {@code
- * <= 5 MB}, unless the net cached bytes exceeds 60 MB at which point all writes will not be cached
- * (until the net bytes falls below 60 MB).
+ * <= 5 MB}, unless the net cached bytes exceed 60 MB at which point all writes will not be cached
+ * (until the net bytes fall below 60 MB).
  *
  * @lucene.experimental
  */
@@ -249,11 +250,9 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
     if (VERBOSE) {
       System.out.println("nrtdir.createTempOutput prefix=" + prefix + " suffix=" + suffix);
     }
-    Set<String> toDelete = new HashSet<>();
-
     // This is very ugly/messy/dangerous (can in some disastrous case maybe create too many temp
     // files), but I don't know of a cleaner way:
-    boolean success = false;
+    Set<String> toDelete = new HashSet<>();
 
     Directory first;
     Directory second;
@@ -266,7 +265,7 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
     }
 
     IndexOutput out = null;
-    try {
+    try (Closeable _ = () -> IOUtils.deleteFiles(first, toDelete)) {
       while (true) {
         out = first.createTempOutput(prefix, suffix, context);
         String name = out.getName();
@@ -275,17 +274,12 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
           out.close();
         } else {
           toDelete.remove(name);
-          success = true;
           break;
         }
       }
-    } finally {
-      if (success) {
-        IOUtils.deleteFiles(first, toDelete);
-      } else {
-        IOUtils.closeWhileHandlingException(out);
-        IOUtils.deleteFilesIgnoringExceptions(first, toDelete);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, out);
+      throw t;
     }
 
     return out;
@@ -299,7 +293,7 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
     try {
       dir.fileLength(fileName);
       return true;
-    } catch (@SuppressWarnings("unused") NoSuchFileException | FileNotFoundException e) {
+    } catch (NoSuchFileException | FileNotFoundException _) {
       return false;
     }
   }

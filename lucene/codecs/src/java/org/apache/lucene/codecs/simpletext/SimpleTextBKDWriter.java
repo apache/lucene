@@ -520,7 +520,7 @@ final class SimpleTextBKDWriter implements Closeable {
       writeLeafBlockDocs(out, leafDocs, 0, leafCount);
 
       final IntFunction<BytesRef> packedValues =
-          new IntFunction<BytesRef>() {
+          new IntFunction<>() {
             final BytesRef scratch = new BytesRef();
 
             {
@@ -687,7 +687,6 @@ final class SimpleTextBKDWriter implements Closeable {
     BKDRadixSelector radixSelector =
         new BKDRadixSelector(config, maxPointsSortInHeap, tempDir, tempFileNamePrefix);
 
-    boolean success = false;
     try {
 
       build(
@@ -706,12 +705,9 @@ final class SimpleTextBKDWriter implements Closeable {
       assert tempDir.getCreatedFiles().isEmpty();
       // System.out.println("write time: " + ((System.nanoTime() - t1) / (double)
       // TimeUnit.MILLISECONDS.toNanos(1)) + " ms");
-
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.deleteFilesIgnoringExceptions(tempDir, tempDir.getCreatedFiles());
-      }
+    } catch (Throwable t) {
+      IOUtils.deleteFilesSuppressingExceptions(t, tempDir, tempDir.getCreatedFiles());
+      throw t;
     }
 
     // Write index:
@@ -1008,7 +1004,7 @@ final class SimpleTextBKDWriter implements Closeable {
 
       // Write the full values:
       IntFunction<BytesRef> packedValues =
-          new IntFunction<BytesRef>() {
+          new IntFunction<>() {
             @Override
             public BytesRef apply(int i) {
               reader.getValue(from + i, scratchBytesRef1);
@@ -1189,7 +1185,7 @@ final class SimpleTextBKDWriter implements Closeable {
 
       // Write the full values:
       IntFunction<BytesRef> packedValues =
-          new IntFunction<BytesRef>() {
+          new IntFunction<>() {
             final BytesRef scratch = new BytesRef();
 
             {

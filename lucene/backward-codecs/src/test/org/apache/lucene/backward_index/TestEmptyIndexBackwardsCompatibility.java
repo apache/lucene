@@ -53,14 +53,14 @@ public class TestEmptyIndexBackwardsCompatibility extends BackwardsCompatibility
   public static Iterable<Object[]> testVersionsFactory() {
     List<Object[]> params = new ArrayList<>();
     // TODO - WHY ONLY on the first major version?
-    params.add(new Object[] {Version.LUCENE_9_0_0, createPattern(INDEX_NAME, SUFFIX)});
+    params.add(new Object[] {Version.LUCENE_10_0_0, createPattern(INDEX_NAME, SUFFIX)});
     return params;
   }
 
   public void testUpgradeEmptyOldIndex() throws Exception {
     try (Directory dir = newDirectory(directory)) {
       TestIndexUpgradeBackwardsCompatibility.newIndexUpgrader(dir).upgrade();
-      TestIndexUpgradeBackwardsCompatibility.checkAllSegmentsUpgraded(dir, 9);
+      TestIndexUpgradeBackwardsCompatibility.checkAllSegmentsUpgraded(dir, 10);
     }
   }
 }

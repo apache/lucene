@@ -16,7 +16,13 @@
  */
 package org.apache.lucene.util.automaton;
 
-import java.util.regex.Matcher;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.emptyString;
+import static org.hamcrest.Matchers.hasToString;
+import static org.hamcrest.Matchers.matchesRegex;
+import static org.hamcrest.Matchers.not;
+
+import java.util.Locale;
 import java.util.regex.Pattern;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
@@ -35,33 +41,97 @@ public class TestRegExp extends LuceneTestCase {
     assertFalse(run.run("ad"));
   }
 
+  public void testUnicodeAsciiInsensitiveFlags() {
+    RegExp r;
+    // ASCII behaves appropriately with different flags
+    r = new RegExp("A");
+    assertFalse(new CharacterRunAutomaton(r.toAutomaton()).run("a"));
+
+    r = new RegExp("A", RegExp.ALL, RegExp.CASE_INSENSITIVE);
+    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("a"));
+
+    r = new RegExp("A", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE);
+    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("a"));
+
+    r = new RegExp("A", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE | RegExp.CASE_INSENSITIVE);
+    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("a"));
+
+    // class 1 Unicode characters behaves appropriately with different flags
+    r = new RegExp("Σ");
+    assertFalse(new CharacterRunAutomaton(r.toAutomaton()).run("σ"));
+    assertFalse(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
+
+    r = new RegExp("σ");
+    assertFalse(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
+
+    r = new RegExp("Σ", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE);
+    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("σ"));
+    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
+
+    r = new RegExp("σ", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE);
+    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
+
+    r = new RegExp("Σ", RegExp.ALL, RegExp.CASE_INSENSITIVE);
+    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("σ"));
+    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
+
+    r = new RegExp("σ", RegExp.ALL, RegExp.CASE_INSENSITIVE);
+    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
+
+    r = new RegExp("Σ", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE | RegExp.CASE_INSENSITIVE);
+    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("σ"));
+    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
+
+    r = new RegExp("σ", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE | RegExp.CASE_INSENSITIVE);
+    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
+
+    // class 2 Unicode characters behaves appropriately with different flags
+    r = new RegExp("ῼ", RegExp.ALL, RegExp.CASE_INSENSITIVE);
+    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ῳ"));
+
+    r = new RegExp("ῼ", RegExp.ALL, RegExp.CASE_INSENSITIVE);
+    assertFalse(
+        new CharacterRunAutomaton(r.toAutomaton()).run("ῼ".toUpperCase(Locale.ROOT))); // "ΩΙ"
+
+    // class 3 Unicode characters behaves appropriately with different flags
+    r = new RegExp("ﬗ", RegExp.ALL, RegExp.CASE_INSENSITIVE);
+    assertFalse(new CharacterRunAutomaton(r.toAutomaton()).run("ﬗ".toUpperCase(Locale.ROOT)));
+  }
+
   // LUCENE-6046
   public void testRepeatWithEmptyString() throws Exception {
     Automaton a = new RegExp("[^y]*{1,2}").toAutomaton();
     // paranoia:
-    assertTrue(a.toString().length() > 0);
+    assertThat(a, hasToString(not(emptyString())));
   }
 
   public void testRepeatWithEmptyLanguage() throws Exception {
     Automaton a = new RegExp("#*").toAutomaton();
     // paranoia:
-    assertTrue(a.toString().length() > 0);
+    assertThat(a, hasToString(not(emptyString())));
     a = new RegExp("#+").toAutomaton();
-    assertTrue(a.toString().length() > 0);
+    assertThat(a, hasToString(not(emptyString())));
     a = new RegExp("#{2,10}").toAutomaton();
-    assertTrue(a.toString().length() > 0);
+    assertThat(a, hasToString(not(emptyString())));
     a = new RegExp("#?").toAutomaton();
-    assertTrue(a.toString().length() > 0);
+    assertThat(a, hasToString(not(emptyString())));
   }
 
   boolean caseSensitiveQuery = true;
+  boolean unicodeCaseQuery = true;
 
   public void testCoreJavaParity() {
     // Generate random doc values and random regular expressions
     // and check for same matching behaviour as Java's Pattern class.
     for (int i = 0; i < 1000; i++) {
       caseSensitiveQuery = true;
-      checkRandomExpression(randomDocValue(1 + random().nextInt(30)));
+      checkRandomExpression(randomDocValue(1 + random().nextInt(30), false));
+    }
+
+    for (int i = 0; i < 1000; i++) {
+      caseSensitiveQuery = true;
+      unicodeCaseQuery = true;
+      checkRandomExpression(randomDocValue(1 + random().nextInt(30), true));
     }
   }
 
@@ -75,7 +145,7 @@ public class TestRegExp extends LuceneTestCase {
               () -> {
                 new RegExp(illegalExpression);
               });
-      assertTrue(expected.getMessage().contains("invalid character class"));
+      assertThat(expected.getMessage(), containsString("invalid character class"));
     }
   }
 
@@ -95,11 +165,14 @@ public class TestRegExp extends LuceneTestCase {
             () -> {
               new RegExp("a{99,11}");
             });
-    assertTrue(expected.getMessage().contains("out of order"));
+    assertThat(expected.getMessage(), containsString("out of order"));
   }
 
-  static String randomDocValue(int minLength) {
+  static String randomDocValue(int minLength, boolean includeUnicode) {
     String charPalette = "AAAaaaBbbCccc123456 \t";
+    if (includeUnicode) {
+      charPalette += "Σσςῼῳ";
+    }
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < minLength; i++) {
       sb.append(charPalette.charAt(randomInt(charPalette.length() - 1)));
@@ -131,7 +204,7 @@ public class TestRegExp extends LuceneTestCase {
       case 0:
         // OR with random alpha of same length
         result.append(
-            "(" + replacementPart + "|d" + randomDocValue(replacementPart.length()) + ")");
+            "(" + replacementPart + "|d" + randomDocValue(replacementPart.length(), false) + ")");
         break;
       case 1:
         // OR with non-existant value
@@ -222,12 +295,11 @@ public class TestRegExp extends LuceneTestCase {
     Pattern pattern =
         caseSensitiveQuery
             ? Pattern.compile(regexPattern)
-            : Pattern.compile(regexPattern, Pattern.CASE_INSENSITIVE);
-    Matcher matcher = pattern.matcher(docValue);
-    assertTrue(
-        "Java regex " + regexPattern + " did not match doc value " + docValue, matcher.matches());
+            : Pattern.compile(regexPattern, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+    assertThat(docValue, matchesRegex(pattern));
 
-    int matchFlags = caseSensitiveQuery ? 0 : RegExp.ASCII_CASE_INSENSITIVE;
+    int matchFlags =
+        caseSensitiveQuery ? 0 : RegExp.ASCII_CASE_INSENSITIVE | RegExp.CASE_INSENSITIVE;
     RegExp regex = new RegExp(regexPattern, RegExp.ALL, matchFlags);
     Automaton automaton =
         Operations.determinize(regex.toAutomaton(), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);

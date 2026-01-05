@@ -1200,7 +1200,7 @@ public class TestQPHelper extends LuceneTestCase {
             new Term("field", "[a-z][123]"),
             RegExp.ALL,
             0,
-            name -> null,
+            _ -> null,
             Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
             MultiTermQuery.SCORING_BOOLEAN_REWRITE);
     assertEquals(new BoostQuery(q, 0.5f), qp.parse("/[A-Z][123]/^0.5", df));
@@ -1257,8 +1257,8 @@ public class TestQPHelper extends LuceneTestCase {
     StandardQueryParser qp = new StandardQueryParser();
     qp.setAnalyzer(new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false));
 
-    assertEquals(new MatchAllDocsQuery(), qp.parse("*:*", "field"));
-    assertEquals(new MatchAllDocsQuery(), qp.parse("(*:*)", "field"));
+    assertEquals(MatchAllDocsQuery.INSTANCE, qp.parse("*:*", "field"));
+    assertEquals(MatchAllDocsQuery.INSTANCE, qp.parse("(*:*)", "field"));
     BooleanQuery bq = (BooleanQuery) qp.parse("+*:* -*:*", "field");
     for (BooleanClause c : bq) {
       assertTrue(c.query().getClass() == MatchAllDocsQuery.class);

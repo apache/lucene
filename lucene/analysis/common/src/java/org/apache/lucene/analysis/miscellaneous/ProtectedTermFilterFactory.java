@@ -138,7 +138,7 @@ public class ProtectedTermFilterFactory extends ConditionalTokenFilterFactory {
         String filterName = splitKey.get(0).toLowerCase(Locale.ROOT);
         if (wrappedFilterArgs.containsKey(filterName)) { // Skip if not in "wrappedFilter" arg
           Map<String, String> filterArgs =
-              wrappedFilterArgs.computeIfAbsent(filterName, k -> new HashMap<>());
+              wrappedFilterArgs.computeIfAbsent(filterName, _ -> new HashMap<>());
           String argKey = splitKey.get(1);
           filterArgs.put(
               argKey, argValue); // argKey is guaranteed unique, don't need to check for duplicates

@@ -18,7 +18,6 @@
 package org.apache.lucene.backward_codecs.lucene92;
 
 import static org.apache.lucene.backward_codecs.lucene92.Lucene92RWHnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -33,6 +32,7 @@ import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -43,7 +43,6 @@ import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
@@ -190,9 +189,12 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     ByteBuffer binaryVector =
         ByteBuffer.allocate(vectors.dimension() * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
-    for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
+    KnnVectorValues.DocIndexIterator iterator = vectors.iterator();
+    for (int docV = iterator.nextDoc();
+        docV != DocIdSetIterator.NO_MORE_DOCS;
+        docV = iterator.nextDoc()) {
       // write vector
-      float[] vectorValue = vectors.vectorValue();
+      float[] vectorValue = vectors.vectorValue(iterator.index());
       binaryVector.asFloatBuffer().put(vectorValue);
       output.writeBytes(binaryVector.array(), binaryVector.limit());
       docsWithField.add(docV);
@@ -265,11 +267,11 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
     } else {
       meta.writeInt(graph.numLevels());
       for (int level = 0; level < graph.numLevels(); level++) {
-        int[] sortedNodes = HnswGraph.NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
-        meta.writeInt(sortedNodes.length); // number of nodes on a level
+        HnswGraph.NodesIterator sortedNodes = graph.getSortedNodes(level);
+        meta.writeInt(sortedNodes.size()); // number of nodes on a level
         if (level > 0) {
-          for (int node : sortedNodes) {
-            meta.writeInt(node); // list of nodes on a level
+          while (sortedNodes.hasNext()) {
+            meta.writeInt(sortedNodes.next()); // list of nodes on a level
           }
         }
       }
@@ -277,7 +279,7 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
   }
 
   private OnHeapHnswGraph writeGraph(
-      RandomAccessVectorValues.Floats vectorValues, VectorSimilarityFunction similarityFunction)
+      FloatVectorValues vectorValues, VectorSimilarityFunction similarityFunction)
       throws IOException {
     DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
     // build graph
@@ -293,9 +295,9 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
     int countOnLevel0 = graph.size();
     for (int level = 0; level < graph.numLevels(); level++) {
       int maxConnOnLevel = level == 0 ? (M * 2) : M;
-      int[] sortedNodes = HnswGraph.NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
-      for (int node : sortedNodes) {
-        NeighborArray neighbors = graph.getNeighbors(level, node);
+      HnswGraph.NodesIterator sortedNodes = graph.getSortedNodes(level);
+      while (sortedNodes.hasNext()) {
+        NeighborArray neighbors = graph.getNeighbors(level, sortedNodes.next());
         int size = neighbors.size();
         vectorIndex.writeInt(size);
         // Destructively modify; it's ok we are discarding it after this

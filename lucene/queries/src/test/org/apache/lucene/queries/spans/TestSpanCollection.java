@@ -42,7 +42,7 @@ public class TestSpanCollection extends LuceneTestCase {
 
   public static final String FIELD = "field";
 
-  public static FieldType OFFSETS = new FieldType(TextField.TYPE_STORED);
+  public static final FieldType OFFSETS = new FieldType(TextField.TYPE_STORED);
 
   static {
     OFFSETS.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);

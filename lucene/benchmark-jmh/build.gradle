@@ -15,15 +15,13 @@
  * limitations under the License.
  */
 
-plugins {
-  id "java-library"
-}
-
 description = 'Lucene JMH micro-benchmarking module'
 
 dependencies {
   moduleImplementation project(':lucene:core')
   moduleImplementation project(':lucene:expressions')
+  moduleImplementation project(':lucene:sandbox')
+  moduleTestImplementation project(':lucene:test-framework')
 
   moduleImplementation deps.jmh.core
   annotationProcessor deps.jmh.annprocess
@@ -32,22 +30,19 @@ dependencies {
 
 // Exclude JMH-generated files and certain classes that require incubating classes
 // from forbiddenapis validation.
-tasks.matching { it.name == "forbiddenApisMain" }.configureEach {
-  patternSet.exclude([
-      "**/jmh_generated/**"
-  ])
+tasks.named("forbiddenApisMain").configure {
+  patternSet.exclude(["**/jmh_generated/**"])
 }
 
 
 // Skip certain infrastructure tasks that we can't use or don't care about.
-tasks.matching { it.name in [
-    // Turn off JMH dependency checksums and licensing (it's GPL w/ classpath exception
-    // but this seems fine for test/build only tools).
-    "validateJarChecksums", "validateJarLicenses", "collectJarInfos",
+tasks.matching {
+  it.name in [
     // No special javadocs for JMH benchmarks.
     "renderSiteJavadoc",
     "renderJavadoc",
-]}.configureEach {
+  ]
+}.configureEach {
   it.enabled = false
 }
 
@@ -67,18 +62,18 @@ tasks.compileJava.configure {
   options.javaModuleMainClass.set("org.apache.lucene.benchmark.jmh.Main")
 }
 
-jar.configure { Jar jarTask ->
+tasks.named("jar").configure {
   dependsOn configurations.runtimeClasspath
 
   manifest {
     attributes([
-        "Main-Class": "org.apache.lucene.benchmark.jmh.Main",
-        "Class-Path": new Object () {
-          @Override
-          String toString() {
-            return configurations.runtimeClasspath.collect { f -> f.name }.join(" ")
-          }
+      "Main-Class": "org.apache.lucene.benchmark.jmh.Main",
+      "Class-Path": new Object () {
+        @Override
+        String toString() {
+          return configurations.runtimeClasspath.collect { f -> f.name }.join(" ")
         }
+      }
     ])
   }
 }
@@ -98,7 +93,7 @@ java --module-path ${rootDir.toPath().relativize(dependenciesDir.toPath())} --mo
 
 JMH options you can use with the above:
 
-  -h      displays verbose help for all options 
+  -h      displays verbose help for all options
   -l      list available benchmarks
   -lp     list benchmarks that pass the filter and their parameters
   regexp  execute all benchmark containing regexp

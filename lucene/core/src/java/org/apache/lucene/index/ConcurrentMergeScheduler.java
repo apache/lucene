@@ -37,6 +37,7 @@ import org.apache.lucene.store.RateLimitedIndexOutput;
 import org.apache.lucene.store.RateLimiter;
 import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
@@ -87,7 +88,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   private int maxMergeCount = AUTO_DETECT_MERGES_AND_THREADS;
 
   /** How many {@link MergeThread}s have kicked off (this is use to name them). */
-  protected int mergeThreadCount;
+  protected int mergeThreadCounter;
 
   /** Floor for IO write rate limit (we will never go any lower than this) */
   private static final double MIN_MERGE_MB_PER_SEC = 5.0;
@@ -159,7 +160,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   /**
    * Sets max merges and threads to proper defaults for rotational or non-rotational storage.
    *
-   * @param spins true to set defaults best for traditional rotatational storage (spinning disks),
+   * @param spins true to set defaults best for traditional rotational storage (spinning disks),
    *     else false (e.g. for solid-state disks)
    */
   public synchronized void setDefaultMaxMergesAndThreads(boolean spins) {
@@ -176,9 +177,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         if (value != null) {
           coreCount = Integer.parseInt(value);
         }
-      } catch (
-          @SuppressWarnings("unused")
-          Throwable ignored) {
+      } catch (Throwable _) {
       }
 
       // If you are indexing at full throttle, how many merge threads do you need to keep up? It
@@ -497,9 +496,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         if (toSync != null) {
           try {
             toSync.join();
-          } catch (
-              @SuppressWarnings("unused")
-              InterruptedException ie) {
+          } catch (InterruptedException _) {
             // ignore this Exception, we will retry until all threads are dead
             interrupted = true;
           }
@@ -578,7 +575,6 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         return;
       }
 
-      boolean success = false;
       try {
         // OK to spawn a new merge thread to handle this
         // merge:
@@ -593,12 +589,9 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
         newMergeThread.start();
         updateMergeThreads();
-
-        success = true;
-      } finally {
-        if (!success) {
-          mergeSource.onMergeFinished(merge);
-        }
+      } catch (Throwable t) {
+        mergeSource.onMergeFinished(merge);
+        throw t;
       }
     }
   }
@@ -673,7 +666,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
       throws IOException {
     final MergeThread thread = new MergeThread(mergeSource, merge);
     thread.setDaemon(true);
-    thread.setName("Lucene Merge Thread #" + mergeThreadCount++);
+    thread.setName("Lucene Merge Thread #" + mergeThreadCounter++);
     return thread;
   }
 
@@ -685,9 +678,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     // Let CMS run new merges if necessary:
     try {
       merge(mergeSource, MergeTrigger.MERGE_FINISHED);
-    } catch (
-        @SuppressWarnings("unused")
-        AlreadyClosedException ace) {
+    } catch (AlreadyClosedException _) {
       // OK
     } catch (IOException ioe) {
       throw new UncheckedIOException(ioe);
@@ -952,7 +943,13 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
     public CachedExecutor() {
       this.executor =
-          new ThreadPoolExecutor(0, 1024, 1L, TimeUnit.MINUTES, new SynchronousQueue<>());
+          new ThreadPoolExecutor(
+              0,
+              1024,
+              1L,
+              TimeUnit.MINUTES,
+              new SynchronousQueue<>(),
+              new NamedThreadFactory("CachedExecutor"));
     }
 
     void shutdown() {

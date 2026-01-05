@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer; // javadocs
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -41,7 +42,7 @@ public class FieldType implements IndexableFieldType {
   private IndexOptions indexOptions = IndexOptions.NONE;
   private boolean frozen;
   private DocValuesType docValuesType = DocValuesType.NONE;
-  private boolean docValuesSkipIndex;
+  private DocValuesSkipIndexType docValuesSkipIndex = DocValuesSkipIndexType.NONE;
   private int dimensionCount;
   private int indexDimensionCount;
   private int dimensionNumBytes;
@@ -61,7 +62,7 @@ public class FieldType implements IndexableFieldType {
     this.omitNorms = ref.omitNorms();
     this.indexOptions = ref.indexOptions();
     this.docValuesType = ref.docValuesType();
-    this.docValuesSkipIndex = ref.hasDocValuesSkipIndex();
+    this.docValuesSkipIndex = ref.docValuesSkipIndexType();
     this.dimensionCount = ref.pointDimensionCount();
     this.indexDimensionCount = ref.pointIndexDimensionCount();
     this.dimensionNumBytes = ref.pointNumBytes();
@@ -508,7 +509,7 @@ public class FieldType implements IndexableFieldType {
   }
 
   @Override
-  public boolean hasDocValuesSkipIndex() {
+  public DocValuesSkipIndexType docValuesSkipIndexType() {
     return docValuesSkipIndex;
   }
 
@@ -518,7 +519,7 @@ public class FieldType implements IndexableFieldType {
    * correlate with fields that are part of the index sort, so that values can be expected to be
    * clustered in the doc ID space.
    */
-  public void setDocValuesSkipIndex(boolean docValuesSkipIndex) {
+  public void setDocValuesSkipIndexType(DocValuesSkipIndexType docValuesSkipIndex) {
     checkIfFrozen();
     this.docValuesSkipIndex = docValuesSkipIndex;
   }
@@ -531,7 +532,7 @@ public class FieldType implements IndexableFieldType {
     result = prime * result + indexDimensionCount;
     result = prime * result + dimensionNumBytes;
     result = prime * result + ((docValuesType == null) ? 0 : docValuesType.hashCode());
-    result = prime * result + Boolean.hashCode(docValuesSkipIndex);
+    result = prime * result + (docValuesSkipIndex == null ? 0 : docValuesSkipIndex.hashCode());
     result = prime * result + indexOptions.hashCode();
     result = prime * result + (omitNorms ? 1231 : 1237);
     result = prime * result + (storeTermVectorOffsets ? 1231 : 1237);

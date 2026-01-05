@@ -62,7 +62,30 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.FieldExistsQuery;
+import org.apache.lucene.search.FilterScorer;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MatchNoDocsQuery;
+import org.apache.lucene.search.MultiCollector;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.Scorable;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
+import org.apache.lucene.search.SimpleCollector;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
+import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
@@ -468,7 +491,7 @@ public class TestJoinUtil extends LuceneTestCase {
 
       final BitSet actualResult = new FixedBitSet(indexSearcher.getIndexReader().maxDoc());
       final TopScoreDocCollector topScoreDocCollector =
-          new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE, false).newCollector();
+          new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE).newCollector();
       indexSearcher.search(
           joinQuery, MultiCollector.wrap(new BitSetCollector(actualResult), topScoreDocCollector));
       assertBitSet(expectedResult, actualResult, indexSearcher);
@@ -719,8 +742,8 @@ public class TestJoinUtil extends LuceneTestCase {
       Query joinQuery =
           JoinUtil.createJoinQuery(
               "join_field",
-              new MatchNoDocsQuery(),
-              new MatchNoDocsQuery(),
+              MatchNoDocsQuery.INSTANCE,
+              MatchNoDocsQuery.INSTANCE,
               searcher,
               RandomPicks.randomFrom(random(), ScoreMode.values()),
               ordMap,
@@ -732,8 +755,8 @@ public class TestJoinUtil extends LuceneTestCase {
       Query joinQuery =
           JoinUtil.createJoinQuery(
               "join_field",
-              new MatchNoDocsQuery(),
-              new MatchNoDocsQuery(),
+              MatchNoDocsQuery.INSTANCE,
+              MatchNoDocsQuery.INSTANCE,
               searcher,
               ScoreMode.None,
               ordMap,
@@ -1234,7 +1257,7 @@ public class TestJoinUtil extends LuceneTestCase {
               JoinUtil.createJoinQuery(
                   joinField,
                   new TermQuery(new Term("name", "name5")),
-                  new MatchAllDocsQuery(),
+                  MatchAllDocsQuery.INSTANCE,
                   indexSearcher,
                   scoreMode1,
                   ordinalMap);
@@ -1244,7 +1267,7 @@ public class TestJoinUtil extends LuceneTestCase {
               JoinUtil.createJoinQuery(
                   joinField,
                   new TermQuery(new Term("name", "name5")),
-                  new MatchAllDocsQuery(),
+                  MatchAllDocsQuery.INSTANCE,
                   indexSearcher,
                   scoreMode1,
                   ordinalMap));
@@ -1255,7 +1278,7 @@ public class TestJoinUtil extends LuceneTestCase {
                   JoinUtil.createJoinQuery(
                       joinField,
                       new TermQuery(new Term("name", "name5")),
-                      new MatchAllDocsQuery(),
+                      MatchAllDocsQuery.INSTANCE,
                       indexSearcher,
                       scoreMode2,
                       ordinalMap)));
@@ -1265,7 +1288,7 @@ public class TestJoinUtil extends LuceneTestCase {
                   JoinUtil.createJoinQuery(
                       joinField,
                       new TermQuery(new Term("name", "name6")),
-                      new MatchAllDocsQuery(),
+                      MatchAllDocsQuery.INSTANCE,
                       indexSearcher,
                       scoreMode1,
                       ordinalMap)));
@@ -1292,7 +1315,7 @@ public class TestJoinUtil extends LuceneTestCase {
                   JoinUtil.createJoinQuery(
                       joinField,
                       new TermQuery(new Term("name", "name5")),
-                      new MatchAllDocsQuery(),
+                      MatchAllDocsQuery.INSTANCE,
                       indexSearcher,
                       scoreMode1,
                       ordinalMap)));
@@ -1546,7 +1569,7 @@ public class TestJoinUtil extends LuceneTestCase {
         // be also testing TopDocsCollector...
         final BitSet actualResult = new FixedBitSet(indexSearcher.getIndexReader().maxDoc());
         final TopScoreDocCollector topScoreDocCollector =
-            new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE, false).newCollector();
+            new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE).newCollector();
         indexSearcher.search(
             joinQuery,
             MultiCollector.wrap(new BitSetCollector(actualResult), topScoreDocCollector));
@@ -1887,7 +1910,7 @@ public class TestJoinUtil extends LuceneTestCase {
         }
       } else {
         searcher.search(
-            new MatchAllDocsQuery(),
+            MatchAllDocsQuery.INSTANCE,
             new SimpleCollector() {
 
               private SortedDocValues terms;

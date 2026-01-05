@@ -17,6 +17,8 @@
 
 package org.apache.lucene.internal.hppc;
 
+import static org.apache.lucene.internal.hppc.TestIntObjectHashMap.toList;
+
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -24,6 +26,8 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.Matchers;
 import org.junit.Test;
 
 /**
@@ -62,13 +66,6 @@ public class TestLongObjectHashMap extends LuceneTestCase {
     assertEquals(elements.length, array.length);
     Arrays.sort(array);
     Arrays.sort(elements);
-    assertArrayEquals(elements, array);
-  }
-
-  /** Check if the array's content is identical to a given sequence of elements. */
-  private static void assertSortedListEquals(Object[] array, Object... elements) {
-    assertEquals(elements.length, array.length);
-    Arrays.sort(array);
     assertArrayEquals(elements, array);
   }
 
@@ -162,11 +159,13 @@ public class TestLongObjectHashMap extends LuceneTestCase {
     assertEquals(value1, map.indexGet(map.indexOf(keyE)));
     assertEquals(value2, map.indexGet(map.indexOf(key1)));
 
-    expectThrows(
-        AssertionError.class,
-        () -> {
-          map.indexGet(map.indexOf(key2));
-        });
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(
+          AssertionError.class,
+          () -> {
+            map.indexGet(map.indexOf(key2));
+          });
+    }
 
     assertEquals(value1, map.indexReplace(map.indexOf(keyE), value3));
     assertEquals(value2, map.indexReplace(map.indexOf(key1), value4));
@@ -258,7 +257,7 @@ public class TestLongObjectHashMap extends LuceneTestCase {
   public void testPutWithExpansions() {
     final int COUNT = 10000;
     final Random rnd = new Random(random().nextLong());
-    final HashSet<Object> values = new HashSet<Object>();
+    final HashSet<Object> values = new HashSet<>();
 
     for (int i = 0; i < COUNT; i++) {
       final int v = rnd.nextInt();
@@ -585,13 +584,15 @@ public class TestLongObjectHashMap extends LuceneTestCase {
     map.put(key1, value3);
     map.put(key2, value2);
     map.put(key3, value1);
-    assertSortedListEquals(map.values().toArray(), value1, value2, value3);
+    MatcherAssert.assertThat(
+        toList(map.values()), Matchers.containsInAnyOrder(value1, value2, value3));
 
     map.clear();
     map.put(key1, value1);
     map.put(key2, value2);
     map.put(key3, value2);
-    assertSortedListEquals(map.values().toArray(), value1, value2, value2);
+    MatcherAssert.assertThat(
+        toList(map.values()), Matchers.containsInAnyOrder(value1, value2, value2));
   }
 
   /* */

@@ -109,7 +109,7 @@ public class TestAtomicUpdate extends LuceneTestCase {
 
     IndexWriterConfig conf =
         new IndexWriterConfig(new MockAnalyzer(random())).setMaxBufferedDocs(7);
-    ((TieredMergePolicy) conf.getMergePolicy()).setMaxMergeAtOnce(3);
+    ((TieredMergePolicy) conf.getMergePolicy()).setSegmentsPerTier(3);
     IndexWriter writer = RandomIndexWriter.mockIndexWriter(directory, conf, random());
 
     // Establish a base index of 100 docs:

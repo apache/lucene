@@ -58,9 +58,9 @@ class FSA:
           found = True
       if not found:
         return -1
-      
+
     return state
-        
+
   def addEdge(self, n1, n2, v1, v2, label):
     """
     Adds edge from n1-n2, utf8 byte range v1-v2.
@@ -123,7 +123,7 @@ class FSA:
     open('tmp.dot', 'wb').write(self.toDOT(label))
     if os.system('dot -Tpng tmp.dot -o %s' % pngOut):
       raise RuntimeException('dot failed')
-    
+
 
 MASKS = []
 v = 2
@@ -134,7 +134,7 @@ for i in range(32):
 def binary(x):
   if x == 0:
     return '00000000'
-  
+
   l = []
   while x > 0:
     if x & 1 == 1:
@@ -201,7 +201,7 @@ def all(fsa, startNode, endNode, startCode, endCode, left):
       left = left[1:]
       lastN = n
     fsa.addEdge(lastN, endNode, 128, 191, 'all*')
-          
+
 def start(fsa, startNode, endNode, utf8, doAll):
   if len(utf8) == 1:
     fsa.addEdge(startNode, endNode, utf8[0][0], utf8[0][0] | MASKS[utf8[0][1]-1], 'start')
@@ -297,7 +297,7 @@ def main():
     print 't=%s [%s]' % \
           (' '.join([binary(x[0]) for x in toUTF8(int(sys.argv[3]))]),
            ' '.join(['%2x' % x[0] for x in toUTF8(int(sys.argv[3]))]))
-  
+
   build(fsa, fsa.start, fsa.end,
         toUTF8(utf32Start),
         toUTF8(utf32End))

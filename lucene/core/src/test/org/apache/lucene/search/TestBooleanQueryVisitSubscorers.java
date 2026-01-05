@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.everyItem;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -29,14 +33,13 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
-import org.apache.lucene.search.similarities.Similarity;
+import org.apache.lucene.search.similarities.RawTFSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -75,7 +78,7 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
     searcher = newSearcher(reader, true, false);
     searcher.setSimilarity(new ClassicSimilarity());
     scorerSearcher = new ScorerIndexSearcher(reader);
-    scorerSearcher.setSimilarity(new CountingSimilarity());
+    scorerSearcher.setSimilarity(new RawTFSimilarity());
   }
 
   @Override
@@ -156,7 +159,7 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
     private final Set<Scorer> tqsSet = new HashSet<>();
 
     MyCollector() {
-      super(new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE, false).newCollector());
+      super(new TopScoreDocCollectorManager(10, null, Integer.MAX_VALUE).newCollector());
     }
 
     @Override
@@ -246,21 +249,21 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
     query.add(new TermQuery(new Term(F2, "web")), Occur.SHOULD);
     query.add(new TermQuery(new Term(F2, "crawler")), Occur.SHOULD);
     query.setMinimumNumberShouldMatch(2);
-    query.add(new MatchAllDocsQuery(), Occur.MUST);
+    query.add(MatchAllDocsQuery.INSTANCE, Occur.MUST);
     ScoreSummary scoreSummary =
         searcher.search(query.build(), new ScorerSummarizingCollectorManager());
     assertEquals(1, scoreSummary.numHits.get());
-    assertFalse(scoreSummary.summaries.isEmpty());
-    for (String summary : scoreSummary.summaries) {
-      assertEquals(
-          "ConjunctionScorer\n"
-              + "    MUST ConstantScoreScorer\n"
-              + "    MUST WANDScorer\n"
-              + "            SHOULD TermScorer\n"
-              + "            SHOULD TermScorer\n"
-              + "            SHOULD TermScorer",
-          summary);
-    }
+    assertThat(
+        scoreSummary.summaries,
+        everyItem(
+            equalTo(
+                """
+                ConjunctionScorer
+                    MUST ConstantScoreScorer
+                    MUST WANDScorer
+                            SHOULD TermScorer
+                            SHOULD TermScorer
+                            SHOULD TermScorer""")));
   }
 
   public void testGetChildrenBoosterScorer() throws IOException {
@@ -270,10 +273,7 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
     ScoreSummary scoreSummary =
         scorerSearcher.search(query.build(), new ScorerSummarizingCollectorManager());
     assertEquals(1, scoreSummary.numHits.get());
-    assertFalse(scoreSummary.summaries.isEmpty());
-    for (String summary : scoreSummary.summaries) {
-      assertEquals("TermScorer", summary);
-    }
+    assertThat(scoreSummary.summaries, contains("TermScorer"));
   }
 
   private static class ScoreSummary {
@@ -343,26 +343,6 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
         builder.append("    ");
       }
       return builder;
-    }
-  }
-
-  // Similarity that just returns the frequency as the score
-  private static class CountingSimilarity extends Similarity {
-
-    @Override
-    public long computeNorm(FieldInvertState state) {
-      return 1;
-    }
-
-    @Override
-    public SimScorer scorer(
-        float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
-      return new SimScorer() {
-        @Override
-        public float score(float freq, long norm) {
-          return freq;
-        }
-      };
     }
   }
 }

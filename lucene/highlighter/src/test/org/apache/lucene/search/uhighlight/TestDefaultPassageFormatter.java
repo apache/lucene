@@ -75,4 +75,30 @@ public class TestDefaultPassageFormatter extends LuceneTestCase {
         "<b>Yin yang loooooooooong</b>, <b>yin</b> gap <b>yang</b> yong",
         formatter.format(passages, content));
   }
+
+  public void testReversedStartOffsetOrder() {
+    String content =
+        "When indexing data in Solr, each document is composed of various fields. "
+            + "A document essentially represents a single record, and each document typically contains a unique ID field.";
+
+    Passage[] passages = new Passage[2];
+    passages[0] = new Passage();
+    passages[0].setStartOffset(73);
+    passages[0].setEndOffset(179);
+    passages[0].setScore(1.8846991f);
+    passages[0].addMatch(75, 83, new BytesRef("document"), 1);
+    passages[0].addMatch(133, 141, new BytesRef("document"), 1);
+
+    passages[1] = new Passage();
+    passages[1].setStartOffset(0);
+    passages[1].setEndOffset(73);
+    passages[1].setScore(1.5923802f);
+    passages[1].addMatch(33, 41, new BytesRef("document"), 1);
+
+    DefaultPassageFormatter formatter = new DefaultPassageFormatter("<b>", "</b>", "\n", false);
+    assertEquals(
+        "A <b>document</b> essentially represents a single record, and each <b>document</b> typically contains a unique ID field.\n"
+            + "When indexing data in Solr, each <b>document</b> is composed of various fields. ",
+        formatter.format(passages, content));
+  }
 }

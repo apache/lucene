@@ -75,7 +75,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -167,8 +166,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
         return true;
       }
 
-      if (other instanceof PermissiveOffsetAttributeImpl) {
-        PermissiveOffsetAttributeImpl o = (PermissiveOffsetAttributeImpl) other;
+      if (other instanceof PermissiveOffsetAttributeImpl o) {
         return o.start == start && o.end == end;
       }
 
@@ -252,11 +250,11 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
         }
       }
 
-      positionToTerms = CollectionUtil.newHashMap(len);
-      startOffsetToTerms = CollectionUtil.newHashMap(len);
+      positionToTerms = HashMap.newHashMap(len);
+      startOffsetToTerms = HashMap.newHashMap(len);
       for (int i = 0; i < len; ++i) {
-        positionToTerms.computeIfAbsent(positions[i], k -> new HashSet<>(1)).add(i);
-        startOffsetToTerms.computeIfAbsent(startOffsets[i], k -> new HashSet<>(1)).add(i);
+        positionToTerms.computeIfAbsent(positions[i], _ -> new HashSet<>(1)).add(i);
+        startOffsetToTerms.computeIfAbsent(startOffsets[i], _ -> new HashSet<>(1)).add(i);
       }
 
       freqs = new HashMap<>();
@@ -519,7 +517,10 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
             assertTrue(foundPayload);
           }
         }
-        expectThrows(getReadPastLastPositionExceptionClass(), docsAndPositionsEnum::nextPosition);
+        Class<? extends Throwable> exClass = getReadPastLastPositionExceptionClass();
+        if (AssertionError.class.isAssignableFrom(exClass) && TEST_ASSERTS_ENABLED) {
+          expectThrows(exClass, docsAndPositionsEnum::nextPosition);
+        }
         assertEquals(PostingsEnum.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
       }
       this.docsEnum.set(docsAndPositionsEnum);

@@ -34,6 +34,7 @@ import org.apache.lucene.codecs.uniformsplit.FSTDictionary;
 import org.apache.lucene.codecs.uniformsplit.FieldMetadata;
 import org.apache.lucene.codecs.uniformsplit.IndexDictionary;
 import org.apache.lucene.codecs.uniformsplit.TermBytes;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -198,7 +199,7 @@ public class TestSTBlockReader extends LuceneTestCase {
         true,
         IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS,
         DocValuesType.NONE,
-        false,
+        DocValuesSkipIndexType.NONE,
         -1,
         Collections.emptyMap(),
         0,

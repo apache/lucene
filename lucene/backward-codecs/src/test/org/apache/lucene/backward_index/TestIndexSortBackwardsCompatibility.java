@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.backward_index;
 
+import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -55,7 +56,7 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
 
   static final String INDEX_NAME = "sorted";
   static final String SUFFIX = "";
-  private static final Version FIRST_PARENT_DOC_VERSION = Version.LUCENE_9_11_0;
+  private static final Version FIRST_PARENT_DOC_VERSION = Version.fromBits(9, 11, 0);
   private static final String PARENT_FIELD_NAME = "___parent";
 
   public TestIndexSortBackwardsCompatibility(Version version, String pattern) {
@@ -63,7 +64,7 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
   }
 
   /** Provides all sorted versions to the test-framework */
-  @ParametersFactory(argumentFormatting = "Lucene-Version:%1$s; Pattern: %2$s")
+  @ParametersFactory(argumentFormatting = "Lucene-Version: '%1$s'; Pattern: '%2$s'")
   public static Iterable<Object[]> testVersionsFactory() throws IllegalAccessException {
     return allVersion(INDEX_NAME, SUFFIX);
   }
@@ -155,7 +156,9 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
     mp.setNoCFSRatio(1.0);
     mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     MockAnalyzer analyzer = new MockAnalyzer(random());
-    analyzer.setMaxTokenLength(TestUtil.nextInt(random(), 1, IndexWriter.MAX_TERM_LENGTH));
+
+    // Don't filter out tokens that are too short because we use those tokens in assertions (#14344)
+    analyzer.setMaxTokenLength(RandomizedTest.randomIntBetween(5, IndexWriter.MAX_TERM_LENGTH));
 
     // TODO: remove randomness
     IndexWriterConfig conf = new IndexWriterConfig(analyzer);
@@ -215,7 +218,7 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
     assertTrue(topDocs.totalHits.value() > 0);
     topDocs =
         searcher.search(
-            new MatchAllDocsQuery(), 5, new Sort(new SortField("dateDV", SortField.Type.LONG)));
+            MatchAllDocsQuery.INSTANCE, 5, new Sort(new SortField("dateDV", SortField.Type.LONG)));
     assertEquals(50, topDocs.totalHits.value());
     assertEquals(5, topDocs.scoreDocs.length);
     long firstDate = (Long) ((FieldDoc) topDocs.scoreDocs[0]).fields[0];

@@ -52,6 +52,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
@@ -108,6 +109,8 @@ public class TestTermInSetQuery extends LuceneTestCase {
     dir.close();
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testDuel() throws IOException {
     final int iters = atLeast(2);
     final String field = "f";
@@ -316,12 +319,12 @@ public class TestTermInSetQuery extends LuceneTestCase {
 
     TermInSetQuery tq1 = new TermInSetQuery("thing", List.of(newBytesRef("apple")));
     TermInSetQuery tq2 = new TermInSetQuery("thing", List.of(newBytesRef("orange")));
-    assertFalse(tq1.hashCode() == tq2.hashCode());
+    assertNotEquals(tq1.hashCode(), tq2.hashCode());
 
     // different fields with the same term should have differing hashcodes
     tq1 = new TermInSetQuery("thing", List.of(newBytesRef("apple")));
     tq2 = new TermInSetQuery("thing2", List.of(newBytesRef("apple")));
-    assertFalse(tq1.hashCode() == tq2.hashCode());
+    assertNotEquals(tq1.hashCode(), tq2.hashCode());
   }
 
   public void testSimpleEquals() {
@@ -526,5 +529,20 @@ public class TestTermInSetQuery extends LuceneTestCase {
             }
           }
         });
+  }
+
+  public void testTermsIterator() throws IOException {
+    TermInSetQuery empty = new TermInSetQuery("field", Collections.emptyList());
+    BytesRefIterator it = empty.getBytesRefIterator();
+    assertNull(it.next());
+
+    TermInSetQuery query =
+        new TermInSetQuery(
+            "field", List.of(newBytesRef("term1"), newBytesRef("term2"), newBytesRef("term3")));
+    it = query.getBytesRefIterator();
+    assertEquals(newBytesRef("term1"), it.next());
+    assertEquals(newBytesRef("term2"), it.next());
+    assertEquals(newBytesRef("term3"), it.next());
+    assertNull(it.next());
   }
 }

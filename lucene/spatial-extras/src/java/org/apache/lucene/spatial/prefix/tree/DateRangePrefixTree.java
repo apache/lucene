@@ -41,22 +41,21 @@ import org.locationtech.spatial4j.shape.Shape;
 public class DateRangePrefixTree extends NumberRangePrefixTree {
 
   /*
-    WARNING  java.util.Calendar is tricky to work with:
-    * If you "get" any field value, every field becomes "set". This can introduce a Heisenbug effect,
-        when in a debugger in some cases. Fortunately, Calendar.toString() doesn't apply.
-    * Beware Calendar underflow of the underlying long.  If you create a Calendar from LONG.MIN_VALUE, and clear
-     a field, it will underflow and appear close to LONG.MAX_VALUE (BC to AD).
-
-    There are no doubt other reasons but those two were hard fought lessons here.
-
-    TODO Improvements:
-    * Make max precision configurable (i.e. to SECOND).
-    * Make min & max year span configurable. Use that to remove pointless top levels of the SPT.
-        If year span is > 10k, then add 1k year level. If year span is > 10k of 1k levels, add 1M level.
-    * NumberRangePrefixTree: override getTreeCellIterator for optimized case where the shape isn't a date span; use
-      FilterCellIterator of the cell stack.
-
-  */
+   * WARNING  java.util.Calendar is tricky to work with:
+   * - If you "get" any field value, every field becomes "set". This can introduce a Heisenbug effect,
+   *   when in a debugger in some cases. Fortunately, Calendar.toString() doesn't apply.
+   * - Beware Calendar underflow of the underlying long.  If you create a Calendar from LONG.MIN_VALUE, and clear
+   *   a field, it will underflow and appear close to LONG.MAX_VALUE (BC to AD).
+   *
+   * There are no doubt other reasons but those two were hard fought lessons here.
+   *
+   * TODO Improvements:
+   * - Make max precision configurable (i.e. to SECOND).
+   * - Make min & max year span configurable. Use that to remove pointless top levels of the SPT.
+   *   If year span is > 10k, then add 1k year level. If year span is > 10k of 1k levels, add 1M level.
+   * - NumberRangePrefixTree: override getTreeCellIterator for optimized case where the shape isn't a date span; use
+   *   FilterCellIterator of the cell stack.
+   */
 
   private static final TimeZone UTC = TimeZone.getTimeZone("UTC");
 
@@ -158,8 +157,7 @@ public class DateRangePrefixTree extends NumberRangePrefixTree {
 
     maxLV = toShape((Calendar) MAXCAL.clone());
     minLV = toShape((Calendar) MINCAL.clone());
-    if (MAXCAL instanceof GregorianCalendar) {
-      GregorianCalendar gCal = (GregorianCalendar) MAXCAL;
+    if (MAXCAL instanceof GregorianCalendar gCal) {
       gregorianChangeDateLV = toUnitShape(gCal.getGregorianChange());
     } else {
       gregorianChangeDateLV = null;
@@ -174,8 +172,9 @@ public class DateRangePrefixTree extends NumberRangePrefixTree {
   public int getNumSubCells(UnitNRShape lv) {
     int cmp = comparePrefix(lv, maxLV);
     assert cmp <= 0;
-    if (cmp == 0) // edge case (literally!)
-    return maxLV.getValAtLevel(lv.getLevel() + 1) + 1;
+    if (cmp == 0) { // edge case (literally!)
+      return maxLV.getValAtLevel(lv.getLevel() + 1) + 1;
+    }
 
     // if using GregorianCalendar and we're after the "Gregorian change date" then we'll compute
     //  the sub-cells ourselves more efficiently without the need to construct a Calendar.

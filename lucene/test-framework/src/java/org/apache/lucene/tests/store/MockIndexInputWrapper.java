@@ -19,9 +19,11 @@ package org.apache.lucene.tests.store;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.FilterIndexInput;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 
 /**
@@ -140,6 +142,21 @@ public class MockIndexInputWrapper extends FilterIndexInput {
   }
 
   @Override
+  public IndexInput slice(String sliceDescription, long offset, long length, IOContext context)
+      throws IOException {
+    ensureOpen();
+    if (dir.verboseClone) {
+      new Exception("slice: " + this).printStackTrace(System.out);
+    }
+    dir.inputCloneCount.incrementAndGet();
+    IndexInput slice = in.slice(sliceDescription, offset, length);
+    MockIndexInputWrapper clone =
+        new MockIndexInputWrapper(
+            dir, sliceDescription, slice, parent != null ? parent : this, confined);
+    return clone;
+  }
+
+  @Override
   public long getFilePointer() {
     ensureOpen();
     ensureAccessible();
@@ -158,6 +175,20 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     ensureOpen();
     ensureAccessible();
     in.prefetch(offset, length);
+  }
+
+  @Override
+  public Optional<Boolean> isLoaded() {
+    ensureOpen();
+    ensureAccessible();
+    return in.isLoaded();
+  }
+
+  @Override
+  public void updateIOContext(IOContext context) throws IOException {
+    ensureOpen();
+    ensureAccessible();
+    in.updateIOContext(context);
   }
 
   @Override

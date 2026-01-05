@@ -275,7 +275,7 @@ public class Monitor implements Closeable {
    */
   public Set<String> getQueryIds() throws IOException {
     final Set<String> ids = new HashSet<>();
-    queryIndex.scan((id, query, dataValues) -> ids.add(id));
+    queryIndex.scan((id, _, _) -> ids.add(id));
     return ids;
   }
 
@@ -370,7 +370,7 @@ public class Monitor implements Closeable {
         MatchesIterator mi = matches.getMatches(field);
         while (mi.next()) {
           matchingTerms
-              .computeIfAbsent(id, i -> new StringBuilder())
+              .computeIfAbsent(id, _ -> new StringBuilder())
               .append(" ")
               .append(mi.getQuery());
         }

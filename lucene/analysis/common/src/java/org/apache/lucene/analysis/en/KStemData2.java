@@ -42,7 +42,7 @@ package org.apache.lucene.analysis.en;
 class KStemData2 {
   private KStemData2() {}
 
-  static String[] data = {
+  static final String[] data = {
     "cash", "cashew", "cashier", "cashmere", "casing",
     "casino", "cask", "casket", "casque", "cassava",
     "casserole", "cassette", "cassock", "cassowary", "cast",

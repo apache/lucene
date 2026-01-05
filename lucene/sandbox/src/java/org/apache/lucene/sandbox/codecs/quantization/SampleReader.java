@@ -20,18 +20,18 @@ package org.apache.lucene.sandbox.codecs.quantization;
 import java.io.IOException;
 import java.util.Random;
 import java.util.function.IntUnaryOperator;
+import org.apache.lucene.codecs.lucene95.HasIndexSlice;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /** A reader of vector values that samples a subset of the vectors. */
-public class SampleReader implements RandomAccessVectorValues.Floats {
-  private final RandomAccessVectorValues.Floats origin;
+public class SampleReader extends FloatVectorValues implements HasIndexSlice {
+  private final FloatVectorValues origin;
   private final int sampleSize;
   private final IntUnaryOperator sampleFunction;
 
-  SampleReader(
-      RandomAccessVectorValues.Floats origin, int sampleSize, IntUnaryOperator sampleFunction) {
+  SampleReader(FloatVectorValues origin, int sampleSize, IntUnaryOperator sampleFunction) {
     this.origin = origin;
     this.sampleSize = sampleSize;
     this.sampleFunction = sampleFunction;
@@ -48,13 +48,13 @@ public class SampleReader implements RandomAccessVectorValues.Floats {
   }
 
   @Override
-  public Floats copy() throws IOException {
+  public FloatVectorValues copy() throws IOException {
     throw new IllegalStateException("Not supported");
   }
 
   @Override
   public IndexInput getSlice() {
-    return origin.getSlice();
+    return ((HasIndexSlice) origin).getSlice();
   }
 
   @Override
@@ -77,8 +77,7 @@ public class SampleReader implements RandomAccessVectorValues.Floats {
     throw new IllegalStateException("Not supported");
   }
 
-  public static SampleReader createSampleReader(
-      RandomAccessVectorValues.Floats origin, int k, long seed) {
+  public static SampleReader createSampleReader(FloatVectorValues origin, int k, long seed) {
     int[] samples = reservoirSample(origin.size(), k, seed);
     return new SampleReader(origin, samples.length, i -> samples[i]);
   }

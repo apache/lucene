@@ -16,12 +16,15 @@
  */
 package org.apache.lucene.search.join;
 
+import static org.apache.lucene.search.knn.KnnSearchStrategy.Hnsw.DEFAULT;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.HitQueue;
 import org.apache.lucene.search.IndexSearcher;
@@ -34,8 +37,8 @@ import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.Bits;
 
 /**
  * kNN float vector query that joins matching children vector documents with their parent doc id.
@@ -59,7 +62,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
   private final float[] query;
 
   /**
-   * Create a ToParentBlockJoinFloatVectorQuery.
+   * Create a DiversifyingChildrenFloatKnnVectorQuery.
    *
    * @param field the query field
    * @param query the vector query
@@ -69,7 +72,30 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
    */
   public DiversifyingChildrenFloatKnnVectorQuery(
       String field, float[] query, Query childFilter, int k, BitSetProducer parentsFilter) {
-    super(field, query, k, childFilter);
+    this(field, query, childFilter, k, parentsFilter, DEFAULT);
+  }
+
+  /**
+   * Create a DiversifyingChildrenFloatKnnVectorQuery.
+   *
+   * @param field the query field
+   * @param query the vector query
+   * @param childFilter the child filter
+   * @param k how many parent documents to return given the matching children
+   * @param parentsFilter Filter identifying the parent documents.
+   * @param searchStrategy the search strategy to use. If null, the default strategy will be used.
+   *     The underlying format may not support all strategies and is free to ignore the requested
+   *     strategy.
+   * @lucene.experimental
+   */
+  public DiversifyingChildrenFloatKnnVectorQuery(
+      String field,
+      float[] query,
+      Query childFilter,
+      int k,
+      BitSetProducer parentsFilter,
+      KnnSearchStrategy searchStrategy) {
+    super(field, query, k, childFilter, searchStrategy);
     this.childFilter = childFilter;
     this.parentsFilter = parentsFilter;
     this.k = k;
@@ -121,10 +147,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
       queue.pop();
     }
 
-    ScoreDoc[] topScoreDocs = new ScoreDoc[queue.size()];
-    for (int i = topScoreDocs.length - 1; i >= 0; i--) {
-      topScoreDocs[i] = queue.pop();
-    }
+    ScoreDoc[] topScoreDocs = queue.drainToArrayHighestFirst(ScoreDoc[]::new);
 
     TotalHits totalHits = new TotalHits(acceptIterator.cost(), relation);
     return new TopDocs(totalHits, topScoreDocs);
@@ -138,12 +161,13 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
   @Override
   protected TopDocs approximateSearch(
       LeafReaderContext context,
-      Bits acceptDocs,
+      AcceptDocs acceptDocs,
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
     FloatVectorValues.checkField(context.reader(), field);
-    KnnCollector collector = knnCollectorManager.newCollector(visitedLimit, context);
+    KnnCollector collector =
+        knnCollectorManager.newCollector(visitedLimit, searchStrategy, context);
     if (collector == null) {
       return NO_RESULTS;
     }
@@ -153,7 +177,14 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
 
   @Override
   public String toString(String field) {
-    return getClass().getSimpleName() + ":" + this.field + "[" + query[0] + ",...][" + k + "]";
+    StringBuilder buffer = new StringBuilder();
+    buffer.append(getClass().getSimpleName() + ":");
+    buffer.append(this.field + "[" + query[0] + ",...]");
+    buffer.append("[" + k + "]");
+    if (this.filter != null) {
+      buffer.append("[" + this.filter + "]");
+    }
+    return buffer.toString();
   }
 
   @Override

@@ -17,6 +17,7 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 
@@ -167,27 +168,21 @@ public class RoaringDocIdSet extends DocIdSet {
     }
 
     @Override
-    public DocIdSetIterator iterator() throws IOException {
-      return new DocIdSetIterator() {
+    public DocIdSetIterator iterator() {
+      return new AbstractDocIdSetIterator() {
 
         int i = -1; // this is the index of the current document in the array
-        int doc = -1;
 
         private int docId(int i) {
           return docIDs[i] & 0xFFFF;
         }
 
         @Override
-        public int nextDoc() throws IOException {
+        public int nextDoc() {
           if (++i >= docIDs.length) {
             return doc = NO_MORE_DOCS;
           }
           return doc = docId(i);
-        }
-
-        @Override
-        public int docID() {
-          return doc;
         }
 
         @Override
@@ -196,7 +191,7 @@ public class RoaringDocIdSet extends DocIdSet {
         }
 
         @Override
-        public int advance(int target) throws IOException {
+        public int advance(int target) {
           // binary search
           int lo = i + 1;
           int hi = docIDs.length - 1;
@@ -215,6 +210,20 @@ public class RoaringDocIdSet extends DocIdSet {
           } else {
             i = lo;
             return doc = docId(i);
+          }
+        }
+
+        @Override
+        public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) {
+          if (doc >= upTo) {
+            return;
+          }
+
+          int from = i;
+          advance(upTo);
+          int to = i;
+          for (int i = from; i < to; ++i) {
+            bitSet.set(docId(i) - offset);
           }
         }
       };
@@ -243,28 +252,21 @@ public class RoaringDocIdSet extends DocIdSet {
   }
 
   @Override
-  public DocIdSetIterator iterator() throws IOException {
+  public DocIdSetIterator iterator() {
     if (cardinality == 0) {
       return null;
     }
     return new Iterator();
   }
 
-  private class Iterator extends DocIdSetIterator {
+  private class Iterator extends AbstractDocIdSetIterator {
 
     int block;
     DocIdSetIterator sub;
-    int doc;
 
-    Iterator() throws IOException {
-      doc = -1;
+    Iterator() {
       block = -1;
       sub = DocIdSetIterator.empty();
-    }
-
-    @Override
-    public int docID() {
-      return doc;
     }
 
     @Override
@@ -308,6 +310,26 @@ public class RoaringDocIdSet extends DocIdSet {
           final int subNext = sub.nextDoc();
           assert subNext != NO_MORE_DOCS;
           return doc = (block << 16) | subNext;
+        }
+      }
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      for (; ; ) {
+        int subUpto = upTo - (block << 16);
+        if (subUpto < 0) {
+          break;
+        }
+        int subOffset = offset - (block << 16);
+        sub.intoBitSet(subUpto, bitSet, subOffset);
+        if (sub.docID() == NO_MORE_DOCS) {
+          if (firstDocFromNextBlock() == NO_MORE_DOCS) {
+            break;
+          }
+        } else {
+          doc = (block << 16) | sub.docID();
+          break;
         }
       }
     }

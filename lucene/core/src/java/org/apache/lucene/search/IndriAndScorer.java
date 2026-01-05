@@ -45,8 +45,7 @@ public class IndriAndScorer extends IndriDisjunctionScorer {
     double score = 0;
     double boostSum = 0.0;
     for (Scorer scorer : subScorers) {
-      if (scorer instanceof IndriScorer) {
-        IndriScorer indriScorer = (IndriScorer) scorer;
+      if (scorer instanceof IndriScorer indriScorer) {
         int scorerDocId = indriScorer.docID();
         // If the query exists in the document, score the document
         // Otherwise, compute a smoothing score, which acts like an idf

@@ -19,7 +19,6 @@ package org.apache.lucene.search.knn;
 
 import org.apache.lucene.search.AbstractKnnCollector;
 import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.hnsw.BlockingFloatHeap;
 import org.apache.lucene.util.hnsw.FloatHeap;
 
@@ -29,21 +28,21 @@ import org.apache.lucene.util.hnsw.FloatHeap;
  *
  * @lucene.experimental
  */
-public final class MultiLeafKnnCollector implements KnnCollector {
+public final class MultiLeafKnnCollector extends KnnCollector.Decorator {
 
   // greediness of globally non-competitive search: (0,1]
   private static final float DEFAULT_GREEDINESS = 0.9f;
+  private static final int DEFAULT_INTERVAL = 0xff;
   // the global queue of the highest similarities collected so far across all segments
   private final BlockingFloatHeap globalSimilarityQueue;
   // the local queue of the highest similarities if we are not competitive globally
   // the size of this queue is defined by greediness
   private final FloatHeap nonCompetitiveQueue;
-  private final float greediness;
   // the queue of the local similarities to periodically update with the global queue
   private final FloatHeap updatesQueue;
   private final float[] updatesScratch;
   // interval to synchronize the local and global queues, as a number of visited vectors
-  private final int interval = 0xff; // 255
+  private final int interval;
   private boolean kResultsCollected = false;
   private float cachedGlobalMinSim = Float.NEGATIVE_INFINITY;
   private final AbstractKnnCollector subCollector;
@@ -58,37 +57,38 @@ public final class MultiLeafKnnCollector implements KnnCollector {
    */
   public MultiLeafKnnCollector(
       int k, BlockingFloatHeap globalSimilarityQueue, AbstractKnnCollector subCollector) {
-    this.greediness = DEFAULT_GREEDINESS;
+    this(k, DEFAULT_GREEDINESS, DEFAULT_INTERVAL, globalSimilarityQueue, subCollector);
+  }
+
+  /**
+   * Create a new MultiLeafKnnCollector.
+   *
+   * @param k the number of neighbors to collect
+   * @param greediness the greediness of the global search
+   * @param interval (by number of collected values) the interval to synchronize the local and
+   *     global queues
+   * @param globalSimilarityQueue the global queue of the highest similarities collected so far
+   * @param subCollector the local collector
+   */
+  public MultiLeafKnnCollector(
+      int k,
+      float greediness,
+      int interval,
+      BlockingFloatHeap globalSimilarityQueue,
+      AbstractKnnCollector subCollector) {
+    super(subCollector);
+    if (greediness < 0 || greediness > 1) {
+      throw new IllegalArgumentException("greediness must be in [0,1]");
+    }
+    if (interval <= 0) {
+      throw new IllegalArgumentException("interval must be positive");
+    }
+    this.interval = interval;
     this.subCollector = subCollector;
     this.globalSimilarityQueue = globalSimilarityQueue;
     this.nonCompetitiveQueue = new FloatHeap(Math.max(1, Math.round((1 - greediness) * k)));
     this.updatesQueue = new FloatHeap(k);
     this.updatesScratch = new float[k];
-  }
-
-  @Override
-  public boolean earlyTerminated() {
-    return subCollector.earlyTerminated();
-  }
-
-  @Override
-  public void incVisitedCount(int count) {
-    subCollector.incVisitedCount(count);
-  }
-
-  @Override
-  public long visitedCount() {
-    return subCollector.visitedCount();
-  }
-
-  @Override
-  public long visitLimit() {
-    return subCollector.visitLimit();
-  }
-
-  @Override
-  public int k() {
-    return subCollector.k();
   }
 
   @Override
@@ -130,11 +130,6 @@ public final class MultiLeafKnnCollector implements KnnCollector {
     return Math.max(
         subCollector.minCompetitiveSimilarity(),
         Math.min(nonCompetitiveQueue.peek(), cachedGlobalMinSim));
-  }
-
-  @Override
-  public TopDocs topDocs() {
-    return subCollector.topDocs();
   }
 
   @Override

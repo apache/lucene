@@ -22,7 +22,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestTotalHits extends LuceneTestCase {
 
-  @SuppressWarnings("unlikely-arg-type")
+  @SuppressWarnings({"unlikely-arg-type", "SelfAssertion"})
   public void testEqualsAndHashcode() {
     TotalHits totalHits1 = randomTotalHits();
     assertFalse(totalHits1.equals(null));

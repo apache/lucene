@@ -17,21 +17,19 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.FieldsConsumer;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.NormsConsumer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.codecs.StoredFieldsWriter;
 import org.apache.lucene.codecs.TermVectorsWriter;
-import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.InfoStream;
@@ -102,12 +100,7 @@ final class SegmentMerger {
   }
 
   private MergeState mergeState() {
-    MergeState mergeState = this.mergeState;
-    if (Thread.currentThread() != mergeStateCreationThread) {
-      // Most merges, e.g. small merges, run in the same thread, so save the cost of pulling a clone
-      // in that case.
-      mergeState = mergeState.clone();
-    }
+    assert Thread.currentThread() == mergeStateCreationThread;
     return mergeState;
   }
 
@@ -147,8 +140,6 @@ final class SegmentMerger {
             IOContext.DEFAULT,
             segmentWriteState.segmentSuffix);
 
-    TaskExecutor taskExecutor = new TaskExecutor(mergeState.intraMergeTaskExecutor);
-    List<Callable<Void>> mergingTasks = new ArrayList<>();
     if (mergeState.mergeFieldInfos.hasNorms()) {
       mergeWithLogging(this::mergeNorms, segmentWriteState, segmentReadState, "norms", numMerged);
     }
@@ -161,12 +152,7 @@ final class SegmentMerger {
     }
 
     if (mergeState.mergeFieldInfos.hasPointValues()) {
-      mergingTasks.add(
-          () -> {
-            mergeWithLogging(
-                this::mergePoints, segmentWriteState, segmentReadState, "points", numMerged);
-            return null;
-          });
+      mergeWithLogging(this::mergePoints, segmentWriteState, segmentReadState, "points", numMerged);
     }
 
     if (mergeState.mergeFieldInfos.hasVectorValues()) {
@@ -179,14 +165,9 @@ final class SegmentMerger {
     }
 
     if (mergeState.mergeFieldInfos.hasTermVectors()) {
-      mergingTasks.add(
-          () -> {
-            mergeWithLogging(this::mergeTermVectors, "term vectors");
-            return null;
-          });
+      mergeWithLogging(this::mergeTermVectors, "term vectors");
     }
 
-    taskExecutor.invokeAll(mergingTasks);
     // write the merged infos
     mergeWithLogging(
         this::mergeFieldInfos, segmentWriteState, segmentReadState, "field infos", numMerged);
@@ -245,7 +226,7 @@ final class SegmentMerger {
     }
   }
 
-  public void mergeFieldInfos() {
+  private void mergeFieldInfos() {
     for (FieldInfos readerFieldInfos : mergeState.fieldInfos) {
       for (FieldInfo fi : readerFieldInfos) {
         fieldInfosBuilder.add(fi);
@@ -342,6 +323,14 @@ final class SegmentMerger {
               + " ["
               + numMerged
               + " docs]");
+    }
+  }
+
+  void cleanupMerge() throws IOException {
+    for (KnnVectorsReader reader : mergeState.knnVectorsReaders) {
+      if (reader != null) {
+        reader.finishMerge();
+      }
     }
   }
 }

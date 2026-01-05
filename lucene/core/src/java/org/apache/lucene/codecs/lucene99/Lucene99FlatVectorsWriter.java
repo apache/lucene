@@ -39,20 +39,23 @@ import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
-import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 
 /**
  * Writes vector values to index segments.
@@ -61,7 +64,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
  */
 public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
-  private static final long SHALLLOW_RAM_BYTES_USED =
+  private static final long SHALLOW_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(Lucene99FlatVectorsWriter.class);
 
   private final SegmentWriteState segmentWriteState;
@@ -84,7 +87,6 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
             state.segmentSuffix,
             Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION);
 
-    boolean success = false;
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
       vectorData = state.directory.createOutput(vectorDataFileName, state.context);
@@ -101,11 +103,9 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
           Lucene99FlatVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -146,7 +146,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
   @Override
   public long ramBytesUsed() {
-    long total = SHALLLOW_RAM_BYTES_USED;
+    long total = SHALLOW_RAM_BYTES_USED;
     for (FieldWriter<?> field : fields) {
       total += field.ramBytesUsed();
     }
@@ -257,7 +257,6 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         segmentWriteState.directory.createTempOutput(
             vectorData.getName(), "temp", segmentWriteState.context);
     IndexInput vectorDataInput = null;
-    boolean success = false;
     try {
       // write the vector data to a temporary file
       DocsWithFieldSet docsWithField =
@@ -281,7 +280,9 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       // to perform random reads.
       vectorDataInput =
           segmentWriteState.directory.openInput(
-              tempVectorData.getName(), IOContext.DEFAULT.withReadAdvice(ReadAdvice.RANDOM));
+              tempVectorData.getName(),
+              IOContext.DEFAULT.withHints(
+                  FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
       // copy the temporary file vectors to the actual data file
       vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
       CodecUtil.retrieveChecksum(vectorDataInput);
@@ -292,8 +293,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
           vectorDataOffset,
           vectorDataLength,
           docsWithField);
-      success = true;
+
       final IndexInput finalVectorDataInput = vectorDataInput;
+      vectorDataInput = null;
+
       final RandomVectorScorerSupplier randomVectorScorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE ->
@@ -324,12 +327,11 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
           },
           docsWithField.cardinality(),
           randomVectorScorerSupplier);
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(vectorDataInput, tempVectorData);
-        IOUtils.deleteFilesIgnoringExceptions(
-            segmentWriteState.directory, tempVectorData.getName());
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, vectorDataInput, tempVectorData);
+      IOUtils.deleteFilesSuppressingExceptions(
+          t, segmentWriteState.directory, tempVectorData.getName());
+      throw t;
     }
   }
 
@@ -361,11 +363,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   private static DocsWithFieldSet writeByteVectorData(
       IndexOutput output, ByteVectorValues byteVectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
-    for (int docV = byteVectorValues.nextDoc();
-        docV != NO_MORE_DOCS;
-        docV = byteVectorValues.nextDoc()) {
+    KnnVectorValues.DocIndexIterator iter = byteVectorValues.iterator();
+    for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
-      byte[] binaryValue = byteVectorValues.vectorValue();
+      byte[] binaryValue = byteVectorValues.vectorValue(iter.index());
       assert binaryValue.length == byteVectorValues.dimension() * VectorEncoding.BYTE.byteSize;
       output.writeBytes(binaryValue, binaryValue.length);
       docsWithField.add(docV);
@@ -382,11 +383,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     ByteBuffer buffer =
         ByteBuffer.allocate(floatVectorValues.dimension() * VectorEncoding.FLOAT32.byteSize)
             .order(ByteOrder.LITTLE_ENDIAN);
-    for (int docV = floatVectorValues.nextDoc();
-        docV != NO_MORE_DOCS;
-        docV = floatVectorValues.nextDoc()) {
+    KnnVectorValues.DocIndexIterator iter = floatVectorValues.iterator();
+    for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
-      float[] value = floatVectorValues.vectorValue();
+      float[] value = floatVectorValues.vectorValue(iter.index());
       buffer.asFloatBuffer().put(value);
       output.writeBytes(buffer.array(), buffer.limit());
       docsWithField.add(docV);
@@ -508,8 +508,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) throws IOException {
-      return supplier.scorer(ord);
+    public UpdateableRandomVectorScorer scorer() throws IOException {
+      return supplier.scorer();
     }
 
     @Override

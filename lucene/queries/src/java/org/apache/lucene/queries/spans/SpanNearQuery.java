@@ -29,7 +29,6 @@ import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -247,8 +246,8 @@ public class SpanNearQuery extends SpanQuery implements Cloneable {
       if (spans == null) {
         return null;
       }
-      final LeafSimScorer docScorer = getSimScorer(context);
-      final var scorer = new SpanScorer(spans, docScorer);
+      final var scorer =
+          new SpanScorer(spans, getSimScorer(), context.reader().getNormValues(field));
       return new DefaultScorerSupplier(scorer);
     }
   }

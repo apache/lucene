@@ -28,6 +28,7 @@ public class TestCodecReported extends WithNestedTests {
   }
 
   public static class Nested1 extends WithNestedTests.AbstractNestedTest {
+    @SuppressWarnings("NonFinalStaticField")
     public static String codecName;
 
     public void testDummy() {

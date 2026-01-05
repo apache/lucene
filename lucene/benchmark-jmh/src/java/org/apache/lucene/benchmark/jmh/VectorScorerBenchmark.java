@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -32,10 +33,22 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
-import org.openjdk.jmh.annotations.*;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Param;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
+import org.openjdk.jmh.annotations.Warmup;
 
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -51,13 +64,13 @@ import org.openjdk.jmh.annotations.*;
 public class VectorScorerBenchmark {
 
   @Param({"1", "128", "207", "256", "300", "512", "702", "1024"})
-  int size;
+  public int size;
 
   Directory dir;
   IndexInput in;
-  RandomAccessVectorValues vectorValues;
+  KnnVectorValues vectorValues;
   byte[] vec1, vec2;
-  RandomVectorScorer scorer;
+  UpdateableRandomVectorScorer scorer;
 
   @Setup(Level.Iteration)
   public void init() throws IOException {
@@ -76,7 +89,8 @@ public class VectorScorerBenchmark {
     scorer =
         FlatVectorScorerUtil.getLucene99FlatVectorsScorer()
             .getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValues)
-            .scorer(0);
+            .scorer();
+    scorer.setScoringOrdinal(0);
   }
 
   @TearDown
@@ -95,7 +109,7 @@ public class VectorScorerBenchmark {
     return scorer.score(1);
   }
 
-  static RandomAccessVectorValues vectorValues(
+  static KnnVectorValues vectorValues(
       int dims, int size, IndexInput in, VectorSimilarityFunction sim) throws IOException {
     return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
         dims, size, in.slice("test", 0, in.length()), dims, new ThrowingFlatVectorScorer(), sim);
@@ -105,23 +119,19 @@ public class VectorScorerBenchmark {
 
     @Override
     public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
-        VectorSimilarityFunction similarityFunction, RandomAccessVectorValues vectorValues) {
+        VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues) {
       throw new UnsupportedOperationException();
     }
 
     @Override
     public RandomVectorScorer getRandomVectorScorer(
-        VectorSimilarityFunction similarityFunction,
-        RandomAccessVectorValues vectorValues,
-        float[] target) {
+        VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, float[] target) {
       throw new UnsupportedOperationException();
     }
 
     @Override
     public RandomVectorScorer getRandomVectorScorer(
-        VectorSimilarityFunction similarityFunction,
-        RandomAccessVectorValues vectorValues,
-        byte[] target) {
+        VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, byte[] target) {
       throw new UnsupportedOperationException();
     }
   }

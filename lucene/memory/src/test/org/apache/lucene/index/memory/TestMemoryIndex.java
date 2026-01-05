@@ -63,6 +63,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.IndexableFieldType;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
@@ -76,11 +77,14 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnByteVectorQuery;
+import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
@@ -110,7 +114,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     MemoryIndex mi = new MemoryIndex();
     mi.addField("f1", "some text", analyzer);
 
-    assertNotEquals(0.0f, mi.search(new MatchAllDocsQuery()));
+    assertNotEquals(0.0f, mi.search(MatchAllDocsQuery.INSTANCE));
     assertNotEquals(0.0f, mi.search(new TermQuery(new Term("f1", "some"))));
 
     // check we can add a new field after searching
@@ -792,6 +796,11 @@ public class TestMemoryIndex extends LuceneTestCase {
             .get(0)
             .reader()
             .getByteVectorValues("knnByteVectorValue"));
+    TopDocs docs =
+        mi.createSearcher()
+            .search(new KnnFloatVectorQuery("knnFloatA", new float[] {1.0f, 1.0f}, 1), 10);
+    // we don't really do knn search right now for MemoryIndex
+    assertEquals(0, docs.totalHits.value());
   }
 
   public void testKnnByteVectorOnlyOneVectorAllowed() throws IOException {
@@ -839,6 +848,10 @@ public class TestMemoryIndex extends LuceneTestCase {
             .get(0)
             .reader()
             .getFloatVectorValues("knnFloatVectorValue"));
+    TopDocs docs =
+        mi.createSearcher().search(new KnnByteVectorQuery("knnByteA", new byte[] {1, 1}, 1), 10);
+    // we don't really do knn search right now for MemoryIndex
+    assertEquals(0, docs.totalHits.value());
   }
 
   private static void assertFloatVectorValue(MemoryIndex mi, String fieldName, float[] expected)
@@ -851,9 +864,10 @@ public class TestMemoryIndex extends LuceneTestCase {
             .reader()
             .getFloatVectorValues(fieldName);
     assertNotNull(fvv);
-    assertEquals(0, fvv.nextDoc());
-    assertArrayEquals(expected, fvv.vectorValue(), 1e-6f);
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, fvv.nextDoc());
+    KnnVectorValues.DocIndexIterator iterator = fvv.iterator();
+    assertEquals(0, iterator.nextDoc());
+    assertArrayEquals(expected, fvv.vectorValue(0), 1e-6f);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.nextDoc());
   }
 
   private static void assertFloatVectorScore(
@@ -868,7 +882,7 @@ public class TestMemoryIndex extends LuceneTestCase {
             .getFloatVectorValues(fieldName);
     assertNotNull(fvv);
     if (random().nextBoolean()) {
-      fvv.nextDoc();
+      fvv.iterator().nextDoc();
     }
     VectorScorer scorer = fvv.scorer(queryVector);
     assertEquals(0, scorer.iterator().nextDoc());
@@ -886,9 +900,10 @@ public class TestMemoryIndex extends LuceneTestCase {
             .reader()
             .getByteVectorValues(fieldName);
     assertNotNull(bvv);
-    assertEquals(0, bvv.nextDoc());
-    assertArrayEquals(expected, bvv.vectorValue());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bvv.nextDoc());
+    KnnVectorValues.DocIndexIterator iterator = bvv.iterator();
+    assertEquals(0, iterator.nextDoc());
+    assertArrayEquals(expected, bvv.vectorValue(0));
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.nextDoc());
   }
 
   private static void assertByteVectorScore(
@@ -903,7 +918,7 @@ public class TestMemoryIndex extends LuceneTestCase {
             .getByteVectorValues(fieldName);
     assertNotNull(bvv);
     if (random().nextBoolean()) {
-      bvv.nextDoc();
+      bvv.iterator().nextDoc();
     }
     VectorScorer scorer = bvv.scorer(queryVector);
     assertEquals(0, scorer.iterator().nextDoc());
