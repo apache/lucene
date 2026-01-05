@@ -98,6 +98,14 @@ public class KnnFloatVectorField extends Field {
     return type;
   }
 
+  /**
+   * A convenience method for creating a vector field type.
+   *
+   * @param dimension dimension of vectors.
+   * @param similarityFunction a function defining vector proximity.
+   * @param vectorEncoding the encoding format for the vector. Currently, supports FLOAT16 and
+   *     FLOAT32.
+   */
   public static FieldType createFieldType(
       int dimension, VectorSimilarityFunction similarityFunction, VectorEncoding vectorEncoding) {
     FieldType type = new FieldType();
