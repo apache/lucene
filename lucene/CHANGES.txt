@@ -59,8 +59,6 @@ New Features
 
 * GITHUB#14792: Introduced OffHeapQuantizedFloatVectorValues class to access float vectors when only quantized byte vectors are available in the index. (Pulkit Gupta)
 
-* GITHUB#15518: Add support for post-collection faceting to the new faceting API in the sandbox module. (Egor Potemkin)
-
 Improvements
 ---------------------
 
@@ -203,6 +201,8 @@ New Features
    no full-precision vectors present (Pulkit Gupta)
 
  * GITHUB#15468: Add support for `@SuppressAssertingFormats` annotation for fine-grained control over `AssertingCodec` formats (Prudhvi Godithi)
+
+ * GITHUB#15518: Add support for post-collection faceting to the new faceting API in the sandbox module. (Egor Potemkin)
 
 Improvements
 ---------------------
