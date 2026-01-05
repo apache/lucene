@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.sandbox.facet.utils;
 
+import static java.util.concurrent.Executors.newFixedThreadPool;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.index.DirectoryReader;
@@ -364,9 +367,8 @@ public class TestPostCollectionFaceting extends LuceneTestCase {
     drillSidewaysManagers.put("dim1", new DocCountCollectorManager());
 
     // Use multi-threaded executor
-    java.util.concurrent.ExecutorService executor =
-        java.util.concurrent.Executors.newFixedThreadPool(
-            3, new NamedThreadFactory("TestPostCollectionFaceting"));
+    ExecutorService executor =
+        newFixedThreadPool(3, new NamedThreadFactory("TestPostCollectionFaceting"));
     try {
       PostCollectionFaceting<DocCountCollector, DocCountResult, DocCountCollector, DocCountResult>
           faceting =
