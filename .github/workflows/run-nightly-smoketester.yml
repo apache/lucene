@@ -63,6 +63,11 @@ jobs:
         env:
           JAVA_VERSION: ${{ matrix.java-version }}
 
+      - name: "Configure Google mirror for Maven Central"
+        run: |
+          mkdir -p ~/.gradle/init.d
+          echo 'allprojects { repositories.configureEach { if (it instanceof MavenArtifactRepository && it.url.toString().contains("repo.maven.apache.org")) { it.setUrl("https://maven-central.storage-download.googleapis.com/maven2/") } } }' > ~/.gradle/init.d/google-mirror.gradle
+
       - name: "Run buildAndPushRelease.py (--dev-mode)"
         run: |
           # Assemble an unsigned release, in dev mode, publish locally.
