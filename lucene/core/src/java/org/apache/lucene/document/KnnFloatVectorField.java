@@ -98,7 +98,8 @@ public class KnnFloatVectorField extends Field {
     return type;
   }
 
-  public static FieldType createFieldType(int dimension, VectorSimilarityFunction similarityFunction, VectorEncoding vectorEncoding) {
+  public static FieldType createFieldType(
+      int dimension, VectorSimilarityFunction similarityFunction, VectorEncoding vectorEncoding) {
     FieldType type = new FieldType();
     type.setVectorAttributes(dimension, vectorEncoding, similarityFunction);
     type.freeze();
@@ -179,7 +180,8 @@ public class KnnFloatVectorField extends Field {
    */
   public KnnFloatVectorField(String name, float[] vector, FieldType fieldType) {
     super(name, fieldType);
-    if ((fieldType.vectorEncoding() != VectorEncoding.FLOAT32 && fieldType.vectorEncoding() != VectorEncoding.FLOAT16)) {
+    if ((fieldType.vectorEncoding() != VectorEncoding.FLOAT32
+        && fieldType.vectorEncoding() != VectorEncoding.FLOAT16)) {
       throw new IllegalArgumentException(
           "Attempt to create a vector for field "
               + name
