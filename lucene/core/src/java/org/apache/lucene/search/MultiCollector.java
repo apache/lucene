@@ -229,6 +229,26 @@ public class MultiCollector implements Collector {
     }
 
     @Override
+    public void collectRange(int min, int max) throws IOException {
+      for (int i = 0; i < collectors.length; i++) {
+        final LeafCollector collector = collectors[i];
+        if (collector != null) {
+          try {
+            collector.collectRange(min, max);
+          } catch (
+              @SuppressWarnings("unused")
+              CollectionTerminatedException e) {
+            collectors[i].finish();
+            collectors[i] = null;
+            if (allCollectorsTerminated()) {
+              throw new CollectionTerminatedException();
+            }
+          }
+        }
+      }
+    }
+
+    @Override
     public void finish() throws IOException {
       for (LeafCollector collector : collectors) {
         if (collector != null) {

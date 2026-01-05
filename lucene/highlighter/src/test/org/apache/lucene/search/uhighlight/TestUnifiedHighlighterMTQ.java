@@ -111,7 +111,7 @@ public class TestUnifiedHighlighterMTQ extends UnifiedHighlighterTestBase {
     // wrong field
     BooleanQuery bq =
         new BooleanQuery.Builder()
-            .add(new MatchAllDocsQuery(), BooleanClause.Occur.SHOULD)
+            .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
             .add(new WildcardQuery(new Term("bogus", "te*")), BooleanClause.Occur.SHOULD)
             .build();
     topDocs = searcher.search(bq, 10, Sort.INDEXORDER);
@@ -165,7 +165,7 @@ public class TestUnifiedHighlighterMTQ extends UnifiedHighlighterTestBase {
     // wrong field
     BooleanQuery bq =
         new BooleanQuery.Builder()
-            .add(new MatchAllDocsQuery(), BooleanClause.Occur.SHOULD)
+            .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
             .add(new PrefixQuery(new Term("bogus", "te")), BooleanClause.Occur.SHOULD)
             .build();
     topDocs = searcher.search(bq, 10, Sort.INDEXORDER);
@@ -207,7 +207,7 @@ public class TestUnifiedHighlighterMTQ extends UnifiedHighlighterTestBase {
     // wrong field
     BooleanQuery bq =
         new BooleanQuery.Builder()
-            .add(new MatchAllDocsQuery(), BooleanClause.Occur.SHOULD)
+            .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
             .add(new RegexpQuery(new Term("bogus", "te.*")), BooleanClause.Occur.SHOULD)
             .build();
     topDocs = searcher.search(bq, 10, Sort.INDEXORDER);
@@ -267,7 +267,7 @@ public class TestUnifiedHighlighterMTQ extends UnifiedHighlighterTestBase {
     // wrong field
     BooleanQuery bq =
         new BooleanQuery.Builder()
-            .add(new MatchAllDocsQuery(), BooleanClause.Occur.SHOULD)
+            .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
             .add(new FuzzyQuery(new Term("bogus", "tets"), 1), BooleanClause.Occur.SHOULD)
             .build();
     topDocs = searcher.search(bq, 10, Sort.INDEXORDER);
@@ -345,7 +345,7 @@ public class TestUnifiedHighlighterMTQ extends UnifiedHighlighterTestBase {
     // exact start exclusive
     BooleanQuery bq =
         new BooleanQuery.Builder()
-            .add(new MatchAllDocsQuery(), BooleanClause.Occur.SHOULD)
+            .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
             .add(
                 TermRangeQuery.newStringRange("body", "test", "tf", false, true),
                 BooleanClause.Occur.SHOULD)
@@ -360,7 +360,7 @@ public class TestUnifiedHighlighterMTQ extends UnifiedHighlighterTestBase {
     // exact end exclusive
     bq =
         new BooleanQuery.Builder()
-            .add(new MatchAllDocsQuery(), BooleanClause.Occur.SHOULD)
+            .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
             .add(
                 TermRangeQuery.newStringRange("body", "ta", "test", true, false),
                 BooleanClause.Occur.SHOULD)
@@ -375,7 +375,7 @@ public class TestUnifiedHighlighterMTQ extends UnifiedHighlighterTestBase {
     // wrong field
     bq =
         new BooleanQuery.Builder()
-            .add(new MatchAllDocsQuery(), BooleanClause.Occur.SHOULD)
+            .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
             .add(
                 TermRangeQuery.newStringRange("bogus", "ta", "tf", true, true),
                 BooleanClause.Occur.SHOULD)
@@ -421,7 +421,7 @@ public class TestUnifiedHighlighterMTQ extends UnifiedHighlighterTestBase {
     // must not
     query =
         new BooleanQuery.Builder()
-            .add(new MatchAllDocsQuery(), BooleanClause.Occur.SHOULD)
+            .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
             .add(new WildcardQuery(new Term("bogus", "te*")), BooleanClause.Occur.MUST_NOT)
             .build();
     topDocs = searcher.search(query, 10, Sort.INDEXORDER);

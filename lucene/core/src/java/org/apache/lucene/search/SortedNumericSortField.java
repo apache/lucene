@@ -42,7 +42,7 @@ import org.apache.lucene.util.NumericUtils;
  * customized.
  *
  * <p>Like sorting by string, this also supports sorting missing values as first or last, via {@link
- * #setMissingValue(Object)}.
+ * SortField#STRING_FIRST} or {@link SortField#STRING_LAST}.
  *
  * @see SortedNumericSelector
  */
@@ -69,7 +69,7 @@ public class SortedNumericSortField extends SortField {
    * @param reverse True if natural order should be reversed.
    */
   public SortedNumericSortField(String field, SortField.Type type, boolean reverse) {
-    this(field, type, reverse, SortedNumericSelector.Type.MIN);
+    this(field, type, reverse, SortedNumericSelector.Type.MIN, null);
   }
 
   /**
@@ -83,7 +83,26 @@ public class SortedNumericSortField extends SortField {
    */
   public SortedNumericSortField(
       String field, SortField.Type type, boolean reverse, SortedNumericSelector.Type selector) {
-    super(field, SortField.Type.CUSTOM, reverse);
+    this(field, type, reverse, selector, null);
+  }
+
+  /**
+   * Creates a sort, possibly in reverse, specifying how the sort value from the document's set is
+   * selected.
+   *
+   * @param field Name of field to sort by. Must not be null.
+   * @param type Type of values
+   * @param reverse True if natural order should be reversed.
+   * @param selector custom selector type for choosing the sort value from the set.
+   * @param missingValue the sort value to use for documents with no value in the field
+   */
+  public SortedNumericSortField(
+      String field,
+      SortField.Type type,
+      boolean reverse,
+      SortedNumericSelector.Type selector,
+      Object missingValue) {
+    super(field, SortField.Type.CUSTOM, reverse, missingValue);
     if (selector == null) {
       throw new NullPointerException();
     }
@@ -107,34 +126,34 @@ public class SortedNumericSortField extends SortField {
 
     @Override
     public SortField readSortField(DataInput in) throws IOException {
-      SortedNumericSortField sf =
-          new SortedNumericSortField(
-              in.readString(), readType(in), in.readInt() == 1, readSelectorType(in));
+      String field = in.readString();
+      Type type = readType(in);
+      boolean reverse = in.readInt() == 1;
+      SortedNumericSelector.Type selectorType = readSelectorType(in);
       if (in.readInt() == 1) {
-        switch (sf.type) {
-          case INT:
-            sf.setMissingValue(in.readInt());
-            break;
-          case LONG:
-            sf.setMissingValue(in.readLong());
-            break;
-          case FLOAT:
-            sf.setMissingValue(NumericUtils.sortableIntToFloat(in.readInt()));
-            break;
-          case DOUBLE:
-            sf.setMissingValue(NumericUtils.sortableLongToDouble(in.readLong()));
-            break;
-          case CUSTOM:
-          case DOC:
-          case REWRITEABLE:
-          case STRING_VAL:
-          case SCORE:
-          case STRING:
-          default:
-            throw new AssertionError();
-        }
+        return switch (type) {
+          case INT -> new SortedNumericSortField(field, type, reverse, selectorType, in.readInt());
+          case LONG ->
+              new SortedNumericSortField(field, type, reverse, selectorType, in.readLong());
+          case FLOAT ->
+              new SortedNumericSortField(
+                  field,
+                  type,
+                  reverse,
+                  selectorType,
+                  NumericUtils.sortableIntToFloat(in.readInt()));
+          case DOUBLE ->
+              new SortedNumericSortField(
+                  field,
+                  type,
+                  reverse,
+                  selectorType,
+                  NumericUtils.sortableLongToDouble(in.readLong()));
+          // $CASES-OMITTED$
+          default -> throw new AssertionError();
+        };
       }
-      return sf;
+      return new SortedNumericSortField(field, type, reverse, selectorType, null);
     }
 
     @Override
@@ -233,11 +252,6 @@ public class SortedNumericSortField extends SortField {
     buffer.append(type);
 
     return buffer.toString();
-  }
-
-  @Override
-  public void setMissingValue(Object missingValue) {
-    this.missingValue = missingValue;
   }
 
   @Override

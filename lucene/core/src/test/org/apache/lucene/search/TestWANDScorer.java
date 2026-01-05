@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThan;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -63,8 +66,8 @@ public class TestWANDScorer extends LuceneTestCase {
   private void doTestScalingFactor(float f) {
     int scalingFactor = WANDScorer.scalingFactor(f);
     float scaled = Math.scalb(f, scalingFactor);
-    assertTrue("" + scaled, scaled >= 1 << (WANDScorer.FLOAT_MANTISSA_BITS - 1));
-    assertTrue("" + scaled, scaled < 1 << WANDScorer.FLOAT_MANTISSA_BITS);
+    assertThat(scaled, greaterThanOrEqualTo((float) (1 << (WANDScorer.FLOAT_MANTISSA_BITS - 1))));
+    assertThat(scaled, lessThan((float) (1 << WANDScorer.FLOAT_MANTISSA_BITS)));
   }
 
   public void testScaleMaxScore() {

@@ -45,7 +45,7 @@ class SimpleTermRewriteQuery extends RewriteQuery<SimpleTerm> {
           }
         });
     return (luceneSubQueries.size() == 0)
-        ? new MatchNoDocsQuery()
+        ? MatchNoDocsQuery.INSTANCE
         : (luceneSubQueries.size() == 1)
             ? luceneSubQueries.get(0)
             : SrndBooleanQuery.makeBooleanQuery(
