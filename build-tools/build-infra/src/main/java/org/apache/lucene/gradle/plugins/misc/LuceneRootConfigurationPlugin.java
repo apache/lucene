@@ -120,11 +120,11 @@ public class LuceneRootConfigurationPlugin extends LuceneGradlePlugin {
       project.setVersion(project.getRootProject().getVersion());
     }
 
-    project.getRepositories().mavenCentral();
     project
         .getRepositories()
         .maven(
             repo -> repo.setUrl("https://maven-central.storage-download.googleapis.com/maven2/"));
+    project.getRepositories().mavenCentral();
 
     // Common archive artifact naming.
     var baseExt = project.getExtensions().getByType(BasePluginExtension.class);
