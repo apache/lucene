@@ -843,18 +843,18 @@ public class TestFieldQuery extends AbstractTestCase {
         pqF(50, "b", "c"));
 
     Map<String, QueryPhraseMap> map = fq.rootMaps;
-    QueryPhraseMap qpm = map.get("f").subMap.get("a");
-    assertEquals(0, qpm.boost, 0.0);
-    QueryPhraseMap qpm1 = qpm.subMap.get("b");
-    assertEquals(20, qpm1.boost, 0.0);
-    QueryPhraseMap qpm2 = qpm1.subMap.get("c");
+    QueryPhraseMap a_qpm = map.get("f").subMap.get("a");
+    assertEquals(0, a_qpm.boost, 0.0);
+    QueryPhraseMap b_qpm = a_qpm.subMap.get("b");
+    assertEquals(20, b_qpm.boost, 0.0);
+    QueryPhraseMap c_qpm = b_qpm.subMap.get("c");
     // make sure final boost is from the query and not the expanded boost 1
-    assertEquals(100, qpm2.boost, 0.0);
+    assertEquals(100, c_qpm.boost, 0.0);
 
-    QueryPhraseMap qpm3 = map.get("f").subMap.get("b");
-    assertEquals(0, qpm3.boost, 0.0);
-    QueryPhraseMap qpm4 = qpm3.subMap.get("c");
-    assertEquals(50, qpm4.boost, 0.0);
+    b_qpm = map.get("f").subMap.get("b");
+    assertEquals(0, b_qpm.boost, 0.0);
+    c_qpm = b_qpm.subMap.get("c");
+    assertEquals(50, c_qpm.boost, 0.0);
   }
 
   public void testSearchPhrase() throws Exception {

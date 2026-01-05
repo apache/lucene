@@ -112,6 +112,8 @@ Bug Fixes
 
 * GITHUB#15125: Handle inconsistent schema on flush with index sorts (Nhat Nguyen)
 
+* GITHUB#15434: Don't override boost of conflicting expanded phrases by taking the max boost in markTerminal for FVHighlighter (Luana Fragoso)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
