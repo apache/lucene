@@ -7,6 +7,12 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#15517: Remove newHashMap, newHashSet from CollectionUtil, and use HashMap.newHashMap, HashSet.newHashSet
+  directly. (Zhou Hui)
+
+* GITHUB#15309: PriorityQueue.remove method has been removed entirely. If you need remove(), implement
+  it yourself in a subclass (heap access and size, upHeap and downHeap are protected members of PQ). (Dawid Weiss)
+
 * GITHUB#15215: Switch to Java 25 as the minimum required platform. Upgrade to gradle 9.1.0.
   (Robert Muir, Kaival Parikh, Dawid Weiss)
 
@@ -46,8 +52,14 @@ API Changes
 
 * GITHUB#15187: Restrict visibility of PerFieldKnnVectorsFormat.FieldsReader (Simon Cooper)
 
+* GITHUB#15486: Remove deprecated SortField.setMissingValue() method (Alan Woodward)
+
 New Features
 ---------------------
+
+* GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
+  PolishSnowballAnalyzer in the stempel package) (Justas Sakalauskas, Dawid Weiss)
+
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
 
 * GITHUB#14178: Add a Faiss-based vector format in the sandbox module. (Kaival Parikh)
@@ -68,6 +80,8 @@ Improvements
   (Uwe Schindler, Robert Muir)
 
 * GITHUB#15124: Use RamUsageEstimator to calculate size for non-accountable queries. (Sagar Upadhyaya)
+
+* GITHUB#15453: Avoid unnecessary sorting and instantiations in readMapOfStrings. (Benjamin Lerer)
 
 Optimizations
 ---------------------
@@ -132,11 +146,14 @@ Other
 * GITHUB#14817: Refactor some complex uses of PriorityQueue to use Comparators. (Simon Cooper)
 
 * GITHUB#14607: Index open performs version check on each segment, ignores indexCreatedVersionMajor (Rahul Goswami)
+* GITHUB#15454: Restore binary readability for 8.x indexes like previously and throw IndexFormatTooOldException for an older default codec not found on classpath (Rahul Goswami)
 
 ======================= Lucene 10.4.0 =======================
 
 API Changes
 ---------------------
+* GITHUB#15497: Singleton for MatchAllDocsQuery & MatchNoDocsQuery. (hossman)
+
 * GITHUB#15149: Introduce NumericDocValues#longValues to help speed up the
   retrieval of many doc values at once. (Adrien Grand)
 
@@ -153,6 +170,18 @@ API Changes
   (with optional timeout) or asynchronously via CompletableFuture. Backward compatible -
   existing code that ignores the return value works unchanged. (Salvatore Campagna)
 
+* GITHUB#15422: Add a new method in DirectWriter to compute how many bytes are written for encoding a number of values using a number of
+  bits per value. (Ignacio Vera)
+
+* GITHUB#15428: Add support for ExecutorServices to be passed into DirectoryReader.open() and DirectoryReader.openIfChanged() APIs (Bryce Kane)
+
+* GITHUB#15483: Deprecate SortField.setMissingValue() in preparation for making SortField immutable
+  in Lucene 11.0. Missing values can be set as constructor parameters.  (Alan Woodward)
+
+* GITHUB#15501: Introduce optional access to backing vector values from the scorer  (Chris Hegarty)
+
+* GITHUB#15514: Refactor DocValuesSkipper stat methods to accept IndexReader instead of IndexSearcher (Pan Guixin)
+
 New Features
 ---------------------
 * GITHUB#15328: VectorSimilarityFunction.getValues() now implements doubleVal allowing its
@@ -161,7 +190,7 @@ New Features
 * GITHUB#14565: Add ParentsChildrenBlockJoinQuery that supports parent and child filter in the same query
   along with limiting number of child documents to retrieve per parent. (Jinny Wang)
 
-* GITHUB#15171: Add `VectorScorer.Bulk` for bulk iteration and scoring of vectors. This new interface is now
+* GITHUB#15171, GITHUB#15496: Add `VectorScorer.Bulk` for bulk iteration and scoring of vectors. This new interface is now
   used in AbstractKnnVectorQuery to make exact matches faster. (Ben Trent)
 
 * GITHUB#15176: Add `[Float|Byte]VectorValues#rescorer(element[])` interface to allow optimized rescoring of vectors.
@@ -181,6 +210,8 @@ New Features
  * GITHUB#15415: Add fallback support to Lucene104ScalarQuantizedVectorsFormat getFloatVectorValues when there are
    no full-precision vectors present (Pulkit Gupta)
 
+ * GITHUB#15468: Add support for `@SuppressAssertingFormats` annotation for fine-grained control over `AssertingCodec` formats (Prudhvi Godithi)
+
 Improvements
 ---------------------
 * GITHUB#15148: Add support uint8 distance and allow 8 bit scalar quantization (Trevor McCulloch)
@@ -190,6 +221,8 @@ Improvements
 * GITHUB#15332: Add PhraseQuery.Builder.setMaxTerms() method to limit the maximum number of terms and excessive memory use (linyunanit)
 
 * GITHUB#15425: Refactoring internal HnswGraph.NodesIterator to avoid unneeded copying and sorting (Mike Sokolov)
+
+* GITHUB#15479: Add NumericDocValueRangeQuery base class to add accessor methods for field, lower and upper values (Alan Woodward)
 
 Optimizations
 ---------------------
@@ -203,6 +236,8 @@ Optimizations
 
 * GITHUB#15151: Use `SimScorer#score` bulk API to compute impact scores per
   block of postings. (Adrien Grand)
+
+* GITHUB#15128: Skip heavy TreeSet opts for the first group in FirstPassGroupingCollector (Binlong Gao)
 
 * GITHUB#15167: FirstPassGroupingCollector supports ignoring docs without group field (Binlong Gao)
 
@@ -220,9 +255,27 @@ Optimizations
 
 * GITHUB#14963: Bypass HNSW graph building for tiny segments. (Shubham Chaudhary, Ben Trent)
 
+* GITHUB#13084: Implement sparse LiveDocs format to reduce memory usage by up to 8x for segments with <=1% deletions. (Salvatore Campagna)
+
 * GITHUB#15397: NumericComparator: immediately check whether a segment is competitive with the recorded bottom (Martijn van Groningen)
 
 # GITHUB#15303: Speed up NumericUtils#{add,subtract} by operating on integers instead of bytes. (Kaival Parikh)
+
+* GITHUB#15003: Avoid reconstructing HNSW graph during merging (Pulkit Gupta)
+
+* GITHUB#15406: Improve round trip conversion of ValueSource <-> DoublesValueSource (hossman)
+
+* GITHUB#15475: Enabling wrapped collectors in MultiCollector to collectRange (Ankit Jain)
+
+* GITHUB#15474: Use bulk scoring provided by RandomVectorScorers for new scalar quantized formats provided through
+    Lucene104ScalarQuantizedVectorsFormat and Lucene104HnswScalarQuantizedVectorsFormat (Ben Trent)
+
+* GITHUB#15500: Use bulk scoring for filtered HNSW search and for entry-point scoring in the graph. This should
+  provide speed improvements when using vector scorers that satisfy the bulk scoring interface. (Ben Trent)
+
+* GITHUB#15498: ExitableDirectoryReader keeps singleton SortedSetDocValues or SortedNumericDocValues as singletons. (Houston Putman)
+
+* GITHUB#15511: Dynamic pruning for SORTED(_SET) fields with doc values skipper (Pan Guixin)
 
 Bug Fixes
 ---------------------
@@ -244,6 +297,10 @@ Bug Fixes
 * GITHUB#15380: Fix potential EOF introduced by optimized filter iterations in MaxScoreBulkScorer. The
   approximation and the match verification could get out of sync, resulting in an EOFException. (Ben Trent)
 
+* GITHUB#15478: Fix duplicate neighbor issue by checking node existence before making reverse link. (Pulkit Gupta)
+
+* GITHUB#15523: Updating createMultiSegmentIndex to utilize an explicit NoMergePolicy (Bryce Kane)
+
 Other
 ---------------------
 * GITHUB#15237: Fix SmartChinese to only deserialize dictionary data from classpath with a native array
@@ -251,6 +308,11 @@ Other
   filter factory that disallows any unprotected deserialization while running tests.
   Applications using SecurityManager now need to grant SerializablePermission("serialFilter")
   to the analysis-smartcn module. (Uwe Schindler, Isaac David)
+
+* GITHUB#15481: The `reverse` field of SortField is now final. If you have subclassed SortField,
+  you should set `reverse` in the super constructor. (Alan Woodward)
+
+* GITHUB#15513: Update documentation in DefaultBloomFilterFactory to reflect changes made in GITHUB#11900 (Greg Miller)
 
 * GITHUB#15341: Align float vectors on disk to 64 bytes, for optimal performance on Arm Neoverse
   machines. (Mike McCandless, Kaival Parikh)

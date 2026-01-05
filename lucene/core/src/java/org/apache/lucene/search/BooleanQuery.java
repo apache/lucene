@@ -369,7 +369,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       if (mustNotClauses.stream().anyMatch(p.or(clauseSets.get(Occur.FILTER)::contains))) {
         return new MatchNoDocsQuery("FILTER or MUST clause also in MUST_NOT");
       }
-      if (mustNotClauses.contains(new MatchAllDocsQuery())) {
+      if (mustNotClauses.contains(MatchAllDocsQuery.INSTANCE)) {
         return new MatchNoDocsQuery("MUST_NOT clause is MatchAllDocsQuery");
       }
     }
@@ -379,7 +379,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       final Set<Query> filters = new HashSet<>(clauseSets.get(Occur.FILTER));
       boolean modified = false;
       if (filters.size() > 1 || clauseSets.get(Occur.MUST).isEmpty() == false) {
-        modified = filters.remove(new MatchAllDocsQuery());
+        modified = filters.remove(MatchAllDocsQuery.INSTANCE);
       }
       modified |= filters.removeAll(clauseSets.get(Occur.MUST));
       if (modified) {

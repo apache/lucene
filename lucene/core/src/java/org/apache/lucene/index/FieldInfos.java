@@ -35,7 +35,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
-import org.apache.lucene.util.CollectionUtil;
 
 /**
  * Collection of {@link FieldInfo}s (accessible by number or by name).
@@ -86,7 +85,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     String softDeletesField = null;
     String parentField = null;
 
-    byName = CollectionUtil.newHashMap(infos.length);
+    byName = HashMap.newHashMap(infos.length);
     int maxFieldNumber = -1;
     boolean fieldNumberStrictlyAscending = true;
     for (FieldInfo info : infos) {
@@ -775,7 +774,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       if (curFi != null) {
         curFi.verifySameSchema(fi);
         if (fi.attributes() != null) {
-          fi.attributes().forEach((k, v) -> curFi.putAttribute(k, v));
+          curFi.putAttributes(fi.attributes());
         }
         if (fi.hasPayloads()) {
           curFi.setStorePayloads();

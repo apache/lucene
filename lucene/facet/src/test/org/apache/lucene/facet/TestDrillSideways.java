@@ -275,7 +275,7 @@ public class TestDrillSideways extends FacetTestCase {
         IndexSearcher searcher = new IndexSearcher(r);
         LeafReaderContext ctx = r.leaves().get(0);
 
-        Query baseQuery = new MatchAllDocsQuery();
+        Query baseQuery = MatchAllDocsQuery.INSTANCE;
         Weight baseWeight = searcher.createWeight(baseQuery, ScoreMode.COMPLETE_NO_SCORES, 1f);
         Scorer baseScorer = baseWeight.scorer(ctx);
 
@@ -402,7 +402,7 @@ public class TestDrillSideways extends FacetTestCase {
           TaxonomyReader taxoR = new DirectoryTaxonomyReader(taxoW)) {
         IndexSearcher searcher = new DrillSidewaysAssertingIndexSearcher(r);
 
-        Query baseQuery = new MatchAllDocsQuery();
+        Query baseQuery = MatchAllDocsQuery.INSTANCE;
         DrillDownQuery ddq = new DrillDownQuery(facetsConfig, baseQuery);
         ddq.add("foo", "bar");
         DrillSideways drillSideways = new DrillSideways(searcher, facetsConfig, taxoR);
@@ -811,7 +811,7 @@ public class TestDrillSideways extends FacetTestCase {
     assertNull(r.facets.getTopChildren(10, "Author"));
 
     // Test no drill down dims:
-    ddq = new DrillDownQuery(config, new MatchAllDocsQuery());
+    ddq = new DrillDownQuery(config, MatchAllDocsQuery.INSTANCE);
     r = ds.search(ddq, manager);
     assertEquals(5, r.collectorResult.size());
     assertEquals(
@@ -822,7 +822,7 @@ public class TestDrillSideways extends FacetTestCase {
         r.facets.getTopChildren(10, "Author").toString());
 
     // Test no drill down dims with null FacetsCollectorManager for the main query:
-    ddq = new DrillDownQuery(config, new MatchAllDocsQuery());
+    ddq = new DrillDownQuery(config, MatchAllDocsQuery.INSTANCE);
     r =
         new DrillSideways(searcher, config, taxoReader) {
           @Override
@@ -1271,7 +1271,7 @@ public class TestDrillSideways extends FacetTestCase {
 
       Query baseQuery;
       if (contentToken == null) {
-        baseQuery = new MatchAllDocsQuery();
+        baseQuery = MatchAllDocsQuery.INSTANCE;
       } else {
         baseQuery = new TermQuery(new Term("content", contentToken));
       }
@@ -1461,7 +1461,7 @@ public class TestDrillSideways extends FacetTestCase {
 
         // Creating a query that matches nothing to make sure #finish still gets called on all
         // facet collectors:
-        Query baseQuery = new MatchNoDocsQuery();
+        Query baseQuery = MatchNoDocsQuery.INSTANCE;
         DrillDownQuery ddq = new DrillDownQuery(facetsConfig, baseQuery);
         ddq.add("foo", "bar");
         DrillSideways drillSideways =

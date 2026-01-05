@@ -117,7 +117,7 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
       avoid.addAll(Arrays.asList(a.value()));
     }
     FileSystem fs = FileSystems.getDefault();
-    if (LuceneTestCase.VERBOSE && allowed(avoid, VerboseFS.class)) {
+    if (LuceneTestCase.INFOSTREAM && allowed(avoid, VerboseFS.class)) {
       fs =
           new VerboseFS(
                   fs,

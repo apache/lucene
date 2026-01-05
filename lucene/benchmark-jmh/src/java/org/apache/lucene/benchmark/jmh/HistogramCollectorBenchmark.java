@@ -129,7 +129,7 @@ public class HistogramCollectorBenchmark {
   public void matchAllQueryHistogram(BenchmarkParams params) throws IOException {
     IndexSearcher searcher = new IndexSearcher(reader);
     searcher.search(
-        new MatchAllDocsQuery(), new HistogramCollectorManager("f", params.bucketWidth, 10000));
+        MatchAllDocsQuery.INSTANCE, new HistogramCollectorManager("f", params.bucketWidth, 10000));
   }
 
   @Benchmark

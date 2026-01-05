@@ -149,7 +149,7 @@ abstract class AbstractKnnVectorQuery extends Query {
       topK = runSearchTasks(tasks, taskExecutor, perLeafResults, leafReaderContexts);
     }
     if (topK.scoreDocs.length == 0) {
-      return new MatchNoDocsQuery();
+      return MatchNoDocsQuery.INSTANCE;
     }
     return DocAndScoreQuery.createDocAndScoreQuery(reader, topK, reentryCount);
   }
@@ -316,17 +316,16 @@ abstract class AbstractKnnVectorQuery extends Query {
     HitQueue queue = new HitQueue(queueSize, true);
     TotalHits.Relation relation = TotalHits.Relation.EQUAL_TO;
     ScoreDoc topDoc = queue.top();
-    DocIdSetIterator vectorIterator = vectorScorer.iterator();
     DocAndFloatFeatureBuffer buffer = new DocAndFloatFeatureBuffer();
     VectorScorer.Bulk bulkScorer = vectorScorer.bulk(acceptIterator);
-    while (vectorIterator.docID() != DocIdSetIterator.NO_MORE_DOCS) {
+    for (float maxScore = bulkScorer.nextDocsAndScores(DocIdSetIterator.NO_MORE_DOCS, null, buffer);
+        buffer.size > 0;
+        maxScore = bulkScorer.nextDocsAndScores(DocIdSetIterator.NO_MORE_DOCS, null, buffer)) {
       // Mark results as partial if timeout is met
       if (queryTimeout != null && queryTimeout.shouldExit()) {
         relation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
         break;
       }
-      // iterator already takes live docs into account
-      float maxScore = bulkScorer.nextDocsAndScores(64, null, buffer);
       if (maxScore < topDoc.score) {
         // all the scores in this batch are too low, skip
         continue;

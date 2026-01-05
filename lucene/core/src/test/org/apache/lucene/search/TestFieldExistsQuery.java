@@ -16,6 +16,11 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.not;
+
 import java.io.IOException;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
@@ -62,8 +67,9 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     final IndexReader reader = iw.getReader();
     iw.close();
 
-    assertTrue(
-        (new FieldExistsQuery("f")).rewrite(newSearcher(reader)) instanceof MatchAllDocsQuery);
+    assertThat(
+        new FieldExistsQuery("f").rewrite(newSearcher(reader)),
+        instanceOf(MatchAllDocsQuery.class));
     reader.close();
     dir.close();
   }
@@ -82,8 +88,9 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     final IndexReader reader = iw.getReader();
     iw.close();
 
-    assertTrue(
-        new FieldExistsQuery("dim").rewrite(newSearcher(reader)) instanceof MatchAllDocsQuery);
+    assertThat(
+        new FieldExistsQuery("dim").rewrite(newSearcher(reader)),
+        instanceOf(MatchAllDocsQuery.class));
     reader.close();
     dir.close();
   }
@@ -101,7 +108,8 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     final IndexReader reader = iw.getReader();
     iw.close();
 
-    assertEquals(new MatchAllDocsQuery(), new FieldExistsQuery("dim").rewrite(newSearcher(reader)));
+    assertEquals(
+        MatchAllDocsQuery.INSTANCE, new FieldExistsQuery("dim").rewrite(newSearcher(reader)));
     reader.close();
     dir.close();
   }
@@ -127,8 +135,10 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     iw.close();
     final IndexSearcher searcher = newSearcher(reader);
 
-    assertFalse((new FieldExistsQuery("dim")).rewrite(searcher) instanceof MatchAllDocsQuery);
-    assertFalse((new FieldExistsQuery("f")).rewrite(searcher) instanceof MatchAllDocsQuery);
+    assertThat(
+        new FieldExistsQuery("dim").rewrite(searcher), not(instanceOf(MatchAllDocsQuery.class)));
+    assertThat(
+        new FieldExistsQuery("f").rewrite(searcher), not(instanceOf(MatchAllDocsQuery.class)));
     reader.close();
     dir.close();
   }
@@ -149,9 +159,12 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     iw.close();
     final IndexSearcher searcher = newSearcher(reader);
 
-    assertFalse((new FieldExistsQuery("dv1")).rewrite(searcher) instanceof MatchAllDocsQuery);
-    assertFalse((new FieldExistsQuery("dv2")).rewrite(searcher) instanceof MatchAllDocsQuery);
-    assertFalse((new FieldExistsQuery("dv3")).rewrite(searcher) instanceof MatchAllDocsQuery);
+    assertThat(
+        new FieldExistsQuery("dv1").rewrite(searcher), not(instanceOf(MatchAllDocsQuery.class)));
+    assertThat(
+        new FieldExistsQuery("dv2").rewrite(searcher), not(instanceOf(MatchAllDocsQuery.class)));
+    assertThat(
+        new FieldExistsQuery("dv3").rewrite(searcher), not(instanceOf(MatchAllDocsQuery.class)));
     reader.close();
     dir.close();
   }
@@ -368,7 +381,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     final IndexSearcher searcher2 = new IndexSearcher(reader2);
     final Query testQuery = new FieldExistsQuery("long");
     final Weight weight2 = searcher2.createWeight(testQuery, ScoreMode.COMPLETE, 1);
-    assertEquals(weight2.count(reader2.leaves().get(0)), -1);
+    assertEquals(-1, weight2.count(reader2.leaves().get(0)));
 
     IOUtils.close(reader, reader2, w, dir);
   }
@@ -660,7 +673,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
       try (IndexReader reader = iw.getReader()) {
         IndexSearcher searcher = newSearcher(reader);
         Query query = new FieldExistsQuery("vector");
-        assertTrue(searcher.rewrite(query) instanceof MatchAllDocsQuery);
+        assertThat(searcher.rewrite(query), instanceOf(MatchAllDocsQuery.class));
         assertEquals(100, searcher.count(query));
       }
     }
@@ -725,7 +738,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
                 .build();
 
         int count = searcher.count(booleanQuery);
-        assertTrue(count <= numVectors);
+        assertThat(count, lessThanOrEqualTo(numVectors));
         if (allDocsHaveVector) {
           assertEquals(numDocs / 2, count);
         }
@@ -816,7 +829,8 @@ public class TestFieldExistsQuery extends LuceneTestCase {
       iw.forceMerge(1);
 
       try (IndexReader reader = iw.getReader()) {
-        assertTrue(reader.leaves().size() == 1 && reader.hasDeletions() == false);
+        assertThat(reader.leaves(), hasSize(1));
+        assertFalse(reader.hasDeletions());
         IndexSearcher searcher = newSearcher(reader);
         assertEquals(0, searcher.count(new FieldExistsQuery("long")));
       }
@@ -845,7 +859,8 @@ public class TestFieldExistsQuery extends LuceneTestCase {
       iw.forceMerge(1);
 
       try (IndexReader reader = iw.getReader()) {
-        assertTrue(reader.leaves().size() == 1 && reader.hasDeletions() == false);
+        assertThat(reader.leaves(), hasSize(1));
+        assertFalse(reader.hasDeletions());
         IndexSearcher searcher = newSearcher(reader);
         assertEquals(0, searcher.count(new FieldExistsQuery("str")));
       }

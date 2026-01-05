@@ -98,6 +98,15 @@ Any subclass of `DataInput` that have implemented `readGroupVInt()` need to remo
 Instead make sure that subclasses of `IndexInput` implement `RandomAccessInput`.
 Pure `DataInput` subclasses cannot be optimized anymore as they cannot offer random access and seeking.`
 
+### SortField.setMissingValue() has been removed
+
+Missing values should be configured in SortField constructor methods, as they are now final.
+
+### MatchAllDocs and MatchNoDocs are singletons
+
+MatchAllDocs and MatchNoDocs queries should use the INSTANCE final field instead of creating
+new objects. The constructors will be removed in the future.
+
 ## Migration from Lucene 9.x to Lucene 10.0
 
 ### DataInput#readVLong() may now read negative vlongs

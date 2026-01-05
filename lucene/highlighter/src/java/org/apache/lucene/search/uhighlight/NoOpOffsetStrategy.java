@@ -36,7 +36,7 @@ public class NoOpOffsetStrategy extends FieldOffsetStrategy {
         new UHComponents(
             "_ignored_",
             (_) -> false,
-            new MatchNoDocsQuery(),
+            MatchNoDocsQuery.INSTANCE,
             new BytesRef[0],
             PhraseHelper.NONE,
             new LabelledCharArrayMatcher[0],

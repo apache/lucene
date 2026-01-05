@@ -281,6 +281,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "AssertFalse:OFF", // TODO: new, not checked if applicable to Lucene
     "AssertThrowsMultipleStatements:WARN",
     "AssertionFailureIgnored:OFF", // TODO: there are problems
+    "AssertSameIncompatible:WARN",
     "AssignmentExpression:OFF", // TODO: there are problems
     "AssistedInjectAndInjectOnConstructors:OFF", // TODO: new, not checked if applicable to Lucene
     "AssistedInjectAndInjectOnSameConstructor:OFF", // we don't use this annotation
@@ -440,6 +441,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "ForEachIterable:OFF", // TODO: new, not checked if applicable to Lucene
     "ForOverride:OFF", // we don't use this annotation
     "FormatString:ERROR",
+    "FormatStringShouldUsePlaceholders:ERROR",
     "FormatStringAnnotation:OFF", // we don't use this annotation
     "FragmentInjection:OFF", // we don't use android
     "FragmentNotInstantiable:OFF", // we don't use android
