@@ -22,14 +22,7 @@ plugins {
   id "java-gradle-plugin"
 }
 
-repositories {
-  mavenCentral()
-  maven {
-    url "https://maven-central.storage-download.googleapis.com/maven2/"
-  }
-  gradlePluginPortal()
-}
-
+apply from: rootProject.file("build-tools/build-infra/declare-repositories.gradle")
 apply from: rootProject.file("build-tools/build-infra/ecj-source.gradle")
 apply from: rootProject.file("build-tools/build-infra/declare-dependencies.gradle")
 
