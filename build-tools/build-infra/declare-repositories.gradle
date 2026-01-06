@@ -23,7 +23,7 @@ repositories {
   // running on github runners (https://github.com/apache/lucene/issues/15541)
   boolean useGoogleMavenProxy = System.getenv("GITHUB_ACTIONS") != null
   if (useGoogleMavenProxy) {
-    google {
+    maven {
       url "https://maven-central.storage-download.googleapis.com/maven2/"
     }
   } else {

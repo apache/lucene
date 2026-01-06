@@ -125,7 +125,7 @@ public class LuceneRootConfigurationPlugin extends LuceneGradlePlugin {
     if (project.getProviders().environmentVariable("GITHUB_ACTIONS").isPresent()) {
       project
           .getRepositories()
-          .google(
+          .maven(
               repo -> repo.setUrl("https://maven-central.storage-download.googleapis.com/maven2/"));
     } else {
       project.getRepositories().mavenCentral();
