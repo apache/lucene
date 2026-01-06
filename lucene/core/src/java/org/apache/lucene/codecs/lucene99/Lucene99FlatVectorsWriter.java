@@ -157,10 +157,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     return output.alignFilePointer(
         switch (encoding) {
           case BYTE -> Float.BYTES;
-          case FLOAT32 ->
-              // optimal alignment for Arm Neoverse machines.
-              // TODO: guarantee this alignment for Lucene90CompoundFormat.
-              64;
+          case FLOAT32 -> 64; // optimal alignment for Arm Neoverse machines.
         });
   }
 

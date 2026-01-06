@@ -107,6 +107,13 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
 
   private record SizedFile(String name, long length) {}
 
+  private int getAlignment(String fileName) {
+    // TODO: Cleaner way for file-specific alignment?
+    return fileName.endsWith(".vec") // raw vectors written by Lucene99FlatVectorsFormat.
+        ? 64 // optimal alignment for Arm Neoverse machines.
+        : Long.BYTES;
+  }
+
   private void writeCompoundFile(
       IndexOutput entries, IndexOutput data, Directory dir, SegmentInfo si) throws IOException {
     // write number of files
@@ -121,7 +128,7 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
     for (SizedFile sizedFile : files) {
       String file = sizedFile.name;
       // align file start offset
-      long startOffset = data.alignFilePointer(Long.BYTES);
+      long startOffset = data.alignFilePointer(getAlignment(file));
       // write bytes for file
       try (ChecksumIndexInput in = dir.openChecksumInput(file)) {
 
