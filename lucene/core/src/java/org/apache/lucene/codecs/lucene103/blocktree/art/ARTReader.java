@@ -138,7 +138,12 @@ public class ARTReader {
         return Node.load(access, childFp);
       } else {
         // Not match, keep in this parent.
-        return parent;
+        //        return parent;
+        // If prefix is 0, and this key has no child, and if this node has output, we should scan
+        // output's block.
+        // If prefix is not 0, but target contains prefix (prefixLength equals commonLength), and if
+        // this node has output, we still need to scan output's block.
+        return null;
       }
     }
   }

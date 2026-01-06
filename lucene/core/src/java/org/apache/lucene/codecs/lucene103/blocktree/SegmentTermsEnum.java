@@ -35,6 +35,7 @@ import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /** Iterates through terms in this field. */
+// TODO: Remove public
 public final class SegmentTermsEnum extends BaseTermsEnum {
 
   // Lazy init:
@@ -740,6 +741,8 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
       } else {
         // Follow this node
         // TODO: set bytes when we walked multi bytes.
+        // TODO: Here we get a node by searching parent, although, we haven't search this node, we
+        // still need to copy node's prefix to term and update targetUpto to pushFrame.
         term.setByteAt(targetUpto, clone.bytes[targetUpto]);
         // TODO: We have not set term length.
         node = nextNode;
