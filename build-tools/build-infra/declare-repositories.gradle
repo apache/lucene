@@ -19,10 +19,14 @@
 // because it's reused in build-infra-shadow and from build settings.
 
 repositories {
-  mavenCentral()
-  maven {
-    url "https://maven-central.storage-download.googleapis.com/maven2/"
+  // use google's maven central mirror first, if requested or if we're
+  // running on github runners (https://github.com/apache/lucene/issues/15541)
+  boolean useGoogleMavenProxy = System.getenv("GITHUB_ACTIONS") != null
+  if (useGoogleMavenProxy) {
+    google()
+  } else {
+    mavenCentral()
   }
+
   gradlePluginPortal()
 }
-

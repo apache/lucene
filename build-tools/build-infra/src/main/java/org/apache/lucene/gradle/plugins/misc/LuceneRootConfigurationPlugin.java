@@ -120,7 +120,13 @@ public class LuceneRootConfigurationPlugin extends LuceneGradlePlugin {
       project.setVersion(project.getRootProject().getVersion());
     }
 
-    project.getRepositories().mavenCentral();
+    // use google's maven central mirror first on github runners.
+    // https://github.com/apache/lucene/issues/15541
+    if (project.getProviders().environmentVariable("GITHUB_ACTIONS").isPresent()) {
+      project.getRepositories().google();
+    } else {
+      project.getRepositories().mavenCentral();
+    }
 
     // Common archive artifact naming.
     var baseExt = project.getExtensions().getByType(BasePluginExtension.class);
