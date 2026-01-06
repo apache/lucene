@@ -79,7 +79,7 @@ public abstract class Node {
   // length of compressed path(prefix)
   public int prefixLength;
   // the compressed path path (prefix)
-  protected byte[] prefix;
+  public byte[] prefix;
   // number of non-null children, the largest value will not beyond 255
   // to benefit calculation,we keep the value as a short type
   protected short childrenCount;

@@ -472,6 +472,11 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         // TODO: check this.
         // TODO: set bytes when we walked multi bytes.
         term.setByteAt(targetUpto, clone.bytes[targetUpto]);
+        // Here we get a node by searching parent, although, we haven't searched this node, we
+        // still need to copy node's prefix to term and update targetUpto to pushFrame.
+        if (nextNode.prefixLength > 0) {
+          term.setBytes(targetUpto + 1, nextNode.prefix);
+        }
         // TODO: We have not set term length.
         // Aggregate output as we go:
 
@@ -480,7 +485,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         // targetUpto]&0xff) + " node.output=" + node.output + " node.nfo=" + node.nextFinalOutput);
         // }
         //        targetUpto++;
-        targetUpto = clone.offset;
+        targetUpto = clone.offset + nextNode.prefixLength;
 
         if (node.hasOutput()) {
           // if (DEBUG) System.out.println("    node is final!");
@@ -586,6 +591,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
       int cmp = 0;
 
       // First compare up to valid seek frames:
+      // TODO: We can't use 1 + targetUpto to get node, since node walks multi bytes now.
       while (targetUpto < targetLimit) {
         cmp = (term.byteAt(targetUpto) & 0xFF) - (target.bytes[target.offset + targetUpto] & 0xFF);
         // if (DEBUG) {
@@ -741,9 +747,12 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
       } else {
         // Follow this node
         // TODO: set bytes when we walked multi bytes.
-        // TODO: Here we get a node by searching parent, although, we haven't search this node, we
-        // still need to copy node's prefix to term and update targetUpto to pushFrame.
         term.setByteAt(targetUpto, clone.bytes[targetUpto]);
+        // Here we get a node by searching parent, although, we haven't searched this node, we
+        // still need to copy node's prefix to term and update targetUpto to pushFrame.
+        if (nextNode.prefixLength > 0) {
+          term.setBytes(targetUpto + 1, nextNode.prefix);
+        }
         // TODO: We have not set term length.
         node = nextNode;
 
@@ -752,7 +761,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         // targetUpto]&0xff) + " node.output=" + node.output + " node.nfo=" + node.nextFinalOutput);
         // }
         //        targetUpto++;
-        targetUpto = clone.offset;
+        targetUpto = clone.offset + nextNode.prefixLength;
 
         if (node.hasOutput()) {
           // if (DEBUG) System.out.println("    node is final!");

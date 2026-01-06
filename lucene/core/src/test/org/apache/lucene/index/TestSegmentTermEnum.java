@@ -77,6 +77,7 @@ public class TestSegmentTermEnum extends LuceneTestCase {
     SegmentTermsEnum termsEnum =
         (SegmentTermsEnum) (getOnlyLeafReader(reader).terms("category").iterator());
 
+    // TODO: test seekExact.
     assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("regular")));
     assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("request1")));
     assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("request2")));
