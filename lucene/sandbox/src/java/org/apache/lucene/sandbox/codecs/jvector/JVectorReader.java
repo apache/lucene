@@ -137,6 +137,11 @@ public class JVectorReader extends KnnVectorsReader {
             try (final var randomAccessReader = new JVectorRandomAccessReader(quant)) {
               pqVectors = PQVectors.load(randomAccessReader);
             }
+            // PQVectors.load may not read entirely, so skip to end if necessary for checksum
+            final long expectedPos = pqOffset + pqLength;
+            if (quant.getFilePointer() != expectedPos) {
+              quant.skipBytes(expectedPos - quant.getFilePointer());
+            }
           } else {
             pqVectors = null;
           }
