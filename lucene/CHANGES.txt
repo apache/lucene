@@ -315,7 +315,7 @@ Other
 * GITHUB#15513: Update documentation in DefaultBloomFilterFactory to reflect changes made in GITHUB#11900 (Greg Miller)
 
 * GITHUB#15341: Align float vectors on disk to 64 bytes, for optimal performance on Arm Neoverse
-  machines. (Mike McCandless, Kaival Parikh)
+  machines (including vectors inside CFS files). (Mike McCandless, Kaival Parikh)
 
 Build
 ---------------------
