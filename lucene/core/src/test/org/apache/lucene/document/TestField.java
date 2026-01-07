@@ -698,17 +698,38 @@ public class TestField extends LuceneTestCase {
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      byte[] b = new byte[5];
+      byte[] empty = new byte[5];
+      IllegalArgumentException zeroError = expectThrows(
+          IllegalArgumentException.class,
+          () -> new KnnByteVectorField("binaryZeroErr", empty));
+      assertTrue(zeroError.getMessage().contains("zero vector not allowed"));
+
+      byte[] b = new byte[] {1, 1, 1, 1, 1};
       KnnByteVectorField field =
           new KnnByteVectorField("binary", b, VectorSimilarityFunction.EUCLIDEAN);
       assertNull(field.binaryValue());
       assertArrayEquals(b, field.vectorValue());
+
       expectThrows(
           IllegalArgumentException.class,
           () -> new KnnFloatVectorField("bogus", new float[] {1}, (FieldType) field.fieldType()));
+      zeroError = expectThrows(
+          IllegalArgumentException.class,
+          () -> new KnnByteVectorField("float", new byte[] {0, 0, 0, 0, 0}, (FieldType) field.fieldType()));
+      assertTrue(zeroError.getMessage().contains("zero vector not allowed"));
+      zeroError = expectThrows(
+          IllegalArgumentException.class,
+          () -> new KnnFloatVectorField("zerovec", new float[] {0, 0, 0, 0}));
+      assertTrue(zeroError.getMessage().contains("zero vector not allowed"));
+
       float[] vector = new float[] {1, 2};
       Field field2 = new KnnFloatVectorField("float", vector);
       assertNull(field2.binaryValue());
+      zeroError = expectThrows(
+          IllegalArgumentException.class,
+          () -> new KnnFloatVectorField("float", new float[] {0, 0}, (FieldType) field2.fieldType()));
+      assertTrue(zeroError.getMessage().contains("zero vector not allowed"));
+
       doc.add(field);
       doc.add(field2);
       w.addDocument(doc);

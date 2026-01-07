@@ -98,6 +98,9 @@ public class KnnFloatVectorField extends Field {
   public KnnFloatVectorField(
       String name, float[] vector, VectorSimilarityFunction similarityFunction) {
     super(name, createType(vector, similarityFunction));
+    if (VectorUtil.isZeroVector(vector) == true) {
+      throw new IllegalArgumentException("zero vector not allowed for vector field value");
+    }
     fieldsData = VectorUtil.checkFinite(vector); // null check done above
   }
 

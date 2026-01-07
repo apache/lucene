@@ -98,6 +98,9 @@ public class KnnByteVectorField extends Field {
   public KnnByteVectorField(
       String name, byte[] vector, VectorSimilarityFunction similarityFunction) {
     super(name, createType(vector, similarityFunction));
+    if (VectorUtil.isZeroVector(vector) == true) {
+      throw new IllegalArgumentException("zero vector not allowed for vector field value");
+    }
     fieldsData = vector; // null-check done above
   }
 
