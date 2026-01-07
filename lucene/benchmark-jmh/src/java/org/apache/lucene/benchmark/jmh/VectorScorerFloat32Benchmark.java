@@ -38,6 +38,7 @@ import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -326,7 +327,8 @@ public class VectorScorerFloat32Benchmark {
         in.slice("test", 0, in.length()),
         byteSize,
         new ThrowingFlatVectorScorer(),
-        sim);
+        sim,
+        VectorEncoding.FLOAT32);
   }
 
   static final class ThrowingFlatVectorScorer implements FlatVectorsScorer {

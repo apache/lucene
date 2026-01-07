@@ -40,7 +40,7 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
       throws IOException {
     switch (vectorValues.getEncoding()) {
-      case FLOAT32 -> {
+      case FLOAT32, FLOAT16 -> {
         return new FloatScoringSupplier((FloatVectorValues) vectorValues, similarityFunction);
       }
       case BYTE -> {

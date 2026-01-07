@@ -236,7 +236,8 @@ public abstract class CodecReader extends LeafReader {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null
         || fi.getVectorDimension() == 0
-        || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
+        || (fi.getVectorEncoding() != VectorEncoding.FLOAT32
+            && fi.getVectorEncoding() != VectorEncoding.FLOAT16)) {
       // Field does not exist or does not index vectors
       return null;
     }
@@ -266,7 +267,8 @@ public abstract class CodecReader extends LeafReader {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null
         || fi.getVectorDimension() == 0
-        || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
+        || (fi.getVectorEncoding() != VectorEncoding.FLOAT32
+            && fi.getVectorEncoding() != VectorEncoding.FLOAT16)) {
       // Field does not exist or does not index vectors
       return;
     }

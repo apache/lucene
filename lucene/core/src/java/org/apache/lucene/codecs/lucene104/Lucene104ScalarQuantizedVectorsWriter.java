@@ -124,7 +124,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   @Override
   public FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
     FlatFieldVectorsWriter<?> rawVectorDelegate = this.rawVectorDelegate.addField(fieldInfo);
-    if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
+    VectorEncoding vectorEncoding = fieldInfo.getVectorEncoding();
+    if (vectorEncoding == VectorEncoding.FLOAT32 || vectorEncoding == VectorEncoding.FLOAT16) {
       @SuppressWarnings("unchecked")
       FieldWriter fieldWriter =
           new FieldWriter(fieldInfo, (FlatFieldVectorsWriter<float[]>) rawVectorDelegate);
@@ -325,7 +326,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
   @Override
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    if (!fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
+    VectorEncoding vectorEncoding = fieldInfo.getVectorEncoding();
+    if (vectorEncoding != VectorEncoding.FLOAT32 && vectorEncoding != VectorEncoding.FLOAT16) {
       rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
       return;
     }
@@ -435,7 +437,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   @Override
   public CloseableRandomVectorScorerSupplier mergeOneFieldToIndex(
       FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    if (!fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
+    VectorEncoding vectorEncoding = fieldInfo.getVectorEncoding();
+    if (vectorEncoding != VectorEncoding.FLOAT32 && vectorEncoding != VectorEncoding.FLOAT16) {
       return rawVectorDelegate.mergeOneFieldToIndex(fieldInfo, mergeState);
     }
 
@@ -650,7 +653,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
   static int calculateCentroid(MergeState mergeState, FieldInfo fieldInfo, float[] centroid)
       throws IOException {
-    assert fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32);
+
+    VectorEncoding vectorEncoding = fieldInfo.getVectorEncoding();
+    assert vectorEncoding != VectorEncoding.FLOAT32 || vectorEncoding != VectorEncoding.FLOAT16;
     // clear out the centroid
     Arrays.fill(centroid, 0);
     int count = 0;

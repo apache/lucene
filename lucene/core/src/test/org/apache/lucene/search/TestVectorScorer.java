@@ -48,7 +48,7 @@ public class TestVectorScorer extends LuceneTestCase {
         case BYTE:
           vectorScorer = context.reader().getByteVectorValues("field").scorer(new byte[] {1, 2});
           break;
-        case FLOAT32:
+        case FLOAT32, FLOAT16:
           vectorScorer = context.reader().getFloatVectorValues("field").scorer(new float[] {1, 2});
           break;
         default:

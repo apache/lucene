@@ -42,6 +42,7 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -406,5 +407,10 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
   @Override
   public void testSearchWithVisitedLimit() {
     // search not supported
+  }
+
+  @Override
+  protected VectorEncoding randomVectorEncoding() {
+    return random().nextBoolean() ? VectorEncoding.BYTE : VectorEncoding.FLOAT32;
   }
 }

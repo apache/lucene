@@ -103,6 +103,7 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
           // TODO: Support using SQ8 quantization, see:
           //  - https://github.com/opensearch-project/k-NN/pull/2425
           throw new UnsupportedOperationException("Byte vectors not supported");
+      case FLOAT16 -> throw new UnsupportedOperationException("Float16 vectors not supported");
       case FLOAT32 -> {
         FloatVectorValues merged =
             KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
@@ -128,6 +129,8 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
             // TODO: Support using SQ8 quantization, see:
             //  - https://github.com/opensearch-project/k-NN/pull/2425
             throw new UnsupportedOperationException("Byte vectors not supported");
+
+        case FLOAT16 -> throw new UnsupportedOperationException("Float16 vectors not supported");
 
         case FLOAT32 -> {
           @SuppressWarnings("unchecked")

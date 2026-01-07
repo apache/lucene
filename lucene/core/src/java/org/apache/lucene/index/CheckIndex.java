@@ -2858,7 +2858,7 @@ public final class CheckIndex implements Closeable {
                     status,
                     reader);
                 break;
-              case FLOAT32:
+              case FLOAT32, FLOAT16:
                 checkFloatVectorValues(
                     Objects.requireNonNull(reader.getFloatVectorValues(fieldInfo.name)),
                     fieldInfo,

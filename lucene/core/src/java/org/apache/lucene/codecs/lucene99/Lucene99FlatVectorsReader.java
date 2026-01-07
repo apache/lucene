@@ -21,6 +21,7 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSi
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -192,23 +193,26 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     return entry;
   }
 
-  private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
+  private FieldEntry getFieldEntry(String field, VectorEncoding... expectedEncoding) {
     final FieldEntry fieldEntry = getFieldEntryOrThrow(field);
-    if (fieldEntry.vectorEncoding != expectedEncoding) {
-      throw new IllegalArgumentException(
-          "field=\""
-              + field
-              + "\" is encoded as: "
-              + fieldEntry.vectorEncoding
-              + " expected: "
-              + expectedEncoding);
+    for (VectorEncoding expected : expectedEncoding) {
+      if (fieldEntry.vectorEncoding == expected) {
+        return fieldEntry;
+      }
     }
-    return fieldEntry;
+    throw new IllegalArgumentException(
+        "field=\""
+            + field
+            + "\" is encoded as: "
+            + fieldEntry.vectorEncoding
+            + " expected: "
+            + Arrays.toString(expectedEncoding));
   }
 
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
+    final FieldEntry fieldEntry =
+        getFieldEntry(field, VectorEncoding.FLOAT32, VectorEncoding.FLOAT16);
     return OffHeapFloatVectorValues.load(
         fieldEntry.similarityFunction,
         vectorScorer,
@@ -236,7 +240,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(String field, float[] target) throws IOException {
-    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
+    final FieldEntry fieldEntry =
+        getFieldEntry(field, VectorEncoding.FLOAT32, VectorEncoding.FLOAT16);
     return vectorScorer.getRandomVectorScorer(
         fieldEntry.similarityFunction,
         OffHeapFloatVectorValues.load(
@@ -315,6 +320,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
           switch (info.getVectorEncoding()) {
             case BYTE -> Byte.BYTES;
             case FLOAT32 -> Float.BYTES;
+            case FLOAT16 -> Short.BYTES;
           };
       long vectorBytes = Math.multiplyExact((long) infoVectorDimension, byteSize);
       long numBytes = Math.multiplyExact(vectorBytes, size);

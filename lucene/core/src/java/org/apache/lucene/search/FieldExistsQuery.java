@@ -180,7 +180,7 @@ public class FieldExistsQuery extends Query {
         } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
           iterator =
               switch (fieldInfo.getVectorEncoding()) {
-                case FLOAT32 -> context.reader().getFloatVectorValues(field).iterator();
+                case FLOAT32, FLOAT16 -> context.reader().getFloatVectorValues(field).iterator();
                 case BYTE -> context.reader().getByteVectorValues(field).iterator();
               };
         } else if (fieldInfo.getDocValuesType()
@@ -282,7 +282,7 @@ public class FieldExistsQuery extends Query {
   private int getVectorValuesSize(FieldInfo fi, LeafReader reader) throws IOException {
     assert fi.name.equals(field);
     return switch (fi.getVectorEncoding()) {
-      case FLOAT32 -> {
+      case FLOAT32, FLOAT16 -> {
         FloatVectorValues floatVectorValues = reader.getFloatVectorValues(field);
         assert floatVectorValues != null : "unexpected null float vector values";
         yield floatVectorValues.size();

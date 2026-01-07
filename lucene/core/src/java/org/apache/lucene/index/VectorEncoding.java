@@ -29,7 +29,10 @@ public enum VectorEncoding {
   BYTE(1),
 
   /** Encodes vector using 32 bits of precision per sample in IEEE floating point format. */
-  FLOAT32(4);
+  FLOAT32(4),
+
+  /** Encodes vector using 16 bits of precision per sample in IEEE floating point format. */
+  FLOAT16(2);
 
   /**
    * The number of bytes required to encode a scalar in this format. A vector will nominally require

@@ -359,7 +359,8 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
         in.slice("floatValues", 0, in.length()),
         dims * Float.BYTES,
         flatVectorsScorer,
-        sim);
+        sim,
+        VectorEncoding.FLOAT32);
   }
 
   /** Concatenates float arrays as byte[]. */

@@ -44,6 +44,7 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -412,7 +413,13 @@ public class TestVectorScorer extends LuceneTestCase {
   KnnVectorValues floatVectorValues(int dims, int size, IndexInput in, VectorSimilarityFunction sim)
       throws IOException {
     return new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
-        dims, size, in.slice("floatValues", 0, in.length()), dims, MEMSEG_SCORER, sim);
+        dims,
+        size,
+        in.slice("floatValues", 0, in.length()),
+        dims,
+        MEMSEG_SCORER,
+        sim,
+        VectorEncoding.FLOAT32);
   }
 
   // creates the vector based on the given ordinal, which is reproducible given the ord and dims

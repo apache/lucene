@@ -177,6 +177,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
         switch (info.getVectorEncoding()) {
           case BYTE -> Byte.BYTES;
           case FLOAT32 -> Float.BYTES;
+          case FLOAT16 -> Short.BYTES;
         };
     long vectorBytes = Math.multiplyExact((long) dimension, byteSize);
     long numBytes = Math.multiplyExact(vectorBytes, fieldEntry.size);

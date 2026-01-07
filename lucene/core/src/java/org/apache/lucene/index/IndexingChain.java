@@ -1030,7 +1030,7 @@ final class IndexingChain implements Accountable {
       case BYTE ->
           ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
               .addValue(docID, ((KnnByteVectorField) field).vectorValue());
-      case FLOAT32 ->
+      case FLOAT32, FLOAT16 ->
           ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
               .addValue(docID, ((KnnFloatVectorField) field).vectorValue());
     }

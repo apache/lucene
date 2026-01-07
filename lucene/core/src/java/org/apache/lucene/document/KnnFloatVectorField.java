@@ -56,6 +56,33 @@ public class KnnFloatVectorField extends Field {
     return type;
   }
 
+  private static FieldType createType(
+      float[] v, VectorSimilarityFunction similarityFunction, VectorEncoding vectorEncoding) {
+    if (v == null) {
+      throw new IllegalArgumentException("vector value must not be null");
+    }
+    int dimension = v.length;
+    if (dimension == 0) {
+      throw new IllegalArgumentException("cannot index an empty vector");
+    }
+    if (similarityFunction == null) {
+      throw new IllegalArgumentException("similarity function must not be null");
+    }
+
+    if (vectorEncoding == null) {
+      throw new IllegalArgumentException("Vector encoding must not be null");
+    }
+
+    if (vectorEncoding != VectorEncoding.FLOAT16 && vectorEncoding != VectorEncoding.FLOAT32) {
+      throw new IllegalArgumentException("Vector encoding must be FLOAT16 or FLOAT32");
+    }
+
+    FieldType type = new FieldType();
+    type.setVectorAttributes(dimension, vectorEncoding, similarityFunction);
+    type.freeze();
+    return type;
+  }
+
   /**
    * A convenience method for creating a vector field type.
    *
@@ -67,6 +94,22 @@ public class KnnFloatVectorField extends Field {
       int dimension, VectorSimilarityFunction similarityFunction) {
     FieldType type = new FieldType();
     type.setVectorAttributes(dimension, VectorEncoding.FLOAT32, similarityFunction);
+    type.freeze();
+    return type;
+  }
+
+  /**
+   * A convenience method for creating a vector field type.
+   *
+   * @param dimension dimension of vectors.
+   * @param similarityFunction a function defining vector proximity.
+   * @param vectorEncoding the encoding format for the vector. Currently, supports FLOAT16 and
+   *     FLOAT32.
+   */
+  public static FieldType createFieldType(
+      int dimension, VectorSimilarityFunction similarityFunction, VectorEncoding vectorEncoding) {
+    FieldType type = new FieldType();
+    type.setVectorAttributes(dimension, vectorEncoding, similarityFunction);
     type.freeze();
     return type;
   }
@@ -102,6 +145,24 @@ public class KnnFloatVectorField extends Field {
   }
 
   /**
+   * Creates a new KnnFloatVectorField with the specified name, vector, similarity function, and
+   * encoding.
+   *
+   * @param name the field name
+   * @param vector the float vector value
+   * @param similarityFunction the similarity function to use for vector comparisons
+   * @param vectorEncoding the encoding format for the vector
+   */
+  public KnnFloatVectorField(
+      String name,
+      float[] vector,
+      VectorSimilarityFunction similarityFunction,
+      VectorEncoding vectorEncoding) {
+    super(name, createType(vector, similarityFunction, vectorEncoding));
+    fieldsData = VectorUtil.checkFinite(vector); // null check done above
+  }
+
+  /**
    * Creates a numeric vector field with the default EUCLIDEAN_HNSW (L2) similarity. Fields are
    * single-valued: each document has either one value or no value. Vectors of a single field share
    * the same dimension and similarity function.
@@ -127,7 +188,8 @@ public class KnnFloatVectorField extends Field {
    */
   public KnnFloatVectorField(String name, float[] vector, FieldType fieldType) {
     super(name, fieldType);
-    if (fieldType.vectorEncoding() != VectorEncoding.FLOAT32) {
+    if ((fieldType.vectorEncoding() != VectorEncoding.FLOAT32
+        && fieldType.vectorEncoding() != VectorEncoding.FLOAT16)) {
       throw new IllegalArgumentException(
           "Attempt to create a vector for field "
               + name

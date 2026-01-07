@@ -43,7 +43,8 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityType, KnnVectorValues vectorValues) throws IOException {
     return switch (vectorValues.getEncoding()) {
-      case FLOAT32 -> getFloatScoringSupplier((FloatVectorValues) vectorValues, similarityType);
+      case FLOAT32, FLOAT16 ->
+          getFloatScoringSupplier((FloatVectorValues) vectorValues, similarityType);
       case BYTE -> getByteScorerSupplier((ByteVectorValues) vectorValues, similarityType);
     };
   }

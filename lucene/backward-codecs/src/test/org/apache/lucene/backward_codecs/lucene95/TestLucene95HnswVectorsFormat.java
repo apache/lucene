@@ -18,6 +18,7 @@ package org.apache.lucene.backward_codecs.lucene95;
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 
 public class TestLucene95HnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
@@ -37,5 +38,10 @@ public class TestLucene95HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
     String expectedString =
         "Lucene95RWHnswVectorsFormat(name=Lucene95RWHnswVectorsFormat, maxConn=10, beamWidth=20)";
     assertEquals(expectedString, customCodec.getKnnVectorsFormatForField("bogus_field").toString());
+  }
+
+  @Override
+  protected VectorEncoding randomVectorEncoding() {
+    return random().nextBoolean() ? VectorEncoding.BYTE : VectorEncoding.FLOAT32;
   }
 }
