@@ -17,6 +17,8 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Comparator;
+import java.util.function.ToIntFunction;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexSorter;
 import org.apache.lucene.index.LeafReader;
@@ -394,5 +396,38 @@ public class SortedNumericSortField extends SortField {
       default:
         throw new AssertionError();
     }
+  }
+
+  @Override
+  public Comparator<LeafReaderContext> getLeafReaderComparator() {
+    return switch (type) {
+      case INT ->
+          new NumericFieldReaderContextComparator(
+              getField(),
+              missingValue == null ? null : ((Integer) missingValue).longValue(),
+              reverse,
+              b -> NumericUtils.sortableBytesToInt(b, 0));
+      case LONG -> new NumericFieldReaderContextComparator(
+          getField(),
+          missingValue == null ? null : (Long) missingValue,
+          reverse,
+          b -> NumericUtils.sortableBytesToLong(b, 0));
+      case FLOAT -> new NumericFieldReaderContextComparator(
+          getField(),
+          missingValue == null
+              ? null
+              : (long) NumericUtils.floatToSortableInt((float) missingValue),
+          reverse,
+          b -> NumericUtils.sortableBytesToInt(b, 0));
+      case DOUBLE -> new NumericFieldReaderContextComparator(
+          getField(),
+          missingValue == null
+              ? null
+              : NumericUtils.doubleToSortableLong((double) missingValue),
+          reverse,
+          b -> NumericUtils.sortableBytesToLong(b, 0));
+      // $CASES-OMITTED$
+      default -> null;
+    };
   }
 }
