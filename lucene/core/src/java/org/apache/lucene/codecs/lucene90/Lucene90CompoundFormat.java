@@ -80,6 +80,9 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
 
+  // Align to LCM of all file alignments in code, which guarantees that they hold individually.
+  private static final int ALIGNMENT_BYTES = 64;
+
   /** Sole constructor. */
   public Lucene90CompoundFormat() {}
 
@@ -107,13 +110,6 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
 
   private record SizedFile(String name, long length) {}
 
-  private int getAlignment(String fileName) {
-    // TODO: Cleaner way for file-specific alignment?
-    return fileName.endsWith(".vec") // raw vectors written by Lucene99FlatVectorsFormat.
-        ? 64 // optimal alignment for Arm Neoverse machines.
-        : Long.BYTES;
-  }
-
   private void writeCompoundFile(
       IndexOutput entries, IndexOutput data, Directory dir, SegmentInfo si) throws IOException {
     // write number of files
@@ -128,7 +124,7 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
     for (SizedFile sizedFile : files) {
       String file = sizedFile.name;
       // align file start offset
-      long startOffset = data.alignFilePointer(getAlignment(file));
+      long startOffset = data.alignFilePointer(ALIGNMENT_BYTES);
       // write bytes for file
       try (ChecksumIndexInput in = dir.openChecksumInput(file)) {
 
