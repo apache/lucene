@@ -64,7 +64,7 @@ import org.apache.lucene.store.IndexOutput;
  *       that follows has that many entries.
  *   <li>Each directory entry contains a long pointer to the start of this file's data section, the
  *       files length, and a String with that file's name. The start of file's data section is
- *       aligned to 8 bytes to not introduce additional unaligned accesses with mmap.
+ *       aligned to 64 bytes to not introduce additional unaligned accesses with mmap.
  * </ul>
  */
 public final class Lucene90CompoundFormat extends CompoundFormat {
