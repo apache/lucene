@@ -447,7 +447,7 @@ public class TestDocValuesQueries extends LuceneTestCase {
 
     QueryUtils.checkEqual(
         NumericDocValuesField.newSlowRangeQuery("foo", 10, 1).rewrite(searcher),
-        new MatchNoDocsQuery());
+        MatchNoDocsQuery.INSTANCE);
     QueryUtils.checkEqual(
         NumericDocValuesField.newSlowRangeQuery("foo", Long.MIN_VALUE, Long.MAX_VALUE)
             .rewrite(searcher),

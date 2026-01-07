@@ -115,11 +115,11 @@ public final class IndexOrDocValuesQuery extends Query {
     Query dvRewrite = dvQuery.rewrite(indexSearcher);
     if (indexRewrite.getClass() == MatchAllDocsQuery.class
         || dvRewrite.getClass() == MatchAllDocsQuery.class) {
-      return new MatchAllDocsQuery();
+      return MatchAllDocsQuery.INSTANCE;
     }
     if (indexRewrite.getClass() == MatchNoDocsQuery.class
         || dvRewrite.getClass() == MatchNoDocsQuery.class) {
-      return new MatchNoDocsQuery();
+      return MatchNoDocsQuery.INSTANCE;
     }
     if (indexQuery != indexRewrite || dvQuery != dvRewrite) {
       return new IndexOrDocValuesQuery(indexRewrite, dvRewrite);

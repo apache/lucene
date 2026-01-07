@@ -33,6 +33,7 @@ import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MatchNoDocsQuery;
+import org.apache.lucene.search.NumericDocValuesRangeQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -41,16 +42,10 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 
-final class SortedNumericDocValuesRangeQuery extends Query {
-
-  private final String field;
-  private final long lowerValue;
-  private final long upperValue;
+final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery {
 
   SortedNumericDocValuesRangeQuery(String field, long lowerValue, long upperValue) {
-    this.field = Objects.requireNonNull(field);
-    this.lowerValue = lowerValue;
-    this.upperValue = upperValue;
+    super(field, lowerValue, upperValue);
   }
 
   @Override
@@ -96,18 +91,18 @@ final class SortedNumericDocValuesRangeQuery extends Query {
       return new FieldExistsQuery(field);
     }
     if (lowerValue > upperValue) {
-      return new MatchNoDocsQuery();
+      return MatchNoDocsQuery.INSTANCE;
     }
-    long globalMin = DocValuesSkipper.globalMinValue(indexSearcher, field);
-    long globalMax = DocValuesSkipper.globalMaxValue(indexSearcher, field);
+    long globalMin = DocValuesSkipper.globalMinValue(indexSearcher.getIndexReader(), field);
+    long globalMax = DocValuesSkipper.globalMaxValue(indexSearcher.getIndexReader(), field);
     if (lowerValue > globalMax || upperValue < globalMin) {
-      return new MatchNoDocsQuery();
+      return MatchNoDocsQuery.INSTANCE;
     }
     if (lowerValue <= globalMin
         && upperValue >= globalMax
-        && DocValuesSkipper.globalDocCount(indexSearcher, field)
+        && DocValuesSkipper.globalDocCount(indexSearcher.getIndexReader(), field)
             == indexSearcher.getIndexReader().maxDoc()) {
-      return new MatchAllDocsQuery();
+      return MatchAllDocsQuery.INSTANCE;
     }
     return super.rewrite(indexSearcher);
   }

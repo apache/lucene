@@ -58,7 +58,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
     MergePolicy policy =
         new SoftDeletesRetentionMergePolicy(
             "soft_delete",
-            () -> letItGo.get() ? new MatchNoDocsQuery() : new MatchAllDocsQuery(),
+            () -> letItGo.get() ? MatchNoDocsQuery.INSTANCE : MatchAllDocsQuery.INSTANCE,
             new LogDocMergePolicy());
     IndexWriterConfig indexWriterConfig =
         newIndexWriterConfig().setMergePolicy(policy).setSoftDeletesField("soft_delete");
@@ -237,7 +237,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
     IndexWriterConfig indexWriterConfig = newIndexWriterConfig();
     indexWriterConfig.setMergePolicy(
         new SoftDeletesRetentionMergePolicy(
-            "soft_delete", () -> new MatchAllDocsQuery(), new LogDocMergePolicy()));
+            "soft_delete", () -> MatchAllDocsQuery.INSTANCE, new LogDocMergePolicy()));
     indexWriterConfig.setSoftDeletesField("soft_delete");
     IndexWriter writer = new IndexWriter(dir, indexWriterConfig);
 
@@ -406,7 +406,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
     if (random().nextBoolean()) {
       config.setMergePolicy(
           new SoftDeletesRetentionMergePolicy(
-              "soft_delete", () -> new MatchNoDocsQuery(), config.getMergePolicy()));
+              "soft_delete", () -> MatchNoDocsQuery.INSTANCE, config.getMergePolicy()));
     }
     IndexWriter writer = new IndexWriter(dir, config);
     // The first segment includes d1 and d2
@@ -443,7 +443,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
     if (softDelete != null && random().nextBoolean()) {
       config.setMergePolicy(
           new SoftDeletesRetentionMergePolicy(
-              softDelete, () -> new MatchNoDocsQuery(), config.getMergePolicy()));
+              softDelete, () -> MatchNoDocsQuery.INSTANCE, config.getMergePolicy()));
     }
     IndexWriter writer = new IndexWriter(dir, config);
     for (int i = 0; i < 2; i++) {

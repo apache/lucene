@@ -477,7 +477,7 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
     Sort sort1 =
         new Sort(SortField.FIELD_SCORE, LatLonDocValuesField.newDistanceSort("foo", lat, lon));
 
-    Query query2 = new MatchAllDocsQuery();
+    Query query2 = MatchAllDocsQuery.INSTANCE;
     Sort sort2 = new Sort(LatLonDocValuesField.newDistanceSort("foo", lat, lon));
 
     TopDocs topDocs1 = searcher.search(query1, 10, sort1);

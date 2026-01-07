@@ -36,7 +36,7 @@ dependencies {
 def resources = rootProject.file("gradle/regenerate/snowball")
 
 // git commit hash of source code https://github.com/snowballstem/snowball/
-def snowballStemmerCommit = "34f3612e5e8c48975243bc2e87561abdac5aa9bb"
+def snowballStemmerCommit = "2d2e312df56f2ede014a4ffb3e91e6dea43c24be"
 // git commit hash of stopwords https://github.com/snowballstem/snowball-website
 def snowballWebsiteCommit = "424fd1f75044160bb4a92f1daf08cce618459374"
 

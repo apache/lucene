@@ -46,7 +46,7 @@ public class TestCheckJoinIndex extends LuceneTestCase {
     }
     final IndexReader reader = w.getReader();
     w.close();
-    BitSetProducer parentsFilter = new QueryBitSetProducer(new MatchNoDocsQuery());
+    BitSetProducer parentsFilter = new QueryBitSetProducer(MatchNoDocsQuery.INSTANCE);
     try {
       expectThrows(IllegalStateException.class, () -> CheckJoinIndex.check(reader, parentsFilter));
     } finally {

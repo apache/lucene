@@ -62,7 +62,6 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InPlaceMergeSorter;
 
@@ -1001,7 +1000,7 @@ public class UnifiedHighlighter {
     //    caller simply iterates it to build another structure.
 
     // field -> object highlights parallel to docIdsIn
-    Map<String, Object[]> resultMap = CollectionUtil.newHashMap(fields.length);
+    Map<String, Object[]> resultMap = HashMap.newHashMap(fields.length);
     for (int f = 0; f < fields.length; f++) {
       resultMap.put(fields[f], highlightDocsInByField[f]);
     }

@@ -185,7 +185,6 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
       }
       final String formatName = format.getName();
 
-      field.putAttribute(PER_FIELD_FORMAT_KEY, formatName);
       Integer suffix = null;
 
       ConsumerAndSuffix consumer = formats.get(format);
@@ -229,8 +228,8 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
         assert suffixes.containsKey(formatName);
         suffix = consumer.suffix;
       }
-
-      field.putAttribute(PER_FIELD_SUFFIX_KEY, Integer.toString(suffix));
+      field.putAttributes(
+          Map.of(PER_FIELD_FORMAT_KEY, formatName, PER_FIELD_SUFFIX_KEY, Integer.toString(suffix)));
       // TODO: we should only provide the "slice" of FIS
       // that this DVF actually sees ...
       return consumer.consumer;

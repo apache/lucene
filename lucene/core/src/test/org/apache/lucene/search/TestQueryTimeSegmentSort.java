@@ -101,10 +101,7 @@ public class TestQueryTimeSegmentSort extends LuceneTestCase {
 
   private static Sort sort(
       String field, SortField.Type type, boolean reverse, Object missingValue) {
-    SortField sf = new SortField(field, type, reverse);
-    if (missingValue != null) {
-      sf.setMissingValue(missingValue);
-    }
+    SortField sf = new SortField(field, type, reverse, missingValue);
     return new Sort(sf);
   }
 
