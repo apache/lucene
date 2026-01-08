@@ -1,0 +1,1021 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.lucene.sandbox.codecs.jvector;
+
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
+
+import io.github.jbellis.jvector.graph.GraphIndexBuilder;
+import io.github.jbellis.jvector.graph.ImmutableGraphIndex;
+import io.github.jbellis.jvector.graph.ListRandomAccessVectorValues;
+import io.github.jbellis.jvector.graph.NodeArray;
+import io.github.jbellis.jvector.graph.OnHeapGraphIndex;
+import io.github.jbellis.jvector.graph.RandomAccessVectorValues;
+import io.github.jbellis.jvector.graph.disk.OnDiskSequentialGraphIndexWriter;
+import io.github.jbellis.jvector.graph.disk.OrdinalMapper;
+import io.github.jbellis.jvector.graph.disk.feature.Feature;
+import io.github.jbellis.jvector.graph.disk.feature.FeatureId;
+import io.github.jbellis.jvector.graph.disk.feature.InlineVectors;
+import io.github.jbellis.jvector.graph.similarity.BuildScoreProvider;
+import io.github.jbellis.jvector.graph.similarity.ScoreFunction;
+import io.github.jbellis.jvector.graph.similarity.SearchScoreProvider;
+import io.github.jbellis.jvector.quantization.MutablePQVectors;
+import io.github.jbellis.jvector.quantization.PQVectors;
+import io.github.jbellis.jvector.quantization.ProductQuantization;
+import io.github.jbellis.jvector.vector.VectorSimilarityFunction;
+import io.github.jbellis.jvector.vector.VectorizationProvider;
+import io.github.jbellis.jvector.vector.types.VectorFloat;
+import io.github.jbellis.jvector.vector.types.VectorTypeSupport;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.OptionalInt;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.function.IntFunction;
+import java.util.function.IntUnaryOperator;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
+import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.index.DocIDMerger;
+import org.apache.lucene.index.DocsWithFieldSet;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.index.MergeState;
+import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.index.Sorter;
+import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.RamUsageEstimator;
+
+/**
+ * JVectorWriter is responsible for writing vector data into index segments using the JVector
+ * library.
+ *
+ * <h2>Persisting the JVector Graph Index</h2>
+ *
+ * <p>Flushing data into disk segments occurs in two scenarios:
+ *
+ * <ol>
+ *   <li>When the segment is being flushed to disk (e.g., when a new segment is created) via {@link
+ *       #flush(int, Sorter.DocMap)}
+ *   <li>When the segment is a result of a merge (e.g., when multiple segments are merged into one)
+ *       via {@link #mergeOneField(FieldInfo, MergeState)}
+ * </ol>
+ *
+ * <h2>jVector Graph Ordinal to Lucene Document ID Mapping</h2>
+ *
+ * <p>JVector keeps its own ordinals to identify its nodes. Those ordinals can be different from the
+ * Lucene document IDs. Document IDs in Lucene can change after a merge operation. Therefore, we
+ * need to maintain a mapping between JVector ordinals and Lucene document IDs that can hold across
+ * merges.
+ *
+ * <p>Document IDs in Lucene are mapped across merges and sorts using the {@link
+ * org.apache.lucene.index.MergeState.DocMap} for merges and {@link
+ * org.apache.lucene.index.Sorter.DocMap} for flush/sorts. For jVector however, we don't want to
+ * modify the ordinals in the jVector graph, and therefore we need to maintain a mapping between the
+ * jVector ordinals and the new Lucene document IDs. This is achieved by keeping checkpoints of the
+ * {@link GraphNodeIdToDocMap} class in the index metadata and allowing us to update the mapping as
+ * needed across merges by constructing a new mapping from the previous mapping and the {@link
+ * org.apache.lucene.index.MergeState.DocMap} provided in the {@link MergeState}.
+ */
+public class JVectorWriter extends KnnVectorsWriter {
+  private static final VectorTypeSupport VECTOR_TYPE_SUPPORT =
+      VectorizationProvider.getInstance().getVectorTypeSupport();
+  private static final long SHALLOW_RAM_BYTES_USED =
+      RamUsageEstimator.shallowSizeOfInstance(JVectorWriter.class);
+
+  private final List<FieldWriter> fields = new ArrayList<>();
+
+  private final IndexOutput meta;
+  private final IndexOutput data;
+  private final IndexOutput quant;
+  private final List<Integer> maxDegrees;
+  private final int beamWidth;
+  private final float degreeOverflow;
+  private final float alpha;
+  /// Number of subspaces used per vector in PQ quantization as a function of the original dimension
+  private final IntUnaryOperator numberOfSubspacesPerVectorSupplier;
+  private final int
+      minimumBatchSizeForQuantization; // Threshold for the vector count above which we will trigger
+  // PQ quantization
+  private final boolean hierarchyEnabled;
+
+  private boolean finished = false;
+
+  public JVectorWriter(
+      SegmentWriteState segmentWriteState,
+      List<Integer> maxDegrees,
+      int beamWidth,
+      float degreeOverflow,
+      float alpha,
+      IntUnaryOperator numberOfSubspacesPerVectorSupplier,
+      int minimumBatchSizeForQuantization,
+      boolean hierarchyEnabled)
+      throws IOException {
+    this.maxDegrees = maxDegrees;
+    this.beamWidth = beamWidth;
+    this.degreeOverflow = degreeOverflow;
+    this.alpha = alpha;
+    this.numberOfSubspacesPerVectorSupplier = numberOfSubspacesPerVectorSupplier;
+    this.minimumBatchSizeForQuantization = minimumBatchSizeForQuantization;
+    this.hierarchyEnabled = hierarchyEnabled;
+
+    try {
+      final String metaFileName =
+          IndexFileNames.segmentFileName(
+              segmentWriteState.segmentInfo.name,
+              segmentWriteState.segmentSuffix,
+              JVectorFormat.META_EXTENSION);
+      meta = segmentWriteState.directory.createOutput(metaFileName, segmentWriteState.context);
+      CodecUtil.writeIndexHeader(
+          meta,
+          JVectorFormat.META_CODEC_NAME,
+          JVectorFormat.VERSION_CURRENT,
+          segmentWriteState.segmentInfo.getId(),
+          segmentWriteState.segmentSuffix);
+
+      final String dataFileName =
+          IndexFileNames.segmentFileName(
+              segmentWriteState.segmentInfo.name,
+              segmentWriteState.segmentSuffix,
+              JVectorFormat.VECTOR_INDEX_EXTENSION);
+      data = segmentWriteState.directory.createOutput(dataFileName, segmentWriteState.context);
+      CodecUtil.writeIndexHeader(
+          data,
+          JVectorFormat.VECTOR_INDEX_CODEC_NAME,
+          JVectorFormat.VERSION_CURRENT,
+          segmentWriteState.segmentInfo.getId(),
+          segmentWriteState.segmentSuffix);
+      final String quantFileName =
+          IndexFileNames.segmentFileName(
+              segmentWriteState.segmentInfo.name,
+              segmentWriteState.segmentSuffix,
+              JVectorFormat.QUANTIZED_EXTENSION);
+      quant = segmentWriteState.directory.createOutput(quantFileName, segmentWriteState.context);
+      CodecUtil.writeIndexHeader(
+          quant,
+          JVectorFormat.QUANTIZED_CODEC_NAME,
+          JVectorFormat.VERSION_CURRENT,
+          segmentWriteState.segmentInfo.getId(),
+          segmentWriteState.segmentSuffix);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
+    }
+  }
+
+  @Override
+  public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
+    if (fieldInfo.getVectorEncoding() == VectorEncoding.BYTE) {
+      final String errorMessage =
+          "byte[] vectors are not supported in JVector. "
+              + "Instead you should only use float vectors and leverage product quantization during indexing."
+              + "This can provides much greater savings in storage and memory";
+      throw new UnsupportedOperationException(errorMessage);
+    }
+    final int M = numberOfSubspacesPerVectorSupplier.applyAsInt(fieldInfo.getVectorDimension());
+    final FieldWriter newField =
+        new FieldWriter(
+            fieldInfo,
+            maxDegrees,
+            beamWidth,
+            degreeOverflow,
+            alpha,
+            hierarchyEnabled,
+            minimumBatchSizeForQuantization,
+            M);
+
+    fields.add(newField);
+    return newField;
+  }
+
+  @Override
+  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    try {
+      switch (fieldInfo.getVectorEncoding()) {
+        case BYTE:
+          throw new UnsupportedEncodingException("Byte vectors are not supported in JVector.");
+        case FLOAT32:
+          mergeAndWriteField(fieldInfo, mergeState);
+          break;
+      }
+    } catch (Exception e) {
+      throw e;
+    }
+  }
+
+  @Override
+  public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
+    for (FieldWriter field : fields) {
+      final DocsWithFieldSet newDocIds;
+      final OrdinalMapper ordinalMapper;
+      if (sortMap != null) {
+        assert field.docIds.cardinality() <= sortMap.size();
+        final int size = field.docIds.cardinality();
+        final int[] oldToNew = new int[size];
+        final int[] newToOld = new int[size];
+        newDocIds = new DocsWithFieldSet();
+        KnnVectorsWriter.mapOldOrdToNewOrd(field.docIds, sortMap, oldToNew, newToOld, newDocIds);
+        ordinalMapper = new ArrayOrdinalMapper(size - 1, oldToNew, newToOld);
+      } else {
+        newDocIds = field.docIds;
+        ordinalMapper = null;
+      }
+      final RandomAccessVectorValues randomAccessVectorValues = field.toRandomAccessVectorValues();
+      final PQVectors pqVectors = field.getCompressedVectors();
+      final ImmutableGraphIndex graph = field.getGraphIndex();
+      final GraphNodeIdToDocMap graphNodeIdToDocMap = new GraphNodeIdToDocMap(newDocIds);
+      writeField(
+          field.fieldInfo,
+          randomAccessVectorValues,
+          pqVectors,
+          ordinalMapper,
+          graphNodeIdToDocMap,
+          graph);
+    }
+  }
+
+  private record ArrayOrdinalMapper(int maxOrdinal, int[] oldToNew, int[] newToOld)
+      implements OrdinalMapper {
+    @Override
+    public int maxOrdinal() {
+      return maxOrdinal;
+    }
+
+    @Override
+    public int oldToNew(int oldOrdinal) {
+      return oldToNew[oldOrdinal];
+    }
+
+    @Override
+    public int newToOld(int newOrdinal) {
+      return newToOld[newOrdinal];
+    }
+  }
+
+  private void writeField(
+      FieldInfo fieldInfo,
+      RandomAccessVectorValues randomAccessVectorValues,
+      PQVectors pqVectors,
+      OrdinalMapper ordinalMapper,
+      GraphNodeIdToDocMap graphNodeIdToDocMap,
+      ImmutableGraphIndex graph)
+      throws IOException {
+    final var vectorIndexFieldMetadata =
+        writeGraph(
+            graph,
+            randomAccessVectorValues,
+            fieldInfo,
+            pqVectors,
+            ordinalMapper,
+            graphNodeIdToDocMap);
+    meta.writeInt(fieldInfo.number);
+    vectorIndexFieldMetadata.toOutput(meta);
+  }
+
+  /**
+   * Writes the graph and PQ codebooks and compressed vectors to the vector index file
+   *
+   * @param graph graph
+   * @param randomAccessVectorValues random access vector values
+   * @param fieldInfo field info
+   * @return Tuple of start offset and length of the graph
+   * @throws IOException IOException
+   */
+  private VectorIndexFieldMetadata writeGraph(
+      ImmutableGraphIndex graph,
+      RandomAccessVectorValues randomAccessVectorValues,
+      FieldInfo fieldInfo,
+      PQVectors pqVectors,
+      OrdinalMapper ordinalMapper,
+      GraphNodeIdToDocMap graphNodeIdToDocMap)
+      throws IOException {
+    final long graphOffset = data.getFilePointer();
+    final long graphLength;
+    try (final var jVectorWriter = new JVectorIndexWriter(data)) {
+      // Trick the writer to ensure offsets relative to the current file pointer
+      assert jVectorWriter.position() == 0;
+      final var graphWriterBuilder =
+          new OnDiskSequentialGraphIndexWriter.Builder(graph, jVectorWriter)
+              .with(new InlineVectors(randomAccessVectorValues.dimension()));
+      if (ordinalMapper != null) {
+        graphWriterBuilder.withMapper(ordinalMapper);
+      }
+      try (var graphWriter = graphWriterBuilder.build()) {
+        var suppliers =
+            Feature.singleStateFactory(
+                FeatureId.INLINE_VECTORS,
+                nodeId -> new InlineVectors.State(randomAccessVectorValues.getVector(nodeId)));
+        graphWriter.write(suppliers);
+        // Position is already relative to graphOffset, as above
+        graphLength = jVectorWriter.position();
+      }
+    }
+
+    final long pqOffset = quant.getFilePointer();
+    final long pqLength;
+    if (null == pqVectors) {
+      pqLength = 0;
+    } else {
+      try (final var jVectorWriter = new JVectorIndexWriter(quant)) {
+        // The writer tricks JVector to ensure offsets are relative to the current file pointer
+        assert jVectorWriter.position() == 0;
+        // write the compressed vectors and codebooks to disk
+        pqVectors.write(jVectorWriter);
+        // Position is already relative to pqOffset, as above
+        pqLength = jVectorWriter.position();
+      }
+    }
+
+    return new VectorIndexFieldMetadata(
+        fieldInfo.number,
+        fieldInfo.getVectorEncoding(),
+        JVectorFormat.toJVectorSimilarity(fieldInfo.getVectorSimilarityFunction()),
+        randomAccessVectorValues.dimension(),
+        graphOffset,
+        graphLength,
+        pqOffset,
+        pqLength,
+        graphNodeIdToDocMap);
+  }
+
+  /// Metadata about the index to be persisted on disk
+  record VectorIndexFieldMetadata(
+      int fieldNumber,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction vectorSimilarityFunction,
+      int vectorDimension,
+      long vectorIndexOffset,
+      long vectorIndexLength,
+      long pqCodebooksAndVectorsOffset,
+      long pqCodebooksAndVectorsLength,
+      GraphNodeIdToDocMap graphNodeIdToDocMap) {
+    void toOutput(IndexOutput out) throws IOException {
+      out.writeInt(fieldNumber);
+      out.writeInt(vectorEncoding.ordinal());
+      out.writeInt(vectorSimilarityFunction.ordinal());
+      out.writeVInt(vectorDimension);
+      out.writeVLong(vectorIndexOffset);
+      out.writeVLong(vectorIndexLength);
+      out.writeVLong(pqCodebooksAndVectorsOffset);
+      out.writeVLong(pqCodebooksAndVectorsLength);
+      graphNodeIdToDocMap.toOutput(out);
+    }
+
+    static VectorIndexFieldMetadata read(IndexInput in) throws IOException {
+      return new VectorIndexFieldMetadata(
+          in.readInt(),
+          readVectorEncoding(in),
+          VectorSimilarityFunction.values()[in.readInt()],
+          in.readVInt(),
+          in.readVLong(),
+          in.readVLong(),
+          in.readVLong(),
+          in.readVLong(),
+          new GraphNodeIdToDocMap(in));
+    }
+  }
+
+  @Override
+  public void finish() throws IOException {
+    if (finished) {
+      throw new IllegalStateException("already finished");
+    }
+    finished = true;
+
+    // write end of fields marker
+    meta.writeInt(-1);
+    CodecUtil.writeFooter(meta);
+    CodecUtil.writeFooter(data);
+    CodecUtil.writeFooter(quant);
+  }
+
+  @Override
+  public void close() throws IOException {
+    IOUtils.close(meta, data, quant);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long total = SHALLOW_RAM_BYTES_USED;
+    for (FieldWriter field : fields) {
+      // the field tracks the delegate field usage
+      total += field.ramBytesUsed();
+    }
+    return total;
+  }
+
+  /**
+   * The FieldWriter class is responsible for writing vector field data into index segments. It
+   * provides functionality to process vector values as those being added, manage memory usage, and
+   * build HNSW graph indexing structures for efficient retrieval during search queries.
+   */
+  static class FieldWriter extends KnnFieldVectorsWriter<float[]> {
+    private final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(FieldWriter.class);
+    private final FieldInfo fieldInfo;
+    // The ordering of docIds matches the ordering of vectors, the index in this list corresponds to
+    // the jVector ordinal
+    private final List<VectorFloat<?>> vectors;
+    private final DocsWithFieldSet docIds;
+
+    private GraphIndexBuilder indexBuilder;
+    private final DelegatingBuildScoreProvider buildScoreProvider;
+
+    // PQ fields
+    private final int pqThreshold;
+    private final int pqSubspaceCount;
+    private MutablePQVectors pqVectors;
+
+    FieldWriter(
+        FieldInfo fieldInfo,
+        List<Integer> maxDegrees,
+        int beamWidth,
+        float degreeOverflow,
+        float alpha,
+        boolean hierarchyEnabled,
+        int pqThreshold,
+        int pqSubspaceCount) {
+      /** For creating a new field from a flat field vectors writer. */
+      this.fieldInfo = fieldInfo;
+      this.vectors = new ArrayList<>();
+      this.docIds = new DocsWithFieldSet();
+
+      final var similarityFunction =
+          JVectorFormat.toJVectorSimilarity(fieldInfo.getVectorSimilarityFunction());
+      this.buildScoreProvider =
+          new DelegatingBuildScoreProvider(
+              BuildScoreProvider.randomAccessScoreProvider(
+                  toRandomAccessVectorValues(), similarityFunction));
+      this.indexBuilder =
+          new GraphIndexBuilder(
+              buildScoreProvider,
+              fieldInfo.getVectorDimension(),
+              maxDegrees,
+              beamWidth,
+              degreeOverflow,
+              alpha,
+              hierarchyEnabled,
+              true);
+
+      this.pqThreshold = pqThreshold;
+      this.pqSubspaceCount = pqSubspaceCount;
+      this.pqVectors = null;
+    }
+
+    @Override
+    public void addValue(int docID, float[] vectorValue) throws IOException {
+      if (docID < docIds.cardinality()) {
+        throw new IllegalArgumentException(
+            "VectorValuesField \""
+                + fieldInfo.name
+                + "\" appears more than once in this document (only one value is allowed per field)");
+      }
+      final int ord = vectors.size();
+      docIds.add(docID);
+      final var vector = VECTOR_TYPE_SUPPORT.createFloatVector(copyValue(vectorValue));
+      vectors.add(vector);
+
+      if (pqVectors != null) {
+        pqVectors.encodeAndSet(ord, vector);
+      } else if (vectors.size() >= pqThreshold) {
+        final ProductQuantization pq =
+            trainPQ(
+                toRandomAccessVectorValues(),
+                pqSubspaceCount,
+                fieldInfo.getVectorSimilarityFunction());
+        pqVectors = new MutablePQVectors(pq);
+        for (int i = 0; i < vectors.size(); ++i) {
+          pqVectors.encodeAndSet(i, vectors.get(i));
+        }
+
+        final var similarityFunction =
+            JVectorFormat.toJVectorSimilarity(fieldInfo.getVectorSimilarityFunction());
+        buildScoreProvider.setDelegate(
+            BuildScoreProvider.pqBuildScoreProvider(similarityFunction, pqVectors));
+        indexBuilder = GraphIndexBuilder.rescore(indexBuilder, buildScoreProvider);
+      }
+
+      indexBuilder.addGraphNode(ord, buildScoreProvider.searchProviderFor(vector));
+    }
+
+    @Override
+    public float[] copyValue(float[] vectorValue) {
+      return vectorValue.clone();
+    }
+
+    public RandomAccessVectorValues toRandomAccessVectorValues() {
+      return new ListRandomAccessVectorValues(vectors, fieldInfo.getVectorDimension());
+    }
+
+    public PQVectors getCompressedVectors() {
+      return pqVectors;
+    }
+
+    public ImmutableGraphIndex getGraphIndex() {
+      indexBuilder.cleanup();
+      return indexBuilder.getGraph();
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return SHALLOW_SIZE
+          + (long) vectors.size() * fieldInfo.getVectorDimension() * Float.BYTES
+          + docIds.ramBytesUsed();
+    }
+  }
+
+  static final class DelegatingBuildScoreProvider implements BuildScoreProvider {
+    BuildScoreProvider delegate;
+
+    DelegatingBuildScoreProvider(BuildScoreProvider delegate) {
+      this.delegate = Objects.requireNonNull(delegate);
+    }
+
+    public void setDelegate(BuildScoreProvider delegate) {
+      this.delegate = Objects.requireNonNull(delegate);
+    }
+
+    @Override
+    public boolean isExact() {
+      return delegate.isExact();
+    }
+
+    @Override
+    public VectorFloat<?> approximateCentroid() {
+      return delegate.approximateCentroid();
+    }
+
+    @Override
+    public SearchScoreProvider searchProviderFor(VectorFloat<?> vector) {
+      return delegate.searchProviderFor(vector);
+    }
+
+    @Override
+    public SearchScoreProvider searchProviderFor(int node1) {
+      return delegate.searchProviderFor(node1);
+    }
+
+    @Override
+    public SearchScoreProvider diversityProviderFor(int node1) {
+      return delegate.diversityProviderFor(node1);
+    }
+  }
+
+  private void mergeAndWriteField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    assert fieldInfo.hasVectorValues();
+    final int dimension = fieldInfo.getVectorDimension();
+    final int mergeCount = mergeState.knnVectorsReaders.length;
+
+    // Collect the sub-readers into a list to make a DocIdMerger
+    final List<SubFloatVectors> subs = new ArrayList<>(mergeCount);
+    final FloatVectorValues[] vectors = new FloatVectorValues[mergeCount];
+    for (int i = 0; i < mergeCount; ++i) {
+      if (false == MergedVectorValues.hasVectorValues(mergeState.fieldInfos[i], fieldInfo.name)) {
+        continue;
+      }
+      final var reader = mergeState.knnVectorsReaders[i];
+      if (reader == null) {
+        continue;
+      }
+      final var values = reader.getFloatVectorValues(fieldInfo.name);
+      if (values == null || values.size() == 0) {
+        continue;
+      }
+
+      assert values.dimension() == dimension;
+      subs.add(new SubFloatVectors(mergeState.docMaps[i], i, values));
+      vectors[i] = values;
+    }
+
+    // These arrays may be larger than strictly necessary if there are deleted docs/missing fields
+    final int[] liveDocCounts = new int[mergeCount];
+    final int totalMaxDocs = Arrays.stream(mergeState.maxDocs).reduce(0, Math::addExact);
+    final DocsWithFieldSet docIds = new DocsWithFieldSet();
+    final int[] ordToReaderIndex = new int[totalMaxDocs];
+    final int[] ordToReaderOrd = new int[totalMaxDocs];
+
+    // Construct ordinal mappings for the new graph
+    int ord = 0;
+    final var docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
+    for (var sub = docIdMerger.next(); sub != null; sub = docIdMerger.next()) {
+      docIds.add(sub.mappedDocID);
+      liveDocCounts[sub.readerIndex] += 1;
+      ordToReaderIndex[ord] = sub.readerIndex;
+      ordToReaderOrd[ord] = sub.index();
+      ord += 1;
+    }
+
+    final int totalLiveDocsCount = ord;
+    if (totalLiveDocsCount == 0) {
+      // Avoid writing an empty graph
+      return;
+    }
+
+    JVectorReader largestReader = null;
+    ProductQuantization largestPQ = null;
+    int largestGraphLiveCount = 0;
+    int largestGraphIndexSoFar = -1;
+    for (int i = 0; i < mergeCount; ++i) {
+      if (liveDocCounts[i] <= largestGraphLiveCount) {
+        continue;
+      } else if (mergeState.knnVectorsReaders[i].unwrapReaderForField(fieldInfo.name)
+          instanceof JVectorReader jVectorReader) {
+        largestGraphIndexSoFar = i;
+        largestGraphLiveCount = liveDocCounts[i];
+        largestReader = jVectorReader;
+        largestPQ = jVectorReader.getProductQuantizationForField(fieldInfo.name).orElse(largestPQ);
+      }
+    }
+    final int largestGraphIndex = largestGraphIndexSoFar;
+
+    // Make a RandomAccessVectorValues instance using the new graph ordinals
+    final var ravv =
+        new RandomAccessMergedFloatVectorValues(
+            totalLiveDocsCount,
+            dimension,
+            vectors,
+            i -> ordToReaderIndex[i],
+            i -> ordToReaderOrd[i]);
+
+    final BuildScoreProvider buildScoreProvider;
+    final var similarityFunction =
+        JVectorFormat.toJVectorSimilarity(fieldInfo.getVectorSimilarityFunction());
+
+    // Perform PQ if applicable
+    final PQVectors pqVectors;
+    if (largestPQ != null) {
+      final ProductQuantization newPQ = largestPQ.refine(ravv);
+      pqVectors = (PQVectors) newPQ.encodeAll(ravv);
+      buildScoreProvider = BuildScoreProvider.pqBuildScoreProvider(similarityFunction, pqVectors);
+    } else if (ravv.size() >= minimumBatchSizeForQuantization) {
+      final int M = numberOfSubspacesPerVectorSupplier.applyAsInt(ravv.dimension());
+      final ProductQuantization newPQ = trainPQ(ravv, M, fieldInfo.getVectorSimilarityFunction());
+      pqVectors = (PQVectors) newPQ.encodeAll(ravv);
+      buildScoreProvider = BuildScoreProvider.pqBuildScoreProvider(similarityFunction, pqVectors);
+      // Pre-init the diversity provider here to avoid doing it lazily (as it could block the SIMD
+      // threads)
+      buildScoreProvider.diversityProviderFor(0);
+    } else {
+      pqVectors = null;
+      buildScoreProvider = BuildScoreProvider.randomAccessScoreProvider(ravv, similarityFunction);
+    }
+
+    final var graphNodeIdToDocMap = new GraphNodeIdToDocMap(docIds);
+    final GraphIndexBuilder graphIndexBuilder;
+    if (largestReader != null) {
+      final ImmutableGraphIndex largestGraph = largestReader.getIndex(fieldInfo.name);
+      final GraphNodeIdToDocMap largestGraphDocIdMap = largestReader.getDocIdMap(fieldInfo.name);
+      final var maxDocs = mergeState.maxDocs[largestGraphIndex];
+      final Bits liveDocs =
+          mergeState.liveDocs[largestGraphIndex] != null
+              ? mergeState.liveDocs[largestGraphIndex]
+              : new Bits.MatchAllBits(maxDocs);
+      assert liveDocs.length() == maxDocs
+          : "maxDocs=" + maxDocs + " but liveDocs=" + liveDocs.length();
+
+      final IntFunction<OptionalInt> ordMapper =
+          oldOrd -> {
+            Objects.checkIndex(oldOrd, largestGraphDocIdMap.getMaxOrd() + 1);
+            final int oldDocId = largestGraphDocIdMap.getLuceneDocId(oldOrd);
+
+            Objects.checkIndex(oldDocId, liveDocs.length());
+            if (false == liveDocs.get(oldDocId)) {
+              return OptionalInt.empty();
+            }
+
+            final int newDocId = mergeState.docMaps[largestGraphIndex].get(oldDocId);
+            Objects.checkIndex(newDocId, graphNodeIdToDocMap.getMaxDocId() + 1);
+
+            final int newOrd = graphNodeIdToDocMap.getJVectorNodeId(newDocId);
+            Objects.checkIndex(newOrd, totalLiveDocsCount);
+
+            assert ordToReaderIndex[newOrd] == largestGraphIndex;
+            assert ordToReaderOrd[newOrd] == oldOrd;
+            return OptionalInt.of(newOrd);
+          };
+      graphIndexBuilder =
+          createGraphIndexBuilderFromExisting(
+              largestGraph,
+              ordMapper,
+              totalLiveDocsCount,
+              buildScoreProvider,
+              mergeState.intraMergeTaskExecutor);
+    } else {
+      graphIndexBuilder =
+          new GraphIndexBuilder(
+              buildScoreProvider,
+              dimension,
+              maxDegrees,
+              beamWidth,
+              degreeOverflow,
+              alpha,
+              hierarchyEnabled,
+              false);
+    }
+
+    // parallel graph construction from the merge documents Ids
+    final var vv = ravv.threadLocalSupplier();
+    IntStream.range(0, ravv.size())
+        .filter(o -> ordToReaderIndex[o] != largestGraphIndex)
+        .mapToObj(
+            o ->
+                CompletableFuture.runAsync(
+                    () -> graphIndexBuilder.addGraphNode(o, vv.get().getVector(o)),
+                    mergeState.intraMergeTaskExecutor))
+        .reduce((a, b) -> a.runAfterBoth(b, () -> {}))
+        .ifPresent(CompletableFuture::join);
+    graphIndexBuilder.cleanup();
+
+    final ImmutableGraphIndex graph = graphIndexBuilder.getGraph();
+    assert graph.getView().entryNode() != null;
+    writeField(fieldInfo, ravv, pqVectors, null, graphNodeIdToDocMap, graph);
+  }
+
+  private GraphIndexBuilder createGraphIndexBuilderFromExisting(
+      ImmutableGraphIndex src,
+      IntFunction<OptionalInt> ordMapper,
+      int fakeOrd,
+      BuildScoreProvider scoreProvider,
+      Executor executor) {
+    final var builder =
+        new GraphIndexBuilder(
+            scoreProvider,
+            src.getDimension(),
+            maxDegrees,
+            beamWidth,
+            degreeOverflow,
+            alpha,
+            hierarchyEnabled,
+            false);
+
+    final var dst = (OnHeapGraphIndex) builder.getGraph();
+    final int maxLevel = hierarchyEnabled ? src.getMaxLevel() : 0;
+
+    final var oldEntryNode = src.getView().entryNode();
+    final int entryNewOrd = ordMapper.apply(oldEntryNode.node).orElse(fakeOrd + oldEntryNode.node);
+    final int entryNewLevel = Math.min(oldEntryNode.level, maxLevel);
+    final var newEntryNode = new ImmutableGraphIndex.NodeAtLevel(entryNewLevel, entryNewOrd);
+    dst.updateEntryNode(newEntryNode);
+
+    for (int l = 0; l <= maxLevel; ++l) {
+      streamNodesInLevel(maxLevel - l, src)
+          .map(
+              old ->
+                  CompletableFuture.runAsync(
+                      () -> {
+                        final int newNode = ordMapper.apply(old.node).orElse(fakeOrd + old.node);
+                        final ScoreFunction scoreFunction;
+                        if (newNode < fakeOrd) {
+                          scoreFunction = scoreProvider.searchProviderFor(newNode).scoreFunction();
+                        } else {
+                          // Deleted nodes aren't in the new RAVV and can't be scored
+                          // But adjacent edges are discarded so a fake score function is fine
+                          scoreFunction = (ScoreFunction.ApproximateScoreFunction) _ -> 0f;
+                        }
+
+                        final var oldNeighbors =
+                            src.getView().getNeighborsIterator(old.level, old.node);
+                        final var newNeighbors = new NodeArray(oldNeighbors.size());
+                        while (oldNeighbors.hasNext()) {
+                          final int oldNeighbor = oldNeighbors.nextInt();
+                          final int newNeighbor =
+                              ordMapper.apply(oldNeighbor).orElse(fakeOrd + oldNeighbor);
+                          final float newScore;
+                          if (newNeighbor < fakeOrd) {
+                            newScore = scoreFunction.similarityTo(newNeighbor);
+                          } else {
+                            // Neighbor deleted; so scoreFunction (on new RAVV) won't know about it
+                            // As above, edge to neighbor will be discarded so fake score works
+                            newScore = 0;
+                          }
+
+                          newNeighbors.insertSorted(newNeighbor, newScore);
+                        }
+
+                        dst.connectNode(old.level, newNode, newNeighbors);
+                        if (old.level == 0) {
+                          final int newLevel = dst.getMaxLevelForNode(newNode);
+                          dst.markComplete(new ImmutableGraphIndex.NodeAtLevel(newLevel, newNode));
+                          if (newNode >= fakeOrd) {
+                            dst.markDeleted(newNode);
+                          }
+                        }
+                      },
+                      executor))
+          .reduce((a, b) -> a.runAfterBoth(b, () -> {}))
+          .ifPresent(CompletableFuture::join);
+    }
+
+    builder.removeDeletedNodes();
+    assert dst.entryNode() != null;
+    assert dst.contains(dst.entryNode());
+    return builder;
+  }
+
+  private static Stream<ImmutableGraphIndex.NodeAtLevel> streamNodesInLevel(
+      int level, ImmutableGraphIndex graph) {
+    final var spliterator =
+        Spliterators.spliterator(
+            graph.getNodes(level), graph.size(level), Spliterator.DISTINCT | Spliterator.IMMUTABLE);
+    return StreamSupport.intStream(spliterator, false)
+        .mapToObj(node -> new ImmutableGraphIndex.NodeAtLevel(level, node));
+  }
+
+  private static final class SubFloatVectors extends DocIDMerger.Sub {
+    final int readerIndex;
+    final KnnVectorValues.DocIndexIterator iterator;
+    int docId = -1;
+
+    SubFloatVectors(MergeState.DocMap docMap, int readerIndex, FloatVectorValues values) {
+      super(docMap);
+      this.readerIndex = readerIndex;
+      this.iterator = values.iterator();
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      docId = iterator.nextDoc();
+      return docId;
+    }
+
+    public int index() {
+      return iterator.index();
+    }
+  }
+
+  private static final class RandomAccessMergedFloatVectorValues
+      implements RandomAccessVectorValues {
+    private final int size;
+    private final int dimension;
+    private final FloatVectorValues[] vectors;
+    private final IntUnaryOperator ordToReader;
+    private final IntUnaryOperator ordToReaderOrd;
+
+    public RandomAccessMergedFloatVectorValues(
+        int size,
+        int dimension,
+        FloatVectorValues[] values,
+        IntUnaryOperator ordToReader,
+        IntUnaryOperator ordToReaderOrd) {
+      this.size = size;
+      this.dimension = dimension;
+      this.vectors = values;
+      this.ordToReader = ordToReader;
+      this.ordToReaderOrd = ordToReaderOrd;
+    }
+
+    @Override
+    public RandomAccessMergedFloatVectorValues copy() {
+      final FloatVectorValues[] newVectors = new FloatVectorValues[vectors.length];
+      for (int i = 0; i < newVectors.length; ++i) {
+        if (vectors[i] != null) {
+          try {
+            newVectors[i] = vectors[i].copy();
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          }
+        }
+      }
+      return new RandomAccessMergedFloatVectorValues(
+          size, dimension, newVectors, ordToReader, ordToReaderOrd);
+    }
+
+    @Override
+    public int dimension() {
+      return dimension;
+    }
+
+    @Override
+    public VectorFloat<?> getVector(int node) {
+      final FloatVectorValues values = vectors[ordToReader.applyAsInt(node)];
+      final int ord = ordToReaderOrd.applyAsInt(node);
+
+      if (values instanceof JVectorFloatVectorValues jVectorValues) {
+        return jVectorValues.vectorFloatValue(ord);
+      }
+
+      try {
+        return VECTOR_TYPE_SUPPORT.createFloatVector(values.vectorValue(ord));
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    }
+
+    @Override
+    public void getVectorInto(int node, VectorFloat<?> destinationVector, int offset) {
+      final FloatVectorValues values = vectors[ordToReader.applyAsInt(node)];
+      final int ord = ordToReaderOrd.applyAsInt(node);
+
+      if (values instanceof JVectorFloatVectorValues jVectorValues) {
+        jVectorValues.getVectorInto(ord, destinationVector, offset);
+      }
+
+      final VectorFloat<?> srcVector;
+      try {
+        srcVector = VECTOR_TYPE_SUPPORT.createFloatVector(values.vectorValue(ord));
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+
+      destinationVector.copyFrom(srcVector, 0, offset, srcVector.length());
+    }
+
+    @Override
+    public boolean isValueShared() {
+      // force thread-local copies
+      return true;
+    }
+
+    @Override
+    public int size() {
+      return size;
+    }
+  }
+
+  private static ProductQuantization trainPQ(
+      RandomAccessVectorValues vectors,
+      int M,
+      org.apache.lucene.index.VectorSimilarityFunction similarityFunction) {
+    final boolean globallyCenter =
+        switch (similarityFunction) {
+          case EUCLIDEAN -> true;
+          case COSINE, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT -> false;
+        };
+    final int numberOfClustersPerSubspace = Math.min(256, vectors.size());
+    // This extracts a random minimal subset of the vectors for training the PQ codebooks
+    return ProductQuantization.compute(vectors, M, numberOfClustersPerSubspace, globallyCenter);
+  }
+
+  static class RandomAccessVectorValuesOverVectorValues implements RandomAccessVectorValues {
+    private final FloatVectorValues values;
+
+    public RandomAccessVectorValuesOverVectorValues(FloatVectorValues values) {
+      this.values = values;
+    }
+
+    @Override
+    public int size() {
+      return values.size();
+    }
+
+    @Override
+    public int dimension() {
+      return values.dimension();
+    }
+
+    @Override
+    public VectorFloat<?> getVector(int nodeId) {
+      try {
+        final float[] vector = values.vectorValue(nodeId);
+        return VECTOR_TYPE_SUPPORT.createFloatVector(ArrayUtil.copyArray(vector));
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    }
+
+    @Override
+    public boolean isValueShared() {
+      // Access to float values is not thread safe
+      return true;
+    }
+
+    @Override
+    public RandomAccessVectorValues copy() {
+      try {
+        return new RandomAccessVectorValuesOverVectorValues(values.copy());
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    }
+  }
+}
