@@ -193,6 +193,17 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
     return nodes[ord];
   }
 
+  /** Get a node (maybe an empty one) to search, and overwrite it. */
+  private void setNode(int ord, Node node) {
+    if (ord >= nodes.length) {
+      final Node[] next =
+          new Node[ArrayUtil.oversize(1 + ord, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
+      System.arraycopy(nodes, 0, next, 0, nodes.length);
+      nodes = next;
+    }
+    nodes[ord] = node;
+  }
+
   // Pushes a frame we seek'd to
   // 1 Only push frame which has output.
   SegmentTermsEnumFrame pushFrame(Node node, int length) throws IOException {
@@ -420,9 +431,13 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
 
       //      final int targetLabel = target.bytes[target.offset + targetUpto] & 0xFF;
 
-      final Node nextNode = artReader.lookupChild(clone, node, getNode(1 + targetUpto));
+      //      final Node nextNode = artReader.lookupChild(clone, node, getNode(1 + targetUpto));
+
+      final Node nextNode = artReader.lookupChild(clone, node);
 
       if (nextNode == null) {
+        // Target equals or contains parent's prefix(non leaf node) or key (leaf node), match, scan
+        // suffixes block.
 
         // Index is exhausted
         // if (DEBUG) {
@@ -468,7 +483,10 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
             return false;
           }
         };
-      } else {
+      } else if (nextNode != node) {
+        // NextNode != node, we get a child to search, set nextNode to nodes.
+        setNode(1 + targetUpto, nextNode);
+
         // Follow this node
         node = nextNode;
         // TODO: check this.
@@ -495,6 +513,8 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
           // currentFrame.hasTerms);
         }
+      } else {
+        // TODO: NextNode == node, there are different bytes between target and parent, not match.
       }
     }
 
@@ -706,9 +726,12 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
 
       //      final int targetLabel = target.bytes[target.offset + targetUpto] & 0xFF;
 
-      final Node nextNode = artReader.lookupChild(clone, node, getNode(1 + targetUpto));
+      //      final Node nextNode = artReader.lookupChild(clone, node, getNode(1 + targetUpto));
+      final Node nextNode = artReader.lookupChild(clone, node);
 
       if (nextNode == null) {
+        // Target equals or contains parent's prefix(non leaf node) or key (leaf node), match, scan
+        // suffixes block.
 
         // Index is exhausted
         // if (DEBUG) {
@@ -748,7 +771,10 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
           // }
           return result;
         }
-      } else {
+      } else if (nextNode != node) {
+        // NextNode != node, we get a child to search, set nextNode to nodes.
+        setNode(1 + targetUpto, nextNode);
+
         // Follow this node
         // TODO: set bytes when we walked multi bytes.
         term.setByteAt(targetUpto, clone.bytes[targetUpto]);
@@ -773,6 +799,8 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
           // currentFrame.hasTerms);
         }
+      } else {
+        // TODO: NextNode == node, there are different bytes between target and parent, not match.
       }
     }
 

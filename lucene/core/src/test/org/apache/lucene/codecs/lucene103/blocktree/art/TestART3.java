@@ -153,7 +153,7 @@ public class TestART3 extends LuceneTestCase {
       throws IOException {
     Node node = reader.getRoot();
     Node targetNode = null;
-    while ((targetNode = reader.lookupChild(term, node, null)) != null) {
+    while ((targetNode = reader.lookupChild(term, node)) != null) {
       if (node == targetNode) {
         break;
       }

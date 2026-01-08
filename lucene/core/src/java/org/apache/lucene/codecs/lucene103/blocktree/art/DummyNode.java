@@ -16,19 +16,15 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
+import java.io.IOException;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.util.BytesRef;
-import java.io.IOException;
 
 /** An ART node used for searching and overwriting. */
-public class DummyNode extends Node{
+public class DummyNode extends Node {
 
-  /**
-   * constructor
-   *
-   */
+  /** constructor */
   public DummyNode() {
     super(NodeType.DUMMY_NODE, 0);
   }
@@ -69,13 +65,11 @@ public class DummyNode extends Node{
   /**
    * replace the position child to the fresh one
    *
-   * @param pos      the position
+   * @param pos the position
    * @param freshOne the fresh node to replace the old one
    */
   @Override
-  public void replaceNode(int pos, Node freshOne) {
-
-  }
+  public void replaceNode(int pos, Node freshOne) {}
 
   /**
    * get the next position in the node
@@ -104,9 +98,7 @@ public class DummyNode extends Node{
    * @param dataOutput
    */
   @Override
-  public void saveChildIndex(IndexOutput dataOutput) throws IOException {
-
-  }
+  public void saveChildIndex(IndexOutput dataOutput) throws IOException {}
 
   /**
    * Write childIndex to output.
@@ -114,20 +106,16 @@ public class DummyNode extends Node{
    * @param dataInput
    */
   @Override
-  public void readChildIndex(IndexInput dataInput) throws IOException {
-
-  }
+  public void readChildIndex(IndexInput dataInput) throws IOException {}
 
   @Override
-  public void readChildIndex(RandomAccessInput access, long fp) throws IOException {
-
-  }
+  public void readChildIndex(RandomAccessInput access, long fp) throws IOException {}
 
   /**
    * insert the child node into this with the key byte
    *
    * @param childNode the child node
-   * @param key       the key byte
+   * @param key the key byte
    * @return the input node4 or an adaptive generated node16
    */
   @Override
@@ -141,13 +129,9 @@ public class DummyNode extends Node{
    * @param children all the not null children nodes in key byte ascending order, no null element.
    */
   @Override
-  void setChildren(Node[] children) {
+  void setChildren(Node[] children) {}
 
-  }
-
-  /**
-   * Get the node's children.
-   */
+  /** Get the node's children. */
   @Override
   Node[] getChildren() {
     return new Node[0];

@@ -52,10 +52,12 @@ public class ARTReader {
   }
 
   /**
-   * Find the next parent from a cached (searched) one, this is useful when seeking in
-   * SegmentTermsEnum.
+   * Overwrite (and return) the incoming Node child, or null if the target was not found. Returns:
+   * null: target equals or contains parent's prefix(non leaf node) or key (leaf node), match, scan
+   * suffixes block. child: next node to search. parent: there are different bytes between target
+   * and parent, not match.
    */
-  public Node lookupChild(BytesRef target, Node parent, Node child) throws IOException {
+  public Node lookupChild(BytesRef target, Node parent) throws IOException {
     assert parent != null;
 
     // TODO: Target length is 0 may never happen, when we search step by step?
