@@ -22,6 +22,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.FilterWeight;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.IndexingMode;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
@@ -91,6 +92,14 @@ public class TestBaseExplanationTestCase extends BaseExplanationTestCase {
     public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
         throws IOException {
       return new BrokenExplainWeight(this, super.createWeight(searcher, scoreMode, boost));
+    }
+
+    @Override
+    public Weight createWeight(
+        IndexSearcher searcher, ScoreMode scoreMode, float boost, IndexingMode indexingMode)
+        throws IOException {
+      return new BrokenExplainWeight(
+          this, super.createWeight(searcher, scoreMode, boost, indexingMode));
     }
   }
 
