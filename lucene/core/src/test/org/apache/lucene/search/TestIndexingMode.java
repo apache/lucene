@@ -121,9 +121,12 @@ public class TestIndexingMode extends LuceneTestCase {
     assertEquals(IndexingMode.HOT, boostWeight.indexingMode);
 
     // Test with DisjunctionMaxQuery
-    DisjunctionMaxQuery dmQuery = new DisjunctionMaxQuery(
-        java.util.Arrays.asList(new TermQuery(new Term("field", "hello")),
-                                new TermQuery(new Term("field", "world"))), 0.1f);
+    DisjunctionMaxQuery dmQuery =
+        new DisjunctionMaxQuery(
+            java.util.Arrays.asList(
+                new TermQuery(new Term("field", "hello")),
+                new TermQuery(new Term("field", "world"))),
+            0.1f);
     Weight dmWeight = searcher.createWeight(dmQuery, ScoreMode.COMPLETE, 1.0f);
     assertEquals(IndexingMode.HOT, dmWeight.indexingMode);
 

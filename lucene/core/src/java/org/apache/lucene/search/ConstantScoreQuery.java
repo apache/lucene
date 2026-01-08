@@ -128,7 +128,8 @@ public final class ConstantScoreQuery extends Query {
   }
 
   @Override
-  public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost, IndexingMode indexingMode)
+  public Weight createWeight(
+      IndexSearcher searcher, ScoreMode scoreMode, float boost, IndexingMode indexingMode)
       throws IOException {
     // If the score mode is exhaustive then pass COMPLETE_NO_SCORES, otherwise pass TOP_DOCS to make
     // sure to not disable any of the dynamic pruning optimizations for queries sorted by field or
@@ -139,7 +140,7 @@ public final class ConstantScoreQuery extends Query {
     } else {
       innerScoreMode = ScoreMode.TOP_DOCS;
     }
-    final Weight innerWeight = query.createWeight(searcher, innerScoreMode, 1f, indexingMode);
+    final Weight innerWeight = searcher.createWeight(query, innerScoreMode, 1f);
     if (scoreMode.needsScores()) {
       return new ConstantScoreWeight(this, boost, indexingMode) {
 

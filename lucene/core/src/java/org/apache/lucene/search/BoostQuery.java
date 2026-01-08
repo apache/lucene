@@ -124,7 +124,8 @@ public final class BoostQuery extends Query {
   }
 
   @Override
-  public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost, IndexingMode indexingMode)
+  public Weight createWeight(
+      IndexSearcher searcher, ScoreMode scoreMode, float boost, IndexingMode indexingMode)
       throws IOException {
     return query.createWeight(searcher, scoreMode, BoostQuery.this.boost * boost, indexingMode);
   }

@@ -114,11 +114,12 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
       this(searcher, scoreMode, boost, IndexingMode.ADAPTIVE);
     }
 
-    public DisjunctionMaxWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost, IndexingMode indexingMode)
+    public DisjunctionMaxWeight(
+        IndexSearcher searcher, ScoreMode scoreMode, float boost, IndexingMode indexingMode)
         throws IOException {
       super(DisjunctionMaxQuery.this, indexingMode);
       for (Query disjunctQuery : disjuncts) {
-        weights.add(disjunctQuery.createWeight(searcher, scoreMode, boost, indexingMode));
+        weights.add(searcher.createWeight(disjunctQuery, scoreMode, boost));
       }
       this.scoreMode = scoreMode;
     }
@@ -261,7 +262,8 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
   }
 
   @Override
-  public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost, IndexingMode indexingMode)
+  public Weight createWeight(
+      IndexSearcher searcher, ScoreMode scoreMode, float boost, IndexingMode indexingMode)
       throws IOException {
     return new DisjunctionMaxWeight(searcher, scoreMode, boost, indexingMode);
   }
