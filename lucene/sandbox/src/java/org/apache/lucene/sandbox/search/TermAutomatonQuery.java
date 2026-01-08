@@ -493,7 +493,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     if (Operations.isEmpty(det)) {
-      return new MatchNoDocsQuery();
+      return MatchNoDocsQuery.INSTANCE;
     }
 
     IntsRef single = Operations.getSingleton(det);

@@ -148,7 +148,6 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
       }
       final String formatName = format.getName();
 
-      field.putAttribute(PER_FIELD_FORMAT_KEY, formatName);
       Integer suffix;
 
       WriterAndSuffix writerAndSuffix = formats.get(format);
@@ -176,7 +175,8 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
         assert suffixes.containsKey(formatName);
         suffix = writerAndSuffix.suffix;
       }
-      field.putAttribute(PER_FIELD_SUFFIX_KEY, Integer.toString(suffix));
+      field.putAttributes(
+          Map.of(PER_FIELD_FORMAT_KEY, formatName, PER_FIELD_SUFFIX_KEY, Integer.toString(suffix)));
       return writerAndSuffix.writer;
     }
 

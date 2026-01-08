@@ -64,8 +64,8 @@ public class TestNumericComparator extends LuceneTestCase {
           doc.add(new NumericDocValuesField("double_field_2", i));
 
           writer.addDocument(doc);
-          writer.forceMerge(1);
         }
+        writer.forceMerge(1);
         try (var reader = DirectoryReader.open(writer)) {
           assertEquals(1, reader.leaves().size());
           var leafContext = reader.leaves().get(0);
@@ -139,9 +139,9 @@ public class TestNumericComparator extends LuceneTestCase {
           var indexSearcher = newSearcher(reader);
           indexSearcher.setQueryCache(null);
           {
-            var sortField = new SortField("long_field_1", SortField.Type.LONG, false);
-            sortField.setMissingValue(Long.MIN_VALUE);
-            var topDocs = indexSearcher.search(new MatchAllDocsQuery(), 3, new Sort(sortField));
+            var sortField =
+                new SortField("long_field_1", SortField.Type.LONG, false, Long.MIN_VALUE);
+            var topDocs = indexSearcher.search(MatchAllDocsQuery.INSTANCE, 3, new Sort(sortField));
             assertEquals(numDocs, topDocs.scoreDocs[0].doc);
             assertEquals(Long.MIN_VALUE, ((FieldDoc) topDocs.scoreDocs[0]).fields[0]);
             assertEquals(0, topDocs.scoreDocs[1].doc);
@@ -150,9 +150,9 @@ public class TestNumericComparator extends LuceneTestCase {
             assertEquals(1L, ((FieldDoc) topDocs.scoreDocs[2]).fields[0]);
           }
           {
-            var sortField = new SortField("long_field_2", SortField.Type.LONG, false);
-            sortField.setMissingValue(Long.MIN_VALUE);
-            var topDocs = indexSearcher.search(new MatchAllDocsQuery(), 3, new Sort(sortField));
+            var sortField =
+                new SortField("long_field_2", SortField.Type.LONG, false, Long.MIN_VALUE);
+            var topDocs = indexSearcher.search(MatchAllDocsQuery.INSTANCE, 3, new Sort(sortField));
             assertEquals(numDocs, topDocs.scoreDocs[0].doc);
             assertEquals(Long.MIN_VALUE, ((FieldDoc) topDocs.scoreDocs[0]).fields[0]);
             assertEquals(0, topDocs.scoreDocs[1].doc);
@@ -189,7 +189,7 @@ public class TestNumericComparator extends LuceneTestCase {
           indexSearcher.setQueryCache(null);
           for (String field : new String[] {"field_1", "field_2"}) {
             var sortField = new SortField(field, SortField.Type.LONG, false);
-            var topDocs = indexSearcher.search(new MatchAllDocsQuery(), 3, new Sort(sortField));
+            var topDocs = indexSearcher.search(MatchAllDocsQuery.INSTANCE, 3, new Sort(sortField));
             assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
             assertEquals(numDocs, topDocs.totalHits.value());
             assertEquals(0, topDocs.scoreDocs[0].doc);

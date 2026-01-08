@@ -104,7 +104,8 @@ public class MultiCategoryListsFacetsExample {
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query:
     FacetsCollector fc =
-        FacetsCollectorManager.search(searcher, new MatchAllDocsQuery(), 10, fcm).facetsCollector();
+        FacetsCollectorManager.search(searcher, MatchAllDocsQuery.INSTANCE, 10, fcm)
+            .facetsCollector();
 
     // Retrieve results
     List<FacetResult> results = new ArrayList<>();

@@ -547,7 +547,7 @@ public class TestValueSources extends LuceneTestCase {
       assertNoneExist(vs);
 
       // doc doesn't match the query, so default value should be returned
-      vs = new QueryValueSource(new MatchNoDocsQuery(), 5.0f);
+      vs = new QueryValueSource(MatchNoDocsQuery.INSTANCE, 5.0f);
       final LeafReaderContext leaf = searcher.getIndexReader().leaves().get(0);
       FunctionValues fv = vs.getValues(ValueSource.newContext(searcher), leaf);
       assertEquals(5.0f, fv.objectVal(1));

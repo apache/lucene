@@ -240,7 +240,7 @@ public class TestBooleanScorer extends LuceneTestCase {
     query =
         new BooleanQuery.Builder()
             .add(new TermQuery(new Term("foo", "baz")), Occur.SHOULD)
-            .add(new MatchAllDocsQuery(), Occur.SHOULD)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.SHOULD)
             .add(new TermQuery(new Term("foo", "bar")), Occur.MUST_NOT)
             .build();
     weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);

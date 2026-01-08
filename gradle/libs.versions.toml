@@ -9,15 +9,15 @@ commons-codec = "1.20.0"
 # benchmark/ bzip2 compression
 commons-compress = "1.28.0"
 # See ecj-lint.gradle (used for more linting).
-ecj = "I20250926-1800"
+ecj = "3.44.0"
 # java linting
-errorprone = "2.44.0"
+errorprone = "2.45.0"
 # markdown documentation generation
 flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
-googleJavaFormat = "1.32.0"
+googleJavaFormat = "1.33.0"
 # gradle build support
-groovy = "5.0.2"
+groovy = "5.0.3"
 # test assertions
 hamcrest = "3.0"
 # analysis/icu/, gradle regeneration unicode support
@@ -27,7 +27,7 @@ javacc = "7.0.13"
 # analysis/ tokenizer grammars
 jflex = "1.9.1"
 # build infra only (diff of changes from google java format tasks)
-jgit = "7.4.0.202509020913-r"
+jgit = "7.5.0.202512021534-r"
 # benchmark-jmh/ microbenchmarks
 jmh = "1.37"
 # spatial-extras/ support
@@ -45,7 +45,7 @@ morfologik-ukrainian = "4.9.1"
 # benchmark/ html parsing
 nekohtml = "1.9.22"
 # analysis/opennlp/ support
-opennlp = "2.5.6.1"
+opennlp = "2.5.7"
 # distribution.tests/ process management
 procfork = "1.0.6"
 # unit tests

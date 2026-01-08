@@ -87,7 +87,7 @@
  *   IndexSearcher searcher = new IndexSearcher(ir);
  *   Sort sort = new Sort();
  *   sort.setSort(new SortField("contents", SortField.STRING));
- *   Query query = new MatchAllDocsQuery();
+ *   Query query = MatchAllDocsQuery.INSTANCE;
  *   ScoreDoc[] result = searcher.search(query, null, 1000, sort).scoreDocs;
  *   for (int i = 0 ; i &lt; result.length ; ++i) {
  *     Document doc = searcher.doc(result[i].doc);

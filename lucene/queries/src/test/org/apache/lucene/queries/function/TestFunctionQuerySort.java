@@ -128,7 +128,7 @@ public class TestFunctionQuerySort extends LuceneTestCase {
     Sort orderBy = new Sort(sf);
 
     // Get hits sorted by our FunctionValues (ascending values)
-    Query q = new MatchAllDocsQuery();
+    Query q = MatchAllDocsQuery.INSTANCE;
     TopDocs hits = searcher.search(q, reader.maxDoc(), orderBy);
     assertEquals(NUM_VALS, hits.scoreDocs.length);
     // Verify that sorting works in general
