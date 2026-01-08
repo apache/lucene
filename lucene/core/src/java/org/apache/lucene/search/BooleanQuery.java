@@ -266,6 +266,12 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   }
 
   @Override
+  public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost, IndexingMode indexingMode)
+      throws IOException {
+    return new BooleanWeight(this, searcher, scoreMode, boost, indexingMode);
+  }
+
+  @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     if (clauses.size() == 0) {
       return new MatchNoDocsQuery("empty BooleanQuery");

@@ -124,6 +124,12 @@ public final class ConstantScoreQuery extends Query {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
+    return createWeight(searcher, scoreMode, boost, IndexingMode.ADAPTIVE);
+  }
+
+  @Override
+  public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost, IndexingMode indexingMode)
+      throws IOException {
     // If the score mode is exhaustive then pass COMPLETE_NO_SCORES, otherwise pass TOP_DOCS to make
     // sure to not disable any of the dynamic pruning optimizations for queries sorted by field or
     // top scores.
@@ -133,9 +139,9 @@ public final class ConstantScoreQuery extends Query {
     } else {
       innerScoreMode = ScoreMode.TOP_DOCS;
     }
-    final Weight innerWeight = searcher.createWeight(query, innerScoreMode, 1f);
+    final Weight innerWeight = query.createWeight(searcher, innerScoreMode, 1f, indexingMode);
     if (scoreMode.needsScores()) {
-      return new ConstantScoreWeight(this, boost) {
+      return new ConstantScoreWeight(this, boost, indexingMode) {
 
         @Override
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
