@@ -129,6 +129,13 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
+    public void finishMerge(int maxDoc) throws IOException {
+      for (WriterAndSuffix was : formats.values()) {
+        was.writer.finishMerge(maxDoc);
+      }
+    }
+
+    @Override
     public void finish() throws IOException {
       for (WriterAndSuffix was : formats.values()) {
         was.writer.finish();

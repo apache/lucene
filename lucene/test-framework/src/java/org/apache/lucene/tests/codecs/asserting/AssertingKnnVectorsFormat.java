@@ -95,6 +95,11 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
+    public void finishMerge(int maxDoc) throws IOException {
+      delegate.finishMerge(maxDoc);
+    }
+
+    @Override
     public void finish() throws IOException {
       delegate.finish();
     }

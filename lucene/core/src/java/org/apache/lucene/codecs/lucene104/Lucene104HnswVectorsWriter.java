@@ -460,6 +460,11 @@ public final class Lucene104HnswVectorsWriter extends KnnVectorsWriter {
     IOUtils.close(scorerSupplier);
   }
 
+  @Override
+  public void finishMerge(int maxDoc) throws IOException {
+    flatVectorWriter.finishMerge(maxDoc);
+  }
+
   /**
    * @param graph Write the graph in a compressed format
    * @return The non-cumulative offsets for the nodes. Should be used to create cumulative offsets.
