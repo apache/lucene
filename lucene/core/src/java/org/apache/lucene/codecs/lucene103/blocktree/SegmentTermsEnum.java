@@ -273,6 +273,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     targetBeforeCurrentLength = currentFrame.ord;
 
     if (currentFrame != staticFrame) {
+      // Seek from cached nodes by last term firstly.
 
       // We are already seek'd; find the common
       // prefix of new seek term vs current term and
@@ -378,6 +379,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       }
 
     } else {
+      // Seek from root.
 
       targetBeforeCurrentLength = -1;
       node = trieReader.root;
@@ -547,6 +549,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     targetBeforeCurrentLength = currentFrame.ord;
 
     if (currentFrame != staticFrame) {
+      // Seek from cached nodes by last term firstly.
 
       // We are already seek'd; find the common
       // prefix of new seek term vs current term and
@@ -647,6 +650,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       }
 
     } else {
+      // Seek from root.
 
       targetBeforeCurrentLength = -1;
       node = nodes[0] = trieReader.root;
