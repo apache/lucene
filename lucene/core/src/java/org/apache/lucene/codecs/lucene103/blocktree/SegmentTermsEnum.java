@@ -442,33 +442,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           return null;
         }
 
-        boolean doDefer = maybePrefetch(prefetch);
-
-        return new IOBooleanSupplier() {
-          @Override
-          public boolean get() throws IOException {
-            currentFrame.loadBlock();
-
-            final SeekStatus result = currentFrame.scanToTerm(target, true);
-            if (result == SeekStatus.FOUND) {
-              // if (DEBUG) {
-              //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
-              // }
-              return true;
-            } else {
-              // if (DEBUG) {
-              //   System.out.println("  got " + result + "; return NOT_FOUND term=" +
-              // ToStringUtils.bytesRefToString(term));
-              // }
-              return false;
-            }
-          }
-
-          @Override
-          public boolean doDefer() {
-            return doDefer;
-          }
-        };
+        return getIoBooleanSupplier(target, prefetch);
       } else {
         // Follow this node
         node = nextNode;
@@ -505,6 +479,11 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       return null;
     }
 
+    return getIoBooleanSupplier(target, prefetch);
+  }
+
+  private IOBooleanSupplier getIoBooleanSupplier(BytesRef target, boolean prefetch)
+      throws IOException {
     boolean doDefer = maybePrefetch(prefetch);
 
     return new IOBooleanSupplier() {
@@ -536,16 +515,18 @@ final class SegmentTermsEnum extends BaseTermsEnum {
   }
 
   private boolean maybePrefetch(boolean prefetch) throws IOException {
-    boolean doDefer;
-    if (prefetch) {
-      doDefer = currentFrame.prefetchBlock();
-      if (doDefer) {
-        hotCounter = 0;
-      } else {
-        hotCounter++;
-      }
+    if (indexingMode == IndexingMode.HOT) {
+      return prefetch;
+    }
+    if (indexingMode == IndexingMode.COLD || !prefetch) {
+      return false;
+    }
+
+    boolean doDefer = currentFrame.prefetchBlock();
+    if (doDefer) {
+      hotCounter = 0;
     } else {
-      doDefer = false;
+      hotCounter++;
     }
     return doDefer;
   }
