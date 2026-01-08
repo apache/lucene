@@ -21,7 +21,7 @@ import java.io.PrintStream;
 import java.util.Arrays;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.lucene103.blocktree.art.ARTReader;
-import org.apache.lucene.codecs.lucene103.blocktree.art.LeafNode;
+import org.apache.lucene.codecs.lucene103.blocktree.art.DummyNode;
 import org.apache.lucene.codecs.lucene103.blocktree.art.Node;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.ImpactsEnum;
@@ -178,14 +178,15 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
     return stack[ord];
   }
 
+  /** Get a node (maybe an empty one) to search, and overwrite it. */
   private Node getNode(int ord) {
     if (ord >= nodes.length) {
       final Node[] next =
           new Node[ArrayUtil.oversize(1 + ord, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
       System.arraycopy(nodes, 0, next, 0, nodes.length);
       for (int nodeOrd = nodes.length; nodeOrd < next.length; nodeOrd++) {
-        // TODO: Do not instantiate Node.
-        next[nodeOrd] = new LeafNode(null, null);
+        // TODO: Maybe do not instantiate this node.
+        next[nodeOrd] = new DummyNode();
       }
       nodes = next;
     }
@@ -193,6 +194,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
   }
 
   // Pushes a frame we seek'd to
+  // 1 Only push frame which has output.
   SegmentTermsEnumFrame pushFrame(Node node, int length) throws IOException {
     final SegmentTermsEnumFrame f = getFrame(1 + currentFrame.ord);
     f.hasTerms = node.hasTerms;

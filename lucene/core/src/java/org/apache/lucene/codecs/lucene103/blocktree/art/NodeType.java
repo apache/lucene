@@ -23,5 +23,5 @@ public enum NodeType {
   NODE48,
   NODE256,
   LEAF_NODE,
-  DUMMY_ROOT;
+  DUMMY_NODE;
 }

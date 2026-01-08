@@ -490,7 +490,7 @@ public abstract class Node {
       case NODE256:
         return Node256.insert(current, childNode, key);
       case LEAF_NODE:
-      case DUMMY_ROOT:
+      case DUMMY_NODE:
       default:
         throw new IllegalArgumentException("Not supported node type!");
     }
