@@ -83,6 +83,8 @@ Improvements
 
 * GITHUB#15453: Avoid unnecessary sorting and instantiations in readMapOfStrings. (Benjamin Lerer)
 
+* GITHUB: Introduce AllGroupsCollectorManager to parallelize search when using AllGroupsCollector. (Binlong Gao)
+
 Optimizations
 ---------------------
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
