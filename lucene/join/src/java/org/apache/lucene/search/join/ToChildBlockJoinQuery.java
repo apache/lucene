@@ -135,6 +135,12 @@ public class ToChildBlockJoinQuery extends Query {
       }
       return Explanation.noMatch("Not a match");
     }
+
+    @Override
+    public int count(LeafReaderContext context) {
+      // Signal we can't compute the exact count in sublinear time.
+      return -1;
+    }
   }
 
   static class ToChildBlockJoinScorer extends Scorer {

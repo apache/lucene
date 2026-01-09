@@ -56,6 +56,9 @@ API Changes
 
 * GITHUB#14615 : Remove unnecessary public methods in FuzzySet (Greg Miller)
 
+* GITHUB#15452: Ensure that Filter classes properly delegate to the decorated instances (Benjamin Lerer)
+
+
 New Features
 ---------------------
 

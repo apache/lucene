@@ -17,6 +17,9 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Unwrappable;
 
 /**
@@ -62,6 +65,32 @@ public abstract class FilterScorer extends Scorer implements Unwrappable<Scorer>
   @Override
   public final TwoPhaseIterator twoPhaseIterator() {
     return in.twoPhaseIterator();
+  }
+
+  @Override
+  public void setMinCompetitiveScore(float minScore) throws IOException {
+    in.setMinCompetitiveScore(minScore);
+  }
+
+  @Override
+  public Collection<ChildScorable> getChildren() throws IOException {
+    return Collections.singletonList(new ChildScorable(in, "FILTER"));
+  }
+
+  @Override
+  public float smoothingScore(int docId) throws IOException {
+    return in.smoothingScore(docId);
+  }
+
+  @Override
+  public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
+      throws IOException {
+    in.nextDocsAndScores(upTo, liveDocs, buffer);
+  }
+
+  @Override
+  public int advanceShallow(int target) throws IOException {
+    return in.advanceShallow(target);
   }
 
   @Override

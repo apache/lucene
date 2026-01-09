@@ -14,15 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queries.spans;
+package org.apache.lucene.search;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
-public class TestFilterSpans extends LuceneTestCase {
+public class TestFilterScorer extends LuceneTestCase {
 
   @Test
-  public void testOverrides() {
-    assertDelegatorOverridesAllRequiredMethods(FilterSpans.class);
+  public void testDeclaredMethodsOverridden() {
+    assertDelegatorOverridesAllRequiredMethods(FilterScorer.class);
   }
 }
