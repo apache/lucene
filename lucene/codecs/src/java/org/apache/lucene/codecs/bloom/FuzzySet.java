@@ -54,8 +54,8 @@ public class FuzzySet implements Accountable {
     NO
   };
 
-  private FixedBitSet filter;
-  private int bloomSize;
+  private final FixedBitSet filter;
+  private final int bloomSize;
   private final int hashCount;
 
   // The sizes of BitSet used are all numbers that, when expressed in binary form,
@@ -80,9 +80,9 @@ public class FuzzySet implements Accountable {
    */
   private static int getNearestSetSize(int maxNumberOfBits) {
     int result = usableBitSetSizes[0];
-    for (int i = 0; i < usableBitSetSizes.length; i++) {
-      if (usableBitSetSizes[i] <= maxNumberOfBits) {
-        result = usableBitSetSizes[i];
+    for (int usableBitSetSize : usableBitSetSizes) {
+      if (usableBitSetSize <= maxNumberOfBits) {
+        result = usableBitSetSize;
       }
     }
     return result;
@@ -235,7 +235,7 @@ public class FuzzySet implements Accountable {
   public int getEstimatedUniqueValues() {
     double setSizeAsDouble = bloomSize;
     double numRecordedBitsAsDouble = filter.cardinality();
-    double hashCountAsDouble = filter.hashCode();
+    double hashCountAsDouble = hashCount;
     double saturation = numRecordedBitsAsDouble / setSizeAsDouble;
     double logInverseSaturation = Math.log(1 - saturation) * -1;
     return (int) (setSizeAsDouble * logInverseSaturation / hashCountAsDouble);
