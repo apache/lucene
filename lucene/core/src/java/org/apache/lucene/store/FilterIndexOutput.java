@@ -60,6 +60,11 @@ public class FilterIndexOutput extends IndexOutput {
   }
 
   @Override
+  public String getName() {
+    return out.getName();
+  }
+
+  @Override
   public void close() throws IOException {
     out.close();
   }
