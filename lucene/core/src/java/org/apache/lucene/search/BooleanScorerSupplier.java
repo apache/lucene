@@ -477,9 +477,10 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       }
 
       if (requiredScoring.isEmpty()) {
-        // Scores are needed but we only have a filter clause
-        // BooleanWeight expects that calling score() is ok so we need to wrap
-        // to prevent score() from being propagated
+        // Scores are needed, but we only have a filter clause
+        // BooleanWeight expects that calling score(), getMaxScore() and advanceShallow()
+        // is ok so we need to override those methods to stop them
+        // from being propagated.
         return new FilterScorer(req) {
           @Override
           public float score() {
