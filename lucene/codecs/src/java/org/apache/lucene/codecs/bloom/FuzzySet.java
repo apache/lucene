@@ -77,7 +77,11 @@ public class FuzzySet implements Accountable {
   /**
    * Rounds down required maxNumberOfBits to the nearest number that is made up of all ones as a
    * binary number. Use this method where controlling memory use is paramount.
+   *
+   * @deprecated public visibility of this method will be removed in a future release; this is meant
+   *     for internal use only
    */
+  @Deprecated
   public static int getNearestSetSize(int maxNumberOfBits) {
     int result = usableBitSetSizes[0];
     for (int i = 0; i < usableBitSetSizes.length; i++) {
@@ -95,7 +99,9 @@ public class FuzzySet implements Accountable {
    * @param desiredSaturation A number between 0 and 1 expressing the % of bits set once all values
    *     have been recorded
    * @return The size of the set nearest to the required size
+   * @deprecated this method will be removed in a future release
    */
+  @Deprecated
   public static int getNearestSetSize(int maxNumberOfValuesExpected, float desiredSaturation) {
     // Iterate around the various scales of bitset from smallest to largest looking for the first
     // that
@@ -117,6 +123,11 @@ public class FuzzySet implements Accountable {
     return new FuzzySet(new FixedBitSet(setSize + 1), setSize, 1);
   }
 
+  /**
+   * @deprecated this ctor will be removed in a future release; please see {@link
+   *     #createOptimalSet(int, float)} for an improved initialization approach
+   */
+  @Deprecated
   public static FuzzySet createSetBasedOnQuality(
       int maxNumUniqueValues, float desiredMaxSaturation, int version) {
     int setSize = getNearestSetSize(maxNumUniqueValues, desiredMaxSaturation);
@@ -276,7 +287,12 @@ public class FuzzySet implements Accountable {
   /**
    * Given a set size and the number of set bits, produces an estimate of the number of unique
    * values recorded (assuming a single hash function is used)
+   *
+   * @deprecated this method will be removed in a future release; see {@link
+   *     #getEstimatedUniqueValues()} for an alternative based on an actual {@code FuzzySet}
+   *     instance
    */
+  @Deprecated
   public static int getEstimatedNumberUniqueValuesAllowingForCollisions(
       int setSize, int numRecordedBits) {
     return getEstimatedNumberUniqueValuesAllowingForCollisions(setSize, numRecordedBits, 1);
@@ -285,7 +301,12 @@ public class FuzzySet implements Accountable {
   /**
    * Given a set size, the number of set bits and hash function count, produces an estimate of the
    * number of unique values recorded
+   *
+   * @deprecated this method will be removed in a future release; see {@link
+   *     #getEstimatedUniqueValues()} for an alternative based on an actual {@code FuzzySet}
+   *     instance
    */
+  @Deprecated
   public static int getEstimatedNumberUniqueValuesAllowingForCollisions(
       int setSize, int numRecordedBits, int hashCount) {
     double setSizeAsDouble = setSize;
