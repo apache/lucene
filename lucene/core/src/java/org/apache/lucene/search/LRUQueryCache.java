@@ -799,6 +799,7 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     }
   }
 
+  /** Partition within a cache. */
   public class LRUQueryCachePartition {
     private final ReentrantReadWriteLock.ReadLock readLock;
     private final ReentrantReadWriteLock.WriteLock writeLock;
@@ -1111,6 +1112,7 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     }
   }
 
+  /** Cache clean up parameters. */
   public static class CacheCleanUpParameters {
     private long scheduleDelayMs = 60 * 1000; // 1 minute
     private final Optional<ScheduledThreadPoolExecutor> scheduledThreadPoolExecutor;
