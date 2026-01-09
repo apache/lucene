@@ -431,7 +431,7 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
   // pkg-private for testing
   // return the list of cached queries in LRU order
   List<Query> cachedQueries() {
-    List<Query> list = new ArrayList<Query>();
+    List<Query> list = new ArrayList<>();
     for (int i = 0; i < this.numberOfPartitions; i++) {
       List<QueryCacheKey> segmentQueryList = lruQueryCachePartition[i].cachedQueries();
       for (QueryCacheKey queryCacheKey : segmentQueryList) {
@@ -1113,13 +1113,11 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
 
   public static class CacheCleanUpParameters {
     private long scheduleDelayMs = 60 * 1000; // 1 minute
-    private Optional<ScheduledThreadPoolExecutor> scheduledThreadPoolExecutor;
-
-    CacheCleanUpParameters() {}
+    private final Optional<ScheduledThreadPoolExecutor> scheduledThreadPoolExecutor;
 
     public CacheCleanUpParameters(
-        long scheduleDelayMs, ScheduledThreadPoolExecutor ScheduledThreadPoolExecutor) {
-      this.scheduledThreadPoolExecutor = Optional.ofNullable(ScheduledThreadPoolExecutor);
+        long scheduleDelayMs, ScheduledThreadPoolExecutor scheduledThreadPoolExecutor) {
+      this.scheduledThreadPoolExecutor = Optional.ofNullable(scheduledThreadPoolExecutor);
       this.scheduleDelayMs = scheduleDelayMs;
     }
 

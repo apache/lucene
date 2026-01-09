@@ -70,8 +70,6 @@ public class LRUQueryCacheBenchmark {
     // Run the background cache clean thread every 50ms for this test
     ScheduledThreadPoolExecutor scheduledThreadPoolExecutor =
         new ScheduledThreadPoolExecutor(1, new DefaultCleanUpThreadFactory());
-    //    LRUQueryCache.CacheCleanUpParameters cacheCleanUpParameters =
-    //        new LRUQueryCache.CacheCleanUpParameters(100, scheduledThreadPoolExecutor);
     queryCache =
         new LRUQueryCache(
             MAX_SIZE * SEGMENTS * 16, MAX_SIZE_IN_BYTES * 16, leafReaderContext -> true, 100000);
@@ -119,7 +117,6 @@ public class LRUQueryCacheBenchmark {
     assert queryCache.getCacheSize() == 0;
     assert queryCache.ramBytesUsed() == 0;
   }
-
 
   @Benchmark
   @Group("concurrent_putIfAbsent")
