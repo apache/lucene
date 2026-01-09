@@ -7,6 +7,9 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#15517: Remove newHashMap, newHashSet from CollectionUtil, and use HashMap.newHashMap, HashSet.newHashSet
+  directly. (Zhou Hui)
+
 * GITHUB#15309: PriorityQueue.remove method has been removed entirely. If you need remove(), implement
   it yourself in a subclass (heap access and size, upHeap and downHeap are protected members of PQ). (Dawid Weiss)
 
@@ -51,6 +54,8 @@ API Changes
 
 * GITHUB#15486: Remove deprecated SortField.setMissingValue() method (Alan Woodward)
 
+* GITHUB#14615 : Remove unnecessary public methods in FuzzySet (Greg Miller)
+
 * GITHUB#15507: Expose MergeRateLimiter in ConcurrentMergeScheduler.runOnMergeFinished hook.
   The runOnMergeFinished method signature now includes OneMerge and MergeRateLimiter parameters,
   enabling applications to monitor merge performance metrics like pause time, throttling behavior,
@@ -59,6 +64,10 @@ API Changes
 
 New Features
 ---------------------
+
+* GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
+  PolishSnowballAnalyzer in the stempel package) (Justas Sakalauskas, Dawid Weiss)
+
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
 
 * GITHUB#14178: Add a Faiss-based vector format in the sandbox module. (Kaival Parikh)
@@ -111,6 +120,8 @@ Bug Fixes
 
 * GITHUB#15125: Handle inconsistent schema on flush with index sorts (Nhat Nguyen)
 
+* GITHUB#15434: Don't override boost of conflicting expanded phrases by taking the max boost in markTerminal for FVHighlighter (Luana Fragoso)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -145,6 +156,7 @@ Other
 * GITHUB#14817: Refactor some complex uses of PriorityQueue to use Comparators. (Simon Cooper)
 
 * GITHUB#14607: Index open performs version check on each segment, ignores indexCreatedVersionMajor (Rahul Goswami)
+* GITHUB#15454: Restore binary readability for 8.x indexes like previously and throw IndexFormatTooOldException for an older default codec not found on classpath (Rahul Goswami)
 
 ======================= Lucene 10.4.0 =======================
 
@@ -177,6 +189,8 @@ API Changes
   in Lucene 11.0. Missing values can be set as constructor parameters.  (Alan Woodward)
 
 * GITHUB#15501: Introduce optional access to backing vector values from the scorer  (Chris Hegarty)
+
+* GITHUB#15514: Refactor DocValuesSkipper stat methods to accept IndexReader instead of IndexSearcher (Pan Guixin)
 
 New Features
 ---------------------
@@ -269,6 +283,10 @@ Optimizations
 * GITHUB#15500: Use bulk scoring for filtered HNSW search and for entry-point scoring in the graph. This should
   provide speed improvements when using vector scorers that satisfy the bulk scoring interface. (Ben Trent)
 
+* GITHUB#15498: ExitableDirectoryReader keeps singleton SortedSetDocValues or SortedNumericDocValues as singletons. (Houston Putman)
+
+* GITHUB#15511: Dynamic pruning for SORTED(_SET) fields with doc values skipper (Pan Guixin)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
@@ -291,6 +309,8 @@ Bug Fixes
 
 * GITHUB#15478: Fix duplicate neighbor issue by checking node existence before making reverse link. (Pulkit Gupta)
 
+* GITHUB#15523: Updating createMultiSegmentIndex to utilize an explicit NoMergePolicy (Bryce Kane)
+
 Other
 ---------------------
 * GITHUB#15237: Fix SmartChinese to only deserialize dictionary data from classpath with a native array
@@ -301,6 +321,11 @@ Other
 
 * GITHUB#15481: The `reverse` field of SortField is now final. If you have subclassed SortField,
   you should set `reverse` in the super constructor. (Alan Woodward)
+
+* GITHUB#15513: Update documentation in DefaultBloomFilterFactory to reflect changes made in GITHUB#11900 (Greg Miller)
+
+* GITHUB#15341: Align float vectors on disk to 64 bytes, for optimal performance on Arm Neoverse
+  machines (including vectors inside CFS files). (Mike McCandless, Kaival Parikh)
 
 Build
 ---------------------
