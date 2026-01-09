@@ -37,6 +37,8 @@ API Changes
 
 * GITHUB#15514: Refactor DocValuesSkipper stat methods to accept IndexReader instead of IndexSearcher (Pan Guixin)
 
+* GITHUB#15559: Deprecate some public FuzzySet methods ahead of removing them in the future (Greg Miller)
+
 New Features
 ---------------------
 * GITHUB#15328: VectorSimilarityFunction.getValues() now implements doubleVal allowing its
