@@ -137,7 +137,8 @@ public class ToChildBlockJoinQuery extends Query {
     }
 
     @Override
-    public int count(LeafReaderContext context) throws IOException {
+    public int count(LeafReaderContext context) {
+      // Signal we can't compute the exact count in sublinear time.
       return -1;
     }
   }

@@ -243,6 +243,7 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
 
     @Override
     public int count(LeafReaderContext context) {
+      // Signal we can't compute the exact count in sublinear time.
       return -1;
     }
   }
