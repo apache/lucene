@@ -305,7 +305,7 @@ Bug Fixes
 
 * GITHUB#15523: Updating createMultiSegmentIndex to utilize an explicit NoMergePolicy (Bryce Kane)
 
-* GITHUB# : Fix mis-interpretation of `maxNumBytes` in FuzzySet#createSetBasedOnMaxMemory (Greg Miller)
+* GITHUB#14616 : Fix mis-interpretation of `maxNumBytes` in FuzzySet#createSetBasedOnMaxMemory (Greg Miller)
 
 Other
 ---------------------
