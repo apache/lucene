@@ -39,6 +39,12 @@ API Changes
 
 * GITHUB#15559: Deprecate some public FuzzySet methods ahead of removing them in the future (Greg Miller)
 
+* GITHUB#15507: Expose MergeRateLimiter in ConcurrentMergeScheduler.runOnMergeFinished hook.
+  The runOnMergeFinished method signature now includes OneMerge and MergeRateLimiter parameters,
+  enabling applications to monitor merge performance metrics like pause time, throttling behavior,
+  and throughput. This provides visibility into Lucene's merge backpressure mechanisms that can
+  stall indexing when merge debt accumulates. (Zihan Xu)
+
 New Features
 ---------------------
 * GITHUB#15328: VectorSimilarityFunction.getValues() now implements doubleVal allowing its
