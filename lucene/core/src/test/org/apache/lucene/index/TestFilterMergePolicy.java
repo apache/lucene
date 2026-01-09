@@ -16,12 +16,11 @@
  */
 package org.apache.lucene.index;
 
-import java.util.Set;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestFilterMergePolicy extends LuceneTestCase {
 
   public void testMethodsOverridden() {
-    assertDelegatorOverridesAllRequiredMethods(FilterMergePolicy.class, Set.of());
+    assertDelegatorOverridesAllRequiredMethods(FilterMergePolicy.class);
   }
 }

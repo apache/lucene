@@ -181,15 +181,15 @@ public class TestFilterLeafReader extends LuceneTestCase {
   }
 
   public void testOverrideMethods() throws Exception {
-    assertDelegatorOverridesAllRequiredMethods(FilterLeafReader.class, Set.of());
+    assertDelegatorOverridesAllRequiredMethods(FilterLeafReader.class);
     assertDelegatorOverridesAllRequiredMethods(
         FilterLeafReader.FilterFields.class,
         Set.of(
             Iterable.class.getMethod("forEach", Consumer.class),
             Iterable.class.getMethod("spliterator")));
-    assertDelegatorOverridesAllRequiredMethods(FilterLeafReader.FilterTerms.class, Set.of());
-    assertDelegatorOverridesAllRequiredMethods(FilterLeafReader.FilterTermsEnum.class, Set.of());
-    assertDelegatorOverridesAllRequiredMethods(FilterLeafReader.FilterPostingsEnum.class, Set.of());
+    assertDelegatorOverridesAllRequiredMethods(FilterLeafReader.FilterTerms.class);
+    assertDelegatorOverridesAllRequiredMethods(FilterLeafReader.FilterTermsEnum.class);
+    assertDelegatorOverridesAllRequiredMethods(FilterLeafReader.FilterPostingsEnum.class);
   }
 
   public void testUnwrap() throws IOException {

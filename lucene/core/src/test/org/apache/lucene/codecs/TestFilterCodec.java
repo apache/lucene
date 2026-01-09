@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.codecs;
 
-import java.util.Set;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
@@ -24,6 +23,6 @@ public class TestFilterCodec extends LuceneTestCase {
 
   @Test
   public void testDeclaredMethodsOverridden() {
-    assertDelegatorOverridesAllRequiredMethods(FilterCodec.class, Set.of());
+    assertDelegatorOverridesAllRequiredMethods(FilterCodec.class);
   }
 }

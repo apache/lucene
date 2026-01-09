@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import java.util.Set;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
@@ -24,6 +23,6 @@ public class TestFilterCollector extends LuceneTestCase {
 
   @Test
   public void testDeclaredMethodsOverridden() {
-    assertDelegatorOverridesAllRequiredMethods(FilterCollector.class, Set.of());
+    assertDelegatorOverridesAllRequiredMethods(FilterCollector.class);
   }
 }

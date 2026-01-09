@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -25,7 +24,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestFilterCodecReader extends LuceneTestCase {
 
   public void testDeclaredMethodsOverridden() throws Exception {
-    assertDelegatorOverridesAllRequiredMethods(FilterCodecReader.class, Set.of());
+    assertDelegatorOverridesAllRequiredMethods(FilterCodecReader.class);
   }
 
   public void testGetDelegate() throws IOException {

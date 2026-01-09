@@ -16,14 +16,12 @@
  */
 package org.apache.lucene.index;
 
-import java.util.Set;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 public class TestFilterNumericDocValues extends LuceneTestCase {
-
   @Test
   public void testDeclaredMethodsOverridden() {
-    assertDelegatorOverridesAllRequiredMethods(FilterNumericDocValues.class, Set.of());
+    assertDelegatorOverridesAllRequiredMethods(FilterNumericDocValues.class);
   }
 }

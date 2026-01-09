@@ -3352,6 +3352,16 @@ public abstract class LuceneTestCase extends Assert {
    * Verifies that the given delegator class overrides all methods that it is expected to delegate.
    *
    * @param delegator the decorating class whose overrides must be verified
+   * @see #assertDelegatorOverridesAllRequiredMethods(Class, Set)
+   */
+  protected static void assertDelegatorOverridesAllRequiredMethods(Class<?> delegator) {
+    assertDelegatorOverridesAllRequiredMethods(delegator, Set.of());
+  }
+
+  /**
+   * Verifies that the given delegator class overrides all methods that it is expected to delegate.
+   *
+   * @param delegator the decorating class whose overrides must be verified
    * @param exclude the methods that should be ignored by the checks
    */
   protected static void assertDelegatorOverridesAllRequiredMethods(

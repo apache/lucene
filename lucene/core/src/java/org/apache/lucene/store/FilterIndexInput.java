@@ -81,6 +81,12 @@ public class FilterIndexInput extends IndexInput {
   }
 
   @Override
+  public IndexInput clone() {
+    throw new RuntimeException(
+        "Clone not implemented by the filter class: " + getClass().getName());
+  }
+
+  @Override
   public long getFilePointer() {
     return in.getFilePointer();
   }

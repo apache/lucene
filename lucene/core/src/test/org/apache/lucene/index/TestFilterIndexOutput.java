@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import java.util.Set;
 import org.apache.lucene.store.FilterIndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
@@ -25,6 +24,6 @@ public class TestFilterIndexOutput extends LuceneTestCase {
 
   @Test
   public void testOverrides() {
-    assertDelegatorOverridesAllRequiredMethods(FilterIndexOutput.class, Set.of());
+    assertDelegatorOverridesAllRequiredMethods(FilterIndexOutput.class);
   }
 }

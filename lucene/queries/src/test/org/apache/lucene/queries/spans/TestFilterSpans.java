@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.queries.spans;
 
-import java.util.Set;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
@@ -24,6 +23,6 @@ public class TestFilterSpans extends LuceneTestCase {
 
   @Test
   public void testOverrides() {
-    assertDelegatorOverridesAllRequiredMethods(FilterSpans.class, Set.of());
+    assertDelegatorOverridesAllRequiredMethods(FilterSpans.class);
   }
 }

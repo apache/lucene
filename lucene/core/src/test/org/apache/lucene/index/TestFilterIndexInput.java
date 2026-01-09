@@ -17,10 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.lang.reflect.Method;
-import java.util.HashSet;
 import java.util.Random;
-import java.util.Set;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.FilterIndexInput;
@@ -62,14 +59,7 @@ public class TestFilterIndexInput extends TestIndexInput {
 
   @Test
   public void testOverrides() {
-    // We want to exclude all the clone methods inherited from the hierarchy.
-    Set<Method> exclude = new HashSet<>();
-    for (Method m : FilterIndexInput.class.getMethods()) {
-      if (m.getName().equals("clone")) {
-        exclude.add(m);
-      }
-    }
-    assertDelegatorOverridesAllRequiredMethods(FilterIndexInput.class, exclude);
+    assertDelegatorOverridesAllRequiredMethods(FilterIndexInput.class);
   }
 
   public void testUnwrap() throws IOException {

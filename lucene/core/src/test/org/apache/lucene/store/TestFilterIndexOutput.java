@@ -17,7 +17,6 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
-import java.util.Set;
 import org.junit.Test;
 
 public class TestFilterIndexOutput extends BaseDataOutputTestCase<FilterIndexOutput> {
@@ -37,7 +36,7 @@ public class TestFilterIndexOutput extends BaseDataOutputTestCase<FilterIndexOut
 
   @Test
   public void testOverrides() {
-    assertDelegatorOverridesAllRequiredMethods(FilterIndexOutput.class, Set.of());
+    assertDelegatorOverridesAllRequiredMethods(FilterIndexOutput.class);
   }
 
   public void testUnwrap() throws IOException {
