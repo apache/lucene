@@ -203,7 +203,7 @@ public class FilterIndexInput extends IndexInput {
   @Override
   public IndexInput slice(String sliceDescription, long offset, long length, IOContext context)
       throws IOException {
-    return super.slice(sliceDescription, offset, length, context);
+    return in.slice(sliceDescription, offset, length, context);
   }
 
   @Override
