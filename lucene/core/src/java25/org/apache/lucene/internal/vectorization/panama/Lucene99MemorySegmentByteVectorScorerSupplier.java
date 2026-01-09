@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.internal.vectorization;
+package org.apache.lucene.internal.vectorization.panama;
 
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
@@ -118,7 +118,7 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
         public float score(int node) throws IOException {
           checkOrdinal(node);
           float raw =
-              PanamaVectorUtilSupport.cosine(getFirstSegment(queryOrd), getSecondSegment(node));
+              NativeVectorUtilSupport.cosine(getFirstSegment(queryOrd), getSecondSegment(node));
           return (1 + raw) / 2;
         }
 
@@ -152,7 +152,7 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
           checkOrdinal(node);
           // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
           float raw =
-              PanamaVectorUtilSupport.dotProduct(getFirstSegment(queryOrd), getSecondSegment(node));
+              NativeVectorUtilSupport.dotProduct(getFirstSegment(queryOrd), getSecondSegment(node));
           return 0.5f + raw / (float) (values.dimension() * (1 << 15));
         }
 
@@ -185,7 +185,7 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
         public float score(int node) throws IOException {
           checkOrdinal(node);
           float raw =
-              PanamaVectorUtilSupport.squareDistance(
+              NativeVectorUtilSupport.squareDistance(
                   getFirstSegment(queryOrd), getSecondSegment(node));
           return 1 / (1f + raw);
         }
@@ -219,7 +219,7 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
         public float score(int node) throws IOException {
           checkOrdinal(node);
           float raw =
-              PanamaVectorUtilSupport.dotProduct(getFirstSegment(queryOrd), getSecondSegment(node));
+              NativeVectorUtilSupport.dotProduct(getFirstSegment(queryOrd), getSecondSegment(node));
           if (raw < 0) {
             return 1 / (1 + -1 * raw);
           }
