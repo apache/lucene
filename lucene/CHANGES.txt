@@ -54,6 +54,8 @@ API Changes
 
 * GITHUB#15486: Remove deprecated SortField.setMissingValue() method (Alan Woodward)
 
+* GITHUB#14615 : Remove unnecessary public methods in FuzzySet (Greg Miller)
+
 New Features
 ---------------------
 
