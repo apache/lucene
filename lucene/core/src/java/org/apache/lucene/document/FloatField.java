@@ -60,20 +60,6 @@ public final class FloatField extends Field {
   private final StoredValue storedValue;
 
   /**
-   * Creates a new FloatField, indexing the provided point and storing it as a DocValue
-   *
-   * @param name field name
-   * @param value the float value
-   * @throws IllegalArgumentException if the field name or value is null.
-   * @deprecated Use {@link #FloatField(String, float, Field.Store)} with {@link Field.Store#NO}
-   *     instead.
-   */
-  @Deprecated
-  public FloatField(String name, float value) {
-    this(name, value, Field.Store.NO);
-  }
-
-  /**
    * Creates a new FloatField, indexing the provided point, storing it as a DocValue, and optionally
    * storing it as a stored field.
    *
@@ -193,6 +179,19 @@ public final class FloatField extends Field {
    */
   public static SortField newSortField(
       String field, boolean reverse, SortedNumericSelector.Type selector) {
-    return new SortedNumericSortField(field, SortField.Type.FLOAT, reverse, selector);
+    return new SortedNumericSortField(field, SortField.Type.FLOAT, reverse, selector, null);
+  }
+
+  /**
+   * Create a new {@link SortField} for float values.
+   *
+   * @param field field name. must not be {@code null}.
+   * @param reverse true if natural order should be reversed.
+   * @param selector custom selector type for choosing the sort value from the set.
+   * @param missingValue a sort value to use for documents with no value in the field
+   */
+  public static SortField newSortField(
+      String field, boolean reverse, SortedNumericSelector.Type selector, float missingValue) {
+    return new SortedNumericSortField(field, SortField.Type.FLOAT, reverse, selector, missingValue);
   }
 }

@@ -64,6 +64,7 @@ public class Lucene87Codec extends Codec {
 
     /** compression mode for stored fields */
     protected final Lucene87StoredFieldsFormat.Mode storedMode;
+
     /** compression mode for doc value fields */
     protected final Lucene80DocValuesFormat.Mode dvMode;
 

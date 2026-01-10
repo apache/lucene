@@ -29,7 +29,7 @@ import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -44,6 +44,7 @@ import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
@@ -69,6 +70,44 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
     return codec;
+  }
+
+  public void testMissingFieldReturnsNoResults() throws IOException {
+    try (Directory directory = newDirectory()) {
+      IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setCodec(
+          new AssertingCodec() {
+            @Override
+            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+              return TestUtil.getDefaultKnnVectorsFormat();
+            }
+          });
+      try (IndexWriter iwriter = new IndexWriter(directory, iwc)) {
+        Document doc = new Document();
+        doc.add(newTextField("id", "1", Field.Store.YES));
+        iwriter.addDocument(doc);
+      }
+
+      try (IndexReader ireader = DirectoryReader.open(directory)) {
+        LeafReader reader = ireader.leaves().get(0).reader();
+        TopDocs hits =
+            reader.searchNearestVectors(
+                "missing_field",
+                new float[] {1, 2, 3},
+                10,
+                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxDoc()),
+                Integer.MAX_VALUE);
+        assertEquals(0, hits.scoreDocs.length);
+        hits =
+            reader.searchNearestVectors(
+                "id",
+                new float[] {1, 2, 3},
+                10,
+                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxDoc()),
+                Integer.MAX_VALUE);
+        assertEquals(0, hits.scoreDocs.length);
+      }
+    }
   }
 
   public void testTwoFieldsTwoFormats() throws IOException {
@@ -112,12 +151,20 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         LeafReader reader = ireader.leaves().get(0).reader();
         TopDocs hits1 =
             reader.searchNearestVectors(
-                "field1", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
+                "field1",
+                new float[] {1, 2, 3},
+                10,
+                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxDoc()),
+                Integer.MAX_VALUE);
         assertEquals(1, hits1.scoreDocs.length);
 
         TopDocs hits2 =
             reader.searchNearestVectors(
-                "field2", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
+                "field2",
+                new float[] {1, 2, 3},
+                10,
+                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxDoc()),
+                Integer.MAX_VALUE);
         assertEquals(1, hits2.scoreDocs.length);
       }
     }
@@ -170,8 +217,8 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
     try (Directory directory = newDirectory()) {
       IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
       KnnVectorsFormat format1 =
-          new KnnVectorsFormatMaxDims32(new Lucene95HnswVectorsFormat(16, 100));
-      KnnVectorsFormat format2 = new Lucene95HnswVectorsFormat(16, 100);
+          new KnnVectorsFormatMaxDims32(new Lucene99HnswVectorsFormat(16, 100));
+      KnnVectorsFormat format2 = new Lucene99HnswVectorsFormat(16, 100);
       iwc.setCodec(
           new AssertingCodec() {
             @Override

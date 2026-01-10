@@ -22,10 +22,13 @@ import static org.apache.lucene.geo.XYEncodingUtils.checkVal;
 public final class XYRectangle extends XYGeometry {
   /** minimum x value */
   public final float minX;
+
   /** minimum y value */
   public final float maxX;
+
   /** maximum x value */
   public final float minY;
+
   /** maximum y value */
   public final float maxY;
 

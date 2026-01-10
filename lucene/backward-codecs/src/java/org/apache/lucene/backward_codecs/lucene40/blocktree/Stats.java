@@ -16,14 +16,14 @@
  */
 package org.apache.lucene.backward_codecs.lucene40.blocktree;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.io.UnsupportedEncodingException;
 import java.util.Locale;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.IOUtils;
 
 /**
  * BlockTree statistics for a single field returned by {@link FieldReader#getStats()}.
@@ -84,7 +84,7 @@ public class Stats {
 
   /**
    * Total number of bytes used to store term stats (not including what the {@link
-   * PostingsReaderBase} stores.
+   * PostingsReaderBase} stores).
    */
   public long totalBlockStatsBytes;
 
@@ -179,12 +179,7 @@ public class Stats {
   @Override
   public String toString() {
     final ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
-    PrintStream out;
-    try {
-      out = new PrintStream(bos, false, IOUtils.UTF_8);
-    } catch (UnsupportedEncodingException bogus) {
-      throw new RuntimeException(bogus);
-    }
+    PrintStream out = new PrintStream(bos, false, UTF_8);
 
     out.println("  index FST:");
     out.println("    " + indexNumBytes + " bytes");
@@ -276,10 +271,6 @@ public class Stats {
       assert totalBlockCount == total;
     }
 
-    try {
-      return bos.toString(IOUtils.UTF_8);
-    } catch (UnsupportedEncodingException bogus) {
-      throw new RuntimeException(bogus);
-    }
+    return bos.toString(UTF_8);
   }
 }

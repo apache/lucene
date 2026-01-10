@@ -22,6 +22,9 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PointValues;
@@ -32,6 +35,7 @@ import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IntsRef;
 
 /**
  * Abstract class for range queries against single or multidimensional points such as {@link
@@ -53,6 +57,7 @@ public abstract class PointRangeQuery extends Query {
   final int bytesPerDim;
   final byte[] lowerPoint;
   final byte[] upperPoint;
+  final ByteArrayComparator comparator;
 
   /**
    * Expert: create a multidimensional range query for point values.
@@ -88,6 +93,8 @@ public abstract class PointRangeQuery extends Query {
 
     this.lowerPoint = lowerPoint;
     this.upperPoint = upperPoint;
+
+    this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
   }
 
   /**
@@ -124,11 +131,9 @@ public abstract class PointRangeQuery extends Query {
 
     return new ConstantScoreWeight(this, boost) {
 
-      private final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
-
       private boolean matches(byte[] packedValue) {
-        for (int dim = 0; dim < numDims; dim++) {
-          int offset = dim * bytesPerDim;
+        int offset = 0;
+        for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
           if (comparator.compare(packedValue, offset, lowerPoint, offset) < 0) {
             // Doc's value is too low, in this dimension
             return false;
@@ -139,30 +144,6 @@ public abstract class PointRangeQuery extends Query {
           }
         }
         return true;
-      }
-
-      private Relation relate(byte[] minPackedValue, byte[] maxPackedValue) {
-
-        boolean crosses = false;
-
-        for (int dim = 0; dim < numDims; dim++) {
-          int offset = dim * bytesPerDim;
-
-          if (comparator.compare(minPackedValue, offset, upperPoint, offset) > 0
-              || comparator.compare(maxPackedValue, offset, lowerPoint, offset) < 0) {
-            return Relation.CELL_OUTSIDE_QUERY;
-          }
-
-          crosses |=
-              comparator.compare(minPackedValue, offset, lowerPoint, offset) < 0
-                  || comparator.compare(maxPackedValue, offset, upperPoint, offset) > 0;
-        }
-
-        if (crosses) {
-          return Relation.CELL_CROSSES_QUERY;
-        } else {
-          return Relation.CELL_INSIDE_QUERY;
-        }
       }
 
       private IntersectVisitor getIntersectVisitor(DocIdSetBuilder result) {
@@ -186,6 +167,11 @@ public abstract class PointRangeQuery extends Query {
           }
 
           @Override
+          public void visit(IntsRef ref) {
+            adder.add(ref);
+          }
+
+          @Override
           public void visit(int docID, byte[] packedValue) {
             if (matches(packedValue)) {
               visit(docID);
@@ -206,20 +192,28 @@ public abstract class PointRangeQuery extends Query {
         };
       }
 
-      /** Create a visitor that clears documents that do NOT match the range. */
+      /** Create a visitor that sets documents that do NOT match the range. */
       private IntersectVisitor getInverseIntersectVisitor(FixedBitSet result, long[] cost) {
         return new IntersectVisitor() {
 
           @Override
           public void visit(int docID) {
-            result.clear(docID);
-            cost[0]--;
+            result.set(docID);
+            cost[0]++;
           }
 
           @Override
           public void visit(DocIdSetIterator iterator) throws IOException {
-            result.andNot(iterator);
-            cost[0] = Math.max(0, cost[0] - iterator.cost());
+            result.or(iterator);
+            cost[0] += iterator.cost();
+          }
+
+          @Override
+          public void visit(IntsRef ref) {
+            for (int i = ref.offset, to = ref.offset + ref.length; i < to; i++) {
+              result.set(ref.ints[i]);
+            }
+            cost[0] += ref.length;
           }
 
           @Override
@@ -254,33 +248,6 @@ public abstract class PointRangeQuery extends Query {
         };
       }
 
-      private boolean checkValidPointValues(PointValues values) throws IOException {
-        if (values == null) {
-          // No docs in this segment/field indexed any points
-          return false;
-        }
-
-        if (values.getNumIndexDimensions() != numDims) {
-          throw new IllegalArgumentException(
-              "field=\""
-                  + field
-                  + "\" was indexed with numIndexDimensions="
-                  + values.getNumIndexDimensions()
-                  + " but this query has numDims="
-                  + numDims);
-        }
-        if (bytesPerDim != values.getBytesPerDimension()) {
-          throw new IllegalArgumentException(
-              "field=\""
-                  + field
-                  + "\" was indexed with bytesPerDim="
-                  + values.getBytesPerDimension()
-                  + " but this query has bytesPerDim="
-                  + bytesPerDim);
-        }
-        return true;
-      }
-
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         LeafReader reader = context.reader();
@@ -288,6 +255,24 @@ public abstract class PointRangeQuery extends Query {
         PointValues values = reader.getPointValues(field);
         if (checkValidPointValues(values) == false) {
           return null;
+        }
+
+        if (values.getDocCount() == 0) {
+          return null;
+        } else {
+          final byte[] fieldPackedLower = values.getMinPackedValue();
+          final byte[] fieldPackedUpper = values.getMaxPackedValue();
+          for (int i = 0; i < numDims; ++i) {
+            int offset = i * bytesPerDim;
+            if (comparator.compare(lowerPoint, offset, fieldPackedUpper, offset) > 0
+                || comparator.compare(upperPoint, offset, fieldPackedLower, offset) < 0) {
+              // If this query is a required clause of a boolean query, then returning null here
+              // will help make sure that we don't call ScorerSupplier#get on other required clauses
+              // of the same boolean query, which is an expensive operation for some queries (e.g.
+              // multi-term queries).
+              return null;
+            }
+          }
         }
 
         boolean allDocsMatch;
@@ -307,30 +292,18 @@ public abstract class PointRangeQuery extends Query {
           allDocsMatch = false;
         }
 
-        final Weight weight = this;
         if (allDocsMatch) {
           // all docs have a value and all points are within bounds, so everything matches
-          return new ScorerSupplier() {
-            @Override
-            public Scorer get(long leadCost) {
-              return new ConstantScoreScorer(
-                  weight, score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
-            }
-
-            @Override
-            public long cost() {
-              return reader.maxDoc();
-            }
-          };
+          return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, reader.maxDoc());
         } else {
-          return new ScorerSupplier() {
+          return new ConstantScoreScorerSupplier(score(), scoreMode, reader.maxDoc()) {
 
-            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
             final IntersectVisitor visitor = getIntersectVisitor(result);
             long cost = -1;
 
             @Override
-            public Scorer get(long leadCost) throws IOException {
+            public DocIdSetIterator iterator(long leadCost) throws IOException {
               if (values.getDocCount() == reader.maxDoc()
                   && values.getDocCount() == values.size()
                   && cost() > reader.maxDoc() / 2) {
@@ -338,16 +311,16 @@ public abstract class PointRangeQuery extends Query {
                 // than half the leaf size then maybe we can make things faster
                 // by computing the set of documents that do NOT match the range
                 final FixedBitSet result = new FixedBitSet(reader.maxDoc());
-                result.set(0, reader.maxDoc());
-                long[] cost = new long[] {reader.maxDoc()};
+                long[] cost = new long[1];
                 values.intersect(getInverseIntersectVisitor(result, cost));
-                final DocIdSetIterator iterator = new BitSetIterator(result, cost[0]);
-                return new ConstantScoreScorer(weight, score(), scoreMode, iterator);
+                // Flip the bit set and cost
+                result.flip(0, reader.maxDoc());
+                cost[0] = Math.max(0, reader.maxDoc() - cost[0]);
+                return new BitSetIterator(result, cost[0]);
               }
 
               values.intersect(visitor);
-              DocIdSetIterator iterator = result.build().iterator();
-              return new ConstantScoreScorer(weight, score(), scoreMode, iterator);
+              return result.build().iterator();
             }
 
             @Override
@@ -361,15 +334,6 @@ public abstract class PointRangeQuery extends Query {
             }
           };
         }
-      }
-
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
       }
 
       @Override
@@ -391,7 +355,8 @@ public abstract class PointRangeQuery extends Query {
           // docCount == size : counting according number of points in leaf node, so must be
           // single-valued.
           if (numDims == 1 && values.getDocCount() == values.size()) {
-            return (int) pointCount(values.getPointTree(), this::relate, this::matches);
+            return (int)
+                pointCount(values.getPointTree(), PointRangeQuery.this::relate, this::matches);
           }
         }
         return super.count(context);
@@ -569,4 +534,118 @@ public abstract class PointRangeQuery extends Query {
    * @return human readable value for debugging
    */
   protected abstract String toString(int dimension, byte[] value);
+
+  @Override
+  public Query rewrite(IndexSearcher searcher) throws IOException {
+    IndexReader reader = searcher.getIndexReader();
+
+    for (LeafReaderContext leaf : reader.leaves()) {
+      checkValidPointValues(leaf.reader().getPointValues(field));
+    }
+
+    // fetch the global min/max packed values across all segments
+    byte[] globalMinPacked = PointValues.getMinPackedValue(reader, getField());
+    byte[] globalMaxPacked = PointValues.getMaxPackedValue(reader, getField());
+
+    if (globalMinPacked == null || globalMaxPacked == null) {
+      return MatchNoDocsQuery.INSTANCE;
+    }
+
+    return switch (relate(globalMinPacked, globalMaxPacked)) {
+      case CELL_INSIDE_QUERY -> {
+        if (canRewriteToMatchAllQuery(reader)) {
+          yield MatchAllDocsQuery.INSTANCE;
+        } else if (canRewriteToFieldExistsQuery(reader)) {
+          yield new FieldExistsQuery(field);
+        } else {
+          yield super.rewrite(searcher);
+        }
+      }
+      case CELL_OUTSIDE_QUERY -> MatchNoDocsQuery.INSTANCE;
+      case CELL_CROSSES_QUERY -> super.rewrite(searcher);
+    };
+  }
+
+  private boolean canRewriteToMatchAllQuery(IndexReader reader) throws IOException {
+    for (LeafReaderContext context : reader.leaves()) {
+      LeafReader leaf = context.reader();
+      PointValues values = leaf.getPointValues(field);
+
+      if (values == null || values.getDocCount() != leaf.maxDoc()) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private boolean canRewriteToFieldExistsQuery(IndexReader reader) {
+    for (LeafReaderContext leaf : reader.leaves()) {
+      FieldInfo info = leaf.reader().getFieldInfos().fieldInfo(field);
+
+      if (info != null
+          && info.getDocValuesType() == DocValuesType.NONE
+          && !info.hasNorms()
+          && info.getVectorDimension() == 0) {
+        // Can't use a FieldExistsQuery on this segment, so return false
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private Relation relate(byte[] minPackedValue, byte[] maxPackedValue) {
+    boolean crosses = false;
+    int offset = 0;
+
+    for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
+
+      if (comparator.compare(minPackedValue, offset, upperPoint, offset) > 0
+          || comparator.compare(maxPackedValue, offset, lowerPoint, offset) < 0) {
+        return Relation.CELL_OUTSIDE_QUERY;
+      }
+
+      // Evaluate crosses only when false. Still need to iterate through
+      // all the dimensions to ensure, none of them is completely outside
+      if (crosses == false) {
+        crosses =
+            comparator.compare(minPackedValue, offset, lowerPoint, offset) < 0
+                || comparator.compare(maxPackedValue, offset, upperPoint, offset) > 0;
+      }
+    }
+
+    if (crosses) {
+      return Relation.CELL_CROSSES_QUERY;
+    } else {
+      return Relation.CELL_INSIDE_QUERY;
+    }
+  }
+
+  private boolean checkValidPointValues(PointValues values) throws IOException {
+    if (values == null) {
+      // No docs in this segment/field indexed any points
+      return false;
+    }
+
+    if (values.getNumIndexDimensions() != numDims) {
+      throw new IllegalArgumentException(
+          "field=\""
+              + field
+              + "\" was indexed with numIndexDimensions="
+              + values.getNumIndexDimensions()
+              + " but this query has numDims="
+              + numDims);
+    }
+    if (bytesPerDim != values.getBytesPerDimension()) {
+      throw new IllegalArgumentException(
+          "field=\""
+              + field
+              + "\" was indexed with bytesPerDim="
+              + values.getBytesPerDimension()
+              + " but this query has bytesPerDim="
+              + bytesPerDim);
+    }
+    return true;
+  }
 }

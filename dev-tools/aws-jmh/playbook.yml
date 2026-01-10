@@ -1,0 +1,164 @@
+
+# spin up aws hardware
+- hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Lookup default VPC
+      ec2_vpc_net_info:
+        region: "{{ region }}"
+        filters:
+          isDefault: true
+      register: vpc_info
+
+    - name: Create cloudformation stack
+      cloudformation:
+        stack_name: "{{ stack_name }}"
+        region: "{{ region }}"
+        template_body: "{{ lookup('template', 'cloudformation.yml.j2') }}"
+
+    - name: Gather instance details
+      ec2_instance_info:
+        region: "{{ region }}"
+        filters:
+          instance-state-name: ["pending", "running"]
+          "tag:aws:cloudformation:stack-name": "{{ stack_name }}"
+      register: ec2_instances
+
+    - name: Add instances to inventory
+      add_host:
+        name: "{{ item['tags']['ShortName'] }}"
+        ansible_host: "{{ item['public_ip_address'] }}"
+        ansible_user: "{{ user }}"
+        ansible_ssh_private_key_file: "{{ ssh_key }}"
+      args: "{{ item }}"
+      with_items: "{{ ec2_instances.instances }}"
+
+- hosts: all
+  gather_facts: false
+  tasks:
+    - name: Wait for connection
+      wait_for_connection:
+
+    - name: Gather facts
+      setup:
+
+    - name: Configure kernel
+      command:
+        argv:
+          - grubby
+          - --remove-args=selinux_1 security=selinux quiet
+          - --args=mitigations=0 random.trust_cpu=1 loglevel=7 selinux=0
+          - --update-kernel=ALL
+      become: true
+
+    - name: Install packages
+      package:
+        name:
+          - git
+      become: true
+
+    - name: Disable noisy services
+      command:
+        cmd: "systemctl disable --now {{ item }}"
+      loop: "{{ disable_services }}"
+      failed_when: false
+      become: true
+
+    - name: Reboot machine
+      reboot:
+      become: true
+
+    - name: Download JDK
+      unarchive:
+        src: "{{ jdk_url }}"
+        dest: .
+        remote_src: true
+
+    - name: Configure JDK
+      blockinfile:
+        path: .bashrc
+        block: |
+          export JAVA_HOME=/home/{{ user }}/jdk-{{ jdk_version }}
+          export PATH=$JAVA_HOME/bin:$PATH
+
+    - name: Configure Gradle
+      blockinfile:
+        path: .gradle/gradle.properties
+        create: true
+        block: |
+          org.gradle.daemon=false
+
+    - name: Checkout main
+      git:
+        repo: "https://github.com/{{ (main_branch | split(':'))[0] }}/lucene.git"
+        version: "{{ (main_branch | split(':'))[1] }}"
+        dest: main
+        depth: 1
+
+    - name: Checkout patch
+      git:
+        repo: "https://github.com/{{ (patch_branch | split(':'))[0] }}/lucene.git"
+        version: "{{ (patch_branch | split(':'))[1] }}"
+        dest: patch
+        depth: 1
+
+    - name: Assemble Sources
+      command:
+        cmd: "{{ assemble_command }}"
+        chdir: "{{ item }}"
+      loop:
+        - main
+        - patch
+
+    - name: Locate benchmark jar
+      find:
+        paths: "{{ item }}/{{ jmh_jar_path }}"
+        pattern: "{{ jmh_jar_glob }}"
+      register: found_jmh_jars
+      loop:
+        - main
+        - patch
+
+    - name: Run benchmark
+      command:
+        cmd: "java -jar {{ jmh_jar }} -rf text -rff ~/{{ item }}.txt {{ jmh_args }}"
+      loop:
+        - main
+        - patch
+      vars:
+        jmh_jars: "{{ found_jmh_jars.results | selectattr('item', 'eq', item) | map(attribute='files') }}"
+        jmh_jar: "{{ jmh_jars | first | map(attribute='path') | first }}"
+
+    - name: Read main results
+      command:
+        cmd: "cat main.txt"
+      register: main_out
+
+    - name: Read patch results
+      command:
+        cmd: "cat patch.txt"
+      register: patch_out
+
+    - name: Write Report
+      copy:
+        dest: "build/{{ inventory_hostname }}.log"
+        content: |
+
+          {{ inventory_hostname }}: `{{ ansible_processor }}`
+
+          main
+          ```
+          {{ main_out.stdout }}
+          ```
+          patch
+          ```
+          {{ patch_out.stdout }}
+          ```
+      delegate_to: localhost
+
+- hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Create combined report
+      shell:
+        cmd: "cat build/*.log > build/report.txt"

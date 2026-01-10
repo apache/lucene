@@ -19,7 +19,6 @@ package org.apache.lucene.search.suggest.document;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
-import org.apache.lucene.search.suggest.document.CompletionPostingsFormat.FSTLoadMode;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
 
@@ -31,15 +30,15 @@ import org.apache.lucene.util.Accountable;
 public final class CompletionsTermsReader implements Accountable {
   /** Minimum entry weight for the suggester */
   public final long minWeight;
+
   /** Maximum entry weight for the suggester */
   public final long maxWeight;
+
   /** type of suggester (context-enabled or not) */
   public final byte type;
 
   private final IndexInput dictIn;
   private final long offset;
-
-  private final FSTLoadMode fstLoadMode;
 
   private NRTSuggester suggester;
 
@@ -48,12 +47,7 @@ public final class CompletionsTermsReader implements Accountable {
    * </code> with <code>offset</code>
    */
   CompletionsTermsReader(
-      IndexInput dictIn,
-      long offset,
-      long minWeight,
-      long maxWeight,
-      byte type,
-      FSTLoadMode fstLoadMode) {
+      IndexInput dictIn, long offset, long minWeight, long maxWeight, byte type) {
     assert minWeight <= maxWeight;
     assert offset >= 0l && offset < dictIn.length();
     this.dictIn = dictIn;
@@ -61,7 +55,6 @@ public final class CompletionsTermsReader implements Accountable {
     this.minWeight = minWeight;
     this.maxWeight = maxWeight;
     this.type = type;
-    this.fstLoadMode = fstLoadMode;
   }
 
   /**
@@ -70,10 +63,8 @@ public final class CompletionsTermsReader implements Accountable {
    */
   public synchronized NRTSuggester suggester() throws IOException {
     if (suggester == null) {
-      try (IndexInput dictClone = dictIn.clone()) { // let multiple fields load concurrently
-        dictClone.seek(offset);
-        suggester = NRTSuggester.load(dictClone, fstLoadMode);
-      }
+      IndexInput indexInput = dictIn.slice("NRTSuggester", offset, dictIn.length() - offset);
+      suggester = NRTSuggester.load(indexInput);
     }
     return suggester;
   }

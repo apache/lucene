@@ -109,19 +109,18 @@ public class TestFSTsMisc extends LuceneTestCase {
         }
         pairs.add(new FSTTester.InputOutput<>(terms[idx], output));
       }
-      new FSTTester<Object>(random(), dir, inputMode, pairs, outputs) {
+      new FSTTester<>(random(), dir, inputMode, pairs, outputs) {
         @Override
         protected boolean outputsEqual(Object output1, Object output2) {
-          if (output1 instanceof TwoLongs && output2 instanceof List) {
-            TwoLongs twoLongs1 = (TwoLongs) output1;
-            return Arrays.asList(new Long[] {twoLongs1.first, twoLongs1.second}).equals(output2);
-          } else if (output2 instanceof TwoLongs && output1 instanceof List) {
-            TwoLongs twoLongs2 = (TwoLongs) output2;
-            return Arrays.asList(new Long[] {twoLongs2.first, twoLongs2.second}).equals(output1);
+          if (output1 instanceof TwoLongs(long first, long second) && output2 instanceof List) {
+            return Arrays.asList(first, second).equals(output2);
+          } else if (output2 instanceof TwoLongs(long first, long second)
+              && output1 instanceof List) {
+            return Arrays.asList(first, second).equals(output1);
           }
           return output1.equals(output2);
         }
-      }.doTest(false);
+      }.doTest();
     }
 
     // ListOfOutputs(PositiveIntOutputs), generally but not
@@ -157,14 +156,15 @@ public class TestFSTsMisc extends LuceneTestCase {
 
         pairs.add(new FSTTester.InputOutput<>(terms[idx], output));
       }
-      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest(false);
+      new FSTTester<>(random(), dir, inputMode, pairs, outputs).doTest();
     }
   }
 
   public void testListOfOutputs() throws Exception {
     PositiveIntOutputs _outputs = PositiveIntOutputs.getSingleton();
     ListOfOutputs<Long> outputs = new ListOfOutputs<>(_outputs);
-    final FSTCompiler<Object> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    final FSTCompiler<Object> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
     final IntsRefBuilder scratch = new IntsRefBuilder();
     // Add the same input more than once and the outputs
@@ -173,7 +173,7 @@ public class TestFSTsMisc extends LuceneTestCase {
     fstCompiler.add(Util.toIntsRef(new BytesRef("a"), scratch), 3L);
     fstCompiler.add(Util.toIntsRef(new BytesRef("a"), scratch), 0L);
     fstCompiler.add(Util.toIntsRef(new BytesRef("b"), scratch), 17L);
-    final FST<Object> fst = fstCompiler.compile();
+    final FST<Object> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
     Object output = Util.get(fst, new BytesRef("a"));
     assertNotNull(output);
@@ -193,7 +193,8 @@ public class TestFSTsMisc extends LuceneTestCase {
   public void testListOfOutputsEmptyString() throws Exception {
     PositiveIntOutputs _outputs = PositiveIntOutputs.getSingleton();
     ListOfOutputs<Long> outputs = new ListOfOutputs<>(_outputs);
-    final FSTCompiler<Object> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    final FSTCompiler<Object> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
 
     final IntsRefBuilder scratch = new IntsRefBuilder();
     fstCompiler.add(scratch.get(), 0L);
@@ -206,7 +207,7 @@ public class TestFSTsMisc extends LuceneTestCase {
     fstCompiler.add(Util.toIntsRef(new BytesRef("a"), scratch), 0L);
     fstCompiler.add(Util.toIntsRef(new BytesRef("b"), scratch), 0L);
 
-    final FST<Object> fst = fstCompiler.compile();
+    final FST<Object> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
     Object output = Util.get(fst, new BytesRef(""));
     assertNotNull(output);

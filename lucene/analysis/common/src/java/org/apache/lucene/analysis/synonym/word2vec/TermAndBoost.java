@@ -18,16 +18,15 @@ package org.apache.lucene.analysis.synonym.word2vec;
 
 import org.apache.lucene.util.BytesRef;
 
-/** Wraps a term and boost */
-public class TermAndBoost {
-  /** the term */
-  public final BytesRef term;
-  /** the boost */
-  public final float boost;
-
+/**
+ * Wraps a term and boost
+ *
+ * @param term the term
+ * @param boost the boost
+ */
+public record TermAndBoost(BytesRef term, float boost) {
   /** Creates a new TermAndBoost */
-  public TermAndBoost(BytesRef term, float boost) {
-    this.term = BytesRef.deepCopyOf(term);
-    this.boost = boost;
+  public TermAndBoost {
+    term = BytesRef.deepCopyOf(term);
   }
 }

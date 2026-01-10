@@ -21,7 +21,6 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
-import org.apache.lucene.search.Weight;
 
 /**
  * {@link Scorer} which returns the result of {@link FunctionValues#floatVal(int)} as the score for
@@ -43,9 +42,7 @@ public abstract class ValueSourceScorer extends Scorer {
   private final TwoPhaseIterator twoPhaseIterator;
   private final DocIdSetIterator disi;
 
-  protected ValueSourceScorer(
-      Weight weight, LeafReaderContext readerContext, FunctionValues values) {
-    super(weight);
+  protected ValueSourceScorer(LeafReaderContext readerContext, FunctionValues values) {
     this.values = values;
     final DocIdSetIterator approximation =
         DocIdSetIterator.all(readerContext.reader().maxDoc()); // no approximation!

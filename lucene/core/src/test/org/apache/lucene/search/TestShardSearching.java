@@ -70,6 +70,7 @@ public class TestShardSearching extends ShardSearchingTestBase {
     }
   }
 
+  @Nightly // TODO: -Ptests.seed=A148FC8983CFA7A - takes 12 seconds. very slow. wall-clock dependent
   public void testSimple() throws Exception {
     final int numNodes = TestUtil.nextInt(random(), 1, 10);
 
@@ -361,12 +362,12 @@ public class TestShardSearching extends ShardSearchingTestBase {
         System.out.println("  shard=" + shardID + " maxDoc=" + shardSearchers[shardID].searcher.getIndexReader().maxDoc());
       }
       */
-      System.out.println("  single searcher: " + hits.totalHits.value);
+      System.out.println("  single searcher: " + hits.totalHits.value());
       for (int i = 0; i < hits.scoreDocs.length; i++) {
         final ScoreDoc sd = hits.scoreDocs[i];
         System.out.println("    doc=" + sd.doc + " score=" + sd.score);
       }
-      System.out.println("  shard searcher: " + shardHits.totalHits.value);
+      System.out.println("  shard searcher: " + shardHits.totalHits.value());
       for (int i = 0; i < shardHits.scoreDocs.length; i++) {
         final ScoreDoc sd = shardHits.scoreDocs[i];
         System.out.println(
@@ -391,7 +392,7 @@ public class TestShardSearching extends ShardSearchingTestBase {
     final ScoreDoc bottomHit;
     final ScoreDoc bottomHitShards;
 
-    if (numHitsPaged < hits.totalHits.value) {
+    if (numHitsPaged < hits.totalHits.value()) {
       // More hits to page through
       moreHits = true;
       if (sort == null) {
@@ -408,7 +409,7 @@ public class TestShardSearching extends ShardSearchingTestBase {
       }
 
     } else {
-      assertEquals(hits.totalHits.value, numHitsPaged);
+      assertEquals(hits.totalHits.value(), numHitsPaged);
       bottomHit = null;
       bottomHitShards = null;
       moreHits = false;

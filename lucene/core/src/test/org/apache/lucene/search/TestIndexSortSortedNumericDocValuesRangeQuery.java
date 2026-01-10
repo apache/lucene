@@ -16,12 +16,13 @@
  */
 package org.apache.lucene.search;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.Matchers.instanceOf;
 
 import java.io.IOException;
 import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.StringField;
@@ -36,6 +37,7 @@ import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.hamcrest.MatcherAssert;
 
 @LuceneTestCase.SuppressCodecs(value = "SimpleText")
 public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCase {
@@ -47,15 +49,17 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       boolean reverse = random().nextBoolean();
-      SortField sortField = new SortedNumericSortField("dv", SortField.Type.LONG, reverse);
       boolean enableMissingValue = random().nextBoolean();
+      Long missingValue = null;
       if (enableMissingValue) {
-        long missingValue =
+        missingValue =
             random().nextBoolean()
                 ? TestUtil.nextLong(random(), -100, 10000)
                 : (random().nextBoolean() ? Long.MIN_VALUE : Long.MAX_VALUE);
-        sortField.setMissingValue(missingValue);
       }
+      SortField sortField =
+          new SortedNumericSortField(
+              "dv", SortField.Type.LONG, reverse, SortedNumericSelector.Type.MIN, missingValue);
       iwc.setIndexSort(new Sort(sortField));
 
       RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
@@ -93,12 +97,67 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     }
   }
 
+  public void testSameHitsAsPointRangeQueryIntSort() throws IOException {
+    final int iters = atLeast(10);
+    for (int iter = 0; iter < iters; ++iter) {
+      Directory dir = newDirectory();
+
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      boolean reverse = random().nextBoolean();
+      boolean enableMissingValue = random().nextBoolean();
+      Integer missingValue = null;
+      if (enableMissingValue) {
+        missingValue =
+            random().nextBoolean()
+                ? TestUtil.nextInt(random(), -100, 10000)
+                : (random().nextBoolean() ? Integer.MIN_VALUE : Integer.MAX_VALUE);
+      }
+      SortField sortField =
+          new SortedNumericSortField(
+              "dv", SortField.Type.INT, reverse, SortedNumericSelector.Type.MIN, missingValue);
+      iwc.setIndexSort(new Sort(sortField));
+
+      RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+
+      final int numDocs = atLeast(100);
+      for (int i = 0; i < numDocs; ++i) {
+        Document doc = new Document();
+        final int numValues = TestUtil.nextInt(random(), 0, 1);
+        for (int j = 0; j < numValues; ++j) {
+          final int value = TestUtil.nextInt(random(), -100, 10000);
+          doc.add(new SortedNumericDocValuesField("dv", value));
+          doc.add(new IntPoint("idx", value));
+        }
+        iw.addDocument(doc);
+      }
+      if (random().nextBoolean()) {
+        iw.deleteDocuments(IntPoint.newRangeQuery("idx", 0, 10));
+      }
+      final IndexReader reader = iw.getReader();
+      final IndexSearcher searcher = newSearcher(reader);
+      iw.close();
+
+      for (int i = 0; i < 100; ++i) {
+        final int min =
+            random().nextBoolean() ? Integer.MIN_VALUE : TestUtil.nextInt(random(), -100, 10000);
+        final int max =
+            random().nextBoolean() ? Integer.MAX_VALUE : TestUtil.nextInt(random(), -100, 10000);
+        final Query q1 = IntPoint.newRangeQuery("idx", min, max);
+        final Query q2 = createQuery("dv", min, max);
+        assertSameHits(searcher, q1, q2, false);
+      }
+
+      reader.close();
+      dir.close();
+    }
+  }
+
   private static void assertSameHits(IndexSearcher searcher, Query q1, Query q2, boolean scores)
       throws IOException {
     final int maxDoc = searcher.getIndexReader().maxDoc();
     final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
     final TopDocs td2 = searcher.search(q2, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
-    assertEquals(td1.totalHits.value, td2.totalHits.value);
+    assertEquals(td1.totalHits.value(), td2.totalHits.value());
     for (int i = 0; i < td1.scoreDocs.length; ++i) {
       assertEquals(td1.scoreDocs[i].doc, td2.scoreDocs[i].doc);
       if (scores) {
@@ -289,8 +348,13 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     Directory dir = newDirectory();
 
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-    SortField sortField = new SortedNumericSortField("field", SortField.Type.LONG);
-    sortField.setMissingValue(random().nextLong());
+    SortField sortField =
+        new SortedNumericSortField(
+            "field",
+            SortField.Type.LONG,
+            false,
+            SortedNumericSelector.Type.MIN,
+            random().nextLong());
     iwc.setIndexSort(new Sort(sortField));
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
 
@@ -359,11 +423,12 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
     Query rewrittenQuery = query.rewrite(newSearcher(reader));
     assertNotEquals(query, rewrittenQuery);
-    assertThat(rewrittenQuery, instanceOf(IndexSortSortedNumericDocValuesRangeQuery.class));
+    MatcherAssert.assertThat(
+        rewrittenQuery, instanceOf(IndexSortSortedNumericDocValuesRangeQuery.class));
 
     IndexSortSortedNumericDocValuesRangeQuery rangeQuery =
         (IndexSortSortedNumericDocValuesRangeQuery) rewrittenQuery;
-    assertEquals(new MatchNoDocsQuery(), rangeQuery.getFallbackQuery());
+    assertEquals(MatchNoDocsQuery.INSTANCE, rangeQuery.getFallbackQuery());
 
     writer.close();
     reader.close();
@@ -471,7 +536,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     IndexSearcher searcher = newSearcher(reader);
 
     // we use an unrealistic query that exposes its own Weight#count
-    Query fallbackQuery = new MatchNoDocsQuery();
+    Query fallbackQuery = MatchNoDocsQuery.INSTANCE;
     // the index is not sorted on this field, the fallback query is used
     Query query = new IndexSortSortedNumericDocValuesRangeQuery("another", 1, 42, fallbackQuery);
     Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
@@ -489,15 +554,17 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     for (int iter = 0; iter < iters; ++iter) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortedNumericSortField("field", SortField.Type.LONG);
       boolean enableMissingValue = random().nextBoolean();
+      Long missingValue = null;
       if (enableMissingValue) {
-        long missingValue =
+        missingValue =
             random().nextBoolean()
                 ? TestUtil.nextLong(random(), -100, 10000)
                 : (random().nextBoolean() ? Long.MIN_VALUE : Long.MAX_VALUE);
-        sortField.setMissingValue(missingValue);
       }
+      SortField sortField =
+          new SortedNumericSortField(
+              "field", SortField.Type.LONG, false, SortedNumericSelector.Type.MIN, missingValue);
       iwc.setIndexSort(new Sort(sortField));
 
       RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
@@ -551,11 +618,16 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
   public void testCountBoundary() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-    SortField sortField = new SortedNumericSortField("field", SortField.Type.LONG);
     boolean useLower = random().nextBoolean();
     long lowerValue = 1;
     long upperValue = 100;
-    sortField.setMissingValue(useLower ? lowerValue : upperValue);
+    SortField sortField =
+        new SortedNumericSortField(
+            "field",
+            SortField.Type.LONG,
+            false,
+            SortedNumericSelector.Type.MIN,
+            useLower ? lowerValue : upperValue);
     Sort indexSort = new Sort(sortField);
     iwc.setIndexSort(indexSort);
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);

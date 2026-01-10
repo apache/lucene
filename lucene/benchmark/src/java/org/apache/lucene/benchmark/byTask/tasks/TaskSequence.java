@@ -25,10 +25,12 @@ import org.apache.lucene.benchmark.byTask.PerfRunData;
 import org.apache.lucene.benchmark.byTask.feeds.NoMoreDataException;
 import org.apache.lucene.benchmark.byTask.stats.TaskStats;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.SuppressForbidden;
 
 /** Sequence of parallel or sequential tasks. */
+@SuppressForbidden(reason = "Thread sleep")
 public class TaskSequence extends PerfTask {
-  public static int REPEAT_EXHAUST = -2;
+  public static final int REPEAT_EXHAUST = -2;
   private ArrayList<PerfTask> tasks;
   private int repetitions = 1;
   private boolean parallel;
@@ -41,7 +43,7 @@ public class TaskSequence extends PerfTask {
   private boolean resetExhausted = false;
   private PerfTask[] tasksArray;
   private boolean anyExhaustibleTasks;
-  private boolean collapsable = false; // to not collapse external sequence named in alg.
+  private final boolean collapsable; // to not collapse external sequence named in alg.
 
   private boolean fixedTime; // true if we run for fixed time
   private double runTimeSec; // how long to run for
@@ -204,9 +206,7 @@ public class TaskSequence extends PerfTask {
               countsByTime[slot] += inc;
             }
             if (anyExhaustibleTasks) updateExhausted(task);
-          } catch (
-              @SuppressWarnings("unused")
-              NoMoreDataException e) {
+          } catch (NoMoreDataException _) {
             exhausted = true;
           }
         }
@@ -273,9 +273,7 @@ public class TaskSequence extends PerfTask {
           }
 
           if (anyExhaustibleTasks) updateExhausted(task);
-        } catch (
-            @SuppressWarnings("unused")
-            NoMoreDataException e) {
+        } catch (NoMoreDataException _) {
           exhausted = true;
         }
       }
@@ -289,8 +287,7 @@ public class TaskSequence extends PerfTask {
     if (task instanceof ResetInputsTask) {
       exhausted = false;
       resetExhausted = true;
-    } else if (task instanceof TaskSequence) {
-      TaskSequence t = (TaskSequence) task;
+    } else if (task instanceof TaskSequence t) {
       if (t.resetExhausted) {
         exhausted = false;
         resetExhausted = true;
@@ -318,9 +315,7 @@ public class TaskSequence extends PerfTask {
           updateExhausted(task);
         }
         count += n;
-      } catch (
-          @SuppressWarnings("unused")
-          NoMoreDataException e) {
+      } catch (NoMoreDataException _) {
         exhausted = true;
       } catch (Exception e) {
         throw new RuntimeException(e);
@@ -382,8 +377,7 @@ public class TaskSequence extends PerfTask {
     for (int i = 0; i < t.length; i++) {
       t[i].join();
       count += t[i].count;
-      if (t[i].task instanceof TaskSequence) {
-        TaskSequence sub = (TaskSequence) t[i].task;
+      if (t[i].task instanceof TaskSequence sub) {
         if (sub.countsByTime != null) {
           if (countsByTime == null) {
             countsByTime = new int[sub.countsByTime.length];

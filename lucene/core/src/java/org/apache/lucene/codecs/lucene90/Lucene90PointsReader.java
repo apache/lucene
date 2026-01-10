@@ -17,8 +17,6 @@
 package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.index.CorruptIndexException;
@@ -26,17 +24,18 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.bkd.BKDReader;
 
 /** Reads point values previously written with {@link Lucene90PointsWriter} */
 public class Lucene90PointsReader extends PointsReader {
-  final IndexInput indexIn, dataIn;
-  final SegmentReadState readState;
-  final Map<Integer, PointValues> readers = new HashMap<>();
+  private final IndexInput indexIn, dataIn;
+  private final SegmentReadState readState;
+  private final IntObjectHashMap<PointValues> readers = new IntObjectHashMap<>();
 
   /** Sole constructor */
   public Lucene90PointsReader(SegmentReadState readState) throws IOException {
@@ -58,9 +57,10 @@ public class Lucene90PointsReader extends PointsReader {
             readState.segmentSuffix,
             Lucene90PointsFormat.DATA_EXTENSION);
 
-    boolean success = false;
     try {
-      indexIn = readState.directory.openInput(indexFileName, IOContext.LOAD);
+      indexIn =
+          readState.directory.openInput(
+              indexFileName, readState.context.withHints(FileTypeHint.INDEX));
       CodecUtil.checkIndexHeader(
           indexIn,
           Lucene90PointsFormat.INDEX_CODEC_NAME,
@@ -70,7 +70,11 @@ public class Lucene90PointsReader extends PointsReader {
           readState.segmentSuffix);
       CodecUtil.retrieveChecksum(indexIn);
 
-      dataIn = readState.directory.openInput(dataFileName, readState.context);
+      // Points read whole ranges of bytes at once, so pass ReadAdvice.NORMAL to perform readahead.
+      // DATA
+      dataIn =
+          readState.directory.openInput(
+              dataFileName, readState.context.withHints(FileTypeHint.DATA));
       CodecUtil.checkIndexHeader(
           dataIn,
           Lucene90PointsFormat.DATA_CODEC_NAME,
@@ -114,11 +118,9 @@ public class Lucene90PointsReader extends PointsReader {
       // know that indexLength and dataLength are very likely correct.
       CodecUtil.retrieveChecksum(indexIn, indexLength);
       CodecUtil.retrieveChecksum(dataIn, dataLength);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 

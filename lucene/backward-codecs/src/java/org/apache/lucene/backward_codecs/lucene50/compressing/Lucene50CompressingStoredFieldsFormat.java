@@ -45,14 +45,19 @@ public class Lucene50CompressingStoredFieldsFormat extends StoredFieldsFormat {
 
   /** format name */
   protected final String formatName;
+
   /** segment suffix */
   protected final String segmentSuffix;
+
   /** compression mode */
   protected final CompressionMode compressionMode;
+
   /** chunk size */
   protected final int chunkSize;
+
   /** max docs per chunk */
   protected final int maxDocsPerChunk;
+
   /** block shift */
   protected final int blockShift;
 

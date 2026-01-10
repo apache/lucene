@@ -32,10 +32,11 @@ import org.apache.lucene.util.CharsRef;
  */
 public class CharArrayMap<V> extends AbstractMap<Object, V> {
   // private only because missing generics
+  @SuppressWarnings("ClassInitializationDeadlock") // FIXME: may cause hangs!
   private static final CharArrayMap<?> EMPTY_MAP = new EmptyCharArrayMap<>();
 
   private static final int INIT_SIZE = 8;
-  private boolean ignoreCase;
+  private final boolean ignoreCase;
   private int count;
   // package private because used in CharArraySet's non Set-conform CharArraySetIterator
   char[][] keys;
@@ -106,8 +107,7 @@ public class CharArrayMap<V> extends AbstractMap<Object, V> {
 
   @Override
   public boolean containsKey(Object o) {
-    if (o instanceof char[]) {
-      final char[] text = (char[]) o;
+    if (o instanceof char[] text) {
       return containsKey(text, 0, text.length);
     }
     return containsKey(o.toString());
@@ -128,8 +128,7 @@ public class CharArrayMap<V> extends AbstractMap<Object, V> {
 
   @Override
   public V get(Object o) {
-    if (o instanceof char[]) {
-      final char[] text = (char[]) o;
+    if (o instanceof char[] text) {
       return get(text, 0, text.length);
     }
     return get(o.toString());
@@ -463,11 +462,9 @@ public class CharArrayMap<V> extends AbstractMap<Object, V> {
 
     @Override
     public String toString() {
-      return new StringBuilder()
-          .append(keys[pos])
-          .append('=')
-          .append((values[pos] == CharArrayMap.this) ? "(this Map)" : values[pos])
-          .toString();
+      return String.valueOf(keys[pos])
+          + '='
+          + ((values[pos] == CharArrayMap.this) ? "(this Map)" : values[pos]);
     }
   }
 
@@ -611,7 +608,7 @@ public class CharArrayMap<V> extends AbstractMap<Object, V> {
    */
   private static final class EmptyCharArrayMap<V> extends UnmodifiableCharArrayMap<V> {
     EmptyCharArrayMap() {
-      super(new CharArrayMap<V>(0, false));
+      super(new CharArrayMap<>(0, false));
     }
 
     @Override

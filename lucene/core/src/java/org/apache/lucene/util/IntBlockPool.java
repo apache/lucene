@@ -63,10 +63,13 @@ public class IntBlockPool {
 
   /** index into the buffers array pointing to the current buffer used as the head */
   private int bufferUpto = -1;
+
   /** Pointer to the current position in head buffer */
   public int intUpto = INT_BLOCK_SIZE;
+
   /** Current head buffer */
   public int[] buffer;
+
   /** Current head offset */
   public int intOffset = -INT_BLOCK_SIZE;
 
@@ -91,15 +94,11 @@ public class IntBlockPool {
   }
 
   /**
-   * Resets the pool to its initial state reusing the first buffer. Calling {@link
-   * IntBlockPool#nextBuffer()} is not needed after reset.
-   */
-  public void reset() {
-    this.reset(true, true);
-  }
-
-  /**
-   * Expert: Resets the pool to its initial state reusing the first buffer.
+   * Expert: Resets the pool to its initial state, while optionally reusing the first buffer.
+   * Buffers that are not reused are reclaimed by {@link
+   * ByteBlockPool.Allocator#recycleByteBlocks(byte[][], int, int)}. Buffers can be filled with
+   * zeros before recycling them. This is useful if a slice pool works on top of this int pool and
+   * relies on the buffers being filled with zeros to find the non-zero end of slices.
    *
    * @param zeroFillBuffers if <code>true</code> the buffers are filled with <code>0</code>.
    * @param reuseFirst if <code>true</code> the first buffer will be reused and calling {@link
@@ -142,8 +141,8 @@ public class IntBlockPool {
 
   /**
    * Advances the pool to its next buffer. This method should be called once after the constructor
-   * to initialize the pool. In contrast to the constructor a {@link IntBlockPool#reset()} call will
-   * advance the pool to its first buffer immediately.
+   * to initialize the pool. In contrast to the constructor a {@link IntBlockPool#reset(boolean,
+   * boolean)} call will advance the pool to its first buffer immediately.
    */
   public void nextBuffer() {
     if (1 + bufferUpto == buffers.length) {

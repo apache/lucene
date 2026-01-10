@@ -30,7 +30,9 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortedNumericSelector;
 import org.apache.lucene.search.SortedNumericSortField;
+import org.apache.lucene.search.SortedSetSelector;
 import org.apache.lucene.search.SortedSetSortField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -44,8 +46,8 @@ import org.apache.lucene.util.Version;
 /**
  * Abstract class to do basic tests for si format. NOTE: This test focuses on the si impl, nothing
  * else. The [stretch] goal is for this test to be so thorough in testing a new si format that if
- * this test passes, then all Lucene/Solr tests should also pass. Ie, if there is some bug in a
- * given si Format that this test fails to catch then this test needs to be improved!
+ * this test passes, then all Lucene tests should also pass. Ie, if there is some bug in a given si
+ * Format that this test fails to catch then this test needs to be improved!
  */
 public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatTestCase {
 
@@ -67,6 +69,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             "_123",
             1,
             false,
+            false,
             codec,
             Collections.emptyMap(),
             id,
@@ -76,6 +79,33 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
     SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
     assertEquals(info.files(), info2.files());
+    dir.close();
+  }
+
+  public void testHasBlocks() throws IOException {
+    assumeTrue("test requires a codec that can read/write hasBlocks", supportsHasBlocks());
+
+    Directory dir = newDirectory();
+    Codec codec = getCodec();
+    byte[] id = StringHelper.randomId();
+    SegmentInfo info =
+        new SegmentInfo(
+            dir,
+            getVersions()[0],
+            getVersions()[0],
+            "_123",
+            1,
+            false,
+            random().nextBoolean(),
+            codec,
+            Collections.emptyMap(),
+            id,
+            Collections.emptyMap(),
+            null);
+    info.setFiles(Collections.<String>emptySet());
+    codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
+    SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
+    assertEquals(info.getHasBlocks(), info2.getHasBlocks());
     dir.close();
   }
 
@@ -91,6 +121,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             getVersions()[0],
             "_123",
             1,
+            false,
             false,
             codec,
             Collections.emptyMap(),
@@ -135,6 +166,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             "_123",
             1,
             false,
+            false,
             codec,
             diagnostics,
             id,
@@ -171,6 +203,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             "_123",
             1,
             false,
+            false,
             codec,
             Collections.emptyMap(),
             id,
@@ -204,6 +237,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             "_123",
             1,
             false,
+            false,
             codec,
             Collections.<String, String>emptyMap(),
             id,
@@ -231,6 +265,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
                 "_123",
                 1,
                 false,
+                false,
                 codec,
                 Collections.<String, String>emptyMap(),
                 id,
@@ -254,89 +289,82 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     return true;
   }
 
+  protected boolean supportsHasBlocks() {
+    return true;
+  }
+
   private SortField randomIndexSortField() {
     boolean reversed = random().nextBoolean();
-    SortField sortField;
-    switch (random().nextInt(10)) {
-      case 0:
-        sortField =
-            new SortField(TestUtil.randomSimpleString(random()), SortField.Type.INT, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextInt());
-        }
-        break;
-      case 1:
-        sortField =
-            new SortedNumericSortField(
-                TestUtil.randomSimpleString(random()), SortField.Type.INT, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextInt());
-        }
-        break;
-
-      case 2:
-        sortField =
-            new SortField(TestUtil.randomSimpleString(random()), SortField.Type.LONG, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextLong());
-        }
-        break;
-      case 3:
-        sortField =
-            new SortedNumericSortField(
-                TestUtil.randomSimpleString(random()), SortField.Type.LONG, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextLong());
-        }
-        break;
-      case 4:
-        sortField =
-            new SortField(TestUtil.randomSimpleString(random()), SortField.Type.FLOAT, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextFloat());
-        }
-        break;
-      case 5:
-        sortField =
-            new SortedNumericSortField(
-                TestUtil.randomSimpleString(random()), SortField.Type.FLOAT, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextFloat());
-        }
-        break;
-      case 6:
-        sortField =
-            new SortField(TestUtil.randomSimpleString(random()), SortField.Type.DOUBLE, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextDouble());
-        }
-        break;
-      case 7:
-        sortField =
-            new SortedNumericSortField(
-                TestUtil.randomSimpleString(random()), SortField.Type.DOUBLE, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextDouble());
-        }
-        break;
-      case 8:
-        sortField =
-            new SortField(TestUtil.randomSimpleString(random()), SortField.Type.STRING, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(SortField.STRING_LAST);
-        }
-        break;
-      case 9:
-        sortField = new SortedSetSortField(TestUtil.randomSimpleString(random()), reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(SortField.STRING_LAST);
-        }
-        break;
-      default:
-        sortField = null;
+    return switch (random().nextInt(10)) {
+      case 0 ->
+          new SortField(
+              TestUtil.randomSimpleString(random()),
+              SortField.Type.INT,
+              reversed,
+              random().nextBoolean() ? random().nextInt() : null);
+      case 1 ->
+          new SortedNumericSortField(
+              TestUtil.randomSimpleString(random()),
+              SortField.Type.INT,
+              reversed,
+              SortedNumericSelector.Type.MIN,
+              random().nextBoolean() ? random().nextInt() : null);
+      case 2 ->
+          new SortField(
+              TestUtil.randomSimpleString(random()),
+              SortField.Type.LONG,
+              reversed,
+              random().nextBoolean() ? random().nextLong() : null);
+      case 3 ->
+          new SortedNumericSortField(
+              TestUtil.randomSimpleString(random()),
+              SortField.Type.LONG,
+              reversed,
+              SortedNumericSelector.Type.MIN,
+              random().nextBoolean() ? random().nextLong() : null);
+      case 4 ->
+          new SortField(
+              TestUtil.randomSimpleString(random()),
+              SortField.Type.FLOAT,
+              reversed,
+              random().nextBoolean() ? random().nextFloat() : null);
+      case 5 ->
+          new SortedNumericSortField(
+              TestUtil.randomSimpleString(random()),
+              SortField.Type.FLOAT,
+              reversed,
+              SortedNumericSelector.Type.MIN,
+              random().nextBoolean() ? random().nextFloat() : null);
+      case 6 ->
+          new SortField(
+              TestUtil.randomSimpleString(random()),
+              SortField.Type.DOUBLE,
+              reversed,
+              random().nextBoolean() ? random().nextDouble() : null);
+      case 7 ->
+          new SortedNumericSortField(
+              TestUtil.randomSimpleString(random()),
+              SortField.Type.DOUBLE,
+              reversed,
+              SortedNumericSelector.Type.MIN,
+              random().nextBoolean() ? random().nextDouble() : null);
+      case 8 ->
+          new SortField(
+              TestUtil.randomSimpleString(random()),
+              SortField.Type.STRING,
+              reversed,
+              random().nextBoolean() ? SortField.STRING_LAST : null);
+      case 9 ->
+          new SortedSetSortField(
+              TestUtil.randomSimpleString(random()),
+              reversed,
+              SortedSetSelector.Type.MIN,
+              random().nextBoolean() ? SortField.STRING_LAST : null);
+      default -> {
         fail();
-    }
-    return sortField;
+        yield null;
+      }
+    };
   }
 
   /** Test sort */
@@ -367,6 +395,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
               getVersions()[0],
               "_123",
               1,
+              false,
               false,
               codec,
               Collections.<String, String>emptyMap(),
@@ -407,6 +436,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             getVersions()[0],
             "_123",
             1,
+            false,
             false,
             codec,
             Collections.<String, String>emptyMap(),
@@ -453,6 +483,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             "_123",
             1,
             false,
+            false,
             codec,
             Collections.<String, String>emptyMap(),
             id,
@@ -497,6 +528,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             getVersions()[0],
             "_123",
             1,
+            false,
             false,
             codec,
             Collections.<String, String>emptyMap(),
@@ -543,6 +575,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
             getVersions()[0],
             "_123",
             1,
+            false,
             false,
             codec,
             Collections.<String, String>emptyMap(),
@@ -614,6 +647,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
               name,
               docCount,
               isCompoundFile,
+              false,
               codec,
               diagnostics,
               id,

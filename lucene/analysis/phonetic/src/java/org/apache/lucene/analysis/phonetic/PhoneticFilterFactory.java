@@ -75,8 +75,10 @@ public class PhoneticFilterFactory extends TokenFilterFactory implements Resourc
 
   /** parameter name: either a short name or a full class name */
   public static final String ENCODER = "encoder";
+
   /** parameter name: true if encoded tokens should be added as synonyms */
   public static final String INJECT = "inject"; // boolean
+
   /** parameter name: restricts the length of the phonetic code */
   public static final String MAX_CODE_LENGTH = "maxCodeLength";
 

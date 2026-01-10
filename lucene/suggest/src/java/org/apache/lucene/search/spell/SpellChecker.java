@@ -74,6 +74,7 @@ public class SpellChecker implements java.io.Closeable {
   // don't modify the directory directly - see #swapSearcher()
   // TODO: why is this package private?
   Directory spellIndex;
+
   /** Boost value for start and end grams */
   private float bStart = 2.0f;
 
@@ -113,6 +114,7 @@ public class SpellChecker implements java.io.Closeable {
   public SpellChecker(Directory spellIndex, StringDistance sd) throws IOException {
     this(spellIndex, sd, SuggestWordQueue.DEFAULT_COMPARATOR);
   }
+
   /**
    * Use the given directory as a spell checker index with a {@link LevenshteinDistance} as the
    * default {@link StringDistance}. The directory is created if it doesn't exist yet.
@@ -189,6 +191,7 @@ public class SpellChecker implements java.io.Closeable {
   public void setStringDistance(StringDistance sd) {
     this.sd = sd;
   }
+
   /**
    * Returns the {@link StringDistance} instance used by this {@link SpellChecker} instance.
    *
@@ -408,6 +411,7 @@ public class SpellChecker implements java.io.Closeable {
       releaseSearcher(indexSearcher);
     }
   }
+
   /** Add a clause to a boolean query. */
   private static void add(BooleanQuery.Builder q, String name, String value, float boost) {
     Query tq = new TermQuery(new Term(name, value));

@@ -146,7 +146,7 @@ public class TestDocValuesFieldSources extends LuceneTestCase {
           case SORTED:
             values.ordVal(i); // no exception
             assertTrue(values.numOrd() >= 1);
-            // fall-through
+          // fall-through
           case BINARY:
             assertEquals(expected, values.objectVal(i));
             assertEquals(expected, values.strVal(i));

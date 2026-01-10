@@ -68,7 +68,7 @@ final class BKDUtil {
 
   /** Predicate for a fixed number of bytes. */
   @FunctionalInterface
-  public static interface ByteArrayPredicate {
+  public interface ByteArrayPredicate {
 
     /** Test bytes starting from the given offsets. */
     boolean test(byte[] a, int aOffset, byte[] b, int bOffset);

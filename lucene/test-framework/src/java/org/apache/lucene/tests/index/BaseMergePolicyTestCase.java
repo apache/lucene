@@ -143,7 +143,7 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
     }
     SegmentInfos infos = new SegmentInfos(Version.LATEST.major);
     try (Directory directory = newDirectory()) {
-      MergePolicy.MergeContext context = new MockMergeContext(s -> 0);
+      MergePolicy.MergeContext context = new MockMergeContext(_ -> 0);
       int numSegs = random().nextInt(10);
       for (int i = 0; i < numSegs; i++) {
         SegmentInfo info =
@@ -154,6 +154,7 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
                 TestUtil.randomSimpleString(random()), // name
                 random().nextInt(Integer.MAX_VALUE), // maxDoc
                 random().nextBoolean(), // isCompoundFile
+                false,
                 null, // codec
                 Collections.emptyMap(), // diagnostics
                 TestUtil.randomSimpleString( // id
@@ -235,6 +236,7 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
             Version.LATEST,
             name,
             maxDoc,
+            false,
             false,
             TestUtil.getDefaultCodec(),
             Collections.emptyMap(),
@@ -398,7 +400,11 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
     return newInfos;
   }
 
-  /** Simulate an append-only use-case, ie. there are no deletes. */
+  /**
+   * Simulate an append-only use-case, ie. there are no deletes. TODO: incredibly slow (at least
+   * with TestUpgradeIndexMergePolicy)
+   */
+  @Nightly
   public void testSimulateAppendOnly() throws IOException {
     doTestSimulateAppendOnly(mergePolicy(), 100_000_000, 10_000);
   }
@@ -407,6 +413,7 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
    * Simulate an append-only use-case, ie. there are no deletes. {@code totalDocs} exist in the
    * index in the end, and flushes contribute at most {@code maxDocsPerFlush} documents.
    */
+  @SuppressWarnings("UnnecessaryAsync")
   protected void doTestSimulateAppendOnly(
       MergePolicy mergePolicy, int totalDocs, int maxDocsPerFlush) throws IOException {
     IOStats stats = new IOStats();
@@ -463,6 +470,7 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
    * totalDocs} exist in the index in the end, and flushes contribute at most {@code
    * maxDocsPerFlush} documents.
    */
+  @SuppressWarnings("UnnecessaryAsync")
   protected void doTestSimulateUpdates(MergePolicy mergePolicy, int totalDocs, int maxDocsPerFlush)
       throws IOException {
     IOStats stats = new IOStats();
@@ -525,10 +533,12 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
   public static class IOStats {
     /** Bytes written through flushes. */
     long flushBytesWritten;
+
     /** Bytes written through merges. */
     long mergeBytesWritten;
   }
 
+  @SuppressWarnings("UnnecessaryAsync")
   public void testNoPathologicalMerges() throws IOException {
     MergePolicy mergePolicy = mergePolicy();
     IOStats stats = new IOStats();

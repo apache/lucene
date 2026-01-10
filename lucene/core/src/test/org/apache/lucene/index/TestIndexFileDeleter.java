@@ -21,8 +21,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -41,11 +41,6 @@ import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.InfoStream;
-
-/*
-  Verify we can read the pre-2.1 file format, do searches
-  against it, and add documents to it.
-*/
 
 public class TestIndexFileDeleter extends LuceneTestCase {
 
@@ -140,7 +135,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
             ? new String[] {"_3.scf"}
             : new String[] {"_3.cfs", "_3.cfe"};
     for (String f : cfsFiles3) {
-      assertTrue(!slowFileExists(dir, f));
+      assertFalse(slowFileExists(dir, f));
     }
 
     String[] cfsFiles1 =
@@ -185,22 +180,14 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     Set<String> set2 = new HashSet<>();
     Set<String> extra = new HashSet<>();
 
-    for (int x = 0; x < files1.length; x++) {
-      set1.add(files1[x]);
-    }
-    for (int x = 0; x < files2.length; x++) {
-      set2.add(files2[x]);
-    }
-    Iterator<String> i1 = set1.iterator();
-    while (i1.hasNext()) {
-      String o = i1.next();
+    Collections.addAll(set1, files1);
+    Collections.addAll(set2, files2);
+    for (String o : set1) {
       if (!set2.contains(o)) {
         extra.add(o);
       }
     }
-    Iterator<String> i2 = set2.iterator();
-    while (i2.hasNext()) {
-      String o = i2.next();
+    for (String o : set2) {
       if (!set1.contains(o)) {
         extra.add(o);
       }
@@ -449,7 +436,6 @@ public class TestIndexFileDeleter extends LuceneTestCase {
         });
 
     IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
-    // iwc.setMergeScheduler(new SerialMergeScheduler());
     MergeScheduler ms = iwc.getMergeScheduler();
     if (ms instanceof ConcurrentMergeScheduler) {
       final ConcurrentMergeScheduler suppressFakeFail =
@@ -459,8 +445,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
               // suppress only FakeIOException:
               if (exc instanceof RuntimeException && exc.getMessage().equals("fake fail")) {
                 // ok to ignore
-              } else if ((exc instanceof AlreadyClosedException
-                      || exc instanceof IllegalStateException)
+              } else if (exc instanceof IllegalStateException
                   && exc.getCause() != null
                   && "fake fail".equals(exc.getCause().getMessage())) {
                 // also ok to ignore
@@ -496,8 +481,12 @@ public class TestIndexFileDeleter extends LuceneTestCase {
         }
       } catch (Throwable t) {
         if (t.toString().contains("fake fail")
-            || (t.getCause() != null && t.getCause().toString().contains("fake fail"))) {
-          // ok
+            || (t.getCause() != null && t.getCause().toString().contains("fake fail"))
+            || t instanceof AlreadyClosedException) {
+          // All these conditions are fine.
+          // AlreadyClosedException can happen if the injected exception (RuntimeException("fake
+          // fail")) happened inside the concurrent merges and this closed the index writer's
+          // reader pool.
         } else {
           throw t;
         }

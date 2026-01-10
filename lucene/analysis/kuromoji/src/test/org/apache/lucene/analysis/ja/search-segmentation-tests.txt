@@ -9,7 +9,7 @@
 ###	  <text><tab><token1> <token2> ... <token>
 ###
 ### This file should use UTF-8 encoding and there is one test per line.  The
-### text to be segmented and its expected surface form token sequence is 
+### text to be segmented and its expected surface form token sequence is
 ### separated by a tab ('\t').  Tokens are  separated by a half-width space.
 ### Whitespace lines and lines starting with a '#' are ignored.  Comments
 ### are not allowed on entry line.

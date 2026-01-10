@@ -110,9 +110,9 @@ public class TestStressDeletes extends LuceneTestCase {
       int id = ent.getKey();
       TopDocs hits = s.search(new TermQuery(new Term("id", "" + id)), 1);
       if (ent.getValue()) {
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
       } else {
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
       }
     }
     r.close();

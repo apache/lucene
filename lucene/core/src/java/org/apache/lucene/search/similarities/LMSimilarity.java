@@ -43,6 +43,12 @@ public abstract class LMSimilarity extends SimilarityBase {
 
   /** Creates a new instance with the specified collection language model. */
   public LMSimilarity(CollectionModel collectionModel) {
+    this(collectionModel, true);
+  }
+
+  /** Creates a new instance with the specified collection language model and discountOverlaps. */
+  public LMSimilarity(CollectionModel collectionModel, boolean discountOverlaps) {
+    super(discountOverlaps);
     this.collectionModel = collectionModel;
   }
 
@@ -121,12 +127,12 @@ public abstract class LMSimilarity extends SimilarityBase {
   }
 
   /** A strategy for computing the collection language model. */
-  public static interface CollectionModel {
+  public interface CollectionModel {
     /**
      * Computes the probability {@code p(w|C)} according to the language model strategy for the
      * current term.
      */
-    public double computeProbability(BasicStats stats);
+    double computeProbability(BasicStats stats);
 
     /** The name of the collection model strategy. */
     public String getName();

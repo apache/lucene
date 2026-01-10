@@ -79,21 +79,21 @@ public class FacetsConfig {
     NONE,
 
     /**
-     * Index only full-path drill down terms. No dimension nor sub-path indexing. e.g. for
-     * FacetField("a", "foo/bar/baz"), we would only index value "a/foo/bar/baz".
+     * Index only full-path drill down terms. No dimension nor sub-path indexing. e.g. for {@code
+     * FacetField("a", "foo/bar/baz")}, we would only index value "a/foo/bar/baz".
      */
     FULL_PATH_ONLY,
 
     /**
-     * Index sub-path and full-path drill down terms. No dimension indexing. e.g. for
-     * FacetField("a", "foo/bar/baz"), we would only index values "a/foo", "a/foo/bar", and
+     * Index sub-path and full-path drill down terms. No dimension indexing. e.g. for {@code
+     * FacetField("a", "foo/bar/baz")}, we would only index values "a/foo", "a/foo/bar", and
      * "a/foo/bar/baz".
      */
     ALL_PATHS_NO_DIM,
 
     /**
-     * Index dimension and full-path drill down terms. No sub-path indexing. e.g. for
-     * FacetField("a", "foo/bar/baz"), we would only index values "a" and "a/foo/bar/baz".
+     * Index dimension and full-path drill down terms. No sub-path indexing. e.g. for {@code
+     * FacetField("a", "foo/bar/baz")}, we would only index values "a" and "a/foo/bar/baz".
      */
     DIMENSION_AND_FULL_PATH,
 
@@ -276,7 +276,7 @@ public class FacetsConfig {
           checkSeen(seenDims, facetField.dim);
         }
         String indexFieldName = dimConfig.indexFieldName;
-        List<FacetField> fields = byField.computeIfAbsent(indexFieldName, k -> new ArrayList<>());
+        List<FacetField> fields = byField.computeIfAbsent(indexFieldName, _ -> new ArrayList<>());
         fields.add(facetField);
       }
 
@@ -288,7 +288,7 @@ public class FacetsConfig {
         }
         String indexFieldName = dimConfig.indexFieldName;
         List<SortedSetDocValuesFacetField> fields =
-            dvByField.computeIfAbsent(indexFieldName, k -> new ArrayList<>());
+            dvByField.computeIfAbsent(indexFieldName, _ -> new ArrayList<>());
         fields.add(facetField);
       }
 
@@ -309,7 +309,7 @@ public class FacetsConfig {
 
         String indexFieldName = dimConfig.indexFieldName;
         List<AssociationFacetField> fields =
-            assocByField.computeIfAbsent(indexFieldName, k -> new ArrayList<>());
+            assocByField.computeIfAbsent(indexFieldName, _ -> new ArrayList<>());
         fields.add(facetField);
 
         // Best effort: detect mis-matched types in same

@@ -18,6 +18,7 @@ package org.apache.lucene.document;
 
 import org.apache.lucene.geo.GeoUtils;
 import org.apache.lucene.search.FieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.SortField;
 
 /** Sorts by distance from an origin location. */
@@ -26,7 +27,7 @@ final class LatLonPointSortField extends SortField {
   final double longitude;
 
   LatLonPointSortField(String field, double latitude, double longitude) {
-    super(field, SortField.Type.CUSTOM);
+    super(field, SortField.Type.CUSTOM, false, Double.POSITIVE_INFINITY);
     if (field == null) {
       throw new IllegalArgumentException("field must not be null");
     }
@@ -34,27 +35,16 @@ final class LatLonPointSortField extends SortField {
     GeoUtils.checkLongitude(longitude);
     this.latitude = latitude;
     this.longitude = longitude;
-    setMissingValue(Double.POSITIVE_INFINITY);
   }
 
   @Override
-  public FieldComparator<?> getComparator(int numHits, boolean enableSkipping) {
+  public FieldComparator<?> getComparator(int numHits, Pruning pruning) {
     return new LatLonPointDistanceComparator(getField(), latitude, longitude, numHits);
   }
 
   @Override
   public Double getMissingValue() {
     return (Double) super.getMissingValue();
-  }
-
-  @Override
-  public void setMissingValue(Object missingValue) {
-    if (Double.valueOf(Double.POSITIVE_INFINITY).equals(missingValue) == false) {
-      throw new IllegalArgumentException(
-          "Missing value can only be Double.POSITIVE_INFINITY (missing values last), but got "
-              + missingValue);
-    }
-    this.missingValue = missingValue;
   }
 
   @Override

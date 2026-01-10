@@ -150,9 +150,7 @@ public class MultiPassIndexSplitter {
             System.err.println("Invalid input index - skipping: " + file);
             continue;
           }
-        } catch (
-            @SuppressWarnings("unused")
-            Exception e) {
+        } catch (Exception _) {
           System.err.println("Invalid input index - skipping: " + file);
           continue;
         }

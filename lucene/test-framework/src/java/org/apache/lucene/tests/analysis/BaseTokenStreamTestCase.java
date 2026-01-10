@@ -90,7 +90,7 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
    * Attribute that records if it was cleared or not. This is used for testing that
    * clearAttributes() was called correctly.
    */
-  public static interface CheckClearAttributesAttribute extends Attribute {
+  public interface CheckClearAttributesAttribute extends Attribute {
     boolean getAndResetClearCalled();
   }
 
@@ -129,7 +129,7 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
 
     @Override
     public void copyTo(AttributeImpl target) {
-      ((CheckClearAttributesAttributeImpl) target).clear();
+      target.clear();
     }
 
     @Override
@@ -913,9 +913,7 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
         // System.out.println(ts.reflectAsString(false));
         fail("didn't get expected exception when reset() not called");
       }
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException expected) {
+    } catch (IllegalStateException _) {
       // ok
     } catch (Exception unexpected) {
       unexpected.printStackTrace(System.err);
@@ -936,9 +934,7 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
     try {
       ts = a.tokenStream("bogus", input);
       fail("didn't get expected exception when close() not called");
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalStateException expected) {
+    } catch (IllegalStateException _) {
       // ok
     } finally {
       ts.close();

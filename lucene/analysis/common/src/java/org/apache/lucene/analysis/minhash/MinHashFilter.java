@@ -18,6 +18,7 @@
 package org.apache.lucene.analysis.minhash;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
@@ -59,11 +60,11 @@ public class MinHashFilter extends TokenFilter {
 
   private final List<List<FixedSizeTreeSet<LongPair>>> minHashSets;
 
-  private int hashSetSize = DEFAULT_HASH_SET_SIZE;
+  private final int hashSetSize;
 
-  private int bucketCount = DEFAULT_BUCKET_COUNT;
+  private final int bucketCount;
 
-  private int hashCount = DEFAULT_HASH_COUNT;
+  private final int hashCount;
 
   private boolean requiresInitialisation = true;
 
@@ -160,7 +161,7 @@ public class MinHashFilter extends TokenFilter {
         String current = new String(termAttribute.buffer(), 0, termAttribute.length());
 
         for (int i = 0; i < hashCount; i++) {
-          byte[] bytes = current.getBytes("UTF-16LE");
+          byte[] bytes = current.getBytes(StandardCharsets.UTF_16LE);
           LongPair hash = new LongPair();
           murmurhash3_x64_128(bytes, 0, bytes.length, 0, hash);
           LongPair rehashed = combineOrdered(hash, getIntHash(i));

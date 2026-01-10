@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;
 import org.apache.lucene.analysis.util.StemmerUtil;
@@ -51,7 +52,8 @@ public final class ScandinavianNormalizer {
 
   private final Set<Foldings> foldings;
 
-  public static final Set<Foldings> ALL_FOLDINGS = EnumSet.allOf(Foldings.class);
+  public static final Set<Foldings> ALL_FOLDINGS =
+      Collections.unmodifiableSet(EnumSet.allOf(Foldings.class));
 
   static final char AA = '\u00C5'; // Å
   static final char aa = '\u00E5'; // å

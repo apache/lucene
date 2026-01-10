@@ -80,7 +80,7 @@ public final class Word2VecSynonymFilter extends TokenFilter {
       clearAttributes();
       restoreState(this.lastState);
       termAtt.setEmpty();
-      termAtt.append(synonym.term.utf8ToString());
+      termAtt.append(synonym.term().utf8ToString());
       typeAtt.setType(SynonymGraphFilter.TYPE_SYNONYM);
       posLenAtt.setPositionLength(1);
       posIncrementAtt.setPositionIncrement(0);

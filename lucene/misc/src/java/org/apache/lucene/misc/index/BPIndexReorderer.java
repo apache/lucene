@@ -22,20 +22,24 @@ import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.RecursiveAction;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executor;
+import java.util.function.IntUnaryOperator;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.index.Sorter.DocMap;
 import org.apache.lucene.index.SortingCodecReader;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.search.TaskExecutor;
+import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
@@ -45,14 +49,14 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefComparator;
 import org.apache.lucene.util.CloseableThreadLocal;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.IntroSelector;
 import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.IntsRef;
-import org.apache.lucene.util.OfflineSorter;
-import org.apache.lucene.util.OfflineSorter.BufferSize;
+import org.apache.lucene.util.packed.PackedInts;
 
 /**
  * Implementation of "recursive graph bisection", also called "bipartite graph partitioning" and
@@ -87,14 +91,7 @@ import org.apache.lucene.util.OfflineSorter.BufferSize;
  *
  * <p>Note: This is a slow operation that consumes O(maxDoc + numTerms * numThreads) memory.
  */
-public final class BPIndexReorderer {
-
-  /** Exception that is thrown when not enough RAM is available. */
-  public static class NotEnoughRAMException extends RuntimeException {
-    private NotEnoughRAMException(String message) {
-      super(message);
-    }
-  }
+public final class BPIndexReorderer extends AbstractBPReorderer {
 
   /** Block size for terms in the forward index */
   private static final int TERM_IDS_BLOCK_SIZE = 17;
@@ -105,33 +102,14 @@ public final class BPIndexReorderer {
   /** Minimum required document frequency for terms to be considered: 4,096. */
   public static final int DEFAULT_MIN_DOC_FREQ = 4096;
 
-  /**
-   * Minimum size of partitions. The algorithm will stop recursing when reaching partitions below
-   * this number of documents: 32.
-   */
-  public static final int DEFAULT_MIN_PARTITION_SIZE = 32;
-
-  /**
-   * Default maximum number of iterations per recursion level: 20. Higher numbers of iterations
-   * typically don't help significantly.
-   */
-  public static final int DEFAULT_MAX_ITERS = 20;
-
   private int minDocFreq;
-  private int minPartitionSize;
-  private int maxIters;
-  private ForkJoinPool forkJoinPool;
-  private double ramBudgetMB;
+  private float maxDocFreq;
   private Set<String> fields;
 
   /** Constructor. */
   public BPIndexReorderer() {
     setMinDocFreq(DEFAULT_MIN_DOC_FREQ);
-    setMinPartitionSize(DEFAULT_MIN_PARTITION_SIZE);
-    setMaxIters(DEFAULT_MAX_ITERS);
-    setForkJoinPool(null);
-    // 10% of the available heap size by default
-    setRAMBudgetMB(Runtime.getRuntime().totalMemory() / 1024d / 1024d / 10d);
+    setMaxDocFreq(1f);
     setFields(null);
   }
 
@@ -143,48 +121,17 @@ public final class BPIndexReorderer {
     this.minDocFreq = minDocFreq;
   }
 
-  /** Set the minimum partition size, when the algorithm stops recursing, 32 by default. */
-  public void setMinPartitionSize(int minPartitionSize) {
-    if (minPartitionSize < 1) {
-      throw new IllegalArgumentException(
-          "minPartitionSize must be at least 1, got " + minPartitionSize);
+  /**
+   * Set the maximum document frequency for terms to be considered, as a ratio of {@code maxDoc}.
+   * This is useful because very frequent terms (stop words) add significant overhead to the
+   * reordering logic while not being very relevant for ordering. This value must be in (0, 1].
+   * Default value is 1.
+   */
+  public void setMaxDocFreq(float maxDocFreq) {
+    if (maxDocFreq > 0 == false || maxDocFreq <= 1 == false) {
+      throw new IllegalArgumentException("maxDocFreq must be in (0, 1], got " + maxDocFreq);
     }
-    this.minPartitionSize = minPartitionSize;
-  }
-
-  /**
-   * Set the maximum number of iterations on each recursion level, 20 by default. Experiments
-   * suggests that values above 20 do not help much. However, values below 20 can be used to trade
-   * effectiveness for faster reordering.
-   */
-  public void setMaxIters(int maxIters) {
-    if (maxIters < 1) {
-      throw new IllegalArgumentException("maxIters must be at least 1, got " + maxIters);
-    }
-    this.maxIters = maxIters;
-  }
-
-  /**
-   * Set the {@link ForkJoinPool} to run graph partitioning concurrently.
-   *
-   * <p>NOTE: A value of {@code null} can be used to run in the current thread, which is the
-   * default.
-   */
-  public void setForkJoinPool(ForkJoinPool forkJoinPool) {
-    this.forkJoinPool = forkJoinPool;
-  }
-
-  private int getParallelism() {
-    return forkJoinPool == null ? 1 : forkJoinPool.getParallelism();
-  }
-
-  /**
-   * Set the amount of RAM that graph partitioning is allowed to use. More RAM allows running
-   * faster. If not enough RAM is provided, a {@link NotEnoughRAMException} will be thrown. This is
-   * 10% of the total heap size by default.
-   */
-  public void setRAMBudgetMB(double ramBudgetMB) {
-    this.ramBudgetMB = ramBudgetMB;
+    this.maxDocFreq = maxDocFreq;
   }
 
   /**
@@ -208,21 +155,18 @@ public final class BPIndexReorderer {
     }
   }
 
-  private abstract class BaseRecursiveAction extends RecursiveAction {
+  private abstract class BaseRecursiveAction implements Callable<Void> {
 
+    protected final TaskExecutor executor;
     protected final int depth;
 
-    BaseRecursiveAction(int depth) {
+    BaseRecursiveAction(TaskExecutor executor, int depth) {
+      this.executor = executor;
       this.depth = depth;
     }
 
     protected final boolean shouldFork(int problemSize, int totalProblemSize) {
-      if (forkJoinPool == null) {
-        return false;
-      }
-      if (getSurplusQueuedTaskCount() > 3) {
-        // Fork tasks if this worker doesn't have more queued work than other workers
-        // See javadocs of #getSurplusQueuedTaskCount for more details
+      if (executor == null) {
         return false;
       }
       if (problemSize == totalProblemSize) {
@@ -232,23 +176,39 @@ public final class BPIndexReorderer {
       }
       return problemSize > FORK_THRESHOLD;
     }
+
+    @Override
+    public abstract Void call();
+
+    protected final void invokeAll(BaseRecursiveAction... actions) {
+      assert executor != null : "Only call invokeAll if shouldFork returned true";
+      try {
+        executor.invokeAll(Arrays.asList(actions));
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    }
   }
 
   private class IndexReorderingTask extends BaseRecursiveAction {
 
     private final IntsRef docIDs;
-    private final float[] gains;
+    private final float[] biases;
     private final CloseableThreadLocal<PerThreadState> threadLocal;
+    private final BitSet parents;
 
     IndexReorderingTask(
         IntsRef docIDs,
-        float[] gains,
+        float[] biases,
         CloseableThreadLocal<PerThreadState> threadLocal,
+        BitSet parents,
+        TaskExecutor executor,
         int depth) {
-      super(depth);
+      super(executor, depth);
       this.docIDs = docIDs;
-      this.gains = gains;
+      this.biases = biases;
       this.threadLocal = threadLocal;
+      this.parents = parents;
     }
 
     private static void computeDocFreqs(IntsRef docs, ForwardIndex forwardIndex, int[] docFreqs) {
@@ -272,36 +232,44 @@ public final class BPIndexReorderer {
     }
 
     @Override
-    protected void compute() {
+    public Void call() {
       if (depth > 0) {
         Arrays.sort(docIDs.ints, docIDs.offset, docIDs.offset + docIDs.length);
       } else {
         assert sorted(docIDs);
       }
+      assert assertParentStructure();
 
-      int leftSize = docIDs.length / 2;
-      if (leftSize < minPartitionSize) {
-        return;
+      int halfLength = docIDs.length / 2;
+      if (halfLength < minPartitionSize) {
+        return null;
       }
 
-      int rightSize = docIDs.length - leftSize;
-      IntsRef left = new IntsRef(docIDs.ints, docIDs.offset, leftSize);
-      IntsRef right = new IntsRef(docIDs.ints, docIDs.offset + leftSize, rightSize);
+      IntsRef left = new IntsRef(docIDs.ints, docIDs.offset, halfLength);
+      IntsRef right =
+          new IntsRef(docIDs.ints, docIDs.offset + halfLength, docIDs.length - halfLength);
 
       PerThreadState state = threadLocal.get();
       ForwardIndex forwardIndex = state.forwardIndex;
       int[] leftDocFreqs = state.leftDocFreqs;
       int[] rightDocFreqs = state.rightDocFreqs;
 
-      Arrays.fill(leftDocFreqs, 0);
       computeDocFreqs(left, forwardIndex, leftDocFreqs);
-      Arrays.fill(rightDocFreqs, 0);
       computeDocFreqs(right, forwardIndex, rightDocFreqs);
 
       for (int iter = 0; iter < maxIters; ++iter) {
         boolean moved;
         try {
-          moved = shuffle(forwardIndex, left, right, leftDocFreqs, rightDocFreqs, gains, iter);
+          moved =
+              shuffle(
+                  forwardIndex,
+                  docIDs,
+                  right.offset,
+                  leftDocFreqs,
+                  rightDocFreqs,
+                  biases,
+                  parents,
+                  iter);
         } catch (IOException e) {
           throw new UncheckedIOException(e);
         }
@@ -310,17 +278,63 @@ public final class BPIndexReorderer {
         }
       }
 
-      // It is fine for all tasks to share the same docs / gains array since they all work on
+      if (parents != null) {
+        // Make sure we split just after a parent doc
+        int lastLeftDocID = docIDs.ints[right.offset - 1];
+        int split = right.offset + parents.nextSetBit(lastLeftDocID) - lastLeftDocID;
+
+        if (split == docIDs.offset + docIDs.length) {
+          // No good split on the right side, look on the left side then.
+          split = right.offset - (lastLeftDocID - parents.prevSetBit(lastLeftDocID));
+          if (split == docIDs.offset) {
+            // No good split on the left side either: this slice has a single parent document, no
+            // reordering is possible. Stop recursing.
+            return null;
+          }
+        }
+
+        assert parents.get(docIDs.ints[split - 1]);
+
+        left = new IntsRef(docIDs.ints, docIDs.offset, split - docIDs.offset);
+        right = new IntsRef(docIDs.ints, split, docIDs.offset + docIDs.length - split);
+      }
+
+      // It is fine for all tasks to share the same docs / biases array since they all work on
       // different slices of the array at a given point in time.
-      IndexReorderingTask leftTask = new IndexReorderingTask(left, gains, threadLocal, depth + 1);
-      IndexReorderingTask rightTask = new IndexReorderingTask(right, gains, threadLocal, depth + 1);
+      IndexReorderingTask leftTask =
+          new IndexReorderingTask(left, biases, threadLocal, parents, executor, depth + 1);
+      IndexReorderingTask rightTask =
+          new IndexReorderingTask(right, biases, threadLocal, parents, executor, depth + 1);
 
       if (shouldFork(docIDs.length, docIDs.ints.length)) {
         invokeAll(leftTask, rightTask);
       } else {
-        leftTask.compute();
-        rightTask.compute();
+        leftTask.call();
+        rightTask.call();
       }
+      return null;
+    }
+
+    // used for asserts
+    private boolean assertParentStructure() {
+      if (parents == null) {
+        return true;
+      }
+      int i = docIDs.offset;
+      final int end = docIDs.offset + docIDs.length;
+      while (i < end) {
+        final int firstChild = docIDs.ints[i];
+        final int parent = parents.nextSetBit(firstChild);
+        final int numChildren = parent - firstChild;
+        assert i + numChildren < end;
+        for (int j = 1; j <= numChildren; ++j) {
+          assert docIDs.ints[i + j] == firstChild + j : "Parent structure has not been preserved";
+        }
+        i += numChildren + 1;
+      }
+      assert i == end : "Last doc ID must be a parent doc";
+
+      return true;
     }
 
     /**
@@ -329,116 +343,138 @@ public final class BPIndexReorderer {
      */
     private boolean shuffle(
         ForwardIndex forwardIndex,
-        IntsRef left,
-        IntsRef right,
+        IntsRef docIDs,
+        int midPoint,
         int[] leftDocFreqs,
         int[] rightDocFreqs,
-        float[] gains,
+        float[] biases,
+        BitSet parents,
         int iter)
         throws IOException {
-      assert left.ints == right.ints;
-      assert left.offset + left.length == right.offset;
 
-      // Computing gains is typically a bottleneck, because each iteration needs to iterate over all
-      // postings to recompute gains, and the total number of postings is usually one order of
+      // Computing biases is typically a bottleneck, because each iteration needs to iterate over
+      // all postings to recompute biases, and the total number of postings is usually one order of
       // magnitude or more larger than the number of docs. So we try to parallelize it.
-      ComputeGainsTask leftGainsTask =
-          new ComputeGainsTask(
-              left.ints,
-              gains,
-              left.offset,
-              left.offset + left.length,
+      new ComputeBiasTask(
+              docIDs.ints,
+              biases,
+              docIDs.offset,
+              docIDs.offset + docIDs.length,
               leftDocFreqs,
               rightDocFreqs,
               threadLocal,
-              depth);
-      ComputeGainsTask rightGainsTask =
-          new ComputeGainsTask(
-              right.ints,
-              gains,
-              right.offset,
-              right.offset + right.length,
-              rightDocFreqs,
-              leftDocFreqs,
-              threadLocal,
-              depth);
-      if (shouldFork(docIDs.length, docIDs.ints.length)) {
-        invokeAll(leftGainsTask, rightGainsTask);
-      } else {
-        leftGainsTask.compute();
-        rightGainsTask.compute();
+              executor,
+              depth)
+          .call();
+
+      if (parents != null) {
+        for (int i = docIDs.offset, end = docIDs.offset + docIDs.length; i < end; ) {
+          final int firstChild = docIDs.ints[i];
+          final int numChildren = parents.nextSetBit(firstChild) - firstChild;
+          assert parents.get(docIDs.ints[i + numChildren]);
+          double cumulativeBias = 0;
+          for (int j = 0; j <= numChildren; ++j) {
+            cumulativeBias += biases[i + j];
+          }
+          // Give all docs from the same block the same bias, which is the sum of biases of all
+          // documents in the block. This helps ensure that the follow-up sort() call preserves the
+          // block structure.
+          Arrays.fill(biases, i, i + numChildren + 1, (float) cumulativeBias);
+          i += numChildren + 1;
+        }
       }
 
-      class ByDescendingGainSorter extends IntroSorter {
+      float maxLeftBias = Float.NEGATIVE_INFINITY;
+      for (int i = docIDs.offset; i < midPoint; ++i) {
+        maxLeftBias = Math.max(maxLeftBias, biases[i]);
+      }
+      float minRightBias = Float.POSITIVE_INFINITY;
+      for (int i = midPoint, end = docIDs.offset + docIDs.length; i < end; ++i) {
+        minRightBias = Math.min(minRightBias, biases[i]);
+      }
+      float gain = maxLeftBias - minRightBias;
+      // This uses the simulated annealing proposed by Mackenzie et al in "Tradeoff Options for
+      // Bipartite Graph Partitioning" by comparing the gain of swapping the doc from the left side
+      // that is most attracted to the right and the doc from the right side that is most attracted
+      // to the left against `iter` rather than zero.
+      if (gain <= iter) {
+        return false;
+      }
+
+      class Selector extends IntroSelector {
 
         int pivotDoc;
-        float pivotGain;
+        float pivotBias;
 
         @Override
-        protected void setPivot(int i) {
-          pivotDoc = left.ints[i];
-          pivotGain = gains[i];
+        public void setPivot(int i) {
+          pivotDoc = docIDs.ints[i];
+          pivotBias = biases[i];
         }
 
         @Override
-        protected int comparePivot(int j) {
-          // Compare in reverse order to get a descending sort
-          int cmp = Float.compare(gains[j], pivotGain);
+        public int comparePivot(int j) {
+          int cmp = Float.compare(pivotBias, biases[j]);
           if (cmp == 0) {
             // Tie break on the doc ID to preserve doc ID ordering as much as possible
-            cmp = pivotDoc - left.ints[j];
+            cmp = pivotDoc - docIDs.ints[j];
           }
           return cmp;
         }
 
         @Override
-        protected void swap(int i, int j) {
-          int tmpDoc = left.ints[i];
-          left.ints[i] = left.ints[j];
-          left.ints[j] = tmpDoc;
+        public void swap(int i, int j) {
+          float tmpBias = biases[i];
+          biases[i] = biases[j];
+          biases[j] = tmpBias;
 
-          float tmpGain = gains[i];
-          gains[i] = gains[j];
-          gains[j] = tmpGain;
-        }
-      }
-
-      Runnable leftSorter =
-          () -> new ByDescendingGainSorter().sort(left.offset, left.offset + left.length);
-      Runnable rightSorter =
-          () -> new ByDescendingGainSorter().sort(right.offset, right.offset + right.length);
-
-      if (shouldFork(docIDs.length, docIDs.ints.length)) {
-        // TODO: run it on more than 2 threads at most
-        invokeAll(adapt(leftSorter), adapt(rightSorter));
-      } else {
-        leftSorter.run();
-        rightSorter.run();
-      }
-
-      for (int i = 0; i < left.length; ++i) {
-        // This uses the simulated annealing proposed by Mackenzie et al in "Tradeoff Options for
-        // Bipartite Graph Partitioning" by comparing the gain against `iter` rather than zero.
-        if (gains[left.offset + i] + gains[right.offset + i] <= iter) {
-          if (i == 0) {
-            return false;
+          if (i < midPoint == j < midPoint) {
+            int tmpDoc = docIDs.ints[i];
+            docIDs.ints[i] = docIDs.ints[j];
+            docIDs.ints[j] = tmpDoc;
+          } else {
+            // If we're swapping docs across the left and right sides, we need to keep doc freqs
+            // up-to-date.
+            int left = Math.min(i, j);
+            int right = Math.max(i, j);
+            try {
+              swapDocsAndFreqs(docIDs.ints, left, right, forwardIndex, leftDocFreqs, rightDocFreqs);
+            } catch (IOException e) {
+              throw new UncheckedIOException(e);
+            }
           }
-          break;
         }
+      }
 
-        swap(
-            left.ints,
-            left.offset + i,
-            right.offset + i,
-            forwardIndex,
-            leftDocFreqs,
-            rightDocFreqs);
+      Selector selector = new Selector();
+
+      if (parents == null) {
+        selector.select(docIDs.offset, docIDs.offset + docIDs.length, midPoint);
+      } else {
+        // When we have parents, we need to do a full sort to make sure we're not breaking the
+        // parent structure.
+        new IntroSorter() {
+          @Override
+          protected void setPivot(int i) {
+            selector.setPivot(i);
+          }
+
+          @Override
+          protected int comparePivot(int j) {
+            return selector.comparePivot(j);
+          }
+
+          @Override
+          protected void swap(int i, int j) {
+            selector.swap(i, j);
+          }
+        }.sort(docIDs.offset, docIDs.offset + docIDs.length);
       }
 
       return true;
     }
 
-    private static void swap(
+    private static void swapDocsAndFreqs(
         int[] docs,
         int left,
         int right,
@@ -480,28 +516,29 @@ public final class BPIndexReorderer {
     }
   }
 
-  private class ComputeGainsTask extends BaseRecursiveAction {
+  private class ComputeBiasTask extends BaseRecursiveAction {
 
     private final int[] docs;
-    private final float[] gains;
+    private final float[] biases;
     private final int from;
     private final int to;
     private final int[] fromDocFreqs;
     private final int[] toDocFreqs;
     private final CloseableThreadLocal<PerThreadState> threadLocal;
 
-    ComputeGainsTask(
+    ComputeBiasTask(
         int[] docs,
-        float[] gains,
+        float[] biases,
         int from,
         int to,
         int[] fromDocFreqs,
         int[] toDocFreqs,
         CloseableThreadLocal<PerThreadState> threadLocal,
+        TaskExecutor executor,
         int depth) {
-      super(depth);
+      super(executor, depth);
       this.docs = docs;
-      this.gains = gains;
+      this.biases = biases;
       this.from = from;
       this.to = to;
       this.fromDocFreqs = fromDocFreqs;
@@ -510,36 +547,37 @@ public final class BPIndexReorderer {
     }
 
     @Override
-    protected void compute() {
+    public Void call() {
       final int problemSize = to - from;
       if (problemSize > 1 && shouldFork(problemSize, docs.length)) {
         final int mid = (from + to) >>> 1;
         invokeAll(
-            new ComputeGainsTask(
-                docs, gains, from, mid, fromDocFreqs, toDocFreqs, threadLocal, depth),
-            new ComputeGainsTask(
-                docs, gains, mid, to, fromDocFreqs, toDocFreqs, threadLocal, depth));
+            new ComputeBiasTask(
+                docs, biases, from, mid, fromDocFreqs, toDocFreqs, threadLocal, executor, depth),
+            new ComputeBiasTask(
+                docs, biases, mid, to, fromDocFreqs, toDocFreqs, threadLocal, executor, depth));
       } else {
         ForwardIndex forwardIndex = threadLocal.get().forwardIndex;
         try {
           for (int i = from; i < to; ++i) {
-            gains[i] = computeGain(docs[i], forwardIndex, fromDocFreqs, toDocFreqs);
+            biases[i] = computeBias(docs[i], forwardIndex, fromDocFreqs, toDocFreqs);
           }
         } catch (IOException e) {
           throw new UncheckedIOException(e);
         }
       }
+      return null;
     }
 
     /**
      * Compute a float that is negative when a document is attracted to the left and positive
      * otherwise.
      */
-    private static float computeGain(
+    private static float computeBias(
         int docID, ForwardIndex forwardIndex, int[] fromDocFreqs, int[] toDocFreqs)
         throws IOException {
       forwardIndex.seek(docID);
-      double gain = 0;
+      double bias = 0;
       for (IntsRef terms = forwardIndex.nextTerms();
           terms.length != 0;
           terms = forwardIndex.nextTerms()) {
@@ -549,12 +587,12 @@ public final class BPIndexReorderer {
           final int toDocFreq = toDocFreqs[termID];
           assert fromDocFreq >= 0;
           assert toDocFreq >= 0;
-          gain +=
+          bias +=
               (toDocFreq == 0 ? 0 : fastLog2(toDocFreq))
                   - (fromDocFreq == 0 ? 0 : fastLog2(fromDocFreq));
         }
       }
-      return (float) gain;
+      return (float) bias;
     }
   }
 
@@ -613,13 +651,18 @@ public final class BPIndexReorderer {
   }
 
   private int writePostings(
-      CodecReader reader, Set<String> fields, Directory tempDir, DataOutput postingsOut)
+      CodecReader reader,
+      Set<String> fields,
+      Directory tempDir,
+      DataOutput postingsOut,
+      int parallelism)
       throws IOException {
     final int maxNumTerms =
         (int)
             ((ramBudgetMB * 1024 * 1024 - docRAMRequirements(reader.maxDoc()))
-                / getParallelism()
+                / parallelism
                 / termRAMRequirementsPerThreadPerTerm());
+    final int maxDocFreq = (int) ((double) this.maxDocFreq * reader.maxDoc());
 
     int numTerms = 0;
     for (String field : fields) {
@@ -637,7 +680,8 @@ public final class BPIndexReorderer {
       TermsEnum iterator = terms.iterator();
       PostingsEnum postings = null;
       for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
-        if (iterator.docFreq() < minDocFreq) {
+        final int docFreq = iterator.docFreq();
+        if (docFreq < minDocFreq || docFreq > maxDocFreq) {
           continue;
         }
         if (numTerms >= ArrayUtil.MAX_ARRAY_LENGTH) {
@@ -656,9 +700,7 @@ public final class BPIndexReorderer {
         for (int doc = postings.nextDoc();
             doc != DocIdSetIterator.NO_MORE_DOCS;
             doc = postings.nextDoc()) {
-          // reverse bytes so that byte order matches natural order
-          postingsOut.writeInt(Integer.reverseBytes(doc));
-          postingsOut.writeInt(Integer.reverseBytes(termID));
+          postingsOut.writeLong(Integer.toUnsignedLong(termID) << 32 | Integer.toUnsignedLong(doc));
         }
       }
     }
@@ -667,124 +709,75 @@ public final class BPIndexReorderer {
 
   private ForwardIndex buildForwardIndex(
       Directory tempDir, String postingsFileName, int maxDoc, int maxTerm) throws IOException {
-    String sortedPostingsFile =
-        new OfflineSorter(
-            tempDir,
-            "forward-index",
-            // Implement BytesRefComparator to make OfflineSorter use radix sort
-            new BytesRefComparator(2 * Integer.BYTES) {
-              @Override
-              protected int byteAt(BytesRef ref, int i) {
-                return ref.bytes[ref.offset + i] & 0xFF;
-              }
-
-              @Override
-              public int compare(BytesRef o1, BytesRef o2) {
-                assert o1.length == 2 * Integer.BYTES;
-                assert o2.length == 2 * Integer.BYTES;
-                return ArrayUtil.compareUnsigned8(o1.bytes, o1.offset, o2.bytes, o2.offset);
-              }
-            },
-            BufferSize.megabytes((long) (ramBudgetMB / getParallelism())),
-            OfflineSorter.MAX_TEMPFILES,
-            2 * Integer.BYTES,
-            forkJoinPool,
-            getParallelism()) {
-
-          @Override
-          protected ByteSequencesReader getReader(ChecksumIndexInput in, String name)
-              throws IOException {
-            return new ByteSequencesReader(in, postingsFileName) {
-              {
-                ref.grow(2 * Integer.BYTES);
-                ref.setLength(2 * Integer.BYTES);
-              }
-
-              @Override
-              public BytesRef next() throws IOException {
-                if (in.getFilePointer() >= end) {
-                  return null;
-                }
-                // optimized read of 8 bytes
-                in.readBytes(ref.bytes(), 0, 2 * Integer.BYTES);
-                return ref.get();
-              }
-            };
-          }
-
-          @Override
-          protected ByteSequencesWriter getWriter(IndexOutput out, long itemCount)
-              throws IOException {
-            return new ByteSequencesWriter(out) {
-              @Override
-              public void write(byte[] bytes, int off, int len) throws IOException {
-                assert len == 2 * Integer.BYTES;
-                // optimized read of 8 bytes
-                out.writeBytes(bytes, off, len);
-              }
-            };
-          }
-        }.sort(postingsFileName);
 
     String termIDsFileName;
     String startOffsetsFileName;
-    int prevDoc = -1;
-    try (IndexInput sortedPostings = tempDir.openInput(sortedPostingsFile, IOContext.READONCE);
-        IndexOutput termIDs = tempDir.createTempOutput("term-ids", "", IOContext.DEFAULT);
+    try (IndexOutput termIDs = tempDir.createTempOutput("term-ids", "", IOContext.DEFAULT);
         IndexOutput startOffsets =
             tempDir.createTempOutput("start-offsets", "", IOContext.DEFAULT)) {
       termIDsFileName = termIDs.getName();
       startOffsetsFileName = startOffsets.getName();
-      final long end = sortedPostings.length() - CodecUtil.footerLength();
       int[] buffer = new int[TERM_IDS_BLOCK_SIZE];
-      int bufferLen = 0;
-      while (sortedPostings.getFilePointer() < end) {
-        final int doc = Integer.reverseBytes(sortedPostings.readInt());
-        final int termID = Integer.reverseBytes(sortedPostings.readInt());
-        if (doc != prevDoc) {
-          if (bufferLen != 0) {
-            writeMonotonicInts(buffer, bufferLen, termIDs);
-            bufferLen = 0;
-          }
+      new ForwardIndexSorter(tempDir)
+          .sortAndConsume(
+              postingsFileName,
+              maxDoc,
+              new LongConsumer() {
 
-          assert doc > prevDoc;
-          for (int d = prevDoc + 1; d <= doc; ++d) {
-            startOffsets.writeLong(termIDs.getFilePointer());
-          }
-          prevDoc = doc;
-        }
-        assert termID < maxTerm : termID + " " + maxTerm;
-        if (bufferLen == buffer.length) {
-          writeMonotonicInts(buffer, bufferLen, termIDs);
-          bufferLen = 0;
-        }
-        buffer[bufferLen++] = termID;
-      }
-      if (bufferLen != 0) {
-        writeMonotonicInts(buffer, bufferLen, termIDs);
-      }
-      for (int d = prevDoc + 1; d <= maxDoc; ++d) {
-        startOffsets.writeLong(termIDs.getFilePointer());
-      }
-      CodecUtil.writeFooter(termIDs);
-      CodecUtil.writeFooter(startOffsets);
+                int prevDoc = -1;
+                int bufferLen = 0;
+
+                @Override
+                public void accept(long value) throws IOException {
+                  int doc = (int) value;
+                  int termID = (int) (value >>> 32);
+                  if (doc != prevDoc) {
+                    if (bufferLen != 0) {
+                      writeMonotonicInts(buffer, bufferLen, termIDs);
+                      bufferLen = 0;
+                    }
+
+                    assert doc > prevDoc;
+                    for (int d = prevDoc + 1; d <= doc; ++d) {
+                      startOffsets.writeLong(termIDs.getFilePointer());
+                    }
+                    prevDoc = doc;
+                  }
+                  assert termID < maxTerm : termID + " " + maxTerm;
+                  if (bufferLen == buffer.length) {
+                    writeMonotonicInts(buffer, bufferLen, termIDs);
+                    bufferLen = 0;
+                  }
+                  buffer[bufferLen++] = termID;
+                }
+
+                @Override
+                public void onFinish() throws IOException {
+                  if (bufferLen != 0) {
+                    writeMonotonicInts(buffer, bufferLen, termIDs);
+                  }
+                  for (int d = prevDoc + 1; d <= maxDoc; ++d) {
+                    startOffsets.writeLong(termIDs.getFilePointer());
+                  }
+                  CodecUtil.writeFooter(termIDs);
+                  CodecUtil.writeFooter(startOffsets);
+                }
+              });
     }
 
-    IndexInput termIDsInput = tempDir.openInput(termIDsFileName, IOContext.READ);
-    IndexInput startOffsets = tempDir.openInput(startOffsetsFileName, IOContext.READ);
+    IndexInput termIDsInput = tempDir.openInput(termIDsFileName, IOContext.DEFAULT);
+    IndexInput startOffsets = tempDir.openInput(startOffsetsFileName, IOContext.DEFAULT);
     return new ForwardIndex(startOffsets, termIDsInput, maxTerm);
   }
 
   /**
-   * Reorder the given {@link CodecReader} into a reader that tries to minimize the log gap between
-   * consecutive documents in postings, which usually helps improve space efficiency and query
-   * evaluation efficiency. Note that the returned {@link CodecReader} is slow and should typically
-   * be used in a call to {@link IndexWriter#addIndexes(CodecReader...)}.
-   *
-   * @throws NotEnoughRAMException if not enough RAM is provided
+   * Expert: Compute the {@link DocMap} that holds the new doc ID numbering. This is exposed to
+   * enable integration into {@link BPReorderingMergePolicy}, {@link #reorder(CodecReader,
+   * Directory, Executor)} should be preferred in general.
    */
-  public CodecReader reorder(CodecReader reader, Directory tempDir) throws IOException {
-
+  @Override
+  public Sorter.DocMap computeDocMap(CodecReader reader, Directory tempDir, Executor executor)
+      throws IOException {
     if (docRAMRequirements(reader.maxDoc()) >= ramBudgetMB * 1024 * 1024) {
       throw new NotEnoughRAMException(
           "At least "
@@ -804,85 +797,108 @@ public final class BPIndexReorderer {
       }
     }
 
-    int[] newToOld = computePermutation(reader, fields, tempDir);
+    TaskExecutor taskExecutor = executor == null ? null : new TaskExecutor(executor);
+    int[] newToOld = computePermutation(reader, fields, tempDir, taskExecutor);
     int[] oldToNew = new int[newToOld.length];
     for (int i = 0; i < newToOld.length; ++i) {
       oldToNew[newToOld[i]] = i;
     }
-    final Sorter.DocMap docMap =
-        new Sorter.DocMap() {
+    return new Sorter.DocMap() {
 
-          @Override
-          public int size() {
-            return newToOld.length;
-          }
+      @Override
+      public int size() {
+        return newToOld.length;
+      }
 
-          @Override
-          public int oldToNew(int docID) {
-            return oldToNew[docID];
-          }
+      @Override
+      public int oldToNew(int docID) {
+        return oldToNew[docID];
+      }
 
-          @Override
-          public int newToOld(int docID) {
-            return newToOld[docID];
-          }
-        };
+      @Override
+      public int newToOld(int docID) {
+        return newToOld[docID];
+      }
+    };
+  }
+
+  /**
+   * Reorder the given {@link CodecReader} into a reader that tries to minimize the log gap between
+   * consecutive documents in postings, which usually helps improve space efficiency and query
+   * evaluation efficiency. Note that the returned {@link CodecReader} is slow and should typically
+   * be used in a call to {@link IndexWriter#addIndexes(CodecReader...)}.
+   *
+   * <p>The provided {@link Executor} can be used to perform reordering concurrently. A value of
+   * {@code null} indicates that reordering should be performed in the current thread.
+   *
+   * <p><b>NOTE</b>: The provided {@link Executor} must not reject tasks.
+   *
+   * @throws NotEnoughRAMException if not enough RAM is provided
+   */
+  public CodecReader reorder(CodecReader reader, Directory tempDir, Executor executor)
+      throws IOException {
+    Sorter.DocMap docMap = computeDocMap(reader, tempDir, executor);
     return SortingCodecReader.wrap(reader, docMap, null);
   }
 
   /**
    * Compute a permutation of the doc ID space that reduces log gaps between consecutive postings.
    */
-  private int[] computePermutation(CodecReader reader, Set<String> fields, Directory dir)
+  private int[] computePermutation(
+      CodecReader reader, Set<String> fields, Directory dir, TaskExecutor executor)
       throws IOException {
     TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(dir);
 
+    final int parallelism;
+    if (executor == null) {
+      parallelism = 1;
+    } else {
+      // Assume as many threads as processors
+      parallelism = Runtime.getRuntime().availableProcessors();
+    }
+
     final int maxDoc = reader.maxDoc();
-    ForwardIndex forwardIndex = null;
-    IndexOutput postingsOutput = null;
-    boolean success = false;
     try {
-      postingsOutput = trackingDir.createTempOutput("postings", "", IOContext.DEFAULT);
-      int numTerms = writePostings(reader, fields, trackingDir, postingsOutput);
-      CodecUtil.writeFooter(postingsOutput);
-      postingsOutput.close();
-      final ForwardIndex finalForwardIndex =
-          forwardIndex = buildForwardIndex(trackingDir, postingsOutput.getName(), maxDoc, numTerms);
-      trackingDir.deleteFile(postingsOutput.getName());
-      postingsOutput = null;
-
-      int[] sortedDocs = new int[maxDoc];
-      for (int i = 0; i < maxDoc; ++i) {
-        sortedDocs[i] = i;
+      int numTerms;
+      String postingsName;
+      try (IndexOutput postingsOutput =
+          trackingDir.createTempOutput("postings", "", IOContext.DEFAULT)) {
+        numTerms = writePostings(reader, fields, trackingDir, postingsOutput, parallelism);
+        CodecUtil.writeFooter(postingsOutput);
+        postingsName = postingsOutput.getName();
       }
 
-      try (CloseableThreadLocal<PerThreadState> threadLocal =
-          new CloseableThreadLocal<>() {
-            @Override
-            protected PerThreadState initialValue() {
-              return new PerThreadState(numTerms, finalForwardIndex.clone());
-            }
-          }) {
-        IntsRef docs = new IntsRef(sortedDocs, 0, sortedDocs.length);
-        IndexReorderingTask task = new IndexReorderingTask(docs, new float[maxDoc], threadLocal, 0);
-        if (forkJoinPool != null) {
-          forkJoinPool.execute(task);
-          task.join();
-        } else {
-          task.compute();
+      try (ForwardIndex forwardIndex =
+          buildForwardIndex(trackingDir, postingsName, maxDoc, numTerms)) {
+        trackingDir.deleteFile(postingsName);
+
+        int[] sortedDocs = new int[maxDoc];
+        Arrays.setAll(sortedDocs, IntUnaryOperator.identity());
+
+        BitSet parents = null;
+        String parentField = reader.getFieldInfos().getParentField();
+        if (parentField != null) {
+          parents = BitSet.of(DocValues.getNumeric(reader, parentField), maxDoc);
         }
-      }
 
-      success = true;
-      return sortedDocs;
-    } finally {
-      if (success) {
-        IOUtils.close(forwardIndex);
+        try (CloseableThreadLocal<PerThreadState> threadLocal =
+            new CloseableThreadLocal<>() {
+              @Override
+              protected PerThreadState initialValue() {
+                return new PerThreadState(numTerms, forwardIndex.clone());
+              }
+            }) {
+          IntsRef docs = new IntsRef(sortedDocs, 0, sortedDocs.length);
+          new IndexReorderingTask(docs, new float[maxDoc], threadLocal, parents, executor, 0)
+              .call();
+        }
+
         IOUtils.deleteFiles(trackingDir, trackingDir.getCreatedFiles());
-      } else {
-        IOUtils.closeWhileHandlingException(postingsOutput, forwardIndex);
-        IOUtils.deleteFilesIgnoringExceptions(trackingDir, trackingDir.getCreatedFiles());
+        return sortedDocs;
       }
+    } catch (Throwable t) {
+      IOUtils.deleteFilesSuppressingExceptions(t, trackingDir, trackingDir.getCreatedFiles());
+      throw t;
     }
   }
 
@@ -897,7 +913,7 @@ public final class BPIndexReorderer {
   }
 
   private static long docRAMRequirements(int maxDoc) {
-    // We need one int per doc for the doc map, plus one float to store the gain associated with
+    // We need one int per doc for the doc map, plus one float to store the bias associated with
     // this doc.
     return 2L * Integer.BYTES * maxDoc;
   }
@@ -921,7 +937,7 @@ public final class BPIndexReorderer {
   }
 
   /** An approximate log() function in base 2 which trades accuracy for much better performance. */
-  static final float fastLog2(int i) {
+  static float fastLog2(int i) {
     assert i > 0 : "Cannot compute log of i=" + i;
     // floorLog2 would be the exponent in the float representation of i
     int floorLog2 = 31 - Integer.numberOfLeadingZeros(i);
@@ -992,5 +1008,170 @@ public final class BPIndexReorderer {
       in.readInts(ints, 0, len);
     }
     return len;
+  }
+
+  /**
+   * Use a LSB Radix Sorter to sort the (docID, termID) entries. We only need to compare docIds
+   * because LSB Radix Sorter is stable and termIDs already sorted.
+   *
+   * <p>This sorter will require at least 16MB ({@link #BUFFER_BYTES} * {@link #HISTOGRAM_SIZE})
+   * RAM.
+   */
+  static class ForwardIndexSorter {
+
+    private static final int HISTOGRAM_SIZE = 256;
+    private static final int BUFFER_SIZE = 8192;
+    private static final int BUFFER_BYTES = BUFFER_SIZE * Long.BYTES;
+    private final Directory directory;
+    private final Bucket[] buckets = new Bucket[HISTOGRAM_SIZE];
+
+    private static class Bucket {
+      private final ByteBuffersDataOutput fps = new ByteBuffersDataOutput();
+      private final long[] buffer = new long[BUFFER_SIZE];
+      private IndexOutput output;
+      private int bufferUsed;
+      private int blockNum;
+      private long lastFp;
+      private int finalBlockSize;
+
+      private void addEntry(long l) throws IOException {
+        buffer[bufferUsed++] = l;
+        if (bufferUsed == BUFFER_SIZE) {
+          flush(false);
+        }
+      }
+
+      private void flush(boolean isFinal) throws IOException {
+        if (isFinal) {
+          finalBlockSize = bufferUsed;
+        }
+        long fp = output.getFilePointer();
+        fps.writeVLong(encode(fp - lastFp));
+        lastFp = fp;
+        for (int i = 0; i < bufferUsed; i++) {
+          output.writeLong(buffer[i]);
+        }
+        lastFp = fp;
+        blockNum++;
+        bufferUsed = 0;
+      }
+
+      private void reset(IndexOutput resetOutput) {
+        output = resetOutput;
+        finalBlockSize = 0;
+        bufferUsed = 0;
+        blockNum = 0;
+        lastFp = 0;
+        fps.reset();
+      }
+    }
+
+    private static long encode(long fpDelta) {
+      assert (fpDelta & 0x07) == 0 : "fpDelta should be multiple of 8";
+      if (fpDelta % BUFFER_BYTES == 0) {
+        return ((fpDelta / BUFFER_BYTES) << 1) | 1;
+      } else {
+        return fpDelta;
+      }
+    }
+
+    private static long decode(long fpDelta) {
+      if ((fpDelta & 1) == 1) {
+        return (fpDelta >>> 1) * BUFFER_BYTES;
+      } else {
+        return fpDelta;
+      }
+    }
+
+    ForwardIndexSorter(Directory directory) {
+      this.directory = directory;
+      for (int i = 0; i < HISTOGRAM_SIZE; i++) {
+        buckets[i] = new Bucket();
+      }
+    }
+
+    private void consume(String fileName, LongConsumer consumer) throws IOException {
+      try (IndexInput in = directory.openInput(fileName, IOContext.READONCE)) {
+        final long end = in.length() - CodecUtil.footerLength();
+        while (in.getFilePointer() < end) {
+          consumer.accept(in.readLong());
+        }
+      }
+      consumer.onFinish();
+    }
+
+    private void consume(String fileName, long indexFP, LongConsumer consumer) throws IOException {
+      try (IndexInput index = directory.openInput(fileName, IOContext.READONCE);
+          IndexInput value = directory.openInput(fileName, IOContext.READONCE)) {
+        index.seek(indexFP);
+        for (int i = 0; i < buckets.length; i++) {
+          int blockNum = index.readVInt();
+          int finalBlockSize = index.readVInt();
+          long fp = decode(index.readVLong());
+          for (int block = 0; block < blockNum - 1; block++) {
+            value.seek(fp);
+            for (int j = 0; j < BUFFER_SIZE; j++) {
+              consumer.accept(value.readLong());
+            }
+            fp += decode(index.readVLong());
+          }
+          value.seek(fp);
+          for (int j = 0; j < finalBlockSize; j++) {
+            consumer.accept(value.readLong());
+          }
+        }
+        consumer.onFinish();
+      }
+    }
+
+    private LongConsumer consumer(int shift) {
+      return new LongConsumer() {
+        @Override
+        public void accept(long value) throws IOException {
+          int b = (int) ((value >>> shift) & 0xFF);
+          Bucket bucket = buckets[b];
+          bucket.addEntry(value);
+        }
+
+        @Override
+        public void onFinish() throws IOException {
+          for (Bucket bucket : buckets) {
+            bucket.flush(true);
+          }
+        }
+      };
+    }
+
+    void sortAndConsume(String fileName, int maxDoc, LongConsumer consumer) throws IOException {
+      int bitsRequired = PackedInts.bitsRequired(maxDoc);
+      String sourceFileName = fileName;
+      long indexFP = -1;
+      for (int shift = 0; shift < bitsRequired; shift += 8) {
+        try (IndexOutput output = directory.createTempOutput(fileName, "sort", IOContext.DEFAULT)) {
+          Arrays.stream(buckets).forEach(b -> b.reset(output));
+          if (shift == 0) {
+            consume(sourceFileName, consumer(shift));
+          } else {
+            consume(sourceFileName, indexFP, consumer(shift));
+            directory.deleteFile(sourceFileName);
+          }
+          indexFP = output.getFilePointer();
+          for (Bucket bucket : buckets) {
+            output.writeVInt(bucket.blockNum);
+            output.writeVInt(bucket.finalBlockSize);
+            bucket.fps.copyTo(output);
+          }
+          CodecUtil.writeFooter(output);
+          sourceFileName = output.getName();
+        }
+      }
+      consume(sourceFileName, indexFP, consumer);
+    }
+  }
+
+  interface LongConsumer {
+    void accept(long value) throws IOException;
+
+    default void onFinish() throws IOException {}
   }
 }

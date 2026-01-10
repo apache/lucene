@@ -34,14 +34,19 @@ final class EdgeTree {
   // X-Y pair (in original order) of the two vertices
   final double y1, y2;
   final double x1, x2;
+
   /** min Y of this edge */
   final double low;
+
   /** max Y of this edge or any children */
   double max;
+
   /** left child edge, or null */
   EdgeTree left;
+
   /** right child edge, or null */
   EdgeTree right;
+
   /** helper bytes to signal if a point is on an edge, it is within the edge tree or disjoint */
   private static final byte FALSE = 0x00;
 

@@ -64,7 +64,6 @@ public final class VersionBlockTreeTermsReader extends FieldsProducer {
             VersionBlockTreeTermsWriter.TERMS_EXTENSION);
     in = state.directory.openInput(termsFile, state.context);
 
-    boolean success = false;
     IndexInput indexIn = null;
 
     try {
@@ -180,13 +179,10 @@ public final class VersionBlockTreeTermsReader extends FieldsProducer {
         }
       }
       indexIn.close();
-
-      success = true;
-    } finally {
-      if (!success) {
-        // this.close() will close in:
-        IOUtils.closeWhileHandlingException(indexIn, this);
-      }
+    } catch (Throwable t) {
+      // this.close() will close in:
+      IOUtils.closeWhileSuppressingExceptions(t, indexIn, this);
+      throw t;
     }
   }
 
@@ -235,24 +231,6 @@ public final class VersionBlockTreeTermsReader extends FieldsProducer {
   @Override
   public int size() {
     return fields.size();
-  }
-
-  // for debugging
-  String brToString(BytesRef b) {
-    if (b == null) {
-      return "null";
-    } else {
-      try {
-        return b.utf8ToString() + " " + b;
-      } catch (
-          @SuppressWarnings("unused")
-          Throwable t) {
-        // If BytesRef isn't actually UTF8, or it's eg a
-        // prefix of UTF8 that ends mid-unicode-char, we
-        // fallback to hex:
-        return b.toString();
-      }
-    }
   }
 
   @Override

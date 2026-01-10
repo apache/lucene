@@ -16,16 +16,17 @@
  */
 package org.apache.lucene.queryparser.xml;
 
-import java.io.Reader;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
-import org.xml.sax.InputSource;
 
-/** Helper methods for parsing XML */
+/**
+ * Helper methods for parsing XML.
+ *
+ * @lucene.internal
+ */
 public class DOMUtils {
+
+  private DOMUtils() {}
 
   public static Element getChildByTagOrFail(Element e, String name) throws ParserException {
     Element kid = getChildByTagName(e, name);
@@ -86,13 +87,12 @@ public class DOMUtils {
    */
   public static String getAttributeWithInheritance(Element element, String attributeName) {
     String result = element.getAttribute(attributeName);
-    if ((result == null) || ("".equals(result))) {
+    if ((result == null) || (result.isEmpty())) {
       Node n = element.getParentNode();
       if ((n == element) || (n == null)) {
         return null;
       }
-      if (n instanceof Element) {
-        Element parent = (Element) n;
+      if (n instanceof Element parent) {
         return getAttributeWithInheritance(parent, attributeName);
       }
       return null; // we reached the top level of the document without finding attribute
@@ -118,22 +118,22 @@ public class DOMUtils {
 
   public static String getAttribute(Element element, String attributeName, String deflt) {
     String result = element.getAttribute(attributeName);
-    return (result == null) || ("".equals(result)) ? deflt : result;
+    return (result == null) || (result.isEmpty()) ? deflt : result;
   }
 
   public static float getAttribute(Element element, String attributeName, float deflt) {
     String result = element.getAttribute(attributeName);
-    return (result == null) || ("".equals(result)) ? deflt : Float.parseFloat(result);
+    return (result == null) || (result.isEmpty()) ? deflt : Float.parseFloat(result);
   }
 
   public static int getAttribute(Element element, String attributeName, int deflt) {
     String result = element.getAttribute(attributeName);
-    return (result == null) || ("".equals(result)) ? deflt : Integer.parseInt(result);
+    return (result == null) || (result.isEmpty()) ? deflt : Integer.parseInt(result);
   }
 
   public static boolean getAttribute(Element element, String attributeName, boolean deflt) {
     String result = element.getAttribute(attributeName);
-    return (result == null) || ("".equals(result)) ? deflt : Boolean.valueOf(result);
+    return (result == null) || (result.isEmpty()) ? deflt : Boolean.valueOf(result);
   }
 
   /* Returns text of node and all child nodes - without markup */
@@ -174,33 +174,5 @@ public class DOMUtils {
           }
       }
     }
-  }
-
-  /**
-   * Helper method to parse an XML file into a DOM tree, given a reader.
-   *
-   * @param is reader of the XML file to be parsed
-   * @return an org.w3c.dom.Document object
-   */
-  public static Document loadXML(Reader is) {
-    DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-    DocumentBuilder db = null;
-
-    try {
-      db = dbf.newDocumentBuilder();
-    } catch (Exception se) {
-      throw new RuntimeException("Parser configuration error", se);
-    }
-
-    // Step 3: parse the input file
-    org.w3c.dom.Document doc = null;
-    try {
-      doc = db.parse(new InputSource(is));
-      // doc = db.parse(is);
-    } catch (Exception se) {
-      throw new RuntimeException("Error parsing file:" + se, se);
-    }
-
-    return doc;
   }
 }

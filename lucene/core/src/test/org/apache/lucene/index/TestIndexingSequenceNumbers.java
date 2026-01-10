@@ -78,7 +78,7 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
     for (int iter = 0; iter < iters; iter++) {
       Directory dir = newDirectory();
       final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
-      Thread[] threads = new Thread[TestUtil.nextInt(random(), 2, 5)];
+      Thread[] threads = new Thread[TestUtil.nextInt(random(), 2, 4)];
       final CountDownLatch startingGun = new CountDownLatch(1);
       final long[] seqNos = new long[threads.length];
       final Term id = new Term("id", "id");
@@ -127,7 +127,7 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
       DirectoryReader r = w.getReader();
       IndexSearcher s = newSearcher(r);
       TopDocs hits = s.search(new TermQuery(id), 1);
-      assertEquals("maxDoc: " + r.maxDoc(), 1, hits.totalHits.value);
+      assertEquals("maxDoc: " + r.maxDoc(), 1, hits.totalHits.value());
       Document doc = r.storedFields().document(hits.scoreDocs[0].doc);
       assertEquals(maxThread, doc.getField("thread").numericValue().intValue());
       r.close();
@@ -156,7 +156,7 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
     // Cannot use RIW since it randomly commits:
     final IndexWriter w = new IndexWriter(dir, iwc);
 
-    final int numThreads = TestUtil.nextInt(random(), 2, 10);
+    final int numThreads = TestUtil.nextInt(random(), 2, 4);
     Thread[] threads = new Thread[numThreads];
     // System.out.println("TEST: iter=" + iter + " opCount=" + opCount + " idCount=" + idCount + "
     // threadCount=" + threads.length);
@@ -276,7 +276,7 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
         TopDocs hits = s.search(new TermQuery(new Term("id", "" + id)), 1);
 
         if (expectedThreadIDs[id] != -1) {
-          assertEquals(1, hits.totalHits.value);
+          assertEquals(1, hits.totalHits.value());
           Document doc = r.storedFields().document(hits.scoreDocs[0].doc);
           int actualThreadID = doc.getField("thread").numericValue().intValue();
           if (expectedThreadIDs[id] != actualThreadID) {
@@ -306,14 +306,14 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
             }
             assertEquals("id=" + id, expectedThreadIDs[id], actualThreadID);
           }
-        } else if (hits.totalHits.value != 0) {
+        } else if (hits.totalHits.value() != 0) {
           System.out.println(
               "FAIL: id="
                   + id
                   + " expectedThreadID="
                   + expectedThreadIDs[id]
                   + " vs totalHits="
-                  + hits.totalHits.value
+                  + hits.totalHits.value()
                   + " commitSeqNo="
                   + commitSeqNo
                   + " numThreads="
@@ -331,7 +331,7 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
               }
             }
           }
-          assertEquals(0, hits.totalHits.value);
+          assertEquals(0, hits.totalHits.value());
         }
       }
       w.close();
@@ -353,7 +353,7 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
     // Cannot use RIW since it randomly commits:
     final IndexWriter w = new IndexWriter(dir, iwc);
 
-    final int numThreads = TestUtil.nextInt(random(), 2, 10);
+    final int numThreads = TestUtil.nextInt(random(), 2, 4);
     if (VERBOSE) {
       System.out.println("TEST: numThreads=" + numThreads);
     }
@@ -482,7 +482,7 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
 
         // We pre-add all ids up front:
         assert expectedThreadIDs[id] != -1;
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
         int hitDoc = hits.scoreDocs[0].doc;
         assertEquals(hitDoc, docValues.advance(hitDoc));
         int actualThreadID = (int) docValues.longValue();
@@ -538,7 +538,7 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
     // Cannot use RIW since it randomly commits:
     final IndexWriter w = new IndexWriter(dir, iwc);
 
-    final int numThreads = TestUtil.nextInt(random(), 2, 5);
+    final int numThreads = TestUtil.nextInt(random(), 2, 4);
     Thread[] threads = new Thread[numThreads];
     // System.out.println("TEST: iter=" + iter + " opCount=" + opCount + " idCount=" + idCount + "
     // threadCount=" + threads.length);

@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Random;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
@@ -41,6 +42,7 @@ import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocIdStream;
@@ -228,6 +230,11 @@ public class QueryUtils {
       }
 
       @Override
+      public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+        return null;
+      }
+
+      @Override
       public FloatVectorValues getFloatVectorValues(String field) throws IOException {
         return null;
       }
@@ -239,11 +246,11 @@ public class QueryUtils {
 
       @Override
       public void searchNearestVectors(
-          String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+          String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {}
 
       @Override
       public void searchNearestVectors(
-          String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+          String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {}
 
       @Override
       public FieldInfos getFieldInfos() {
@@ -293,7 +300,7 @@ public class QueryUtils {
 
       @Override
       public LeafMetaData getMetaData() {
-        return new LeafMetaData(Version.LATEST.major, Version.LATEST, null);
+        return new LeafMetaData(Version.LATEST.major, Version.LATEST, null, false);
       }
 
       @Override
@@ -540,8 +547,10 @@ public class QueryUtils {
     s.search(
         q,
         new SimpleCollector() {
+          private final Weight w = s.createWeight(rewritten, ScoreMode.COMPLETE, 1);
           private Scorable scorer;
           private int leafPtr;
+          private long intervalTimes32 = 1 * 32;
 
           @Override
           public void setScorer(Scorable scorer) {
@@ -552,10 +561,11 @@ public class QueryUtils {
           public void collect(int doc) throws IOException {
             float score = scorer.score();
             try {
-              long startNS = System.nanoTime();
-              for (int i = lastDoc[0] + 1; i <= doc; i++) {
-                Weight w = s.createWeight(rewritten, ScoreMode.COMPLETE, 1);
-                Scorer scorer = w.scorer(context.get(leafPtr));
+              // The intervalTimes32 trick helps contain the runtime of this check: first we check
+              // every single doc in the interval, then after 32 docs we check every 2 docs, etc.
+              for (int i = lastDoc[0] + 1; i <= doc; i += intervalTimes32++ / 1024) {
+                ScorerSupplier supplier = w.scorerSupplier(context.get(leafPtr));
+                Scorer scorer = supplier.get(1L); // only checking one doc, so leadCost = 1
                 assertTrue(
                     "query collected " + doc + " but advance(" + i + ") says no more docs!",
                     scorer.iterator().advance(i) != DocIdSetIterator.NO_MORE_DOCS);
@@ -579,12 +589,6 @@ public class QueryUtils {
                     score,
                     advanceScore,
                     maxDiff);
-
-                // Hurry things along if they are going slow (eg
-                // if you got SimpleText codec this will kick in):
-                if (i < doc && System.nanoTime() - startNS > 5_000_000) {
-                  i = doc - 1;
-                }
               }
               lastDoc[0] = doc;
             } catch (IOException e) {

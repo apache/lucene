@@ -98,7 +98,8 @@ public class TestSimpleQueryParser extends LuceneTestCase {
     bool.add(new TermQuery(new Term("field", "bar")), Occur.MUST);
 
     assertEquals(
-        bool.build(), parse("foo~" + LevenshteinAutomata.MAXIMUM_SUPPORTED_DISTANCE + 1 + " bar"));
+        bool.build(),
+        parse("foo~" + (LevenshteinAutomata.MAXIMUM_SUPPORTED_DISTANCE + 1) + " bar"));
   }
 
   /** test a simple phrase */
@@ -205,7 +206,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
   public void testNOT() throws Exception {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     expected.add(new TermQuery(new Term("field", "foo")), Occur.MUST_NOT);
-    expected.add(new MatchAllDocsQuery(), Occur.SHOULD);
+    expected.add(MatchAllDocsQuery.INSTANCE, Occur.SHOULD);
 
     assertEquals(expected.build(), parse("-foo"));
     assertEquals(expected.build(), parse("-(foo)"));
@@ -253,7 +254,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
   }
 
   public void testGarbageEmpty() throws Exception {
-    MatchNoDocsQuery expected = new MatchNoDocsQuery();
+    MatchNoDocsQuery expected = MatchNoDocsQuery.INSTANCE;
 
     assertEquals(expected, parse(""));
     assertEquals(expected, parse("  "));
@@ -295,7 +296,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
   public void testGarbageNOT() throws Exception {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     expected.add(new TermQuery(new Term("field", "star")), Occur.MUST_NOT);
-    expected.add(new MatchAllDocsQuery(), Occur.SHOULD);
+    expected.add(MatchAllDocsQuery.INSTANCE, Occur.SHOULD);
 
     assertEquals(expected.build(), parse("-star"));
     assertEquals(expected.build(), parse("---star"));
@@ -434,7 +435,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
     inner3.add(new TermQuery(new Term("field", "back")), Occur.MUST);
 
     inner4.add(new TermQuery(new Term("field", "jarjar")), Occur.MUST_NOT);
-    inner4.add(new MatchAllDocsQuery(), Occur.SHOULD);
+    inner4.add(MatchAllDocsQuery.INSTANCE, Occur.SHOULD);
 
     inner3.add(inner4.build(), Occur.MUST);
     inner2.add(inner3.build(), Occur.SHOULD);
@@ -632,8 +633,8 @@ public class TestSimpleQueryParser extends LuceneTestCase {
 
   public void testStarBecomesMatchAll() throws Exception {
     Query q = parse("*");
-    assertEquals(q, new MatchAllDocsQuery());
+    assertEquals(q, MatchAllDocsQuery.INSTANCE);
     q = parse(" *   ");
-    assertEquals(q, new MatchAllDocsQuery());
+    assertEquals(q, MatchAllDocsQuery.INSTANCE);
   }
 }

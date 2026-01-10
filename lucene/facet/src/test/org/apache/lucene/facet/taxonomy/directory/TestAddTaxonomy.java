@@ -43,20 +43,18 @@ public class TestAddTaxonomy extends FacetTestCase {
       Thread[] addThreads = new Thread[4];
       for (int j = 0; j < addThreads.length; j++) {
         addThreads[j] =
-            new Thread() {
-              @Override
-              public void run() {
-                Random random = random();
-                while (numCats.decrementAndGet() > 0) {
-                  String cat = Integer.toString(random.nextInt(range));
-                  try {
-                    tw.addCategory(new FacetLabel("a", cat));
-                  } catch (IOException e) {
-                    throw new RuntimeException(e);
+            new Thread(
+                () -> {
+                  Random random = random();
+                  while (numCats.decrementAndGet() > 0) {
+                    String cat = Integer.toString(random.nextInt(range));
+                    try {
+                      tw.addCategory(new FacetLabel("a", cat));
+                    } catch (IOException e) {
+                      throw new RuntimeException(e);
+                    }
                   }
-                }
-              }
-            };
+                });
       }
 
       for (Thread t : addThreads) t.start();
@@ -83,11 +81,9 @@ public class TestAddTaxonomy extends FacetTestCase {
   }
 
   private void validate(Directory dest, Directory src, OrdinalMap ordMap) throws Exception {
-    DirectoryTaxonomyReader destTR = new DirectoryTaxonomyReader(dest);
-    try {
+    try (DirectoryTaxonomyReader destTR = new DirectoryTaxonomyReader(dest)) {
       final int destSize = destTR.getSize();
-      DirectoryTaxonomyReader srcTR = new DirectoryTaxonomyReader(src);
-      try {
+      try (DirectoryTaxonomyReader srcTR = new DirectoryTaxonomyReader(src)) {
         int[] map = ordMap.getMap();
 
         // validate taxo sizes
@@ -107,11 +103,7 @@ public class TestAddTaxonomy extends FacetTestCase {
           assertTrue(cp + " not found in destination", destOrdinal > 0);
           assertEquals(destOrdinal, map[j]);
         }
-      } finally {
-        srcTR.close();
       }
-    } finally {
-      destTR.close();
     }
   }
 
@@ -154,6 +146,8 @@ public class TestAddTaxonomy extends FacetTestCase {
   }
 
   // A more comprehensive and big random test.
+  // TODO: TOO BIG
+  @Nightly
   public void testBig() throws Exception {
     dotest(200, 10000);
     dotest(1000, 20000);
@@ -209,19 +203,17 @@ public class TestAddTaxonomy extends FacetTestCase {
     Directory dest = newDirectory();
     final DirectoryTaxonomyWriter destTW = new DirectoryTaxonomyWriter(dest);
     Thread t =
-        new Thread() {
-          @Override
-          public void run() {
-            for (int i = 0; i < numCategories; i++) {
-              try {
-                destTW.addCategory(new FacetLabel("a", Integer.toString(i)));
-              } catch (IOException e) {
-                // shouldn't happen - if it does, let the test fail on uncaught exception.
-                throw new RuntimeException(e);
+        new Thread(
+            () -> {
+              for (int i = 0; i < numCategories; i++) {
+                try {
+                  destTW.addCategory(new FacetLabel("a", Integer.toString(i)));
+                } catch (IOException e) {
+                  // shouldn't happen - if it does, let the test fail on uncaught exception.
+                  throw new RuntimeException(e);
+                }
               }
-            }
-          }
-        };
+            });
     t.start();
 
     OrdinalMap map = new MemoryOrdinalMap();

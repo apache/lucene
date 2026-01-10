@@ -38,6 +38,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.IntsRef;
 
 /**
  * Query class for searching {@code RangeField} types by a defined {@link Relation}.
@@ -47,17 +48,22 @@ import org.apache.lucene.util.DocIdSetBuilder;
 public abstract class RangeFieldQuery extends Query {
   /** field name */
   final String field;
+
   /**
    * query relation intersects: {@code CELL_CROSSES_QUERY}, contains: {@code CELL_CONTAINS_QUERY},
    * within: {@code CELL_WITHIN_QUERY}
    */
   final QueryType queryType;
+
   /** number of dimensions - max 4 */
   final int numDims;
+
   /** ranges encoded as a sortable byte array */
   final byte[] ranges;
+
   /** number of bytes per dimension */
   final int bytesPerDim;
+
   /** ByteArrayComparator selected by bytesPerDim */
   final ByteArrayComparator comparator;
 
@@ -396,7 +402,12 @@ public abstract class RangeFieldQuery extends Query {
           }
 
           @Override
-          public void visit(int docID) throws IOException {
+          public void visit(IntsRef ref) {
+            adder.add(ref);
+          }
+
+          @Override
+          public void visit(int docID) {
             adder.add(docID);
           }
 
@@ -406,7 +417,7 @@ public abstract class RangeFieldQuery extends Query {
           }
 
           @Override
-          public void visit(int docID, byte[] leaf) throws IOException {
+          public void visit(int docID, byte[] leaf) {
             if (queryType.matches(ranges, leaf, numDims, bytesPerDim, comparator)) {
               visit(docID);
             }
@@ -454,13 +465,12 @@ public abstract class RangeFieldQuery extends Query {
           allDocsMatch = true;
         }
 
-        final Weight weight = this;
         if (allDocsMatch) {
           return new ScorerSupplier() {
             @Override
             public Scorer get(long leadCost) {
               return new ConstantScoreScorer(
-                  weight, score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
+                  score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
             }
 
             @Override
@@ -471,7 +481,7 @@ public abstract class RangeFieldQuery extends Query {
         } else {
           return new ScorerSupplier() {
 
-            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
             final IntersectVisitor visitor = getIntersectVisitor(result);
             long cost = -1;
 
@@ -479,7 +489,7 @@ public abstract class RangeFieldQuery extends Query {
             public Scorer get(long leadCost) throws IOException {
               values.intersect(visitor);
               DocIdSetIterator iterator = result.build().iterator();
-              return new ConstantScoreScorer(weight, score(), scoreMode, iterator);
+              return new ConstantScoreScorer(score(), scoreMode, iterator);
             }
 
             @Override
@@ -493,15 +503,6 @@ public abstract class RangeFieldQuery extends Query {
             }
           };
         }
-      }
-
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
       }
 
       @Override

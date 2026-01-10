@@ -23,8 +23,8 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsReader;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsWriter;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsReader;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsWriter;
 import org.apache.lucene.codecs.uniformsplit.BlockDecoder;
 import org.apache.lucene.codecs.uniformsplit.BlockEncoder;
 import org.apache.lucene.codecs.uniformsplit.IndexDictionary;
@@ -39,6 +39,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
 /** {@link UniformSplitPostingsFormat} with block encoding using ROT13 cypher. */
+@SuppressWarnings("NonFinalStaticField")
 public class UniformSplitRot13PostingsFormat extends PostingsFormat {
 
   public static volatile boolean encoderCalled;
@@ -67,7 +68,7 @@ public class UniformSplitRot13PostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState segmentWriteState) throws IOException {
-    PostingsWriterBase postingsWriter = new Lucene90PostingsWriter(segmentWriteState);
+    PostingsWriterBase postingsWriter = new Lucene104PostingsWriter(segmentWriteState);
     boolean success = false;
     try {
       FieldsConsumer fieldsConsumer = createFieldsConsumer(segmentWriteState, postingsWriter);
@@ -145,7 +146,7 @@ public class UniformSplitRot13PostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState segmentReadState) throws IOException {
-    PostingsReaderBase postingsReader = new Lucene90PostingsReader(segmentReadState);
+    PostingsReaderBase postingsReader = new Lucene104PostingsReader(segmentReadState);
     boolean success = false;
     try {
       FieldsProducer fieldsProducer = createFieldsProducer(segmentReadState, postingsReader);

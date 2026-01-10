@@ -17,19 +17,20 @@
 package org.apache.lucene.backward_codecs.lucene84;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.backward_codecs.lucene40.blocktree.FieldReader;
 import org.apache.lucene.backward_codecs.lucene40.blocktree.Stats;
-import org.apache.lucene.backward_codecs.lucene84.Lucene84ScoreSkipReader.MutableImpactList;
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
+import org.apache.lucene.codecs.Impact;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.ByteArrayDataInput;
@@ -123,9 +124,13 @@ public class TestLucene84PostingsFormat extends BasePostingsFormatTestCase {
       try (IndexInput in = EndiannessReverserUtil.openInput(dir, "foo", IOContext.DEFAULT)) {
         byte[] b = new byte[Math.toIntExact(in.length())];
         in.readBytes(b, 0, b.length);
-        List<Impact> impacts2 =
-            Lucene84ScoreSkipReader.readImpacts(new ByteArrayDataInput(b), new MutableImpactList());
-        assertEquals(impacts, impacts2);
+        FreqAndNormBuffer impacts2 =
+            Lucene84ScoreSkipReader.readImpacts(new ByteArrayDataInput(b), new FreqAndNormBuffer());
+        List<Impact> impacts2AsList = new ArrayList<>();
+        for (int i = 0; i < impacts2.size; ++i) {
+          impacts2AsList.add(new Impact(impacts2.freqs[i], impacts2.norms[i]));
+        }
+        assertEquals(impacts, impacts2AsList);
       }
     }
   }

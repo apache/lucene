@@ -67,7 +67,7 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
     for (String file : dir1.listAll()) {
       if (isExtra(file) == false) {
         // the test framework creates these devious extra files just to chaos test the edge cases
-        commit1.copyFrom(dir1, file, file, IOContext.READ);
+        commit1.copyFrom(dir1, file, file, IOContext.DEFAULT);
       }
     }
 
@@ -82,11 +82,11 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
     final FacetsConfig config = new FacetsConfig();
     SearcherTaxonomyManager.SearcherAndTaxonomy pair = mgr.acquire();
     final FacetsCollector sfc = new FacetsCollector();
-    /**
+    /*
      * the call flow here initializes {@link DirectoryTaxonomyReader#taxoArrays}. These reused
      * `taxoArrays` form the basis of the inconsistency *
      */
-    getTaxonomyFacetCounts(pair.taxonomyReader, config, sfc);
+    getTaxonomyFacetCounts(pair.taxonomyReader(), config, sfc);
 
     // now try to go back to checkpoint 1 and refresh the SearcherTaxonomyManager
 
@@ -103,7 +103,7 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
     // copy all index files from commit1
     for (String file : commit1.listAll()) {
       if (isExtra(file) == false) {
-        dir1.copyFrom(commit1, file, file, IOContext.READ);
+        dir1.copyFrom(commit1, file, file, IOContext.DEFAULT);
       }
     }
 
@@ -112,8 +112,8 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
     } else {
       mgr.maybeRefresh();
       pair = mgr.acquire();
-      assertEquals(new FacetLabel("a"), pair.taxonomyReader.getPath(1));
-      assertEquals(-1, pair.taxonomyReader.getOrdinal(new FacetLabel("b")));
+      assertEquals(new FacetLabel("a"), pair.taxonomyReader().getPath(1));
+      assertEquals(-1, pair.taxonomyReader().getOrdinal(new FacetLabel("b")));
     }
 
     mgr.release(pair);
@@ -167,8 +167,6 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
 
     @Override
     protected DirectoryTaxonomyReader doOpenIfChanged() throws IOException {
-      boolean success = false;
-
       // the getInternalIndexReader() function performs the ensureOpen() check
       final DirectoryReader reader = DirectoryReader.openIfChanged(super.getInternalIndexReader());
       if (reader == null) {
@@ -181,14 +179,10 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
         // Returning a AlwaysRefreshDirectoryTaxonomyReader ensures that the recreated taxonomy
         // reader also uses the overridden doOpenIfChanged
         // method (that always recomputes values).
-        final AlwaysRefreshDirectoryTaxonomyReader newTaxonomyReader =
-            new AlwaysRefreshDirectoryTaxonomyReader(reader);
-        success = true;
-        return newTaxonomyReader;
-      } finally {
-        if (!success) {
-          IOUtils.closeWhileHandlingException(reader);
-        }
+        return new AlwaysRefreshDirectoryTaxonomyReader(reader);
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, reader);
+        throw t;
       }
     }
   }

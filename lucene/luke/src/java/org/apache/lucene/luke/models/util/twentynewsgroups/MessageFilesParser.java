@@ -54,7 +54,7 @@ public class MessageFilesParser extends SimpleFileVisitor<Path> {
       if (attr.isRegularFile()) {
         Message message = parse(file);
         if (message != null) {
-          messages.add(parse(file));
+          messages.add(message);
         }
       }
     } catch (IOException e) {
@@ -68,7 +68,7 @@ public class MessageFilesParser extends SimpleFileVisitor<Path> {
       String line = br.readLine();
 
       Message message = new Message();
-      while (!line.equals("")) {
+      while (!line.isEmpty()) {
         String[] ary = line.split(":", 2);
         if (ary.length < 2) {
           line = br.readLine();
@@ -98,9 +98,7 @@ public class MessageFilesParser extends SimpleFileVisitor<Path> {
           case "Lines":
             try {
               message.setLines(Integer.parseInt(ary[1].trim()));
-            } catch (
-                @SuppressWarnings("unused")
-                NumberFormatException e) {
+            } catch (NumberFormatException _) {
             }
             break;
           default:

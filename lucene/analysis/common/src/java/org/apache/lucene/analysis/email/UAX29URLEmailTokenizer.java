@@ -38,22 +38,31 @@ public final class UAX29URLEmailTokenizer extends Tokenizer {
 
   /** Alpha/numeric token type */
   public static final int ALPHANUM = 0;
+
   /** Numeric token type */
   public static final int NUM = 1;
+
   /** Southeast Asian token type */
   public static final int SOUTHEAST_ASIAN = 2;
+
   /** Ideographic token type */
   public static final int IDEOGRAPHIC = 3;
+
   /** Hiragana token type */
   public static final int HIRAGANA = 4;
+
   /** Katakana token type */
   public static final int KATAKANA = 5;
+
   /** Hangul token type */
   public static final int HANGUL = 6;
+
   /** URL token type */
   public static final int URL = 7;
+
   /** Email token type */
   public static final int EMAIL = 8;
+
   /** Emoji token type. */
   public static final int EMOJI = 9;
 

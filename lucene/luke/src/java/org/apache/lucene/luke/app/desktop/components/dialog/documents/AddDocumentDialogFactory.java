@@ -35,7 +35,6 @@ import java.lang.reflect.Constructor;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -103,6 +102,7 @@ public final class AddDocumentDialogFactory
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+  @SuppressWarnings("NonFinalStaticField")
   private static AddDocumentDialogFactory instance;
 
   private static final int ROW_COUNT = 50;
@@ -152,9 +152,7 @@ public final class AddDocumentDialogFactory
     this.indexOptionsDialogFactory = IndexOptionsDialogFactory.getInstance();
     this.helpDialogFactory = HelpDialogFactory.getInstance();
     this.newFieldList =
-        IntStream.range(0, ROW_COUNT)
-            .mapToObj(i -> NewField.newInstance())
-            .collect(Collectors.toList());
+        IntStream.range(0, ROW_COUNT).mapToObj(_ -> NewField.newInstance()).toList();
 
     operatorRegistry.register(AddDocumentDialogOperator.class, this);
     indexHandler.addObserver(new Observer());
@@ -170,7 +168,7 @@ public final class AddDocumentDialogFactory
 
     closeBtn.setText(MessageUtils.getLocalizedMessage("button.cancel"));
     closeBtn.setMargin(new Insets(3, 3, 3, 3));
-    closeBtn.addActionListener(e -> dialog.dispose());
+    closeBtn.addActionListener(_ -> dialog.dispose());
 
     infoTA.setRows(3);
     infoTA.setLineWrap(true);
@@ -262,8 +260,7 @@ public final class AddDocumentDialogFactory
         80);
     fieldsTable.setShowGrid(true);
     JComboBox<Class<? extends IndexableField>> typesCombo = new JComboBox<>(presetFieldClasses);
-    typesCombo.setRenderer(
-        (list, value, index, isSelected, cellHasFocus) -> new JLabel(value.getSimpleName()));
+    typesCombo.setRenderer((_, value, _, _, _) -> new JLabel(value.getSimpleName()));
     fieldsTable
         .getColumnModel()
         .getColumn(FieldsTableModel.Column.TYPE.getIndex())
@@ -323,7 +320,7 @@ public final class AddDocumentDialogFactory
     JComboBox<String> typeCombo = new JComboBox<>(typeList);
     typeCombo.setSelectedItem(typeList[0]);
     typeCombo.addActionListener(
-        e -> {
+        _ -> {
           String selected = (String) typeCombo.getSelectedItem();
           descTA.setText(MessageUtils.getLocalizedMessage("help.fieldtype." + selected));
         });
@@ -388,7 +385,7 @@ public final class AddDocumentDialogFactory
               .filter(nf -> !nf.isDeleted())
               .filter(nf -> !StringUtils.isNullOrEmpty(nf.getName()))
               .filter(nf -> !StringUtils.isNullOrEmpty(nf.getValue()))
-              .collect(Collectors.toList());
+              .toList();
       if (validFields.isEmpty()) {
         infoTA.setText("Please add one or more fields. Name and Value are both required.");
         return;
@@ -411,7 +408,6 @@ public final class AddDocumentDialogFactory
       log.info("Added document: " + doc);
     }
 
-    @SuppressWarnings("unchecked")
     private IndexableField toIndexableField(NewField nf) throws Exception {
       final Constructor<? extends IndexableField> constr;
       if (nf.getType().equals(TextField.class) || nf.getType().equals(StringField.class)) {
@@ -461,7 +457,7 @@ public final class AddDocumentDialogFactory
             operatorRegistry
                 .get(AnalysisTabOperator.class)
                 .map(AnalysisTabOperator::getCurrentAnalyzer)
-                .orElse(new StandardAnalyzer());
+                .orElseGet(StandardAnalyzer::new);
         toolsModel.addDocument(doc, analyzer);
         indexHandler.reOpen();
         operatorRegistry
@@ -505,9 +501,9 @@ public final class AddDocumentDialogFactory
       OPTIONS("Options", 3, String.class),
       VALUE("Value", 4, String.class);
 
-      private String colName;
-      private int index;
-      private Class<?> type;
+      private final String colName;
+      private final int index;
+      private final Class<?> type;
 
       Column(String colName, int index, Class<?> type) {
         this.colName = colName;
@@ -589,7 +585,7 @@ public final class AddDocumentDialogFactory
 
   static final class OptionsCellRenderer implements TableCellRenderer {
 
-    private JDialog dialog;
+    private final JDialog dialog;
 
     private final IndexOptionsDialogFactory indexOptionsDialogFactory;
 
@@ -609,7 +605,6 @@ public final class AddDocumentDialogFactory
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Component getTableCellRendererComponent(
         JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
       if (table != null && this.table != table) {
@@ -635,9 +630,7 @@ public final class AddDocumentDialogFactory
                             title,
                             500,
                             500,
-                            (factory) -> {
-                              factory.setNewField(newFieldList.get(row));
-                            });
+                            (factory) -> factory.setNewField(newFieldList.get(row)));
                   }
                 }
               });

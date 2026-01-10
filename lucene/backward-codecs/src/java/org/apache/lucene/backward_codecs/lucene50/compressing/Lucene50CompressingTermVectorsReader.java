@@ -64,8 +64,10 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
 
   static final int VERSION_START = 1;
   static final int VERSION_OFFHEAP_INDEX = 2;
+
   /** Version where all metadata were moved to the meta file. */
   static final int VERSION_META = 3;
+
   /** Version where numChunks is explicitly recorded in meta file */
   static final int VERSION_NUM_CHUNKS = 4;
 
@@ -808,7 +810,7 @@ public final class Lucene50CompressingTermVectorsReader extends TermVectorsReade
 
     @Override
     public Iterator<String> iterator() {
-      return new Iterator<String>() {
+      return new Iterator<>() {
         int i = 0;
 
         @Override

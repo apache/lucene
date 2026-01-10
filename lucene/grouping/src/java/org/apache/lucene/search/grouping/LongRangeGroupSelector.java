@@ -34,7 +34,7 @@ public class LongRangeGroupSelector extends GroupSelector<LongRange> {
   private final LongRangeFactory rangeFactory;
 
   private Set<LongRange> inSecondPass;
-  private boolean includeEmpty = true;
+  private boolean includeEmpty;
   private boolean positioned;
   private LongRange current;
 
@@ -89,7 +89,6 @@ public class LongRangeGroupSelector extends GroupSelector<LongRange> {
   @Override
   public void setGroups(Collection<SearchGroup<LongRange>> searchGroups) {
     inSecondPass = new HashSet<>();
-    includeEmpty = false;
     for (SearchGroup<LongRange> group : searchGroups) {
       if (group.groupValue == null) {
         includeEmpty = true;

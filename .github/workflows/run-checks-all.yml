@@ -1,0 +1,116 @@
+name: "Run checks: all modules"
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - '*'
+
+  push:
+    branches:
+      - 'main'
+      - 'branch_10x'
+
+  schedule:
+    - cron: '44 1 * * *'
+
+permissions: {}
+
+env:
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+
+# We split the workflow into two parallel jobs for efficiency:
+# one is running all validation checks without tests,
+# the other runs all tests without other validation checks.
+
+jobs:
+
+  # This runs all validation checks without tests.
+  checks:
+    name: checks without tests (JDK ${{ matrix.java }} on ${{ matrix.os }})
+    timeout-minutes: 15
+
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+        java: [ '25' ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Correct git autocrlf
+        run: git config --global core.autocrlf false
+
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+
+      - name: Configure tools
+        uses: ./.github/actions/prepare-for-build
+
+      - name: Install eclint
+        if: ${{ ! startsWith(matrix.os, 'windows') }}
+        uses: ./.github/actions/eclint
+
+      - name: Install ast-grep
+        if: ${{ ! startsWith(matrix.os, 'windows') }}
+        run: |
+          npm -g i @ast-grep/cli
+          echo "lucene.tool.ast-grep=ast-grep" >> build-options.local.properties
+
+      - name: Run gradle check (without tests)
+        run: ./gradlew check -x test "-Ptask.times=true"
+
+
+  # This runs all tests without any other validation checks.
+  tests:
+    name: tests (JDK ${{ matrix.java }} on ${{ matrix.os }})
+    timeout-minutes: 30
+
+    strategy:
+      matrix:
+        # Operating systems to run on.
+        os: [ ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-latest ]
+        java: [ '25' ]
+        trigger:
+          - ${{ github.event_name }}
+        exclude:
+          - os: macos-latest
+            trigger: push
+          - os: macos-latest
+            trigger: pull_request
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Correct git autocrlf on Windows
+        if: startsWith(matrix.os, 'windows')
+        run: git config --global core.autocrlf false
+
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+
+      - name: Configure tools
+        uses: ./.github/actions/prepare-for-build
+
+      - name: Speedup MacOS runner
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          mkdir /tmp/tmpfs
+          sudo mount_tmpfs -o noowners -s 1g /tmp/tmpfs
+          sudo sysctl debug.lowpri_throttle_enabled=0
+          echo "tests.workDir=/tmp/tmpfs/lucene" >> build-options.local.properties
+
+      - name: Run gradle tests
+        run: ./gradlew displayGradleDiagnostics allOptions test "-Ptask.times=true" "-Pvalidation.errorprone=false"
+        env:
+          # Set to the defaults to override the "CI"-based logic that would enable C2
+          # we can't afford C2 on github runners.
+          TEST_JVM_ARGS: "-XX:TieredStopAtLevel=1 -XX:+UseParallelGC -XX:ActiveProcessorCount=1"
+
+      - name: List automatically-initialized gradle.properties
+        run: cat gradle.properties

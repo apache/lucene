@@ -74,7 +74,7 @@ public abstract class PresearcherTestBase extends MonitorTestBase {
 
   public void testMatchAllQueryHandling() throws IOException {
     try (Monitor monitor = newMonitor()) {
-      monitor.register(new MonitorQuery("1", new MatchAllDocsQuery()));
+      monitor.register(new MonitorQuery("1", MatchAllDocsQuery.INSTANCE));
       assertEquals(
           1, monitor.match(buildDoc("f", "wibble"), QueryMatch.SIMPLE_MATCHER).getMatchCount());
     }
@@ -83,7 +83,7 @@ public abstract class PresearcherTestBase extends MonitorTestBase {
   public void testNegativeQueryHandling() throws IOException {
     Query q =
         new BooleanQuery.Builder()
-            .add(new MatchAllDocsQuery(), BooleanClause.Occur.SHOULD)
+            .add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.SHOULD)
             .add(new TermQuery(new Term("f", "foo")), BooleanClause.Occur.MUST_NOT)
             .build();
     try (Monitor monitor = newMonitor()) {
@@ -101,7 +101,7 @@ public abstract class PresearcherTestBase extends MonitorTestBase {
   public void testAnyTokenHandling() throws IOException {
 
     try (Monitor monitor = newMonitor()) {
-      monitor.register(new MonitorQuery("1", new MatchAllDocsQuery()));
+      monitor.register(new MonitorQuery("1", MatchAllDocsQuery.INSTANCE));
       MatchingQueries<QueryMatch> matches =
           monitor.match(buildDoc("f", "wibble"), QueryMatch.SIMPLE_MATCHER);
       assertEquals(1, matches.getMatchCount());

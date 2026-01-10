@@ -30,12 +30,16 @@ import java.io.OutputStream;
 class GeoStandardCircle extends GeoBaseCircle {
   /** Center of circle */
   protected final GeoPoint center;
+
   /** Cutoff angle of circle (not quite the same thing as radius) */
   protected final double cutoffAngle;
+
   /** The plane describing the circle (really an ellipse on a non-spherical world) */
   protected final SidedPlane circlePlane;
+
   /** A point that is on the world and on the circle plane */
   protected final GeoPoint[] edgePoints;
+
   /** Notable points for a circle -- there aren't any */
   protected static final GeoPoint[] circlePoints = new GeoPoint[0];
 

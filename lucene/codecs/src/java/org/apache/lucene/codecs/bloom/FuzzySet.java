@@ -24,6 +24,7 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.StringHelper;
 
 /**
  * A class used to represent a set of many, potentially large, values (e.g. many long strings such
@@ -53,9 +54,8 @@ public class FuzzySet implements Accountable {
     NO
   };
 
-  private HashFunction hashFunction;
-  private FixedBitSet filter;
-  private int bloomSize;
+  private final FixedBitSet filter;
+  private final int bloomSize;
   private final int hashCount;
 
   // The sizes of BitSet used are all numbers that, when expressed in binary form,
@@ -78,48 +78,18 @@ public class FuzzySet implements Accountable {
    * Rounds down required maxNumberOfBits to the nearest number that is made up of all ones as a
    * binary number. Use this method where controlling memory use is paramount.
    */
-  public static int getNearestSetSize(int maxNumberOfBits) {
+  private static int getNearestSetSize(int maxNumberOfBits) {
     int result = usableBitSetSizes[0];
-    for (int i = 0; i < usableBitSetSizes.length; i++) {
-      if (usableBitSetSizes[i] <= maxNumberOfBits) {
-        result = usableBitSetSizes[i];
+    for (int usableBitSetSize : usableBitSetSizes) {
+      if (usableBitSetSize <= maxNumberOfBits) {
+        result = usableBitSetSize;
       }
     }
     return result;
   }
 
-  /**
-   * Use this method to choose a set size where accuracy (low content saturation) is more important
-   * than deciding how much memory to throw at the problem.
-   *
-   * @param desiredSaturation A number between 0 and 1 expressing the % of bits set once all values
-   *     have been recorded
-   * @return The size of the set nearest to the required size
-   */
-  public static int getNearestSetSize(int maxNumberOfValuesExpected, float desiredSaturation) {
-    // Iterate around the various scales of bitset from smallest to largest looking for the first
-    // that
-    // satisfies value volumes at the chosen saturation level
-    for (int i = 0; i < usableBitSetSizes.length; i++) {
-      int numSetBitsAtDesiredSaturation = (int) (usableBitSetSizes[i] * desiredSaturation);
-      int estimatedNumUniqueValues =
-          getEstimatedNumberUniqueValuesAllowingForCollisions(
-              usableBitSetSizes[i], numSetBitsAtDesiredSaturation);
-      if (estimatedNumUniqueValues > maxNumberOfValuesExpected) {
-        return usableBitSetSizes[i];
-      }
-    }
-    return -1;
-  }
-
   public static FuzzySet createSetBasedOnMaxMemory(int maxNumBytes) {
-    int setSize = getNearestSetSize(maxNumBytes);
-    return new FuzzySet(new FixedBitSet(setSize + 1), setSize, 1);
-  }
-
-  public static FuzzySet createSetBasedOnQuality(
-      int maxNumUniqueValues, float desiredMaxSaturation, int version) {
-    int setSize = getNearestSetSize(maxNumUniqueValues, desiredMaxSaturation);
+    int setSize = getNearestSetSize(maxNumBytes * Byte.SIZE);
     return new FuzzySet(new FixedBitSet(setSize + 1), setSize, 1);
   }
 
@@ -138,7 +108,6 @@ public class FuzzySet implements Accountable {
     super();
     this.filter = filter;
     this.bloomSize = bloomSize;
-    this.hashFunction = MurmurHash64.INSTANCE;
     this.hashCount = hashCount;
   }
 
@@ -150,12 +119,14 @@ public class FuzzySet implements Accountable {
    * @return NO or MAYBE
    */
   public ContainsResult contains(BytesRef value) {
-    long hash = hashFunction.hash(value);
-    int msb = (int) (hash >>> Integer.SIZE);
-    int lsb = (int) hash;
+    long[] hash = StringHelper.murmurhash3_x64_128(value);
+
+    long msb = hash[0];
+    long lsb = hash[1];
     for (int i = 0; i < hashCount; i++) {
-      int bloomPos = (lsb + i * msb);
-      if (!mayContainValue(bloomPos)) {
+      // Bloom sizes are always base 2 and so can be ANDed for a fast modulo
+      int bloomPos = ((int) (lsb + i * msb)) & bloomSize;
+      if (filter.get(bloomPos) == false) {
         return ContainsResult.NO;
       }
     }
@@ -196,17 +167,9 @@ public class FuzzySet implements Accountable {
     int bloomSize = in.readInt();
     int numLongs = in.readInt();
     long[] longs = new long[numLongs];
-    for (int i = 0; i < numLongs; i++) {
-      longs[i] = in.readLong();
-    }
+    in.readLongs(longs, 0, numLongs);
     FixedBitSet bits = new FixedBitSet(longs, bloomSize + 1);
     return new FuzzySet(bits, bloomSize, hashCount);
-  }
-
-  private boolean mayContainValue(int aHash) {
-    // Bloom sizes are always base 2 and so can be ANDed for a fast modulo
-    int pos = aHash & bloomSize;
-    return filter.get(pos);
   }
 
   /**
@@ -216,15 +179,14 @@ public class FuzzySet implements Accountable {
    * is modulo n'd where n is the chosen size of the internal bitset.
    *
    * @param value the key value to be hashed
-   * @throws IOException If there is a low-level I/O error
    */
-  public void addValue(BytesRef value) throws IOException {
-    long hash = hashFunction.hash(value);
-    int msb = (int) (hash >>> Integer.SIZE);
-    int lsb = (int) hash;
+  public void addValue(BytesRef value) {
+    long[] hash = StringHelper.murmurhash3_x64_128(value);
+    long msb = hash[0];
+    long lsb = hash[1];
     for (int i = 0; i < hashCount; i++) {
       // Bitmasking using bloomSize is effectively a modulo operation.
-      int bloomPos = (lsb + i * msb) & bloomSize;
+      int bloomPos = ((int) (lsb + i * msb)) & bloomSize;
       filter.set(bloomPos);
     }
   }
@@ -271,18 +233,12 @@ public class FuzzySet implements Accountable {
   }
 
   public int getEstimatedUniqueValues() {
-    return getEstimatedNumberUniqueValuesAllowingForCollisions(bloomSize, filter.cardinality());
-  }
-
-  // Given a set size and a the number of set bits, produces an estimate of the number of unique
-  // values recorded
-  public static int getEstimatedNumberUniqueValuesAllowingForCollisions(
-      int setSize, int numRecordedBits) {
-    double setSizeAsDouble = setSize;
-    double numRecordedBitsAsDouble = numRecordedBits;
+    double setSizeAsDouble = bloomSize;
+    double numRecordedBitsAsDouble = filter.cardinality();
+    double hashCountAsDouble = hashCount;
     double saturation = numRecordedBitsAsDouble / setSizeAsDouble;
     double logInverseSaturation = Math.log(1 - saturation) * -1;
-    return (int) (setSizeAsDouble * logInverseSaturation);
+    return (int) (setSizeAsDouble * logInverseSaturation / hashCountAsDouble);
   }
 
   public float getTargetMaxSaturation() {
@@ -302,9 +258,7 @@ public class FuzzySet implements Accountable {
   @Override
   public String toString() {
     return getClass().getSimpleName()
-        + "(hash="
-        + hashFunction
-        + ", k="
+        + "(k="
         + hashCount
         + ", bits="
         + filter.cardinality()

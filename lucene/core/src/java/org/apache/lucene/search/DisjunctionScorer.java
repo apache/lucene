@@ -20,44 +20,40 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import org.apache.lucene.util.FloatComparator;
 import org.apache.lucene.util.PriorityQueue;
 
 /** Base class for Scorers that score disjunctions. */
 abstract class DisjunctionScorer extends Scorer {
 
+  private final int numClauses;
   private final boolean needsScores;
 
-  private final DisiPriorityQueue subScorers;
-  private final DocIdSetIterator approximation;
+  private final DisjunctionDISIApproximation approximation;
   private final TwoPhase twoPhase;
 
-  protected DisjunctionScorer(Weight weight, List<Scorer> subScorers, ScoreMode scoreMode)
+  protected DisjunctionScorer(List<Scorer> subScorers, ScoreMode scoreMode, long leadCost)
       throws IOException {
-    super(weight);
     if (subScorers.size() <= 1) {
       throw new IllegalArgumentException("There must be at least 2 subScorers");
     }
-    this.subScorers = new DisiPriorityQueue(subScorers.size());
-    for (Scorer scorer : subScorers) {
-      final DisiWrapper w = new DisiWrapper(scorer);
-      this.subScorers.add(w);
-    }
+    this.numClauses = subScorers.size();
     this.needsScores = scoreMode != ScoreMode.COMPLETE_NO_SCORES;
-    this.approximation = new DisjunctionDISIApproximation(this.subScorers);
-
     boolean hasApproximation = false;
     float sumMatchCost = 0;
     long sumApproxCost = 0;
-    // Compute matchCost as the average over the matchCost of the subScorers.
-    // This is weighted by the cost, which is an expected number of matching documents.
-    for (DisiWrapper w : this.subScorers) {
+    List<DisiWrapper> wrappers = new ArrayList<>();
+    for (Scorer scorer : subScorers) {
+      DisiWrapper w = new DisiWrapper(scorer, false);
       long costWeight = (w.cost <= 1) ? 1 : w.cost;
       sumApproxCost += costWeight;
       if (w.twoPhaseView != null) {
         hasApproximation = true;
         sumMatchCost += w.matchCost * costWeight;
       }
+      wrappers.add(w);
     }
+    this.approximation = new DisjunctionDISIApproximation(wrappers, leadCost);
 
     if (hasApproximation == false) { // no sub scorer supports approximations
       twoPhase = null;
@@ -93,12 +89,7 @@ abstract class DisjunctionScorer extends Scorer {
       super(approximation);
       this.matchCost = matchCost;
       unverifiedMatches =
-          new PriorityQueue<DisiWrapper>(DisjunctionScorer.this.subScorers.size()) {
-            @Override
-            protected boolean lessThan(DisiWrapper a, DisiWrapper b) {
-              return a.matchCost < b.matchCost;
-            }
-          };
+          PriorityQueue.usingComparator(numClauses, FloatComparator.comparing(d -> d.matchCost));
     }
 
     DisiWrapper getSubMatches() throws IOException {
@@ -110,7 +101,18 @@ abstract class DisjunctionScorer extends Scorer {
         }
       }
       unverifiedMatches.clear();
+      assert assertVerifiedMatchesApproximationDocID();
       return verifiedMatches;
+    }
+
+    private boolean assertVerifiedMatchesApproximationDocID() {
+      int docID = docID();
+      for (DisiWrapper w = verifiedMatches; w != null; w = w.next) {
+        if (w.doc != docID) {
+          return false;
+        }
+      }
+      return true;
     }
 
     @Override
@@ -118,7 +120,7 @@ abstract class DisjunctionScorer extends Scorer {
       verifiedMatches = null;
       unverifiedMatches.clear();
 
-      for (DisiWrapper w = subScorers.topList(); w != null; ) {
+      for (DisiWrapper w = DisjunctionScorer.this.approximation.topList(); w != null; ) {
         DisiWrapper next = w.next;
 
         if (w.twoPhaseView == null) {
@@ -162,12 +164,12 @@ abstract class DisjunctionScorer extends Scorer {
 
   @Override
   public final int docID() {
-    return subScorers.top().doc;
+    return approximation.docID();
   }
 
   DisiWrapper getSubMatches() throws IOException {
     if (twoPhase == null) {
-      return subScorers.topList();
+      return approximation.topList();
     } else {
       return twoPhase.getSubMatches();
     }

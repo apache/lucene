@@ -42,8 +42,9 @@ package org.apache.lucene.analysis.en;
 /** A list of words used by Kstem */
 class KStemData1 {
   private KStemData1() {}
+
   // KStemData1 ... KStemData8 are created from "head_word_list.txt"
-  static String[] data = {
+  static final String[] data = {
     "aback", "abacus", "abandon", "abandoned", "abase",
     "abash", "abate", "abattoir", "abbess", "abbey",
     "abbot", "abbreviate", "abbreviation", "abc", "abdicate",

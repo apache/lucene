@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.Query;
@@ -65,9 +64,7 @@ abstract class MinimizingConjunctionIntervalsSource extends IntervalsSource {
     }
     IntervalIterator it =
         combine(
-            subs.stream()
-                .map(m -> IntervalMatches.wrapMatches(m, doc))
-                .collect(Collectors.toList()),
+            subs.stream().map(m -> IntervalMatches.wrapMatches(m, doc)).toList(),
             cacheIterators(subs));
     if (it.advance(doc) != doc) {
       return null;

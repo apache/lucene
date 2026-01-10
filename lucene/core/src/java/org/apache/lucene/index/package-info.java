@@ -70,28 +70,33 @@
  * <h3>IndexReader</h3>
  *
  * <p>{@link org.apache.lucene.index.IndexReader} is used to read data from the index, and supports
- * searching. Many thread-safe readers may be {@link org.apache.lucene.index.DirectoryReader#open}
- * concurrently with a single (or no) writer. Each reader maintains a consistent "point in time"
- * view of an index and must be explicitly refreshed (see {@link
- * org.apache.lucene.index.DirectoryReader#openIfChanged}) in order to incorporate writes that may
- * occur after it is opened. <a id="segments"></a>
+ * searching. Many thread-safe readers may be {@link org.apache.lucene.index.DirectoryReader#open
+ * open} concurrently with a single (or no) writer. Each reader maintains a consistent "point in
+ * time" view of an index and must be explicitly refreshed (see {@link
+ * org.apache.lucene.index.DirectoryReader#openIfChanged(DirectoryReader, IndexWriter)}) in order to
+ * incorporate writes that may occur after it is opened. <a id="segments"></a>
  *
  * <h3>Segments and docids</h3>
  *
  * <p>Lucene's index is composed of segments, each of which contains a subset of all the documents
  * in the index, and is a complete searchable index in itself, over that subset. As documents are
  * written to the index, new segments are created and flushed to directory storage. Segments are
- * immutable; updates and deletions may only create new segments and do not modify existing ones.
- * Over time, the writer merges groups of smaller segments into single larger ones in order to
+ * composed of an immutable core and per-commit live documents and doc-value updates. Insertions add
+ * new segments. Deletions and doc-value updates in a given segment create a new segment that shares
+ * the same core as the previous segment and new live docs for this segment. Updates are implemented
+ * as an atomic insertion and deletion.
+ *
+ * <p>Over time, the writer merges groups of smaller segments into single larger ones in order to
  * maintain an index that is efficient to search, and to reclaim dead space left behind by deleted
  * (and updated) documents.
  *
  * <p>Each document is identified by a 32-bit number, its "docid," and is composed of a collection
- * of Field values of diverse types (postings, stored fields, doc values, and points). Docids come
- * in two flavors: global and per-segment. A document's global docid is just the sum of its
- * per-segment docid and that segment's base docid offset. External, high-level APIs only handle
- * global docids, but internal APIs that reference a {@link org.apache.lucene.index.LeafReader},
- * which is a reader for a single segment, deal in per-segment docids.
+ * of Field values of diverse types (postings, stored fields, term vectors, doc values, points and
+ * knn vectors). Docids come in two flavors: global and per-segment. A document's global docid is
+ * just the sum of its per-segment docid and that segment's base docid offset. External, high-level
+ * APIs only handle global docids, but internal APIs that reference a {@link
+ * org.apache.lucene.index.LeafReader}, which is a reader for a single segment, deal in per-segment
+ * docids.
  *
  * <p>Docids are assigned sequentially within each segment (starting at 0). Thus the number of
  * documents in a segment is the same as its maximum docid; some may be deleted, but their docids
@@ -117,45 +122,31 @@
  * values given a docid. All stored field values for a document are stored together in a block.
  * Different types of stored field provide high-level datatypes such as strings and numbers on top
  * of the underlying bytes. Stored field values are usually retrieved by the searcher using an
- * implementation of {@link org.apache.lucene.index.StoredFieldVisitor}. <a id="docvalues"></a>
+ * implementation of {@link org.apache.lucene.index.StoredFieldVisitor}. <a id="termvectors"></a>
+ *
+ * <p>{@link org.apache.lucene.index.TermVectors} store a per-document inverted index. They are
+ * useful for finding similar documents, called MoreLikeThis in Lucene. <a id="docvalues"></a>
  *
  * <p>{@link org.apache.lucene.index.DocValues} fields are what are sometimes referred to as
  * columnar, or column-stride fields, by analogy to relational database terminology, in which
  * documents are considered as rows, and fields, columns. DocValues fields store values per-field: a
  * value for every document is held in a single data structure, providing for rapid, sequential
  * lookup of a field-value given a docid. These fields are used for efficient value-based sorting,
- * and for faceting, but they are not useful for filtering. <a id="points"></a>
+ * for faceting, and sometimes for filtering on the least selective clauses of a query. <a
+ * id="points"></a>
  *
  * <p>{@link org.apache.lucene.index.PointValues} represent numeric values using a kd-tree data
  * structure. Efficient 1- and higher dimensional implementations make these the choice for numeric
- * range and interval queries, and geo-spatial queries. <a id="postings"></a>
+ * range and interval queries, and geo-spatial queries. <a id="knnvectors"></a>
+ *
+ * <p>{@link org.apache.lucene.index.KnnVectorValues} represent dense numeric vectors whose
+ * dimensions may either be bytes or floats. They are indexed in a way that allows searching for
+ * nearest neighbors. The vectors are typically produced by a machine-learned model, and used to
+ * perform semantic search.
+ *
+ * <p><a id="postings"></a>
  *
  * <h2>Postings APIs</h2>
- *
- * <a id="fields"></a>
- *
- * <h3>Fields </h3>
- *
- * <p>{@link org.apache.lucene.index.Fields} is the initial entry point into the postings APIs, this
- * can be obtained in several ways:
- *
- * <pre class="prettyprint">
- * // access indexed fields for an index segment
- * Fields fields = reader.fields();
- * // access term vector fields for a specified document
- * TermVectors vectors = reader.termVectors();
- * Fields fields = vectors.get(docid);
- * </pre>
- *
- * Fields implements Java's Iterable interface, so it's easy to enumerate the list of fields:
- *
- * <pre class="prettyprint">
- * // enumerate list of fields
- * for (String field : fields) {
- *   // access the terms for this field
- *   Terms terms = fields.terms(field);
- * }
- * </pre>
  *
  * <a id="terms"></a>
  *
@@ -165,15 +156,16 @@
  * exposes some metadata and <a href="#fieldstats">statistics</a>, and an API for enumeration.
  *
  * <pre class="prettyprint">
+ * Terms terms = leafReader.terms("body");
  * // metadata about the field
  * System.out.println("positions? " + terms.hasPositions());
  * System.out.println("offsets? " + terms.hasOffsets());
  * System.out.println("payloads? " + terms.hasPayloads());
  * // iterate through terms
- * TermsEnum termsEnum = terms.iterator(null);
+ * TermsEnum termsEnum = terms.iterator();
  * BytesRef term = null;
  * while ((term = termsEnum.next()) != null) {
- *   doSomethingWith(termsEnum.term());
+ *   doSomethingWith(term);
  * }
  * </pre>
  *
@@ -188,9 +180,9 @@
  *   // get the document frequency
  *   System.out.println(termsEnum.docFreq());
  *   // enumerate through documents
- *   PostingsEnum docs = termsEnum.postings(null, null);
+ *   PostingsEnum docs = termsEnum.postings(null);
  *   // enumerate through documents and positions
- *   PostingsEnum docsAndPositions = termsEnum.postings(null, null, PostingsEnum.FLAG_POSITIONS);
+ *   PostingsEnum docsAndPositions = termsEnum.postings(null, PostingsEnum.POSITIONS);
  * }
  * </pre>
  *
@@ -199,7 +191,7 @@
  * <h3>Documents </h3>
  *
  * <p>{@link org.apache.lucene.index.PostingsEnum} is an extension of {@link
- * org.apache.lucene.search.DocIdSetIterator}that iterates over the list of documents for a term,
+ * org.apache.lucene.search.DocIdSetIterator} that iterates over the list of documents for a term,
  * along with the term frequency within that document.
  *
  * <pre class="prettyprint">
@@ -207,12 +199,12 @@
  * while ((docid = docsEnum.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
  *   System.out.println(docid);
  *   System.out.println(docsEnum.freq());
- *  }
+ * }
  * </pre>
  *
  * <a id="positions"></a>
  *
- * <h3>Positions </h3>
+ * <h3>Positions</h3>
  *
  * <p>PostingsEnum also allows iteration of the positions a term occurred within the document, and
  * any additional per-position information (offsets and payload). The information available is
@@ -220,16 +212,38 @@
  *
  * <pre class="prettyprint">
  * int docid;
- * PostingsEnum postings = termsEnum.postings(null, null, PostingsEnum.FLAG_PAYLOADS | PostingsEnum.FLAG_OFFSETS);
+ * PostingsEnum postings = termsEnum.postings(null, PostingsEnum.PAYLOADS | PostingsEnum.OFFSETS);
  * while ((docid = postings.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
  *   System.out.println(docid);
  *   int freq = postings.freq();
  *   for (int i = 0; i &lt; freq; i++) {
- *    System.out.println(postings.nextPosition());
- *    System.out.println(postings.startOffset());
- *    System.out.println(postings.endOffset());
- *    System.out.println(postings.getPayload());
+ *     System.out.println(postings.nextPosition());
+ *     System.out.println(postings.startOffset());
+ *     System.out.println(postings.endOffset());
+ *     System.out.println(postings.getPayload());
  *   }
+ * }
+ * </pre>
+ *
+ * <h3>Impacts</h3>
+ *
+ * <p>TermsEnum also allows returning an {@link org.apache.lucene.index.ImpactsEnum}, an extension
+ * of PostingsEnum that exposes pareto-optimal tuples of (term frequency, length normalization
+ * factor) per block of postings. It is typically used to compute the maximum possible score over
+ * these blocks of postings, so that they can be skipped if they cannot possibly produce a
+ * competitive hit.
+ *
+ * <pre class="prettyprint">
+ * int docid;
+ * ImpactsEnum impactsEnum = termsEnum.impacts(PostingsEnum.FREQS);
+ * int targetDocID = 420;
+ * impactsEnum.advanceShallow(targetDocID);
+ * // These impacts expose pareto-optimal tuples of (termFreq, lengthNorm) over various ranges of doc IDs.
+ * Impacts impacts = impactsEnum.getImpacts();
+ * for (int level = 0; level &lt; impacts.numLevels(); i++) {
+ *   int docIdUpTo = impacts.getDocIdUpTo(level);
+ *   // List of pareto-optimal (termFreq, lengthNorm) tuples between targetDocID inclusive and docIdUpTo inclusive.
+ *   List&lt;Impact&gt; perLevelImpacts = impacts.getImpacts(level);
  * }
  * </pre>
  *
@@ -286,7 +300,6 @@
  *       (excluding deleted documents) in the index.
  *   <li>{@link org.apache.lucene.index.IndexReader#numDeletedDocs}: Returns the number of deleted
  *       documents in the index.
- *   <li>{@link org.apache.lucene.index.Fields#size}: Returns the number of indexed fields.
  * </ul>
  *
  * <a id="documentstats"></a>

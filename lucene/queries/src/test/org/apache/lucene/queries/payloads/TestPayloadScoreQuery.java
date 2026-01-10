@@ -150,6 +150,8 @@ public class TestPayloadScoreQuery extends LuceneTestCase {
         q, new AveragePayloadFunction(), new int[] {122, 222, 22}, new float[] {4.0f, 4.0f, 3.0f});
   }
 
+  // TODO: incredibly slow
+  @Nightly
   @Test
   public void testNestedNearQuery() throws Exception {
 
@@ -208,6 +210,8 @@ public class TestPayloadScoreQuery extends LuceneTestCase {
     }
   }
 
+  // TODO: incredibly slow
+  @Nightly
   @Test
   public void testSpanContainingQuery() throws Exception {
 
@@ -270,9 +274,9 @@ public class TestPayloadScoreQuery extends LuceneTestCase {
   private static IndexSearcher searcher;
   private static IndexReader reader;
   private static Directory directory;
-  private static JustScorePayloadSimilarity similarity = new JustScorePayloadSimilarity();
-  private static byte[] payload2 = new byte[] {2};
-  private static byte[] payload4 = new byte[] {4};
+  private static final JustScorePayloadSimilarity similarity = new JustScorePayloadSimilarity();
+  private static final byte[] payload2 = new byte[] {2};
+  private static final byte[] payload4 = new byte[] {4};
 
   private static class PayloadAnalyzer extends Analyzer {
     @Override

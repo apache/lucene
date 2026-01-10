@@ -24,13 +24,10 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Consumer;
-import java.util.function.IntPredicate;
-import java.util.stream.Collectors;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.fst.FST;
@@ -63,12 +60,7 @@ class GeneratingSuggester {
 
   private List<Weighted<Root<String>>> findSimilarDictionaryEntries(
       String word, WordCase originalCase) {
-    Comparator<Weighted<Root<String>>> natural = Comparator.naturalOrder();
-    PriorityQueue<Weighted<Root<String>>> roots = new PriorityQueue<>(natural.reversed());
-
-    char[] excludeFlags = dictionary.allNonSuggestibleFlags();
-    FlagEnumerator.Lookup flagLookup = dictionary.flagLookup;
-    IntPredicate isSuggestible = formId -> !flagLookup.hasAnyFlag(formId, excludeFlags);
+    PriorityQueue<Weighted<Root<String>>> roots = new PriorityQueue<>(Comparator.reverseOrder());
 
     boolean ignoreTitleCaseRoots = originalCase == WordCase.LOWER && !dictionary.hasLanguage("de");
     TrigramAutomaton automaton = new TrigramAutomaton(word);
@@ -89,8 +81,7 @@ class GeneratingSuggester {
           CharsRef rootChars = entry.root();
           sc += commonPrefix(word, rootChars) - longerWorsePenalty(word.length(), rootChars.length);
 
-          boolean overflow = roots.size() == MAX_ROOTS;
-          if (overflow && isWorseThan(sc, rootChars, roots.peek())) {
+          if (roots.size() == MAX_ROOTS && isWorseThan(sc, rootChars, roots.peek())) {
             return;
           }
 
@@ -98,22 +89,20 @@ class GeneratingSuggester {
 
           String root = rootChars.toString();
           IntsRef forms = entry.forms();
-          for (int i = 0; i < forms.length; i++) {
-            if (isSuggestible.test(forms.ints[forms.offset + i])) {
-              roots.add(new Weighted<>(new Root<>(root, forms.ints[forms.offset + i]), sc));
-              if (overflow) {
-                roots.poll();
-              }
+          for (int i = 0; i < forms.length; i += dictionary.formStep()) {
+            int form = forms.ints[forms.offset + i];
+            roots.add(new Weighted<>(new Root<>(root, form), sc));
+            if (roots.size() > MAX_ROOTS) {
+              roots.poll();
             }
           }
         });
-
-    return roots.stream().sorted().collect(Collectors.toList());
+    return roots.stream().sorted().toList();
   }
 
   private static boolean isWorseThan(int score, CharsRef candidate, Weighted<Root<String>> root) {
     return score < root.score
-        || score == root.score && CharSequence.compare(candidate, root.word.word) > 0;
+        || score == root.score && CharSequence.compare(candidate, root.word.word()) > 0;
   }
 
   private void processSuggestibleWords(
@@ -141,7 +130,7 @@ class GeneratingSuggester {
         }
       }
     }
-    return expanded.stream().limit(MAX_GUESSES).collect(Collectors.toList());
+    return expanded.stream().limit(MAX_GUESSES).toList();
   }
 
   // find minimum threshold for a passable suggestion
@@ -164,11 +153,11 @@ class GeneratingSuggester {
     List<char[]> crossProducts = new ArrayList<>();
     Set<String> result = new LinkedHashSet<>();
 
-    if (!dictionary.hasFlag(root.entryId, dictionary.needaffix)) {
-      result.add(root.word);
+    if (!dictionary.hasFlag(root.entryId(), dictionary.needaffix)) {
+      result.add(root.word());
     }
 
-    char[] wordChars = root.word.toCharArray();
+    char[] wordChars = root.word().toCharArray();
 
     // suffixes
     processAffixes(
@@ -182,7 +171,7 @@ class GeneratingSuggester {
           }
 
           String suffix = misspelled.substring(misspelled.length() - suffixLength);
-          String withSuffix = root.word.substring(0, root.word.length() - stripLength) + suffix;
+          String withSuffix = root.word().substring(0, root.word().length() - stripLength) + suffix;
           result.add(withSuffix);
           if (dictionary.isCrossProduct(suffixId)) {
             crossProducts.add(withSuffix.toCharArray());
@@ -194,7 +183,7 @@ class GeneratingSuggester {
         true,
         misspelled,
         (prefixLength, prefixId) -> {
-          if (!dictionary.hasFlag(root.entryId, dictionary.affixData(prefixId, AFFIX_FLAG))
+          if (!dictionary.hasFlag(root.entryId(), dictionary.affixData(prefixId, AFFIX_FLAG))
               || !dictionary.isCrossProduct(prefixId)) {
             return;
           }
@@ -219,11 +208,11 @@ class GeneratingSuggester {
           if (hasCompatibleFlags(root, prefixId)
               && checkAffixCondition(prefixId, wordChars, stripLength, stemLength)) {
             String prefix = misspelled.substring(0, prefixLength);
-            result.add(prefix + root.word.substring(stripLength));
+            result.add(prefix + root.word().substring(stripLength));
           }
         });
 
-    return result.stream().limit(MAX_WORDS).collect(Collectors.toList());
+    return result.stream().limit(MAX_WORDS).toList();
   }
 
   private void processAffixes(boolean prefixes, String word, AffixProcessor processor) {
@@ -265,7 +254,7 @@ class GeneratingSuggester {
   }
 
   private boolean hasCompatibleFlags(Root<?> root, int affixId) {
-    if (!dictionary.hasFlag(root.entryId, dictionary.affixData(affixId, AFFIX_FLAG))) {
+    if (!dictionary.hasFlag(root.entryId(), dictionary.affixData(affixId, AFFIX_FLAG))) {
       return false;
     }
 
@@ -449,28 +438,8 @@ class GeneratingSuggester {
     return commonScore;
   }
 
-  private static class Weighted<T extends Comparable<T>> implements Comparable<Weighted<T>> {
-    final T word;
-    final int score;
-
-    Weighted(T word, int score) {
-      this.word = word;
-      this.score = score;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (!(o instanceof Weighted)) return false;
-      @SuppressWarnings("unchecked")
-      Weighted<T> that = (Weighted<T>) o;
-      return score == that.score && word.equals(that.word);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(word, score);
-    }
+  private record Weighted<T extends Comparable<T>>(T word, int score)
+      implements Comparable<Weighted<T>> {
 
     @Override
     public String toString() {

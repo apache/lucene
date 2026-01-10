@@ -84,7 +84,7 @@ public class TestExpressionSorts extends LuceneTestCase {
   public void testQueries() throws Exception {
     int n = atLeast(1);
     for (int i = 0; i < n; i++) {
-      assertQuery(new MatchAllDocsQuery());
+      assertQuery(MatchAllDocsQuery.INSTANCE);
       assertQuery(new TermQuery(new Term("english", "one")));
       BooleanQuery.Builder bq = new BooleanQuery.Builder();
       bq.add(new TermQuery(new Term("english", "one")), BooleanClause.Occur.SHOULD);
@@ -140,7 +140,7 @@ public class TestExpressionSorts extends LuceneTestCase {
     TopDocs actual = searcher.search(query, size, mutatedSort, random().nextBoolean());
     CheckHits.checkEqual(query, expected.scoreDocs, actual.scoreDocs);
 
-    if (size < actual.totalHits.value) {
+    if (size < actual.totalHits.value()) {
       expected = searcher.searchAfter(expected.scoreDocs[size - 1], query, size, sort);
       actual = searcher.searchAfter(actual.scoreDocs[size - 1], query, size, mutatedSort);
       CheckHits.checkEqual(query, expected.scoreDocs, actual.scoreDocs);

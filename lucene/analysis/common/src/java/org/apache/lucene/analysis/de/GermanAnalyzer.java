@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 package org.apache.lucene.analysis.de;
+
 // This file is encoded in UTF-8
 
 import java.io.IOException;
@@ -84,8 +85,6 @@ public final class GermanAnalyzer extends StopwordAnalyzerBase {
       }
     }
   }
-
-  /** Contains the stopwords used with the {@link StopFilter}. */
 
   /** Contains words that should be indexed but not stemmed. */
   private final CharArraySet exclusionSet;

@@ -170,7 +170,7 @@ public class SolrSynonymParser extends SynonymMap.Parser {
   }
 
   private String unescape(String s) {
-    if (s.indexOf("\\") >= 0) {
+    if (s.indexOf('\\') >= 0) {
       StringBuilder sb = new StringBuilder();
       for (int i = 0; i < s.length(); i++) {
         char ch = s.charAt(i);

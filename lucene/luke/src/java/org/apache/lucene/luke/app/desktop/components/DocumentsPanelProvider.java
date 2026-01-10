@@ -661,7 +661,7 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
   }
 
   private void showAddDocumentDialog() {
-    new DialogOpener<>(addDocDialogFactory).open("Add document", 600, 500, (factory) -> {});
+    new DialogOpener<>(addDocDialogFactory).open("Add document", 600, 500, (_) -> {});
   }
 
   private void showTermVectorDialog() {
@@ -834,7 +834,6 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
   public void displayDoc(int docid) {
     showDoc(docid);
   }
-  ;
 
   private void showDoc(int docid) {
     docNumSpnr.setValue(docid);

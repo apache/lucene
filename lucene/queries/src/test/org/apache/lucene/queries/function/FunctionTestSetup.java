@@ -49,18 +49,20 @@ public abstract class FunctionTestSetup extends LuceneTestCase {
    * Actual score computation order is slightly different than assumptios this allows for a small
    * amount of variation
    */
-  protected static float TEST_SCORE_TOLERANCE_DELTA = 0.001f;
+  protected static final float TEST_SCORE_TOLERANCE_DELTA = 0.001f;
 
   protected static final int N_DOCS = 17; // select a primary number > 2
 
   protected static final String ID_FIELD = "id";
   protected static final String TEXT_FIELD = "text";
   protected static final String INT_FIELD = "iii";
+
   /**
    * This field is multiValued and should give the exact same results as {@link #INT_FIELD} when
    * used with MIN selector
    */
   protected static final String INT_FIELD_MV_MIN = "iii_min";
+
   /**
    * This field is multiValued and should give the exact same results as {@link #INT_FIELD} when
    * used with MAX selector
@@ -68,11 +70,13 @@ public abstract class FunctionTestSetup extends LuceneTestCase {
   protected static final String INT_FIELD_MV_MAX = "iii_max";
 
   protected static final String FLOAT_FIELD = "fff";
+
   /**
    * This field is multiValued and should give the exact same results as {@link #FLOAT_FIELD} when
    * used with MIN selector
    */
   protected static final String FLOAT_FIELD_MV_MIN = "fff_min";
+
   /**
    * This field is multiValued and should give the exact same results as {@link #FLOAT_FIELD} when
    * used with MAX selector
@@ -107,7 +111,10 @@ public abstract class FunctionTestSetup extends LuceneTestCase {
     "text for the test, but oh much much safer. ",
   };
 
+  @SuppressWarnings("NonFinalStaticField")
   protected static Directory dir;
+
+  @SuppressWarnings("NonFinalStaticField")
   protected static Analyzer anlzr;
 
   @AfterClass

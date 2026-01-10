@@ -37,7 +37,7 @@ import org.apache.lucene.util.Bits;
  *
  * @lucene.experimental
  */
-public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
+public class FastTaxonomyFacetCounts extends TaxonomyFacets {
 
   /** Create {@code FastTaxonomyFacetCounts}, which also counts all facet labels. */
   public FastTaxonomyFacetCounts(TaxonomyReader taxoReader, FacetsConfig config, FacetsCollector fc)
@@ -53,7 +53,7 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
   public FastTaxonomyFacetCounts(
       String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config, FacetsCollector fc)
       throws IOException {
-    super(indexFieldName, taxoReader, config, AssociationAggregationFunction.SUM, fc);
+    super(indexFieldName, taxoReader, config, fc);
     count(fc.getMatchingDocs());
   }
 
@@ -65,17 +65,17 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
   public FastTaxonomyFacetCounts(
       String indexFieldName, IndexReader reader, TaxonomyReader taxoReader, FacetsConfig config)
       throws IOException {
-    super(indexFieldName, taxoReader, config, AssociationAggregationFunction.SUM, null);
+    super(indexFieldName, taxoReader, config, null);
     countAll(reader);
   }
 
   private void count(List<MatchingDocs> matchingDocs) throws IOException {
     for (MatchingDocs hits : matchingDocs) {
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         continue;
       }
       SortedNumericDocValues multiValued =
-          hits.context.reader().getSortedNumericDocValues(indexFieldName);
+          hits.context().reader().getSortedNumericDocValues(indexFieldName);
       if (multiValued == null) {
         continue;
       }
@@ -85,29 +85,29 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
 
       DocIdSetIterator valuesIt = singleValued != null ? singleValued : multiValued;
       DocIdSetIterator it =
-          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), valuesIt));
+          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits().iterator(), valuesIt));
 
       if (singleValued != null) {
-        if (values != null) {
+        if (counts != null) {
           while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-            values[(int) singleValued.longValue()]++;
+            counts[(int) singleValued.longValue()]++;
           }
         } else {
           while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-            sparseValues.addTo((int) singleValued.longValue(), 1);
+            sparseCounts.addTo((int) singleValued.longValue(), 1);
           }
         }
       } else {
-        if (values != null) {
+        if (counts != null) {
           while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
             for (int i = 0; i < multiValued.docValueCount(); i++) {
-              values[(int) multiValued.nextValue()]++;
+              counts[(int) multiValued.nextValue()]++;
             }
           }
         } else {
           while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
             for (int i = 0; i < multiValued.docValueCount(); i++) {
-              sparseValues.addTo((int) multiValued.nextValue(), 1);
+              sparseCounts.addTo((int) multiValued.nextValue(), 1);
             }
           }
         }
@@ -125,7 +125,7 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
         continue;
       }
       initializeValueCounters();
-      assert values != null;
+      assert counts != null;
 
       Bits liveDocs = context.reader().getLiveDocs();
 
@@ -135,7 +135,7 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
           for (int doc = singleValued.nextDoc();
               doc != DocIdSetIterator.NO_MORE_DOCS;
               doc = singleValued.nextDoc()) {
-            values[(int) singleValued.longValue()]++;
+            counts[(int) singleValued.longValue()]++;
           }
         } else {
           for (int doc = singleValued.nextDoc();
@@ -144,7 +144,7 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
             if (liveDocs.get(doc) == false) {
               continue;
             }
-            values[(int) singleValued.longValue()]++;
+            counts[(int) singleValued.longValue()]++;
           }
         }
       } else {
@@ -153,7 +153,7 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
               doc != DocIdSetIterator.NO_MORE_DOCS;
               doc = multiValued.nextDoc()) {
             for (int i = 0; i < multiValued.docValueCount(); i++) {
-              values[(int) multiValued.nextValue()]++;
+              counts[(int) multiValued.nextValue()]++;
             }
           }
         } else {
@@ -164,7 +164,7 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
               continue;
             }
             for (int i = 0; i < multiValued.docValueCount(); i++) {
-              values[(int) multiValued.nextValue()]++;
+              counts[(int) multiValued.nextValue()]++;
             }
           }
         }

@@ -19,7 +19,6 @@ package org.apache.lucene.search.grouping;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -110,7 +109,7 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
       groupedAirportFacetCollector =
           createRandomCollector(
               useDv ? "hotel_dv" : "hotel", useDv ? "airport_dv" : "airport", null, false);
-      indexSearcher.search(new MatchAllDocsQuery(), groupedAirportFacetCollector);
+      indexSearcher.search(MatchAllDocsQuery.INSTANCE, groupedAirportFacetCollector);
       int maxOffset = 5;
       airportResult =
           groupedAirportFacetCollector.mergeSegmentResults(
@@ -124,21 +123,21 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
 
       entries = airportResult.getFacetEntries(0, limit);
       assertEquals(2, entries.size());
-      assertEquals("ams", entries.get(0).getValue().utf8ToString());
-      assertEquals(2, entries.get(0).getCount());
-      assertEquals("dus", entries.get(1).getValue().utf8ToString());
-      assertEquals(1, entries.get(1).getCount());
+      assertEquals("ams", entries.get(0).value().utf8ToString());
+      assertEquals(2, entries.get(0).count());
+      assertEquals("dus", entries.get(1).value().utf8ToString());
+      assertEquals(1, entries.get(1).count());
 
       entries = airportResult.getFacetEntries(1, limit);
       assertEquals(1, entries.size());
-      assertEquals("dus", entries.get(0).getValue().utf8ToString());
-      assertEquals(1, entries.get(0).getCount());
+      assertEquals("dus", entries.get(0).value().utf8ToString());
+      assertEquals(1, entries.get(0).count());
     }
 
     GroupFacetCollector groupedDurationFacetCollector =
         createRandomCollector(
             useDv ? "hotel_dv" : "hotel", useDv ? "duration_dv" : "duration", null, false);
-    indexSearcher.search(new MatchAllDocsQuery(), groupedDurationFacetCollector);
+    indexSearcher.search(MatchAllDocsQuery.INSTANCE, groupedDurationFacetCollector);
     TermGroupFacetCollector.GroupedFacetResult durationResult =
         groupedDurationFacetCollector.mergeSegmentResults(10, 0, false);
     assertEquals(4, durationResult.getTotalCount());
@@ -146,10 +145,10 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
 
     entries = durationResult.getFacetEntries(0, 10);
     assertEquals(2, entries.size());
-    assertEquals("10", entries.get(0).getValue().utf8ToString());
-    assertEquals(2, entries.get(0).getCount());
-    assertEquals("5", entries.get(1).getValue().utf8ToString());
-    assertEquals(2, entries.get(1).getCount());
+    assertEquals("10", entries.get(0).value().utf8ToString());
+    assertEquals(2, entries.get(0).count());
+    assertEquals("5", entries.get(1).value().utf8ToString());
+    assertEquals(2, entries.get(1).count());
 
     // 5
     doc = new Document();
@@ -187,38 +186,38 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
     groupedAirportFacetCollector =
         createRandomCollector(
             useDv ? "hotel_dv" : "hotel", useDv ? "airport_dv" : "airport", null, !useDv);
-    indexSearcher.search(new MatchAllDocsQuery(), groupedAirportFacetCollector);
+    indexSearcher.search(MatchAllDocsQuery.INSTANCE, groupedAirportFacetCollector);
     airportResult = groupedAirportFacetCollector.mergeSegmentResults(3, 0, true);
     entries = airportResult.getFacetEntries(1, 2);
     assertEquals(2, entries.size());
     if (useDv) {
       assertEquals(6, airportResult.getTotalCount());
       assertEquals(0, airportResult.getTotalMissingCount());
-      assertEquals("bru", entries.get(0).getValue().utf8ToString());
-      assertEquals(2, entries.get(0).getCount());
-      assertEquals("", entries.get(1).getValue().utf8ToString());
-      assertEquals(1, entries.get(1).getCount());
+      assertEquals("bru", entries.get(0).value().utf8ToString());
+      assertEquals(2, entries.get(0).count());
+      assertEquals("", entries.get(1).value().utf8ToString());
+      assertEquals(1, entries.get(1).count());
     } else {
       assertEquals(5, airportResult.getTotalCount());
       assertEquals(1, airportResult.getTotalMissingCount());
-      assertEquals("bru", entries.get(0).getValue().utf8ToString());
-      assertEquals(2, entries.get(0).getCount());
-      assertEquals("dus", entries.get(1).getValue().utf8ToString());
-      assertEquals(1, entries.get(1).getCount());
+      assertEquals("bru", entries.get(0).value().utf8ToString());
+      assertEquals(2, entries.get(0).count());
+      assertEquals("dus", entries.get(1).value().utf8ToString());
+      assertEquals(1, entries.get(1).count());
     }
 
     groupedDurationFacetCollector =
         createRandomCollector(
             useDv ? "hotel_dv" : "hotel", useDv ? "duration_dv" : "duration", null, false);
-    indexSearcher.search(new MatchAllDocsQuery(), groupedDurationFacetCollector);
+    indexSearcher.search(MatchAllDocsQuery.INSTANCE, groupedDurationFacetCollector);
     durationResult = groupedDurationFacetCollector.mergeSegmentResults(10, 2, true);
     assertEquals(5, durationResult.getTotalCount());
     assertEquals(0, durationResult.getTotalMissingCount());
 
     entries = durationResult.getFacetEntries(1, 1);
     assertEquals(1, entries.size());
-    assertEquals("5", entries.get(0).getValue().utf8ToString());
-    assertEquals(2, entries.get(0).getCount());
+    assertEquals("5", entries.get(0).value().utf8ToString());
+    assertEquals(2, entries.get(0).count());
 
     // 9
     doc = new Document();
@@ -239,47 +238,47 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
     groupedAirportFacetCollector =
         createRandomCollector(
             useDv ? "hotel_dv" : "hotel", useDv ? "airport_dv" : "airport", null, false);
-    indexSearcher.search(new MatchAllDocsQuery(), groupedAirportFacetCollector);
+    indexSearcher.search(MatchAllDocsQuery.INSTANCE, groupedAirportFacetCollector);
     airportResult = groupedAirportFacetCollector.mergeSegmentResults(10, 0, false);
     entries = airportResult.getFacetEntries(0, 10);
     if (useDv) {
       assertEquals(8, airportResult.getTotalCount());
       assertEquals(0, airportResult.getTotalMissingCount());
       assertEquals(4, entries.size());
-      assertEquals("", entries.get(0).getValue().utf8ToString());
-      assertEquals(1, entries.get(0).getCount());
-      assertEquals("ams", entries.get(1).getValue().utf8ToString());
-      assertEquals(2, entries.get(1).getCount());
-      assertEquals("bru", entries.get(2).getValue().utf8ToString());
-      assertEquals(3, entries.get(2).getCount());
-      assertEquals("dus", entries.get(3).getValue().utf8ToString());
-      assertEquals(2, entries.get(3).getCount());
+      assertEquals("", entries.get(0).value().utf8ToString());
+      assertEquals(1, entries.get(0).count());
+      assertEquals("ams", entries.get(1).value().utf8ToString());
+      assertEquals(2, entries.get(1).count());
+      assertEquals("bru", entries.get(2).value().utf8ToString());
+      assertEquals(3, entries.get(2).count());
+      assertEquals("dus", entries.get(3).value().utf8ToString());
+      assertEquals(2, entries.get(3).count());
     } else {
       assertEquals(7, airportResult.getTotalCount());
       assertEquals(1, airportResult.getTotalMissingCount());
       assertEquals(3, entries.size());
-      assertEquals("ams", entries.get(0).getValue().utf8ToString());
-      assertEquals(2, entries.get(0).getCount());
-      assertEquals("bru", entries.get(1).getValue().utf8ToString());
-      assertEquals(3, entries.get(1).getCount());
-      assertEquals("dus", entries.get(2).getValue().utf8ToString());
-      assertEquals(2, entries.get(2).getCount());
+      assertEquals("ams", entries.get(0).value().utf8ToString());
+      assertEquals(2, entries.get(0).count());
+      assertEquals("bru", entries.get(1).value().utf8ToString());
+      assertEquals(3, entries.get(1).count());
+      assertEquals("dus", entries.get(2).value().utf8ToString());
+      assertEquals(2, entries.get(2).count());
     }
 
     groupedDurationFacetCollector =
         createRandomCollector(
             useDv ? "hotel_dv" : "hotel", useDv ? "duration_dv" : "duration", "1", false);
-    indexSearcher.search(new MatchAllDocsQuery(), groupedDurationFacetCollector);
+    indexSearcher.search(MatchAllDocsQuery.INSTANCE, groupedDurationFacetCollector);
     durationResult = groupedDurationFacetCollector.mergeSegmentResults(10, 0, true);
     assertEquals(5, durationResult.getTotalCount());
     assertEquals(0, durationResult.getTotalMissingCount());
 
     entries = durationResult.getFacetEntries(0, 10);
     assertEquals(2, entries.size());
-    assertEquals("10", entries.get(0).getValue().utf8ToString());
-    assertEquals(3, entries.get(0).getCount());
-    assertEquals("15", entries.get(1).getValue().utf8ToString());
-    assertEquals(2, entries.get(1).getCount());
+    assertEquals("10", entries.get(0).value().utf8ToString());
+    assertEquals(3, entries.get(0).count());
+    assertEquals("15", entries.get(1).value().utf8ToString());
+    assertEquals(2, entries.get(1).count());
 
     w.close();
     indexSearcher.getIndexReader().close();
@@ -358,7 +357,7 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
     IndexSearcher indexSearcher = newSearcher(DirectoryReader.open(dir));
     GroupFacetCollector groupedAirportFacetCollector =
         createRandomCollector(groupField + "_dv", "airport", null, true);
-    indexSearcher.search(new MatchAllDocsQuery(), groupedAirportFacetCollector);
+    indexSearcher.search(MatchAllDocsQuery.INSTANCE, groupedAirportFacetCollector);
     TermGroupFacetCollector.GroupedFacetResult airportResult =
         groupedAirportFacetCollector.mergeSegmentResults(10, 0, false);
     assertEquals(3, airportResult.getTotalCount());
@@ -366,10 +365,10 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
 
     List<TermGroupFacetCollector.FacetEntry> entries = airportResult.getFacetEntries(0, 10);
     assertEquals(2, entries.size());
-    assertEquals("ams", entries.get(0).getValue().utf8ToString());
-    assertEquals(2, entries.get(0).getCount());
-    assertEquals("dus", entries.get(1).getValue().utf8ToString());
-    assertEquals(1, entries.get(1).getCount());
+    assertEquals("ams", entries.get(0).value().utf8ToString());
+    assertEquals(2, entries.get(0).count());
+    assertEquals("dus", entries.get(1).value().utf8ToString());
+    assertEquals(1, entries.get(1).count());
 
     indexSearcher.getIndexReader().close();
     dir.close();
@@ -429,7 +428,7 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
             groupFacetCollector.mergeSegmentResults(size, minCount, orderByCount);
 
         List<TermGroupFacetCollector.FacetEntry> expectedFacetEntries =
-            expectedFacetResult.getFacetEntries();
+            expectedFacetResult.facetEntries();
         List<TermGroupFacetCollector.FacetEntry> actualFacetEntries =
             actualFacetResult.getFacetEntries(offset, limit);
 
@@ -449,17 +448,16 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
           System.out.println("Order by count: " + orderByCount);
 
           System.out.println("\n=== Expected: \n");
-          System.out.println("Total count " + expectedFacetResult.getTotalCount());
-          System.out.println("Total missing count " + expectedFacetResult.getTotalMissingCount());
+          System.out.println("Total count " + expectedFacetResult.totalCount());
+          System.out.println("Total missing count " + expectedFacetResult.totalMissingCount());
           int counter = 0;
           for (TermGroupFacetCollector.FacetEntry expectedFacetEntry : expectedFacetEntries) {
-            System.out.println(
-                String.format(
-                    Locale.ROOT,
-                    "%d. Expected facet value %s with count %d",
-                    counter++,
-                    expectedFacetEntry.getValue().utf8ToString(),
-                    expectedFacetEntry.getCount()));
+            System.out.printf(
+                Locale.ROOT,
+                "%d. Expected facet value %s with count %d%n",
+                counter++,
+                expectedFacetEntry.value().utf8ToString(),
+                expectedFacetEntry.count());
           }
 
           System.out.println("\n=== Actual: \n");
@@ -467,21 +465,20 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
           System.out.println("Total missing count " + actualFacetResult.getTotalMissingCount());
           counter = 0;
           for (TermGroupFacetCollector.FacetEntry actualFacetEntry : actualFacetEntries) {
-            System.out.println(
-                String.format(
-                    Locale.ROOT,
-                    "%d. Actual facet value %s with count %d",
-                    counter++,
-                    actualFacetEntry.getValue().utf8ToString(),
-                    actualFacetEntry.getCount()));
+            System.out.printf(
+                Locale.ROOT,
+                "%d. Actual facet value %s with count %d%n",
+                counter++,
+                actualFacetEntry.value().utf8ToString(),
+                actualFacetEntry.count());
           }
           System.out.println(
               "\n===================================================================================");
         }
 
-        assertEquals(expectedFacetResult.getTotalCount(), actualFacetResult.getTotalCount());
+        assertEquals(expectedFacetResult.totalCount(), actualFacetResult.getTotalCount());
         assertEquals(
-            expectedFacetResult.getTotalMissingCount(), actualFacetResult.getTotalMissingCount());
+            expectedFacetResult.totalMissingCount(), actualFacetResult.getTotalMissingCount());
         assertEquals(expectedFacetEntries.size(), actualFacetEntries.size());
         for (int i = 0; i < expectedFacetEntries.size(); i++) {
           TermGroupFacetCollector.FacetEntry expectedFacetEntry = expectedFacetEntries.get(i);
@@ -490,20 +487,15 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
               "i="
                   + i
                   + ": "
-                  + expectedFacetEntry.getValue().utf8ToString()
+                  + expectedFacetEntry.value().utf8ToString()
                   + " != "
-                  + actualFacetEntry.getValue().utf8ToString(),
-              expectedFacetEntry.getValue(),
-              actualFacetEntry.getValue());
+                  + actualFacetEntry.value().utf8ToString(),
+              expectedFacetEntry.value(),
+              actualFacetEntry.value());
           assertEquals(
-              "i="
-                  + i
-                  + ": "
-                  + expectedFacetEntry.getCount()
-                  + " != "
-                  + actualFacetEntry.getCount(),
-              expectedFacetEntry.getCount(),
-              actualFacetEntry.getCount());
+              "i=" + i + ": " + expectedFacetEntry.count() + " != " + actualFacetEntry.count(),
+              expectedFacetEntry.count(),
+              actualFacetEntry.count());
         }
       }
 
@@ -581,19 +573,15 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
 
     NavigableSet<String> uniqueFacetValues =
         new TreeSet<>(
-            new Comparator<String>() {
-
-              @Override
-              public int compare(String a, String b) {
-                if (a == b) {
-                  return 0;
-                } else if (a == null) {
-                  return -1;
-                } else if (b == null) {
-                  return 1;
-                } else {
-                  return a.compareTo(b);
-                }
+            (a, b) -> {
+              if (a == b) {
+                return 0;
+              } else if (a == null) {
+                return -1;
+              } else if (b == null) {
+                return 1;
+              } else {
+                return a.compareTo(b);
               }
             });
     Map<String, Map<String, Set<String>>> searchTermToFacetToGroups = new HashMap<>();
@@ -610,7 +598,7 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
 
       String contentStr = contentBrs[random.nextInt(contentBrs.length)];
       if (!searchTermToFacetToGroups.containsKey(contentStr)) {
-        searchTermToFacetToGroups.put(contentStr, new HashMap<String, Set<String>>());
+        searchTermToFacetToGroups.put(contentStr, new HashMap<>());
       }
       Map<String, Set<String>> facetToGroups = searchTermToFacetToGroups.get(contentStr);
 
@@ -619,7 +607,7 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
         String facetValue = facetValues.get(random.nextInt(facetValues.size()));
         uniqueFacetValues.add(facetValue);
         if (!facetToGroups.containsKey(facetValue)) {
-          facetToGroups.put(facetValue, new HashSet<String>());
+          facetToGroups.put(facetValue, new HashSet<>());
         }
         Set<String> groupsInFacet = facetToGroups.get(facetValue);
         groupsInFacet.add(groupValue);
@@ -634,7 +622,7 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
           String facetValue = facetValues.get(random.nextInt(facetValues.size()));
           uniqueFacetValues.add(facetValue);
           if (!facetToGroups.containsKey(facetValue)) {
-            facetToGroups.put(facetValue, new HashSet<String>());
+            facetToGroups.put(facetValue, new HashSet<>());
           }
           Set<String> groupsInFacet = facetToGroups.get(facetValue);
           groupsInFacet.add(groupValue);
@@ -740,21 +728,15 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
       }
     }
 
-    Collections.sort(
-        entries,
-        new Comparator<TermGroupFacetCollector.FacetEntry>() {
-
-          @Override
-          public int compare(
-              TermGroupFacetCollector.FacetEntry a, TermGroupFacetCollector.FacetEntry b) {
-            if (orderByCount) {
-              int cmp = b.getCount() - a.getCount();
-              if (cmp != 0) {
-                return cmp;
-              }
+    entries.sort(
+        (a, b) -> {
+          if (orderByCount) {
+            int cmp = b.count() - a.count();
+            if (cmp != 0) {
+              return cmp;
             }
-            return a.getValue().compareTo(b.getValue());
           }
+          return a.value().compareTo(b.value());
         });
 
     int endOffset = offset + limit;
@@ -818,31 +800,8 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
     }
   }
 
-  private static class GroupedFacetResult {
-
-    final int totalCount;
-    final int totalMissingCount;
-    final List<TermGroupFacetCollector.FacetEntry> facetEntries;
-
-    private GroupedFacetResult(
-        int totalCount,
-        int totalMissingCount,
-        List<TermGroupFacetCollector.FacetEntry> facetEntries) {
-      this.totalCount = totalCount;
-      this.totalMissingCount = totalMissingCount;
-      this.facetEntries = facetEntries;
-    }
-
-    public int getTotalCount() {
-      return totalCount;
-    }
-
-    public int getTotalMissingCount() {
-      return totalMissingCount;
-    }
-
-    public List<TermGroupFacetCollector.FacetEntry> getFacetEntries() {
-      return facetEntries;
-    }
-  }
+  private record GroupedFacetResult(
+      int totalCount,
+      int totalMissingCount,
+      List<TermGroupFacetCollector.FacetEntry> facetEntries) {}
 }

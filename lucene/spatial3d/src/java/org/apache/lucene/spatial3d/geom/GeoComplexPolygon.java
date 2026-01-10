@@ -748,9 +748,7 @@ class GeoComplexPolygon extends GeoBasePolygon {
       for (final TraversalStrategy ts : traversalStrategies) {
         try {
           return ts.apply(testPoint, testPointInSet, x, y, z);
-        } catch (
-            @SuppressWarnings("unused")
-            IllegalArgumentException e) {
+        } catch (IllegalArgumentException _) {
           // Continue
         }
       }
@@ -897,9 +895,7 @@ class GeoComplexPolygon extends GeoBasePolygon {
       // System.out.println(" creating sector linear crossing edge iterator");
       return new SectorLinearCrossingEdgeIterator(
           testPoint, plane, abovePlane, belowPlane, thePointX, thePointY, thePointZ);
-    } catch (
-        @SuppressWarnings("unused")
-        IllegalArgumentException e) {
+    } catch (IllegalArgumentException _) {
       // Assume we failed because we could not construct bounding planes, so do it another way.
       // System.out.println(" create full linear crossing edge iterator");
       return new FullLinearCrossingEdgeIterator(
@@ -1061,9 +1057,7 @@ class GeoComplexPolygon extends GeoBasePolygon {
 
         // System.out.println(" Check point in set? " + rval);
         return rval;
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException e) {
+      } catch (IllegalArgumentException _) {
         // Intersection point apparently was on edge, so try another strategy
         // System.out.println(" Trying dual crossing edge iterator");
         final CountingEdgeIterator edgeIterator =
@@ -1120,12 +1114,12 @@ class GeoComplexPolygon extends GeoBasePolygon {
    * into the traversal method of a tree, and each edge that matches will cause this object to be
    * called.
    */
-  private static interface EdgeIterator {
+  private interface EdgeIterator {
     /**
      * @param edge is the edge that matched.
      * @return true if the iteration should continue, false otherwise.
      */
-    public boolean matches(final Edge edge);
+    boolean matches(final Edge edge);
   }
 
   /**
@@ -1133,16 +1127,16 @@ class GeoComplexPolygon extends GeoBasePolygon {
    * implementing this interface into the traversal method of a tree, and each edge that matches
    * will cause this object to be called.
    */
-  private static interface CountingEdgeIterator extends EdgeIterator {
+  private interface CountingEdgeIterator extends EdgeIterator {
     /**
      * @return the number of edges that were crossed.
      */
-    public int getCrossingCount();
+    int getCrossingCount();
 
     /**
      * @return true if the endpoint was on an edge.
      */
-    public boolean isOnEdge();
+    boolean isOnEdge();
   }
 
   /**
@@ -2305,11 +2299,13 @@ class GeoComplexPolygon extends GeoBasePolygon {
    * to numerical issues.
    */
   private static final double DELTA_DISTANCE = Vector.MINIMUM_RESOLUTION;
+
   /**
    * This is the maximum number of iterations. If we get this high, effectively the planes are
    * parallel, and we treat that as a crossing.
    */
   private static final int MAX_ITERATIONS = 100;
+
   /**
    * This is the amount off of the envelope plane that we count as "enough" for a valid crossing
    * assessment.

@@ -100,11 +100,11 @@ def processTar(fileName, fOut):
         write(date, title, pending, fOut)
 
   didEnglish = True
-  
+
 # '/x/lucene/data/europarl/all.lines.txt'
 dirIn = sys.argv[1]
 fileOut = sys.argv[2]
-  
+
 fOut = open(fileOut, 'wb')
 
 for fileName in glob.glob('%s/??-??.tgz' % dirIn):

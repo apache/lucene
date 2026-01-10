@@ -25,7 +25,7 @@ import org.apache.lucene.index.LeafReaderContext;
 /**
  * A {@link Collector} which allows running a search with several {@link Collector}s. It offers a
  * static {@link #wrap} method which accepts a list of collectors and wraps them with {@link
- * MultiCollector}, while filtering out the <code>null</code> null ones.
+ * MultiCollector}, while filtering out the <code>null</code> ones.
  *
  * <p><b>NOTE:</b>When mixing collectors that want to skip low-scoring hits ({@link
  * ScoreMode#TOP_SCORES}) with ones that require to see all hits, such as mixing {@link
@@ -128,9 +128,7 @@ public class MultiCollector implements Collector {
       final LeafCollector leafCollector;
       try {
         leafCollector = collector.getLeafCollector(context);
-      } catch (
-          @SuppressWarnings("unused")
-          CollectionTerminatedException e) {
+      } catch (CollectionTerminatedException _) {
         // this leaf collector does not need this segment
         continue;
       }
@@ -219,6 +217,24 @@ public class MultiCollector implements Collector {
         if (collector != null) {
           try {
             collector.collect(doc);
+          } catch (CollectionTerminatedException _) {
+            collectors[i].finish();
+            collectors[i] = null;
+            if (allCollectorsTerminated()) {
+              throw new CollectionTerminatedException();
+            }
+          }
+        }
+      }
+    }
+
+    @Override
+    public void collectRange(int min, int max) throws IOException {
+      for (int i = 0; i < collectors.length; i++) {
+        final LeafCollector collector = collectors[i];
+        if (collector != null) {
+          try {
+            collector.collectRange(min, max);
           } catch (
               @SuppressWarnings("unused")
               CollectionTerminatedException e) {

@@ -34,11 +34,12 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.similarities.BM25Similarity;
+import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 
 /**
  * {@link Field} that can be used to store static scoring factors into documents. This is mostly
- * inspired from the work from Nick Craswell, Stephen Robertson, Hugo Zaragoza and Michael Taylor.
+ * inspired by the work of Nick Craswell, Stephen Robertson, Hugo Zaragoza and Michael Taylor:
  * Relevance weighting for query independent evidence. Proceedings of the 28th annual international
  * ACM SIGIR conference on Research and development in information retrieval. August 15-19, 2005,
  * Salvador, Brazil.
@@ -105,11 +106,17 @@ import org.apache.lucene.search.similarities.Similarity.SimScorer;
 public final class FeatureField extends Field {
 
   private static final FieldType FIELD_TYPE = new FieldType();
+  private static final FieldType FIELD_TYPE_STORE_TERM_VECTORS = new FieldType();
 
   static {
     FIELD_TYPE.setTokenized(false);
     FIELD_TYPE.setOmitNorms(true);
     FIELD_TYPE.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+
+    FIELD_TYPE_STORE_TERM_VECTORS.setTokenized(false);
+    FIELD_TYPE_STORE_TERM_VECTORS.setOmitNorms(true);
+    FIELD_TYPE_STORE_TERM_VECTORS.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+    FIELD_TYPE_STORE_TERM_VECTORS.setStoreTermVectors(true);
   }
 
   private float featureValue;
@@ -123,7 +130,21 @@ public final class FeatureField extends Field {
    * @param featureValue The value of the feature, must be a positive, finite, normal float.
    */
   public FeatureField(String fieldName, String featureName, float featureValue) {
-    super(fieldName, featureName, FIELD_TYPE);
+    this(fieldName, featureName, featureValue, false);
+  }
+
+  /**
+   * Create a feature.
+   *
+   * @param fieldName The name of the field to store the information into. All features may be
+   *     stored in the same field.
+   * @param featureName The name of the feature, eg. 'pagerank`. It will be indexed as a term.
+   * @param featureValue The value of the feature, must be a positive, finite, normal float.
+   * @param storeTermVectors Whether term vectors should be stored.
+   */
+  public FeatureField(
+      String fieldName, String featureName, float featureValue, boolean storeTermVectors) {
+    super(fieldName, featureName, storeTermVectors ? FIELD_TYPE_STORE_TERM_VECTORS : FIELD_TYPE);
     setFeatureValue(featureValue);
   }
 
@@ -164,6 +185,16 @@ public final class FeatureField extends Field {
     int freqBits = Float.floatToIntBits(featureValue);
     stream.setValues((String) fieldsData, freqBits >>> 15);
     return stream;
+  }
+
+  /**
+   * This is useful if you have multiple features sharing a name and you want to take action to
+   * deduplicate them.
+   *
+   * @return the feature value of this field.
+   */
+  public float getFeatureValue() {
+    return featureValue;
   }
 
   private static final class FeatureTokenStream extends TokenStream {
@@ -232,9 +263,27 @@ public final class FeatureField extends Field {
     @Override
     SimScorer scorer(float w) {
       return new SimScorer() {
+        private float doScore(float f) {
+          return (w * f);
+        }
+
         @Override
         public float score(float freq, long norm) {
-          return (w * decodeFeatureValue(freq));
+          float f = decodeFeatureValue(freq);
+          return doScore(f);
+        }
+
+        @Override
+        public Similarity.BulkSimScorer asBulkSimScorer() {
+          return new Similarity.BulkSimScorer() {
+            @Override
+            public void score(int size, float[] freqs, long[] norms, float[] scores) {
+              for (int i = 0; i < size; ++i) {
+                float f = decodeFeatureValue(freqs[i]);
+                scores[i] = doScore(f);
+              }
+            }
+          };
         }
       };
     }
@@ -272,7 +321,6 @@ public final class FeatureField extends Field {
       return true;
     }
   }
-  ;
 
   static final class LogFunction extends FeatureFunction {
 
@@ -304,9 +352,27 @@ public final class FeatureField extends Field {
     @Override
     SimScorer scorer(float weight) {
       return new SimScorer() {
+        private float doScore(float f) {
+          return (float) (weight * Math.log(scalingFactor + f));
+        }
+
         @Override
         public float score(float freq, long norm) {
-          return (float) (weight * Math.log(scalingFactor + decodeFeatureValue(freq)));
+          float f = decodeFeatureValue(freq);
+          return doScore(f);
+        }
+
+        @Override
+        public Similarity.BulkSimScorer asBulkSimScorer() {
+          return new Similarity.BulkSimScorer() {
+            @Override
+            public void score(int size, float[] freqs, long[] norms, float[] scores) {
+              for (int i = 0; i < size; ++i) {
+                float f = decodeFeatureValue(freqs[i]);
+                scores[i] = doScore(f);
+              }
+            }
+          };
         }
       };
     }
@@ -376,13 +442,31 @@ public final class FeatureField extends Field {
       }
       final float pivot = this.pivot; // unbox
       return new SimScorer() {
-        @Override
-        public float score(float freq, long norm) {
-          float f = decodeFeatureValue(freq);
+
+        private float doScore(float f) {
           // should be f / (f + k) but we rewrite it to
           // 1 - k / (f + k) to make sure it doesn't decrease
           // with f in spite of rounding
           return weight * (1 - pivot / (f + pivot));
+        }
+
+        @Override
+        public float score(float freq, long norm) {
+          float f = decodeFeatureValue(freq);
+          return doScore(f);
+        }
+
+        @Override
+        public Similarity.BulkSimScorer asBulkSimScorer() {
+          return new Similarity.BulkSimScorer() {
+            @Override
+            public void score(int size, float[] freqs, long[] norms, float[] scores) {
+              for (int i = 0; i < size; ++i) {
+                float f = decodeFeatureValue(freqs[i]);
+                scores[i] = doScore(f);
+              }
+            }
+          };
         }
       };
     }
@@ -440,13 +524,30 @@ public final class FeatureField extends Field {
     @Override
     SimScorer scorer(float weight) {
       return new SimScorer() {
-        @Override
-        public float score(float freq, long norm) {
-          float f = decodeFeatureValue(freq);
+        private float doScore(float f) {
           // should be f^a / (f^a + k^a) but we rewrite it to
           // 1 - k^a / (f + k^a) to make sure it doesn't decrease
           // with f in spite of rounding
           return (float) (weight * (1 - pivotPa / (Math.pow(f, a) + pivotPa)));
+        }
+
+        @Override
+        public float score(float freq, long norm) {
+          float f = decodeFeatureValue(freq);
+          return doScore(f);
+        }
+
+        @Override
+        public Similarity.BulkSimScorer asBulkSimScorer() {
+          return new Similarity.BulkSimScorer() {
+            @Override
+            public void score(int size, float[] freqs, long[] norms, float[] scores) {
+              for (int i = 0; i < size; ++i) {
+                float f = decodeFeatureValue(freqs[i]);
+                scores[i] = doScore(f);
+              }
+            }
+          };
         }
       };
     }
@@ -466,7 +567,7 @@ public final class FeatureField extends Field {
           Explanation.match(
               pivot, "k, pivot feature value that would give a score contribution equal to w/2"),
           Explanation.match(
-              pivot,
+              a,
               "a, exponent, higher values make the function grow slower before k and faster after k"),
           Explanation.match(featureValue, "S, feature value"));
     }

@@ -32,11 +32,11 @@ public abstract class MSBRadixSorter extends Sorter {
   // this is used as a protection against the fact that radix sort performs
   // worse when there are long common prefixes (probably because of cache
   // locality)
-  private static final int LEVEL_THRESHOLD = 8;
+  protected static final int LEVEL_THRESHOLD = 8;
   // size of histograms: 256 + 1 to indicate that the string is finished
   protected static final int HISTOGRAM_SIZE = 257;
-  // buckets below this size will be sorted with introsort
-  private static final int LENGTH_THRESHOLD = 100;
+  // buckets below this size will be sorted with fallback sorter
+  protected static final int LENGTH_THRESHOLD = 100;
 
   // we store one histogram per recursion level
   private final int[][] histograms = new int[LEVEL_THRESHOLD][];
@@ -130,15 +130,15 @@ public abstract class MSBRadixSorter extends Sorter {
   }
 
   protected void sort(int from, int to, int k, int l) {
-    if (to - from <= LENGTH_THRESHOLD || l >= LEVEL_THRESHOLD) {
-      introSort(from, to, k);
+    if (shouldFallback(from, to, l)) {
+      getFallbackSorter(k).sort(from, to);
     } else {
       radixSort(from, to, k, l);
     }
   }
 
-  private void introSort(int from, int to, int k) {
-    getFallbackSorter(k).sort(from, to);
+  protected boolean shouldFallback(int from, int to, int l) {
+    return to - from <= LENGTH_THRESHOLD || l >= LEVEL_THRESHOLD;
   }
 
   /**
@@ -213,7 +213,16 @@ public abstract class MSBRadixSorter extends Sorter {
    *
    * @see #buildHistogram
    */
+  // This method, and its namesakes, have been manually split to work around a JVM crash.
+  // See https://github.com/apache/lucene/issues/12898
   private int computeCommonPrefixLengthAndBuildHistogram(int from, int to, int k, int[] histogram) {
+    int commonPrefixLength = computeInitialCommonPrefixLength(from, k);
+    return computeCommonPrefixLengthAndBuildHistogramPart1(
+        from, to, k, histogram, commonPrefixLength);
+  }
+
+  // This method, and its namesakes, have been manually split to work around a JVM crash.
+  private int computeInitialCommonPrefixLength(int from, int k) {
     final int[] commonPrefix = this.commonPrefix;
     int commonPrefixLength = Math.min(commonPrefix.length, maxLength - k);
     for (int j = 0; j < commonPrefixLength; ++j) {
@@ -224,7 +233,13 @@ public abstract class MSBRadixSorter extends Sorter {
         break;
       }
     }
+    return commonPrefixLength;
+  }
 
+  // This method, and its namesakes, have been manually split to work around a JVM crash.
+  private int computeCommonPrefixLengthAndBuildHistogramPart1(
+      int from, int to, int k, int[] histogram, int commonPrefixLength) {
+    final int[] commonPrefix = this.commonPrefix;
     int i;
     outer:
     for (i = from + 1; i < to; ++i) {
@@ -233,19 +248,23 @@ public abstract class MSBRadixSorter extends Sorter {
         if (b != commonPrefix[j]) {
           commonPrefixLength = j;
           if (commonPrefixLength == 0) { // we have no common prefix
-            histogram[commonPrefix[0] + 1] = i - from;
-            histogram[b + 1] = 1;
             break outer;
           }
           break;
         }
       }
     }
+    return computeCommonPrefixLengthAndBuildHistogramPart2(
+        from, to, k, histogram, commonPrefixLength, i);
+  }
 
+  // This method, and its namesakes, have been manually split to work around a JVM crash.
+  private int computeCommonPrefixLengthAndBuildHistogramPart2(
+      int from, int to, int k, int[] histogram, int commonPrefixLength, int i) {
     if (i < to) {
       // the loop got broken because there is no common prefix
       assert commonPrefixLength == 0;
-      buildHistogram(i + 1, to, k, histogram);
+      buildHistogram(commonPrefix[0] + 1, i - from, i, to, k, histogram);
     } else {
       assert commonPrefixLength > 0;
       histogram[commonPrefix[0] + 1] = to - from;
@@ -258,7 +277,9 @@ public abstract class MSBRadixSorter extends Sorter {
    * Build an histogram of the k-th characters of values occurring between offsets {@code from} and
    * {@code to}, using {@link #getBucket}.
    */
-  private void buildHistogram(int from, int to, int k, int[] histogram) {
+  protected void buildHistogram(
+      int prefixCommonBucket, int prefixCommonLen, int from, int to, int k, int[] histogram) {
+    histogram[prefixCommonBucket] = prefixCommonLen;
     for (int i = from; i < to; ++i) {
       histogram[getBucket(i, k)]++;
     }

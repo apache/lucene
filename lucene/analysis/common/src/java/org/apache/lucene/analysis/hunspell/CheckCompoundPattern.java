@@ -34,11 +34,11 @@ class CheckCompoundPattern {
       throw new IllegalArgumentException("Invalid pattern: " + unparsed);
     }
 
-    int flagSep = parts[1].indexOf("/");
+    int flagSep = parts[1].indexOf('/');
     endChars = flagSep < 0 ? parts[1] : parts[1].substring(0, flagSep);
     endFlags = flagSep < 0 ? new char[0] : strategy.parseFlags(parts[1].substring(flagSep + 1));
 
-    flagSep = parts[2].indexOf("/");
+    flagSep = parts[2].indexOf('/');
     beginChars = flagSep < 0 ? parts[2] : parts[2].substring(0, flagSep);
     beginFlags = flagSep < 0 ? new char[0] : strategy.parseFlags(parts[2].substring(flagSep + 1));
 
@@ -52,7 +52,7 @@ class CheckCompoundPattern {
 
   boolean prohibitsCompounding(CharsRef word, int breakPos, Root<?> rootBefore, Root<?> rootAfter) {
     if (isNonAffixedPattern(endChars)) {
-      if (!charsMatch(word, breakPos - rootBefore.word.length(), rootBefore.word)) {
+      if (!charsMatch(word, breakPos - rootBefore.word().length(), rootBefore.word())) {
         return false;
       }
     } else if (!charsMatch(word, breakPos - endChars.length(), endChars)) {
@@ -60,7 +60,7 @@ class CheckCompoundPattern {
     }
 
     if (isNonAffixedPattern(beginChars)) {
-      if (!charsMatch(word, breakPos, rootAfter.word)) {
+      if (!charsMatch(word, breakPos, rootAfter.word())) {
         return false;
       }
     } else if (!charsMatch(word, breakPos, beginChars)) {
@@ -84,7 +84,7 @@ class CheckCompoundPattern {
 
   private boolean hasAllFlags(Root<?> root, char[] flags) {
     for (char flag : flags) {
-      if (!dictionary.hasFlag(root.entryId, flag)) {
+      if (!dictionary.hasFlag(root.entryId(), flag)) {
         return false;
       }
     }

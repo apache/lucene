@@ -31,8 +31,8 @@ doc.tokenized=true
 doc.term.vector=false
 log.step=2000
 
-docs.dir=reuters-out
-#docs.dir=reuters-111
+work.dir=data
+docs.dir=reuters21578
 
 #content.source=org.apache.lucene.benchmark.byTask.feeds.SingleDocSource
 content.source=org.apache.lucene.benchmark.byTask.feeds.ReutersContentSource
@@ -57,28 +57,28 @@ log.queries=true
         CloseIndex
     }
 
-    OpenReader  
+    OpenReader
     { "SearchSameRdr" Search > : 5000
-    CloseReader 
-                
+    CloseReader
+
     { "WarmNewRdr" Warm > : 50
-                
+
     { "SrchNewRdr" Search > : 500
-                
+
     { "SrchTrvNewRdr" SearchTrav > : 300
-                
+
     { "SrchTrvRetNewRdr" SearchTravRet > : 100
-                
-    OpenReader  
+
+    OpenReader
     [ "SearchSameRdr" Search > : 5000 : 2500
-    CloseReader 
-                
+    CloseReader
+
     [ "WarmNewRdr" Warm > : 50 : 25
-                
+
     [ "SrchNewRdr" Search > : 50 : 25
-                
+
     [ "SrchTrvNewRdr" SearchTrav > : 300 : 150
-                
+
     [ "SrchTrvRetNewRdr" SearchTravRet > : 100 : 50
 
     RepSumByPref MAddDocs

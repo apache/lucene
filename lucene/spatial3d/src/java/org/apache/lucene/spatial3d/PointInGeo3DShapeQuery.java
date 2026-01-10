@@ -26,7 +26,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.spatial3d.geom.GeoShape;
 import org.apache.lucene.spatial3d.geom.XYZBounds;
@@ -72,9 +72,8 @@ final class PointInGeo3DShapeQuery extends Query implements Accountable {
     // is an inverted structure and should be used in the first pass:
 
     return new ConstantScoreWeight(this, boost) {
-
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         LeafReader reader = context.reader();
         PointValues values = reader.getPointValues(field);
         if (values == null) {
@@ -103,11 +102,12 @@ final class PointInGeo3DShapeQuery extends Query implements Accountable {
         assert xyzSolid.getRelationship(shape) == GeoArea.WITHIN || xyzSolid.getRelationship(shape) == GeoArea.OVERLAPS: "expected WITHIN (1) or OVERLAPS (2) but got " + xyzSolid.getRelationship(shape) + "; shape="+shape+"; XYZSolid="+xyzSolid;
         */
 
-        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
 
         values.intersect(new PointInShapeIntersectVisitor(result, shape, shapeBounds));
 
-        return new ConstantScoreScorer(this, score(), scoreMode, result.build().iterator());
+        final var scorer = new ConstantScoreScorer(score(), scoreMode, result.build().iterator());
+        return new DefaultScorerSupplier(scorer);
       }
 
       @Override

@@ -64,6 +64,7 @@ public final class UkrainianMorfologikAnalyzer extends StopwordAnalyzerBase {
   }
 
   /** Returns a lazy singleton with the default Ukrainian resources. */
+  @SuppressWarnings("NonFinalStaticField")
   private static volatile DefaultResources defaultResources;
 
   private static DefaultResources getDefaultResources() {

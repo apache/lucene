@@ -20,7 +20,7 @@ import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 
-/** Require assertions for Lucene/Solr packages. */
+/** Require assertions for Lucene packages. */
 public class TestRuleAssertionsRequired implements TestRule {
   @Override
   public Statement apply(final Statement base, final Description description) {
@@ -29,9 +29,10 @@ public class TestRuleAssertionsRequired implements TestRule {
       public void evaluate() throws Throwable {
         try {
           // Make sure -ea matches -Dtests.asserts, to catch accidental mis-use:
-          if (LuceneTestCase.assertsAreEnabled != LuceneTestCase.TEST_ASSERTS_ENABLED) {
+          var assertsEnabled = LuceneTestCase.class.desiredAssertionStatus();
+          if (assertsEnabled != LuceneTestCase.TEST_ASSERTS_ENABLED) {
             String msg = "Assertions mismatch: ";
-            if (LuceneTestCase.assertsAreEnabled) {
+            if (assertsEnabled) {
               msg += "-ea was specified";
             } else {
               msg += "-ea was not specified";
@@ -44,9 +45,7 @@ public class TestRuleAssertionsRequired implements TestRule {
             System.err.println(msg);
             throw new Exception(msg);
           }
-        } catch (
-            @SuppressWarnings("unused")
-            AssertionError e) {
+        } catch (AssertionError _) {
           // Ok, enabled.
         }
 

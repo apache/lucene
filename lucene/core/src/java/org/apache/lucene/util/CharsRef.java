@@ -29,10 +29,13 @@ import java.util.Objects;
 public final class CharsRef implements Comparable<CharsRef>, CharSequence, Cloneable {
   /** An empty character array for convenience */
   public static final char[] EMPTY_CHARS = new char[0];
+
   /** The contents of the CharsRef. Should never be {@code null}. */
   public char[] chars;
+
   /** Offset of first valid character. */
   public int offset;
+
   /** Length of used characters. */
   public int length;
 
@@ -169,7 +172,6 @@ public final class CharsRef implements Comparable<CharsRef>, CharSequence, Clone
   private static class UTF16SortedAsUTF8Comparator implements Comparator<CharsRef> {
     // Only singleton
     private UTF16SortedAsUTF8Comparator() {}
-    ;
 
     @Override
     public int compare(CharsRef a, CharsRef b) {

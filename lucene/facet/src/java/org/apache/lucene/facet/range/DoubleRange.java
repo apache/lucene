@@ -31,6 +31,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.NumericUtils;
@@ -173,7 +174,7 @@ public final class DoubleRange extends Range {
 
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           final int maxDoc = context.reader().maxDoc();
 
           final DocIdSetIterator approximation;
@@ -201,7 +202,8 @@ public final class DoubleRange extends Range {
                   return 100; // TODO: use cost of range.accept()
                 }
               };
-          return new ConstantScoreScorer(this, score(), scoreMode, twoPhase);
+          final var scorer = new ConstantScoreScorer(score(), scoreMode, twoPhase);
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override
@@ -271,7 +273,7 @@ public final class DoubleRange extends Range {
 
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           final int maxDoc = context.reader().maxDoc();
 
           final DocIdSetIterator approximation;
@@ -307,7 +309,8 @@ public final class DoubleRange extends Range {
                   return 100; // TODO: use cost of range.accept()
                 }
               };
-          return new ConstantScoreScorer(this, score(), scoreMode, twoPhase);
+          final var scorer = new ConstantScoreScorer(score(), scoreMode, twoPhase);
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

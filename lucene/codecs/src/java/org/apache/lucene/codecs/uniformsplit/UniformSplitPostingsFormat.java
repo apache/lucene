@@ -23,8 +23,8 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsReader;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsWriter;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsReader;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.util.IOUtils;
@@ -39,6 +39,7 @@ public class UniformSplitPostingsFormat extends PostingsFormat {
 
   /** Extension of the file containing the terms dictionary (the FST "trie"). */
   public static final String TERMS_DICTIONARY_EXTENSION = "ustd";
+
   /** Extension of the file containing the terms blocks for each field and the fields metadata. */
   public static final String TERMS_BLOCKS_EXTENSION = "ustb";
 
@@ -112,34 +113,24 @@ public class UniformSplitPostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    PostingsWriterBase postingsWriter = new Lucene90PostingsWriter(state);
-    boolean success = false;
+    PostingsWriterBase postingsWriter = new Lucene104PostingsWriter(state);
     try {
-      FieldsConsumer termsWriter =
-          createUniformSplitTermsWriter(
-              postingsWriter, state, targetNumBlockLines, deltaNumLines, blockEncoder);
-      success = true;
-      return termsWriter;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(postingsWriter);
-      }
+      return createUniformSplitTermsWriter(
+          postingsWriter, state, targetNumBlockLines, deltaNumLines, blockEncoder);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, postingsWriter);
+      throw t;
     }
   }
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
-    PostingsReaderBase postingsReader = new Lucene90PostingsReader(state);
-    boolean success = false;
+    PostingsReaderBase postingsReader = new Lucene104PostingsReader(state);
     try {
-      FieldsProducer termsReader =
-          createUniformSplitTermsReader(postingsReader, state, blockDecoder);
-      success = true;
-      return termsReader;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(postingsReader);
-      }
+      return createUniformSplitTermsReader(postingsReader, state, blockDecoder);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, postingsReader);
+      throw t;
     }
   }
 

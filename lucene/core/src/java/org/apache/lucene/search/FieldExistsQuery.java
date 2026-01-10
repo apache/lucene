@@ -19,10 +19,14 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
@@ -35,7 +39,7 @@ import org.apache.lucene.index.Terms;
  * org.apache.lucene.document.KnnByteVectorField} or a field that indexes norms or doc values.
  */
 public class FieldExistsQuery extends Query {
-  private String field;
+  private final String field;
 
   /** Create a query that will match that have a value for the given {@code field}. */
   public FieldExistsQuery(String field) {
@@ -128,30 +132,22 @@ public class FieldExistsQuery extends Query {
           break;
         }
       } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
-        int numVectors =
-            switch (fieldInfo.getVectorEncoding()) {
-              case FLOAT32 -> leaf.getFloatVectorValues(field).size();
-              case BYTE -> leaf.getByteVectorValues(field).size();
-            };
-        if (numVectors != leaf.maxDoc()) {
+        if (getVectorValuesSize(fieldInfo, leaf) != leaf.maxDoc()) {
           allReadersRewritable = false;
           break;
         }
       } else if (fieldInfo.getDocValuesType()
           != DocValuesType.NONE) { // the field indexes doc values or points
 
-        // This optimization is possible due to LUCENE-9334 enforcing a field to always uses the
-        // same data structures (all or nothing). Since there's no index statistic to detect when
-        // all documents have doc values for a specific field, FieldExistsQuery can only be
-        // rewritten to MatchAllDocsQuery for doc values field, when that same field also indexes
-        // terms or point values which do have index statistics, and those statistics confirm that
-        // all documents in this segment have values terms or point values.
-
-        Terms terms = leaf.terms(field);
-        PointValues pointValues = leaf.getPointValues(field);
+        // This optimization is possible due to LUCENE-9334 enforcing a field to always use the
+        // same data structures (all or nothing).
+        final Terms terms = leaf.terms(field);
+        final PointValues pointValues = leaf.getPointValues(field);
+        final DocValuesSkipper docValuesSkipper = leaf.getDocValuesSkipper(field);
 
         if ((terms == null || terms.getDocCount() != leaf.maxDoc())
-            && (pointValues == null || pointValues.getDocCount() != leaf.maxDoc())) {
+            && (pointValues == null || pointValues.getDocCount() != leaf.maxDoc())
+            && (docValuesSkipper == null || docValuesSkipper.docCount() != leaf.maxDoc())) {
           allReadersRewritable = false;
           break;
         }
@@ -160,7 +156,7 @@ public class FieldExistsQuery extends Query {
       }
     }
     if (allReadersRewritable) {
-      return new MatchAllDocsQuery();
+      return MatchAllDocsQuery.INSTANCE;
     }
     return super.rewrite(indexSearcher);
   }
@@ -168,8 +164,9 @@ public class FieldExistsQuery extends Query {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
     return new ConstantScoreWeight(this, boost) {
+
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         FieldInfos fieldInfos = context.reader().getFieldInfos();
         FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
         DocIdSetIterator iterator = null;
@@ -183,8 +180,8 @@ public class FieldExistsQuery extends Query {
         } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
           iterator =
               switch (fieldInfo.getVectorEncoding()) {
-                case FLOAT32 -> context.reader().getFloatVectorValues(field);
-                case BYTE -> context.reader().getByteVectorValues(field);
+                case FLOAT32 -> context.reader().getFloatVectorValues(field).iterator();
+                case BYTE -> context.reader().getByteVectorValues(field).iterator();
               };
         } else if (fieldInfo.getDocValuesType()
             != DocValuesType.NONE) { // the field indexes doc values
@@ -215,7 +212,8 @@ public class FieldExistsQuery extends Query {
         if (iterator == null) {
           return null;
         }
-        return new ConstantScoreScorer(this, score(), scoreMode, iterator);
+        final var scorer = new ConstantScoreScorer(score(), scoreMode, iterator);
+        return new DefaultScorerSupplier(scorer);
       }
 
       @Override
@@ -235,7 +233,10 @@ public class FieldExistsQuery extends Query {
           }
 
           return super.count(context);
-        } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
+        } else if (fieldInfo.hasVectorValues()) { // the field indexes vectors
+          if (reader.hasDeletions() == false) {
+            return getVectorValuesSize(fieldInfo, reader);
+          }
           return super.count(context);
         } else if (fieldInfo.getDocValuesType()
             != DocValuesType.NONE) { // the field indexes doc values
@@ -246,6 +247,9 @@ public class FieldExistsQuery extends Query {
             } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) {
               Terms terms = reader.terms(field);
               return terms == null ? 0 : terms.getDocCount();
+            } else if (fieldInfo.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
+              DocValuesSkipper docValuesSkipper = reader.getDocValuesSkipper(field);
+              return docValuesSkipper == null ? 0 : docValuesSkipper.docCount();
             }
           }
 
@@ -273,5 +277,21 @@ public class FieldExistsQuery extends Query {
     return "FieldExistsQuery requires that the field indexes doc values, norms or vectors, but field '"
         + fieldInfo.name
         + "' exists and indexes neither of these data structures";
+  }
+
+  private int getVectorValuesSize(FieldInfo fi, LeafReader reader) throws IOException {
+    assert fi.name.equals(field);
+    return switch (fi.getVectorEncoding()) {
+      case FLOAT32 -> {
+        FloatVectorValues floatVectorValues = reader.getFloatVectorValues(field);
+        assert floatVectorValues != null : "unexpected null float vector values";
+        yield floatVectorValues.size();
+      }
+      case BYTE -> {
+        ByteVectorValues byteVectorValues = reader.getByteVectorValues(field);
+        assert byteVectorValues != null : "unexpected null byte vector values";
+        yield byteVectorValues.size();
+      }
+    };
   }
 }

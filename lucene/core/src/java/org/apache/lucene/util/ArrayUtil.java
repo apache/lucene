@@ -27,6 +27,8 @@ import java.util.Comparator;
  */
 public final class ArrayUtil {
 
+  private static final String PARSING_EXCEPTION_MESSAGE = "Unable to parse";
+
   /** Maximum length for an array (Integer.MAX_VALUE - RamUsageEstimator.NUM_BYTES_ARRAY_HEADER). */
   public static final int MAX_ARRAY_LENGTH =
       Integer.MAX_VALUE - RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
@@ -90,24 +92,21 @@ public final class ArrayUtil {
     for (int i = 0; i < len; i++) {
       int digit = Character.digit(chars[i + offset], radix);
       if (digit == -1) {
-        throw new NumberFormatException("Unable to parse");
+        throw new NumberFormatException(PARSING_EXCEPTION_MESSAGE);
       }
       if (max > result) {
-        throw new NumberFormatException("Unable to parse");
+        throw new NumberFormatException(PARSING_EXCEPTION_MESSAGE);
       }
       int next = result * radix - digit;
       if (next > result) {
-        throw new NumberFormatException("Unable to parse");
+        throw new NumberFormatException(PARSING_EXCEPTION_MESSAGE);
       }
       result = next;
     }
-    /*while (offset < len) {
-
-    }*/
     if (!negative) {
       result = -result;
       if (result < 0) {
-        throw new NumberFormatException("Unable to parse");
+        throw new NumberFormatException(PARSING_EXCEPTION_MESSAGE);
       }
     }
     return result;
@@ -174,42 +173,34 @@ public final class ArrayUtil {
 
     if (Constants.JRE_IS_64BIT) {
       // round up to 8 byte alignment in 64bit env
-      switch (bytesPerElement) {
-        case 4:
-          // round up to multiple of 2
-          return (newSize + 1) & 0x7ffffffe;
-        case 2:
-          // round up to multiple of 4
-          return (newSize + 3) & 0x7ffffffc;
-        case 1:
-          // round up to multiple of 8
-          return (newSize + 7) & 0x7ffffff8;
-        case 8:
-          // no rounding
-        default:
-          // odd (invalid?) size
-          return newSize;
-      }
+      return switch (bytesPerElement) {
+        // round up to multiple of 2
+        case 4 -> (newSize + 1) & 0x7ffffffe;
+        // round up to multiple of 4
+        case 2 -> (newSize + 3) & 0x7ffffffc;
+        // round up to multiple of 8
+        case 1 -> (newSize + 7) & 0x7ffffff8;
+        // no rounding
+        case 8 -> newSize;
+        // odd (invalid?) size
+        default -> newSize;
+      };
     } else {
       // In 32bit jvm, it's still 8-byte aligned,
       // but the array header is 12 bytes, not a multiple of 8.
       // So saving 4,12,20,28... bytes of data is the most cost-effective.
-      switch (bytesPerElement) {
-        case 1:
-          // align with size of 4,12,20,28...
-          return ((newSize + 3) & 0x7ffffff8) + 4;
-        case 2:
-          // align with size of 6,10,14,18...
-          return ((newSize + 1) & 0x7ffffffc) + 2;
-        case 4:
-          // align with size of 5,7,9,11...
-          return (newSize & 0x7ffffffe) + 1;
-        case 8:
-          // no processing required
-        default:
-          // odd (invalid?) size
-          return newSize;
-      }
+      return switch (bytesPerElement) {
+        // align with size of 4,12,20,28...
+        case 1 -> ((newSize + 3) & 0x7ffffff8) + 4;
+        // align with size of 6,10,14,18...
+        case 2 -> ((newSize + 1) & 0x7ffffffc) + 2;
+        // align with size of 5,7,9,11...
+        case 4 -> (newSize & 0x7ffffffe) + 1;
+        // no processing required
+        case 8 -> newSize;
+        // odd (invalid?) size
+        default -> newSize;
+      };
     }
   }
 
@@ -331,14 +322,59 @@ public final class ArrayUtil {
   }
 
   /**
+   * Returns an array whose size is at least {@code minLength}, generally over-allocating
+   * exponentially, but never allocating more than {@code maxLength} elements.
+   */
+  public static int[] growInRange(int[] array, int minLength, int maxLength) {
+    assert minLength >= 0
+        : "length must be positive (got " + minLength + "): likely integer overflow?";
+
+    if (minLength > maxLength) {
+      throw new IllegalArgumentException(
+          "requested minimum array length "
+              + minLength
+              + " is larger than requested maximum array length "
+              + maxLength);
+    }
+
+    if (array.length >= minLength) {
+      return array;
+    }
+
+    int potentialLength = oversize(minLength, Integer.BYTES);
+    return growExact(array, Math.min(maxLength, potentialLength));
+  }
+
+  /**
+   * Returns an array whose size is at least {@code minLength} but not over {@code maxLength},
+   * growing exponentially if it needs to grow.
+   */
+  public static float[] growInRange(float[] array, int minLength, int maxLength) {
+    assert minLength >= 0
+        : "minLength must be positive (got " + minLength + "): likely integer overflow?";
+
+    if (minLength > maxLength) {
+      throw new IllegalArgumentException(
+          "requested minimum array length "
+              + minLength
+              + " is larger than requested maximum array length "
+              + maxLength);
+    }
+
+    if (array.length >= minLength) {
+      return array;
+    }
+
+    int potentialLength = oversize(minLength, Float.BYTES);
+    return growExact(array, Math.min(maxLength, potentialLength));
+  }
+
+  /**
    * Returns an array whose size is at least {@code minSize}, generally over-allocating
    * exponentially
    */
   public static int[] grow(int[] array, int minSize) {
-    assert minSize >= 0 : "size must be positive (got " + minSize + "): likely integer overflow?";
-    if (array.length < minSize) {
-      return growExact(array, oversize(minSize, Integer.BYTES));
-    } else return array;
+    return growInRange(array, minSize, Integer.MAX_VALUE);
   }
 
   /**
@@ -602,6 +638,11 @@ public final class ArrayUtil {
     }.select(from, to, k);
   }
 
+  /** Copies an array into a new array. */
+  public static byte[] copyArray(byte[] array) {
+    return copyOfSubArray(array, 0, array.length);
+  }
+
   /**
    * Copies the specified range of the given array into a new sub array.
    *
@@ -613,6 +654,11 @@ public final class ArrayUtil {
     final byte[] copy = new byte[to - from];
     System.arraycopy(array, from, copy, 0, to - from);
     return copy;
+  }
+
+  /** Copies an array into a new array. */
+  public static char[] copyArray(char[] array) {
+    return copyOfSubArray(array, 0, array.length);
   }
 
   /**
@@ -628,6 +674,11 @@ public final class ArrayUtil {
     return copy;
   }
 
+  /** Copies an array into a new array. */
+  public static short[] copyArray(short[] array) {
+    return copyOfSubArray(array, 0, array.length);
+  }
+
   /**
    * Copies the specified range of the given array into a new sub array.
    *
@@ -639,6 +690,11 @@ public final class ArrayUtil {
     final short[] copy = new short[to - from];
     System.arraycopy(array, from, copy, 0, to - from);
     return copy;
+  }
+
+  /** Copies an array into a new array. */
+  public static int[] copyArray(int[] array) {
+    return copyOfSubArray(array, 0, array.length);
   }
 
   /**
@@ -654,6 +710,11 @@ public final class ArrayUtil {
     return copy;
   }
 
+  /** Copies an array into a new array. */
+  public static long[] copyArray(long[] array) {
+    return copyOfSubArray(array, 0, array.length);
+  }
+
   /**
    * Copies the specified range of the given array into a new sub array.
    *
@@ -665,6 +726,11 @@ public final class ArrayUtil {
     final long[] copy = new long[to - from];
     System.arraycopy(array, from, copy, 0, to - from);
     return copy;
+  }
+
+  /** Copies an array into a new array. */
+  public static float[] copyArray(float[] array) {
+    return copyOfSubArray(array, 0, array.length);
   }
 
   /**
@@ -680,6 +746,11 @@ public final class ArrayUtil {
     return copy;
   }
 
+  /** Copies an array into a new array. */
+  public static double[] copyArray(double[] array) {
+    return copyOfSubArray(array, 0, array.length);
+  }
+
   /**
    * Copies the specified range of the given array into a new sub array.
    *
@@ -691,6 +762,11 @@ public final class ArrayUtil {
     final double[] copy = new double[to - from];
     System.arraycopy(array, from, copy, 0, to - from);
     return copy;
+  }
+
+  /** Copies an array into a new array. */
+  public static <T> T[] copyArray(T[] array) {
+    return copyOfSubArray(array, 0, array.length);
   }
 
   /**
@@ -714,7 +790,7 @@ public final class ArrayUtil {
 
   /** Comparator for a fixed number of bytes. */
   @FunctionalInterface
-  public static interface ByteArrayComparator {
+  public interface ByteArrayComparator {
 
     /**
      * Compare bytes starting from the given offsets. The return value has the same contract as

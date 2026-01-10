@@ -370,9 +370,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
   public BytesRef next() throws IOException {
     try {
       return _next();
-    } catch (
-        @SuppressWarnings("unused")
-        NoMoreTermsException eoi) {
+    } catch (NoMoreTermsException _) {
       // Provoke NPE if we are (illegally!) called again:
       currentFrame = null;
       return null;
@@ -540,19 +538,6 @@ final class IntersectTermsEnum extends BaseTermsEnum {
       }
 
       isSubBlock = popPushNext();
-    }
-  }
-
-  // for debugging
-  @SuppressWarnings("unused")
-  static String brToString(BytesRef b) {
-    try {
-      return b.utf8ToString() + " " + b;
-    } catch (Throwable t) {
-      // If BytesRef isn't actually UTF8, or it's eg a
-      // prefix of UTF8 that ends mid-unicode-char, we
-      // fallback to hex:
-      return b.toString();
     }
   }
 

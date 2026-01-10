@@ -68,4 +68,23 @@ public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCa
                 TruncateTokenFilterFactory.PREFIX_LENGTH_KEY
                     + " parameter must be a positive number: -5"));
   }
+
+  /** Test that takes length greater than byte limit accepts it */
+  public void testLengthGreaterThanByteLimitArgument() throws Exception {
+    Reader reader =
+        new StringReader(
+            "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvw128characters From here");
+    TokenStream stream = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+    ((Tokenizer) stream).setReader(reader);
+    stream =
+        tokenFilterFactory("Truncate", TruncateTokenFilterFactory.PREFIX_LENGTH_KEY, "128")
+            .create(stream);
+    assertTokenStreamContents(
+        stream,
+        new String[] {
+          "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvw1",
+          "From",
+          "here"
+        });
+  }
 }

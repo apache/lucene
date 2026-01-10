@@ -392,8 +392,9 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
     }
   }
 
-  public int numGlobalTermDeletes() {
-    return globalBufferedUpdates.numTermDeletes.get();
+  /** For test purposes. */
+  int numGlobalTermDeletes() {
+    return globalBufferedUpdates.deleteTerms.size();
   }
 
   void clear() {
@@ -635,7 +636,7 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
   }
 
   /** Returns <code>true</code> if it was advanced. */
-  boolean isAdvanced() {
+  synchronized boolean isAdvanced() {
     return advanced;
   }
 }

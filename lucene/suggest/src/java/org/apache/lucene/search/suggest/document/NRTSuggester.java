@@ -24,10 +24,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.search.suggest.analyzing.FSTUtil;
-import org.apache.lucene.search.suggest.document.CompletionPostingsFormat.FSTLoadMode;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
-import org.apache.lucene.store.ByteBufferIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
@@ -147,10 +145,13 @@ public final class NRTSuggester implements Accountable {
 
     final CharsRefBuilder spare = new CharsRefBuilder();
 
-    Comparator<Pair<Long, BytesRef>> comparator = getComparator();
     Util.TopNSearcher<Pair<Long, BytesRef>> searcher =
-        new Util.TopNSearcher<Pair<Long, BytesRef>>(
-            fst, topN, queueSize, comparator, new ScoringPathComparator(scorer)) {
+        new Util.TopNSearcher<>(
+            fst,
+            topN,
+            queueSize,
+            (o1, o2) -> Long.compare(o1.output1, o2.output1),
+            new ScoringPathComparator(scorer)) {
 
           private final ByteArrayDataInput scratchInput = new ByteArrayDataInput();
 
@@ -227,8 +228,8 @@ public final class NRTSuggester implements Accountable {
         };
 
     for (FSTUtil.Path<Pair<Long, BytesRef>> path : prefixPaths) {
-      scorer.weight.setNextMatch(path.input.get());
-      BytesRef output = path.output.output2;
+      scorer.weight.setNextMatch(path.input().get());
+      BytesRef output = path.output().output2;
       int payload = -1;
       if (collector.doSkipDuplicates()) {
         for (int j = 0; j < output.length; j++) {
@@ -242,10 +243,10 @@ public final class NRTSuggester implements Accountable {
       }
 
       searcher.addStartPaths(
-          path.fstNode,
-          path.output,
+          path.fstNode(),
+          path.output(),
           false,
-          path.input,
+          path.input(),
           scorer.weight.boost(),
           scorer.weight.context(),
           payload);
@@ -262,13 +263,8 @@ public final class NRTSuggester implements Accountable {
    * Compares partial completion paths using {@link CompletionScorer#score(float, float)}, breaks
    * ties comparing path inputs
    */
-  private static class ScoringPathComparator
+  private record ScoringPathComparator(CompletionScorer scorer)
       implements Comparator<Util.FSTPath<Pair<Long, BytesRef>>> {
-    private final CompletionScorer scorer;
-
-    public ScoringPathComparator(CompletionScorer scorer) {
-      this.scorer = scorer;
-    }
 
     @Override
     public int compare(
@@ -279,15 +275,6 @@ public final class NRTSuggester implements Accountable {
               scorer.score((float) decode(first.output.output1), first.boost));
       return (cmp != 0) ? cmp : first.input.get().compareTo(second.input.get());
     }
-  }
-
-  private static Comparator<Pair<Long, BytesRef>> getComparator() {
-    return new Comparator<Pair<Long, BytesRef>>() {
-      @Override
-      public int compare(Pair<Long, BytesRef> o1, Pair<Long, BytesRef> o2) {
-        return Long.compare(o1.output1, o2.output1);
-      }
-    };
   }
 
   /**
@@ -318,45 +305,15 @@ public final class NRTSuggester implements Accountable {
     return (numDocs > 0) ? ((double) numDocs / maxDocs) : -1;
   }
 
-  private static boolean shouldLoadFSTOffHeap(IndexInput input, FSTLoadMode fstLoadMode) {
-    switch (fstLoadMode) {
-      case ON_HEAP:
-        return false;
-      case OFF_HEAP:
-        return true;
-      case AUTO:
-        return input instanceof ByteBufferIndexInput;
-      default:
-        throw new IllegalStateException("unknown enum constant: " + fstLoadMode);
-    }
-  }
-
-  /**
-   * Loads a {@link NRTSuggester} from {@link org.apache.lucene.store.IndexInput} on or off-heap
-   * depending on the provided <code>fstLoadMode</code>
-   */
-  public static NRTSuggester load(IndexInput input, FSTLoadMode fstLoadMode) throws IOException {
+  /** Loads a {@link NRTSuggester} from {@link org.apache.lucene.store.IndexInput} */
+  static NRTSuggester load(IndexInput input) throws IOException {
     final FST<Pair<Long, BytesRef>> fst;
-    if (shouldLoadFSTOffHeap(input, fstLoadMode)) {
-      OffHeapFSTStore store = new OffHeapFSTStore();
-      IndexInput clone = input.clone();
-      clone.seek(input.getFilePointer());
-      fst =
-          new FST<>(
-              clone,
-              clone,
-              new PairOutputs<>(
-                  PositiveIntOutputs.getSingleton(), ByteSequenceOutputs.getSingleton()),
-              store);
-      input.seek(clone.getFilePointer() + store.size());
-    } else {
-      fst =
-          new FST<>(
-              input,
-              input,
-              new PairOutputs<>(
-                  PositiveIntOutputs.getSingleton(), ByteSequenceOutputs.getSingleton()));
-    }
+    PairOutputs<Long, BytesRef> outputs =
+        new PairOutputs<>(PositiveIntOutputs.getSingleton(), ByteSequenceOutputs.getSingleton());
+    final FST.FSTMetadata<Pair<Long, BytesRef>> fstMetadata = FST.readMetadata(input, outputs);
+    OffHeapFSTStore store = new OffHeapFSTStore(input, input.getFilePointer(), fstMetadata);
+    fst = FST.fromFSTReader(fstMetadata, store);
+    input.skipBytes(store.size());
 
     /* read some meta info */
     int maxAnalyzedPathsPerOutput = input.readVInt();

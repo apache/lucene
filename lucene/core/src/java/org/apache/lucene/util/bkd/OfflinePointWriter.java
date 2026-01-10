@@ -56,9 +56,9 @@ public final class OfflinePointWriter implements PointWriter {
   @Override
   public void append(byte[] packedValue, int docID) throws IOException {
     assert closed == false : "Point writer is already closed";
-    assert packedValue.length == config.packedBytesLength
+    assert packedValue.length == config.packedBytesLength()
         : "[packedValue] must have length ["
-            + config.packedBytesLength
+            + config.packedBytesLength()
             + "] but was ["
             + packedValue.length
             + "]";
@@ -75,9 +75,9 @@ public final class OfflinePointWriter implements PointWriter {
   public void append(PointValue pointValue) throws IOException {
     assert closed == false : "Point writer is already closed";
     BytesRef packedValueDocID = pointValue.packedValueDocIDBytes();
-    assert packedValueDocID.length == config.bytesPerDoc
+    assert packedValueDocID.length == config.bytesPerDoc()
         : "[packedValue and docID] must have length ["
-            + (config.bytesPerDoc)
+            + (config.bytesPerDoc())
             + "] but was ["
             + packedValueDocID.length
             + "]";
@@ -89,7 +89,7 @@ public final class OfflinePointWriter implements PointWriter {
 
   @Override
   public PointReader getReader(long start, long length) throws IOException {
-    byte[] buffer = new byte[config.bytesPerDoc];
+    byte[] buffer = new byte[config.bytesPerDoc()];
     return getReader(start, length, buffer);
   }
 

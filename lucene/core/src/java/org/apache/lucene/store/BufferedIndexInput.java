@@ -26,7 +26,6 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
 
   private static final ByteBuffer EMPTY_BYTEBUFFER =
       ByteBuffer.allocate(0).order(ByteOrder.LITTLE_ENDIAN);
-  ;
 
   /** Default buffer size set to {@value #BUFFER_SIZE}. */
   public static final int BUFFER_SIZE = 1024;
@@ -249,6 +248,27 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
+  public void readBytes(long pos, byte[] bytes, int offset, int len) throws IOException {
+    if (len <= bufferSize) {
+      // the buffer is big enough to satisfy this request
+      if (len > 0) { // to allow b to be null if len is 0...
+        long index = resolvePositionInBuffer(pos, len);
+        buffer.get((int) index, bytes, offset, len);
+      }
+    } else {
+      while (len > bufferSize) {
+        long index = resolvePositionInBuffer(pos, bufferSize);
+        buffer.get((int) index, bytes, offset, bufferSize);
+        len -= bufferSize;
+        offset += bufferSize;
+        pos += bufferSize;
+      }
+      long index = resolvePositionInBuffer(pos, len);
+      buffer.get((int) index, bytes, offset, len);
+    }
+  }
+
+  @Override
   public final short readShort(long pos) throws IOException {
     long index = resolvePositionInBuffer(pos, Short.BYTES);
     return buffer.getShort((int) index);
@@ -338,12 +358,11 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
 
   /** Returns default buffer sizes for the given {@link IOContext} */
   public static int bufferSize(IOContext context) {
-    switch (context.context) {
+    switch (context.context()) {
       case MERGE:
         return MERGE_BUFFER_SIZE;
       case DEFAULT:
       case FLUSH:
-      case READ:
       default:
         return BUFFER_SIZE;
     }
@@ -371,7 +390,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
               ? base.toString()
               : (base.toString() + " [slice=" + sliceDescription + "]"),
           BufferedIndexInput.BUFFER_SIZE);
-      if (offset < 0 || length < 0 || offset + length > base.length()) {
+      if ((length | offset) < 0 || length > base.length() - offset) {
         throw new IllegalArgumentException(
             "slice() " + sliceDescription + " out of bounds: " + base);
       }

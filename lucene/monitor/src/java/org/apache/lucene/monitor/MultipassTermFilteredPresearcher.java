@@ -17,6 +17,7 @@
 
 package org.apache.lucene.monitor;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -110,7 +111,7 @@ public class MultipassTermFilteredPresearcher extends TermFilteredPresearcher {
 
     @Override
     public void addTerm(String field, BytesRef term) {
-      BytesRefHash t = terms.computeIfAbsent(field, f -> new BytesRefHash());
+      BytesRefHash t = terms.computeIfAbsent(field, _ -> new BytesRefHash());
       t.add(term);
     }
 
@@ -125,7 +126,7 @@ public class MultipassTermFilteredPresearcher extends TermFilteredPresearcher {
         BooleanQuery.Builder child = new BooleanQuery.Builder();
         for (String field : terms.keySet()) {
           child.add(
-              new TermInSetQuery(field(field, i), collectedTerms.get(field)),
+              new TermInSetQuery(field(field, i), Arrays.asList(collectedTerms.get(field))),
               BooleanClause.Occur.SHOULD);
         }
         parent.add(child.build(), BooleanClause.Occur.MUST);

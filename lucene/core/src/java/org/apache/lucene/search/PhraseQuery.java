@@ -21,8 +21,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsReader;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsReader;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -33,10 +33,12 @@ import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 
 /**
  * A Query that matches documents containing a particular sequence of terms. A PhraseQuery is built
@@ -72,14 +74,16 @@ public class PhraseQuery extends Query {
   public static class Builder {
 
     private int slop;
+    private int maxTerms;
     private final List<Term> terms;
-    private final List<Integer> positions;
+    private final IntArrayList positions;
 
     /** Sole constructor. */
     public Builder() {
       slop = 0;
+      maxTerms = -1;
       terms = new ArrayList<>();
-      positions = new ArrayList<>();
+      positions = new IntArrayList();
     }
 
     /**
@@ -89,6 +93,18 @@ public class PhraseQuery extends Query {
      */
     public Builder setSlop(int slop) {
       this.slop = slop;
+      return this;
+    }
+
+    /**
+     * Set the maximum number of terms allowed in the phrase query. This helps prevent excessive
+     * memory usage for very long phrases.
+     *
+     * <p>If the number of terms added via {@link #add(Term)} or {@link #add(Term, int)} exceeds
+     * this threshold, an {@link IllegalArgumentException} will be thrown.
+     */
+    public Builder setMaxTerms(int maxTerms) {
+      this.maxTerms = maxTerms;
       return this;
     }
 
@@ -126,6 +142,13 @@ public class PhraseQuery extends Query {
                 + " and "
                 + terms.get(0).field());
       }
+      if (maxTerms > 0 && terms.size() >= maxTerms) {
+        throw new IllegalArgumentException(
+            "The current number of terms is "
+                + terms.size()
+                + ", which exceeds the limit of "
+                + maxTerms);
+      }
       terms.add(term);
       positions.add(position);
       return this;
@@ -133,12 +156,8 @@ public class PhraseQuery extends Query {
 
     /** Build a phrase query based on the terms that have been added. */
     public PhraseQuery build() {
-      Term[] terms = this.terms.toArray(new Term[this.terms.size()]);
-      int[] positions = new int[this.positions.size()];
-      for (int i = 0; i < positions.length; ++i) {
-        positions[i] = this.positions.get(i);
-      }
-      return new PhraseQuery(slop, terms, positions);
+      Term[] terms = this.terms.toArray(new Term[0]);
+      return new PhraseQuery(slop, terms, positions.toArray());
     }
   }
 
@@ -401,20 +420,19 @@ public class PhraseQuery extends Query {
   /**
    * A guess of the average number of simple operations for the initial seek and buffer refill per
    * document for the positions of a term. See also {@link
-   * Lucene90PostingsReader.BlockImpactsPostingsEnum#nextPosition()}.
+   * Lucene104PostingsReader.BlockPostingsEnum#nextPosition()}.
    *
    * <p>Aside: Instead of being constant this could depend among others on {@link
-   * Lucene90PostingsFormat#BLOCK_SIZE}, {@link TermsEnum#docFreq()}, {@link
+   * Lucene104PostingsFormat#BLOCK_SIZE}, {@link TermsEnum#docFreq()}, {@link
    * TermsEnum#totalTermFreq()}, {@link DocIdSetIterator#cost()} (expected number of matching docs),
    * {@link LeafReader#maxDoc()} (total number of docs in the segment), and the seek time and block
    * size of the device storing the index.
    */
-  private static final int TERM_POSNS_SEEK_OPS_PER_DOC = 128;
+  private static final int TERM_POSNS_SEEK_OPS_PER_DOC = 256;
 
   /**
-   * Number of simple operations in {@link
-   * Lucene90PostingsReader.BlockImpactsPostingsEnum#nextPosition()} when no seek or buffer refill
-   * is done.
+   * Number of simple operations in {@link Lucene104PostingsReader.BlockPostingsEnum#nextPosition()}
+   * when no seek or buffer refill is done.
    */
   private static final int TERM_OPS_PER_POS = 7;
 
@@ -501,7 +519,8 @@ public class PhraseQuery extends Query {
 
         for (int i = 0; i < terms.length; i++) {
           final Term t = terms[i];
-          final TermState state = states[i].get(context);
+          final IOSupplier<TermState> supplier = states[i].get(context);
+          final TermState state = supplier == null ? null : supplier.get();
           if (state == null) {
             /* term doesnt exist in this segment */
             assert termNotInReader(reader, t) : "no termstate found but term exists in reader";

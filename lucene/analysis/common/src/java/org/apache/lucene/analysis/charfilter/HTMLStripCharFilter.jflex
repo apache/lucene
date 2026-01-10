@@ -111,7 +111,8 @@ SingleQuoted = ( "'" ( "\\'" | [^']* )* "'" )
 DoubleQuoted = ( "\"" ( "\\\"" | [^\"]* )* "\"" )
 ServerSideInclude = ( "<!--#" ( [^'\"] | {SingleQuoted} | {DoubleQuoted} )* "-->" )
 EventAttribute = [oO][nN] {EventAttributeSuffixes} \s* "=" \s* ( {SingleQuoted} | {DoubleQuoted} )
-OpenTagContent = ( {EventAttribute} | [^<>] | {ServerSideInclude} )*
+OpenTagAttribute = {Name} \s* "=" \s* ( {SingleQuoted} | {DoubleQuoted} )
+OpenTagContent = ( {EventAttribute} | [^<>] | {ServerSideInclude} | {OpenTagAttribute} )*
 
 InlineElment = ( [aAbBiIqQsSuU]                   |
                  [aA][bB][bB][rR]                 |
@@ -791,7 +792,7 @@ InlineElment = ( [aAbBiIqQsSuU]                   |
     addOffCorrectMap(outputCharCount, cumulativeDiff);
     yybegin(YYINITIAL);
   }
-  [^] { 
+  [^] {
     if (yylength() == 1) {
       return zzBuffer[zzStartRead];
     } else {
@@ -920,7 +921,7 @@ InlineElment = ( [aAbBiIqQsSuU]                   |
   }
 }
 
-[^] { 
+[^] {
   if (yylength() == 1) {
     return zzBuffer[zzStartRead];
   } else {

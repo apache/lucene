@@ -31,6 +31,7 @@
  *   <li>SegmentInfo - see {@link org.apache.lucene.codecs.SegmentInfoFormat}
  *   <li>Norms - see {@link org.apache.lucene.codecs.NormsFormat}
  *   <li>Live documents - see {@link org.apache.lucene.codecs.LiveDocsFormat}
+ *   <li>Numeric vectors - see {@link org.apache.lucene.codecs.KnnVectorsFormat}
  * </ul>
  *
  * For some concrete implementations beyond Lucene's official index format, see the <a

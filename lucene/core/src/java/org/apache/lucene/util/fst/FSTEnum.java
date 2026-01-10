@@ -32,6 +32,7 @@ abstract class FSTEnum<T> {
 
   @SuppressWarnings({"rawtypes", "unchecked"})
   protected FST.Arc<T>[] arcs = new FST.Arc[10];
+
   // outputs are cumulative
   @SuppressWarnings({"rawtypes", "unchecked"})
   protected T[] output = (T[]) new Object[10];
@@ -148,12 +149,41 @@ abstract class FSTEnum<T> {
         final FST.BytesReader in = fst.getBytesReader();
         if (arc.nodeFlags() == FST.ARCS_FOR_DIRECT_ADDRESSING) {
           arc = doSeekCeilArrayDirectAddressing(arc, targetLabel, in);
-        } else {
-          assert arc.nodeFlags() == FST.ARCS_FOR_BINARY_SEARCH;
+        } else if (arc.nodeFlags() == FST.ARCS_FOR_BINARY_SEARCH) {
           arc = doSeekCeilArrayPacked(arc, targetLabel, in);
+        } else {
+          assert arc.nodeFlags() == FST.ARCS_FOR_CONTINUOUS;
+          arc = doSeekCeilArrayContinuous(arc, targetLabel, in);
         }
       } else {
         arc = doSeekCeilList(arc, targetLabel);
+      }
+    }
+  }
+
+  private FST.Arc<T> doSeekCeilArrayContinuous(
+      final FST.Arc<T> arc, final int targetLabel, final FST.BytesReader in) throws IOException {
+    int targetIndex = targetLabel - arc.firstLabel();
+    if (targetIndex >= arc.numArcs()) {
+      rollbackToLastForkThenPush();
+      return null;
+    } else {
+      if (targetIndex < 0) {
+        fst.readArcByContinuous(arc, in, 0);
+        assert arc.label() > targetLabel;
+        pushFirst();
+        return null;
+      } else {
+        fst.readArcByContinuous(arc, in, targetIndex);
+        assert arc.label() == targetLabel;
+        // found -- copy pasta from below
+        output[upto] = fst.outputs.add(output[upto - 1], arc.output());
+        if (targetLabel == FST.END_LABEL) {
+          return null;
+        }
+        setCurrentLabel(arc.label());
+        incr();
+        return fst.readFirstTargetArc(arc, getArc(upto), fstReader);
       }
     }
   }
@@ -165,24 +195,8 @@ abstract class FSTEnum<T> {
 
     int targetIndex = targetLabel - arc.firstLabel();
     if (targetIndex >= arc.numArcs()) {
-      // Target is beyond the last arc, out of label range.
-      // Dead end (target is after the last arc);
-      // rollback to last fork then push
-      upto--;
-      while (true) {
-        if (upto == 0) {
-          return null;
-        }
-        final FST.Arc<T> prevArc = getArc(upto);
-        // System.out.println("  rollback upto=" + upto + " arc.label=" + prevArc.label + "
-        // isLast?=" + prevArc.isLast());
-        if (!prevArc.isLast()) {
-          fst.readNextArc(prevArc, fstReader);
-          pushFirst();
-          return null;
-        }
-        upto--;
-      }
+      rollbackToLastForkThenPush();
+      return null;
     } else {
       if (targetIndex < 0) {
         targetIndex = -1;
@@ -331,13 +345,43 @@ abstract class FSTEnum<T> {
         final FST.BytesReader in = fst.getBytesReader();
         if (arc.nodeFlags() == FST.ARCS_FOR_DIRECT_ADDRESSING) {
           arc = doSeekFloorArrayDirectAddressing(arc, targetLabel, in);
-        } else {
-          assert arc.nodeFlags() == FST.ARCS_FOR_BINARY_SEARCH;
+        } else if (arc.nodeFlags() == FST.ARCS_FOR_BINARY_SEARCH) {
           arc = doSeekFloorArrayPacked(arc, targetLabel, in);
+        } else {
+          assert arc.nodeFlags() == FST.ARCS_FOR_CONTINUOUS;
+          arc = doSeekFloorContinuous(arc, targetLabel, in);
         }
       } else {
         arc = doSeekFloorList(arc, targetLabel);
       }
+    }
+  }
+
+  private FST.Arc<T> doSeekFloorContinuous(FST.Arc<T> arc, int targetLabel, FST.BytesReader in)
+      throws IOException {
+    int targetIndex = targetLabel - arc.firstLabel();
+    if (targetIndex < 0) {
+      // Before first arc.
+      return backtrackToFloorArc(arc, targetLabel, in);
+    } else if (targetIndex >= arc.numArcs()) {
+      // After last arc.
+      fst.readLastArcByContinuous(arc, in);
+      assert arc.label() < targetLabel;
+      assert arc.isLast();
+      pushLast();
+      return null;
+    } else {
+      // Within label range.
+      fst.readArcByContinuous(arc, in, targetIndex);
+      assert arc.label() == targetLabel;
+      // found -- copy pasta from below
+      output[upto] = fst.outputs.add(output[upto - 1], arc.output());
+      if (targetLabel == FST.END_LABEL) {
+        return null;
+      }
+      setCurrentLabel(arc.label());
+      incr();
+      return fst.readFirstTargetArc(arc, getArc(upto), fstReader);
     }
   }
 
@@ -383,6 +427,28 @@ abstract class FSTEnum<T> {
   }
 
   /**
+   * Target is beyond the last arc, out of label range. Dead end (target is after the last arc);
+   * rollback to last fork then push
+   */
+  private void rollbackToLastForkThenPush() throws IOException {
+    upto--;
+    while (true) {
+      if (upto == 0) {
+        return;
+      }
+      final FST.Arc<T> prevArc = getArc(upto);
+      // System.out.println("  rollback upto=" + upto + " arc.label=" + prevArc.label + "
+      // isLast?=" + prevArc.isLast());
+      if (!prevArc.isLast()) {
+        fst.readNextArc(prevArc, fstReader);
+        pushFirst();
+        return;
+      }
+      upto--;
+    }
+  }
+
+  /**
    * Backtracks until it finds a node which first arc is before our target label.` Then on the node,
    * finds the arc just before the targetLabel.
    *
@@ -399,9 +465,11 @@ abstract class FSTEnum<T> {
           if (arc.bytesPerArc() != 0 && arc.label() != FST.END_LABEL) {
             if (arc.nodeFlags() == FST.ARCS_FOR_BINARY_SEARCH) {
               findNextFloorArcBinarySearch(arc, targetLabel, in);
-            } else {
-              assert arc.nodeFlags() == FST.ARCS_FOR_DIRECT_ADDRESSING;
+            } else if (arc.nodeFlags() == FST.ARCS_FOR_DIRECT_ADDRESSING) {
               findNextFloorArcDirectAddressing(arc, targetLabel, in);
+            } else {
+              assert arc.nodeFlags() == FST.ARCS_FOR_CONTINUOUS;
+              findNextFloorArcContinuous(arc, targetLabel, in);
             }
           } else {
             while (!arc.isLast() && fst.readNextArcLabel(arc, in) < targetLabel) {
@@ -447,6 +515,24 @@ abstract class FSTEnum<T> {
         if (floorIndex > 0) {
           fst.readArcByDirectAddressing(arc, in, floorIndex);
         }
+      }
+    }
+  }
+
+  /** Same as {@link #findNextFloorArcDirectAddressing} for continuous node. */
+  private void findNextFloorArcContinuous(FST.Arc<T> arc, int targetLabel, final FST.BytesReader in)
+      throws IOException {
+    assert arc.nodeFlags() == FST.ARCS_FOR_CONTINUOUS;
+    assert arc.label() != FST.END_LABEL;
+    assert arc.label() == arc.firstLabel();
+    if (arc.numArcs() > 1) {
+      int targetIndex = targetLabel - arc.firstLabel();
+      assert targetIndex >= 0;
+      if (targetIndex >= arc.numArcs()) {
+        // Beyond last arc. Take last arc.
+        fst.readLastArcByContinuous(arc, in);
+      } else {
+        fst.readArcByContinuous(arc, in, targetIndex - 1);
       }
     }
   }

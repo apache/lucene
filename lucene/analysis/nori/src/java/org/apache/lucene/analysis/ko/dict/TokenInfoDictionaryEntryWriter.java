@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.analysis.ko.POS;
 import org.apache.lucene.analysis.morph.DictionaryEntryWriter;
+import org.apache.lucene.analysis.util.CSVUtil;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
 
@@ -149,13 +150,13 @@ class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
       int compoundOffset = 0;
       for (KoMorphData.Morpheme morpheme : morphemes) {
         if (hasSinglePOS == false) {
-          buffer.put((byte) morpheme.posTag.ordinal());
+          buffer.put((byte) morpheme.posTag().ordinal());
         }
         if (posType != POS.Type.INFLECT) {
-          buffer.put((byte) morpheme.surfaceForm.length());
-          compoundOffset += morpheme.surfaceForm.length();
+          buffer.put((byte) morpheme.surfaceForm().length());
+          compoundOffset += morpheme.surfaceForm().length();
         } else {
-          writeString(morpheme.surfaceForm);
+          writeString(morpheme.surfaceForm());
         }
         assert compoundOffset <= entry[0].length() : Arrays.toString(entry);
       }

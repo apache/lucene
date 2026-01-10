@@ -58,6 +58,7 @@ public class TestHighFreqTerms extends LuceneTestCase {
     reader = null;
     writer = null;
   }
+
   /******************** Tests for getHighFreqTerms **********************************/
 
   // test without specifying field (i.e. if we pass in field=null it should examine all fields)
@@ -89,7 +90,7 @@ public class TestHighFreqTerms extends LuceneTestCase {
     for (int i = 0; i < terms.length; i++) {
       if (i > 0) {
         assertTrue(
-            "out of order " + terms[i - 1].docFreq + "should be >= " + terms[i].docFreq,
+            "out of order " + terms[i - 1].docFreq + " should be >= " + terms[i].docFreq,
             terms[i - 1].docFreq >= terms[i].docFreq);
       }
     }
@@ -122,7 +123,7 @@ public class TestHighFreqTerms extends LuceneTestCase {
         }
       } else {
         int n = Integer.parseInt(termtext);
-        assertEquals("doc freq is not as expected", getExpecteddocFreq(n), terms[i].docFreq);
+        assertEquals("doc freq is not as expected", getExpectedDocFreq(n), terms[i].docFreq);
       }
     }
   }
@@ -162,7 +163,7 @@ public class TestHighFreqTerms extends LuceneTestCase {
       // order
       if (i > 0) {
         assertTrue(
-            "out of order" + terms[i - 1] + " > " + terms[i],
+            "out of order " + terms[i - 1] + " > " + terms[i],
             terms[i - 1].totalTermFreq >= terms[i].totalTermFreq);
       }
     }
@@ -186,9 +187,9 @@ public class TestHighFreqTerms extends LuceneTestCase {
 
       } else {
         int n = Integer.parseInt(text);
-        assertEquals("doc freq is expected", getExpecteddocFreq(n), terms[i].docFreq);
+        assertEquals("doc freq is expected", getExpectedDocFreq(n), terms[i].docFreq);
         assertEquals(
-            "total term freq is expected", getExpectedtotalTermFreq(n), terms[i].totalTermFreq);
+            "total term freq is expected", getExpectedTotalTermFreq(n), terms[i].totalTermFreq);
       }
     }
   }
@@ -198,7 +199,7 @@ public class TestHighFreqTerms extends LuceneTestCase {
   private static void indexDocs(IndexWriter writer) throws Exception {
     Random rnd = random();
 
-    /**
+    /*
      * Generate 10 documents where term n has a docFreq of n and a totalTermFreq of n*2 (squared).
      */
     for (int i = 1; i <= 10; i++) {
@@ -268,11 +269,11 @@ public class TestHighFreqTerms extends LuceneTestCase {
     return s;
   }
 
-  private static int getExpectedtotalTermFreq(int i) {
-    return getExpecteddocFreq(i) * i;
+  private static int getExpectedTotalTermFreq(int i) {
+    return getExpectedDocFreq(i) * i;
   }
 
-  private static int getExpecteddocFreq(int i) {
+  private static int getExpectedDocFreq(int i) {
     return i;
   }
 }

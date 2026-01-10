@@ -17,6 +17,7 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 
@@ -41,36 +42,15 @@ public final class NotDocIdSet extends DocIdSet {
   }
 
   @Override
-  public Bits bits() throws IOException {
-    final Bits inBits = in.bits();
-    if (inBits == null) {
-      return null;
-    }
-    return new Bits() {
-
-      @Override
-      public boolean get(int index) {
-        return !inBits.get(index);
-      }
-
-      @Override
-      public int length() {
-        return inBits.length();
-      }
-    };
-  }
-
-  @Override
   public long ramBytesUsed() {
     return BASE_RAM_BYTES_USED + in.ramBytesUsed();
   }
 
   @Override
-  public DocIdSetIterator iterator() throws IOException {
+  public DocIdSetIterator iterator() {
     final DocIdSetIterator inIterator = in.iterator();
-    return new DocIdSetIterator() {
+    return new AbstractDocIdSetIterator() {
 
-      int doc = -1;
       int nextSkippedDoc = -1;
 
       @Override
@@ -95,11 +75,6 @@ public final class NotDocIdSet extends DocIdSet {
           doc += 1;
           nextSkippedDoc = inIterator.nextDoc();
         }
-      }
-
-      @Override
-      public int docID() {
-        return doc;
       }
 
       @Override

@@ -99,12 +99,14 @@ public class SimpleFacetsExample {
     IndexSearcher searcher = new IndexSearcher(indexReader);
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
 
-    FacetsCollector fc = new FacetsCollector();
+    FacetsCollectorManager fcm = new FacetsCollectorManager();
 
     // MatchAllDocsQuery is for "browsing" (counts facets
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query:
-    FacetsCollector.search(searcher, new MatchAllDocsQuery(), 10, fc);
+    FacetsCollector fc =
+        FacetsCollectorManager.search(searcher, MatchAllDocsQuery.INSTANCE, 10, fcm)
+            .facetsCollector();
 
     // Retrieve results
     List<FacetResult> results = new ArrayList<>();
@@ -128,7 +130,7 @@ public class SimpleFacetsExample {
     // MatchAllDocsQuery is for "browsing" (counts facets
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query:
-    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector fc = searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     // Retrieve results
     List<FacetResult> results = new ArrayList<>();
@@ -156,8 +158,8 @@ public class SimpleFacetsExample {
 
     // Now user drills down on Publish Date/2010:
     q.add("Publish Date", "2010");
-    FacetsCollector fc = new FacetsCollector();
-    FacetsCollector.search(searcher, q, 10, fc);
+    FacetsCollectorManager fcm = new FacetsCollectorManager();
+    FacetsCollector fc = FacetsCollectorManager.search(searcher, q, 10, fcm).facetsCollector();
 
     // Retrieve results
     Facets facets = new FastTaxonomyFacetCounts(taxoReader, config, fc);

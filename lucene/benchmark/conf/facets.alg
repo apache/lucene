@@ -30,7 +30,8 @@ doc.tokenized=true
 doc.term.vector=false
 log.step=1000
 
-docs.dir=reuters-out
+work.dir=data
+docs.dir=reuters21578
 
 content.source=org.apache.lucene.benchmark.byTask.feeds.ReutersContentSource
 
@@ -57,9 +58,9 @@ task.max.depth.log=2
       -CloseTaxonomyIndex
   }
 
-  OpenReader  
+  OpenReader
   { "SearchSameRdr" Search > : 40
-  CloseReader 
+  CloseReader
 
   #RepSumByNameRound
   ResetSystemErase

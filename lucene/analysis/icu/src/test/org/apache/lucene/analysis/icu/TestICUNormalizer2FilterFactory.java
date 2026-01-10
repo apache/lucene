@@ -29,8 +29,7 @@ public class TestICUNormalizer2FilterFactory extends BaseTokenStreamTestCase {
   /** Test nfkc_cf defaults */
   public void testDefaults() throws Exception {
     Reader reader = new StringReader("This is a Ｔｅｓｔ");
-    ICUNormalizer2FilterFactory factory =
-        new ICUNormalizer2FilterFactory(new HashMap<String, String>());
+    ICUNormalizer2FilterFactory factory = new ICUNormalizer2FilterFactory(new HashMap<>());
     TokenStream stream = whitespaceMockTokenizer(reader);
     stream = factory.create(stream);
     assertTokenStreamContents(stream, new String[] {"this", "is", "a", "test"});
@@ -45,6 +44,18 @@ public class TestICUNormalizer2FilterFactory extends BaseTokenStreamTestCase {
     TokenStream stream = whitespaceMockTokenizer(reader);
     stream = factory.create(stream);
     assertTokenStreamContents(stream, new String[] {"This", "is", "a", "Test"});
+  }
+
+  /** Test nfkc_scf form */
+  public void testSimpleCaseFold() throws Exception {
+    // example from https://www.w3.org/TR/charmod-norm/#dfn-unicode-simple
+    Reader reader = new StringReader("ᾛ");
+    Map<String, String> args = new HashMap<>();
+    args.put("form", "nfkc_scf");
+    ICUNormalizer2FilterFactory factory = new ICUNormalizer2FilterFactory(args);
+    TokenStream stream = whitespaceMockTokenizer(reader);
+    stream = factory.create(stream);
+    assertTokenStreamContents(stream, new String[] {"ᾓ"});
   }
 
   /** Test that bogus arguments result in exception */

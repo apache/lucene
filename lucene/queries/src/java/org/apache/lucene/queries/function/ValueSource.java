@@ -29,6 +29,7 @@ import org.apache.lucene.search.FieldComparatorSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.SimpleFieldComparator;
 import org.apache.lucene.search.SortField;
@@ -264,7 +265,10 @@ public abstract class ValueSource {
   }
 
   public static ValueSource fromDoubleValuesSource(DoubleValuesSource in) {
-    return new FromDoubleValuesSource(in);
+    return switch (in) {
+      case WrappedDoubleValuesSource wrapped -> wrapped.in;
+      default -> new FromDoubleValuesSource(in);
+    };
   }
 
   private static class FromDoubleValuesSource extends ValueSource {
@@ -273,6 +277,12 @@ public abstract class ValueSource {
 
     private FromDoubleValuesSource(DoubleValuesSource in) {
       this.in = in;
+    }
+
+    /** Return the original DoubleValuesSource */
+    @Override
+    public DoubleValuesSource asDoubleValuesSource() {
+      return in;
     }
 
     @Override
@@ -316,6 +326,12 @@ public abstract class ValueSource {
           return inner.advanceExact(doc);
         }
       };
+    }
+
+    @Override
+    public SortField getSortField(boolean reverse) {
+      // avoids indirection and supports a better needsScores()
+      return in.getSortField(reverse);
     }
 
     @Override
@@ -376,7 +392,7 @@ public abstract class ValueSource {
 
     @Override
     public FieldComparator<Double> newComparator(
-        String fieldname, int numHits, boolean enableSkipping, boolean reversed) {
+        String fieldname, int numHits, Pruning pruning, boolean reversed) {
       return new ValueSourceComparator(context, numHits);
     }
   }

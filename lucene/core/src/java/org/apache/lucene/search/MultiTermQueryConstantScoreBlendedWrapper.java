@@ -17,6 +17,8 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -52,16 +54,13 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery>
           int fieldDocCount,
           Terms terms,
           TermsEnum termsEnum,
-          List<TermAndState> collectedTerms)
+          List<TermAndState> collectedTerms,
+          long leadCost)
           throws IOException {
         DocIdSetBuilder otherTerms = new DocIdSetBuilder(context.reader().maxDoc(), terms);
         PriorityQueue<PostingsEnum> highFrequencyTerms =
-            new PriorityQueue<>(collectedTerms.size()) {
-              @Override
-              protected boolean lessThan(PostingsEnum a, PostingsEnum b) {
-                return a.cost() < b.cost();
-              }
-            };
+            PriorityQueue.usingComparator(
+                collectedTerms.size(), Comparator.comparingLong(PostingsEnum::cost));
 
         // Handle the already-collected terms:
         PostingsEnum reuse = null;
@@ -110,15 +109,15 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery>
           }
         } while (termsEnum.next() != null);
 
-        DisiPriorityQueue subs = new DisiPriorityQueue(highFrequencyTerms.size() + 1);
+        List<DisiWrapper> subs = new ArrayList<>(highFrequencyTerms.size() + 1);
         for (DocIdSetIterator disi : highFrequencyTerms) {
           Scorer s = wrapWithDummyScorer(this, disi);
-          subs.add(new DisiWrapper(s));
+          subs.add(new DisiWrapper(s, false));
         }
         Scorer s = wrapWithDummyScorer(this, otherTerms.build().iterator());
-        subs.add(new DisiWrapper(s));
+        subs.add(new DisiWrapper(s, false));
 
-        return new WeightOrDocIdSetIterator(new DisjunctionDISIApproximation(subs));
+        return new WeightOrDocIdSetIterator(new DisjunctionDISIApproximation(subs, leadCost));
       }
     };
   }
@@ -132,6 +131,6 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery>
   private static Scorer wrapWithDummyScorer(Weight weight, DocIdSetIterator disi) {
     // The score and score mode do not actually matter here, except that using TOP_SCORES results
     // in another wrapper object getting created around the disi, so we try to avoid that:
-    return new ConstantScoreScorer(weight, 1f, ScoreMode.COMPLETE_NO_SCORES, disi);
+    return new ConstantScoreScorer(1f, ScoreMode.COMPLETE_NO_SCORES, disi);
   }
 }

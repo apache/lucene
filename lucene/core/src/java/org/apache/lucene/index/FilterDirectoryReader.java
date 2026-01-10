@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 /**
  * A FilterDirectoryReader wraps another DirectoryReader, allowing implementations to transform or
@@ -113,14 +114,33 @@ public abstract class FilterDirectoryReader extends DirectoryReader {
   }
 
   @Override
+  protected final DirectoryReader doOpenIfChanged(ExecutorService executorService)
+      throws IOException {
+    return wrapDirectoryReader(in.doOpenIfChanged(executorService));
+  }
+
+  @Override
   protected final DirectoryReader doOpenIfChanged(IndexCommit commit) throws IOException {
     return wrapDirectoryReader(in.doOpenIfChanged(commit));
+  }
+
+  @Override
+  protected final DirectoryReader doOpenIfChanged(
+      IndexCommit commit, ExecutorService executorService) throws IOException {
+    return wrapDirectoryReader(in.doOpenIfChanged(commit, executorService));
   }
 
   @Override
   protected final DirectoryReader doOpenIfChanged(IndexWriter writer, boolean applyAllDeletes)
       throws IOException {
     return wrapDirectoryReader(in.doOpenIfChanged(writer, applyAllDeletes));
+  }
+
+  @Override
+  protected final DirectoryReader doOpenIfChanged(
+      IndexWriter writer, boolean applyAllDeletes, ExecutorService executorService)
+      throws IOException {
+    return wrapDirectoryReader(in.doOpenIfChanged(writer, applyAllDeletes, executorService));
   }
 
   @Override
@@ -177,7 +197,7 @@ public abstract class FilterDirectoryReader extends DirectoryReader {
       // here we wrap the listener and call it with our cache key
       // this is important since this key will be used to cache the reader and otherwise we won't
       // free caches etc.
-      delegate.addClosedListener(unused -> listener.onClose(cacheKey));
+      delegate.addClosedListener(_ -> listener.onClose(cacheKey));
     }
   }
 }

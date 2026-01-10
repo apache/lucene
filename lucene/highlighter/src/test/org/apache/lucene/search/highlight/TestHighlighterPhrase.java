@@ -73,7 +73,7 @@ public class TestHighlighterPhrase extends LuceneTestCase {
       final IndexSearcher indexSearcher = newSearcher(indexReader);
       final PhraseQuery phraseQuery = new PhraseQuery(FIELD, "fox", "jumped");
       TopDocs hits = indexSearcher.search(phraseQuery, 1);
-      assertEquals(1, hits.totalHits.value);
+      assertEquals(1, hits.totalHits.value());
       final Highlighter highlighter =
           new Highlighter(
               new SimpleHTMLFormatter(), new SimpleHTMLEncoder(), new QueryScorer(phraseQuery));
@@ -170,7 +170,7 @@ public class TestHighlighterPhrase extends LuceneTestCase {
       final IndexSearcher indexSearcher = newSearcher(indexReader);
       final PhraseQuery phraseQuery = new PhraseQuery(FIELD, "did", "jump");
       TopDocs hits = indexSearcher.search(phraseQuery, 1);
-      assertEquals(0, hits.totalHits.value);
+      assertEquals(0, hits.totalHits.value());
       final Highlighter highlighter =
           new Highlighter(
               new SimpleHTMLFormatter(), new SimpleHTMLEncoder(), new QueryScorer(phraseQuery));
@@ -209,7 +209,7 @@ public class TestHighlighterPhrase extends LuceneTestCase {
       final IndexSearcher indexSearcher = newSearcher(indexReader);
       final PhraseQuery phraseQuery = new PhraseQuery(1, FIELD, "did", "jump");
       TopDocs hits = indexSearcher.search(phraseQuery, 1);
-      assertEquals(1, hits.totalHits.value);
+      assertEquals(1, hits.totalHits.value());
       final Highlighter highlighter =
           new Highlighter(
               new SimpleHTMLFormatter(), new SimpleHTMLEncoder(), new QueryScorer(phraseQuery));
@@ -255,7 +255,7 @@ public class TestHighlighterPhrase extends LuceneTestCase {
               true);
 
       TopDocs hits = indexSearcher.search(phraseQuery, 1);
-      assertEquals(0, hits.totalHits.value);
+      assertEquals(0, hits.totalHits.value());
       final Highlighter highlighter =
           new Highlighter(
               new SimpleHTMLFormatter(), new SimpleHTMLEncoder(), new QueryScorer(phraseQuery));
@@ -293,7 +293,7 @@ public class TestHighlighterPhrase extends LuceneTestCase {
               .build();
 
       TopDocs hits = indexSearcher.search(phraseQuery, 100);
-      assertEquals(1, hits.totalHits.value);
+      assertEquals(1, hits.totalHits.value());
       final Highlighter highlighter =
           new Highlighter(
               new SimpleHTMLFormatter(), new SimpleHTMLEncoder(), new QueryScorer(phraseQuery));
@@ -326,7 +326,7 @@ public class TestHighlighterPhrase extends LuceneTestCase {
               .build();
 
       TopDocs hits = indexSearcher.search(phraseQuery, 100);
-      assertEquals(1, hits.totalHits.value);
+      assertEquals(1, hits.totalHits.value());
 
       final Highlighter highlighter =
           new Highlighter(

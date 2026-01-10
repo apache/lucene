@@ -17,14 +17,14 @@
 
 package org.apache.lucene.replicator.nrt;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import com.carrotsearch.randomizedtesting.SeedUtils;
 import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.io.Writer;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -37,6 +37,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -94,8 +95,7 @@ import org.apache.lucene.util.ThreadInterruptedException;
 // hazardous window
 //   - replica comes up just as the primary is crashing / moving
 //   - electing a new primary when a replica is just finishing its nrt sync: we need to wait for it
-// so we are sure to get the "most up to
-//     date" replica
+// so we are sure to get the "most up to date" replica
 //   - replica comes up after merged segment finished so it doesn't copy over the merged segment
 // "promptly" (i.e. only sees it on NRT refresh)
 
@@ -120,6 +120,7 @@ import org.apache.lucene.util.ThreadInterruptedException;
 @SuppressCodecs({"MockRandom", "Direct", "SimpleText"})
 @SuppressSysoutChecks(bugUrl = "Stuff gets printed, important stuff for debugging a failure")
 public class TestStressNRTReplication extends LuceneTestCase {
+  public static final String CRASH_MSG_PREFIX = "will crash after ";
 
   // Test evilness controls:
 
@@ -210,10 +211,10 @@ public class TestStressNRTReplication extends LuceneTestCase {
     if (NUM_NODES == null) {
       numNodes = TestUtil.nextInt(random(), 2, 10);
     } else {
-      numNodes = NUM_NODES.intValue();
+      numNodes = NUM_NODES;
     }
 
-    System.out.println("TEST: using " + numNodes + " nodes");
+    message("TEST: using " + numNodes + " nodes");
 
     transLogPath = createTempDir("NRTReplication").resolve("translog");
     transLog = new SimpleTransLog(transLogPath);
@@ -230,7 +231,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
     }
 
     Thread[] indexers = new Thread[TestUtil.nextInt(random(), 1, 3)];
-    System.out.println("TEST: launch " + indexers.length + " indexer threads");
+    message("TEST: launch " + indexers.length + " indexer threads");
     for (int i = 0; i < indexers.length; i++) {
       indexers[i] = new IndexThread();
       indexers[i].setName("indexer" + i);
@@ -239,7 +240,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
     }
 
     Thread[] searchers = new Thread[TestUtil.nextInt(random(), 1, 3)];
-    System.out.println("TEST: launch " + searchers.length + " searcher threads");
+    message("TEST: launch " + searchers.length + " searcher threads");
     for (int i = 0; i < searchers.length; i++) {
       searchers[i] = new SearchThread();
       searchers[i].setName("searcher" + i);
@@ -256,10 +257,10 @@ public class TestStressNRTReplication extends LuceneTestCase {
     if (TEST_NIGHTLY) {
       runTimeSec = RANDOM_MULTIPLIER * TestUtil.nextInt(random(), 120, 240);
     } else {
-      runTimeSec = RANDOM_MULTIPLIER * TestUtil.nextInt(random(), 45, 120);
+      runTimeSec = RANDOM_MULTIPLIER * TestUtil.nextInt(random(), 20, 60);
     }
 
-    System.out.println("TEST: will run for " + runTimeSec + " sec");
+    message("TEST: will run for " + runTimeSec + " sec");
 
     long endTime = System.nanoTime() + runTimeSec * 1000000000L;
 
@@ -268,7 +269,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
     while (failed.get() == false && System.nanoTime() < endTime) {
 
       // Wait a bit:
-      Thread.sleep(TestUtil.nextInt(random(), Math.min(runTimeSec * 4, 200), runTimeSec * 4));
+      pause(TestUtil.nextInt(random(), Math.min(runTimeSec * 4, 200), runTimeSec * 4));
       if (primary != null && random().nextBoolean()) {
         NodeProcess curPrimary = primary;
         if (curPrimary != null) {
@@ -347,8 +348,8 @@ public class TestStressNRTReplication extends LuceneTestCase {
     }
     restarter.join();
 
-    // Close replicas before primary so we cancel any in-progres replications:
-    System.out.println("TEST: top: now close replicas");
+    // Close replicas before primary so we cancel any in-progress replications:
+    message("TEST: top: now close replicas");
     List<Closeable> toClose = new ArrayList<>();
     for (NodeProcess node : nodes) {
       if (node != primary && node != null) {
@@ -484,7 +485,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
     // When the primary starts, the userData in its latest commit point tells us which version it
     // had indexed up to, so we know where to
-    // replay from in the xlog.  However, we forcefuly advance the version, and then IW on init (or
+    // replay from in the xlog.  However, we forcefully advance the version, and then IW on init (or
     // maybe getReader) also adds 1 to it.
     // Since we publish the primary in this state (before xlog replay is done), a replica can start
     // up at this point and pull this version,
@@ -620,10 +621,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
       message("logging to " + childOut);
       childLog =
           Files.newBufferedWriter(
-              childOut,
-              StandardCharsets.UTF_8,
-              StandardOpenOption.APPEND,
-              StandardOpenOption.CREATE);
+              childOut, UTF_8, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
       childLog.write("\n\nSTART NEW CHILD:\n");
     } else {
       childLog = null;
@@ -638,18 +636,14 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
     Process p = pb.start();
 
-    BufferedReader r;
-    try {
-      r = new BufferedReader(new InputStreamReader(p.getInputStream(), IOUtils.UTF_8));
-    } catch (UnsupportedEncodingException uee) {
-      throw new RuntimeException(uee);
-    }
+    BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream(), UTF_8));
 
     int tcpPort = -1;
     long initCommitVersion = -1;
     long initInfosVersion = -1;
-    Pattern logTimeStart = Pattern.compile("^[0-9\\.]+s .*");
+    Pattern logTimeStart = Pattern.compile("^[0-9.]+s .*");
     boolean willCrash = false;
+    Optional<Thread> subprocessKiller = Optional.empty();
 
     while (true) {
       String l = r.readLine();
@@ -678,7 +672,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
               return null;
             } else {
               try {
-                Thread.sleep(10);
+                pause(10);
               } catch (InterruptedException ie) {
                 throw new ThreadInterruptedException(ie);
               }
@@ -709,8 +703,38 @@ public class TestStressNRTReplication extends LuceneTestCase {
         initCommitVersion = Integer.parseInt(l.substring(16).trim());
       } else if (l.startsWith("INFOS VERSION: ")) {
         initInfosVersion = Integer.parseInt(l.substring(15).trim());
-      } else if (l.contains("will crash after")) {
+      } else if (l.contains(CRASH_MSG_PREFIX)) {
         willCrash = true;
+        Pattern crashMsg =
+            Pattern.compile(Pattern.quote(CRASH_MSG_PREFIX) + "\\s*(?<millis>[0-9]+)");
+        var m = crashMsg.matcher(l);
+        if (!m.find()) {
+          throw new AssertionError("Expected the crash message to include the timeout: " + l);
+        }
+        final long deadline =
+            System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(Integer.parseInt(m.group("millis")));
+        // Fork a new thread that will attempt to terminate the subprocess after a certain delay.
+        // We don't keep track of these "killer" subprocesses; they will end gracefully if the
+        // subprocess is terminated prior to the timeout.
+        subprocessKiller =
+            Optional.of(
+                new Thread(
+                    () -> {
+                      while (System.nanoTime() < deadline && p.isAlive()) {
+                        try {
+                          pause(250);
+                        } catch (InterruptedException _) {
+                          // If we do get interrupted, it's likely we're being cleaned up. Do
+                          // proceed immediately then.
+                          break;
+                        }
+                      }
+                      if (p.isAlive()) {
+                        message("now killing process " + p);
+                        p.destroyForcibly();
+                      }
+                    }));
+        subprocessKiller.get().start();
       } else if (l.startsWith("NODE STARTED")) {
         break;
       }
@@ -723,48 +747,43 @@ public class TestStressNRTReplication extends LuceneTestCase {
     // nodeClosed once it exits:
     Thread pumper =
         ThreadPumper.start(
-            new Runnable() {
-              @Override
-              public void run() {
-                message("now wait for process " + p);
-                try {
-                  p.waitFor();
-                } catch (Throwable t) {
-                  throw new RuntimeException(t);
-                }
-
-                message("done wait for process " + p);
-                int exitValue = p.exitValue();
-                message("exit value=" + exitValue + " willCrash=" + finalWillCrash);
-                if (childLog != null) {
-                  try {
-                    childLog.write("process done; exitValue=" + exitValue + "\n");
-                    childLog.close();
-                  } catch (IOException ioe) {
-                    throw new RuntimeException(ioe);
-                  }
-                }
-                if (exitValue != 0
-                    && finalWillCrash == false
-                    && crashingNodes.remove(id) == false) {
-                  // should fail test
-                  failed.set(true);
-                  if (childLog != null) {
-                    throw new RuntimeException(
-                        "node "
-                            + id
-                            + " process had unexpected non-zero exit status="
-                            + exitValue
-                            + "; see "
-                            + childLog
-                            + " for details");
-                  } else {
-                    throw new RuntimeException(
-                        "node " + id + " process had unexpected non-zero exit status=" + exitValue);
-                  }
-                }
-                nodeClosed(id);
+            () -> {
+              message("now wait for process " + p);
+              try {
+                p.waitFor();
+              } catch (Throwable t) {
+                throw new RuntimeException(t);
               }
+
+              message("done wait for process " + p);
+              int exitValue = p.exitValue();
+              message("exit value=" + exitValue + " willCrash=" + finalWillCrash);
+              if (childLog != null) {
+                try {
+                  childLog.write("process done; exitValue=" + exitValue + "\n");
+                  childLog.close();
+                } catch (IOException ioe) {
+                  throw new RuntimeException(ioe);
+                }
+              }
+              if (exitValue != 0 && finalWillCrash == false && crashingNodes.remove(id) == false) {
+                // should fail test
+                failed.set(true);
+                if (childLog != null) {
+                  throw new RuntimeException(
+                      "node "
+                          + id
+                          + " process had unexpected non-zero exit status="
+                          + exitValue
+                          + "; see "
+                          + childLog
+                          + " for details");
+                } else {
+                  throw new RuntimeException(
+                      "node " + id + " process had unexpected non-zero exit status=" + exitValue);
+                }
+              }
+              nodeClosed(id);
             },
             r,
             System.out,
@@ -782,7 +801,20 @@ public class TestStressNRTReplication extends LuceneTestCase {
             + " initInfosVersion="
             + initInfosVersion);
     return new NodeProcess(
-        p, id, tcpPort, pumper, isPrimary, initCommitVersion, initInfosVersion, nodeIsClosing);
+        p,
+        id,
+        tcpPort,
+        pumper,
+        isPrimary,
+        initCommitVersion,
+        initInfosVersion,
+        nodeIsClosing,
+        subprocessKiller);
+  }
+
+  @SuppressForbidden(reason = "Thread sleep")
+  private static void pause(int millis) throws InterruptedException {
+    Thread.sleep(millis);
   }
 
   private void nodeClosed(int id) {
@@ -866,6 +898,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
   }
 
   // Periodically wakes up and starts up any down nodes:
+
   private class RestartThread extends Thread {
     @Override
     public void run() {
@@ -874,7 +907,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
       try {
         while (stop.get() == false) {
-          Thread.sleep(TestUtil.nextInt(random(), 50, 500));
+          pause(TestUtil.nextInt(random(), 50, 500));
           // message("top: restarter cycle");
 
           // Randomly crash full cluster:
@@ -884,7 +917,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
               if (starting[i]) {
                 message("N" + i + ": top: wait for startup so we can crash...");
                 while (starting[i]) {
-                  Thread.sleep(10);
+                  pause(10);
                 }
                 message("N" + i + ": top: done wait for startup");
               }
@@ -920,7 +953,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
             }
             b.append(String.format(Locale.ROOT, "%s%d(%.1fs)", prefix, i, sec));
           }
-          message("node status" + b.toString());
+          message("node status" + b);
           message("downNodes=" + downNodes);
 
           // If primary is down, promote a replica:
@@ -963,12 +996,13 @@ public class TestStressNRTReplication extends LuceneTestCase {
                         } finally {
                           starting[idx] = false;
                           startupThreads.remove(Thread.currentThread());
+                          message("N" + idx + ": top: removed thread");
                         }
                       }
                     };
+                startupThreads.add(t);
                 t.setName("start R" + idx);
                 t.start();
-                startupThreads.add(t);
               }
             } else {
               message("node " + idx + " still starting");
@@ -976,13 +1010,12 @@ public class TestStressNRTReplication extends LuceneTestCase {
           }
         }
 
-        System.out.println(
-            "Restarter: now stop: join " + startupThreads.size() + " startup threads");
+        message("Restarter: now stop: join " + startupThreads.size() + " startup threads");
 
-        while (startupThreads.size() > 0) {
-          Thread.sleep(10);
+        while (!startupThreads.isEmpty()) {
+          pause(1000);
+          message("Waiting for startup threads to terminate.");
         }
-
       } catch (Throwable t) {
         failed.set(true);
         stop.set(true);
@@ -1042,7 +1075,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
               if (node.isOpen == false) {
                 throw new IOException("node closed");
               }
-              Thread.sleep(1);
+              pause(1);
             }
             version = c.in.readVLong();
 
@@ -1053,7 +1086,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
               if (node.isOpen == false) {
                 throw new IOException("node closed");
               }
-              Thread.sleep(1);
+              pause(1);
             }
             int hitCount = c.in.readVInt();
 
@@ -1084,28 +1117,21 @@ public class TestStressNRTReplication extends LuceneTestCase {
             } else {
               // Just ensure that all nodes show the same hit count for
               // the same version, i.e. they really are replicas of one another:
-              if (oldHitCount.intValue() != hitCount) {
+              if (oldHitCount != hitCount) {
                 failed.set(true);
                 stop.set(true);
                 message(
                     "top: searcher: wrong version hitCount: version="
                         + version
                         + " oldHitCount="
-                        + oldHitCount.intValue()
+                        + oldHitCount
                         + " hitCount="
                         + hitCount);
                 fail(
-                    "version="
-                        + version
-                        + " oldHitCount="
-                        + oldHitCount.intValue()
-                        + " hitCount="
-                        + hitCount);
+                    "version=" + version + " oldHitCount=" + oldHitCount + " hitCount=" + hitCount);
               }
             }
-          } catch (
-              @SuppressWarnings("unused")
-              IOException ioe) {
+          } catch (IOException _) {
             // message("top: searcher: ignore exc talking to node " + node + ": " + ioe);
             // ioe.printStackTrace(System.out);
             IOUtils.closeWhileHandlingException(c);
@@ -1134,7 +1160,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
                 if (node.isOpen == false) {
                   throw new IOException("node died");
                 }
-                Thread.sleep(1);
+                pause(1);
               }
 
               version = c.in.readVLong();
@@ -1146,7 +1172,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
                 if (node.isOpen == false) {
                   throw new IOException("node died");
                 }
-                Thread.sleep(1);
+                pause(1);
               }
 
               int hitCount = c.in.readVInt();
@@ -1169,9 +1195,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
                 stop.set(true);
                 fail(failMessage);
               }
-            } catch (
-                @SuppressWarnings("unused")
-                IOException ioe) {
+            } catch (IOException _) {
               // message("top: searcher: ignore exc talking to node " + node + ": " + ioe);
               // throw new RuntimeException(ioe);
               // ioe.printStackTrace(System.out);
@@ -1181,7 +1205,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
             }
           }
 
-          Thread.sleep(10);
+          pause(10);
 
         } catch (Throwable t) {
           failed.set(true);
@@ -1220,7 +1244,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
           try {
             while (stop.get() == false && curPrimary == null) {
-              Thread.sleep(10);
+              pause(10);
               curPrimary = primary;
               if (curPrimary != null) {
                 c = new Connection(curPrimary.tcpPort);
@@ -1272,32 +1296,28 @@ public class TestStressNRTReplication extends LuceneTestCase {
               curPrimary.addOrUpdateDocument(c, doc, false);
               transLog.addDocument(idString, doc);
             }
-          } catch (
-              @SuppressWarnings("unused")
-              IOException se) {
+          } catch (IOException _) {
             // Assume primary crashed
             if (c != null) {
               message("top: indexer lost connection to primary");
             }
             try {
               c.close();
-            } catch (
-                @SuppressWarnings("unused")
-                Throwable t) {
+            } catch (Throwable _) {
             }
             curPrimary = null;
             c = null;
           }
 
           if (random().nextInt(sleepChance) == 0) {
-            Thread.sleep(10);
+            pause(10);
           }
 
           if (random().nextInt(100) == 17) {
             int pauseMS = TestUtil.nextInt(random(), 500, 2000);
-            System.out.println("Indexer: now pause for " + pauseMS + " ms...");
-            Thread.sleep(pauseMS);
-            System.out.println("Indexer: done pause for a bit...");
+            message("Indexer: now pause for " + pauseMS + " ms...");
+            pause(pauseMS);
+            message("Indexer: done pause for a bit...");
           }
         }
         if (curPrimary != null) {
@@ -1305,16 +1325,12 @@ public class TestStressNRTReplication extends LuceneTestCase {
             c.out.writeByte(SimplePrimaryNode.CMD_INDEXING_DONE);
             c.flush();
             c.in.readByte();
-          } catch (
-              @SuppressWarnings("unused")
-              IOException se) {
+          } catch (IOException _) {
             // Assume primary crashed
             message("top: indexer lost connection to primary");
             try {
               c.close();
-            } catch (
-                @SuppressWarnings("unused")
-                Throwable t) {
+            } catch (Throwable _) {
             }
             curPrimary = null;
             c = null;
@@ -1333,24 +1349,22 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
   static void message(String message) {
     long now = System.nanoTime();
-    System.out.println(
-        String.format(
-            Locale.ROOT,
-            "%5.3fs       :     parent [%11s] %s",
-            (now - Node.globalStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
-            Thread.currentThread().getName(),
-            message));
+    System.out.printf(
+        Locale.ROOT,
+        "%5.3fs       :     parent [%11s] %s%n",
+        (now - Node.globalStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
+        Thread.currentThread().getName(),
+        message);
   }
 
   static void message(String message, long localStartNS) {
     long now = System.nanoTime();
-    System.out.println(
-        String.format(
-            Locale.ROOT,
-            "%5.3fs %5.1fs:     parent [%11s] %s",
-            (now - Node.globalStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
-            (now - localStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
-            Thread.currentThread().getName(),
-            message));
+    System.out.printf(
+        Locale.ROOT,
+        "%5.3fs %5.1fs:     parent [%11s] %s%n",
+        (now - Node.globalStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
+        (now - localStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
+        Thread.currentThread().getName(),
+        message);
   }
 }

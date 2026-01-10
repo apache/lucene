@@ -271,11 +271,11 @@ public class TestPostingsOffsets extends LuceneTestCase {
         final Token token =
             makeToken(text, posIncr, offset + offIncr, offset + offIncr + tokenOffset);
         if (!actualTokens.containsKey(text)) {
-          actualTokens.put(text, new HashMap<Integer, List<Token>>());
+          actualTokens.put(text, new HashMap<>());
         }
         final Map<Integer, List<Token>> postingsByDoc = actualTokens.get(text);
         if (!postingsByDoc.containsKey(docCount)) {
-          postingsByDoc.put(docCount, new ArrayList<Token>());
+          postingsByDoc.put(docCount, new ArrayList<>());
         }
         postingsByDoc.get(docCount).add(token);
         tokens.add(token);
@@ -486,6 +486,7 @@ public class TestPostingsOffsets extends LuceneTestCase {
     iw.close();
     dir.close();
   }
+
   // TODO: more tests with other possibilities
 
   private void checkTokens(Token[] field1, Token[] field2) throws IOException {

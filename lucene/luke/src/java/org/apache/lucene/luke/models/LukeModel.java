@@ -44,8 +44,7 @@ public abstract class LukeModel {
   protected LukeModel(IndexReader reader) {
     this.reader = Objects.requireNonNull(reader);
 
-    if (reader instanceof DirectoryReader) {
-      DirectoryReader dr = (DirectoryReader) reader;
+    if (reader instanceof DirectoryReader dr) {
       this.dir = dr.directory();
       try {
         this.commit = dr.getIndexCommit();

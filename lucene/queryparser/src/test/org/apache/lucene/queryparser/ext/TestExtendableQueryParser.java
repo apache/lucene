@@ -31,7 +31,7 @@ import org.apache.lucene.tests.analysis.MockTokenizer;
 
 /** Testcase for the class {@link ExtendableQueryParser} */
 public class TestExtendableQueryParser extends TestQueryParser {
-  private static char[] DELIMITERS =
+  private static final char[] DELIMITERS =
       new char[] {Extensions.DEFAULT_EXTENSION_FIELD_DELIMITER, '-', '|'};
 
   @Override
@@ -75,7 +75,7 @@ public class TestExtendableQueryParser extends TestQueryParser {
       BooleanClause[] clauses = bquery.clauses().toArray(new BooleanClause[0]);
       assertEquals(2, clauses.length);
       BooleanClause booleanClause = clauses[0];
-      query = booleanClause.getQuery();
+      query = booleanClause.query();
       assertTrue(
           "expected instance of TermQuery but was " + query.getClass(), query instanceof TermQuery);
       TermQuery tquery = (TermQuery) query;
@@ -83,7 +83,7 @@ public class TestExtendableQueryParser extends TestQueryParser {
       assertEquals("foo", tquery.getTerm().text());
 
       booleanClause = clauses[1];
-      query = booleanClause.getQuery();
+      query = booleanClause.query();
       assertTrue(
           "expected instance of TermQuery but was " + query.getClass(), query instanceof TermQuery);
       tquery = (TermQuery) query;

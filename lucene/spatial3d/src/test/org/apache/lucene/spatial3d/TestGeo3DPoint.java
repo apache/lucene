@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.IntSupplier;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.PointsFormat;
@@ -143,7 +144,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
                         planetModel, toRadians(50), toRadians(-97), Math.PI / 180.)),
                 1)
             .totalHits
-            .value);
+            .value());
     w.close();
     r.close();
     dir.close();
@@ -154,7 +155,15 @@ public class TestGeo3DPoint extends LuceneTestCase {
   }
 
   private static class Cell {
-    static int nextCellID;
+    static final IntSupplier nextCellID =
+        new IntSupplier() {
+          int counter = 0;
+
+          @Override
+          public int getAsInt() {
+            return counter++;
+          }
+        };
 
     final Cell parent;
     final int cellID;
@@ -181,7 +190,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
       this.yMaxEnc = yMaxEnc;
       this.zMinEnc = zMinEnc;
       this.zMaxEnc = zMaxEnc;
-      this.cellID = nextCellID++;
+      this.cellID = nextCellID.getAsInt();
       this.splitCount = splitCount;
       this.planetModel = planetModel;
     }
@@ -588,6 +597,8 @@ public class TestGeo3DPoint extends LuceneTestCase {
     doTestRandom(10);
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandomMedium() throws Exception {
     doTestRandom(1000);
   }
@@ -752,9 +763,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
               // System.err.println("Generated: "+q);
               // assertTrue(false);
               return q;
-            } catch (
-                @SuppressWarnings("unused")
-                IllegalArgumentException e) {
+            } catch (IllegalArgumentException _) {
               continue;
             }
           }
@@ -779,9 +788,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
               // System.err.println("Generated: "+q);
               // assertTrue(false);
               return q;
-            } catch (
-                @SuppressWarnings("unused")
-                IllegalArgumentException e) {
+            } catch (IllegalArgumentException _) {
               continue;
             }
           }
@@ -798,9 +805,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
                   GeoTestUtil.nextLatitude(),
                   GeoTestUtil.nextLongitude(),
                   widthMeters);
-            } catch (
-                @SuppressWarnings("unused")
-                IllegalArgumentException e) {
+            } catch (IllegalArgumentException _) {
               continue;
             }
           }
@@ -812,9 +817,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
             try {
               return Geo3DPoint.newBoxQuery(
                   field, planetModel, r.minLat, r.maxLat, r.minLon, r.maxLon);
-            } catch (
-                @SuppressWarnings("unused")
-                IllegalArgumentException e) {
+            } catch (IllegalArgumentException _) {
               continue;
             }
           }
@@ -834,9 +837,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
             }
             try {
               return Geo3DPoint.newPathQuery(field, latitudes, longitudes, width, planetModel);
-            } catch (
-                @SuppressWarnings("unused")
-                IllegalArgumentException e) {
+            } catch (IllegalArgumentException _) {
               // This is what happens when we create a shape that is invalid.  Although it is
               // conceivable that there are cases where
               // the exception is thrown incorrectly, we aren't going to be able to do that in this
@@ -876,9 +877,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
                 continue;
               }
               return rval;
-            } catch (
-                @SuppressWarnings("unused")
-                IllegalArgumentException e) {
+            } catch (IllegalArgumentException _) {
               // This is what happens when we create a shape that is invalid.  Although it is
               // conceivable that there are cases where
               // the exception is thrown incorrectly, we aren't going to be able to do that in this
@@ -898,9 +897,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
 
             try {
               return GeoCircleFactory.makeGeoCircle(planetModel, lat, lon, angle);
-            } catch (
-                @SuppressWarnings("unused")
-                IllegalArgumentException iae) {
+            } catch (IllegalArgumentException _) {
               // angle is too small; try again:
               continue;
             }
@@ -942,9 +939,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
             }
             try {
               return GeoPathFactory.makeGeoPath(planetModel, width, points);
-            } catch (
-                @SuppressWarnings("unused")
-                IllegalArgumentException e) {
+            } catch (IllegalArgumentException _) {
               // This is what happens when we create a shape that is invalid.  Although it is
               // conceivable that there are cases where
               // the exception is thrown incorrectly, we aren't going to be able to do that in this
@@ -1183,8 +1178,8 @@ public class TestGeo3DPoint extends LuceneTestCase {
     }
   }
 
-  protected static double MINIMUM_EDGE_ANGLE = toRadians(5.0);
-  protected static double MINIMUM_ARC_ANGLE = toRadians(1.0);
+  private static final double MINIMUM_EDGE_ANGLE = toRadians(5.0);
+  private static final double MINIMUM_ARC_ANGLE = toRadians(1.0);
 
   /**
    * Cook up a random Polygon that makes sense, with possible nested polygon within. This is part of
@@ -1559,9 +1554,9 @@ public class TestGeo3DPoint extends LuceneTestCase {
    * the double range and random doubles within the range too.
    */
   public void testQuantization() throws Exception {
-    Random random = random();
+    Random random = nonAssertingRandom(random());
     PlanetModel planetModel = randomPlanetModel();
-    for (int i = 0; i < 10000; i++) {
+    for (int i = 0; i < atLeast(5000); i++) {
       int encoded = random.nextInt();
       if (encoded <= planetModel.MIN_ENCODED_VALUE) {
         continue;

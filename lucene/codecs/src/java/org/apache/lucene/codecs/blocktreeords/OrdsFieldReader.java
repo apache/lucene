@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.codecs.blocktreeords;
 
+import static org.apache.lucene.util.fst.FST.readMetadata;
+
 import java.io.IOException;
 import org.apache.lucene.codecs.blocktreeords.FSTOrdsOutputs.Output;
 import org.apache.lucene.index.FieldInfo;
@@ -43,6 +45,7 @@ final class OrdsFieldReader extends Terms {
   final OrdsBlockTreeTermsReader parent;
 
   final FST<Output> index;
+
   // private boolean DEBUG;
 
   OrdsFieldReader(
@@ -76,7 +79,8 @@ final class OrdsFieldReader extends Terms {
     // }
 
     rootBlockFP =
-        (new ByteArrayDataInput(rootCode.bytes.bytes, rootCode.bytes.offset, rootCode.bytes.length))
+        (new ByteArrayDataInput(
+                    rootCode.bytes().bytes, rootCode.bytes().offset, rootCode.bytes().length))
                 .readVLong()
             >>> OrdsBlockTreeTermsWriter.OUTPUT_FLAGS_NUM_BITS;
 
@@ -84,7 +88,7 @@ final class OrdsFieldReader extends Terms {
       final IndexInput clone = indexIn.clone();
       // System.out.println("start=" + indexStartFP + " field=" + fieldInfo.name);
       clone.seek(indexStartFP);
-      index = new FST<>(clone, clone, OrdsBlockTreeTermsWriter.FST_OUTPUTS);
+      index = new FST<>(readMetadata(clone, OrdsBlockTreeTermsWriter.FST_OUTPUTS), clone);
 
       /*
       if (true) {

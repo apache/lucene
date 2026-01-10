@@ -69,23 +69,15 @@ public class SimpleTextStoredFieldsReader extends StoredFieldsReader {
   public SimpleTextStoredFieldsReader(
       Directory directory, SegmentInfo si, FieldInfos fn, IOContext context) throws IOException {
     this.fieldInfos = fn;
-    boolean success = false;
     try {
       in =
           directory.openInput(
               IndexFileNames.segmentFileName(
                   si.name, "", SimpleTextStoredFieldsWriter.FIELDS_EXTENSION),
               context);
-      success = true;
-    } finally {
-      if (!success) {
-        try {
-          close();
-        } catch (
-            @SuppressWarnings("unused")
-            Throwable t) {
-        } // ensure we throw our original exception
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
     readIndex(si.maxDoc());
   }
@@ -169,7 +161,7 @@ public class SimpleTextStoredFieldsReader extends StoredFieldsReader {
     if (type == TYPE_STRING) {
       byte[] bytes = new byte[scratch.length() - VALUE.length];
       System.arraycopy(scratch.bytes(), VALUE.length, bytes, 0, bytes.length);
-      visitor.stringField(fieldInfo, new String(bytes, 0, bytes.length, StandardCharsets.UTF_8));
+      visitor.stringField(fieldInfo, new String(bytes, StandardCharsets.UTF_8));
     } else if (type == TYPE_BINARY) {
       byte[] copy = new byte[scratch.length() - VALUE.length];
       System.arraycopy(scratch.bytes(), VALUE.length, copy, 0, copy.length);

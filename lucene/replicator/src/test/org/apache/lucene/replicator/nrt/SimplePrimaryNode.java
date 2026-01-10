@@ -66,6 +66,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /** A primary node that uses simple TCP connections to send commands and copy files */
@@ -160,12 +161,9 @@ class SimplePrimaryNode extends PrimaryNode {
     // iwc.setInfoStream(new PrintStreamInfoStream(System.out));
 
     // Force more frequent merging so we stress merge warming:
-    if (mp instanceof TieredMergePolicy) {
-      TieredMergePolicy tmp = (TieredMergePolicy) mp;
+    if (mp instanceof TieredMergePolicy tmp) {
       tmp.setSegmentsPerTier(3);
-      tmp.setMaxMergeAtOnce(3);
-    } else if (mp instanceof LogMergePolicy) {
-      LogMergePolicy lmp = (LogMergePolicy) mp;
+    } else if (mp instanceof LogMergePolicy lmp) {
       lmp.setMergeFactor(3);
     }
 
@@ -175,6 +173,7 @@ class SimplePrimaryNode extends PrimaryNode {
     return writer;
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   @Override
   protected void preCopyMergedSegmentFiles(SegmentCommitInfo info, Map<String, FileMetaData> files)
       throws IOException {
@@ -242,11 +241,9 @@ class SimplePrimaryNode extends PrimaryNode {
           message(
               String.format(
                   Locale.ROOT,
-                  "top: warning: still warming merge "
-                      + info
-                      + " to "
-                      + preCopy.connections.size()
-                      + " replicas for %.1f sec...",
+                  "top: warning: still warming merge %s to %d replicas for %.1f sec...",
+                  info,
+                  preCopy.connections.size(),
                   (ns - startNS) / (double) TimeUnit.SECONDS.toNanos(1)));
           lastWarnNS = ns;
         }
@@ -388,17 +385,17 @@ class SimplePrimaryNode extends PrimaryNode {
   private static void writeCopyState(CopyState state, DataOutput out) throws IOException {
     // TODO (opto): we could encode to byte[] once when we created the copyState, and then just send
     // same byts to all replicas...
-    out.writeVInt(state.infosBytes.length);
-    out.writeBytes(state.infosBytes, 0, state.infosBytes.length);
-    out.writeVLong(state.gen);
-    out.writeVLong(state.version);
-    TestSimpleServer.writeFilesMetaData(out, state.files);
+    out.writeVInt(state.infosBytes().length);
+    out.writeBytes(state.infosBytes(), 0, state.infosBytes().length);
+    out.writeVLong(state.gen());
+    out.writeVLong(state.version());
+    TestSimpleServer.writeFilesMetaData(out, state.files());
 
-    out.writeVInt(state.completedMergeFiles.size());
-    for (String fileName : state.completedMergeFiles) {
+    out.writeVInt(state.completedMergeFiles().size());
+    for (String fileName : state.completedMergeFiles()) {
       out.writeString(fileName);
     }
-    out.writeVLong(state.primaryGen);
+    out.writeVLong(state.primaryGen());
   }
 
   /** Called when another node (replica) wants to copy files from us */
@@ -417,7 +414,7 @@ class SimplePrimaryNode extends PrimaryNode {
     } else if (b == 1) {
       // Caller does not have CopyState; we pull the latest one:
       copyState = getCopyState();
-      Thread.currentThread().setName("send-R" + replicaID + "-" + copyState.version);
+      Thread.currentThread().setName("send-R" + replicaID + "-" + copyState.version());
     } else {
       // Protocol error:
       throw new IllegalArgumentException("invalid CopyState byte=" + b);
@@ -512,6 +509,7 @@ class SimplePrimaryNode extends PrimaryNode {
     tokenizedWithTermVectors.setStoreTermVectorPositions(true);
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   private void handleIndexing(
       Socket socket,
       AtomicBoolean stop,
@@ -535,9 +533,7 @@ class SimplePrimaryNode extends PrimaryNode {
       byte cmd;
       try {
         cmd = in.readByte();
-      } catch (
-          @SuppressWarnings("unused")
-          EOFException eofe) {
+      } catch (EOFException _) {
         // done
         return;
       }
@@ -657,6 +653,7 @@ class SimplePrimaryNode extends PrimaryNode {
   static final byte CMD_SET_CLOSE_WAIT_MS = 25;
 
   /** Handles incoming request to the naive TCP server wrapping this node */
+  @SuppressForbidden(reason = "Thread sleep")
   void handleOneConnection(
       Random random,
       ServerSocket ss,
@@ -683,9 +680,7 @@ class SimplePrimaryNode extends PrimaryNode {
 
       try {
         cmd = in.readByte();
-      } catch (
-          @SuppressWarnings("unused")
-          EOFException eofe) {
+      } catch (EOFException _) {
         break;
       }
 
@@ -731,7 +726,7 @@ class SimplePrimaryNode extends PrimaryNode {
             IndexSearcher searcher = mgr.acquire();
             try {
               long version = ((DirectoryReader) searcher.getIndexReader()).getVersion();
-              int hitCount = searcher.count(new MatchAllDocsQuery());
+              int hitCount = searcher.count(MatchAllDocsQuery.INSTANCE);
               // message("version=" + version + " searcher=" + searcher);
               out.writeVLong(version);
               out.writeVInt(hitCount);

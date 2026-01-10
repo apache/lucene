@@ -95,7 +95,7 @@ my $regional_indicator_codepoints = [];
 # Using lowercase versions of property value names to allow for case-
 # insensitive comparison with the names in the Unicode data files.
 parse_Unicode_data_file($line_break_url, $codepoints, {'sa' => 1});
-parse_Unicode_data_file($scripts_url, $codepoints, 
+parse_Unicode_data_file($scripts_url, $codepoints,
                         {'han' => 1, 'hiragana' => 1});
 parse_Unicode_data_file($word_break_url, $codepoints,
                         {'aletter' => 1, 'hebrew_letter' => 1, 'katakana' => 1, 'numeric' => 1});

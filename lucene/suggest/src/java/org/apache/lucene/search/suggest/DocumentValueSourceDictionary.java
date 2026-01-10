@@ -96,10 +96,13 @@ public class DocumentValueSourceDictionary extends DocumentDictionary {
   final class DocumentValueSourceInputIterator extends DocumentDictionary.DocumentInputIterator {
 
     private LongValues currentWeightValues;
+
     /** leaves of the reader */
     private final List<LeafReaderContext> leaves;
+
     /** starting docIds of all the leaves */
     private final int[] starts;
+
     /** current leave index */
     private int currentLeafIndex = 0;
 

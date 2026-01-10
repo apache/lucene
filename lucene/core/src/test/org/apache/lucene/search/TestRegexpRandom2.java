@@ -52,6 +52,7 @@ import org.apache.lucene.util.automaton.RegExp;
 public class TestRegexpRandom2 extends LuceneTestCase {
   protected IndexSearcher searcher1;
   protected IndexSearcher searcher2;
+  protected IndexSearcher searcher3;
   private IndexReader reader;
   private Directory dir;
   protected String fieldName;
@@ -95,6 +96,7 @@ public class TestRegexpRandom2 extends LuceneTestCase {
     reader = writer.getReader();
     searcher1 = newSearcher(reader);
     searcher2 = newSearcher(reader);
+    searcher3 = newSearcher(reader);
     writer.close();
   }
 
@@ -141,7 +143,7 @@ public class TestRegexpRandom2 extends LuceneTestCase {
 
     @Override
     public String toString(String field) {
-      return field.toString() + automaton.toString();
+      return field + automaton;
     }
 
     @Override
@@ -172,11 +174,24 @@ public class TestRegexpRandom2 extends LuceneTestCase {
   /** check that the # of hits is the same as from a very simple regexpquery implementation. */
   protected void assertSame(String regexp) throws IOException {
     RegexpQuery smart = new RegexpQuery(new Term(fieldName, regexp), RegExp.NONE);
+    RegexpQuery nfaQuery =
+        new RegexpQuery(
+            new Term(fieldName, regexp),
+            RegExp.NONE,
+            0,
+            RegexpQuery.DEFAULT_PROVIDER,
+            0,
+            // TODO: The NFA query is not able to use rewrite method that will utilize the
+            // concurrency
+            MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE,
+            false);
     DumbRegexpQuery dumb = new DumbRegexpQuery(new Term(fieldName, regexp), RegExp.NONE);
 
     TopDocs smartDocs = searcher1.search(smart, 25);
     TopDocs dumbDocs = searcher2.search(dumb, 25);
+    TopDocs nfaDocs = searcher3.search(nfaQuery, 25);
 
     CheckHits.checkEqual(smart, smartDocs.scoreDocs, dumbDocs.scoreDocs);
+    CheckHits.checkEqual(nfaQuery, nfaDocs.scoreDocs, dumbDocs.scoreDocs);
   }
 }

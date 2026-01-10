@@ -45,6 +45,7 @@ import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.SameThreadExecutorService;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
 
@@ -209,7 +210,7 @@ public class TestDoc extends LuceneTestCase {
       String merged,
       boolean useCompoundFile)
       throws Exception {
-    IOContext context = newIOContext(random(), new IOContext(new MergeInfo(-1, -1, false, -1)));
+    IOContext context = newIOContext(random(), IOContext.merge(new MergeInfo(-1, -1, false, -1)));
     SegmentReader r1 = new SegmentReader(si1, Version.LATEST.major, context);
     SegmentReader r2 = new SegmentReader(si2, Version.LATEST.major, context);
 
@@ -223,6 +224,7 @@ public class TestDoc extends LuceneTestCase {
             merged,
             -1,
             false,
+            false,
             codec,
             Collections.emptyMap(),
             StringHelper.randomId(),
@@ -235,10 +237,12 @@ public class TestDoc extends LuceneTestCase {
             si,
             InfoStream.getDefault(),
             trackingDir,
-            new FieldInfos.FieldNumbers(null),
-            context);
+            new FieldInfos.FieldNumbers(null, null),
+            context,
+            new SameThreadExecutorService());
 
     merger.merge();
+    merger.cleanupMerge();
     r1.close();
     r2.close();
     si.setFiles(new HashSet<>(trackingDir.getCreatedFiles()));

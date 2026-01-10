@@ -166,16 +166,16 @@ public class TestStandardQP extends QueryParserTestBase {
 
   @Override
   public void testNewFieldQuery() throws Exception {
-    /** ordinary behavior, synonyms form uncoordinated boolean query */
+    /* ordinary behavior, synonyms form uncoordinated boolean query */
     StandardQueryParser dumb = getParser(new Analyzer1());
     BooleanQuery.Builder expanded = new BooleanQuery.Builder();
     expanded.add(new TermQuery(new Term("field", "dogs")), BooleanClause.Occur.SHOULD);
     expanded.add(new TermQuery(new Term("field", "dog")), BooleanClause.Occur.SHOULD);
     assertEquals(expanded.build(), dumb.parse("\"dogs\"", "field"));
-    /** even with the phrase operator the behavior is the same */
+    /* even with the phrase operator the behavior is the same */
     assertEquals(expanded.build(), dumb.parse("dogs", "field"));
 
-    /** custom behavior, the synonyms are expanded, unless you use quote operator */
+    /* custom behavior, the synonyms are expanded, unless you use quote operator */
     // TODO test something like "SmartQueryParser()"
   }
 

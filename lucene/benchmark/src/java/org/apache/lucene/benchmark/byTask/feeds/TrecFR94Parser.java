@@ -53,14 +53,14 @@ public class TrecFR94Parser extends TrecDocParser {
       // date...
       String dateStr = extract(docBuf, DATE, DATE_END, h2, DATE_NOISE_PREFIXES);
       if (dateStr != null) {
-        dateStr = stripTags(dateStr, 0).toString();
+        dateStr = stripTags(dateStr, 0);
         date = trecSrc.parseDate(dateStr.trim());
       }
     }
     docData.clear();
     docData.setName(name);
     docData.setDate(date);
-    docData.setBody(stripTags(docBuf, mark).toString());
+    docData.setBody(stripTags(docBuf, mark));
     return docData;
   }
 }

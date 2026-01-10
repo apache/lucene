@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -35,12 +36,12 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
-import org.apache.lucene.search.suggest.document.CompletionPostingsFormat.FSTLoadMode;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.PreloadHint;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -56,7 +57,7 @@ import org.apache.lucene.util.IOUtils;
 final class CompletionFieldsProducer extends FieldsProducer implements Accountable {
 
   private FieldsProducer delegateFieldsProducer;
-  private Map<String, CompletionsTermsReader> readers;
+  private final Map<String, CompletionsTermsReader> readers;
   private IndexInput dictIn;
 
   // copy ctr for merge instance
@@ -66,20 +67,20 @@ final class CompletionFieldsProducer extends FieldsProducer implements Accountab
     this.readers = readers;
   }
 
-  CompletionFieldsProducer(String codecName, SegmentReadState state, FSTLoadMode fstLoadMode)
-      throws IOException {
+  CompletionFieldsProducer(String codecName, SegmentReadState state) throws IOException {
     String indexFile =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, INDEX_EXTENSION);
     delegateFieldsProducer = null;
-    boolean success = false;
 
     try (ChecksumIndexInput index = state.directory.openChecksumInput(indexFile)) {
       // open up dict file containing all fsts
       String dictFile =
           IndexFileNames.segmentFileName(
               state.segmentInfo.name, state.segmentSuffix, DICT_EXTENSION);
-      dictIn = state.directory.openInput(dictFile, state.context);
+      dictIn =
+          state.directory.openInput(
+              dictFile, state.context.withHints(FileTypeHint.DATA, PreloadHint.INSTANCE));
       CodecUtil.checkIndexHeader(
           dictIn,
           codecName,
@@ -104,7 +105,7 @@ final class CompletionFieldsProducer extends FieldsProducer implements Accountab
 
       // read suggest field numbers and their offsets in the terms file from index
       int numFields = index.readVInt();
-      readers = CollectionUtil.newHashMap(numFields);
+      readers = HashMap.newHashMap(numFields);
       for (int i = 0; i < numFields; i++) {
         int fieldNumber = index.readVInt();
         long offset = index.readVLong();
@@ -114,30 +115,18 @@ final class CompletionFieldsProducer extends FieldsProducer implements Accountab
         FieldInfo fieldInfo = state.fieldInfos.fieldInfo(fieldNumber);
         // we don't load the FST yet
         readers.put(
-            fieldInfo.name,
-            new CompletionsTermsReader(dictIn, offset, minWeight, maxWeight, type, fstLoadMode));
+            fieldInfo.name, new CompletionsTermsReader(dictIn, offset, minWeight, maxWeight, type));
       }
       CodecUtil.checkFooter(index);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(delegateFieldsProducer, dictIn);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, delegateFieldsProducer, dictIn);
+      throw t;
     }
   }
 
   @Override
   public void close() throws IOException {
-    boolean success = false;
-    try {
-      delegateFieldsProducer.close();
-      IOUtils.close(dictIn);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(delegateFieldsProducer, dictIn);
-      }
-    }
+    IOUtils.close(delegateFieldsProducer, dictIn);
   }
 
   @Override

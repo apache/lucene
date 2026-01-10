@@ -18,9 +18,7 @@
 package org.apache.lucene.search.join;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.function.BiFunction;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.FloatPoint;
@@ -34,6 +32,8 @@ import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.PrefixCodedTerms;
 import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
+import org.apache.lucene.internal.hppc.FloatArrayList;
+import org.apache.lucene.internal.hppc.FloatCursor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
@@ -41,6 +41,7 @@ import org.apache.lucene.search.PointInSetQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BitSetIterator;
@@ -54,7 +55,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
   protected static final long BASE_RAM_BYTES =
       RamUsageEstimator.shallowSizeOfInstance(PointInSetIncludingScoreQuery.class);
 
-  static BiFunction<byte[], Class<? extends Number>, String> toString =
+  static final BiFunction<byte[], Class<? extends Number>, String> toString =
       (value, numericType) -> {
         if (Integer.class.equals(numericType)) {
           return Integer.toString(IntPoint.decodeDimension(value, 0));
@@ -77,7 +78,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
   final String field;
   final int bytesPerDim;
 
-  final List<Float> aggregatedJoinScores;
+  final FloatArrayList aggregatedJoinScores;
 
   private final long ramBytesUsed; // cache
 
@@ -103,7 +104,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
     }
     this.bytesPerDim = bytesPerDim;
 
-    aggregatedJoinScores = new ArrayList<>();
+    aggregatedJoinScores = new FloatArrayList();
     PrefixCodedTerms.Builder builder = new PrefixCodedTerms.Builder();
     BytesRefBuilder previous = null;
     BytesRef current;
@@ -171,7 +172,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         LeafReader reader = context.reader();
         FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
         if (fieldInfo == null) {
@@ -202,30 +203,32 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
         FixedBitSet result = new FixedBitSet(reader.maxDoc());
         float[] scores = new float[reader.maxDoc()];
         values.intersect(new MergePointVisitor(sortedPackedPoints, result, scores));
-        return new Scorer(this) {
+        final var scorer =
+            new Scorer() {
 
-          DocIdSetIterator disi = new BitSetIterator(result, 10L);
+              DocIdSetIterator disi = new BitSetIterator(result, 10L);
 
-          @Override
-          public float score() throws IOException {
-            return scores[docID()];
-          }
+              @Override
+              public float score() throws IOException {
+                return scores[docID()];
+              }
 
-          @Override
-          public float getMaxScore(int upTo) throws IOException {
-            return Float.POSITIVE_INFINITY;
-          }
+              @Override
+              public float getMaxScore(int upTo) throws IOException {
+                return Float.POSITIVE_INFINITY;
+              }
 
-          @Override
-          public int docID() {
-            return disi.docID();
-          }
+              @Override
+              public int docID() {
+                return disi.docID();
+              }
 
-          @Override
-          public DocIdSetIterator iterator() {
-            return disi;
-          }
-        };
+              @Override
+              public DocIdSetIterator iterator() {
+                return disi;
+              }
+            };
+        return new DefaultScorerSupplier(scorer);
       }
 
       @Override
@@ -240,8 +243,8 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
     private final FixedBitSet result;
     private final float[] scores;
 
-    private TermIterator iterator;
-    private Iterator<Float> scoreIterator;
+    private final TermIterator iterator;
+    private final Iterator<FloatCursor> scoreIterator;
     private BytesRef nextQueryPoint;
     float nextScore;
     private final BytesRef scratch = new BytesRef();
@@ -256,7 +259,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
       this.scoreIterator = aggregatedJoinScores.iterator();
       nextQueryPoint = iterator.next();
       if (scoreIterator.hasNext()) {
-        nextScore = scoreIterator.next();
+        nextScore = scoreIterator.next().value;
       }
     }
 
@@ -273,8 +276,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
         if (cmp == 0) {
           // Query point equals index point, so collect and return
           if (multipleValuesPerDocument) {
-            if (result.get(docID) == false) {
-              result.set(docID);
+            if (result.getAndSet(docID) == false) {
               scores[docID] = nextScore;
             }
           } else {
@@ -286,7 +288,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
           // Query point is before index point, so we move to next query point
           nextQueryPoint = iterator.next();
           if (scoreIterator.hasNext()) {
-            nextScore = scoreIterator.next();
+            nextScore = scoreIterator.next().value;
           }
         } else {
           // Query point is after index point, so we don't collect and we return:
@@ -304,7 +306,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
           // query point is before the start of this cell
           nextQueryPoint = iterator.next();
           if (scoreIterator.hasNext()) {
-            nextScore = scoreIterator.next();
+            nextScore = scoreIterator.next().value;
           }
           continue;
         }

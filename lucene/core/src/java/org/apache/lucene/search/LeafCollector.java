@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.StoredFields;
 
 /**
@@ -84,6 +85,22 @@ public interface LeafCollector {
   void collect(int doc) throws IOException;
 
   /**
+   * Collect a range of doc IDs, between {@code min} inclusive and {@code max} exclusive. {@code
+   * max} is guaranteed to be greater than {@code min}.
+   *
+   * <p>Extending this method is typically useful to take advantage of pre-aggregated data exposed
+   * in a {@link DocValuesSkipper}.
+   *
+   * <p>The default implementation calls {@link #collect(DocIdStream)} on a {@link DocIdStream} that
+   * matches the given range.
+   *
+   * @see #collect(int)
+   */
+  default void collectRange(int min, int max) throws IOException {
+    collect(new RangeDocIdStream(min, max));
+  }
+
+  /**
    * Bulk-collect doc IDs.
    *
    * <p>Note: The provided {@link DocIdStream} may be reused across calls and should be consumed
@@ -125,6 +142,9 @@ public interface LeafCollector {
    * is typically useful to compile data that has been collected on this leaf, e.g. to convert facet
    * counts on leaf ordinals to facet counts on global ordinals. The default implementation does
    * nothing.
+   *
+   * <p>Note: It can be assumed that this method will only be called once per LeafCollector
+   * instance.
    */
   default void finish() throws IOException {}
 }

@@ -368,6 +368,7 @@ final class ForUtil {
       MASKS32[i] = mask32(i);
     }
   }
+
   // mark values in array as final longs to avoid the cost of reading array, arrays should only be
   // used when the idx is a variable
   private static final long MASK8_1 = MASKS8[1];

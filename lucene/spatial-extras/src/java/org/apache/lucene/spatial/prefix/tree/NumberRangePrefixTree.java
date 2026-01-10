@@ -80,17 +80,17 @@ public abstract class NumberRangePrefixTree extends SpatialPrefixTree {
    *
    * @lucene.experimental
    */
-  public static interface NRShape extends Shape, Cloneable {
+  public interface NRShape extends Shape, Cloneable {
     /** The result should be parseable by {@link #parseShape(String)}. */
     @Override
-    abstract String toString();
+    String toString();
 
     /**
      * Returns this shape rounded to the target level. If we are already more course than the level
      * then the shape is simply returned. The result may refer to internal state of the argument so
      * you may want to clone it.
      */
-    public NRShape roundToLevel(int targetLevel);
+    NRShape roundToLevel(int targetLevel);
   }
 
   //
@@ -234,16 +234,18 @@ public abstract class NumberRangePrefixTree extends SpatialPrefixTree {
    *
    * @lucene.experimental
    */
-  public static interface UnitNRShape extends NRShape, Comparable<UnitNRShape> {
+  public interface UnitNRShape extends NRShape, Comparable<UnitNRShape> {
     // note: formerly known as LevelledValue; thus some variables still use 'lv'
 
     /** Get the prefix tree level, the higher the more precise. 0 means the world (universe). */
     int getLevel();
+
     /**
      * Gets the value at the specified level of this unit. level must be &gt;= 0 and &lt;=
      * getLevel().
      */
     int getValAtLevel(int level);
+
     /** Gets an ancestor at the specified level. It shares state, so you may want to clone() it. */
     UnitNRShape getShapeAtLevel(int level);
 

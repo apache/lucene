@@ -53,44 +53,33 @@ public abstract class TwoPhaseIterator {
     }
   }
 
-  private static class TwoPhaseIteratorAsDocIdSetIterator extends DocIdSetIterator {
+  private static class TwoPhaseIteratorAsDocIdSetIterator extends FilterDocIdSetIterator {
 
     final TwoPhaseIterator twoPhaseIterator;
-    final DocIdSetIterator approximation;
 
     TwoPhaseIteratorAsDocIdSetIterator(TwoPhaseIterator twoPhaseIterator) {
+      super(twoPhaseIterator.approximation());
       this.twoPhaseIterator = twoPhaseIterator;
-      this.approximation = twoPhaseIterator.approximation;
-    }
-
-    @Override
-    public int docID() {
-      return approximation.docID();
     }
 
     @Override
     public int nextDoc() throws IOException {
-      return doNext(approximation.nextDoc());
+      return doNext(in.nextDoc());
     }
 
     @Override
     public int advance(int target) throws IOException {
-      return doNext(approximation.advance(target));
+      return doNext(in.advance(target));
     }
 
     private int doNext(int doc) throws IOException {
-      for (; ; doc = approximation.nextDoc()) {
+      for (; ; doc = in.nextDoc()) {
         if (doc == NO_MORE_DOCS) {
           return NO_MORE_DOCS;
         } else if (twoPhaseIterator.matches()) {
           return doc;
         }
       }
-    }
-
-    @Override
-    public long cost() {
-      return approximation.cost();
     }
   }
 
@@ -118,4 +107,18 @@ public abstract class TwoPhaseIterator {
    * indexing an array. The returned value must be positive.
    */
   public abstract float matchCost();
+
+  /**
+   * Returns the end of the run of consecutive doc IDs that match this {@link TwoPhaseIterator} and
+   * that contains the current doc ID of the approximation, that is: one plus the last doc ID of the
+   * run.
+   *
+   * <p><b>Note</b>: It is illegal to call this method when the approximation is exhausted or not
+   * positioned.
+   *
+   * <p>The default implementation returns the current doc ID of the approximation.
+   */
+  public int docIDRunEnd() throws IOException {
+    return approximation().docID();
+  }
 }

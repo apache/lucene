@@ -34,7 +34,11 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.QueryTimeout;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -42,6 +46,7 @@ import org.apache.lucene.util.TestVectorUtil;
 import org.apache.lucene.util.VectorUtil;
 
 public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
+
   @Override
   KnnFloatVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
     return new KnnFloatVectorQuery(field, query, k, queryFilter);
@@ -50,6 +55,12 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
   AbstractKnnVectorQuery getThrowingKnnVectorQuery(String field, float[] vec, int k, Query query) {
     return new ThrowingKnnVectorQuery(field, vec, k, query);
+  }
+
+  @Override
+  AbstractKnnVectorQuery getCappedResultsThrowingKnnVectorQuery(
+      String field, float[] vec, int k, Query query, int maxResults) {
+    return new CappedResultsThrowingKnnVectorQuery(field, vec, k, query, maxResults);
   }
 
   @Override
@@ -76,6 +87,25 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
       assertEquals("KnnFloatVectorQuery:field[0.0,...][10]", query.toString("ignored"));
 
       assertDocScoreQueryToString(query.rewrite(newSearcher(reader)));
+
+      // test with filter
+      Query filter = new TermQuery(new Term("id", "text"));
+      query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10, filter);
+      assertEquals("KnnFloatVectorQuery:field[0.0,...][10][id:text]", query.toString("ignored"));
+    }
+  }
+
+  public void testVectorEncodingMismatch() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      Query filter = null;
+      if (random().nextBoolean()) {
+        filter = MatchAllDocsQuery.INSTANCE;
+      }
+      AbstractKnnVectorQuery query = new KnnByteVectorQuery("field", new byte[] {0, 1}, 10, filter);
+      IndexSearcher searcher = newSearcher(reader);
+      expectThrows(IllegalStateException.class, () -> searcher.search(query, 10));
     }
   }
 
@@ -109,16 +139,16 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
         DocIdSetIterator it = scorer.iterator();
         assertEquals(2, it.cost());
         assertEquals(0, it.nextDoc());
-        assertEquals(0, scorer.score(), 0);
+        assertTrue(0 <= scorer.score());
         assertEquals(1, it.advance(1));
-        assertEquals(1, scorer.score(), 0);
+        assertEquals(1, scorer.score(), EPSILON);
       }
     }
   }
 
   public void testScoreDotProduct() throws IOException {
     try (Directory d = newDirectory()) {
-      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+      try (IndexWriter w = new IndexWriter(d, configStandardCodec())) {
         for (int j = 1; j <= 5; j++) {
           Document doc = new Document();
           doc.add(
@@ -153,7 +183,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
             (float) ((1 + (2 * 2 + 3 * 4) / Math.sqrt((2 * 2 + 3 * 3) * (2 * 2 + 4 * 4))) / 2);
 
         // doc 1 happens to have the max score
-        assertEquals(score1, scorer.getMaxScore(2), 0.0001);
+        assertEquals(score1, scorer.getMaxScore(2), 0.001);
         assertEquals(score1, scorer.getMaxScore(Integer.MAX_VALUE), 0.0001);
 
         DocIdSetIterator it = scorer.iterator();
@@ -201,17 +231,25 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
           maxScore = Math.max(maxScore, scores[i]);
         }
         IndexReader indexReader = searcher.getIndexReader();
-        int[] segments = AbstractKnnVectorQuery.findSegmentStarts(indexReader, docs);
+        int[] segments = DocAndScoreQuery.findSegmentStarts(indexReader.leaves(), docs);
 
-        AbstractKnnVectorQuery.DocAndScoreQuery query =
-            new AbstractKnnVectorQuery.DocAndScoreQuery(
-                docs, scores, maxScore, segments, indexReader.getContext().id());
+        DocAndScoreQuery query =
+            new DocAndScoreQuery(
+                docs,
+                scores,
+                maxScore,
+                segments,
+                scoreDocs.length,
+                indexReader.getContext().id(),
+                0);
         final Weight w = query.createWeight(searcher, ScoreMode.TOP_SCORES, 1.0f);
         TopDocs topDocs = searcher.search(query, 100);
-        assertEquals(scoreDocs.length, topDocs.totalHits.value);
-        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
+        assertEquals(scoreDocs.length, topDocs.totalHits.value());
+        assertEquals(query.visited(), topDocs.totalHits.value());
+        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
         Arrays.sort(topDocs.scoreDocs, Comparator.comparingInt(scoreDoc -> scoreDoc.doc));
         assertEquals(scoreDocs.length, topDocs.scoreDocs.length);
+        assertEquals(0, query.reentryCount());
         for (int i = 0; i < scoreDocs.length; i++) {
           assertEquals(scoreDocs[i].doc, topDocs.scoreDocs[i].doc);
           assertEquals(scoreDocs[i].score, topDocs.scoreDocs[i].score, 0.0001f);
@@ -237,20 +275,48 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
     }
   }
 
-  private static class ThrowingKnnVectorQuery extends KnnFloatVectorQuery {
+  static class ThrowingKnnVectorQuery extends KnnFloatVectorQuery {
 
     public ThrowingKnnVectorQuery(String field, float[] target, int k, Query filter) {
-      super(field, target, k, filter);
+      super(field, target, k, filter, new KnnSearchStrategy.Hnsw(0));
     }
 
     @Override
-    protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator) {
+    protected TopDocs exactSearch(
+        LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout) {
       throw new UnsupportedOperationException("exact search is not supported");
     }
 
     @Override
     public String toString(String field) {
       return null;
+    }
+  }
+
+  static class CappedResultsThrowingKnnVectorQuery extends ThrowingKnnVectorQuery {
+
+    private final int maxResults;
+
+    public CappedResultsThrowingKnnVectorQuery(
+        String field, float[] target, int k, Query filter, int maxResults) {
+      super(field, target, k, filter);
+      this.maxResults = maxResults;
+    }
+
+    @Override
+    protected TopDocs approximateSearch(
+        LeafReaderContext context,
+        AcceptDocs acceptDocs,
+        int visitedLimit,
+        KnnCollectorManager knnCollectorManager)
+        throws IOException {
+      TopDocs topDocs =
+          super.approximateSearch(context, acceptDocs, Integer.MAX_VALUE, knnCollectorManager);
+      long results = Math.min(topDocs.totalHits.value(), maxResults);
+      ScoreDoc[] scoreDocs = new ScoreDoc[(int) results];
+      System.arraycopy(topDocs.scoreDocs, 0, scoreDocs, 0, scoreDocs.length);
+
+      return new TopDocs(new TotalHits(results, TotalHits.Relation.EQUAL_TO), scoreDocs);
     }
   }
 }

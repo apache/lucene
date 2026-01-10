@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.no;
 
 /*
  * This algorithm is updated based on code located at:
@@ -51,7 +50,9 @@ package org.apache.lucene.analysis.no;
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-import static org.apache.lucene.analysis.util.StemmerUtil.*;
+package org.apache.lucene.analysis.no;
+
+import static org.apache.lucene.analysis.util.StemmerUtil.endsWith;
 
 /**
  * Light Stemmer for Norwegian.
@@ -63,6 +64,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
 class NorwegianLightStemmer {
   /** Constant to remove Bokmål-specific endings */
   static final int BOKMAAL = 1;
+
   /** Constant to remove Nynorsk-specific endings */
   static final int NYNORSK = 2;
 

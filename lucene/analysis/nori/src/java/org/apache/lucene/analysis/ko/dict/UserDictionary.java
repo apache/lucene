@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.analysis.morph.Dictionary;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
@@ -75,13 +76,15 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
     entries.sort(Comparator.comparing(e -> e.split("\\s+")[0]));
 
     PositiveIntOutputs fstOutput = PositiveIntOutputs.getSingleton();
-    FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE2, fstOutput);
+    FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE2, fstOutput).build();
     IntsRefBuilder scratch = new IntsRefBuilder();
 
     String lastToken = null;
     List<int[]> _segmentations = new ArrayList<>(entries.size());
-    List<Short> _rightIds = new ArrayList<>(entries.size());
+    short[] rightIds = new short[entries.size()];
     long ord = 0;
+    int entryIndex = 0;
     for (String entry : entries) {
       String[] splits = entry.split("\\s+");
       String token = splits[0];
@@ -91,12 +94,12 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
       char lastChar = entry.charAt(entry.length() - 1);
       if (charDef.isHangul(lastChar)) {
         if (charDef.hasCoda(lastChar)) {
-          _rightIds.add(RIGHT_ID_T);
+          rightIds[entryIndex++] = RIGHT_ID_T;
         } else {
-          _rightIds.add(RIGHT_ID_F);
+          rightIds[entryIndex++] = RIGHT_ID_F;
         }
       } else {
-        _rightIds.add(RIGHT_ID);
+        rightIds[entryIndex++] = RIGHT_ID;
       }
 
       if (splits.length == 1) {
@@ -120,7 +123,7 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
       }
 
       // add mapping to FST
-      scratch.grow(token.length());
+      scratch.growNoCopy(token.length());
       scratch.setLength(token.length());
       for (int i = 0; i < token.length(); i++) {
         scratch.setIntAt(i, token.charAt(i));
@@ -129,12 +132,12 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
       lastToken = token;
       ord++;
     }
-    this.fst = new TokenInfoFST(fstCompiler.compile());
-    int[][] segmentations = _segmentations.toArray(new int[_segmentations.size()][]);
-    short[] rightIds = new short[_rightIds.size()];
-    for (int i = 0; i < _rightIds.size(); i++) {
-      rightIds[i] = _rightIds.get(i);
+    if (entryIndex < rightIds.length) {
+      rightIds = ArrayUtil.copyOfSubArray(rightIds, 0, entryIndex);
     }
+    this.fst =
+        new TokenInfoFST(FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()));
+    int[][] segmentations = _segmentations.toArray(new int[_segmentations.size()][]);
     this.morphAtts = new UserMorphData(segmentations, rightIds);
   }
 

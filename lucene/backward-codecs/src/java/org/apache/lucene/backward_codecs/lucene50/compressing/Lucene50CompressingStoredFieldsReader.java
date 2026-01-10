@@ -30,6 +30,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.index.StoredFieldDataInput;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ByteArrayDataInput;
@@ -54,10 +55,13 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
 
   /** Extension of stored fields file */
   public static final String FIELDS_EXTENSION = "fdt";
+
   /** Extension of stored fields index */
   public static final String INDEX_EXTENSION = "fdx";
+
   /** Extension of stored fields meta */
   public static final String META_EXTENSION = "fdm";
+
   /** Codec name for the index. */
   public static final String INDEX_CODEC_NAME = "Lucene85FieldsIndex";
 
@@ -73,8 +77,10 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
 
   static final int VERSION_START = 1;
   static final int VERSION_OFFHEAP_INDEX = 2;
+
   /** Version where all metadata were moved to the meta file. */
   static final int VERSION_META = 3;
+
   /**
    * Version where numChunks is explicitly recorded in meta file and a dirty chunk bit is recorded
    * in each chunk
@@ -285,9 +291,7 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
     switch (bits & TYPE_MASK) {
       case BYTE_ARR:
         int length = in.readVInt();
-        byte[] data = new byte[length];
-        in.readBytes(data, 0, length);
-        visitor.binaryField(info, data);
+        visitor.binaryField(info, new StoredFieldDataInput(in, length));
         break;
       case STRING:
         visitor.stringField(info, in.readString());

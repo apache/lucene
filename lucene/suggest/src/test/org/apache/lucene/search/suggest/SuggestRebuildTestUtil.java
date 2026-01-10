@@ -100,27 +100,21 @@ public final class SuggestRebuildTestUtil {
    * Simple marker interface to allow {@link #testLookupsDuringReBuild} callbacks to throw
    * Exceptions
    */
-  public static interface ExceptionalCallback {
-    public void check(final Lookup suggester) throws Exception;
+  public interface ExceptionalCallback {
+    void check(final Lookup suggester) throws Exception;
   }
 
   /**
    * An InputArrayIterator wrapper whose {@link InputIterator#next} method releases on a Semaphore,
    * and then acquires from a differnet Semaphore.
    */
-  private static final class DelayedInputIterator implements InputIterator {
-    final Semaphore releaseOnNext;
-    final Semaphore acquireOnNext;
-    final InputIterator inner;
-
-    public DelayedInputIterator(
-        final Semaphore releaseOnNext, final Semaphore acquireOnNext, final InputIterator inner) {
+  private record DelayedInputIterator(
+      Semaphore releaseOnNext, Semaphore acquireOnNext, InputIterator inner)
+      implements InputIterator {
+    private DelayedInputIterator {
       assert null != releaseOnNext;
       assert null != acquireOnNext;
       assert null != inner;
-      this.releaseOnNext = releaseOnNext;
-      this.acquireOnNext = acquireOnNext;
-      this.inner = inner;
     }
 
     @Override

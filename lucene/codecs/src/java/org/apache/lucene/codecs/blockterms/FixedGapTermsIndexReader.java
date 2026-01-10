@@ -31,7 +31,6 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.PagedBytes;
 import org.apache.lucene.util.packed.MonotonicBlockPackedReader;
 
@@ -47,7 +46,7 @@ public class FixedGapTermsIndexReader extends TermsIndexReaderBase {
   // number of places to multiply out the actual ord, and we
   // will overflow int during those multiplies.  So to avoid
   // having to upgrade each multiple to long in multiple
-  // places (error prone), we use long here:
+  // places (error-prone), we use long here:
   private final long indexInterval;
 
   private final int packedIntsVersion;
@@ -68,11 +67,8 @@ public class FixedGapTermsIndexReader extends TermsIndexReaderBase {
             state.segmentInfo.name,
             state.segmentSuffix,
             FixedGapTermsIndexWriter.TERMS_INDEX_EXTENSION);
-    final IndexInput in = state.directory.openInput(fileName, state.context);
 
-    boolean success = false;
-
-    try {
+    try (IndexInput in = state.directory.openInput(fileName, state.context)) {
 
       CodecUtil.checkIndexHeader(
           in,
@@ -118,7 +114,7 @@ public class FixedGapTermsIndexReader extends TermsIndexReaderBase {
                   + packedIndexStart
                   + " indexStart: "
                   + indexStart
-                  + "numIndexTerms: "
+                  + " numIndexTerms: "
                   + numIndexTerms,
               in);
         }
@@ -138,13 +134,7 @@ public class FixedGapTermsIndexReader extends TermsIndexReaderBase {
           throw new CorruptIndexException("duplicate field: " + fieldInfo.name, in);
         }
       }
-      success = true;
     } finally {
-      if (success) {
-        IOUtils.close(in);
-      } else {
-        IOUtils.closeWhileHandlingException(in);
-      }
       termBytesReader = termBytes.freeze(true);
     }
   }
@@ -272,7 +262,7 @@ public class FixedGapTermsIndexReader extends TermsIndexReaderBase {
 
       // slurp in the images from disk:
 
-      try {
+      try (clone) {
         final long numTermBytes = packedIndexStart - indexStart;
         termBytes.copy(clone, numTermBytes);
 
@@ -283,8 +273,6 @@ public class FixedGapTermsIndexReader extends TermsIndexReaderBase {
         // records offsets into byte[] term data
         termOffsets =
             MonotonicBlockPackedReader.of(clone, packedIntsVersion, blocksize, 1 + numIndexTerms);
-      } finally {
-        clone.close();
       }
     }
 
@@ -324,20 +312,6 @@ public class FixedGapTermsIndexReader extends TermsIndexReaderBase {
     input.seek(input.length() - CodecUtil.footerLength() - 8);
     long dirOffset = input.readLong();
     input.seek(dirOffset);
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    long sizeInBytes = ((termBytesReader != null) ? termBytesReader.ramBytesUsed() : 0);
-    for (FieldIndexData entry : fields.values()) {
-      sizeInBytes += entry.ramBytesUsed();
-    }
-    return sizeInBytes;
-  }
-
-  @Override
-  public Collection<Accountable> getChildResources() {
-    return Accountables.namedAccountables("field", fields);
   }
 
   @Override

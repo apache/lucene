@@ -18,11 +18,27 @@ package org.apache.lucene.expressions.js;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.lang.classfile.ClassBuilder;
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassFile.ClassHierarchyResolverOption;
+import java.lang.classfile.ClassHierarchyResolver;
+import java.lang.classfile.CodeBuilder;
+import java.lang.classfile.CodeBuilder.BlockCodeBuilder;
+import java.lang.classfile.Label;
+import java.lang.classfile.Opcode;
+import java.lang.classfile.TypeKind;
+import java.lang.classfile.attribute.ExceptionsAttribute;
+import java.lang.classfile.instruction.BranchInstruction;
+import java.lang.classfile.instruction.OperatorInstruction;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.ConstantDescs;
+import java.lang.constant.DynamicConstantDesc;
+import java.lang.constant.MethodTypeDesc;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandleInfo;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.MethodType;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.ArrayDeque;
@@ -32,9 +48,14 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
-import org.antlr.v4.runtime.ANTLRInputStream;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 import org.antlr.v4.runtime.BaseErrorListener;
+import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.DiagnosticErrorListener;
 import org.antlr.v4.runtime.RecognitionException;
@@ -45,11 +66,7 @@ import org.apache.lucene.expressions.Expression;
 import org.apache.lucene.expressions.js.JavascriptParser.ExpressionContext;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.util.IOUtils;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
-import org.objectweb.asm.commons.GeneratorAdapter;
+import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * An expression compiler for javascript expressions.
@@ -63,68 +80,57 @@ import org.objectweb.asm.commons.GeneratorAdapter;
  * <p>See the {@link org.apache.lucene.expressions.js package documentation} for the supported
  * syntax and default functions.
  *
- * <p>You can compile with an alternate set of functions via {@link #compile(String, Map,
- * ClassLoader)}. For example:
+ * <p>You can compile with an alternate set of functions via {@link #compile(String, Map)}. For
+ * example:
  *
  * <pre class="prettyprint">
- *   Map&lt;String,Method&gt; functions = new HashMap&lt;&gt;();
+ *   Map&lt;String,MethodHandle&gt; functions = new HashMap&lt;&gt;();
  *   // add all the default functions
  *   functions.putAll(JavascriptCompiler.DEFAULT_FUNCTIONS);
  *   // add cbrt()
- *   functions.put("cbrt", Math.class.getMethod("cbrt", double.class));
+ *   functions.put("cbrt", MethodHandles.publicLookup().findStatic(Math.class, "cbrt",
+ *                 MethodType.methodType(double.class, double.class)));
  *   // call compile with customized function map
  *   Expression foo = JavascriptCompiler.compile("cbrt(score)+ln(popularity)",
- *                                               functions,
- *                                               getClass().getClassLoader());
+ *                                               functions);
  * </pre>
+ *
+ * <p>It is possible to pass any {@link MethodHandle} as function that only takes {@code double}
+ * parameters and returns a {@code double}. The method does not need to be public, it just needs to
+ * be resolved correctly using a private {@link Lookup} instance. Ideally the methods should be
+ * {@code static}, but you can use {@link MethodHandle#bindTo(Object)} to bind it to a receiver.
  *
  * @lucene.experimental
  */
 public final class JavascriptCompiler {
-  static final class Loader extends ClassLoader {
-    Loader(ClassLoader parent) {
-      super(parent);
-    }
 
-    public Class<? extends Expression> define(String className, byte[] bytecode) {
-      return defineClass(className, bytecode, 0, bytecode.length).asSubclass(Expression.class);
-    }
-  }
+  private static final Lookup LOOKUP = MethodHandles.lookup();
 
-  private static final int CLASSFILE_VERSION = Opcodes.V1_8;
+  private static final MethodType MT_EXPRESSION_CTOR_LOOKUP =
+      MethodType.methodType(void.class, String.class, String[].class);
 
-  // We use the same class name for all generated classes as they all have their own class loader.
+  // We use the same class name for all generated classes (they are hidden anyways).
   // The source code is displayed as "source file name" in stack trace.
-  private static final String COMPILED_EXPRESSION_CLASS =
-      JavascriptCompiler.class.getName() + "$CompiledExpression";
-  private static final String COMPILED_EXPRESSION_INTERNAL =
-      COMPILED_EXPRESSION_CLASS.replace('.', '/');
+  private static final ClassDesc
+      CD_CompiledExpression =
+          ClassDesc.of(JavascriptCompiler.class.getName() + "$CompiledExpression"),
+      CD_Expression = Expression.class.describeConstable().orElseThrow(),
+      CD_DoubleValues = DoubleValues.class.describeConstable().orElseThrow(),
+      CD_JavascriptCompiler = JavascriptCompiler.class.describeConstable().orElseThrow();
+  private static final MethodTypeDesc
+      MTD_EXPRESSION_CTOR =
+          MethodTypeDesc.of(
+              ConstantDescs.CD_void, ConstantDescs.CD_String, ConstantDescs.CD_String.arrayType()),
+      MTD_EVALUATE = MethodTypeDesc.of(ConstantDescs.CD_double, CD_DoubleValues.arrayType()),
+      MTD_DOUBLE_VAL = MethodTypeDesc.of(ConstantDescs.CD_double),
+      MTD_PATCH_STACK =
+          MethodTypeDesc.of(ConstantDescs.CD_Throwable, ConstantDescs.CD_Throwable, CD_Expression);
 
-  static final Type EXPRESSION_TYPE = Type.getType(Expression.class);
-  static final Type FUNCTION_VALUES_TYPE = Type.getType(DoubleValues.class);
-
-  private static final org.objectweb.asm.commons.Method
-      EXPRESSION_CTOR = getAsmMethod(void.class, "<init>", String.class, String[].class),
-      EVALUATE_METHOD = getAsmMethod(double.class, "evaluate", DoubleValues[].class);
-
-  static final org.objectweb.asm.commons.Method DOUBLE_VAL_METHOD =
-      getAsmMethod(double.class, "doubleValue");
-
-  /** create an ASM Method object from return type, method name, and parameters. */
-  private static org.objectweb.asm.commons.Method getAsmMethod(
-      Class<?> rtype, String name, Class<?>... ptypes) {
-    return new org.objectweb.asm.commons.Method(
-        name, MethodType.methodType(rtype, ptypes).toMethodDescriptorString());
-  }
-
-  // This maximum length is theoretically 65535 bytes, but as it's CESU-8 encoded we dont know how
-  // large it is in bytes, so be safe
-  // rcmuir: "If your ranking function is that large you need to check yourself into a mental
-  // institution!"
-  private static final int MAX_SOURCE_LENGTH = 16384;
+  private static final ExceptionsAttribute ATTR_THROWS_IOEXCEPTION =
+      ExceptionsAttribute.ofSymbols(IOException.class.describeConstable().orElseThrow());
 
   final String sourceText;
-  final Map<String, Method> functions;
+  final Map<String, MethodHandle> functions;
   final boolean picky;
 
   /**
@@ -135,7 +141,7 @@ public final class JavascriptCompiler {
    * @throws ParseException on failure to compile
    */
   public static Expression compile(String sourceText) throws ParseException {
-    return compile(sourceText, DEFAULT_FUNCTIONS, JavascriptCompiler.class.getClassLoader());
+    return compile(sourceText, DEFAULT_FUNCTIONS);
   }
 
   /**
@@ -146,15 +152,13 @@ public final class JavascriptCompiler {
    * {@code double} parameters.
    *
    * @param sourceText The expression to compile
-   * @param functions map of String names to functions
-   * @param parent a {@code ClassLoader} that should be used as the parent of the loaded class. It
-   *     must contain all classes referred to by the given {@code functions}.
+   * @param functions map of String names to {@link MethodHandle}s
    * @return A new compiled expression
    * @throws ParseException on failure to compile
    */
-  public static Expression compile(
-      String sourceText, Map<String, Method> functions, ClassLoader parent) throws ParseException {
-    return compile(sourceText, functions, parent, false);
+  public static Expression compile(String sourceText, Map<String, MethodHandle> functions)
+      throws ParseException {
+    return compile(sourceText, functions, false);
   }
 
   /**
@@ -164,36 +168,18 @@ public final class JavascriptCompiler {
    * {@code double} parameters.
    *
    * @param sourceText The expression to compile
-   * @param functions map of String names to functions
-   * @param parent a {@code ClassLoader} that should be used as the parent of the loaded class. It
-   *     must contain all classes referred to by the given {@code functions}.
+   * @param functions map of String names to {@link MethodHandle}s
    * @param picky whether to throw exception on ambiguity or other internal parsing issues (this
    *     option makes things slower too, it is only for debugging).
    * @return A new compiled expression
    * @throws ParseException on failure to compile
    */
-  static Expression compile(
-      String sourceText, Map<String, Method> functions, ClassLoader parent, boolean picky)
+  static Expression compile(String sourceText, Map<String, MethodHandle> functions, boolean picky)
       throws ParseException {
-    if (parent == null) {
-      throw new NullPointerException("A parent ClassLoader must be given.");
-    }
-    for (Method m : functions.values()) {
-      checkFunctionClassLoader(m, parent);
+    for (MethodHandle m : functions.values()) {
       checkFunction(m);
     }
-    return new JavascriptCompiler(sourceText, functions, picky).compileExpression(parent);
-  }
-
-  /**
-   * This method is unused, it is just here to make sure that the function signatures don't change.
-   * If this method fails to compile, you also have to change the byte code generator to correctly
-   * use the FunctionValues class.
-   */
-  @SuppressWarnings({"unused", "null"})
-  private static void unusedTestCompile() throws IOException {
-    DoubleValues f = null;
-    f.doubleValue();
+    return new JavascriptCompiler(sourceText, functions, picky).compileExpression();
   }
 
   /**
@@ -201,41 +187,44 @@ public final class JavascriptCompiler {
    *
    * @param sourceText The expression to compile
    */
-  private JavascriptCompiler(String sourceText, Map<String, Method> functions, boolean picky) {
-    if (sourceText == null) {
-      throw new NullPointerException();
-    }
-    this.sourceText = sourceText;
-    this.functions = functions;
+  private JavascriptCompiler(
+      String sourceText, Map<String, MethodHandle> functions, boolean picky) {
+    this.sourceText = Objects.requireNonNull(sourceText, "sourceText");
+    this.functions = Map.copyOf(functions);
     this.picky = picky;
   }
 
   /**
-   * Compiles the given expression with the specified parent classloader
+   * Compiles the given expression as hidden class.
    *
    * @return A new compiled expression
    * @throws ParseException on failure to compile
    */
-  private Expression compileExpression(ClassLoader parent) throws ParseException {
-    final Map<String, Integer> externalsMap = new LinkedHashMap<>();
-    final ClassWriter classWriter =
-        new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
-
+  @SuppressForbidden(reason = "defines new bytecode on purpose, carefully")
+  private Expression compileExpression() throws ParseException {
+    final Map<String, Integer> externalsMap = new LinkedHashMap<>(),
+        constantsMap = new LinkedHashMap<>();
+    final byte[] classFile;
     try {
-      generateClass(getAntlrParseTree(), classWriter, externalsMap);
-
-      final Class<? extends Expression> evaluatorClass =
-          new Loader(parent).define(COMPILED_EXPRESSION_CLASS, classWriter.toByteArray());
-      final Constructor<? extends Expression> constructor =
-          evaluatorClass.getConstructor(String.class, String[].class);
-
-      return constructor.newInstance(
-          sourceText, externalsMap.keySet().toArray(new String[externalsMap.size()]));
+      classFile =
+          ClassFile.of(
+                  ClassHierarchyResolverOption.of(ClassHierarchyResolver.ofClassLoading(LOOKUP)))
+              .build(
+                  CD_CompiledExpression,
+                  writer -> generateClass(getAntlrParseTree(), writer, externalsMap, constantsMap));
     } catch (RuntimeException re) {
-      if (re.getCause() instanceof ParseException) {
-        throw (ParseException) re.getCause();
+      // Unwrap the ParseException from RuntimeException
+      if (re.getCause() instanceof ParseException cause) {
+        throw cause;
       }
       throw re;
+    }
+
+    try {
+      final Lookup lookup =
+          LOOKUP.defineHiddenClassWithClassData(
+              classFile, constantsMap.keySet().stream().map(functions::get).toList(), true);
+      return invokeConstructor(lookup, lookup.lookupClass(), externalsMap);
     } catch (ReflectiveOperationException exception) {
       throw new IllegalStateException(
           "An internal error occurred attempting to compile the expression (" + sourceText + ").",
@@ -243,16 +232,27 @@ public final class JavascriptCompiler {
     }
   }
 
+  private Expression invokeConstructor(
+      Lookup lookup, Class<?> expressionClass, Map<String, Integer> externalsMap)
+      throws ReflectiveOperationException {
+    final MethodHandle ctor = lookup.findConstructor(expressionClass, MT_EXPRESSION_CTOR_LOOKUP);
+    try {
+      return (Expression) ctor.invoke(sourceText, externalsMap.keySet().toArray(String[]::new));
+    } catch (RuntimeException | Error e) {
+      throw e;
+    } catch (Throwable t) {
+      throw new AssertionError(t);
+    }
+  }
+
   /**
    * Parses the sourceText into an ANTLR 4 parse tree
    *
    * @return The ANTLR parse tree
-   * @throws ParseException on failure to parse
    */
-  private ParseTree getAntlrParseTree() throws ParseException {
-    final ANTLRInputStream antlrInputStream = new ANTLRInputStream(sourceText);
+  private ParseTree getAntlrParseTree() {
     final JavascriptErrorHandlingLexer javascriptLexer =
-        new JavascriptErrorHandlingLexer(antlrInputStream);
+        new JavascriptErrorHandlingLexer(CharStreams.fromString(sourceText));
     javascriptLexer.removeErrorListeners();
     final JavascriptParser javascriptParser =
         new JavascriptParser(new CommonTokenStream(javascriptLexer));
@@ -278,17 +278,16 @@ public final class JavascriptCompiler {
               final int charPositionInLine,
               final String msg,
               final RecognitionException e) {
-            throw new RuntimeException(
-                new ParseException(
-                    "line ("
-                        + line
-                        + "), offset ("
-                        + charPositionInLine
-                        + "), symbol ("
-                        + offendingSymbol
-                        + ") "
-                        + msg,
-                    charPositionInLine));
+            throw newWrappedParseException(
+                "line ("
+                    + line
+                    + "), offset ("
+                    + charPositionInLine
+                    + "), symbol ("
+                    + offendingSymbol
+                    + ") "
+                    + msg,
+                charPositionInLine);
           }
         });
 
@@ -298,43 +297,59 @@ public final class JavascriptCompiler {
     parser.getInterpreter().setPredictionMode(PredictionMode.LL_EXACT_AMBIG_DETECTION);
   }
 
-  /** Sends the bytecode of class file to {@link ClassWriter}. */
+  /** Sends the bytecode of class file to {@link ClassBuilder}. */
   private void generateClass(
       final ParseTree parseTree,
-      final ClassWriter classWriter,
-      final Map<String, Integer> externalsMap)
-      throws ParseException {
-    classWriter.visit(
-        CLASSFILE_VERSION,
-        Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER | Opcodes.ACC_FINAL,
-        COMPILED_EXPRESSION_INTERNAL,
-        null,
-        EXPRESSION_TYPE.getInternalName(),
-        null);
-    final String clippedSourceText =
-        (sourceText.length() <= MAX_SOURCE_LENGTH)
-            ? sourceText
-            : (sourceText.substring(0, MAX_SOURCE_LENGTH - 3) + "...");
-    classWriter.visitSource(clippedSourceText, null);
+      final ClassBuilder builder,
+      final Map<String, Integer> externalsMap,
+      final Map<String, Integer> constantsMap) {
+    builder.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL).withSuperclass(CD_Expression);
 
-    final GeneratorAdapter constructor =
-        new GeneratorAdapter(Opcodes.ACC_PUBLIC, EXPRESSION_CTOR, null, null, classWriter);
-    constructor.loadThis();
-    constructor.loadArgs();
-    constructor.invokeConstructor(EXPRESSION_TYPE, EXPRESSION_CTOR);
-    constructor.returnValue();
-    constructor.endMethod();
+    // constructor:
+    builder.withMethodBody(
+        ConstantDescs.INIT_NAME,
+        MTD_EXPRESSION_CTOR,
+        ClassFile.ACC_PUBLIC,
+        gen -> {
+          gen.aload(0); // this
+          gen.aload(gen.parameterSlot(0));
+          gen.aload(gen.parameterSlot(1));
+          gen.invokespecial(CD_Expression, ConstantDescs.INIT_NAME, MTD_EXPRESSION_CTOR);
+          gen.return_();
+        });
 
-    final GeneratorAdapter gen =
-        new GeneratorAdapter(Opcodes.ACC_PUBLIC, EVALUATE_METHOD, null, null, classWriter);
+    // evaluate method:
+    final Consumer<BlockCodeBuilder> mainBlock =
+        gen -> {
+          newClassFileGeneratorVisitor(gen, externalsMap, constantsMap).visit(parseTree);
+          gen.dreturn();
+        };
+    final Consumer<BlockCodeBuilder> rethrowBlock =
+        gen -> {
+          gen.aload(0); // this
+          gen.invokestatic(CD_JavascriptCompiler, "patchStackTrace", MTD_PATCH_STACK);
+          gen.athrow();
+        };
+    final Consumer<CodeBuilder> body =
+        gen -> gen.trying(mainBlock, c -> c.catching(ConstantDescs.CD_Throwable, rethrowBlock));
+    builder.withMethod(
+        "evaluate",
+        MTD_EVALUATE,
+        ClassFile.ACC_PUBLIC,
+        mth -> mth.with(ATTR_THROWS_IOEXCEPTION).withCode(body));
+  }
 
+  private JavascriptBaseVisitor<Void> newClassFileGeneratorVisitor(
+      CodeBuilder gen,
+      final Map<String, Integer> externalsMap,
+      final Map<String, Integer> constantsMap) {
     // to completely hide the ANTLR visitor we use an anonymous impl:
-    new JavascriptBaseVisitor<Void>() {
-      private final Deque<Type> typeStack = new ArrayDeque<>();
+    return new JavascriptBaseVisitor<>() {
+      private final Deque<TypeKind> typeStack = new ArrayDeque<>();
 
       @Override
       public Void visitCompile(JavascriptParser.CompileContext ctx) {
-        typeStack.push(Type.DOUBLE_TYPE);
+        typeStack.push(TypeKind.DOUBLE);
         visit(ctx.expression());
         typeStack.pop();
 
@@ -355,8 +370,8 @@ public final class JavascriptCompiler {
         } else if (ctx.OCTAL() != null) {
           pushLong(Long.parseLong(ctx.OCTAL().getText().substring(1), 8));
         } else if (ctx.DECIMAL() != null) {
-          gen.push(Double.parseDouble(ctx.DECIMAL().getText()));
-          gen.cast(Type.DOUBLE_TYPE, typeStack.peek());
+          gen.loadConstant(Double.parseDouble(ctx.DECIMAL().getText()));
+          gen.conversion(TypeKind.DOUBLE, typeStack.peek());
         } else {
           throw new IllegalStateException("Unknown operation specified: " + ctx.getText());
         }
@@ -369,107 +384,99 @@ public final class JavascriptCompiler {
         String text = ctx.VARIABLE().getText();
         int arguments = ctx.expression().size();
         boolean parens = ctx.LP() != null && ctx.RP() != null;
-        Method method = parens ? functions.get(text) : null;
+        MethodHandle mh = parens ? functions.get(text) : null;
 
-        try {
-          if (method != null) {
-            int arity = method.getParameterTypes().length;
+        if (mh != null) {
+          final int arity = mh.type().parameterCount();
 
-            if (arguments != arity) {
-              throw new ParseException(
-                  "Invalid expression '"
-                      + sourceText
-                      + "': Expected ("
-                      + arity
-                      + ") arguments for function call ("
-                      + text
-                      + "), but found ("
-                      + arguments
-                      + ").",
-                  ctx.start.getStartIndex());
-            }
-
-            typeStack.push(Type.DOUBLE_TYPE);
-
-            for (int argument = 0; argument < arguments; ++argument) {
-              visit(ctx.expression(argument));
-            }
-
-            typeStack.pop();
-
-            gen.invokeStatic(
-                Type.getType(method.getDeclaringClass()),
-                org.objectweb.asm.commons.Method.getMethod(method));
-
-            gen.cast(Type.DOUBLE_TYPE, typeStack.peek());
-          } else if (!parens || arguments == 0 && text.contains(".")) {
-            int index;
-
-            text = normalizeQuotes(ctx.getText());
-
-            if (externalsMap.containsKey(text)) {
-              index = externalsMap.get(text);
-            } else {
-              index = externalsMap.size();
-              externalsMap.put(text, index);
-            }
-
-            gen.loadArg(0);
-            gen.push(index);
-            gen.arrayLoad(FUNCTION_VALUES_TYPE);
-            gen.invokeVirtual(FUNCTION_VALUES_TYPE, DOUBLE_VAL_METHOD);
-            gen.cast(Type.DOUBLE_TYPE, typeStack.peek());
-          } else {
-            throw new ParseException(
+          if (arguments != arity) {
+            throw newWrappedParseException(
                 "Invalid expression '"
                     + sourceText
-                    + "': Unrecognized function call ("
+                    + "': Expected ("
+                    + arity
+                    + ") arguments for function call ("
                     + text
+                    + "), but found ("
+                    + arguments
                     + ").",
                 ctx.start.getStartIndex());
           }
-          return null;
-        } catch (ParseException e) {
-          // The API doesn't allow checked exceptions here, so propagate up the stack. This is
-          // unwrapped
-          // in getAntlrParseTree.
-          throw new RuntimeException(e);
+
+          // place dynamic constant with MethodHandle on top of stack
+          final int index = constantsMap.computeIfAbsent(text, _ -> constantsMap.size());
+          final var constantDesc =
+              DynamicConstantDesc.ofNamed(
+                  ConstantDescs.BSM_CLASS_DATA_AT,
+                  ConstantDescs.DEFAULT_NAME,
+                  ConstantDescs.CD_MethodHandle,
+                  index);
+          gen.loadConstant(constantDesc);
+
+          // add arguments:
+          typeStack.push(TypeKind.DOUBLE);
+          for (int argument = 0; argument < arguments; ++argument) {
+            visit(ctx.expression(argument));
+          }
+          typeStack.pop();
+
+          // invoke MethodHandle of function:
+          gen.invokevirtual(
+              ConstantDescs.CD_MethodHandle,
+              "invokeExact",
+              mh.type().describeConstable().orElseThrow());
+
+          gen.conversion(TypeKind.DOUBLE, typeStack.peek());
+        } else if (!parens || arguments == 0 && text.contains(".")) {
+          text = normalizeQuotes(ctx.getText());
+          final int index = externalsMap.computeIfAbsent(text, _ -> externalsMap.size());
+
+          gen.aload(gen.parameterSlot(0));
+          gen.loadConstant(index);
+          gen.arrayLoad(TypeKind.REFERENCE);
+          gen.invokevirtual(CD_DoubleValues, "doubleValue", MTD_DOUBLE_VAL);
+          gen.conversion(TypeKind.DOUBLE, typeStack.peek());
+        } else {
+          throw newWrappedParseException(
+              "Invalid expression '" + sourceText + "': Unrecognized function call (" + text + ").",
+              ctx.start.getStartIndex());
         }
+        return null;
       }
 
       @Override
       public Void visitUnary(JavascriptParser.UnaryContext ctx) {
         if (ctx.BOOLNOT() != null) {
-          Label labelNotTrue = new Label();
-          Label labelNotReturn = new Label();
+          Label labelNotTrue = gen.newLabel();
+          Label labelNotReturn = gen.newLabel();
 
-          typeStack.push(Type.INT_TYPE);
+          typeStack.push(TypeKind.INT);
           visit(ctx.expression());
           typeStack.pop();
-          gen.visitJumpInsn(Opcodes.IFEQ, labelNotTrue);
+          gen.ifeq(labelNotTrue);
           pushBoolean(false);
-          gen.goTo(labelNotReturn);
-          gen.visitLabel(labelNotTrue);
+          gen.goto_(labelNotReturn);
+          gen.labelBinding(labelNotTrue);
           pushBoolean(true);
-          gen.visitLabel(labelNotReturn);
+          gen.labelBinding(labelNotReturn);
 
         } else if (ctx.BWNOT() != null) {
-          typeStack.push(Type.LONG_TYPE);
+          typeStack.push(TypeKind.LONG);
           visit(ctx.expression());
           typeStack.pop();
-          gen.push(-1L);
-          gen.visitInsn(Opcodes.LXOR);
-          gen.cast(Type.LONG_TYPE, typeStack.peek());
+          gen.loadConstant(-1L);
+          gen.lxor();
+          gen.conversion(TypeKind.LONG, typeStack.peek());
 
         } else if (ctx.ADD() != null) {
           visit(ctx.expression());
 
         } else if (ctx.SUB() != null) {
-          typeStack.push(Type.DOUBLE_TYPE);
+          typeStack.push(TypeKind.DOUBLE);
           visit(ctx.expression());
           typeStack.pop();
-          gen.visitInsn(Opcodes.DNEG);
-          gen.cast(Type.DOUBLE_TYPE, typeStack.peek());
+          gen.dneg();
+          gen.conversion(TypeKind.DOUBLE, typeStack.peek());
 
         } else {
           throw new IllegalStateException("Unknown operation specified: " + ctx.getText());
@@ -480,14 +487,14 @@ public final class JavascriptCompiler {
 
       @Override
       public Void visitMuldiv(JavascriptParser.MuldivContext ctx) {
-        int opcode;
+        Opcode opcode;
 
         if (ctx.MUL() != null) {
-          opcode = Opcodes.DMUL;
+          opcode = Opcode.DMUL;
         } else if (ctx.DIV() != null) {
-          opcode = Opcodes.DDIV;
+          opcode = Opcode.DDIV;
         } else if (ctx.REM() != null) {
-          opcode = Opcodes.DREM;
+          opcode = Opcode.DREM;
         } else {
           throw new IllegalStateException("Unknown operation specified: " + ctx.getText());
         }
@@ -499,12 +506,12 @@ public final class JavascriptCompiler {
 
       @Override
       public Void visitAddsub(JavascriptParser.AddsubContext ctx) {
-        int opcode;
+        Opcode opcode;
 
         if (ctx.ADD() != null) {
-          opcode = Opcodes.DADD;
+          opcode = Opcode.DADD;
         } else if (ctx.SUB() != null) {
-          opcode = Opcodes.DSUB;
+          opcode = Opcode.DSUB;
         } else {
           throw new IllegalStateException("Unknown operation specified: " + ctx.getText());
         }
@@ -516,14 +523,14 @@ public final class JavascriptCompiler {
 
       @Override
       public Void visitBwshift(JavascriptParser.BwshiftContext ctx) {
-        int opcode;
+        Opcode opcode;
 
         if (ctx.LSH() != null) {
-          opcode = Opcodes.LSHL;
+          opcode = Opcode.LSHL;
         } else if (ctx.RSH() != null) {
-          opcode = Opcodes.LSHR;
+          opcode = Opcode.LSHR;
         } else if (ctx.USH() != null) {
-          opcode = Opcodes.LUSHR;
+          opcode = Opcode.LUSHR;
         } else {
           throw new IllegalStateException("Unknown operation specified: " + ctx.getText());
         }
@@ -535,16 +542,16 @@ public final class JavascriptCompiler {
 
       @Override
       public Void visitBoolcomp(JavascriptParser.BoolcompContext ctx) {
-        int opcode;
+        Opcode opcode;
 
         if (ctx.LT() != null) {
-          opcode = GeneratorAdapter.LT;
+          opcode = Opcode.IFLT;
         } else if (ctx.LTE() != null) {
-          opcode = GeneratorAdapter.LE;
+          opcode = Opcode.IFLE;
         } else if (ctx.GT() != null) {
-          opcode = GeneratorAdapter.GT;
+          opcode = Opcode.IFGT;
         } else if (ctx.GTE() != null) {
-          opcode = GeneratorAdapter.GE;
+          opcode = Opcode.IFGE;
         } else {
           throw new IllegalStateException("Unknown operation specified: " + ctx.getText());
         }
@@ -556,12 +563,12 @@ public final class JavascriptCompiler {
 
       @Override
       public Void visitBooleqne(JavascriptParser.BooleqneContext ctx) {
-        int opcode;
+        Opcode opcode;
 
         if (ctx.EQ() != null) {
-          opcode = GeneratorAdapter.EQ;
+          opcode = Opcode.IFEQ;
         } else if (ctx.NE() != null) {
-          opcode = GeneratorAdapter.NE;
+          opcode = Opcode.IFNE;
         } else {
           throw new IllegalStateException("Unknown operation specified: " + ctx.getText());
         }
@@ -571,168 +578,170 @@ public final class JavascriptCompiler {
         return null;
       }
 
+      private void pushCond(Opcode operator, ExpressionContext left, ExpressionContext right) {
+        Label labelTrue = gen.newLabel();
+        Label labelReturn = gen.newLabel();
+
+        typeStack.push(TypeKind.DOUBLE);
+        visit(left);
+        visit(right);
+        typeStack.pop();
+
+        if (operator == Opcode.IFGE || operator == Opcode.IFGT) {
+          gen.dcmpl();
+        } else {
+          gen.dcmpg();
+        }
+        gen.with(BranchInstruction.of(operator, labelTrue));
+        pushBoolean(false);
+        gen.goto_(labelReturn);
+        gen.labelBinding(labelTrue);
+        pushBoolean(true);
+        gen.labelBinding(labelReturn);
+      }
+
       @Override
       public Void visitBwand(JavascriptParser.BwandContext ctx) {
-        pushBitwise(Opcodes.LAND, ctx.expression(0), ctx.expression(1));
+        pushBitwise(Opcode.LAND, ctx.expression(0), ctx.expression(1));
 
         return null;
       }
 
       @Override
       public Void visitBwxor(JavascriptParser.BwxorContext ctx) {
-        pushBitwise(Opcodes.LXOR, ctx.expression(0), ctx.expression(1));
+        pushBitwise(Opcode.LXOR, ctx.expression(0), ctx.expression(1));
 
         return null;
       }
 
       @Override
       public Void visitBwor(JavascriptParser.BworContext ctx) {
-        pushBitwise(Opcodes.LOR, ctx.expression(0), ctx.expression(1));
+        pushBitwise(Opcode.LOR, ctx.expression(0), ctx.expression(1));
 
         return null;
       }
 
       @Override
       public Void visitBooland(JavascriptParser.BoolandContext ctx) {
-        Label andFalse = new Label();
-        Label andEnd = new Label();
+        Label andFalse = gen.newLabel();
+        Label andEnd = gen.newLabel();
 
-        typeStack.push(Type.INT_TYPE);
+        typeStack.push(TypeKind.INT);
         visit(ctx.expression(0));
-        gen.visitJumpInsn(Opcodes.IFEQ, andFalse);
+        gen.ifeq(andFalse);
         visit(ctx.expression(1));
-        gen.visitJumpInsn(Opcodes.IFEQ, andFalse);
+        gen.ifeq(andFalse);
         typeStack.pop();
         pushBoolean(true);
-        gen.goTo(andEnd);
-        gen.visitLabel(andFalse);
+        gen.goto_(andEnd);
+        gen.labelBinding(andFalse);
         pushBoolean(false);
-        gen.visitLabel(andEnd);
+        gen.labelBinding(andEnd);
 
         return null;
       }
 
       @Override
       public Void visitBoolor(JavascriptParser.BoolorContext ctx) {
-        Label orTrue = new Label();
-        Label orEnd = new Label();
+        Label orTrue = gen.newLabel();
+        Label orEnd = gen.newLabel();
 
-        typeStack.push(Type.INT_TYPE);
+        typeStack.push(TypeKind.INT);
         visit(ctx.expression(0));
-        gen.visitJumpInsn(Opcodes.IFNE, orTrue);
+        gen.ifne(orTrue);
         visit(ctx.expression(1));
-        gen.visitJumpInsn(Opcodes.IFNE, orTrue);
+        gen.ifne(orTrue);
         typeStack.pop();
         pushBoolean(false);
-        gen.goTo(orEnd);
-        gen.visitLabel(orTrue);
+        gen.goto_(orEnd);
+        gen.labelBinding(orTrue);
         pushBoolean(true);
-        gen.visitLabel(orEnd);
+        gen.labelBinding(orEnd);
 
         return null;
       }
 
       @Override
       public Void visitConditional(JavascriptParser.ConditionalContext ctx) {
-        Label condFalse = new Label();
-        Label condEnd = new Label();
+        Label condFalse = gen.newLabel();
+        Label condEnd = gen.newLabel();
 
-        typeStack.push(Type.INT_TYPE);
+        typeStack.push(TypeKind.INT);
         visit(ctx.expression(0));
         typeStack.pop();
-        gen.visitJumpInsn(Opcodes.IFEQ, condFalse);
+        gen.ifeq(condFalse);
         visit(ctx.expression(1));
-        gen.goTo(condEnd);
-        gen.visitLabel(condFalse);
+        gen.goto_(condEnd);
+        gen.labelBinding(condFalse);
         visit(ctx.expression(2));
-        gen.visitLabel(condEnd);
+        gen.labelBinding(condEnd);
 
         return null;
       }
 
-      private void pushArith(int operator, ExpressionContext left, ExpressionContext right) {
-        pushBinaryOp(operator, left, right, Type.DOUBLE_TYPE, Type.DOUBLE_TYPE, Type.DOUBLE_TYPE);
+      private void pushArith(Opcode operator, ExpressionContext left, ExpressionContext right) {
+        pushBinaryOp(operator, left, right, TypeKind.DOUBLE, TypeKind.DOUBLE, TypeKind.DOUBLE);
       }
 
-      private void pushShift(int operator, ExpressionContext left, ExpressionContext right) {
-        pushBinaryOp(operator, left, right, Type.LONG_TYPE, Type.INT_TYPE, Type.LONG_TYPE);
+      private void pushShift(Opcode operator, ExpressionContext left, ExpressionContext right) {
+        pushBinaryOp(operator, left, right, TypeKind.LONG, TypeKind.INT, TypeKind.LONG);
       }
 
-      private void pushBitwise(int operator, ExpressionContext left, ExpressionContext right) {
-        pushBinaryOp(operator, left, right, Type.LONG_TYPE, Type.LONG_TYPE, Type.LONG_TYPE);
+      private void pushBitwise(Opcode operator, ExpressionContext left, ExpressionContext right) {
+        pushBinaryOp(operator, left, right, TypeKind.LONG, TypeKind.LONG, TypeKind.LONG);
       }
 
       private void pushBinaryOp(
-          int operator,
+          Opcode operator,
           ExpressionContext left,
           ExpressionContext right,
-          Type leftType,
-          Type rightType,
-          Type returnType) {
+          TypeKind leftType,
+          TypeKind rightType,
+          TypeKind returnType) {
         typeStack.push(leftType);
         visit(left);
         typeStack.pop();
         typeStack.push(rightType);
         visit(right);
         typeStack.pop();
-        gen.visitInsn(operator);
-        gen.cast(returnType, typeStack.peek());
-      }
-
-      private void pushCond(int operator, ExpressionContext left, ExpressionContext right) {
-        Label labelTrue = new Label();
-        Label labelReturn = new Label();
-
-        typeStack.push(Type.DOUBLE_TYPE);
-        visit(left);
-        visit(right);
-        typeStack.pop();
-
-        gen.ifCmp(Type.DOUBLE_TYPE, operator, labelTrue);
-        pushBoolean(false);
-        gen.goTo(labelReturn);
-        gen.visitLabel(labelTrue);
-        pushBoolean(true);
-        gen.visitLabel(labelReturn);
+        gen.with(OperatorInstruction.of(operator));
+        gen.conversion(returnType, typeStack.peek());
       }
 
       private void pushBoolean(boolean truth) {
-        switch (typeStack.peek().getSort()) {
-          case Type.INT:
-            gen.push(truth);
+        switch (typeStack.peek()) {
+          case TypeKind.INT:
+            gen.loadConstant(truth ? 1 : 0);
             break;
-          case Type.LONG:
-            gen.push(truth ? 1L : 0L);
+          case TypeKind.LONG:
+            gen.loadConstant(truth ? 1L : 0L);
             break;
-          case Type.DOUBLE:
-            gen.push(truth ? 1. : 0.);
+          case TypeKind.DOUBLE:
+            gen.loadConstant(truth ? 1. : 0.);
             break;
+          // $CASES-OMITTED$
           default:
             throw new IllegalStateException("Invalid expected type: " + typeStack.peek());
         }
       }
 
       private void pushLong(long i) {
-        switch (typeStack.peek().getSort()) {
-          case Type.INT:
-            gen.push((int) i);
+        switch (typeStack.peek()) {
+          case TypeKind.INT:
+            gen.loadConstant((int) i);
             break;
-          case Type.LONG:
-            gen.push(i);
+          case TypeKind.LONG:
+            gen.loadConstant(i);
             break;
-          case Type.DOUBLE:
-            gen.push((double) i);
+          case TypeKind.DOUBLE:
+            gen.loadConstant((double) i);
             break;
+          // $CASES-OMITTED$
           default:
             throw new IllegalStateException("Invalid expected type: " + typeStack.peek());
         }
       }
-    }.visit(parseTree);
-
-    gen.returnValue();
-    gen.endMethod();
-
-    classWriter.visitEnd();
+    };
   }
 
   static String normalizeQuotes(String text) {
@@ -776,14 +785,24 @@ public final class JavascriptCompiler {
   }
 
   /**
+   * Returns a new {@link ParseException} wrapped in a {@link RuntimeException} because the API
+   * doesn't allow checked exceptions, so propagate up the stack. This is unwrapped in {@link
+   * #compileExpression()}.
+   */
+  static RuntimeException newWrappedParseException(String text, int position) {
+    return new RuntimeException(new ParseException(text, position));
+  }
+
+  /**
    * The default set of functions available to expressions.
    *
    * <p>See the {@link org.apache.lucene.expressions.js package documentation} for a list.
    */
-  public static final Map<String, Method> DEFAULT_FUNCTIONS;
+  public static final Map<String, MethodHandle> DEFAULT_FUNCTIONS = loadDefaultFunctions();
 
-  static {
-    Map<String, Method> map = new HashMap<>();
+  private static Map<String, MethodHandle> loadDefaultFunctions() {
+    final Map<String, MethodHandle> map = new HashMap<>();
+    final Lookup publicLookup = MethodHandles.publicLookup();
     try {
       final Properties props = new Properties();
       var name = JavascriptCompiler.class.getSimpleName() + ".properties";
@@ -802,61 +821,72 @@ public final class JavascriptCompiler {
         final Class<?> clazz = Class.forName(vals[0].trim());
         final String methodName = vals[1].trim();
         final int arity = Integer.parseInt(vals[2].trim());
-        @SuppressWarnings({"rawtypes", "unchecked"})
-        Class[] args = new Class[arity];
-        Arrays.fill(args, double.class);
-        Method method = clazz.getMethod(methodName, args);
-        checkFunction(method);
-        map.put(call, method);
+        final MethodHandle mh =
+            publicLookup.findStatic(
+                clazz,
+                methodName,
+                MethodType.methodType(double.class, Collections.nCopies(arity, double.class)));
+        checkFunction(mh);
+        map.put(call, mh);
       }
     } catch (ReflectiveOperationException | IOException e) {
       throw new Error("Cannot resolve function", e);
     }
-    DEFAULT_FUNCTIONS = Collections.unmodifiableMap(map);
+    return Collections.unmodifiableMap(map);
   }
 
   /** Check Method signature for compatibility. */
-  private static void checkFunction(Method method) {
-    // check that the Method is public in some public reachable class:
-    final MethodType type;
+  private static void checkFunction(MethodHandle method) {
+    Supplier<String> methodNameSupplier = method::toString;
+
+    // try to crack the handle and check if it is a static call:
+    int refKind;
     try {
-      type = MethodHandles.publicLookup().unreflect(method).type();
-    } catch (IllegalAccessException iae) {
-      throw new IllegalArgumentException(
-          method + " is not accessible (declaring class or method not public).", iae);
+      MethodHandleInfo cracked = LOOKUP.revealDirect(method);
+      refKind = cracked.getReferenceKind();
+      // we have a much better name for the method so display it instead:
+      methodNameSupplier =
+          () ->
+              cracked.getDeclaringClass().getName()
+                  + "#"
+                  + cracked.getName()
+                  + cracked.getMethodType();
+    } catch (IllegalArgumentException | SecurityException _) {
+      // can't check for static, we assume it is static
+      // (it does not matter as we call the MethodHandle directly if it is compatible):
+      refKind = MethodHandleInfo.REF_invokeStatic;
     }
+    if (refKind != MethodHandleInfo.REF_invokeStatic && refKind != MethodHandleInfo.REF_getStatic) {
+      throw new IllegalArgumentException(methodNameSupplier.get() + " is not static.");
+    }
+
     // do some checks if the signature is "compatible":
-    if (!Modifier.isStatic(method.getModifiers())) {
-      throw new IllegalArgumentException(method + " is not static.");
-    }
+    final MethodType type = method.type();
     for (int arg = 0, arity = type.parameterCount(); arg < arity; arg++) {
       if (type.parameterType(arg) != double.class) {
-        throw new IllegalArgumentException(method + " must take only double parameters.");
+        throw new IllegalArgumentException(
+            methodNameSupplier.get() + " must take only double parameters.");
       }
     }
     if (type.returnType() != double.class) {
-      throw new IllegalArgumentException(method + " does not return a double.");
+      throw new IllegalArgumentException(methodNameSupplier.get() + " does not return a double.");
     }
   }
 
   /**
-   * Cross check if declaring class of given method is the same as returned by the given parent
-   * {@link ClassLoader} on string lookup. This prevents {@link NoClassDefFoundError}.
+   * Method called from try/catch handler in compiled expression. This patches the stack trace and
+   * adds back a hidden frame (including the source code of script as filename).
    */
-  private static void checkFunctionClassLoader(Method method, ClassLoader parent) {
-    boolean ok = false;
-    try {
-      final Class<?> clazz = method.getDeclaringClass();
-      ok = Class.forName(clazz.getName(), false, parent) == clazz;
-    } catch (
-        @SuppressWarnings("unused")
-        ClassNotFoundException e) {
-      ok = false;
-    }
-    if (!ok) {
-      throw new IllegalArgumentException(
-          method
-              + " is not declared by a class which is accessible by the given parent ClassLoader.");
-    }
+  static Throwable patchStackTrace(Throwable t, Expression impl) {
+    var extra = new StackTraceElement(impl.getClass().getName(), "evaluate", impl.sourceText, -1);
+    var origStack = t.getStackTrace();
+    var myStack = new Throwable().getStackTrace();
+    var top = Arrays.stream(origStack).limit(Math.max(0, origStack.length - myStack.length + 1));
+    var tail = Arrays.stream(myStack).skip(1);
+    t.setStackTrace(
+        Stream.of(top, Stream.of(extra), tail)
+            .flatMap(Function.identity())
+            .toArray(StackTraceElement[]::new));
+    return t;
   }
 }

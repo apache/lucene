@@ -65,20 +65,6 @@ public final class LongField extends Field {
   private final StoredValue storedValue;
 
   /**
-   * Creates a new LongField, indexing the provided point and storing it as a DocValue
-   *
-   * @param name field name
-   * @param value the long value
-   * @throws IllegalArgumentException if the field name or value is null.
-   * @deprecated Use {@link #LongField(String, long, Field.Store)} with {@link Field.Store#NO}
-   *     instead.
-   */
-  @Deprecated
-  public LongField(String name, long value) {
-    this(name, value, Field.Store.NO);
-  }
-
-  /**
    * Creates a new LongField, indexing the provided point, storing it as a DocValue, and optionally
    * storing it as a stored field.
    *
@@ -186,7 +172,20 @@ public final class LongField extends Field {
    */
   public static SortField newSortField(
       String field, boolean reverse, SortedNumericSelector.Type selector) {
-    return new SortedNumericSortField(field, SortField.Type.LONG, reverse, selector);
+    return new SortedNumericSortField(field, SortField.Type.LONG, reverse, selector, null);
+  }
+
+  /**
+   * Create a new {@link SortField} for long values.
+   *
+   * @param field field name. must not be {@code null}.
+   * @param reverse true if natural order should be reversed.
+   * @param selector custom selector type for choosing the sort value from the set.
+   * @param missingValue a sort value to use for documents with no value in the field
+   */
+  public static SortField newSortField(
+      String field, boolean reverse, SortedNumericSelector.Type selector, long missingValue) {
+    return new SortedNumericSortField(field, SortField.Type.LONG, reverse, selector, missingValue);
   }
 
   /**

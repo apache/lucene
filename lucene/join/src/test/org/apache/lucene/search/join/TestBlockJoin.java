@@ -27,6 +27,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -49,13 +50,32 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.FieldDoc;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MatchNoDocsQuery;
+import org.apache.lucene.search.PrefixQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.BasicStats;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.SimilarityBase;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.search.QueryUtils;
@@ -146,9 +166,9 @@ public class TestBlockJoin extends LuceneTestCase {
 
     BooleanQuery.Builder fullQuery = new BooleanQuery.Builder();
     fullQuery.add(new BooleanClause(childJoinQuery, Occur.MUST));
-    fullQuery.add(new BooleanClause(new MatchAllDocsQuery(), Occur.MUST));
+    fullQuery.add(new BooleanClause(MatchAllDocsQuery.INSTANCE, Occur.MUST));
     TopDocs topDocs = s.search(fullQuery.build(), 2);
-    assertEquals(2, topDocs.totalHits.value);
+    assertEquals(2, topDocs.totalHits.value());
     assertEquals(
         asSet("Lisa", "Frank"),
         asSet(
@@ -159,14 +179,14 @@ public class TestBlockJoin extends LuceneTestCase {
         new ParentChildrenBlockJoinQuery(
             parentsFilter, childQuery.build(), topDocs.scoreDocs[0].doc);
     TopDocs matchingChildren = s.search(childrenQuery, 1);
-    assertEquals(1, matchingChildren.totalHits.value);
+    assertEquals(1, matchingChildren.totalHits.value());
     assertEquals("java", s.storedFields().document(matchingChildren.scoreDocs[0].doc).get("skill"));
 
     childrenQuery =
         new ParentChildrenBlockJoinQuery(
             parentsFilter, childQuery.build(), topDocs.scoreDocs[1].doc);
     matchingChildren = s.search(childrenQuery, 1);
-    assertEquals(1, matchingChildren.totalHits.value);
+    assertEquals(1, matchingChildren.totalHits.value());
     assertEquals("java", s.storedFields().document(matchingChildren.scoreDocs[0].doc).get("skill"));
 
     r.close();
@@ -176,7 +196,9 @@ public class TestBlockJoin extends LuceneTestCase {
   // You must use ToParentBlockJoinSearcher if you want to do BQ SHOULD queries:
   public void testBQShouldJoinedChild() throws Exception {
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     final List<Document> docs = new ArrayList<>();
 
@@ -220,7 +242,7 @@ public class TestBlockJoin extends LuceneTestCase {
     fullQuery.add(new BooleanClause(childJoinQuery, Occur.SHOULD));
 
     final TopDocs topDocs = s.search(fullQuery.build(), 2);
-    assertEquals(2, topDocs.totalHits.value);
+    assertEquals(2, topDocs.totalHits.value());
     assertEquals(
         asSet("Lisa", "Frank"),
         asSet(
@@ -231,14 +253,14 @@ public class TestBlockJoin extends LuceneTestCase {
         new ParentChildrenBlockJoinQuery(
             parentsFilter, childQuery.build(), topDocs.scoreDocs[0].doc);
     TopDocs matchingChildren = s.search(childrenQuery, 1);
-    assertEquals(1, matchingChildren.totalHits.value);
+    assertEquals(1, matchingChildren.totalHits.value());
     assertEquals("java", s.storedFields().document(matchingChildren.scoreDocs[0].doc).get("skill"));
 
     childrenQuery =
         new ParentChildrenBlockJoinQuery(
             parentsFilter, childQuery.build(), topDocs.scoreDocs[1].doc);
     matchingChildren = s.search(childrenQuery, 1);
-    assertEquals(1, matchingChildren.totalHits.value);
+    assertEquals(1, matchingChildren.totalHits.value());
     assertEquals("java", s.storedFields().document(matchingChildren.scoreDocs[0].doc).get("skill"));
 
     r.close();
@@ -248,7 +270,19 @@ public class TestBlockJoin extends LuceneTestCase {
   public void testSimpleKnn() throws Exception {
 
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(),
+            dir,
+            newIndexWriterConfig()
+                .setCodec(
+                    new AssertingCodec() {
+                      @Override
+                      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                        return TestUtil.getDefaultKnnVectorsFormat();
+                      }
+                    })
+                .setMergePolicy(newMergePolicy(random(), false)));
 
     final List<Document> docs = new ArrayList<>();
 
@@ -277,7 +311,7 @@ public class TestBlockJoin extends LuceneTestCase {
             "vector", new float[] {4f, 4f, 4f}, null, 3, parentsFilter);
 
     TopDocs topDocs = s.search(childKnnJoin, 5);
-    assertEquals(2, topDocs.totalHits.value);
+    assertEquals(2, topDocs.totalHits.value());
     Document childDoc = s.storedFields().document(topDocs.scoreDocs[0].doc);
     assertEquals("parent1", childDoc.get("my_parent_id"));
     assertEquals(
@@ -294,7 +328,9 @@ public class TestBlockJoin extends LuceneTestCase {
   public void testSimple() throws Exception {
 
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     final List<Document> docs = new ArrayList<>();
 
@@ -340,7 +376,7 @@ public class TestBlockJoin extends LuceneTestCase {
 
     TopDocs topDocs = s.search(fullQuery.build(), 1);
     // assertEquals(1, results.totalHitCount);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     Document parentDoc = s.storedFields().document(topDocs.scoreDocs[0].doc);
     assertEquals("Lisa", parentDoc.get("name"));
 
@@ -348,7 +384,7 @@ public class TestBlockJoin extends LuceneTestCase {
         new ParentChildrenBlockJoinQuery(
             parentsFilter, childQuery.build(), topDocs.scoreDocs[0].doc);
     TopDocs matchingChildren = s.search(childrenQuery, 1);
-    assertEquals(1, matchingChildren.totalHits.value);
+    assertEquals(1, matchingChildren.totalHits.value());
     assertEquals("java", s.storedFields().document(matchingChildren.scoreDocs[0].doc).get("skill"));
 
     // System.out.println("TEST: now test up");
@@ -361,7 +397,7 @@ public class TestBlockJoin extends LuceneTestCase {
 
     // System.out.println("FULL: " + fullChildQuery);
     TopDocs hits = s.search(fullChildQuery.build(), 10);
-    assertEquals(1, hits.totalHits.value);
+    assertEquals(1, hits.totalHits.value());
     Document childDoc = s.storedFields().document(hits.scoreDocs[0].doc);
     // System.out.println("CHILD = " + childDoc + " docID=" + hits.scoreDocs[0].doc);
     assertEquals("java", childDoc.get("skill"));
@@ -383,7 +419,9 @@ public class TestBlockJoin extends LuceneTestCase {
   public void testSimpleFilter() throws Exception {
 
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     final List<Document> docs = new ArrayList<>();
     docs.add(makeJob("java", 2007));
@@ -459,7 +497,7 @@ public class TestBlockJoin extends LuceneTestCase {
             .add(parentQuery, Occur.FILTER)
             .build();
     TopDocs ukOnly = s.search(query, 1);
-    assertEquals("has filter - single passed", 1, ukOnly.totalHits.value);
+    assertEquals("has filter - single passed", 1, ukOnly.totalHits.value());
     assertEquals("Lisa", r.storedFields().document(ukOnly.scoreDocs[0].doc).get("name"));
 
     query =
@@ -469,7 +507,7 @@ public class TestBlockJoin extends LuceneTestCase {
             .build();
     // looking for US candidates
     TopDocs usThen = s.search(query, 1);
-    assertEquals("has filter - single passed", 1, usThen.totalHits.value);
+    assertEquals("has filter - single passed", 1, usThen.totalHits.value());
     assertEquals("Frank", r.storedFields().document(usThen.scoreDocs[0].doc).get("name"));
 
     TermQuery us = new TermQuery(new Term("country", "United States"));
@@ -515,15 +553,17 @@ public class TestBlockJoin extends LuceneTestCase {
 
   public void testBoostBug() throws Exception {
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
     IndexReader r = w.getReader();
     w.close();
     IndexSearcher s = newSearcher(r);
 
     ToParentBlockJoinQuery q =
         new ToParentBlockJoinQuery(
-            new MatchNoDocsQuery(),
-            new QueryBitSetProducer(new MatchAllDocsQuery()),
+            MatchNoDocsQuery.INSTANCE,
+            new QueryBitSetProducer(MatchAllDocsQuery.INSTANCE),
             ScoreMode.Avg);
     QueryUtils.check(random(), q, s);
     s.search(q, 10);
@@ -586,6 +626,8 @@ public class TestBlockJoin extends LuceneTestCase {
     return new Sort(sortFields.toArray(new SortField[sortFields.size()]));
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandom() throws Exception {
     // We build two indices at once: one normalized (which
     // ToParentBlockJoinQuery/Collector,
@@ -608,8 +650,14 @@ public class TestBlockJoin extends LuceneTestCase {
     final List<Integer> toDelete = new ArrayList<>();
 
     // TODO: parallel star join, nested join cases too!
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
-    final RandomIndexWriter joinW = new RandomIndexWriter(random(), joinDir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
+    final RandomIndexWriter joinW =
+        new RandomIndexWriter(
+            random(),
+            joinDir,
+            newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
     for (int parentDocID = 0; parentDocID < numParentDocs; parentDocID++) {
       Document parentDoc = new Document();
       Document parentJoinDoc = new Document();
@@ -873,7 +921,7 @@ public class TestBlockJoin extends LuceneTestCase {
       if (VERBOSE) {
         System.out.println(
             "\nTEST: normal index gets "
-                + results.totalHits.value
+                + results.totalHits.value()
                 + " hits; sort="
                 + parentAndChildSort);
         final ScoreDoc[] hits = results.scoreDocs;
@@ -942,7 +990,7 @@ public class TestBlockJoin extends LuceneTestCase {
         }
       }
 
-      if (results.totalHits.value == 0) {
+      if (results.totalHits.value() == 0) {
         assertEquals(0, joinResults.size());
       } else {
         compareHits(r, joinR, results, joinResults);
@@ -1097,7 +1145,7 @@ public class TestBlockJoin extends LuceneTestCase {
       }
       final TopDocs results2 = s.search(childQuery2, r.numDocs(), childSort2);
       if (VERBOSE) {
-        System.out.println("  " + results2.totalHits.value + " totalHits:");
+        System.out.println("  " + results2.totalHits.value() + " totalHits:");
         for (ScoreDoc sd : results2.scoreDocs) {
           final Document doc = s.storedFields().document(sd.doc);
           System.out.println(
@@ -1117,7 +1165,7 @@ public class TestBlockJoin extends LuceneTestCase {
       }
       TopDocs joinResults2 = joinS.search(childJoinQuery2, joinR.numDocs(), childSort2);
       if (VERBOSE) {
-        System.out.println("  " + joinResults2.totalHits.value + " totalHits:");
+        System.out.println("  " + joinResults2.totalHits.value() + " totalHits:");
         for (ScoreDoc sd : joinResults2.scoreDocs) {
           final Document doc = joinS.storedFields().document(sd.doc);
           final Document parentDoc = getParentDoc(joinR, parentsFilter, sd.doc);
@@ -1142,7 +1190,7 @@ public class TestBlockJoin extends LuceneTestCase {
 
   private void compareChildHits(
       IndexReader r, IndexReader joinR, TopDocs results, TopDocs joinResults) throws Exception {
-    assertEquals(results.totalHits.value, joinResults.totalHits.value);
+    assertEquals(results.totalHits.value(), joinResults.totalHits.value());
     assertEquals(results.scoreDocs.length, joinResults.scoreDocs.length);
     for (int hitCount = 0; hitCount < results.scoreDocs.length; hitCount++) {
       ScoreDoc hit = results.scoreDocs[hitCount];
@@ -1187,7 +1235,9 @@ public class TestBlockJoin extends LuceneTestCase {
   public void testMultiChildTypes() throws Exception {
 
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     final List<Document> docs = new ArrayList<>();
 
@@ -1234,7 +1284,7 @@ public class TestBlockJoin extends LuceneTestCase {
     fullQuery.add(new BooleanClause(childQualificationJoinQuery, Occur.MUST));
 
     final TopDocs topDocs = s.search(fullQuery.build(), 10);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     Document parentDoc = s.storedFields().document(topDocs.scoreDocs[0].doc);
     assertEquals("Lisa", parentDoc.get("name"));
 
@@ -1242,14 +1292,14 @@ public class TestBlockJoin extends LuceneTestCase {
         new ParentChildrenBlockJoinQuery(
             parentsFilter, childJobQuery.build(), topDocs.scoreDocs[0].doc);
     TopDocs matchingChildren = s.search(childrenQuery, 1);
-    assertEquals(1, matchingChildren.totalHits.value);
+    assertEquals(1, matchingChildren.totalHits.value());
     assertEquals("java", s.storedFields().document(matchingChildren.scoreDocs[0].doc).get("skill"));
 
     childrenQuery =
         new ParentChildrenBlockJoinQuery(
             parentsFilter, childQualificationQuery.build(), topDocs.scoreDocs[0].doc);
     matchingChildren = s.search(childrenQuery, 1);
-    assertEquals(1, matchingChildren.totalHits.value);
+    assertEquals(1, matchingChildren.totalHits.value());
     assertEquals(
         "maths", s.storedFields().document(matchingChildren.scoreDocs[0].doc).get("qualification"));
 
@@ -1259,7 +1309,9 @@ public class TestBlockJoin extends LuceneTestCase {
 
   public void testAdvanceSingleParentSingleChild() throws Exception {
     Directory dir = newDirectory();
-    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
     Document childDoc = new Document();
     childDoc.add(newStringField("child", "1", Field.Store.NO));
     Document parentDoc = new Document();
@@ -1322,7 +1374,9 @@ public class TestBlockJoin extends LuceneTestCase {
   // LUCENE-4968
   public void testChildQueryNeverMatches() throws Exception {
     Directory d = newDirectory();
-    RandomIndexWriter w = new RandomIndexWriter(random(), d);
+    RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), d, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
     Document parent = new Document();
     parent.add(new StoredField("parentID", "0"));
     parent.add(new SortedDocValuesField("parentID", new BytesRef("0")));
@@ -1358,7 +1412,7 @@ public class TestBlockJoin extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(r);
 
     // never matches:
-    Query childQuery = new TermQuery(new Term("childText", "bogus"));
+    Query childQuery = new TermQuery(new Term("childBogusField", "bogus"));
     BitSetProducer parentsFilter =
         new QueryBitSetProducer(new TermQuery(new Term("isParent", "yes")));
     CheckJoinIndex.check(r, parentsFilter);
@@ -1392,7 +1446,9 @@ public class TestBlockJoin extends LuceneTestCase {
   public void testAdvanceSingleDeletedParentNoChild() throws Exception {
 
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     // First doc with 1 children
     Document parentDoc = new Document();
@@ -1429,7 +1485,7 @@ public class TestBlockJoin extends LuceneTestCase {
 
     ToChildBlockJoinQuery parentJoinQuery = new ToChildBlockJoinQuery(parentQuery, parentsFilter);
     TopDocs topdocs = s.search(parentJoinQuery, 3);
-    assertEquals(1, topdocs.totalHits.value);
+    assertEquals(1, topdocs.totalHits.value());
 
     r.close();
     dir.close();
@@ -1437,7 +1493,9 @@ public class TestBlockJoin extends LuceneTestCase {
 
   public void testIntersectionWithRandomApproximation() throws IOException {
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     final int numBlocks = atLeast(100);
     for (int i = 0; i < numBlocks; ++i) {
@@ -1483,7 +1541,9 @@ public class TestBlockJoin extends LuceneTestCase {
   // delete documents to simulate FilteredQuery applying a filter as acceptDocs
   public void testParentScoringBug() throws Exception {
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     final List<Document> docs = new ArrayList<>();
     docs.add(makeJob("java", 2007));
@@ -1521,7 +1581,9 @@ public class TestBlockJoin extends LuceneTestCase {
 
   public void testToChildBlockJoinQueryExplain() throws Exception {
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     final List<Document> docs = new ArrayList<>();
     docs.add(makeJob("java", 2007));
@@ -1563,7 +1625,9 @@ public class TestBlockJoin extends LuceneTestCase {
   public void testToChildInitialAdvanceParentButNoKids() throws Exception {
 
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     // degenerate case: first doc has no children
     w.addDocument(makeResume("first", "nokids"));
@@ -1598,10 +1662,14 @@ public class TestBlockJoin extends LuceneTestCase {
     dir.close();
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testMultiChildQueriesOfDiffParentLevels() throws Exception {
 
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     // randomly generate resume->jobs[]->qualifications[]
     final int numResumes = atLeast(100);
@@ -1680,7 +1748,12 @@ public class TestBlockJoin extends LuceneTestCase {
         };
     Directory dir = newDirectory();
     RandomIndexWriter w =
-        new RandomIndexWriter(random(), dir, newIndexWriterConfig().setSimilarity(sim));
+        new RandomIndexWriter(
+            random(),
+            dir,
+            newIndexWriterConfig()
+                .setSimilarity(sim)
+                .setMergePolicy(newMergePolicy(random(), false)));
     w.addDocuments(
         Arrays.asList(
             Collections.singleton(newTextField("foo", "bar bar", Store.NO)),
@@ -1696,7 +1769,7 @@ public class TestBlockJoin extends LuceneTestCase {
       Query query =
           new ToParentBlockJoinQuery(new TermQuery(new Term("foo", "bar")), parents, scoreMode);
       TopDocs topDocs = searcher.search(query, 10);
-      assertEquals(1, topDocs.totalHits.value);
+      assertEquals(1, topDocs.totalHits.value());
       assertEquals(3, topDocs.scoreDocs[0].doc);
       float expectedScore;
       switch (scoreMode) {

@@ -37,14 +37,16 @@ public class TestCheckJoinIndex extends LuceneTestCase {
 
   public void testNoParent() throws IOException {
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
     final int numDocs = TestUtil.nextInt(random(), 1, 3);
     for (int i = 0; i < numDocs; ++i) {
       w.addDocument(new Document());
     }
     final IndexReader reader = w.getReader();
     w.close();
-    BitSetProducer parentsFilter = new QueryBitSetProducer(new MatchNoDocsQuery());
+    BitSetProducer parentsFilter = new QueryBitSetProducer(MatchNoDocsQuery.INSTANCE);
     try {
       expectThrows(IllegalStateException.class, () -> CheckJoinIndex.check(reader, parentsFilter));
     } finally {
@@ -55,7 +57,9 @@ public class TestCheckJoinIndex extends LuceneTestCase {
 
   public void testOrphans() throws IOException {
     final Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final RandomIndexWriter w =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
 
     {
       // Add a first valid block

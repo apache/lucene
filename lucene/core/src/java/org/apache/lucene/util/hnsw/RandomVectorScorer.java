@@ -18,9 +18,13 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
-import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.util.Bits;
 
-/** A {@link RandomVectorScorer} for scoring random nodes in batches against an abstract query. */
+/**
+ * A {@link RandomVectorScorer} for scoring random nodes in batches against an abstract query. This
+ * class isn't thread-safe and should be used by a single thread.
+ */
 public interface RandomVectorScorer {
   /**
    * Returns the score between the query and the provided node.
@@ -31,54 +35,80 @@ public interface RandomVectorScorer {
   float score(int node) throws IOException;
 
   /**
-   * Creates a default scorer for float vectors.
+   * Score a list of numNodes and store the results in the scores array.
    *
-   * <p>WARNING: The {@link RandomAccessVectorValues} given can contain stateful buffers. Avoid
-   * using it after calling this function. If you plan to use it again outside the returned {@link
-   * RandomVectorScorer}, think about passing a copied version ({@link
-   * RandomAccessVectorValues#copy}).
+   * <p>This may be more efficient than calling {@link #score(int)} for each node.
    *
-   * @param vectors the underlying storage for vectors
-   * @param similarityFunction the similarity function to score vectors
-   * @param query the actual query
+   * @param nodes array of nodes to score.
+   * @param scores output array of scores corresponding to each node.
+   * @param numNodes number of nodes to score. Must not exceed length of nodes or scores arrays.
+   * @return the maximum scored value of any node, or Float.NEGATIVE_INFINITY if numNodes == 0.
    */
-  static RandomVectorScorer createFloats(
-      final RandomAccessVectorValues<float[]> vectors,
-      final VectorSimilarityFunction similarityFunction,
-      final float[] query) {
-    if (query.length != vectors.dimension()) {
-      throw new IllegalArgumentException(
-          "vector query dimension: "
-              + query.length
-              + " differs from field dimension: "
-              + vectors.dimension());
+  default float bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
+    float max = Float.NEGATIVE_INFINITY;
+    for (int i = 0; i < numNodes; i++) {
+      scores[i] = score(nodes[i]);
+      max = Math.max(max, scores[i]);
     }
-    return node -> similarityFunction.compare(query, vectors.vectorValue(node));
+    return max;
   }
 
   /**
-   * Creates a default scorer for byte vectors.
-   *
-   * <p>WARNING: The {@link RandomAccessVectorValues} given can contain stateful buffers. Avoid
-   * using it after calling this function. If you plan to use it again outside the returned {@link
-   * RandomVectorScorer}, think about passing a copied version ({@link
-   * RandomAccessVectorValues#copy}).
-   *
-   * @param vectors the underlying storage for vectors
-   * @param similarityFunction the similarity function to use to score vectors
-   * @param query the actual query
+   * @return the maximum possible ordinal for this scorer
    */
-  static RandomVectorScorer createBytes(
-      final RandomAccessVectorValues<byte[]> vectors,
-      final VectorSimilarityFunction similarityFunction,
-      final byte[] query) {
-    if (query.length != vectors.dimension()) {
-      throw new IllegalArgumentException(
-          "vector query dimension: "
-              + query.length
-              + " differs from field dimension: "
-              + vectors.dimension());
+  int maxOrd();
+
+  /**
+   * Translates vector ordinal to the correct document ID. By default, this is an identity function.
+   *
+   * @param ord the vector ordinal
+   * @return the document Id for that vector ordinal
+   */
+  default int ordToDoc(int ord) {
+    return ord;
+  }
+
+  /**
+   * Returns the {@link Bits} representing live documents. By default, this is an identity function.
+   *
+   * @param acceptDocs the accept docs
+   * @return the accept docs
+   */
+  default Bits getAcceptOrds(Bits acceptDocs) {
+    return acceptDocs;
+  }
+
+  /** Creates a default scorer for random access vectors. */
+  abstract class AbstractRandomVectorScorer implements RandomVectorScorer, HasKnnVectorValues {
+    private final KnnVectorValues values;
+
+    /**
+     * Creates a new scorer for the given vector values.
+     *
+     * @param values the vector values
+     */
+    public AbstractRandomVectorScorer(KnnVectorValues values) {
+      this.values = values;
     }
-    return node -> similarityFunction.compare(query, vectors.vectorValue(node));
+
+    @Override
+    public int maxOrd() {
+      return values.size();
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return values.ordToDoc(ord);
+    }
+
+    @Override
+    public Bits getAcceptOrds(Bits acceptDocs) {
+      return values.getAcceptOrds(acceptDocs);
+    }
+
+    @Override
+    public KnnVectorValues values() {
+      return values;
+    }
   }
 }

@@ -16,9 +16,8 @@
  */
 package org.apache.lucene.analysis.hunspell;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Consumer;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IntsRef;
@@ -35,9 +34,7 @@ class SuggestibleEntryCache {
 
   private final Section[] sections;
 
-  private SuggestibleEntryCache(Map<Integer, SectionBuilder> builders) {
-    int maxLength =
-        builders.isEmpty() ? 0 : builders.keySet().stream().max(Integer::compare).orElseThrow();
+  private SuggestibleEntryCache(IntObjectHashMap<SectionBuilder> builders, int maxLength) {
     sections = new Section[maxLength + 1];
     for (int i = 0; i < sections.length; i++) {
       SectionBuilder builder = builders.get(i);
@@ -48,7 +45,8 @@ class SuggestibleEntryCache {
   static SuggestibleEntryCache buildCache(WordStorage storage) {
     var consumer =
         new Consumer<FlyweightEntry>() {
-          final Map<Integer, SectionBuilder> builders = new HashMap<>();
+          final IntObjectHashMap<SectionBuilder> builders = new IntObjectHashMap<>();
+          int maxLength;
 
           @Override
           public void accept(FlyweightEntry entry) {
@@ -56,14 +54,24 @@ class SuggestibleEntryCache {
             if (root.length > Short.MAX_VALUE) {
               throw new UnsupportedOperationException(
                   "Too long dictionary entry, please report this to dev@lucene.apache.org");
+            } else if (root.length > maxLength) {
+              maxLength = root.length;
             }
 
-            builders.computeIfAbsent(root.length, __ -> new SectionBuilder()).add(entry);
+            SectionBuilder builder;
+            int index = builders.indexOf(root.length);
+            if (index < 0) {
+              builder = new SectionBuilder();
+              builders.indexInsert(index, root.length, builder);
+            } else {
+              builder = builders.indexGet(index);
+            }
+            builder.add(entry);
           }
         };
     storage.processSuggestibleWords(1, Integer.MAX_VALUE, consumer);
 
-    return new SuggestibleEntryCache(consumer.builders);
+    return new SuggestibleEntryCache(consumer.builders, consumer.maxLength);
   }
 
   private static class SectionBuilder {

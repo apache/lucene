@@ -75,7 +75,7 @@ public class PayloadSpanUtil {
     if (query instanceof BooleanQuery) {
       for (BooleanClause clause : (BooleanQuery) query) {
         if (!clause.isProhibited()) {
-          queryToSpanQuery(clause.getQuery(), payloads);
+          queryToSpanQuery(clause.query(), payloads);
         }
       }
 
@@ -107,8 +107,7 @@ public class PayloadSpanUtil {
         queryToSpanQuery(iterator.next(), payloads);
       }
 
-    } else if (query instanceof MultiPhraseQuery) {
-      final MultiPhraseQuery mpq = (MultiPhraseQuery) query;
+    } else if (query instanceof MultiPhraseQuery mpq) {
       final Term[][] termArrays = mpq.getTermArrays();
       final int[] positions = mpq.getPositions();
       if (positions.length > 0) {

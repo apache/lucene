@@ -3,12 +3,13 @@ Armenian
 Basque
 Catalan
 Danish
+Dutch_porter
 Dutch
 English
+Esperanto
 Estonian
 Finnish
 French
-German2
 German
 Greek
 Hindi
@@ -16,11 +17,10 @@ Hungarian
 Indonesian
 Irish
 Italian
-Kp
 Lithuanian
-Lovins
 Nepali
 Norwegian
+Polish
 Porter
 Portuguese
 Romanian

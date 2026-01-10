@@ -255,9 +255,7 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
 
     assertTokenStreamContents(
         tf,
-        new String[] {
-          "Basfiolsfodralmakaregesäll", "Bas", "fiolsfodral", "fodral", "makare", "gesäll"
-        },
+        new String[] {"Basfiolsfodralmakaregesäll", "Bas", "fiolsfodral", "makare", "gesäll"},
         new int[] {0, 0, 0, 0, 0, 0},
         new int[] {26, 26, 26, 26, 26, 26},
         new int[] {1, 0, 0, 0, 0, 0});
@@ -528,7 +526,7 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
     assertTokenStreamContents(tf8, new String[] {"fußball"});
   }
 
-  public static interface MockRetainAttribute extends Attribute {
+  public interface MockRetainAttribute extends Attribute {
     void setRetain(boolean attr);
 
     boolean getRetain();
@@ -681,5 +679,41 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
         };
     checkOneTerm(b, "", "");
     b.close();
+  }
+
+  public void testDecompoundingWithConsumingChars() throws Exception {
+
+    CharArraySet dict = makeDictionary("wein", "schwein", "fleisch");
+
+    Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+    String searchTerm = "schweinefleisch";
+    DictionaryCompoundWordTokenFilter tf =
+        getDictionaryCompoundWordTokenFilter(tokenizer, searchTerm, dict);
+
+    assertTokenStreamContents(tf, new String[] {searchTerm, "schwein", "fleisch"});
+  }
+
+  public void testDecompoundingWithConsumingChars2() throws Exception {
+    CharArraySet dict = makeDictionary("waffe", "affe", "kampf");
+
+    Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+    String searchTerm = "nahkampfwaffen";
+
+    DictionaryCompoundWordTokenFilter tf =
+        getDictionaryCompoundWordTokenFilter(tokenizer, searchTerm, dict);
+
+    assertTokenStreamContents(tf, new String[] {searchTerm, "kampf", "waffe"});
+  }
+
+  private DictionaryCompoundWordTokenFilter getDictionaryCompoundWordTokenFilter(
+      Tokenizer tokenizer, String searchTerm, CharArraySet dict) {
+    tokenizer.setReader(new StringReader(searchTerm));
+    return new DictionaryCompoundWordTokenFilter(
+        tokenizer,
+        dict,
+        CompoundWordTokenFilterBase.DEFAULT_MIN_WORD_SIZE,
+        CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
+        CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
+        true);
   }
 }

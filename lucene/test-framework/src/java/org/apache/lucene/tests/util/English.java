@@ -166,7 +166,6 @@ public final class English {
         result.append("one ");
         break;
       case 0:
-        result.append("");
         break;
     }
   }

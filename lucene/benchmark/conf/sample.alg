@@ -15,7 +15,7 @@
 # * limitations under the License.
 # */
 # --------------------------------------------------------
-# 
+#
 # Sample: what is the effect of doc size on indexing time?
 #
 # There are two parts in this test:
@@ -42,8 +42,8 @@ doc.tokenized=true
 doc.term.vector=false
 log.step=500
 
-docs.dir=reuters-out
-#docs.dir=reuters-111
+work.dir=data
+docs.dir=reuters21578
 
 content.source=org.apache.lucene.benchmark.byTask.feeds.SingleDocSource
 #content.source=org.apache.lucene.benchmark.byTask.feeds.ReutersContentSource
@@ -67,7 +67,7 @@ log.queries=false
     >
 
     ResetSystemErase
-    
+
     { "PopulateLong"
         CreateIndex
         { AddDoc(8000) > : 10000

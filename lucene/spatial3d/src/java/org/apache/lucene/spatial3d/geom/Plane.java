@@ -26,12 +26,16 @@ package org.apache.lucene.spatial3d.geom;
 public class Plane extends Vector {
   /** An array with no points in it */
   public static final GeoPoint[] NO_POINTS = new GeoPoint[0];
+
   /** An array with no bounds in it */
   public static final Membership[] NO_BOUNDS = new Membership[0];
+
   /** A vertical plane normal to the Y axis */
   public static final Plane normalYPlane = new Plane(0.0, 1.0, 0.0, 0.0);
+
   /** A vertical plane normal to the X axis */
   public static final Plane normalXPlane = new Plane(1.0, 0.0, 0.0, 0.0);
+
   /** A vertical plane normal to the Z axis */
   public static final Plane normalZPlane = new Plane(0.0, 0.0, 1.0, 0.0);
 

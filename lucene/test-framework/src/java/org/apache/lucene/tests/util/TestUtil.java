@@ -16,6 +16,17 @@
  */
 package org.apache.lucene.tests.util;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.arrayWithSize;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.not;
+
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
@@ -53,16 +64,18 @@ import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104Codec;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
-import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95Codec;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.IntField;
+import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.index.CheckIndex;
@@ -101,12 +114,9 @@ import org.apache.lucene.tests.codecs.blockterms.LuceneFixedGap;
 import org.apache.lucene.tests.mockfile.FilterFileSystem;
 import org.apache.lucene.tests.mockfile.VirusCheckingFS;
 import org.apache.lucene.tests.mockfile.WindowsFS;
-import org.apache.lucene.util.Attribute;
 import org.apache.lucene.util.AttributeImpl;
-import org.apache.lucene.util.AttributeReflector;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRef;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.UnicodeUtil;
 import org.junit.Assert;
 
@@ -189,9 +199,7 @@ public final class TestUtil {
         try {
           iterator.remove();
           throw new AssertionError("broken iterator (supports remove): " + iterator);
-        } catch (
-            @SuppressWarnings("unused")
-            UnsupportedOperationException expected) {
+        } catch (UnsupportedOperationException _) {
           // ok
         }
       }
@@ -200,9 +208,7 @@ public final class TestUtil {
     try {
       iterator.next();
       throw new AssertionError("broken iterator (allows next() when hasNext==false) " + iterator);
-    } catch (
-        @SuppressWarnings("unused")
-        NoSuchElementException expected) {
+    } catch (NoSuchElementException _) {
       // ok
     }
   }
@@ -224,18 +230,14 @@ public final class TestUtil {
       try {
         iterator.remove();
         throw new AssertionError("broken iterator (supports remove): " + iterator);
-      } catch (
-          @SuppressWarnings("unused")
-          UnsupportedOperationException expected) {
+      } catch (UnsupportedOperationException _) {
         // ok
       }
     }
     try {
       iterator.next();
       throw new AssertionError("broken iterator (allows next() when hasNext==false) " + iterator);
-    } catch (
-        @SuppressWarnings("unused")
-        NoSuchElementException expected) {
+    } catch (NoSuchElementException _) {
       // ok
     }
   }
@@ -247,8 +249,7 @@ public final class TestUtil {
    */
   public static <T> void checkReadOnly(Collection<T> coll) {
     int size = 0;
-    for (Iterator<?> it = coll.iterator(); it.hasNext(); ) {
-      it.next();
+    for (T _ : coll) {
       size += 1;
     }
     if (size != coll.size()) {
@@ -265,9 +266,7 @@ public final class TestUtil {
       try {
         coll.remove(coll.iterator().next());
         throw new AssertionError("broken collection (supports remove): " + coll);
-      } catch (
-          @SuppressWarnings("unused")
-          UnsupportedOperationException e) {
+      } catch (UnsupportedOperationException _) {
         // ok
       }
     }
@@ -275,18 +274,14 @@ public final class TestUtil {
     try {
       coll.add(null);
       throw new AssertionError("broken collection (supports add): " + coll);
-    } catch (
-        @SuppressWarnings("unused")
-        UnsupportedOperationException e) {
+    } catch (UnsupportedOperationException _) {
       // ok
     }
 
     try {
       coll.addAll(Collections.singleton(null));
       throw new AssertionError("broken collection (supports addAll): " + coll);
-    } catch (
-        @SuppressWarnings("unused")
-        UnsupportedOperationException e) {
+    } catch (UnsupportedOperationException _) {
       // ok
     }
 
@@ -306,12 +301,11 @@ public final class TestUtil {
    * thrown; else, true is returned.
    */
   public static CheckIndex.Status checkIndex(Directory dir) throws IOException {
-    return checkIndex(dir, true);
+    return checkIndex(dir, CheckIndex.Level.MIN_LEVEL_FOR_SLOW_CHECKS);
   }
 
-  public static CheckIndex.Status checkIndex(Directory dir, boolean doSlowChecks)
-      throws IOException {
-    return checkIndex(dir, doSlowChecks, false, true, null);
+  public static CheckIndex.Status checkIndex(Directory dir, int level) throws IOException {
+    return checkIndex(dir, level, false, true, null);
   }
 
   /**
@@ -319,11 +313,7 @@ public final class TestUtil {
    * moving on to other fields/segments to look for any other corruption.
    */
   public static CheckIndex.Status checkIndex(
-      Directory dir,
-      boolean doSlowChecks,
-      boolean failFast,
-      boolean concurrent,
-      ByteArrayOutputStream output)
+      Directory dir, int level, boolean failFast, boolean concurrent, ByteArrayOutputStream output)
       throws IOException {
     if (output == null) {
       output = new ByteArrayOutputStream(1024);
@@ -332,9 +322,9 @@ public final class TestUtil {
     // some tests e.g. exception tests become much more complicated if they have to close the writer
     try (CheckIndex checker =
         new CheckIndex(dir, NoLockFactory.INSTANCE.obtainLock(dir, "bogus"))) {
-      checker.setDoSlowChecks(doSlowChecks);
+      checker.setLevel(level);
       checker.setFailFast(failFast);
-      checker.setInfoStream(new PrintStream(output, false, IOUtils.UTF_8), false);
+      checker.setInfoStream(new PrintStream(output, false, UTF_8), false);
       if (concurrent) {
         checker.setThreadCount(RandomizedTest.randomIntBetween(2, 5));
       } else {
@@ -344,11 +334,11 @@ public final class TestUtil {
 
       if (indexStatus == null || indexStatus.clean == false) {
         System.out.println("CheckIndex failed");
-        System.out.println(output.toString(IOUtils.UTF_8));
+        System.out.println(output.toString(UTF_8));
         throw new RuntimeException("CheckIndex failed");
       } else {
         if (LuceneTestCase.INFOSTREAM) {
-          System.out.println(output.toString(IOUtils.UTF_8));
+          System.out.println(output.toString(UTF_8));
         }
         return indexStatus;
       }
@@ -361,13 +351,13 @@ public final class TestUtil {
    */
   public static void checkReader(IndexReader reader) throws IOException {
     for (LeafReaderContext context : reader.leaves()) {
-      checkReader(context.reader(), true);
+      checkReader(context.reader(), CheckIndex.Level.MIN_LEVEL_FOR_SLOW_CHECKS);
     }
   }
 
-  public static void checkReader(LeafReader reader, boolean doSlowChecks) throws IOException {
+  public static void checkReader(LeafReader reader, int level) throws IOException {
     ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
-    PrintStream infoStream = new PrintStream(bos, false, IOUtils.UTF_8);
+    PrintStream infoStream = new PrintStream(bos, false, UTF_8);
 
     final CodecReader codecReader;
     if (reader instanceof CodecReader) {
@@ -379,9 +369,9 @@ public final class TestUtil {
     CheckIndex.testLiveDocs(codecReader, infoStream, true);
     CheckIndex.testFieldInfos(codecReader, infoStream, true);
     CheckIndex.testFieldNorms(codecReader, infoStream, true);
-    CheckIndex.testPostings(codecReader, infoStream, false, doSlowChecks, true);
+    CheckIndex.testPostings(codecReader, infoStream, false, level, true);
     CheckIndex.testStoredFields(codecReader, infoStream, true);
-    CheckIndex.testTermVectors(codecReader, infoStream, false, doSlowChecks, true);
+    CheckIndex.testTermVectors(codecReader, infoStream, false, level, true);
     CheckIndex.testDocValues(codecReader, infoStream, true);
     CheckIndex.testPoints(codecReader, infoStream, true);
 
@@ -389,7 +379,7 @@ public final class TestUtil {
     checkReaderSanity(reader);
 
     if (LuceneTestCase.INFOSTREAM) {
-      System.out.println(bos.toString(IOUtils.UTF_8));
+      System.out.println(bos.toString(UTF_8));
     }
 
     // FieldInfos should be cached at the reader and always return the same instance
@@ -467,6 +457,90 @@ public final class TestUtil {
           throw new AssertionError();
       }
     }
+  }
+
+  /**
+   * Returns true if the arguments are equal or within the range of allowed error (inclusive).
+   * Returns {@code false} if either of the arguments is NaN.
+   *
+   * <p>Two float numbers are considered equal if there are {@code (maxUlps - 1)} (or fewer)
+   * floating point numbers between them, i.e. two adjacent floating point numbers are considered
+   * equal.
+   *
+   * <p>Adapted from org.apache.commons.numbers.core.Precision
+   *
+   * <p>github: https://github.com/apache/commons-numbers release 1.2
+   *
+   * @param x first value
+   * @param y second value
+   * @param maxUlps {@code (maxUlps - 1)} is the number of floating point values between {@code x}
+   *     and {@code y}.
+   * @return {@code true} if there are fewer than {@code maxUlps} floating point values between
+   *     {@code x} and {@code y}.
+   */
+  public static boolean floatUlpEquals(final float x, final float y, final short maxUlps) {
+    final int xInt = Float.floatToRawIntBits(x);
+    final int yInt = Float.floatToRawIntBits(y);
+
+    if ((xInt ^ yInt) < 0) {
+      // Numbers have opposite signs, take care of overflow.
+      // Remove the sign bit to obtain the absolute ULP above zero.
+      final int deltaPlus = xInt & Integer.MAX_VALUE;
+      final int deltaMinus = yInt & Integer.MAX_VALUE;
+
+      // Note:
+      // If either value is NaN, the exponent bits are set to (255 << 23) and the
+      // distance above 0.0 is always above a short ULP error. So omit the test
+      // for NaN and return directly.
+
+      // Avoid possible overflow from adding the deltas by splitting the comparison
+      return deltaPlus <= maxUlps && deltaMinus <= (maxUlps - deltaPlus);
+    }
+
+    // Numbers have same sign, there is no risk of overflow.
+    return Math.abs(xInt - yInt) <= maxUlps && !Float.isNaN(x) && !Float.isNaN(y);
+  }
+
+  /**
+   * Returns true if the arguments are equal or within the range of allowed error (inclusive).
+   * Returns {@code false} if either of the arguments is NaN.
+   *
+   * <p>Two double numbers are considered equal if there are {@code (maxUlps - 1)} (or fewer)
+   * floating point numbers between them, i.e. two adjacent floating point numbers are considered
+   * equal.
+   *
+   * <p>Adapted from org.apache.commons.numbers.core.Precision
+   *
+   * <p>github: https://github.com/apache/commons-numbers release 1.2
+   *
+   * @param x first value
+   * @param y second value
+   * @param maxUlps {@code (maxUlps - 1)} is the number of floating point values between {@code x}
+   *     and {@code y}.
+   * @return {@code true} if there are fewer than {@code maxUlps} floating point values between
+   *     {@code x} and {@code y}.
+   */
+  public static boolean doubleUlpEquals(final double x, final double y, final int maxUlps) {
+    final long xInt = Double.doubleToRawLongBits(x);
+    final long yInt = Double.doubleToRawLongBits(y);
+
+    if ((xInt ^ yInt) < 0) {
+      // Numbers have opposite signs, take care of overflow.
+      // Remove the sign bit to obtain the absolute ULP above zero.
+      final long deltaPlus = xInt & Long.MAX_VALUE;
+      final long deltaMinus = yInt & Long.MAX_VALUE;
+
+      // Note:
+      // If either value is NaN, the exponent bits are set to (2047L << 52) and the
+      // distance above 0.0 is always above an integer ULP error. So omit the test
+      // for NaN and return directly.
+
+      // Avoid possible overflow from adding the deltas by splitting the comparison
+      return deltaPlus <= maxUlps && deltaMinus <= (maxUlps - deltaPlus);
+    }
+
+    // Numbers have same sign, there is no risk of overflow.
+    return Math.abs(xInt - yInt) <= maxUlps && !Double.isNaN(x) && !Double.isNaN(y);
   }
 
   /** start and end are BOTH inclusive */
@@ -578,7 +652,7 @@ public final class TestUtil {
   }
 
   /**
-   * Returns a String thats "regexpish" (contains lots of operators typically found in regular
+   * Returns a String that's "regexpish" (contains lots of operators typically found in regular
    * expressions) If you call this enough times, you might get a valid regex!
    */
   public static String randomRegexpishString(Random r) {
@@ -606,7 +680,7 @@ public final class TestUtil {
           "|");
 
   /**
-   * Returns a String thats "regexpish" (contains lots of operators typically found in regular
+   * Returns a String that's "regexpish" (contains lots of operators typically found in regular
    * expressions) If you call this enough times, you might get a valid regex!
    *
    * <p>Note: to avoid practically endless backtracking patterns we replace asterisk and plus
@@ -1149,9 +1223,9 @@ public final class TestUtil {
       int t;
       if (bytes >= 4) {
         t = r.nextInt(5);
-      } else if (bytes >= 3) {
+      } else if (bytes == 3) {
         t = r.nextInt(4);
-      } else if (bytes >= 2) {
+      } else if (bytes == 2) {
         t = r.nextInt(2);
       } else {
         t = 0;
@@ -1232,30 +1306,49 @@ public final class TestUtil {
   }
 
   /**
-   * Returns the actual default codec (e.g. LuceneMNCodec) for this version of Lucene. This may be
-   * different than {@link Codec#getDefault()} because that is randomized.
+   * Return a Codec that can read any of the default codecs and formats, but always writes in the
+   * specified format.
    */
-  public static Codec getDefaultCodec() {
-    return new Lucene95Codec();
+  public static Codec alwaysKnnVectorsFormat(final KnnVectorsFormat format) {
+    // TODO: we really need for knn vectors impls etc to announce themselves
+    // (and maybe their params, too) to infostream on flush and merge.
+    // otherwise in a real debugging situation we won't know whats going on!
+    if (LuceneTestCase.VERBOSE) {
+      System.out.println("TestUtil: forcing knn vectors format to:" + format);
+    }
+    return new AssertingCodec() {
+      @Override
+      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+        return format;
+      }
+    };
   }
 
   /**
-   * Returns the actual default postings format (e.g. LuceneMNPostingsFormat for this version of
+   * Returns the actual default codec (e.g. LuceneMNCodec) for this version of Lucene. This may be
+   * different from {@link Codec#getDefault()} because that is randomized.
+   */
+  public static Codec getDefaultCodec() {
+    return new Lucene104Codec();
+  }
+
+  /**
+   * Returns the actual default postings format (e.g. LuceneMNPostingsFormat) for this version of
    * Lucene.
    */
   public static PostingsFormat getDefaultPostingsFormat() {
-    return new Lucene90PostingsFormat();
+    return new Lucene104PostingsFormat();
   }
 
   /**
-   * Returns the actual default postings format (e.g. LuceneMNPostingsFormat for this version of
+   * Returns the actual default postings format (e.g. LuceneMNPostingsFormat) for this version of
    * Lucene.
    *
    * @lucene.internal this may disappear at any time
    */
   public static PostingsFormat getDefaultPostingsFormat(
       int minItemsPerBlock, int maxItemsPerBlock) {
-    return new Lucene90PostingsFormat(minItemsPerBlock, maxItemsPerBlock);
+    return new Lucene104PostingsFormat(minItemsPerBlock, maxItemsPerBlock);
   }
 
   /** Returns a random postings format that supports term ordinals */
@@ -1265,15 +1358,15 @@ public final class TestUtil {
         return new LuceneFixedGap();
       case 1:
         return new BlockTreeOrdsPostingsFormat();
-        // TODO: these don't actually support ords!
-        // case 2: return new FSTOrdPostingsFormat();
+      // TODO: these don't actually support ords!
+      // case 2: return new FSTOrdPostingsFormat();
       default:
         throw new AssertionError();
     }
   }
 
   /**
-   * Returns the actual default docvalues format (e.g. LuceneMNDocValuesFormat for this version of
+   * Returns the actual default docvalues format (e.g. LuceneMNDocValuesFormat) for this version of
    * Lucene.
    */
   public static DocValuesFormat getDefaultDocValuesFormat() {
@@ -1318,11 +1411,11 @@ public final class TestUtil {
   }
 
   /**
-   * Returns the actual default vector format (e.g. LuceneMNKnnVectorsFormat for this version of
+   * Returns the actual default vector format (e.g. LuceneMNKnnVectorsFormat) for this version of
    * Lucene.
    */
   public static KnnVectorsFormat getDefaultKnnVectorsFormat() {
-    return new Lucene95HnswVectorsFormat();
+    return new Lucene99HnswVectorsFormat(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, 0);
   }
 
   public static boolean anyFilesExceptWriteLock(Directory dir) throws IOException {
@@ -1342,7 +1435,7 @@ public final class TestUtil {
         leaves.add(SlowCodecReaderWrapper.wrap(context.reader()));
       }
     }
-    writer.addIndexes(leaves.toArray(new CodecReader[leaves.size()]));
+    writer.addIndexes(leaves.toArray(new CodecReader[0]));
   }
 
   /** just tries to configure things to keep the open file count lowish */
@@ -1350,17 +1443,14 @@ public final class TestUtil {
     // keep number of open files lowish
     MergePolicy mp = w.getConfig().getMergePolicy();
     mp.setNoCFSRatio(1.0);
-    if (mp instanceof LogMergePolicy) {
-      LogMergePolicy lmp = (LogMergePolicy) mp;
+    if (mp instanceof LogMergePolicy lmp) {
       lmp.setMergeFactor(Math.min(5, lmp.getMergeFactor()));
-    } else if (mp instanceof TieredMergePolicy) {
-      TieredMergePolicy tmp = (TieredMergePolicy) mp;
-      tmp.setMaxMergeAtOnce(Math.min(5, tmp.getMaxMergeAtOnce()));
+    } else if (mp instanceof TieredMergePolicy tmp) {
       tmp.setSegmentsPerTier(Math.min(5, tmp.getSegmentsPerTier()));
     }
     MergeScheduler ms = w.getConfig().getMergeScheduler();
     if (ms instanceof ConcurrentMergeScheduler) {
-      // wtf... shouldnt it be even lower since it's 1 by default?!?!
+      // wtf... shouldn't it be even lower since it's 1 by default?!?!
       ((ConcurrentMergeScheduler) ms).setMaxMergesAndThreads(3, 2);
     }
   }
@@ -1373,43 +1463,44 @@ public final class TestUtil {
   public static <T> void assertAttributeReflection(
       final AttributeImpl att, Map<String, T> reflectedValues) {
     final Map<String, Object> map = new HashMap<>();
-    att.reflectWith(
-        new AttributeReflector() {
-          @Override
-          public void reflect(Class<? extends Attribute> attClass, String key, Object value) {
-            map.put(attClass.getName() + '#' + key, value);
-          }
-        });
+    att.reflectWith((attClass, key, value) -> map.put(attClass.getName() + '#' + key, value));
     Assert.assertEquals("Reflection does not produce same map", reflectedValues, map);
   }
 
   /** Assert that the given {@link TopDocs} have the same top docs and consistent hit counts. */
   public static void assertConsistent(TopDocs expected, TopDocs actual) {
     Assert.assertEquals(
-        "wrong total hits", expected.totalHits.value == 0, actual.totalHits.value == 0);
-    if (expected.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
-      if (actual.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
-        Assert.assertEquals("wrong total hits", expected.totalHits.value, actual.totalHits.value);
+        "wrong total hits", expected.totalHits.value() == 0, actual.totalHits.value() == 0);
+    if (expected.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
+      if (actual.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
+        assertThat(
+            "wrong total hits", actual.totalHits.value(), equalTo(expected.totalHits.value()));
       } else {
-        Assert.assertTrue("wrong total hits", expected.totalHits.value >= actual.totalHits.value);
+        assertThat(
+            "wrong total hits",
+            actual.totalHits.value(),
+            lessThanOrEqualTo(expected.totalHits.value()));
       }
-    } else if (actual.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
-      Assert.assertTrue("wrong total hits", expected.totalHits.value <= actual.totalHits.value);
+    } else if (actual.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
+      assertThat(
+          "wrong total hits",
+          actual.totalHits.value(),
+          greaterThanOrEqualTo(expected.totalHits.value()));
     }
-    Assert.assertEquals("wrong hit count", expected.scoreDocs.length, actual.scoreDocs.length);
+    assertThat("wrong hit count", actual.scoreDocs, arrayWithSize(expected.scoreDocs.length));
     for (int hitIDX = 0; hitIDX < expected.scoreDocs.length; hitIDX++) {
       final ScoreDoc expectedSD = expected.scoreDocs[hitIDX];
       final ScoreDoc actualSD = actual.scoreDocs[hitIDX];
-      Assert.assertEquals("wrong hit docID", expectedSD.doc, actualSD.doc);
+      assertThat("wrong hit docID", actualSD.doc, equalTo(expectedSD.doc));
       Assert.assertEquals("wrong hit score", expectedSD.score, actualSD.score, 0.0);
       if (expectedSD instanceof FieldDoc) {
-        Assert.assertTrue(actualSD instanceof FieldDoc);
+        assertThat(actualSD, instanceOf(FieldDoc.class));
         Assert.assertArrayEquals(
             "wrong sort field values",
             ((FieldDoc) expectedSD).fields,
             ((FieldDoc) actualSD).fields);
       } else {
-        Assert.assertFalse(actualSD instanceof FieldDoc);
+        assertThat(actualSD, not(instanceOf(FieldDoc.class)));
       }
     }
   }
@@ -1425,7 +1516,19 @@ public final class TestUtil {
       final Field field2;
       final DocValuesType dvType = field1.fieldType().docValuesType();
       final int dimCount = field1.fieldType().pointDimensionCount();
-      if (dvType != DocValuesType.NONE) {
+      if (f instanceof KeywordField) {
+        field2 =
+            new KeywordField(
+                f.name(),
+                f.stringValue(),
+                f.fieldType().stored() ? Field.Store.YES : Field.Store.NO);
+      } else if (f instanceof IntField) {
+        field2 =
+            new IntField(
+                f.name(),
+                f.numericValue().intValue(),
+                f.fieldType().stored() ? Field.Store.YES : Field.Store.NO);
+      } else if (dvType != DocValuesType.NONE) {
         switch (dvType) {
           case NUMERIC:
             field2 = new NumericDocValuesField(field1.name(), field1.numericValue().longValue());
@@ -1548,9 +1651,7 @@ public final class TestUtil {
         // ignore bugs in Sun's regex impl
         try {
           replacement = p.matcher(nonBmpString).replaceAll("_");
-        } catch (
-            @SuppressWarnings("unused")
-            StringIndexOutOfBoundsException jdkBug) {
+        } catch (StringIndexOutOfBoundsException _) {
           System.out.println("WARNING: your jdk is buggy!");
           System.out.println(
               "Pattern.compile(\""
@@ -1562,9 +1663,7 @@ public final class TestUtil {
         if (replacement != null && UnicodeUtil.validUTF16String(replacement)) {
           return p;
         }
-      } catch (
-          @SuppressWarnings("unused")
-          PatternSyntaxException ignored) {
+      } catch (PatternSyntaxException _) {
         // Loop trying until we hit something that compiles.
       }
     }
@@ -1598,6 +1697,8 @@ public final class TestUtil {
   }
 
   public static String randomSubString(Random random, int wordLength, boolean simple) {
+    random = LuceneTestCase.nonAssertingRandom(random);
+
     if (wordLength == 0) {
       return "";
     }
@@ -1615,7 +1716,7 @@ public final class TestUtil {
         if (evilness < 10) {
           sb.append(TestUtil.randomSimpleString(random, wordLength));
         } else if (evilness < 15) {
-          assert sb.length() == 0; // we should always get wordLength back!
+          assert sb.isEmpty(); // we should always get wordLength back!
           sb.append(TestUtil.randomRealisticUnicodeString(random, wordLength, wordLength));
         } else if (evilness == 16) {
           sb.append(TestUtil.randomHtmlishString(random, wordLength));
@@ -1653,11 +1754,11 @@ public final class TestUtil {
       return "(null)";
     } else {
       try {
-        return br.utf8ToString() + " " + br.toString();
-      } catch (@SuppressWarnings("unused") AssertionError | IllegalArgumentException t) {
-        // If BytesRef isn't actually UTF8, or it's eg a
+        return br.utf8ToString() + " " + br;
+      } catch (AssertionError | IllegalArgumentException _) {
+        // If BytesRef isn't actually UTF8, or it's e.g. a
         // prefix of UTF8 that ends mid-unicode-char, we
-        // fallback to hex:
+        // fall back to hex:
         return br.toString();
       }
     }

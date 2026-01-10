@@ -197,7 +197,7 @@ public abstract class FilterSpans extends Spans {
           if (startPos != NO_MORE_POSITIONS) {
             break;
           }
-          // else fallthrough
+        // else fallthrough
         case NO_MORE_IN_CURRENT_DOC:
           startPos = -1;
           return false;

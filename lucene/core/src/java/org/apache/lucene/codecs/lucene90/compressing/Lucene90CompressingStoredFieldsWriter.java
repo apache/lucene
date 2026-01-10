@@ -34,6 +34,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.index.StoredFieldDataInput;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
@@ -56,10 +57,13 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
 
   /** Extension of stored fields file */
   public static final String FIELDS_EXTENSION = "fdt";
+
   /** Extension of stored fields index */
   public static final String INDEX_EXTENSION = "fdx";
+
   /** Extension of stored fields meta */
   public static final String META_EXTENSION = "fdm";
+
   /** Codec name for the index. */
   public static final String INDEX_CODEC_NAME = "Lucene90FieldsIndex";
 
@@ -120,7 +124,6 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     this.endOffsets = new int[16];
     this.numBufferedDocs = 0;
 
-    boolean success = false;
     try {
       metaStream =
           directory.createOutput(
@@ -150,12 +153,9 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
               context);
 
       metaStream.writeVInt(chunkSize);
-
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(metaStream, fieldsStream, indexWriter);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, metaStream, fieldsStream, indexWriter);
+      throw t;
     }
   }
 
@@ -249,7 +249,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     // compress stored fields to fieldsStream.
     if (sliced) {
       // big chunk, slice it, using ByteBuffersDataInput ignore memory copy
-      final int capacity = (int) bytebuffers.size();
+      final int capacity = (int) bytebuffers.length();
       for (int compressed = 0; compressed < capacity; compressed += chunkSize) {
         int l = Math.min(chunkSize, capacity - compressed);
         ByteBuffersDataInput bbdi = bytebuffers.slice(compressed, l);
@@ -304,6 +304,16 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     bufferedDocs.writeVLong(infoAndBits);
     bufferedDocs.writeVInt(value.length);
     bufferedDocs.writeBytes(value.bytes, value.offset, value.length);
+  }
+
+  @Override
+  public void writeField(FieldInfo info, StoredFieldDataInput value) throws IOException {
+    int length = value.getLength();
+    ++numStoredFieldsInDoc;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | BYTE_ARR;
+    bufferedDocs.writeVLong(infoAndBits);
+    bufferedDocs.writeVInt(length);
+    bufferedDocs.copyBytes(value.getDataInput(), length);
   }
 
   @Override
@@ -487,9 +497,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     boolean v = true;
     try {
       v = Boolean.parseBoolean(System.getProperty(BULK_MERGE_ENABLED_SYSPROP, "true"));
-    } catch (
-        @SuppressWarnings("unused")
-        SecurityException ignored) {
+    } catch (SecurityException _) {
     }
     BULK_MERGE_ENABLED = v;
   }

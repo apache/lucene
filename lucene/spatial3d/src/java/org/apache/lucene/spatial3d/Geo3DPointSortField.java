@@ -17,6 +17,7 @@
 package org.apache.lucene.spatial3d;
 
 import org.apache.lucene.search.FieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.spatial3d.geom.GeoDistanceShape;
 import org.apache.lucene.spatial3d.geom.PlanetModel;
@@ -28,7 +29,7 @@ final class Geo3DPointSortField extends SortField {
 
   Geo3DPointSortField(
       final String field, final PlanetModel planetModel, final GeoDistanceShape distanceShape) {
-    super(field, SortField.Type.CUSTOM);
+    super(field, SortField.Type.CUSTOM, false, Double.POSITIVE_INFINITY);
     if (field == null) {
       throw new IllegalArgumentException("field must not be null");
     }
@@ -37,27 +38,16 @@ final class Geo3DPointSortField extends SortField {
     }
     this.distanceShape = distanceShape;
     this.planetModel = planetModel;
-    setMissingValue(Double.POSITIVE_INFINITY);
   }
 
   @Override
-  public FieldComparator<?> getComparator(int numHits, boolean enableSkipping) {
+  public FieldComparator<?> getComparator(int numHits, Pruning pruning) {
     return new Geo3DPointDistanceComparator(getField(), planetModel, distanceShape, numHits);
   }
 
   @Override
   public Double getMissingValue() {
     return (Double) super.getMissingValue();
-  }
-
-  @Override
-  public void setMissingValue(Object missingValue) {
-    if (Double.valueOf(Double.POSITIVE_INFINITY).equals(missingValue) == false) {
-      throw new IllegalArgumentException(
-          "Missing value can only be Double.POSITIVE_INFINITY (missing values last), but got "
-              + missingValue);
-    }
-    this.missingValue = missingValue;
   }
 
   @Override

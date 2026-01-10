@@ -54,6 +54,7 @@ import org.apache.lucene.util.Version;
 /** Factory of about dialog */
 public final class AboutDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static AboutDialogFactory instance;
 
   private final Preferences prefs;
@@ -165,7 +166,7 @@ public final class AboutDialogFactory implements DialogOpener.DialogFactory {
     JButton closeBtn = new JButton(MessageUtils.getLocalizedMessage("button.close"));
     closeBtn.setMargin(new Insets(5, 5, 5, 5));
     if (closeBtn.getActionListeners().length == 0) {
-      closeBtn.addActionListener(e -> dialog.dispose());
+      closeBtn.addActionListener(_ -> dialog.dispose());
     }
     panel.add(closeBtn);
     return panel;

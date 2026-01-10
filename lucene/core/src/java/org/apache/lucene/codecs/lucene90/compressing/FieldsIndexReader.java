@@ -25,9 +25,11 @@ import java.util.Objects;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 final class FieldsIndexReader extends FieldsIndex {
@@ -52,7 +54,8 @@ final class FieldsIndexReader extends FieldsIndex {
       String extension,
       String codecName,
       byte[] id,
-      IndexInput metaIn)
+      IndexInput metaIn,
+      IOContext context)
       throws IOException {
     maxDoc = metaIn.readInt();
     blockShift = metaIn.readInt();
@@ -65,17 +68,16 @@ final class FieldsIndexReader extends FieldsIndex {
     maxPointer = metaIn.readLong();
 
     indexInput =
-        dir.openInput(IndexFileNames.segmentFileName(name, suffix, extension), IOContext.LOAD);
-    boolean success = false;
+        dir.openInput(
+            IndexFileNames.segmentFileName(name, suffix, extension),
+            context.withHints(FileTypeHint.INDEX));
     try {
       CodecUtil.checkIndexHeader(
           indexInput, codecName + "Idx", VERSION_START, VERSION_CURRENT, id, suffix);
       CodecUtil.retrieveChecksum(indexInput);
-      success = true;
-    } finally {
-      if (success == false) {
-        indexInput.close();
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, indexInput);
+      throw t;
     }
     final RandomAccessInput docsSlice =
         indexInput.randomAccessSlice(docsStartPointer, docsEndPointer - docsStartPointer);
@@ -113,13 +115,29 @@ final class FieldsIndexReader extends FieldsIndex {
   }
 
   @Override
-  long getStartPointer(int docID) {
+  long getBlockID(int docID) {
     Objects.checkIndex(docID, maxDoc);
     long blockIndex = docs.binarySearch(0, numChunks, docID);
     if (blockIndex < 0) {
       blockIndex = -2 - blockIndex;
     }
+    return blockIndex;
+  }
+
+  @Override
+  long getBlockStartPointer(long blockIndex) {
     return startPointers.get(blockIndex);
+  }
+
+  @Override
+  long getBlockLength(long blockIndex) {
+    final long endPointer;
+    if (blockIndex == numChunks - 1) {
+      endPointer = maxPointer;
+    } else {
+      endPointer = startPointers.get(blockIndex + 1);
+    }
+    return endPointer - getBlockStartPointer(blockIndex);
   }
 
   @Override

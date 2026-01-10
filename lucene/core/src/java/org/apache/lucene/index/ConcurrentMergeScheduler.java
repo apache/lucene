@@ -21,9 +21,12 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.Executor;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.index.MergePolicy.OneMerge;
-import org.apache.lucene.internal.tests.ConcurrentMergeSchedulerAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
@@ -34,6 +37,7 @@ import org.apache.lucene.store.RateLimitedIndexOutput;
 import org.apache.lucene.store.RateLimiter;
 import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
@@ -84,7 +88,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   private int maxMergeCount = AUTO_DETECT_MERGES_AND_THREADS;
 
   /** How many {@link MergeThread}s have kicked off (this is use to name them). */
-  protected int mergeThreadCount;
+  protected int mergeThreadCounter;
 
   /** Floor for IO write rate limit (we will never go any lower than this) */
   private static final double MIN_MERGE_MB_PER_SEC = 5.0;
@@ -105,9 +109,12 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   protected double targetMBPerSec = START_MB_PER_SEC;
 
   /** true if we should rate-limit writes for each merge */
-  private boolean doAutoIOThrottle = true;
+  private boolean doAutoIOThrottle = false;
 
   private double forceMergeMBPerSec = Double.POSITIVE_INFINITY;
+
+  /** The executor provided for intra-merge parallelization */
+  protected CachedExecutor intraMergeExecutor;
 
   /** Sole constructor, with all settings set to default values. */
   public ConcurrentMergeScheduler() {}
@@ -153,7 +160,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   /**
    * Sets max merges and threads to proper defaults for rotational or non-rotational storage.
    *
-   * @param spins true to set defaults best for traditional rotatational storage (spinning disks),
+   * @param spins true to set defaults best for traditional rotational storage (spinning disks),
    *     else false (e.g. for solid-state disks)
    */
   public synchronized void setDefaultMaxMergesAndThreads(boolean spins) {
@@ -170,12 +177,17 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         if (value != null) {
           coreCount = Integer.parseInt(value);
         }
-      } catch (
-          @SuppressWarnings("unused")
-          Throwable ignored) {
+      } catch (Throwable _) {
       }
 
-      maxThreadCount = Math.max(1, Math.min(4, coreCount / 2));
+      // If you are indexing at full throttle, how many merge threads do you need to keep up? It
+      // depends: for most data structures, merging is cheaper than indexing/flushing, but for knn
+      // vectors, merges can require about as much work as the initial indexing/flushing. Plus
+      // documents are indexed/flushed only once, but may be merged multiple times.
+      // Here, we assume an intermediate scenario where merging requires about as much work as
+      // indexing/flushing overall, so we give half the core count to merges.
+
+      maxThreadCount = Math.max(1, coreCount / 2);
       maxMergeCount = maxThreadCount + 5;
     }
   }
@@ -196,7 +208,8 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
   /**
    * Turn on dynamic IO throttling, to adaptively rate limit writes bytes/sec to the minimal rate
-   * necessary so merges do not fall behind. By default this is enabled.
+   * necessary so merges do not fall behind. By default this is disabled and writes are not
+   * rate-limited.
    */
   public synchronized void enableAutoIOThrottle() {
     doAutoIOThrottle = true;
@@ -260,6 +273,16 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   }
 
   @Override
+  public Executor getIntraMergeExecutor(OneMerge merge) {
+    assert intraMergeExecutor != null : "scaledExecutor is not initialized";
+    // don't do multithreaded merges for small merges
+    if (merge.estimatedMergeBytes < MIN_BIG_MERGE_MB * 1024 * 1024) {
+      return super.getIntraMergeExecutor(merge);
+    }
+    return intraMergeExecutor;
+  }
+
+  @Override
   public Directory wrapForMerge(OneMerge merge, Directory in) {
     Thread mergeThread = Thread.currentThread();
     if (!MergeThread.class.isInstance(mergeThread)) {
@@ -268,6 +291,9 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     }
 
     // Return a wrapped Directory which has rate-limited output.
+    // Note: the rate limiter is only per thread. So, if there are multiple merge threads running
+    // and throttling is required, each thread will be throttled independently.
+    // The implication of this, is that the total IO rate could be higher than the target rate.
     RateLimiter rateLimiter = ((MergeThread) mergeThread).rateLimiter;
     return new FilterDirectory(in) {
       @Override
@@ -277,15 +303,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         // This Directory is only supposed to be used during merging,
         // so all writes should have MERGE context, else there is a bug
         // somewhere that is failing to pass down the right IOContext:
-        assert context.context == IOContext.Context.MERGE : "got context=" + context.context;
-
-        // Because rateLimiter is bound to a particular merge thread, this method should
-        // always be called from that context. Verify this.
-        assert mergeThread == Thread.currentThread()
-            : "Not the same merge thread, current="
-                + Thread.currentThread()
-                + ", expected="
-                + mergeThread;
+        assert context.context() == IOContext.Context.MERGE : "got context=" + context.context();
 
         return new RateLimitedIndexOutput(rateLimiter, in.createOutput(name, context));
       }
@@ -445,8 +463,15 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   }
 
   @Override
-  public void close() {
-    sync();
+  public void close() throws IOException {
+    super.close();
+    try {
+      sync();
+    } finally {
+      if (intraMergeExecutor != null) {
+        intraMergeExecutor.shutdown();
+      }
+    }
   }
 
   /**
@@ -471,9 +496,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         if (toSync != null) {
           try {
             toSync.join();
-          } catch (
-              @SuppressWarnings("unused")
-              InterruptedException ie) {
+          } catch (InterruptedException _) {
             // ignore this Exception, we will retry until all threads are dead
             interrupted = true;
           }
@@ -510,6 +533,9 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   void initialize(InfoStream infoStream, Directory directory) throws IOException {
     super.initialize(infoStream, directory);
     initDynamicDefaults(directory);
+    if (intraMergeExecutor == null) {
+      intraMergeExecutor = new CachedExecutor();
+    }
   }
 
   @Override
@@ -549,7 +575,6 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         return;
       }
 
-      boolean success = false;
       try {
         // OK to spawn a new merge thread to handle this
         // merge:
@@ -564,12 +589,9 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
         newMergeThread.start();
         updateMergeThreads();
-
-        success = true;
-      } finally {
-        if (!success) {
-          mergeSource.onMergeFinished(merge);
-        }
+      } catch (Throwable t) {
+        mergeSource.onMergeFinished(merge);
+        throw t;
       }
     }
   }
@@ -644,11 +666,17 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
       throws IOException {
     final MergeThread thread = new MergeThread(mergeSource, merge);
     thread.setDaemon(true);
-    thread.setName("Lucene Merge Thread #" + mergeThreadCount++);
+    thread.setName("Lucene Merge Thread #" + mergeThreadCounter++);
     return thread;
   }
 
-  synchronized void runOnMergeFinished(MergeSource mergeSource) {
+  /**
+   * Called when a merge thread finishes.
+   *
+   * @lucene.experimental
+   */
+  protected synchronized void runOnMergeFinished(
+      MergeSource mergeSource, OneMerge merge, MergeRateLimiter rateLimiter) {
     // the merge call as well as the merge thread handling in the finally
     // block must be sync'd on CMS otherwise stalling decisions might cause
     // us to miss pending merges
@@ -656,9 +684,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     // Let CMS run new merges if necessary:
     try {
       merge(mergeSource, MergeTrigger.MERGE_FINISHED);
-    } catch (
-        @SuppressWarnings("unused")
-        AlreadyClosedException ace) {
+    } catch (AlreadyClosedException _) {
       // OK
     } catch (IOException ioe) {
       throw new UncheckedIOException(ioe);
@@ -713,7 +739,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
                   rateToString(rateLimiter.getMBPerSec())));
         }
 
-        runOnMergeFinished(mergeSource);
+        runOnMergeFinished(mergeSource, merge, rateLimiter);
 
         if (verbose()) {
           message(String.format(Locale.ROOT, "merge thread %s end", this.getName()));
@@ -755,11 +781,16 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder(getClass().getSimpleName() + ": ");
-    sb.append("maxThreadCount=").append(maxThreadCount).append(", ");
-    sb.append("maxMergeCount=").append(maxMergeCount).append(", ");
-    sb.append("ioThrottle=").append(doAutoIOThrottle);
-    return sb.toString();
+    return getClass().getSimpleName()
+        + ": "
+        + "maxThreadCount="
+        + maxThreadCount
+        + ", "
+        + "maxMergeCount="
+        + maxMergeCount
+        + ", "
+        + "ioThrottle="
+        + doAutoIOThrottle;
   }
 
   private boolean isBacklog(long now, OneMerge merge) {
@@ -902,12 +933,70 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   }
 
   static {
-    TestSecrets.setConcurrentMergeSchedulerAccess(
-        new ConcurrentMergeSchedulerAccess() {
-          @Override
-          public void setSuppressExceptions(ConcurrentMergeScheduler cms) {
-            cms.setSuppressExceptions();
-          }
-        });
+    TestSecrets.setConcurrentMergeSchedulerAccess(ConcurrentMergeScheduler::setSuppressExceptions);
+  }
+
+  /**
+   * This executor provides intra-merge threads for parallel execution of merge tasks. It provides a
+   * limited number of threads to execute merge tasks. In particular, if the number of
+   * `mergeThreads` is equal to `maxThreadCount`, then the executor will execute the merge task in
+   * the calling thread.
+   */
+  private class CachedExecutor implements Executor {
+
+    private final AtomicInteger activeCount = new AtomicInteger(0);
+    private final ThreadPoolExecutor executor;
+
+    public CachedExecutor() {
+      this.executor =
+          new ThreadPoolExecutor(
+              0,
+              1024,
+              1L,
+              TimeUnit.MINUTES,
+              new SynchronousQueue<>(),
+              new NamedThreadFactory("CachedExecutor"));
+    }
+
+    void shutdown() {
+      executor.shutdown();
+    }
+
+    @Override
+    public void execute(Runnable command) {
+      final boolean isThreadAvailable;
+      // we need to check if a thread is available before submitting the task to the executor
+      // synchronize on CMS to get an accurate count of current threads
+      synchronized (ConcurrentMergeScheduler.this) {
+        int max = maxThreadCount - mergeThreads.size() - 1;
+        int value = activeCount.get();
+        if (value < max) {
+          activeCount.incrementAndGet();
+          assert activeCount.get() > 0 : "active count must be greater than 0 after increment";
+          isThreadAvailable = true;
+        } else {
+          isThreadAvailable = false;
+        }
+      }
+      if (isThreadAvailable) {
+        executor.execute(
+            () -> {
+              try {
+                command.run();
+              } catch (Throwable exc) {
+                if (suppressExceptions == false) {
+                  // suppressExceptions is normally only set during
+                  // testing.
+                  handleMergeException(exc);
+                }
+              } finally {
+                activeCount.decrementAndGet();
+                assert activeCount.get() >= 0 : "unexpected negative active count";
+              }
+            });
+      } else {
+        command.run();
+      }
+    }
   }
 }

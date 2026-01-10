@@ -27,6 +27,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestWeakIdentityMap extends LuceneTestCase {
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testSimpleHashMap() {
     final WeakIdentityMap<String, String> map = WeakIdentityMap.newHashMap(random().nextBoolean());
     // we keep strong references to the keys,
@@ -97,7 +98,7 @@ public class TestWeakIdentityMap extends LuceneTestCase {
     for (Iterator<String> it = map.keyIterator(); it.hasNext(); ) {
       assertTrue(it.hasNext()); // try again, should return same result!
       final String k = it.next();
-      assertTrue(k == key1 || k == key2 | k == key3);
+      assertTrue(k == key1 || k == key2 || k == key3);
       keysAssigned += (k == key1) ? 1 : ((k == key2) ? 2 : 4);
       c++;
     }
@@ -119,7 +120,7 @@ public class TestWeakIdentityMap extends LuceneTestCase {
     int size = map.size();
     for (int i = 0; size > 0 && i < 10; i++)
       try {
-        System.runFinalization();
+        runFinalization();
         System.gc();
         int newSize = map.size();
         assertTrue("previousSize(" + size + ")>=newSize(" + newSize + ")", size >= newSize);
@@ -134,9 +135,7 @@ public class TestWeakIdentityMap extends LuceneTestCase {
         assertTrue("previousSize(" + size + ")>=iteratorSize(" + c + ")", size >= c);
         assertTrue("iteratorSize(" + c + ")>=newSize(" + newSize + ")", c >= newSize);
         size = newSize;
-      } catch (
-          @SuppressWarnings("unused")
-          InterruptedException ie) {
+      } catch (InterruptedException _) {
       }
 
     map.clear();
@@ -162,6 +161,7 @@ public class TestWeakIdentityMap extends LuceneTestCase {
     assertTrue(map.isEmpty());
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testConcurrentHashMap() throws Exception {
     // don't make threadCount and keyCount random, otherwise easily OOMs or fails otherwise:
     final int threadCount = TEST_NIGHTLY ? 8 : 2;
@@ -219,8 +219,7 @@ public class TestWeakIdentityMap extends LuceneTestCase {
       }
     } finally {
       exec.shutdown();
-      while (!exec.awaitTermination(1000L, TimeUnit.MILLISECONDS))
-        ;
+      while (!exec.awaitTermination(1000L, TimeUnit.MILLISECONDS)) {}
     }
 
     // clear strong refs
@@ -232,7 +231,7 @@ public class TestWeakIdentityMap extends LuceneTestCase {
     int size = map.size();
     for (int i = 0; size > 0 && i < 10; i++)
       try {
-        System.runFinalization();
+        runFinalization();
         System.gc();
         int newSize = map.size();
         assertTrue("previousSize(" + size + ")>=newSize(" + newSize + ")", size >= newSize);
@@ -247,9 +246,13 @@ public class TestWeakIdentityMap extends LuceneTestCase {
         assertTrue("previousSize(" + size + ")>=iteratorSize(" + c + ")", size >= c);
         assertTrue("iteratorSize(" + c + ")>=newSize(" + newSize + ")", c >= newSize);
         size = newSize;
-      } catch (
-          @SuppressWarnings("unused")
-          InterruptedException ie) {
+      } catch (InterruptedException _) {
       }
+  }
+
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "requires to run finalization")
+  private static void runFinalization() {
+    System.runFinalization();
   }
 }

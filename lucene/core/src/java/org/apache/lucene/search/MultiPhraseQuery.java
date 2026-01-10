@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,10 +34,12 @@ import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.PriorityQueue;
 
 /**
@@ -53,14 +56,14 @@ public class MultiPhraseQuery extends Query {
   public static class Builder {
     private String field; // becomes non-null on first add() then is unmodified
     private final ArrayList<Term[]> termArrays;
-    private final ArrayList<Integer> positions;
+    private final IntArrayList positions;
     private int slop;
 
     /** Default constructor. */
     public Builder() {
       this.field = null;
       this.termArrays = new ArrayList<>();
-      this.positions = new ArrayList<>();
+      this.positions = new IntArrayList();
       this.slop = 0;
     }
 
@@ -74,7 +77,7 @@ public class MultiPhraseQuery extends Query {
       int length = multiPhraseQuery.termArrays.length;
 
       this.termArrays = new ArrayList<>(length);
-      this.positions = new ArrayList<>(length);
+      this.positions = new IntArrayList(length);
 
       for (int i = 0; i < length; ++i) {
         this.termArrays.add(multiPhraseQuery.termArrays[i]);
@@ -138,15 +141,8 @@ public class MultiPhraseQuery extends Query {
 
     /** Builds a {@link MultiPhraseQuery}. */
     public MultiPhraseQuery build() {
-      int[] positionsArray = new int[this.positions.size()];
-
-      for (int i = 0; i < this.positions.size(); ++i) {
-        positionsArray[i] = this.positions.get(i);
-      }
-
       Term[][] termArraysArray = termArrays.toArray(new Term[termArrays.size()][]);
-
-      return new MultiPhraseQuery(field, termArraysArray, positionsArray, slop);
+      return new MultiPhraseQuery(field, termArraysArray, positions.toArray(), slop);
     }
   }
 
@@ -277,7 +273,8 @@ public class MultiPhraseQuery extends Query {
           List<PostingsEnum> postings = new ArrayList<>();
 
           for (Term term : terms) {
-            TermState termState = termStates.get(term).get(context);
+            IOSupplier<TermState> supplier = termStates.get(term).get(context);
+            TermState termState = supplier == null ? null : supplier.get();
             if (termState != null) {
               termsEnum.seekExact(term.bytes(), termState);
               postings.add(
@@ -416,19 +413,23 @@ public class MultiPhraseQuery extends Query {
    */
   public static class UnionPostingsEnum extends PostingsEnum {
     /** queue ordered by docid */
-    final DocsQueue docsQueue;
+    final PriorityQueue<PostingsEnum> docsQueue;
+
     /** cost of this enum: sum of its subs */
     final long cost;
 
     /** queue ordered by position for current doc */
     final PositionsQueue posQueue = new PositionsQueue();
+
     /** current doc posQueue is working */
     int posQueueDoc = -2;
+
     /** list of subs (unordered) */
     final PostingsEnum[] subs;
 
     public UnionPostingsEnum(Collection<PostingsEnum> subs) {
-      docsQueue = new DocsQueue(subs.size());
+      docsQueue =
+          PriorityQueue.usingComparator(subs.size(), Comparator.comparingInt(PostingsEnum::docID));
       long cost = 0;
       for (PostingsEnum sub : subs) {
         docsQueue.add(sub);
@@ -512,18 +513,6 @@ public class MultiPhraseQuery extends Query {
       return null; // payloads are unsupported
     }
 
-    /** disjunction of postings ordered by docid. */
-    static class DocsQueue extends PriorityQueue<PostingsEnum> {
-      DocsQueue(int size) {
-        super(size);
-      }
-
-      @Override
-      public final boolean lessThan(PostingsEnum a, PostingsEnum b) {
-        return a.docID() < b.docID();
-      }
-    }
-
     /**
      * queue of terms for a single document. its a sorted array of all the positions from all the
      * postings
@@ -593,12 +582,7 @@ public class MultiPhraseQuery extends Query {
     public UnionFullPostingsEnum(List<PostingsEnum> subs) {
       super(subs);
       this.posQueue =
-          new PriorityQueue<PostingsAndPosition>(subs.size()) {
-            @Override
-            protected boolean lessThan(PostingsAndPosition a, PostingsAndPosition b) {
-              return a.pos < b.pos;
-            }
-          };
+          PriorityQueue.usingComparator(subs.size(), Comparator.comparingInt(p -> p.pos));
       this.subs = new ArrayList<>();
       for (PostingsEnum pe : subs) {
         this.subs.add(new PostingsAndPosition(pe));

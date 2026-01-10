@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.DataOutput;
@@ -56,6 +57,7 @@ abstract class WordStorage {
   private static final int MAX_STORED_LENGTH = SUGGESTIBLE_MASK - 1;
   private final int maxEntryLength;
   private final boolean hasCustomMorphData;
+
   /**
    * A map from word's hash (modulo array's length) into an int containing:
    *
@@ -261,7 +263,7 @@ abstract class WordStorage {
 
     private final IntsRefBuilder currentOrds = new IntsRefBuilder();
     private final List<char[]> group = new ArrayList<>();
-    private final List<Integer> morphDataIDs = new ArrayList<>();
+    private final IntArrayList morphDataIDs = new IntArrayList();
     private String currentEntry = null;
     private final int wordCount;
     private final double hashFactor;
@@ -349,16 +351,19 @@ abstract class WordStorage {
 
       currentOrds.clear();
       boolean hasNonHidden = false;
+      boolean isSuggestible = false;
       for (char[] flags : group) {
         if (!hasFlag(flags, Dictionary.HIDDEN_FLAG)) {
           hasNonHidden = true;
-          break;
+        }
+        if (!hasNoSuggestFlag(flags)) {
+          isSuggestible = true;
         }
       }
 
       for (int i = 0; i < group.size(); i++) {
         char[] flags = group.get(i);
-        if (hasNonHidden && hasFlag(flags, Dictionary.HIDDEN_FLAG)) {
+        if (hasNonHidden && group.size() > 1 && hasFlag(flags, Dictionary.HIDDEN_FLAG)) {
           continue;
         }
 
@@ -387,7 +392,7 @@ abstract class WordStorage {
 
       int mask =
           (prevCode == 0 ? 0 : COLLISION_MASK)
-              | (group.stream().anyMatch(flags -> !hasNoSuggestFlag(flags)) ? SUGGESTIBLE_MASK : 0)
+              | (isSuggestible ? SUGGESTIBLE_MASK : 0)
               | Math.min(currentEntry.length(), MAX_STORED_LENGTH);
       hashTable[hash] = (mask << OFFSET_BITS) | pos;
 

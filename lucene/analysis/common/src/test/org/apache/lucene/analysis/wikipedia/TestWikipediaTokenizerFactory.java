@@ -17,8 +17,6 @@
 package org.apache.lucene.analysis.wikipedia;
 
 import java.io.StringReader;
-import java.util.HashSet;
-import java.util.Set;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 
@@ -66,9 +64,6 @@ public class TestWikipediaTokenizerFactory extends BaseTokenStreamFactoryTestCas
   public void testTokenizerUntokenizedOnly() throws Exception {
     String test =
         "[[Category:a b c d]] [[Category:e f g]] [[link here]] [[link there]] ''italics here'' something ''more italics'' [[Category:h   i   j]]";
-    Set<String> untoks = new HashSet<>();
-    untoks.add(WikipediaTokenizer.CATEGORY);
-    untoks.add(WikipediaTokenizer.ITALICS);
     Tokenizer tf =
         tokenizerFactory(
                 WIKIPEDIA,
@@ -145,9 +140,9 @@ public class TestWikipediaTokenizerFactory extends BaseTokenStreamFactoryTestCas
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
-            () -> {
-              tokenizerFactory(WIKIPEDIA, "bogusArg", "bogusValue").create(newAttributeFactory());
-            });
+            () ->
+                tokenizerFactory(WIKIPEDIA, "bogusArg", "bogusValue")
+                    .create(newAttributeFactory()));
     assertTrue(expected.getMessage().contains("Unknown parameters"));
   }
 
@@ -155,9 +150,7 @@ public class TestWikipediaTokenizerFactory extends BaseTokenStreamFactoryTestCas
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
-            () -> {
-              tokenizerFactory(WIKIPEDIA, TOKEN_OUTPUT, "-1").create(newAttributeFactory());
-            });
+            () -> tokenizerFactory(WIKIPEDIA, TOKEN_OUTPUT, "-1").create(newAttributeFactory()));
     assertTrue(
         expected
             .getMessage()

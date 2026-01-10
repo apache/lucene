@@ -42,7 +42,7 @@ public class TestSortedNumericSortField extends LuceneTestCase {
             10,
             new Sort(new SortedNumericSortField("sortednumeric", SortField.Type.LONG)),
             true);
-    assertEquals(0, td.totalHits.value);
+    assertEquals(0, td.totalHits.value());
 
     // for an empty index, any selector should work
     for (SortedNumericSelector.Type v : SortedNumericSelector.Type.values()) {
@@ -52,11 +52,11 @@ public class TestSortedNumericSortField extends LuceneTestCase {
               10,
               new Sort(new SortedNumericSortField("sortednumeric", SortField.Type.LONG, false, v)),
               true);
-      assertEquals(0, td.totalHits.value);
+      assertEquals(0, td.totalHits.value());
     }
   }
 
-  @SuppressWarnings("unlikely-arg-type")
+  @SuppressWarnings({"unlikely-arg-type", "SelfAssertion"})
   public void testEquals() throws Exception {
     SortField sf = new SortedNumericSortField("a", SortField.Type.LONG);
     assertFalse(sf.equals(null));
@@ -95,8 +95,8 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortedNumericSortField("value", SortField.Type.INT));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(2, td.totalHits.value);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
+    assertEquals(2, td.totalHits.value());
     // 3 comes before 5
     assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
     assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
@@ -124,8 +124,8 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortedNumericSortField("value", SortField.Type.INT, true));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(2, td.totalHits.value);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
+    assertEquals(2, td.totalHits.value());
     // 'bar' comes before 'baz'
     assertEquals("2", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
     assertEquals("1", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
@@ -153,12 +153,13 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     writer.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    SortField sortField = new SortedNumericSortField("value", SortField.Type.INT);
-    sortField.setMissingValue(Integer.MIN_VALUE);
+    SortField sortField =
+        new SortedNumericSortField(
+            "value", SortField.Type.INT, false, SortedNumericSelector.Type.MIN, Integer.MIN_VALUE);
     Sort sort = new Sort(sortField);
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(3, td.totalHits.value);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
+    assertEquals(3, td.totalHits.value());
     // 3 comes before 5
     // null comes first
     assertEquals("3", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
@@ -188,12 +189,13 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     writer.close();
 
     IndexSearcher searcher = newSearcher(ir);
-    SortField sortField = new SortedNumericSortField("value", SortField.Type.INT);
-    sortField.setMissingValue(Integer.MAX_VALUE);
+    SortField sortField =
+        new SortedNumericSortField(
+            "value", SortField.Type.INT, false, SortedNumericSelector.Type.MIN, Integer.MAX_VALUE);
     Sort sort = new Sort(sortField);
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(3, td.totalHits.value);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
+    assertEquals(3, td.totalHits.value());
     // 3 comes before 5
     assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
     assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
@@ -221,8 +223,8 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortedNumericSortField("value", SortField.Type.INT));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(2, td.totalHits.value);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
+    assertEquals(2, td.totalHits.value());
     // 3 comes before 5
     assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
     assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
@@ -249,8 +251,8 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortedNumericSortField("value", SortField.Type.FLOAT));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(2, td.totalHits.value);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
+    assertEquals(2, td.totalHits.value());
     // -5 comes before -3
     assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
     assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
@@ -277,8 +279,8 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(ir);
     Sort sort = new Sort(new SortedNumericSortField("value", SortField.Type.DOUBLE));
 
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(2, td.totalHits.value);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
+    assertEquals(2, td.totalHits.value());
     // -5 comes before -3
     assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
     assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));

@@ -18,12 +18,15 @@ package org.apache.lucene.util.packed;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Random;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.DataInput;
@@ -72,8 +75,17 @@ public class TestPackedInts extends LuceneTestCase {
     assertEquals(61, PackedInts.bitsRequired(0x1FFFFFFFFFFFFFFFL));
     assertEquals(62, PackedInts.bitsRequired(0x3FFFFFFFFFFFFFFFL));
     assertEquals(63, PackedInts.bitsRequired(0x7FFFFFFFFFFFFFFFL));
-    assertEquals(64, PackedInts.unsignedBitsRequired(-1));
+    assertEquals(64, PackedInts.unsignedBitsRequired(-1L));
     assertEquals(64, PackedInts.unsignedBitsRequired(Long.MIN_VALUE));
+    assertEquals(1, PackedInts.bitsRequired(0L));
+  }
+
+  public void testBitsRequiredInt() {
+    assertEquals(29, PackedInts.bitsRequired((int) Math.pow(2, 29) - 1));
+    assertEquals(30, PackedInts.bitsRequired(0x3FFFFFFF));
+    assertEquals(31, PackedInts.bitsRequired(0x7FFFFFFF));
+    assertEquals(32, PackedInts.unsignedBitsRequired(-1));
+    assertEquals(32, PackedInts.unsignedBitsRequired(Integer.MIN_VALUE));
     assertEquals(1, PackedInts.bitsRequired(0));
   }
 
@@ -417,11 +429,11 @@ public class TestPackedInts extends LuceneTestCase {
   }
 
   /*
-   Check if the structures properly handle the case where
-   index * bitsPerValue > Integer.MAX_VALUE
-
-   NOTE: this test allocates 256 MB
-  */
+   * Check if the structures properly handle the case where
+   * index * bitsPerValue > Integer.MAX_VALUE
+   *
+   * NOTE: this test allocates 256 MB
+   */
   @Ignore("See LUCENE-4488")
   public void testIntOverflow() {
     int INDEX = (int) Math.pow(2, 30) + 1;
@@ -430,9 +442,7 @@ public class TestPackedInts extends LuceneTestCase {
     Packed64 p64 = null;
     try {
       p64 = new Packed64(INDEX, BITS);
-    } catch (
-        @SuppressWarnings("unused")
-        OutOfMemoryError oome) {
+    } catch (OutOfMemoryError _) {
       // This can easily happen: we're allocating a
       // long[] that needs 256-273 MB.  Heap is 512 MB,
       // but not all of that is available for large
@@ -451,9 +461,7 @@ public class TestPackedInts extends LuceneTestCase {
     Packed64SingleBlock p64sb = null;
     try {
       p64sb = Packed64SingleBlock.create(INDEX, BITS);
-    } catch (
-        @SuppressWarnings("unused")
-        OutOfMemoryError oome) {
+    } catch (OutOfMemoryError _) {
       // Ignore: see comment above
     }
     if (p64sb != null) {
@@ -502,7 +510,7 @@ public class TestPackedInts extends LuceneTestCase {
   public void testPackedIntsNull() {
     // must be > 10 for the bulk reads below
     int size = TestUtil.nextInt(random(), 11, 256);
-    Reader packedInts = new PackedInts.NullReader(size);
+    Reader packedInts = PackedInts.NullReader.forCount(size);
     assertEquals(0, packedInts.get(TestUtil.nextInt(random(), 0, size - 1)));
     long[] arr = new long[size + 10];
     int r;
@@ -966,12 +974,24 @@ public class TestPackedInts extends LuceneTestCase {
             .ramBytesUsed());
   }
 
+  private static final class IgnoreNullReaderSingletonAccumulator
+      extends RamUsageTester.Accumulator {
+    @Override
+    public long accumulateObject(
+        Object o, long shallowSize, Map<Field, Object> fieldValues, Collection<Object> queue) {
+      if (o == PackedInts.NullReader.forCount(PackedLongValues.DEFAULT_PAGE_SIZE)) {
+        return 0;
+      }
+      return super.accumulateObject(o, shallowSize, fieldValues, queue);
+    }
+  }
+
   public void testPackedLongValues() {
     final long[] arr =
         new long[RandomNumbers.randomIntBetween(random(), 1, TEST_NIGHTLY ? 1000000 : 10000)];
     float[] ratioOptions = new float[] {PackedInts.DEFAULT, PackedInts.COMPACT, PackedInts.FAST};
     for (int bpv : new int[] {0, 1, 63, 64, RandomNumbers.randomIntBetween(random(), 2, 62)}) {
-      for (DataType dataType : Arrays.asList(DataType.DELTA_PACKED)) {
+      for (DataType dataType : DataType.values()) {
         final int pageSize = 1 << TestUtil.nextInt(random(), 6, 20);
         float acceptableOverheadRatio =
             ratioOptions[TestUtil.nextInt(random(), 0, ratioOptions.length - 1)];
@@ -1017,7 +1037,8 @@ public class TestPackedInts extends LuceneTestCase {
         for (int i = 0; i < arr.length; ++i) {
           buf.add(arr[i]);
           if (rarely() && !TEST_NIGHTLY) {
-            final long expectedBytesUsed = RamUsageTester.ramUsed(buf);
+            final long expectedBytesUsed =
+                RamUsageTester.ramUsed(buf, new IgnoreNullReaderSingletonAccumulator());
             final long computedBytesUsed = buf.ramBytesUsed();
             assertEquals(expectedBytesUsed, computedBytesUsed);
           }
@@ -1044,7 +1065,8 @@ public class TestPackedInts extends LuceneTestCase {
         }
         assertFalse(it.hasNext());
 
-        final long expectedBytesUsed = RamUsageTester.ramUsed(values);
+        final long expectedBytesUsed =
+            RamUsageTester.ramUsed(values, new IgnoreNullReaderSingletonAccumulator());
         final long computedBytesUsed = values.ramBytesUsed();
         assertEquals(expectedBytesUsed, computedBytesUsed);
       }
@@ -1203,20 +1225,21 @@ public class TestPackedInts extends LuceneTestCase {
   }
 
   public void testMonotonicBlockPackedReaderWriter() throws IOException {
+    var random = nonAssertingRandom(random());
+
     final int iters = atLeast(2);
     for (int iter = 0; iter < iters; ++iter) {
-      final int blockSize = 1 << TestUtil.nextInt(random(), 6, 18);
-      final int valueCount = random().nextInt(1 << 18);
+      final int blockSize = 1 << TestUtil.nextInt(random, 6, 18);
+      final int valueCount = random.nextInt(1 << 18);
       final long[] values = new long[valueCount];
       if (valueCount > 0) {
-        values[0] =
-            random().nextBoolean() ? random().nextInt(10) : random().nextInt(Integer.MAX_VALUE);
-        int maxDelta = random().nextInt(64);
+        values[0] = random.nextBoolean() ? random.nextInt(10) : random.nextInt(Integer.MAX_VALUE);
+        int maxDelta = random.nextInt(64);
         for (int i = 1; i < valueCount; ++i) {
-          if (random().nextDouble() < 0.1d) {
-            maxDelta = random().nextInt(64);
+          if (random.nextDouble() < 0.1d) {
+            maxDelta = random.nextInt(64);
           }
-          values[i] = Math.max(0, values[i - 1] + TestUtil.nextInt(random(), -16, maxDelta));
+          values[i] = Math.max(0, values[i - 1] + TestUtil.nextInt(random, -16, maxDelta));
         }
       }
 

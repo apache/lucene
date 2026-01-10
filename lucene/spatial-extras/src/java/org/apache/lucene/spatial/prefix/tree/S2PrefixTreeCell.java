@@ -19,6 +19,7 @@ package org.apache.lucene.spatial.prefix.tree;
 
 import com.google.common.geometry.S2CellId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,7 +64,7 @@ class S2PrefixTreeCell implements CellCanPrune {
     for (int i = 0; i < TOKENS.length; i++) {
       pixels.put(TOKENS[i], i);
     }
-    PIXELS = Map.copyOf(pixels);
+    PIXELS = Collections.unmodifiableMap(pixels);
   }
 
   S2CellId cellId;
@@ -277,7 +278,7 @@ class S2PrefixTreeCell implements CellCanPrune {
   @Override
   public int hashCode() {
     if (cellId == null) {
-      return super.hashCode();
+      return System.identityHashCode(this);
     }
     return this.cellId.hashCode();
   }

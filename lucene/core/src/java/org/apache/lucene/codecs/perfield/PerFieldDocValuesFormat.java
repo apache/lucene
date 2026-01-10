@@ -24,11 +24,11 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
-import java.util.TreeMap;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
@@ -38,6 +38,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -77,10 +78,7 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     return new FieldsWriter(state);
   }
 
-  static class ConsumerAndSuffix implements Closeable {
-    DocValuesConsumer consumer;
-    int suffix;
-
+  record ConsumerAndSuffix(DocValuesConsumer consumer, int suffix) implements Closeable {
     @Override
     public void close() throws IOException {
       consumer.close();
@@ -148,13 +146,8 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
       }
 
       // Delegate the merge to the appropriate consumer
-      PerFieldMergeState pfMergeState = new PerFieldMergeState(mergeState);
-      try {
-        for (Map.Entry<DocValuesConsumer, Collection<String>> e : consumersToField.entrySet()) {
-          e.getKey().merge(pfMergeState.apply(e.getValue()));
-        }
-      } finally {
-        pfMergeState.reset();
+      for (Map.Entry<DocValuesConsumer, Collection<String>> e : consumersToField.entrySet()) {
+        e.getKey().merge(PerFieldMergeState.restrictFields(mergeState, e.getValue()));
       }
     }
 
@@ -192,7 +185,6 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
       }
       final String formatName = format.getName();
 
-      field.putAttribute(PER_FIELD_FORMAT_KEY, formatName);
       Integer suffix = null;
 
       ConsumerAndSuffix consumer = formats.get(format);
@@ -226,18 +218,18 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
         final String segmentSuffix =
             getFullSegmentSuffix(
                 segmentWriteState.segmentSuffix, getSuffix(formatName, Integer.toString(suffix)));
-        consumer = new ConsumerAndSuffix();
-        consumer.consumer =
-            format.fieldsConsumer(new SegmentWriteState(segmentWriteState, segmentSuffix));
-        consumer.suffix = suffix;
+        consumer =
+            new ConsumerAndSuffix(
+                format.fieldsConsumer(new SegmentWriteState(segmentWriteState, segmentSuffix)),
+                suffix);
         formats.put(format, consumer);
       } else {
         // we've already seen this format, so just grab its suffix
         assert suffixes.containsKey(formatName);
         suffix = consumer.suffix;
       }
-
-      field.putAttribute(PER_FIELD_SUFFIX_KEY, Integer.toString(suffix));
+      field.putAttributes(
+          Map.of(PER_FIELD_FORMAT_KEY, formatName, PER_FIELD_SUFFIX_KEY, Integer.toString(suffix)));
       // TODO: we should only provide the "slice" of FIS
       // that this DVF actually sees ...
       return consumer.consumer;
@@ -262,9 +254,9 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     }
   }
 
-  private class FieldsReader extends DocValuesProducer {
+  private static class FieldsReader extends DocValuesProducer {
 
-    private final Map<String, DocValuesProducer> fields = new TreeMap<>();
+    private final IntObjectHashMap<DocValuesProducer> fields = new IntObjectHashMap<>();
     private final Map<String, DocValuesProducer> formats = new HashMap<>();
 
     // clone for merge
@@ -278,17 +270,16 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
       }
 
       // Then rebuild fields:
-      for (Map.Entry<String, DocValuesProducer> ent : other.fields.entrySet()) {
-        DocValuesProducer producer = oldToNew.get(ent.getValue());
+      for (IntObjectHashMap.IntObjectCursor<DocValuesProducer> ent : other.fields) {
+        DocValuesProducer producer = oldToNew.get(ent.value);
         assert producer != null;
-        fields.put(ent.getKey(), producer);
+        fields.put(ent.key, producer);
       }
     }
 
     public FieldsReader(final SegmentReadState readState) throws IOException {
 
       // Init each unique format:
-      boolean success = false;
       try {
         // Read field name -> format name
         for (FieldInfo fi : readState.fieldInfos) {
@@ -310,46 +301,50 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
                     segmentSuffix,
                     format.fieldsProducer(new SegmentReadState(readState, segmentSuffix)));
               }
-              fields.put(fieldName, formats.get(segmentSuffix));
+              fields.put(fi.number, formats.get(segmentSuffix));
             }
           }
         }
-        success = true;
-      } finally {
-        if (!success) {
-          IOUtils.closeWhileHandlingException(formats.values());
-        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, formats.values());
+        throw t;
       }
     }
 
     @Override
     public NumericDocValues getNumeric(FieldInfo field) throws IOException {
-      DocValuesProducer producer = fields.get(field.name);
+      DocValuesProducer producer = fields.get(field.number);
       return producer == null ? null : producer.getNumeric(field);
     }
 
     @Override
     public BinaryDocValues getBinary(FieldInfo field) throws IOException {
-      DocValuesProducer producer = fields.get(field.name);
+      DocValuesProducer producer = fields.get(field.number);
       return producer == null ? null : producer.getBinary(field);
     }
 
     @Override
     public SortedDocValues getSorted(FieldInfo field) throws IOException {
-      DocValuesProducer producer = fields.get(field.name);
+      DocValuesProducer producer = fields.get(field.number);
       return producer == null ? null : producer.getSorted(field);
     }
 
     @Override
     public SortedNumericDocValues getSortedNumeric(FieldInfo field) throws IOException {
-      DocValuesProducer producer = fields.get(field.name);
+      DocValuesProducer producer = fields.get(field.number);
       return producer == null ? null : producer.getSortedNumeric(field);
     }
 
     @Override
     public SortedSetDocValues getSortedSet(FieldInfo field) throws IOException {
-      DocValuesProducer producer = fields.get(field.name);
+      DocValuesProducer producer = fields.get(field.number);
       return producer == null ? null : producer.getSortedSet(field);
+    }
+
+    @Override
+    public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+      DocValuesProducer producer = fields.get(field.number);
+      return producer == null ? null : producer.getSkipper(field);
     }
 
     @Override

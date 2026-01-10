@@ -127,7 +127,8 @@ public class CustomFacetSetExample {
       // MatchAllDocsQuery is for "browsing" (counts facets
       // for all non-deleted docs in the index); normally
       // you'd use a "normal" query:
-      FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+      FacetsCollector fc =
+          searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
       // Count both "May 2022, 100 degrees" and "July 2022, 120 degrees" dimensions
       Facets facets =
@@ -159,7 +160,8 @@ public class CustomFacetSetExample {
       // MatchAllDocsQuery is for "browsing" (counts facets
       // for all non-deleted docs in the index); normally
       // you'd use a "normal" query:
-      FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+      FacetsCollector fc =
+          searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
       // Match documents whose "day" field is either "May 2022" or "July 2022"
       Query dateQuery =
@@ -200,6 +202,7 @@ public class CustomFacetSetExample {
       return facets.getAllChildren("temperature");
     }
   }
+
   /** Counting documents which match a certain degrees value for any date. */
   private FacetResult rangeMatching() throws IOException {
     try (DirectoryReader indexReader = DirectoryReader.open(indexDir)) {
@@ -208,7 +211,8 @@ public class CustomFacetSetExample {
       // MatchAllDocsQuery is for "browsing" (counts facets
       // for all non-deleted docs in the index); normally
       // you'd use a "normal" query:
-      FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+      FacetsCollector fc =
+          searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
       // Count 80-100 degrees
       Facets facets =
@@ -238,7 +242,8 @@ public class CustomFacetSetExample {
       // MatchAllDocsQuery is for "browsing" (counts facets
       // for all non-deleted docs in the index); normally
       // you'd use a "normal" query:
-      FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+      FacetsCollector fc =
+          searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
       // Count 80-100 degrees
       Facets facets =
@@ -378,7 +383,7 @@ public class CustomFacetSetExample {
 
     @Override
     public boolean matches(long[] dimValues) {
-      return temperatureRange.min <= dimValues[1] && temperatureRange.max >= dimValues[1];
+      return temperatureRange.min() <= dimValues[1] && temperatureRange.max() >= dimValues[1];
     }
   }
 }

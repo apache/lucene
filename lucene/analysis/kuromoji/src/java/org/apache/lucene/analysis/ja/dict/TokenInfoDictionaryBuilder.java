@@ -26,8 +26,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.lucene.analysis.util.CSVUtil;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
@@ -56,10 +56,7 @@ class TokenInfoDictionaryBuilder {
   public TokenInfoDictionaryWriter build(Path dir) throws IOException {
     try (Stream<Path> files = Files.list(dir)) {
       List<Path> csvFiles =
-          files
-              .filter(path -> path.getFileName().toString().endsWith(".csv"))
-              .sorted()
-              .collect(Collectors.toList());
+          files.filter(path -> path.getFileName().toString().endsWith(".csv")).sorted().toList();
       return buildDictionary(csvFiles);
     }
   }
@@ -100,7 +97,8 @@ class TokenInfoDictionaryBuilder {
     lines.sort(Comparator.comparing(entry -> entry[0]));
 
     PositiveIntOutputs fstOutput = PositiveIntOutputs.getSingleton();
-    FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE2, fstOutput);
+    FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE2, fstOutput).build();
     IntsRefBuilder scratch = new IntsRefBuilder();
     long ord = -1; // first ord will be 0
     String lastValue = null;
@@ -118,17 +116,17 @@ class TokenInfoDictionaryBuilder {
         // new word to add to fst
         ord++;
         lastValue = token;
-        scratch.grow(token.length());
+        scratch.growNoCopy(token.length());
         scratch.setLength(token.length());
         for (int i = 0; i < token.length(); i++) {
-          scratch.setIntAt(i, (int) token.charAt(i));
+          scratch.setIntAt(i, token.charAt(i));
         }
         fstCompiler.add(scratch.get(), ord);
       }
       dictionary.addMapping((int) ord, offset);
       offset = next;
     }
-    dictionary.setFST(fstCompiler.compile());
+    dictionary.setFST(FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()));
     return dictionary;
   }
 
@@ -142,7 +140,7 @@ class TokenInfoDictionaryBuilder {
    * 4-9 - pos
    * 10  - base form
    * 11  - reading
-   * 12  - pronounciation
+   * 12  - pronunciation
    *
    * UniDic features
    *
@@ -176,7 +174,7 @@ class TokenInfoDictionaryBuilder {
 
       // If the surface reading is non-existent, use surface form for reading and pronunciation.
       // This happens with punctuation in UniDic and there are possibly other cases as well
-      if (features[13].length() == 0) {
+      if (features[13].isEmpty()) {
         features2[11] = features[0];
         features2[12] = features[0];
       } else {

@@ -17,10 +17,12 @@
 package org.apache.lucene.facet.range;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntCursor;
+import org.apache.lucene.internal.hppc.LongArrayList;
+import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
@@ -34,8 +36,10 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
 
   /** segment tree root node */
   private final LongRangeNode root;
+
   /** elementary interval boundaries used for efficient counting (bsearch to find interval) */
   private final long[] boundaries;
+
   /**
    * whether-or-not there are elementary interval counts that still need to be rolled up at the end
    */
@@ -48,11 +52,13 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
   // Needed only for counting multi-valued docs:
   /** whether-or-not an elementary interval has seen at least one match for a single doc */
   private FixedBitSet multiValuedDocElementaryIntervalHits;
+
   /** whether-or-not a requested range has seen at least one match for a single doc */
   private FixedBitSet multiValuedDocRangeHits;
 
   // Used during rollup
   private int elementaryIntervalUpto;
+
   /** number of counted documents that haven't matched any requested ranges */
   private int missingCount;
 
@@ -194,8 +200,8 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
       }
     }
     if (node.outputs != null) {
-      for (int rangeIndex : node.outputs) {
-        increment(rangeIndex, count);
+      for (IntCursor rangeIndex : node.outputs) {
+        increment(rangeIndex.value, count);
       }
     }
 
@@ -220,8 +226,8 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
       elementaryIntervalUpto++;
     }
     if (containedHit && node.outputs != null) {
-      for (int rangeIndex : node.outputs) {
-        multiValuedDocRangeHits.set(rangeIndex);
+      for (IntCursor rangeIndex : node.outputs) {
+        multiValuedDocRangeHits.set(rangeIndex.value);
       }
     }
 
@@ -234,28 +240,29 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
     // track the start vs end case separately because if a
     // given point is both, then it must be its own
     // elementary interval:
-    Map<Long, Integer> endsMap = new HashMap<>();
+    LongIntHashMap endsMap = new LongIntHashMap();
 
     endsMap.put(Long.MIN_VALUE, 1);
     endsMap.put(Long.MAX_VALUE, 2);
 
     for (LongRange range : ranges) {
-      Integer cur = endsMap.get(range.min);
-      if (cur == null) {
-        endsMap.put(range.min, 1);
+      int index = endsMap.indexOf(range.min);
+      if (index < 0) {
+        endsMap.indexInsert(index, range.min, 1);
       } else {
-        endsMap.put(range.min, cur | 1);
+        endsMap.indexReplace(index, endsMap.indexGet(index) | 1);
       }
-      cur = endsMap.get(range.max);
-      if (cur == null) {
-        endsMap.put(range.max, 2);
+      index = endsMap.indexOf(range.max);
+      if (index < 0) {
+        endsMap.indexInsert(index, range.max, 2);
       } else {
-        endsMap.put(range.max, cur | 2);
+        endsMap.indexReplace(index, endsMap.indexGet(index) | 2);
       }
     }
 
-    List<Long> endsList = new ArrayList<>(endsMap.keySet());
-    Collections.sort(endsList);
+    LongArrayList endsList = new LongArrayList(endsMap.size());
+    endsList.addAll(endsMap.keys());
+    Arrays.sort(endsList.buffer, 0, endsList.size());
 
     // Build elementaryIntervals (a 1D Venn diagram):
     List<InclusiveRange> elementaryIntervals = new ArrayList<>();
@@ -314,7 +321,7 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
 
     // Which range indices to output when a query goes
     // through this node:
-    List<Integer> outputs;
+    IntArrayList outputs;
 
     public LongRangeNode(
         long start,
@@ -348,7 +355,7 @@ class OverlappingLongRangeCounter extends LongRangeCounter {
         // Our range is fully included in the incoming
         // range; add to our output list:
         if (outputs == null) {
-          outputs = new ArrayList<>();
+          outputs = new IntArrayList();
         }
         outputs.add(index);
       } else if (left != null) {

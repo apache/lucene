@@ -503,16 +503,8 @@ public class TestFuzzySuggester extends LuceneTestCase {
   }
 
   // Holds surface form separately:
-  private static class TermFreqPayload2 implements Comparable<TermFreqPayload2> {
-    public final String surfaceForm;
-    public final String analyzedForm;
-    public final long weight;
-
-    public TermFreqPayload2(String surfaceForm, String analyzedForm, long weight) {
-      this.surfaceForm = surfaceForm;
-      this.analyzedForm = analyzedForm;
-      this.weight = weight;
-    }
+  private record TermFreqPayload2(String surfaceForm, String analyzedForm, long weight)
+      implements Comparable<TermFreqPayload2> {
 
     @Override
     public int compareTo(TermFreqPayload2 other) {
@@ -948,7 +940,7 @@ public class TestFuzzySuggester extends LuceneTestCase {
               }
               return builder.toString();
             }
-            // NOTE: fall through to delete:
+          // NOTE: fall through to delete:
           case 2:
             // Delete input[i]
             for (int j = i + 1; j < input.length; j++) {
@@ -1200,7 +1192,7 @@ public class TestFuzzySuggester extends LuceneTestCase {
   // and tweaked to return the edit distance not the float
   // lucene measure
 
-  /* Finds unicode (code point) Levenstein (edit) distance
+  /* Finds unicode (code point) Levenshtein (edit) distance
    * between two strings, including transpositions. */
   public int getDistance(String target, String other, boolean allowTransposition) {
     IntsRef targetPoints;

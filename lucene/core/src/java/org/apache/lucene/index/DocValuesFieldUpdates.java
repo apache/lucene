@@ -18,15 +18,13 @@ package org.apache.lucene.index;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
+import java.util.Comparator;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.SparseFixedBitSet;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PagedMutable;
 
@@ -115,6 +113,7 @@ abstract class DocValuesFieldUpdates implements Accountable {
         }
       };
     }
+
     /** Wraps the given iterator as a NumericDocValues instance. */
     static NumericDocValues asNumericDocValues(Iterator iterator) {
       return new NumericDocValues() {
@@ -161,24 +160,12 @@ abstract class DocValuesFieldUpdates implements Accountable {
       return subs[0];
     }
 
+    // sort by smaller docID, then larger delGen
     PriorityQueue<Iterator> queue =
-        new PriorityQueue<Iterator>(subs.length) {
-          @Override
-          protected boolean lessThan(Iterator a, Iterator b) {
-            // sort by smaller docID
-            int cmp = Integer.compare(a.docID(), b.docID());
-            if (cmp == 0) {
-              // then by larger delGen
-              cmp = Long.compare(b.delGen(), a.delGen());
-
-              // delGens are unique across our subs:
-              assert cmp != 0;
-            }
-
-            return cmp < 0;
-          }
-        };
-
+        PriorityQueue.usingComparator(
+            subs.length,
+            Comparator.comparingInt(Iterator::docID)
+                .thenComparing(Comparator.comparingLong(Iterator::delGen).reversed()));
     for (Iterator sub : subs) {
       if (sub.nextDoc() != NO_MORE_DOCS) {
         queue.add(sub);
@@ -477,109 +464,6 @@ abstract class DocValuesFieldUpdates implements Accountable {
     @Override
     final boolean hasValue() {
       return hasValue;
-    }
-  }
-
-  abstract static class SingleValueDocValuesFieldUpdates extends DocValuesFieldUpdates {
-    private final BitSet bitSet;
-    private BitSet hasNoValue;
-    private boolean hasAtLeastOneValue;
-
-    protected SingleValueDocValuesFieldUpdates(
-        int maxDoc, long delGen, String field, DocValuesType type) {
-      super(maxDoc, delGen, field, type);
-      this.bitSet = new SparseFixedBitSet(maxDoc);
-    }
-
-    @Override
-    void add(int doc, long value) {
-      assert longValue() == value;
-      bitSet.set(doc);
-      this.hasAtLeastOneValue = true;
-      if (hasNoValue != null) {
-        hasNoValue.clear(doc);
-      }
-    }
-
-    @Override
-    void add(int doc, BytesRef value) {
-      assert binaryValue().equals(value);
-      bitSet.set(doc);
-      this.hasAtLeastOneValue = true;
-      if (hasNoValue != null) {
-        hasNoValue.clear(doc);
-      }
-    }
-
-    @Override
-    synchronized void reset(int doc) {
-      bitSet.set(doc);
-      this.hasAtLeastOneValue = true;
-      if (hasNoValue == null) {
-        hasNoValue = new SparseFixedBitSet(maxDoc);
-      }
-      hasNoValue.set(doc);
-    }
-
-    @Override
-    void add(int docId, Iterator iterator) {
-      throw new UnsupportedOperationException();
-    }
-
-    protected abstract BytesRef binaryValue();
-
-    protected abstract long longValue();
-
-    @Override
-    synchronized boolean any() {
-      return super.any() || hasAtLeastOneValue;
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return super.ramBytesUsed()
-          + bitSet.ramBytesUsed()
-          + (hasNoValue == null ? 0 : hasNoValue.ramBytesUsed());
-    }
-
-    @Override
-    Iterator iterator() {
-      BitSetIterator iterator = new BitSetIterator(bitSet, maxDoc);
-      return new DocValuesFieldUpdates.Iterator() {
-
-        @Override
-        public int docID() {
-          return iterator.docID();
-        }
-
-        @Override
-        public int nextDoc() {
-          return iterator.nextDoc();
-        }
-
-        @Override
-        long longValue() {
-          return SingleValueDocValuesFieldUpdates.this.longValue();
-        }
-
-        @Override
-        BytesRef binaryValue() {
-          return SingleValueDocValuesFieldUpdates.this.binaryValue();
-        }
-
-        @Override
-        long delGen() {
-          return delGen;
-        }
-
-        @Override
-        boolean hasValue() {
-          if (hasNoValue != null) {
-            return hasNoValue.get(docID()) == false;
-          }
-          return true;
-        }
-      };
     }
   }
 }

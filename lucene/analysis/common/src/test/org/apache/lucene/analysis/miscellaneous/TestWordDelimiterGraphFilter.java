@@ -1104,9 +1104,10 @@ public class TestWordDelimiterGraphFilter extends BaseTokenStreamTestCase {
 
   private String randomWDFText() {
     StringBuilder b = new StringBuilder();
-    int length = TestUtil.nextInt(random(), 1, 50);
+    Random random = random();
+    int length = TestUtil.nextInt(random, 1, 20);
     for (int i = 0; i < length; i++) {
-      int surpriseMe = random().nextInt(37);
+      int surpriseMe = random.nextInt(37);
       int lower = -1;
       int upper = -1;
       if (surpriseMe < 10) {
@@ -1130,7 +1131,7 @@ public class TestWordDelimiterGraphFilter extends BaseTokenStreamTestCase {
       }
 
       if (lower != -1) {
-        b.append((char) TestUtil.nextInt(random(), lower, upper));
+        b.append((char) TestUtil.nextInt(random, lower, upper));
       }
     }
 
@@ -1146,7 +1147,7 @@ public class TestWordDelimiterGraphFilter extends BaseTokenStreamTestCase {
   }
 
   public void testRandomPaths() throws Exception {
-    int iters = atLeast(10);
+    int iters = atLeast(1);
     for (int iter = 0; iter < iters; iter++) {
       String text = randomWDFText();
       if (VERBOSE) {

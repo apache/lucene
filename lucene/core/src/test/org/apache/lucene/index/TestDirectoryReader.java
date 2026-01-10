@@ -24,12 +24,21 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -38,6 +47,7 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.DocHelper;
@@ -48,6 +58,8 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.NamedThreadFactory;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
 import org.junit.Assume;
 
@@ -55,7 +67,6 @@ import org.junit.Assume;
 public class TestDirectoryReader extends LuceneTestCase {
 
   public void testDocument() throws IOException {
-    SegmentReader[] readers = new SegmentReader[2];
     Directory dir = newDirectory();
     Document doc1 = new Document();
     Document doc2 = new Document();
@@ -80,8 +91,6 @@ public class TestDirectoryReader extends LuceneTestCase {
     assertNotNull(vector);
 
     reader.close();
-    if (readers[0] != null) readers[0].close();
-    if (readers[1] != null) readers[1].close();
     dir.close();
   }
 
@@ -271,7 +280,7 @@ public class TestDirectoryReader extends LuceneTestCase {
       } else {
         notIndexedFieldNames.add(name);
       }
-      if (fieldInfo.hasVectors()) {
+      if (fieldInfo.hasTermVectors()) {
         tvFieldNames.add(name);
       }
     }
@@ -368,7 +377,8 @@ public class TestDirectoryReader extends LuceneTestCase {
 
   public void testBinaryFields() throws IOException {
     Directory dir = newDirectory();
-    byte[] bin = new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    byte[] bin1 = new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    byte[] bin2 = new byte[] {10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
 
     IndexWriter writer =
         new IndexWriter(
@@ -389,7 +399,8 @@ public class TestDirectoryReader extends LuceneTestCase {
                 .setOpenMode(OpenMode.APPEND)
                 .setMergePolicy(newLogMergePolicy()));
     Document doc = new Document();
-    doc.add(new StoredField("bin1", bin));
+    doc.add(new StoredField("bin1", bin1));
+    doc.add(new StoredField("bin2", new StoredFieldDataInput(new ByteArrayDataInput(bin2))));
     doc.add(new TextField("junk", "junk text", Field.Store.NO));
     writer.addDocument(doc);
     writer.close();
@@ -400,11 +411,22 @@ public class TestDirectoryReader extends LuceneTestCase {
     assertEquals(1, fields.length);
     IndexableField b1 = fields[0];
     assertTrue(b1.binaryValue() != null);
-    BytesRef bytesRef = b1.binaryValue();
-    assertEquals(bin.length, bytesRef.length);
-    for (int i = 0; i < bin.length; i++) {
-      assertEquals(bin[i], bytesRef.bytes[i + bytesRef.offset]);
+    BytesRef bytesRef1 = b1.binaryValue();
+    assertEquals(bin1.length, bytesRef1.length);
+    for (int i = 0; i < bin1.length; i++) {
+      assertEquals(bin1[i], bytesRef1.bytes[i + bytesRef1.offset]);
     }
+    fields = doc2.getFields("bin2");
+    assertNotNull(fields);
+    assertEquals(1, fields.length);
+    IndexableField b2 = fields[0];
+    assertTrue(b2.binaryValue() != null);
+    BytesRef bytesRef2 = b2.binaryValue();
+    assertEquals(bin2.length, bytesRef2.length);
+    for (int i = 0; i < bin2.length; i++) {
+      assertEquals(bin2[i], bytesRef2.bytes[i + bytesRef2.offset]);
+    }
+
     reader.close();
     // force merge
 
@@ -423,10 +445,19 @@ public class TestDirectoryReader extends LuceneTestCase {
     assertEquals(1, fields.length);
     b1 = fields[0];
     assertTrue(b1.binaryValue() != null);
-    bytesRef = b1.binaryValue();
-    assertEquals(bin.length, bytesRef.length);
-    for (int i = 0; i < bin.length; i++) {
-      assertEquals(bin[i], bytesRef.bytes[i + bytesRef.offset]);
+    bytesRef1 = b1.binaryValue();
+    assertEquals(bin1.length, bytesRef1.length);
+    for (int i = 0; i < bin1.length; i++) {
+      assertEquals(bin1[i], bytesRef1.bytes[i + bytesRef1.offset]);
+    }
+    fields = doc2.getFields("bin2");
+    assertNotNull(fields);
+    assertEquals(1, fields.length);
+    b2 = fields[0];
+    bytesRef2 = b2.binaryValue();
+    assertEquals(bin2.length, bytesRef2.length);
+    for (int i = 0; i < bin2.length; i++) {
+      assertEquals(bin2[i], bytesRef2.bytes[i + bytesRef2.offset]);
     }
     reader.close();
     dir.close();
@@ -482,11 +513,8 @@ public class TestDirectoryReader extends LuceneTestCase {
 
   public void testOpenReaderAfterDelete() throws IOException {
     Path dirFile = createTempDir("deletetest");
-    Directory dir = newFSDirectory(dirFile);
-    if (dir instanceof BaseDirectoryWrapper) {
-      ((BaseDirectoryWrapper) dir)
-          .setCheckIndexOnClose(false); // we will hit NoSuchFileException in MDW since we nuked it!
-    }
+    BaseDirectoryWrapper dir = newFSDirectory(dirFile);
+    dir.setCheckIndexOnClose(false); // we will hit NoSuchFileException in MDW since we nuked it!
     expectThrowsAnyOf(
         Arrays.asList(FileNotFoundException.class, NoSuchFileException.class),
         () -> DirectoryReader.open(dir));
@@ -702,7 +730,7 @@ public class TestDirectoryReader extends LuceneTestCase {
 
     assertEquals(sis.getSegmentsFileName(), c.getSegmentsFileName());
 
-    assertTrue(c.equals(r.getIndexCommit()));
+    assertEquals(c, r.getIndexCommit());
 
     // Change the index
     writer =
@@ -717,8 +745,8 @@ public class TestDirectoryReader extends LuceneTestCase {
 
     DirectoryReader r2 = DirectoryReader.openIfChanged(r);
     assertNotNull(r2);
-    assertFalse(c.equals(r2.getIndexCommit()));
-    assertFalse(r2.getIndexCommit().getSegmentCount() == 1);
+    assertNotEquals(c, r2.getIndexCommit());
+    assertNotEquals(1, r2.getIndexCommit().getSegmentCount());
     r2.close();
 
     writer =
@@ -737,6 +765,67 @@ public class TestDirectoryReader extends LuceneTestCase {
     d.close();
   }
 
+  public void testGetIndexCommitWithExecutorService() throws IOException {
+
+    Directory d = newDirectory();
+    ExecutorService executorService =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReader"));
+
+    try {
+      // set up writer
+      IndexWriter writer =
+          new IndexWriter(
+              d,
+              newIndexWriterConfig(new MockAnalyzer(random()))
+                  .setMaxBufferedDocs(2)
+                  .setMergePolicy(newLogMergePolicy(10)));
+      for (int i = 0; i < 27; i++) addDocumentWithFields(writer);
+      writer.close();
+
+      SegmentInfos sis = SegmentInfos.readLatestCommit(d);
+      DirectoryReader r = DirectoryReader.open(d);
+      IndexCommit c = r.getIndexCommit();
+
+      assertEquals(sis.getSegmentsFileName(), c.getSegmentsFileName());
+
+      assertEquals(c, r.getIndexCommit());
+
+      // Change the index
+      writer =
+          new IndexWriter(
+              d,
+              newIndexWriterConfig(new MockAnalyzer(random()))
+                  .setOpenMode(OpenMode.APPEND)
+                  .setMaxBufferedDocs(2)
+                  .setMergePolicy(newLogMergePolicy(10)));
+      for (int i = 0; i < 7; i++) addDocumentWithFields(writer);
+      writer.close();
+
+      DirectoryReader r2 = DirectoryReader.openIfChanged(r, executorService);
+      assertNotNull(r2);
+      assertNotEquals(c, r2.getIndexCommit());
+      assertNotEquals(1, r2.getIndexCommit().getSegmentCount());
+      r2.close();
+
+      writer =
+          new IndexWriter(
+              d, newIndexWriterConfig(new MockAnalyzer(random())).setOpenMode(OpenMode.APPEND));
+      writer.forceMerge(1);
+      writer.close();
+
+      r2 = DirectoryReader.openIfChanged(r, executorService);
+      assertNotNull(r2);
+      assertNull(DirectoryReader.openIfChanged(r2, executorService));
+      assertEquals(1, r2.getIndexCommit().getSegmentCount());
+
+      r.close();
+      r2.close();
+    } finally {
+      executorService.shutdown();
+      d.close();
+    }
+  }
+
   static Document createDocument(String id) {
     Document doc = new Document();
     FieldType customType = new FieldType(TextField.TYPE_STORED);
@@ -753,12 +842,21 @@ public class TestDirectoryReader extends LuceneTestCase {
   public void testNoDir() throws Throwable {
     Path tempDir = createTempDir("doesnotexist");
     Directory dir = newFSDirectory(tempDir);
-    expectThrows(
-        IndexNotFoundException.class,
-        () -> {
-          DirectoryReader.open(dir);
-        });
+    expectThrows(IndexNotFoundException.class, () -> DirectoryReader.open(dir));
     dir.close();
+  }
+
+  public void testNoDirWithExecutor() throws Throwable {
+    Path tempDir = createTempDir("doesnotexist");
+    Directory dir = newFSDirectory(tempDir);
+    ExecutorService executorService =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("TestDirectoryReader"));
+    try {
+      expectThrows(IndexNotFoundException.class, () -> DirectoryReader.open(dir, executorService));
+    } finally {
+      dir.close();
+      executorService.shutdown();
+    }
   }
 
   // LUCENE-1509
@@ -779,7 +877,7 @@ public class TestDirectoryReader extends LuceneTestCase {
       Collection<String> files = commit.getFileNames();
       HashSet<String> seen = new HashSet<>();
       for (final String fileName : files) {
-        assertTrue("file " + fileName + " was duplicated", !seen.contains(fileName));
+        assertFalse("file " + fileName + " was duplicated", seen.contains(fileName));
         seen.add(fileName);
       }
     }
@@ -970,13 +1068,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     writer.commit();
     final DirectoryReader reader = DirectoryReader.open(writer);
     final int[] closeCount = new int[1];
-    final IndexReader.ClosedListener listener =
-        new IndexReader.ClosedListener() {
-          @Override
-          public void onClose(IndexReader.CacheKey key) {
-            closeCount[0]++;
-          }
-        };
+    final IndexReader.ClosedListener listener = _ -> closeCount[0]++;
 
     reader.getReaderCacheHelper().addClosedListener(listener);
 
@@ -1002,11 +1094,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     DirectoryReader r = DirectoryReader.open(writer);
     writer.close();
     r.storedFields().document(0);
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          r.storedFields().document(1);
-        });
+    expectThrows(IllegalArgumentException.class, () -> r.storedFields().document(1));
     r.close();
     dir.close();
   }
@@ -1025,6 +1113,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     dir.close();
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testStressTryIncRef() throws IOException, InterruptedException {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
@@ -1044,9 +1133,9 @@ public class TestDirectoryReader extends LuceneTestCase {
     r.decRef();
     r.close();
 
-    for (int i = 0; i < threads.length; i++) {
-      threads[i].join();
-      assertNull(threads[i].failed);
+    for (IncThread thread : threads) {
+      thread.join();
+      assertNull(thread.failed);
     }
     assertFalse(r.tryIncRef());
     writer.close();
@@ -1115,5 +1204,236 @@ public class TestDirectoryReader extends LuceneTestCase {
       expectThrows(IllegalArgumentException.class, () -> DirectoryReader.open(commit, -1, null));
       DirectoryReader.open(commit, random().nextInt(Version.LATEST.major + 1), null).close();
     }
+  }
+
+  public void testOpenWithExecutorService() throws IOException {
+    Directory dir = newDirectory();
+    createMultiSegmentIndex(dir, 5);
+
+    ExecutorService executor =
+        Executors.newFixedThreadPool(1, new NamedThreadFactory("TestDirectoryReader"));
+    try {
+      DirectoryReader reader = DirectoryReader.open(dir, executor);
+      assertNotNull(reader);
+      assertTrue(reader.numDocs() > 0);
+      reader.close();
+    } finally {
+      executor.shutdown();
+      dir.close();
+    }
+  }
+
+  public void testOpenWithLeafSorterAndExecutor() throws IOException {
+    Directory dir = newDirectory();
+    createMultiSegmentIndex(dir, 3);
+
+    ExecutorService executor =
+        Executors.newFixedThreadPool(1, new NamedThreadFactory("TestDirectoryReader"));
+    Comparator<LeafReader> sorter = (r1, r2) -> Integer.compare(r1.numDocs(), r2.numDocs());
+
+    try {
+      DirectoryReader reader = DirectoryReader.open(dir, sorter, executor);
+      assertNotNull(reader);
+      reader.close();
+    } finally {
+      executor.shutdown();
+      dir.close();
+    }
+  }
+
+  public void testOpenCommitWithExecutor() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig());
+    Document doc = new Document();
+    doc.add(newStringField("id", "1", Field.Store.YES));
+    writer.addDocument(doc);
+    writer.commit();
+    writer.close();
+
+    IndexCommit commit = DirectoryReader.listCommits(dir).get(0);
+    ExecutorService executor =
+        Executors.newFixedThreadPool(1, new NamedThreadFactory("TestDirectoryReader"));
+    try {
+      DirectoryReader reader = DirectoryReader.open(commit, executor);
+      assertNotNull(reader);
+      assertEquals(1, reader.numDocs());
+      reader.close();
+    } finally {
+      executor.shutdown();
+      dir.close();
+    }
+  }
+
+  public void testOpenCommitWithMinVersionAndExecutor() throws IOException {
+    Directory dir = newDirectory();
+    createMultiSegmentIndex(dir, 3);
+
+    ExecutorService executor =
+        Executors.newFixedThreadPool(1, new NamedThreadFactory("TestDirectoryReader"));
+    Comparator<LeafReader> sorter = (r1, r2) -> Integer.compare(r1.numDocs(), r2.numDocs());
+
+    try (DirectoryReader baseReader = DirectoryReader.open(dir)) {
+      IndexCommit commit = baseReader.getIndexCommit();
+      DirectoryReader reader =
+          DirectoryReader.open(commit, Version.MIN_SUPPORTED_MAJOR, sorter, executor);
+      assertNotNull(reader);
+      assertEquals(baseReader.numDocs(), reader.numDocs());
+      reader.close();
+    } finally {
+      executor.shutdown();
+      dir.close();
+    }
+  }
+
+  public void testNullExecutorService() throws IOException {
+    Directory dir = newDirectory();
+    createMultiSegmentIndex(dir, 3);
+
+    // Should work fine with null executor (fallback to sequential)
+    DirectoryReader reader = DirectoryReader.open(dir, (ExecutorService) null);
+    assertNotNull(reader);
+    assertTrue(reader.numDocs() > 0);
+    reader.close();
+    dir.close();
+  }
+
+  public void testExecutorServiceExceptionHandling() throws IOException {
+    Directory dir = newDirectory();
+    createMultiSegmentIndex(dir, 3);
+
+    // Test with shutdown executor
+    ExecutorService executor =
+        Executors.newFixedThreadPool(1, new NamedThreadFactory("TestDirectoryReader"));
+    executor.shutdown();
+
+    expectThrows(
+        RuntimeException.class,
+        () -> {
+          DirectoryReader.open(dir, executor);
+        });
+
+    dir.close();
+  }
+
+  public void testExecutorServicePartialFailure() throws IOException {
+    Directory dir = newDirectory();
+    createMultiSegmentIndex(dir, 3);
+
+    // Create an executor that fails on the second task but succeeds on others
+    ExecutorService executor = createExecutorServiceThatFailsOneTask();
+
+    try {
+      expectThrows(
+          RuntimeException.class,
+          () -> {
+            DirectoryReader.open(dir, executor);
+          });
+    } finally {
+      executor.shutdown();
+      dir.close();
+    }
+  }
+
+  private ExecutorService createExecutorServiceThatFailsOneTask() {
+    return new ExecutorService() {
+      private int taskCount = 0;
+      private final ExecutorService delegate =
+          Executors.newFixedThreadPool(2, new NamedThreadFactory("TestDirectoryReader"));
+
+      @Override
+      public <T> Future<T> submit(Callable<T> task) {
+        taskCount++;
+        if (taskCount == 2) {
+          // Second task fails
+          CompletableFuture<T> future = new CompletableFuture<>();
+          future.completeExceptionally(
+              new RuntimeException(new IOException("Simulated failure on segment")));
+          return future;
+        } else {
+          // Other tasks succeed normally
+          return delegate.submit(task);
+        }
+      }
+
+      @Override
+      public void shutdown() {
+        delegate.shutdown();
+      }
+
+      @Override
+      public List<Runnable> shutdownNow() {
+        return delegate.shutdownNow();
+      }
+
+      @Override
+      public boolean isShutdown() {
+        return delegate.isShutdown();
+      }
+
+      @Override
+      public boolean isTerminated() {
+        return delegate.isTerminated();
+      }
+
+      @Override
+      public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+        return delegate.awaitTermination(timeout, unit);
+      }
+
+      @Override
+      public Future<?> submit(Runnable task) {
+        return delegate.submit(task);
+      }
+
+      @Override
+      public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks)
+          throws InterruptedException {
+        return delegate.invokeAll(tasks);
+      }
+
+      @Override
+      public <T> List<Future<T>> invokeAll(
+          Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
+          throws InterruptedException {
+        return delegate.invokeAll(tasks, timeout, unit);
+      }
+
+      @Override
+      public <T> T invokeAny(Collection<? extends Callable<T>> tasks)
+          throws InterruptedException, ExecutionException {
+        return delegate.invokeAny(tasks);
+      }
+
+      @Override
+      public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
+          throws InterruptedException, ExecutionException, TimeoutException {
+        return delegate.invokeAny(tasks, timeout, unit);
+      }
+
+      @Override
+      public <T> Future<T> submit(Runnable task, T result) {
+        return delegate.submit(task, result);
+      }
+
+      @Override
+      public void execute(Runnable command) {
+        delegate.execute(command);
+      }
+    };
+  }
+
+  private void createMultiSegmentIndex(Directory dir, int numSegments) throws IOException {
+    IndexWriter writer =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig().setMaxBufferedDocs(2).setMergePolicy(NoMergePolicy.INSTANCE));
+    for (int i = 0; i < numSegments; i++) {
+      Document doc = new Document();
+      doc.add(newStringField("id", String.valueOf(i), Field.Store.YES));
+      doc.add(newTextField("content", "segment " + i + " content", Field.Store.YES));
+      writer.addDocument(doc);
+      writer.commit(); // Force new segment
+    }
+    writer.close();
   }
 }

@@ -281,10 +281,10 @@ public class ComplexPhraseQueryParser extends QueryParser {
       int i = 0;
       for (BooleanClause clause : bq) {
         // HashSet bclauseterms=new HashSet();
-        Query qc = clause.getQuery();
+        Query qc = clause.query();
         // Rewrite this clause e.g one* becomes (one OR onerous)
         qc = indexSearcher.rewrite(qc);
-        if (clause.getOccur().equals(BooleanClause.Occur.MUST_NOT)) {
+        if (clause.occur().equals(BooleanClause.Occur.MUST_NOT)) {
           numNegatives++;
         }
 
@@ -294,9 +294,9 @@ public class ComplexPhraseQueryParser extends QueryParser {
 
         if (qc instanceof BooleanQuery || qc instanceof SynonymQuery) {
           ArrayList<SpanQuery> sc = new ArrayList<>();
-          BooleanQuery booleanCaluse =
+          BooleanQuery booleanClause =
               qc instanceof BooleanQuery ? (BooleanQuery) qc : convert((SynonymQuery) qc);
-          addComplexPhraseClause(sc, booleanCaluse);
+          addComplexPhraseClause(sc, booleanClause);
           if (sc.size() > 0) {
             allSpanClauses[i] = sc.get(0);
           } else {
@@ -315,8 +315,7 @@ public class ComplexPhraseQueryParser extends QueryParser {
               new SpanTermQuery(
                   new Term(field, "Dummy clause because no terms found - must match nothing"));
         } else {
-          if (qc instanceof TermQuery) {
-            TermQuery tq = (TermQuery) qc;
+          if (qc instanceof TermQuery tq) {
             allSpanClauses[i] = new SpanTermQuery(tq.getTerm());
           } else {
             throw new IllegalArgumentException(
@@ -340,7 +339,7 @@ public class ComplexPhraseQueryParser extends QueryParser {
       ArrayList<SpanQuery> positiveClauses = new ArrayList<>();
       i = 0;
       for (BooleanClause clause : bq) {
-        if (!clause.getOccur().equals(BooleanClause.Occur.MUST_NOT)) {
+        if (!clause.occur().equals(BooleanClause.Occur.MUST_NOT)) {
           positiveClauses.add(allSpanClauses[i]);
         }
         i += 1;
@@ -376,7 +375,7 @@ public class ComplexPhraseQueryParser extends QueryParser {
 
       // For all clauses e.g. one* two~
       for (BooleanClause clause : qc) {
-        Query childQuery = clause.getQuery();
+        Query childQuery = clause.query();
 
         while (childQuery instanceof BoostQuery) {
           BoostQuery bq = (BoostQuery) childQuery;
@@ -385,16 +384,14 @@ public class ComplexPhraseQueryParser extends QueryParser {
 
         // select the list to which we will add these options
         ArrayList<SpanQuery> chosenList = ors;
-        if (clause.getOccur() == BooleanClause.Occur.MUST_NOT) {
+        if (clause.occur() == BooleanClause.Occur.MUST_NOT) {
           chosenList = nots;
         }
 
-        if (childQuery instanceof TermQuery) {
-          TermQuery tq = (TermQuery) childQuery;
+        if (childQuery instanceof TermQuery tq) {
           SpanQuery stq = new SpanTermQuery(tq.getTerm());
           chosenList.add(stq);
-        } else if (childQuery instanceof BooleanQuery) {
-          BooleanQuery cbq = (BooleanQuery) childQuery;
+        } else if (childQuery instanceof BooleanQuery cbq) {
           addComplexPhraseClause(chosenList, cbq);
         } else if (childQuery instanceof MatchNoDocsQuery) {
           // Insert fake term e.g. phrase query was for "Fred Smithe*" and
