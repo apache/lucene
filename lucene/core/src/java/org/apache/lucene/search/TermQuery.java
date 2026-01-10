@@ -48,9 +48,13 @@ public class TermQuery extends Query {
     private final ScoreMode scoreMode;
 
     public TermWeight(
-        IndexSearcher searcher, ScoreMode scoreMode, float boost, TermStates termStates)
+        IndexSearcher searcher,
+        ScoreMode scoreMode,
+        float boost,
+        TermStates termStates,
+        IndexingMode indexingMode)
         throws IOException {
-      super(TermQuery.this);
+      super(TermQuery.this, indexingMode);
       if (scoreMode.needsScores() && termStates == null) {
         throw new IllegalStateException("termStates are required when scores are needed");
       }
@@ -138,7 +142,7 @@ public class TermQuery extends Query {
             if (state == null) {
               return null;
             }
-            termsEnum = context.reader().terms(term.field()).iterator();
+            termsEnum = context.reader().terms(term.field()).iterator(indexingMode);
             termsEnum.seekExact(term.bytes(), state);
           }
           return termsEnum;
@@ -214,7 +218,7 @@ public class TermQuery extends Query {
             : "no termstate found but term exists in reader term=" + term;
         return null;
       }
-      final TermsEnum termsEnum = context.reader().terms(term.field()).iterator();
+      final TermsEnum termsEnum = context.reader().terms(term.field()).iterator(indexingMode);
       termsEnum.seekExact(term.bytes(), state);
       return termsEnum;
     }
@@ -297,6 +301,13 @@ public class TermQuery extends Query {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
+    return createWeight(searcher, scoreMode, boost, IndexingMode.ADAPTIVE);
+  }
+
+  @Override
+  public Weight createWeight(
+      IndexSearcher searcher, ScoreMode scoreMode, float boost, IndexingMode indexingMode)
+      throws IOException {
     final IndexReaderContext context = searcher.getTopReaderContext();
     final TermStates termState;
     if (perReaderTermState == null || perReaderTermState.wasBuiltFor(context) == false) {
@@ -306,7 +317,7 @@ public class TermQuery extends Query {
       termState = this.perReaderTermState;
     }
 
-    return new TermWeight(searcher, scoreMode, boost, termState);
+    return new TermWeight(searcher, scoreMode, boost, termState, indexingMode);
   }
 
   @Override

@@ -21,6 +21,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.IndexingMode;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
@@ -110,7 +111,7 @@ public final class FieldReader extends Terms {
   /** For debugging -- used by CheckIndex too */
   @Override
   public Stats getStats() throws IOException {
-    return new SegmentTermsEnum(this, newReader()).computeBlockStats();
+    return new SegmentTermsEnum(this, newReader(), IndexingMode.ADAPTIVE).computeBlockStats();
   }
 
   @Override
@@ -139,6 +140,11 @@ public final class FieldReader extends Terms {
   @Override
   public TermsEnum iterator() throws IOException {
     return new SegmentTermsEnum(this, newReader());
+  }
+
+  @Override
+  public TermsEnum iterator(IndexingMode indexingMode) throws IOException {
+    return new SegmentTermsEnum(this, newReader(), indexingMode);
   }
 
   @Override

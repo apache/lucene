@@ -124,6 +124,7 @@ public class IndexSearcher {
 
   private QueryCache queryCache = DEFAULT_QUERY_CACHE;
   private QueryCachingPolicy queryCachingPolicy = DEFAULT_CACHING_POLICY;
+  private IndexingMode indexingMode = IndexingMode.ADAPTIVE;
 
   /**
    * Expert: returns a default Similarity instance. In general, this method is only called to
@@ -307,6 +308,16 @@ public class IndexSearcher {
    */
   public QueryCachingPolicy getQueryCachingPolicy() {
     return queryCachingPolicy;
+  }
+
+  /** Set the indexing mode for prefetching optimization. */
+  public void setIndexingMode(IndexingMode indexingMode) {
+    this.indexingMode = indexingMode;
+  }
+
+  /** Get the current indexing mode. */
+  public IndexingMode getIndexingMode() {
+    return indexingMode;
   }
 
   /**
@@ -964,7 +975,7 @@ public class IndexSearcher {
    */
   public Weight createWeight(Query query, ScoreMode scoreMode, float boost) throws IOException {
     final QueryCache queryCache = this.queryCache;
-    Weight weight = query.createWeight(this, scoreMode, boost);
+    Weight weight = query.createWeight(this, scoreMode, boost, indexingMode);
     if (scoreMode.needsScores() == false && queryCache != null) {
       weight = queryCache.doCache(weight, queryCachingPolicy);
     }

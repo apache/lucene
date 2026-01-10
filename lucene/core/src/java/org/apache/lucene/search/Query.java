@@ -70,6 +70,21 @@ public abstract class Query {
   }
 
   /**
+   * Expert: Constructs an appropriate Weight implementation for this query with IndexMode.
+   *
+   * <p>Only implemented by primitive queries, which re-write to themselves.
+   *
+   * @param scoreMode How the produced scorers will be consumed.
+   * @param boost The boost that is propagated by the parent queries.
+   * @param indexingMode The index mode for prefetching optimization.
+   */
+  public Weight createWeight(
+      IndexSearcher searcher, ScoreMode scoreMode, float boost, IndexingMode indexingMode)
+      throws IOException {
+    return createWeight(searcher, scoreMode, boost);
+  }
+
+  /**
    * Expert: called to re-write queries into primitive queries. For example, a PrefixQuery will be
    * rewritten into a BooleanQuery that consists of TermQuerys.
    *
