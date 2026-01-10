@@ -122,6 +122,9 @@ Bug Fixes
 
 * GITHUB#15434: Don't override boost of conflicting expanded phrases by taking the max boost in markTerminal for FVHighlighter (Luana Fragoso)
 
+* GITHUB#12561: UAX29URLEmailTokenizer matched emails with commas and invalid
+  periods in the local part. (Eran Yarkon)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -1216,9 +1219,6 @@ Changes in Backwards Compatibility Policy
 
 * GITHUB#13602: SearchWithCollectorTask no longer supports the `collector.class` config parameter to load a custom
   collector implementation. `collector.manager.class` allows users to load a collector manager instead. (Luca Cavanna)
-
-* GITHUB#12561: UAX29URLEmailTokenizer matched emails with commas and invalid
-  periods in the local part. (Eran Yarkon)
 
 Other
 ---------------------
