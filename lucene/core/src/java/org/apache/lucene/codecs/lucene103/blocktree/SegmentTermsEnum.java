@@ -205,6 +205,10 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
           new Node[ArrayUtil.oversize(1 + ord, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
       System.arraycopy(nodes, 0, next, 0, nodes.length);
       nodes = next;
+
+      final int[] nextNodeEnds = new int[nodes.length];
+      System.arraycopy(nodeEnds, 0, nextNodeEnds, 0, nodeEnds.length);
+      nodeEnds = nextNodeEnds;
     }
     nodes[ord] = node;
     nodeEnds[ord] = end;
@@ -610,7 +614,6 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
       // }
 
       node = nodes[0];
-      nodeEnds[0] = 0;
       assert node.hasOutput();
       targetUpto = 0;
 
@@ -620,11 +623,21 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
       final int targetLimit = Math.min(target.length, validIndexPrefix);
 
       int cmp = 0;
+      int nodeIndex = 0;
 
       // First compare up to valid seek frames:
       // TODO: We can't use 1 + targetUpto to get node, since node walks multi bytes now.
       while (targetUpto < targetLimit) {
-        cmp = (term.byteAt(targetUpto) & 0xFF) - (target.bytes[target.offset + targetUpto] & 0xFF);
+        cmp =
+            Arrays.compareUnsigned(
+                term.bytes(),
+                nodeEnds[nodeIndex],
+                nodeEnds[nodeIndex + 1],
+                target.bytes,
+                target.offset + nodeEnds[nodeIndex],
+                target.offset + nodeEnds[nodeIndex + 1]);
+        //        cmp = (term.byteAt(targetUpto) & 0xFF) - (target.bytes[target.offset + targetUpto]
+        // & 0xFF);
         // if (DEBUG) {
         // System.out.println("    cycle targetUpto=" + targetUpto + " (vs limit=" + targetLimit +
         // ") cmp=" + cmp + " (targetLabel=" + (char) (target.bytes[target.offset + targetUpto]) +
@@ -635,8 +648,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         if (cmp != 0) {
           break;
         }
-        // TODO: Use nodeEnds to locate node.
-        node = nodes[1 + targetUpto];
+        node = nodes[1 + nodeIndex];
         //        assert node.label == (target.bytes[target.offset + targetUpto] & 0xFF)
         //            : "node.label="
         //                + (char) node.label
@@ -646,8 +658,8 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         if (node.hasOutput()) {
           lastFrame = stack[1 + lastFrame.ord];
         }
-        targetUpto++;
-        // TODO: Set target.offset use targetUpto.
+        targetUpto = nodeEnds[1 + nodeIndex];
+        nodeIndex++;
       }
 
       if (cmp == 0) {
@@ -731,6 +743,8 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
     // seek'd; now continue walking the index:
 
     // TODO: Search target directly if we can.
+    // TODO: If targetUpto is not 0, we get a node from cached nodes, call lookupChild2.
+    target.offset = targetUpto;
     BytesRef clone = target.clone();
     while (clone.length > 0) {
 
@@ -811,6 +825,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         }
       } else {
         // TODO: NextNode == node, there are different bytes between target and parent, not match.
+        System.out.println("NOT MATCH");
       }
     }
 

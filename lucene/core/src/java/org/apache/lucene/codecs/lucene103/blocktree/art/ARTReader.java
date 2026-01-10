@@ -52,10 +52,11 @@ public class ARTReader {
   }
 
   /**
-   * Overwrite (and return) the incoming Node child, or null if the target was not found. Returns:
-   * null: target equals or contains parent's prefix(non leaf node) or key (leaf node), match, scan
-   * suffixes block. child: next node to search. parent: there are different bytes between target
-   * and parent, not match.
+   * We get this parent from index key, so we should match parent's remaining bytes(prefix, key),
+   * and find child. Overwrite (and return) the incoming Node child, or null if the target was not
+   * found. Returns: 1 null: target equals or contains parent's prefix(non leaf node) or key (leaf
+   * node), match, scan suffixes block. 2 child: next node to search. 3 parent: there are different
+   * bytes between target and parent, not match.
    */
   public Node lookupChild(BytesRef target, Node parent) throws IOException {
     assert parent != null;
@@ -145,6 +146,60 @@ public class ARTReader {
         // output's block.
         // If prefix is not 0, but target contains prefix (prefixLength equals commonLength), and if
         // this node has output, we still need to scan output's block.
+        return null;
+      }
+    }
+  }
+
+  /**
+   * We have already matched parent, just find next child. This is useful when we find a node from
+   * cached nodes by last searched term. Overwrite (and return) the incoming Node child, or null if
+   * the target was not found. Returns: 1 null: no child. 2 child: next node to search.
+   */
+  public Node lookupChild2(BytesRef target, Node parent) throws IOException {
+    assert parent != null;
+
+    // TODO: Target length is 0 may never happen, when we search step by step?
+    if (target.length == 0) {
+      // We can not get a child from empty target.
+      return null;
+    }
+
+    if (parent.nodeType.equals(NodeType.LEAF_NODE)) {
+      return null;
+    } else {
+      // Get child.
+      byte key = target.bytes[target.offset];
+      int childPos = parent.getChildPos(target.bytes[target.offset]);
+      target.offset++;
+      target.length--;
+      if (childPos != Node.ILLEGAL_IDX) {
+        // For Node 256, there is gap in children, we need minus the number of null child from 0 to
+        // this pos.
+        // For Node 48, childPos is the key byte, we need use the read index in children.
+        long childDeltaFpStart;
+        if (parent.nodeType.equals(NodeType.NODE48)) {
+          int childIndex = ((Node48) parent).getChildIndex(key);
+          childDeltaFpStart =
+              parent.childrenDeltaFpStart + (long) childIndex * parent.childrenDeltaFpBytes;
+        } else if (parent.nodeType.equals(NodeType.NODE256)) {
+          int numberOfNullChildren = ((Node256) parent).numberOfNullChildren(childPos);
+          childDeltaFpStart =
+              parent.childrenDeltaFpStart
+                  + (long) (childPos - numberOfNullChildren) * parent.childrenDeltaFpBytes;
+        } else {
+          childDeltaFpStart =
+              parent.childrenDeltaFpStart + (long) childPos * parent.childrenDeltaFpBytes;
+        }
+        long childDeltaFp = access.readLong(childDeltaFpStart);
+        if (parent.childrenDeltaFpBytes < 8) {
+          childDeltaFp = childDeltaFp & Node.BYTES_MINUS_1_MASK[parent.childrenDeltaFpBytes - 1];
+        }
+
+        long childFp = parent.fp - childDeltaFp;
+        assert childFp >= 0 && childFp < parent.fp : "child fp should less than parent fp";
+        return Node.load(access, childFp);
+      } else {
         return null;
       }
     }
