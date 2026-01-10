@@ -170,6 +170,12 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
 
   private final int writeVersion;
 
+  /**
+   * If true, forces all nodes to be on level 0 (no hierarchy). This can save memory for
+   * high-dimensional vectors (d >= 32) without sacrificing recall or latency.
+   */
+  private final boolean flatMode;
+
   /** Constructs a format using default graph construction parameters */
   public Lucene99HnswVectorsFormat() {
     this(
@@ -178,7 +184,8 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
         DEFAULT_NUM_MERGE_WORKER,
         null,
         HNSW_GRAPH_THRESHOLD,
-        VERSION_CURRENT);
+        VERSION_CURRENT,
+        false);
   }
 
   /**
@@ -188,7 +195,33 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    * @param beamWidth the size of the queue maintained during graph construction.
    */
   public Lucene99HnswVectorsFormat(int maxConn, int beamWidth) {
-    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, HNSW_GRAPH_THRESHOLD, VERSION_CURRENT);
+    this(
+        maxConn,
+        beamWidth,
+        DEFAULT_NUM_MERGE_WORKER,
+        null,
+        HNSW_GRAPH_THRESHOLD,
+        VERSION_CURRENT,
+        false);
+  }
+
+  /**
+   * Constructs a format using the given graph construction parameters with flat mode option.
+   *
+   * @param maxConn the maximum number of connections to a node in the HNSW graph
+   * @param beamWidth the size of the queue maintained during graph construction.
+   * @param flatMode if true, all nodes are placed on level 0 (no hierarchy). Recommended for
+   *     high-dimensional vectors (d >= 32).
+   */
+  public Lucene99HnswVectorsFormat(int maxConn, int beamWidth, boolean flatMode) {
+    this(
+        maxConn,
+        beamWidth,
+        DEFAULT_NUM_MERGE_WORKER,
+        null,
+        HNSW_GRAPH_THRESHOLD,
+        VERSION_CURRENT,
+        flatMode);
   }
 
   /**
@@ -201,7 +234,13 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    */
   public Lucene99HnswVectorsFormat(int maxConn, int beamWidth, int tinySegmentsThreshold) {
     this(
-        maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, null, tinySegmentsThreshold, VERSION_CURRENT);
+        maxConn,
+        beamWidth,
+        DEFAULT_NUM_MERGE_WORKER,
+        null,
+        tinySegmentsThreshold,
+        VERSION_CURRENT,
+        false);
   }
 
   /**
@@ -217,7 +256,14 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    */
   public Lucene99HnswVectorsFormat(
       int maxConn, int beamWidth, int numMergeWorkers, ExecutorService mergeExec) {
-    this(maxConn, beamWidth, numMergeWorkers, mergeExec, HNSW_GRAPH_THRESHOLD, VERSION_CURRENT);
+    this(
+        maxConn,
+        beamWidth,
+        numMergeWorkers,
+        mergeExec,
+        HNSW_GRAPH_THRESHOLD,
+        VERSION_CURRENT,
+        false);
   }
 
   /**
@@ -240,7 +286,14 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
       int numMergeWorkers,
       ExecutorService mergeExec,
       int tinySegmentsThreshold) {
-    this(maxConn, beamWidth, numMergeWorkers, mergeExec, tinySegmentsThreshold, VERSION_CURRENT);
+    this(
+        maxConn,
+        beamWidth,
+        numMergeWorkers,
+        mergeExec,
+        tinySegmentsThreshold,
+        VERSION_CURRENT,
+        false);
   }
 
   /**
@@ -256,6 +309,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    * @param tinySegmentsThreshold the expected number of vector operations to return k nearest
    *     neighbors of the current graph size
    * @param writeVersion the version used for the writer to encode docID's (VarInt=0, GroupVarInt=1)
+   * @param flatMode if true, all nodes are placed on level 0 (no hierarchy)
    */
   Lucene99HnswVectorsFormat(
       int maxConn,
@@ -263,7 +317,8 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
       int numMergeWorkers,
       ExecutorService mergeExec,
       int tinySegmentsThreshold,
-      int writeVersion) {
+      int writeVersion,
+      boolean flatMode) {
     super("Lucene99HnswVectorsFormat");
     if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
@@ -283,6 +338,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
     this.beamWidth = beamWidth;
     this.tinySegmentsThreshold = tinySegmentsThreshold;
     this.writeVersion = writeVersion;
+    this.flatMode = flatMode;
     if (numMergeWorkers == 1 && mergeExec != null) {
       throw new IllegalArgumentException(
           "No executor service is needed as we'll use single thread to merge");
@@ -305,7 +361,8 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
         numMergeWorkers,
         mergeExec,
         tinySegmentsThreshold,
-        writeVersion);
+        writeVersion,
+        flatMode);
   }
 
   @Override
@@ -324,6 +381,8 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
         + maxConn
         + ", beamWidth="
         + beamWidth
+        + ", flatMode="
+        + flatMode
         + ", tinySegmentsThreshold="
         + tinySegmentsThreshold
         + ", flatVectorFormat="

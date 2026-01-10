@@ -81,6 +81,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   private final TaskExecutor mergeExec;
   private final int tinySegmentsThreshold;
   private final int version;
+  private final boolean flatMode;
 
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
@@ -101,7 +102,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         numMergeWorkers,
         mergeExec,
         HNSW_GRAPH_THRESHOLD,
-        VERSION_CURRENT);
+        VERSION_CURRENT,
+        false);
   }
 
   public Lucene99HnswVectorsWriter(
@@ -121,7 +123,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         numMergeWorkers,
         mergeExec,
         tinySegmentsThreshold,
-        VERSION_CURRENT);
+        VERSION_CURRENT,
+        false);
   }
 
   Lucene99HnswVectorsWriter(
@@ -132,7 +135,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       int numMergeWorkers,
       TaskExecutor mergeExec,
       int tinySegmentsThreshold,
-      int version)
+      int version,
+      boolean flatMode)
       throws IOException {
     this.M = M;
     this.flatVectorWriter = flatVectorWriter;
@@ -141,6 +145,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     this.mergeExec = mergeExec;
     this.tinySegmentsThreshold = tinySegmentsThreshold;
     this.version = version;
+    this.flatMode = flatMode;
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -184,7 +189,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
             M,
             beamWidth,
             segmentWriteState.infoStream,
-            tinySegmentsThreshold);
+            tinySegmentsThreshold,
+            flatMode);
     fields.add(newField);
     return newField;
   }
@@ -634,6 +640,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     private final int beamWidth;
     private final InfoStream infoStream;
     private final RandomVectorScorerSupplier scorerSupplier;
+    private final boolean flatMode;
 
     @SuppressWarnings("unchecked")
     static FieldWriter<?> create(
@@ -643,7 +650,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         int M,
         int beamWidth,
         InfoStream infoStream,
-        int tinySegmentsThreshold)
+        int tinySegmentsThreshold,
+        boolean flatMode)
         throws IOException {
       return switch (fieldInfo.getVectorEncoding()) {
         case BYTE ->
@@ -654,7 +662,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 M,
                 beamWidth,
                 infoStream,
-                tinySegmentsThreshold);
+                tinySegmentsThreshold,
+                flatMode);
         case FLOAT32 ->
             new FieldWriter<>(
                 scorer,
@@ -663,7 +672,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 M,
                 beamWidth,
                 infoStream,
-                tinySegmentsThreshold);
+                tinySegmentsThreshold,
+                flatMode);
       };
     }
 
@@ -675,7 +685,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         int M,
         int beamWidth,
         InfoStream infoStream,
-        int tinySegmentsThreshold)
+        int tinySegmentsThreshold,
+        boolean flatMode)
         throws IOException {
       this.fieldInfo = fieldInfo;
       this.M = M;
@@ -683,6 +694,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       this.infoStream = infoStream;
       this.flatFieldVectorsWriter = Objects.requireNonNull(flatFieldVectorsWriter);
       this.graphThreshold = tinySegmentsThreshold;
+      this.flatMode = flatMode;
       this.scorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE ->
@@ -710,7 +722,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         return;
       }
       this.hnswGraphBuilder =
-          HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
+          HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, flatMode);
       this.hnswGraphBuilder.setInfoStream(infoStream);
     }
 

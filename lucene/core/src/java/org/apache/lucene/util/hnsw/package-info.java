@@ -16,7 +16,18 @@
  */
 
 /**
- * Navigable Small-World graph, nominally Hierarchical but currently only has a single layer.
- * Provides efficient approximate nearest neighbor search for high dimensional vectors.
+ * Hierarchical Navigable Small-World (HNSW) graph implementation for efficient approximate nearest
+ * neighbor search.
+ *
+ * <p>This package provides a fully hierarchical HNSW implementation with optional flat mode support.
+ * When flatMode is enabled, all nodes are placed on level 0, which can provide memory savings
+ * (approximately 38%) for high-dimensional vectors (d >= 32) without sacrificing recall or latency.
+ *
+ * <p>The flat mode is based on research showing that high-dimensional spaces naturally form "hub
+ * highways" that provide the same fast routing as hierarchical layers. For more details, see:
+ * "Down with the Hierarchy: The 'H' in HNSW Stands for 'Hubs'" (arXiv:2412.01940).
+ *
+ * <p>Use hierarchical mode (default) for low-dimensional vectors (d < 32) and flat mode for
+ * high-dimensional vectors to optimize memory usage.
  */
 package org.apache.lucene.util.hnsw;

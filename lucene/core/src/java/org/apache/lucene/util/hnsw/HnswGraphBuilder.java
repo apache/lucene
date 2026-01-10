@@ -66,6 +66,7 @@ public class HnswGraphBuilder implements HnswBuilder {
 
   protected final int M; // max number of connections on upper layers
   private final double ml;
+  private final boolean flatMode; // if true, all nodes are placed on level 0
 
   private final SplittableRandom random;
   protected final UpdateableRandomVectorScorer scorer;
@@ -84,13 +85,49 @@ public class HnswGraphBuilder implements HnswBuilder {
   public static HnswGraphBuilder create(
       RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
       throws IOException {
-    return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed, -1);
+    return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed, -1, false);
   }
 
   public static HnswGraphBuilder create(
       RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed, int graphSize)
       throws IOException {
-    return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed, graphSize);
+    return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed, graphSize, false);
+  }
+
+  /**
+   * Creates an HnswGraphBuilder with flat mode option.
+   *
+   * @param scorerSupplier a supplier to create vector scorer from ordinals.
+   * @param M graph fanout parameter
+   * @param beamWidth the size of the beam search to use when finding nearest neighbors.
+   * @param seed the seed for a random number generator
+   * @param flatMode if true, all nodes are placed on level 0 (no hierarchy)
+   */
+  public static HnswGraphBuilder create(
+      RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed, boolean flatMode)
+      throws IOException {
+    return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed, -1, flatMode);
+  }
+
+  /**
+   * Creates an HnswGraphBuilder with flat mode option and known graph size.
+   *
+   * @param scorerSupplier a supplier to create vector scorer from ordinals.
+   * @param M graph fanout parameter
+   * @param beamWidth the size of the beam search to use when finding nearest neighbors.
+   * @param seed the seed for a random number generator
+   * @param graphSize size of graph, if unknown, pass in -1
+   * @param flatMode if true, all nodes are placed on level 0 (no hierarchy)
+   */
+  public static HnswGraphBuilder create(
+      RandomVectorScorerSupplier scorerSupplier,
+      int M,
+      int beamWidth,
+      long seed,
+      int graphSize,
+      boolean flatMode)
+      throws IOException {
+    return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed, graphSize, flatMode);
   }
 
   /**
@@ -104,15 +141,25 @@ public class HnswGraphBuilder implements HnswBuilder {
    * @param seed the seed for a random number generator used during graph construction. Provide this
    *     to ensure repeatable construction.
    * @param graphSize size of graph, if unknown, pass in -1
+   * @param flatMode if true, all nodes are placed on level 0 (no hierarchy)
    */
   protected HnswGraphBuilder(
-      RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed, int graphSize)
+      RandomVectorScorerSupplier scorerSupplier,
+      int M,
+      int beamWidth,
+      long seed,
+      int graphSize,
+      boolean flatMode)
       throws IOException {
-    this(scorerSupplier, beamWidth, seed, new OnHeapHnswGraph(M, graphSize));
+    this(scorerSupplier, beamWidth, seed, new OnHeapHnswGraph(M, graphSize), flatMode);
   }
 
   protected HnswGraphBuilder(
-      RandomVectorScorerSupplier scorerSupplier, int beamWidth, long seed, OnHeapHnswGraph hnsw)
+      RandomVectorScorerSupplier scorerSupplier,
+      int beamWidth,
+      long seed,
+      OnHeapHnswGraph hnsw,
+      boolean flatMode)
       throws IOException {
     this(
         scorerSupplier,
@@ -120,7 +167,8 @@ public class HnswGraphBuilder implements HnswBuilder {
         seed,
         hnsw,
         null,
-        new HnswGraphSearcher(new NeighborQueue(beamWidth, true), new FixedBitSet(hnsw.size())));
+        new HnswGraphSearcher(new NeighborQueue(beamWidth, true), new FixedBitSet(hnsw.size())),
+        flatMode);
   }
 
   /**
@@ -132,6 +180,7 @@ public class HnswGraphBuilder implements HnswBuilder {
    * @param seed the seed for a random number generator used during graph construction. Provide this
    *     to ensure repeatable construction.
    * @param hnsw the graph to build, can be previously initialized
+   * @param flatMode if true, all nodes are placed on level 0 (no hierarchy)
    */
   protected HnswGraphBuilder(
       RandomVectorScorerSupplier scorerSupplier,
@@ -139,7 +188,8 @@ public class HnswGraphBuilder implements HnswBuilder {
       long seed,
       OnHeapHnswGraph hnsw,
       HnswLock hnswLock,
-      HnswGraphSearcher graphSearcher)
+      HnswGraphSearcher graphSearcher,
+      boolean flatMode)
       throws IOException {
     if (hnsw.maxConn() <= 0) {
       throw new IllegalArgumentException("M (max connections) must be positive");
@@ -152,6 +202,7 @@ public class HnswGraphBuilder implements HnswBuilder {
         Objects.requireNonNull(scorerSupplier, "scorer supplier must not be null").scorer();
     // normalization factor for level generation; currently not configurable
     this.ml = M == 1 ? 1 : 1 / Math.log(1.0 * M);
+    this.flatMode = flatMode;
     this.random = new SplittableRandom(seed);
     this.hnsw = hnsw;
     this.hnswLock = hnswLock;
@@ -479,7 +530,10 @@ public class HnswGraphBuilder implements HnswBuilder {
     return true;
   }
 
-  private static int getRandomGraphLevel(double ml, SplittableRandom random) {
+  private int getRandomGraphLevel(double ml, SplittableRandom random) {
+    if (flatMode) {
+      return 0; // In flat mode, all nodes are on level 0
+    }
     double randDouble;
     do {
       randDouble = random.nextDouble(); // avoid 0 value, as log(0) is undefined
