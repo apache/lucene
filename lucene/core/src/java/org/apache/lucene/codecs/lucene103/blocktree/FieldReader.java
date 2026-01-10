@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs.lucene103.blocktree;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.lucene103.blocktree.art.ARTReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Terms;
@@ -87,6 +88,10 @@ public final class FieldReader extends Terms {
     return new TrieReader(indexIn.slice("trie index", indexStart, indexEnd - indexStart), rootFP);
   }
 
+  private ARTReader newARTReader() throws IOException {
+    return new ARTReader(indexIn.slice("art index", indexStart, indexEnd - indexStart), rootFP);
+  }
+
   @Override
   public BytesRef getMin() throws IOException {
     if (minTerm == null) {
@@ -110,7 +115,7 @@ public final class FieldReader extends Terms {
   /** For debugging -- used by CheckIndex too */
   @Override
   public Stats getStats() throws IOException {
-    return new SegmentTermsEnum(this, newReader()).computeBlockStats();
+    return new SegmentTermsEnum(this, newARTReader()).computeBlockStats();
   }
 
   @Override
@@ -138,7 +143,7 @@ public final class FieldReader extends Terms {
 
   @Override
   public TermsEnum iterator() throws IOException {
-    return new SegmentTermsEnum(this, newReader());
+    return new SegmentTermsEnum(this, newARTReader());
   }
 
   @Override
