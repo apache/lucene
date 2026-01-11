@@ -89,7 +89,7 @@ public class FuzzySet implements Accountable {
   }
 
   public static FuzzySet createSetBasedOnMaxMemory(int maxNumBytes) {
-    int setSize = getNearestSetSize(maxNumBytes);
+    int setSize = getNearestSetSize(maxNumBytes * Byte.SIZE);
     return new FuzzySet(new FixedBitSet(setSize + 1), setSize, 1);
   }
 

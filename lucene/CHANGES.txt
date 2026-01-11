@@ -58,6 +58,11 @@ API Changes
 
 * GITHUB#15452: Ensure that Filter classes properly delegate to the decorated instances (Benjamin Lerer)
 
+* GITHUB#15507: Expose MergeRateLimiter in ConcurrentMergeScheduler.runOnMergeFinished hook.
+  The runOnMergeFinished method signature now includes OneMerge and MergeRateLimiter parameters,
+  enabling applications to monitor merge performance metrics like pause time, throttling behavior,
+  and throughput. This provides visibility into Lucene's merge backpressure mechanisms that can
+  stall indexing when merge debt accumulates. (Zihan Xu)
 
 New Features
 ---------------------
@@ -118,6 +123,9 @@ Bug Fixes
 * GITHUB#15125: Handle inconsistent schema on flush with index sorts (Nhat Nguyen)
 
 * GITHUB#15434: Don't override boost of conflicting expanded phrases by taking the max boost in markTerminal for FVHighlighter (Luana Fragoso)
+
+* GITHUB#12561: UAX29URLEmailTokenizer matched emails with commas and invalid
+  periods in the local part. (Eran Yarkon)
 
 Changes in Runtime Behavior
 ---------------------
@@ -307,6 +315,8 @@ Bug Fixes
 * GITHUB#15478: Fix duplicate neighbor issue by checking node existence before making reverse link. (Pulkit Gupta)
 
 * GITHUB#15523: Updating createMultiSegmentIndex to utilize an explicit NoMergePolicy (Bryce Kane)
+
+* GITHUB#14616 : Fix mis-interpretation of `maxNumBytes` in FuzzySet#createSetBasedOnMaxMemory (Greg Miller)
 
 Other
 ---------------------
