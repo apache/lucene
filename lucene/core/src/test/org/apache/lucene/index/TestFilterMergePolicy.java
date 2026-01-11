@@ -16,20 +16,11 @@
  */
 package org.apache.lucene.index;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestFilterMergePolicy extends LuceneTestCase {
 
   public void testMethodsOverridden() {
-    for (Method m : MergePolicy.class.getDeclaredMethods()) {
-      if (Modifier.isFinal(m.getModifiers()) || Modifier.isPrivate(m.getModifiers())) continue;
-      try {
-        FilterMergePolicy.class.getDeclaredMethod(m.getName(), m.getParameterTypes());
-      } catch (NoSuchMethodException _) {
-        fail("FilterMergePolicy needs to override '" + m + "'");
-      }
-    }
+    assertDelegatorOverridesAllRequiredMethods(FilterMergePolicy.class);
   }
 }

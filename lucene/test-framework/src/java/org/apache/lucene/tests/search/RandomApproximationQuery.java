@@ -100,6 +100,12 @@ public class RandomApproximationQuery extends Query {
       }
       return new DefaultScorerSupplier(scorer);
     }
+
+    @Override
+    public int count(LeafReaderContext context) throws IOException {
+      // Signal we can't compute the exact count in sublinear time.
+      return -1;
+    }
   }
 
   private static class RandomApproximationScorer extends Scorer {

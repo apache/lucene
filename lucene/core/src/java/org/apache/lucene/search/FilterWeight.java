@@ -67,4 +67,9 @@ public abstract class FilterWeight extends Weight {
   public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
     return in.scorerSupplier(context);
   }
+
+  @Override
+  public int count(LeafReaderContext context) throws IOException {
+    return in.count(context);
+  }
 }

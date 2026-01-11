@@ -56,6 +56,8 @@ API Changes
 
 * GITHUB#14615 : Remove unnecessary public methods in FuzzySet (Greg Miller)
 
+* GITHUB#15452: Ensure that Filter classes properly delegate to the decorated instances (Benjamin Lerer)
+
 * GITHUB#15507: Expose MergeRateLimiter in ConcurrentMergeScheduler.runOnMergeFinished hook.
   The runOnMergeFinished method signature now includes OneMerge and MergeRateLimiter parameters,
   enabling applications to monitor merge performance metrics like pause time, throttling behavior,

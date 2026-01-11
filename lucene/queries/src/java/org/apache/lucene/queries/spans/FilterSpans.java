@@ -19,6 +19,7 @@ package org.apache.lucene.queries.spans;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.search.TwoPhaseIterator;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * A {@link Spans} implementation wrapping another spans instance, allowing to filter spans matches
@@ -124,8 +125,18 @@ public abstract class FilterSpans extends Spans {
   }
 
   @Override
+  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+    in.intoBitSet(upTo, bitSet, offset);
+  }
+
+  @Override
+  public int docIDRunEnd() throws IOException {
+    return in.docIDRunEnd();
+  }
+
+  @Override
   public String toString() {
-    return "Filter(" + in.toString() + ")";
+    return "Filter(" + in + ")";
   }
 
   @Override
