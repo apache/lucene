@@ -397,7 +397,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   }
 
   public void testScoreMIP() throws IOException {
-    float[][] vectors = {{0, 1}, {1, 2}, {0, 0}};
+    float[][] vectors = {{0, 1}, {1, 2}, {0 + 1e-6f, 0 + 1e-6f}};
     try (Directory d =
             getStableIndexStore("field", VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT, vectors);
         IndexReader reader = DirectoryReader.open(d)) {
