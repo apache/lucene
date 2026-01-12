@@ -62,6 +62,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
   private Node[] nodes = new Node[1];
   // Use nodeEnds to locate node when search from cached nodes.
   private int[] nodeEnds = new int[1];
+  private int nextNodeIndex = 0;
 
   public SegmentTermsEnum(FieldReader fr, ARTReader reader) throws IOException {
     this.fr = fr;
@@ -199,10 +200,10 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
   }
 
   /** Get a node (maybe an empty one) to search, and overwrite it. */
-  private void setNode(int ord, Node node, int end) {
-    if (ord >= nodes.length) {
+  private void setNode(Node node, int end) {
+    if (nextNodeIndex >= nodes.length) {
       final Node[] next =
-          new Node[ArrayUtil.oversize(1 + ord, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
+          new Node[ArrayUtil.oversize(1 + nextNodeIndex, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
       System.arraycopy(nodes, 0, next, 0, nodes.length);
       nodes = next;
 
@@ -210,8 +211,9 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
       System.arraycopy(nodeEnds, 0, nextNodeEnds, 0, nodeEnds.length);
       nodeEnds = nextNodeEnds;
     }
-    nodes[ord] = node;
-    nodeEnds[ord] = end;
+    nodes[nextNodeIndex] = node;
+    nodeEnds[nextNodeIndex] = end;
+    nextNodeIndex++;
   }
 
   // Pushes a frame we seek'd to
@@ -496,7 +498,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         };
       } else if (nextNode != node) {
         // NextNode != node, we get a child to search, set nextNode to nodes.
-        setNode(1 + targetUpto, nextNode, clone.offset + nextNode.prefixLength);
+        setNode(nextNode, clone.offset + nextNode.prefixLength);
 
         // Follow this node
         node = nextNode;
@@ -645,6 +647,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         // + " output=" + output);
         // }
         if (cmp != 0) {
+          nextNodeIndex = nodeIndex + 1;
           break;
         }
         node = nodes[1 + nodeIndex];
@@ -717,6 +720,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
       targetBeforeCurrentLength = -1;
       node = nodes[0] = artReader.root;
       nodeEnds[0] = 0;
+      nextNodeIndex = 1;
 
       // Empty string prefix must have an output (block) in the index!
       assert node.hasOutput();
@@ -798,8 +802,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
       } else if (nextNode != node) {
         //        assert clone.offset - lastOffset == nextNode.prefixLength + 1;
         // NextNode != node, we get a child to search, set nextNode to nodes.
-        // TODO: Do not use targetUpto to index node. maybe discard target upto.
-        setNode(1 + targetUpto, nextNode, clone.offset);
+        setNode(nextNode, clone.offset);
 
         // Follow this node
         term.setBytes(clone.bytes, lastOffset, targetUpto, clone.offset - lastOffset);
