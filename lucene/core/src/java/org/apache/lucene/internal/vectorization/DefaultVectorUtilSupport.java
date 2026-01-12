@@ -284,6 +284,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   public static long int4BitDotProductImpl(byte[] q, byte[] d) {
+    assert q.length == d.length * 4;
     return int4BitDotProductImpl(q, d, 0, d.length);
   }
 
