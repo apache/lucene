@@ -305,6 +305,66 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public long int4DibitDotProduct(byte[] int4Quantized, byte[] dibitQuantized) {
+    return int4DibitDotProductImpl(int4Quantized, dibitQuantized);
+  }
+
+  /**
+   * Computes the dot product between a transposed 4-bit query vector and a transposed 2-bit
+   * document vector. The dibit vector has 2 stripes (lower bits first, then upper bits), so the
+   * scoring is two passes of int4-bit dot product with results shifted appropriately.
+   *
+   * @param q transposed 4-bit query vector (4 stripes, each of size q.length/4)
+   * @param d transposed 2-bit document vector (2 stripes, each of size d.length/2)
+   * @return the dot product
+   */
+  public static long int4DibitDotProductImpl(byte[] q, byte[] d) {
+    assert q.length == d.length * 2;
+    // d has 2 stripes: lower bits (bit 0) and upper bits (bit 1)
+    // Each stripe is d.length/2 bytes
+    // q has 4 stripes, each q.length/4 = d.length/2 bytes
+    int stripeSize = d.length / 2;
+
+    // First pass: compute int4-bit dot product with lower stripe (bit 0)
+    // Result is weighted by 2^0 = 1
+    long ret0 = int4BitDotProductImpl(q, d, 0, stripeSize);
+
+    // Second pass: compute int4-bit dot product with upper stripe (bit 1)
+    // Result is weighted by 2^1 = 2
+    long ret1 = int4BitDotProductImpl(q, d, stripeSize, stripeSize);
+
+    return ret0 + (ret1 << 1);
+  }
+
+  /**
+   * Helper method to compute int4-bit dot product with a specific stripe of the document vector.
+   *
+   * @param q transposed 4-bit query vector (4 stripes)
+   * @param d transposed document vector
+   * @param dOffset offset into d for the stripe to use
+   * @param stripeSize size of each stripe
+   * @return the dot product for this stripe
+   */
+  private static long int4BitDotProductImpl(byte[] q, byte[] d, int dOffset, int stripeSize) {
+    long ret = 0;
+    for (int i = 0; i < 4; i++) {
+      int r = 0;
+      long subRet = 0;
+      for (final int upperBound = stripeSize & -Integer.BYTES; r < upperBound; r += Integer.BYTES) {
+        subRet +=
+            Integer.bitCount(
+                (int) BitUtil.VH_NATIVE_INT.get(q, i * stripeSize + r)
+                    & (int) BitUtil.VH_NATIVE_INT.get(d, dOffset + r));
+      }
+      for (; r < stripeSize; r++) {
+        subRet += Integer.bitCount((q[i * stripeSize + r] & d[dOffset + r]) & 0xFF);
+      }
+      ret += subRet << i;
+    }
+    return ret;
+  }
+
+  @Override
   public float minMaxScalarQuantize(
       float[] vector, byte[] dest, float scale, float alpha, float minQuantile, float maxQuantile) {
     return new ScalarQuantizer(alpha, scale, minQuantile, maxQuantile).quantize(vector, dest, 0);
