@@ -419,7 +419,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       switch (encoding) {
         case SINGLE_BIT_QUERY_NIBBLE -> packAsBinary(quantizationScratch[0], toIndex);
         case DIBIT_QUERY_NIBBLE -> transposeDibit(quantizationScratch[0], toIndex);
-        default ->
+        case PACKED_NIBBLE, UNSIGNED_BYTE, SEVEN_BIT ->
             throw new IllegalArgumentException("Unsupported asymmetric encoding: " + encoding);
       }
       binarizedVectorData.writeBytes(toIndex, toIndex.length);
