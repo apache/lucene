@@ -596,6 +596,8 @@ public class TestBlockJoin extends LuceneTestCase {
     return new Sort(sortFields.toArray(new SortField[sortFields.size()]));
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandom() throws Exception {
     // We build two indices at once: one normalized (which
     // ToParentBlockJoinQuery/Collector,

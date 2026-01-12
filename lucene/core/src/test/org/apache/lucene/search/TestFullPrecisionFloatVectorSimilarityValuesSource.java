@@ -82,6 +82,8 @@ public class TestFullPrecisionFloatVectorSimilarityValuesSource extends LuceneTe
         null);
   }
 
+  // TODO: incredibly slow
+  @Nightly
   @Test
   public void testFullPrecisionVectorSimilarityDVS() throws Exception {
     List<float[]> vectors = new ArrayList<>();
