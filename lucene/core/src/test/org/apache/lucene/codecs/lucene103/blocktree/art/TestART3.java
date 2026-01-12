@@ -141,7 +141,7 @@ public class TestART3 extends LuceneTestCase {
           ARTReader artReader = new ARTReader(indexIn.slice("outputs", start, end - start), rootFP);
 
           for (Map.Entry<BytesRef, Output> entry : expected.entrySet()) {
-            assertResultStepByNode(artReader, entry.getKey(), entry.getValue());
+            assertResultStepByNode2(artReader, entry.getKey(), entry.getValue());
           }
           // TODO: test not found.
         }
@@ -150,6 +150,31 @@ public class TestART3 extends LuceneTestCase {
   }
 
   private static void assertResultStepByNode(ARTReader reader, BytesRef term, Output expected)
+      throws IOException {
+    Node node = reader.getRoot();
+    Node targetNode = null;
+    while ((targetNode = reader.lookupChildLazily(term, node)) != null) {
+      if (node == targetNode) {
+        break;
+      }
+      node = targetNode;
+    }
+    if (targetNode == null) {
+      assertEquals(expected.fp(), node.outputFp);
+      assertEquals(expected.hasTerms(), node.hasTerms);
+
+      if (node.floorDataLen > 0) {
+        byte[] floorData = new byte[node.floorDataLen];
+        reader.access.readBytes(node.floorDataFp, floorData, 0, floorData.length);
+        assertEquals(expected.floorData(), new BytesRef(floorData));
+      }
+      return;
+    }
+    // Not match.
+    assertEquals(expected, null);
+  }
+
+  private static void assertResultStepByNode2(ARTReader reader, BytesRef term, Output expected)
       throws IOException {
     Node node = reader.getRoot();
     Node targetNode = null;

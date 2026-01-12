@@ -444,7 +444,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
 
       //      final Node nextNode = artReader.lookupChild(clone, node, getNode(1 + targetUpto));
 
-      final Node nextNode = artReader.lookupChild(clone, node);
+      final Node nextNode = artReader.lookupChildLazily(clone, node);
 
       if (nextNode == null) {
         // Target equals or contains parent's prefix(non leaf node) or key (leaf node), match, scan
@@ -751,7 +751,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
       //      final int targetLabel = target.bytes[target.offset + targetUpto] & 0xFF;
 
       //      final Node nextNode = artReader.lookupChild(clone, node, getNode(1 + targetUpto));
-      final Node nextNode = artReader.lookupChild(clone, node);
+      final Node nextNode = artReader.lookupChildLazily(clone, node);
 
       if (nextNode == null) {
         // Target equals or contains parent's prefix(non leaf node) or key (leaf node), match, scan

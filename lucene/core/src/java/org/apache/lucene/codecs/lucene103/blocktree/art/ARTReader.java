@@ -52,13 +52,10 @@ public class ARTReader {
   }
 
   /**
-   * We get this parent from index key, so we should match parent's remaining bytes(prefix, key),
-   * and find child. Overwrite (and return) the incoming Node child, or null if the target was not
-   * found. Returns: 1 null: target equals or contains parent's prefix(non leaf node) or key (leaf
-   * node), match, scan suffixes block. 2 child: next node to search. 3 parent: there are different
-   * bytes between target and parent, not match.
+   * Different with lookupChild, this method just find a child, ignore remaining bytes. So we should
+   * compare parent's remaining bytes(prefix, key), and find child next.
    */
-  public Node lookupChild(BytesRef target, Node parent) throws IOException {
+  public Node lookupChildLazily(BytesRef target, Node parent) throws IOException {
     assert parent != null;
 
     // TODO: Target length is 0 may never happen, when we search step by step?
@@ -152,11 +149,11 @@ public class ARTReader {
   }
 
   /**
-   * We have already matched parent, just find next child. This is useful when we find a node from
-   * cached nodes by last searched term. Overwrite (and return) the incoming Node child, or null if
-   * the target was not found. Returns: 1 null: no child. 2 child: next node to search.
+   * Find the next child to search, note the child's prefix(non-leaf node) or key(leaf node) must
+   * same with target. Returns: 1 null: can not find a child. 2 child: next node to search. 3
+   * parent: we get a child, but remaining bytes are different.
    */
-  public Node lookupChild2(BytesRef target, Node parent) throws IOException {
+  public Node lookupChild(BytesRef target, Node parent) throws IOException {
     assert parent != null;
 
     // TODO: Target length is 0 may never happen, when we search step by step?
@@ -198,11 +195,45 @@ public class ARTReader {
 
         long childFp = parent.fp - childDeltaFp;
         assert childFp >= 0 && childFp < parent.fp : "child fp should less than parent fp";
-        return Node.load(access, childFp);
+        Node child = Node.load(access, childFp);
+        if (matchRemainingBytes(child, target)) {
+          return child;
+        } else {
+          // we get a child, but remaining bytes are different.
+          return parent;
+        }
       } else {
         return null;
       }
     }
+  }
+
+  private boolean matchRemainingBytes(Node node, BytesRef target) {
+    if (node.nodeType.equals(NodeType.LEAF_NODE)) {
+      // TODO: Should we consume remaining bytes.
+      if (node.key == null) {
+        return target.length == 0;
+      } else return node.key.equals(target);
+    } else {
+      if (node.prefixLength > 0) {
+        int commonLength =
+            ARTUtil.commonPrefixLength(
+                target.bytes,
+                target.offset,
+                target.offset + target.length,
+                node.prefix,
+                0,
+                node.prefixLength);
+        if (commonLength == node.prefixLength) {
+          target.offset += node.prefixLength;
+          target.length -= node.prefixLength;
+          return true;
+        }
+      } else {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Find output for the given key(input). Return null if not found. */
