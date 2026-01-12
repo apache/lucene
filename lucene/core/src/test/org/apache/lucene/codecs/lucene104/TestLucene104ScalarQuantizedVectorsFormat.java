@@ -70,9 +70,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
   @Override
   public void setUp() throws Exception {
     var encodingValues = ScalarEncoding.values();
-    encoding =
-        ScalarEncoding
-            .DIBIT_QUERY_NIBBLE; // encodingValues[random().nextInt(encodingValues.length)];
+    encoding = encodingValues[random().nextInt(encodingValues.length)];
     format = new Lucene104ScalarQuantizedVectorsFormat(encoding);
     super.setUp();
   }

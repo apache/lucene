@@ -1133,112 +1133,17 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   static long int4BitDotProduct256(byte[] q, byte[] d) {
-    long subRet0 = 0;
-    long subRet1 = 0;
-    long subRet2 = 0;
-    long subRet3 = 0;
-    int i = 0;
-
-    if (d.length >= ByteVector.SPECIES_256.vectorByteSize() * 2) {
-      int limit = ByteVector.SPECIES_256.loopBound(d.length);
-      var sum0 = LongVector.zero(LongVector.SPECIES_256);
-      var sum1 = LongVector.zero(LongVector.SPECIES_256);
-      var sum2 = LongVector.zero(LongVector.SPECIES_256);
-      var sum3 = LongVector.zero(LongVector.SPECIES_256);
-      for (; i < limit; i += ByteVector.SPECIES_256.length()) {
-        var vq0 = ByteVector.fromArray(BYTE_SPECIES_256, q, i).reinterpretAsLongs();
-        var vq1 = ByteVector.fromArray(BYTE_SPECIES_256, q, i + d.length).reinterpretAsLongs();
-        var vq2 = ByteVector.fromArray(BYTE_SPECIES_256, q, i + d.length * 2).reinterpretAsLongs();
-        var vq3 = ByteVector.fromArray(BYTE_SPECIES_256, q, i + d.length * 3).reinterpretAsLongs();
-        var vd = ByteVector.fromArray(BYTE_SPECIES_256, d, i).reinterpretAsLongs();
-        sum0 = sum0.add(vq0.and(vd).lanewise(VectorOperators.BIT_COUNT));
-        sum1 = sum1.add(vq1.and(vd).lanewise(VectorOperators.BIT_COUNT));
-        sum2 = sum2.add(vq2.and(vd).lanewise(VectorOperators.BIT_COUNT));
-        sum3 = sum3.add(vq3.and(vd).lanewise(VectorOperators.BIT_COUNT));
-      }
-      subRet0 += sum0.reduceLanes(VectorOperators.ADD);
-      subRet1 += sum1.reduceLanes(VectorOperators.ADD);
-      subRet2 += sum2.reduceLanes(VectorOperators.ADD);
-      subRet3 += sum3.reduceLanes(VectorOperators.ADD);
-    }
-
-    if (d.length - i >= ByteVector.SPECIES_128.vectorByteSize()) {
-      var sum0 = LongVector.zero(LongVector.SPECIES_128);
-      var sum1 = LongVector.zero(LongVector.SPECIES_128);
-      var sum2 = LongVector.zero(LongVector.SPECIES_128);
-      var sum3 = LongVector.zero(LongVector.SPECIES_128);
-      int limit = ByteVector.SPECIES_128.loopBound(d.length);
-      for (; i < limit; i += ByteVector.SPECIES_128.length()) {
-        var vq0 = ByteVector.fromArray(BYTE_SPECIES_128, q, i).reinterpretAsLongs();
-        var vq1 = ByteVector.fromArray(BYTE_SPECIES_128, q, i + d.length).reinterpretAsLongs();
-        var vq2 = ByteVector.fromArray(BYTE_SPECIES_128, q, i + d.length * 2).reinterpretAsLongs();
-        var vq3 = ByteVector.fromArray(BYTE_SPECIES_128, q, i + d.length * 3).reinterpretAsLongs();
-        var vd = ByteVector.fromArray(BYTE_SPECIES_128, d, i).reinterpretAsLongs();
-        sum0 = sum0.add(vq0.and(vd).lanewise(VectorOperators.BIT_COUNT));
-        sum1 = sum1.add(vq1.and(vd).lanewise(VectorOperators.BIT_COUNT));
-        sum2 = sum2.add(vq2.and(vd).lanewise(VectorOperators.BIT_COUNT));
-        sum3 = sum3.add(vq3.and(vd).lanewise(VectorOperators.BIT_COUNT));
-      }
-      subRet0 += sum0.reduceLanes(VectorOperators.ADD);
-      subRet1 += sum1.reduceLanes(VectorOperators.ADD);
-      subRet2 += sum2.reduceLanes(VectorOperators.ADD);
-      subRet3 += sum3.reduceLanes(VectorOperators.ADD);
-    }
-    // tail as bytes
-    for (; i < d.length; i++) {
-      subRet0 += Integer.bitCount((q[i] & d[i]) & 0xFF);
-      subRet1 += Integer.bitCount((q[i + d.length] & d[i]) & 0xFF);
-      subRet2 += Integer.bitCount((q[i + 2 * d.length] & d[i]) & 0xFF);
-      subRet3 += Integer.bitCount((q[i + 3 * d.length] & d[i]) & 0xFF);
-    }
-    return subRet0 + (subRet1 << 1) + (subRet2 << 2) + (subRet3 << 3);
+    return int4BitDotProduct256WithOffset(q, d, 0, d.length);
   }
 
   public static long int4BitDotProduct128(byte[] q, byte[] d) {
-    long subRet0 = 0;
-    long subRet1 = 0;
-    long subRet2 = 0;
-    long subRet3 = 0;
-    int i = 0;
-
-    var sum0 = IntVector.zero(IntVector.SPECIES_128);
-    var sum1 = IntVector.zero(IntVector.SPECIES_128);
-    var sum2 = IntVector.zero(IntVector.SPECIES_128);
-    var sum3 = IntVector.zero(IntVector.SPECIES_128);
-    int limit = ByteVector.SPECIES_128.loopBound(d.length);
-    for (; i < limit; i += ByteVector.SPECIES_128.length()) {
-      var vd = ByteVector.fromArray(BYTE_SPECIES_128, d, i).reinterpretAsInts();
-      var vq0 = ByteVector.fromArray(BYTE_SPECIES_128, q, i).reinterpretAsInts();
-      var vq1 = ByteVector.fromArray(BYTE_SPECIES_128, q, i + d.length).reinterpretAsInts();
-      var vq2 = ByteVector.fromArray(BYTE_SPECIES_128, q, i + d.length * 2).reinterpretAsInts();
-      var vq3 = ByteVector.fromArray(BYTE_SPECIES_128, q, i + d.length * 3).reinterpretAsInts();
-      sum0 = sum0.add(vd.and(vq0).lanewise(VectorOperators.BIT_COUNT));
-      sum1 = sum1.add(vd.and(vq1).lanewise(VectorOperators.BIT_COUNT));
-      sum2 = sum2.add(vd.and(vq2).lanewise(VectorOperators.BIT_COUNT));
-      sum3 = sum3.add(vd.and(vq3).lanewise(VectorOperators.BIT_COUNT));
-    }
-    subRet0 += sum0.reduceLanes(VectorOperators.ADD);
-    subRet1 += sum1.reduceLanes(VectorOperators.ADD);
-    subRet2 += sum2.reduceLanes(VectorOperators.ADD);
-    subRet3 += sum3.reduceLanes(VectorOperators.ADD);
-    // tail as bytes
-    for (; i < d.length; i++) {
-      int dValue = d[i];
-      subRet0 += Integer.bitCount((dValue & q[i]) & 0xFF);
-      subRet1 += Integer.bitCount((dValue & q[i + d.length]) & 0xFF);
-      subRet2 += Integer.bitCount((dValue & q[i + 2 * d.length]) & 0xFF);
-      subRet3 += Integer.bitCount((dValue & q[i + 3 * d.length]) & 0xFF);
-    }
-    return subRet0 + (subRet1 << 1) + (subRet2 << 2) + (subRet3 << 3);
+    return int4BitDotProduct128WithOffset(q, d, 0, d.length);
   }
 
   @Override
   public long int4DibitDotProduct(byte[] q, byte[] d) {
     assert q.length == d.length * 2;
-    // d has 2 stripes (lower bit, upper bit), each of size d.length/2
-    // q has 4 stripes, each of size q.length/4 = d.length/2
     int stripeSize = d.length / 2;
-    // Minimum size for vectorization: 16 bytes per stripe
     if (stripeSize >= 16) {
       if (VECTOR_BITSIZE >= 256) {
         return int4DibitDotProduct256(q, d);
@@ -1251,26 +1156,18 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   static long int4DibitDotProduct256(byte[] q, byte[] d) {
     int stripeSize = d.length / 2;
-    // First pass: lower bit stripe (bit 0), weighted by 2^0 = 1
     long ret0 = int4BitDotProduct256WithOffset(q, d, 0, stripeSize);
-    // Second pass: upper bit stripe (bit 1), weighted by 2^1 = 2
     long ret1 = int4BitDotProduct256WithOffset(q, d, stripeSize, stripeSize);
     return ret0 + (ret1 << 1);
   }
 
   static long int4DibitDotProduct128(byte[] q, byte[] d) {
     int stripeSize = d.length / 2;
-    // First pass: lower bit stripe (bit 0), weighted by 2^0 = 1
     long ret0 = int4BitDotProduct128WithOffset(q, d, 0, stripeSize);
-    // Second pass: upper bit stripe (bit 1), weighted by 2^1 = 2
     long ret1 = int4BitDotProduct128WithOffset(q, d, stripeSize, stripeSize);
     return ret0 + (ret1 << 1);
   }
 
-  /**
-   * Helper for int4-bit dot product with a specific stripe of the document vector using 256-bit
-   * SIMD.
-   */
   private static long int4BitDotProduct256WithOffset(
       byte[] q, byte[] d, int dOffset, int stripeSize) {
     long subRet0 = 0;
@@ -1338,10 +1235,6 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return subRet0 + (subRet1 << 1) + (subRet2 << 2) + (subRet3 << 3);
   }
 
-  /**
-   * Helper for int4-bit dot product with a specific stripe of the document vector using 128-bit
-   * SIMD.
-   */
   private static long int4BitDotProduct128WithOffset(
       byte[] q, byte[] d, int dOffset, int stripeSize) {
     long subRet0 = 0;

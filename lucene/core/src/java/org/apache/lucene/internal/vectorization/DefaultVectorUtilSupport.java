@@ -284,24 +284,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   public static long int4BitDotProductImpl(byte[] q, byte[] d) {
-    assert q.length == d.length * 4;
-    long ret = 0;
-    int size = d.length;
-    for (int i = 0; i < 4; i++) {
-      int r = 0;
-      long subRet = 0;
-      for (final int upperBound = d.length & -Integer.BYTES; r < upperBound; r += Integer.BYTES) {
-        subRet +=
-            Integer.bitCount(
-                (int) BitUtil.VH_NATIVE_INT.get(q, i * size + r)
-                    & (int) BitUtil.VH_NATIVE_INT.get(d, r));
-      }
-      for (; r < d.length; r++) {
-        subRet += Integer.bitCount((q[i * size + r] & d[r]) & 0xFF);
-      }
-      ret += subRet << i;
-    }
-    return ret;
+    return int4BitDotProductImpl(q, d, 0, d.length);
   }
 
   @Override
@@ -320,17 +303,8 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
    */
   public static long int4DibitDotProductImpl(byte[] q, byte[] d) {
     assert q.length == d.length * 2;
-    // d has 2 stripes: lower bits (bit 0) and upper bits (bit 1)
-    // Each stripe is d.length/2 bytes
-    // q has 4 stripes, each q.length/4 = d.length/2 bytes
     int stripeSize = d.length / 2;
-
-    // First pass: compute int4-bit dot product with lower stripe (bit 0)
-    // Result is weighted by 2^0 = 1
     long ret0 = int4BitDotProductImpl(q, d, 0, stripeSize);
-
-    // Second pass: compute int4-bit dot product with upper stripe (bit 1)
-    // Result is weighted by 2^1 = 2
     long ret1 = int4BitDotProductImpl(q, d, stripeSize, stripeSize);
 
     return ret0 + (ret1 << 1);

@@ -442,8 +442,7 @@ public class OptimizedScalarQuantizer {
 
   /**
    * Transpose a 2-bit (dibit) quantized vector into a byte array for efficient bitwise operations.
-   * The result has 2 stripes: bit0 of all dimensions first, then bit1 of all dimensions. This
-   * layout allows for efficient SIMD operations by performing two passes of single-bit scoring.
+   * The result has 2 stripes: similar to {@link #transposeHalfByte}, but only for 2 bits
    *
    * @param vector the 2-bit quantized vector (values 0-3)
    * @param packed the byte array to store the transposed vector
@@ -490,8 +489,7 @@ public class OptimizedScalarQuantizer {
 
   /**
    * Untranspose a packed 2-bit (dibit) vector back to its original form. This is the reverse of
-   * {@link #transposeDibit}. The packed array has bit0 of all dimensions in the first half, and
-   * bit1 of all dimensions in the second half.
+   * {@link #transposeDibit}.
    *
    * @param packed the packed/transposed byte array
    * @param vector the output vector where each byte will contain a 2-bit value (0-3)
