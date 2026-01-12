@@ -17,6 +17,8 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -24,7 +26,8 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestFilterCodecReader extends LuceneTestCase {
 
   public void testDeclaredMethodsOverridden() throws Exception {
-    assertDelegatorOverridesAllRequiredMethods(FilterCodecReader.class);
+    final Class<?> subClass = FilterCodecReader.class;
+    implTestDeclaredMethodsOverridden(subClass.getSuperclass(), subClass);
   }
 
   public void testGetDelegate() throws IOException {
@@ -38,6 +41,27 @@ public class TestFilterCodecReader extends LuceneTestCase {
 
         assertSame(FilterCodecReader.unwrap(r), reader.getSequentialSubReaders().get(0));
         assertSame(r.getDelegate(), reader.getSequentialSubReaders().get(0));
+      }
+    }
+  }
+
+  private void implTestDeclaredMethodsOverridden(Class<?> superClass, Class<?> subClass)
+      throws Exception {
+    for (final Method superClassMethod : superClass.getDeclaredMethods()) {
+      final int modifiers = superClassMethod.getModifiers();
+      if (Modifier.isPrivate(modifiers)) continue;
+      if (Modifier.isFinal(modifiers)) continue;
+      if (Modifier.isStatic(modifiers)) continue;
+      try {
+        final Method subClassMethod =
+            subClass.getDeclaredMethod(
+                superClassMethod.getName(), superClassMethod.getParameterTypes());
+        assertEquals(
+            "getReturnType() difference",
+            superClassMethod.getReturnType(),
+            subClassMethod.getReturnType());
+      } catch (NoSuchMethodException _) {
+        fail(subClass + " needs to override '" + superClassMethod + "'");
       }
     }
   }

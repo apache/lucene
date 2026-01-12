@@ -19,7 +19,6 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Objects;
-import org.apache.lucene.util.FixedBitSet;
 
 /** Delegates all methods to a wrapped {@link NumericDocValues}. */
 public abstract class FilterNumericDocValues extends NumericDocValues {
@@ -61,21 +60,5 @@ public abstract class FilterNumericDocValues extends NumericDocValues {
   @Override
   public long longValue() throws IOException {
     return in.longValue();
-  }
-
-  @Override
-  public void longValues(int size, int[] docs, long[] values, long defaultValue)
-      throws IOException {
-    in.longValues(size, docs, values, defaultValue);
-  }
-
-  @Override
-  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-    in.intoBitSet(upTo, bitSet, offset);
-  }
-
-  @Override
-  public int docIDRunEnd() throws IOException {
-    return in.docIDRunEnd();
   }
 }

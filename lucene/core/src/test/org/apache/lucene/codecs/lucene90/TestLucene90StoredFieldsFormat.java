@@ -80,13 +80,6 @@ public class TestLucene90StoredFieldsFormat extends BaseStoredFieldsFormatTestCa
     public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
       return new CountingPrefetchIndexInput(in.slice(sliceDescription, offset, length), counter);
     }
-
-    @Override
-    public IndexInput slice(String sliceDescription, long offset, long length, IOContext context)
-        throws IOException {
-      return new CountingPrefetchIndexInput(
-          in.slice(sliceDescription, offset, length, context), counter);
-    }
   }
 
   public void testSkipRedundantPrefetches() throws IOException {

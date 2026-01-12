@@ -163,11 +163,6 @@ public abstract class FilterDirectoryReader extends DirectoryReader {
     in.close();
   }
 
-  @Override
-  public boolean hasDeletions() {
-    return in.hasDeletions();
-  }
-
   /** Returns the wrapped {@link DirectoryReader}. */
   public DirectoryReader getDelegate() {
     return in;

@@ -37,6 +37,11 @@ public class CorruptingIndexOutput extends FilterIndexOutput {
   }
 
   @Override
+  public String getName() {
+    return out.getName();
+  }
+
+  @Override
   public void close() throws IOException {
     if (closed == false) {
       out.close();

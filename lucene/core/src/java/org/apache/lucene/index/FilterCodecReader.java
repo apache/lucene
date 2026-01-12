@@ -26,7 +26,6 @@ import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.LiveDocs;
 
 /**
  * A <code>FilterCodecReader</code> contains another CodecReader, which it uses as its basic source
@@ -129,16 +128,6 @@ public abstract class FilterCodecReader extends CodecReader {
   @Override
   public void checkIntegrity() throws IOException {
     in.checkIntegrity();
-  }
-
-  @Override
-  public LiveDocs getLiveDocsWithDeletedIterator() {
-    return in.getLiveDocsWithDeletedIterator();
-  }
-
-  @Override
-  public boolean hasDeletions() {
-    return in.hasDeletions();
   }
 
   /** Returns the wrapped {@link CodecReader}. */

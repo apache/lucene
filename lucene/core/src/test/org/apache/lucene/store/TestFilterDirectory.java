@@ -19,6 +19,7 @@ package org.apache.lucene.store;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 import org.junit.Test;
@@ -34,13 +35,16 @@ public class TestFilterDirectory extends BaseDirectoryTestCase {
   public void testOverrides() throws Exception {
     // verify that all methods of Directory are overridden by FilterDirectory,
     // except those under the 'exclude' list
-    Set<Method> exclude =
-        Set.of(
-            Directory.class.getMethod(
-                "copyFrom", Directory.class, String.class, String.class, IOContext.class),
-            Directory.class.getMethod("openChecksumInput", String.class));
-
-    assertDelegatorOverridesAllRequiredMethods(FilterDirectory.class, exclude);
+    Set<Method> exclude = new HashSet<>();
+    exclude.add(
+        Directory.class.getMethod(
+            "copyFrom", Directory.class, String.class, String.class, IOContext.class));
+    exclude.add(Directory.class.getMethod("openChecksumInput", String.class));
+    for (Method m : FilterDirectory.class.getMethods()) {
+      if (m.getDeclaringClass() == Directory.class) {
+        assertTrue("method " + m.getName() + " not overridden!", exclude.contains(m));
+      }
+    }
   }
 
   public void testUnwrap() throws IOException {

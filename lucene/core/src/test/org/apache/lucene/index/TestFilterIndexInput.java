@@ -17,6 +17,8 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Random;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -59,7 +61,24 @@ public class TestFilterIndexInput extends TestIndexInput {
 
   @Test
   public void testOverrides() {
-    assertDelegatorOverridesAllRequiredMethods(FilterIndexInput.class);
+    for (Method m : FilterIndexInput.class.getMethods()) {
+      if (m.getName().contains("clone")) {
+        // special case
+        continue;
+      }
+      if (m.getDeclaringClass() == FilterIndexInput.class) {
+        // verify that only abstract methods are overridden
+        Method indexInputMethod;
+        try {
+          indexInputMethod = IndexInput.class.getMethod(m.getName(), m.getParameterTypes());
+          assertTrue(
+              "Non-abstract method " + m.getName() + " is overridden",
+              Modifier.isAbstract(indexInputMethod.getModifiers()));
+        } catch (Exception e) {
+          assertTrue(e instanceof NoSuchMethodException);
+        }
+      }
+    }
   }
 
   public void testUnwrap() throws IOException {

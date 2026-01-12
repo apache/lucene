@@ -19,16 +19,12 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.Iterator;
 import org.apache.lucene.search.AcceptDocs;
-import org.apache.lucene.search.DocAndFloatFeatureBuffer;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOBooleanSupplier;
-import org.apache.lucene.util.LiveDocs;
 import org.apache.lucene.util.Unwrappable;
-import org.apache.lucene.util.automaton.CompiledAutomaton;
 
 /**
  * A <code>FilterLeafReader</code> contains another LeafReader, which it uses as its basic source of
@@ -162,21 +158,6 @@ public abstract class FilterLeafReader extends LeafReader {
     @Override
     public Object getStats() throws IOException {
       return in.getStats();
-    }
-
-    @Override
-    public TermsEnum intersect(CompiledAutomaton compiled, BytesRef startTerm) throws IOException {
-      return in.intersect(compiled, startTerm);
-    }
-
-    @Override
-    public BytesRef getMin() throws IOException {
-      return in.getMin();
-    }
-
-    @Override
-    public BytesRef getMax() throws IOException {
-      return in.getMax();
     }
   }
 
@@ -336,21 +317,6 @@ public abstract class FilterLeafReader extends LeafReader {
     public PostingsEnum unwrap() {
       return in;
     }
-
-    @Override
-    public void nextPostings(int upTo, DocAndFloatFeatureBuffer buffer) throws IOException {
-      in.nextPostings(upTo, buffer);
-    }
-
-    @Override
-    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-      in.intoBitSet(upTo, bitSet, offset);
-    }
-
-    @Override
-    public int docIDRunEnd() throws IOException {
-      return in.docIDRunEnd();
-    }
   }
 
   /** The underlying LeafReader. */
@@ -506,16 +472,6 @@ public abstract class FilterLeafReader extends LeafReader {
   public void checkIntegrity() throws IOException {
     ensureOpen();
     in.checkIntegrity();
-  }
-
-  @Override
-  public boolean hasDeletions() {
-    return in.hasDeletions();
-  }
-
-  @Override
-  public LiveDocs getLiveDocsWithDeletedIterator() {
-    return in.getLiveDocsWithDeletedIterator();
   }
 
   /** Returns the wrapped {@link LeafReader}. */

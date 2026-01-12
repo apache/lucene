@@ -49,14 +49,4 @@ public class FilterScorable extends Scorable {
   public Collection<ChildScorable> getChildren() throws IOException {
     return Collections.singletonList(new ChildScorable(in, "FILTER"));
   }
-
-  @Override
-  public float smoothingScore(int docId) throws IOException {
-    return in.smoothingScore(docId);
-  }
-
-  @Override
-  public void setMinCompetitiveScore(float minScore) throws IOException {
-    in.setMinCompetitiveScore(minScore);
-  }
 }

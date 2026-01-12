@@ -64,7 +64,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -74,20 +73,17 @@ import java.nio.file.Paths;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.StringJoiner;
 import java.util.TimeZone;
 import java.util.TreeSet;
 import java.util.concurrent.Executor;
@@ -3345,156 +3341,6 @@ public abstract class LuceneTestCase extends Assert {
       assert intraMergeExecutor != null : "scaledExecutor is not initialized";
       // Always do the intra merge executor to ensure we test it
       return intraMergeExecutor;
-    }
-  }
-
-  /**
-   * Verifies that the given delegator class overrides all methods that it is expected to delegate.
-   *
-   * @param delegator the decorating class whose overrides must be verified
-   * @see #assertDelegatorOverridesAllRequiredMethods(Class, Set)
-   */
-  protected static void assertDelegatorOverridesAllRequiredMethods(Class<?> delegator) {
-    assertDelegatorOverridesAllRequiredMethods(delegator, Set.of());
-  }
-
-  /**
-   * Verifies that the given delegator class overrides all methods that it is expected to delegate.
-   *
-   * @param delegator the decorating class whose overrides must be verified
-   * @param exclude the methods that should be ignored by the checks
-   */
-  protected static void assertDelegatorOverridesAllRequiredMethods(
-      Class<?> delegator, Set<Method> exclude) {
-    Set<String> missingOverrides = new LinkedHashSet<>();
-    for (Method m : getMethods(delegator)) {
-      if (!exclude.contains(m)
-          && m.getDeclaringClass() != delegator
-          && requiresDelegatorOverride(m)) {
-        missingOverrides.add(methodSignature(m));
-      }
-    }
-    if (!missingOverrides.isEmpty()) {
-      fail(
-          String.format(
-              Locale.US,
-              "The decorating class %s must override the following methods: %s",
-              delegator.getSimpleName(),
-              String.join(", ", missingOverrides)));
-    }
-  }
-
-  /**
-   * Returns the effective set of methods visible on the given class, filtering out overridden
-   * declarations introduced by the reflection changes in Java 21+.
-   *
-   * @param clazz the class whose effective methods should be enumerated
-   * @return a collection of methods where each signature appears at most once, resolved to the most
-   *     specific declaring class
-   */
-  private static Collection<Method> getMethods(Class<?> clazz) {
-    Map<MethodKey, Method> methods = new HashMap<>();
-    collectDeclaredMethods(clazz, methods);
-    return methods.values();
-  }
-
-  /**
-   * Recursively collects declared methods from the class hierarchy into the provided map, keeping
-   * only the most specific declaration for each method signature.
-   *
-   * @param clazz the class being inspected
-   * @param methods the map collecting signature-to-method entries
-   */
-  private static void collectDeclaredMethods(Class<?> clazz, Map<MethodKey, Method> methods) {
-
-    for (Class<?> i : clazz.getInterfaces()) {
-      collectDeclaredMethods(i, methods);
-    }
-
-    Class<?> superclass = clazz.getSuperclass();
-    if (superclass != null && superclass != Object.class) {
-      collectDeclaredMethods(superclass, methods);
-    }
-
-    for (Method m : clazz.getDeclaredMethods()) {
-      MethodKey key = new MethodKey(m);
-      Method previous = methods.get(key);
-      if (previous != null && previous.getDeclaringClass() == clazz) {
-        Class<?> previousReturnType = previous.getReturnType();
-        Class<?> newReturnType = m.getReturnType();
-        if (previousReturnType.isAssignableFrom(newReturnType)) {
-          methods.put(key, m);
-        }
-      } else {
-        methods.put(key, m);
-      }
-    }
-  }
-
-  /**
-   * Signature key: method name + parameter types. We use a List for parameter types so that record
-   * equality works with element-wise comparison.
-   */
-  private record MethodKey(String name, List<Class<?>> parameterTypes) {
-    MethodKey(Method m) {
-      this(m.getName(), List.of(m.getParameterTypes()));
-    }
-  }
-
-  private static String methodSignature(Method m) {
-    String name =
-        String.format(
-            Locale.US,
-            "%s %s.%s",
-            m.getReturnType().getSimpleName(),
-            m.getDeclaringClass().getSimpleName(),
-            m.getName());
-
-    StringJoiner sj = new StringJoiner(", ", name + "(", ")");
-    for (Class<?> parameterType : m.getParameterTypes()) {
-      sj.add(parameterType.getSimpleName());
-    }
-    return sj.toString();
-  }
-
-  /**
-   * Determines whether the given method must be overridden by a delegator class.
-   *
-   * <p>A method is considered required to override if it is:
-   *
-   * <ul>
-   *   <li>public,
-   *   <li>non-static,
-   *   <li>non-final,
-   *   <li>not declared on {@link Object},
-   *   <li>non abstract
-   * </ul>
-   *
-   * @param m the method to inspect
-   * @return {@code true} if the delegator must override this method
-   */
-  private static boolean requiresDelegatorOverride(Method m) {
-
-    int modifier = m.getModifiers();
-
-    // We want to ignore Objects methods as a base delegator cannot override them correctly anyway.
-    return !isObjectMethod(m)
-        && Modifier.isPublic(modifier)
-        && !Modifier.isStatic(modifier)
-        && !Modifier.isFinal(modifier)
-        // We keep only the last method implementation, therefore, if it is abstract java will force
-        // the implementation to define it.
-        && !Modifier.isAbstract(modifier);
-  }
-
-  private static boolean isObjectMethod(Method m) {
-    try {
-      Object.class.getMethod(m.getName(), m.getParameterTypes());
-      return true;
-    } catch (
-        @SuppressWarnings("unused")
-        NoSuchMethodException ignored) {
-      return false;
     }
   }
 }
