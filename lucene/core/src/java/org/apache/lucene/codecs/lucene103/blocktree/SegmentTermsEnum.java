@@ -444,7 +444,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
 
       //      final Node nextNode = artReader.lookupChild(clone, node, getNode(1 + targetUpto));
 
-      final Node nextNode = artReader.lookupChildLazily(clone, node);
+      final Node nextNode = artReader.lookupChild(clone, node);
 
       if (nextNode == null) {
         // Target equals or contains parent's prefix(non leaf node) or key (leaf node), match, scan
@@ -626,7 +626,6 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
       int nodeIndex = 0;
 
       // First compare up to valid seek frames:
-      // TODO: We can't use 1 + targetUpto to get node, since node walks multi bytes now.
       while (targetUpto < targetLimit) {
         cmp =
             Arrays.compareUnsigned(
@@ -743,15 +742,16 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
     // seek'd; now continue walking the index:
 
     // TODO: Search target directly if we can.
-    // TODO: If targetUpto is not 0, we get a node from cached nodes, call lookupChild2.
-    target.offset = targetUpto;
     BytesRef clone = target.clone();
+    clone.offset += targetUpto;
+    clone.length -= targetUpto;
     while (clone.length > 0) {
 
       //      final int targetLabel = target.bytes[target.offset + targetUpto] & 0xFF;
 
       //      final Node nextNode = artReader.lookupChild(clone, node, getNode(1 + targetUpto));
-      final Node nextNode = artReader.lookupChildLazily(clone, node);
+      final int lastOffset = clone.offset;
+      final Node nextNode = artReader.lookupChild(clone, node);
 
       if (nextNode == null) {
         // Target equals or contains parent's prefix(non leaf node) or key (leaf node), match, scan
@@ -796,17 +796,13 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
           return result;
         }
       } else if (nextNode != node) {
+        //        assert clone.offset - lastOffset == nextNode.prefixLength + 1;
         // NextNode != node, we get a child to search, set nextNode to nodes.
-        setNode(1 + targetUpto, nextNode, clone.offset + nextNode.prefixLength);
+        // TODO: Do not use targetUpto to index node. maybe discard target upto.
+        setNode(1 + targetUpto, nextNode, clone.offset);
 
         // Follow this node
-        // TODO: set bytes when we walked multi bytes.
-        term.setByteAt(targetUpto, clone.bytes[targetUpto]);
-        // Here we get a node by searching parent, although, we haven't searched this node, we
-        // still need to copy node's prefix to term and update targetUpto to pushFrame.
-        if (nextNode.prefixLength > 0) {
-          term.setBytes(targetUpto + 1, nextNode.prefix);
-        }
+        term.setBytes(clone.bytes, lastOffset, targetUpto, clone.offset - lastOffset);
         // TODO: We have not set term length.
         node = nextNode;
 
@@ -815,7 +811,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         // targetUpto]&0xff) + " node.output=" + node.output + " node.nfo=" + node.nextFinalOutput);
         // }
         //        targetUpto++;
-        targetUpto = clone.offset + nextNode.prefixLength;
+        targetUpto = clone.offset;
 
         if (node.hasOutput()) {
           // if (DEBUG) System.out.println("    node is final!");

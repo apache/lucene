@@ -213,7 +213,21 @@ public class ARTReader {
       // TODO: Should we consume remaining bytes.
       if (node.key == null) {
         return target.length == 0;
-      } else return node.key.equals(target);
+      } else {
+        int commonLength =
+            ARTUtil.commonPrefixLength(
+                target.bytes,
+                target.offset,
+                target.offset + target.length,
+                node.key.bytes,
+                node.key.offset,
+                node.key.length);
+        if (commonLength == node.key.length) {
+          target.offset += node.key.length;
+          target.length -= node.key.length;
+          return true;
+        }
+      }
     } else {
       if (node.prefixLength > 0) {
         int commonLength =

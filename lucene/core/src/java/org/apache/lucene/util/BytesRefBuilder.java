@@ -61,6 +61,12 @@ public class BytesRefBuilder {
     System.arraycopy(bytes, 0, ref.bytes, offset, bytes.length);
   }
 
+  /** Set bytes. */
+  public void setBytes(byte[] bytes, int srcPos, int dstPos, int length) {
+    grow(dstPos + bytes.length);
+    System.arraycopy(bytes, srcPos, ref.bytes, dstPos, length);
+  }
+
   /** Ensure that this builder can hold at least <code>capacity</code> bytes without resizing. */
   public void grow(int capacity) {
     ref.bytes = ArrayUtil.grow(ref.bytes, capacity);
