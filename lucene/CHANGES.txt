@@ -292,6 +292,8 @@ Optimizations
 
 * GITHUB#15511: Dynamic pruning for SORTED(_SET) fields with doc values skipper (Pan Guixin)
 
+* GITHUB#15560: Avoid unnecessary getGraph() call. (Shubham Chaudhary)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
