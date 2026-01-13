@@ -57,13 +57,11 @@ public class AllGroupHeadsCollectorManager
     }
   }
 
-  private static class GroupHeadWithValues<T> {
-    final T groupValue;
+  private static class GroupHeadWithValues {
     int doc;
     final Object[] sortValues;
 
-    GroupHeadWithValues(T groupValue, int doc, Object[] sortValues) {
-      this.groupValue = groupValue;
+    GroupHeadWithValues(int doc, Object[] sortValues) {
       this.doc = doc;
       this.sortValues = sortValues;
     }
@@ -113,7 +111,7 @@ public class AllGroupHeadsCollectorManager
       return new GroupHeadsResult(collectors.iterator().next().retrieveGroupHeads());
     }
 
-    Map<Object, GroupHeadWithValues<?>> mergedHeads = new HashMap<>();
+    Map<Object, GroupHeadWithValues> mergedHeads = new HashMap<>();
     SortField[] sortFields = sortWithinGroup.getSort();
 
     for (AllGroupHeadsCollector<?> collector : collectors) {
@@ -126,21 +124,19 @@ public class AllGroupHeadsCollectorManager
   @SuppressWarnings("unchecked")
   private <T> void mergeCollectorHeads(
       AllGroupHeadsCollector<T> collector,
-      Map<Object, GroupHeadWithValues<?>> mergedHeads,
+      Map<Object, GroupHeadWithValues> mergedHeads,
       SortField[] sortFields) {
     Collection<AllGroupHeadsCollector.GroupHead<T>> heads =
         (Collection<AllGroupHeadsCollector.GroupHead<T>>) collector.getCollectedGroupHeads();
     for (AllGroupHeadsCollector.GroupHead<T> head : heads) {
       Object[] sortValues = collector.getSortValues(head.groupValue);
-      GroupHeadWithValues<?> existing = mergedHeads.get(head.groupValue);
+      GroupHeadWithValues existing = mergedHeads.get(head.groupValue);
       if (existing == null) {
-        mergedHeads.put(
-            head.groupValue, new GroupHeadWithValues<>(head.groupValue, head.doc, sortValues));
+        mergedHeads.put(head.groupValue, new GroupHeadWithValues(head.doc, sortValues));
       } else if (sortValues != null && existing.sortValues != null) {
         int cmp = compareValues(sortValues, existing.sortValues, sortFields);
         if (cmp > 0 || (cmp == 0 && head.doc < existing.doc)) {
-          mergedHeads.put(
-              head.groupValue, new GroupHeadWithValues<>(head.groupValue, head.doc, sortValues));
+          mergedHeads.put(head.groupValue, new GroupHeadWithValues(head.doc, sortValues));
         }
       }
     }
