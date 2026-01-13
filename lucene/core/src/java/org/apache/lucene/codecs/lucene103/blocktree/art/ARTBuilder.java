@@ -114,7 +114,7 @@ public class ARTBuilder {
     }
   }
 
-  /** Append an art builder to this. */
+  /** Append an art builder to this. Use ARTBuilder#insert of this method */
   public void append(ARTBuilder artBuilder) {
     Map<BytesRef, Output> kvs = new TreeMap<>();
     visit(artBuilder.root, new BytesRefBuilder(), kvs::put);
@@ -124,7 +124,7 @@ public class ARTBuilder {
     }
   }
 
-  /** Insert an art builder into this one, this should called by append. */
+  /** Insert an art builder into this one. */
   public void insert(ARTBuilder artBuilder) {
     if (artBuilder.root.nodeType.equals(NodeType.LEAF_NODE)) {
       insert(artBuilder.root.key, artBuilder.root.output);

@@ -175,7 +175,7 @@ public class Node16 extends Node {
       }
       copyNode(this, node48);
       node48.childrenCount = this.childrenCount;
-      Node freshOne = Node48.insert(node48, this, indexByte);
+      Node freshOne = Node48.insert(node48, childNode, indexByte);
       return freshOne;
     }
   }
