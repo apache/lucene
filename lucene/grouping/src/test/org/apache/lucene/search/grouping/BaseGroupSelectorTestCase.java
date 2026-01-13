@@ -309,17 +309,17 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
     // A grouped query run in two phases against the control should give us the same
     // result as the query run against shards and merged back together after each phase.
 
-    FirstPassGroupingCollector<T> singletonFirstPass =
-        new FirstPassGroupingCollector<>(getGroupSelector(), sort, 5);
-    control.getIndexSearcher().search(topLevel, singletonFirstPass);
-    Collection<SearchGroup<T>> singletonGroups = singletonFirstPass.getTopGroups(0);
+    FirstPassGroupingCollectorManager<T> firstPassGroupingCollectorManager =
+        new FirstPassGroupingCollectorManager<>(this::getGroupSelector, sort, 5);
+    Collection<SearchGroup<T>> singletonGroups =
+        control.getIndexSearcher().search(topLevel, firstPassGroupingCollectorManager);
 
     List<Collection<SearchGroup<T>>> shardGroups = new ArrayList<>();
     for (Shard shard : shards) {
-      FirstPassGroupingCollector<T> fc =
-          new FirstPassGroupingCollector<>(getGroupSelector(), sort, 5);
-      shard.getIndexSearcher().search(topLevel, fc);
-      shardGroups.add(fc.getTopGroups(0));
+      FirstPassGroupingCollectorManager<T> fcm =
+          new FirstPassGroupingCollectorManager<>(this::getGroupSelector, sort, 5);
+      Collection<SearchGroup<T>> topGroups = shard.getIndexSearcher().search(topLevel, fcm);
+      shardGroups.add(topGroups);
     }
     Collection<SearchGroup<T>> mergedGroups = SearchGroup.merge(shardGroups, 0, 5, sort);
     assertEquals(singletonGroups, mergedGroups);
