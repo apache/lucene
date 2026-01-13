@@ -84,11 +84,7 @@ public final class FieldReader extends Terms {
     this.indexIn = indexIn;
   }
 
-  private TrieReader newReader() throws IOException {
-    return new TrieReader(indexIn.slice("trie index", indexStart, indexEnd - indexStart), rootFP);
-  }
-
-  private ARTReader newARTReader() throws IOException {
+  private ARTReader newReader() throws IOException {
     return new ARTReader(indexIn.slice("art index", indexStart, indexEnd - indexStart), rootFP);
   }
 
@@ -115,7 +111,7 @@ public final class FieldReader extends Terms {
   /** For debugging -- used by CheckIndex too */
   @Override
   public Stats getStats() throws IOException {
-    return new SegmentTermsEnum(this, newARTReader()).computeBlockStats();
+    return new SegmentTermsEnum(this, newReader()).computeBlockStats();
   }
 
   @Override
@@ -143,7 +139,7 @@ public final class FieldReader extends Terms {
 
   @Override
   public TermsEnum iterator() throws IOException {
-    return new SegmentTermsEnum(this, newARTReader());
+    return new SegmentTermsEnum(this, newReader());
   }
 
   @Override

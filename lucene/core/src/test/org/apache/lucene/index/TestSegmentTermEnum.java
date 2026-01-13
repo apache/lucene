@@ -47,6 +47,7 @@ public class TestSegmentTermEnum extends LuceneTestCase {
     super.tearDown();
   }
 
+  // TODO: Remove this test case after debugging.
   public void testDeepSubBlock() throws Exception {
     Directory dir = newDirectory();
     // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate deep subBlock.
@@ -77,7 +78,7 @@ public class TestSegmentTermEnum extends LuceneTestCase {
     SegmentTermsEnum termsEnum =
         (SegmentTermsEnum) (getOnlyLeafReader(reader).terms("category").iterator());
 
-    // TODO: test seekExact.
+    // Test seekCeil.
     assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("regular")));
     assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("request1")));
     assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("request2")));
@@ -87,6 +88,17 @@ public class TestSegmentTermEnum extends LuceneTestCase {
     assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("rest2")));
     assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("rest3")));
     assertEquals(TermsEnum.SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("rest4")));
+
+    // Test seekExact.
+    assertTrue(termsEnum.seekExact(new BytesRef("regular")));
+    assertTrue(termsEnum.seekExact(new BytesRef("request1")));
+    assertTrue(termsEnum.seekExact(new BytesRef("request2")));
+    assertTrue(termsEnum.seekExact(new BytesRef("request3")));
+    assertTrue(termsEnum.seekExact(new BytesRef("request4")));
+    assertTrue(termsEnum.seekExact(new BytesRef("rest1")));
+    assertTrue(termsEnum.seekExact(new BytesRef("rest2")));
+    assertTrue(termsEnum.seekExact(new BytesRef("rest3")));
+    assertTrue(termsEnum.seekExact(new BytesRef("rest4")));
 
     writer.close();
     reader.close();

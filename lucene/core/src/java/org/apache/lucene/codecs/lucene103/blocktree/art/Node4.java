@@ -98,6 +98,7 @@ public class Node4 extends Node {
   }
 
   /** Insert the child node into this with the index byte. */
+  @Override
   public Node insert(Node childNode, byte indexByte) {
     if (this.childrenCount < 4) {
       // insert leaf into current node

@@ -443,6 +443,7 @@ public abstract class Node {
       case NODE16 -> Node16.insert(current, childNode, indexByte);
       case NODE48 -> Node48.insert(current, childNode, indexByte);
       case NODE256 -> Node256.insert(current, childNode, indexByte);
+      // $CASES-OMITTED$
       default -> throw new IllegalArgumentException("Not supported node type!");
     };
   }

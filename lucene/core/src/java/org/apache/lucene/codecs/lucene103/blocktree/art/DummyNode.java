@@ -67,11 +67,7 @@ public class DummyNode extends Node {
   @Override
   public void saveChildIndex(IndexOutput dataOutput) throws IOException {}
 
-  /**
-   * Write childIndex to output.
-   *
-   * @param dataInput
-   */
+  /** Write childIndex to output. */
   @Override
   public void readChildIndex(IndexInput dataInput) throws IOException {}
 
