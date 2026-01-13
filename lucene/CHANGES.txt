@@ -13,7 +13,7 @@ API Changes
 * GITHUB#15309: PriorityQueue.remove method has been removed entirely. If you need remove(), implement
   it yourself in a subclass (heap access and size, upHeap and downHeap are protected members of PQ). (Dawid Weiss)
 
-* GITHUB#15215: Switch to Java 25 as the minimum required platform. Upgrade to gradle 9.1.0.
+* GITHUB#15215: Switch to Java 25 as the minimum required platform. Upgrade to gradle 9.x.
   (Robert Muir, Kaival Parikh, Dawid Weiss)
 
 * GITHUB#13797: Relaxed Lucene Index Upgrade Policy to Allow Safe Upgrades Across Multiple Major Versions.
