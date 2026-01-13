@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import org.apache.lucene.search.IndexingMode;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
@@ -48,14 +47,6 @@ public abstract class Terms {
 
   /** Returns an iterator that will step through all terms. This method will not return null. */
   public abstract TermsEnum iterator() throws IOException;
-
-  /**
-   * Returns an iterator that will step through all terms with IndexMode. Default implementation
-   * ignores IndexMode.
-   */
-  public TermsEnum iterator(IndexingMode indexingMode) throws IOException {
-    return iterator();
-  }
 
   /**
    * Returns a TermsEnum that iterates over all terms and documents that are accepted by the

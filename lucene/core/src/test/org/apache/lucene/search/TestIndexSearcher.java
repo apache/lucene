@@ -214,7 +214,6 @@ public class TestIndexSearcher extends LuceneTestCase {
           public void onUse(Query query) {}
         };
     searcher.setQueryCachingPolicy(dummyPolicy);
-    searcher.setIndexingMode(IndexingMode.HOT);
     assertEquals(dummyPolicy, searcher.getQueryCachingPolicy());
 
     IndexSearcher.setDefaultQueryCachingPolicy(dummyPolicy);

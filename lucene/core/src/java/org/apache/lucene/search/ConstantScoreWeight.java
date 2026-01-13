@@ -35,11 +35,6 @@ public abstract class ConstantScoreWeight extends Weight {
     this.score = score;
   }
 
-  protected ConstantScoreWeight(Query query, float score, IndexingMode indexingMode) {
-    super(query, indexingMode);
-    this.score = score;
-  }
-
   /** Return the score produced by this {@link Weight}. */
   protected final float score() {
     return score;

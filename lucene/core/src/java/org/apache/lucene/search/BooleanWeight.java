@@ -48,17 +48,7 @@ final class BooleanWeight extends Weight {
 
   BooleanWeight(BooleanQuery query, IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
-    this(query, searcher, scoreMode, boost, IndexingMode.ADAPTIVE);
-  }
-
-  BooleanWeight(
-      BooleanQuery query,
-      IndexSearcher searcher,
-      ScoreMode scoreMode,
-      float boost,
-      IndexingMode indexingMode)
-      throws IOException {
-    super(query, indexingMode);
+    super(query);
     this.query = query;
     this.scoreMode = scoreMode;
     this.similarity = searcher.getSimilarity();

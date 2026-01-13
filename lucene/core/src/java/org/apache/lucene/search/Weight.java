@@ -54,7 +54,6 @@ import org.apache.lucene.util.Bits;
 public abstract class Weight implements SegmentCacheable {
 
   protected final Query parentQuery;
-  protected final IndexingMode indexingMode;
 
   /**
    * Sole constructor, typically invoked by sub-classes.
@@ -62,18 +61,7 @@ public abstract class Weight implements SegmentCacheable {
    * @param query the parent query
    */
   protected Weight(Query query) {
-    this(query, IndexingMode.ADAPTIVE);
-  }
-
-  /**
-   * Constructor with IndexMode, typically invoked by sub-classes.
-   *
-   * @param query the parent query
-   * @param indexingMode the index mode for prefetching optimization
-   */
-  protected Weight(Query query, IndexingMode indexingMode) {
     this.parentQuery = query;
-    this.indexingMode = indexingMode;
   }
 
   /**
