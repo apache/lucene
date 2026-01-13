@@ -7,6 +7,8 @@ on:
     # 4:13 on Mondays
     - cron: '13 4 * * 1'
 
+permissions: {}
+
 env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
@@ -18,15 +20,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/prepare-for-build
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+
+      - name: Configure tools
+        uses: ./.github/actions/prepare-for-build
 
       - name: Run Hunspell regression tests against latest commits in dictionary repositories
         run: >
-          ./gradlew -p lucene/analysis/common 
+          ./gradlew -p lucene/analysis/common
           -Ptests.hunspell.regressions=true
           -Ptests.verbose=true
           -Ptests.hunspell.libreoffice.ref=master
           -Ptests.hunspell.woorm.ref=main
-          test 
+          test
           --tests "TestAllDictionaries"

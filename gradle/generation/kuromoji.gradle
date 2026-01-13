@@ -55,7 +55,8 @@ configure(project(":lucene:analysis:kuromoji")) {
       dependsOn sourceSets.main.runtimeClasspath
 
       def dictionaryName = "mecab-ipadic-2.7.0-20070801"
-      def dictionarySource = "https://jaist.dl.sourceforge.net/project/mecab/mecab-ipadic/2.7.0-20070801/${dictionaryName}.tar.gz"
+      // original source: "https://jaist.dl.sourceforge.net/project/mecab/mecab-ipadic/2.7.0-20070801/${dictionaryName}.tar.gz"
+      def dictionarySource = "https://s3.amazonaws.com/lucene-testdata/mecab/${dictionaryName}.tar.gz"
       def dictionaryFile = file("${buildDir}/generate/${dictionaryName}.tar.gz")
       def unpackedDir = file("${buildDir}/generate/${dictionaryName}")
 

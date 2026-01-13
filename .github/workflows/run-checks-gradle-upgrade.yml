@@ -19,18 +19,49 @@ on:
       - '.github/workflows/run-checks-gradle-upgrade.yml'
       - 'gradle/wrapper/**'
 
+permissions: {}
+
 env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
 jobs:
+  gradleScriptBootstrapCheck:
+    name: "Check gradle boostrap script sanity on old JVMs."
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # v5.1.0
+        with:
+          distribution: 'temurin'
+          java-version: 11
+          java-package: jdk
+
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+
+      - shell: bash
+        run: |
+          set +e
+          output=$(./gradlew 2>&1)
+          if [[ "$output" == *"ERROR: java version must be"* ]]; then
+            echo "Passed."
+          else
+            echo "Something is not right: gradlew command returned suspicious output or status code on JDK 11"
+            echo -e "gradlew output echoed below:\n\n$output\n\n---(end of output)"
+            exit 1
+          fi
+
   gradleSanityCheck:
     name: "Run tasks (java: ${{ matrix.java-version }}, alt-java: ${{ matrix.uses-alt-java }})"
     timeout-minutes: 30
+    needs: gradleScriptBootstrapCheck
 
     strategy:
       matrix:
         os: [ ubuntu-latest ]
-        java-version: [ '24' ]
+        java-version: [ '21' ]
         uses-alt-java: [ true, false ]
 
     runs-on: ${{ matrix.os }}
@@ -39,10 +70,15 @@ jobs:
       ALT_JAVA_DIR: /tmp/alt-java
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+
       - uses: ./.github/actions/prepare-for-build
         with:
           java-version: ${{ matrix.java-version }}
+          use-cache: false
 
       - name: Set up RUNTIME_JAVA_HOME variable
         if: ${{ matrix.uses-alt-java }}
@@ -51,24 +87,26 @@ jobs:
           set | grep "JAVA"
 
           echo "Gradle's 'RUNTIME_JAVA_HOME' JDK:"
-          RUNTIME_JAVA_HOME_VAR=JAVA_HOME_`echo ${{ matrix.java-version }} | egrep --only "[0-9]+"`_X64
-          echo ${RUNTIME_JAVA_HOME_VAR} points at ${!RUNTIME_JAVA_HOME_VAR}
-          
+          RUNTIME_JAVA_HOME_VAR=JAVA_HOME_$(echo "$JAVA_VERSION" | grep -E --only "[0-9]+")_X64
+          echo "${RUNTIME_JAVA_HOME_VAR}" points at "${!RUNTIME_JAVA_HOME_VAR}"
+
           # Copy the JDK from its default location to /tmp so that it appears different to gradle.
-          rsync -av ${!RUNTIME_JAVA_HOME_VAR}/ ${{ env.ALT_JAVA_DIR }}/
-          
+          rsync -av "${!RUNTIME_JAVA_HOME_VAR}/" "${ALT_JAVA_DIR}/"
+
           # This sets the environment variable and makes it available for subsequent job steps.
           # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-an-environment-variable
-          echo "RUNTIME_JAVA_HOME=${{ env.ALT_JAVA_DIR }}" >> "$GITHUB_ENV"
+          echo "RUNTIME_JAVA_HOME=$ALT_JAVA_DIR" >> "$GITHUB_ENV"
+        env:
+          JAVA_VERSION: ${{ matrix.java-version }}
 
       - name: ./gradlew tidy
         run: |
           ./gradlew tidy
           if [ ! -z "$(git status --porcelain)" ]; then
-          echo ":warning: **tidy left local checkout in modified state**" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          git status --porcelain >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo ":warning: **tidy left local checkout in modified state**" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          git status --porcelain >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
           git reset --hard && git clean -xfd .
           fi
 
@@ -77,11 +115,11 @@ jobs:
           # add this package for generateEmojiTokenizationTestChecksumLoad.
           sudo apt-get install libwww-perl
           ./gradlew regenerate -x generateUAX29URLEmailTokenizerInternal --rerun-tasks
-          if [ ! -z "$(git status --porcelain)" ]; then 
-            echo ":warning: **regenerate left local checkout in modified state**" >> $GITHUB_STEP_SUMMARY 
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            git status --porcelain >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+          if [ ! -z "$(git status --porcelain)" ]; then
+            echo ":warning: **regenerate left local checkout in modified state**" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            git status --porcelain >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
             git reset --hard && git clean -xfd .
           fi
 
