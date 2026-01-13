@@ -209,4 +209,9 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
       }
     }
   }
+
+  @Override
+  protected boolean supportsFloatVectorFallback() {
+    return false;
+  }
 }
