@@ -5,15 +5,15 @@ name: Prepare Lucene build
 description: Creates a shared setup for other workflows
 
 inputs:
-   java-version:
-     required: false
-     default: "21"
-     description: "The default JDK version to set up."
+  java-version:
+    required: false
+    default: "21"
+    description: "The default JDK version to set up."
 
-   java-distribution:
-     required: false
-     default: "temurin"
-     description: "The default JDK distribution type"
+  java-distribution:
+    required: false
+    default: "temurin"
+    description: "The default JDK distribution type"
 
   use-cache:
     required: false
@@ -21,8 +21,8 @@ inputs:
     description: "Use setup-gradle for dependency caching"
 
 runs:
- using: "composite"
- steps:
+  using: "composite"
+  steps:
     - name: Set up Java (${{ inputs.java-distribution }}, ${{ inputs.java-version }})"
       uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # v5.1.0
       with:
