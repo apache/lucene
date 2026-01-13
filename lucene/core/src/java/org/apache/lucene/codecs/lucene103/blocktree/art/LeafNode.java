@@ -42,16 +42,16 @@ public class LeafNode extends Node {
    * insert the child node into this with the key byte
    *
    * @param childNode the child node
-   * @param key the key byte
+   * @param indexByte the key byte
    * @return the input node4 or an adaptive generated node16
    */
   @Override
-  public Node insert(Node childNode, byte key) {
+  public Node insert(Node childNode, byte indexByte) {
     // This happens at final, we will append all sub blocks to an empty block.
     if (this.key == null) {
       Node4 node4 = new Node4(0);
       node4.output = this.output;
-      node4.insert(childNode, key);
+      node4.insert(childNode, indexByte);
       return node4;
     } else {
       // This case childNode's prefix/key must start with this node's key, e.g.: insert 're' into
@@ -62,18 +62,18 @@ public class LeafNode extends Node {
       node4.output = this.output;
       // TODO: check key's offset, length.
       node4.prefix = this.key.bytes;
-      node4.insert(childNode, key);
+      node4.insert(childNode, indexByte);
       return node4;
     }
   }
 
   @Override
-  public int getChildPos(byte k) {
+  public int getChildPos(byte indexByte) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public byte getChildKey(int pos) {
+  public byte getChildIndexByte(int pos) {
     throw new UnsupportedOperationException();
   }
 

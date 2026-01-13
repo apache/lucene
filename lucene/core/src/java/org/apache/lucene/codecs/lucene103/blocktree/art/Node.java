@@ -105,51 +105,22 @@ public abstract class Node {
     return output;
   }
 
-  /**
-   * get the position of a child corresponding to the input key 'k'
-   *
-   * @param k a key value of the byte range
-   * @return the child position corresponding to the key 'k'
-   */
-  public abstract int getChildPos(byte k);
+  /** Get the position of a child corresponding to the input index byte. */
+  public abstract int getChildPos(byte indexByte);
 
-  /**
-   * get the corresponding key byte of the requested position
-   *
-   * @param pos the position
-   * @return the corresponding key byte
-   */
-  public abstract byte getChildKey(int pos);
+  /** Get the corresponding index byte of the requested position */
+  public abstract byte getChildIndexByte(int pos);
 
-  /**
-   * get the child at the specified position in the node, the 'pos' range from 0 to count
-   *
-   * @param pos the position
-   * @return a Node corresponding to the input position
-   */
+  /** Get the child at the specified position in the node, the 'pos' range from 0 to count */
   public abstract Node getChild(int pos);
 
-  /**
-   * replace the position child to the fresh one
-   *
-   * @param pos the position
-   * @param freshOne the fresh node to replace the old one
-   */
+  /** Replace the position child to the fresh one */
   public abstract void replaceNode(int pos, Node freshOne);
 
-  /**
-   * get the next position in the node
-   *
-   * @param pos current position,-1 to start from the min one
-   * @return the next larger byte key's position which is close to 'pos' position,-1 for end
-   */
+  /** Get the next position in the node */
   public abstract int getNextLargerPos(int pos);
 
-  /**
-   * get the max child's position
-   *
-   * @return the max byte key's position
-   */
+  /** Get the max child's position */
   public abstract int getMaxPos();
 
   /** Read node from data input. */
@@ -279,7 +250,7 @@ public abstract class Node {
     // Get first child to compute max delta fp between parent and children.
     // Children fps are in order, so the first child's fp is min, then delta is max.
 
-    // For node48, its position is the key byte, we use the first child in children.
+    // For node48, its position is the child index byte, we use the first child in children.
     Node child;
     if (nodeType.equals(NodeType.NODE48)) {
       child = getChildren()[0];
@@ -462,38 +433,18 @@ public abstract class Node {
     assert v == 0;
   }
 
-  /**
-   * insert the child node into this with the key byte
-   *
-   * @param childNode the child node
-   * @param key the key byte
-   * @return the input node4 or an adaptive generated node16
-   */
-  public abstract Node insert(Node childNode, byte key);
+  /** Insert the child node into this with the index byte. */
+  public abstract Node insert(Node childNode, byte indexByte);
 
-  /**
-   * insert the LeafNode as a child of the current internal node
-   *
-   * @param current current internal node
-   * @param childNode the leaf node
-   * @param key the key byte reference to the child leaf node
-   * @return an adaptive changed node of the input 'current' node
-   */
-  public static Node insertLeaf(Node current, LeafNode childNode, byte key) {
-    switch (current.nodeType) {
-      case NODE4:
-        return Node4.insert(current, childNode, key);
-      case NODE16:
-        return Node16.insert(current, childNode, key);
-      case NODE48:
-        return Node48.insert(current, childNode, key);
-      case NODE256:
-        return Node256.insert(current, childNode, key);
-      case LEAF_NODE:
-      case DUMMY_NODE:
-      default:
-        throw new IllegalArgumentException("Not supported node type!");
-    }
+  /** Insert the LeafNode as a child of the current internal node. */
+  public static Node insertLeaf(Node current, LeafNode childNode, byte indexByte) {
+    return switch (current.nodeType) {
+      case NODE4 -> Node4.insert(current, childNode, indexByte);
+      case NODE16 -> Node16.insert(current, childNode, indexByte);
+      case NODE48 -> Node48.insert(current, childNode, indexByte);
+      case NODE256 -> Node256.insert(current, childNode, indexByte);
+      default -> throw new IllegalArgumentException("Not supported node type!");
+    };
   }
 
   protected void updateNodePrefix(Node node, int from) {
@@ -522,40 +473,36 @@ public abstract class Node {
   }
 
   /**
-   * search the position of the input byte key in the node's key byte array part
+   * Search the position of the input index byte in the node's index byte array part
    *
-   * @param key the input key byte array
+   * @param indexBytes the input indexBytes byte array
    * @param fromIndex inclusive
    * @param toIndex exclusive
-   * @param k the target key byte value
-   * @return the array offset of the target input key 'k' or -1 to not found
+   * @param indexByte the target indexBytes byte value
+   * @return the array offset of the target input indexBytes 'indexByte' or -1 to not found
    */
-  public static int binarySearch(byte[] key, int fromIndex, int toIndex, byte k) {
-    int inputUnsignedByte = Byte.toUnsignedInt(k);
+  public static int binarySearch(byte[] indexBytes, int fromIndex, int toIndex, byte indexByte) {
+    int inputUnsignedByte = Byte.toUnsignedInt(indexByte);
     int low = fromIndex;
     int high = toIndex - 1;
 
     while (low <= high) {
       int mid = (low + high) >>> 1;
-      int midVal = Byte.toUnsignedInt(key[mid]);
+      int midVal = Byte.toUnsignedInt(indexBytes[mid]);
 
       if (midVal < inputUnsignedByte) {
         low = mid + 1;
       } else if (midVal > inputUnsignedByte) {
         high = mid - 1;
       } else {
-        return mid; // key found
+        return mid; // indexBytes found
       }
     }
-    // key not found.
+    // indexBytes not found.
     return ILLEGAL_IDX;
   }
 
-  /**
-   * Set the node's children to right index while doing the read phase.
-   *
-   * @param children all the not null children nodes in key byte ascending order, no null element.
-   */
+  /** Set the node's children to right index while doing the read phase. */
   abstract void setChildren(Node[] children);
 
   /** Get the node's children. */

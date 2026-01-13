@@ -33,11 +33,11 @@ public class Node4 extends Node {
   }
 
   @Override
-  public int getChildPos(byte k) {
+  public int getChildPos(byte indexByte) {
     for (int i = 0; i < childrenCount; i++) {
       int shiftLeftLen = (3 - i) * 8;
       byte v = (byte) (childIndex >> shiftLeftLen);
-      if (v == k) {
+      if (v == indexByte) {
         return i;
       }
     }
@@ -45,7 +45,7 @@ public class Node4 extends Node {
   }
 
   @Override
-  public byte getChildKey(int pos) {
+  public byte getChildIndexByte(int pos) {
     int shiftLeftLen = (3 - pos) * 8;
     byte v = (byte) (childIndex >> shiftLeftLen);
     return v;
@@ -75,19 +75,13 @@ public class Node4 extends Node {
     return childrenCount - 1;
   }
 
-  /**
-   * insert the child node into the node4 with the key byte
-   *
-   * @param node the node4 to insert into
-   * @param childNode the child node
-   * @param key the key byte
-   * @return the input node4 or an adaptive generated node16
-   */
-  public static Node insert(Node node, Node childNode, byte key) {
+  /** Insert the child node into this with the index byte. */
+  public static Node insert(Node node, Node childNode, byte indexByte) {
     Node4 current = (Node4) node;
     if (current.childrenCount < 4) {
       // insert leaf into current node
-      current.childIndex = IntegerUtil.setByte(current.childIndex, key, current.childrenCount);
+      current.childIndex =
+          IntegerUtil.setByte(current.childIndex, indexByte, current.childrenCount);
       current.children[current.childrenCount] = childNode;
       current.childrenCount++;
       return current;
@@ -98,22 +92,16 @@ public class Node4 extends Node {
       node16.firstChildIndex = LongUtils.initWithFirst4Byte(current.childIndex);
       System.arraycopy(current.children, 0, node16.children, 0, 4);
       copyNode(current, node16);
-      Node freshOne = Node16.insert(node16, childNode, key);
+      Node freshOne = Node16.insert(node16, childNode, indexByte);
       return freshOne;
     }
   }
 
-  /**
-   * insert the child node into this with the key byte
-   *
-   * @param childNode the child node
-   * @param key the key byte
-   * @return the input node4 or an adaptive generated node16
-   */
-  public Node insert(Node childNode, byte key) {
+  /** Insert the child node into this with the index byte. */
+  public Node insert(Node childNode, byte indexByte) {
     if (this.childrenCount < 4) {
       // insert leaf into current node
-      this.childIndex = IntegerUtil.setByte(this.childIndex, key, this.childrenCount);
+      this.childIndex = IntegerUtil.setByte(this.childIndex, indexByte, this.childrenCount);
       this.children[this.childrenCount] = childNode;
       this.childrenCount++;
       return this;
@@ -124,7 +112,7 @@ public class Node4 extends Node {
       node16.firstChildIndex = LongUtils.initWithFirst4Byte(this.childIndex);
       System.arraycopy(this.children, 0, node16.children, 0, 4);
       copyNode(this, node16);
-      Node freshOne = Node16.insert(node16, childNode, key);
+      Node freshOne = Node16.insert(node16, childNode, indexByte);
       return freshOne;
     }
   }

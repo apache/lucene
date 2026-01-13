@@ -38,12 +38,12 @@ public class Node48 extends Node {
 
   // Return the original byte, we will calculate the real index in getChild.
   @Override
-  public int getChildPos(byte k) {
+  public int getChildPos(byte indexByte) {
     // Different with other type's node, this pos is a position value(byte value) to calculate the
     // position (long position and byte position) in childIndex, the value in this position is the
     // index in
     // children.
-    int unsignedIdx = Byte.toUnsignedInt(k);
+    int unsignedIdx = Byte.toUnsignedInt(indexByte);
     int childIdx = childrenIdx(unsignedIdx, childIndex);
     if (childIdx != EMPTY_VALUE) {
       return unsignedIdx;
@@ -57,7 +57,7 @@ public class Node48 extends Node {
   }
 
   @Override
-  public byte getChildKey(int pos) {
+  public byte getChildIndexByte(int pos) {
     return (byte) pos;
   }
 
@@ -73,8 +73,10 @@ public class Node48 extends Node {
     children[(int) idx] = freshOne;
   }
 
-  // For Node48, this return the next key byte, we can use this key to calculate real index with
-  // #getChildIndex
+  /**
+   * For Node48, this return the next index byte, we can use this index byte to calculate real index
+   * with #getChildIndex.
+   */
   @Override
   public int getNextLargerPos(int pos) {
     if (pos == ILLEGAL_IDX) {
@@ -126,22 +128,15 @@ public class Node48 extends Node {
     return ILLEGAL_IDX;
   }
 
-  /**
-   * insert a child node into the node48 node with the key byte
-   *
-   * @param currentNode the node4
-   * @param child the child node
-   * @param key the key byte
-   * @return the node48 or an adaptive generated node256
-   */
-  public static Node insert(Node currentNode, Node child, byte key) {
+  /** Insert the child node into this with the index byte. */
+  public static Node insert(Node currentNode, Node child, byte indexByte) {
     Node48 node48 = (Node48) currentNode;
     if (node48.childrenCount < 48) {
       // insert leaf node into current node
       int pos = node48.childrenCount;
       assert node48.children[pos] == null;
       node48.children[pos] = child;
-      int unsignedByte = Byte.toUnsignedInt(key);
+      int unsignedByte = Byte.toUnsignedInt(indexByte);
       int longPosition = unsignedByte >>> 3;
       int bytePosition = unsignedByte & (8 - 1);
       long original = node48.childIndex[longPosition];
@@ -161,26 +156,20 @@ public class Node48 extends Node {
       }
       node256.childrenCount = node48.childrenCount;
       copyNode(node48, node256);
-      Node freshOne = Node256.insert(node256, child, key);
+      Node freshOne = Node256.insert(node256, child, indexByte);
       return freshOne;
     }
   }
 
-  /**
-   * insert the child node into this with the key byte
-   *
-   * @param child the child node
-   * @param key the key byte
-   * @return the input node4 or an adaptive generated node16
-   */
+  /** Insert the child node into this with the index byte. */
   @Override
-  public Node insert(Node child, byte key) {
+  public Node insert(Node child, byte indexByte) {
     if (this.childrenCount < 48) {
       // insert leaf node into current node
       int pos = this.childrenCount;
       assert this.children[pos] == null;
       this.children[pos] = child;
-      int unsignedByte = Byte.toUnsignedInt(key);
+      int unsignedByte = Byte.toUnsignedInt(indexByte);
       int longPosition = unsignedByte >>> 3;
       int bytePosition = unsignedByte & (8 - 1);
       long original = this.childIndex[longPosition];
@@ -200,7 +189,7 @@ public class Node48 extends Node {
       }
       node256.childrenCount = this.childrenCount;
       copyNode(this, node256);
-      Node freshOne = Node256.insert(node256, child, key);
+      Node freshOne = Node256.insert(node256, child, indexByte);
       return freshOne;
     }
   }

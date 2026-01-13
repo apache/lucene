@@ -34,17 +34,17 @@ public class Node16 extends Node {
   }
 
   @Override
-  public int getChildPos(byte k) {
+  public int getChildPos(byte indexByte) {
     byte[] firstBytes = LongUtils.toBDBytes(firstChildIndex);
     if (childrenCount <= 8) {
-      return Node.binarySearch(firstBytes, 0, childrenCount, k);
+      return Node.binarySearch(firstBytes, 0, childrenCount, indexByte);
     } else {
-      int pos = Node.binarySearch(firstBytes, 0, 8, k);
+      int pos = Node.binarySearch(firstBytes, 0, 8, indexByte);
       if (pos != ILLEGAL_IDX) {
         return pos;
       } else {
         byte[] secondBytes = LongUtils.toBDBytes(secondChildIndex);
-        pos = Node.binarySearch(secondBytes, 0, (childrenCount - 8), k);
+        pos = Node.binarySearch(secondBytes, 0, (childrenCount - 8), indexByte);
         if (pos != ILLEGAL_IDX) {
           return 8 + pos;
         } else {
@@ -55,7 +55,7 @@ public class Node16 extends Node {
   }
 
   @Override
-  public byte getChildKey(int pos) {
+  public byte getChildIndexByte(int pos) {
     int posInLong;
     if (pos <= 7) {
       posInLong = pos;
@@ -92,20 +92,13 @@ public class Node16 extends Node {
     return childrenCount - 1;
   }
 
-  /**
-   * insert a child into the node with the key byte
-   *
-   * @param node the node16 to insert into
-   * @param child the child node to be inserted
-   * @param key the key byte
-   * @return the adaptive changed node of the parent node16
-   */
-  public static Node insert(Node node, Node child, byte key) {
+  /** Insert the child node into this with the index byte. */
+  public static Node insert(Node node, Node child, byte indexByte) {
     Node16 currentNode16 = (Node16) node;
     if (currentNode16.childrenCount < 8) {
       // first
       byte[] bytes = LongUtils.toBDBytes(currentNode16.firstChildIndex);
-      bytes[currentNode16.childrenCount] = key;
+      bytes[currentNode16.childrenCount] = indexByte;
       currentNode16.firstChildIndex = LongUtils.fromBDBytes(bytes);
       currentNode16.children[currentNode16.childrenCount] = child;
       currentNode16.childrenCount++;
@@ -113,7 +106,7 @@ public class Node16 extends Node {
     } else if (currentNode16.childrenCount < 16) {
       // second
       byte[] bytes = LongUtils.toBDBytes(currentNode16.secondChildIndex);
-      bytes[currentNode16.childrenCount - 8] = key;
+      bytes[currentNode16.childrenCount - 8] = indexByte;
       currentNode16.secondChildIndex = LongUtils.fromBDBytes(bytes);
       currentNode16.children[currentNode16.childrenCount] = child;
       currentNode16.childrenCount++;
@@ -138,24 +131,18 @@ public class Node16 extends Node {
       }
       copyNode(currentNode16, node48);
       node48.childrenCount = currentNode16.childrenCount;
-      Node freshOne = Node48.insert(node48, child, key);
+      Node freshOne = Node48.insert(node48, child, indexByte);
       return freshOne;
     }
   }
 
-  /**
-   * insert the child node into this with the key byte
-   *
-   * @param childNode the child node
-   * @param key the key byte
-   * @return the input node4 or an adaptive generated node16
-   */
+  /** Insert the child node into this with the index byte. */
   @Override
-  public Node insert(Node childNode, byte key) {
+  public Node insert(Node childNode, byte indexByte) {
     if (this.childrenCount < 8) {
       // first
       byte[] bytes = LongUtils.toBDBytes(this.firstChildIndex);
-      bytes[this.childrenCount] = key;
+      bytes[this.childrenCount] = indexByte;
       this.firstChildIndex = LongUtils.fromBDBytes(bytes);
       this.children[this.childrenCount] = childNode;
       this.childrenCount++;
@@ -163,7 +150,7 @@ public class Node16 extends Node {
     } else if (this.childrenCount < 16) {
       // second
       byte[] bytes = LongUtils.toBDBytes(this.secondChildIndex);
-      bytes[this.childrenCount - 8] = key;
+      bytes[this.childrenCount - 8] = indexByte;
       this.secondChildIndex = LongUtils.fromBDBytes(bytes);
       this.children[this.childrenCount] = childNode;
       this.childrenCount++;
@@ -188,7 +175,7 @@ public class Node16 extends Node {
       }
       copyNode(this, node48);
       node48.childrenCount = this.childrenCount;
-      Node freshOne = Node48.insert(node48, this, key);
+      Node freshOne = Node48.insert(node48, this, indexByte);
       return freshOne;
     }
   }

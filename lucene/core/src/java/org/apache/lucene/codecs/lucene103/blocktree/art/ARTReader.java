@@ -106,17 +106,17 @@ public class ARTReader {
       }
 
       // Get child.
-      byte key = target.bytes[target.offset];
+      byte indexByte = target.bytes[target.offset];
       int childPos = parent.getChildPos(target.bytes[target.offset]);
       target.offset++;
       target.length--;
       if (childPos != Node.ILLEGAL_IDX) {
         // For Node 256, there is gap in children, we need minus the number of null child from 0 to
         // this pos.
-        // For Node 48, childPos is the key byte, we need use the read index in children.
+        // For Node 48, childPos is the child index byte, we need use the read index in children.
         long childDeltaFpStart;
         if (parent.nodeType.equals(NodeType.NODE48)) {
-          int childIndex = ((Node48) parent).getChildIndex(key);
+          int childIndex = ((Node48) parent).getChildIndex(indexByte);
           childDeltaFpStart =
               parent.childrenDeltaFpStart + (long) childIndex * parent.childrenDeltaFpBytes;
         } else if (parent.nodeType.equals(NodeType.NODE256)) {
@@ -139,7 +139,8 @@ public class ARTReader {
       } else {
         // Not match, keep in this parent.
         //        return parent;
-        // If prefix is 0, and this key has no child, and if this node has output, we should scan
+        // If prefix is 0, and this indexByte has no child, and if this node has output, we should
+        // scan
         // output's block.
         // If prefix is not 0, but target contains prefix (prefixLength equals commonLength), and if
         // this node has output, we still need to scan output's block.
@@ -166,17 +167,17 @@ public class ARTReader {
       return null;
     } else {
       // Get child.
-      byte key = target.bytes[target.offset];
+      byte indexByte = target.bytes[target.offset];
       int childPos = parent.getChildPos(target.bytes[target.offset]);
       target.offset++;
       target.length--;
       if (childPos != Node.ILLEGAL_IDX) {
         // For Node 256, there is gap in children, we need minus the number of null child from 0 to
         // this pos.
-        // For Node 48, childPos is the key byte, we need use the read index in children.
+        // For Node 48, childPos is the child index byte, we need use the read index in children.
         long childDeltaFpStart;
         if (parent.nodeType.equals(NodeType.NODE48)) {
-          int childIndex = ((Node48) parent).getChildIndex(key);
+          int childIndex = ((Node48) parent).getChildIndex(indexByte);
           childDeltaFpStart =
               parent.childrenDeltaFpStart + (long) childIndex * parent.childrenDeltaFpBytes;
         } else if (parent.nodeType.equals(NodeType.NODE256)) {

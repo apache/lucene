@@ -38,8 +38,8 @@ public class Node256 extends Node {
   }
 
   @Override
-  public int getChildPos(byte k) {
-    int pos = Byte.toUnsignedInt(k);
+  public int getChildPos(byte indexByte) {
+    int pos = Byte.toUnsignedInt(indexByte);
     int longIdx = pos >> 6;
 
     final long longVal = bitmapMask[longIdx];
@@ -59,7 +59,7 @@ public class Node256 extends Node {
   //  }
 
   @Override
-  public byte getChildKey(int pos) {
+  public byte getChildIndexByte(int pos) {
     return (byte) pos;
   }
 
@@ -148,41 +148,28 @@ public class Node256 extends Node {
     return ILLEGAL_IDX;
   }
 
-  /**
-   * insert the child node into the node256 node with the key byte
-   *
-   * @param currentNode the node256
-   * @param child the child node
-   * @param key the key byte
-   * @return the node256 node
-   */
-  public static Node256 insert(Node currentNode, Node child, byte key) {
+  /** Insert the child node into this with the index byte. */
+  public static Node256 insert(Node currentNode, Node child, byte indexByte) {
     Node256 node256 = (Node256) currentNode;
     node256.childrenCount++;
-    int i = Byte.toUnsignedInt(key);
+    int i = Byte.toUnsignedInt(indexByte);
     node256.children[i] = child;
-    setBit(key, node256.bitmapMask);
+    setBit(indexByte, node256.bitmapMask);
     return node256;
   }
 
-  /**
-   * insert the child node into this with the key byte
-   *
-   * @param child the child node
-   * @param key the key byte
-   * @return the input node4 or an adaptive generated node16
-   */
+  /** Insert the child node into this with the index byte. */
   @Override
-  public Node insert(Node child, byte key) {
+  public Node insert(Node child, byte indexByte) {
     this.childrenCount++;
-    int i = Byte.toUnsignedInt(key);
+    int i = Byte.toUnsignedInt(indexByte);
     this.children[i] = child;
-    setBit(key, this.bitmapMask);
+    setBit(indexByte, this.bitmapMask);
     return this;
   }
 
-  static void setBit(byte key, long[] bitmapMask) {
-    int i = Byte.toUnsignedInt(key);
+  static void setBit(byte indexByte, long[] bitmapMask) {
+    int i = Byte.toUnsignedInt(indexByte);
     int longIdx = i >>> 6;
     final long previous = bitmapMask[longIdx];
     long newVal = previous | (1L << i);

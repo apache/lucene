@@ -116,7 +116,7 @@ public class ARTBuilderPre {
 
     int pos = -1;
     while ((pos = node.getNextLargerPos(pos)) != -1) {
-      byte key = node.getChildKey(pos);
+      byte key = node.getChildIndexByte(pos);
       Node child = node.getChild(pos);
       // Clone prefix.
       BytesRefBuilder clonedPrefix = new BytesRefBuilder();

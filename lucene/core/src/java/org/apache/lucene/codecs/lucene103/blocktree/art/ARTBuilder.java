@@ -75,7 +75,7 @@ public class ARTBuilder {
 
       // If there are any children have not been saved, push the first one into stack and continue.
       // We want to ensure saving children before parent.
-      // TODO: For node48, its position is the key byte, we save children in index order, so we can
+      // For node48, its position is the index byte, we save children in index order, so we can
       // calculate child fp when loading.
       if (node.nodeType.equals(NodeType.NODE48)) {
         int nextChildPos = node.savedChildPos + 1;
@@ -167,12 +167,12 @@ public class ARTBuilder {
 
     int pos = -1;
     while ((pos = node.getNextLargerPos(pos)) != -1) {
-      byte key = node.getChildKey(pos);
+      byte indexByte = node.getChildIndexByte(pos);
       Node child = node.getChild(pos);
       // Clone prefix.
       BytesRefBuilder clonedPrefix = new BytesRefBuilder();
       clonedPrefix.copyBytes(prefix);
-      clonedPrefix.append(key);
+      clonedPrefix.append(indexByte);
 
       // We append prefix with output in next visit.
       if (child.output == null && child.prefixLength > 0) {
