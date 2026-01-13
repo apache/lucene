@@ -45,6 +45,7 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
 
   private final GroupSelector<T> groupSelector;
   protected final Sort sort;
+  protected final boolean fillSortValues;
 
   protected final int[] reversed;
   protected final int compIDXEnd;
@@ -62,15 +63,29 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
    * @param <T> the group value type
    */
   public static <T> AllGroupHeadsCollector<T> newCollector(GroupSelector<T> selector, Sort sort) {
-    if (sort.equals(Sort.RELEVANCE)) {
-      return new ScoringGroupHeadsCollector<>(selector, sort);
-    }
-    return new SortingGroupHeadsCollector<>(selector, sort);
+    return newCollector(selector, sort, false);
   }
 
-  private AllGroupHeadsCollector(GroupSelector<T> selector, Sort sort) {
+  /**
+   * Create a new AllGroupHeadsCollector based on the type of within-group Sort required
+   *
+   * @param selector a GroupSelector to define the groups
+   * @param sort the within-group sort to use to choose the group head document
+   * @param fillSortValues whether to store sort values for merging across collectors
+   * @param <T> the group value type
+   */
+  public static <T> AllGroupHeadsCollector<T> newCollector(
+      GroupSelector<T> selector, Sort sort, boolean fillSortValues) {
+    if (sort.equals(Sort.RELEVANCE)) {
+      return new ScoringGroupHeadsCollector<>(selector, sort, fillSortValues);
+    }
+    return new SortingGroupHeadsCollector<>(selector, sort, fillSortValues);
+  }
+
+  private AllGroupHeadsCollector(GroupSelector<T> selector, Sort sort, boolean fillSortValues) {
     this.groupSelector = selector;
     this.sort = sort;
+    this.fillSortValues = fillSortValues;
     this.reversed = new int[sort.getSort().length];
     final SortField[] sortFields = sort.getSort();
     for (int i = 0; i < sortFields.length; i++) {
@@ -124,6 +139,17 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
    */
   protected Collection<? extends GroupHead<T>> getCollectedGroupHeads() {
     return heads.values();
+  }
+
+  /**
+   * Returns the sort values for a given group.
+   *
+   * @param groupValue the group value
+   * @return the sort values, or null if not available
+   */
+  public Object[] getSortValues(T groupValue) {
+    GroupHead<T> head = heads.get(groupValue);
+    return head != null ? head.getSortValues() : null;
   }
 
   @Override
@@ -232,19 +258,29 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
      * @throws IOException If I/O related errors occur
      */
     protected abstract void updateDocHead(int doc) throws IOException;
+
+    /**
+     * Returns the sort values for this group head.
+     *
+     * @return the sort values, or null if not stored
+     */
+    protected Object[] getSortValues() {
+      return null;
+    }
   }
 
   /** General implementation using a {@link FieldComparator} to select the group head */
   private static class SortingGroupHeadsCollector<T> extends AllGroupHeadsCollector<T> {
 
-    protected SortingGroupHeadsCollector(GroupSelector<T> selector, Sort sort) {
-      super(selector, sort);
+    protected SortingGroupHeadsCollector(
+        GroupSelector<T> selector, Sort sort, boolean fillSortValues) {
+      super(selector, sort, fillSortValues);
     }
 
     @Override
     protected GroupHead<T> newGroupHead(int doc, T value, LeafReaderContext ctx, Scorable scorer)
         throws IOException {
-      return new SortingGroupHead<>(sort, value, doc, ctx, scorer);
+      return new SortingGroupHead<>(sort, value, doc, ctx, scorer, fillSortValues);
     }
   }
 
@@ -252,20 +288,30 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
 
     final FieldComparator[] comparators;
     final LeafFieldComparator[] leafComparators;
+    final Object[] sortValues;
 
     protected SortingGroupHead(
-        Sort sort, T groupValue, int doc, LeafReaderContext context, Scorable scorer)
+        Sort sort,
+        T groupValue,
+        int doc,
+        LeafReaderContext context,
+        Scorable scorer,
+        boolean fillSortValues)
         throws IOException {
       super(groupValue, doc, context.docBase);
       final SortField[] sortFields = sort.getSort();
       comparators = new FieldComparator[sortFields.length];
       leafComparators = new LeafFieldComparator[sortFields.length];
+      sortValues = fillSortValues ? new Object[sortFields.length] : null;
       for (int i = 0; i < sortFields.length; i++) {
         comparators[i] = sortFields[i].getComparator(1, Pruning.NONE);
         leafComparators[i] = comparators[i].getLeafComparator(context);
         leafComparators[i].setScorer(scorer);
         leafComparators[i].copy(0, doc);
         leafComparators[i].setBottom(0);
+        if (fillSortValues) {
+          sortValues[i] = comparators[i].value(0);
+        }
       }
     }
 
@@ -291,25 +337,34 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
 
     @Override
     public void updateDocHead(int doc) throws IOException {
-      for (LeafFieldComparator comparator : leafComparators) {
-        comparator.copy(0, doc);
-        comparator.setBottom(0);
+      for (int i = 0; i < leafComparators.length; i++) {
+        leafComparators[i].copy(0, doc);
+        leafComparators[i].setBottom(0);
+        if (sortValues != null) {
+          sortValues[i] = comparators[i].value(0);
+        }
       }
       this.doc = doc + docBase;
+    }
+
+    @Override
+    protected Object[] getSortValues() {
+      return sortValues;
     }
   }
 
   /** Specialized implementation for sorting by score */
   private static class ScoringGroupHeadsCollector<T> extends AllGroupHeadsCollector<T> {
 
-    protected ScoringGroupHeadsCollector(GroupSelector<T> selector, Sort sort) {
-      super(selector, sort);
+    protected ScoringGroupHeadsCollector(
+        GroupSelector<T> selector, Sort sort, boolean fillSortValues) {
+      super(selector, sort, fillSortValues);
     }
 
     @Override
     protected GroupHead<T> newGroupHead(
         int doc, T value, LeafReaderContext context, Scorable scorer) throws IOException {
-      return new ScoringGroupHead<>(scorer, value, doc, context.docBase);
+      return new ScoringGroupHead<>(scorer, value, doc, context.docBase, fillSortValues);
     }
   }
 
@@ -317,12 +372,15 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
 
     private Scorable scorer;
     private float topScore;
+    private final Object[] sortValues;
 
-    protected ScoringGroupHead(Scorable scorer, T groupValue, int doc, int docBase)
+    protected ScoringGroupHead(
+        Scorable scorer, T groupValue, int doc, int docBase, boolean fillSortValues)
         throws IOException {
       super(groupValue, doc, docBase);
       this.scorer = scorer;
       this.topScore = scorer.score();
+      this.sortValues = fillSortValues ? new Object[] {topScore} : null;
     }
 
     @Override
@@ -344,6 +402,14 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
     @Override
     protected void updateDocHead(int doc) throws IOException {
       this.doc = doc + docBase;
+      if (sortValues != null) {
+        sortValues[0] = topScore;
+      }
+    }
+
+    @Override
+    protected Object[] getSortValues() {
+      return sortValues;
     }
   }
 }

@@ -136,45 +136,54 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
     int maxDoc = reader.maxDoc();
 
     Sort sortWithinGroup = new Sort(new SortField("id_1", SortField.Type.INT, true));
-    AllGroupHeadsCollector<?> allGroupHeadsCollector =
-        createRandomCollector(groupField, sortWithinGroup);
-    indexSearcher.search(new TermQuery(new Term("content", "random")), allGroupHeadsCollector);
-    assertTrue(arrayContains(new int[] {2, 3, 5, 7}, allGroupHeadsCollector.retrieveGroupHeads()));
+    AllGroupHeadsCollectorManager allGroupHeadsCollectorManager =
+        createRandomCollectorManager(groupField, sortWithinGroup);
+    AllGroupHeadsCollectorManager.GroupHeadsResult groupHeadsResult =
+        indexSearcher.search(
+            new TermQuery(new Term("content", "random")), allGroupHeadsCollectorManager);
+    assertTrue(arrayContains(new int[] {2, 3, 5, 7}, groupHeadsResult.retrieveGroupHeads()));
     assertTrue(
         openBitSetContains(
-            new int[] {2, 3, 5, 7}, allGroupHeadsCollector.retrieveGroupHeads(maxDoc), maxDoc));
+            new int[] {2, 3, 5, 7}, groupHeadsResult.retrieveGroupHeads(maxDoc), maxDoc));
 
-    allGroupHeadsCollector = createRandomCollector(groupField, sortWithinGroup);
-    indexSearcher.search(new TermQuery(new Term("content", "some")), allGroupHeadsCollector);
-    assertTrue(arrayContains(new int[] {2, 3, 4}, allGroupHeadsCollector.retrieveGroupHeads()));
+    allGroupHeadsCollectorManager = createRandomCollectorManager(groupField, sortWithinGroup);
+    groupHeadsResult =
+        indexSearcher.search(
+            new TermQuery(new Term("content", "some")), allGroupHeadsCollectorManager);
+    assertTrue(arrayContains(new int[] {2, 3, 4}, groupHeadsResult.retrieveGroupHeads()));
     assertTrue(
         openBitSetContains(
-            new int[] {2, 3, 4}, allGroupHeadsCollector.retrieveGroupHeads(maxDoc), maxDoc));
+            new int[] {2, 3, 4}, groupHeadsResult.retrieveGroupHeads(maxDoc), maxDoc));
 
-    allGroupHeadsCollector = createRandomCollector(groupField, sortWithinGroup);
-    indexSearcher.search(new TermQuery(new Term("content", "blob")), allGroupHeadsCollector);
-    assertTrue(arrayContains(new int[] {1, 5}, allGroupHeadsCollector.retrieveGroupHeads()));
+    allGroupHeadsCollectorManager = createRandomCollectorManager(groupField, sortWithinGroup);
+    groupHeadsResult =
+        indexSearcher.search(
+            new TermQuery(new Term("content", "blob")), allGroupHeadsCollectorManager);
+    assertTrue(arrayContains(new int[] {1, 5}, groupHeadsResult.retrieveGroupHeads()));
     assertTrue(
-        openBitSetContains(
-            new int[] {1, 5}, allGroupHeadsCollector.retrieveGroupHeads(maxDoc), maxDoc));
+        openBitSetContains(new int[] {1, 5}, groupHeadsResult.retrieveGroupHeads(maxDoc), maxDoc));
 
     // STRING sort type triggers different implementation
     Sort sortWithinGroup2 = new Sort(new SortField("id_2", SortField.Type.STRING, true));
-    allGroupHeadsCollector = createRandomCollector(groupField, sortWithinGroup2);
-    indexSearcher.search(new TermQuery(new Term("content", "random")), allGroupHeadsCollector);
-    assertTrue(arrayContains(new int[] {2, 3, 5, 7}, allGroupHeadsCollector.retrieveGroupHeads()));
+    allGroupHeadsCollectorManager = createRandomCollectorManager(groupField, sortWithinGroup2);
+    groupHeadsResult =
+        indexSearcher.search(
+            new TermQuery(new Term("content", "random")), allGroupHeadsCollectorManager);
+    assertTrue(arrayContains(new int[] {2, 3, 5, 7}, groupHeadsResult.retrieveGroupHeads()));
     assertTrue(
         openBitSetContains(
-            new int[] {2, 3, 5, 7}, allGroupHeadsCollector.retrieveGroupHeads(maxDoc), maxDoc));
+            new int[] {2, 3, 5, 7}, groupHeadsResult.retrieveGroupHeads(maxDoc), maxDoc));
 
     Sort sortWithinGroup3 = new Sort(new SortField("id_2", SortField.Type.STRING, false));
-    allGroupHeadsCollector = createRandomCollector(groupField, sortWithinGroup3);
-    indexSearcher.search(new TermQuery(new Term("content", "random")), allGroupHeadsCollector);
+    allGroupHeadsCollectorManager = createRandomCollectorManager(groupField, sortWithinGroup3);
+    groupHeadsResult =
+        indexSearcher.search(
+            new TermQuery(new Term("content", "random")), allGroupHeadsCollectorManager);
     // 7 b/c higher doc id wins, even if order of field is in not in reverse.
-    assertTrue(arrayContains(new int[] {0, 3, 4, 6}, allGroupHeadsCollector.retrieveGroupHeads()));
+    assertTrue(arrayContains(new int[] {0, 3, 4, 6}, groupHeadsResult.retrieveGroupHeads()));
     assertTrue(
         openBitSetContains(
-            new int[] {0, 3, 4, 6}, allGroupHeadsCollector.retrieveGroupHeads(maxDoc), maxDoc));
+            new int[] {0, 3, 4, 6}, groupHeadsResult.retrieveGroupHeads(maxDoc), maxDoc));
 
     indexSearcher.getIndexReader().close();
     dir.close();
@@ -345,13 +354,14 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
         final String searchTerm = "real" + random().nextInt(3);
         boolean sortByScoreOnly = random().nextBoolean();
         Sort sortWithinGroup = getRandomSort(sortByScoreOnly);
-        AllGroupHeadsCollector<?> allGroupHeadsCollector =
-            createRandomCollector("group", sortWithinGroup);
-        s.search(new TermQuery(new Term("content", searchTerm)), allGroupHeadsCollector);
+        AllGroupHeadsCollectorManager allGroupHeadsCollectorManager =
+            new AllGroupHeadsCollectorManager("group", sortWithinGroup);
+        AllGroupHeadsCollectorManager.GroupHeadsResult groupHeadsResult =
+            s.search(new TermQuery(new Term("content", searchTerm)), allGroupHeadsCollectorManager);
         int[] expectedGroupHeads =
             createExpectedGroupHeads(
                 searchTerm, groupDocs, sortWithinGroup, sortByScoreOnly, fieldIdToDocID);
-        int[] actualGroupHeads = allGroupHeadsCollector.retrieveGroupHeads();
+        int[] actualGroupHeads = groupHeadsResult.retrieveGroupHeads();
         // The actual group heads contains Lucene ids. Need to change them into our id value.
         for (int i = 0; i < actualGroupHeads.length; i++) {
           actualGroupHeads[i] = docIDToFieldId[actualGroupHeads[i]];
@@ -361,7 +371,8 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
         Arrays.sort(actualGroupHeads);
 
         if (VERBOSE) {
-          System.out.println("Collector: " + allGroupHeadsCollector.getClass().getSimpleName());
+          System.out.println(
+              "CollectorManager: " + allGroupHeadsCollectorManager.getClass().getSimpleName());
           System.out.println("Sort within group: " + sortWithinGroup);
           System.out.println("Num group: " + numGroups);
           System.out.println("Num doc: " + numDocs);
@@ -548,14 +559,13 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
     };
   }
 
-  private AllGroupHeadsCollector<?> createRandomCollector(String groupField, Sort sortWithinGroup) {
+  private AllGroupHeadsCollectorManager createRandomCollectorManager(
+      String groupField, Sort sortWithinGroup) {
     if (random().nextBoolean()) {
       ValueSource vs = new BytesRefFieldSource(groupField);
-      return AllGroupHeadsCollector.newCollector(
-          new ValueSourceGroupSelector(vs, new HashMap<>()), sortWithinGroup);
+      return new AllGroupHeadsCollectorManager(vs, new HashMap<>(), sortWithinGroup);
     } else {
-      return AllGroupHeadsCollector.newCollector(
-          new TermGroupSelector(groupField), sortWithinGroup);
+      return new AllGroupHeadsCollectorManager(groupField, sortWithinGroup);
     }
   }
 
