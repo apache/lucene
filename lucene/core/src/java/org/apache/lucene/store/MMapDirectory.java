@@ -336,7 +336,7 @@ public class MMapDirectory extends FSDirectory {
     final String resourceDescription = "MemorySegmentIndexInput(path=\"" + path.toString() + "\")";
 
     // Add IndexingMode hint if configured, preserving existing hints
-    if (indexingMode != null && context.hints().contains(indexingMode) == false) {
+    if (context.hints().contains(indexingMode) == false) {
       var hints = new java.util.HashSet<>(context.hints());
       hints.add(indexingMode);
       context = new DefaultIOContext(hints);
