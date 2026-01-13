@@ -166,7 +166,7 @@ public class TestBlockJoin extends LuceneTestCase {
 
     BooleanQuery.Builder fullQuery = new BooleanQuery.Builder();
     fullQuery.add(new BooleanClause(childJoinQuery, Occur.MUST));
-    fullQuery.add(new BooleanClause(new MatchAllDocsQuery(), Occur.MUST));
+    fullQuery.add(new BooleanClause(MatchAllDocsQuery.INSTANCE, Occur.MUST));
     TopDocs topDocs = s.search(fullQuery.build(), 2);
     assertEquals(2, topDocs.totalHits.value());
     assertEquals(
@@ -562,8 +562,8 @@ public class TestBlockJoin extends LuceneTestCase {
 
     ToParentBlockJoinQuery q =
         new ToParentBlockJoinQuery(
-            new MatchNoDocsQuery(),
-            new QueryBitSetProducer(new MatchAllDocsQuery()),
+            MatchNoDocsQuery.INSTANCE,
+            new QueryBitSetProducer(MatchAllDocsQuery.INSTANCE),
             ScoreMode.Avg);
     QueryUtils.check(random(), q, s);
     s.search(q, 10);

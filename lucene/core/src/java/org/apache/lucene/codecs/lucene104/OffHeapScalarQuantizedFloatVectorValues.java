@@ -252,6 +252,11 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
         public DocIdSetIterator iterator() {
           return iterator;
         }
+
+        @Override
+        public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
+          return Bulk.fromRandomScorerDense(scorer, iterator, matchingDocs);
+        }
       };
     }
 
@@ -345,6 +350,11 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
         @Override
         public DocIdSetIterator iterator() {
           return iterator;
+        }
+
+        @Override
+        public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
+          return Bulk.fromRandomScorerSparse(scorer, iterator, matchingDocs);
         }
       };
     }

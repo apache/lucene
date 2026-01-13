@@ -144,7 +144,7 @@ public class TestTaskExecutor extends LuceneTestCase {
             };
 
         searcher.search(
-            new MatchAllDocsQuery(),
+            MatchAllDocsQuery.INSTANCE,
             new CollectorManager<Collector, Void>() {
               @Override
               public Collector newCollector() {
@@ -218,7 +218,7 @@ public class TestTaskExecutor extends LuceneTestCase {
             };
 
         searcher.search(
-            new MatchAllDocsQuery(),
+            MatchAllDocsQuery.INSTANCE,
             new CollectorManager<Collector, Void>() {
               @Override
               public Collector newCollector() {

@@ -43,7 +43,6 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Terms;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.MergedIterator;
 
@@ -245,12 +244,16 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
 
         groupBuilder.addField(field);
 
-        fieldInfo.putAttribute(PER_FIELD_FORMAT_KEY, formatName);
-        fieldInfo.putAttribute(PER_FIELD_SUFFIX_KEY, Integer.toString(groupBuilder.suffix));
+        fieldInfo.putAttributes(
+            Map.of(
+                PER_FIELD_FORMAT_KEY,
+                formatName,
+                PER_FIELD_SUFFIX_KEY,
+                Integer.toString(groupBuilder.suffix)));
       }
 
       Map<PostingsFormat, FieldsGroup> formatToGroups =
-          CollectionUtil.newHashMap(formatToGroupBuilders.size());
+          HashMap.newHashMap(formatToGroupBuilders.size());
       formatToGroupBuilders.forEach(
           (postingsFormat, builder) -> formatToGroups.put(postingsFormat, builder.build()));
       return formatToGroups;

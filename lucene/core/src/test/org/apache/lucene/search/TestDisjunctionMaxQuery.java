@@ -478,7 +478,7 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
   public void testRewriteEmpty() throws Exception {
     DisjunctionMaxQuery q = new DisjunctionMaxQuery(Collections.emptyList(), 0.0f);
     Query rewritten = s.rewrite(q);
-    Query expected = new MatchNoDocsQuery();
+    Query expected = MatchNoDocsQuery.INSTANCE;
     assertEquals(expected, rewritten);
   }
 

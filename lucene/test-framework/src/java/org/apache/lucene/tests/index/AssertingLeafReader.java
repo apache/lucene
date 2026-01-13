@@ -57,6 +57,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOBooleanSupplier;
+import org.apache.lucene.util.LiveDocs;
 import org.apache.lucene.util.VirtualMethod;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
@@ -1852,7 +1853,11 @@ public class AssertingLeafReader extends FilterLeafReader {
     Bits liveDocs = super.getLiveDocs();
     if (liveDocs != null) {
       assert maxDoc() == liveDocs.length();
-      liveDocs = new AssertingBits(liveDocs);
+      if (liveDocs instanceof LiveDocs) {
+        liveDocs = new AssertingLiveDocs((LiveDocs) liveDocs);
+      } else {
+        liveDocs = new AssertingBits(liveDocs);
+      }
     } else {
       assert maxDoc() == numDocs();
       assert !hasDeletions();
@@ -1886,5 +1891,32 @@ public class AssertingLeafReader extends FilterLeafReader {
   @Override
   public CacheHelper getReaderCacheHelper() {
     return in.getReaderCacheHelper();
+  }
+
+  static class AssertingLiveDocs extends AssertingBits implements LiveDocs {
+    private final LiveDocs liveDocs;
+
+    AssertingLiveDocs(LiveDocs liveDocs) {
+      super(liveDocs);
+      this.liveDocs = liveDocs;
+    }
+
+    @Override
+    public int deletedCount() {
+      int count = liveDocs.deletedCount();
+      assert count >= 0;
+      assert count <= length();
+      return count;
+    }
+
+    @Override
+    public DocIdSetIterator liveDocsIterator() {
+      return liveDocs.liveDocsIterator();
+    }
+
+    @Override
+    public DocIdSetIterator deletedDocsIterator() {
+      return liveDocs.deletedDocsIterator();
+    }
   }
 }

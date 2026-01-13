@@ -255,7 +255,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
   private static void assertHits(final ValueSource func, final float[] scores) throws Exception {
     assertHits(new FunctionQuery(func), scores);
     assertHits(
-        new FunctionScoreQuery(new MatchAllDocsQuery(), func.asDoubleValuesSource()), scores);
+        new FunctionScoreQuery(MatchAllDocsQuery.INSTANCE, func.asDoubleValuesSource()), scores);
   }
 
   private static void assertHits(Query q, float[] scores) throws Exception {

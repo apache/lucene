@@ -114,7 +114,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     MemoryIndex mi = new MemoryIndex();
     mi.addField("f1", "some text", analyzer);
 
-    assertNotEquals(0.0f, mi.search(new MatchAllDocsQuery()));
+    assertNotEquals(0.0f, mi.search(MatchAllDocsQuery.INSTANCE));
     assertNotEquals(0.0f, mi.search(new TermQuery(new Term("f1", "some"))));
 
     // check we can add a new field after searching
