@@ -38,4 +38,9 @@ public class TestLucene95HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
         "Lucene95RWHnswVectorsFormat(name=Lucene95RWHnswVectorsFormat, maxConn=10, beamWidth=20)";
     assertEquals(expectedString, customCodec.getKnnVectorsFormatForField("bogus_field").toString());
   }
+
+  @Override
+  protected boolean supportsFloatVectorFallback() {
+    return false;
+  }
 }
