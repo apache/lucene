@@ -90,10 +90,9 @@ jobs:
           mkdir /tmp/tmpfs
           sudo mount_tmpfs -o noowners -s 1g /tmp/tmpfs
           sudo sysctl debug.lowpri_throttle_enabled=0
-          echo "tests.workDir=/tmp/tmpfs/lucene" >> build-options.local.properties
 
       - name: Run gradle tests
-        run: ./gradlew test "-Ptask.times=true" "-Pvalidation.errorprone=false"
+        run: ./gradlew test "-Ptask.times=true" "-Pvalidation.errorprone=false" "-Ptests.workDir=/tmp/tmpfs/lucene"
         env:
           # Set to the defaults to override the "CI"-based logic that would enable C2
           # we can't afford C2 on github runners.
