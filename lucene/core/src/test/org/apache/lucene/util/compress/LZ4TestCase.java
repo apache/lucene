@@ -143,7 +143,8 @@ public abstract class LZ4TestCase extends LuceneTestCase {
 
     // Now restore and compare bytes
     byte[] restored = new byte[length + random().nextInt(10)];
-    LZ4.decompress(new ByteArrayDataInput(compressed), length, restored, 0);
+    int restoreOffsetEnd = LZ4.decompress(new ByteArrayDataInput(compressed), length, restored, 0);
+    assertEquals(length, restoreOffsetEnd);
     assertArrayEquals(
         ArrayUtil.copyOfSubArray(data, offset, offset + length),
         ArrayUtil.copyOfSubArray(restored, 0, length));
@@ -151,7 +152,9 @@ public abstract class LZ4TestCase extends LuceneTestCase {
     // Now restore with an offset
     int restoreOffset = TestUtil.nextInt(random(), 1, 10);
     restored = new byte[restoreOffset + length + random().nextInt(10)];
-    LZ4.decompress(new ByteArrayDataInput(compressed), length, restored, restoreOffset);
+    restoreOffsetEnd =
+        LZ4.decompress(new ByteArrayDataInput(compressed), length, restored, restoreOffset);
+    assertEquals(length, restoreOffsetEnd - restoreOffset);
     assertArrayEquals(
         ArrayUtil.copyOfSubArray(data, offset, offset + length),
         ArrayUtil.copyOfSubArray(restored, restoreOffset, restoreOffset + length));
@@ -380,5 +383,35 @@ public abstract class LZ4TestCase extends LuceneTestCase {
     // The compressed output is smaller than the original input despite being incompressible on its
     // own
     assertTrue(out.size() < len);
+  }
+
+  public void testDecompressOffset0() {
+    byte[] input =
+        new byte[] {
+          // token
+          0xE,
+          // offset 0
+          0,
+          0,
+          // last literal
+          // token
+          7 << 4,
+          // literal
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        };
+
+    byte[] output = new byte[18];
+
+    var e =
+        assertThrows(
+            IOException.class,
+            () -> LZ4.decompress(new ByteArrayDataInput(input), output.length, output, 0));
+    assertEquals("offset 0 is invalid", e.getMessage());
   }
 }
