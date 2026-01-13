@@ -15,7 +15,7 @@ errorprone = "2.45.0"
 # markdown documentation generation
 flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
-googleJavaFormat = "1.33.0"
+googleJavaFormat = "1.33.0-markdown"
 # gradle build support
 groovy = "5.0.3"
 # test assertions
@@ -72,7 +72,7 @@ flexmark-ext-abbreviation = { module = "com.vladsch.flexmark:flexmark-ext-abbrev
 flexmark-ext-attributes = { module = "com.vladsch.flexmark:flexmark-ext-attributes", version.ref = "flexmark" }
 flexmark-ext-autolink = { module = "com.vladsch.flexmark:flexmark-ext-autolink", version.ref = "flexmark" }
 flexmark-ext-tables = { module = "com.vladsch.flexmark:flexmark-ext-tables", version.ref = "flexmark" }
-gjf = { module = "com.google.googlejavaformat:google-java-format", version.ref = "googleJavaFormat" }
+gjf = { module = "com.carrotsearch.googlejavaformat:google-java-format", version.ref = "googleJavaFormat" }
 groovy = { module = "org.apache.groovy:groovy-all", version.ref = "groovy" }
 hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
 icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
