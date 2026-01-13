@@ -16,8 +16,10 @@
  */
 package org.apache.lucene.search;
 
+import org.apache.lucene.store.IOContext;
+
 /** The different indexing modes for prefetching. */
-public enum IndexingMode {
+public enum IndexingMode implements IOContext.FileOpenHint {
   HOT,
   COLD,
   ADAPTIVE

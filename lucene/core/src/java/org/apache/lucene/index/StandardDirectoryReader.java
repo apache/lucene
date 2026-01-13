@@ -31,9 +31,11 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import org.apache.lucene.search.IndexingMode;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOFunction;
 import org.apache.lucene.util.IOUtils;
@@ -290,12 +292,22 @@ public final class StandardDirectoryReader extends DirectoryReader {
       SegmentCommitInfo commitInfo, SegmentReader oldReader, int indexCreatedVersionMajor)
       throws IOException {
 
+    // Extract IndexingMode from directory if it's MMapDirectory
+    // We need it before openInput is called in MMapDirectory
+    IOContext context = IOContext.DEFAULT;
+    if (commitInfo.info.dir instanceof MMapDirectory mmapDir) {
+      IndexingMode mode = mmapDir.getIndexingMode();
+      if (mode != null) {
+        context = IOContext.DEFAULT.withHints(mode);
+      }
+    }
+
     SegmentReader newReader;
     if (oldReader == null
         || commitInfo.info.getUseCompoundFile()
             != oldReader.getSegmentInfo().info.getUseCompoundFile()) {
       // this is a new reader; in case we hit an exception we can decRef it safely
-      newReader = new SegmentReader(commitInfo, indexCreatedVersionMajor, IOContext.DEFAULT);
+      newReader = new SegmentReader(commitInfo, indexCreatedVersionMajor, context);
     } else {
       if (oldReader.isNRT) {
         // We must load liveDocs/DV updates from disk:

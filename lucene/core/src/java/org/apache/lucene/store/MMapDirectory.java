@@ -35,6 +35,7 @@ import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.logging.Logger;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.search.IndexingMode;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.Unwrappable;
 
@@ -175,6 +176,8 @@ public class MMapDirectory extends FSDirectory {
 
   private BiPredicate<String, IOContext> preload = NO_FILES;
 
+  private IndexingMode indexingMode = IndexingMode.ADAPTIVE;
+
   /**
    * Default max chunk size:
    *
@@ -305,6 +308,16 @@ public class MMapDirectory extends FSDirectory {
     this.groupingFunction = groupingFunction;
   }
 
+  /** Returns the configured IndexingMode for this directory. */
+  public IndexingMode getIndexingMode() {
+    return indexingMode;
+  }
+
+  /** Sets the IndexingMode for this directory. */
+  public void setIndexingMode(IndexingMode indexingMode) {
+    this.indexingMode = indexingMode;
+  }
+
   /**
    * Returns the current mmap chunk size.
    *
@@ -322,6 +335,12 @@ public class MMapDirectory extends FSDirectory {
     Path path = directory.resolve(name);
     final String resourceDescription = "MemorySegmentIndexInput(path=\"" + path.toString() + "\")";
 
+    // Add IndexingMode hint if configured, preserving existing hints
+    if (indexingMode != null && context.hints().contains(indexingMode) == false) {
+      var hints = new java.util.HashSet<>(context.hints());
+      hints.add(indexingMode);
+      context = new DefaultIOContext(hints);
+    }
     // Work around for JDK-8259028: we need to unwrap our test-only file system layers
     path = Unwrappable.unwrapAll(path);
 

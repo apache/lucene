@@ -59,10 +59,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
   private TrieReader.Node[] nodes = new TrieReader.Node[1];
   private final IndexingMode indexingMode;
 
-  public SegmentTermsEnum(FieldReader fr, TrieReader reader) throws IOException {
-    this(fr, reader, IndexingMode.ADAPTIVE);
-  }
-
   public SegmentTermsEnum(FieldReader fr, TrieReader reader, IndexingMode indexingMode)
       throws IOException {
     this.fr = fr;

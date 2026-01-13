@@ -339,7 +339,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         });
   }
 
-  public boolean isProbablyLoaded(MemorySegment segment) {
+  private boolean isProbablyLoaded(MemorySegment segment) {
     if (NATIVE_ACCESS.isEmpty()) {
       return true;
     }

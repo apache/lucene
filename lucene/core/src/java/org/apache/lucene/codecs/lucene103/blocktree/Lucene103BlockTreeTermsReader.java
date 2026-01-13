@@ -33,6 +33,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.search.IndexingMode;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
@@ -108,6 +109,10 @@ public final class Lucene103BlockTreeTermsReader extends FieldsProducer {
       throws IOException {
     this.postingsReader = postingsReader;
     this.segment = state.segmentInfo.name;
+
+    // Extract IndexingMode from IOContext hints
+    IndexingMode indexingMode =
+        state.context.hints(IndexingMode.class).findFirst().orElse(IndexingMode.ADAPTIVE);
 
     try {
       String termsName =
@@ -209,7 +214,8 @@ public final class Lucene103BlockTreeTermsReader extends FieldsProducer {
                         metaIn,
                         indexIn,
                         minTerm,
-                        maxTerm));
+                        maxTerm,
+                        indexingMode));
             if (previous != null) {
               throw new CorruptIndexException("duplicate field: " + fieldInfo.name, metaIn);
             }
