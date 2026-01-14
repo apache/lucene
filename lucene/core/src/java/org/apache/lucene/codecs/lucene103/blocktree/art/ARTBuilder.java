@@ -129,14 +129,29 @@ public class ARTBuilder {
     if (artBuilder.root.nodeType.equals(NodeType.LEAF_NODE)) {
       insert(artBuilder.root.key, artBuilder.root.output);
     } else {
-      BytesRef key = this.root.key;
-      // Finally, we will append all sub blocks to an empty block.
-      if (key == null) {
-        this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[0]);
-        updateNodePrefix(artBuilder.root, 1);
+      if (this.root.nodeType.equals(NodeType.LEAF_NODE)) {
+        assert this.root.prefixLength == 0;
+        final BytesRef key = this.root.key;
+        if (key == null) {
+          this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[0]);
+          updateNodePrefix(artBuilder.root, 1);
+        } else {
+          this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[key.length]);
+          updateNodePrefix(artBuilder.root, key.length + 1);
+        }
       } else {
-        this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[key.length]);
-        updateNodePrefix(artBuilder.root, key.length + 1);
+        assert this.root.key == null;
+        final int prefixLength = this.root.prefixLength;
+        if (prefixLength == 0) {
+          this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[0]);
+          updateNodePrefix(artBuilder.root, 1);
+        } else {
+          assert prefixLength
+              == ARTUtil.commonPrefixLength(
+                  this.root.prefix, 0, prefixLength, artBuilder.root.prefix, 0, prefixLength);
+          this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[prefixLength]);
+          updateNodePrefix(artBuilder.root, prefixLength + 1);
+        }
       }
     }
   }
