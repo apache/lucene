@@ -202,6 +202,8 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
                   OffHeapScalarQuantizedVectorValues.packNibbles(scratch, expectedVector);
               case SINGLE_BIT_QUERY_NIBBLE ->
                   OptimizedScalarQuantizer.packAsBinary(scratch, expectedVector);
+              case DIBIT_QUERY_NIBBLE ->
+                  OptimizedScalarQuantizer.transposeDibit(scratch, expectedVector);
             }
             assertArrayEquals(expectedVector, qvectorValues.vectorValue(docIndexIterator.index()));
             var actualCorrections = qvectorValues.getCorrectiveTerms(docIndexIterator.index());

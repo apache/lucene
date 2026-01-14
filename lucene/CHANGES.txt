@@ -70,6 +70,11 @@ New Features
    `Lucene104HnswScalarQuantizedVectorsFormat(ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE, int, int)`
     (Ben Trent)
 
+ * GITHUB#15564: Further extend `Lucene104ScalarQuantizedVectorsFormat` and `Lucene104HnswScalarQuantizedVectorsFormat` to
+   allow asymmetric quantization with 2 bits and 4 bit queries. This can provide increased recall over single bit
+   with little additional storage cost and latency.
+   (Ben Trent)
+
  * GITHUB#15415: Add fallback support to Lucene104ScalarQuantizedVectorsFormat getFloatVectorValues when there are
    no full-precision vectors present (Pulkit Gupta)
 
