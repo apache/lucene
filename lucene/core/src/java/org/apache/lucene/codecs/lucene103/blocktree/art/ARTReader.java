@@ -211,9 +211,9 @@ public class ARTReader {
 
   private boolean matchRemainingBytes(Node node, BytesRef target) {
     if (node.nodeType.equals(NodeType.LEAF_NODE)) {
-      // TODO: Should we consume remaining bytes.
       if (node.key == null) {
-        return target.length == 0;
+        // If this leaf node has no key, we should scan the suffixes' block.
+        return true;
       } else {
         int commonLength =
             ARTUtil.commonPrefixLength(
