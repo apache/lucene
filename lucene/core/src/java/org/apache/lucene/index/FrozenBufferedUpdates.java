@@ -49,8 +49,7 @@ final class FrozenBufferedUpdates {
    * we run this before applying the deletes/updates. */
 
   /* Query we often undercount (say 24 bytes), plus int. */
-  static final int BYTES_PER_DEL_QUERY =
-      RamUsageEstimator.NUM_BYTES_OBJECT_REF + Integer.BYTES + 24;
+  static final int BYTES_PER_DEL_QUERY = RamUsageEstimator.NUM_BYTES_OBJECT_REF + Integer.BYTES + 24;
 
   // Terms, in sorted order:
   final PrefixCodedTerms deleteTerms;
@@ -106,10 +105,8 @@ final class FrozenBufferedUpdates {
     this.fieldUpdates = Map.copyOf(updates.fieldUpdates);
     this.fieldUpdatesCount = updates.numFieldUpdates.get();
 
-    bytesUsed =
-        (int)
-            ((deleteTerms.ramBytesUsed() + deleteQueries.length * (long) BYTES_PER_DEL_QUERY)
-                + updates.fieldUpdatesBytesUsed.get());
+    bytesUsed = (int) ((deleteTerms.ramBytesUsed() + deleteQueries.length * (long) BYTES_PER_DEL_QUERY)
+        + updates.fieldUpdatesBytesUsed.get());
 
     if (infoStream != null && infoStream.isEnabled("BD")) {
       infoStream.message(
@@ -201,8 +198,7 @@ final class FrozenBufferedUpdates {
       }
       final boolean isSegmentPrivateDeletes = privateSegment != null;
       if (fieldUpdates.isEmpty() == false) {
-        updateCount +=
-            applyDocValuesUpdates(segState, fieldUpdates, delGen, isSegmentPrivateDeletes);
+        updateCount += applyDocValuesUpdates(segState, fieldUpdates, delGen, isSegmentPrivateDeletes);
       }
     }
 
@@ -250,8 +246,7 @@ final class FrozenBufferedUpdates {
       boolean isNumeric = value.isNumeric();
       FieldUpdatesBuffer.BufferedUpdateIterator iterator = value.iterator();
       FieldUpdatesBuffer.BufferedUpdate bufferedUpdate;
-      TermDocsIterator termDocsIterator =
-          new TermDocsIterator(segState.reader, iterator.isSortedTerms());
+      TermDocsIterator termDocsIterator = new TermDocsIterator(segState.reader, false);
       while ((bufferedUpdate = iterator.next()) != null) {
         // TODO: we traverse the terms in update order (not term order) so that we
         // apply the updates in the correct order, i.e. if two terms update the
@@ -263,8 +258,8 @@ final class FrozenBufferedUpdates {
         // which will get same docIDUpto, yet will still need to respect the order
         // those updates arrived.
         // TODO: we could at least *collate* by field?
-        final DocIdSetIterator docIdSetIterator =
-            termDocsIterator.nextTerm(bufferedUpdate.termField, bufferedUpdate.termValue);
+        final DocIdSetIterator docIdSetIterator = termDocsIterator.nextTerm(bufferedUpdate.termField,
+            bufferedUpdate.termValue);
         if (docIdSetIterator != null) {
           final int limit;
           if (delGen == segState.delGen) {
@@ -285,21 +280,18 @@ final class FrozenBufferedUpdates {
           if (dvUpdates == null) {
             if (isNumeric) {
               if (value.hasSingleValue()) {
-                dvUpdates =
-                    new NumericDocValuesFieldUpdates.SingleValueNumericDocValuesFieldUpdates(
-                        delGen, updateField, segState.reader.maxDoc(), value.getNumericValue(0));
+                dvUpdates = new NumericDocValuesFieldUpdates.SingleValueNumericDocValuesFieldUpdates(
+                    delGen, updateField, segState.reader.maxDoc(), value.getNumericValue(0));
               } else {
-                dvUpdates =
-                    new NumericDocValuesFieldUpdates(
-                        delGen,
-                        updateField,
-                        value.getMinNumeric(),
-                        value.getMaxNumeric(),
-                        segState.reader.maxDoc());
+                dvUpdates = new NumericDocValuesFieldUpdates(
+                    delGen,
+                    updateField,
+                    value.getMinNumeric(),
+                    value.getMaxNumeric(),
+                    segState.reader.maxDoc());
               }
             } else {
-              dvUpdates =
-                  new BinaryDocValuesFieldUpdates(delGen, updateField, segState.reader.maxDoc());
+              dvUpdates = new BinaryDocValuesFieldUpdates(delGen, updateField, segState.reader.maxDoc());
             }
             resolvedUpdates.add(dvUpdates);
           }
@@ -464,7 +456,7 @@ final class FrozenBufferedUpdates {
 
       FieldTermIterator iter = deleteTerms.iterator();
       BytesRef delTerm;
-      TermDocsIterator termDocsIterator = new TermDocsIterator(segState.reader, true);
+      TermDocsIterator termDocsIterator = new TermDocsIterator(segState.reader, false);
       while ((delTerm = iter.next()) != null) {
         final DocIdSetIterator iterator = termDocsIterator.nextTerm(iter.field(), delTerm);
         if (iterator != null) {
