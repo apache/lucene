@@ -196,6 +196,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
       System.arraycopy(nodeEnds, 0, nextNodeEnds, 0, nodeEnds.length);
       nodeEnds = nextNodeEnds;
     }
+    assert end > nodeEnds[nextNodeIndex - 1];
     nodes[nextNodeIndex] = node;
     nodeEnds[nextNodeIndex] = end;
     nextNodeIndex++;
@@ -503,9 +504,6 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         // }
         //        targetUpto++;
         targetUpto = clone.offset;
-
-        // NextNode != node, we get a child to search, set nextNode to nodes.
-        setNode(nextNode, clone.offset);
 
         if (node.hasOutput()) {
           // if (DEBUG) System.out.println("    node is final!");
