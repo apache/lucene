@@ -370,11 +370,11 @@ public class OptimizedScalarQuantizer {
    *
    * <p>This bit decomposition for fast bitwise SIMD operations was first proposed in:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    *   Gao, Jianyang, and Cheng Long. "RaBitQ: Quantizing High-
    *   Dimensional Vectors with a Theoretical Error Bound for Approximate Nearest Neighbor Search."
    *   Proceedings of the ACM on Management of Data 2, no. 3 (2024): 1-27.
-   *   </pre>
+   *   </code></pre>
    *
    * @param q the query vector, assumed to be half-byte quantized with values between 0 and 15
    * @param quantQueryByte the byte array to store the transposed query vector

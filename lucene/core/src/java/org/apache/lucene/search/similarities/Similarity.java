@@ -242,11 +242,11 @@ public abstract class Similarity {
      * Bulk computation of scores. For each index {@code i} in [0, size), scores[i] is computed as
      * score(freqs[i], norms[i]). The default implementation does the following:
      *
-     * <pre class="prettyprint">
+     * <pre><code class="language-java">
      * for (int i = 0; i &lt; size; ++i) {
      *   scores[i] = score(freqs[i], norms[i]);
      * }
-     * </pre>
+     * </code></pre>
      *
      * <p><b>NOTE</b>: It is legal to pass the same {@code freqs} and {@code scores} arrays.
      */

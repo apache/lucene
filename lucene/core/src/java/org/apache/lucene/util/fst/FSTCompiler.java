@@ -978,20 +978,20 @@ public class FSTCompiler<T> {
    * <p>- If a FSTReader DataOutput was used, such as the one returned by {@link
    * #getOnHeapReaderWriter(int)}
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    *     fstMetadata = fstCompiler.compile();
    *     fst = FST.fromFSTReader(fstMetadata, fstCompiler.getFSTReader());
-   * </pre>
+   * </code></pre>
    *
    * <p>- If a non-FSTReader DataOutput was used, such as {@link
    * org.apache.lucene.store.IndexOutput}, you need to first create the corresponding {@link
    * org.apache.lucene.store.DataInput}, such as {@link org.apache.lucene.store.IndexInput} then
    * pass it to the FST construct
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    *     fstMetadata = fstCompiler.compile();
    *     fst = new FST&lt;&gt;(fstMetadata, dataInput, new OffHeapFSTStore());
-   * </pre>
+   * </code></pre>
    */
   public FST.FSTMetadata<T> compile() throws IOException {
 
