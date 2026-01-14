@@ -71,6 +71,8 @@ New Features
 Improvements
 ---------------------
 
+* GITHUB#15568: Add markdown support for javadocs and modernize highlighting a bit. (Dawid Weiss)
+
 * GITHUB#14972: Require named thread factory in ThreadPoolExecutor constructors. (Dawid Weiss)
 
 * GITHUB#14597: Rewrite expressions compiler to use Java 24+ Classfile library instead of ASM.
