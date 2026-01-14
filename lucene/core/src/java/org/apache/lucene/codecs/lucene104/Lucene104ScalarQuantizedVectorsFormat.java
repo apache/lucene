@@ -136,7 +136,16 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
      * <p>This is the most space efficient encoding, and will produce an index 8x smaller than
      * {@link #UNSIGNED_BYTE}. However, this comes at the cost of accuracy.
      */
-    SINGLE_BIT_QUERY_NIBBLE(3, (byte) 1, 1, (byte) 4, 4);
+    SINGLE_BIT_QUERY_NIBBLE(3, (byte) 1, 1, (byte) 4, 4),
+    /**
+     * Each dimension is quantized to 2 bits (dibit) and packed into bytes. During query time, the
+     * query vector is quantized to 4 bits per dimension.
+     *
+     * <p>This encoding produces an index 4x smaller than {@link #UNSIGNED_BYTE}, offering a balance
+     * between the compression of {@link #SINGLE_BIT_QUERY_NIBBLE} and the accuracy of {@link
+     * #PACKED_NIBBLE}.
+     */
+    DIBIT_QUERY_NIBBLE(4, (byte) 2, 2, (byte) 4, 4);
 
     public static ScalarEncoding fromNumBits(int bits) {
       for (ScalarEncoding encoding : values()) {

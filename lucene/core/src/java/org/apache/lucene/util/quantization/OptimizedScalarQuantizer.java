@@ -440,6 +440,86 @@ public class OptimizedScalarQuantizer {
     }
   }
 
+  /**
+   * Transpose a 2-bit (dibit) quantized vector into a byte array for efficient bitwise operations.
+   * The result has 2 stripes: similar to {@link #transposeHalfByte}, but only for 2 bits
+   *
+   * @param vector the 2-bit quantized vector (values 0-3)
+   * @param packed the byte array to store the transposed vector
+   */
+  public static void transposeDibit(byte[] vector, byte[] packed) {
+    int limit = vector.length - 7;
+    int i = 0;
+    int index = 0;
+    for (; i < limit; i += 8, index++) {
+      int lowerByte =
+          (vector[i] & 1) << 7
+              | (vector[i + 1] & 1) << 6
+              | (vector[i + 2] & 1) << 5
+              | (vector[i + 3] & 1) << 4
+              | (vector[i + 4] & 1) << 3
+              | (vector[i + 5] & 1) << 2
+              | (vector[i + 6] & 1) << 1
+              | (vector[i + 7] & 1);
+      int upperByte =
+          ((vector[i] >> 1) & 1) << 7
+              | ((vector[i + 1] >> 1) & 1) << 6
+              | ((vector[i + 2] >> 1) & 1) << 5
+              | ((vector[i + 3] >> 1) & 1) << 4
+              | ((vector[i + 4] >> 1) & 1) << 3
+              | ((vector[i + 5] >> 1) & 1) << 2
+              | ((vector[i + 6] >> 1) & 1) << 1
+              | ((vector[i + 7] >> 1) & 1);
+      packed[index] = (byte) lowerByte;
+      packed[index + packed.length / 2] = (byte) upperByte;
+    }
+    if (i == vector.length) {
+      return;
+    }
+    int lowerByte = 0;
+    int upperByte = 0;
+    for (int j = 7; i < vector.length; j--, i++) {
+      assert vector[i] >= 0 && vector[i] <= 3;
+      lowerByte |= (vector[i] & 1) << j;
+      upperByte |= ((vector[i] >> 1) & 1) << j;
+    }
+    packed[index] = (byte) lowerByte;
+    packed[index + packed.length / 2] = (byte) upperByte;
+  }
+
+  /**
+   * Untranspose a packed 2-bit (dibit) vector back to its original form. This is the reverse of
+   * {@link #transposeDibit}.
+   *
+   * @param packed the packed/transposed byte array
+   * @param vector the output vector where each byte will contain a 2-bit value (0-3)
+   */
+  public static void untransposeDibit(byte[] packed, byte[] vector) {
+    int stripeSize = packed.length / 2;
+    int limit = vector.length - 7;
+    int i = 0;
+    int index = 0;
+    for (; i < limit; i += 8, index++) {
+      byte lowerByte = packed[index];
+      byte upperByte = packed[index + stripeSize];
+      vector[i] = (byte) (((lowerByte >> 7) & 1) | (((upperByte >> 7) & 1) << 1));
+      vector[i + 1] = (byte) (((lowerByte >> 6) & 1) | (((upperByte >> 6) & 1) << 1));
+      vector[i + 2] = (byte) (((lowerByte >> 5) & 1) | (((upperByte >> 5) & 1) << 1));
+      vector[i + 3] = (byte) (((lowerByte >> 4) & 1) | (((upperByte >> 4) & 1) << 1));
+      vector[i + 4] = (byte) (((lowerByte >> 3) & 1) | (((upperByte >> 3) & 1) << 1));
+      vector[i + 5] = (byte) (((lowerByte >> 2) & 1) | (((upperByte >> 2) & 1) << 1));
+      vector[i + 6] = (byte) (((lowerByte >> 1) & 1) | (((upperByte >> 1) & 1) << 1));
+      vector[i + 7] = (byte) ((lowerByte & 1) | ((upperByte & 1) << 1));
+    }
+    if (i < vector.length) {
+      byte lowerByte = packed[index];
+      byte upperByte = packed[index + stripeSize];
+      for (int j = 7; i < vector.length; j--, i++) {
+        vector[i] = (byte) (((lowerByte >> j) & 1) | (((upperByte >> j) & 1) << 1));
+      }
+    }
+  }
+
   private static double clamp(double x, double a, double b) {
     return Math.min(Math.max(x, a), b);
   }

@@ -296,6 +296,25 @@ public final class VectorUtil {
   }
 
   /**
+   * Dot product computed over int4 (values between [0,15]) bytes and a dibit (2-bit) vector.
+   *
+   * <p>The int4 query vector is expected to be transposed (4 stripes, each containing one bit plane
+   * of all dimensions). The dibit document vector is expected to be transposed (2 stripes: lower
+   * bits first, then upper bits).
+   *
+   * @param q the int4 query vector (transposed, 4 stripes)
+   * @param d the dibit document vector (transposed, 2 stripes)
+   * @return the dot product
+   */
+  public static long int4DibitDotProduct(byte[] q, byte[] d) {
+    if (q.length != d.length * 2) {
+      throw new IllegalArgumentException(
+          "vector dimensions incompatible: " + q.length + "!= " + 2 + " x " + d.length);
+    }
+    return IMPL.int4DibitDotProduct(q, d);
+  }
+
+  /**
    * For xorBitCount we stride over the values as either 64-bits (long) or 32-bits (int) at a time.
    * On ARM Long::bitCount is not vectorized, and therefore produces less than optimal code, when
    * compared to Integer::bitCount. While Long::bitCount is optimal on x64. See
