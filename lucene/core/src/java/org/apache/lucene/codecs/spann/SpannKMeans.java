@@ -4,9 +4,7 @@ import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
-/**
- * Simple in-memory K-Means implementation for SPANN clustering.
- */
+/** Simple in-memory K-Means implementation for SPANN clustering. */
 public class SpannKMeans {
 
     /**
@@ -18,8 +16,8 @@ public class SpannKMeans {
      * @param maxIterations      Max iterations for Lloyd's algorithm
      * @return The computed centroids [k][dimension]
      */
-    public static float[][] cluster(float[][] vectors, int k, VectorSimilarityFunction similarityFunction,
-            int maxIterations) {
+    public static float[][] cluster(
+            float[][] vectors, int k, VectorSimilarityFunction similarityFunction, int maxIterations) {
         if (vectors.length < k) {
             return Arrays.copyOf(vectors, vectors.length);
         }
@@ -28,12 +26,13 @@ public class SpannKMeans {
         float[][] centroids = new float[k][dim];
         Random random = new Random(42); // Seeded for determinism
 
-        // TODO: Implement K-Means++ for faster convergence
+        // Initial centroid selection
         for (int i = 0; i < k; i++) {
             centroids[i] = vectors[random.nextInt(vectors.length)].clone();
         }
 
         int[] assignments = new int[vectors.length];
+        Arrays.fill(assignments, -1);
 
         for (int iter = 0; iter < maxIterations; iter++) {
             boolean changed = false;

@@ -5,14 +5,15 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * Buffers vectors in memory until flush.
+ *
  * <p>
- * TODO: Replace with off-heap or disk-backed buffering (e.g. ByteBlockPool) to
- * support segments larger than heap.
+ * Future improvements could include off-heap or disk-backed buffering (e.g.
+ * ByteBlockPool) to
+ * support larger segments without significant heap pressure.
  */
 public class SpannFieldVectorsWriter extends KnnFieldVectorsWriter<float[]> {
     private final FieldInfo fieldInfo;
@@ -39,7 +40,9 @@ public class SpannFieldVectorsWriter extends KnnFieldVectorsWriter<float[]> {
 
     @Override
     public long ramBytesUsed() {
-        return ramBytesUsed + RamUsageEstimator.shallowSizeOf(vectors) + RamUsageEstimator.shallowSizeOf(docIds);
+        return ramBytesUsed
+                + RamUsageEstimator.shallowSizeOf(vectors)
+                + RamUsageEstimator.shallowSizeOf(docIds);
     }
 
     public List<float[]> getVectors() {
@@ -48,5 +51,9 @@ public class SpannFieldVectorsWriter extends KnnFieldVectorsWriter<float[]> {
 
     public List<Integer> getDocIds() {
         return docIds;
+    }
+
+    public FieldInfo getFieldInfo() {
+        return fieldInfo;
     }
 }

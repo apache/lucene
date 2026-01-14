@@ -18,7 +18,7 @@ package org.apache.lucene.codecs.spann;
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99Codec;
+import org.apache.lucene.codecs.lucene104.Lucene104Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DirectoryReader;
@@ -33,7 +33,7 @@ public class TestLucene99SpannVectorsReader extends LuceneTestCase {
 
     public void testCheckIntegrity() throws Exception {
         try (Directory dir = newDirectory()) {
-            Codec codec = new Lucene99Codec() {
+            Codec codec = new Lucene104Codec() {
                 @Override
                 public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
                     return new Lucene99SpannVectorsFormat();

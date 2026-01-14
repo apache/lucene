@@ -26,43 +26,42 @@ import org.apache.lucene.index.SegmentWriteState;
 
 /**
  * Lucene 9.9 SPANN Vectors Format.
- * <p>
- * This format implements the <b>Disk-Resident HNSW-IVF</b> architecture.
- * It is a composite codec that delegates:
+ *
+ * <p>This format implements the <b>Disk-Resident HNSW-IVF</b> architecture. It is a composite codec
+ * that delegates:
+ *
  * <ul>
- * <li><b>Navigation</b>: To {@link Lucene99HnswVectorsFormat} (Off-Heap
- * Centroids).</li>
- * <li><b>Storage</b>: To a local sequential implementation (Disk-Resident
- * Data).</li>
+ *   <li><b>Navigation</b>: To {@link Lucene99HnswVectorsFormat} (Off-Heap Centroids).
+ *   <li><b>Storage</b>: To a local sequential implementation (Disk-Resident Data).
  * </ul>
  */
 public final class Lucene99SpannVectorsFormat extends KnnVectorsFormat {
 
-    public static final String FORMAT_NAME = "Lucene99SpannVectors";
+  public static final String FORMAT_NAME = "Lucene99SpannVectors";
 
-    /**
-     * We delegate the "Centroid Index" to HNSW.
-     * This allows us to use off-heap navigation for millions of centroids.
-     */
-    private final KnnVectorsFormat centroidIndexFormat;
+  /**
+   * We delegate the "Centroid Index" to HNSW. This allows us to use off-heap navigation for
+   * millions of centroids.
+   */
+  private final KnnVectorsFormat centroidIndexFormat;
 
-    public Lucene99SpannVectorsFormat() {
-        super(FORMAT_NAME);
-        this.centroidIndexFormat = new Lucene99HnswVectorsFormat();
-    }
+  public Lucene99SpannVectorsFormat() {
+    super(FORMAT_NAME);
+    this.centroidIndexFormat = new Lucene99HnswVectorsFormat();
+  }
 
-    @Override
-    public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-        return new Lucene99SpannVectorsWriter(state, centroidIndexFormat);
-    }
+  @Override
+  public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+    return new Lucene99SpannVectorsWriter(state, centroidIndexFormat);
+  }
 
-    @Override
-    public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-        return new Lucene99SpannVectorsReader(state, centroidIndexFormat);
-    }
+  @Override
+  public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
+    return new Lucene99SpannVectorsReader(state, centroidIndexFormat);
+  }
 
-    @Override
-    public int getMaxDimensions(String fieldName) {
-        return 1024; // SPANN limit
-    }
+  @Override
+  public int getMaxDimensions(String fieldName) {
+    return 1024; // SPANN limit
+  }
 }
