@@ -40,13 +40,16 @@ import org.apache.lucene.util.Bits;
 /**
  * Uses {@link KnnVectorsReader#search} to perform nearest neighbour search.
  *
- * <p>This query also allows for performing a kNN search subject to a filter. In this case, it first
+ * <p>
+ * This query also allows for performing a kNN search subject to a filter. In
+ * this case, it first
  * executes the filter for each leaf, then chooses a strategy dynamically:
  *
  * <ul>
- *   <li>If the filter cost is less than k, just execute an exact search
- *   <li>Otherwise run a kNN search subject to the filter
- *   <li>If the kNN search visits too many vectors without completing, stop and run an exact search
+ * <li>If the filter cost is less than k, just execute an exact search
+ * <li>Otherwise run a kNN search subject to the filter
+ * <li>If the kNN search visits too many vectors without completing, stop and
+ * run an exact search
  * </ul>
  */
 abstract class AbstractKnnVectorQuery extends Query {
@@ -85,11 +88,10 @@ abstract class AbstractKnnVectorQuery extends Query {
         return rewrittenFilter;
       }
       if (rewrittenFilter.getClass() != MatchAllDocsQuery.class) {
-        BooleanQuery booleanQuery =
-            new BooleanQuery.Builder()
-                .add(filter, BooleanClause.Occur.FILTER)
-                .add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER)
-                .build();
+        BooleanQuery booleanQuery = new BooleanQuery.Builder()
+            .add(filter, BooleanClause.Occur.FILTER)
+            .add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER)
+            .build();
         Query rewritten = indexSearcher.rewrite(booleanQuery);
         if (rewritten.getClass() == MatchNoDocsQuery.class) {
           return rewritten;
@@ -104,10 +106,10 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     KnnCollectorManager knnCollectorManager = getKnnCollectorManager(k, indexSearcher);
-    OptimisticKnnCollectorManager optimisticCollectorManager =
-        new OptimisticKnnCollectorManager(k, knnCollectorManager);
-    TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager =
-        new TimeLimitingKnnCollectorManager(optimisticCollectorManager, indexSearcher.getTimeout());
+    OptimisticKnnCollectorManager optimisticCollectorManager = new OptimisticKnnCollectorManager(k,
+        knnCollectorManager);
+    TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager = new TimeLimitingKnnCollectorManager(
+        optimisticCollectorManager, indexSearcher.getTimeout());
     TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
     List<LeafReaderContext> leafReaderContexts = new ArrayList<>(reader.leaves());
     List<Callable<TopDocs>> tasks = new ArrayList<>(leafReaderContexts.size());
@@ -124,22 +126,23 @@ abstract class AbstractKnnVectorQuery extends Query {
         // don't re-enter the search if we early terminated
         && topK.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
       float minTopKScore = topK.scoreDocs[topK.scoreDocs.length - 1].score;
-      TimeLimitingKnnCollectorManager knnCollectorManagerPhase2 =
-          new TimeLimitingKnnCollectorManager(
-              new ReentrantKnnCollectorManager(
-                  getKnnCollectorManager(k, indexSearcher), perLeafResults),
-              indexSearcher.getTimeout());
+      TimeLimitingKnnCollectorManager knnCollectorManagerPhase2 = new TimeLimitingKnnCollectorManager(
+          new ReentrantKnnCollectorManager(
+              getKnnCollectorManager(k, indexSearcher), perLeafResults),
+          indexSearcher.getTimeout());
       Iterator<LeafReaderContext> ctxIter = leafReaderContexts.iterator();
       while (ctxIter.hasNext()) {
         LeafReaderContext ctx = ctxIter.next();
         TopDocs perLeaf = perLeafResults.get(ctx.ord);
         if (perLeaf.scoreDocs.length > 0
             && perLeaf.scoreDocs[perLeaf.scoreDocs.length - 1].score >= minTopKScore) {
-          // All this leaf's hits are at or above the global topK min score; explore it further
+          // All this leaf's hits are at or above the global topK min score; explore it
+          // further
           ++reentryCount;
           tasks.add(() -> searchLeaf(ctx, filterWeight, knnCollectorManagerPhase2));
         } else {
-          // This leaf is tapped out; discard the context from the active list so we maintain
+          // This leaf is tapped out; discard the context from the active list so we
+          // maintain
           // correspondence between tasks and leaves
           ctxIter.remove();
         }
@@ -196,18 +199,17 @@ abstract class AbstractKnnVectorQuery extends Query {
       return approximateSearch(ctx, acceptDocs, Integer.MAX_VALUE, timeLimitingKnnCollectorManager);
     }
 
-    AcceptDocs acceptDocs =
-        AcceptDocs.fromIteratorSupplier(
-            () -> {
-              Scorer scorer = filterWeight.scorer(ctx);
-              if (scorer == null) {
-                return DocIdSetIterator.empty();
-              } else {
-                return scorer.iterator();
-              }
-            },
-            liveDocs,
-            reader.maxDoc());
+    AcceptDocs acceptDocs = AcceptDocs.fromIteratorSupplier(
+        () -> {
+          Scorer scorer = filterWeight.scorer(ctx);
+          if (scorer == null) {
+            return DocIdSetIterator.empty();
+          } else {
+            return scorer.iterator();
+          }
+        },
+        liveDocs,
+        reader.maxDoc());
     final int cost = acceptDocs.cost();
     QueryTimeout queryTimeout = timeLimitingKnnCollectorManager.getQueryTimeout();
 
@@ -216,30 +218,35 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (ctx.parent != null) {
       float leafProportion = ctx.reader().maxDoc() / (float) ctx.parent.reader().maxDoc();
       perLeafTopK = perLeafTopKCalculation(k, leafProportion);
-      // We don't have a good way to estimate perLeafTopK here, so just do approximate search
+      // We don't have a good way to estimate perLeafTopK here, so just do approximate
+      // search
     } else {
       perLeafTopK = k;
     }
 
     if (cost <= perLeafTopK) {
-      // If there are <= perLeafTopK possible matches, short-circuit and perform exact search, since
+      // If there are <= perLeafTopK possible matches, short-circuit and perform exact
+      // search, since
       // HNSW must always visit at least perLeafTopK documents
       return exactSearch(ctx, acceptDocs.iterator(), queryTimeout);
     }
 
     // Perform the approximate kNN search
-    // We pass cost + 1 here to account for the edge case when we explore exactly cost vectors
+    // We pass cost + 1 here to account for the edge case when we explore exactly
+    // cost vectors
     TopDocs results = approximateSearch(ctx, acceptDocs, cost + 1, timeLimitingKnnCollectorManager);
 
     if ((results.totalHits.relation() == TotalHits.Relation.EQUAL_TO
-            // We know that there are more than `perLeafTopK` available docs, if we didn't even get
-            // `perLeafTopK` something weird happened, and we need to drop to exact search
-            && results.scoreDocs.length >= perLeafTopK)
+        // We know that there are more than `perLeafTopK` available docs, if we didn't
+        // even get
+        // `perLeafTopK` something weird happened, and we need to drop to exact search
+        && results.scoreDocs.length >= perLeafTopK)
         // Return partial results only when timeout is met
         || (queryTimeout != null && queryTimeout.shouldExit())) {
       return results;
     } else {
-      // We stopped the kNN search because it visited too many nodes, so fall back to exact search
+      // We stopped the kNN search because it visited too many nodes, so fall back to
+      // exact search
       return exactSearch(ctx, acceptDocs.iterator(), queryTimeout);
     }
   }
@@ -267,7 +274,8 @@ abstract class AbstractKnnVectorQuery extends Query {
         @SuppressWarnings("resource")
         float leafProportion = context.reader().maxDoc() / (float) context.parent.reader().maxDoc();
         int perLeafTopK = perLeafTopKCalculation(k, leafProportion);
-        // if we divided by zero above, leafProportion can be NaN and then this would be 0
+        // if we divided by zero above, leafProportion can be NaN and then this would be
+        // 0
         assert perLeafTopK > 0;
         return delegate.newOptimisticCollector(visitedLimit, searchStrategy, context, perLeafTopK);
       }
@@ -277,15 +285,17 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   /*
-   * Returns perLeafTopK, the expected number (K * leafProportion) of hits in a leaf with the given
-   * proportion of the entire index, plus three standard deviations of a binomial distribution. Math
-   * says there is a 95% probability that this segment's contribution to the global top K hits are
+   * Returns perLeafTopK, the expected number (K * leafProportion) of hits in a
+   * leaf with the given
+   * proportion of the entire index, plus three standard deviations of a binomial
+   * distribution. Math
+   * says there is a 95% probability that this segment's contribution to the
+   * global top K hits are
    * <= perLeafTopK.
    */
   private static int perLeafTopKCalculation(int k, float leafProportion) {
-    return (int)
-        Math.max(
-            1, k * leafProportion + LAMBDA * Math.sqrt(k * leafProportion * (1 - leafProportion)));
+    return (int) Math.max(
+        1, k * leafProportion + LAMBDA * Math.sqrt(k * leafProportion * (1 - leafProportion)));
   }
 
   protected abstract TopDocs approximateSearch(
@@ -298,7 +308,8 @@ abstract class AbstractKnnVectorQuery extends Query {
   abstract VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi)
       throws IOException;
 
-  // We allow this to be overridden so that tests can check what search strategy is used
+  // We allow this to be overridden so that tests can check what search strategy
+  // is used
   protected TopDocs exactSearch(
       LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout)
       throws IOException {
@@ -318,9 +329,9 @@ abstract class AbstractKnnVectorQuery extends Query {
     ScoreDoc topDoc = queue.top();
     DocAndFloatFeatureBuffer buffer = new DocAndFloatFeatureBuffer();
     VectorScorer.Bulk bulkScorer = vectorScorer.bulk(acceptIterator);
-    for (float maxScore = bulkScorer.nextDocsAndScores(DocIdSetIterator.NO_MORE_DOCS, null, buffer);
-        buffer.size > 0;
-        maxScore = bulkScorer.nextDocsAndScores(DocIdSetIterator.NO_MORE_DOCS, null, buffer)) {
+    for (float maxScore = bulkScorer.nextDocsAndScores(DocIdSetIterator.NO_MORE_DOCS, null,
+        buffer); buffer.size > 0; maxScore = bulkScorer.nextDocsAndScores(DocIdSetIterator.NO_MORE_DOCS, null,
+            buffer)) {
       // Mark results as partial if timeout is met
       if (queryTimeout != null && queryTimeout.shouldExit()) {
         relation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
@@ -358,10 +369,14 @@ abstract class AbstractKnnVectorQuery extends Query {
   /**
    * Merges all segment-level kNN results to get the index-level kNN results.
    *
-   * <p>The default implementation delegates to {@link TopDocs#merge(int, TopDocs[])} to find the
+   * <p>
+   * The default implementation delegates to {@link TopDocs#merge(int, TopDocs[])}
+   * to find the
    * overall top {@link #k}, which requires input results to be sorted.
    *
-   * <p>This method is useful for reading and / or modifying the final results as needed.
+   * <p>
+   * This method is useful for reading and / or modifying the final results as
+   * needed.
    *
    * @param perLeafResults array of segment-level kNN results.
    * @return index-level kNN results (no constraint on their ordering).
@@ -386,8 +401,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     public KnnCollector newCollector(
         int visitLimit, KnnSearchStrategy searchStrategy, LeafReaderContext ctx)
         throws IOException {
-      KnnCollector delegateCollector =
-          knnCollectorManager.newCollector(visitLimit, searchStrategy, ctx);
+      KnnCollector delegateCollector = knnCollectorManager.newCollector(visitLimit, searchStrategy, ctx);
       TopDocs seedTopDocs = perLeafResults.get(ctx.ord);
       VectorScorer scorer = createVectorScorer(ctx, ctx.reader().getFieldInfos().fieldInfo(field));
       if (seedTopDocs.totalHits.value() == 0 || scorer == null) {
@@ -401,11 +415,11 @@ abstract class AbstractKnnVectorQuery extends Query {
       if (vectorIterator instanceof IndexedDISI indexedDISI) {
         vectorIterator = IndexedDISI.asDocIndexIterator(indexedDISI);
       }
-      // Most underlying iterators are indexed, so we can map the seed docs to the vector docs
+      // Most underlying iterators are indexed, so we can map the seed docs to the
+      // vector docs
       if (vectorIterator instanceof KnnVectorValues.DocIndexIterator indexIterator) {
-        DocIdSetIterator seedDocs =
-            new SeededKnnVectorQuery.MappedDISI(
-                indexIterator, new SeededKnnVectorQuery.TopDocsDISI(seedTopDocs, ctx));
+        DocIdSetIterator seedDocs = new SeededKnnVectorQuery.MappedDISI(
+            indexIterator, new SeededKnnVectorQuery.TopDocsDISI(seedTopDocs, ctx));
         return knnCollectorManager.newCollector(
             visitLimit,
             new KnnSearchStrategy.Seeded(seedDocs, seedTopDocs.scoreDocs.length, searchStrategy),
@@ -426,8 +440,10 @@ abstract class AbstractKnnVectorQuery extends Query {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o)
+      return true;
+    if (o == null || getClass() != o.getClass())
+      return false;
     AbstractKnnVectorQuery that = (AbstractKnnVectorQuery) o;
     return k == that.k
         && Objects.equals(field, that.field)
@@ -455,8 +471,9 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   /**
-   * @return the filter that is executed before the KnnVector search happens. Only the results
-   *     accepted by this filter are returned by the KnnVector search.
+   * @return the filter that is executed before the KnnVector search happens. Only
+   *         the results
+   *         accepted by this filter are returned by the KnnVector search.
    */
   public Query getFilter() {
     return filter;

@@ -4,17 +4,20 @@ import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
-/** Simple in-memory K-Means implementation for SPANN clustering. */
+/**
+ * In-memory K-Means implementation for SPANN clustering.
+ *
+ * @lucene.internal
+ */
 public class SpannKMeans {
 
     /**
-     * Clusters the input vectors into k partitions.
-     *
-     * @param vectors            The input vectors
-     * @param k                  The target number of clusters
-     * @param similarityFunction The similarity function (e.g. DOT_PRODUCT)
-     * @param maxIterations      Max iterations for Lloyd's algorithm
-     * @return The computed centroids [k][dimension]
+     * Seed for deterministic clustering.
+     */
+    private static final long SEED = 42;
+
+    /**
+     * Clusters the input vectors using Lloyd's algorithm.
      */
     public static float[][] cluster(
             float[][] vectors, int k, VectorSimilarityFunction similarityFunction, int maxIterations) {
@@ -24,7 +27,7 @@ public class SpannKMeans {
 
         int dim = vectors[0].length;
         float[][] centroids = new float[k][dim];
-        Random random = new Random(42); // Seeded for determinism
+        Random random = new Random(SEED);
 
         // Initial centroid selection
         for (int i = 0; i < k; i++) {
