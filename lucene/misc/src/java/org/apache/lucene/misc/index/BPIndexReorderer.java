@@ -72,7 +72,7 @@ import org.apache.lucene.util.packed.PackedInts;
  *
  * <p>Typical usage would look like this:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * LeafReader reader; // reader to reorder
  * Directory targetDir; // Directory where to write the reordered index
  *
@@ -87,7 +87,7 @@ import org.apache.lucene.util.packed.PackedInts;
  *   w.addIndexes(reorderedReaderView);
  * }
  * DirectoryReader reorderedReader = DirectoryReader.open(targetDir);
- * </pre>
+ * </code></pre>
  *
  * <p>Note: This is a slow operation that consumes O(maxDoc + numTerms * numThreads) memory.
  */
